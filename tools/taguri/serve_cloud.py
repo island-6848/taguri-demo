@@ -51,6 +51,7 @@ AWS公式のSDKを使うほうが確実で読みやすいと判断した。影�
 from __future__ import annotations
 
 import os
+import shutil
 import sys
 import tarfile
 from pathlib import Path
@@ -67,15 +68,18 @@ S3_REGION = os.environ.get("AWS_DEFAULT_REGION", "ap-northeast-1")
 def _fetch_catalog() -> None:
     """非公開S3から公演カタログを取得し、`data/`に展開する。
 
-    **`data/review/candidates.jsonl`が無いときだけ取得する。** Renderは再デプロイの
-    たびにディスクを作り直すので、毎回の起動で必ず走るが、**同じ内容を毎回S3から
-    落とすだけで、CoRichへは一切アクセスしない**（外部への取得はEC2側で事前に
-    済ませてある）。
+    **常に取得し直す（2026-08-29に「無ければ取得」から変更）。** 当初は
+    `data/review/candidates.jsonl`が無いときだけ取得する形にしていたが、
+    **Renderのディスクが再デプロイをまたいで残るケースがあり、S3側のカタログを
+    更新してもいつまでも古いデータのままになる事故が起きた**（起案者の報告 ──
+    「あらすじが取れていないままです」→ S3・Renderを更新しても`これから観られる
+    公演`の件数が古いまま変わらなかった）。**「ディスクは毎回まっさらになる」という
+    前提が誤りだった以上、存在チェックに頼らず、起動のたびに無条件でS3から
+    取り直して上書きする方が安全である。** 起動のたびにCoRichへ取得しに行くわけ
+    ではない点は変わらない（読みに行くのはS3のみ）。ダウンロード自体の時間は
+    かかるが、起動回数は少ない（Render無料枠はアクセスが無いと休止する）ので
+    許容範囲とした。
     """
-    marker = ROOT / "data" / "review" / "candidates.jsonl"
-    if marker.exists():
-        print("公演カタログはすでにある（取得済み）", flush=True)
-        return
     try:
         import boto3
     except ImportError:
@@ -86,6 +90,9 @@ def _fetch_catalog() -> None:
     s3 = boto3.client("s3", region_name=S3_REGION)
     archive = ROOT / "_stage_catalog.tar.gz"
     s3.download_file(S3_BUCKET, S3_KEY, str(archive))
+    # **展開前に古い`data/`を消す。** tarファイルの展開は上書き・追加はするが、
+    # 新しいカタログに無くなったファイル（古いポスター等）を消してはくれない
+    shutil.rmtree(ROOT / "data", ignore_errors=True)
     (ROOT / "data").mkdir(parents=True, exist_ok=True)
     with tarfile.open(archive) as tf:
         tf.extractall(ROOT / "data")            # noqa: S202 自分でS3に置いた信頼できる中身
