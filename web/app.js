@@ -311,10 +311,21 @@ function renderScreen(el, activePath, d) {
   });
 }
 
+// **後から押した画面が、先に押した(だが遅く返ってきた)画面に上書きされない
+// ようにする。** 例: 「今週のおすすめ」の初期読み込みがまだ終わらないうちに
+// 「開幕リマインド」へ移ると、開幕リマインドのfetchのほうが早く返ってきても、
+// あとから解決した「今週のおすすめ」の結果でDOMが上書きされてしまっていた
+// (実機の実データで確認した不具合)。**呼ぶたびに番号を進め、自分の番号が
+// 最新でなくなっていたら画面には反映しない**(読み込み中の表示は消す)。
+let loadSeq = 0;
+
 async function loadScreen(path, search) {
+  const seq = ++loadSeq;
   const name = SCREENS[path];
   const el = contentEl();
+  const stale = () => seq !== loadSeq;
   if (!name) {
+    if (stale()) return;
     el.innerHTML = "<h1>見つかりません</h1><p>このページはありません。"
       + '<a href="/" data-path="/">おすすめへ戻る</a></p>';
     renderCrumbBar("/", "見つかりません");
@@ -322,6 +333,7 @@ async function loadScreen(path, search) {
     return;
   }
   if (!IMPLEMENTED.has(name)) {
+    if (stale()) return;
     el.innerHTML = "<h1>この画面は準備中です</h1>"
       + "<p>GitHub Pages移行はPhase 0(今週のおすすめ)のみ対応しています。"
       + "現行の全画面版は <a href=\"" + API_BASE + path + "\">Renderの旧UI</a> で見られます。</p>";
@@ -335,6 +347,7 @@ async function loadScreen(path, search) {
   const cacheKey = name + "?" + search;
   const cached = fragmentCache.get(cacheKey);
   if (cached) {
+    if (stale()) return;
     renderScreen(el, activePath, cached);
     return;
   }
@@ -347,11 +360,13 @@ async function loadScreen(path, search) {
     if (!r.ok || !d.ok) throw new Error(d.error || r.status);
   } catch (e) {
     stopLoading();
+    if (stale()) return;
     el.innerHTML = "<h1>読み込めませんでした</h1><p>" + E(String(e)) + "</p>";
     return;
   }
-  stopLoading();
   fragmentCache.set(cacheKey, d);
+  stopLoading();
+  if (stale()) return;
   renderScreen(el, activePath, d);
 }
 
