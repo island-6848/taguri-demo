@@ -139,9 +139,91 @@ const LOADING_MESSAGES = [
   "もうすぐ開幕です…",
 ];
 
+// **舞台の支度をしている小さなキャラクター。** つかんで動かせる(makeCharDraggable)、
+// 突くと一言しゃべる(pokeChar)。読み込みの「待たされている感」を紛らわせる
+// ための、実用性のない遊び ── 消しても読み込み自体には影響しない。
+const CHAR_SVG = '<svg viewBox="0 0 64 64" aria-hidden="true">'
+  + '<rect class="tgc-leg tgc-leg-l" x="24" y="46" width="6" height="10" rx="3"/>'
+  + '<rect class="tgc-leg tgc-leg-r" x="34" y="46" width="6" height="10" rx="3"/>'
+  + '<ellipse class="tgc-body" cx="32" cy="42" rx="15" ry="12"/>'
+  + '<rect class="tgc-arm tgc-arm-l" x="17" y="34" width="6" height="14" rx="3"/>'
+  + '<rect class="tgc-arm tgc-arm-r" x="41" y="34" width="6" height="14" rx="3"/>'
+  + '<circle class="tgc-ear tgc-ear-l" cx="21" cy="15" r="6.5"/>'
+  + '<circle class="tgc-ear tgc-ear-r" cx="43" cy="15" r="6.5"/>'
+  + '<circle class="tgc-ear-in tgc-ear-l" cx="21" cy="15" r="3.3"/>'
+  + '<circle class="tgc-ear-in tgc-ear-r" cx="43" cy="15" r="3.3"/>'
+  + '<circle class="tgc-head" cx="32" cy="25" r="13"/>'
+  + '<path class="tgc-scarf" d="M20 33c6 5 18 5 24 0l-2 6c-6 4-14 4-20 0z"/>'
+  + '<g class="tgc-eyes"><circle cx="27" cy="24" r="1.7"/><circle cx="37" cy="24" r="1.7"/></g>'
+  + '<circle class="tgc-nose" cx="32" cy="28.5" r="1.5"/>'
+  + '</svg>';
+
+const CHAR_LINES = [
+  "支度中です…", "もうすぐ開幕!", "つかまえた?", "手伝ってくれる?",
+  "幕、あと少しで開きます", "衣装を直してます",
+];
+
+// **`.tg-stage`の中だけで動かせるようにする。** ポインタでつかんで離すまで
+// 追従し、範囲外には出さない。ドラッグと判定したらタップの反応(pokeChar)は
+// 起こさない ── 少し動いただけでしゃべりだすと、動かしたいだけの操作の邪魔になる。
+function makeCharDraggable(stage, char, bubble) {
+  let dragging = false, moved = false, offX = 0, offY = 0;
+  const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
+
+  function place(x, y) {
+    const sr = stage.getBoundingClientRect();
+    const w = char.offsetWidth, h = char.offsetHeight;
+    char.style.left = clamp(x, 0, Math.max(0, sr.width - w)) + "px";
+    char.style.top = clamp(y, 0, Math.max(0, sr.height - h)) + "px";
+    char.style.bottom = "auto";
+  }
+  char.addEventListener("pointerdown", ev => {
+    dragging = true; moved = false;
+    try { char.setPointerCapture(ev.pointerId); } catch (e) {}
+    char.classList.add("dragging");
+    const cr = char.getBoundingClientRect(), sr = stage.getBoundingClientRect();
+    offX = ev.clientX - cr.left; offY = ev.clientY - cr.top;
+    place(cr.left - sr.left, cr.top - sr.top);
+    ev.preventDefault();
+  });
+  char.addEventListener("pointermove", ev => {
+    if (!dragging) return;
+    moved = true;
+    const sr = stage.getBoundingClientRect();
+    place(ev.clientX - sr.left - offX, ev.clientY - sr.top - offY);
+  });
+  function release() {
+    if (!dragging) return;
+    dragging = false;
+    char.classList.remove("dragging");
+  }
+  char.addEventListener("pointerup", () => { const m = moved; release(); if (!m) pokeChar(char, bubble); });
+  char.addEventListener("pointercancel", release);
+  char.addEventListener("keydown", ev => {
+    if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); pokeChar(char, bubble); }
+  });
+}
+
+function pokeChar(char, bubble) {
+  char.classList.remove("poked");
+  void char.offsetWidth;  // 再生し直すための強制リフロー
+  char.classList.add("poked");
+  if (!bubble) return;
+  bubble.textContent = CHAR_LINES[Math.floor(Math.random() * CHAR_LINES.length)];
+  bubble.classList.add("show");
+  clearTimeout(bubble._hideTimer);
+  bubble._hideTimer = setTimeout(() => bubble.classList.remove("show"), 1800);
+}
+
 function loadingHtml() {
   return '<div class="tg-loading">'
-    + '<div class="tg-load-ticket">' + ico("ticket", 40) + '</div>'
+    + '<div class="tg-stage">'
+    + '<div class="tg-char-bubble"></div>'
+    + '<div class="tg-char" tabindex="0" role="button" '
+    + 'aria-label="舞台の支度をしている小さなキャラクター。つかんで動かせます">'
+    + CHAR_SVG + '</div>'
+    + '<div class="tg-stage-floor"></div>'
+    + '</div>'
     + '<div class="tg-load-bar"><div class="tg-load-fill"></div></div>'
     + '<p class="tg-load-pct">0%</p>'
     + '<p class="tg-load-msg">' + LOADING_MESSAGES[0] + '</p>'
@@ -155,6 +237,10 @@ function loadingHtml() {
 // 呼び出し側がすぐ中身を差し替える(フェッチが速ければ0%のまま一瞬で終わる)。
 function startLoading(el) {
   el.innerHTML = loadingHtml();
+  const stage = el.querySelector(".tg-stage");
+  const char = el.querySelector(".tg-char");
+  const bubble = el.querySelector(".tg-char-bubble");
+  if (stage && char) makeCharDraggable(stage, char, bubble);
   const t0 = performance.now();
   const fill = el.querySelector(".tg-load-fill");
   const pct = el.querySelector(".tg-load-pct");
