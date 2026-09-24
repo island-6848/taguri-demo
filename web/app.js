@@ -155,16 +155,20 @@ const CURTAIN_SVG = '<svg class="tg-curtain" viewBox="0 0 ' + CURTAIN_W + ' 74" 
 // **案内標識と同じ、幾何学的な人型ピクトグラム。** 顔・毛など飾りは持たない
 // (円+角丸の四角だけの構成)。腕は前へ寄せた角度で固定し、その先(手の
 // あたり)に`.tg-prop`が乗るので、小道具は常に手に持っている形になる。
+// **腕・脚はそれぞれ別グループにして、歩いている間だけ振る(起案者の指示
+// ──「手足も動かしてよりリアルに」)。手(circle)は腕グループの子にして
+// あるので、腕が振れても手だけ置いていかれることはない。静止時(小道具を
+// 持って支度をしている間)は今までどおりの構え(肩から前へ寄せた角度)。 */
 const PICTO_SVG = '<svg viewBox="0 0 64 64" aria-hidden="true">'
   + '<g class="tg-picto">'
-  + '<rect x="33" y="37" width="6" height="16" rx="3"/>'
-  + '<rect x="25" y="37" width="6" height="16" rx="3"/>'
+  + '<rect class="tg-leg tg-leg-r" x="33" y="37" width="6" height="16" rx="3"/>'
+  + '<rect class="tg-leg tg-leg-l" x="25" y="37" width="6" height="16" rx="3"/>'
   + '<rect x="26" y="21" width="12" height="17" rx="5"/>'
-  + '<rect class="tg-arm" x="37" y="23" width="6" height="19" rx="3" transform="rotate(-26 40 23)"/>'
-  + '<rect class="tg-arm" x="21" y="23" width="6" height="19" rx="3" transform="rotate(26 24 23)"/>'
+  + '<g class="tg-arm tg-arm-r"><rect x="37" y="23" width="6" height="19" rx="3"/>'
+  + '<circle cx="40" cy="42" r="2.2"/></g>'
+  + '<g class="tg-arm tg-arm-l"><rect x="21" y="23" width="6" height="19" rx="3"/>'
+  + '<circle cx="24" cy="42" r="2.2"/></g>'
   + '<circle cx="32" cy="14" r="6"/>'
-  + '<circle cx="35" cy="41" r="2.2"/>'
-  + '<circle cx="29" cy="41" r="2.2"/>'
   + '<g class="tg-prop"></g>'
   + '</g></svg>';
 

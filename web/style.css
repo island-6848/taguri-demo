@@ -48,6 +48,22 @@ body{overflow-wrap:break-word}
    顔の無い幾何学的な単色シルエット。 */
 .tg-picto{fill:var(--curtain);animation:tg-picto-bob 2.6s ease-in-out infinite}
 .tg-picto-wrap.walking .tg-picto{animation-duration:.45s}
+
+/* ---- 歩いている間だけ腕・脚を振る(起案者の指示 ──「手足も動かして
+   よりリアルに」)。静止時(小道具を持って支度をしている間)は構えの角度
+   のまま ── 手は腕の子なので、振れても小道具を持つ位置から離れない。 */
+.tg-arm,.tg-leg{transform-box:fill-box;transform-origin:50% 0%}
+.tg-arm-r{transform:rotate(-26deg)}
+.tg-arm-l{transform:rotate(26deg)}
+.tg-picto-wrap.walking .tg-arm-r{animation:tg-arm-r-walk .35s ease-in-out infinite}
+.tg-picto-wrap.walking .tg-arm-l{animation:tg-arm-l-walk .35s ease-in-out infinite}
+.tg-picto-wrap.walking .tg-leg-r{animation:tg-leg-r-walk .35s ease-in-out infinite}
+.tg-picto-wrap.walking .tg-leg-l{animation:tg-leg-l-walk .35s ease-in-out infinite}
+@keyframes tg-arm-r-walk{0%,100%{transform:rotate(-26deg)}50%{transform:rotate(24deg)}}
+@keyframes tg-arm-l-walk{0%,100%{transform:rotate(26deg)}50%{transform:rotate(-24deg)}}
+@keyframes tg-leg-r-walk{0%,100%{transform:rotate(0deg)}50%{transform:rotate(-24deg)}}
+@keyframes tg-leg-l-walk{0%,100%{transform:rotate(0deg)}50%{transform:rotate(24deg)}}
+
 .tg-cutout{fill:var(--surf)}
 .tg-cutout-line{fill:none;stroke:var(--surf);stroke-width:1;stroke-linecap:round}
 .tg-stroke{fill:none;stroke:var(--curtain);stroke-width:2;stroke-linecap:round}
