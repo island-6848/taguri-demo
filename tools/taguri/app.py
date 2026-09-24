@@ -3539,6 +3539,19 @@ def page_recommend(prefs=()) -> str:
     **全国の上位 15 件とは別の束にする** ── 週次の指標（提示 → 興味あり → 購入 → ◎ の連鎖）の
     分母は「その週に全国で出した 15 件」なので、絞り込んで出したぶんを混ぜると分母が動く。
     """
+    body = _recommend_body(prefs)
+    return layout("今週のおすすめ", "/recommend", body, RR.STYLE, active_sub="/recommend")
+
+
+def _recommend_body(prefs=()) -> str:
+    """`page_recommend()` の中身だけを組み立てる。
+
+    **#000009(GitHub Pages移行)で切り出した。** `layout()`で包む前のHTML片を
+    返すところまでが共通で、`page_recommend()`(フルページ、`run.py`向け)と
+    `serve.py`の`/api/screen/recommend`(JSONフラグメント、GitHub Pages向け)の
+    両方がこれを呼ぶ。**この関数自体はどちらから呼ばれたかを知らない** ──
+    出し分けは呼び出し側(`layout()`で包むか、JSONに詰めるか)だけの違いにする。
+    """
     d, wait = _load()
     n_tr = len(d.get("tracking") or [])
     # **綴りと並びはここで正す。** 選択は URL から来るので、知らない県名は落とす
@@ -3603,7 +3616,7 @@ def page_recommend(prefs=()) -> str:
 <p class="lede">すでに答えた公演です。上の都道府県の絞り込みは、ここには効きません。</p>
 {RR.bundles_html(d, _notes_no())}
 {RR.limits_html(d, rows)}"""
-    return layout("今週のおすすめ", "/recommend", body, RR.STYLE, active_sub="/recommend")
+    return body
 
 
 # ---------------------------------------------------------------- おすすめ ▸ 興味あり

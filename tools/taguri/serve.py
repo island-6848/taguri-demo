@@ -177,6 +177,32 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.close_connection = True
 
     # ---- 応答の下請け ------------------------------------------------------
+    def _cors_headers(self) -> dict:
+        """**GitHub Pages からのクロスオリジン呼び出し用ヘッダ。**
+
+        `self.server.cors_origin`(#000009・GitHub Pages移行）が設定されている
+        ときだけ付ける ── ローカル・EC2の`run.py`経路は同一オリジンなので不要
+        （`*`にはしない。Cookieを伴うクロスオリジン要求は、許可オリジンを名指し
+        しないとブラウザが送らせてくれない）。
+        """
+        origin = self.server.cors_origin                            # type: ignore[attr-defined]
+        if not origin:
+            return {}
+        return {"Access-Control-Allow-Origin": origin,
+                "Access-Control-Allow-Credentials": "true",
+                "Vary": "Origin"}
+
+    def do_OPTIONS(self) -> None:                                    # noqa: N802
+        """**プリフライト応答。** クロスオリジンの POST(JSONボディ)はブラウザが
+        先にこれを送る。中身は無く、許可ヘッダを返すだけでよい。
+        """
+        # **`_send`が`_cors_headers()`を毎回付けるので、ここでは追加分だけ渡す**
+        # （二重に渡すとヘッダが2回出る）。
+        extra = {"Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+                 "Access-Control-Allow-Headers": "Content-Type, X-Taguri-Token",
+                 "Access-Control-Max-Age": "86400"}
+        self._send(204, b"", "text/plain", extra)
+
     def _send(self, code: int, body: bytes, ctype: str, extra: dict | None = None) -> None:
         try:
             self.send_response(code)
@@ -189,6 +215,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             # サイトを含む）」からの要求を防ぐためのものなので、Referer で外部サイトに
             # 渡ってしまうと、その守りの片方が崩れる。
             self.send_header("Referrer-Policy", "no-referrer")
+            for k, v in self._cors_headers().items():
+                self.send_header(k, v)
             for k, v in (extra or {}).items():
                 self.send_header(k, v)
             self.end_headers()
@@ -238,11 +266,22 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def _set_session_cookie(self, token: str) -> dict:
         """Set-Cookieヘッダを組み立てる。`_send`のextraにそのまま渡す形。
 
-        HttpOnly・SameSite=Lax（C15の下地）。HTTPS化（E1）が済むまでは
+        HttpOnly・既定はSameSite=Lax（C15の下地）。HTTPS化（E1）が済むまでは
         Secure属性を付けない ── 平文HTTPの現状で付けるとCookie自体が
         機能しなくなる。E1実装時にSecureを足す。
+
+        **`cors_origin`設定時（GitHub Pagesからのクロスオリジン運用）だけは
+        `SameSite=None; Secure`にする**（#000009）。RenderはHTTPS配信なので
+        Secureは付けられる一方、クロスオリジンの`fetch`にCookieを乗せるには
+        `SameSite=None`が要る ── `Lax`のままだとcrendentialsを送っても
+        ブラウザがCookie自体を付けてくれない。ローカル・EC2の平文HTTP経路
+        （`cors_origin`未設定）は今までどおり`SameSite=Lax`のまま変えない。
         """
-        return {"Set-Cookie": f"{SESSION_COOKIE}={token}; Path=/; HttpOnly; SameSite=Lax; "
+        if self.server.cors_origin:                                  # type: ignore[attr-defined]
+            same_site = "SameSite=None; Secure"
+        else:
+            same_site = "SameSite=Lax"
+        return {"Set-Cookie": f"{SESSION_COOKIE}={token}; Path=/; HttpOnly; {same_site}; "
                                f"Max-Age={AU.SESSION_TTL_SEC}"}
 
     def _auth_page(self, body: str) -> bytes:
@@ -335,7 +374,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
                                               "/api/import_status",
                                               "/api/mail_hints", "/api/suggest",
                                               "/api/suggest_web", "/vendor/d3.js") \
-                and not path.startswith("/img/"):
+                and not path.startswith("/img/") \
+                and not path.startswith("/api/screen/"):
             self._send(404, b"not found", "text/plain; charset=utf-8")
             return
         if not self._tok(query):
@@ -372,6 +412,19 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return
         if path == "/api/import_status":
             self._json(200, srv.import_status())
+            return
+        if path == "/api/screen/recommend":
+            # **GitHub Pages向けフラグメントAPI（#000009）。** `page_recommend()`
+            # と同じ中身(`APP._recommend_body`)を呼び、`layout()`で包む代わりに
+            # JSONで返す。都道府県の絞り込み・提示記録（`RECORD`）・既読印
+            # （`mark_viewed`）は、今までどおりのHTML版と同じ扱いにする
+            # ── フラグメント版だけ指標が薄くなることを避ける。
+            q = urllib.parse.parse_qs(query)
+            if "f" in q:
+                srv.prefs = [p for p in q.get("pref", []) if p][:47]
+            body = APP._recommend_body(srv.prefs)
+            srv.mark_viewed("recommend_pref" if srv.prefs else "recommend")
+            self._json(200, {"ok": True, "title": "今週のおすすめ", "body_html": body})
             return
         if path == "/api/suggest":
             # **手で足す欄の候補。** 手元にあるものだけを引く読み口で、外へは行かない
@@ -672,7 +725,7 @@ class Server(http.server.ThreadingHTTPServer):
         super().handle_error(request, client_address)
 
     def __init__(self, label: str, port: int, *, bind_host: str = "127.0.0.1",
-                demo_mode: bool = False) -> None:
+                demo_mode: bool = False, cors_origin: str = "") -> None:
         # **既定は`127.0.0.1`に固定する。** ここを`0.0.0.0`にすると同じLANの他端末
         # から観劇記録が読める。**`bind_host`を明示的に変えられるのは、就活デモを
         # Render等のクラウドで動かす`serve_cloud.py`だけ**（#000008・2026-08-29）。
@@ -681,6 +734,11 @@ class Server(http.server.ThreadingHTTPServer):
         super().__init__((bind_host, port), Handler)
         self.label = label
         self.token = secrets.token_urlsafe(24)
+        # **GitHub Pagesを入口にする移行（#000009）で使う。** 設定時のみCORSヘッダと
+        # `SameSite=None`Cookieを出す（`_cors_headers`・`_set_session_cookie`参照）。
+        # ローカル・EC2の`run.py`は引数を渡さないので空文字のまま、今までどおり
+        # 同一オリジン専用の挙動になる。
+        self.cors_origin = cors_origin
         # **デモモード。** 起動ごとの合言葉（`_tok`・`X-Taguri-Token`）は、就活の
         # リクルーターが知りようがない秘密なので、デモ環境ではこの2つの検査を
         # 迂回する。既存のセキュリティは働かなくなるが、それは想定内 ──

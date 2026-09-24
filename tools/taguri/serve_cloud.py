@@ -106,8 +106,14 @@ import serve as S                                                  # noqa: E402
 def main() -> int:
     _fetch_catalog()
     port = int(os.environ.get("PORT", "8000"))
-    srv = S.Server("demo", port, bind_host="0.0.0.0", demo_mode=True)
-    print(f"デモサーバ起動 ── 0.0.0.0:{port}（demo_mode）", flush=True)
+    # **GitHub Pages移行（#000009）。** `CORS_ORIGIN`にGitHub Pagesの配信元
+    # （例 `https://island-6848.github.io`）を設定すると、そこからのクロス
+    # オリジン`fetch`（`/api/screen/*`等）を許可する。未設定なら今までどおり
+    # CORSヘッダを出さない（同一オリジンの旧UIだけがRenderに残る前提）。
+    cors_origin = os.environ.get("CORS_ORIGIN", "")
+    srv = S.Server("demo", port, bind_host="0.0.0.0", demo_mode=True, cors_origin=cors_origin)
+    print(f"デモサーバ起動 ── 0.0.0.0:{port}（demo_mode, CORS_ORIGIN={cors_origin or '(未設定)'}）",
+          flush=True)
     try:
         srv.serve_forever()
     except KeyboardInterrupt:

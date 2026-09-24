@@ -1,0 +1,1516 @@
+/* たぐり ── GitHub Pages版スタイル。
+   Render上のPythonアプリ(tools/taguri/app.py, render_recommend.py等)が
+   持つCSS文字列定数をそのまま抽出したもの(APP_CSS/RR.STYLE/各モジュールのCSS)。
+   内容は書き換えず、結合しているだけ。 */
+
+/* ---- 2 カラム。ナビゲーションは常に左に出したままにする -------------------
+   起案者の指示（2026-08-24）──「上にナビゲーションバーじゃなくて 2 カラムにして
+   常に左にバーを出していてほしい」。
+
+   **横並びの札を上に置くと、下にスクロールした時点で行き先が画面から消えていた。**
+   この画面は 1 件ずつ押して進める使い方（評価を付ける・興味ありをもぎる）なので、
+   縦に長い。左に貼り付けておけば、どこまで下がっても現在地と行き先が見えている。
+   **縦に並べる利点はもう 1 つある** ── 項目名を省略せずに置ける。横並びでは
+   「観た公演の評価」「公演情報の登録」が折り返して 2 段になっていた。            */
+body{padding:0}
+.shell{display:flex;align-items:flex-start;min-height:100vh}
+/* ---- 左の帯は幕の色で塗る ---------------------------------------------------
+   **帯と本文が同じ色だったので、境目が線 1 本しか無かった。** 画面が 1 枚の平らな面に
+   見えて、どこが行き先でどこが読むところなのかが形で分からない ── **色を変えれば、
+   線を足さずに分かれる。** えんじは `.curtain` の意匠にすでに入っている色なので、
+   新しい色を持ち込んではいない。
+   **現在地は紙の色で抜く。** 帯の中で 1 か所だけ紙が出ている形になるので、
+   「いまこの紙を読んでいる」がそのまま出る。                                   */
+/* **行の高さは、縦 15 行が入る前提で決める。** 起案者の指摘（2026-08-25）──
+   「サイドバーが長すぎてスクロールバーがでちゃってる。スクロールバー出るのはダサい」。
+   **束を 2 つ作った時点で、全部開くと帯は 15 行になっていた**（親 7 行と子 8 行）──
+   1 行 43px・上下の余白 42px で約 700px あり、**縦 700px に満たない画面では必ず
+   スクロールバーが出る。** 既定でいま居る束だけを開く手当て（`layout._group`）と
+   合わせて、1 行あたりの高さも詰めた ── 詰めたのは余白だけで、**文字の大きさは
+   変えていない**（読みにくくして行数を稼ぐことになる）。                        */
+.side{position:sticky;top:0;flex:none;width:228px;height:100vh;overflow-y:auto;
+ display:flex;flex-direction:column;gap:2px;padding:16px 14px 16px;
+ background:var(--curtain);color:var(--curtain-w);border-right:1px solid var(--curtain);
+ /* **それでも溢れる高さの画面はある。** 切り取るのではなく送るが、**太い灰色の棒が
+    えんじの帯に載るのは避ける** ── 細くして、帯の中の色で塗る                  */
+ scrollbar-width:thin;
+ scrollbar-color:color-mix(in srgb,var(--curtain-w) 34%,transparent) transparent}
+.side::-webkit-scrollbar{width:6px}
+.side::-webkit-scrollbar-thumb{border-radius:99px;
+ background:color-mix(in srgb,var(--curtain-w) 34%,transparent)}
+.side::-webkit-scrollbar-track{background:transparent}
+.side .brand{font-family:var(--mincho);font-size:19px;font-weight:600;letter-spacing:.14em;
+ color:var(--curtain-w);padding:0 12px 12px}
+/* **「たぐり」の下に検索窓を置く**（起案者の指示・2026-08-26）。宛先は既にある
+   「探す」（`/search`）と同じ ── 新しい探し方は作らない。帯のどこからでも 1 打で
+   探せるようにする窓なので、押し口ではなく Enter で送る単発の入力欄にする */
+.side .search{position:relative;margin:0 0 10px;padding:0 12px}
+.side .search svg{position:absolute;left:22px;top:50%;transform:translateY(-50%);
+ opacity:.6;pointer-events:none}
+.side .search input{width:100%;box-sizing:border-box;font:inherit;font-size:13.5px;
+ padding:7px 10px 7px 32px;border-radius:10px;
+ border:1px solid color-mix(in srgb,var(--curtain-w) 24%,transparent);
+ background:color-mix(in srgb,var(--curtain-w) 10%,transparent);color:var(--curtain-w)}
+.side .search input::placeholder{color:color-mix(in srgb,var(--curtain-w) 55%,transparent)}
+.side .search input:focus{outline:2px solid var(--curtain-w);outline-offset:1px}
+.side a{font-size:14.5px;text-decoration:none;padding:8px 12px;line-height:1.4;
+ color:color-mix(in srgb,var(--curtain-w) 76%,transparent);
+ border:1px solid transparent;border-radius:10px}
+.side a:hover{color:var(--curtain-w);
+ background:color-mix(in srgb,var(--curtain-w) 12%,transparent)}
+.side a.on{color:var(--curtain);font-weight:700;background:var(--surf);border-color:var(--surf)}
+/* **公演カレンダーと購入済み公演の間に隙間を入れる。** どちらも独立した行き先だが、
+   「これから観に行く公演」を扱う 2 つが地続きに詰まって見えていた（起案者の指示・
+   2026-08-26）。隙間は `href` で狙う ── 束を持たない単独行なので `NAV` 側に印を
+   増やすほどではない */
+.side a[href^="/tickets"]{margin-top:10px}
+/* **段の途中の画面は、親の下に一段下げて置く。** 同じ高さに並べると 8 つの対等な
+   行き先に見えて、「おすすめ」の中の段であることが画面から消える */
+.side a.kid{margin-left:16px;font-size:13.5px;padding:5px 12px;gap:7px}
+/* ---- 行き先を持たない親（「おすすめ」）------------------------------------
+   起案者の指示（2026-08-25）── 押すと畳む／開くだけの押し口にした。
+   **見た目は隣の行き先と同じ寸法にそろえる**（同じ働きの部品を作ったのではなく、
+   同じ帯に並ぶ 1 行なので、行の高さと余白がずれると帯が段違いに見える）。
+   **違いは山形 1 つで出す** ── 右を向いていれば畳んである、下を向いていれば開いている。
+   文字を「＋／−」にはしない。押した結果は形で出し、名前の欄には名前だけを置く。   */
+.side .grp{display:flex;flex-direction:column;gap:2px}
+.side .grp>summary{display:flex;align-items:center;gap:9px;cursor:pointer;
+ list-style:none;font-size:14.5px;padding:8px 12px;line-height:1.4;
+ border:1px solid transparent;border-radius:10px;
+ color:color-mix(in srgb,var(--curtain-w) 76%,transparent)}
+.side .grp>summary::-webkit-details-marker{display:none}
+.side .grp>summary:hover{color:var(--curtain-w);
+ background:color-mix(in srgb,var(--curtain-w) 12%,transparent)}
+.side .grp .gl{flex:1 1 auto;min-width:0}
+.side .grp .cv{flex:none;opacity:.7;transition:transform .15s ease}
+.side .grp[open]>summary .cv{transform:rotate(90deg)}
+@media(prefers-reduced-motion:reduce){.side .grp .cv{transition:none}}
+/* **畳んだときだけ、親が現在地の紙になる。** 開いているあいだは子のほうが現在地なので
+   親は薄く光るだけにする（親子が両方濃いと、どちらが現在地か分からない）── しかし
+   畳むと子が画面から消えるので、**そのままでは現在地がどこにも無くなる。**       */
+.side .grp[open]>summary.sec{color:var(--curtain-w);
+ background:color-mix(in srgb,var(--curtain-w) 16%,transparent)}
+.side .grp:not([open])>summary.sec{color:var(--curtain);font-weight:700;
+ background:var(--surf);border-color:var(--surf)}
+/* **開いている節の親は、薄く光らせる。** 子が現在地のときに親まで濃く光ると、
+   どちらが現在地なのか分からない */
+.side a.sec{color:var(--curtain-w);
+ background:color-mix(in srgb,var(--curtain-w) 16%,transparent)}
+/* **`.main` は名前がぶつかっている。** チケットの本文の列も `.main` を名乗るので
+   （`render_recommend.py` の `ticket`）、素の `.main` に余白を書くと**カード 1 枚ずつの
+   中にも同じ余白が入る。** 実測で 1 枚あたり下に 72px・左右に 20px の使われない帯が
+   でき、推薦の 15 枚では 1,080px（画面 1 枚ぶん）を占めていた。**帯の直下の列だけを
+   指す。** 名前を変えるほうは採らない ── チケットの側は 3 つの画面で使われており、
+   意匠を作業中の側に触ることになる。                                          */
+.shell>.main{flex:1 1 auto;min-width:0;padding:0 20px 72px}
+/* **狭い画面では 1 カラムに戻す。** 幅 228px を削ると本文が読めなくなるので、
+   左に貼るのをやめて上に横並びで置く（元の形に近い）。                          */
+@media(max-width:820px){
+ .shell{flex-direction:column}
+ .side{position:static;width:100%;height:auto;flex-direction:row;flex-wrap:wrap;gap:4px;
+  padding:12px 14px;border-right:0;border-bottom:1px solid var(--curtain)}
+ .side .brand{width:100%;padding:0 4px 6px}
+ .side .search{width:100%;padding:0 4px 6px}
+ /* **横並びに戻る幅では、束も 1 行として横に流す。** 縦積みのまま残すと、
+    束の中だけが段違いになって帯が 2 段の高さになる                            */
+ .side .grp{width:100%;flex-direction:row;flex-wrap:wrap;align-items:center;gap:4px}
+ .side .grp .gl{flex:0 0 auto}
+ .side .grp>summary{padding:8px 12px}
+ .side a.kid{margin-left:0}
+ .shell>.main{width:100%;padding:0 14px 72px}
+ /* **横に折り返す帯なので、1行に入る数を増やして段数を減らす**（起案者の指摘・
+    2026-08-29「ナビゲーションバーが長い」）。並び方は変えず、文字・余白・アイコンを
+    詰めるだけにした ── 縦積みの帯からハンバーガーメニューに変える案もあったが、
+    起案者の指示で「今の形のまま、並び方をもっとこまめる」を選んだ。 */
+ .side a,.side .grp>summary{font-size:12.5px;padding:5px 9px;gap:5px}
+ .side a.kid{font-size:11.5px;padding:4px 8px;gap:5px}
+ .side svg.ico{width:13px;height:13px}
+ .side .brand svg.tgm{width:19px;height:19px}}
+/* ---- 段の帯（フローチャート）は撤去した ------------------------------------
+   起案者の指摘「おすすめと評価のリンクを外して」→「これ自体消してほしい」→
+   「記録を見返すのも消してよい」の 3 段階で、`.sub` の帯を全画面から消した
+   （2026-08-25）。戻るボタンと道のり（`.crumbbar`）が役目を引き継いだ ── CSS も
+   `flow_nav()` と一緒に削った。 */
+/* ---- 戻るボタンとパンくずリスト ---------------------------------------------
+   **どの画面にも同じ 1 行を置く**（起案者の指示・2026-08-25）。左に戻る、右に道のり
+   ── 戻るは「直前の状態」、パンくずは「いまどの束の中か」で役目を分けている。       */
+.crumbbar{max-width:1000px;margin:16px auto 0;padding:0 4px;display:flex;
+ align-items:center;gap:14px;flex-wrap:wrap}
+.backbtn{flex:none;font:inherit;font-size:12.5px;color:var(--ink2);background:none;
+ border:1px solid var(--ring);border-radius:99px;padding:5px 13px;cursor:pointer}
+.backbtn:hover{color:var(--ink);border-color:var(--base)}
+.crumb{font-size:12.5px;color:var(--mute);display:flex;flex-wrap:wrap;
+ align-items:center;gap:4px;min-width:0}
+.crumb a{color:var(--acc);text-decoration:none}
+.crumb a:hover{text-decoration:underline}
+.crumb span[aria-current]{color:var(--ink2);font-weight:600}
+.crumbsep{color:var(--base)}
+.wrap{max-width:1000px}
+/* `ch` を `em` に直した（起案者の指摘 2026-08-26）── 理由は render_recommend.py の `.lead` にある */
+.lede{color:var(--ink2);margin:0 0 22px;font-size:14px;max-width:70em}
+.poster{width:104px;height:146px;object-fit:cover;border-radius:6px;display:block;
+ background:var(--grid);border:1px solid var(--ring)}
+/* ---- 読み込み中の文字（起案者の指摘・2026-08-25）---------------------------
+   **枠は `.poster` と同じ寸法にする** ── サイズを持つのは枠（`.pwrap`）で、
+   絵はその中を埋めるだけにする。読み込む前と失敗したときは絵を透明にし、
+   文字だけを重ねて出す。**遅いのではなく壊れているように見えるのを防ぐのが目的**
+   なので、絵が来た瞬間に文字を消す（読み込み中の一瞬より長く出さない）。          */
+.pwrap{position:relative;display:inline-block;border-radius:6px;overflow:hidden}
+/* **絵は枠いっぱいに合わせる。** `.poster` 単体の固定寸法（104×146）は他の一覧行
+   （評価一覧・日記帳など、`.pwrap` を使わない箇所）向けのままにしてあるので、
+   ここで上書きしないと枠が 132×186 でも絵は 104×146 のまま隅に残る */
+.pwrap .poster{width:100%;height:100%;border-radius:0;border:0;opacity:0;
+ transition:opacity .12s}
+.pwrap.ld .poster{opacity:1}
+.pwrap.pe .poster{display:none}
+.pwrap .pmsg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+ padding:6px;text-align:center;font-size:10.5px;line-height:1.35;color:var(--mute)}
+.pwrap.ld .pmsg{display:none}
+@media(prefers-reduced-motion:reduce){.pwrap .poster{transition:none}}
+.fav .pwrap{width:64px;height:90px;flex:none}
+/* ---- 舞台の意匠 ------------------------------------------------------------
+   **飾りだが、役割はある。** どの画面に居るのかを一目で分かるようにするための地であって、
+   数字や理由の読み取りを邪魔しない位置（見出しの背後と、ページの上端）にだけ置く。 */
+.curtain{height:22px;margin:0 0 20px;border-radius:0 0 12px 12px;
+ background:repeating-linear-gradient(90deg,#7d1f2c 0 13px,#5c1220 13px 26px);
+ box-shadow:inset 0 -7px 14px rgba(0,0,0,.38)}
+.spot{position:relative}
+.spot>h1{position:relative}
+.spot::before{content:"";position:absolute;left:-24px;right:-24px;top:-34px;height:130px;
+ background:radial-gradient(ellipse 60% 100% at 16% 0%,rgba(237,161,0,.16),transparent 66%);
+ pointer-events:none}
+@media (prefers-reduced-motion:no-preference){
+ .ticket{animation:rise .34s cubic-bezier(.2,.8,.3,1) both}
+ @keyframes rise{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}}
+/* **半券の寸法を決める規則は `.rec-row .pin>*` の 1 本だけにする。**
+   ここに `.rec-row .pin .poster{height:100%}` を足していたため、**「公演詳細を直す」を
+   開いた行では半券が縦に伸びていた** ── `.pin` は `.rec-row`（`align-items:stretch`）の
+   子なので高さが行いっぱいに確定しており、`height:100%` がその高さを拾っていた。
+   **寸法を 2 か所で決めると、片方が勝ったことに気づけない。** */
+.bundle{background:var(--surf);border:1px solid var(--ring);border-radius:12px;
+ padding:12px 18px;margin:0 0 10px}
+.bundle summary{cursor:pointer;font-size:14px;font-weight:600}
+.bundle .lead{margin:10px 0 12px}
+.tags{display:flex;gap:7px;flex-wrap:wrap;margin:12px 0 0}
+.tag{font-size:12.5px;border:1px solid var(--ring);border-radius:99px;padding:3px 8px 3px 5px;
+ display:inline-flex;gap:8px;align-items:center;color:var(--ink2);background:var(--surf)}
+.tag .tgn{min-width:0}
+.tag button{font:inherit;font-size:11px;border:0;background:transparent;color:var(--mute);cursor:pointer}
+.tag button:hover{color:#e34948}
+.fav-add,.miss-add,.imp,.add-work{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0 0}
+/* ---- 公演詳細を直す欄 -----------------------------------------------------
+   **読む画面の中に置く入力なので、畳んだ状態を既定にする。** 開いた行だけが
+   入力の場になり、読んでいる最中の行は読むための形のまま残る。 */
+/* **先に確かめてほしい記録は、余白の側で言う。** 本文の枠を変えると、読む面の
+   見た目が記録ごとに変わる */
+.rec-row.check .marg{border-right-width:3px}
+.rec-row.check .dt .md{color:var(--warn)}
+.editor{margin:8px 0 0;font-size:13px}
+.editor>summary{cursor:pointer;color:var(--acc);font-size:12.5px}
+.editor[open]{border:1px dashed var(--ring);border-radius:10px;padding:10px 12px}
+/* `ch`→`em`（render_recommend.py の `.lead` と同じ理由） */
+.ed-lead{color:var(--ink2);font-size:12.5px;margin:8px 0 10px;max-width:64em}
+.ed-t{display:block;font-size:12.5px;color:var(--mute);margin:0 0 8px}
+.ed-t input{display:block;width:100%;max-width:44em;margin:3px 0 0}
+/* **入力欄と、そのすぐ後ろの文字を離す**（起案者の指摘・2026-08-26 ── 日付・劇場・
+   時刻の欄が近くなりすぎて見える）。`gap:8px` は同じ列にある「入力欄どうし」には
+   足りていたが、**枠を持つ入力欄と、枠の無い文字（`.ed-m`）が並ぶと、枠の分だけ
+   さらに近く見える。** 12px でも測ってみたが、まだ詰まって見えたので 16px にした
+   （`.isteps` などで既に使っている値にそろえた）。 */
+.ed-show{display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin:0 0 6px}
+.ed-m{color:var(--mute);font-size:11.5px}
+.ed-btns{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0 0}
+.ed-btns button{font:inherit;font-size:12.5px;padding:6px 16px;border-radius:99px;
+ border:1px solid var(--ring);background:var(--surf);color:var(--ink2);cursor:pointer}
+.ed-btns button:first-child{border-color:var(--acc);color:var(--acc);font-weight:600}
+.ed-mail{margin:10px 0 0;border-top:1px solid var(--grid);padding:8px 0 0}
+.ed-src{margin:0 0 8px;font-size:12px;color:var(--ink2);display:flex;
+ flex-direction:column;gap:2px}
+.ed-hints{color:var(--mute);font-size:11.5px;white-space:pre-wrap}
+select,input[type=text],input[type=date],input[type=time]{font:inherit;font-size:13px;
+ padding:6px 10px;border:1px solid var(--ring);border-radius:8px;background:var(--plane);
+ color:var(--ink)}
+.card button,.fav-add button,.miss-add button,.imp button,.add-work button{
+ font:inherit;font-size:13px;padding:7px 18px;border-radius:99px;
+ border:1px solid var(--ring);background:var(--surf);color:var(--ink2);cursor:pointer}
+.imp button{border-color:var(--acc);color:var(--acc);font-weight:600}
+/* ---- 取り込みの進み具合 -----------------------------------------------------
+   起案者の指示（2026-08-25）──「経過がわかるバーがほしい。進行状況を一目で」。
+
+   **動きで出すのは 2 つだけである** ── どこまで来たか（帯の長さ）と、いま何をして
+   いるか（点）。数字は帯の上に置く。**帯の色は藍のまま**（押した結果として動いて
+   いるもの）で、終わったら値の緑に変わる ── `.said` の「できました」と同じ色である。 */
+.ibar{margin:14px 0 0;max-width:46em}
+.ibar[hidden]{display:none}
+/* **狭い画面では折り返す。** 3 つを 1 行に詰めると、段の名前が 2 行に割れた横で
+   「137 / 402 通」も割れて、どの数字がどれなのか読めなくなる ── 数字のほうは
+   割らずに次の行へ送る（起案者の指摘・2026-08-25） */
+.ist{display:flex;gap:4px 10px;align-items:baseline;flex-wrap:wrap;
+ font-size:12.5px;color:var(--ink2)}
+.ist .istep{font-weight:600}
+.ist .inum,.ist .irest{color:var(--mute);font-size:11.5px;white-space:nowrap;
+ font-variant-numeric:tabular-nums}
+.ist .irest{margin-left:auto;flex:none}
+.itrack{position:relative;height:9px;margin:7px 0 0;border-radius:99px;
+ background:var(--grid);overflow:hidden}
+.ifill{height:100%;border-radius:99px;background:var(--acc);transition:width .5s ease}
+.ibar.done .ifill{background:var(--good)}
+/* **何通あるかが分かるまでは伸ばさない。** 0 パーセントの帯を出すと止まって見えるので、
+   短い帯を流して「数えている最中である」ことを形で出す。
+   **状態の名前に `wait` は使えない** ── 評価待ちの 1 行が同じ名前を使っており
+   （`.wait{display:flex;border-left:3px …}`）、**帯がその行の形になって崩れていた**
+   （起案者の指摘・2026-08-25）。部品の中だけで通じる名前を付ける。 */
+.ibar.iwait .ifill{width:32%;transition:none;animation:isweep 1.6s ease-in-out infinite}
+@keyframes isweep{from{transform:translateX(-110%)}to{transform:translateX(320%)}}
+.isteps{list-style:none;display:flex;gap:16px;flex-wrap:wrap;margin:9px 0 0;padding:0;
+ font-size:11.5px;color:var(--mute)}
+.isteps li{display:flex;gap:6px;align-items:center}
+.isteps li::before{content:"";width:7px;height:7px;border-radius:99px;flex:none;
+ border:1px solid var(--base)}
+.isteps li.on{color:var(--acc);font-weight:600}
+.isteps li.on::before{border-color:var(--acc);background:var(--acc);
+ animation:ipulse 1.3s ease-in-out infinite}
+.isteps li.fin{color:var(--ink2)}
+.isteps li.fin::before{border-color:var(--good);background:var(--good)}
+.ibar.done .isteps li{color:var(--ink2)}
+.ibar.done .isteps li::before{border-color:var(--good);background:var(--good);animation:none}
+@keyframes ipulse{50%{opacity:.3}}
+/* ---- 読み込み直す押し口は、終わってから出す -------------------------------
+   **小さく置く**（起案者の指示・2026-08-25）。この画面で先に押すのは「取り込みを
+   始める」であって、これはその後始末である ── 同じ寸法で並ぶと、2 つの入口が
+   あるように見える。**役は同じなので形は変えない**（丸い縁・藍）。 */
+.idone{display:none;margin:10px 0 0}
+.ibar.done .idone{display:block}
+.idone button{font:inherit;font-size:11.5px;padding:3px 11px;border-radius:99px;
+ border:1px solid var(--ring);background:var(--surf);color:var(--acc);cursor:pointer}
+.idone button:hover{border-color:var(--acc)}
+/* ---- 今回入った公演の題名 ---------------------------------------------------
+   **並べるだけである。** 日付も会場も付けない ── ここは入ったことを確かめる場所で、
+   記録を読む場所ではない。**区切りは読点ではなく「／」** ── 題名の中に読点が入る
+   ことがあり、どこまでが 1 つの題名なのかが読めなくなる。 */
+.impgot{margin:12px 0 0;padding:11px 14px;border-radius:10px;
+ border:1px solid var(--ring);background:var(--plane);font-size:13px;line-height:1.9}
+.impgot b{font-size:11.5px;color:var(--mute);font-weight:600;display:block;margin:0 0 2px}
+.impgot-l{color:var(--ink)}
+/* **動きを減らす設定の端末では流さない。** 長さと点の色だけで同じことが読める */
+@media (prefers-reduced-motion:reduce){
+ .ibar.iwait .ifill,.isteps li.on::before{animation:none}
+ .ifill{transition:none}}
+button:disabled{opacity:.45;cursor:default}
+.dead{opacity:.4;pointer-events:none}
+/* ---- 1 件の記録を、1 日ぶんの帳面として組む ---------------------------------
+   起案者の指示（2026-08-24）──「記録を観るページは日記帳っぽいとなおいい」。
+
+   **枠で囲むのをやめた。** 108 件が同じ角丸の箱で縦に並ぶと、どれも同じ重さに見えて
+   1 件 1 件が思い出であるという前提が形に出ていない。**左の余白と本文の境に線を
+   1 本引くだけで 1 件が切れる**ので、箱が 108 個並ばない。
+
+   行送りを 30px に固定して、その間隔で薄い横罫を敷く ── **題名・劇場・感想がすべて
+   同じ罫に乗るので、あとから書き足した感想が同じ帳面の続きとして読める。**       */
+.rec-row{display:flex;align-items:stretch;background:var(--surf);
+ border:1px solid var(--grid);border-top:0;margin:0}
+.rec-row:first-of-type{border-top:1px solid var(--grid);border-radius:0 4px 0 0}
+.rec-row:last-of-type{border-radius:0 0 4px 4px}
+/* ---- 左の余白。日付と印だけを置く ------------------------------------------
+   **境の縦線は幕の色にする。** 帳面の朱の罫と同じ位置に来るので、意匠としても
+   「余白と本文の境」という役割としても同じものになる。                          */
+.rec-row .marg{flex:none;width:112px;padding:20px 14px 18px;
+ display:flex;flex-direction:column;align-items:flex-end;gap:11px;text-align:right;
+ border-right:1px solid color-mix(in srgb,var(--curtain) 36%,transparent)}
+.rec-row .dt{font-family:var(--mincho);line-height:1.2;display:block}
+.rec-row .dt .y{display:block;font-size:11.5px;color:var(--mute);letter-spacing:.09em;
+ font-variant-numeric:tabular-nums}
+.rec-row .dt .md{display:block;font-size:27px;font-weight:600;color:var(--ink);
+ font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.rec-row .dt .wd{display:block;font-size:11px;color:var(--mute)}
+.rec-row .dt.no{font-size:11.5px;color:var(--mute);line-height:1.5;font-family:inherit}
+/* ---- 罫を敷いた面 ----------------------------------------------------------
+   罫は背景なので、開いた入力欄の下にも走る（帳面の上で書いているので、それでよい）。
+   **入力欄と押し口の側を不透明にする** ── 罫が文字と重なると読めない。          */
+.rec-row .page{flex:1;min-width:0;padding:20px 22px 18px;
+ background-image:repeating-linear-gradient(to bottom,
+  transparent 0 29px,var(--grid) 29px 30px);
+ background-position:0 20px}
+.rec-row .ttl{font-family:var(--mincho);font-size:18px;font-weight:600;line-height:30px}
+.rec-row .where{font-size:12.5px;color:var(--ink2);line-height:30px;
+ display:flex;gap:0;flex-wrap:wrap}
+.rec-row .where span+span::before{content:"／";color:var(--mute);padding:0 8px}
+/* **押し口の列は、罫 1 行ぶんの高さに収める。** ここだけ高さが変わると、
+   下の行から罫と文字がずれる */
+.rec-row .tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;
+ min-height:30px;margin:0}
+/* **押し口は画面をまたいで同じ形にする**（`.rb button` は `render_recommend` の
+   `.btns button` と同じ指定を共有している）。ここで別の形を作らない */
+.rec-row .rb{display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap}
+/* **`display` を書いたら `[hidden]` を書き直す。** `[hidden]` の display:none は
+   ブラウザの既定なので、こちらで display を書くと押す前から開いた状態で出てしまう
+   （`.inote[hidden]` と同じ落とし穴） */
+.rec-row .rb[hidden]{display:none}
+.rec-row .rb button{min-width:38px;text-align:center}
+.rec-row textarea{width:100%;margin:6px 0 0;font:inherit;font-size:13px;padding:8px 11px;
+ border:1px solid var(--base);border-radius:8px;background:var(--surf);color:var(--ink);
+ min-height:44px;resize:vertical}
+/* ---- 右に貼った半券 --------------------------------------------------------
+   **白い縁を付けてわずかに傾け、上端にテープを 1 枚。**
+   **出せなかった分も枠を残す** ── 行によって高さが変わると、上から順に読めない。  */
+.rec-row .pin{flex:none;align-self:flex-start;width:126px;padding:22px 20px 18px 6px;
+ display:flex;align-items:flex-start;justify-content:center}
+.rec-row .pin>*{position:relative;width:84px;height:118px;flex:none;
+ object-fit:cover;background:var(--plane);
+ border:5px solid var(--surf);border-radius:1px;transform:rotate(-1.1deg);
+ box-shadow:0 1px 3px rgba(0,0,0,.2),0 7px 16px -10px rgba(0,0,0,.3)}
+.rec-row:nth-of-type(2n) .pin>*{transform:rotate(1.3deg)}
+.rec-row .pin>*::after{content:"";position:absolute;top:-11px;left:50%;width:46px;height:15px;
+ transform:translateX(-50%) rotate(-2.5deg);
+ background:color-mix(in srgb,var(--ink) 8%,transparent);
+ box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ink) 5%,transparent)}
+.rec-row .noposter{background:repeating-linear-gradient(135deg,
+ var(--plane) 0 6px,var(--surf) 6px 12px)}
+/* ---- 評価の判子 ------------------------------------------------------------
+   起案者の指示（2026-08-24）──「評価の◎とかのハンコがもっとスタンプで押したっぽい
+   デザインだったらよりリアル」。
+
+   **輪郭を歪めているのは `feTurbulence` の 1 枚のフィルタである**（`layout` が
+   1 か所だけ置く）。円と字を同じフィルタに通すので、**輪と字が同じゴム版で押された
+   ように崩れる** ── 円だけを歪めると、きれいな字が汚れた輪の中に浮いて貼り絵に見える。
+
+   **紙に染む重ね方にする**（`--stamp-blend`）。明るい地では `multiply` で紙の色を
+   通し、暗い地では `screen` で抜く。**上から不透明な色を置くとシールに見える。**
+
+   **インクの抜けを 4 か所置く。** 判子は全面が均一に付かない ── 抜けは紙の色の点で
+   作るので、`multiply` を通すと紙がそのまま出る（塗り足しではなく抜きである）。   */
+.rec-row .stamp{--rot:0deg;position:relative;flex:none;width:46px;height:46px;
+ display:grid;place-items:center;border:2.5px solid var(--curtain);border-radius:50%;
+ font-family:var(--mincho);font-size:21px;font-weight:600;color:var(--curtain);
+ background:radial-gradient(circle at 34% 28%,
+  color-mix(in srgb,var(--curtain) 9%,transparent),transparent 68%);
+ transform:rotate(var(--rot));opacity:var(--stamp-ink);
+ mix-blend-mode:var(--stamp-blend);filter:url(#tg-ink)}
+.rec-row .stamp::after{content:"";position:absolute;inset:-3px;border-radius:50%;
+ pointer-events:none;background-image:
+  radial-gradient(circle at 21% 33%,var(--surf) 0 1.7px,transparent 1.8px),
+  radial-gradient(circle at 71% 17%,var(--surf) 0 1.1px,transparent 1.2px),
+  radial-gradient(circle at 82% 70%,var(--surf) 0 2px,transparent 2.1px),
+  radial-gradient(circle at 33% 81%,var(--surf) 0 1.3px,transparent 1.4px)}
+/* **「まだ判断できない」は金にして字を落とす。** えんじで押すと、評価が付いた記録と
+   見分けが付かない（7 文字なので円にも入らない） */
+.rec-row .stamp.hold{border-color:var(--warn);color:var(--warn);
+ font-family:inherit;font-size:10px;font-weight:700;line-height:1.25;text-align:center;
+ letter-spacing:0;padding:0 3px;background:none}
+/* **まだ押していない枠は、歪めない。** 判子はまだ押されていないので、
+   押した跡の意匠を先に出さない */
+.rec-row .stamp.none{border-style:dashed;border-width:1.5px;border-color:var(--base);
+ background:none;filter:none;mix-blend-mode:normal;opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){.rec-row .stamp{transform:none}}
+/* ---- 狭い画面では、半券を本文の下に回す ------------------------------------
+   **余白は残す。** 日付と印は 1 件を切る役なので、幅が狭くても縦に並べない。      */
+@media(max-width:700px){
+ .rec-row{flex-wrap:wrap}
+ .rec-row .marg{width:86px;padding:16px 10px 14px}
+ .rec-row .dt .md{font-size:22px}
+ .rec-row .page{padding:16px 16px 14px}
+ .rec-row .pin{width:100%;padding:0 16px 16px 86px;justify-content:flex-start}
+ .rec-row .pin>*{transform:none}
+ .rec-row .pin>*::after{display:none}}
+/* ---- 感想は押してから開く ---------------------------------------------------
+   **書いてあるものは文として出す**（`.inr`）。読み返すために入力欄の中をなぞらせない。
+   **`display` を書いたら `[hidden]` を書き直す** ── `[hidden]` の display:none は
+   ブラウザの既定なので、こちらで display を書くと押す前から開いた状態で出てしまう。   */
+.inw{margin:6px 0 0}
+.inote[hidden]{display:none}
+/* **書いてある感想は、罫の上の文としてそのまま置く。** 枠に入れて左に色の帯を付けると
+   「引用された誰かの文」に見える ── ここに並ぶのは本人が書いた文である。
+   **明朝で組み、行送りを罫に合わせる。**
+   **クレジット（出演・演出・脚本）とフォントの太さ・大きさしか違わず、パッと見分けが
+   付かなかった**（起案者の指摘・2026-08-26）。**箱・帯は付けない**という上の判断は
+   保ったまま、字を斜体にし、札の色を「なぜ出てきたか」の見出しと同じ `--curtain`
+   にした ── クレジットは事実の一覧、感想は本人の声、という違いを色と字形の両方
+   で言う。                                                                    */
+.inr{display:flex;gap:11px;align-items:baseline;flex-wrap:wrap;font-size:15px;
+ font-family:var(--mincho);line-height:30px}
+.inl{flex:none;font-size:11px;color:var(--curtain);font-weight:700;font-family:inherit}
+.int{color:var(--ink);min-width:0;flex:1;font-style:italic}
+.int::before{content:"「";color:var(--mute);font-style:normal}
+.int::after{content:"」";color:var(--mute);font-style:normal}
+.inr .wnb{margin-left:auto;border:0;padding:0;font-size:11.5px}
+.inr .wnb:hover{text-decoration:underline}
+/* ---- 「すべて表示」だけの、回ごとのメモ ---------------------------------------
+   **感想（`.inr`）とは色も字形も変える。** 感想は推薦の材料であることを
+   `--curtain` と明朝の斜体で言っている ── この欄はその逆（推薦に使わない）なので、
+   同じ色・同じ字形にすると「これも材料になる」と誤読される。地の色（`--mute`）の
+   ゴシックで、事務的な覚え書きに見える形にした。                                */
+.vnw{margin:6px 0 0}
+.vnote[hidden]{display:none}
+.vnr{display:flex;gap:11px;align-items:baseline;flex-wrap:wrap;font-size:13px;
+ color:var(--mute);line-height:26px}
+.vnl{flex:none;font-size:11px;color:var(--mute);font-weight:700}
+.vnt{color:var(--ink2);min-width:0;flex:1}
+.vnr .wnb{margin-left:auto;border:0;padding:0;font-size:11.5px}
+.vnr .wnb:hover{text-decoration:underline}
+/* ---- 1 件ごとの記録を、年で畳む ---------------------------------------------
+   **中に何件あるかを見出しに出す。** 件数の分からない畳み方では、開くかどうかを
+   決められない。いちばん新しい年（と、先に確かめてほしい分）だけ開いておく。      */
+/* **年の見出しは、帳面の上に飛び出す索引の耳にする。** 押して開く見出しと押せない
+   見出しで形を変えない ── どちらも「この年の束はここから始まる」を言う札である。   */
+.yr{margin:0 0 18px}
+.yr>h3,.yr>summary{display:inline-flex;gap:12px;align-items:baseline;
+ background:var(--curtain);color:var(--curtain-w);font-size:13.5px;font-weight:700;
+ letter-spacing:.05em;padding:6px 20px 5px;border-radius:4px 4px 0 0;margin:22px 0 0;
+ list-style:none}
+.yr>summary{cursor:pointer}
+.yr>summary::-webkit-details-marker{display:none}
+.yr>summary::after{content:"開く";font-weight:400;font-size:11.5px;
+ color:color-mix(in srgb,var(--curtain-w) 72%,transparent)}
+.yr[open]>summary::after{content:"閉じる"}
+.yr>h3 .badge,.yr>summary .badge{font-weight:400;border:0;padding:0;
+ color:color-mix(in srgb,var(--curtain-w) 78%,transparent)}
+/* 耳のすぐ下から帳面が始まる。**上端だけ幕の色で止める** */
+.yr>.rec-row:first-of-type{border-top:2px solid var(--curtain)}
+.yr>h3+.rec-row,.yr>summary+.rec-row{border-top:2px solid var(--curtain)}
+/* ---- 図を 2 列に並べる -------------------------------------------------------
+   **縦に積むと、図だけで画面 8 枚ぶんになる**（実測）。半分の幅に入らない図
+   （中に 2 列を持つ地図・人の網・表の広い節）は `wide` で幅いっぱいのままにする。   */
+.figs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 16px;
+ align-items:start;grid-auto-flow:dense}
+.figs>.card,.figs>section{min-width:0}
+.figs>.wide{grid-column:1 / -1}
+@media(max-width:820px){.figs{grid-template-columns:1fr}}
+/* ---- 探す ── 観た月のマス目 -------------------------------------------------
+   **6 年ぶんを 1 画面に収める。** 日めくりの暦は 2,190 マス中 67 マスしか埋まらない
+   （実測）ので、探す相手より空欄のほうが目に入る。**濃さだけで意味を運ばない** ──
+   マスには本数をそのまま書く。空の月は押せない。                                */
+.cal{margin:26px 0 0}
+.cal-grid{display:grid;grid-template-columns:auto repeat(12,minmax(0,1fr));
+ gap:4px;align-items:center;margin:0 0 12px;max-width:640px}
+.cal .mh{font-size:10.5px;color:var(--mute);text-align:center}
+.cal-y{font-size:11.5px;color:var(--mute);padding-right:8px;
+ font-variant-numeric:tabular-nums}
+.cal-c{display:flex;align-items:center;justify-content:center;aspect-ratio:1;
+ border-radius:6px;font-size:11.5px;text-decoration:none;color:var(--ink);
+ background:var(--plane);border:1px solid var(--ring);
+ font-variant-numeric:tabular-nums}
+.cal-c.off{background:none;border-style:dashed;border-color:var(--grid)}
+.cal-c.l1{background:color-mix(in srgb,var(--acc) 16%,var(--surf))}
+.cal-c.l2{background:color-mix(in srgb,var(--acc) 38%,var(--surf))}
+/* **白い字にしない。** 明るい側でこの濃さに白を置くと 3.5:1 しか出ない（実測）。
+   文字は `--ink` のままにすれば、明暗どちらでも 5:1 以上になる */
+.cal-c.l3{background:color-mix(in srgb,var(--acc) 62%,var(--surf))}
+.cal-c:hover{border-color:var(--acc)}
+/* **選んだ月は、藍ではなくえんじで示す**（起案者の指摘・2026-08-25 ──
+   「観た記録／これから観られる公演の耳がどちらを選んでいるか分かりにくい」）。
+   直った先は耳ではなくここだった。マスの濃さ（本数）も、当たり判定の縁取りも
+   `--acc`（藍）のままで、**「選んだ月」だけが同じ藍で塗られていた** ── この画面の
+   上には「押せる耳は藍、開いている耳（現在地）はえんじ」という耳の規則が既にあり
+   （`.idx .ix` の注記）、すぐ下のマス目だけがそれに反していた。**現在地は、
+   このアプリのどこでも一貫してえんじである。** 色を揃えると、耳がどちらを
+   選んでいても、選んだ月がどのマスなのかが同じ言葉で読めるようになる。 */
+.cal-c.on{outline:2px solid var(--curtain);outline-offset:1px;font-weight:700}
+.cal-none{display:inline-flex;gap:9px;align-items:baseline;text-decoration:none;
+ border:1px solid var(--ring);border-radius:99px;padding:5px 14px;font-size:12.5px;
+ color:var(--ink2);background:var(--surf)}
+.cal-none:hover{border-color:var(--acc);color:var(--acc)}
+.cal-none.on{border-color:var(--curtain);color:var(--curtain);font-weight:600}
+.cal-none .mn{font-size:11.5px;color:var(--mute);font-variant-numeric:tabular-nums}
+/* ---- 探す ── ヒットした箇所を、行の中に書く --------------------------------
+   **どこに一致したのかで意味が違う**（出演なのか、演出なのか、題材の言葉なのか）。
+   題名のすぐ下に置き、役割と名前を対にして出す。                                */
+.hitwhy{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;margin:6px 0 2px;
+ font-size:12px;color:var(--ink2)}
+.hitwhy .hl{flex:none;font-size:11px;color:var(--mute)}
+.hitwhy .hw{border:1px solid var(--ring);border-radius:99px;padding:1px 10px;
+ background:var(--plane)}
+.hitwhy .hw .k{color:var(--mute);margin-right:6px;font-size:11px}
+.hit .why{color:var(--acc);font-size:12px;margin-left:10px}
+.dl{display:inline-block;margin:14px 0 0;font-size:13.5px;padding:9px 20px;border-radius:99px;
+ border:1px solid var(--ring);background:var(--surf);color:var(--acc);text-decoration:none}
+/* ファイルの中での項目名。**控えの大きさで置く** ── 読むのは日本語の名前のほうで、
+   これは「ほかの道具で開いたときにどの並びがどれか」を照らし合わせるためだけにある */
+.xk{margin-left:9px;font-size:11px;color:var(--mute);font-family:ui-monospace,monospace}
+.empty{color:var(--mute);font-size:13px}
+.said{font-size:12px;color:var(--good)}
+.card{background:var(--surf);border:1px solid var(--ring);border-radius:14px;
+ padding:22px 24px 18px;margin:0 0 16px}
+/* **「設定」の札は、既定で畳んでおく**（起案者の指示・2026-08-26 ──「設定の各項目は
+   デフォルトで折りたたんで表示して」）。`<details class="card">` にするだけで、
+   見出しより下（本文・フォーム）は全部そのまま隠れる ── 見出しの形（`h2`）は変えず、
+   ここだけ `<summary>` に載せ替える。畳んだ状態でも、いま何が選ばれているか（右の
+   バッジ）は見出しの行に出ているので、開かなくても現在の設定は読める。**開閉の印は
+   ブラウザの既定の三角のままにする** ── 同じ「畳んである絞り込み」の `.pbox` と
+   同じ規約（`render_recommend.py`）。 */
+.card>summary{cursor:pointer;list-style:revert;display:flex;align-items:center;
+ gap:9px;flex-wrap:wrap;font-family:var(--mincho);font-size:18.5px;font-weight:600;
+ line-height:1.45}
+details.card:not([open])>summary{margin:0}
+.more{margin:14px 0 0}
+.more summary{cursor:pointer;font-size:13px;color:var(--acc)}
+.prom{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap;padding:11px 0;
+ border-bottom:1px solid var(--grid);font-size:13.5px}
+.prom .w{font-weight:600}
+.prom .k{font-size:11px;border:1px solid var(--ring);border-radius:99px;padding:1px 8px;
+ color:var(--ink2)}
+.prom .src{color:var(--mute);font-size:11.5px}
+.prom .q{color:var(--ink2);font-size:12.5px;flex-basis:100%;margin:2px 0 0}
+.prom button{margin-left:auto}
+.prom.done{opacity:.45}
+/* ---- すでにある情報から選ぶ -------------------------------------------------
+   **入力欄のすぐ下に出す。** 別の場所に出すと、打っている手元から目を離すことになる。 */
+.sug{margin:8px 0 0}
+.sug-head{font-size:12px;color:var(--mute);margin:0 0 6px}
+.sug-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;font-size:13px;
+ padding:8px 12px;border:1px solid var(--ring);border-radius:9px;background:var(--plane);
+ margin:0 0 5px}
+/* **ポスターを候補の先頭に置く。** 同じ題名の公演が並ぶことがあり（再演・ツアー）、
+   文字だけだと日付と劇場を読み比べないと選べない ── **絵は 1 目で違いが分かる。**
+   **無いときも枠を残す。** 行によって高さが変わると、上から順に読めない */
+.sug-row .sg-p{flex:none;width:46px;height:65px;border-radius:4px;overflow:hidden;
+ background:var(--plane);display:flex;align-items:center;justify-content:center}
+.sug-row .sg-p img{width:100%;height:100%;object-fit:cover;display:block}
+.sug-row .sg-p.none{border:1px dashed var(--ring)}
+.sug-row .sg-b{flex:1;min-width:0;display:flex;gap:8px;align-items:baseline;
+ flex-wrap:wrap}
+/* ---- 直す欄のポスター。**いま何が出ているかを、直す場所の隣に置く** ---- */
+.ed-pos{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:8px 0 0}
+.ed-pos .ed-pv{flex:none;width:52px;height:73px;border-radius:4px;overflow:hidden;
+ display:flex;align-items:center;justify-content:center}
+.ed-pos .ed-pv img{width:100%;height:100%;object-fit:cover;display:block}
+.ed-pos .ed-pn{width:100%;height:100%;border:1px dashed var(--ring);border-radius:4px}
+.ed-pos .ed-m{flex:1;min-width:220px}
+.sug-row .sg-k{font-size:11px;border:1px solid var(--ring);border-radius:99px;
+ padding:1px 8px;color:var(--mute);flex:none}
+.sug-row.record .sg-k{border-color:var(--warn);color:var(--warn)}
+.sug-row .sg-t{font-weight:600}
+.sug-row .sg-m{color:var(--mute);font-size:12px}
+.sug-row .sg-dup{margin-left:auto;color:var(--warn);font-size:12px}
+/* **出演は行を分けて置く。** 劇場と日程の行に続けると、どこまでが公演の情報なのか
+   分からなくなる（同じ題名の公演を見分けるために出している） */
+.sug-row .sg-c{flex-basis:100%;color:var(--mute);font-size:12px;line-height:1.6}
+.sug-row button{margin-left:auto;font:inherit;font-size:12.5px;padding:4px 14px;
+ border-radius:99px;border:1px solid var(--acc);background:var(--surf);color:var(--acc);
+ cursor:pointer}
+/* ---- 同じ公演かを確かめる ---------------------------------------------------
+   **押した直後に、その場で出す。** 別の画面へ送ると、直した文脈が切れて答えられない。 */
+.mergeq{margin:12px 0 0;padding:14px 16px;border:1px solid var(--acc);border-radius:11px;
+ background:var(--surf)}
+.mergeq p{margin:0 0 10px;font-size:13.5px}
+.mq-note{color:var(--ink2);font-size:12.5px;font-weight:400}
+.mq-row{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;font-size:13px;
+ padding:8px 0;border-top:1px solid var(--grid)}
+.mq-row .mq-t{font-weight:600}
+.mq-row .mq-m{color:var(--mute);font-size:12px}
+.mq-row button,.mq-foot button{margin-left:auto;font:inherit;font-size:12.5px;
+ padding:5px 14px;border-radius:99px;border:1px solid var(--ring);background:var(--plane);
+ color:var(--ink2);cursor:pointer}
+.mq-row button{border-color:var(--acc);color:var(--acc);font-weight:600}
+.mq-foot{display:flex;gap:12px;align-items:center;margin:10px 0 0;flex-wrap:wrap}
+/* ---- 記録と公演の結び付け --------------------------------------------------- */
+.ed-link{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:10px 0 0;
+ padding:10px 12px;border:1px dashed var(--ring);border-radius:9px;background:var(--plane)}
+.ed-lk{font-size:12px;color:var(--mute);flex:none}
+.ed-lv{font-size:13px;font-weight:600}
+/* **自動で結び付けた分は見た目を変える。** 確かめていないことが一目で分かる */
+.ed-lv.auto{color:var(--warn)}
+.ed-link:has(.ed-lv.auto){border-color:var(--warn)}
+.ed-link .lk-sug{flex-basis:100%;margin:6px 0 0}
+/* **外へ探しに行く口は、手で足す欄の「検索」と同じ見た目にする。** 同じ働きの口が
+   2 か所にあるので、形が違うと別の機能に見える */
+.ed-link button{font:inherit;font-size:12.5px;padding:6px 14px;border-radius:99px;
+ border:1px solid var(--ring);background:var(--surf);color:var(--ink2);cursor:pointer}
+.ed-link button[data-lk-web]{border-color:var(--acc);color:var(--acc);font-weight:600}
+/* ---- ポスター・クレジットを手入力する欄 -------------------------------------
+   **上の「推薦に使う公演」と見た目を分ける。** どちらも同じ「この記録を正しくする」
+   作業だが、**片方は選ぶ操作で、こちらは書く操作である** ── 同じ枠で続けると、
+   探して見つからなかった人が書く場所に辿り着けない。                            */
+.hand{margin:10px 0 0;padding:10px 12px;border:1px dashed var(--ring);border-radius:9px;
+ background:var(--plane)}
+.hand>summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--ink2)}
+.hand[open]>summary{margin:0 0 8px}
+.hand-p{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:0 0 12px}
+.hand-p .ed-pv img{width:64px;height:90px;object-fit:cover;border-radius:5px;display:block}
+/* **ファイルを選ぶ口は、ボタンの形にする。** 素の input はブラウザごとに姿が変わり、
+   同じ画面の他の押し口と揃わない */
+.hand-file{font:inherit;font-size:12.5px;padding:6px 14px;border-radius:99px;
+ border:1px solid var(--acc);color:var(--acc);font-weight:600;cursor:pointer}
+.hand-file input{display:none}
+.hand-f{display:block;font-size:12.5px;color:var(--ink2);margin:0 0 10px}
+.hand-f textarea{display:block;width:100%;margin:4px 0 0;font:inherit;font-size:13px;
+ padding:6px 10px;border:1px solid var(--ring);border-radius:8px;
+ background:var(--surf);color:var(--ink);resize:vertical}
+.hand-h{display:block;font-size:11.5px;color:var(--mute);line-height:1.55;
+ font-weight:400;flex-basis:100%}
+.hand button{font:inherit;font-size:12.5px;padding:6px 14px;border-radius:99px;
+ border:1px solid var(--ring);background:var(--surf);color:var(--ink2);cursor:pointer}
+.hand .pfoot button{border-color:var(--acc);color:var(--acc);font-weight:600}
+/* ---- 作品を親、会場ごとの上演を子として並べる -------------------------------
+   **取得元は作品の id を持っていない**（会場ごとの上演に 1 ページ）ので、親はこちらで
+   組んでいる。**子は畳まない** ── 会場ごとに出演者も座組も違いうるので、どの上演かは
+   本人しか知らない。親を 1 行にして、その下で選んでもらう。                       */
+details.sug-work{border:1px solid var(--ring);border-radius:10px;margin:5px 0;
+ background:var(--plane)}
+details.sug-work>summary{cursor:pointer;font-size:13px;font-weight:600;padding:9px 12px;
+ color:var(--ink2)}
+details.sug-work[open]>summary{color:var(--ink);border-bottom:1px solid var(--grid)}
+details.sug-work .sug-row{margin:0;border:0;border-top:1px solid var(--grid);
+ border-radius:0;background:transparent}
+details.sug-work>.sug-head{margin:8px 12px 2px}
+/* **すでに記録がある上演は目で分かるようにする。** 選ぶときのいちばん強い手がかりである */
+.sug-row.mine{background:var(--surf);border-left:3px solid var(--acc)}
+/* ---- 取り消した記録 --------------------------------------------------------- */
+.drop-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;font-size:13.5px;
+ padding:9px 0;border-bottom:1px solid var(--grid)}
+.drop-row .dt{font-weight:600}
+.drop-row .dm{color:var(--mute);font-size:12px}
+/* **押し口は 1 組にして、行の右端へまとめて寄せる。** 個々のボタンに margin-left:auto を
+   持たせると、2 個目以降が余白を食い合って隙間が揃わない */
+.drop-row .drop-btns{display:flex;gap:8px;align-items:center;margin-left:auto}
+/* **取り消しの押し口は、色で他と分ける。** 押した結果が他のボタンと違う */
+button.danger{border-color:var(--ring);color:var(--mute)}
+button.danger:hover{border-color:#e34948;color:#e34948}
+/* ---- 観ていない公演 ---------------------------------------------------------
+   **畳んで置く。** 押す頻度の低い口なので、15 行すべてに開いた選択肢を並べると
+   評価を付ける画面が「外す画面」に見える。閉じているのが既定である（`<details>` なので
+   JavaScript を要さない）。 */
+details.ns{flex-basis:100%;margin:2px 0 0;font-size:12.5px}
+details.ns>summary{cursor:pointer;list-style:none;color:var(--mute);width:fit-content}
+details.ns>summary::-webkit-details-marker{display:none}
+details.ns>summary::before{content:"▸ "}
+details.ns[open]>summary::before{content:"▾ "}
+details.ns>summary:hover{color:var(--ink2)}
+.ns-body{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0 2px;
+ padding:9px 12px;border:1px dashed var(--ring);border-radius:9px;background:var(--plane)}
+.ns-body p{margin:0 0 2px;flex-basis:100%;color:var(--ink2);line-height:1.7}
+.ns-body button{font-size:12.5px}
+.ns-body.done button{opacity:.35;pointer-events:none}
+.ns-body.dead button{opacity:.4;pointer-events:none}
+/* **行かなかった記録は、一覧の中で見た目を変える。** 観た記録と並べたまま印だけを
+   付けないと、観た本数を目で数えたときに合わない */
+.rec-row.skipped{opacity:.72}
+.rb.notseen .nsm{font-size:12.5px;color:var(--mute);font-weight:600}
+.rb.notseen button{font-size:12.5px;min-width:0}
+.wait.skipped{opacity:.72}
+/* ---- 推薦の効かせ方 ---------------------------------------------------------
+   **枠は都道府県の絞り込みと同じ `.pbox` を使う。** 同じ「畳んである絞り込み」なので、
+   別の見た目を作ると画面ごとに枠の意味を覚え直すことになる。
+   **押し口も `.pfoot` / `.pall` と同じもの**（起案者の指示 ──「ボタンのデザインを
+   他と統一して」）。 */
+/* ---- 更新でできなかったこと。**一覧より前に置く** --------------------------
+   **色で驚かせない。** 壊れたのではなく「今回はここが欠けている」という知らせなので、
+   赤ではなく、注意の色の細い縦線だけを立てる（`.pnow` と同じ組み方）。 */
+.runmiss{background:var(--surf);border:1px solid var(--ring);
+ border-left:3px solid var(--warn);border-radius:0 12px 12px 0;
+ padding:14px 20px;margin:0 0 20px;font-size:13.5px;line-height:1.9}
+.runmiss p{margin:0}
+.runmiss ul{margin:8px 0 0;padding-left:1.3em;color:var(--ink2)}
+.runmiss li{margin:0 0 4px}
+.runmiss .rm-f{margin:10px 0 0;color:var(--mute);font-size:12.5px}
+.wfil{margin:0 0 22px}
+/* ---- 絞り込みを 2 段組にする（起案者の指示・2026-08-24）--------------------
+   **2 つの絞り込みは、別のことを決めている。** 場所は「どこなら観に行けるか」、
+   効かせ方は「どの情報を順位に使うか」で、**片方を決めてからもう片方を決める順序は
+   無い。** 縦に積むと上から順に読む形になり、下の 1 つは畳まれたまま気づかれにくい。
+   **横に並べると、決めることが 2 つあることが 1 目で分かる。**
+   **狭い画面では 1 列に戻す** ── 札が 47 個並ぶので、半分の幅では読めない。 */
+.fil2{display:grid;grid-template-columns:1fr 1fr;gap:0 18px;align-items:start;
+ margin:0 0 22px}
+.fil2>.pfil,.fil2>.wfil{margin:0}
+/* 畳んであるときは高さが揃うが、開くと片方だけ伸びる。**開いた側を下まで伸ばさない**
+   ── `align-items:start` で上端を揃える（既定の stretch だと、閉じている側の枠が
+   開いた側と同じ高さまで引き伸ばされて、空の箱に見える） */
+@media(max-width:880px){.fil2{grid-template-columns:1fr;gap:0}
+ .fil2>.pfil{margin:0 0 14px}
+ .fil2>.pbox:not(:last-child){margin:0 0 14px}}
+/* お気に入りの道具も同じ枠・同じ横並びを使う（`.pbox` を直に置く） */
+.fil2>.pbox{margin:0}
+/* ---- 帳面に挟んだ索引の耳で切り替える --------------------------------------
+   起案者の指示（2026-08-24）──「札、デザインはさっきのままでメモ帳に付属している
+   インデックスで切り替え、みたいなデザインにして」。
+
+   **耳は紙に挟まっているものなので、押せる耳と開いている耳を「前後」で表す。**
+   選んでいる耳だけが紙と同じ色で、下の 2px を塗りつぶして帳面とつながる ──
+   ほかの耳は 1 段沈めて（`top`）、地の色で後ろに置く。
+
+   **色の役割はそのまま。** 押せる耳の文字は藍（`--acc`）、開いている耳は現在地なので
+   えんじ（`--curtain`）── 左の帯で現在地を紙の色で抜いているのと同じ規則である。
+
+   **狭い画面では折り返す**（`flex-wrap`）。横に流して隠すと、5 つある耳のうち
+   見えない分が「無い」ことになる ── 折り返せば全部見えたまま、下の段の耳が
+   帳面とつながる形は保たれる。 */
+.idx{display:flex;flex-wrap:wrap;align-items:flex-end;gap:3px;margin:0;padding:0 3px}
+/* **耳が2段以上重なる画面（評価一覧の「評価」→「年」）だけに出す見出し。**
+   `index_tabs`の`show_label`が真のときだけ描かれる（2026-08-29）。小さく・
+   地味に置く ── 主役は耳そのものであって、見出しはどの軸かを示す添え書きである。 */
+.idx-lab{display:block;font-size:11px;color:var(--mute);margin:.6em 0 .15em;padding:0 3px}
+/* **押せる耳は紙の色**（起案者の指示・2026-08-24）。地（客席の壁の灰緑）の上に紙が
+   挟まっている形になるので、耳が何枚あるかが地との差で読める。**文字は藍のまま** ──
+   押せるものは藍という規則は動かさない。
+
+   **縁取りはえんじで取る**（起案者の指示・2026-08-25）。灰色の線だと、白いままの耳が
+   地に沈んで、そこに耳が挟まっていること自体が読めなかった。**耳の一列は、開いている
+   ものも押せるものも同じえんじの線で描かれた 1 つの索引である** ── 塗りの有無だけが
+   現在地を言う。色の役割は崩れない（線は形を描くもので、文字の藍が「押せる」を言う）。 */
+.idx .ix{position:relative;top:2px;display:inline-flex;gap:8px;align-items:baseline;
+ text-decoration:none;font-size:13px;line-height:1.5;padding:6px 14px 6px;
+ background:var(--surf);color:var(--acc);
+ border:1px solid var(--curtain);border-bottom:0;border-radius:7px 7px 0 0}
+/* **重ねても縁取りはえんじのまま。** 押せることは文字の藍が言っているので、線の色を
+   藍に振り替えると、指を乗せた耳だけ索引から外れて見える ── 紙にえんじを薄く敷く */
+.idx .ix:hover{background:color-mix(in srgb,var(--curtain) 9%,var(--surf))}
+.idx .ix .mn{font-size:11.5px;color:var(--mute);font-variant-numeric:tabular-nums}
+/* **開いている耳はえんじを塗って白抜きにする**（起案者の指示・2026-08-24）。
+   **帳面の上端の線と同じ色なので、耳と紙の境が消えて 1 枚につながる。**
+   日記帳の年の耳も同じ塗りなので、これで 2 つの耳が同じ形になった。 */
+.idx .ix.on{top:0;margin-bottom:-2px;padding:8px 16px;font-weight:700;
+ background:var(--curtain);color:var(--curtain-w);
+ border:2px solid var(--curtain);border-bottom:0}
+.idx .ix.on .mn{color:color-mix(in srgb,var(--curtain-w) 76%,transparent)}
+/* **色に頼らない印。** 耳が 2 枚しかない画面では、塗りつぶしと藍の文字のどちらが
+   「選ばれている」側なのか、色の意味を知らないと読めない（起案者の指摘・2026-08-25）。
+   check の印は開いている耳にしか出ないので、色を無視しても選択が読める */
+.idx .ix .ixck{margin-right:-2px}
+/* 耳が挟まっている帳面。**上端の線が耳と同じ色** ── 同じ 1 枚の紙である */
+.idxsheet{background:var(--surf);border-top:2px solid var(--curtain);margin:0 0 4px}
+.idxsheet>.mnow{margin:0;padding:13px 18px;border-bottom:1px solid var(--grid);
+ border-left:1px solid var(--grid);border-right:1px solid var(--grid)}
+/* 帳面の中の行は、上端の線を二重に引かない */
+.idxsheet>.rec-row:first-of-type{border-top:0;border-radius:0}
+/* **1 件が札で並ぶ画面の帳面。** 興味あり・お気に入り・探すは 1 件が券の札
+   （`.ticket`）で、**札そのものが紙の色を持っている** ── 帳面まで紙で塗ると札が
+   沈んで枠線しか残らない。**上端の線と、状態を書いた 1 枚だけを紙にし、札は地の上に
+   置く。** 耳が受け止められる面（上端の 2px）は残るので、耳は浮かない。 */
+.idxsheet.loose{background:none}
+.idxsheet.loose>.mnow{background:var(--surf);border:1px solid var(--grid);border-top:0;
+ border-radius:0 0 11px 11px;margin:0 0 18px}
+/* **登録済みの札は、開いた中で高さを持たせすぎない。** 41 件あると 10 行になるので、
+   畳んだ枠の中でもさらにスクロールできる形にする ── 枠の外の一覧まで押し下げない */
+.pbox .tags{max-height:210px;overflow-y:auto;margin:12px 0 0}
+/* 目盛りの意味は 1 か所にだけ書く。7 行それぞれに 5 つの言葉を並べない */
+.wscale{display:flex;justify-content:space-between;align-items:baseline;
+ font-size:11.5px;color:var(--mute);margin:12px 0 2px;padding:0 2px}
+.wscale .wmid{color:var(--ink2)}
+.wrow{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:9px 0;
+ border-top:1px solid var(--grid);font-size:13px}
+.wrow .wl{font-weight:600;flex:1 1 220px}
+.wrow .wn{color:var(--mute);font-size:12px;flex:none;font-variant-numeric:tabular-nums}
+/* **つまみ。** 段には弱い → 強いの順序があるので、位置そのものが強さを表す形にする
+   （同じ大きさのボタンを 5 つ並べると「5 つの別の選択肢」に見える）。
+   **見た目はブラウザのものに任せ、色だけを合わせる** ── つまみを自作すると、
+   明暗のモードと OS ごとに崩れる箇所を自分で抱えることになる */
+.wrow .wsl{flex:0 0 168px;accent-color:var(--acc);cursor:pointer;margin:0}
+.wrow .wv{flex:0 0 118px;font-size:12.5px;color:var(--acc);font-weight:600}
+/* **いちばん左に置いた行は薄くする。** 順位から消えていることを行の見た目で言う */
+.wrow.off .wl{color:var(--mute);text-decoration:line-through}
+.wrow.off .wv{color:var(--mute)}
+/* **確定していないことを、押し口の側に出す。** 動かしただけで効いたと読まれないため */
+.wbox.dirty .pfoot button[data-wsave]{border-color:var(--warn);color:var(--warn)}
+.wsaid{font-size:12px;color:var(--mute)}
+.wbox.dirty .wsaid{color:var(--warn)}
+button.pall-btn{font:inherit;font-size:12.5px;color:var(--mute);background:none;
+ border:0;padding:0;cursor:pointer;text-decoration:underline}
+button.pall-btn:hover{color:var(--ink2)}
+.wbox.dead .wsl{opacity:.4;pointer-events:none}
+.wbox.dead .pfoot button{opacity:.4;pointer-events:none}
+/* ---- 三択に答えた枠を埋めた 1 枚 -----------------------------------------
+   **足したことが分かるように、1 度だけ動かす。** 一覧のいちばん下に差し込むので、
+   静かに現れると増えたことに気づけない ── 押し口の側にも文で出しているが、
+   **文と場所が離れているときは、動きのほうが先に目に入る。**
+   動きを減らす設定は尊重する（増えたこと自体は文で分かる）。               */
+.ticket.filled{animation:tgfill .45s ease-out}
+@keyframes tgfill{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){.ticket.filled{animation:none}}
+
+*{box-sizing:border-box}
+:root{color-scheme:light;
+ /* ---- 地と紙 ---------------------------------------------------------------
+    **読むところだけを紙の色で抜き、その外側は客席の壁の色にする。** 灰に緑を寄せて
+    あるのは、紙の白を際立たせるためである（黄を寄せると紙が沈む）。            */
+ --plane:#e7eae6;--surf:#f8f9f6;--ink:#191b18;--ink2:#4e534d;--mute:#828880;
+ --grid:#dde2d9;--base:#c2c9bd;--ring:rgba(25,27,24,.13);
+ /* ---- インクは 2 本だけ ------------------------------------------------------
+    **`--acc`（藍）は押せるところと書けるところにしか使わない。**
+    **`--curtain`（幕のえんじ）は識別にしか使わない** ── 左の帯・年の耳・評価の印。
+    以前は `--acc` の青 1 色が「押せる」「現在地」「見出しの強調」をすべて担っており、
+    **青が出てくるたびに押せるかどうかを確かめることになっていた。**             */
+ --acc:#26467d;--curtain:#7a1e2b;--curtain-w:#f6efe9;
+ /* **お気に入りだけの色。**（起案者の指示・2026-08-26 ──「サイトで統一してお気に入り
+    にはこのテーマに合う黄色（オレンジ寄りにして見やすいように）をつけて」）。
+    「新しい色を増やさない」という上の決まりに対する、お気に入りだけの例外である。
+    封蝋（約束の印）と同じ色にする ── 封蝋はもともと「お気に入り＝件数も条件も
+    付けずに必ず出す約束」の印としてお気に入りにしか使っていないので、色を変える
+    だけで済む。暦の帯（`stage_calendar.py` の `.bar.fav`）・開幕リマインドの札
+    （`digest.py` の `.dgk.fav`／`.dgli.fav`）にも、この 1 つの色を差し込む。 */
+ --wax:#995c0c;--wax-hi:#db9730;
+ /* ---- 値の色。**意匠の色とは別に持つ** ── ◎ と × は好みの値であって飾りではない */
+ --pos:#1e6b48;--neg:#8a3b3b;--good:#1e6b48;--warn:#8a6d2a;
+ --s1:#2f5590;--s2:#b1592c;--s3:#1d7d59;--s4:#8a6d2a;
+ --oth:#c2c9bd;--deemp:#c2c9bd;
+ /* ---- 明朝。**端末にあるものだけを並べる** ── 外部からフォントを読み込むと、
+    端末内のデータだけで作るという守り（企画書 5 章）が 1 か所破れる。
+    **どれも無い端末ではゴシックに落ちる**ので、帳面らしさは書体ではなく
+    余白・罫・日付・印で作り、書体は乗ったときに効く上乗せとして扱う。          */
+ --mincho:"Hiragino Mincho ProN","Yu Mincho",YuMincho,"Noto Serif JP",serif;
+ /* 判子の刷り。明るい地では紙に染むように重ね、暗い地では抜くように重ねる */
+ --stamp-blend:multiply;--stamp-ink:.88}
+@media (prefers-color-scheme:dark){:root:where(:not([data-theme=light])){color-scheme:dark;
+ --plane:#101210;--surf:#191c18;--ink:#eef0ec;--ink2:#b6bbb2;--mute:#7f857c;
+ --grid:#2c302b;--base:#3c423b;--ring:rgba(238,240,236,.12);
+ /* **暗い地では幕のえんじが沈むので明るい側へ振る。**紙も白くしない（暗い部屋で読めない） */
+ --acc:#86aae8;--curtain:#b03a4a;--curtain-w:#fbf1ef;
+ --wax:#cc9029;--wax-hi:#ebba59;
+ --pos:#3f9a6f;--neg:#c86a6a;--good:#3f9a6f;--warn:#c9a552;
+ --s1:#6f9ad8;--s2:#d07a4a;--s3:#3f9a6f;--s4:#c9a552;
+ --oth:#4e534d;--deemp:#4e534d;
+ --stamp-blend:screen;--stamp-ink:.94}}
+:root[data-theme=dark]{color-scheme:dark;
+ --plane:#101210;--surf:#191c18;--ink:#eef0ec;--ink2:#b6bbb2;--mute:#7f857c;
+ --grid:#2c302b;--base:#3c423b;--ring:rgba(238,240,236,.12);
+ /* **暗い地では幕のえんじが沈むので明るい側へ振る。**紙も白くしない（暗い部屋で読めない） */
+ --acc:#86aae8;--curtain:#b03a4a;--curtain-w:#fbf1ef;
+ --wax:#cc9029;--wax-hi:#ebba59;
+ --pos:#3f9a6f;--neg:#c86a6a;--good:#3f9a6f;--warn:#c9a552;
+ --s1:#6f9ad8;--s2:#d07a4a;--s3:#3f9a6f;--s4:#c9a552;
+ --oth:#4e534d;--deemp:#4e534d;
+ --stamp-blend:screen;--stamp-ink:.94}
+body{margin:0;padding:32px 20px 72px;background:var(--plane);color:var(--ink);
+ font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.7;font-size:15px}
+/* **リンクの既定色を、意匠案 A のとおり藍にする。**（起案者の指摘・2026-08-25 ──
+   「デザイン案を見直して。画像のページなど、デザイン案にあったデザインではなくなってる」）
+
+   意匠案（`docs/` に置いた案 A のページ）は `a{color:var(--indigo)}` を 1 行だけ
+   全体の既定として持っている。**実装のこちら側にはその 1 行が無かった** ── 各部品が
+   自分でリンクの色を決める作りになっていたので、色を決め忘れた部品はブラウザの既定
+   （下線つきの青）のまま表示されていた。「たどる」画面の名前のリンクがそれで、
+   意匠と関係の無い色が出ていた。
+
+   **1 か所に既定を置く。** 個別の部品が `color` を指定していれば、詳細度で
+   そちらが勝つので壊れない（`.pk{color:inherit}` や `.side a{color:...}` など）。
+   決め忘れた部品だけが、ここで意匠の色に落ち着く。 */
+a{color:var(--acc)}
+.wrap{max-width:900px;margin:0 auto}
+/* ---- 見出しと題名は明朝で組む ------------------------------------------------
+   **当日パンフの題名が明朝で組まれているのと同じ理由である** ── 公演の名前は読み上げる
+   ものではなく眺めるものなので、字面が残る書体のほうが識別に効く。
+   **押し口はゴシックのまま残す**（`button` は `font:inherit` を上書きしない）──
+   明朝の押し口は文章に見えて、押せることが伝わらない。                          */
+h1{font-family:var(--mincho);font-size:26px;font-weight:600;margin:0 0 4px;
+ line-height:1.42;letter-spacing:.01em}
+.sub{color:var(--ink2);margin:0 0 6px;font-size:14px}
+.bundles{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 26px;font-size:12.5px;color:var(--ink2)}
+.bundles span{border:1px solid var(--ring);border-radius:99px;padding:3px 11px}
+h2{font-family:var(--mincho);font-size:18.5px;font-weight:600;margin:30px 0 6px;
+ line-height:1.45}
+/* **読みやすい行の長さは `ch` では作れない。** `ch` は半角数字「0」の幅を基準に
+   するため、全角の日本語では 1 文字が「1ch」の約 2 倍になり、`74ch` は実際には
+   全角 37 字ほどしか入らない（起案者の指摘 2026-08-26 ──「なぜか途中で改行され
+   てしまっている」）。**`em` に替えた** ── 全角文字はおおむね 1 文字 = 1em なので、
+   同じ数値でも意図した文字数に近づく。この画面をまたいで同じ値を使っている場所
+   （`app.py` の `.lede`・`.chnote` など）も同様に直した。                     */
+.lead{margin:0 0 18px;color:var(--ink2);font-size:13.5px;max-width:74em}
+/* ---- 1 件 1 枚を「チケット」として組む -------------------------------------
+   **公演を眺める行為に形を合わせる。** 表の行や無地のカードだと、識別（題名・劇場・日程）
+   と理由が同じ重みで並び、どこから読むのかが決まらない。**チケットには読む順序が
+   もともとある** ── 番号と日付の耳（もぎる側）を左に置き、本文を右に置く。
+   もぎる操作（興味あり）に動きを付けているのも同じ理由で、**押した結果が形で分かる。**  */
+.ticket{position:relative;display:flex;background:var(--surf);border:1px solid var(--ring);
+ border-radius:12px;margin:0 0 18px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+/* **耳に出すのは事実だけ。** 縦書きの札は外した（理由は `_stub` にある）── ここは
+   配られる直前の HTML なので、飾りの文字はこの注記にも書かない。 */
+.ticket .stub{flex:none;width:70px;display:flex;flex-direction:column;align-items:center;
+ justify-content:flex-start;gap:9px;padding:20px 0;border-radius:12px 0 0 12px;
+ background:linear-gradient(180deg,var(--plane),var(--surf));
+ transition:transform .5s cubic-bezier(.34,1.1,.3,1),opacity .5s}
+.ticket .stub .sn{font-size:10.5px;letter-spacing:.09em;color:var(--mute)}
+.ticket .stub .sd{display:flex;flex-direction:column;align-items:center;line-height:1.15}
+.ticket .stub .sd b{font-size:19px;font-weight:700;color:var(--acc);
+ font-variant-numeric:tabular-nums}
+.ticket .stub .sk{font-size:10px;letter-spacing:.16em;color:var(--mute);margin:3px 0 0}
+/* ミシン目と、切り取り線の端のくぼみ */
+.ticket .perf{flex:none;width:2px;margin:10px 0;opacity:.9;
+ background-image:radial-gradient(circle at 1px 3.5px,var(--base) 1.1px,transparent 1.3px);
+ background-size:2px 9px}
+.ticket::before,.ticket::after{content:"";position:absolute;left:65px;width:11px;height:11px;
+ border-radius:50%;background:var(--plane);border:1px solid var(--ring)}
+.ticket::before{top:-6px}
+.ticket::after{bottom:-6px}
+/* **ポスターは本文の左に立てる。** 題名の隣にだけ置くと、絵の高さのぶん右が空いて
+   「読むところが無い帯」ができる。本文の全体と並べれば、絵の高さが無駄にならない */
+.ticket .body{flex:1;min-width:0;padding:20px 22px 18px;display:flex;gap:18px}
+.ticket .main{flex:1;min-width:0}
+/* **枠（`.pwrap`）に寸法を持たせる。** 絵そのものの `.poster` は枠いっぱいを埋めるだけ
+   にしてある（`app.py` の `.pwrap .poster`）── 読み込み中の文字を重ねるため、
+   起案者の指摘（2026-08-25）で `_poster()` が絵を `<span class="pwrap">` で囲む
+   ようになった。ポスターの無い公演は `poster()` が空文字を返すので、この枠は出ない。 */
+.ticket .pcol{flex:none;width:132px;display:flex;flex-direction:column;gap:8px}
+.ticket .pcol .pwrap{width:132px;height:186px}
+/* **公式サイトへの導線を、ポスターの真下に立てる**（起案者の指摘・2026-08-26 ──
+   「もうちょっと主張してほしい」）。文字だけの下端の 1 行は、三択やあらすじを
+   読んだ先にあって見落とされやすかった。絵の下ならボタンだと一目で分かる */
+.ticket .sitebtn{display:flex;align-items:center;justify-content:center;gap:6px;
+ font-size:12.5px;font-weight:600;padding:8px 6px;border-radius:99px;
+ border:1px solid var(--acc);color:var(--acc);text-decoration:none;text-align:center}
+.ticket .sitebtn:hover{background:var(--acc);color:var(--surf)}
+@media(max-width:640px){.ticket .body{flex-direction:column}
+ .ticket .pcol{width:104px}
+ .ticket .pcol .pwrap{width:104px;height:146px}}
+/* **もぎった状態。** 押した結果が形で分かる（reduced-motion では動かさない） */
+.ticket.torn .stub{transform:translate(-15px,11px) rotate(-9deg);opacity:.38}
+.ticket.torn .perf{opacity:.25}
+.ticket.torn{box-shadow:none;border-style:dashed}
+@media (prefers-reduced-motion:reduce){.ticket .stub{transition:none}}
+@media(max-width:560px){.ticket .stub{width:52px;padding:12px 0;gap:6px}
+ .ticket .stub .sd b{font-size:15px}
+ .ticket::before,.ticket::after{left:47px}}
+/* **もぎった 1 枚（興味あり）。** 傾けない ── 耳の日付がこの画面の主役なので薄くしない。
+   済んだことは印（✓）と、ミシン目を薄くすることで出す。 */
+.ticket.interest .stub{transition:none}
+.ticket.interest .perf{opacity:.35}
+.ticket .stub .sn.done{color:var(--good)}
+.tickets{margin:0 0 8px}
+/* ---- 月で絞り込む ------------------------------------------------------------
+   **耳は素のリンクにした。** 月は 1 つ選べば足りるので、都道府県のような複数選択の
+   form も、それを組み替える JavaScript も要らない。**押す前に件数が分かる**ように
+   耳に数字を書く（0 件の月は耳を出さない）。
+
+   **丸い札（`.mchip`）はやめた。** 評価一覧と日記帳を索引の耳に変えたときに、
+   ここと探すの札だけがピルのまま残り、**同じ「1 つ選ぶと一覧の中身が入れ替わる」
+   操作に 2 つの見た目が並んでいた。** 耳の指定は `app.py` の `APP_CSS` に 1 か所ある。 */
+.mnow{margin:0 0 9px;color:var(--ink2);font-size:13px;max-width:74em}
+/* 続きへの送り。**一覧の下に置く** ── 読み終えた場所に次の口がある */
+.mfoot{display:flex;gap:14px;align-items:center;justify-content:space-between;
+ flex-wrap:wrap;margin:4px 0 26px;font-size:13.5px}
+.mpage{text-decoration:none;color:var(--acc);border:1px solid var(--ring);
+ border-radius:99px;padding:7px 16px;background:var(--surf)}
+.mpage:hover{border-color:var(--acc)}
+.mpage.off{color:var(--mute);border-style:dashed;background:none}
+.mfoot .mp{color:var(--mute);font-size:12.5px;font-variant-numeric:tabular-nums}
+/* 理由の欄 */
+.why-note{margin:12px 0 0;padding:12px 14px;border:1px dashed var(--ring);
+ border-radius:10px;background:var(--plane)}
+.why-note label{font-size:12px;color:var(--ink2);display:block;margin:0 0 6px}
+/* **「任意」の小さな枠は、置かれた場所に関係なく同じ形にする。** 以前は
+   `.why-note .opt` と欄の中に閉じて書いてあったため、**同じ部品をボタンの中に置いた
+   45 か所（評価一覧・未評価・日記帳・探す）では枠も余白も大きさも失われ、
+   「感想を書く任意」と字がくっついて出ていた。** 部品の見た目は部品の側で決める。   */
+.opt{font-size:10.5px;color:var(--mute);border:1px solid var(--ring);
+ border-radius:99px;padding:1px 7px;margin-left:8px}
+.why-note textarea{width:100%;font:inherit;font-size:13px;padding:8px 11px;
+ border:1px solid var(--ring);border-radius:8px;background:var(--surf);color:var(--ink);
+ resize:vertical}
+.wn-foot{display:flex;gap:10px;align-items:center;margin:6px 0 0;flex-wrap:wrap}
+/* **空欄を並べない。** 追いかける一覧は読む画面なので、書く場所は押したときに開く */
+.wnw{margin:12px 0 0}
+/* ---- 封蝋 --------------------------------------------------------------------
+   起案者の指示（2026-08-24）──「他の箇所にもシーリングとかつかうとおしゃれかも」。
+
+   **押す場所を選んだ。** 封蝋は約束の印なので、**お気に入りにだけ使う** ── 登録した
+   名前は「内容を問わず、件数も条件も付けずに必ず出す」と決めたものであり（企画書 1 章）、
+   点数を付けて並べた推薦とは性質が違う。**一覧の耳に封蝋があれば、その 1 枚が順位では
+   なく約束で出ていることが、理由の文を読む前に分かる。**
+
+   **飾りとして各所に散らさない。** 意味の無い場所にも押すと、印であることが消えて
+   ただの模様になる。                                                             */
+.wax{position:relative;flex:none;width:25px;height:25px;display:grid;place-items:center;
+ border-radius:47% 53% 51% 49% / 52% 47% 53% 48%;
+ background:radial-gradient(circle at 33% 27%,var(--wax-hi),var(--wax) 64%);
+ box-shadow:inset -1px -2px 3px rgba(0,0,0,.32),inset 1px 1px 2px rgba(255,255,255,.28),
+  0 1px 2px rgba(0,0,0,.26);
+ filter:url(#tg-wax);
+ font-family:var(--mincho);font-size:12px;font-weight:600;line-height:1;
+ color:var(--curtain-w)}
+.wnb{font:inherit;font-size:12.5px;padding:5px 14px;border-radius:99px;
+ border:1px dashed var(--ring);background:transparent;color:var(--acc);cursor:pointer}
+.wnb:hover{border-style:solid}
+.wnb .opt{border-color:var(--ring)}
+.wnw .why-note{margin:0}
+/* **自分が書いた理由。** 引用（あらすじ）と同じ形にそろえるが、線の色は変える ──
+   あちらは外から来た文、こちらは自分が書いた文である。 */
+.wnr{display:flex;gap:11px;align-items:baseline;flex-wrap:wrap;padding:9px 14px;
+ border-left:3px solid var(--s2);background:var(--plane);border-radius:0 8px 8px 0;
+ font-size:13px}
+.wnl{flex:none;font-size:11px;color:var(--mute)}
+.wnt{color:var(--ink);min-width:0}
+.wnr .wnb{margin-left:auto;border:0;padding:0;font-size:11.5px}
+.wnr .wnb:hover{text-decoration:underline}
+/* **見送った理由。** 書く頻度が低い入力なので、閉じているのが既定である。
+   `<details>` にしたので JavaScript を要さない。 */
+.nn{margin:11px 0 0;font-size:12.5px}
+.fav .nn{flex-basis:100%;margin:8px 0 0}
+.nn>summary{cursor:pointer;color:var(--acc);list-style:none;display:inline-flex;
+ gap:2px;align-items:baseline;flex-wrap:wrap}
+.nn>summary::-webkit-details-marker{display:none}
+.nn>summary::before{content:"▸";color:var(--mute);margin-right:6px}
+.nn[open]>summary::before{content:"▾"}
+.nn .nnv{color:var(--ink);margin-left:9px}
+.nn[open]{border:1px dashed var(--ring);border-radius:10px;padding:10px 13px;
+ background:var(--plane)}
+.nn textarea{width:100%;margin:8px 0 0;font:inherit;font-size:13px;padding:8px 11px;
+ border:1px solid var(--ring);border-radius:8px;background:var(--surf);color:var(--ink);
+ resize:vertical}
+.hint{font-size:11.5px;color:var(--mute)}
+.body{flex:1;min-width:0}
+h3{font-family:var(--mincho);font-size:17.5px;font-weight:600;margin:0 0 3px;
+ line-height:1.45}
+.meta{font-size:13.5px;color:var(--ink2);margin:0 0 2px}
+.grp{color:var(--ink)}
+.sep{color:var(--base);margin:0 5px}
+.pref{color:var(--mute)}
+.when{font-size:13.5px;margin:0 0 6px}
+.price{color:var(--mute);font-size:12.5px;margin-left:12px}
+/* **持っている券の日時。** 上演期間（`.when`）とは別のことを言っている ── 期間は
+   公演全体がいつやるか、これは本人がどの回の券を持っているかである。何回もある
+   公演では前者だけでは分からないので、目立つ色で分けて先に出す */
+.mytix{margin:0 0 10px;font-size:13px}
+.mytix>b{display:block;color:var(--ink);font-weight:600;margin:0 0 4px}
+.mt-row{display:inline-flex;align-items:center;gap:6px;color:var(--acc);
+ font-variant-numeric:tabular-nums;margin:0 10px 5px 0}
+.mt-row.un{color:var(--mute)}
+.mt-row button{font:inherit;font-size:11px;padding:1px 8px;border-radius:99px;
+ border:1px solid var(--ring);background:var(--surf);color:var(--ink2);cursor:pointer}
+.mt-row button:hover{border-color:var(--acc);color:var(--acc)}
+.mt-add{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap}
+.mt-add input{font:inherit;font-size:12.5px;padding:3px 8px;border-radius:6px;
+ border:1px solid var(--ring);background:var(--surf);color:var(--ink)}
+.mt-add button{font:inherit;font-size:12px;padding:4px 11px;border-radius:99px;
+ border:1px solid var(--acc);background:var(--surf);color:var(--acc);cursor:pointer;
+ display:inline-flex;align-items:center;gap:4px}
+.mt-add button:hover{background:var(--acc);color:var(--surf)}
+.mt-add .said{font-size:11.5px;color:var(--mute)}
+/* ---- ツアーの全日程 ---------------------------------------------------------
+   起案者の指摘（2026-08-26）──「興味あるんだけどその地方公演だといけない…って
+   パターンがよくある。ツアー全日程表示してほしい。終わった日程は線を引いて消して」。
+   **地方ごとに 1 行、上限なしで並べる。** 横一列に詰めて省略していたのをやめた ──
+   「地方公演だと行けない」を判断するには、どの地方がいつなのかを全部読める必要がある。 */
+.tourfull{margin:0 0 10px;font-size:12.5px;line-height:1.9}
+.tf-row{display:flex;gap:8px;align-items:baseline}
+.tf-loc{color:var(--ink2);font-weight:600;flex:none}
+/* 会場名は都道府県の呼び名より軽くする ── 太字が並ぶと、どちらが地名でどちらが
+   劇場名か読み分けにくい */
+.tf-th{font-weight:400;color:var(--mute)}
+.tf-when{color:var(--ink2)}
+/* **終わった日程は消さず、取り消し線で「もう行けない」と示す。** 消すと、
+   ツアー全体が何都市を回ったのかが読めなくなる */
+.tf-row.done{color:var(--mute)}
+.tf-row.done .tf-loc,.tf-row.done .tf-when{text-decoration:line-through}
+.sale{margin:8px 0 10px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.pill{font-size:12px;font-weight:600;padding:2px 10px;border-radius:99px;border:1px solid var(--ring)}
+.pill.ok{color:var(--good);border-color:#0ca30c55}
+.pill.soon{color:var(--acc);border-color:#2a78d655}
+.pill.warn{color:var(--warn);border-color:#c9850055}
+/* **出演者は事実として出す。** 理由の欄（名簿に当たった人だけ）とは別の節にする */
+.cast{margin:0 0 10px;font-size:13px;line-height:1.75}
+.cast .cr{display:flex;gap:10px}
+.cast .cl{flex:none;width:3.4em;color:var(--mute);font-size:11.5px;padding-top:.15em}
+.cast .cv{color:var(--ink);min-width:0}
+.cast .rest{display:none}
+.cast.open .rest{display:inline}
+.cast.open .mrb{display:none}
+.cast .mrb{font:inherit;font-size:11.5px;padding:0 0 0 6px;border:0;background:none;
+ color:var(--acc);cursor:pointer}
+.cast.none{color:var(--mute);font-size:12.5px}
+.cast .src{color:var(--base);font-size:11px;margin-left:3.4em;display:inline-block}
+.syn{font-size:13.5px;color:var(--ink2);margin:0 0 12px;padding:10px 14px;
+ border-left:3px solid var(--grid);background:var(--plane);border-radius:0 8px 8px 0}
+.syn .txt{margin:0;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;
+ overflow:hidden}
+.syn.open .txt{display:block}
+.syn .mrb{font:inherit;font-size:11.5px;padding:0;margin:4px 0 0;border:0;background:none;
+ color:var(--acc);cursor:pointer;display:block}
+.syn.open .mrb::after{content:"を閉じる"}
+.syn.open .mrb{font-size:0}
+.syn.open .mrb::after{font-size:11.5px;content:"畳む"}
+.syn.no{color:var(--mute);font-size:12.5px}
+.syn.part{font-size:12.5px}
+/* **札は押し口ではない。** 藍（--acc）は押せるものの色なので使わない ──
+   同じ見た目のものは同じ働きをする、を崩さないためである */
+.syn .tags{display:flex;flex-wrap:wrap;gap:4px 5px;margin:7px 0 0}
+.syn .tag{font-size:11.5px;line-height:1.5;color:var(--ink2);background:var(--surf);
+ border:1px solid var(--grid);border-radius:999px;padding:1px 9px;white-space:nowrap}
+.syn .tag.mine{color:var(--mute);border-style:dashed}
+/* **入れ口は畳んでおく。** 15 枚を並べる一覧なので、開いたままだと 1 枚が伸びて
+   見比べられなくなる。**空いている枠にだけ出す**ので、押す人は目的があって押す */
+.handt{margin:8px 0 0}
+.handt>summary{font-size:11.5px;color:var(--acc);cursor:pointer;list-style:none;
+ display:inline-block;padding:1px 0}
+.handt>summary::-webkit-details-marker{display:none}
+.handt>summary::before{content:"＋ "}
+.handt[open]>summary::before{content:"− "}
+.handt .lead{font-size:11.5px;color:var(--ink2);margin:6px 0 8px;line-height:1.7}
+.handt .hl{display:block;font-size:11px;color:var(--mute);margin:7px 0 0}
+.handt input,.handt textarea{display:block;width:100%;box-sizing:border-box;margin:3px 0 0;
+ font:inherit;font-size:12.5px;color:var(--ink);background:var(--surf);
+ border:1px solid var(--grid);border-radius:6px;padding:5px 8px}
+.handt textarea{resize:vertical;line-height:1.6}
+.handt .hn{display:block;font-size:10.5px;color:var(--mute);margin:3px 0 0;line-height:1.6}
+.handt .hb{margin:10px 0 0;font:inherit;font-size:12px;cursor:pointer;
+ color:var(--curtain-w);background:var(--acc);border:0;border-radius:6px;padding:5px 14px}
+.syn .hsaid{font-size:11.5px;color:var(--pos);margin:7px 0 0}
+.syn.doubt{border-left-color:var(--warn)}
+.src.warn{color:var(--warn)}
+/* **「なぜ出てきたか」は、この一覧の存在理由そのものである。** あらすじや値段と同じ
+   灰色で置くと、付帯情報の 1 つに見える ── 幕の色で言う（押し口ではないので藍は使わない） */
+.whyh{font-size:11.5px;letter-spacing:.13em;font-weight:700;color:var(--curtain);
+ margin:0 0 5px}
+.why{list-style:none;margin:0;padding:0}
+/* **探した結果は、題名の直下に面で置く。**（起案者の指示・2026-08-26 ──「各カードの
+   上に明記してほしい」）。あらすじや値段と同じ並びに置くと、下まで読まないと出てこない
+   ── **見た目でも「これが出た理由」だと分かるように、幕の色を薄く敷いた面にする。**
+   `.whyh`（見出し）は既存の色のままにし、面の側だけ足す */
+.whyh.top{margin:8px 0 6px;letter-spacing:.08em}
+.why.top{margin:0 0 14px;padding:8px 12px;border-radius:9px;
+ background:color-mix(in srgb,var(--curtain) 8%,var(--surf));
+ border:1px solid color-mix(in srgb,var(--curtain) 22%,var(--ring))}
+.why.top .rs{padding:2px 0}
+.rs{font-size:13.5px;padding:3px 0 3px 0;line-height:1.65}
+.net{display:inline-block;font-size:11px;font-weight:600;padding:1px 8px;border-radius:99px;
+ margin-right:9px;border:1px solid var(--ring);color:var(--ink2)}
+/* **縁の色は系統の色から作る。** 以前は `#eb683455` のように値を直に書いていたので、
+   意匠の色を差し替えても縁だけが古い色のまま残っていた */
+.rs.a .net{color:var(--s2);border-color:color-mix(in srgb,var(--s2) 42%,transparent)}
+.rs.b .net{color:var(--s1);border-color:color-mix(in srgb,var(--s1) 42%,transparent)}
+.rs.c .net{color:var(--s3);border-color:color-mix(in srgb,var(--s3) 42%,transparent)}
+.rs.none{color:var(--mute);font-size:12.5px}
+.n{color:var(--mute);font-size:12.5px}
+.src{color:var(--base);font-size:11.5px;margin-left:8px}
+.rsx{font:inherit;font-size:11px;border:0;background:transparent;color:var(--mute);
+ cursor:pointer;margin-left:6px;padding:0 2px}
+.rsx:hover{color:#e34948}
+.act{margin:14px 0 0;display:flex;gap:16px;align-items:center;flex-wrap:wrap;
+ border-top:1px solid var(--grid);padding-top:12px}
+.act a{color:var(--acc);font-size:13px;text-decoration:none}
+.act a:hover{text-decoration:underline}
+.nolink{font-size:12.5px;color:var(--mute)}
+/* **すでに登録した公演の印。** 起案者の指示（2026-08-26）で赤文字にする ──
+   ×（好みの否定）と同じ意味の赤ではないが、**この仕組みが持つ赤はこの 1 色だけ**
+   なので、新しい赤を持ち込まず `--neg` を借りる（濃淡はテーマごとに調整済み） */
+.added-note{margin-left:auto;color:var(--neg);font-size:13px;font-weight:600}
+.btns{display:flex;gap:8px;align-items:center;margin-left:auto;flex-wrap:wrap}
+/* **`hidden` 属性は、同じ強さの `display` 指定に負ける。** 上の `display:flex` が
+   既定を上書きするので、答え直す口で畳むにはここが要る（`.rb[hidden]` と同じ理由） */
+.btns[hidden]{display:none}
+.btns button,.rb button{font:inherit;font-size:12.5px;padding:4px 12px;border-radius:99px;
+ border:1px solid var(--ring);background:var(--surf);color:var(--ink2);cursor:pointer}
+.btns button:hover,.rb button:hover{border-color:var(--acc);color:var(--acc)}
+.btns.done button,.rb.done button{opacity:.35;pointer-events:none}
+.btns.dead,.rb.dead{opacity:.4;pointer-events:none}
+.said{font-size:12px;color:var(--good);min-width:0}
+.waits{margin:0 0 8px}
+/* ---- 評価待ちの行も、もぎられる形にする ------------------------------------
+   **もぎるのは、観てきた 1 枚である。** 半券がもぎられるのは劇場に入るときなので、
+   まだ買ってもいない推薦の枠ではなく、**観終わって評価を付けた瞬間**に耳が外れる。
+   耳に出すのは上演日で、飾りの文字は書かない（`_wait_stub`）。                  */
+/* **耳は行の高さいっぱいに立てる。** 折り返す本文と同じ flex 行に置くと、耳が
+   1 行目の高さしか持たず、下が空いた欠けた券になる。**外側は 3 列（耳・ミシン目・
+   本文）に固定し、折り返しは本文の中だけで起こす。**                            */
+/* **左端に「まだ答えていない」の印を持たせる。** 急ぎの催促ではなく宿題なので、
+   赤ではなく金で置く ── 評価は輪を閉じる操作だが、期限があるものではない */
+.wait{position:relative;display:flex;align-items:stretch;
+ background:var(--surf);border:1px solid var(--ring);border-left:3px solid var(--warn);
+ border-radius:0 10px 10px 0;margin:0 0 9px;font-size:13.5px}
+.wait .wbody{flex:1;min-width:0;display:flex;gap:12px;align-items:center;flex-wrap:wrap;
+ padding:11px 16px 11px 12px}
+.wait .wstub{flex:none;width:60px;display:flex;flex-direction:column;
+ align-items:center;justify-content:center;line-height:1.15;border-radius:0;
+ background:linear-gradient(180deg,var(--plane),var(--surf));
+ transition:transform .5s cubic-bezier(.34,1.1,.3,1),opacity .5s}
+/* **年を月日の上に置く。** 耳の幅は 60px しかないので、同じ行に並べると読めない。
+   小さくても、**2022 年の公演と 2026 年の公演が同じ顔で並ばない**ことが要る */
+.wait .wstub .sy{font-size:10.5px;color:var(--mute);letter-spacing:.02em;
+ font-variant-numeric:tabular-nums}
+.wait .wstub b{font-size:15px;color:var(--acc);font-variant-numeric:tabular-nums}
+.wait .wstub .sk{font-size:9.5px;letter-spacing:.13em;color:var(--mute);margin:2px 0 0}
+.wait .wperf{flex:none;width:2px;margin:9px 0;
+ background-image:radial-gradient(circle at 1px 3.5px,var(--base) 1.1px,transparent 1.3px);
+ background-size:2px 9px}
+.wait::before,.wait::after{content:"";position:absolute;left:56px;width:9px;height:9px;
+ border-radius:50%;background:var(--plane);border:1px solid var(--ring)}
+.wait::before{top:-5px}
+.wait::after{bottom:-5px}
+/* **もぎれた状態。** 評価を押した結果が形で分かる（記録できなかったら元に戻す） */
+.wait.torn .wstub{transform:translate(-14px,10px) rotate(-9deg);opacity:.38}
+.wait.torn .wperf{opacity:.25}
+.wait.torn{border-style:dashed;box-shadow:none}
+@media (prefers-reduced-motion:reduce){.wait .wstub{transition:none}}
+@media(max-width:560px){.wait .wstub{width:48px}
+ .wait .wstub b{font-size:13px}
+ .wait .wstub .sy{font-size:9.5px}
+ .wait::before,.wait::after{left:44px}}
+.wait .wt{font-weight:600}
+.wait .wm{color:var(--mute);font-size:12.5px}
+.rb{display:flex;gap:6px;align-items:center;margin-left:auto;flex-wrap:wrap}
+.rb button{min-width:36px;font-size:15px;padding:2px 10px}
+.rb button.pend{font-size:12px;min-width:0}
+/* 感想の欄。**行の幅いっぱいに折り返して置く** ── ◎○△× の横に並べると、
+   ボタンと同じ大きさの入力欄になって何を書く場所か分からない */
+.wnote{flex:1 0 100%;display:flex;gap:10px;align-items:flex-start;
+ border-top:1px solid var(--grid);padding-top:10px;margin-top:2px}
+/* **`display` を書いたら `hidden` を書き直す。** `[hidden]` の display:none は
+   ブラウザの既定の指定なので、こちらで display:flex を書くと**押す前から開いた状態で
+   出てしまう**（`.why-note` は display を書いていないので無事だった） */
+.wnote[hidden]{display:none}
+.wnote textarea{flex:1;font:inherit;font-size:13px;line-height:1.6;resize:vertical;
+ padding:8px 11px;border-radius:9px;border:1px solid var(--ring);
+ background:var(--bg);color:var(--ink)}
+.wnote textarea::placeholder{color:var(--mute)}
+.wnote .said{padding-top:9px;white-space:nowrap}
+/* 自分が書いた感想の引用。**網の色は付けない** ── これは網ではなく、
+   本人が書いた文を返している行である */
+.rs.q{color:var(--ink2);padding-left:2px}
+.rs.q b{color:var(--ink);font-weight:600;margin-right:7px}
+.dead-note{background:var(--surf);border:1px solid #c9850055;color:var(--warn);
+ border-radius:12px;padding:12px 18px;margin:0 0 22px;font-size:13px}
+.foot{margin:28px 0 0;display:flex;justify-content:flex-end}
+.foot button{font:inherit;font-size:13px;padding:7px 18px;border-radius:99px;
+ border:1px solid var(--ring);background:var(--surf);color:var(--ink2);cursor:pointer}
+.favs{margin:0 0 8px}
+.fav{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap;background:var(--surf);
+ border:1px solid var(--ring);border-radius:10px;padding:11px 16px;margin:0 0 7px;font-size:13.5px}
+.fav .ft{font-weight:600}
+.fav .fm{color:var(--ink2);font-size:12.5px}
+.fav .fa{color:var(--s2);font-size:12px;margin-left:auto}
+.fav a{color:var(--acc);font-size:12px;text-decoration:none}
+/* ---- 観に行ける場所で絞り込む ----------------------------------------------
+   **畳んでおく。** 既定が全国なので、開いていると「選ばないといけない」ように見える。
+   選んでいるときだけ開いた状態で出し、いま何で絞っているのかを見出しに書く。 */
+.pfil{margin:0 0 22px}
+.pbox{background:var(--surf);border:1px solid var(--ring);border-radius:12px;padding:12px 18px}
+/* **三角の印を消さない。** summary を flex にすると印が消え、押せる場所に見えなくなる */
+.pbox summary{cursor:pointer;font-size:13.5px;font-weight:600}
+.pbox summary .ico{margin-right:7px}
+.pbox summary b{color:var(--acc)}
+.pchips{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 0}
+/* 札そのものを押せるようにする。**チェック箱だけを的にしない** ── 47 個並ぶので、
+   小さな箱を狙わせると押し間違える */
+.pchip{display:inline-flex;gap:6px;align-items:center;font-size:12.5px;cursor:pointer;
+ border:1px solid var(--ring);border-radius:99px;padding:4px 11px;color:var(--ink2);
+ background:var(--plane);user-select:none}
+.pchip:hover{color:var(--ink);border-color:var(--base)}
+.pchip.on,.pchip:has(input:checked){border-color:var(--acc);color:var(--acc);
+ font-weight:600;background:var(--surf)}
+.pchip input{margin:0;accent-color:var(--acc)}
+.pchip .pn{font-size:11px;color:var(--mute);font-variant-numeric:tabular-nums}
+.pchip.on .pn,.pchip:has(input:checked) .pn{color:var(--acc)}
+.pfoot{display:flex;gap:14px;align-items:center;margin:14px 0 0;flex-wrap:wrap}
+.pfoot button{font:inherit;font-size:13px;padding:7px 18px;border-radius:99px;
+ border:1px solid var(--acc);background:var(--surf);color:var(--acc);font-weight:600;
+ cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+.pall{font-size:12.5px;color:var(--mute)}
+.pnow{font-size:13px;color:var(--ink2);margin:0 0 14px;background:var(--surf);
+ border:1px solid var(--ring);border-left:3px solid var(--acc);border-radius:0 10px 10px 0;
+ padding:11px 16px}
+.note{margin:16px 0 0;color:var(--mute);font-size:12.5px;line-height:1.7;
+ background:var(--surf);border:1px solid var(--ring);border-radius:12px;padding:16px 20px}
+b{font-weight:600;color:var(--ink)}
+@media(max-width:560px){.rec{flex-direction:column;gap:6px}.rk{text-align:left}}
+
+.viz{max-width:100%;overflow:visible}
+.viz .vlab{font-size:11px;fill:var(--ink2);text-anchor:middle;font-weight:600}
+.viz .alab{font-size:11px;fill:var(--mute);text-anchor:middle}
+.viz .a-l{text-anchor:start;font-size:11.5px;fill:var(--ink2)}
+.viz .v-l{text-anchor:start;font-weight:600}
+.viz .bar:hover rect{stroke:var(--ink);stroke-width:1.5}
+.viz text{dominant-baseline:middle}
+.dbar{position:relative;margin:6px 0 30px}
+.dbar svg{display:block;border-radius:4px}
+.dlabs{position:relative;height:18px}
+.dlabs .dl{position:absolute;transform:translateX(-50%);font-size:11.5px;color:var(--ink2);
+ white-space:nowrap;margin:0;padding:0;border:0;background:none}
+.vcols{display:grid;grid-template-columns:1fr 1fr;gap:0 28px;align-items:start;margin:6px 0 0}
+@media(max-width:820px){.vcols{grid-template-columns:1fr}}
+.vsub{font-size:13.5px;font-weight:600;color:var(--ink);margin:16px 0 2px;
+ display:flex;gap:8px;align-items:baseline}
+.vcol>.vsub:first-child{margin-top:0}
+.hbars{margin:4px 0 0}
+.hb{display:grid;grid-template-columns:minmax(0,15em) 1fr 2.4em;gap:12px;align-items:center;
+ padding:3px 0;font-size:13px}
+.hb-l{color:var(--ink2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hb-t{background:var(--grid);border-radius:4px;height:14px;overflow:hidden}
+.hb-f{display:block;height:100%;background:var(--s1);border-radius:4px}
+.hb-v{color:var(--ink2);font-weight:600;text-align:right}
+.hb:hover .hb-f{filter:brightness(1.12)}
+@media(max-width:560px){.hb{grid-template-columns:minmax(0,9em) 1fr 2.4em}}
+.tv{margin:10px 0 0}
+.tv summary{cursor:pointer;font-size:12px;color:var(--mute)}
+.tbl{border-collapse:collapse;margin:8px 0 0;font-size:12.5px}
+.tbl th,.tbl td{padding:3px 12px 3px 0;text-align:left;color:var(--ink2);
+ border-bottom:1px solid var(--grid)}
+.tbl th{color:var(--mute);font-weight:600}
+
+/* ---- 観劇の年輪 -----------------------------------------------------------
+   地と軸は退かせ、点だけを前に出す。**格子と軸線は読み取りの邪魔をしない濃さにする。** */
+.ring{margin:10px 0 0;display:flex;justify-content:center}
+.ring .sp line,.ring .rg circle{stroke:var(--grid);stroke-width:1;fill:none}
+.ring .mo{font-size:10.5px;fill:var(--mute);text-anchor:middle;dominant-baseline:middle}
+/* **年の文字は点の上に来ても読めるようにする。** 地の色で縁を先に塗る
+   （`paint-order:stroke`）── 位置をずらして逃げると、どの輪の年なのかが分からなくなる */
+.ring .yr{font-size:10px;fill:var(--ink2);text-anchor:middle;dominant-baseline:middle;
+ font-weight:600;paint-order:stroke;stroke:var(--surf);stroke-width:3.5;
+ stroke-linejoin:round}
+/* **重なった点は地の色の輪で分ける**（2px の隙間を作る規則） */
+.ring .pt circle{paint-order:stroke;stroke-linejoin:round}
+.ring a{cursor:pointer}
+.ring .pt:hover circle{stroke:var(--ink);stroke-width:2.4}
+.legend{display:flex;gap:14px;flex-wrap:wrap;margin:10px 0 0;font-size:12.5px;
+ color:var(--ink2);justify-content:center}
+.legend .lg{display:inline-flex;gap:5px;align-items:center}
+
+/* ---- 行った劇場の地図 ------------------------------------------------------
+   陸は面として退かせ、点は 1 色。**量は大きさだけが運ぶ。** */
+.maps{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:12px 0 0}
+@media(max-width:640px){.maps{grid-template-columns:1fr}}
+.maps figure{margin:0}
+.maps figcaption{font-size:11.5px;color:var(--mute);margin:4px 0 0;text-align:center}
+.maps .land path{fill:var(--grid);stroke:var(--base);stroke-width:.4}
+/* 区の境界は**地**なので、線を細く薄くする（点と名前より後ろに退く） */
+.maps .ward path{fill:var(--grid);stroke:var(--surf);stroke-width:.8}
+.maps .wardl text{font-size:6.5px;fill:var(--mute);text-anchor:middle;
+ dominant-baseline:middle}
+.maps .lead{stroke:var(--base);stroke-width:.8}
+.maps .pins circle{fill:var(--acc);fill-opacity:.72;stroke:var(--surf);stroke-width:1.5}
+.maps .vp{cursor:default}
+.maps .vp:hover circle{fill-opacity:1;stroke:var(--ink);stroke-width:1.8}
+/* 直接ラベル。**点の上に重なっても読めるように地の色の縁を付ける** */
+.maps .vl{font-size:9.5px;fill:var(--ink2);text-anchor:middle;dominant-baseline:middle;
+ paint-order:stroke;stroke:var(--surf);stroke-width:3;stroke-linejoin:round}
+.note{color:var(--ink2);font-size:12.5px;margin:10px 0 0}
+
+/* ---- 一緒に出てくる人の網 --------------------------------------------------
+   地（線）は退かせ、点と名前を前に出す。**重なった点は地の色の輪で分ける**
+   （2px の隙間を作る規則）。名前は点の上に来ても読めるように縁を先に塗る。 */
+.pnet{position:relative;margin:12px 0 4px;overflow-x:auto}
+.pnet svg{display:block;min-width:520px;touch-action:none}
+.pnet .nd circle{stroke:var(--surf);stroke-width:2;paint-order:stroke;cursor:grab}
+.pnet .nd.cut circle{stroke:var(--ink);stroke-width:2.4}
+.pnet .nd:hover circle,.pnet .nd.on circle{stroke:var(--ink);stroke-width:2.6}
+.pnet .nl{font-size:11.5px;fill:var(--ink2);dominant-baseline:middle;
+ paint-order:stroke;stroke:var(--surf);stroke-width:3.4;stroke-linejoin:round;
+ pointer-events:none}
+/* **浮かせるのは、下げることで作る。** 触れた 1 人の線を太くするのではなく、
+   関係の無い線と点を退かせる ── 太くすると「一緒に居た作品数」の意味が壊れる */
+.pnet.lit .ed line{stroke-opacity:.07}
+.pnet.lit .ed line.on{stroke-opacity:.85;stroke:var(--ink2)}
+.pnet.lit .nd{opacity:.22}
+.pnet.lit .nd.on,.pnet.lit .nd.near{opacity:1}
+.pnet.lit .nl{opacity:.12}
+.pnet.lit .nl.on,.pnet.lit .nl.near{opacity:1}
+/* 外した人。**消さずに、外れていることが見える形にする** */
+.pnet .nd.out{opacity:.28}
+.pnet .nd.out circle{fill:none;stroke:var(--mute);stroke-width:2;stroke-dasharray:3 3}
+.pnet .ed line.out{display:none}
+.pnet .nl.out{display:none}
+/* 割れた束の輪。**色ではなく囲いで示す** ── 束の数は色の数ではないので、
+   枠が増えたことが数として読めるほうがよい */
+.pnet .hull{fill:var(--ink);fill-opacity:.045;stroke:var(--base);stroke-width:1;
+ stroke-dasharray:5 4}
+.ptip{position:absolute;z-index:3;max-width:268px;background:var(--surf);
+ border:1px solid var(--ring);border-radius:10px;padding:9px 12px;font-size:12.5px;
+ color:var(--ink2);box-shadow:0 6px 22px rgba(0,0,0,.14);pointer-events:none}
+.ptip b{color:var(--ink)}
+.ptip .tw{display:block;margin:5px 0 0;color:var(--mute);font-size:11.5px}
+.pcut{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 10px;align-items:center}
+/* **`hidden` 属性は、同じ強さの `display` 指定に負ける。** 時間のつまみで過去を
+   見ているあいだ、この帯を消すために要る（`display:flex` が UA の既定を上書きする） */
+.pcut[hidden]{display:none}
+.pcut button{font:inherit;font-size:12.5px;padding:5px 13px;border-radius:99px;
+ border:1px solid var(--ring);background:var(--surf);color:var(--ink2);cursor:pointer}
+.pcut button:hover{border-color:var(--acc);color:var(--acc)}
+.pcut button.on{border-color:var(--acc);color:var(--acc);font-weight:600}
+.pcut button .cn{color:var(--mute);font-size:11px;margin-left:7px}
+.pcut button.rst{border-style:dashed}
+/* `ch`→`em`（render_recommend.py の `.lead` と同じ理由） */
+.psaid{margin:0 0 8px;font-size:13px;color:var(--ink2);min-height:1.3em;max-width:74em}
+.psaid b{color:var(--ink)}
+.pkey{display:flex;gap:16px;flex-wrap:wrap;margin:2px 0 12px;font-size:12px;
+ color:var(--mute)}
+.pkey .ky{display:inline-flex;gap:6px;align-items:center}
+.pkey .sw{width:11px;height:11px;border-radius:50%;flex:none}
+.pkey .sw.s1{background:var(--s1)}
+.pkey .sw.s2{background:var(--s2)}
+.pkey .sw.ring{background:transparent;border:2.4px solid var(--ink)}
+/* ---- 時間のつまみ。**配置は変えず、隠すだけ**（`.future` は物理からも隠される） */
+.pnet .nd.future,.pnet .ed line.future,.pnet .nl.future{display:none}
+.ptime{margin:2px 0 10px}
+.ptrow{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:0 0 8px}
+.ptrow .ptplay{font:inherit;font-size:12.5px;padding:5px 13px;border-radius:99px;
+ border:1px solid var(--ring);background:var(--surf);color:var(--ink2);cursor:pointer;
+ flex:none}
+.ptrow .ptplay:hover{border-color:var(--acc);color:var(--acc)}
+.ptrow .ptsl{flex:1 1 220px;min-width:160px;accent-color:var(--acc);cursor:pointer;margin:0}
+.pnstage{margin:0 0 6px;font-size:13px;color:var(--ink2);max-width:74em}
+.pnstage b{color:var(--ink)}
+.pnstage a{color:var(--ink);text-decoration:underline;text-decoration-color:var(--ring)}
+/* ---- この図から分かること（LLM の読み。`chronicle.py` の `.chprofile` と同じ形） -------- */
+.pread{background:var(--surf);border:1px solid var(--grid);border-left:3px solid var(--curtain);
+ border-radius:0 8px 8px 0;padding:14px 16px;margin:2px 0 14px}
+.pread h3{font-size:12.5px;margin:0 0 6px;color:var(--curtain);font-weight:600}
+.pread p{margin:0 0 8px;font-size:14px;line-height:1.75;color:var(--ink);max-width:74em}
+.pread .pnote{font-size:11.5px;color:var(--mute);line-height:1.7;max-width:74em;margin:0 0 8px}
+.pread button{font:inherit;font-size:12.5px;padding:6px 14px;border-radius:6px;
+ border:1px solid var(--acc);background:var(--acc);color:var(--surf);cursor:pointer}
+.pread .said{margin-left:10px;font-size:11.5px;color:var(--mute)}
+@media (prefers-reduced-motion:reduce){
+ /* **動きを減らす設定を尊重する。** 力学は 1 回だけ解いて止める（絵は同じ所に落ちる） */
+ .pnet svg{transition:none}
+}
+
+/* ---- まだ行っていない劇場 ------------------------------------------------- */
+.vhs{margin:0 0 10px}
+.vh{border:1px solid var(--ring);border-radius:10px;background:var(--surf);
+ padding:0;margin:0 0 8px}
+.vh>summary{cursor:pointer;padding:11px 16px;font-size:13.5px;display:flex;gap:12px;
+ align-items:baseline;flex-wrap:wrap;list-style:none}
+.vh>summary::-webkit-details-marker{display:none}
+.vh>summary::before{content:"▸";color:var(--mute);margin-right:2px}
+.vh[open]>summary::before{content:"▾"}
+.vh .vhm{color:var(--mute);font-size:12.5px}
+.vs{border-top:1px solid var(--grid);padding:11px 16px;display:flex;gap:10px;
+ flex-wrap:wrap;align-items:baseline}
+.vs .vst{font-weight:600;font-size:13.5px}
+.vs .vsm{color:var(--mute);font-size:12.5px}
+.vs .vsw{flex:1 0 100%;color:var(--ink2);font-size:12.5px}
+
+.ico{flex:none;vertical-align:-.16em}
+h1 .ico,h2 .ico{opacity:.75}
+h2{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.side a{display:flex;align-items:center;gap:9px}
+button .ico{vertical-align:-.2em;margin-right:5px}
+
+/* ---- 標章 -----------------------------------------------------------------
+   **字の大きさ・太さ・色は帯の側（`.side .brand`）が決める。** ここで持つのは組み方
+   （絵と文字を横に並べて中心を揃える）だけである ── 意匠の色を変えるときに、
+   標章の側を直さなくて済む。                                                  */
+.tglock{display:inline-flex;align-items:center;gap:9px;line-height:1;white-space:nowrap}
+.tglock .tgm{flex:none}
+.tglock .tgw{letter-spacing:.1em}
+
+/* ---- 地方の札 ---------------------------------------------------------------
+   **県の札と同じ形にしない。** 同じ丸い札にすると、47 個の中に 8 個が紛れて
+   「押すと何が起きるのか」が見た目から消える ── 角の立った札にして、
+   1 行目に置く（押す順が上から下になる）                                      */
+.prgs{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:12px 0 0}
+.prgl{font-size:12px;color:var(--mute);margin-right:2px}
+.prg{font:inherit;font-size:12.5px;padding:6px 12px;border-radius:8px;cursor:pointer;
+ display:inline-flex;gap:6px;align-items:center;
+ border:1px solid var(--ring);background:var(--plane);color:var(--ink2)}
+.prg:hover{color:var(--ink);border-color:var(--base)}
+.prg.on{border-color:var(--acc);color:var(--acc);background:var(--surf);font-weight:600}
+.prg .pn{font-size:11px;color:var(--mute);font-variant-numeric:tabular-nums}
+.prg.on .pn{color:var(--acc)}
+.prg.clr{margin-left:auto;color:var(--mute)}
+/* ---- 地図 -------------------------------------------------------------------
+   **幅は 430px で止める。** 絞り込みの箱の中の 1 部品なので、広い画面で本文の幅
+   いっぱいに伸びると、地図を見に来たように見える                              */
+.pmapbox{margin:14px 0 0}
+/* **幅は使えるだけ使う（上限 430px）。** 大阪府・滋賀県・奈良県・香川県・埼玉県は
+   430px の地図の上でも 11〜13px しかない（実測）── ここを削ると押せなくなる */
+.pmap{display:block;width:100%;max-width:430px;margin:8px auto 0}
+.pmaplead{font-size:12.5px;color:var(--mute);line-height:1.7;margin:0}
+.pmap .pf{fill:var(--plane);stroke:var(--ring);stroke-width:.6;cursor:pointer;
+ transition:fill .12s}
+/* **触れている県は線でも出す。** 小さい県は塗りが 11px しか変わらないので、
+   塗りだけでは「いまどこに触れているか」が読めない */
+.pmap .pf:hover{fill:var(--base);stroke:var(--ink2);stroke-width:1.1}
+/* **候補の無い県は押せない。** 薄いだけにして消さない ── どこで何も上演されて
+   いないかが見えることが、この地図の中身の半分である                          */
+.pmap .pf.off{fill:color-mix(in srgb,var(--plane) 55%,transparent);
+ stroke:color-mix(in srgb,var(--ring) 55%,transparent);cursor:default;
+ pointer-events:none}
+@media(prefers-reduced-motion:reduce){.pmap .pf{transition:none}}
+.pfil:has(input[value="北海道"]:checked) .pmap [data-pref="北海道"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="青森県"]:checked) .pmap [data-pref="青森県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="岩手県"]:checked) .pmap [data-pref="岩手県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="宮城県"]:checked) .pmap [data-pref="宮城県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="秋田県"]:checked) .pmap [data-pref="秋田県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="山形県"]:checked) .pmap [data-pref="山形県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="福島県"]:checked) .pmap [data-pref="福島県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="茨城県"]:checked) .pmap [data-pref="茨城県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="栃木県"]:checked) .pmap [data-pref="栃木県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="群馬県"]:checked) .pmap [data-pref="群馬県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="埼玉県"]:checked) .pmap [data-pref="埼玉県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="千葉県"]:checked) .pmap [data-pref="千葉県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="東京都"]:checked) .pmap [data-pref="東京都"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="神奈川県"]:checked) .pmap [data-pref="神奈川県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="新潟県"]:checked) .pmap [data-pref="新潟県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="富山県"]:checked) .pmap [data-pref="富山県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="石川県"]:checked) .pmap [data-pref="石川県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="福井県"]:checked) .pmap [data-pref="福井県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="山梨県"]:checked) .pmap [data-pref="山梨県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="長野県"]:checked) .pmap [data-pref="長野県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="岐阜県"]:checked) .pmap [data-pref="岐阜県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="静岡県"]:checked) .pmap [data-pref="静岡県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="愛知県"]:checked) .pmap [data-pref="愛知県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="三重県"]:checked) .pmap [data-pref="三重県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="滋賀県"]:checked) .pmap [data-pref="滋賀県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="京都府"]:checked) .pmap [data-pref="京都府"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="大阪府"]:checked) .pmap [data-pref="大阪府"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="兵庫県"]:checked) .pmap [data-pref="兵庫県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="奈良県"]:checked) .pmap [data-pref="奈良県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="和歌山県"]:checked) .pmap [data-pref="和歌山県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="鳥取県"]:checked) .pmap [data-pref="鳥取県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="島根県"]:checked) .pmap [data-pref="島根県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="岡山県"]:checked) .pmap [data-pref="岡山県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="広島県"]:checked) .pmap [data-pref="広島県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="山口県"]:checked) .pmap [data-pref="山口県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="徳島県"]:checked) .pmap [data-pref="徳島県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="香川県"]:checked) .pmap [data-pref="香川県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="愛媛県"]:checked) .pmap [data-pref="愛媛県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="高知県"]:checked) .pmap [data-pref="高知県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="福岡県"]:checked) .pmap [data-pref="福岡県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="佐賀県"]:checked) .pmap [data-pref="佐賀県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="長崎県"]:checked) .pmap [data-pref="長崎県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="熊本県"]:checked) .pmap [data-pref="熊本県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="大分県"]:checked) .pmap [data-pref="大分県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="宮崎県"]:checked) .pmap [data-pref="宮崎県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="鹿児島県"]:checked) .pmap [data-pref="鹿児島県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="沖縄県"]:checked) .pmap [data-pref="沖縄県"]{fill:var(--acc);stroke:var(--acc)}
