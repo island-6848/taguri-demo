@@ -198,12 +198,40 @@ const PHASES = [
 
 const COLD_START_NOTE = "サーバーが眠っていたら起こしています(無料枠なので少し待ちます)…";
 
+// **周りの舞台美術。** ピクトグラム1体だけだと寂しいので(起案者の指示 ──
+// 「周りのオブジェクトなどをつくりこんで」)、道具箱(左)・脚立(右)・
+// 作業灯(中央奥)を舞台に置いた。歩く先の左右の立ち位置にちょうど道具箱・
+// 脚立が来るので、「そこへ向かって支度している」ように見える。ピクトグラムと
+// 同じくえんじ一色、`.tg-picto-wrap`より先に置いて背景に回す(DOM順=重なり順)。
+const SCENE_PROPS_SVG = '<svg class="tg-scenery" viewBox="0 0 ' + CURTAIN_W + ' 84" aria-hidden="true">'
+  + '<g class="tg-obj-crates">'
+  + '<rect x="10" y="58" width="24" height="20" rx="1.5"/>'
+  + '<rect x="15" y="42" width="15" height="17" rx="1.5"/>'
+  + '<g class="tg-cutout-line">'
+  + '<line x1="22" y1="58" x2="22" y2="78"/><line x1="10" y1="68" x2="34" y2="68"/>'
+  + '<line x1="22.5" y1="42" x2="22.5" y2="59"/><line x1="15" y1="50.5" x2="30" y2="50.5"/>'
+  + '</g></g>'
+  + '<g class="tg-obj-ladder tg-stroke">'
+  + '<line x1="194" y1="78" x2="202" y2="30"/>'
+  + '<line x1="182" y1="78" x2="190" y2="30"/>'
+  + '<line x1="184" y1="66" x2="196" y2="66"/>'
+  + '<line x1="185.6" y1="56.4" x2="197.6" y2="56.4"/>'
+  + '<line x1="187.2" y1="46.8" x2="199.2" y2="46.8"/>'
+  + '<line x1="188.8" y1="37.2" x2="200.8" y2="37.2"/>'
+  + '</g>'
+  + '<g class="tg-obj-lamp">'
+  + '<line x1="112" y1="4" x2="112" y2="20" class="tg-stroke"/>'
+  + '<circle cx="112" cy="24" r="3.6"/>'
+  + '</g>'
+  + '</svg>';
+
 function loadingHtml() {
   const picto = PICTO_SVG.replace('<g class="tg-prop"></g>',
     '<g class="tg-prop">' + PHASES[0].prop + '</g>');
   return '<div class="tg-loading">'
     + CURTAIN_SVG
     + '<div class="tg-scene" aria-label="舞台の準備をしているピクトグラムのアニメーション">'
+    + SCENE_PROPS_SVG
     + '<div class="tg-picto-wrap" data-phase="' + PHASES[0].name + '">' + picto + '</div></div>'
     + '<div class="tg-load-bar"><div class="tg-load-fill"></div></div>'
     + '<p class="tg-load-pct">0%</p>'
@@ -354,10 +382,21 @@ async function loadScreen(path, search) {
   const stopLoading = startLoading(el);
   let d;
   try {
-    const url = API_BASE + "/api/screen/" + name + (search ? "?" + search : "");
-    const r = await fetch(url);
-    d = await r.json();
-    if (!r.ok || !d.ok) throw new Error(d.error || r.status);
+    // **index.html/404.htmlが<head>で先に飛ばしておいたfetchがあれば使い回す。**
+    // CSS・app.js本体の読み込みを待たずにコールドスタートの時計を進めておく
+    // ための仕掛け(起案者の指摘 ──「初期読み込みの時間もうちょっと短縮
+    // できない?」)。1回使ったら消す ── 2回目のナビゲーションでは効かない。
+    if (window.__prefetch && window.__prefetchKey === cacheKey) {
+      const pf = window.__prefetch;
+      window.__prefetch = null;
+      d = await pf;
+      if (!d || !d.ok) throw new Error((d && d.error) || "prefetch failed");
+    } else {
+      const url = API_BASE + "/api/screen/" + name + (search ? "?" + search : "");
+      const r = await fetch(url);
+      d = await r.json();
+      if (!r.ok || !d.ok) throw new Error(d.error || r.status);
+    }
   } catch (e) {
     stopLoading();
     if (stale()) return;

@@ -3,9 +3,43 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<script>
+// **初期読み込みの短縮(起案者の指摘)。** Renderの無料枠のコールドスタートが
+// 支配的なので、CSS/app.jsの読み込みを待たずに、できるだけ早く1回目の
+// APIリクエストを飛ばしてコールドスタートの時計を進めておく。app.js側は
+// window.__prefetchが自分の見ようとしている画面と一致すれば、これを
+// 使い回して二重にフェッチしない(下のloadScreen()参照)。
+// **画面名の出し方(app.jsのSCREENS/detectRepoBaseと同じ規則の最小限の複製)。**
+// 新しい画面をIMPLEMENTEDに足すときも、ここを直す必要は無い ──
+// 画面名は常にパスの最後のセグメント(例外は"/"→"recommend")である。
+(function () {
+  try {
+    var TOP = ["recommend", "start", "calendar", "tickets", "rate",
+      "register", "records", "search", "settings"];
+    var segs = location.pathname.split("/").filter(Boolean);
+    if (segs.length && TOP.indexOf(segs[0]) === -1) segs.shift();
+    var name = segs.length ? segs[segs.length - 1] : "recommend";
+    // **app.jsのDOMContentLoadedが渡すsearchと同じ形にする**
+    // (location.search.replace(/^\?/, "")、トークンの除去なし)。
+    var qs = location.search.replace(/^\?/, "");
+    window.__prefetchKey = name + "?" + qs;
+    window.__prefetch = fetch(
+      "https://taguri-demo.onrender.com/api/screen/" + name + (qs ? "?" + qs : "")
+    ).then(function (r) { return r.json(); }).catch(function () { return null; });
+  } catch (e) {}
+})();
+</script>
 <title>たぐり</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%3E%3Cstyle%3E.s%7Bstroke%3A%239b2b3a%3Bfill%3Anone%3Bstroke-linecap%3Around%7D.b%7Bfill%3A%239b2b3a%7D%40media%28prefers-color-scheme%3Adark%29%7B.s%7Bstroke%3A%23b03a4a%7D.b%7Bfill%3A%23b03a4a%7D%7D%3C%2Fstyle%3E%3Cpath%20class%3D%22s%22%20d%3D%22M14%204V20%22%20stroke-width%3D%222.3%22%2F%3E%3Cpath%20class%3D%22s%22%20d%3D%22M19.5%204V20%22%20stroke-width%3D%222.3%22%2F%3E%3Cpath%20class%3D%22s%22%20d%3D%22M14%204C13.2%2011.6%2011.4%2015.8%205.4%2017.6%22%20stroke-width%3D%223%22%2F%3E%3Ccircle%20class%3D%22b%22%20cx%3D%225.4%22%20cy%3D%2217.6%22%20r%3D%222.9%22%2F%3E%3C%2Fsvg%3E">
-<link rel="stylesheet" href="style.css">
+<link rel="preconnect" href="https://taguri-demo.onrender.com" crossorigin>
+<link rel="dns-prefetch" href="https://taguri-demo.onrender.com">
+<!-- **相対パスにしない。** GitHub Pagesの404.htmlフォールバックは、深い階層の
+     URL(例: /taguri-demo/recommend/reminder)でもこのHTMLの中身を返すが、
+     ブラウザの相対パス解決はアドレスバーの階層を基準にする。相対で書くと、
+     2階層以上のURLで開いた/再読み込みしたときだけstyle.css/app.jsが404になり、
+     CSSの無い白画面になっていた(起案者の報告)。オリジンからの絶対パスに
+     固定して、どの深さのURLで読み込まれても同じファイルを指すようにする。 -->
+<link rel="stylesheet" href="/taguri-demo/style.css">
 </head>
 <body>
 <svg width="0" height="0" aria-hidden="true" focusable="false"
@@ -30,6 +64,6 @@
 </div>
 </main>
 </div>
-<script src="app.js"></script>
+<script src="/taguri-demo/app.js"></script>
 </body>
 </html>

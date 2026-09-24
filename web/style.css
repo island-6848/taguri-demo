@@ -3,6 +3,16 @@
    持つCSS文字列定数をそのまま抽出したもの(APP_CSS/RR.STYLE/各モジュールのCSS)。
    内容は書き換えず、結合しているだけ。 */
 
+/* ---- 長い一続きの文字列が画面の外に出るのを防ぐ安全網(GitHub Pages版だけの
+   追加) ── 起案者の報告「開幕リマインドでタイトルが画面の幅をはみ出て、
+   折り返しになっていない」。`digest.py`の`.dgt`(開幕リマインドの公演名、
+   app.py:425)は`min-width:0`はあるが`overflow-wrap`が無く、区切りの無い
+   長い文字列(英字のみの題名など)は縮んだ箱の外へそのまま溢れて見える。
+   元のPython側CSSは直さず(フルページ版とも共有しており、目で確認できない
+   まま書き換えるのは危険)、GitHub Pages側にだけ安全網を足す。 */
+body{overflow-wrap:break-word}
+.dgt{overflow-wrap:anywhere}
+
 /* ---- フラグメント読み込み中のアニメーション(GitHub Pages版だけの追加) -----
    Renderの無料枠は休止から起きるのに10〜20秒ほどかかることがあり、
    ただの「読み込み中…」だと待たされている感が強い。枠は持たず、幕と
@@ -20,6 +30,14 @@
 
 /* ---- 舞台の上(ピクトグラムが歩き回る範囲)。枠は描かない ------------------- */
 .tg-scene{position:relative;width:220px;max-width:80vw;height:84px;margin:0 auto}
+
+/* ---- 周りの舞台美術(起案者の指示 ──「周りのオブジェクトなどをつくりこんで」)
+   道具箱(左の立ち位置)・脚立(右の立ち位置)・作業灯(中央奥)。ピクトグラムと
+   同じえんじ一色で、DOM順を先にして背景に回す。 */
+.tg-scenery{position:absolute;inset:0;width:100%;height:100%;fill:var(--curtain)}
+.tg-obj-lamp circle{animation:tg-lamp-flicker 3.4s ease-in-out infinite}
+@keyframes tg-lamp-flicker{0%,44%,100%{opacity:.85}50%{opacity:.5}56%{opacity:.85}}
+
 .tg-picto-wrap{position:absolute;bottom:0;left:0;width:52px;height:52px;
  --x:0px;--facing:1;transform:translateX(var(--x)) scaleX(var(--facing));
  transition:transform .7s ease-in-out}
@@ -72,7 +90,7 @@
  letter-spacing:.02em}
 .tg-load-note{font-size:12px;color:var(--mute);max-width:24em}
 @media (prefers-reduced-motion: reduce){
- .tg-curtain,.tg-picto,.tg-beam,.tg-prop.swap,
+ .tg-curtain,.tg-picto,.tg-beam,.tg-prop.swap,.tg-obj-lamp circle,
  .tg-picto-wrap[data-phase] .tg-prop{animation:none}
  .tg-picto-wrap{transition:none}}
 
