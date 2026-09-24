@@ -142,19 +142,36 @@ const LOADING_MESSAGES = [
 function loadingHtml() {
   return '<div class="tg-loading">'
     + '<div class="tg-load-ticket">' + ico("ticket", 40) + '</div>'
-    + '<div class="tg-load-dots"><span></span><span></span><span></span></div>'
+    + '<div class="tg-load-bar"><div class="tg-load-fill"></div></div>'
+    + '<p class="tg-load-pct">0%</p>'
     + '<p class="tg-load-msg">' + LOADING_MESSAGES[0] + '</p>'
     + '</div>';
 }
 
-// **表示 → 案内文を入れ替え → 呼び出し側が止める、までを1つにまとめる。**
-// 戻り値のstop()を呼ぶまで回り続ける(フェッチが速く終わればすぐ止まるので、
-// 遅いとき(コールドスタート)だけ効いてくる)。
+// **表示 → 進捗％・案内文を進める → 呼び出し側が止める、までを1つにまとめる。**
+// 本当の進み具合(コールドスタートでサーバが起きるまでの時間)は分からないので、
+// 経過時間から95%まで滑らかに近づける「気持ちの上では正しい」進捗にする ──
+// 最初の数秒はよく進み、待たされるほど遅くなる。届いたら100%まで跳ねさせて
+// 呼び出し側がすぐ中身を差し替える(フェッチが速ければ0%のまま一瞬で終わる)。
 function startLoading(el) {
   el.innerHTML = loadingHtml();
-  let i = 0;
+  const t0 = performance.now();
+  const fill = el.querySelector(".tg-load-fill");
+  const pct = el.querySelector(".tg-load-pct");
   const msg = el.querySelector(".tg-load-msg");
-  const timer = setInterval(() => {
+  let i = 0;
+
+  const tick = () => {
+    if (!fill || !fill.isConnected) return;
+    const elapsed = performance.now() - t0;
+    const p = Math.min(95, Math.round(95 * (1 - Math.exp(-elapsed / 6000))));
+    fill.style.width = p + "%";
+    if (pct) pct.textContent = p + "%";
+  };
+  tick();
+  const progressTimer = setInterval(tick, 150);
+
+  const msgTimer = setInterval(() => {
     if (!msg || !msg.isConnected) return;
     msg.classList.add("fading");
     setTimeout(() => {
@@ -163,7 +180,15 @@ function startLoading(el) {
       msg.classList.remove("fading");
     }, 350);
   }, 3200);
-  return () => clearInterval(timer);
+
+  return () => {
+    clearInterval(progressTimer);
+    clearInterval(msgTimer);
+    if (fill && fill.isConnected) {
+      fill.style.width = "100%";
+      if (pct) pct.textContent = "100%";
+    }
+  };
 }
 
 async function loadScreen(path, search) {
