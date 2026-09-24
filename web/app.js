@@ -128,11 +128,28 @@ function renderCrumbBar(path, title) {
 // --- フラグメント読み込み ---------------------------------------------------
 const contentEl = () => document.getElementById("content");
 
-// **舞台の開幕準備をしている、えんじ一色の猫のシルエット。** 起案者の指示で
-// ドラッグ操作はやめ、代わりに「何を支度しているか」を案内文と一緒に順に
-// 見せる(台本読み → 稽古 → 大道具 → 衣装 → 照明)。目・ひげ・小道具の細部は
-// 背景色(var(--surf))を「切り抜く」影絵の技法で表す ── 色を増やさずに、
-// 紙芝居・影絵という舞台美術そのものの技法で表現を足す。
+// **舞台の幕と、開幕準備で動き回る猫のシルエット。** 文章で「何をしているか」
+// を語るのではなく、猫自身が舞台の上を歩いて回り、立ち止まった先で小道具を
+// 手に取る形で見せる(起案者の指示)。枠は持たず、幕も猫も背景に直接置く。
+// 色はサイト基調のえんじ(var(--curtain))一色 ── 目・小道具の細部は背景色を
+// 「切り抜く」影絵の技法で表す。
+function curtainValanceD(w, h, dip, scallops) {
+  const seg = w / scallops;
+  let d = "M0 " + h;
+  for (let i = 0; i < scallops; i++) {
+    d += " Q" + (i * seg + seg / 2) + " " + (h + dip) + " " + ((i + 1) * seg) + " " + h;
+  }
+  return d + " L" + w + " 0 L0 0 Z";
+}
+const CURTAIN_W = 220, CURTAIN_H = 10;
+const CURTAIN_SVG = '<svg class="tg-curtain" viewBox="0 0 ' + CURTAIN_W + ' 74" aria-hidden="true">'
+  + '<path class="tg-curtain-leg" d="M6 6C-6 26 0 54 14 70C22 50 14 24 6 6Z"/>'
+  + '<path class="tg-curtain-leg" d="M' + (CURTAIN_W - 6) + ' 6C' + (CURTAIN_W + 6) + ' 26 '
+  + CURTAIN_W + ' 54 ' + (CURTAIN_W - 14) + ' 70C' + (CURTAIN_W - 22) + ' 50 '
+  + (CURTAIN_W - 14) + ' 24 ' + (CURTAIN_W - 6) + ' 6Z"/>'
+  + '<path class="tg-curtain-valance" d="' + curtainValanceD(CURTAIN_W, CURTAIN_H, 16, 9) + '"/>'
+  + '</svg>';
+
 const CAT_SVG = '<svg viewBox="0 0 64 64" aria-hidden="true">'
   + '<g class="tg-cat">'
   + '<path class="tg-cat-tail" d="M45 47c11-2 13-16 4-21c6 8 4 18-6 22z"/>'
@@ -151,60 +168,98 @@ const CAT_SVG = '<svg viewBox="0 0 64 64" aria-hidden="true">'
   + '<g class="tg-prop"></g>'
   + '</g></svg>';
 
-// **各支度の小道具。** `.tg-prop`の中身をそのまま差し替える。既定の塗りは
-// `.tg-cat`から継いだえんじ色 ── 追加の色は使わず、`tg-cutout`(切り抜き=
-// 背景色の塗り)と`tg-cutout-line`/`tg-stroke`(線)だけで濃淡を作る。
-const SCENES = [
-  { msg: "台本を読んでいます…", prop:
-    '<rect x="29" y="30" width="15" height="11" rx="1.3"/>'
+// **立ち止まった先で手に取る小道具。** 文章の代わりに、これを手に持って
+// いる姿そのもので「何をしているか」を示す。塗りは`.tg-cat`から継いだ
+// えんじ色のまま ── `tg-cutout`(切り抜き)・`tg-stroke`/`tg-beam`(線)で
+// 濃淡だけを作り、色は増やさない。
+const PROPS = [
+  '<rect x="29" y="30" width="15" height="11" rx="1.3"/>'                    // 台本
     + '<g class="tg-cutout-line"><line x1="36.5" y1="31.5" x2="36.5" y2="39.5"/>'
     + '<line x1="31" y1="34" x2="35" y2="34"/><line x1="31" y1="37" x2="35" y2="37"/>'
-    + '<line x1="38" y1="34" x2="42" y2="34"/><line x1="38" y1="37" x2="42" y2="37"/></g>' },
-  { msg: "稽古をしています…", prop:
-    '<ellipse cx="37" cy="35" rx="8" ry="9"/>'
+    + '<line x1="38" y1="34" x2="42" y2="34"/><line x1="38" y1="37" x2="42" y2="37"/></g>',
+  '<ellipse cx="37" cy="35" rx="8" ry="9"/>'                                  // 面(稽古)
     + '<g class="tg-cutout"><circle cx="34" cy="33" r="1.4"/><circle cx="40" cy="33" r="1.4"/></g>'
-    + '<path class="tg-cutout-line" d="M33 39q4 3 8 0"/>' },
-  { msg: "舞台装置を組み立てています…", prop:
-    '<rect x="32" y="27" width="12" height="5" rx="1.4"/>'
-    + '<rect x="36.5" y="32" width="3" height="13" rx="1.4"/>' },
-  { msg: "衣装を仕立てています…", prop:
-    '<path class="tg-stroke" d="M29 45 43 28"/>'
+    + '<path class="tg-cutout-line" d="M33 39q4 3 8 0"/>',
+  '<rect x="32" y="27" width="12" height="5" rx="1.4"/>'                      // 金槌(大道具)
+    + '<rect x="36.5" y="32" width="3" height="13" rx="1.4"/>',
+  '<path class="tg-stroke" d="M29 45 43 28"/>'                                // 針と糸(衣装)
     + '<circle class="tg-cutout" cx="43.5" cy="27" r="1.8"/>'
-    + '<path class="tg-stroke" d="M29 45q-4 2 -3 7q4-1 5-5"/>' },
-  { msg: "照明を調整しています…", prop:
-    '<path d="M31 27h10l4 13H27z"/>'
+    + '<path class="tg-stroke" d="M29 45q-4 2 -3 7q4-1 5-5"/>',
+  '<path d="M31 27h10l4 13H27z"/>'                                           // 照明
     + '<g class="tg-beam"><line x1="29" y1="41" x2="24" y2="49"/>'
-    + '<line x1="36" y1="43" x2="36" y2="51"/><line x1="43" y1="41" x2="48" y2="49"/></g>' },
-  { msg: "サーバーが眠っていたら起こしています(無料枠なので少し待ちます)…", prop: "" },
+    + '<line x1="36" y1="43" x2="36" y2="51"/><line x1="43" y1="41" x2="48" y2="49"/></g>',
 ];
 
+const COLD_START_NOTE = "サーバーが眠っていたら起こしています(無料枠なので少し待ちます)…";
+
 function loadingHtml() {
-  // **最初の場面(台本読み)を、猫の手に最初から持たせておく。**
-  // ここで差し込まないと、最初のscene切り替え(3.2秒後)までのあいだ
-  // 文章だけが先に「台本を読んでいます」と言って、手ぶらの猫が映る。
   const cat = CAT_SVG.replace('<g class="tg-prop"></g>',
-    '<g class="tg-prop">' + SCENES[0].prop + '</g>');
+    '<g class="tg-prop">' + PROPS[0] + '</g>');
   return '<div class="tg-loading">'
-    + '<div class="tg-stage">' + cat + '<div class="tg-stage-floor"></div></div>'
+    + CURTAIN_SVG
+    + '<div class="tg-scene" aria-label="舞台の準備をしている猫のアニメーション">'
+    + '<div class="tg-cat-wrap">' + cat + '</div></div>'
     + '<div class="tg-load-bar"><div class="tg-load-fill"></div></div>'
     + '<p class="tg-load-pct">0%</p>'
-    + '<p class="tg-load-msg">' + SCENES[0].msg + '</p>'
+    + '<p class="tg-load-note" hidden>' + COLD_START_NOTE + '</p>'
     + '</div>';
 }
 
-// **表示 → 進捗％・案内文を進める → 呼び出し側が止める、までを1つにまとめる。**
-// 本当の進み具合(コールドスタートでサーバが起きるまでの時間)は分からないので、
-// 経過時間から95%まで滑らかに近づける「気持ちの上では正しい」進捗にする ──
-// 最初の数秒はよく進み、待たされるほど遅くなる。届いたら100%まで跳ねさせて
-// 呼び出し側がすぐ中身を差し替える(フェッチが速ければ0%のまま一瞬で終わる)。
+// **猫を舞台の上で歩かせ、立ち止まった先ごとに小道具を持ち替えさせる。**
+// 歩いているあいだは`.walking`で足取りの弾みを速め、止まったら小道具を
+// 出す ── これを繰り返すことで「動き回って支度している」ように見せる。
+// `prefers-reduced-motion`のときは動かさず、中央で静止させる。
+function startCatWalk(scene, wrap, propEl) {
+  const reduced = typeof matchMedia === "function"
+    && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (reduced) return () => {};
+  const waypoints = [0.06, 0.5, 0.94];
+  // **pr は1から。** 最初の小道具(PROPS[0])はloadingHtml()で最初から
+  // 持たせてあるので、最初の到着でまた同じものを出すと変わり映えしない。
+  let wp = 0, pr = 1, x = 0, stopped = false;
+  const timers = [];
+  const t = (fn, ms) => { const id = setTimeout(fn, ms); timers.push(id); return id; };
+
+  function step() {
+    if (stopped) return;
+    const travel = Math.max(0, scene.clientWidth - wrap.offsetWidth);
+    const nx = Math.round(waypoints[wp] * travel);
+    wrap.style.setProperty("--facing", nx >= x ? 1 : -1);
+    wrap.style.setProperty("--x", nx + "px");
+    x = nx;
+    wrap.classList.add("walking");
+    if (propEl) propEl.classList.add("swap");
+    t(() => {
+      if (stopped) return;
+      wrap.classList.remove("walking");
+      if (propEl) {
+        propEl.innerHTML = PROPS[pr % PROPS.length];
+        propEl.classList.remove("swap");
+        pr++;
+      }
+      t(() => { wp = (wp + 1) % waypoints.length; step(); }, 2200);
+    }, 700);
+  }
+  step();
+  return () => { stopped = true; timers.forEach(clearTimeout); };
+}
+
+// **表示 → 猫を歩かせる・進捗%を進める → 呼び出し側が止める、までを
+// 1つにまとめる。** 本当の進み具合(コールドスタートでサーバが起きるまでの
+// 時間)は分からないので、経過時間から95%まで滑らかに近づける「気持ちの
+// 上では正しい」進捗にする。5秒以上かかっていたら、コールドスタートの
+// 案内をそっと添える(待たされる理由が分からないと不安になるため)。
 function startLoading(el) {
   el.innerHTML = loadingHtml();
   const t0 = performance.now();
   const fill = el.querySelector(".tg-load-fill");
   const pct = el.querySelector(".tg-load-pct");
-  const msg = el.querySelector(".tg-load-msg");
-  const prop = el.querySelector(".tg-prop");
-  let i = 0;
+  const note = el.querySelector(".tg-load-note");
+  const scene = el.querySelector(".tg-scene");
+  const wrap = el.querySelector(".tg-cat-wrap");
+  const propEl = el.querySelector(".tg-prop");
+
+  const stopWalk = (scene && wrap) ? startCatWalk(scene, wrap, propEl) : () => {};
 
   const tick = () => {
     if (!fill || !fill.isConnected) return;
@@ -215,27 +270,12 @@ function startLoading(el) {
   };
   tick();
   const progressTimer = setInterval(tick, 150);
-
-  // **案内文と小道具を同じタイミングで差し替える。** どちらも
-  // `SCENES[i]`という同じ1件から取るので、文と絵が食い違うことがない。
-  const msgTimer = setInterval(() => {
-    if (!msg || !msg.isConnected) return;
-    msg.classList.add("fading");
-    if (prop) prop.classList.add("swap");
-    setTimeout(() => {
-      i = (i + 1) % SCENES.length;
-      msg.textContent = SCENES[i].msg;
-      msg.classList.remove("fading");
-      if (prop) {
-        prop.innerHTML = SCENES[i].prop;
-        prop.classList.remove("swap");
-      }
-    }, 350);
-  }, 3200);
+  const noteTimer = setTimeout(() => { if (note && note.isConnected) note.hidden = false; }, 5000);
 
   return () => {
     clearInterval(progressTimer);
-    clearInterval(msgTimer);
+    clearTimeout(noteTimer);
+    stopWalk();
     if (fill && fill.isConnected) {
       fill.style.width = "100%";
       if (pct) pct.textContent = "100%";

@@ -5,26 +5,31 @@
 
 /* ---- フラグメント読み込み中のアニメーション(GitHub Pages版だけの追加) -----
    Renderの無料枠は休止から起きるのに10〜20秒ほどかかることがあり、
-   ただの「読み込み中…」だと待たされている感が強い。猫が舞台の支度を
-   している絵(台本読み→稽古→大道具→衣装→照明)と、進捗・案内文の
-   入れ替えで待ち時間を退屈させない。 */
-.tg-loading{display:flex;flex-direction:column;align-items:center;gap:14px;
- padding:36px 12px;color:var(--ink2);text-align:center}
+   ただの「読み込み中…」だと待たされている感が強い。枠は持たず、幕と
+   猫を背景に直接置く。猫は舞台の上を歩いて回り、立ち止まった先で
+   小道具(台本→面→金槌→針→照明)を手に取る ── 文章で説明する代わりに、
+   動きそのもので支度の様子を見せる(起案者の指示)。 */
+.tg-loading{display:flex;flex-direction:column;align-items:center;gap:8px;
+ padding:22px 12px 10px;color:var(--ink2);text-align:center}
 
-/* ---- 舞台 ---------------------------------------------------------------- */
-.tg-stage{position:relative;width:208px;max-width:76vw;height:108px;margin:0 auto;
- border-radius:8px;border-top:6px solid var(--curtain);
- background:var(--surf);box-shadow:inset 0 0 0 1px var(--ring);overflow:hidden}
-.tg-stage-floor{position:absolute;left:6px;right:6px;bottom:14px;height:1px;
- background:var(--base)}
-.tg-stage svg{position:absolute;left:50%;bottom:14px;width:52px;height:52px;
- margin-left:-26px;overflow:visible}
+/* ---- 幕。枠は無く、背景の上にそのまま乗る --------------------------------- */
+.tg-curtain{width:220px;max-width:80vw;height:auto;display:block;
+ animation:tg-curtain-sway 5s ease-in-out infinite}
+.tg-curtain-valance,.tg-curtain-leg{fill:var(--curtain)}
+@keyframes tg-curtain-sway{0%,100%{transform:skewX(0)}50%{transform:skewX(.5deg)}}
+
+/* ---- 舞台の上(猫が歩き回る範囲)。枠は描かない ----------------------------- */
+.tg-scene{position:relative;width:220px;max-width:80vw;height:84px;margin:0 auto}
+.tg-cat-wrap{position:absolute;bottom:0;left:0;width:52px;height:52px;
+ --x:0px;--facing:1;transform:translateX(var(--x)) scaleX(var(--facing));
+ transition:transform .7s ease-in-out}
+.tg-cat-wrap svg{width:100%;height:100%;display:block;overflow:visible}
 
 /* ---- 猫のシルエット。えんじ(--curtain)一色 + 背景色の切り抜きだけで描く ---
-   起案者の指示 ──「色はえんじ一色で、猫のキャラクター」「動かせなくていい」。
-   影絵・紙芝居の技法(単色 + 切り抜き)にしたので、色を増やさずに目や
-   小道具の細部を出せる。 */
+   起案者の指示 ──「色はえんじ一色で、猫のキャラクター」。影絵・紙芝居の
+   技法(単色 + 切り抜き)にしたので、色を増やさずに目や小道具の細部を出せる。 */
 .tg-cat{fill:var(--curtain);animation:tg-cat-bob 2.6s ease-in-out infinite}
+.tg-cat-wrap.walking .tg-cat{animation-duration:.45s}
 .tg-cutout{fill:var(--surf)}
 .tg-cutout-line{fill:none;stroke:var(--surf);stroke-width:1;stroke-linecap:round}
 .tg-stroke{fill:none;stroke:var(--curtain);stroke-width:2;stroke-linecap:round}
@@ -49,10 +54,10 @@
  transition:width .2s linear}
 .tg-load-pct{font-size:12px;color:var(--mute);font-variant-numeric:tabular-nums;
  letter-spacing:.02em}
-.tg-load-msg{font-size:13px;max-width:26em;min-height:2.6em;transition:opacity .35s;opacity:1}
-.tg-load-msg.fading{opacity:0}
+.tg-load-note{font-size:12px;color:var(--mute);max-width:24em}
 @media (prefers-reduced-motion: reduce){
- .tg-cat,.tg-cat-tail,.tg-cat-eyes,.tg-beam,.tg-prop.swap{animation:none}}
+ .tg-curtain,.tg-cat,.tg-cat-tail,.tg-cat-eyes,.tg-beam,.tg-prop.swap{animation:none}
+ .tg-cat-wrap{transition:none}}
 
 /* ---- 2 カラム。ナビゲーションは常に左に出したままにする -------------------
    起案者の指示（2026-08-24）──「上にナビゲーションバーじゃなくて 2 カラムにして
