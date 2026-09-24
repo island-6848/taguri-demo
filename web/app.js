@@ -128,11 +128,12 @@ function renderCrumbBar(path, title) {
 // --- フラグメント読み込み ---------------------------------------------------
 const contentEl = () => document.getElementById("content");
 
-// **舞台の幕と、開幕準備で動き回る猫のシルエット。** 文章で「何をしているか」
-// を語るのではなく、猫自身が舞台の上を歩いて回り、立ち止まった先で小道具を
-// 手に取る形で見せる(起案者の指示)。枠は持たず、幕も猫も背景に直接置く。
-// 色はサイト基調のえんじ(var(--curtain))一色 ── 目・小道具の細部は背景色を
-// 「切り抜く」影絵の技法で表す。
+// **舞台の幕と、開幕準備で動き回る人型のピクトグラム。** 文章で「何をして
+// いるか」を語るのではなく、ピクトグラム自身が舞台の上を歩いて回り、
+// 立ち止まった先で小道具を手に取る形で見せる(起案者の指示)。枠は持たず、
+// 幕もピクトグラムも背景に直接置く。色はサイト基調のえんじ
+// (var(--curtain))一色 ── 案内標識のピクトグラムと同じ、顔の無い幾何学的な
+// 単色シルエットにした。小道具の細部は背景色を「切り抜く」技法で表す。
 function curtainValanceD(w, h, dip, scallops) {
   const seg = w / scallops;
   let d = "M0 " + h;
@@ -150,28 +151,26 @@ const CURTAIN_SVG = '<svg class="tg-curtain" viewBox="0 0 ' + CURTAIN_W + ' 74" 
   + '<path class="tg-curtain-valance" d="' + curtainValanceD(CURTAIN_W, CURTAIN_H, 16, 9) + '"/>'
   + '</svg>';
 
-const CAT_SVG = '<svg viewBox="0 0 64 64" aria-hidden="true">'
-  + '<g class="tg-cat">'
-  + '<path class="tg-cat-tail" d="M45 47c11-2 13-16 4-21c6 8 4 18-6 22z"/>'
-  + '<path d="M20 52q0-18 12-20q12 2 12 20q0 2-2 2H22q-2 0-2-2z"/>'
-  + '<ellipse cx="35" cy="46" rx="4" ry="3"/>'
-  + '<ellipse cx="41" cy="45" rx="4" ry="3"/>'
-  + '<circle cx="32" cy="24" r="11"/>'
-  + '<path d="M22 17 26 6 30 18z"/>'
-  + '<path d="M34 18 38 6 42 17z"/>'
-  + '<g class="tg-cutout tg-cat-eyes"><ellipse cx="28" cy="23" rx="1.5" ry="2"/>'
-  + '<ellipse cx="36" cy="23" rx="1.5" ry="2"/></g>'
-  + '<g class="tg-whisk"><line x1="18" y1="25" x2="24" y2="24.5"/>'
-  + '<line x1="18" y1="29" x2="24.5" y2="27"/>'
-  + '<line x1="46" y1="25" x2="40" y2="24.5"/>'
-  + '<line x1="46" y1="29" x2="39.5" y2="27"/></g>'
+// **案内標識と同じ、幾何学的な人型ピクトグラム。** 顔・毛など飾りは持たない
+// (円+角丸の四角だけの構成)。腕は前へ寄せた角度で固定し、その先(手の
+// あたり)に`.tg-prop`が乗るので、小道具は常に手に持っている形になる。
+const PICTO_SVG = '<svg viewBox="0 0 64 64" aria-hidden="true">'
+  + '<g class="tg-picto">'
+  + '<rect x="33" y="37" width="6" height="16" rx="3"/>'
+  + '<rect x="25" y="37" width="6" height="16" rx="3"/>'
+  + '<rect x="26" y="21" width="12" height="17" rx="5"/>'
+  + '<rect class="tg-arm" x="37" y="23" width="6" height="19" rx="3" transform="rotate(-26 40 23)"/>'
+  + '<rect class="tg-arm" x="21" y="23" width="6" height="19" rx="3" transform="rotate(26 24 23)"/>'
+  + '<circle cx="32" cy="14" r="6"/>'
+  + '<circle cx="35" cy="41" r="2.2"/>'
+  + '<circle cx="29" cy="41" r="2.2"/>'
   + '<g class="tg-prop"></g>'
   + '</g></svg>';
 
 // **立ち止まった先でする支度。** 持ち替えるだけでなく、段ごとに合った
 // 動き(小道具自身のアニメーション)を付ける ── ページをめくる・面を顔に
 // 当てる・金槌を振る・針を運針させる・照明を振る。`name`はCSS側で
-// `.tg-cat-wrap[data-phase]`のセレクタに使う(style.cssのtg-act-*)。
+// `.tg-picto-wrap[data-phase]`のセレクタに使う(style.cssのtg-act-*)。
 // 塗りはえんじ色のまま(`tg-cutout`/`tg-stroke`/`tg-beam`で濃淡だけ作る)。
 const PHASES = [
   { name: "book", prop:
@@ -199,24 +198,24 @@ const PHASES = [
 const COLD_START_NOTE = "サーバーが眠っていたら起こしています(無料枠なので少し待ちます)…";
 
 function loadingHtml() {
-  const cat = CAT_SVG.replace('<g class="tg-prop"></g>',
+  const picto = PICTO_SVG.replace('<g class="tg-prop"></g>',
     '<g class="tg-prop">' + PHASES[0].prop + '</g>');
   return '<div class="tg-loading">'
     + CURTAIN_SVG
-    + '<div class="tg-scene" aria-label="舞台の準備をしている猫のアニメーション">'
-    + '<div class="tg-cat-wrap" data-phase="' + PHASES[0].name + '">' + cat + '</div></div>'
+    + '<div class="tg-scene" aria-label="舞台の準備をしているピクトグラムのアニメーション">'
+    + '<div class="tg-picto-wrap" data-phase="' + PHASES[0].name + '">' + picto + '</div></div>'
     + '<div class="tg-load-bar"><div class="tg-load-fill"></div></div>'
     + '<p class="tg-load-pct">0%</p>'
     + '<p class="tg-load-note" hidden>' + COLD_START_NOTE + '</p>'
     + '</div>';
 }
 
-// **猫を舞台の上で歩かせ、立ち止まった先ごとに段(PHASES)を切り替える。**
-// 歩いているあいだは`.walking`で足取りの弾みを速め、止まったら
-// `data-phase`を差し替える ── そのCSSセレクタで小道具ごとの動作
-// アニメーションが決まる(style.cssのtg-act-*)。
+// **ピクトグラムを舞台の上で歩かせ、立ち止まった先ごとに段(PHASES)を
+// 切り替える。** 歩いているあいだは`.walking`で足取りの弾みを速め、
+// 止まったら`data-phase`を差し替える ── そのCSSセレクタで小道具ごとの
+// 動作アニメーションが決まる(style.cssのtg-act-*)。
 // `prefers-reduced-motion`のときは動かさず、中央で静止させる。
-function startCatWalk(scene, wrap, propEl) {
+function startPictoWalk(scene, wrap, propEl) {
   const reduced = typeof matchMedia === "function"
     && matchMedia("(prefers-reduced-motion: reduce)").matches;
   if (reduced) return () => {};
@@ -253,11 +252,11 @@ function startCatWalk(scene, wrap, propEl) {
   return () => { stopped = true; timers.forEach(clearTimeout); };
 }
 
-// **表示 → 猫を歩かせる・進捗%を進める → 呼び出し側が止める、までを
-// 1つにまとめる。** 本当の進み具合(コールドスタートでサーバが起きるまでの
-// 時間)は分からないので、経過時間から95%まで滑らかに近づける「気持ちの
-// 上では正しい」進捗にする。5秒以上かかっていたら、コールドスタートの
-// 案内をそっと添える(待たされる理由が分からないと不安になるため)。
+// **表示 → ピクトグラムを歩かせる・進捗%を進める → 呼び出し側が止める、
+// までを1つにまとめる。** 本当の進み具合(コールドスタートでサーバが
+// 起きるまでの時間)は分からないので、経過時間から95%まで滑らかに近づける
+// 「気持ちの上では正しい」進捗にする。5秒以上かかっていたら、コールド
+// スタートの案内をそっと添える(待たされる理由が分からないと不安になるため)。
 function startLoading(el) {
   el.innerHTML = loadingHtml();
   const t0 = performance.now();
@@ -265,10 +264,10 @@ function startLoading(el) {
   const pct = el.querySelector(".tg-load-pct");
   const note = el.querySelector(".tg-load-note");
   const scene = el.querySelector(".tg-scene");
-  const wrap = el.querySelector(".tg-cat-wrap");
+  const wrap = el.querySelector(".tg-picto-wrap");
   const propEl = el.querySelector(".tg-prop");
 
-  const stopWalk = (scene && wrap) ? startCatWalk(scene, wrap, propEl) : () => {};
+  const stopWalk = (scene && wrap) ? startPictoWalk(scene, wrap, propEl) : () => {};
 
   const tick = () => {
     if (!fill || !fill.isConnected) return;
