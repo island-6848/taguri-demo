@@ -41,11 +41,34 @@
 .tg-cat-eyes{transform-box:fill-box;transform-origin:50% 50%;
  animation:tg-cat-blink 4.8s ease-in-out infinite}
 .tg-prop{transform-box:fill-box;transform-origin:50% 50%;transition:none}
-.tg-prop.swap{animation:tg-prop-out .35s ease-in both}
 @keyframes tg-cat-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-2.5px)}}
 @keyframes tg-cat-tail{0%,100%{transform:rotate(0)}50%{transform:rotate(-7deg)}}
 @keyframes tg-cat-blink{0%,92%,100%{transform:scaleY(1)}96%{transform:scaleY(.15)}}
 @keyframes tg-beam-flicker{0%,100%{opacity:.35}50%{opacity:.6}}
+
+/* ---- 段ごとの支度の動き(起案者の指示 ──「ちゃんとそれぞれのフェーズに
+   合わせた準備を行うアニメーション」)。`.tg-cat-wrap`の`data-phase`
+   (app.jsのPHASESが書き換える)で、小道具自身の動きを出し分ける。 */
+.tg-cat-wrap[data-phase="book"] .tg-prop{transform-origin:0% 100%;
+ animation:tg-act-book 1.3s ease-in-out infinite}
+.tg-cat-wrap[data-phase="mask"] .tg-prop{transform-origin:50% 100%;
+ animation:tg-act-mask 1.9s ease-in-out infinite}
+.tg-cat-wrap[data-phase="hammer"] .tg-prop{transform-origin:50% 0%;
+ animation:tg-act-hammer .5s ease-in-out infinite}
+.tg-cat-wrap[data-phase="sewing"] .tg-prop{animation:tg-act-sewing .8s ease-in-out infinite}
+.tg-cat-wrap[data-phase="light"] .tg-prop{transform-origin:50% 0%;
+ animation:tg-act-light 2.4s ease-in-out infinite}
+@keyframes tg-act-book{0%,100%{transform:rotate(0)}50%{transform:rotate(9deg)}}
+@keyframes tg-act-mask{0%,100%{transform:translateY(0) rotate(0)}
+ 50%{transform:translateY(-3.5px) rotate(-5deg)}}
+@keyframes tg-act-hammer{0%,55%,100%{transform:rotate(-16deg)}75%{transform:rotate(12deg)}}
+@keyframes tg-act-sewing{0%,100%{transform:translate(0,0)}50%{transform:translate(-5px,5px)}}
+@keyframes tg-act-light{0%,100%{transform:rotate(-9deg)}50%{transform:rotate(9deg)}}
+
+/* **場面の切り替え中はこちらを勝たせる。** `.tg-prop.swap`は上のどの
+   `[data-phase] .tg-prop`とも詳しさが同点なので、あとに書いたこの規則が
+   歩いているあいだ(700ms)だけ動作の動きを止めてフェードアウトさせる。 */
+.tg-prop.swap{animation:tg-prop-out .35s ease-in both}
 @keyframes tg-prop-out{0%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(.7)}}
 
 .tg-load-bar{width:200px;max-width:70vw;height:6px;border-radius:99px;
@@ -56,7 +79,8 @@
  letter-spacing:.02em}
 .tg-load-note{font-size:12px;color:var(--mute);max-width:24em}
 @media (prefers-reduced-motion: reduce){
- .tg-curtain,.tg-cat,.tg-cat-tail,.tg-cat-eyes,.tg-beam,.tg-prop.swap{animation:none}
+ .tg-curtain,.tg-cat,.tg-cat-tail,.tg-cat-eyes,.tg-beam,.tg-prop.swap,
+ .tg-cat-wrap[data-phase] .tg-prop{animation:none}
  .tg-cat-wrap{transition:none}}
 
 /* ---- 2 カラム。ナビゲーションは常に左に出したままにする -------------------

@@ -168,55 +168,62 @@ const CAT_SVG = '<svg viewBox="0 0 64 64" aria-hidden="true">'
   + '<g class="tg-prop"></g>'
   + '</g></svg>';
 
-// **立ち止まった先で手に取る小道具。** 文章の代わりに、これを手に持って
-// いる姿そのもので「何をしているか」を示す。塗りは`.tg-cat`から継いだ
-// えんじ色のまま ── `tg-cutout`(切り抜き)・`tg-stroke`/`tg-beam`(線)で
-// 濃淡だけを作り、色は増やさない。
-const PROPS = [
-  '<rect x="29" y="30" width="15" height="11" rx="1.3"/>'                    // 台本
+// **立ち止まった先でする支度。** 持ち替えるだけでなく、段ごとに合った
+// 動き(小道具自身のアニメーション)を付ける ── ページをめくる・面を顔に
+// 当てる・金槌を振る・針を運針させる・照明を振る。`name`はCSS側で
+// `.tg-cat-wrap[data-phase]`のセレクタに使う(style.cssのtg-act-*)。
+// 塗りはえんじ色のまま(`tg-cutout`/`tg-stroke`/`tg-beam`で濃淡だけ作る)。
+const PHASES = [
+  { name: "book", prop:
+    '<rect x="29" y="30" width="15" height="11" rx="1.3"/>'                  // 台本
     + '<g class="tg-cutout-line"><line x1="36.5" y1="31.5" x2="36.5" y2="39.5"/>'
     + '<line x1="31" y1="34" x2="35" y2="34"/><line x1="31" y1="37" x2="35" y2="37"/>'
-    + '<line x1="38" y1="34" x2="42" y2="34"/><line x1="38" y1="37" x2="42" y2="37"/></g>',
-  '<ellipse cx="37" cy="35" rx="8" ry="9"/>'                                  // 面(稽古)
+    + '<line x1="38" y1="34" x2="42" y2="34"/><line x1="38" y1="37" x2="42" y2="37"/></g>' },
+  { name: "mask", prop:
+    '<ellipse cx="37" cy="35" rx="8" ry="9"/>'                                // 面(稽古)
     + '<g class="tg-cutout"><circle cx="34" cy="33" r="1.4"/><circle cx="40" cy="33" r="1.4"/></g>'
-    + '<path class="tg-cutout-line" d="M33 39q4 3 8 0"/>',
-  '<rect x="32" y="27" width="12" height="5" rx="1.4"/>'                      // 金槌(大道具)
-    + '<rect x="36.5" y="32" width="3" height="13" rx="1.4"/>',
-  '<path class="tg-stroke" d="M29 45 43 28"/>'                                // 針と糸(衣装)
+    + '<path class="tg-cutout-line" d="M33 39q4 3 8 0"/>' },
+  { name: "hammer", prop:
+    '<rect x="32" y="27" width="12" height="5" rx="1.4"/>'                    // 金槌(大道具)
+    + '<rect x="36.5" y="32" width="3" height="13" rx="1.4"/>' },
+  { name: "sewing", prop:
+    '<path class="tg-stroke" d="M29 45 43 28"/>'                              // 針と糸(衣装)
     + '<circle class="tg-cutout" cx="43.5" cy="27" r="1.8"/>'
-    + '<path class="tg-stroke" d="M29 45q-4 2 -3 7q4-1 5-5"/>',
-  '<path d="M31 27h10l4 13H27z"/>'                                           // 照明
+    + '<path class="tg-stroke" d="M29 45q-4 2 -3 7q4-1 5-5"/>' },
+  { name: "light", prop:
+    '<path d="M31 27h10l4 13H27z"/>'                                        // 照明
     + '<g class="tg-beam"><line x1="29" y1="41" x2="24" y2="49"/>'
-    + '<line x1="36" y1="43" x2="36" y2="51"/><line x1="43" y1="41" x2="48" y2="49"/></g>',
+    + '<line x1="36" y1="43" x2="36" y2="51"/><line x1="43" y1="41" x2="48" y2="49"/></g>' },
 ];
 
 const COLD_START_NOTE = "サーバーが眠っていたら起こしています(無料枠なので少し待ちます)…";
 
 function loadingHtml() {
   const cat = CAT_SVG.replace('<g class="tg-prop"></g>',
-    '<g class="tg-prop">' + PROPS[0] + '</g>');
+    '<g class="tg-prop">' + PHASES[0].prop + '</g>');
   return '<div class="tg-loading">'
     + CURTAIN_SVG
     + '<div class="tg-scene" aria-label="舞台の準備をしている猫のアニメーション">'
-    + '<div class="tg-cat-wrap">' + cat + '</div></div>'
+    + '<div class="tg-cat-wrap" data-phase="' + PHASES[0].name + '">' + cat + '</div></div>'
     + '<div class="tg-load-bar"><div class="tg-load-fill"></div></div>'
     + '<p class="tg-load-pct">0%</p>'
     + '<p class="tg-load-note" hidden>' + COLD_START_NOTE + '</p>'
     + '</div>';
 }
 
-// **猫を舞台の上で歩かせ、立ち止まった先ごとに小道具を持ち替えさせる。**
-// 歩いているあいだは`.walking`で足取りの弾みを速め、止まったら小道具を
-// 出す ── これを繰り返すことで「動き回って支度している」ように見せる。
+// **猫を舞台の上で歩かせ、立ち止まった先ごとに段(PHASES)を切り替える。**
+// 歩いているあいだは`.walking`で足取りの弾みを速め、止まったら
+// `data-phase`を差し替える ── そのCSSセレクタで小道具ごとの動作
+// アニメーションが決まる(style.cssのtg-act-*)。
 // `prefers-reduced-motion`のときは動かさず、中央で静止させる。
 function startCatWalk(scene, wrap, propEl) {
   const reduced = typeof matchMedia === "function"
     && matchMedia("(prefers-reduced-motion: reduce)").matches;
   if (reduced) return () => {};
   const waypoints = [0.06, 0.5, 0.94];
-  // **pr は1から。** 最初の小道具(PROPS[0])はloadingHtml()で最初から
-  // 持たせてあるので、最初の到着でまた同じものを出すと変わり映えしない。
-  let wp = 0, pr = 1, x = 0, stopped = false;
+  // **ph は1から。** 最初の段(PHASES[0])はloadingHtml()で最初から
+  // 出してあるので、最初の到着でまた同じものにすると変わり映えしない。
+  let wp = 0, ph = 1, x = 0, stopped = false;
   const timers = [];
   const t = (fn, ms) => { const id = setTimeout(fn, ms); timers.push(id); return id; };
 
@@ -233,9 +240,11 @@ function startCatWalk(scene, wrap, propEl) {
       if (stopped) return;
       wrap.classList.remove("walking");
       if (propEl) {
-        propEl.innerHTML = PROPS[pr % PROPS.length];
+        const phase = PHASES[ph % PHASES.length];
+        propEl.innerHTML = phase.prop;
         propEl.classList.remove("swap");
-        pr++;
+        wrap.dataset.phase = phase.name;
+        ph++;
       }
       t(() => { wp = (wp + 1) % waypoints.length; step(); }, 2200);
     }, 700);
