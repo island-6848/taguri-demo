@@ -5495,6 +5495,12 @@ def page_rate(verdict: str = "", year: str = "", venues=(), page: int = 1) -> st
     どちらも評価そのものに属する操作で、日記帳には無い（`rate_reopen` はこの画面専用と
     決めてある）。記録そのものを直す道は日記帳に一本化する。
     """
+    body = _rate_body(verdict, year, venues, page)
+    return layout("評価一覧", "/rate", body, RR.STYLE, active_sub="/rate")
+
+
+def _rate_body(verdict: str = "", year: str = "", venues=(), page: int = 1) -> str:
+    """`page_rate()` の中身だけを組み立てる(#000009、`_recommend_body`と同じ形)。"""
     b = _rate_base()
     rated = b["rated"]
     verdict_fig = CH.verdict_panel([w for w in b["all"] if not w.get("unseen")])
@@ -5504,9 +5510,8 @@ def page_rate(verdict: str = "", year: str = "", venues=(), page: int = 1) -> st
             for g in CH.VERDICT_ORDER}
     live = [g for g in CH.VERDICT_ORDER if by_v[g]]
     if not live:
-        body = (f'<h1>評価一覧</h1>{verdict_fig}'
+        return (f'<h1>評価一覧</h1>{verdict_fig}'
                 f'<p class="empty">まだ評価が付いた記録はありません。</p>')
-        return layout("評価一覧", "/rate", body, RR.STYLE, active_sub="/rate")
     # **既定は ◎ である。** 名簿の材料であり、感想の引用が返るのも ◎ の作品だけなので、
     # 確かめたくなるのはここである。**「すべて」は明示的に選んだときだけ**
     # （`v=all`。空文字は「まだ何も選んでいない」の意味のままにしておく ──
@@ -5588,7 +5593,7 @@ def page_rate(verdict: str = "", year: str = "", venues=(), page: int = 1) -> st
 評価をまたいで続けて読むときは<a href="/records/works?t=__TAGURI_TOKEN__">日記帳</a>です。</p>
 {rows}</div>
 {foot}"""
-    return layout("評価一覧", "/rate", body, RR.STYLE, active_sub="/rate")
+    return body
 
 
 def _poster_html(w: dict) -> str:
@@ -5605,6 +5610,12 @@ def page_unrated() -> str:
     ので、一覧の帯（評価待ち）には出てこない ── **その分がどこにあるかを言う場所が
     無いと、答えたつもりで残り続ける。**
     """
+    body = _unrated_body()
+    return layout("未評価", "/rate", body, RR.STYLE, active_sub="/rate/unrated")
+
+
+def _unrated_body() -> str:
+    """`page_unrated()` の中身だけを組み立てる(#000009、`_recommend_body`と同じ形)。"""
     b = _rate_base()
     unrated = sorted(b["unrated"], key=lambda w: w.get("first_date") or "", reverse=True)
     # **外した分の行き先を書く。** 黙って減らすと、答えた記録がどこへ行ったのか
@@ -5614,7 +5625,7 @@ def page_unrated() -> str:
                f'ここには出していません。</b>'
                f'<a href="/records/works?t=__TAGURI_TOKEN__">日記帳</a>に残っていますので、'
                f'付け間違えたときはその行の「やはり観た」で戻してください。')
-    body = f"""<h1>未評価 ── {len(unrated)} 件</h1>
+    return f"""<h1>未評価 ── {len(unrated)} 件</h1>
 <p class="lede">評価が付いていない記録です。<b>上演日が分からない記録も含みます</b> ──
 日付が無いと上演が終わったかを判定できないので、「まだ答えていない」には出てきません。{skipped}<br>
 <b>実際には観ていない公演が混じっていたら、各行の「公演詳細を直す」から外せます。</b>
@@ -5622,15 +5633,19 @@ def page_unrated() -> str:
 ── どちらもあとで戻せます。</p>
 {"".join(_rec_row(w, poster=_poster_html(w), rate_always=True, editable=True)
          for w in unrated) or '<p class="empty">評価が付いていない記録はありません。</p>'}"""
-    return layout("未評価", "/rate", body, RR.STYLE, active_sub="/rate/unrated")
 
 
 def page_notes() -> str:
     """**評価 ▸ 感想。** ◎ を付けたのに感想が無い作品に、一文を書き足す 1 枚。"""
-    b = _rate_base()
-    body = f"""<h1>感想 ── ◎ を付けた {len(b["no_note"])} 件</h1>
-{_pending_notes_html(b["all"], collapsed=False)}"""
+    body = _notes_body()
     return layout("感想", "/rate", body, RR.STYLE, active_sub="/rate/notes")
+
+
+def _notes_body() -> str:
+    """`page_notes()` の中身だけを組み立てる(#000009、`_recommend_body`と同じ形)。"""
+    b = _rate_base()
+    return f"""<h1>感想 ── ◎ を付けた {len(b["no_note"])} 件</h1>
+{_pending_notes_html(b["all"], collapsed=False)}"""
 
 
 def _pending_notes_html(all_w: list[dict], collapsed: bool = True) -> str:
@@ -8194,6 +8209,12 @@ def page_tickets() -> str:
     知らせ（`ticket_manager_html`）だけはページの下に残す** ── どの公演の券か
     決められなかった分なので、特定のカードには置けない。
     """
+    body = _tickets_body()
+    return layout("購入済み公演", "/tickets", body, RR.STYLE + SC.STYLE)
+
+
+def _tickets_body() -> str:
+    """`page_tickets()` の中身だけを組み立てる(#000009、`_recommend_body`と同じ形)。"""
     d, _ = _load()
     owned = d.get("owned") or []
     import datetime
@@ -8228,7 +8249,7 @@ def page_tickets() -> str:
     cards = "".join(RR.ticket(c, mode="owned", my_tickets=_my_tickets(c))
                     for c in sorted(owned, key=_rank))
     left = sync_mail_tickets(owned)
-    body = f"""<h1>購入済み公演 ── {len(owned)} 件</h1>
+    return f"""<h1>購入済み公演 ── {len(owned)} 件</h1>
 <p class="lede">「すでに持っている」と答えた公演と、購入確認メールから見つかった
 公演です。<b>次の推薦は変わりません</b> ── 答えを出すのは推薦だけです。上演日を
 過ぎると、この一覧からは外れ、<a href="/rate?t=__TAGURI_TOKEN__">評価一覧</a>の
@@ -8236,4 +8257,3 @@ def page_tickets() -> str:
 {cards or '<p class="empty">チケットを持っている公演はまだありません。'
           '推薦の画面で「すでに持っている」を押した公演が、ここに並びます。</p>'}
 {SC.ticket_manager_html(unplaced=left)}"""
-    return layout("購入済み公演", "/tickets", body, RR.STYLE + SC.STYLE)

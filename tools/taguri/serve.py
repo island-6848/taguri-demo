@@ -450,6 +450,26 @@ class Handler(http.server.BaseHTTPRequestHandler):
             html = APP._calendar_body(kinds, prefs)
             self._json(200, {"ok": True, "title": "公演カレンダー", "body_html": html})
             return
+        if path == "/api/screen/rate":
+            q = urllib.parse.parse_qs(query)
+            v = q.get("v", [""])[0]
+            y = q.get("y", [""])[0]
+            venues = q.get("venue", [])
+            html = APP._rate_body(v, y, venues, _page(query))
+            self._json(200, {"ok": True, "title": "評価一覧", "body_html": html})
+            return
+        if path == "/api/screen/unrated":
+            html = APP._unrated_body()
+            self._json(200, {"ok": True, "title": "未評価", "body_html": html})
+            return
+        if path == "/api/screen/notes":
+            html = APP._notes_body()
+            self._json(200, {"ok": True, "title": "感想", "body_html": html})
+            return
+        if path == "/api/screen/tickets":
+            html = APP._tickets_body()
+            self._json(200, {"ok": True, "title": "購入済み公演", "body_html": html})
+            return
         if path == "/api/suggest":
             # **手で足す欄の候補。** 手元にあるものだけを引く読み口で、外へは行かない
             # （守り 5）。**打っている最中に走る**ので、外へ行く口と分けてある

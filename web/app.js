@@ -30,9 +30,11 @@ const SCREENS = {
   "/records/chronicle": "chronicle", "/records/works": "works",
   "/search": "search", "/settings": "settings",
 };
-// Phase 0-1: おすすめ・興味あり・開幕リマインド・お気に入り・カレンダーを実装。
-// 残りは「準備中」を出す(段階移行のためのプレースホルダ)。
-const IMPLEMENTED = new Set(["recommend", "interest", "reminder", "favourites", "calendar"]);
+// Phase 0-2: おすすめ・興味あり・開幕リマインド・お気に入り・カレンダー・
+// 評価一覧・未評価・感想・購入済み公演を実装。残りは「準備中」を出す
+// (段階移行のためのプレースホルダ)。
+const IMPLEMENTED = new Set(["recommend", "interest", "reminder", "favourites", "calendar",
+  "rate", "unrated", "notes", "tickets"]);
 
 // --- NAV(app.py の NAV表と同じデータ) -------------------------------------
 const NAV = [[null, "おすすめ", "ticket", [["/recommend", "今週のおすすめ", "ticket"], ["/recommend/reminder", "開幕リマインド", "inbox"], ["/recommend/interest", "興味あり", "flag"], ["/recommend/favourites", "お気に入り", "star"]]], ["/calendar", "公演カレンダー", "calendar", []], ["/tickets", "購入済み公演", "ticket", []], [null, "観た公演の評価", "check", [["/rate", "評価一覧", "check"], ["/rate/unrated", "未評価", "clock"], ["/rate/notes", "感想", "pencil"]]], ["/register", "公演情報の登録", "inbox", []], [null, "記録を見返す", "chart", [["/records", "眺める", "chart"], ["/records/trace", "たどる", "user"], ["/records/chronicle", "観劇史年表", "calendar"], ["/records/works", "日記帳", "book"]]], ["/search", "探す", "search", []], ["/settings", "設定", "gear", []]];
