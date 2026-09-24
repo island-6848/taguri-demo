@@ -426,6 +426,30 @@ class Handler(http.server.BaseHTTPRequestHandler):
             srv.mark_viewed("recommend_pref" if srv.prefs else "recommend")
             self._json(200, {"ok": True, "title": "今週のおすすめ", "body_html": body})
             return
+        if path == "/api/screen/interest":
+            html = APP._interest_body(_month(query), _page(query))
+            self._json(200, {"ok": True, "title": "興味あり", "body_html": html})
+            return
+        if path == "/api/screen/reminder":
+            q = urllib.parse.parse_qs(query)
+            if "f" in q:
+                srv.prefs = [p for p in q.get("pref", []) if p][:47]
+            w = q.get("w", ["this"])[0]
+            html = APP._reminder_body(srv.prefs, w if w in ("this", "next") else "this")
+            self._json(200, {"ok": True, "title": "開幕リマインド", "body_html": html})
+            return
+        if path == "/api/screen/favourites":
+            html = APP._favourites_body(_month(query), _page(query))
+            srv.mark_viewed("favourite")
+            self._json(200, {"ok": True, "title": "お気に入り", "body_html": html})
+            return
+        if path == "/api/screen/calendar":
+            q = urllib.parse.parse_qs(query)
+            kinds = ({k for k in q.get("kind", []) if k in SC.KIND_KEYS} or None)
+            prefs = ({p for p in q.get("pref", []) if p in RR.PREFS} or None)
+            html = APP._calendar_body(kinds, prefs)
+            self._json(200, {"ok": True, "title": "公演カレンダー", "body_html": html})
+            return
         if path == "/api/suggest":
             # **手で足す欄の候補。** 手元にあるものだけを引く読み口で、外へは行かない
             # （守り 5）。**打っている最中に走る**ので、外へ行く口と分けてある

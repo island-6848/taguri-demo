@@ -1587,3 +1587,227 @@ button .ico{vertical-align:-.2em;margin-right:5px}
  pointer-events:none}
 @media(prefers-reduced-motion:reduce){.pmap .pf{transition:none}}
 .pfil:has(input[value="北海道"]:checked) .pmap [data-pref="北海道"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="青森県"]:checked) .pmap [data-pref="青森県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="岩手県"]:checked) .pmap [data-pref="岩手県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="宮城県"]:checked) .pmap [data-pref="宮城県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="秋田県"]:checked) .pmap [data-pref="秋田県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="山形県"]:checked) .pmap [data-pref="山形県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="福島県"]:checked) .pmap [data-pref="福島県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="茨城県"]:checked) .pmap [data-pref="茨城県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="栃木県"]:checked) .pmap [data-pref="栃木県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="群馬県"]:checked) .pmap [data-pref="群馬県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="埼玉県"]:checked) .pmap [data-pref="埼玉県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="千葉県"]:checked) .pmap [data-pref="千葉県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="東京都"]:checked) .pmap [data-pref="東京都"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="神奈川県"]:checked) .pmap [data-pref="神奈川県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="新潟県"]:checked) .pmap [data-pref="新潟県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="富山県"]:checked) .pmap [data-pref="富山県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="石川県"]:checked) .pmap [data-pref="石川県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="福井県"]:checked) .pmap [data-pref="福井県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="山梨県"]:checked) .pmap [data-pref="山梨県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="長野県"]:checked) .pmap [data-pref="長野県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="岐阜県"]:checked) .pmap [data-pref="岐阜県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="静岡県"]:checked) .pmap [data-pref="静岡県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="愛知県"]:checked) .pmap [data-pref="愛知県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="三重県"]:checked) .pmap [data-pref="三重県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="滋賀県"]:checked) .pmap [data-pref="滋賀県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="京都府"]:checked) .pmap [data-pref="京都府"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="大阪府"]:checked) .pmap [data-pref="大阪府"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="兵庫県"]:checked) .pmap [data-pref="兵庫県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="奈良県"]:checked) .pmap [data-pref="奈良県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="和歌山県"]:checked) .pmap [data-pref="和歌山県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="鳥取県"]:checked) .pmap [data-pref="鳥取県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="島根県"]:checked) .pmap [data-pref="島根県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="岡山県"]:checked) .pmap [data-pref="岡山県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="広島県"]:checked) .pmap [data-pref="広島県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="山口県"]:checked) .pmap [data-pref="山口県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="徳島県"]:checked) .pmap [data-pref="徳島県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="香川県"]:checked) .pmap [data-pref="香川県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="愛媛県"]:checked) .pmap [data-pref="愛媛県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="高知県"]:checked) .pmap [data-pref="高知県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="福岡県"]:checked) .pmap [data-pref="福岡県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="佐賀県"]:checked) .pmap [data-pref="佐賀県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="長崎県"]:checked) .pmap [data-pref="長崎県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="熊本県"]:checked) .pmap [data-pref="熊本県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="大分県"]:checked) .pmap [data-pref="大分県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="宮崎県"]:checked) .pmap [data-pref="宮崎県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="鹿児島県"]:checked) .pmap [data-pref="鹿児島県"]{fill:var(--acc);stroke:var(--acc)}.pfil:has(input[value="沖縄県"]:checked) .pmap [data-pref="沖縄県"]{fill:var(--acc);stroke:var(--acc)}
+/* ---- digest.py(開幕リマインド)と stage_calendar.py(公演カレンダー)の
+   CSS。Phase 1(#000009)で追加。内容はそのまま抽出、書き換えていない。 */
+
+/* ---- 開幕リマインド ---------------------------------------------------------- */
+.dgcard{background:var(--surf);border:1px solid var(--ring);border-radius:14px;
+ padding:18px 20px 16px;margin:0 0 20px}
+.dglead{font-size:13px;color:var(--ink2);margin:0 0 10px}
+.dgday{margin:0 0 18px}
+.dgday:last-child{margin-bottom:0}
+/* **文字を大きくした。**（起案者の指摘・2026-08-26 ──「各日付の文字サイズをもっと
+   大きくして」）。13.5px は本文の注記と同じ大きさで、7 つある日付の見出しが
+   本文に埋もれていた。一般の h3（17.5px）より少し大きくし、色も薄い `--ink2` から
+   `--ink` に上げて、日付が実際に見出しとして立つようにした */
+/* **見出し（旧 h3）を summary にした**（起案者の指摘・2026-08-26 ──「関東を選ぶと
+   100件近く表示されて見づらい」）。押して開閉できる印（▸/▾）は `.nn` と同じ規約を使う
+   ── この画面だけの見た目を作らない */
+.dgday summary{font-size:19px;font-weight:700;color:var(--ink);margin:0 0 10px;
+ padding-bottom:5px;border-bottom:1px solid var(--grid);cursor:pointer;
+ list-style:none;display:flex;align-items:center;gap:8px}
+.dgday summary::-webkit-details-marker{display:none}
+.dgday summary::before{content:"▸";color:var(--mute);font-size:15px}
+.dgday[open]>summary::before{content:"▾"}
+.dglist{list-style:none;margin:0;padding:0;display:grid;gap:9px}
+.dgli{display:flex;flex-wrap:wrap;align-items:center;gap:10px;
+ padding:9px 0;border-bottom:1px solid var(--grid)}
+.dglist li:last-child{border-bottom:none}
+.dgbody{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px;flex:1 1 auto;min-width:0}
+.dgt{flex:1 1 auto;min-width:0}
+.dgw{color:var(--mute);font-size:12.5px;white-space:nowrap}
+.dgun{color:var(--mute);font-weight:400;font-style:normal;font-size:11.5px}
+/* **本日・明日だけ太く大きくする。** 新しい色は増やさず、太さと大きさだけで急ぎ度を
+   出す（起案者の指示・2026-08-26） */
+.dgurgent .dgw{font-size:14.5px;font-weight:700;color:var(--ink)}
+/* **決着済み（興味なし・持っている）は静かにする。** 答える必要が無い行に注意を
+   引きすぎない */
+.dgli.dec{opacity:.72}
+.dgli.own .dgw{color:var(--ink2)}
+/* **興味あり・お気に入りは、行の左に印を引いて目立たせる**（起案者の指摘・2026-08-26
+   ──「興味があるだったりお気に入りのものはもうちょっと強調してもよいと思う」）。
+   興味ありは、評価の判子・索引の耳の「現在地」と同じ意味を持つえんじ（`--curtain`）
+   を流用する。太い左線と、行の背景を `--plane` にわずかに沈めるだけにする。 */
+.dgli.trk,.dgli.fav{background:var(--plane);
+ padding:9px 10px;border-radius:0 8px 8px 0;margin:0 0 0 -1px}
+.dgli.trk{border-left:3px solid var(--curtain)}
+.dgli.trk .dgt,.dgli.fav .dgt{font-weight:700}
+/* **お気に入りだけ、封蝋と同じ黄色を左線に使う**（起案者の指示・2026-08-26 ──
+   「サイトで統一してお気に入りにはこのテーマに合う黄色をつけて」）。新しい色は
+   増やさない、という上の決まりに対する、お気に入りだけの例外である */
+.dgli.fav{border-left:3px solid var(--wax)}
+/* ポスター。既存のカードと同じ枠（.pwrap）をそのまま使うので、寸法だけここで決める */
+.dgli .pwrap{flex:none;width:46px;height:64px;border-radius:6px}
+/* **形は stage_calendar.py の 3 種類と同じ約束にする。** 藍とえんじは押せる・識別の
+   意味をすでに持っているので、ここでは色を運ばない ── **お気に入りだけ、上と同じ
+   理由で例外にする。**「未回答」は見逃しリスクの本体だが、形を目立たせるのは行の
+   中身（太字の題名・急ぎ度）の役目にして、バッジ自体は静かにする */
+.dgk{display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:2px 8px;
+ border-radius:99px;flex:none;color:var(--mute)}
+.dgk.trk{border:1px solid var(--base);color:var(--ink2)}
+.dgk.fav{border:1px dashed var(--wax);color:var(--wax)}
+.dgk.own{background:color-mix(in srgb,var(--ink) 12%,transparent);color:var(--ink2)}
+.dgk.dec{color:var(--mute)}
+.dgempty{font-size:13px;color:var(--mute);margin:0}
+.dgmore{font-size:12px;color:var(--mute);margin:8px 0 0}
+/* 三択ボタン（RR.buttons）は既存の .btns の見た目のまま。行の右端に置く */
+.dgli .btns{flex:none;margin-left:auto}
+
+/* ---- 公演カレンダー ── 月 × 日の帯 ---------------------------------------
+   **左の題名は必ず読める幅を持つ。** 帯の幅は期間で決まるので、1 日公演では
+   題名が入らない ── 題名を帯の中に置かない理由がこれである。                 */
+.cal-legend{display:flex;flex-wrap:wrap;gap:16px;margin:0 0 12px;font-size:12.5px;
+ color:var(--ink2)}
+.cal-legend .lg{display:inline-flex;align-items:center;gap:7px}
+.cal-legend .bar.sm{width:34px;height:17px;padding:0}
+.mblock{margin:0 0 26px}
+.mblock h3{font-size:15.5px;margin:0 0 7px;display:flex;align-items:baseline;gap:10px}
+.mblock h3 .cnt{font-size:12px;font-weight:400;color:var(--mute)}
+/* **横にあふれたら、この枠の中だけで動かす。** 本文ごと横に動くのは避ける */
+.mscroll{overflow-x:auto;padding-bottom:4px}
+.mgrid{display:grid;grid-template-columns:230px repeat(var(--n),minmax(19px,1fr));
+ align-items:center;row-gap:3px;position:relative;min-width:700px;
+ border-top:1px solid var(--grid)}
+/* **影と今日の線は、行いっぱいに伸ばす。** 格子は `align-items:center` なので、
+   中身を持たないこの 2 つは指定しないと高さ 0 になり、**敷いたつもりで何も出ない**
+   （実測 ── 見出しの行だけ影が出て、本文には出ていなかった）。 */
+/* **土は青、日は赤。** 暦でいちばん強い慣習なので、これを外すと曜日を数え直すことに
+   なる。**意匠の 2 本のインク（藍＝押せる・えんじ＝識別）は使わない** ── 暦の色に
+   使うと「押せるのか」「識別なのか」をまた確かめることになる。**この 2 色は曜日
+   専用に別に持ち、暦の外では使わない。** 影は薄く、数字ははっきり出す。          */
+.mgrid{--sat:#2f6fb0;--sun:#b8434e}
+@media (prefers-color-scheme:dark){:root:where(:not([data-theme=light])) .mgrid{
+ --sat:#7fb0e8;--sun:#dd7f88}}
+:root[data-theme=dark] .mgrid{--sat:#7fb0e8;--sun:#dd7f88}
+.mgrid .wk{z-index:0;align-self:stretch}
+.mgrid .wk.sat{background:color-mix(in srgb,var(--sat) 9%,transparent)}
+.mgrid .wk.sun{background:color-mix(in srgb,var(--sun) 9%,transparent)}
+.mgrid .now{border-left:2px solid var(--curtain);z-index:2;pointer-events:none;
+ align-self:stretch}
+.mgrid .hc{grid-column:1}
+.mgrid .hd{position:relative;z-index:1;text-align:center;line-height:1.15;
+ padding:5px 0 6px;font-size:10px;color:var(--ink2)}
+.mgrid .hd b{display:block;font-size:11.5px;font-weight:600}
+.mgrid .hd i{font-style:normal;font-size:9px;color:var(--mute)}
+.mgrid .hd.past{opacity:.42}
+.mgrid .hd.sat{background:color-mix(in srgb,var(--sat) 9%,transparent)}
+.mgrid .hd.sun{background:color-mix(in srgb,var(--sun) 9%,transparent)}
+.mgrid .hd.sat b,.mgrid .hd.sat i{color:var(--sat)}
+.mgrid .hd.sun b,.mgrid .hd.sun i{color:var(--sun)}
+/* 行く日の半券。**帯の上に重ねる。** 帯は期間、札は回で、言っていることが違う。
+   **丸い点はやめた**（起案者の指摘 ──「● だとデザインがダサい」）── 丸は帯とも
+   暦とも関係の無い形で、どこに属しているのかが読めない。**その日のマスをそのまま
+   半券の形に抜く**ので、日の列とも帯とも辻褄が合う。左右のミシン目は紙の色で入れる。 */
+.pt{height:21px;border-radius:3px;background:var(--ink);color:var(--surf);
+ border-left:2px dotted var(--surf);border-right:2px dotted var(--surf);
+ display:flex;align-items:center;justify-content:center;z-index:3;position:relative}
+.pt b{font-size:9.5px;font-weight:700;line-height:1;font-style:normal}
+/* 確定前（購入確認メールから読み取ったまま）は塗らない。**読み取りは間違いうる**ので、
+   確定した回と同じ濃さで置くと、確かめていないものを確かめたように見せることになる */
+.pt.un{background:color-mix(in srgb,var(--ink) 17%,transparent);color:var(--ink);
+ border:1px dashed color-mix(in srgb,var(--ink) 62%,transparent)}
+/* 凡例では帯の見本の中に置く ── 単独の札だけ見せても、どこに出るのか分からない */
+.cal-legend .bar.sm{justify-content:center}
+.cal-legend .pt{height:15px;width:12px;flex:none}
+.mgrid .nm{grid-column:1;position:relative;z-index:1;padding:1px 12px 1px 0;min-width:0}
+/* 行く日は題名の下に書く。**札だけでは回（昼夜）が分からない。**
+   頭の印は帯の中の札と同じ形にする ── 同じことを指すものは同じ形で出す */
+.mgrid .nm .go{display:block;font-style:normal;font-size:10.5px;font-weight:600;
+ color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mgrid .nm .go::before{content:"";display:inline-block;width:6px;height:11px;
+ border-radius:2px;background:var(--ink);margin-right:6px;vertical-align:-1px;
+ border-left:1px dotted var(--surf);border-right:1px dotted var(--surf)}
+.mgrid .nm b{display:block;font-size:13px;font-weight:600;line-height:1.35;
+ overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mgrid .nm i{display:block;font-style:normal;font-size:10.5px;color:var(--mute);
+ overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* 帯。**塗り・枠・破線の 3 つの形で束を分ける**（色では分けない）。
+   **お気に入りだけ例外で色も持つ**（起案者の指示・2026-08-26 ──「サイトで統一して
+   お気に入りにはこのテーマに合う黄色をつけて」）。形の違いは残したまま、封蝋と
+   同じ `--wax` を差し込む ── 色を増やすのはこの束だけで、持っている・興味ありは
+   形だけで見分ける決まりのままにする。 */
+/* **箱の性質は帯そのものに持たせる。** `.mgrid .bar` に書いていたため、格子の外に
+   ある凡例の見本には効かず、**絵記号が箱の下にはみ出していた**（実測）。 */
+.bar{height:21px;border-radius:5px;display:flex;align-items:center;padding:0 4px;
+ overflow:hidden;color:var(--ink2)}
+.mgrid .bar{position:relative;z-index:1}
+/* **束の名前は帯に書かない。** 凡例と形で分かるので、53 本すべてに同じ語を刷ると
+   読む量だけが増える。**読み上げには残す**（絵記号は読み上げから外してある）。 */
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);
+ white-space:nowrap}
+.bar.own{background:color-mix(in srgb,var(--ink) 16%,transparent);
+ border:1px solid color-mix(in srgb,var(--ink) 42%,transparent);color:var(--ink)}
+.bar.trk{background:var(--surf);border:1px solid var(--base)}
+.bar.fav{background:color-mix(in srgb,var(--wax) 12%,transparent);
+ border:1px dashed var(--wax);color:var(--wax)}
+/* 月をまたぐ帯は、その端の丸みを落とす（切れていることが分かるように） */
+.mgrid .bar.cl{border-top-left-radius:0;border-bottom-left-radius:0;border-left-style:dotted}
+.mgrid .bar.cr{border-top-right-radius:0;border-bottom-right-radius:0;border-right-style:dotted}
+/* **`.note` を上書きしない。** 同じ名前が `render_recommend.py` と `charts.py` に
+   あり、この画面の都合で共有の見た目を変えることになる。 */
+/* `ch`→`em`（render_recommend.py の `.lead` と同じ理由） */
+.calnote{font-size:12.5px;color:var(--ink2);border-left:2px solid var(--base);
+ padding:2px 0 2px 11px;margin:0 0 20px;max-width:70em}
+/* ---- すでに入れてある券の一覧（ポップアップの中） --------------------------
+   **「行く日を入れる」は廃止した**（起案者の指示・2026-08-26 ──「日程を追加する、
+   があるなら『行く日を入れる』は不要です」）。以前は暦と同じ画面に常に出す枠
+   だったが、いまは「観劇日を追加する」ポップアップの中で、選んだ公演の分だけ
+   出す（`.tkinfo`）。ここに残っているのは、その一覧の行そのものの見た目である。 */
+.tklist{list-style:none;margin:7px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:7px}
+.tklist li{display:inline-flex;align-items:center;gap:7px;font-size:12px;
+ border:1px solid var(--base);border-radius:999px;padding:3px 5px 3px 12px}
+/* 確定前は破線で出す ── 暦の側の札と同じ約束（確かめていないものは塗らない） */
+.tklist li.un{border-style:dashed}
+.tklist li i{font-style:normal;font-size:10.5px;color:var(--mute);margin-left:7px}
+/* **まとめた行では、券がどの会場のものかを頭に付ける。** 1 会場しか無い行では
+   付けない（`_ticket_li` の `loc`） */
+.tklist li .tkloc{font-size:10.5px;color:var(--ink2);font-weight:600}
+.tklist button{font:inherit;font-size:11px;color:var(--ink2);background:none;
+ border:0;cursor:pointer;padding:3px 8px;border-radius:999px}
+.tklist button:hover{background:var(--plane);color:var(--ink)}
+/* **「確定」を先に、濃く出す。** 読み取ったものは合っていることのほうが多いので、
+   押す回数の少ないほうを「合っている」に当てる（起案者の指示 2026-08-25） */
+.tklist button.go-ok{background:var(--ink);color:var(--surf);font-weight:600}
+.tklist button.go-ok:hover{background:var(--acc);color:var(--surf)}
+.tknot{border-left:2px solid var(--curtain);padding:2px 0 2px 12px;margin:22px 0 0}
+.tknot h3{font-size:14px;margin:0 0 4px}
+.tknot ul{margin:6px 0 0;padding-left:18px;font-size:12.5px}
+@media(max-width:700px){.mgrid{grid-template-columns:150px repeat(var(--n),minmax(15px,1fr))}}
+
+/* ---- 「観劇日を追加する」ボタンとポップアップ ----------------------------------
+   起案者の指示（2026-08-26）──「日程を追加する、があるなら『行く日を入れる』は
+   不要です。あと名前を『観劇日を追加する』にして」。**行く日を入れる口はここ
+   1 つにまとめた**ので、押し口は目立たせる（藍地に白文字 ── このアプリで
+   「押せる」の既定）。                                                        */
+.addtk{font:inherit;font-size:13.5px;font-weight:600;padding:9px 18px;
+ border-radius:99px;border:1px solid var(--acc);background:var(--acc);
+ color:var(--surf);cursor:pointer;display:inline-flex;align-items:center;gap:7px;
+ margin:0 0 18px}
+.addtk:hover{opacity:.9}
+/* **`<dialog>` は既定の見た目を消し、他の道具と同じ紙の色・枠に合わせる。** */
+.tkdlg{border:1px solid var(--ring);border-radius:14px;padding:0;
+ background:var(--surf);color:var(--ink);max-width:380px;width:92vw}
+.tkdlg::backdrop{background:rgba(0,0,0,.42)}
+.tkdform{padding:20px 22px 18px;display:flex;flex-direction:column;gap:12px}
+.tkdform h3{margin:0;font-size:15.5px;display:flex;align-items:center;gap:8px}
+.tkdform label{display:flex;flex-direction:column;gap:4px;font-size:12px;
+ color:var(--ink2)}
+.tkdform select,.tkdform input{font:inherit;font-size:13px;padding:7px 9px;
+ border:1px solid var(--base);border-radius:7px;background:var(--plane);
+ color:var(--ink)}
+/* **選んだ公演の地方の日程・すでに入れてある日。**（起案者の指示・2026-08-26 ──
+   「『公演』を選んだら各地方日程の日付が表示されるようになっていて、次の
+   『行く日』入力を支援するように」）。地に薄い色を敷き、入力欄と読む欄の境目を
+   はっきりさせる ── 全部が同じ地だと、どこまでが「選んだ結果」なのか読みにくい */
+.tkinfos{margin:-4px 0 0}
+.tkinfo{background:var(--plane);border-radius:8px;padding:10px 12px;
+ font-size:12.5px}
+.tkinfo .tourfull{margin:0}
+.tkinfo .tkihave{margin:8px 0 4px;font-size:11px;color:var(--mute);font-weight:600}
+.tkinfo:has(.tourfull)>.tkihave{margin-top:10px}
+.tkdfoot{display:flex;align-items:center;gap:10px;margin:4px 0 0}
+.tkdfoot .said{flex:1;font-size:11.5px;color:var(--mute)}
+.tkdfoot button{font:inherit;font-size:12.5px;padding:7px 14px;border-radius:7px;
+ cursor:pointer;border:1px solid var(--ring);background:var(--plane);color:var(--ink)}
+.tkdfoot button[data-dlg-add]{border-color:var(--acc);background:var(--acc);
+ color:var(--surf)}

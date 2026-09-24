@@ -3629,10 +3629,16 @@ def page_interest(month: str = "", page: int = 1) -> str:
 
     **順位は付けない。** 上演日の近い順に並べる ── 買うならいちばん近いものから買う。
     """
+    body = _interest_body(month, page)
+    return layout("興味あり", "/recommend", body, RR.STYLE, active_sub="/recommend/interest")
+
+
+def _interest_body(month: str = "", page: int = 1) -> str:
+    """`page_interest()` の中身だけを組み立てる(#000009、`_recommend_body`と同じ形)。"""
     d, wait = _load()
     rows = d.get("tracking") or []
     show, mfil, mfoot = RR.month_pick(rows, month, page, "/recommend/interest")
-    body = f"""<h1>追いかけている {len(rows)} 件</h1>
+    return f"""<h1>追いかけている {len(rows)} 件</h1>
 <p class="lede">「興味あり」を押した公演を、上演日の近い順に並べています。順位は付けていません。
 チケットを取れたら「すでに持っている」を押してください ── 観る予定に移り、
 上演日を過ぎると評価待ちに並びます。<br>
@@ -3641,7 +3647,6 @@ def page_interest(month: str = "", page: int = 1) -> str:
 {mfil}
 {RR.tracking_html(d, _notes(), show)}
 {mfoot}"""
-    return layout("興味あり", "/recommend", body, RR.STYLE, active_sub="/recommend/interest")
 
 
 # ---------------------------------------------------------------- おすすめ ▸ 開幕リマインド
@@ -3675,6 +3680,13 @@ def page_reminder(prefs=(), week: str = "this") -> str:
     （`digest.panel` の docstring 参照 ── すでに券を持っている予定を、絞り込みのせいで
     見落とすと本末転倒である）。
     """
+    body = _reminder_body(prefs, week)
+    return layout("開幕リマインド", "/recommend", body,
+                  RR.STYLE + DG.STYLE, active_sub="/recommend/reminder")
+
+
+def _reminder_body(prefs=(), week: str = "this") -> str:
+    """`page_reminder()` の中身だけを組み立てる(#000009、`_recommend_body`と同じ形)。"""
     d, wait = _load()
     import datetime
     today = datetime.date.today()
@@ -3690,19 +3702,23 @@ def page_reminder(prefs=(), week: str = "this") -> str:
             'ツアーで来る公演は、その会場のある県として数えます。<br>'
             '<b>「今週のおすすめ」と同じ絞り込みです</b>'
             '── どちらの画面で選んでも、両方に効きます。')
-    body = f"""<h1>開幕リマインド ── 見逃していませんか</h1>
+    return f"""<h1>開幕リマインド ── 見逃していませんか</h1>
 <p class="lede"><b>好みに合うかどうか、すでに答えたかどうかに関わらず、
 初日が近い公演を全部出します。</b>まだ「興味あり」も「興味なし」も答えていない公演が、
 答える間もなく開幕してしまうのが、見逃しの本当のリスクです。
 未回答の行はその場で答えられます。</p>
 {RR.pref_form(pc, prefs, action="/recommend/reminder", note=note, hidden={"w": week})}
 {DG.panel(d, today, ticket_map(), prefs, week)}"""
-    return layout("開幕リマインド", "/recommend", body,
-                  RR.STYLE + DG.STYLE, active_sub="/recommend/reminder")
 
 
 # ---------------------------------------------------------------- おすすめ ▸ お気に入り
 def page_favourites(month: str = "", page: int = 1) -> str:
+    body = _favourites_body(month, page)
+    return layout("お気に入り", "/recommend", body, RR.STYLE, active_sub="/recommend/favourites")
+
+
+def _favourites_body(month: str = "", page: int = 1) -> str:
+    """`page_favourites()` の中身だけを組み立てる(#000009、`_recommend_body`と同じ形)。"""
     d, wait = _load()
     favs = d.get("favourites") or []
     show, mfil, mfoot = RR.month_pick(favs, month, page, "/recommend/favourites")
@@ -3753,14 +3769,13 @@ def page_favourites(month: str = "", page: int = 1) -> str:
              f'<span class="said"></span></div>'
              f'<div class="tags">{tags}</div></details>'
              f'{_declined_html()}</div>')
-    body = f"""<h1>お気に入り ── 新着 {len(favs)} 件</h1>
+    return f"""<h1>お気に入り ── 新着 {len(favs)} 件</h1>
 <p class="lede">登録した名前の公演を、内容も件数も問わずにすべて出します。順位は付けていません。
 件数が多いので、上演月で分けて表示しています。</p>
 {tools}
 {mfil}
 {RR.favourites_html(d, show)}
 {mfoot}"""
-    return layout("お気に入り", "/recommend", body, RR.STYLE, active_sub="/recommend/favourites")
 
 
 def _declined_html() -> str:
@@ -8123,6 +8138,12 @@ def page_calendar(kinds: set[str] | None = None, prefs: set[str] | None = None) 
     素の GET なので、この関数は要求のたびに `None`（絞り込みなし）から作り直す ──
     起動のあいだ覚える状態は持たない。組み方は `SC.panel`／`SC.filter_html` にある。
     """
+    body = _calendar_body(kinds, prefs)
+    return layout("公演カレンダー", "/calendar", body, RR.STYLE + SC.STYLE)
+
+
+def _calendar_body(kinds: set[str] | None = None, prefs: set[str] | None = None) -> str:
+    """`page_calendar()` の中身だけを組み立てる(#000009、`_recommend_body`と同じ形)。"""
     d, _ = _load()
     # **購入確認メールの券を、開くたびに結び付け直す。**（取り込みと結び付けは
     # 同じ 1 回で走らせる ── 分けると、メールは入っているのに暦に点が出ない状態が残る）
@@ -8131,13 +8152,12 @@ def page_calendar(kinds: set[str] | None = None, prefs: set[str] | None = None) 
     # **「日程を追加する」はページの上に置く**（起案者の指示・2026-08-26 ──
     # 「行く日を入れる」は畳んだので、その早道になる。組み方は `SC.add_ticket_button_html`
     # にある。
-    body = f"""<h1>公演カレンダー</h1>
+    return f"""<h1>公演カレンダー</h1>
 {SC.add_ticket_button_html(d, tickets=tickets)}
 <p class="lede">券を持っている公演・「興味あり」を押した公演・お気に入りに当たった公演を、
 上演期間の帯で並べています。<b>いつまで観られるか</b>が 1 枚で分かります。
 券を持っている公演は、行く日を入れるとその日が半券の形になって出ます。</p>
 {SC.panel(d, tickets=tickets, unplaced=left, sel_kinds=kinds, sel_prefs=prefs)}"""
-    return layout("公演カレンダー", "/calendar", body, RR.STYLE + SC.STYLE)
 
 
 # ---------------------------------------------------------------- 購入済み公演

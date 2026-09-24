@@ -30,8 +30,9 @@ const SCREENS = {
   "/records/chronicle": "chronicle", "/records/works": "works",
   "/search": "search", "/settings": "settings",
 };
-// Phase 0: /recommend だけ実装。他は「準備中」を出す(段階移行のためのプレースホルダ)。
-const IMPLEMENTED = new Set(["recommend"]);
+// Phase 0-1: おすすめ・興味あり・開幕リマインド・お気に入り・カレンダーを実装。
+// 残りは「準備中」を出す(段階移行のためのプレースホルダ)。
+const IMPLEMENTED = new Set(["recommend", "interest", "reminder", "favourites", "calendar"]);
 
 // --- NAV(app.py の NAV表と同じデータ) -------------------------------------
 const NAV = [[null, "おすすめ", "ticket", [["/recommend", "今週のおすすめ", "ticket"], ["/recommend/reminder", "開幕リマインド", "inbox"], ["/recommend/interest", "興味あり", "flag"], ["/recommend/favourites", "お気に入り", "star"]]], ["/calendar", "公演カレンダー", "calendar", []], ["/tickets", "購入済み公演", "ticket", []], [null, "観た公演の評価", "check", [["/rate", "評価一覧", "check"], ["/rate/unrated", "未評価", "clock"], ["/rate/notes", "感想", "pencil"]]], ["/register", "公演情報の登録", "inbox", []], [null, "記録を見返す", "chart", [["/records", "眺める", "chart"], ["/records/trace", "たどる", "user"], ["/records/chronicle", "観劇史年表", "calendar"], ["/records/works", "日記帳", "book"]]], ["/search", "探す", "search", []], ["/settings", "設定", "gear", []]];
@@ -304,6 +305,7 @@ function renderScreen(el, activePath, d) {
   renderCrumbBar(activePath, d.title || "");
   updateNavActive(activePath);
   fixupSynClamp(el);
+  fixupMonthScroll(el);
   el.querySelectorAll('img[src^="/img/"]').forEach(img => {
     img.src = API_BASE + img.getAttribute("src");
   });
@@ -2229,3 +2231,72 @@ document.addEventListener("click", ev => {
   });
   marks();
 })();
+
+// === ported: tools/taguri/stage_calendar.py の JS(カレンダーの「行く日を追加」ダイアログ) ===
+
+// **元は読み込み時に1度だけ走る処理だったが、SPAではフラグメントを
+// 差し込むたびに呼び直す必要がある**(#000009)。呼び出しはrenderScreen()。
+function fixupMonthScroll(root) {
+  (root || document).querySelectorAll(".mscroll .now").forEach(n => {
+    const s = n.closest(".mscroll");
+    s.scrollLeft = Math.max(0, n.offsetLeft - s.clientWidth * 0.35);
+  });
+}
+
+// ---- 「観劇日を追加する」ポップアップ ---------------------------------------
+// 起案者の指示（2026-08-26）──「日程を追加する、があるなら『行く日を入れる』は
+// 不要です。あと名前を『観劇日を追加する』にして」。**行く日を入れる口はここ
+// 1 つにまとめた** ── 券を足す・確定する・取り消すのすべてがこのポップアップの
+// 中で完結する。**外部のライブラリは使わない**（`<dialog>` は素の HTML で
+// 開閉できる）。
+
+// **選んだ公演に合わせて、日付の範囲と「地方の日程／入れてある日」を切り替える。**
+// 起案者の指示 ──「『公演』を選んだら各地方日程の日付が表示されるようになって
+// いて、次の『行く日』入力を支援するように」。中身は `add_ticket_button_html` が
+// 選択肢ごとに埋め込み済みなので、ここでは表示・非表示を切り替えるだけでよい
+// （画面から外部・API を叩かない）。
+function tkdSync(dlg) {
+  const sel = dlg.querySelector(".tkd-work"), d = dlg.querySelector(".tkd-date");
+  const opt = sel && sel.selectedOptions[0];
+  if (opt) { d.min = opt.dataset.lo; d.max = opt.dataset.hi; }
+  dlg.querySelectorAll(".tkinfo").forEach(e => {
+    e.hidden = !sel || e.dataset.for !== sel.value;
+  });
+}
+document.addEventListener("click", ev => {
+  const open = ev.target.closest && ev.target.closest("[data-open-dialog]");
+  if (open) {
+    const dlg = document.getElementById(open.dataset.openDialog);
+    if (dlg) { tkdSync(dlg); dlg.showModal(); }
+    return;
+  }
+  const close = ev.target.closest && ev.target.closest("[data-dlg-close]");
+  if (close) { close.closest("dialog").close(); return; }
+  const add = ev.target.closest && ev.target.closest("[data-dlg-add]");
+  if (add) {
+    const dlg = add.closest("dialog"), sel = dlg.querySelector(".tkd-work");
+    const dd = dlg.querySelector(".tkd-date").value, tt = dlg.querySelector(".tkd-time").value;
+    const said = dlg.querySelector(".said");
+    if (!dd) { said.textContent = "行く日を入れてください"; return; }
+    post("/api/ticket", {stage_id: sel.value, date: dd, time: tt}, dlg, "記録しました")
+      .then(r => { if (r) setTimeout(() => location.reload(), 500); });
+    return;
+  }
+  // **すでに入れてある券の「確定」「取り消し」。** ポップアップの中の一覧
+  // （`.tkinfo .tklist`）にだけ出る。**押した券自身の会場（`data-stage`）を使う**
+  // ── 1 つの公演が複数の会場をまとめて持つことがあるので、選んでいる公演の
+  // 代表会場に頼ると、他の会場の券まで代表会場のものとして操作してしまう
+  const b = ev.target.closest && ev.target.closest(".tkinfo .tklist button");
+  if (!b) return;
+  const dlg = b.closest("dialog");
+  const body = {stage_id: b.dataset.stage, date: b.dataset.date, time: b.dataset.time,
+                action: b.dataset.ok ? "confirm" : "del"};
+  const said = {del: "取り消しました", confirm: "確定しました"}[body.action];
+  post("/api/ticket", body, dlg, said).then(r => {
+    if (r) setTimeout(() => location.reload(), 500);
+  });
+});
+document.addEventListener("change", ev => {
+  const sel = ev.target.closest && ev.target.closest(".tkd-work");
+  if (sel) tkdSync(sel.closest("dialog"));
+});
