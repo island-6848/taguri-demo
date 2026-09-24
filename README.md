@@ -2,7 +2,9 @@
 
 観た演劇の記録・評価・お気に入りをもとに、次に観るべき公演を提示するWebアプリです。個人開発。
 
-**デモ**: https://taguri-demo.onrender.com/
+**デモ**: https://island-6848.github.io/taguri-demo/
+（画面はGitHub Pages配信、推薦計算・データはRender上のAPI（`tools/taguri/serve_cloud.py`）が持つ。
+無料枠のため、しばらくアクセスが無いと初回読み込みに10〜20秒ほどかかることがある）
 
 ## これは何か
 
@@ -28,6 +30,16 @@
 - SQLite（永続化）
 - Gemini API（あらすじ・要素抽出のみ、順位づけには使わない）
 - 公演情報の取得元: CoRich・ステイジーズカレンダー
+
+### 公開デモの構成（GitHub Pages + Render）
+
+画面（`web/`、静的ファイルのみ）はGitHub Pagesから配信し、推薦計算・DB書き込みは
+今までどおりRender上のAPI（`tools/taguri/serve_cloud.py`）が担う。`web/`のJSが
+CORS越しにRenderのJSON API（`/api/screen/*`・`/api/react`等）を叩き、返ってきた
+HTML断片を画面に差し込む形にした ── GitHub Pagesは静的配信専用でサーバサイド
+コードを実行できないため、DB書き込みを伴う本体はRenderに残している。
+ローカル・EC2向けの`run.py`経路（`127.0.0.1`固定・起動ごとトークン認証）は
+この移行の影響を受けず、今までどおり動く。
 
 ## ドキュメント
 

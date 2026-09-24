@@ -191,6 +191,24 @@ function startLoading(el) {
   };
 }
 
+// **同じ画面(同じパス+検索条件)を、タブを開いている間だけ覚えておく。**
+// 起案者の指摘 ──「1回の起動内で同じページにアクセスするなら読み込み時間を
+// 短くできないか」。Renderのコールドスタートが終わったあとでも、押すたびに
+// 毎回サーバへ取りに行くと同じだけ待たされていた。**書き込み(反応・評価・
+// 設定変更など)が起きたら全部消す** ── どの画面の材料が変わったかをここでは
+// 判別しないので、安全側に倒して丸ごと作り直す(`post()`から呼ぶ)。
+const fragmentCache = new Map();
+
+function renderScreen(el, activePath, d) {
+  el.innerHTML = d.body_html;
+  renderCrumbBar(activePath, d.title || "");
+  updateNavActive(activePath);
+  fixupSynClamp(el);
+  el.querySelectorAll('img[src^="/img/"]').forEach(img => {
+    img.src = API_BASE + img.getAttribute("src");
+  });
+}
+
 async function loadScreen(path, search) {
   const name = SCREENS[path];
   const el = contentEl();
@@ -209,6 +227,15 @@ async function loadScreen(path, search) {
     updateNavActive(path);
     return;
   }
+  // `/` は「今週のおすすめ」と同じ画面の別入口(app.pyのpage_recommendが
+  // active_sub="/recommend"を返すのと同じ扱いにする)。
+  const activePath = path === "/" ? "/recommend" : path;
+  const cacheKey = name + "?" + search;
+  const cached = fragmentCache.get(cacheKey);
+  if (cached) {
+    renderScreen(el, activePath, cached);
+    return;
+  }
   const stopLoading = startLoading(el);
   let d;
   try {
@@ -222,16 +249,8 @@ async function loadScreen(path, search) {
     return;
   }
   stopLoading();
-  // `/` は「今週のおすすめ」と同じ画面の別入口(app.pyのpage_recommendが
-  // active_sub="/recommend"を返すのと同じ扱いにする)。
-  const activePath = path === "/" ? "/recommend" : path;
-  el.innerHTML = d.body_html;
-  renderCrumbBar(activePath, d.title || "");
-  updateNavActive(activePath);
-  fixupSynClamp(el);
-  el.querySelectorAll('img[src^="/img/"]').forEach(img => {
-    img.src = API_BASE + img.getAttribute("src");
-  });
+  fragmentCache.set(cacheKey, d);
+  renderScreen(el, activePath, d);
 }
 
 // --- SPAルーター:内部リンク・GETフォームをその場遷移に変える ----------------
@@ -325,6 +344,7 @@ async function post(path, body, group, done) {
     const d = await r.json();
     if (!r.ok) { if (said) said.textContent = "できなかった: " + (d.error || r.status); return null; }
     if (said && done !== null) said.textContent = done || "記録した";
+    fragmentCache.clear();  // 書き込みが起きたので、覚えていた画面はすべて古くなる
     return d;
   } catch (e) { if (said) said.textContent = "できなかった: " + e; return null; }
 }
