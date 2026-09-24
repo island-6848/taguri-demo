@@ -3,6 +3,32 @@
    持つCSS文字列定数をそのまま抽出したもの(APP_CSS/RR.STYLE/各モジュールのCSS)。
    内容は書き換えず、結合しているだけ。 */
 
+/* ---- フラグメント読み込み中のアニメーション(GitHub Pages版だけの追加) -----
+   Renderの無料枠は休止から起きるのに10〜20秒ほどかかることがあり、
+   ただの「読み込み中…」だと待たされている感が強い。半券をもぎる動きと
+   案内文の入れ替えで、待ち時間を退屈させない。 */
+.tg-loading{display:flex;flex-direction:column;align-items:center;gap:14px;
+ padding:64px 12px;color:var(--ink2);text-align:center}
+.tg-load-ticket svg{width:40px;height:40px;stroke:var(--curtain);
+ animation:tg-tear 1.4s ease-in-out infinite}
+@keyframes tg-tear{
+ 0%,100%{transform:rotate(-8deg) translateY(0)}
+ 25%{transform:rotate(6deg) translateY(-4px)}
+ 50%{transform:rotate(-4deg) translateY(2px)}
+ 75%{transform:rotate(5deg) translateY(-2px)}}
+.tg-load-dots{display:flex;gap:6px}
+.tg-load-dots span{width:7px;height:7px;border-radius:50%;background:var(--curtain);
+ animation:tg-bounce 1.1s ease-in-out infinite}
+.tg-load-dots span:nth-child(2){animation-delay:.15s}
+.tg-load-dots span:nth-child(3){animation-delay:.3s}
+@keyframes tg-bounce{
+ 0%,80%,100%{transform:translateY(0);opacity:.4}
+ 40%{transform:translateY(-7px);opacity:1}}
+.tg-load-msg{font-size:13px;max-width:26em;min-height:2.6em;transition:opacity .35s;opacity:1}
+.tg-load-msg.fading{opacity:0}
+@media (prefers-reduced-motion: reduce){
+ .tg-load-ticket svg,.tg-load-dots span{animation:none}}
+
 /* ---- 2 カラム。ナビゲーションは常に左に出したままにする -------------------
    起案者の指示（2026-08-24）──「上にナビゲーションバーじゃなくて 2 カラムにして
    常に左にバーを出していてほしい」。

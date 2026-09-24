@@ -128,6 +128,44 @@ function renderCrumbBar(path, title) {
 // --- フラグメント読み込み ---------------------------------------------------
 const contentEl = () => document.getElementById("content");
 
+// **読み込み中の案内文。** Renderの無料枠は休止から起きるのに10〜20秒ほど
+// かかることがあるので、ただの「読み込み中…」より、待っている理由が分かる
+// 文へ順に入れ替える。半券をもぎる絵も添えて、待つこと自体を少し楽しくする。
+const LOADING_MESSAGES = [
+  "読み込んでいます…",
+  "幕が上がるのを待っています…",
+  "公演情報を集めています…",
+  "サーバーが眠っていたら起こしています(無料枠なので少し待ちます)…",
+  "もうすぐ開幕です…",
+];
+
+function loadingHtml() {
+  return '<div class="tg-loading">'
+    + '<div class="tg-load-ticket">' + ico("ticket", 40) + '</div>'
+    + '<div class="tg-load-dots"><span></span><span></span><span></span></div>'
+    + '<p class="tg-load-msg">' + LOADING_MESSAGES[0] + '</p>'
+    + '</div>';
+}
+
+// **表示 → 案内文を入れ替え → 呼び出し側が止める、までを1つにまとめる。**
+// 戻り値のstop()を呼ぶまで回り続ける(フェッチが速く終わればすぐ止まるので、
+// 遅いとき(コールドスタート)だけ効いてくる)。
+function startLoading(el) {
+  el.innerHTML = loadingHtml();
+  let i = 0;
+  const msg = el.querySelector(".tg-load-msg");
+  const timer = setInterval(() => {
+    if (!msg || !msg.isConnected) return;
+    msg.classList.add("fading");
+    setTimeout(() => {
+      i = (i + 1) % LOADING_MESSAGES.length;
+      msg.textContent = LOADING_MESSAGES[i];
+      msg.classList.remove("fading");
+    }, 350);
+  }, 3200);
+  return () => clearInterval(timer);
+}
+
 async function loadScreen(path, search) {
   const name = SCREENS[path];
   const el = contentEl();
@@ -146,7 +184,7 @@ async function loadScreen(path, search) {
     updateNavActive(path);
     return;
   }
-  el.innerHTML = "<p class=\"lede\">読み込み中…</p>";
+  const stopLoading = startLoading(el);
   let d;
   try {
     const url = API_BASE + "/api/screen/" + name + (search ? "?" + search : "");
@@ -154,9 +192,11 @@ async function loadScreen(path, search) {
     d = await r.json();
     if (!r.ok || !d.ok) throw new Error(d.error || r.status);
   } catch (e) {
+    stopLoading();
     el.innerHTML = "<h1>読み込めませんでした</h1><p>" + E(String(e)) + "</p>";
     return;
   }
+  stopLoading();
   // `/` は「今週のおすすめ」と同じ画面の別入口(app.pyのpage_recommendが
   // active_sub="/recommend"を返すのと同じ扱いにする)。
   const activePath = path === "/" ? "/recommend" : path;
