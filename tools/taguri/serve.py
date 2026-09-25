@@ -426,18 +426,20 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 # `_load()`・`measure_nets`・storyline/相関図の計算だけで数秒〜10秒台
                 # かかる。**書き込みが無いのに毎回作り直すと、同じ人が2度開く・複数の
                 # 閲覧者が同じ画面を開くだけで、同じ計算を何度もやり直すことになる。**
-                # 書き込み(do_POST)が起きたら丸ごと消す(`srv.screen_cache.clear()`、
-                # クライアント側の`fragmentCache`と同じ「安全側に倒す」判断)。
-                # 「今週のおすすめ」「開幕リマインド」は都道府県の絞り込み(`srv.prefs`、
-                # URLに乗らない起動中の状態)にも結果が依存するので、キーにそれも含める
-                # ── 含めないと、絞り込みを変えたのに前の絞り込みの答えを返しかねない。
+                # TTL(`Server.SCREEN_CACHE_TTL_SEC`)が切れるまで覚えておく。書き込みで
+                # 丸ごと消す方式はやめた(起案者の指摘 ──「3回目以降でまた再度ロードが
+                # 入るようになる」。`/api/react`のような頻繁な書き込み自体がキャッシュを
+                # 消していたのが原因だった)。「今週のおすすめ」「開幕リマインド」は
+                # 都道府県の絞り込み(`srv.prefs`、URLに乗らない起動中の状態)にも
+                # 結果が依存するので、キーにそれも含める ── 含めないと、絞り込みを
+                # 変えたのに前の絞り込みの答えを返しかねない(これでキーが変われば
+                # 自然に別エントリになるので、絞り込み変更時に丸ごと消す必要もない)。
                 if path == "/api/screen/recommend":
                     q = urllib.parse.parse_qs(query)
                     if "f" in q:
                         srv.prefs = [p for p in q.get("pref", []) if p][:47]
-                        srv.screen_cache.clear()
                     cache_key = "recommend|" + ",".join(srv.prefs)
-                    cached = srv.screen_cache.get(cache_key)
+                    cached = srv.screen_cache_get(cache_key)
                     if cached is not None:
                         self._json(200, cached)
                         return
@@ -451,11 +453,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     q = urllib.parse.parse_qs(query)
                     if "f" in q:
                         srv.prefs = [p for p in q.get("pref", []) if p][:47]
-                        srv.screen_cache.clear()
                     w = q.get("w", ["this"])[0]
                     w = w if w in ("this", "next") else "this"
                     cache_key = "reminder|" + w + "|" + ",".join(srv.prefs)
-                    cached = srv.screen_cache.get(cache_key)
+                    cached = srv.screen_cache_get(cache_key)
                     if cached is not None:
                         self._json(200, cached)
                         return
@@ -474,7 +475,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 # 以降は、都道府県の絞り込みのような起動中の状態を持たない画面。
                 # パス+検索条件だけで結果が決まる
                 cache_key = path + "?" + query
-                cached = srv.screen_cache.get(cache_key)
+                cached = srv.screen_cache_get(cache_key)
                 if cached is not None:
                     self._json(200, cached)
                     return
@@ -811,14 +812,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return
         try:
             result = fn(body)
-            if op != "/api/hand_theme_refresh":
-                # **書き込みが起きたら、覚えていた画面をすべて消す（#000009）。**
-                # どの画面の材料が変わったかはここでは判別しないので、安全側に倒す
-                # （クライアント側の`fragmentCache`と同じ判断）。`hand_theme_refresh`
-                # だけは例外 ── LLMの読み取りが終わるまで数秒おきに呼ばれる読み取り
-                # 専用の再描画で、これで消すと呼ぶたびに他の画面のキャッシュまで
-                # 巻き添えで消えてしまう
-                srv.screen_cache.clear()
+            # **書き込みのたびに`screen_cache`を丸ごと消す、はやめた（起案者の指摘
+            # ──「3回目以降でまた再度ロードが入るようになる」）。** 一番頻繁な書き込み
+            # である`/api/react`(三択ボタン)自体がここを通るので、消す方式だと
+            # 「三択を押すたび、次に開く画面が毎回また重い初回読み込みに戻る」ことに
+            # なっていた。`screen_cache_set`が付けたTTL(`SCREEN_CACHE_TTL_SEC`)に
+            # 任せ、ここでは何もしない。
             self._json(200, result)
         except ValueError as e:
             self._json(400, {"error": str(e)})
@@ -1028,17 +1027,35 @@ class Server(http.server.ThreadingHTTPServer):
     def import_status(self) -> dict:
         return dict(self.imp)
 
-    # **`screen_cache`に上限を持たせる（#000009）。** 「探す」は自由な文字列が
-    # キーになるので、放っておくと来訪者ごとに違う検索語がキーとして際限なく
-    # 積み上がりかねない ── Renderの無料枠はメモリも小さいので、青天井にしない。
-    # 単純に「増えすぎたら丸ごと作り直す」だけにする ── 個々のキーを退避する
-    # 複雑な仕組みは要らない(消えてもまた計算し直されるだけで、壊れはしない)。
+    # **`screen_cache`は書き込みで消さず、短い有効期限(TTL)だけで管理する
+    # （起案者の指摘 ──「3回目以降でまた再度ロードが入るようになる」）。**
+    # 最初は「書き込みが起きたら丸ごと消す」にしていたが、この仕組みの主役の
+    # 操作である`/api/react`(三択ボタン)そのものが書き込みなので、**推薦画面で
+    # 何回か三択を押すだけで、そのたびに他の画面のキャッシュまで丸ごと消えて
+    # いた。** 押すたびに「次に開く画面が毎回また重い初回読み込みになる」のでは、
+    # キャッシュを付けた意味が薄い。三択の相手（`fill_slot`）はその場でカードを
+    # 差し替えるので画面遷移を伴わず、**「反応した内容がよそ様の画面に反映される
+    # までの数十秒」は、待たされ続けるより軽い代償だと判断した。**
+    SCREEN_CACHE_TTL_SEC = 45
+    # **上限も持たせる（#000009）。** 「探す」は自由な文字列がキーになるので、
+    # 放っておくと来訪者ごとに違う検索語がキーとして際限なく積み上がりかねない
+    # ── Renderの無料枠はメモリも小さいので、青天井にしない。
     SCREEN_CACHE_MAX = 50
+
+    def screen_cache_get(self, key: str) -> dict | None:
+        hit = self.screen_cache.get(key)
+        if hit is None:
+            return None
+        expires_at, value = hit
+        if time.monotonic() >= expires_at:
+            self.screen_cache.pop(key, None)
+            return None
+        return value
 
     def screen_cache_set(self, key: str, value: dict) -> None:
         if len(self.screen_cache) >= self.SCREEN_CACHE_MAX:
             self.screen_cache.clear()
-        self.screen_cache[key] = value
+        self.screen_cache[key] = (time.monotonic() + self.SCREEN_CACHE_TTL_SEC, value)
 
     # ---- 1 三択の反応 ------------------------------------------------------
     def on_react(self, b: dict) -> dict:

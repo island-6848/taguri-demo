@@ -333,6 +333,21 @@ function startLoading(el) {
 // 設定変更など)が起きたら全部消す** ── どの画面の材料が変わったかをここでは
 // 判別しないので、安全側に倒して丸ごと作り直す(`post()`から呼ぶ)。
 const fragmentCache = new Map();
+// **書き込みのたびに丸ごと消す、はやめた（起案者の指摘 ──「3回目以降でまた
+// 再度ロードが入るようになる」）。** サーバ側の`screen_cache`と同じ理由 ──
+// 一番よく押す三択ボタン自体が書き込みなので、押すたびに他の画面の
+// キャッシュまで消えていた。サーバ側のTTL(`SCREEN_CACHE_TTL_SEC`、45秒)と
+// 揃えた期限だけで古くする。
+const FRAGMENT_CACHE_TTL_MS = 45000;
+function fragmentCacheGet(key) {
+  const hit = fragmentCache.get(key);
+  if (!hit) return null;
+  if (Date.now() >= hit.expires) { fragmentCache.delete(key); return null; }
+  return hit.data;
+}
+function fragmentCacheSet(key, data) {
+  fragmentCache.set(key, {expires: Date.now() + FRAGMENT_CACHE_TTL_MS, data});
+}
 
 // **d3を遅延読み込みする。** 220KB超あり、使うのは「眺める」(storyline)
 // だけなので、常に読み込まずに使うときだけ取りに行く。自前で同梱した
@@ -420,7 +435,7 @@ async function loadScreen(path, search) {
   // active_sub="/recommend"を返すのと同じ扱いにする)。
   const activePath = path === "/" ? "/recommend" : path;
   const cacheKey = name + "?" + search;
-  const cached = fragmentCache.get(cacheKey);
+  const cached = fragmentCacheGet(cacheKey);
   if (cached) {
     if (stale()) return;
     renderScreen(el, activePath, cached);
@@ -450,7 +465,7 @@ async function loadScreen(path, search) {
     el.innerHTML = "<h1>読み込めませんでした</h1><p>" + E(String(e)) + "</p>";
     return;
   }
-  fragmentCache.set(cacheKey, d);
+  fragmentCacheSet(cacheKey, d);
   stopLoading();
   if (stale()) return;
   renderScreen(el, activePath, d);
@@ -547,7 +562,6 @@ async function post(path, body, group, done) {
     const d = await r.json();
     if (!r.ok) { if (said) said.textContent = "できなかった: " + (d.error || r.status); return null; }
     if (said && done !== null) said.textContent = done || "記録した";
-    fragmentCache.clear();  // 書き込みが起きたので、覚えていた画面はすべて古くなる
     return d;
   } catch (e) { if (said) said.textContent = "できなかった: " + e; return null; }
 }
