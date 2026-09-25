@@ -7813,6 +7813,12 @@ def page_search(q: str, ym: str = "", web: bool = False,
     1 件以下になりやすく、覚えていない側を 2 つ重ねることになる。** 出すものは同じ行なので、
     見つけたあとにできること（評価・感想・題名を直す）はどちらから来ても変わらない。
     """
+    body = _search_body(q, ym, web, cal_side)
+    return layout("探す", "/search", body, RR.STYLE)
+
+
+def _search_body(q: str, ym: str = "", web: bool = False, cal_side: str = "past") -> str:
+    """`page_search()` の中身だけを組み立てる(#000009、`_recommend_body`と同じ形)。"""
     ix = _index()
     n_up = len(_upcoming_index()["rows"])
     note = (f'<p class="note"><b>出演者や題材で引けるのは、公演ページを見つけられた記録だけです</b>'
@@ -7840,7 +7846,7 @@ def page_search(q: str, ym: str = "", web: bool = False,
                     '<p class="empty">上の暦から月を選ぶと、その月に観られる公演が出ます。</p>')
         else:
             body = _month_rows(seen_ws, ym)
-        return layout("探す", "/search", head + cal + body, RR.STYLE)
+        return head + cal + body
     hits, names = [], []
     for w in ws:
         why, found = _hit_why(q, w, ix)
@@ -7865,21 +7871,17 @@ def page_search(q: str, ym: str = "", web: bool = False,
         body = (f'<p class="empty">{narrowed}手元には、これから観られる公演にも観た記録にも'
                 '見つかりませんでした。<b>公演ページを見つけられなかった記録は、'
                 '出演者や題材では引けません</b> ── その場合は題名でお試しください。</p>')
-        return layout("探す", "/search", head + body + web_html + cal, RR.STYLE)
+        return head + body + web_html + cal
     if not hits:
         past = ('<h2>観た記録</h2>'
                 '<p class="empty">観た記録の中には見つかりませんでした。</p>')
-        return layout("探す", "/search",
-                      head + _search_follow(names) + up_html + past + web_html + cal,
-                      RR.STYLE)
+        return head + _search_follow(names) + up_html + past + web_html + cal
     n_un = sum(1 for w, _ in hits if not w.get("verdict"))
     lead = (f'<h2>観た記録 {len(hits)} 件</h2>'
             + (f'<p class="lead">このうち {n_un} 件はまだ評価が付いていません。'
                f'<b>この場で ◎○△× を押せます。</b></p>' if n_un else
                '<p class="lead">評価を付け直すことも、感想を足すこともできます。</p>'))
-    return layout("探す", "/search",
-                  head + _search_follow(names) + up_html + lead + "".join(rows)
-                  + web_html + cal, RR.STYLE)
+    return head + _search_follow(names) + up_html + lead + "".join(rows) + web_html + cal
 
 
 # ---------------------------------------------------------------- 書き出す

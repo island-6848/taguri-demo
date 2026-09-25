@@ -30,13 +30,11 @@ const SCREENS = {
   "/records/chronicle": "chronicle", "/records/works": "works",
   "/search": "search", "/settings": "settings",
 };
-// Phase 0-4: おすすめ・興味あり・開幕リマインド・お気に入り・カレンダー・
-// 評価一覧・未評価・感想・購入済み公演・眺める・たどる・観劇史年表・日記帳・
-// はじめる・公演情報の登録・設定を実装。残りは「準備中」を出す
-// (段階移行のためのプレースホルダ)。
+// 全17画面を実装済み(#000009)。「準備中」プレースホルダは段階移行の
+// 名残りとして残してある(未知のIMPLEMENTED外の画面名が来た場合の保険)。
 const IMPLEMENTED = new Set(["recommend", "interest", "reminder", "favourites", "calendar",
   "rate", "unrated", "notes", "tickets", "records", "trace", "chronicle", "works",
-  "start", "register", "settings"]);
+  "start", "register", "settings", "search"]);
 
 // --- NAV(app.py の NAV表と同じデータ) -------------------------------------
 const NAV = [[null, "おすすめ", "ticket", [["/recommend", "今週のおすすめ", "ticket"], ["/recommend/reminder", "開幕リマインド", "inbox"], ["/recommend/interest", "興味あり", "flag"], ["/recommend/favourites", "お気に入り", "star"]]], ["/calendar", "公演カレンダー", "calendar", []], ["/tickets", "購入済み公演", "ticket", []], [null, "観た公演の評価", "check", [["/rate", "評価一覧", "check"], ["/rate/unrated", "未評価", "clock"], ["/rate/notes", "感想", "pencil"]]], ["/register", "公演情報の登録", "inbox", []], [null, "記録を見返す", "chart", [["/records", "眺める", "chart"], ["/records/trace", "たどる", "user"], ["/records/chronicle", "観劇史年表", "calendar"], ["/records/works", "日記帳", "book"]]], ["/search", "探す", "search", []], ["/settings", "設定", "gear", []]];

@@ -510,6 +510,16 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     html = APP._register_body(srv.imp, srv.imported)
                     self._json(200, {"ok": True, "title": "公演情報の登録", "body_html": html})
                     return
+                if path == "/api/screen/search":
+                    q = urllib.parse.parse_qs(query)
+                    kw = q.get("q", [""])[0]
+                    ym = q.get("ym", [""])[0]
+                    ym = ym if ym == "none" or re.fullmatch(r"20\d\d-\d{2}", ym or "") else ""
+                    web = q.get("web", [""])[0] == "1"
+                    cal = q.get("cal", [""])[0]
+                    html = APP._search_body(kw, ym, web, "up" if cal == "up" else "past")
+                    self._json(200, {"ok": True, "title": "探す", "body_html": html})
+                    return
                 self._json(404, {"ok": False, "error": "unknown screen"})
                 return
             except Exception as e:                                      # noqa: BLE001
