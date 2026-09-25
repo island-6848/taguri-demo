@@ -413,63 +413,96 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if path == "/api/import_status":
             self._json(200, srv.import_status())
             return
-        if path == "/api/screen/recommend":
-            # **GitHub Pages向けフラグメントAPI（#000009）。** `page_recommend()`
-            # と同じ中身(`APP._recommend_body`)を呼び、`layout()`で包む代わりに
-            # JSONで返す。都道府県の絞り込み・提示記録（`RECORD`）・既読印
-            # （`mark_viewed`）は、今までどおりのHTML版と同じ扱いにする
-            # ── フラグメント版だけ指標が薄くなることを避ける。
-            q = urllib.parse.parse_qs(query)
-            if "f" in q:
-                srv.prefs = [p for p in q.get("pref", []) if p][:47]
-            body = APP._recommend_body(srv.prefs)
-            srv.mark_viewed("recommend_pref" if srv.prefs else "recommend")
-            self._json(200, {"ok": True, "title": "今週のおすすめ", "body_html": body})
-            return
-        if path == "/api/screen/interest":
-            html = APP._interest_body(_month(query), _page(query))
-            self._json(200, {"ok": True, "title": "興味あり", "body_html": html})
-            return
-        if path == "/api/screen/reminder":
-            q = urllib.parse.parse_qs(query)
-            if "f" in q:
-                srv.prefs = [p for p in q.get("pref", []) if p][:47]
-            w = q.get("w", ["this"])[0]
-            html = APP._reminder_body(srv.prefs, w if w in ("this", "next") else "this")
-            self._json(200, {"ok": True, "title": "開幕リマインド", "body_html": html})
-            return
-        if path == "/api/screen/favourites":
-            html = APP._favourites_body(_month(query), _page(query))
-            srv.mark_viewed("favourite")
-            self._json(200, {"ok": True, "title": "お気に入り", "body_html": html})
-            return
-        if path == "/api/screen/calendar":
-            q = urllib.parse.parse_qs(query)
-            kinds = ({k for k in q.get("kind", []) if k in SC.KIND_KEYS} or None)
-            prefs = ({p for p in q.get("pref", []) if p in RR.PREFS} or None)
-            html = APP._calendar_body(kinds, prefs)
-            self._json(200, {"ok": True, "title": "公演カレンダー", "body_html": html})
-            return
-        if path == "/api/screen/rate":
-            q = urllib.parse.parse_qs(query)
-            v = q.get("v", [""])[0]
-            y = q.get("y", [""])[0]
-            venues = q.get("venue", [])
-            html = APP._rate_body(v, y, venues, _page(query))
-            self._json(200, {"ok": True, "title": "評価一覧", "body_html": html})
-            return
-        if path == "/api/screen/unrated":
-            html = APP._unrated_body()
-            self._json(200, {"ok": True, "title": "未評価", "body_html": html})
-            return
-        if path == "/api/screen/notes":
-            html = APP._notes_body()
-            self._json(200, {"ok": True, "title": "感想", "body_html": html})
-            return
-        if path == "/api/screen/tickets":
-            html = APP._tickets_body()
-            self._json(200, {"ok": True, "title": "購入済み公演", "body_html": html})
-            return
+        if path.startswith("/api/screen/"):
+            # **フラグメントAPIは丸ごと例外に備える（#000009）。** 個々のハンドラが
+            # 例外を投げても、応答を返さないまま接続だけ切れることを避ける
+            # （実際に page_works の空データ時の境界条件で踏んだ）。クライアント側は
+            # fetch のネットワークエラーとして拾うので致命的ではなかったが、
+            # エラー内容が画面にもサーバのログにも残らなかった。ここで受け止めて、
+            # 既存の書き込みAPIと同じ形のJSONエラーにする。
+            try:
+                if path == "/api/screen/recommend":
+                    # **GitHub Pages向けフラグメントAPI（#000009）。** `page_recommend()`
+                    # と同じ中身(`APP._recommend_body`)を呼び、`layout()`で包む代わりに
+                    # JSONで返す。都道府県の絞り込み・提示記録（`RECORD`）・既読印
+                    # （`mark_viewed`）は、今までどおりのHTML版と同じ扱いにする
+                    # ── フラグメント版だけ指標が薄くなることを避ける。
+                    q = urllib.parse.parse_qs(query)
+                    if "f" in q:
+                        srv.prefs = [p for p in q.get("pref", []) if p][:47]
+                    body = APP._recommend_body(srv.prefs)
+                    srv.mark_viewed("recommend_pref" if srv.prefs else "recommend")
+                    self._json(200, {"ok": True, "title": "今週のおすすめ", "body_html": body})
+                    return
+                if path == "/api/screen/interest":
+                    html = APP._interest_body(_month(query), _page(query))
+                    self._json(200, {"ok": True, "title": "興味あり", "body_html": html})
+                    return
+                if path == "/api/screen/reminder":
+                    q = urllib.parse.parse_qs(query)
+                    if "f" in q:
+                        srv.prefs = [p for p in q.get("pref", []) if p][:47]
+                    w = q.get("w", ["this"])[0]
+                    html = APP._reminder_body(srv.prefs, w if w in ("this", "next") else "this")
+                    self._json(200, {"ok": True, "title": "開幕リマインド", "body_html": html})
+                    return
+                if path == "/api/screen/favourites":
+                    html = APP._favourites_body(_month(query), _page(query))
+                    srv.mark_viewed("favourite")
+                    self._json(200, {"ok": True, "title": "お気に入り", "body_html": html})
+                    return
+                if path == "/api/screen/calendar":
+                    q = urllib.parse.parse_qs(query)
+                    kinds = ({k for k in q.get("kind", []) if k in SC.KIND_KEYS} or None)
+                    prefs = ({p for p in q.get("pref", []) if p in RR.PREFS} or None)
+                    html = APP._calendar_body(kinds, prefs)
+                    self._json(200, {"ok": True, "title": "公演カレンダー", "body_html": html})
+                    return
+                if path == "/api/screen/rate":
+                    q = urllib.parse.parse_qs(query)
+                    v = q.get("v", [""])[0]
+                    y = q.get("y", [""])[0]
+                    venues = q.get("venue", [])
+                    html = APP._rate_body(v, y, venues, _page(query))
+                    self._json(200, {"ok": True, "title": "評価一覧", "body_html": html})
+                    return
+                if path == "/api/screen/unrated":
+                    html = APP._unrated_body()
+                    self._json(200, {"ok": True, "title": "未評価", "body_html": html})
+                    return
+                if path == "/api/screen/notes":
+                    html = APP._notes_body()
+                    self._json(200, {"ok": True, "title": "感想", "body_html": html})
+                    return
+                if path == "/api/screen/tickets":
+                    html = APP._tickets_body()
+                    self._json(200, {"ok": True, "title": "購入済み公演", "body_html": html})
+                    return
+                if path == "/api/screen/records":
+                    html = APP._records_body()
+                    self._json(200, {"ok": True, "title": "眺める", "body_html": html})
+                    return
+                if path == "/api/screen/trace":
+                    q = urllib.parse.parse_qs(query)
+                    html = APP._trace_body(q.get("name", [""])[0], q.get("via", [""])[0])
+                    self._json(200, {"ok": True, "title": "たどる", "body_html": html})
+                    return
+                if path == "/api/screen/chronicle":
+                    html = APP._chronicle_body()
+                    self._json(200, {"ok": True, "title": "観劇史年表", "body_html": html})
+                    return
+                if path == "/api/screen/works":
+                    q = urllib.parse.parse_qs(query)
+                    y = q.get("y", [""])[0]
+                    g = q.get("g", ["work"])[0]
+                    html = APP._works_body(y, _page(query), q.get("w", [""])[0], g)
+                    self._json(200, {"ok": True, "title": "日記帳", "body_html": html})
+                    return
+                self._json(404, {"ok": False, "error": "unknown screen"})
+                return
+            except Exception as e:                                      # noqa: BLE001
+                self._json(500, {"ok": False, "error": str(e)})
+                return
         if path == "/api/suggest":
             # **手で足す欄の候補。** 手元にあるものだけを引く読み口で、外へは行かない
             # （守り 5）。**打っている最中に走る**ので、外へ行く口と分けてある

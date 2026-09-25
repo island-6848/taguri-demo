@@ -1845,3 +1845,395 @@ button .ico{vertical-align:-.2em;margin-right:5px}
  cursor:pointer;border:1px solid var(--ring);background:var(--plane);color:var(--ink)}
 .tkdfoot button[data-dlg-add]{border-color:var(--acc);background:var(--acc);
  color:var(--surf)}
+
+/* ---- storyline.py・chronicle.py・trace.py・render_lookback.py の
+   CSS。Phase 3(#000009)で追加。内容はそのまま抽出、書き換えていない。 */
+
+/* ---- 同じ作品で一緒だった人の流れ（storyline） ------------------------------- */
+.sl{margin:10px 0 2px;overflow-x:auto}
+.sl svg{display:block}
+.sl .ln{fill:none;stroke-width:2.6;stroke-linecap:round;stroke-opacity:.7}
+.sl .ln.w0{stroke:var(--pos)}
+.sl .ln.w1{stroke:var(--neg)}
+.sl .ln.w2{stroke:var(--mute)}
+.sl .ln.hot{stroke-opacity:1;stroke-width:4.4}
+.sl .ln.dim{stroke-opacity:.10}
+/* 束（セッション）。**面で示す。** 線と同じ描き方にすると束が読めない */
+.sl .ses{fill:var(--ink2);fill-opacity:.09;stroke:none;cursor:pointer}
+.sl .ses:hover{fill-opacity:.2}
+.sl .st{font-size:10px;fill:var(--mute);pointer-events:none}
+/* **束に入った日の印。** 線と同じ色にし、白で縁を取って重なっても数えられるようにする */
+.sl .dot{pointer-events:none;stroke:var(--plane);stroke-width:1.1}
+.sl .dot.w0{fill:var(--pos)}
+.sl .dot.w1{fill:var(--neg)}
+.sl .dot.w2{fill:var(--mute)}
+.sl .dot.dim{opacity:.12}
+/* **名前は線に沿わせる**（参照実装の textPath）。線が動くので左端に固定はできない */
+.sl .nm{font-size:10.5px;pointer-events:none;font-weight:600}
+.sl .nm.w0{fill:var(--pos)}
+.sl .nm.w1{fill:var(--neg)}
+.sl .nm.w2{fill:var(--mute)}
+.sl .nm.dim{opacity:.12}
+.sl .ax text{font-size:11px;fill:var(--mute)}
+.sl .ax line,.sl .ax path{stroke:var(--grid)}
+.sl-legend{display:flex;gap:14px;align-items:center;flex-wrap:wrap;font-size:12px;
+ color:var(--mute);margin:6px 0 0}
+.sl-k{display:inline-flex;align-items:center;gap:5px}
+.sl-k::before{content:"";width:16px;height:3px;border-radius:2px;background:var(--ink2)}
+.sl-k.sl-w0::before{background:var(--pos)}
+.sl-k.sl-w1::before{background:var(--neg)}
+.sl-k.sl-w2::before{background:var(--mute)}
+.sl-hint{margin-left:auto}
+.sl-fallback{font-size:12.5px;color:var(--mute);margin:8px 0 0}
+.sl-tip{position:fixed;z-index:40;pointer-events:none;max-width:300px;
+ background:var(--plane);border:1px solid var(--ring);border-radius:8px;
+ padding:7px 10px;font-size:12.5px;line-height:1.6;color:var(--ink2);
+ box-shadow:0 6px 20px rgba(0,0,0,.18)}
+
+/* ---- 観劇の年表 ------------------------------------------------------------
+   **年が縦に流れる形にする。** 棒の高さで年を比べる図は既に別に持っており、
+   ここで見たいのは高さではなく順序と切れ目である。                           */
+/* **この節の `max-width` は `ch` ではなく `em` にする**（起案者の指摘 2026-08-26
+   ──「なぜか途中で改行されてしまっている」）。理由は render_recommend.py の
+   `.lead` にある ── `ch` は全角文字では約半分の文字数しか入らない。         */
+.chcard .chera{border-left:3px solid var(--curtain);padding:2px 0 2px 14px;
+ margin:22px 0 10px}
+.chcard .chera h3{font-size:15px;margin:0 0 5px}
+.chcard .chera p{margin:0;font-size:13px;line-height:1.75;color:var(--ink2);max-width:74em}
+.chcard .ev{display:inline-block;font-size:11px;color:var(--mute);
+ border:1px solid var(--grid);border-radius:999px;padding:1px 9px;margin:7px 6px 0 0}
+.chyear{display:flex;gap:16px;padding:11px 0;border-top:1px solid var(--grid)}
+.chyear .chy{flex:none;width:104px;text-align:right}
+.chyear .chy b{display:block;font-size:19px;font-weight:600;line-height:1.2;
+ font-family:var(--mincho)}
+.chyear .chy i{font-style:normal;font-size:11px;color:var(--mute)}
+.chyear .chbody{min-width:0;flex:1}
+.chyear .chread{margin:0 0 4px;font-size:13.5px;line-height:1.7}
+.chyear .chtop{margin:0 0 4px;font-size:12px;color:var(--ink2)}
+.chfacts{list-style:none;margin:4px 0 0;padding:0;font-size:12px;color:var(--ink2)}
+.chfacts li{margin:2px 0;line-height:1.65}
+.chfacts b{display:inline-block;min-width:9.5em;font-weight:600;color:var(--mute);
+ font-size:11px;margin-right:6px}
+/* ---- 年表の図 ── 横が時間、1 行が 1 劇場、1 点が 1 作品 ------------------- */
+.chfig{overflow-x:auto;margin:4px 0 6px}
+.chfig svg{display:block;min-width:620px}
+.chfig .eband{fill:color-mix(in srgb,var(--base) 13%,transparent)}
+.chfig .eband.alt{fill:color-mix(in srgb,var(--base) 6%,transparent)}
+.chfig .elab{font-size:11px;fill:var(--ink2);font-weight:600}
+.chfig .gl{stroke:var(--grid);stroke-width:1}
+.chfig .ylab{font-size:11px;fill:var(--mute);text-anchor:middle}
+.chfig .ylab.st{text-anchor:start}
+.chfig .lane{stroke:var(--grid);stroke-width:1}
+.chfig .vlab2{font-size:11.5px;fill:var(--ink2);text-anchor:end}
+/* **色は 1 色。** この図の仕事は時間と劇場であって評価ではない。
+   ◎ だけは塗りと輪郭で分ける ── 色を足さずに 2 通目の符号を持たせる */
+.dot{fill:var(--surf);stroke:var(--s1);stroke-width:2}
+.dot.on{fill:var(--s1);stroke:var(--surf);stroke-width:1.5}
+.chfig a:hover .dot{stroke:var(--curtain)}
+.chleg{margin:0 0 14px}
+/* **`.lg`（`inline-flex`）は付けない。** 付けると、中に挟んだ `<b>` の前後で
+   文が別々の箱（匿名 flex item）に割れ、箱ごとに幅を持たされて狭い所で
+   折り返される（実測 ── 「初めて行った順」が「初めて行っ」「た順」に千切れて
+   いた）。`flex-basis:100%` で、短い凡例（◎など）と同じ行には並べず、
+   必ず自分の行にする */
+.chleg .lgn{display:block;flex-basis:100%;color:var(--mute);font-size:11px;
+ line-height:1.6}
+.chacross{margin:18px 0 0;padding:12px 14px;background:var(--plane);border-radius:8px}
+.chacross h3{font-size:13.5px;margin:0 0 6px}
+.chacross ul{list-style:none;margin:0;padding:0;font-size:12px;color:var(--ink2)}
+.chacross b{display:inline-block;min-width:11em;font-weight:600;color:var(--mute);
+ font-size:11px;margin-right:6px}
+/* **「この記録から見えること」は、年ごとの読みより一段強く出す。** 年表全体を
+   見て初めて言える 1 段落なので、いちばん上に帯の形で置く。**`--curtain-w` は
+   幕のえんじの上に置く文字の色**であって地の色ではない（`app.py` の帯・見出しの
+   約束）ので、地に使うと暗い画面で文字が読めなくなる。ここは既存の `.chera` と
+   同じ形（幕のえんじの左帯＋通常の地色）に揃える。                             */
+.chprofile{background:var(--surf);border:1px solid var(--grid);border-left:3px solid var(--curtain);
+ border-radius:0 8px 8px 0;padding:14px 16px;margin:2px 0 18px}
+.chprofile h3{font-size:12.5px;margin:0 0 6px;color:var(--curtain);font-weight:600}
+.chprofile p{margin:0;font-size:14px;line-height:1.75;color:var(--ink);max-width:74em}
+.chclose{margin:16px 0 0;font-size:13.5px;line-height:1.8;border-left:2px solid var(--base);
+ padding-left:12px;max-width:74em}
+.chfoot{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:16px 0 0}
+.chfoot button{font:inherit;font-size:12.5px;padding:6px 14px;border-radius:6px;
+ border:1px solid var(--acc);background:var(--acc);color:var(--surf);cursor:pointer}
+.chfoot .said{font-size:11.5px;color:var(--mute)}
+.chnote{font-size:11.5px;color:var(--mute);margin:8px 0 0;max-width:74em;line-height:1.7}
+.chcard .chfoot .chnote{margin:0;flex:1 1 100%}
+@media(max-width:700px){.chyear{flex-direction:column;gap:4px}
+ .chyear .chy{width:auto;text-align:left;display:flex;align-items:baseline;gap:8px}}
+
+/* **線は押せないので地の色、結び目は押せるので藍にする。** この画面のためだけに
+   色を増やさない ── 藍は「押せる・書ける」ところにしか使わないという既存の線をそのまま
+   守る。**線に藍を引くと、線そのものが押せるように見える。** */
+.thr{margin:6px 0 2px;overflow-x:auto}
+.thr svg{display:block}
+.ln{fill:none;stroke:var(--base);stroke-linecap:round}
+.ln2{fill:none;stroke:var(--surf);stroke-linecap:round;opacity:.55}
+.ln3{fill:none;stroke:var(--ink);stroke-linecap:round;opacity:.13}
+.br{fill:none;stroke:var(--base);stroke-width:2.6;stroke-linecap:round;
+    stroke-dasharray:1 6}
+.kh{fill:var(--surf);stroke:var(--surf);stroke-width:3}
+.kc{fill:var(--acc);stroke:var(--surf);stroke-width:1.6}
+.kn-n{fill:var(--surf);font-size:10.5px;font-weight:700;text-anchor:middle}
+.kn circle.kc,.bn circle.kc{transition:r .12s}
+.kn:hover circle.kc,.kn:focus circle.kc{r:10}
+.kd{fill:var(--mute);font-size:12px;text-anchor:middle;font-variant-numeric:tabular-nums}
+.kd2{font-size:11px}
+.bl{fill:var(--ink);font-size:12.5px;font-weight:600}
+.bl2{fill:var(--mute);font-weight:400}
+.bn:hover .bl,.bn:focus .bl{text-decoration:underline}
+/* **名前で絞り込む欄**（起案者の指示・2026-08-26 ──「85名の名前を羅列するって
+   センスないんだけど、どう並べたらユーザーは見やすいかな」への答え）。
+   `input[type=text]` の見た目は共通規約（`app.py`）に任せ、ここでは並びと
+   絵記号の位置だけを決める。 */
+.pk-search{display:flex;align-items:center;gap:8px;margin:14px 0 4px;
+    color:var(--mute)}
+.pk-search input{flex:1 1 auto;max-width:22em}
+.pk-none{margin-top:14px}
+/* **3 カラムぐらいで並べる**（起案者の指示・2026-08-26 ──「たどるの名前を、
+   たどるのページ内で3カラムくらいで表示してほしい」）。80 名を 1 列で並べると
+   縦にとても長くなる（全員出すようにしたのは同日の別の指示）。**列数は決め打ちに
+   しない** ── `auto-fill` と `minmax` で、1 枚のカードが 230px を切らない範囲で
+   並べるだけにする。ページの本文幅（`.wrap`）だと 3 列前後になるが、狭い画面では
+   自然に 1〜2 列へ畳まれるので、別に分岐を書く必要が無い。 */
+.picks{list-style:none;margin:10px 0 0;padding:0;display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px 16px}
+/* **カード 1 枚の中は横並びから縦並びに変えた。** 名前・役職・作品数・観た期間の
+   4 つを横 1 列に収めるには、3 列に割ったカードの幅（230px 前後）が足りない。
+   縦に積めば、どの幅でも同じ組み方で読める */
+.pk{display:flex;flex-direction:column;gap:2px;padding:9px 12px;
+    border:1px solid var(--grid);border-radius:9px;
+    text-decoration:none;color:inherit;min-width:0}
+.pk:hover,.pk:focus{border-color:var(--acc);background:var(--plane)}
+.pk-n{font-weight:700}
+.pk-r,.pk-c,.pk-s{color:var(--mute);font-size:.82rem}
+.pk-s{font-variant-numeric:tabular-nums}
+.pk-d{color:var(--mute);font-size:.78rem}
+.knots{list-style:none;margin:14px 0 0;padding:0;display:grid;gap:10px}
+.knots li{display:grid;grid-template-columns:2em 1fr;gap:10px;align-items:start}
+.knots .no{display:inline-grid;place-items:center;width:1.9em;height:1.9em;border-radius:50%;
+    background:var(--acc);color:var(--surf);font-size:.8rem;font-weight:700}
+.knots .ti{font-weight:600;color:var(--ink);text-decoration:none}
+.knots .ti:hover,.knots .ti:focus{text-decoration:underline}
+.knots .me{margin:2px 0 0;color:var(--mute);font-size:.9rem}
+.brl{margin:4px 0 0;font-size:.9rem}
+/* **移れる名前は押せることが分かる色にする**（`.hit .why` と同じ既定色）。
+   何も指定しないと既定の青・下線が出る ── ブラウザの既定は「案A」の色ではない */
+.brl a{color:var(--acc);text-decoration:none}
+.brl a:hover,.brl a:focus{text-decoration:underline}
+.trail{margin:0 0 12px;color:var(--mute)}
+.trail a{color:var(--ink2);text-decoration:none}
+.trail a:hover,.trail a:focus{color:var(--ink);text-decoration:underline}
+.back{color:var(--acc);text-decoration:none}
+.back:hover,.back:focus{text-decoration:underline}
+/* **動きは 1 度きりで、終わったあとの形だけで読める。** 動きに情報は載せない */
+.pull{animation:pullin .34s ease-out both}
+@keyframes pullin{from{opacity:0;transform:translateX(22px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.pull{animation:none}}
+
+*{box-sizing:border-box}
+:root{color-scheme:light;
+ /* ---- 地と紙 ---------------------------------------------------------------
+    **読むところだけを紙の色で抜き、その外側は客席の壁の色にする。** 灰に緑を寄せて
+    あるのは、紙の白を際立たせるためである（黄を寄せると紙が沈む）。            */
+ --plane:#e7eae6;--surf:#f8f9f6;--ink:#191b18;--ink2:#4e534d;--mute:#828880;
+ --grid:#dde2d9;--base:#c2c9bd;--ring:rgba(25,27,24,.13);
+ /* ---- インクは 2 本だけ ------------------------------------------------------
+    **`--acc`（藍）は押せるところと書けるところにしか使わない。**
+    **`--curtain`（幕のえんじ）は識別にしか使わない** ── 左の帯・年の耳・評価の印。
+    以前は `--acc` の青 1 色が「押せる」「現在地」「見出しの強調」をすべて担っており、
+    **青が出てくるたびに押せるかどうかを確かめることになっていた。**             */
+ --acc:#26467d;--curtain:#7a1e2b;--curtain-w:#f6efe9;
+ /* 封蝋。**約束の印にだけ使う**（お気に入り＝件数も条件も付けずに必ず出す約束） */
+ --wax:#8f2b3a;--wax-hi:#c2596a;
+ /* ---- 値の色。**意匠の色とは別に持つ** ── ◎ と × は好みの値であって飾りではない */
+ --pos:#1e6b48;--neg:#8a3b3b;--good:#1e6b48;--warn:#8a6d2a;
+ --s1:#2f5590;--s2:#b1592c;--s3:#1d7d59;--s4:#8a6d2a;
+ --oth:#c2c9bd;--unk:#dde2d9;--deemp:#c2c9bd;
+ /* ---- 明朝。**端末にあるものだけを並べる** ── 外部からフォントを読み込むと、
+    端末内のデータだけで作るという守り（企画書 5 章）が 1 か所破れる。
+    **どれも無い端末ではゴシックに落ちる**ので、帳面らしさは書体ではなく
+    余白・罫・日付・印で作り、書体は乗ったときに効く上乗せとして扱う。          */
+ --mincho:"Hiragino Mincho ProN","Yu Mincho",YuMincho,"Noto Serif JP",serif;
+ /* 判子の刷り。明るい地では紙に染むように重ね、暗い地では抜くように重ねる */
+ --stamp-blend:multiply;--stamp-ink:.88}
+@media (prefers-color-scheme:dark){:root:where(:not([data-theme=light])){color-scheme:dark;
+ --plane:#101210;--surf:#191c18;--ink:#eef0ec;--ink2:#b6bbb2;--mute:#7f857c;
+ --grid:#2c302b;--base:#3c423b;--ring:rgba(238,240,236,.12);
+ /* **暗い地では幕のえんじが沈むので明るい側へ振る。**紙も白くしない（暗い部屋で読めない） */
+ --acc:#86aae8;--curtain:#b03a4a;--curtain-w:#fbf1ef;
+ --wax:#b8404f;--wax-hi:#e0808c;
+ --pos:#3f9a6f;--neg:#c86a6a;--good:#3f9a6f;--warn:#c9a552;
+ --s1:#6f9ad8;--s2:#d07a4a;--s3:#3f9a6f;--s4:#c9a552;
+ --oth:#4e534d;--unk:#2c302b;--deemp:#4e534d;
+ --stamp-blend:screen;--stamp-ink:.94}}
+:root[data-theme=dark]{color-scheme:dark;
+ --plane:#101210;--surf:#191c18;--ink:#eef0ec;--ink2:#b6bbb2;--mute:#7f857c;
+ --grid:#2c302b;--base:#3c423b;--ring:rgba(238,240,236,.12);
+ /* **暗い地では幕のえんじが沈むので明るい側へ振る。**紙も白くしない（暗い部屋で読めない） */
+ --acc:#86aae8;--curtain:#b03a4a;--curtain-w:#fbf1ef;
+ --wax:#b8404f;--wax-hi:#e0808c;
+ --pos:#3f9a6f;--neg:#c86a6a;--good:#3f9a6f;--warn:#c9a552;
+ --s1:#6f9ad8;--s2:#d07a4a;--s3:#3f9a6f;--s4:#c9a552;
+ --oth:#4e534d;--unk:#2c302b;--deemp:#4e534d;
+ --stamp-blend:screen;--stamp-ink:.94}
+body{margin:0;padding:32px 20px 72px;background:var(--plane);color:var(--ink);
+ font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.7;font-size:15px}
+.wrap{max-width:960px;margin:0 auto}
+h1{font-size:24px;margin:0 0 4px;letter-spacing:.01em}
+.sub{color:var(--ink2);margin:0 0 28px;font-size:14px}
+.card{background:var(--surf);border:1px solid var(--ring);border-radius:14px;
+ padding:24px 26px 20px;margin:0 0 20px}
+h2{font-size:17px;margin:0 0 10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.badge{font-size:11px;font-weight:600;padding:2px 9px;border-radius:99px;border:1px solid var(--ring);color:var(--ink2)}
+.badge.ok{color:var(--good);border-color:#0ca30c55}
+.badge.part{color:var(--ink2)}
+.badge.no{color:#d03b3b;border-color:#d03b3b55}
+.lead{margin:0 0 14px;color:var(--ink2);font-size:14px}
+.agg{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:0 0 18px}
+@media(max-width:720px){.agg{grid-template-columns:1fr}}
+.ins2{background:var(--plane);border:1px solid var(--ring);border-radius:12px;
+ padding:14px 16px;font-size:13px;line-height:1.7;color:var(--ink2)}
+.segbar{display:flex;height:12px;border-radius:6px;overflow:hidden;margin:10px 0 8px;background:var(--grid)}
+.tbl.mini{margin:8px 0 4px;font-size:12.5px}
+.tbl.mini th,.tbl.mini td{padding:3px 8px}
+.funnel{list-style:none;margin:0 0 16px;padding:0;display:flex;flex-wrap:wrap;gap:8px}
+.funnel li{display:flex;gap:8px;align-items:baseline;border:1px solid var(--ring);
+ border-radius:99px;padding:3px 12px;font-size:12.5px;color:var(--ink2)}
+.funnel li.last{border-color:var(--acc);color:var(--ink)}
+.funnel .v{font-weight:600;color:var(--ink)}
+.nm .rl{font-size:11.5px;color:var(--mute);margin-left:8px}
+.vn .main{font-size:12.5px;color:var(--ink2)}
+.vn .out{font-size:12.5px;color:var(--acc);margin-left:10px;font-weight:600}
+.vn .note2{font-size:11.5px;color:var(--mute);margin-top:2px}
+.up{font-size:12px;color:var(--ink2);margin-top:6px;line-height:1.5}
+.up.dim{color:var(--mute)}
+.note{margin:12px 0 0;color:var(--mute);font-size:12.5px;line-height:1.65}
+b{color:var(--ink);font-weight:600}
+.legend{display:flex;gap:16px;flex-wrap:wrap;margin:0 0 12px;font-size:12.5px;color:var(--ink2)}
+.lg{display:inline-flex;align-items:center;gap:6px}
+.sw{width:11px;height:11px;border-radius:3px;display:inline-block}
+.sw.s-in{background:var(--deemp)}.sw.s-ac{background:var(--acc)}
+.sw.s1{background:var(--s1)}.sw.s2{background:var(--s2)}.sw.s3{background:var(--s3)}
+.sw.s4{background:var(--s4)}.sw.s-oth{background:var(--oth)}
+.sw.s-unk{background:var(--unk);border:1px solid var(--base)}
+/* tabs */
+.tabs{display:flex;gap:4px;flex-wrap:wrap;margin:0 0 14px;border-bottom:1px solid var(--grid);padding-bottom:8px}
+.tab{font:inherit;font-size:13px;color:var(--ink2);background:none;border:1px solid transparent;
+ border-radius:8px;padding:4px 10px;cursor:pointer}
+.tab:hover{background:var(--grid)}
+.tab.is-on{background:var(--acc);color:#fff;border-color:transparent}
+.tab-n{font-size:11px;opacity:.7;margin-left:5px;font-variant-numeric:tabular-nums}
+.pane{display:none}.pane.is-on{display:block}
+/* table */
+.tbl{width:100%;border-collapse:collapse;font-size:13.5px}
+.tbl th{text-align:left;font-weight:600;font-size:11.5px;color:var(--mute);
+ border-bottom:1px solid var(--grid);padding:0 8px 6px;white-space:nowrap}
+.tbl td{padding:5px 8px;border-bottom:1px solid var(--grid)}
+.tbl tr:last-child td{border-bottom:none}
+.num{text-align:right;font-variant-numeric:tabular-nums;width:76px;white-space:nowrap}
+.num.strong{color:var(--acc);font-weight:600}
+.dim{color:var(--mute)}
+.nm{white-space:nowrap}
+.th-bar{width:44%}
+.bar{padding-right:14px!important}
+.seg{display:inline-block;height:11px;vertical-align:middle}
+.s-in{background:var(--deemp);border-radius:3px 0 0 3px}
+.s-ac{background:var(--acc);border-radius:0 4px 4px 0;margin-left:2px}
+.bar .s-in:only-child{border-radius:3px}
+.bar .s-ac:only-child{border-radius:3px;margin-left:0}
+.mk{font-size:10.5px;padding:1px 6px;border-radius:99px;margin-left:8px;white-space:nowrap;
+ border:1px solid var(--ring);color:var(--mute)}
+.mk-y{color:var(--ink2)}
+.mk-n{color:var(--acc);border-color:var(--acc)}
+/* year chart */
+.chart{display:flex;gap:14px;align-items:flex-end;height:210px;
+ border-bottom:1px solid var(--base);padding:0 4px;margin:0 0 6px}
+.col{flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:100%;min-width:0}
+.stack{display:flex;flex-direction:column-reverse;border-radius:4px 4px 0 0;overflow:hidden;
+ min-height:6px;gap:2px}
+.stack.thin{opacity:.5}
+.sg{min-height:3px;display:flex;align-items:center;justify-content:center;position:relative}
+.sg.s1{background:var(--s1)}.sg.s2{background:var(--s2)}.sg.s3{background:var(--s3)}
+.sg.s4{background:var(--s4)}.sg.s-oth{background:var(--oth)}
+.sg.s-unk{background:repeating-linear-gradient(45deg,var(--unk),var(--unk) 4px,var(--surf) 4px,var(--surf) 5px)}
+.dl{font-size:10.5px;color:#fff;font-variant-numeric:tabular-nums;text-shadow:0 0 3px rgba(0,0,0,.35)}
+.dl.dim,.dl.ink{color:var(--ink2);text-shadow:none}
+.xl{font-size:12px;color:var(--ink2);text-align:center;padding-top:6px;white-space:nowrap}
+.xn{display:block;font-size:10.5px;color:var(--mute);font-variant-numeric:tabular-nums}
+.warn{display:block;font-size:9.5px;color:var(--mute);line-height:1.25}
+details{margin-top:12px}
+summary{font-size:12.5px;color:var(--acc);cursor:pointer}
+/* timeline */
+.ctrl{display:flex;align-items:center;gap:12px;margin:0 0 12px}
+#q{font:inherit;font-size:13px;padding:6px 11px;border:1px solid var(--base);border-radius:8px;
+ background:var(--plane);color:var(--ink);width:min(420px,100%)}
+.qn{font-size:12px;color:var(--mute);font-variant-numeric:tabular-nums}
+.rails{border-top:1px solid var(--grid)}
+.strip{display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--grid);padding:3px 0}
+.yl{font-size:11.5px;color:var(--ink2);width:52px;flex:none;font-variant-numeric:tabular-nums;line-height:1.25}
+.yl .xn{display:inline;margin-left:5px;color:var(--mute)}
+.rail{position:relative;flex:1;height:22px}
+.dot{position:absolute;top:7px;width:8px;height:8px;margin-left:-4px;border-radius:50%;
+ background:var(--acc);box-shadow:0 0 0 2px var(--surf)}
+.dot.mult{width:10px;height:10px;top:6px;margin-left:-5px;background:transparent;
+ border:2.5px solid var(--acc)}
+.dot.off{background:var(--deemp);border-color:var(--deemp);opacity:.45}
+.months{display:flex;margin-left:62px;font-size:10px;color:var(--mute)}
+.months span{flex:1;text-align:left}
+/* fail panels */
+
+.why{margin:0 0 10px;padding:9px 12px;border-left:3px solid var(--acc);background:var(--plane);
+ border-radius:0 8px 8px 0;font-size:13px;color:var(--ink2)}
+h3{font-size:13.5px;margin:18px 0 8px;color:var(--ink)}
+.sub-block{margin-top:22px;padding-top:4px;border-top:1px solid var(--grid)}
+.rl{font-size:10.5px;color:var(--mute);margin-left:7px}
+.rate{font-size:12px;color:var(--acc);text-align:center;font-variant-numeric:tabular-nums;
+ padding-bottom:3px;font-weight:600}
+.sg.s-acc{background:var(--acc)}
+.sw.s-acc{background:var(--acc)}
+.vd{width:38px;text-align:center;font-size:15px}
+.wd{width:150px}
+.chip{font-size:10.5px;border:1px solid var(--acc);color:var(--acc);border-radius:99px;
+ padding:1px 7px;margin-right:4px;white-space:nowrap}
+.tx{color:var(--ink2);font-size:12.5px}
+
+.th-dv{width:38%}
+.dv,.db{position:relative;height:16px;padding:0 8px!important}
+.axis{position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--base)}
+/* **これからの公演との差の棒は、藍と朱で分ける。** 以前は `--pos`（緑）と `--neg`（赤）
+   だったが、2 つの理由で替えた（2026-08-25）。
+   ⑴ **色覚の型によってはほぼ同じ色に見える。** 検証にかけると deutan での隔たりが
+      ΔE 2.3 しかなく、下限（8）を大きく下回っていた。藍と朱は ΔE 18.4 で全項目 PASS。
+   ⑵ **緑と赤は良し悪しの色である。** この図が出しているのは偏りであって優劣ではない
+      ── 「自分のほうが多い」は良いことでも悪いことでもない。 */
+.dvbar{position:absolute;top:3px;height:10px}
+.dvbar.pos{background:var(--s1);border-radius:0 4px 4px 0}
+.dvbar.neg{background:var(--s2);border-radius:4px 0 0 4px}
+.sw.s-pos{background:var(--s1)}.sw.s-neg{background:var(--s2)}
+.up{color:var(--s1);font-weight:600}
+.dn{color:var(--s2);font-weight:600}
+.dbline{position:absolute;top:7px;height:2px;background:var(--base)}
+.dot-a,.dot-b{position:absolute;top:3px;width:10px;height:10px;margin-left:-5px;border-radius:50%;
+ box-shadow:0 0 0 2px var(--surf)}
+.dot-a{background:var(--deemp)}
+.dot-b{background:var(--acc)}
+.sw.sw-a{background:var(--deemp);border-radius:50%}
+.sw.sw-b{background:var(--acc);border-radius:50%}
+.ins{width:34%;font-size:13px}
+.mean{width:33%;font-size:12.5px;color:var(--ink2)}
+/* **行動の欄は、押し口が 1 行で収まる幅を必ず取る。** `width` は自動割付では
+   ただの希望なので、中身が折り返せる限りブラウザは列を詰める ── 実際に
+   「1 日公演は発表された時点で知らせる」が 1 文字ずつ 5 行に割れていた。
+   **下限を px で置き、押し口は折り返さないと決める** ── 行動の文は「押すと何が
+   起きるか」の一文なので、途中で切れると押す前に読めない。添える公演名（`.up`）は
+   折り返してよい。 */
+.act{width:33%;min-width:210px}
+.act .btn{white-space:nowrap}
+.btn{font:inherit;font-size:12px;padding:5px 11px;border-radius:8px;cursor:pointer;
+ background:var(--acc);color:#fff;border:none;text-align:left}
+.btn.on{background:var(--good)}
+.card.fail .big{display:flex;align-items:baseline;gap:10px;margin:6px 0 2px}
+.hero{font-size:46px;font-weight:600;letter-spacing:-.02em;color:#d03b3b;line-height:1.1}
+.hu{font-size:13px;color:var(--ink2)}

@@ -110,6 +110,7 @@ import charts as CH
 import chronicle as CR2
 import compare as CP
 import digest as DG
+import render_lookback as RL                                        # noqa: E402
 import storyline as SL
 import trace as TR                                                    # noqa: E402
 import venues as VE                                                  # noqa: E402
@@ -6814,6 +6815,18 @@ def page_records() -> str:
     **「座組の大きさ」（`compare.py` の `panel`）と「まだ行っていない劇場」
     （`venues.py` の `open_panel`）は呼ばなくなったが、中身は削除していない。**
     """
+    body = _records_body()
+    return layout("眺める", "/records", body,
+                  RR.STYLE + SL.STYLE + RL.STYLE, active_sub="/records")
+
+
+def _records_body() -> str:
+    """`page_records()` の中身だけを組み立てる(#000009、`_recommend_body`と同じ形)。
+
+    **`lstyle`の出し分けは無くした。** フルページ版は「比べる」が組めなかったときに
+    `RL.STYLE`を省いていたが、GitHub Pages側は`RL.STYLE`を常時読み込み済み
+    （style.cssに結合済み）なので、この関数はHTML片だけを返せばよい。
+    """
     d = _records_base()
     seen_ws, rated_rows = d["seen"], d["rated_rows"]
     sl_html = SL.panel(rated_rows) if rated_rows else ""
@@ -6821,20 +6834,17 @@ def page_records() -> str:
         # **記録が 0 件のときに、内部の失敗文言を画面に出さない。** 以前はここで
         # 例外が起き、`max() iterable argument is empty` がそのまま出ていた。
         # **空は失敗ではないので、空として書く。**
-        cmp_panels, lstyle = "", ""
+        cmp_panels = ""
     else:
         try:
-            import render_lookback as RL
             # **足した 2 軸は「まだ比較できない軸」の前に入れる。** できないことの説明は、
             # できることを全部並べたあとに来ないと読めない
             # **比べる相手が何かは、いちばん先に置く**（どの図にも同じように掛かる）
-            cmp_panels, lstyle = RL.body(_compare_panel(rated_rows),
-                                         head=_pop_note(rated_rows)), RL.STYLE
+            cmp_panels = RL.body(_compare_panel(rated_rows), head=_pop_note(rated_rows))
         except Exception:                                           # noqa: BLE001
             cmp_panels = ('<p class="empty">これからの公演との比較は、いまの記録では組めませんでした。'
                           '観た公演が増えると出るようになります。</p>')
-            lstyle = ""
-    body = f"""<h1>眺める ── 図で見る</h1>
+    return f"""<h1>眺める ── 図で見る</h1>
 {_records_lede(d)}
 {_records_empty_note() if not seen_ws else ""}
 <div class="figs">
@@ -6851,8 +6861,6 @@ def page_records() -> str:
 <p class="lede">観た記録を、これから観られる公演の一覧と並べて、差の大きいところを出しています。</p>
 {'' if d["seen"] else _compare_empty_note()}
 <div class="figs">{cmp_panels}</div>"""
-    return layout("眺める", "/records", body,
-                  RR.STYLE + SL.STYLE + lstyle, active_sub="/records")
 
 
 def page_chronicle() -> str:
@@ -6864,6 +6872,13 @@ def page_chronicle() -> str:
     だったものを、専用の画面がほしいという指示に沿ってそこから外し、ここへ移しただけ
     である。中身（事実の抽出・図・LLM の読み）は変えていない。
     """
+    body = _chronicle_body()
+    return layout("観劇史年表", "/records/chronicle", body,
+                  RR.STYLE + CR2.STYLE, active_sub="/records/chronicle")
+
+
+def _chronicle_body() -> str:
+    """`page_chronicle()` の中身だけを組み立てる(#000009、`_recommend_body`と同じ形)。"""
     d = _records_base()
     main = CR2.panel(d["seen"], d["rated_rows"])
     if not main:
@@ -6872,11 +6887,9 @@ def page_chronicle() -> str:
         main = ('<section class="card"><p class="empty">まだ年表を描けるだけの'
                 '記録がありません。上演日の分かる記録が増えると出るようになります。'
                 '</p></section>')
-    body = f"""<h1>観劇史年表 ── 何が始まった年か</h1>
+    return f"""<h1>観劇史年表 ── 何が始まった年か</h1>
 {_records_lede(d)}
 {main}"""
-    return layout("観劇史年表", "/records/chronicle", body,
-                  RR.STYLE + CR2.STYLE, active_sub="/records/chronicle")
 
 
 def _pop_note(rated_rows: list) -> str:
@@ -6913,6 +6926,13 @@ def page_trace(name: str = "", via: str = "") -> str:
     ある ── 数え方を画面の側に書くと、`_records_base` に 1 か所だけ置いた数え方が
     画面ごとに分かれる。
     """
+    body = _trace_body(name, via)
+    return layout("たどる", "/records/trace", body,
+                  RR.STYLE + TR.STYLE, active_sub="/records/trace")
+
+
+def _trace_body(name: str = "", via: str = "") -> str:
+    """`page_trace()` の中身だけを組み立てる(#000009、`_recommend_body`と同じ形)。"""
     d = _records_base()
     try:
         main = TR.body(d["rated_rows"], name, via)
@@ -6920,13 +6940,11 @@ def page_trace(name: str = "", via: str = "") -> str:
         # **落ちても「記録を見返す」の他の画面は生きている。** ここだけ空にする
         main = ('<section class="card"><p class="empty">この線は、いまの記録では'
                 '組めませんでした。観た公演が増えると出るようになります。</p></section>')
-    body = f"""<h1>たどる ── 1 つの名前をたどる</h1>
+    return f"""<h1>たどる ── 1 つの名前をたどる</h1>
 {_records_lede(d)}
 <p class="lede">名前を 1 つ選ぶと、<b>その名前をいつ知って、そこから何につながったか</b>が出ます。
 何本観たか・どの劇場が多いかは「眺める」で見られます。</p>
 {main}"""
-    return layout("たどる", "/records/trace", body,
-                  RR.STYLE + TR.STYLE, active_sub="/records/trace")
 
 
 
@@ -7055,6 +7073,13 @@ def page_works(year: str = "", page: int = 1, want: str = "", group: str = "work
     では 1 行が複数回を畳んでいて、どの回のことかが決まらないので出さない。
     詳しくは `_visit_note_html` を見る。
     """
+    body = _works_body(year, page, want, group)
+    return layout("日記帳", "/records/works", body, RR.STYLE,
+                  active_sub="/records/works")
+
+
+def _works_body(year: str = "", page: int = 1, want: str = "", group: str = "work") -> str:
+    """`page_works()` の中身だけを組み立てる(#000009、`_recommend_body`と同じ形)。"""
     d = _records_base()
     ws = d["ws"]
     # **あらすじ・出演者を、記録ごとに引けるようにしておく**（起案者の指示・2026-08-26
@@ -7163,7 +7188,7 @@ def page_works(year: str = "", page: int = 1, want: str = "", group: str = "work
              "という意味です）。同じ作品を複数回観ていれば、行った日の数だけ並びます。"
              "評価・感想はどの行にも同じ値が付きます（回ごとには記録していません）。"
              "<b>「この回のメモ」だけは行ごとに別々に持てます</b>（推薦には使いません）。")
-    body = f"""<h1>日記帳 ── 1 公演ごとの記録</h1>
+    return f"""<h1>日記帳 ── 1 公演ごとの記録</h1>
 {_records_lede(d)}
 <p class="lede">1 件ごとに、日付・評価・感想が出ます。<b>感想は各行の「感想を書く」から
 書けます</b>（欄から離れたときに保存されます）。<b>題名・上演日・劇場は、各行の
@@ -7177,8 +7202,6 @@ def page_works(year: str = "", page: int = 1, want: str = "", group: str = "work
 <p class="mnow">{lead}{now}ほかの年は、上のインデックスで切り替えられます。</p>
 {"".join(row(w) for w in show)}</div>
 {foot}"""
-    return layout("日記帳", "/records/works", body, RR.STYLE,
-                  active_sub="/records/works")
 
 
 # ---------------------------------------------------------------- 探す

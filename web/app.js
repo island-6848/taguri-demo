@@ -30,11 +30,11 @@ const SCREENS = {
   "/records/chronicle": "chronicle", "/records/works": "works",
   "/search": "search", "/settings": "settings",
 };
-// Phase 0-2: おすすめ・興味あり・開幕リマインド・お気に入り・カレンダー・
-// 評価一覧・未評価・感想・購入済み公演を実装。残りは「準備中」を出す
-// (段階移行のためのプレースホルダ)。
+// Phase 0-3: おすすめ・興味あり・開幕リマインド・お気に入り・カレンダー・
+// 評価一覧・未評価・感想・購入済み公演・眺める・たどる・観劇史年表・日記帳を
+// 実装。残りは「準備中」を出す(段階移行のためのプレースホルダ)。
 const IMPLEMENTED = new Set(["recommend", "interest", "reminder", "favourites", "calendar",
-  "rate", "unrated", "notes", "tickets"]);
+  "rate", "unrated", "notes", "tickets", "records", "trace", "chronicle", "works"]);
 
 // --- NAV(app.py の NAV表と同じデータ) -------------------------------------
 const NAV = [[null, "おすすめ", "ticket", [["/recommend", "今週のおすすめ", "ticket"], ["/recommend/reminder", "開幕リマインド", "inbox"], ["/recommend/interest", "興味あり", "flag"], ["/recommend/favourites", "お気に入り", "star"]]], ["/calendar", "公演カレンダー", "calendar", []], ["/tickets", "購入済み公演", "ticket", []], [null, "観た公演の評価", "check", [["/rate", "評価一覧", "check"], ["/rate/unrated", "未評価", "clock"], ["/rate/notes", "感想", "pencil"]]], ["/register", "公演情報の登録", "inbox", []], [null, "記録を見返す", "chart", [["/records", "眺める", "chart"], ["/records/trace", "たどる", "user"], ["/records/chronicle", "観劇史年表", "calendar"], ["/records/works", "日記帳", "book"]]], ["/search", "探す", "search", []], ["/settings", "設定", "gear", []]];
@@ -334,12 +334,48 @@ function startLoading(el) {
 // 判別しないので、安全側に倒して丸ごと作り直す(`post()`から呼ぶ)。
 const fragmentCache = new Map();
 
+// **d3を遅延読み込みする。** 220KB超あり、使うのは「眺める」(storyline)
+// だけなので、常に読み込まずに使うときだけ取りに行く。自前で同梱した
+// vendor/d3.v7.min.js を使う(Render経由の配信には頼らない、Phase 0参照)。
+// 一度読み込んだら使い回す。
+let d3LoadPromise = null;
+function ensureD3() {
+  if (!d3LoadPromise) {
+    d3LoadPromise = new Promise(resolve => {
+      const s = document.createElement("script");
+      s.src = "/taguri-demo/vendor/d3.v7.min.js";
+      s.onload = resolve;
+      s.onerror = resolve;
+      document.body.appendChild(s);
+    });
+  }
+  return d3LoadPromise;
+}
+
+// **storyline.py(観る世界の乗り換わりを見る図)が埋め込むJS。**
+// `<script>`タグとして本文(body_html)の中に来るが、innerHTML経由では
+// 実行されない ── ここに一度だけ移植し、`#sl-data`(材料のJSON)が
+// 画面に来るたびに明示的に実行し直す(新しいデータで描き直すため、
+// chronicle.pyのJS(委譲登録・1回きりでよい)とは事情が違う)。
+const SL_SCRIPT = "\n(function () {\n  const host = document.getElementById(\"sl\");\n  const src = document.getElementById(\"sl-data\");\n  if (!host || !src || typeof d3 === \"undefined\") return;\n  const D = JSON.parse(src.textContent);\n  // **左に名前のための余白を取る。**（正解の図も左端が名前の欄になっている）\n  // padT は世界の名札を置くぶん取る（名札は先頭の線の 16px 上に出る）\n  const left = 84, padR = 18, padT = 30, axisH = 26;\n  const h = D.height + padT + axisH + 26;\n  // **横幅は「束が入り切る幅」で決める。** 入れ物に合わせて縮めると、束が詰まった\n  // ところで水平区間が消える（入れ物は横に流れる）\n  const w = Math.max(D.width, host.clientWidth || 900);\n  // 位置は Python 側で決めてある（日付の順は保ち、詰まるところだけ広げてある）\n  let tr = d3.zoomIdentity;\n  const px = dt => D.X[dt];\n  const xz = dt => tr.applyX(px(dt));\n  const cls = d => \"w\" + Math.min(d.loc, 2);\n\n  // **viewBox で縮めない。** 縮めると幅を広げた意味が消える（入れ物を横に流す）\n  const root = d3.select(host).append(\"svg\")\n    .attr(\"width\", w).attr(\"height\", h);\n  const svg = root.append(\"g\").attr(\"transform\", \"translate(0,\" + padT + \")\");\n  const clip = svg.append(\"clipPath\").attr(\"id\", \"sl-clip\");\n  clip.append(\"rect\").attr(\"x\", 0).attr(\"y\", -padT)\n    .attr(\"width\", w).attr(\"height\", h);\n  const plot = svg.append(\"g\").attr(\"clip-path\", \"url(#sl-clip)\");\n  const gLb = plot.append(\"g\");        // 場所の名前（面の縁に沿う）\n  const gSes = plot.append(\"g\");       // 束\n  const gLine = plot.append(\"g\");      // 線\n  // **名前は切り取る層の外に置く。** 中に置くと、左の余白へはみ出した名前が切れる\n  const gName = svg.append(\"g\");\n  const gDot = plot.append(\"g\");       // 束に入っている印（線の上）\n  const gSt = plot.append(\"g\");        // 作品名\n  const ax = svg.append(\"g\").attr(\"class\", \"ax\")\n    .attr(\"transform\", \"translate(0,\" + (D.height + 12) + \")\");\n  const tip = d3.select(\"body\").append(\"div\").attr(\"class\", \"sl-tip\")\n    .style(\"display\", \"none\");\n\n  // **線は水平に走り、高さが変わるところだけ S 字で移る。**（起案者の指摘・2026-08-25）\n  //\n  // 前は各場面の点を `curveMonotoneX` で結んでいたので、**点ごとに高さが違うぶん\n  // 線がずっと斜めに流れていた。** storyline の図は地下鉄の路線図に近く、\n  // **平らに走っている時間があって、移るときだけ短く上下する。** 平らな区間があるから\n  // 「この人とこの人がしばらく一緒だった」が読めるので、これは見た目の好みではない。\n  //\n  // 移り変わりは横に TW px だけ使い、両端で水平に接する 3 次ベジエにする\n  // （制御点を同じ高さに置くと、接続部が折れずに滑らかにつながる）。\n  const TW = 26;\n  function pathOf(l) {\n    const P = l.pts.map(p => ({ x: xz(p.date), y: p.y }));\n    if (!P.length) return \"\";\n    // 束に居るあいだは少し前後へ伸ばす（一緒に居た幅を見せる）\n    let d = \"M\" + (P[0].x - D.runPx).toFixed(1) + \",\" + P[0].y.toFixed(1);\n    for (let i = 0; i < P.length; i++) {\n      const cur = P[i], nxt = P[i + 1];\n      d += \"L\" + (cur.x + D.runPx).toFixed(1) + \",\" + cur.y.toFixed(1);\n      if (!nxt) break;\n      const gap = (nxt.x - D.runPx) - (cur.x + D.runPx);\n      const tw = Math.max(Math.min(TW, gap), 0);\n      const x0 = (nxt.x - D.runPx) - tw;\n      if (x0 > cur.x + D.runPx) d += \"L\" + x0.toFixed(1) + \",\" + cur.y.toFixed(1);\n      if (Math.abs(nxt.y - cur.y) < 0.4) {\n        d += \"L\" + (nxt.x - D.runPx).toFixed(1) + \",\" + nxt.y.toFixed(1);\n      } else {\n        const xm = (x0 + (nxt.x - D.runPx)) / 2;\n        d += \"C\" + xm.toFixed(1) + \",\" + cur.y.toFixed(1)\n           + \" \" + xm.toFixed(1) + \",\" + nxt.y.toFixed(1)\n           + \" \" + (nxt.x - D.runPx).toFixed(1) + \",\" + nxt.y.toFixed(1);\n      }\n    }\n    return d;\n  }\n  const lines = D.lines.map(l => ({ ...l }));\n\n  // 選んだ人の集合。**`draw()` より前に置く** ── `draw()` の最後で `paint()` を\n  // 呼ぶので、後ろに置くと初回の描画で ReferenceError になる（`const` は\n  // 初期化より前に触れない）。`node --check` は構文しか見ないので通ってしまう\n  // 選んだ人の集合。**空なら全部ふつうに描く**\n  const chosen = new Set();\n  function paint() {\n    const on = chosen.size > 0;\n    gLine.selectAll(\"path\")\n      .classed(\"hot\", d => on && chosen.has(d.name))\n      .classed(\"dim\", d => on && !chosen.has(d.name));\n    gName.selectAll(\"text\").classed(\"dim\", d => on && !chosen.has(d.l ? d.l.name : d.name));\n    gDot.selectAll(\"circle\").classed(\"dim\", d => on && !chosen.has(d.name));\n  }\n  function pick(name) {\n    if (chosen.has(name)) chosen.delete(name); else chosen.add(name);\n    paint();\n  }\n  // **背景を押すと解除する**（参照実装と同じ）\n  root.on(\"click\", () => { chosen.clear(); paint(); });\n\n  function draw() {\n    // **年の変わり目だけを置く。** 位置を歪めてあるので普通の軸は引けない\n    ax.selectAll(\"text\").data(D.ticks).join(\"text\")\n      .attr(\"x\", t => tr.applyX(t.x)).attr(\"y\", 14).attr(\"text-anchor\", \"start\")\n      .text(t => t.label);\n    ax.selectAll(\"line\").data(D.ticks).join(\"line\")\n      .attr(\"x1\", t => tr.applyX(t.x)).attr(\"x2\", t => tr.applyX(t.x))\n      .attr(\"y1\", -D.height - 8).attr(\"y2\", 4);\n    // **世界の名札は水平に、その世界の左上へ置く。**\n    // 背景の帯はやめたので（起案者の指示・2026-08-25）、どの線がどの世界かを示すのは\n    // **線の色とこの名札だけ**である。帯は線の色と並びで既に読めることを塗り直して\n    // いただけで、しかも論文で背景が指すのは「場所」なので、\n    // **「この人たちはこの場所に居た」と誤読される**ほうが大きかった\n    gLb.selectAll(\"text\").data(D.worlds).join(\"text\")\n      .attr(\"class\", d => \"loclb \" + cls(d))\n      .attr(\"x\", d => tr.applyX(px(d.lx)) - D.runPx)\n      .attr(\"y\", d => d.ly - 16)\n      .text(d => (d.loc + 1) + \" つめの世界 ── \" + d.n_people + \" 人\");\n    // **束はやわらかい影にする。** 正解の図は角のある枠ではなく、束の後ろにぼんやりした\n    // 影を敷いている ── 枠で囲うと「囲われた集合」に見え、線が主役でなくなる\n    gSes.selectAll(\"ellipse\").data(D.sessions).join(\"ellipse\")\n      .attr(\"class\", \"ses\")\n      .attr(\"cx\", s => xz(s.date))\n      .attr(\"cy\", s => (s.y0 + s.y1) / 2)\n      .attr(\"rx\", D.runPx + 11)\n      .attr(\"ry\", s => (s.y1 - s.y0) / 2 + 11)\n      .on(\"mouseenter\", (ev, s) => tip.style(\"display\", \"block\")\n        .text(s.date + \"｜\" + s.titles.join(\" / \") + \"｜この日に一緒だった \" + s.n + \" 名\"))\n      .on(\"mousemove\", ev => tip.style(\"left\", (ev.clientX + 14) + \"px\")\n        .style(\"top\", (ev.clientY + 14) + \"px\"))\n      .on(\"mouseleave\", () => tip.style(\"display\", \"none\"))\n      .on(\"click\", (ev, s) => {\n        const a = s.anchors[0];\n        location.href = D.rowHref + \"&w=\" + encodeURIComponent(a) + \"#w-\" + a;\n      });\n    // **名札は近すぎるものを出さない。** 前半は束が詰まっているので、全部出すと\n    // 名前が重なって読めない（束に触れれば作品名は出る）\n    let lastX = -1e9;\n    const shown = D.sessions.slice().sort((a, b) => px(a.date) - px(b.date))\n      .filter(sx => { const X = tr.applyX(px(sx.date));\n                      if (X - lastX < 64) return false; lastX = X; return true; });\n    gSt.selectAll(\"text\").data(shown).join(\"text\")\n      .attr(\"class\", \"st\").attr(\"text-anchor\", \"middle\")\n      .attr(\"x\", s => xz(s.date))\n      .attr(\"y\", s => s.y0 - 15)\n      .text(s => s.titles[0].length > 13 ? s.titles[0].slice(0, 12) + \"…\" : s.titles[0]);\n    gLine.selectAll(\"path\").data(lines).join(\"path\")\n      .attr(\"class\", d => \"ln \" + cls(d))\n      .attr(\"id\", (d, i) => \"slln\" + i)\n      .attr(\"d\", d => pathOf(d))\n      .on(\"mouseenter\", (ev, l) => tip.style(\"display\", \"block\")\n        .text(l.name + \"｜\" + l.n + \" 回、\" + l.from + \" から \" + l.to + \" まで\"))\n      .on(\"mousemove\", ev => tip.style(\"left\", (ev.clientX + 14) + \"px\")\n        .style(\"top\", (ev.clientY + 14) + \"px\"))\n      .on(\"mouseleave\", () => tip.style(\"display\", \"none\"))\n      // **押して選ぶ**（参照実装の toggleCharacterHighlight）。触れるだけの強調は\n      // **2 人を見比べられない** ── 手を離すと消えるので、追いたい線を並べて見られない。\n      // 複数選べて、背景を押すと解除する（参照実装と同じ約束）\n      .on(\"click\", (ev, l) => { ev.stopPropagation(); pick(l.name); });\n    // **束に入った日に ● を打つ。**（起案者の指示・2026-08-25）\n    //\n    // 線が水平に走る形にしたので、**どこが「一緒に出た日」でどこが「通り過ぎただけ」\n    // なのかが線の形からは分からない** ── 束の影は重なった塊にしか見えず、1 人ずつでは\n    // 読めない。**点を打つと、その人がその日に出ていたことが 1 本ずつ分かる。**\n    //\n    // 通っているだけの点には打たない（`on` が偽）。打つと、居なかった日にも\n    // 居たように見える\n    const dots = [];\n    lines.forEach(l => l.pts.forEach(p => {\n      if (p.on) dots.push({ name: l.name, loc: l.loc, date: p.date, y: p.y });\n    }));\n    gDot.selectAll(\"circle\").data(dots).join(\"circle\")\n      .attr(\"class\", d => \"dot \" + cls(d))\n      .attr(\"cx\", d => xz(d.date)).attr(\"cy\", d => d.y).attr(\"r\", 3.1);\n\n    // **名前は線の始まりの左に置く。**（起案者の指摘・2026-08-25）\n    //\n    // 線に沿わせる（textPath）のをやめた ── 正解の図は**左端に名前を縦に並べ、線の\n    // 高さに合わせている。** 線に沿わせると、線が動くたびに名前の位置も動いて追えず、\n    // **どの高さが誰なのかを最初に掴めない。** 線が平らに走る形にしたので、始まりの\n    // 高さがそのままその人の「持ち場」になる。\n    // **名前がぶつかるので、ぶつかる分だけ左へ段をずらす。**\n    // 束の中は 8.4px 間隔で文字は 10.5px あるため、同じ束から始まる線の名前は必ず重なる。\n    // **高さは動かさない** ── 名前の高さがその人の線の高さであることが、この図で\n    // 名前と線を結びつける唯一の手がかりだからである。段は 3 つまでで、\n    // それでも収まらない分は出さない（線に触れれば名前は出る）\n    const COLW = 46, VMIN = 11.5, COLS = 3;\n    const taken = [[], [], []];\n    const labelled = [];\n    lines.slice().sort((a, b) => a.pts[0].y - b.pts[0].y).forEach(l => {\n      const y = l.pts[0].y, x0 = xz(l.pts[0].date) - D.runPx - 5;\n      for (let c = 0; c < COLS; c++) {\n        if (taken[c].every(v => Math.abs(v - y) >= VMIN)) {\n          taken[c].push(y);\n          // **画面の外へは出さない。** 段をずらしても左端より外なら、そこで留める\n          labelled.push({ l: l, x: Math.max(x0 - c * COLW, 38), y: y });\n          break;\n        }\n      }\n    });\n    gName.selectAll(\"text\").data(labelled, d => d.l.name).join(\"text\")\n      .attr(\"class\", d => \"nm \" + cls(d.l))\n      .attr(\"text-anchor\", \"end\").attr(\"dy\", 3.5)\n      .attr(\"x\", d => d.x).attr(\"y\", d => d.y)\n      .text(d => d.l.name.length > 9 ? d.l.name.slice(0, 8) + \"…\" : d.l.name);\n    if (typeof paint === \"function\") paint();   // 拡大縮小で描き直しても選択を保つ\n  }\n  draw();\n\n  root.call(d3.zoom().scaleExtent([1, 30])\n    .translateExtent([[left, 0], [w - padR, h]])\n    .extent([[left, 0], [w - padR, h]])\n    // **位置はもう決まっているので、拡大縮小は写した px の上に掛ける**\n    .on(\"zoom\", ev => { tr = ev.transform; draw(); }));\n})();\n";
+function runInlineScript(code) {
+  const s = document.createElement("script");
+  s.textContent = code;
+  document.body.appendChild(s);
+  s.remove();
+}
+function fixupStoryline(root) {
+  if (!root.querySelector("#sl-data")) return;
+  ensureD3().then(() => runInlineScript(SL_SCRIPT));
+}
+
 function renderScreen(el, activePath, d) {
   el.innerHTML = d.body_html;
   renderCrumbBar(activePath, d.title || "");
   updateNavActive(activePath);
   fixupSynClamp(el);
   fixupMonthScroll(el);
+  fixupStoryline(el);
   el.querySelectorAll('img[src^="/img/"]').forEach(img => {
     img.src = API_BASE + img.getAttribute("src");
   });
@@ -2359,4 +2395,21 @@ document.addEventListener("click", ev => {
 document.addEventListener("change", ev => {
   const sel = ev.target.closest && ev.target.closest(".tkd-work");
   if (sel) tkdSync(sel.closest("dialog"));
+});
+
+// === ported: tools/taguri/chronicle.py の JS(年表の「読みを作り直す」ボタン) ===
+// **1回だけグローバルに登録する。** chronicle.pyのpanel()はこのJSを呼び出しの
+// たびに<script>タグごと埋め込むが、innerHTML経由では実行されない(想定どおり
+// 無害)。document.addEventListenerでの委譲なので、ここで1回登録しておけば
+// /records/chronicleを何度開いても効く。
+
+document.addEventListener("click", ev => {
+  const b = ev.target.closest && ev.target.closest("[data-chron]");
+  if (!b) return;
+  const box = b.closest(".chfoot");
+  box.querySelector(".said").textContent = "書いています…（1 分ほどかかります）";
+  post("/api/chronicle", {}, box, null).then(r => {
+    box.querySelector(".said").textContent =
+      r ? (r.line || "作りました") + "　画面を読み込み直すと出ます" : "";
+  });
 });
