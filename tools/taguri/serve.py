@@ -421,96 +421,115 @@ class Handler(http.server.BaseHTTPRequestHandler):
             # エラー内容が画面にもサーバのログにも残らなかった。ここで受け止めて、
             # 既存の書き込みAPIと同じ形のJSONエラーにする。
             try:
+                # **同じ画面への応答を、書き込みが起きるまで覚えておく（起案者の指摘
+                # ──「各ロード画面が長すぎる。なぜ」）。** Renderの無料枠はCPUが弱く、
+                # `_load()`・`measure_nets`・storyline/相関図の計算だけで数秒〜10秒台
+                # かかる。**書き込みが無いのに毎回作り直すと、同じ人が2度開く・複数の
+                # 閲覧者が同じ画面を開くだけで、同じ計算を何度もやり直すことになる。**
+                # 書き込み(do_POST)が起きたら丸ごと消す(`srv.screen_cache.clear()`、
+                # クライアント側の`fragmentCache`と同じ「安全側に倒す」判断)。
+                # 「今週のおすすめ」「開幕リマインド」は都道府県の絞り込み(`srv.prefs`、
+                # URLに乗らない起動中の状態)にも結果が依存するので、キーにそれも含める
+                # ── 含めないと、絞り込みを変えたのに前の絞り込みの答えを返しかねない。
                 if path == "/api/screen/recommend":
-                    # **GitHub Pages向けフラグメントAPI（#000009）。** `page_recommend()`
-                    # と同じ中身(`APP._recommend_body`)を呼び、`layout()`で包む代わりに
-                    # JSONで返す。都道府県の絞り込み・提示記録（`RECORD`）・既読印
-                    # （`mark_viewed`）は、今までどおりのHTML版と同じ扱いにする
-                    # ── フラグメント版だけ指標が薄くなることを避ける。
                     q = urllib.parse.parse_qs(query)
                     if "f" in q:
                         srv.prefs = [p for p in q.get("pref", []) if p][:47]
+                        srv.screen_cache.clear()
+                    cache_key = "recommend|" + ",".join(srv.prefs)
+                    cached = srv.screen_cache.get(cache_key)
+                    if cached is not None:
+                        self._json(200, cached)
+                        return
                     body = APP._recommend_body(srv.prefs)
                     srv.mark_viewed("recommend_pref" if srv.prefs else "recommend")
-                    self._json(200, {"ok": True, "title": "今週のおすすめ", "body_html": body})
-                    return
-                if path == "/api/screen/interest":
-                    html = APP._interest_body(_month(query), _page(query))
-                    self._json(200, {"ok": True, "title": "興味あり", "body_html": html})
+                    result = {"ok": True, "title": "今週のおすすめ", "body_html": body}
+                    srv.screen_cache[cache_key] = result
+                    self._json(200, result)
                     return
                 if path == "/api/screen/reminder":
                     q = urllib.parse.parse_qs(query)
                     if "f" in q:
                         srv.prefs = [p for p in q.get("pref", []) if p][:47]
+                        srv.screen_cache.clear()
                     w = q.get("w", ["this"])[0]
-                    html = APP._reminder_body(srv.prefs, w if w in ("this", "next") else "this")
-                    self._json(200, {"ok": True, "title": "開幕リマインド", "body_html": html})
+                    w = w if w in ("this", "next") else "this"
+                    cache_key = "reminder|" + w + "|" + ",".join(srv.prefs)
+                    cached = srv.screen_cache.get(cache_key)
+                    if cached is not None:
+                        self._json(200, cached)
+                        return
+                    html = APP._reminder_body(srv.prefs, w)
+                    result = {"ok": True, "title": "開幕リマインド", "body_html": html}
+                    srv.screen_cache[cache_key] = result
+                    self._json(200, result)
                     return
-                if path == "/api/screen/favourites":
+                if path == "/api/screen/register":
+                    # **登録画面は覚えない。** 取り込みの進み具合(imp.running等)が
+                    # 変わるたびに違う見た目になるはずの画面なので、キャッシュすると
+                    # 進捗が固まって見える
+                    html = APP._register_body(srv.imp, srv.imported)
+                    self._json(200, {"ok": True, "title": "公演情報の登録", "body_html": html})
+                    return
+                # 以降は、都道府県の絞り込みのような起動中の状態を持たない画面。
+                # パス+検索条件だけで結果が決まる
+                cache_key = path + "?" + query
+                cached = srv.screen_cache.get(cache_key)
+                if cached is not None:
+                    self._json(200, cached)
+                    return
+                if path == "/api/screen/interest":
+                    html = APP._interest_body(_month(query), _page(query))
+                    result = {"ok": True, "title": "興味あり", "body_html": html}
+                elif path == "/api/screen/favourites":
                     html = APP._favourites_body(_month(query), _page(query))
                     srv.mark_viewed("favourite")
-                    self._json(200, {"ok": True, "title": "お気に入り", "body_html": html})
-                    return
-                if path == "/api/screen/calendar":
+                    result = {"ok": True, "title": "お気に入り", "body_html": html}
+                elif path == "/api/screen/calendar":
                     q = urllib.parse.parse_qs(query)
                     kinds = ({k for k in q.get("kind", []) if k in SC.KIND_KEYS} or None)
                     prefs = ({p for p in q.get("pref", []) if p in RR.PREFS} or None)
                     html = APP._calendar_body(kinds, prefs)
-                    self._json(200, {"ok": True, "title": "公演カレンダー", "body_html": html})
-                    return
-                if path == "/api/screen/rate":
+                    result = {"ok": True, "title": "公演カレンダー", "body_html": html}
+                elif path == "/api/screen/rate":
                     q = urllib.parse.parse_qs(query)
                     v = q.get("v", [""])[0]
                     y = q.get("y", [""])[0]
                     venues = q.get("venue", [])
                     html = APP._rate_body(v, y, venues, _page(query))
-                    self._json(200, {"ok": True, "title": "評価一覧", "body_html": html})
-                    return
-                if path == "/api/screen/unrated":
+                    result = {"ok": True, "title": "評価一覧", "body_html": html}
+                elif path == "/api/screen/unrated":
                     html = APP._unrated_body()
-                    self._json(200, {"ok": True, "title": "未評価", "body_html": html})
-                    return
-                if path == "/api/screen/notes":
+                    result = {"ok": True, "title": "未評価", "body_html": html}
+                elif path == "/api/screen/notes":
                     html = APP._notes_body()
-                    self._json(200, {"ok": True, "title": "感想", "body_html": html})
-                    return
-                if path == "/api/screen/tickets":
+                    result = {"ok": True, "title": "感想", "body_html": html}
+                elif path == "/api/screen/tickets":
                     html = APP._tickets_body()
-                    self._json(200, {"ok": True, "title": "購入済み公演", "body_html": html})
-                    return
-                if path == "/api/screen/records":
+                    result = {"ok": True, "title": "購入済み公演", "body_html": html}
+                elif path == "/api/screen/records":
                     html = APP._records_body()
-                    self._json(200, {"ok": True, "title": "眺める", "body_html": html})
-                    return
-                if path == "/api/screen/trace":
+                    result = {"ok": True, "title": "眺める", "body_html": html}
+                elif path == "/api/screen/trace":
                     q = urllib.parse.parse_qs(query)
                     html = APP._trace_body(q.get("name", [""])[0], q.get("via", [""])[0])
-                    self._json(200, {"ok": True, "title": "たどる", "body_html": html})
-                    return
-                if path == "/api/screen/chronicle":
+                    result = {"ok": True, "title": "たどる", "body_html": html}
+                elif path == "/api/screen/chronicle":
                     html = APP._chronicle_body()
-                    self._json(200, {"ok": True, "title": "観劇史年表", "body_html": html})
-                    return
-                if path == "/api/screen/works":
+                    result = {"ok": True, "title": "観劇史年表", "body_html": html}
+                elif path == "/api/screen/works":
                     q = urllib.parse.parse_qs(query)
                     y = q.get("y", [""])[0]
                     g = q.get("g", ["work"])[0]
                     html = APP._works_body(y, _page(query), q.get("w", [""])[0], g)
-                    self._json(200, {"ok": True, "title": "日記帳", "body_html": html})
-                    return
-                if path == "/api/screen/start":
+                    result = {"ok": True, "title": "日記帳", "body_html": html}
+                elif path == "/api/screen/start":
                     html = APP._start_body()
-                    self._json(200, {"ok": True, "title": "はじめる", "body_html": html})
-                    return
-                if path == "/api/screen/settings":
+                    result = {"ok": True, "title": "はじめる", "body_html": html}
+                elif path == "/api/screen/settings":
                     html = APP._settings_body()
-                    self._json(200, {"ok": True, "title": "設定", "body_html": html})
-                    return
-                if path == "/api/screen/register":
-                    html = APP._register_body(srv.imp, srv.imported)
-                    self._json(200, {"ok": True, "title": "公演情報の登録", "body_html": html})
-                    return
-                if path == "/api/screen/search":
+                    result = {"ok": True, "title": "設定", "body_html": html}
+                elif path == "/api/screen/search":
                     q = urllib.parse.parse_qs(query)
                     kw = q.get("q", [""])[0]
                     ym = q.get("ym", [""])[0]
@@ -518,9 +537,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     web = q.get("web", [""])[0] == "1"
                     cal = q.get("cal", [""])[0]
                     html = APP._search_body(kw, ym, web, "up" if cal == "up" else "past")
-                    self._json(200, {"ok": True, "title": "探す", "body_html": html})
+                    result = {"ok": True, "title": "探す", "body_html": html}
+                else:
+                    self._json(404, {"ok": False, "error": "unknown screen"})
                     return
-                self._json(404, {"ok": False, "error": "unknown screen"})
+                srv.screen_cache[cache_key] = result
+                self._json(200, result)
                 return
             except Exception as e:                                      # noqa: BLE001
                 self._json(500, {"ok": False, "error": str(e)})
@@ -788,7 +810,16 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self._json(404, {"error": "unknown op"})
             return
         try:
-            self._json(200, fn(body))
+            result = fn(body)
+            if op != "/api/hand_theme_refresh":
+                # **書き込みが起きたら、覚えていた画面をすべて消す（#000009）。**
+                # どの画面の材料が変わったかはここでは判別しないので、安全側に倒す
+                # （クライアント側の`fragmentCache`と同じ判断）。`hand_theme_refresh`
+                # だけは例外 ── LLMの読み取りが終わるまで数秒おきに呼ばれる読み取り
+                # 専用の再描画で、これで消すと呼ぶたびに他の画面のキャッシュまで
+                # 巻き添えで消えてしまう
+                srv.screen_cache.clear()
+            self._json(200, result)
         except ValueError as e:
             self._json(400, {"error": str(e)})
 
@@ -854,6 +885,12 @@ class Server(http.server.ThreadingHTTPServer):
         self.lock = threading.Lock()
         self.n = {"react": 0, "rate": 0, "note": 0, "fav": 0, "missed": 0,
                   "add": 0, "import": 0, "fix": 0}
+        # **`/api/screen/*`の応答を、書き込みが起きるまで覚えておく（#000009）。**
+        # do_GETの`/api/screen/`ハンドラが参照・更新し、do_POSTの書き込みAPIが
+        # 成功するたびに丸ごと消す。dictのget/set/clearはCPythonではGIL下で
+        # 原子的なので、`ThreadingHTTPServer`から複数スレッドで触っても壊れない
+        # ── ここに専用の錠は要らない。
+        self.screen_cache: dict = {}
         # **最初の接続が来るまでは落ちない**（`_watchdog`）
         self.started = time.monotonic()
         self.opened = False
