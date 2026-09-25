@@ -60,6 +60,14 @@ ROOT = Path(__file__).resolve().parents[2]
 DB_PATH = ROOT / "data" / "auth" / "auth.db"
 PEPPER_PATH = Path.home() / ".config" / "taguri" / "auth_pepper.txt"
 
+# **ローカル/EC2（`run.py`）専用の固定利用者ID（利用者ごとのデータ分離・E3）。**
+# この経路は今までどおり1人しか使わないので、認証の概念そのものが要らない ──
+# `Server.demo_mode=False`のときは常にこの定数を使い、Cookie・復旧コードには
+# 一切触れない。公開デモ（`demo_mode=True`）側の新規訪問者はここには絶対に
+# 割り当てない（`derive_user_id`はscryptの16進64桁を返すので、この短い固定
+# 文字列と衝突することはない）。
+LOCAL_USER_ID = "local"
+
 RECOVERY_CODE_BYTES = 16          # 128bit
 SESSION_TTL_SEC = 60 * 60 * 24 * 365   # 日常鍵は長期間有効（毎回打ち直させない）
 LINK_TTL_SEC = 10 * 60            # 連携コードは10分で失効

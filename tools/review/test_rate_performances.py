@@ -419,7 +419,9 @@ def check_weights(check) -> None:
     """
     sys.path.insert(0, str(ROOT / "tools" / "taguri"))
     import app as APP  # noqa: E402
+    import auth as AU  # noqa: E402
     import render_recommend as RR  # noqa: E402
+    uid = AU.LOCAL_USER_ID
     try:
         raw, _ = RR.load()
     except Exception as e:                                          # noqa: BLE001
@@ -440,7 +442,7 @@ def check_weights(check) -> None:
 
     # --- 既定では 1 件も動かさない
     mid = {k: "mid" for k, _l, _r in APP.ROLE_GROUPS}
-    e = APP._apply_weights(base, mid)
+    e = APP._apply_weights(uid, base, mid)
     check("既定では並びも点も変えない",
           [c["stage_id"] for c in e["ranked"]] == [c["stage_id"] for c in base["ranked"]],
           f"推薦 {len(e['ranked'])} 件がそのまま")
@@ -452,7 +454,7 @@ def check_weights(check) -> None:
 
     # --- 「効かせない」はスコアと理由の両方から消す
     off = dict(mid, craft="off", stage="off", produce="off", other="off")
-    e = APP._apply_weights(base, off)
+    e = APP._apply_weights(uid, base, off)
     left = {APP.group_of(x[1]) for c in e["ranked"] for x in c["why_b"]}
     check("効かせないは理由からも消える",
           not (left & {"craft", "stage", "produce", "other"}),
@@ -470,7 +472,7 @@ def check_weights(check) -> None:
     if not cast:
         check("出演の一致がある候補で試せる", False, "推薦の候補に出演の一致が無い")
     else:
-        e = APP._apply_weights(base, dict(mid, cast="max"))
+        e = APP._apply_weights(uid, base, dict(mid, cast="max"))
         was = {c["stage_id"]: c["strong"] for c in base["ranked"]}
         now = {c["stage_id"]: c["strong"] for c in e["ranked"]}
         sid = str(cast[0]["stage_id"])
@@ -478,7 +480,7 @@ def check_weights(check) -> None:
               now.get(sid, 0) > was.get(sid, 0),
               f"効く一致 {was.get(sid)} → {now.get(sid)}（並びの 1 段目に届く）")
         # 逆に、弱めた側は下がる
-        e2 = APP._apply_weights(base, dict(mid, craft="weak"))
+        e2 = APP._apply_weights(uid, base, dict(mid, craft="weak"))
         # **効く一致に数えられている一致で試す**（出演、または履歴 2 本以上）── 履歴 1 本の
         # 裏方は元から数に入っていないので、弱めても下がらず、検査にならない
         cw = next((c for c in base["ranked"]
@@ -493,21 +495,21 @@ def check_weights(check) -> None:
                   f"効く一致 {a} → {b2}")
 
     # --- 保存する口
-    APP.save_weight("produce", "off")
-    check("段階を保存して読み出せる", APP.read_weights()["produce"] == "off")
+    APP.save_weight(uid, "produce", "off")
+    check("段階を保存して読み出せる", APP.read_weights(uid)["produce"] == "off")
     bad = 0
     for g, st in (("xx", "off"), ("cast", "9999"), ("cast", ""), ("", "mid")):
         try:
-            APP.save_weight(g, st)
+            APP.save_weight(uid, g, st)
         except ValueError:
             bad += 1
     check("列挙した組み合わせ以外は断る", bad == 4, "任意の数値も受けない")
-    APP.save_weight("produce", "mid")
+    APP.save_weight(uid, "produce", "mid")
 
     # --- 画面に倍率の数字を出さない
-    d = APP._apply_weights(base, dict(mid, cast="max"))
+    d = APP._apply_weights(uid, base, dict(mid, cast="max"))
     d["w_counts"] = APP._weight_counts(raw)
-    form = APP.weight_form(d)
+    form = APP.weight_form(uid, d)
     check("画面に倍率を出さない",
           "倍" not in form and "4.0" not in form and "0.5" not in form,
           "出すのは言葉と一致件数だけ")
@@ -535,15 +537,15 @@ def check_weights(check) -> None:
           f"凡例 1 つ・行ごとの札 {form.count(chr(39)+chr(39)) or form.count('class=\"wv\"')} 個")
 
     # --- まとめて書くときは、全部確かめてから書く
-    keep = APP.read_weights()
+    keep = APP.read_weights(uid)
     try:
-        APP.save_weights({"cast": "off", "xxx": "mid"})
+        APP.save_weights(uid, {"cast": "off", "xxx": "mid"})
         check("1 つでも間違っていたら何も書かない", False, "断らずに書いてしまった")
     except ValueError:
-        check("1 つでも間違っていたら何も書かない", APP.read_weights() == keep,
+        check("1 つでも間違っていたら何も書かない", APP.read_weights(uid) == keep,
               "半分だけ効いた設定を作らない")
     try:
-        APP.save_weights({})
+        APP.save_weights(uid, {})
         check("空の確定は断る", False, "断らなかった")
     except ValueError:
         check("空の確定は断る", True)
@@ -562,11 +564,14 @@ def check_nav(check) -> None:
     """
     sys.path.insert(0, str(ROOT / "tools" / "taguri"))
     import app as APP  # noqa: E402
+    import auth as AU  # noqa: E402
+    uid = AU.LOCAL_USER_ID
 
-    pages = {"/recommend": APP.page_recommend, "/recommend/interest": APP.page_interest,
-             "/recommend/favourites": APP.page_favourites, "/rate": APP.page_rate,
-             "/records": APP.page_records, "/register": APP.page_register,
-             "/export": APP.page_export}
+    pages = {"/recommend": lambda: APP.page_recommend(uid),
+             "/recommend/interest": lambda: APP.page_interest(uid),
+             "/recommend/favourites": lambda: APP.page_favourites(uid),
+             "/rate": lambda: APP.page_rate(uid),
+             "/records": APP.page_records, "/register": APP.page_register}
     flow = [p for p, _l, _i, _d in APP.SUB_RECOMMEND]
     miss, wrong = [], []
     for name, fn in pages.items():
@@ -607,6 +612,7 @@ def check_perf_dates(check) -> None:
     """
     sys.path.insert(0, str(ROOT / "tools" / "taguri"))
     import app as APP  # noqa: E402
+    import auth as AU  # noqa: E402
     import render_recommend as RR  # noqa: E402
 
     def shows(*ds):
@@ -636,7 +642,7 @@ def check_perf_dates(check) -> None:
           == "上演日が分かりません")
 
     # --- 実データの画面で、すべての行に年が出ているか
-    _d, wait = APP._load()
+    _d, wait = APP._load(AU.LOCAL_USER_ID)
     if not wait:
         check("評価待ちの行に年が出ている", True, "評価待ちが空（確かめる行が無い）")
         return

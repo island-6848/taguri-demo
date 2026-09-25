@@ -2774,11 +2774,34 @@ def _rebucket(d: dict) -> dict:
 # 開いた瞬間から効く。** 内訳には 1 件ごとの寄与と役職と履歴の本数が入っている。
 WEIGHT_SCHEMA = """
 CREATE TABLE IF NOT EXISTS rank_weight (
-    grp        TEXT PRIMARY KEY,
+    user_id    TEXT NOT NULL,
+    grp        TEXT NOT NULL,
     step       TEXT NOT NULL,
-    updated_at TEXT NOT NULL
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY (user_id, grp)
 );
 """
+
+
+def _migrate_rank_weight(con: sqlite3.Connection) -> None:
+    """`rank_weight`の主キーを`grp`から`(user_id, grp)`へ広げる(利用者ごとの
+    データ分離・E3)。**既存の行(これまでは起案者本人だけが書いていた)は
+    すべて`auth.LOCAL_USER_ID`として持ち越す** ──
+    `rate_performances._widen_attendance_key`と同じ手法。
+    """
+    have = con.execute(
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name='rank_weight'").fetchone()
+    if not have or "PRIMARY KEY (user_id, grp)" in have["sql"]:
+        return
+    import auth as AU
+    old = [dict(r) for r in con.execute("SELECT * FROM rank_weight")]
+    with con:
+        con.execute("DROP TABLE rank_weight")
+        con.executescript(WEIGHT_SCHEMA)
+        con.executemany(
+            "INSERT INTO rank_weight (user_id, grp, step, updated_at)"
+            " VALUES (:user_id, :grp, :step, :updated_at)",
+            [{**r, "user_id": AU.LOCAL_USER_ID} for r in old])
 
 # 5 段階。**真ん中が既定で、実測どおりの効き方である。**
 WEIGHT_STEPS = (("off", "効かせない", 0.0),
@@ -2834,20 +2857,22 @@ def group_of(role: str) -> str:
     return _ROLE_TO_GROUP.get((role or "").strip(), "other")
 
 
-def read_weights() -> dict:
+def read_weights(user_id: str) -> dict:
     """いまの効かせ方。**保存が無ければ全部「ふつう」である。**"""
     import rate_performances as R
     con = R.connect()
     try:
+        _migrate_rank_weight(con)
         con.executescript(WEIGHT_SCHEMA)
-        rows = {r["grp"]: r["step"] for r in con.execute("SELECT grp, step FROM rank_weight")}
+        rows = {r["grp"]: r["step"] for r in con.execute(
+            "SELECT grp, step FROM rank_weight WHERE user_id=?", (user_id,))}
     finally:
         con.close()
     return {k: (rows.get(k) if rows.get(k) in STEP_MUL else DEFAULT_STEP)
             for k, _l, _r in ROLE_GROUPS}
 
 
-def save_weight(grp: str, step: str) -> dict:
+def save_weight(user_id: str, grp: str, step: str) -> dict:
     """効かせ方を 1 つ書く。**受け付ける組み合わせは列挙したものだけ**（守り 4）。"""
     import rate_performances as R
     if grp not in GROUP_LABEL:
@@ -2856,18 +2881,20 @@ def save_weight(grp: str, step: str) -> dict:
         raise ValueError("その段階は無い")
     con = R.connect()
     try:
+        _migrate_rank_weight(con)
         con.executescript(WEIGHT_SCHEMA)
         with con:
-            con.execute("INSERT INTO rank_weight (grp, step, updated_at) VALUES (?, ?, ?)"
-                        " ON CONFLICT(grp) DO UPDATE SET step=excluded.step,"
+            con.execute("INSERT INTO rank_weight (user_id, grp, step, updated_at)"
+                        " VALUES (?, ?, ?, ?)"
+                        " ON CONFLICT(user_id, grp) DO UPDATE SET step=excluded.step,"
                         " updated_at=excluded.updated_at",
-                        (grp, step, R.now()))
+                        (user_id, grp, step, R.now()))
     finally:
         con.close()
     return {"ok": True, "grp": grp, "label": GROUP_LABEL[grp], "step": step}
 
 
-def save_weights(w: dict) -> dict:
+def save_weights(user_id: str, w: dict) -> dict:
     """効かせ方を**まとめて 1 回で書く。**
 
     起案者の指示（2026-08-24）──「推薦の効かせ方を変えたら、確定ボタンを押して再度推薦を
@@ -2891,13 +2918,14 @@ def save_weights(w: dict) -> dict:
         raise ValueError("効かせ方が 1 つも来ていない")
     con = R.connect()
     try:
+        _migrate_rank_weight(con)
         con.executescript(WEIGHT_SCHEMA)
         with con:
             con.executemany(
-                "INSERT INTO rank_weight (grp, step, updated_at) VALUES (?, ?, ?)"
-                " ON CONFLICT(grp) DO UPDATE SET step=excluded.step,"
+                "INSERT INTO rank_weight (user_id, grp, step, updated_at) VALUES (?, ?, ?, ?)"
+                " ON CONFLICT(user_id, grp) DO UPDATE SET step=excluded.step,"
                 " updated_at=excluded.updated_at",
-                [(k, v, R.now()) for k, v in rows])
+                [(user_id, k, v, R.now()) for k, v in rows])
     finally:
         con.close()
     return {"ok": True, "n": len(rows)}
@@ -2915,16 +2943,37 @@ def save_weights(w: dict) -> dict:
 # 項目ごとに JSON で決める。**
 SETTING_SCHEMA = """
 CREATE TABLE IF NOT EXISTS app_setting (
-    key        TEXT PRIMARY KEY,
+    user_id    TEXT NOT NULL,
+    key        TEXT NOT NULL,
     value      TEXT NOT NULL,
-    updated_at TEXT NOT NULL
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY (user_id, key)
 );
 """
+
+
+def _migrate_app_setting(con: sqlite3.Connection) -> None:
+    """`app_setting`の主キーを`key`から`(user_id, key)`へ広げる（`_migrate_rank_weight`
+    と同じ理由・同じ手法。E3）。既存の行はすべて`auth.LOCAL_USER_ID`として持ち越す。"""
+    have = con.execute(
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name='app_setting'").fetchone()
+    if not have or "PRIMARY KEY (user_id, key)" in have["sql"]:
+        return
+    import auth as AU
+    old = [dict(r) for r in con.execute("SELECT * FROM app_setting")]
+    with con:
+        con.execute("DROP TABLE app_setting")
+        con.executescript(SETTING_SCHEMA)
+        con.executemany(
+            "INSERT INTO app_setting (user_id, key, value, updated_at)"
+            " VALUES (:user_id, :key, :value, :updated_at)",
+            [{**r, "user_id": AU.LOCAL_USER_ID} for r in old])
+
 
 PREF_SETTING_KEY = "pref_filter"
 
 
-def read_pref_setting() -> list[str]:
+def read_pref_setting(user_id: str) -> list[str]:
     """既定の都道府県の絞り込み。**保存が無ければ全国**（絞り込みなし）。
 
     **これまでは「保存はしない・既定は全国」だった**（`/recommend` の以前の注記）。
@@ -2934,9 +2983,10 @@ def read_pref_setting() -> list[str]:
     import rate_performances as R
     con = R.connect()
     try:
+        _migrate_app_setting(con)
         con.executescript(SETTING_SCHEMA)
-        row = con.execute("SELECT value FROM app_setting WHERE key=?",
-                          (PREF_SETTING_KEY,)).fetchone()
+        row = con.execute("SELECT value FROM app_setting WHERE user_id=? AND key=?",
+                          (user_id, PREF_SETTING_KEY)).fetchone()
     finally:
         con.close()
     if not row:
@@ -2948,7 +2998,7 @@ def read_pref_setting() -> list[str]:
     return [p for p in RR.PREFS if p in set(v)] if isinstance(v, list) else []
 
 
-def save_pref_setting(prefs) -> dict:
+def save_pref_setting(user_id: str, prefs) -> dict:
     """既定の都道府県の絞り込みを 1 回で書く。**受け付けるのは列挙した都道府県だけ**
     （守り 4 ── 任意の文字列を書き込める口を作らない）。"""
     import rate_performances as R
@@ -2957,13 +3007,14 @@ def save_pref_setting(prefs) -> dict:
     keep = [p for p in RR.PREFS if p in set(prefs)]
     con = R.connect()
     try:
+        _migrate_app_setting(con)
         con.executescript(SETTING_SCHEMA)
         with con:
             con.execute(
-                "INSERT INTO app_setting (key, value, updated_at) VALUES (?, ?, ?)"
-                " ON CONFLICT(key) DO UPDATE SET value=excluded.value,"
+                "INSERT INTO app_setting (user_id, key, value, updated_at) VALUES (?, ?, ?, ?)"
+                " ON CONFLICT(user_id, key) DO UPDATE SET value=excluded.value,"
                 " updated_at=excluded.updated_at",
-                (PREF_SETTING_KEY, json.dumps(keep, ensure_ascii=False), R.now()))
+                (user_id, PREF_SETTING_KEY, json.dumps(keep, ensure_ascii=False), R.now()))
     finally:
         con.close()
     return {"ok": True, "prefs": keep}
@@ -2980,7 +3031,7 @@ def _card_h2(name: str, text: str, extra: str = "") -> str:
     return f'<summary>{IC.ico(name, 18)}<span>{text}</span>{extra}</summary>'
 
 
-def page_settings() -> str:
+def page_settings(user_id: str) -> str:
     """**一括の設定画面。**（起案者の指示・2026-08-26）
 
     ## 決めごとの下に、たまにしか押さない道具を並べる
@@ -3019,14 +3070,14 @@ def page_settings() -> str:
     **畳んでいても、いま何を選んでいるかは見出しの右のバッジで読める**（`_card_h2`）ので、
     開かなくても現在の設定は分かる。
     """
-    body = _settings_body()
+    body = _settings_body(user_id)
     return layout("設定", "/settings", body, RR.STYLE)
 
 
-def _settings_body() -> str:
+def _settings_body(user_id: str) -> str:
     """`page_settings()` の中身だけを組み立てる(#000009、`_recommend_body`と同じ形)。"""
-    prefs = read_pref_setting()
-    d, _wait = _load()
+    prefs = read_pref_setting(user_id)
+    d, _wait = _load(user_id)
     counts = RR.pref_counts(d)
     rcounts = PM.region_counts(d)
     keep = set(prefs)
@@ -3066,7 +3117,7 @@ def _p90(vals) -> float:
     return v[int(len(v) * 0.9)] if v else 1.0
 
 
-def _apply_weights(d: dict, w: dict | None = None) -> dict:
+def _apply_weights(user_id: str, d: dict, w: dict | None = None) -> dict:
     """効かせ方を当てて、点と理由と並びを作り直す。
 
     **保存済みの内訳だけで足りる。** `why_b` は 1 件ごとに（寄与, 役職, 名前, 履歴の本数）を
@@ -3078,7 +3129,7 @@ def _apply_weights(d: dict, w: dict | None = None) -> dict:
     **推薦の一覧から落ちる。** 落ちた件数は画面に書く。
     """
     import recommend2 as RC2
-    w = w or read_weights()
+    w = w or read_weights(user_id)
     if all(v == DEFAULT_STEP for v in w.values()):
         return dict(d, weights=w, w_dropped=0)
 
@@ -3137,7 +3188,7 @@ def _apply_weights(d: dict, w: dict | None = None) -> dict:
     return e
 
 
-def weight_form(d: dict) -> str:
+def weight_form(user_id: str, d: dict) -> str:
     """効かせ方を変える口。**左から右へつまんで動かし、確定を押すと読み込み直す。**
 
     起案者の指示（2026-08-24）──「確定ボタンを押して再度推薦を読み込む形にしてほしい。
@@ -3167,7 +3218,7 @@ def weight_form(d: dict) -> str:
     なので当事者の画面には置かない）。**「ふつう」が既定であることを書く** ── 何もしなければ
     実測どおりに効くことが伝わらないと、触らないと損をしているように読める。
     """
-    w = d.get("weights") or read_weights()
+    w = d.get("weights") or read_weights(user_id)
     cnt = d.get("w_counts") or {}
     keys = [k for k, _l, _m in WEIGHT_STEPS]
     labels = {k: l for k, l, _m in WEIGHT_STEPS}
@@ -3283,10 +3334,16 @@ def _overlay_themes(d: dict) -> dict:
     return d
 
 
-def _load() -> tuple[dict, list]:
-    """画面が読む材料。**保存された一覧に、いまの反応と効かせ方を当て直して返す。**"""
+def _load(user_id: str) -> tuple[dict, list]:
+    """画面が読む材料。**保存された一覧に、いまの反応と効かせ方を当て直して返す。**
+
+    **`user_id`は今のところ効かせ方（`read_weights`）にしか使わない。**
+    `_rebucket`が読む反応・チケット（`reaction`/`ticket`）はまだ利用者ごとに
+    分かれていない（#000009フェーズ2で対応）── 段階的な移行のため、この関数
+    自体はすでに`user_id`を受け取る形にしておく。
+    """
     raw, _ = RR.load()
-    d = _apply_weights(_rebucket(raw), read_weights())
+    d = _apply_weights(user_id, _rebucket(raw), read_weights(user_id))
     d["w_counts"] = _weight_counts(raw)
     return _overlay_themes(d), waiting_rows()
 
@@ -3401,7 +3458,7 @@ def run_status_html() -> str:
 
 
 # ---------------------------------------------------------------- はじめる（初期状態）
-def is_fresh() -> bool:
+def is_fresh(user_id: str) -> bool:
     """**まだ 1 件もお出しできない状態か。**
 
     お出しできるもの（推薦・お気に入りの新着）が無く、観た記録も無いときは、
@@ -3413,7 +3470,7 @@ def is_fresh() -> bool:
     までは新着が 0 件のままなので、次にやることを出し続ける必要がある。
     """
     try:
-        d, _ = _load()
+        d, _ = _load(user_id)
     except Exception:                                               # noqa: BLE001
         return True
     if d.get("recommend") or d.get("favourites") or d.get("tracking"):
@@ -3421,11 +3478,11 @@ def is_fresh() -> bool:
     return not _works()
 
 
-def _start_state() -> dict:
+def _start_state(user_id: str) -> dict:
     """はじめる画面が出す 3 つの段の、いまの状態。"""
     dec = RC.load_declared()
     try:
-        d, _ = _load()
+        d, _ = _load(user_id)
         n_cand = int(d.get("n_cand") or 0)
     except Exception:                                               # noqa: BLE001
         n_cand = 0
@@ -3447,7 +3504,7 @@ def _step_card(n: int, title: str, done: bool, lead: str, inner: str = "") -> st
             f'<p class="lead">{lead}</p>{inner}</div>')
 
 
-def page_start() -> str:
+def page_start(user_id: str) -> str:
     """**何も入っていないときの、最初の画面。**
 
     起案者の指示（2026-08-24）──「その人の好みに合わせたツールなので、そこもまっさらな
@@ -3462,13 +3519,13 @@ def page_start() -> str:
     無条件でお出しする（企画書 4 章）。**観た記録が要るのは 3 段目の推薦のほうだけ**
     なので、「記録が無いと何も始まらない」と読ませてはいけない。
     """
-    body = _start_body()
+    body = _start_body(user_id)
     return layout("はじめる", "/recommend", body, RR.STYLE + START_CSS)
 
 
-def _start_body() -> str:
+def _start_body(user_id: str) -> str:
     """`page_start()` の中身だけを組み立てる(#000009、`_recommend_body`と同じ形)。"""
-    s = _start_state()
+    s = _start_state(user_id)
     kinds = "".join(f'<option value="{E(k)}">{E(k)}</option>' for k in RC.KINDS)
     tags = "".join(
         f'<span class="tag" data-kind="{E(k)}" data-name="{E(n)}">{E(k)}「{E(n)}」'
@@ -3536,7 +3593,7 @@ code.cmd{display:inline-block;margin:10px 0 4px;padding:8px 14px;border-radius:8
 RECORD = None
 
 
-def page_recommend(prefs=()) -> str:
+def page_recommend(user_id: str, prefs=()) -> str:
     """答えの画面。**都道府県で絞り込める**（起案者の指示・2026-08-24）。
 
     ## 絞り込んだ一覧も「出した」と記録する
@@ -3550,11 +3607,11 @@ def page_recommend(prefs=()) -> str:
     **全国の上位 15 件とは別の束にする** ── 週次の指標（提示 → 興味あり → 購入 → ◎ の連鎖）の
     分母は「その週に全国で出した 15 件」なので、絞り込んで出したぶんを混ぜると分母が動く。
     """
-    body = _recommend_body(prefs)
+    body = _recommend_body(user_id, prefs)
     return layout("今週のおすすめ", "/recommend", body, RR.STYLE, active_sub="/recommend")
 
 
-def _recommend_body(prefs=()) -> str:
+def _recommend_body(user_id: str, prefs=()) -> str:
     """`page_recommend()` の中身だけを組み立てる。
 
     **#000009(GitHub Pages移行)で切り出した。** `layout()`で包む前のHTML片を
@@ -3563,7 +3620,7 @@ def _recommend_body(prefs=()) -> str:
     両方がこれを呼ぶ。**この関数自体はどちらから呼ばれたかを知らない** ──
     出し分けは呼び出し側(`layout()`で包むか、JSONに詰めるか)だけの違いにする。
     """
-    d, wait = _load()
+    d, wait = _load(user_id)
     n_tr = len(d.get("tracking") or [])
     # **綴りと並びはここで正す。** 選択は URL から来るので、知らない県名は落とす
     prefs = [p for p in RR.PREFS if p in set(prefs or ())]
@@ -3619,7 +3676,7 @@ def _recommend_body(prefs=()) -> str:
     body = f"""{run_status_html()}<h1>{E(head)}</h1>
 {lede}
 {upd_html}
-<div class="fil2">{RR.pref_form(pc, prefs)}{weight_form(d)}</div>
+<div class="fil2">{RR.pref_form(pc, prefs)}{weight_form(user_id, d)}</div>
 {RR.cards_html(d, rows)}
 <p class="lede">気になった公演の「興味あり」を押すと、
 <a href="/recommend/interest?t=__TAGURI_TOKEN__">「興味あり」（いま {n_tr} 件）</a>に移ります。</p>
@@ -3631,7 +3688,7 @@ def _recommend_body(prefs=()) -> str:
 
 
 # ---------------------------------------------------------------- おすすめ ▸ 興味あり
-def page_interest(month: str = "", page: int = 1) -> str:
+def page_interest(user_id: str, month: str = "", page: int = 1) -> str:
     """**もぎった公演を追いかける画面。** フローの 2 段目である。
 
     **畳んだ束から画面に出した**（起案者の指示・2026-08-24 でフローを 3 段にしたため）。
@@ -3640,13 +3697,13 @@ def page_interest(month: str = "", page: int = 1) -> str:
 
     **順位は付けない。** 上演日の近い順に並べる ── 買うならいちばん近いものから買う。
     """
-    body = _interest_body(month, page)
+    body = _interest_body(user_id, month, page)
     return layout("興味あり", "/recommend", body, RR.STYLE, active_sub="/recommend/interest")
 
 
-def _interest_body(month: str = "", page: int = 1) -> str:
+def _interest_body(user_id: str, month: str = "", page: int = 1) -> str:
     """`page_interest()` の中身だけを組み立てる(#000009、`_recommend_body`と同じ形)。"""
-    d, wait = _load()
+    d, wait = _load(user_id)
     rows = d.get("tracking") or []
     show, mfil, mfoot = RR.month_pick(rows, month, page, "/recommend/interest")
     return f"""<h1>追いかけている {len(rows)} 件</h1>
@@ -3661,7 +3718,7 @@ def _interest_body(month: str = "", page: int = 1) -> str:
 
 
 # ---------------------------------------------------------------- おすすめ ▸ 開幕リマインド
-def page_reminder(prefs=(), week: str = "this") -> str:
+def page_reminder(user_id: str, prefs=(), week: str = "this") -> str:
     """答えていない候補と、券を持っている公演の直近予定。**独立した画面。**（起案者の
     指示・2026-08-25 ──「そのページは独立しておすすめの傘下においてください」）。
 
@@ -3691,14 +3748,14 @@ def page_reminder(prefs=(), week: str = "this") -> str:
     （`digest.panel` の docstring 参照 ── すでに券を持っている予定を、絞り込みのせいで
     見落とすと本末転倒である）。
     """
-    body = _reminder_body(prefs, week)
+    body = _reminder_body(user_id, prefs, week)
     return layout("開幕リマインド", "/recommend", body,
                   RR.STYLE + DG.STYLE, active_sub="/recommend/reminder")
 
 
-def _reminder_body(prefs=(), week: str = "this") -> str:
+def _reminder_body(user_id: str, prefs=(), week: str = "this") -> str:
     """`page_reminder()` の中身だけを組み立てる(#000009、`_recommend_body`と同じ形)。"""
-    d, wait = _load()
+    d, wait = _load(user_id)
     import datetime
     today = datetime.date.today()
     prefs = [p for p in RR.PREFS if p in set(prefs or ())]
@@ -3723,14 +3780,14 @@ def _reminder_body(prefs=(), week: str = "this") -> str:
 
 
 # ---------------------------------------------------------------- おすすめ ▸ お気に入り
-def page_favourites(month: str = "", page: int = 1) -> str:
-    body = _favourites_body(month, page)
+def page_favourites(user_id: str, month: str = "", page: int = 1) -> str:
+    body = _favourites_body(user_id, month, page)
     return layout("お気に入り", "/recommend", body, RR.STYLE, active_sub="/recommend/favourites")
 
 
-def _favourites_body(month: str = "", page: int = 1) -> str:
+def _favourites_body(user_id: str, month: str = "", page: int = 1) -> str:
     """`page_favourites()` の中身だけを組み立てる(#000009、`_recommend_body`と同じ形)。"""
-    d, wait = _load()
+    d, wait = _load(user_id)
     favs = d.get("favourites") or []
     show, mfil, mfoot = RR.month_pick(favs, month, page, "/recommend/favourites")
     dec = RC.load_declared()
@@ -4473,9 +4530,9 @@ def save_hand_credits(work_key: str, fields: dict) -> dict:
                      "手で入れた出演者を消しました")}
 
 
-def _card_by_stage(sid: str) -> dict:
+def _card_by_stage(user_id: str, sid: str) -> dict:
     """保存された一覧から 1 枚を引く。**無ければ最小限の枠を作る**（一覧から外れた公演）。"""
-    d, _ = _load()
+    d, _ = _load(user_id)
     for rows in d.values():
         if not isinstance(rows, list):
             continue
@@ -4485,7 +4542,7 @@ def _card_by_stage(sid: str) -> dict:
     return {"stage_id": sid, "title": "", "synopsis": "", "themes": []}
 
 
-def save_hand_theme(stage_id: str, *, words: str = "", synopsis: str = "",
+def save_hand_theme(user_id: str, stage_id: str, *, words: str = "", synopsis: str = "",
                     url: str = "", fields: dict | None = None) -> dict:
     """**公演ページから内容を読み取れなかった公演に、本人が内容を入れる。**
 
@@ -4512,7 +4569,7 @@ def save_hand_theme(stage_id: str, *, words: str = "", synopsis: str = "",
     syn, u = (synopsis or "").strip(), (url or "").strip()
     n_cast = hand_credit_count(fields or {})
     HT.save(sid, words=ws, synopsis=syn, url=u, fields=fields or {})
-    c = _card_by_stage(sid)
+    c = _card_by_stage(user_id, sid)
     # **読み取りが要るのは、本人がタグを打たなかったときだけである。**
     # 打ったタグを、貼った文から読み取ったタグで上書きしない
     read = (bool(syn) or bool(u)) and not ws
@@ -4521,7 +4578,7 @@ def save_hand_theme(stage_id: str, *, words: str = "", synopsis: str = "",
             "title": c.get("title") or ""}
 
 
-def hand_theme_refresh(stage_id: str) -> dict:
+def hand_theme_refresh(user_id: str, stage_id: str) -> dict:
     """**あらすじの枠を、いまの中身で組み直すだけ。** 書き込みは起きない。
 
     貼った本文からのタグの読み取りは別のスレッドで走っている（`read_hand_theme`）ので、
@@ -4532,10 +4589,10 @@ def hand_theme_refresh(stage_id: str) -> dict:
     sid = str(stage_id or "").strip()
     if not sid:
         raise ValueError("どの公演か分かりません")
-    return {"html": RR.syn_block(_card_by_stage(sid))}
+    return {"html": RR.syn_block(_card_by_stage(user_id, sid))}
 
 
-def read_hand_theme(stage_id: str) -> dict:
+def read_hand_theme(user_id: str, stage_id: str) -> dict:
     """**貼られた本文・URL からタグを読み取る。** 時間がかかるので画面は待たない
     （`serve.py` が別のスレッドで走らせ、画面が数秒おきに拾いに行ってタグが出る）。
 
@@ -4545,7 +4602,7 @@ def read_hand_theme(stage_id: str) -> dict:
     import hand_themes as HT
     sid = str(stage_id or "").strip()
     h = HT.load().get(sid) or {}
-    title = (_card_by_stage(sid).get("title") or "")
+    title = (_card_by_stage(user_id, sid).get("title") or "")
     if h.get("url"):
         try:
             return HT.extract_to_themes(sid, title, h["url"])
@@ -5337,13 +5394,13 @@ def _missed_html(rows: list[dict]) -> str:
 
 
 # ---------------------------------------------------------------- 観た公演の評価
-def _rate_base() -> dict:
+def _rate_base(user_id: str) -> dict:
     """3 枚が共通で使う材料と件数。**数え方を 1 か所に置く。**
 
     帯の件数と各画面の中身が別々に数えていると、**帯に 22 件と出ているのに開くと
     18 件しか無い**という食い違いが起きる（「記録を見返す」の 3 枚と同じ判断）。
     """
-    d, wait = _load()
+    d, wait = _load(user_id)
     all_w = _works()
     # **上演前のものは評価待ちに入れない**（企画書 4 章）。
     #
@@ -5449,7 +5506,7 @@ def _venue_form(ws: list, keep: set, action: str, hidden: dict) -> str:
 </details></form>"""
 
 
-def page_rate(verdict: str = "", year: str = "", venues=(), page: int = 1) -> str:
+def page_rate(user_id: str, verdict: str = "", year: str = "", venues=(), page: int = 1) -> str:
     """**評価 ▸ 一覧。付けた評価を ◎○△× ごとに、札で切り替えて出す画面。**
 
     起案者の指示（2026-08-24）──「『評価』ってナビゲーションバーのボタンを押したら
@@ -5511,13 +5568,13 @@ def page_rate(verdict: str = "", year: str = "", venues=(), page: int = 1) -> st
     どちらも評価そのものに属する操作で、日記帳には無い（`rate_reopen` はこの画面専用と
     決めてある）。記録そのものを直す道は日記帳に一本化する。
     """
-    body = _rate_body(verdict, year, venues, page)
+    body = _rate_body(user_id, verdict, year, venues, page)
     return layout("評価一覧", "/rate", body, RR.STYLE, active_sub="/rate")
 
 
-def _rate_body(verdict: str = "", year: str = "", venues=(), page: int = 1) -> str:
+def _rate_body(user_id: str, verdict: str = "", year: str = "", venues=(), page: int = 1) -> str:
     """`page_rate()` の中身だけを組み立てる(#000009、`_recommend_body`と同じ形)。"""
-    b = _rate_base()
+    b = _rate_base(user_id)
     rated = b["rated"]
     verdict_fig = CH.verdict_panel([w for w in b["all"] if not w.get("unseen")])
     # 束ごとに分ける。**空の束の札は出さない**（押しても何も出ない選択肢を並べない）
@@ -5619,20 +5676,20 @@ def _poster_html(w: dict) -> str:
             f' loading="lazy">' if f else "")
 
 
-def page_unrated() -> str:
+def page_unrated(user_id: str) -> str:
     """**評価 ▸ 未評価。** 評価が付いていない記録を全部出す 1 枚。
 
     **上演日が分からない記録も入る。** 日付が無いと「上演が終わったか」を判定できない
     ので、一覧の帯（評価待ち）には出てこない ── **その分がどこにあるかを言う場所が
     無いと、答えたつもりで残り続ける。**
     """
-    body = _unrated_body()
+    body = _unrated_body(user_id)
     return layout("未評価", "/rate", body, RR.STYLE, active_sub="/rate/unrated")
 
 
-def _unrated_body() -> str:
+def _unrated_body(user_id: str) -> str:
     """`page_unrated()` の中身だけを組み立てる(#000009、`_recommend_body`と同じ形)。"""
-    b = _rate_base()
+    b = _rate_base(user_id)
     unrated = sorted(b["unrated"], key=lambda w: w.get("first_date") or "", reverse=True)
     # **外した分の行き先を書く。** 黙って減らすと、答えた記録がどこへ行ったのか
     # 分からない ── **戻す口はその行き先にしか無い**（`_rec_row` の「やはり観た」）
@@ -5651,15 +5708,15 @@ def _unrated_body() -> str:
          for w in unrated) or '<p class="empty">評価が付いていない記録はありません。</p>'}"""
 
 
-def page_notes() -> str:
+def page_notes(user_id: str) -> str:
     """**評価 ▸ 感想。** ◎ を付けたのに感想が無い作品に、一文を書き足す 1 枚。"""
-    body = _notes_body()
+    body = _notes_body(user_id)
     return layout("感想", "/rate", body, RR.STYLE, active_sub="/rate/notes")
 
 
-def _notes_body() -> str:
+def _notes_body(user_id: str) -> str:
     """`page_notes()` の中身だけを組み立てる(#000009、`_recommend_body`と同じ形)。"""
-    b = _rate_base()
+    b = _rate_base(user_id)
     return f"""<h1>感想 ── ◎ を付けた {len(b["no_note"])} 件</h1>
 {_pending_notes_html(b["all"], collapsed=False)}"""
 
@@ -7529,7 +7586,7 @@ def _web_hits(q: str, on: bool) -> str:
             f'入ります。この探し方では、都道府県と団体名は出ません。</p>{"".join(cards)}</div>')
 
 
-def _upcoming_hits(q: str, ym: str = "", top: int = 8) -> tuple[str, list, int]:
+def _upcoming_hits(user_id: str, q: str, ym: str = "", top: int = 8) -> tuple[str, list, int]:
     """これから観られる公演のうち、打った言葉に当たったもの。
 
     ## 出すのは推薦と同じ 1 枚である
@@ -7553,7 +7610,7 @@ def _upcoming_hits(q: str, ym: str = "", top: int = 8) -> tuple[str, list, int]:
     いまの状態を 1 行足す。
     """
     up = _upcoming_index()
-    d, _ = _load()
+    d, _ = _load(user_id)
     rich: dict[str, dict] = {}
     for k in ("ranked", "recommend", "favourites", "others", "owned", "tracking", "started"):
         for c in (d.get(k) or []):
@@ -7780,7 +7837,7 @@ def _month_rows(ws: list, ym: str) -> str:
             + "".join(_found_row(w) for w in hit))
 
 
-def page_search(q: str, ym: str = "", web: bool = False,
+def page_search(user_id: str, q: str, ym: str = "", web: bool = False,
                 cal_side: str = "past") -> str:
     """探す画面。**結果は、記録の行そのものにする**（起案者の指示・2026-08-24）。
 
@@ -7813,11 +7870,12 @@ def page_search(q: str, ym: str = "", web: bool = False,
     1 件以下になりやすく、覚えていない側を 2 つ重ねることになる。** 出すものは同じ行なので、
     見つけたあとにできること（評価・感想・題名を直す）はどちらから来ても変わらない。
     """
-    body = _search_body(q, ym, web, cal_side)
+    body = _search_body(user_id, q, ym, web, cal_side)
     return layout("探す", "/search", body, RR.STYLE)
 
 
-def _search_body(q: str, ym: str = "", web: bool = False, cal_side: str = "past") -> str:
+def _search_body(user_id: str, q: str, ym: str = "", web: bool = False,
+                 cal_side: str = "past") -> str:
     """`page_search()` の中身だけを組み立てる(#000009、`_recommend_body`と同じ形)。"""
     ix = _index()
     n_up = len(_upcoming_index()["rows"])
@@ -7841,7 +7899,7 @@ def _search_body(q: str, ym: str = "", web: bool = False, cal_side: str = "past"
     if not q:
         # **言葉が無いときは、暦だけで引く。** どちらの側を選んでいるかで出すものが変わる
         if side == "up":
-            up_html, _n, n_up = _upcoming_hits("", ym)
+            up_html, _n, n_up = _upcoming_hits(user_id, "", ym)
             body = (up_html if ym else
                     '<p class="empty">上の暦から月を選ぶと、その月に観られる公演が出ます。</p>')
         else:
@@ -7855,7 +7913,7 @@ def _search_body(q: str, ym: str = "", web: bool = False, cal_side: str = "past"
             names += found
     hits.sort(key=lambda x: x[0].get("first_date") or "", reverse=True)
     rows = [_found_row(w, why) for w, why in hits]
-    up_html, up_names, n_up = _upcoming_hits(q, ym if side == "up" else "")
+    up_html, up_names, n_up = _upcoming_hits(user_id, q, ym if side == "up" else "")
     names += up_names
     web_html = _web_hits(q, web)
     if not hits and not n_up:
@@ -8176,7 +8234,8 @@ def save_ticket(stage_id: str, date: str, time: str = "", *,
 
 
 # ---------------------------------------------------------------- 公演カレンダー
-def page_calendar(kinds: set[str] | None = None, prefs: set[str] | None = None) -> str:
+def page_calendar(user_id: str, kinds: set[str] | None = None,
+                  prefs: set[str] | None = None) -> str:
     """追いかけている公演を、月ごとの暦に期間の帯で並べる画面。
 
     起案者の指示（2026-08-24）──「興味ありとお気に入りを一括でカレンダーに表示する
@@ -8193,13 +8252,14 @@ def page_calendar(kinds: set[str] | None = None, prefs: set[str] | None = None) 
     素の GET なので、この関数は要求のたびに `None`（絞り込みなし）から作り直す ──
     起動のあいだ覚える状態は持たない。組み方は `SC.panel`／`SC.filter_html` にある。
     """
-    body = _calendar_body(kinds, prefs)
+    body = _calendar_body(user_id, kinds, prefs)
     return layout("公演カレンダー", "/calendar", body, RR.STYLE + SC.STYLE)
 
 
-def _calendar_body(kinds: set[str] | None = None, prefs: set[str] | None = None) -> str:
+def _calendar_body(user_id: str, kinds: set[str] | None = None,
+                   prefs: set[str] | None = None) -> str:
     """`page_calendar()` の中身だけを組み立てる(#000009、`_recommend_body`と同じ形)。"""
-    d, _ = _load()
+    d, _ = _load(user_id)
     # **購入確認メールの券を、開くたびに結び付け直す。**（取り込みと結び付けは
     # 同じ 1 回で走らせる ── 分けると、メールは入っているのに暦に点が出ない状態が残る）
     left = sync_mail_tickets(d.get("owned") or [])
@@ -8216,7 +8276,7 @@ def _calendar_body(kinds: set[str] | None = None, prefs: set[str] | None = None)
 
 
 # ---------------------------------------------------------------- 購入済み公演
-def page_tickets() -> str:
+def page_tickets(user_id: str) -> str:
     """チケットをすでに買っている公演の一覧。
 
     起案者の指摘（2026-08-25）──「もうチケットを買っていてこれから観に行く公演に
@@ -8249,13 +8309,13 @@ def page_tickets() -> str:
     知らせ（`ticket_manager_html`）だけはページの下に残す** ── どの公演の券か
     決められなかった分なので、特定のカードには置けない。
     """
-    body = _tickets_body()
+    body = _tickets_body(user_id)
     return layout("購入済み公演", "/tickets", body, RR.STYLE + SC.STYLE)
 
 
-def _tickets_body() -> str:
+def _tickets_body(user_id: str) -> str:
     """`page_tickets()` の中身だけを組み立てる(#000009、`_recommend_body`と同じ形)。"""
-    d, _ = _load()
+    d, _ = _load(user_id)
     owned = d.get("owned") or []
     import datetime
     import feedback as FB

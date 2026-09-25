@@ -242,10 +242,18 @@ class Handler(http.server.BaseHTTPRequestHandler):
         `RR.card()` を呼ぶ場所が増えるたびに置き換えを書き足すのは漏れやすい。
         JSON を返す口をすべて通るここで 1 度だけ置き換えれば、**新しく HTML 断片を
         JSON に混ぜる操作を足しても、この手当てを覚えておく必要が無い。**
+
+        **新規ゲスト登録の直後は、生の復旧コードとCookieもここで一緒に乗せる**
+        （`_resolve_user`）。JSON を返す口をすべて通るのはここだけなので、
+        `/api/screen/*`・書き込みAPIのどちらから初回アクセスされても、
+        個別に手当てを書き足さずに済む。
         """
-        body = json.dumps(obj, ensure_ascii=False).replace(
+        welcome = getattr(self, "_welcome_code", None)
+        payload = {**obj, "welcome_code": welcome} if welcome else obj
+        body = json.dumps(payload, ensure_ascii=False).replace(
             "__TAGURI_TOKEN__", self.server.token)                  # type: ignore[attr-defined]
-        self._send(code, body.encode(), "application/json")
+        self._send(code, body.encode(), "application/json",
+                   getattr(self, "_auth_extra", None))
 
     def _tok(self, query: str) -> bool:
         if self.server.demo_mode:                                  # type: ignore[attr-defined]
@@ -283,6 +291,37 @@ class Handler(http.server.BaseHTTPRequestHandler):
             same_site = "SameSite=Lax"
         return {"Set-Cookie": f"{SESSION_COOKIE}={token}; Path=/; HttpOnly; {same_site}; "
                                f"Max-Age={AU.SESSION_TTL_SEC}"}
+
+    def _resolve_user(self) -> tuple[str, str | None]:
+        """この要求の利用者IDを解決する(利用者ごとのデータ分離・E3)。
+
+        **`demo_mode`でなければ常に固定値を返す。** ローカル/EC2（`run.py`）は
+        今までどおり1人しか使わないので、認証の概念そのものが要らない ──
+        Cookie・復旧コードには一切触れない。
+
+        **`demo_mode`のときだけCookieを見る。** 無い/無効なら、その場で新規に
+        ゲスト登録する ── 訪問者は`/auth/start`を踏まずに即座に使い始められる
+        （起案者の指示）。戻り値の2つ目は、**今回新規登録した場合だけ**生の
+        復旧コードを返す ── サーバは以後これを二度と持たない（`auth.py`の
+        設計）ので、見せられるのはこの一度きり。呼び出し側（`do_GET`/`do_POST`）
+        が応答にこれを乗せて画面に見せる。
+
+        レート制限（`AU.throttle_register`）に掛かったときは`AU.AuthError`を
+        そのまま投げる ── 呼び出し側で429として扱う。
+        """
+        srv = self.server                                          # type: ignore[assignment]
+        self._auth_extra: dict = {}
+        if not srv.demo_mode:
+            return AU.LOCAL_USER_ID, None
+        user_id = self._session_user_id()
+        if user_id is not None:
+            return user_id, None
+        AU.throttle_register(self.client_address[0])
+        code = AU.generate_recovery_code()
+        new_user_id, _ = AU.access_or_register(code)
+        token = AU.create_session(new_user_id)
+        self._auth_extra = self._set_session_cookie(token)
+        return new_user_id, code
 
     def _auth_page(self, body: str) -> bytes:
         return (
@@ -381,6 +420,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if not self._tok(query):
             self._send(403, b"token mismatch", "text/plain; charset=utf-8")
             return
+        try:
+            self.user_id, self._welcome_code = self._resolve_user()
+        except AU.AuthError as e:
+            self._json(429, {"error": str(e)})
+            return
         srv.opened = True
         if path.startswith("/img/"):
             # **名前は取り込み済みの一覧と突き合わせる。** パスをそのまま繋ぐと
@@ -430,39 +474,44 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 # 丸ごと消す方式はやめた(起案者の指摘 ──「3回目以降でまた再度ロードが
                 # 入るようになる」。`/api/react`のような頻繁な書き込み自体がキャッシュを
                 # 消していたのが原因だった)。「今週のおすすめ」「開幕リマインド」は
-                # 都道府県の絞り込み(`srv.prefs`、URLに乗らない起動中の状態)にも
-                # 結果が依存するので、キーにそれも含める ── 含めないと、絞り込みを
-                # 変えたのに前の絞り込みの答えを返しかねない(これでキーが変われば
-                # 自然に別エントリになるので、絞り込み変更時に丸ごと消す必要もない)。
+                # 都道府県の絞り込み(`srv.get_prefs(user_id)`、URLに乗らない起動中の
+                # 状態)にも結果が依存するので、キーにそれも含める ── 含めないと、
+                # 絞り込みを変えたのに前の絞り込みの答えを返しかねない(これでキーが
+                # 変われば自然に別エントリになるので、絞り込み変更時に丸ごと消す
+                # 必要もない)。**`screen_cache_get`/`_set`自体が利用者IDでも分けている**
+                # （利用者ごとのデータ分離・E3）ので、ここでは今まで通りのキーを渡すだけでよい。
+                user_id = self.user_id
                 if path == "/api/screen/recommend":
                     q = urllib.parse.parse_qs(query)
                     if "f" in q:
-                        srv.prefs = [p for p in q.get("pref", []) if p][:47]
-                    cache_key = "recommend|" + ",".join(srv.prefs)
-                    cached = srv.screen_cache_get(cache_key)
+                        srv.set_prefs(user_id, [p for p in q.get("pref", []) if p][:47])
+                    prefs = srv.get_prefs(user_id)
+                    cache_key = "recommend|" + ",".join(prefs)
+                    cached = srv.screen_cache_get(user_id, cache_key)
                     if cached is not None:
                         self._json(200, cached)
                         return
-                    body = APP._recommend_body(srv.prefs)
-                    srv.mark_viewed("recommend_pref" if srv.prefs else "recommend")
+                    body = APP._recommend_body(user_id, prefs)
+                    srv.mark_viewed("recommend_pref" if prefs else "recommend")
                     result = {"ok": True, "title": "今週のおすすめ", "body_html": body}
-                    srv.screen_cache_set(cache_key, result)
+                    srv.screen_cache_set(user_id, cache_key, result)
                     self._json(200, result)
                     return
                 if path == "/api/screen/reminder":
                     q = urllib.parse.parse_qs(query)
                     if "f" in q:
-                        srv.prefs = [p for p in q.get("pref", []) if p][:47]
+                        srv.set_prefs(user_id, [p for p in q.get("pref", []) if p][:47])
+                    prefs = srv.get_prefs(user_id)
                     w = q.get("w", ["this"])[0]
                     w = w if w in ("this", "next") else "this"
-                    cache_key = "reminder|" + w + "|" + ",".join(srv.prefs)
-                    cached = srv.screen_cache_get(cache_key)
+                    cache_key = "reminder|" + w + "|" + ",".join(prefs)
+                    cached = srv.screen_cache_get(user_id, cache_key)
                     if cached is not None:
                         self._json(200, cached)
                         return
-                    html = APP._reminder_body(srv.prefs, w)
+                    html = APP._reminder_body(user_id, prefs, w)
                     result = {"ok": True, "title": "開幕リマインド", "body_html": html}
-                    srv.screen_cache_set(cache_key, result)
+                    srv.screen_cache_set(user_id, cache_key, result)
                     self._json(200, result)
                     return
                 if path == "/api/screen/register":
@@ -475,38 +524,38 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 # 以降は、都道府県の絞り込みのような起動中の状態を持たない画面。
                 # パス+検索条件だけで結果が決まる
                 cache_key = path + "?" + query
-                cached = srv.screen_cache_get(cache_key)
+                cached = srv.screen_cache_get(user_id, cache_key)
                 if cached is not None:
                     self._json(200, cached)
                     return
                 if path == "/api/screen/interest":
-                    html = APP._interest_body(_month(query), _page(query))
+                    html = APP._interest_body(user_id, _month(query), _page(query))
                     result = {"ok": True, "title": "興味あり", "body_html": html}
                 elif path == "/api/screen/favourites":
-                    html = APP._favourites_body(_month(query), _page(query))
+                    html = APP._favourites_body(user_id, _month(query), _page(query))
                     srv.mark_viewed("favourite")
                     result = {"ok": True, "title": "お気に入り", "body_html": html}
                 elif path == "/api/screen/calendar":
                     q = urllib.parse.parse_qs(query)
                     kinds = ({k for k in q.get("kind", []) if k in SC.KIND_KEYS} or None)
                     prefs = ({p for p in q.get("pref", []) if p in RR.PREFS} or None)
-                    html = APP._calendar_body(kinds, prefs)
+                    html = APP._calendar_body(user_id, kinds, prefs)
                     result = {"ok": True, "title": "公演カレンダー", "body_html": html}
                 elif path == "/api/screen/rate":
                     q = urllib.parse.parse_qs(query)
                     v = q.get("v", [""])[0]
                     y = q.get("y", [""])[0]
                     venues = q.get("venue", [])
-                    html = APP._rate_body(v, y, venues, _page(query))
+                    html = APP._rate_body(user_id, v, y, venues, _page(query))
                     result = {"ok": True, "title": "評価一覧", "body_html": html}
                 elif path == "/api/screen/unrated":
-                    html = APP._unrated_body()
+                    html = APP._unrated_body(user_id)
                     result = {"ok": True, "title": "未評価", "body_html": html}
                 elif path == "/api/screen/notes":
-                    html = APP._notes_body()
+                    html = APP._notes_body(user_id)
                     result = {"ok": True, "title": "感想", "body_html": html}
                 elif path == "/api/screen/tickets":
-                    html = APP._tickets_body()
+                    html = APP._tickets_body(user_id)
                     result = {"ok": True, "title": "購入済み公演", "body_html": html}
                 elif path == "/api/screen/records":
                     html = APP._records_body()
@@ -525,10 +574,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     html = APP._works_body(y, _page(query), q.get("w", [""])[0], g)
                     result = {"ok": True, "title": "日記帳", "body_html": html}
                 elif path == "/api/screen/start":
-                    html = APP._start_body()
+                    html = APP._start_body(user_id)
                     result = {"ok": True, "title": "はじめる", "body_html": html}
                 elif path == "/api/screen/settings":
-                    html = APP._settings_body()
+                    html = APP._settings_body(user_id)
                     result = {"ok": True, "title": "設定", "body_html": html}
                 elif path == "/api/screen/search":
                     q = urllib.parse.parse_qs(query)
@@ -537,12 +586,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     ym = ym if ym == "none" or re.fullmatch(r"20\d\d-\d{2}", ym or "") else ""
                     web = q.get("web", [""])[0] == "1"
                     cal = q.get("cal", [""])[0]
-                    html = APP._search_body(kw, ym, web, "up" if cal == "up" else "past")
+                    html = APP._search_body(user_id, kw, ym, web, "up" if cal == "up" else "past")
                     result = {"ok": True, "title": "探す", "body_html": html}
                 else:
                     self._json(404, {"ok": False, "error": "unknown screen"})
                     return
-                srv.screen_cache_set(cache_key, result)
+                srv.screen_cache_set(user_id, cache_key, result)
                 self._json(200, result)
                 return
             except Exception as e:                                      # noqa: BLE001
@@ -594,43 +643,46 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self._send(200, buf.getvalue(), "application/zip",
                        {"Content-Disposition": 'attachment; filename="taguri-data.zip"'})
             return
+        user_id = self.user_id
         try:
-            if path == "/start" or (path == "/" and APP.is_fresh()):
+            if path == "/start" or (path == "/" and APP.is_fresh(user_id)):
                 # **何も入っていないときは、入口を「はじめる」に差し替える。**
                 # ふだんの一覧を出しても 0 件の枠が並ぶだけで、**次に何をすれば
                 # よいかがどこにも書かれていない**（`app.page_start` の説明）
-                html = APP.page_start()
+                html = APP.page_start(user_id)
             elif path in ("/", "/recommend"):
                 # **絞り込みは、この起動のあいだ覚えておく。** 記録を見返す画面へ移って
                 # 戻ってきたときに全国へ戻ると、選び直しが要る。**この起動が始まった
-                # ときの既定は設定画面で決めた都道府県**（`self.prefs` の初期値）で、
+                # ときの既定は設定画面で決めた都道府県**（`srv.get_prefs`の初期値）で、
                 # ここで一時的に別の県へ変えても、次の起動では設定の既定に戻る
                 # （2026-08-26 に撤回 ── 以前は「保存はしない・既定は全国」だった）
                 q = urllib.parse.parse_qs(query)
                 if "f" in q:                       # 絞り込みの form から来た要求だけが変える
-                    srv.prefs = [p for p in q.get("pref", []) if p][:47]
-                html = APP.page_recommend(srv.prefs)
+                    srv.set_prefs(user_id, [p for p in q.get("pref", []) if p][:47])
+                prefs = srv.get_prefs(user_id)
+                html = APP.page_recommend(user_id, prefs)
                 # **出した束の名前で印を付ける。** 絞り込んでいるときに出しているのは
                 # 全国の 15 件ではないので、`recommend` と混ぜない
-                srv.mark_viewed("recommend_pref" if srv.prefs else "recommend")
+                srv.mark_viewed("recommend_pref" if prefs else "recommend")
             elif path == "/recommend/reminder":
-                # **絞り込みは `/recommend` と同じ `srv.prefs` を使う**（起案者の指示・
-                # 2026-08-26 ──「開幕リマインドも選んだ都道府県だけに絞って」）。
-                # 別に持つと、「おすすめ」で選んだ県と「開幕リマインド」で選んだ県が
-                # 食い違い、どちらが今の絞り込みか分からなくなる
+                # **絞り込みは `/recommend` と同じ絞り込み(`srv.get_prefs`)を使う**
+                # （起案者の指示・2026-08-26 ──「開幕リマインドも選んだ都道府県だけに
+                # 絞って」）。別に持つと、「おすすめ」で選んだ県と「開幕リマインド」で
+                # 選んだ県が食い違い、どちらが今の絞り込みか分からなくなる
                 q = urllib.parse.parse_qs(query)
                 if "f" in q:
-                    srv.prefs = [p for p in q.get("pref", []) if p][:47]
+                    srv.set_prefs(user_id, [p for p in q.get("pref", []) if p][:47])
                 # **週の切り替えは月の絞り込みと同じ規約 ── URL だけで持つ。**
                 w = q.get("w", ["this"])[0]
-                html = APP.page_reminder(srv.prefs, w if w in ("this", "next") else "this")
+                html = APP.page_reminder(user_id, srv.get_prefs(user_id),
+                                         w if w in ("this", "next") else "this")
             elif path == "/recommend/interest":
-                # **月の絞り込みは URL だけで持つ。** 都道府県（`srv.prefs`）のように
-                # 起動のあいだ覚える必要が無い ── 札は素のリンクなので、押した先の
+                # **月の絞り込みは URL だけで持つ。** 都道府県のように起動のあいだ
+                # 覚える必要が無い ── 札は素のリンクなので、押した先の
                 # URL がそのまま「いまどの月を見ているか」である
-                html = APP.page_interest(_month(query), _page(query))
+                html = APP.page_interest(user_id, _month(query), _page(query))
             elif path == "/recommend/favourites":
-                html = APP.page_favourites(_month(query), _page(query))
+                html = APP.page_favourites(user_id, _month(query), _page(query))
                 srv.mark_viewed("favourite")
             elif path == "/calendar":
                 # **束・都道府県の絞り込みは URL だけで持つ**（月の札と同じ判断）── 押した
@@ -639,9 +691,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 q = urllib.parse.parse_qs(query)
                 kinds = ({k for k in q.get("kind", []) if k in SC.KIND_KEYS} or None)
                 prefs = ({p for p in q.get("pref", []) if p in RR.PREFS} or None)
-                html = APP.page_calendar(kinds, prefs)
+                html = APP.page_calendar(user_id, kinds, prefs)
             elif path == "/tickets":
-                html = APP.page_tickets()
+                html = APP.page_tickets(user_id)
             elif path == "/rate":
                 # **どの束を見ているかは URL だけで持つ**（月の札と同じ判断）── 札は
                 # 素のリンクなので、押した先の URL がそのまま現在地である
@@ -649,11 +701,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 v = q.get("v", [""])[0]
                 y = q.get("y", [""])[0]
                 venues = q.get("venue", [])
-                html = APP.page_rate(v, y, venues, _page(query))
+                html = APP.page_rate(user_id, v, y, venues, _page(query))
             elif path == "/rate/unrated":
-                html = APP.page_unrated()
+                html = APP.page_unrated(user_id)
             elif path == "/rate/notes":
-                html = APP.page_notes()
+                html = APP.page_notes(user_id)
             elif path == "/register":
                 html = APP.page_register(srv.imp, srv.imported)
             elif path == "/records":
@@ -683,9 +735,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 web = urllib.parse.parse_qs(query).get("web", [""])[0] == "1"
                 # **暦のどちら側を見ているか。** 既定は観た記録
                 cal = urllib.parse.parse_qs(query).get("cal", [""])[0]
-                html = APP.page_search(q, ym, web, "up" if cal == "up" else "past")
+                html = APP.page_search(user_id, q, ym, web, "up" if cal == "up" else "past")
             elif path == "/settings":
-                html = APP.page_settings()
+                html = APP.page_settings(user_id)
             else:
                 # **ここには来ない。** 上の `PAGES` に列挙した道はすべて明示の分岐で
                 # 受けている ── 食い違いが起きたら、page_export に逃がさず黙って 404 にする
@@ -699,7 +751,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                        "text/html; charset=utf-8")
             return
         self._send(200, html.replace("__TAGURI_TOKEN__", srv.token).encode(),
-                   "text/html; charset=utf-8")
+                   "text/html; charset=utf-8", self._auth_extra)
 
     # ---- POST は列挙した操作だけ -----------------------------------------
     def _read_form_or_json(self) -> dict:
@@ -762,6 +814,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 self.headers.get("X-Taguri-Token", ""), srv.token):
             self._json(403, {"error": "token"})
             return
+        try:
+            self.user_id, self._welcome_code = self._resolve_user()
+        except AU.AuthError as e:
+            self._json(429, {"error": str(e)})
+            return
         op = self.path
         srv.opened = True
         if op == "/api/close":
@@ -811,7 +868,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self._json(404, {"error": "unknown op"})
             return
         try:
-            result = fn(body)
+            result = fn(body, self.user_id)
             # **書き込みのたびに`screen_cache`を丸ごと消す、はやめた（起案者の指摘
             # ──「3回目以降でまた再度ロードが入るようになる」）。** 一番頻繁な書き込み
             # である`/api/react`(三択ボタン)自体がここを通るので、消す方式だと
@@ -905,11 +962,11 @@ class Server(http.server.ThreadingHTTPServer):
         # 守れない ── 取得の間隔を 1 か所で守るのが企画書 5 章の守りの中身である
         self.jobs: queue.Queue = queue.Queue()
         threading.Thread(target=self._jobs, daemon=True).start()
-        # **絞り込んだ都道府県。** 起動のたびに、設定画面で決めた既定から始める
-        # （起案者の指示・2026-08-26 ── 一括の設定画面。「保存はしない・既定は全国」
-        # という以前の判断を撤回する）。この起動のあいだ「観に行ける場所で絞り込む」で
-        # 一時的に変えることはできるが、**次の起動ではまた設定の既定に戻る**。
-        self.prefs: list[str] = APP.read_pref_setting()
+        # **絞り込んだ都道府県。** 利用者ごとに持つ（`get_prefs`/`set_prefs`。
+        # 利用者ごとのデータ分離・E3 ── 以前は`self.prefs`というプロセス全体で
+        # 1つの値だったが、公開デモでは訪問者ごとに別々でなければならない）。
+        # 各利用者について、初めて触れたときに設定画面で決めた既定から始める。
+        self.prefs_by_user: dict[str, list[str]] = {}
         APP.RECORD = self.record_presented
         # **デモモードでは監視しない。** クラウドの公開デモは「誰かがブラウザを
         # 開くまでの一時プロセス」ではなく、常時稼働のWebサービスとして動かす
@@ -1042,23 +1099,58 @@ class Server(http.server.ThreadingHTTPServer):
     # ── Renderの無料枠はメモリも小さいので、青天井にしない。
     SCREEN_CACHE_MAX = 50
 
-    def screen_cache_get(self, key: str) -> dict | None:
-        hit = self.screen_cache.get(key)
+    def screen_cache_get(self, user_id: str, key: str) -> dict | None:
+        hit = self.screen_cache.get(user_id + "|" + key)
         if hit is None:
             return None
         expires_at, value = hit
         if time.monotonic() >= expires_at:
-            self.screen_cache.pop(key, None)
+            self.screen_cache.pop(user_id + "|" + key, None)
             return None
         return value
 
-    def screen_cache_set(self, key: str, value: dict) -> None:
+    def screen_cache_set(self, user_id: str, key: str, value: dict) -> None:
         if len(self.screen_cache) >= self.SCREEN_CACHE_MAX:
             self.screen_cache.clear()
-        self.screen_cache[key] = (time.monotonic() + self.SCREEN_CACHE_TTL_SEC, value)
+        self.screen_cache[user_id + "|" + key] = (
+            time.monotonic() + self.SCREEN_CACHE_TTL_SEC, value)
+
+    def invalidate_user_cache(self, user_id: str) -> None:
+        """この利用者が覚えていた画面だけを消す。
+
+        書き込みのたびに`screen_cache`を丸ごと消す方式はやめた（起案者の指摘
+        ──「3回目以降でまた再度ロードが入るようになる」）が、**「設定」画面
+        だけは例外にする** ── 保存ボタンを押した本人が、押した直後に自分の
+        設定画面を開いたとき、TTLが切れるまで古い内容が出るのは「保存した
+        つもりが反映されていない」というバグに見える。押した本人以外には
+        一切影響しない（他の利用者のキーには触れない）ので、書き込みのたびに
+        丸ごと消していたときの問題（三択ボタンを押すたびに他画面のキャッシュ
+        まで巻き添えで消える）は起きない。
+        """
+        prefix = user_id + "|"
+        for key in [k for k in self.screen_cache if k.startswith(prefix)]:
+            self.screen_cache.pop(key, None)
+
+    # **`srv.prefs`だった、都道府県の絞り込みの「起動のあいだ覚えておく」状態
+    # （利用者ごとのデータ分離・E3）。** 以前はプロセス全体で1つの`self.prefs`
+    # だったが、公開デモでは訪問者ごとに別々でなければならない。`screen_cache`と
+    # 同じ「増えすぎたら丸ごと作り直す」上限を持たせる。
+    PREFS_BY_USER_MAX = 500
+
+    def get_prefs(self, user_id: str) -> list[str]:
+        if user_id not in self.prefs_by_user:
+            if len(self.prefs_by_user) >= self.PREFS_BY_USER_MAX:
+                self.prefs_by_user.clear()
+            self.prefs_by_user[user_id] = APP.read_pref_setting(user_id)
+        return self.prefs_by_user[user_id]
+
+    def set_prefs(self, user_id: str, prefs: list[str]) -> None:
+        if len(self.prefs_by_user) >= self.PREFS_BY_USER_MAX:
+            self.prefs_by_user.clear()
+        self.prefs_by_user[user_id] = prefs
 
     # ---- 1 三択の反応 ------------------------------------------------------
-    def on_react(self, b: dict) -> dict:
+    def on_react(self, b: dict, user_id: str) -> dict:
         """三択と、**「興味あり」「興味なし」に添える任意の理由。**
 
         **理由だけを送れるようにしてある** ── 押した後に書くので、三択と同時には来ない。
@@ -1095,7 +1187,7 @@ class Server(http.server.ThreadingHTTPServer):
             # （`feedback.report` の「回答」「興味あり」は `screen_tour` を数えない）。
             if value:
                 react_kw = dict(REACT.get(value) or {})
-                for sid in self._siblings(stage_id):
+                for sid in self._siblings(user_id, stage_id):
                     FB.react(self.con, self.label, sid, source="screen_tour", **react_kw)
             self.n["react"] += 1
         # **手元の候補に無い公演なら、控えに加える**（起案者の指摘・2026-08-24）。
@@ -1110,10 +1202,10 @@ class Server(http.server.ThreadingHTTPServer):
         # 理由だけの更新では埋めない ── 枠が空いていないので足す先が無い
         if value:
             out["fill"] = self.fill_slot(
-                [str(x)[:20] for x in (b.get("shown") or [])][:120], stage_id)
+                user_id, [str(x)[:20] for x in (b.get("shown") or [])][:120], stage_id)
         return out
 
-    def fill_slot(self, shown: list, pressed: str) -> dict:
+    def fill_slot(self, user_id: str, shown: list, pressed: str) -> dict:
         """三択を押した 1 枚の代わりに出す候補を 1 件返す。**在庫が無ければ `html` は空。**
 
         起案者の指示（2026-08-24）──「すでに持っている・興味あり・興味なしのボタンを
@@ -1129,13 +1221,14 @@ class Server(http.server.ThreadingHTTPServer):
         1 会場へ畳んであるので、id を突き合わせれば別会場が二重に出ることはない。
 
         **絞り込みは引き継ぐ。** いま都道府県で絞って見ているなら、足す 1 件も
-        その県で観られるものにする（`self.prefs`）── 絞り込みの外から足すと、
-        押しただけで絞り込みが破れる。
+        その県で観られるものにする（`self.get_prefs(user_id)`）── 絞り込みの外から
+        足すと、押しただけで絞り込みが破れる。
         """
         if not shown:
             return {"html": "", "left": 0, "said": ""}
-        d, _ = APP._load()
-        rows, _n = RR.filtered(d, self.prefs, 10 ** 6)
+        d, _ = APP._load(user_id)
+        prefs = self.get_prefs(user_id)
+        rows, _n = RR.filtered(d, prefs, 10 ** 6)
         seen = {str(x) for x in shown} | {str(pressed)}
         rest = [c for c in rows if str(c.get("stage_id") or "") not in seen]
         if not rest:
@@ -1147,12 +1240,12 @@ class Server(http.server.ThreadingHTTPServer):
         # 読んでいる途中の 1 枚の番号が変わる。足した 1 枚に次の番号を与えれば、
         # 点の高い順という並びも番号の意味も壊れない
         rank = len(shown) + 1
-        self.record_presented([c], list(self.prefs), "recommend_fill", rank)
+        self.record_presented([c], list(prefs), "recommend_fill", rank)
         return {"html": RR.card(rank, c), "left": len(rest),
                 "said": f"記録しました。入れ替わりに 1 件を下に足しました"
                         f"（まだ出していない候補が {len(rest) - 1} 件あります）。"}
 
-    def _siblings(self, stage_id: str) -> list[str]:
+    def _siblings(self, user_id: str, stage_id: str) -> list[str]:
         """同じ作品の、ツアーの他会場の stage_id を全部返す（自分は含めない）。
 
         起案者の指摘（2026-08-26）── 反応は会場ではなく作品に付くべきものなので、
@@ -1168,7 +1261,7 @@ class Server(http.server.ThreadingHTTPServer):
         週の計算が壊れているときに、この関数のせいで反応そのものが書けなくなってはいけない。
         """
         try:
-            d, _ = APP._load()
+            d, _ = APP._load(user_id)
         except Exception:                                            # noqa: BLE001
             return []
         for c in d.get("ranked") or []:
@@ -1208,7 +1301,7 @@ class Server(http.server.ThreadingHTTPServer):
         self.enqueue("この公演を手元に加えています…", work)
 
     # ---- 2 観たあとの ◎○△× ----------------------------------------------
-    def on_chronicle(self, _b: dict) -> dict:
+    def on_chronicle(self, _b: dict, user_id: str) -> dict:
         """年表の文を作り直す（起案者の指示 2026-08-25）。
 
         **錠は取らない。** 1 分ほどかかる仕事なので、この間ほかの押し口まで止めると
@@ -1223,7 +1316,7 @@ class Server(http.server.ThreadingHTTPServer):
         r = CR.write(force=True)
         return {"ok": bool(r.get("ok")), "line": r.get("line") or ""}
 
-    def on_people_read(self, _b: dict) -> dict:
+    def on_people_read(self, _b: dict, user_id: str) -> dict:
         """「一緒に出てくる人の網」の読み（LLM の 1 段落）を作り直す（起案者の指示
         2026-08-27 ──「図から読み取れることを LLM で分析し、文章で記載して」）。
 
@@ -1234,7 +1327,7 @@ class Server(http.server.ThreadingHTTPServer):
         r = PE.write(force=True)
         return {"ok": bool(r.get("ok")), "line": r.get("line") or ""}
 
-    def on_ticket(self, b: dict) -> dict:
+    def on_ticket(self, b: dict, user_id: str) -> dict:
         """券の行く日を 1 枚足す・確定する・取り消す（起案者の指示 2026-08-25）。
 
         **一覧を組み直さない。** 足したのは「いつ行くか」であって、どの束に入るかでも
@@ -1245,7 +1338,7 @@ class Server(http.server.ThreadingHTTPServer):
                                    str(b.get("date") or ""), str(b.get("time") or ""),
                                    action=str(b.get("action") or "add"))
 
-    def on_rate(self, b: dict) -> dict:
+    def on_rate(self, b: dict, user_id: str) -> dict:
         work_key, verdict = str(b.get("work_key") or ""), str(b.get("verdict") or "")
         if verdict not in VERDICTS:
             raise ValueError(f"verdict が候補にない: {verdict!r}")
@@ -1255,7 +1348,7 @@ class Server(http.server.ThreadingHTTPServer):
         return {"ok": True, "work_key": work_key, "verdict": verdict}
 
     # ---- 3 感想の自由記述 --------------------------------------------------
-    def on_note(self, b: dict) -> dict:
+    def on_note(self, b: dict, user_id: str) -> dict:
         """**感想は任意で、評価とは別に保存する。**
 
         書く本人にとっては分析用のデータではなく、残すためのものである（企画書 2 章）。
@@ -1268,7 +1361,7 @@ class Server(http.server.ThreadingHTTPServer):
             self.n["note"] += 1
         return {"ok": True, "work_key": work_key, "len": len(note)}
 
-    def on_visit_note(self, b: dict) -> dict:
+    def on_visit_note(self, b: dict, user_id: str) -> dict:
         """**「すべて表示」だけに出す、回ごとのメモ。**（起案者の指示・2026-08-26）
 
         `on_note`（作品ごとの感想）とは保存先が別（`visit_note` 表・uid が鍵）。
@@ -1285,7 +1378,7 @@ class Server(http.server.ThreadingHTTPServer):
         return out
 
     # ---- 4 お気に入りの登録・解除 ------------------------------------------
-    def on_favourite(self, b: dict) -> dict:
+    def on_favourite(self, b: dict, user_id: str) -> dict:
         """**履歴に無い名前も登録できる。** 名簿は「◎ を付けた公演の作り手」しか材料に
         持てないので、外で知った名前はここが唯一の入口である（企画書の中核）。"""
         action, kind = str(b.get("action") or ""), str(b.get("kind") or "")
@@ -1332,7 +1425,7 @@ class Server(http.server.ThreadingHTTPServer):
                      else "一覧を組み直しています…", work)
         return {"ok": True, "kind": kind, "name": name, "n": len(cur)}
 
-    def on_decline(self, b: dict) -> dict:
+    def on_decline(self, b: dict, user_id: str) -> dict:
         """**出さないと決めた語**（お気に入りの裏返し）。
 
         起案者の指示（2026-08-24）── 見送った理由が推薦に 1 文字も効いていなかったので、
@@ -1372,7 +1465,7 @@ class Server(http.server.ThreadingHTTPServer):
         return {"ok": True, "word": word, "n": len(cur)}
 
     # ---- 5「観ればよかった」の登録 ----------------------------------------
-    def on_missed(self, b: dict) -> dict:
+    def on_missed(self, b: dict, user_id: str) -> dict:
         """**絞り込みの穴を測る唯一の口である。** 気づかなかった見逃しは原理的に数えられないが、
         あとで気づいたものは本人が申告できる（V35）。
 
@@ -1447,7 +1540,7 @@ class Server(http.server.ThreadingHTTPServer):
 
 
     # ---- 6 公演詳細を直す --------------------------------------------------
-    def on_fix_work(self, b: dict) -> dict:
+    def on_fix_work(self, b: dict, user_id: str) -> dict:
         """題名・上演日・劇場を人が確定する。
 
         **抽出は題名をよく間違える。** 実データ 129 作品のうち 24 件で括弧が閉じて
@@ -1481,7 +1574,7 @@ class Server(http.server.ThreadingHTTPServer):
         return out
 
     # ---- 7 手で 1 件足す ---------------------------------------------------
-    def on_add_work(self, b: dict) -> dict:
+    def on_add_work(self, b: dict, user_id: str) -> dict:
         """**メールに残らない経路を手で足す。** 招待・当日窓口・人に取ってもらった分。"""
         title = str(b.get("title") or "").strip()[:200]
         date = str(b.get("date") or "").strip()[:10]
@@ -1544,7 +1637,7 @@ class Server(http.server.ThreadingHTTPServer):
         self.enqueue("公演ページを探し、材料を取りに行っています…", work)
 
     # ---- 8 同じ公演をまとめる ／ 取り込みを取り消す -------------------------
-    def on_merge_work(self, b: dict) -> dict:
+    def on_merge_work(self, b: dict, user_id: str) -> dict:
         """**2 つの記録が同じ公演だと本人が答えたときにまとめる。**
 
         `other` を渡さずに `unmerge` を渡すと、この記録にまとめた分を全部もとに戻す。
@@ -1561,7 +1654,7 @@ class Server(http.server.ThreadingHTTPServer):
             self.n["fix"] = self.n.get("fix", 0) + 1
         return out
 
-    def on_drop_work(self, b: dict) -> dict:
+    def on_drop_work(self, b: dict, user_id: str) -> dict:
         """**取り込んだ記録を候補から外す。** 消さずに外すので、いつでも戻せる。"""
         work_key = str(b.get("work_key") or "")
         if not work_key:
@@ -1572,7 +1665,7 @@ class Server(http.server.ThreadingHTTPServer):
         return out
 
     # ---- 9 公演ページが無い公演を、手で埋める ------------------------------
-    def on_hand_credits(self, b: dict) -> dict:
+    def on_hand_credits(self, b: dict, user_id: str) -> dict:
         """出演者・作り手を手で書く。
 
         起案者の指示（2026-08-24）──「公演ページが無い公演のために、ポスターと
@@ -1590,7 +1683,7 @@ class Server(http.server.ThreadingHTTPServer):
             self.n["fix"] = self.n.get("fix", 0) + 1
         return out
 
-    def on_hand_poster(self, b: dict) -> dict:
+    def on_hand_poster(self, b: dict, user_id: str) -> dict:
         """ポスターを手で入れる（`drop` を渡すと外す）。
 
         **受け取った画像は端末内に写すだけで、どこへも送らない。** 画面から外部サイトを
@@ -1607,7 +1700,7 @@ class Server(http.server.ThreadingHTTPServer):
             self.n["fix"] = self.n.get("fix", 0) + 1
         return out
 
-    def on_hand_theme(self, b: dict) -> dict:
+    def on_hand_theme(self, b: dict, user_id: str) -> dict:
         """**公演ページから内容を読み取れなかった公演に、本人が内容を入れる。**
 
         起案者の問い（2026-08-25）──「『あらすじを取れませんでした』の作品を
@@ -1626,7 +1719,7 @@ class Server(http.server.ThreadingHTTPServer):
         if fields is not None and not isinstance(fields, dict):
             raise ValueError("出演者・作り手の欄の形が違う")
         with self.lock:
-            out = APP.save_hand_theme(sid, words=str(b.get("words") or ""),
+            out = APP.save_hand_theme(user_id, sid, words=str(b.get("words") or ""),
                                       synopsis=str(b.get("synopsis") or ""),
                                       url=str(b.get("url") or ""), fields=fields)
             self.n["fix"] = self.n.get("fix", 0) + 1
@@ -1634,20 +1727,20 @@ class Server(http.server.ThreadingHTTPServer):
         # 自動で拾いに行くかどうかを画面側が判断できなくなる（`pollHandTheme`）
         out["read"] = out.pop("read", False)
         if out["read"]:
-            threading.Thread(target=self._read_theme, args=(sid,), daemon=True).start()
+            threading.Thread(target=self._read_theme, args=(user_id, sid), daemon=True).start()
             out["said"] = ("保存しました。題材はいま読み取っています ── "
                            "少し待つとタグが自動で出ます")
         return out
 
-    def _read_theme(self, sid: str) -> None:
+    def _read_theme(self, user_id: str, sid: str) -> None:
         """**別のスレッドで読み取る。** 失敗しても画面は落とさない ──
         入れた内容は保存済みで、タグが付かなかっただけである。"""
         try:
-            APP.read_hand_theme(sid)
+            APP.read_hand_theme(user_id, sid)
         except Exception as e:                                       # noqa: BLE001
             print(f"  題材の読み取りに失敗しました（{sid}）: {e}", flush=True)
 
-    def on_hand_theme_refresh(self, b: dict) -> dict:
+    def on_hand_theme_refresh(self, b: dict, user_id: str) -> dict:
         """**読み取り中のタグが届いたかを、画面が数秒おきに確かめる。**
 
         書く操作ではないので `self.n` は増やさない ── 自動で何度も呼ばれる操作を
@@ -1656,9 +1749,9 @@ class Server(http.server.ThreadingHTTPServer):
         sid = str(b.get("stage_id") or "").strip()[:16]
         if not sid:
             raise ValueError("どの公演か分かりません")
-        return APP.hand_theme_refresh(sid)
+        return APP.hand_theme_refresh(user_id, sid)
 
-    def on_link_stage(self, b: dict) -> dict:
+    def on_link_stage(self, b: dict, user_id: str) -> dict:
         """**記録を手元の公演データに結び付ける。**
 
         これが無いと、メールから導けない記録は評価を付けても推薦に効かない ──
@@ -1678,7 +1771,7 @@ class Server(http.server.ThreadingHTTPServer):
         self._enrich(stage_id, work_key, str(out.get("title") or ""), "")
         return out
 
-    def on_restore_work(self, b: dict) -> dict:
+    def on_restore_work(self, b: dict, user_id: str) -> dict:
         """外した記録をもとに戻す。"""
         key = str(b.get("key") or "")
         if not key:
@@ -1688,7 +1781,7 @@ class Server(http.server.ThreadingHTTPServer):
             self.n["drop"] = self.n.get("drop", 0) + 1
         return out
 
-    def on_purge_work(self, b: dict) -> dict:
+    def on_purge_work(self, b: dict, user_id: str) -> dict:
         """取り消した記録を、戻す口ごと「取り消した記録」の一覧から消す。"""
         key = str(b.get("key") or "")
         if not key:
@@ -1698,7 +1791,7 @@ class Server(http.server.ThreadingHTTPServer):
             self.n["drop"] = self.n.get("drop", 0) + 1
         return out
 
-    def on_weight(self, b: dict) -> dict:
+    def on_weight(self, b: dict, user_id: str) -> dict:
         """**順位付けに、どの情報をどれくらい効かせるかを 1 つ書く。**
 
         起案者の指示（2026-08-24）──「実際にどの項目をどれくらい推薦に影響させるのか？
@@ -1715,31 +1808,33 @@ class Server(http.server.ThreadingHTTPServer):
             if isinstance(ws, dict):
                 if not ws or len(ws) > 32:
                     raise ValueError("weights の件数が範囲外")
-                out = APP.save_weights({str(k): str(v) for k, v in ws.items()})
+                out = APP.save_weights(user_id, {str(k): str(v) for k, v in ws.items()})
             else:
-                out = APP.save_weight(str(b.get("group") or ""), str(b.get("step") or ""))
+                out = APP.save_weight(user_id, str(b.get("group") or ""), str(b.get("step") or ""))
             self.n["weight"] = self.n.get("weight", 0) + 1
+        self.invalidate_user_cache(user_id)
         return out
 
-    def on_pref_setting(self, b: dict) -> dict:
+    def on_pref_setting(self, b: dict, user_id: str) -> dict:
         """**「観に行ける場所」の既定を 1 回で書く**（設定画面）。
 
         起案者の指示（2026-08-26）──「一括の設定画面をつくってほしい。たとえば
         『全部の表示を指定した都道府県のみにする』」。
 
         **保存に加えて、いま起動中のこのプロセスの絞り込みもその場で当て直す**
-        （`self.prefs`）。保存だけでは、この起動のあいだは古い絞り込みのままになる ──
-        設定画面で保存した直後に「今週のおすすめ」を開いても、次の起動まで反映されない
-        のでは「設定」として機能しない。
+        （`get_prefs`/`set_prefs`。利用者ごと）。保存だけでは、この起動のあいだは古い
+        絞り込みのままになる ── 設定画面で保存した直後に「今週のおすすめ」を開いても、
+        次の起動まで反映されないのでは「設定」として機能しない。
         """
         prefs = b.get("prefs")
         with self.lock:
-            out = APP.save_pref_setting(prefs if isinstance(prefs, list) else [])
-            self.prefs = list(out["prefs"])
+            out = APP.save_pref_setting(user_id, prefs if isinstance(prefs, list) else [])
+            self.set_prefs(user_id, list(out["prefs"]))
             self.n["pref_setting"] = self.n.get("pref_setting", 0) + 1
+        self.invalidate_user_cache(user_id)
         return out
 
-    def on_unseen(self, b: dict) -> dict:
+    def on_unseen(self, b: dict, user_id: str) -> dict:
         """**券は買ったが観ていない公演を、観た記録から外す**（または戻す）。
 
         「この記録を取り消す」とは別の口である ── **買った事実は消さず、観た本数と図と
@@ -1757,7 +1852,7 @@ class Server(http.server.ThreadingHTTPServer):
         return out
 
     # ---- 10 購入確認メールの取り込み --------------------------------------
-    def on_import_mail(self, _b: dict) -> dict:
+    def on_import_mail(self, _b: dict, user_id: str) -> dict:
         """**画面のボタンから取り込みを始める。**
 
         企画書 5 章の 1 段目（前回の走査以降に届いたメールだけを取る）を、
