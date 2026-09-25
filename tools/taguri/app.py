@@ -3019,6 +3019,12 @@ def page_settings() -> str:
     **畳んでいても、いま何を選んでいるかは見出しの右のバッジで読める**（`_card_h2`）ので、
     開かなくても現在の設定は分かる。
     """
+    body = _settings_body()
+    return layout("設定", "/settings", body, RR.STYLE)
+
+
+def _settings_body() -> str:
+    """`page_settings()` の中身だけを組み立てる(#000009、`_recommend_body`と同じ形)。"""
     prefs = read_pref_setting()
     d, _wait = _load()
     counts = RR.pref_counts(d)
@@ -3031,7 +3037,7 @@ def page_settings() -> str:
         for p in RR.PREFS if counts.get(p))
     now = ("全国" if not prefs else
            "・".join(prefs) + f"（{len(prefs)} 県）")
-    body = f"""<h1>設定</h1>
+    return f"""<h1>設定</h1>
 <p class="lede">この仕組みぜんたいに効く、決めごとを置く場所です。<b>1 件ずつではなく、
 まとめて確かめてから保存します。</b></p>
 <details class="card">{_card_h2("gear", "観に行ける場所を決めておく",
@@ -3052,7 +3058,6 @@ def page_settings() -> str:
 {_data_copy_card_html()}
 {_dropped_html()}
 {_skipped_html()}"""
-    return layout("設定", "/settings", body, RR.STYLE)
 
 
 def _p90(vals) -> float:
@@ -3457,6 +3462,12 @@ def page_start() -> str:
     無条件でお出しする（企画書 4 章）。**観た記録が要るのは 3 段目の推薦のほうだけ**
     なので、「記録が無いと何も始まらない」と読ませてはいけない。
     """
+    body = _start_body()
+    return layout("はじめる", "/recommend", body, RR.STYLE + START_CSS)
+
+
+def _start_body() -> str:
+    """`page_start()` の中身だけを組み立てる(#000009、`_recommend_body`と同じ形)。"""
     s = _start_state()
     kinds = "".join(f'<option value="{E(k)}">{E(k)}</option>' for k in RC.KINDS)
     tags = "".join(
@@ -3497,7 +3508,7 @@ def page_start() -> str:
         '観た公演には <a href="/rate?t=__TAGURI_TOKEN__">観た公演の評価</a> で '
         "◎○△× を付けてください。")
 
-    body = f"""{run_status_html()}<h1>はじめに ── 見逃したくない名前を 1 つ登録してください</h1>
+    return f"""{run_status_html()}<h1>はじめに ── 見逃したくない名前を 1 つ登録してください</h1>
 <p class="lede">たぐりは、<b>これから観られる公演の中から、見逃したくないものを毎週出す</b>
 仕組みです。いまは登録も記録も無いので、出せるものがありません。
 <b>下の 3 つのうち、1 つ目だけで動き始めます。</b></p>
@@ -3506,7 +3517,6 @@ def page_start() -> str:
 {step3}
 <p class="lede">ナビゲーションから、それぞれの画面をいま見ることもできます。
 <b>どの画面もまだ 0 件です。</b></p>"""
-    return layout("はじめる", "/recommend", body, RR.STYLE + START_CSS)
 
 
 START_CSS = """
@@ -5107,13 +5117,19 @@ def page_register(imp: dict | None = None, imported: list | None = None) -> str:
     その違いは札の見出しと本文の両方に書く ── 同じ画面に並ぶと、観た公演を足す口と
     見分けが付かなくなる。
     """
+    body = _register_body(imp, imported)
+    return layout("公演情報の登録", "/register", body, RR.STYLE)
+
+
+def _register_body(imp: dict | None = None, imported: list | None = None) -> str:
+    """`page_register()` の中身だけを組み立てる(#000009、`_recommend_body`と同じ形)。"""
     wait = waiting_rows()
     all_w = _works()
     # **上演前のものは評価待ちに入れない**（企画書 4 章）
     unrated = [w for w in all_w if not w.get("verdict") and w.get("bucket") != "upcoming"]
     line = (imp or {}).get("line") or ""
     missed = missed_rows()
-    body = f"""<h1>公演情報の登録</h1>
+    return f"""<h1>公演情報の登録</h1>
 <p class="lede">公演を記録に足す場所です。<b>入口は 3 つあります</b> ──
 購入確認メールから自動で取り込む、メールに残らない分（招待・当日窓口・人に取ってもらった分）を
 手で足す、<b>観ればよかった公演（観ていないもの）を足す</b>の 3 つです。
@@ -5158,7 +5174,6 @@ def page_register(imp: dict | None = None, imported: list | None = None) -> str:
 <p class="lede">①② で登録した公演は、上演が終わると
 <a href="/rate?t=__TAGURI_TOKEN__">「観た公演の評価」（いま {len(wait)} 件）</a>に並びます。
 評価はそちらで付けてください。</p>"""
-    return layout("公演情報の登録", "/register", body, RR.STYLE)
 
 
 def _pool_titles() -> dict:

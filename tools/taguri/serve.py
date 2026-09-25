@@ -498,6 +498,18 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     html = APP._works_body(y, _page(query), q.get("w", [""])[0], g)
                     self._json(200, {"ok": True, "title": "日記帳", "body_html": html})
                     return
+                if path == "/api/screen/start":
+                    html = APP._start_body()
+                    self._json(200, {"ok": True, "title": "はじめる", "body_html": html})
+                    return
+                if path == "/api/screen/settings":
+                    html = APP._settings_body()
+                    self._json(200, {"ok": True, "title": "設定", "body_html": html})
+                    return
+                if path == "/api/screen/register":
+                    html = APP._register_body(srv.imp, srv.imported)
+                    self._json(200, {"ok": True, "title": "公演情報の登録", "body_html": html})
+                    return
                 self._json(404, {"ok": False, "error": "unknown screen"})
                 return
             except Exception as e:                                      # noqa: BLE001

@@ -30,11 +30,13 @@ const SCREENS = {
   "/records/chronicle": "chronicle", "/records/works": "works",
   "/search": "search", "/settings": "settings",
 };
-// Phase 0-3: おすすめ・興味あり・開幕リマインド・お気に入り・カレンダー・
-// 評価一覧・未評価・感想・購入済み公演・眺める・たどる・観劇史年表・日記帳を
-// 実装。残りは「準備中」を出す(段階移行のためのプレースホルダ)。
+// Phase 0-4: おすすめ・興味あり・開幕リマインド・お気に入り・カレンダー・
+// 評価一覧・未評価・感想・購入済み公演・眺める・たどる・観劇史年表・日記帳・
+// はじめる・公演情報の登録・設定を実装。残りは「準備中」を出す
+// (段階移行のためのプレースホルダ)。
 const IMPLEMENTED = new Set(["recommend", "interest", "reminder", "favourites", "calendar",
-  "rate", "unrated", "notes", "tickets", "records", "trace", "chronicle", "works"]);
+  "rate", "unrated", "notes", "tickets", "records", "trace", "chronicle", "works",
+  "start", "register", "settings"]);
 
 // --- NAV(app.py の NAV表と同じデータ) -------------------------------------
 const NAV = [[null, "おすすめ", "ticket", [["/recommend", "今週のおすすめ", "ticket"], ["/recommend/reminder", "開幕リマインド", "inbox"], ["/recommend/interest", "興味あり", "flag"], ["/recommend/favourites", "お気に入り", "star"]]], ["/calendar", "公演カレンダー", "calendar", []], ["/tickets", "購入済み公演", "ticket", []], [null, "観た公演の評価", "check", [["/rate", "評価一覧", "check"], ["/rate/unrated", "未評価", "clock"], ["/rate/notes", "感想", "pencil"]]], ["/register", "公演情報の登録", "inbox", []], [null, "記録を見返す", "chart", [["/records", "眺める", "chart"], ["/records/trace", "たどる", "user"], ["/records/chronicle", "観劇史年表", "calendar"], ["/records/works", "日記帳", "book"]]], ["/search", "探す", "search", []], ["/settings", "設定", "gear", []]];
@@ -376,6 +378,11 @@ function renderScreen(el, activePath, d) {
   fixupSynClamp(el);
   fixupMonthScroll(el);
   fixupStoryline(el);
+  fixupImportBar(el);
+  fixupPeopleNet(el);
+  fixupPrefMap(el);
+  fixupWeightHash(el);
+  bindNotes(el);
   el.querySelectorAll('img[src^="/img/"]').forEach(img => {
     img.src = API_BASE + img.getAttribute("src");
   });
@@ -1497,14 +1504,18 @@ function poll(g, b) {
   tick();
 }
 
-// 走っている最中に開き直したときは、そのまま続きから見せる（`app._import_bar`）
-{
-  const bar = live && document.querySelector("[data-ibar][data-run]");
+// 走っている最中に開き直したときは、そのまま続きから見せる（`app._import_bar`）。
+// **元は読み込み時に1度だけ走る処理だったが、SPAでは「公演情報の登録」の
+// フラグメントを差し込むたびに呼び直す必要がある**(#000009)。呼び出しは
+// renderScreen()。
+function fixupImportBar(root) {
+  const bar = live && (root || document).querySelector("[data-ibar][data-run]");
   if (bar) {
-    const g = document.querySelector(".imp");
+    const g = (root || document).querySelector(".imp");
     if (g) poll(g, g.querySelector("button"));
   }
 }
+fixupImportBar(document);
 
 // **入力欄の動きは、後から足した 1 枚にも付ける。**
 //
@@ -1620,10 +1631,13 @@ document.addEventListener("change", ev => {
 // 「表示したとき常に開いているので、初期は閉じているようにしてください」）。
 // **開くのは、確定か「ふつうに戻す」を押した直後だけである** ── その知らせ
 // （推薦から外れた件数）はこの欄の中にしか無いので、畳んで戻すと結果が見えない。
-{
-  const wb = document.getElementById("weights");
+// **元は読み込み時に1度だけ走る処理だったが、SPAではフラグメントを差し込む
+// たびに呼び直す必要がある**(#000009、location.reload()の直後にここへ来る)。
+function fixupWeightHash(root) {
+  const wb = (root || document).querySelector("#weights");
   if (wb && location.hash === "#weights") wb.open = true;
 }
+fixupWeightHash(document);
 
 // **画面を閉じたら自動で終了する仕組みは撤回した**（起案者の指示・2026-08-27）。
 // 「記録を見返す」のような画面を長時間開いたままにする使い方と噛み合わなかった
@@ -1633,14 +1647,15 @@ if (live) sugWatch();
 
 // === ported: tools/taguri/people.py の PE.JS(相関図パネル) ===
 
-(() => {
-  const box = document.querySelector("[data-pnet]");
+function fixupPeopleNet(root) {
+  root = root || document;
+  const box = root.querySelector("[data-pnet]");
   if (!box) return;
   const src = box.querySelector("[data-pnet-data]");
   let D;
   try { D = JSON.parse(src.textContent); } catch (e) { return; }
   const svg = box.querySelector("svg"), tip = box.querySelector("[data-ptip]");
-  const said = document.querySelector("[data-psaid]");
+  const said = root.querySelector("[data-psaid]");
   const N = D.nodes, EG = D.edges, W = D.w, H = D.h, PAD = D.pad;
   const nd = [...svg.querySelectorAll(".nd")];
   const ln = [...svg.querySelectorAll(".ed line")];
@@ -1667,7 +1682,8 @@ if (live) sugWatch();
   // ---- 力学。**乱数は使わない** ------------------------------------------
   const K_REP = 1350, K_SPR = 0.055, K_MID = 0.020, DAMP = 0.82;
   let alpha = 0.55, raf = 0;
-  const slow = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const slow = typeof matchMedia === "function"
+    && matchMedia("(prefers-reduced-motion: reduce)").matches;
   // **枠に合わせて伸ばす倍率。** 定数を手で当てて広げるのではなく、落ち着いた形を
   // そのまま拡大し、**ばねの自然長も同じ倍率で伸ばす** ── 位置だけ拡大すると
   // ばねが伸びた状態になり、次の瞬間また縮んで元の大きさに戻る
@@ -2135,8 +2151,8 @@ if (live) sugWatch();
   svg.addEventListener("pointerleave", () => { if (drag < 0) { light(-1); tip.hidden = true; } });
 
   // ---- 外してみる。**この図の見出しの問いに答える操作** ------------------
-  const btns = [...document.querySelectorAll(".pcut button")];
-  const rst = document.querySelector(".pcut .rst");
+  const btns = [...root.querySelectorAll(".pcut button")];
+  const rst = root.querySelector(".pcut .rst");
   function tell() {
     if (out < 0) {
       said.innerHTML = "";
@@ -2217,15 +2233,15 @@ if (live) sugWatch();
   // 力学を解き直さない ── 解き直すと、増えたのか点が動いただけなのかが読めなくなる
   // （docs/000007-records-network-time-spec.md 4 章）。「外してみる」・つまんで動かす
   // 操作は「いま」だけに残す（過去は読むだけの見え方にする）。
-  const tsrc = document.querySelector("[data-pnet-time]");
+  const tsrc = root.querySelector("[data-pnet-time]");
   let T = null;
   try { if (tsrc) T = JSON.parse(tsrc.textContent); } catch (e) { T = null; }
   if (T && T.stages && T.stages.length) {
-    const sl = document.querySelector("[data-psl]");
-    const play = document.querySelector("[data-pplay]");
-    const note = document.querySelector("[data-pnstage]");
-    const gap = document.querySelector("[data-pgap]");
-    const pcutBox = document.querySelector(".pcut");
+    const sl = root.querySelector("[data-psl]");
+    const play = root.querySelector("[data-pplay]");
+    const note = root.querySelector("[data-pnstage]");
+    const gap = root.querySelector("[data-pgap]");
+    const pcutBox = root.querySelector(".pcut");
     if (sl) {
       const last = T.stages.length - 1;
       // 累積の可視集合を先に作る（毎回全段をなめ直さない）
@@ -2248,7 +2264,7 @@ if (live) sugWatch();
         timePast = k < last;
         if (pcutBox) pcutBox.hidden = timePast;
         if (timePast && out >= 0) {
-          const r = document.querySelector(".pcut .rst");
+          const r = root.querySelector(".pcut .rst");
           if (r) r.click();
         }
         if (gap) gap.hidden = !timePast;
@@ -2274,7 +2290,7 @@ if (live) sugWatch();
       apply(last);
     }
   }
-})();
+}
 
 // **この図から分かる文章を作る／作り直す。**（`chronicle.py` の「年表の文を作る」と同じ形）
 document.addEventListener("click", ev => {
@@ -2293,10 +2309,11 @@ document.addEventListener("click", ev => {
 // **地図と地方の札は、チェックを反転させるだけである。**（`prefmap.py` の説明）
 // 塗りは CSS が `:checked` から決めるので、ここでは見た目に触らない ──
 // **状態を 2 つ持つと、ずれたときにどちらが本当か決められない。**
-(() => {
+function fixupPrefMap(root) {
+  root = root || document;
   // **`.pfil`（場所の絞り込みの form）だけを見る。** `.pbox` は畳んである道具の枠
   // として使い回している名前なので、最初の 1 つが場所の箱とはかぎらない
-  const box = document.querySelector("form.pfil");
+  const box = root.querySelector("form.pfil");
   if (!box) return;
   const cb = v => box.querySelector('input[name="pref"][value="' + CSS.escape(v) + '"]');
   // 地方の札は「その地方の県が全部入っているか」で光る。全部入っていれば外す側に働く
@@ -2326,7 +2343,7 @@ document.addEventListener("click", ev => {
     marks();
   });
   marks();
-})();
+}
 
 // === ported: tools/taguri/stage_calendar.py の JS(カレンダーの「行く日を追加」ダイアログ) ===
 

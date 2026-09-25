@@ -2237,3 +2237,14 @@ h3{font-size:13.5px;margin:18px 0 8px;color:var(--ink)}
 .card.fail .big{display:flex;align-items:baseline;gap:10px;margin:6px 0 2px}
 .hero{font-size:46px;font-weight:600;letter-spacing:-.02em;color:#d03b3b;line-height:1.1}
 .hu{font-size:13px;color:var(--ink2)}
+
+/* ---- app.py の START_CSS(はじめる画面)。Phase 4(#000009)で追加。
+   内容はそのまま抽出、書き換えていない。 */
+
+.start-step .badge{margin-left:10px}
+.start-step.done{opacity:.72}
+.start-step .lead a{color:var(--acc);font-weight:600}
+code.cmd{display:inline-block;margin:10px 0 4px;padding:8px 14px;border-radius:8px;
+ background:var(--plane);border:1px solid var(--ring);font-size:13px;
+ font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--ink);
+ user-select:all}
