@@ -444,7 +444,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     body = APP._recommend_body(srv.prefs)
                     srv.mark_viewed("recommend_pref" if srv.prefs else "recommend")
                     result = {"ok": True, "title": "今週のおすすめ", "body_html": body}
-                    srv.screen_cache[cache_key] = result
+                    srv.screen_cache_set(cache_key, result)
                     self._json(200, result)
                     return
                 if path == "/api/screen/reminder":
@@ -461,7 +461,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                         return
                     html = APP._reminder_body(srv.prefs, w)
                     result = {"ok": True, "title": "開幕リマインド", "body_html": html}
-                    srv.screen_cache[cache_key] = result
+                    srv.screen_cache_set(cache_key, result)
                     self._json(200, result)
                     return
                 if path == "/api/screen/register":
@@ -541,7 +541,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 else:
                     self._json(404, {"ok": False, "error": "unknown screen"})
                     return
-                srv.screen_cache[cache_key] = result
+                srv.screen_cache_set(cache_key, result)
                 self._json(200, result)
                 return
             except Exception as e:                                      # noqa: BLE001
@@ -1027,6 +1027,18 @@ class Server(http.server.ThreadingHTTPServer):
 
     def import_status(self) -> dict:
         return dict(self.imp)
+
+    # **`screen_cache`に上限を持たせる（#000009）。** 「探す」は自由な文字列が
+    # キーになるので、放っておくと来訪者ごとに違う検索語がキーとして際限なく
+    # 積み上がりかねない ── Renderの無料枠はメモリも小さいので、青天井にしない。
+    # 単純に「増えすぎたら丸ごと作り直す」だけにする ── 個々のキーを退避する
+    # 複雑な仕組みは要らない(消えてもまた計算し直されるだけで、壊れはしない)。
+    SCREEN_CACHE_MAX = 50
+
+    def screen_cache_set(self, key: str, value: dict) -> None:
+        if len(self.screen_cache) >= self.SCREEN_CACHE_MAX:
+            self.screen_cache.clear()
+        self.screen_cache[key] = value
 
     # ---- 1 三択の反応 ------------------------------------------------------
     def on_react(self, b: dict) -> dict:
