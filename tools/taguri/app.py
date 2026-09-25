@@ -3105,6 +3105,7 @@ def _settings_body(user_id: str) -> str:
 <button type="button" class="pall-btn" data-set-pref-all="1">全国に戻す</button>
 <span class="said"></span></div>
 </form></details>
+{_account_card_html(user_id)}
 {_export_card_html()}
 {_data_copy_card_html()}
 {_dropped_html()}
@@ -7981,6 +7982,39 @@ EXPORT_LABEL = {
     "missed": "「観ればよかった」の登録",
     "declared": "お気に入りに登録した名前と題材",
 }
+
+
+def _account_card_html(user_id: str) -> str:
+    """「アカウント」の札。**公開デモ（`demo_mode`）だけに出す**（利用者ごとの
+    データ分離・E3）。
+
+    `auth.py`には復旧コードでの復旧(`/recover`)・別端末の追加
+    (`/link`・`/api/link/create`)がすでに実装済みだったが、**呼び出すUIが
+    どこにも無かった** ── ゲスト登録は初回アクセス時に自動で行われるので
+    (`serve.Handler._resolve_user`)、`/auth/start`を自分から踏む理由が
+    普段は無い。この画面から辿れるようにする。
+
+    **ローカル/EC2（`run.py`）では出さない。** `user_id`が
+    `auth.LOCAL_USER_ID`のときは認証の概念自体が無いので、アカウントという
+    言葉が意味を持たない（1台のパソコンに1人だけの前提のまま）。
+    """
+    import auth as AU
+    if user_id == AU.LOCAL_USER_ID:
+        return ""
+    return f"""<details class="card">{_card_h2("gear", "アカウント")}
+<p class="lead">この仕組みはアカウント登録なしで動きます。**この端末を識別しているのは
+復旧コード1つだけ**で、控えていないと端末を失ったときに記録へ二度と戻れません。</p>
+<p class="lead">利用者ID: <code>{E(user_id[:12])}…</code></p>
+<p class="lead"><a href="/auth/start?t=__TAGURI_TOKEN__">復旧コードをもう一度確認する
+（すでに発行済みなら再発行はしません）</a><br>
+<a href="/recover?t=__TAGURI_TOKEN__">別の復旧コードでこの端末を切り替える</a></p>
+<div class="link-add">
+<p class="lead">いま使っている記録を、別の端末（スマホ・別のパソコン）でも続けて
+使いたいときは、こちらで一時コードを発行してください（10分で失効・1回限り）。</p>
+<button type="button" data-link-create="1">{IC.ico("plus")}この端末を追加する用のコードを発行する</button>
+<div class="link-out" hidden></div>
+</div>
+</details>"""
 
 
 def _export_card_html() -> str:

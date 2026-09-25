@@ -13,6 +13,26 @@
 body{overflow-wrap:break-word}
 .dgt{overflow-wrap:anywhere}
 
+/* ---- 初回訪問者への復旧コード表示(GitHub Pages版だけの追加・利用者ごとの
+   データ分離・E3) ── サーバが初めての訪問者をその場でゲスト登録したとき、
+   生の復旧コードを一度だけ返す。二度と表示できないので、はっきり目立つ
+   全画面オーバーレイで見せ、本人が「控えました」を押すまで消えない。 */
+.tg-welcome{position:fixed;inset:0;z-index:100;display:flex;align-items:center;
+ justify-content:center;padding:16px;background:rgba(0,0,0,.55)}
+.tg-welcome-box{background:var(--surf);border:1px solid var(--ring);border-radius:14px;
+ padding:22px 24px;max-width:28em;width:100%;box-shadow:0 8px 32px rgba(0,0,0,.3)}
+.tg-welcome-box h2{margin:0 0 .5em;color:var(--curtain)}
+.tg-welcome-code{display:block;margin:14px 0;padding:.7em .8em;font-size:1.15em;
+ letter-spacing:.02em;word-break:break-all;background:rgba(127,127,127,.12);
+ border:1px dashed var(--curtain);border-radius:8px;user-select:all}
+.tg-welcome-btns{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+.tg-welcome-btns button{background:var(--curtain);color:#fff;border:none;
+ border-radius:8px;padding:.55em 1em;cursor:pointer;font-size:.95em}
+.tg-welcome-btns button[data-wc-copy]{background:transparent;color:var(--curtain);
+ border:1px solid var(--curtain)}
+.link-add{margin-top:12px;padding-top:12px;border-top:1px solid var(--ring)}
+.link-out{margin-top:10px}
+
 /* ---- フラグメント読み込み中のアニメーション(GitHub Pages版だけの追加) -----
    Renderの無料枠は休止から起きるのに10〜20秒ほどかかることがあり、
    ただの「読み込み中…」だと待たされている感が強い。枠は持たず、幕と

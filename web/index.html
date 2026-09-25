@@ -24,7 +24,8 @@
     var qs = location.search.replace(/^\?/, "");
     window.__prefetchKey = name + "?" + qs;
     window.__prefetch = fetch(
-      "https://taguri-demo.onrender.com/api/screen/" + name + (qs ? "?" + qs : "")
+      "https://taguri-demo.onrender.com/api/screen/" + name + (qs ? "?" + qs : ""),
+      {credentials: "include"}
     ).then(function (r) { return r.json(); }).catch(function () { return null; });
   } catch (e) {}
 })();

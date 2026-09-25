@@ -349,6 +349,39 @@ function fragmentCacheSet(key, data) {
   fragmentCache.set(key, {expires: Date.now() + FRAGMENT_CACHE_TTL_MS, data});
 }
 
+// **初めての訪問者を、その場で自動的にゲスト登録する（利用者ごとのデータ分離・
+// E3）。** サーバ側(`serve.Handler._resolve_user`)がセッションCookieを持たない
+// 要求を受けると、その場で復旧コードを発行してCookieを返す。**生の復旧コードは
+// この応答に一度だけ乗る**（サーバは以後これを二度と持たない）ので、ここで
+// 受け取ったらその場で見せて控えてもらう。二度と同じコードは見せられない。
+let welcomeShown = false;
+function showWelcomeCode(code) {
+  if (!code || welcomeShown) return;
+  welcomeShown = true;
+  const wrap = document.createElement("div");
+  wrap.className = "tg-welcome";
+  wrap.innerHTML =
+    '<div class="tg-welcome-box">'
+    + '<h2>この端末の復旧コードです</h2>'
+    + '<p>他の端末でも同じ記録を使いたいとき、Cookieを消してしまったときに'
+    + '必要になります。<b>今だけ表示していて、二度と表示できません。</b>'
+    + '安全な場所に控えてください。</p>'
+    + '<code class="tg-welcome-code">' + E(code) + '</code>'
+    + '<div class="tg-welcome-btns">'
+    + '<button type="button" data-wc-copy>コピーする</button>'
+    + '<button type="button" data-wc-ok>控えました</button>'
+    + '</div></div>';
+  document.body.appendChild(wrap);
+  wrap.querySelector("[data-wc-copy]").addEventListener("click", () => {
+    const said = wrap.querySelector("[data-wc-copy]");
+    (navigator.clipboard && navigator.clipboard.writeText(code)
+      .then(() => { said.textContent = "コピーしました"; })
+      .catch(() => { said.textContent = "コピーできませんでした ── 手で選んでください"; }))
+      || (said.textContent = "コピーできませんでした ── 手で選んでください");
+  });
+  wrap.querySelector("[data-wc-ok]").addEventListener("click", () => wrap.remove());
+}
+
 // **d3を遅延読み込みする。** 220KB超あり、使うのは「眺める」(storyline)
 // だけなので、常に読み込まずに使うときだけ取りに行く。自前で同梱した
 // vendor/d3.v7.min.js を使う(Render経由の配信には頼らない、Phase 0参照)。
@@ -455,7 +488,7 @@ async function loadScreen(path, search) {
       if (!d || !d.ok) throw new Error((d && d.error) || "prefetch failed");
     } else {
       const url = API_BASE + "/api/screen/" + name + (search ? "?" + search : "");
-      const r = await fetch(url);
+      const r = await fetch(url, {credentials: "include"});
       d = await r.json();
       if (!r.ok || !d.ok) throw new Error(d.error || r.status);
     }
@@ -465,6 +498,7 @@ async function loadScreen(path, search) {
     el.innerHTML = "<h1>読み込めませんでした</h1><p>" + E(String(e)) + "</p>";
     return;
   }
+  showWelcomeCode(d.welcome_code);
   fragmentCacheSet(cacheKey, d);
   stopLoading();
   if (stale()) return;
@@ -556,11 +590,12 @@ fixupSynClamp(document);
 async function post(path, body, group, done) {
   const said = group ? group.querySelector(".said") : null;
   try {
-    const r = await fetch(API_BASE + path, {method: "POST",
+    const r = await fetch(API_BASE + path, {method: "POST", credentials: "include",
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify(body)});
     const d = await r.json();
     if (!r.ok) { if (said) said.textContent = "できなかった: " + (d.error || r.status); return null; }
+    showWelcomeCode(d.welcome_code);
     if (said && done !== null) said.textContent = done || "記録した";
     return d;
   } catch (e) { if (said) said.textContent = "できなかった: " + e; return null; }
@@ -859,6 +894,20 @@ document.addEventListener("click", ev => {
       "保存しました ── 次に開いたときから効きます").then(d => {
       if (d) setTimeout(() => location.reload(), 700);
     });
+  } else if (b.dataset.linkCreate) {
+    // **「この端末を追加」用の一時コードを発行する**（利用者ごとのデータ分離・E3）。
+    // `auth.create_link_code`はすでに実装済みだったが、呼び出すUIがどこにも
+    // 無かった(`_account_card_html`参照)。10分で失効・1回限り
+    const box = b.closest(".link-add").querySelector(".link-out");
+    b.disabled = true;
+    post("/api/link/create", {}, null, null).then(d => {
+      b.disabled = false;
+      if (!d) { box.hidden = false; box.textContent = "発行できませんでした"; return; }
+      box.hidden = false;
+      box.innerHTML = '<p class="lead">別の端末で <code>' + E(API_BASE) + '/link</code> '
+        + 'を開き、この6桁を10分以内に入力してください。</p>'
+        + '<code class="tg-welcome-code">' + E(d.code) + '</code>';
+    });
   } else if (b.dataset.unseen) {
     // **押したら一覧から外れる**（起案者の指示・2026-08-24）。評価待ちを開くたびに
     // 作り直すようにしたので、読み込み直せば実際に消える。**書く欄は開かない操作なので、
@@ -1062,7 +1111,7 @@ document.addEventListener("click", ev => {
     // あらすじの続きと、出演者の残り。**同じ押し口で開く**
     (b.closest(".syn") || b.closest(".cast")).classList.toggle("open");
   } else if (b.dataset.close) {
-    fetch(API_BASE + "/api/close", {method: "POST", keepalive: true});
+    fetch(API_BASE + "/api/close", {method: "POST", keepalive: true, credentials: "include"});
     b.textContent = "閉じてよい";
   }
 });
@@ -1153,7 +1202,7 @@ async function lkSearch(i, web, btn) {
   try {
     const r = await fetch(API_BASE + (web ? "/api/suggest_web?t=" : "/api/suggest?t=")
       + encodeURIComponent(T) + "&q=" + encodeURIComponent(q),
-      {headers: {"X-Taguri-Token": T}});
+      {headers: {"X-Taguri-Token": T}, credentials: "include"});
     d = await r.json();
   } catch (e) { d = null; }
   if (btn) btn.disabled = false;
@@ -1287,7 +1336,7 @@ async function sugFetch(q, box) {
   let d;
   try {
     const r = await fetch(API_BASE + "/api/suggest?t=" + encodeURIComponent(T)
-      + "&q=" + encodeURIComponent(q), {headers: {"X-Taguri-Token": T}});
+      + "&q=" + encodeURIComponent(q), {headers: {"X-Taguri-Token": T}, credentials: "include"});
     d = await r.json();
   } catch (e) { return; }
   sugRender(box, d.rows, "すでにある情報から選べます（"
@@ -1311,7 +1360,7 @@ async function sugWeb() {
   let d = null;
   try {
     const r = await fetch(API_BASE + "/api/suggest_web?t=" + encodeURIComponent(T)
-      + "&q=" + encodeURIComponent(q), {headers: {"X-Taguri-Token": T}});
+      + "&q=" + encodeURIComponent(q), {headers: {"X-Taguri-Token": T}, credentials: "include"});
     d = await r.json();
   } catch (e) { d = null; }
   if (btn) btn.disabled = false;
@@ -1399,7 +1448,8 @@ async function hints(box) {
   box.textContent = "メールを読んでいます…";
   try {
     const r = await fetch(API_BASE + "/api/mail_hints?t=" + encodeURIComponent(T)
-      + "&uid=" + encodeURIComponent(box.dataset.hints), {headers: {"X-Taguri-Token": T}});
+      + "&uid=" + encodeURIComponent(box.dataset.hints),
+      {headers: {"X-Taguri-Token": T}, credentials: "include"});
     const d = await r.json();
     box.textContent = "";
     (d.hints || []).forEach(h => {
@@ -1423,7 +1473,7 @@ function waitJob(g, reload) {
   const tick = async () => {
     try {
       const r = await fetch(API_BASE + "/api/import_status?t=" + encodeURIComponent(T),
-                            {headers: {"X-Taguri-Token": T}});
+                            {headers: {"X-Taguri-Token": T}, credentials: "include"});
       const d = await r.json();
       if (said && d.line) said.textContent = d.line;
       if (d.running) { setTimeout(tick, 1200); return; }
@@ -1500,7 +1550,7 @@ function poll(g, b) {
   const tick = async () => {
     try {
       const r = await fetch(API_BASE + "/api/import_status?t=" + encodeURIComponent(T),
-                            {headers: {"X-Taguri-Token": T}});
+                            {headers: {"X-Taguri-Token": T}, credentials: "include"});
       const d = await r.json();
       prog(d);
       said.textContent = d.line || "…";
