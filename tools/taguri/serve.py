@@ -308,9 +308,18 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
         レート制限（`AU.throttle_register`）に掛かったときは`AU.AuthError`を
         そのまま投げる ── 呼び出し側で429として扱う。
+
+        **例外を投げる前に`_welcome_code`も空にしておく。** `Handler`は
+        keep-alive接続では複数の要求で使い回される（Renderのプロキシが
+        バックエンドへの接続を再利用しているのを実測で確認した）。ここで
+        例外を投げると呼び出し側の`self.user_id, self._welcome_code = ...`
+        代入が実行されないため、空にしないと**前の要求で新規登録できた
+        ときの生コードが、無関係な今回のエラー応答に紛れ込む**
+        （`_json`が`self._welcome_code`をそのまま読むため）。
         """
         srv = self.server                                          # type: ignore[assignment]
         self._auth_extra: dict = {}
+        self._welcome_code: str | None = None
         if not srv.demo_mode:
             return AU.LOCAL_USER_ID, None
         user_id = self._session_user_id()
@@ -338,6 +347,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def do_GET(self) -> None:                                      # noqa: N802
         path, _, query = self.path.partition("?")
         srv = self.server                                          # type: ignore[assignment]
+        # **`Handler`はkeep-alive接続では複数の要求で使い回されるので、
+        # 前の要求の状態を持ち越さないようここで必ず空にする**（`_json`が
+        # 読む`_welcome_code`・`_auth_extra`。Renderのプロキシがバックエンドへの
+        # 接続を再利用しているのを実測で確認した）。
+        self._welcome_code: str | None = None
+        self._auth_extra: dict = {}
         # **`_watchdog`向けに、どの道であれ最初に触られたらここで印を付ける。**
         # 以前は`_tok`を通った後でしか付かず、#000008で追加した新しい道
         # （`/auth/start`等）だけを使う利用者では一度も付かないまま
@@ -768,6 +783,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:                                     # noqa: N802
         srv = self.server                                          # type: ignore[assignment]
+        # **keep-alive接続での使い回し対策（`do_GET`と同じ理由）。**
+        self._welcome_code: str | None = None
+        self._auth_extra: dict = {}
 
         # **#000008の新しい道は、既存の起動ごとトークンより前に受ける。**
         # `/api/recover`・`/api/link/redeem`は「まだ鍵を持っていない人」が
