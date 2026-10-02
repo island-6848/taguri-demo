@@ -2492,6 +2492,11 @@ def _promote_owned_tickets(user_id: str, today: str) -> None:
     """
     import feedback as FB
     import rate_performances as R
+    if not _is_owner(user_id):
+        # **反応と券の表（`reaction`・`ticket`）はまだ全員共通である**（E3 の Phase 3 で
+        # 分ける）。ここで訪問者の `works` に書くと、持ち主（デモデータ）の「持っている」
+        # 公演が、評価一覧を開いた訪問者全員の観劇記録に入る。分けるまでは持ち主だけ
+        return
     con = FB.connect()
     try:
         react, tickets = FB.reactions(con), FB.tickets(con)
