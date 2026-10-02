@@ -30,6 +30,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools" / "review"))
 import rate_performances as R  # noqa: E402
+LOCAL = R.LOCAL_USER_ID   # 検査はローカルの持ち主の記録で行う（E3）
 
 R.DB = Path(tempfile.mkdtemp()) / "test.db"
 
@@ -103,7 +104,7 @@ def check_fixes(check, works: list[dict]) -> None:
                            "note_motive": ""})
     con.close()
     uid = src["shows"][0]["uid"]
-    out = APP.fix_work(src["work_key"], title="直した題名 ── 検査用",
+    out = APP.fix_work(LOCAL, src["work_key"], title="直した題名 ── 検査用",
                        shows=[{"uid": s["uid"], "date": s["date"], "venue": s["venue"]}
                               for s in src["shows"]])
     after = R.load_works(R.load_purchases(), *_state())
@@ -120,11 +121,11 @@ def check_fixes(check, works: list[dict]) -> None:
     same = next(r for r in raw if r["uid"] == uid)
     check("抽出した題名を消さない", same["title"] == src["shows"][0]["extracted"]["title"],
           "credits.jsonl は (date, mail_title) で引くので上書きできない")
-    n0 = APP.fix_work(out["work_key"], title="直した題名 ── 検査用",
+    n0 = APP.fix_work(LOCAL, out["work_key"], title="直した題名 ── 検査用",
                       shows=[{"uid": s["uid"], "date": s["date"], "venue": s["venue"]}
                              for s in now["shows"]])
     check("変わっていなければ直したと言わない", n0["n"] == 0, "同じ内容で押しても 0 件")
-    APP.unfix_work(n0["work_key"])
+    APP.unfix_work(LOCAL, n0["work_key"])
     back = R.load_works(R.load_purchases(), *_state())
     now2 = next((x for x in back if any(y["uid"] == uid for y in x["shows"])), None)
     check("直しを取り消して戻せる", bool(now2) and now2["title"] == src["title"],
@@ -151,7 +152,7 @@ def check_merged_fix(check, works: list[dict]) -> None:
     if len(past) < 2:
         return
     a, b = past[0], past[1]
-    merged = APP.merge_works(a["work_key"], b["work_key"])
+    merged = APP.merge_works(LOCAL, a["work_key"], b["work_key"])
     kept = merged["kept"]
     con = R.connect()
     try:
@@ -163,12 +164,12 @@ def check_merged_fix(check, works: list[dict]) -> None:
     check("まとめた記録に、両方の回（uid）が出る", bool(now)
           and len(now["shows"]) >= len(a["shows"]) + len(b["shows"]),
           f'{len(now["shows"]) if now else 0} 回')
-    out = APP.fix_work(kept, title=now["title"],
+    out = APP.fix_work(LOCAL, kept, title=now["title"],
                        shows=[{"uid": s["uid"], "date": s["date"], "venue": s["venue"]}
                               for s in now["shows"]])
     check("まとめた記録でも、画面が出す回はすべて保存できる（「この公演の回ではない」で落ちない）",
           out.get("n") is not None, out)
-    APP.unmerge_work(kept)
+    APP.unmerge_work(LOCAL, kept)
 
 
 def check_figures(check) -> None:
@@ -181,7 +182,7 @@ def check_figures(check) -> None:
     import app as APP  # noqa: E402
     import charts as CH  # noqa: E402
     import venues as VN  # noqa: E402
-    ws = APP._works()
+    ws = APP._works(LOCAL)
 
     ring = CH.spiral_panel(ws)
     dated = [w for w in ws if (w.get("first_date") or "")[:4].isdigit()]
@@ -193,7 +194,7 @@ def check_figures(check) -> None:
     # **日記帳が年の耳で 1 枚 15 件ずつに切られた**（同日）。**断片（`#w-…`）だけでは
     # 足りない** ── その行が載っていない紙が開くので、点の行き先には「どの記録か」
     # （`w=`）も載っている。**確かめるのは、その道を辿って行に着けることである。**
-    figs = APP.page_records()
+    figs = APP.page_records(LOCAL)
     # **数えるのは行き先（`href`）だけである。** 画面には `#w-title` のような入力欄の
     # 名前も入っているので、`"#w-"` の数を数えると点の数と合わない
     dests = re.findall(r'href="([^"]*#w-[^"]+)"', figs)
@@ -205,7 +206,7 @@ def check_figures(check) -> None:
           f"{len(dests)} 点のうち {len(hrefs)} 点に載っている")
     # **全点を辿ると重い**（1 点ごとに紙を組み直す）ので、間隔を空けて拾う
     sample = hrefs[:: max(1, len(hrefs) // 8)][:8]
-    miss = [a for w, a in sample if f'id="{a}"' not in APP.page_works(want=w)]
+    miss = [a for w, a in sample if f'id="{a}"' not in APP.page_works(LOCAL, want=w)]
     links, ids = {a for _w, a in hrefs}, set()
     check("図の点から記録へ飛べる", bool(sample) and not miss,
           f"辿れなかった点 {len(miss)} / {len(sample)} 件（全 {len(links)} 点）")
@@ -248,11 +249,11 @@ def check_unseen(check) -> None:
     """
     sys.path.insert(0, str(ROOT / "tools" / "taguri"))
     import app as APP  # noqa: E402
-    ws = APP._works()
+    ws = APP._works(LOCAL)
     today = max((w.get("last_date") or "") for w in ws)
 
     def waiting() -> list:
-        return [w["work_key"] for w in APP._works()
+        return [w["work_key"] for w in APP._works(LOCAL)
                 if not w["verdict"] and w["bucket"] != "upcoming" and not w.get("unseen")
                 and w["last_date"] and w["last_date"] <= today]
 
@@ -265,15 +266,15 @@ def check_unseen(check) -> None:
         check("行かなかったを試せる記録がある", False, "回を持つ評価待ちの記録が無い")
         return
     key = target["work_key"]
-    APP.set_unseen(key, True)
-    after = {w["work_key"]: w for w in APP._works()}
+    APP.set_unseen(LOCAL, key, True)
+    after = {w["work_key"]: w for w in APP._works(LOCAL)}
     check("行かなかったを記録できる", bool(after[key].get("unseen")),
           f"「{target['title'][:20]}」")
     check("評価待ちから外れる", key not in waiting() and key in before_wait,
           f"{len(before_wait)} → {len(waiting())} 件")
     # **記録からは消さない。** 買った事実は残るので、戻す口がその行に要る
     # **1 公演ごとの行は「日記帳」に移った**（2026-08-24 の画面の分割）
-    page = APP.page_works()
+    page = APP.page_works(LOCAL)
     check("記録には残り、戻す口が出る",
           f'data-seen="{key}"' in page, "「やはり観た」を同じ行に置いている")
     un = [w for w in after.values() if w.get("unseen")]
@@ -292,8 +293,8 @@ def check_unseen(check) -> None:
           f'data-work="{key}"><button data-v="◎"' not in page,
           "◎○△× を出していない")
 
-    APP.set_unseen(key, False)
-    back = {w["work_key"]: w for w in APP._works()}
+    APP.set_unseen(LOCAL, key, False)
+    back = {w["work_key"]: w for w in APP._works(LOCAL)}
     check("やはり観たで戻せる",
           not back[key].get("unseen") and waiting() == before_wait,
           f"評価待ちが {len(before_wait)} 件に戻った")
@@ -303,7 +304,7 @@ def check_unseen(check) -> None:
     manual = next((w for w in ws if not w.get("shows")), None)
     if manual:
         try:
-            APP.set_unseen(manual["work_key"], True)
+            APP.set_unseen(LOCAL, manual["work_key"], True)
             check("手で足した記録は別の口を名指しする", False, "断らずに書いてしまった")
         except ValueError as e:
             check("手で足した記録は別の口を名指しする", "取り消す" in str(e), str(e)[:40])
@@ -329,21 +330,21 @@ def check_live_lists(check) -> None:
     import render_recommend as RR  # noqa: E402
 
     # --- 評価待ちは、控えではなく DB から作る
-    before = [w["work_key"] for w in APP.waiting_rows()]
-    target = next((w for w in APP._works() if w["work_key"] in before), None)
+    before = [w["work_key"] for w in APP.waiting_rows(LOCAL)]
+    target = next((w for w in APP._works(LOCAL) if w["work_key"] in before), None)
     if target is None:
         check("評価待ちに試せる記録がある", False, "評価待ちが空")
         return
     key = target["work_key"]
-    APP.drop_work(key)
+    APP.drop_work(LOCAL, key)
     check("取り消すとその場で評価待ちから消える",
-          key not in [w["work_key"] for w in APP.waiting_rows()],
-          f"{len(before)} → {len(APP.waiting_rows())} 件（run.py を走らせずに）")
+          key not in [w["work_key"] for w in APP.waiting_rows(LOCAL)],
+          f"{len(before)} → {len(APP.waiting_rows(LOCAL))} 件（run.py を走らせずに）")
     check("取り消した記録は画面から戻せる",
-          key in [r["key"] for r in APP.dropped_works()], "「取り消した記録」に出ている")
-    APP.restore_work(key)
+          key in [r["key"] for r in APP.dropped_works(LOCAL)], "「取り消した記録」に出ている")
+    APP.restore_work(LOCAL, key)
     check("戻すと評価待ちに帰る",
-          [w["work_key"] for w in APP.waiting_rows()] == before, f"{len(before)} 件に戻った")
+          [w["work_key"] for w in APP.waiting_rows(LOCAL)] == before, f"{len(before)} 件に戻った")
 
     # --- 反応を押すと、束が変わる（点は変えない）
     try:
@@ -364,7 +365,7 @@ def check_live_lists(check) -> None:
     real = FB.reactions
     try:
         FB.reactions = lambda con: mock
-        live = APP._rebucket(raw)
+        live = APP._rebucket(LOCAL, raw)
         bad = [k for k in ("ranked", "others", "owned", "tracking", "favourites", "started")
                if len(live.get(k) or []) != len(raw.get(k) or [])]
     finally:
@@ -372,7 +373,7 @@ def check_live_lists(check) -> None:
     check("同じ反応なら同じ束が出る", not bad,
           "recommend2.py の割り振りをそのまま再現している" if not bad
           else "・".join(f"{k} {len(raw.get(k) or [])}→{len(live.get(k) or [])}" for k in bad))
-    live = APP._rebucket(raw)
+    live = APP._rebucket(LOCAL, raw)
 
     top = (raw.get("ranked") or [None])[0]
     if top is None:
@@ -387,7 +388,7 @@ def check_live_lists(check) -> None:
         bad = []
         for label, (dest, val) in moves.items():
             FB.reactions = lambda con, v=val: {sid: dict(v, title=title)}
-            e = APP._rebucket(raw)
+            e = APP._rebucket(LOCAL, raw)
             here = [k for k in ("ranked", "others", "owned", "tracking")
                     if any(str(c["stage_id"]) == sid for c in e.get(k) or [])]
             if here != [dest]:
@@ -427,7 +428,7 @@ def check_weights(check) -> None:
     except Exception as e:                                          # noqa: BLE001
         check("推薦の控えが読める", False, str(e)[:50])
         return
-    base = APP._rebucket(raw)
+    base = APP._rebucket(LOCAL, raw)
 
     check("段階は 5 つ", len(APP.WEIGHT_STEPS) == 5,
           "／".join(l for _k, l, _m in APP.WEIGHT_STEPS))
@@ -571,7 +572,8 @@ def check_nav(check) -> None:
              "/recommend/interest": lambda: APP.page_interest(uid),
              "/recommend/favourites": lambda: APP.page_favourites(uid),
              "/rate": lambda: APP.page_rate(uid),
-             "/records": APP.page_records, "/register": APP.page_register}
+             "/records": lambda: APP.page_records(uid),
+             "/register": lambda: APP.page_register(uid)}
     flow = [p for p, _l, _i, _d in APP.SUB_RECOMMEND]
     miss, wrong = [], []
     for name, fn in pages.items():
@@ -729,7 +731,7 @@ def check_suggest(check) -> None:
     import app as APP  # noqa: E402
     import collections as _c
 
-    pool = APP._suggest_pool()
+    pool = APP._suggest_pool(LOCAL)
     by = _c.defaultdict(set)
     for r in pool:
         if r.get("stage_id") and r["kind"] == "stage":
@@ -744,7 +746,7 @@ def check_suggest(check) -> None:
           f"{len(multi)} 行が 2 通り以上の題名を持つ")
     if multi:
         r = multi[0]
-        got = [APP.suggest(kk).get("rows") or [] for kk in r["ks"][:2]]
+        got = [APP.suggest(LOCAL, kk).get("rows") or [] for kk in r["ks"][:2]]
         ok = all(any(str(x.get("stage_id")) == r["stage_id"] for x in g) for g in got)
         check("どちらの書き方でも同じ公演が引ける", ok, "／".join(r["ks"][:2])[:40])
 
@@ -781,7 +783,7 @@ def check_suggest(check) -> None:
           "会場ごとに座組が違いうることまで書いている")
     # **題名だけで畳まない。** 別の団体が同じ戯曲を上演したものを 1 つにすると、
     # 観ていない公演の作り手が名簿に入る（実データの「ハムレット」がこれに当たった）
-    ham = [x for x in (APP.suggest("ハムレット").get("rows") or [])
+    ham = [x for x in (APP.suggest(LOCAL, "ハムレット").get("rows") or [])
            if x["kind"] == "stage"]
     if len(ham) >= 2:
         check("題名が同じでも団体が違えば別の作品にする",
@@ -789,7 +791,7 @@ def check_suggest(check) -> None:
               or len({x["wk"] for x in ham}) > 1,
               f"{len(ham)} 上演 → 作品 {len({x['wk'] for x in ham})} 個")
     # **同じ団体のツアーは 1 つの作品にまとめる**
-    pk = [x for x in (APP.suggest("プリキュア").get("rows") or [])
+    pk = [x for x in (APP.suggest(LOCAL, "プリキュア").get("rows") or [])
           if x["kind"] == "stage"]
     if len(pk) >= 3:
         check("同じ団体のツアーは 1 つの作品にする",

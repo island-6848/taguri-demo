@@ -449,7 +449,8 @@ def write(model: str = MODEL, force: bool = False) -> dict:
     """読みを作って保存する。**網が変わっていなければ何もしない。**"""
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     import app                                                        # noqa: PLC0415
-    rated = app._records_base()["rated_rows"]
+    import auth as AU                                                 # noqa: PLC0415
+    rated = app._records_base(AU.LOCAL_USER_ID)["rated_rows"]   # 持ち主の記録だけ（E3）
     g = build(rated)
     if len(g["core"]) < 3:
         return {"ok": False, "line": "この図はまだ読みを作れるだけの網がありません"}
@@ -644,8 +645,12 @@ def _is_maker(g: dict, p: str) -> bool:
 
 
 # ---------------------------------------------------------------- 図
-def panel(rated: list[dict]) -> str:
+def panel(rated: list[dict], *, owner: bool = True) -> str:
     """1 枚のパネル。**答えを文で先に書き、図はそれを確かめるために置く。**
+
+    **`owner=False`（公開デモの訪問者）には LLM の読みを出さず、作り直す口も置かない**
+    （E3。`chronicle.panel` と同じ理由 ── `people_read.json` は持ち主の網から作った
+    1 ファイルしか無い）。
 
     ## 動かす理由 ── 答えを確かめる操作が要るから（2026-08-24・起案者の指示）
 
@@ -771,8 +776,10 @@ def panel(rated: list[dict]) -> str:
     data = _payload(g, pos, rad, idx)
     tl = timeline(rated, g, idx)
     net_facts = facts(g, comps, tl)
-    read = load()
-    if read.get("body"):
+    read = load() if owner else {}
+    if not owner:
+        read_block = ""
+    elif read.get("body"):
         stale = read.get("fingerprint") != fingerprint(net_facts)
         read_block = (
             '<div class="pread"><h3>この図から分かること</h3>'
@@ -1640,7 +1647,8 @@ def main() -> int:
         return 0 if r.get("ok") else 1
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     import app                                                         # noqa: PLC0415
-    rated = app._records_base()["rated_rows"]
+    import auth as AU                                                  # noqa: PLC0415
+    rated = app._records_base(AU.LOCAL_USER_ID)["rated_rows"]
     g = build(rated)
     idx = {p: i for i, p in enumerate(g["core"])}
     print(json.dumps(facts(g, components(g), timeline(rated, g, idx)),

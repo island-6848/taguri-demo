@@ -70,6 +70,17 @@ from scan_ticket_mail import Gmail                                  # noqa: E402
 SRC = ROOT / "data" / "tickets" / "performances.jsonl"
 DB = ROOT / "data" / "review" / "ratings.db"
 
+# **利用者ごとのデータ分離（E3）Phase 2。** 観劇記録の 7 表（works・attendance・splits・
+# excluded・merges・hand_credits・visit_note）は `user_id` で分ける。値は
+# `tools/taguri/auth.py` の `LOCAL_USER_ID` と同じ ── この表に今まで書いてきたのは
+# ローカル（`run.py`）の持ち主 1 人だけなので、既存の行はすべてこの値として持ち越す。
+#
+# **既定値をこれにしてあるのは、バッチ（`recommend2.py`・`build_lookback.py` 等）が
+# 持ち主のローカルの記録を読むためだけに書かれているからである。** 公開デモの画面
+# （`app.py`）からは必ず `user_id=` を明示して呼ぶ ── 渡し忘れると持ち主の記録が
+# 訪問者に見えることになる。
+LOCAL_USER_ID = "local"
+
 # 段階（◎○△×）と、段階でないもの。企画書 4 章のとおり「まだ判断できない」は
 # 段階の隣に並べず、集計では欠測として扱う。
 GRADES = ["◎", "○", "△", "×"]
@@ -253,7 +264,7 @@ def _days(a: str, b: str) -> int:
 
 # ---------------------------------------------------------------- 作品の一覧
 
-def load_purchases(fixes: dict | None = None) -> list[dict]:
+def load_purchases(fixes: dict | None = None, *, user_id: str = LOCAL_USER_ID) -> list[dict]:
     """performances.jsonl から、評価の対象になる購入（＝観た回）を作る。
 
     同じ日・同じ時刻の購入は同一の回とみなす（extract_performances --list と同じ）。
@@ -268,6 +279,11 @@ def load_purchases(fixes: dict | None = None) -> list[dict]:
     演劇でない語の除外）は抽出の失敗を落とすための網であって、当事者が自分で
     書いた題名を却下する道具ではない（探すのは機械、確定は人）。
     """
+    if user_id != LOCAL_USER_ID:
+        # **購入確認メールは持ち主（ローカル）1 人のものである**（E3）。取り込みは
+        # 持ち主の Gmail を読む `run.py` の段でしか行わないので、公開デモの訪問者には
+        # 取り込んだ購入が 1 件も無い ── 持ち主の購入を訪問者の記録として見せない
+        return []
     if not SRC.exists():
         # **1 件も取り込んでいないのは、初めて使う人の正常な状態である。**
         # ここで止めると `run.py` が 2 段目で終わり、**画面が 1 度も開かない**
@@ -548,7 +564,8 @@ def mail_hints(uid: str, limit: int = 10) -> list[str]:
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS works (
-    work_key         TEXT PRIMARY KEY,
+    user_id          TEXT NOT NULL DEFAULT 'local',
+    work_key         TEXT NOT NULL,
     title            TEXT NOT NULL,
     first_date       TEXT,
     last_date        TEXT,
@@ -557,25 +574,30 @@ CREATE TABLE IF NOT EXISTS works (
     chosen           TEXT,
     note_impression  TEXT NOT NULL DEFAULT '',
     note_motive      TEXT NOT NULL DEFAULT '',
-    updated_at       TEXT NOT NULL
+    updated_at       TEXT NOT NULL,
+    PRIMARY KEY (user_id, work_key)
 );
 CREATE TABLE IF NOT EXISTS attendance (
+    user_id          TEXT NOT NULL DEFAULT 'local',
     uid              TEXT NOT NULL,
     work_key         TEXT NOT NULL,
     attended         INTEGER NOT NULL DEFAULT 1,
     updated_at       TEXT NOT NULL,
-    PRIMARY KEY (uid, work_key)
+    PRIMARY KEY (user_id, uid, work_key)
 );
 CREATE TABLE IF NOT EXISTS splits (
-    uid              TEXT PRIMARY KEY,
+    user_id          TEXT NOT NULL DEFAULT 'local',
+    uid              TEXT NOT NULL,
     programs         TEXT NOT NULL,
-    updated_at       TEXT NOT NULL
+    updated_at       TEXT NOT NULL,
+    PRIMARY KEY (user_id, uid)
 );
 CREATE TABLE IF NOT EXISTS excluded (
+    user_id          TEXT NOT NULL DEFAULT 'local',
     uid              TEXT NOT NULL,
     program          TEXT NOT NULL,
     updated_at       TEXT NOT NULL,
-    PRIMARY KEY (uid, program)
+    PRIMARY KEY (user_id, uid, program)
 );
 -- **人が「これは同じ公演だ」と確定した束ね直し。**
 --
@@ -588,9 +610,11 @@ CREATE TABLE IF NOT EXISTS excluded (
 -- 「題名の鍵＋初日」でできており、束ねて初日が変わるたびに鍵が変わると、
 -- **評価と感想の置き場所（works 表）が宙に浮く。**
 CREATE TABLE IF NOT EXISTS merges (
-    work_key         TEXT PRIMARY KEY,   -- 束ねられて消える側
+    user_id          TEXT NOT NULL DEFAULT 'local',
+    work_key         TEXT NOT NULL,      -- 束ねられて消える側
     into_key         TEXT NOT NULL,      -- 残る側
-    updated_at       TEXT NOT NULL
+    updated_at       TEXT NOT NULL,
+    PRIMARY KEY (user_id, work_key)
 );
 -- **公演ページが無い公演のために、人が直に入れた出演者・作り手とポスター。**
 --
@@ -607,10 +631,12 @@ CREATE TABLE IF NOT EXISTS merges (
 -- **公演ページの分を置き換えるのではなく、足す。** 手で入れたものは本人が確定した
 -- 事実だが、ページから取れている分を消す理由にはならない（消したいときは結び付けを外す）。
 CREATE TABLE IF NOT EXISTS hand_credits (
-    work_key         TEXT PRIMARY KEY,
+    user_id          TEXT NOT NULL DEFAULT 'local',
+    work_key         TEXT NOT NULL,
     fields           TEXT NOT NULL DEFAULT '{}',  -- 役職 → 名前。公演ページの欄と同じ形
     poster           TEXT NOT NULL DEFAULT '',    -- data/review/img の中のファイル名
-    updated_at       TEXT NOT NULL
+    updated_at       TEXT NOT NULL,
+    PRIMARY KEY (user_id, work_key)
 );
 -- **回ごとの、推薦には使わないメモ。**（起案者の指示・2026-08-26）
 --
@@ -630,9 +656,11 @@ CREATE TABLE IF NOT EXISTS hand_credits (
 -- `ratings` は評価そのもの（推薦に使う）を回ごとに割っていたが、この表は
 -- **推薦とは無関係な私的なメモだけ**を持つ。
 CREATE TABLE IF NOT EXISTS visit_note (
-    uid              TEXT PRIMARY KEY,
+    user_id          TEXT NOT NULL DEFAULT 'local',
+    uid              TEXT NOT NULL,
     note             TEXT NOT NULL DEFAULT '',
-    updated_at       TEXT NOT NULL
+    updated_at       TEXT NOT NULL,
+    PRIMARY KEY (user_id, uid)
 );
 """
 
@@ -647,7 +675,49 @@ def connect() -> sqlite3.Connection:
     _add_stage_id(con)
     _add_venue(con)
     _add_time(con)
+    _scope_by_user(con)
     return con
+
+
+# 利用者ごとに分ける表と、その表の（`user_id` を除いた）主キー
+USER_TABLES: dict[str, tuple[str, ...]] = {
+    "works": ("work_key",), "attendance": ("uid", "work_key"), "splits": ("uid",),
+    "excluded": ("uid", "program"), "merges": ("work_key",),
+    "hand_credits": ("work_key",), "visit_note": ("uid",),
+}
+
+
+def _scope_by_user(con: sqlite3.Connection) -> None:
+    """観劇記録の 7 表に `user_id` を足し、主キーを `(user_id, …)` へ広げる（E3）。
+
+    `_widen_attendance_key` と同じ手法 ── SQLite は主キーを `ALTER TABLE` で変えられない
+    ので、正しい形の表を作って写し、古い表と差し替える。**既存の行はすべて
+    `LOCAL_USER_ID` として持ち越す**（列の既定値がそれなので、写すだけでそうなる）。
+
+    **列は `PRAGMA table_info` から組み直す。** `works` には後から `ALTER` で足した列
+    （`stage_id`・`venue`・`time`）があり、`SCHEMA` の文面を写すとそれが落ちる。
+    """
+    for table, key in USER_TABLES.items():
+        cols = list(con.execute(f"PRAGMA table_info({table})"))
+        if not cols or any(c["name"] == "user_id" for c in cols):
+            continue
+        defs = [f"user_id TEXT NOT NULL DEFAULT '{LOCAL_USER_ID}'"]
+        for c in cols:
+            d = f'{c["name"]} {c["type"]}'
+            if c["notnull"]:
+                d += " NOT NULL"
+            if c["dflt_value"] is not None:
+                d += f' DEFAULT {c["dflt_value"]}'
+            defs.append(d)
+        defs.append(f"PRIMARY KEY (user_id, {', '.join(key)})")
+        names = ", ".join(c["name"] for c in cols)
+        new = f"{table}__by_user"
+        with con:
+            con.execute(f"DROP TABLE IF EXISTS {new}")
+            con.execute(f"CREATE TABLE {new} ({', '.join(defs)})")
+            con.execute(f"INSERT INTO {new} ({names}) SELECT {names} FROM {table}")
+            con.execute(f"DROP TABLE {table}")
+            con.execute(f"ALTER TABLE {new} RENAME TO {table}")
 
 
 def _add_stage_id(con: sqlite3.Connection) -> None:
@@ -698,7 +768,7 @@ def _add_venue(con: sqlite3.Connection) -> None:
     # **移すのは 1 度だけでよいが、毎回確かめて構わない。** 前置きが付いた行だけを見るので、
     # 本人が書いた感想には触れない（「劇場: 」で始まる感想を人が書く筋はない）
     rows = [dict(r) for r in con.execute(
-        "SELECT work_key, note_impression FROM works"
+        "SELECT rowid, note_impression FROM works"
         " WHERE note_impression LIKE '劇場: %'")]
     if not rows:
         return
@@ -707,7 +777,7 @@ def _add_venue(con: sqlite3.Connection) -> None:
             v = r["note_impression"][len("劇場: "):].strip()
             con.execute("UPDATE works SET venue = CASE WHEN trim(venue)='' THEN ? ELSE venue END,"
                         " note_impression='', updated_at=datetime('now','localtime')"
-                        " WHERE work_key=?", (v, r["work_key"]))
+                        " WHERE rowid=?", (v, r["rowid"]))
 
 
 def _add_time(con: sqlite3.Connection) -> None:
@@ -731,7 +801,7 @@ def _widen_attendance_key(con: sqlite3.Connection) -> None:
     """
     have = con.execute(
         "SELECT sql FROM sqlite_master WHERE type='table' AND name='attendance'").fetchone()
-    if not have or "PRIMARY KEY (uid, work_key)" in have["sql"]:
+    if not have or "uid, work_key)" in have["sql"]:
         return
     old = [dict(r) for r in con.execute("SELECT * FROM attendance")]
     with con:
@@ -747,33 +817,37 @@ def now() -> str:
     return datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
 
 
-def read_works(con: sqlite3.Connection) -> dict[str, dict]:
-    return {r["work_key"]: dict(r) for r in con.execute("SELECT * FROM works")}
+def read_works(con: sqlite3.Connection, *, user_id: str = LOCAL_USER_ID) -> dict[str, dict]:
+    return {r["work_key"]: dict(r) for r in con.execute(
+        "SELECT * FROM works WHERE user_id = ?", (user_id,))}
 
 
-def read_attendance(con: sqlite3.Connection) -> dict[str, int]:
+def read_attendance(con: sqlite3.Connection, *, user_id: str = LOCAL_USER_ID) -> dict[str, int]:
     """鍵は「回 uid ｜ 作品 work_key」。1 回が 2 演目に属しうるため両方が要る。"""
     return {f"{r['uid']}|{r['work_key']}": r["attended"]
-            for r in con.execute("SELECT uid, work_key, attended FROM attendance")}
+            for r in con.execute("SELECT uid, work_key, attended FROM attendance"
+                                 " WHERE user_id = ?", (user_id,))}
 
 
-def read_splits(con: sqlite3.Connection) -> dict[str, list[str]]:
+def read_splits(con: sqlite3.Connection, *, user_id: str = LOCAL_USER_ID) -> dict[str, list[str]]:
     return {r["uid"]: json.loads(r["programs"])
-            for r in con.execute("SELECT uid, programs FROM splits")}
+            for r in con.execute("SELECT uid, programs FROM splits WHERE user_id = ?",
+                                 (user_id,))}
 
 
-def read_excluded(con: sqlite3.Connection) -> set[tuple[str, str]]:
+def read_excluded(con: sqlite3.Connection, *, user_id: str = LOCAL_USER_ID) -> set[tuple[str, str]]:
     """候補から外した（回, 演目）。舞台でないものを機械が拾ったとき人が外す。
 
     **回ではなく演目の単位で持つ。** セット券で 2 演目のうち片方だけが舞台でない
     ことがあり、回で外すと相方まで消えてしまう。
     """
     return {(r["uid"], r["program"])
-            for r in con.execute("SELECT uid, program FROM excluded")}
+            for r in con.execute("SELECT uid, program FROM excluded WHERE user_id = ?",
+                                 (user_id,))}
 
 
 def save_excluded(con: sqlite3.Connection, pairs: list[tuple[str, str]],
-                  excluded: bool) -> None:
+                  excluded: bool, *, user_id: str = LOCAL_USER_ID) -> None:
     """外す／戻すを（回, 演目）ごとに書く。
 
     **消さずに残す** ── 戻せなければ誤操作が取り返せない。
@@ -781,21 +855,23 @@ def save_excluded(con: sqlite3.Connection, pairs: list[tuple[str, str]],
     with con:
         if excluded:
             con.executemany(
-                "INSERT INTO excluded (uid, program, updated_at) VALUES (?, ?, ?)"
-                " ON CONFLICT(uid, program) DO UPDATE SET updated_at=excluded.updated_at",
-                [(u, p, now()) for u, p in pairs])
+                "INSERT INTO excluded (user_id, uid, program, updated_at) VALUES (?, ?, ?, ?)"
+                " ON CONFLICT(user_id, uid, program) DO UPDATE SET updated_at=excluded.updated_at",
+                [(user_id, u, p, now()) for u, p in pairs])
         else:
-            con.executemany("DELETE FROM excluded WHERE uid = ? AND program = ?", pairs)
+            con.executemany("DELETE FROM excluded WHERE user_id = ? AND uid = ? AND program = ?",
+                            [(user_id, u, p) for u, p in pairs])
 
 
-def read_hand(con: sqlite3.Connection) -> dict[str, dict]:
+def read_hand(con: sqlite3.Connection, *, user_id: str = LOCAL_USER_ID) -> dict[str, dict]:
     """人が手で入れた公演情報（work_key → {"fields": {...}, "poster": "..."}）。
 
     **壊れた JSON で全体を落とさない。** 1 行が読めなくても、他の記録の学習と表示は
     続けられるべきなので、その行だけ空として扱う。
     """
     out = {}
-    for r in con.execute("SELECT work_key, fields, poster FROM hand_credits"):
+    for r in con.execute("SELECT work_key, fields, poster FROM hand_credits"
+                         " WHERE user_id = ?", (user_id,)):
         try:
             f = json.loads(r["fields"] or "{}")
         except ValueError:
@@ -806,7 +882,8 @@ def read_hand(con: sqlite3.Connection) -> dict[str, dict]:
 
 
 def save_hand(con: sqlite3.Connection, work_key: str, *,
-              fields: dict | None = None, poster: str | None = None) -> None:
+              fields: dict | None = None, poster: str | None = None,
+              user_id: str = LOCAL_USER_ID) -> None:
     """手で入れた公演情報を書く。**渡さなかった側は触らない。**
 
     ポスターと出演者は別々に直すものなので（絵だけ差し替えたい・名前だけ足したい）、
@@ -815,63 +892,69 @@ def save_hand(con: sqlite3.Connection, work_key: str, *,
     if not work_key:
         raise ValueError("work_key が要る")
     with con:
-        con.execute("INSERT INTO hand_credits (work_key, fields, poster, updated_at)"
-                    " VALUES (?, '{}', '', ?) ON CONFLICT(work_key) DO NOTHING",
-                    (work_key, now()))
+        con.execute("INSERT INTO hand_credits (user_id, work_key, fields, poster, updated_at)"
+                    " VALUES (?, ?, '{}', '', ?) ON CONFLICT(user_id, work_key) DO NOTHING",
+                    (user_id, work_key, now()))
         if fields is not None:
             con.execute("UPDATE hand_credits SET fields = ?, updated_at = ?"
-                        " WHERE work_key = ?",
-                        (json.dumps(fields, ensure_ascii=False), now(), work_key))
+                        " WHERE user_id = ? AND work_key = ?",
+                        (json.dumps(fields, ensure_ascii=False), now(), user_id, work_key))
         if poster is not None:
             con.execute("UPDATE hand_credits SET poster = ?, updated_at = ?"
-                        " WHERE work_key = ?", (poster, now(), work_key))
+                        " WHERE user_id = ? AND work_key = ?", (poster, now(), user_id, work_key))
         # **中身が空になった行は残さない。** 消したのに行が残ると、
         # 「手で入れてある」と読める印が画面に出続ける
-        con.execute("DELETE FROM hand_credits WHERE work_key = ?"
-                    " AND poster = '' AND fields IN ('{}', '')", (work_key,))
+        con.execute("DELETE FROM hand_credits WHERE user_id = ? AND work_key = ?"
+                    " AND poster = '' AND fields IN ('{}', '')", (user_id, work_key))
 
 
-def read_merges(con: sqlite3.Connection) -> dict[str, str]:
+def read_merges(con: sqlite3.Connection, *, user_id: str = LOCAL_USER_ID) -> dict[str, str]:
     """人が確定した束ね直し（消える側の work_key → 残る側の work_key）。"""
     return {r["work_key"]: r["into_key"]
-            for r in con.execute("SELECT work_key, into_key FROM merges")}
+            for r in con.execute("SELECT work_key, into_key FROM merges WHERE user_id = ?",
+                                 (user_id,))}
 
 
-def save_merge(con: sqlite3.Connection, work_key: str, into_key: str) -> None:
+def save_merge(con: sqlite3.Connection, work_key: str, into_key: str, *,
+               user_id: str = LOCAL_USER_ID) -> None:
     """「これは同じ公演だ」を残す。**押し直せる**（あとから取り消せる）。"""
     if work_key == into_key:
         raise ValueError("同じ記録どうしは束ねられない")
     with con:
-        con.execute("INSERT INTO merges (work_key, into_key, updated_at) VALUES (?,?,?)"
-                    " ON CONFLICT(work_key) DO UPDATE SET"
+        con.execute("INSERT INTO merges (user_id, work_key, into_key, updated_at)"
+                    " VALUES (?,?,?,?) ON CONFLICT(user_id, work_key) DO UPDATE SET"
                     " into_key=excluded.into_key, updated_at=excluded.updated_at",
-                    (work_key, into_key, now()))
+                    (user_id, work_key, into_key, now()))
 
 
 def delete_merges(con: sqlite3.Connection, *, into_key: str = "",
-                  work_key: str = "") -> int:
+                  work_key: str = "", user_id: str = LOCAL_USER_ID) -> int:
     """束ね直しを取り消す。**戻せなければ誤操作が取り返せない**（除外と同じ扱い）。"""
     with con:
         if work_key:
-            return con.execute("DELETE FROM merges WHERE work_key=?", (work_key,)).rowcount
-        return con.execute("DELETE FROM merges WHERE into_key=?", (into_key,)).rowcount
+            return con.execute("DELETE FROM merges WHERE user_id=? AND work_key=?",
+                               (user_id, work_key)).rowcount
+        return con.execute("DELETE FROM merges WHERE user_id=? AND into_key=?",
+                           (user_id, into_key)).rowcount
 
 
-def save_split(con: sqlite3.Connection, uid: str, programs: list[str]) -> list[str]:
+def save_split(con: sqlite3.Connection, uid: str, programs: list[str], *,
+               user_id: str = LOCAL_USER_ID) -> list[str]:
     """1 回の購入を、どの演目に分けるかを人が確定する。
 
     2 つ以上ならその分け方を使い、1 つ以下なら「分けない」として題名のまま扱う。
     """
     clean = [str(p).strip()[:200] for p in programs if str(p).strip()][:12]
     with con:
-        con.execute("INSERT INTO splits (uid, programs, updated_at) VALUES (?, ?, ?)"
-                    " ON CONFLICT(uid) DO UPDATE SET"
+        con.execute("INSERT INTO splits (user_id, uid, programs, updated_at) VALUES (?, ?, ?, ?)"
+                    " ON CONFLICT(user_id, uid) DO UPDATE SET"
                     " programs=excluded.programs, updated_at=excluded.updated_at",
-                    (uid, json.dumps(clean, ensure_ascii=False), now()))
+                    (user_id, uid, json.dumps(clean, ensure_ascii=False), now()))
     return clean
 
 
-def save_work(con: sqlite3.Connection, work: dict, payload: dict) -> dict:
+def save_work(con: sqlite3.Connection, work: dict, payload: dict, *,
+              user_id: str = LOCAL_USER_ID) -> dict:
     """1 作品ぶんの評価を書く。受け付ける項目は列挙したものだけにする（守り 4）。"""
     if work["bucket"] == "upcoming":
         raise ValueError("まだ上演していない作品には評価を付けない")
@@ -891,18 +974,19 @@ def save_work(con: sqlite3.Connection, work: dict, payload: dict) -> dict:
     }
     with con:
         con.execute(
-            "INSERT INTO works (work_key, title, first_date, last_date, times, verdict,"
+            "INSERT INTO works (user_id, work_key, title, first_date, last_date, times, verdict,"
             " chosen, note_impression, note_motive, updated_at)"
-            " VALUES (:work_key, :title, :first_date, :last_date, :times, :verdict,"
+            " VALUES (:user_id, :work_key, :title, :first_date, :last_date, :times, :verdict,"
             " :chosen, :note_impression, :note_motive, :updated_at)"
-            " ON CONFLICT(work_key) DO UPDATE SET"
+            " ON CONFLICT(user_id, work_key) DO UPDATE SET"
             " times=:times, verdict=:verdict, chosen=:chosen,"
             " note_impression=:note_impression, note_motive=:note_motive,"
-            " updated_at=:updated_at", row)
+            " updated_at=:updated_at", {**row, "user_id": user_id})
     return row
 
 
-def save_attendance(con: sqlite3.Connection, work: dict, uid: str, attended: bool) -> dict:
+def save_attendance(con: sqlite3.Connection, work: dict, uid: str, attended: bool, *,
+                    user_id: str = LOCAL_USER_ID) -> dict:
     """観た／行かなかったを、作品ごと・回ごとに書く。
 
     セット券で 2 演目を観たとき、片方だけ席を立った場合もありうるので、
@@ -912,49 +996,53 @@ def save_attendance(con: sqlite3.Connection, work: dict, uid: str, attended: boo
         raise ValueError(f"この作品の回ではない: {uid!r}")
     with con:
         con.execute(
-            "INSERT INTO attendance (uid, work_key, attended, updated_at)"
-            " VALUES (?, ?, ?, ?) ON CONFLICT(uid, work_key) DO UPDATE SET"
+            "INSERT INTO attendance (user_id, uid, work_key, attended, updated_at)"
+            " VALUES (?, ?, ?, ?, ?) ON CONFLICT(user_id, uid, work_key) DO UPDATE SET"
             " attended=excluded.attended, updated_at=excluded.updated_at",
-            (uid, work["work_key"], 1 if attended else 0, now()))
+            (user_id, uid, work["work_key"], 1 if attended else 0, now()))
     return {"uid": uid, "work_key": work["work_key"], "attended": 1 if attended else 0}
 
 
-def read_visit_notes(con: sqlite3.Connection) -> dict[str, str]:
+def read_visit_notes(con: sqlite3.Connection, *, user_id: str = LOCAL_USER_ID) -> dict[str, str]:
     """回ごとのメモを、uid → 文で返す。**推薦の計算はこれを読まない**（`visit_note`
     表の注記を見る）。空文字は返り値に含めない ── 呼ぶ側は `dict.get(uid, "")` で
     「書いていない」と区別なく扱える。
     """
     return {r["uid"]: r["note"] for r in con.execute(
-        "SELECT uid, note FROM visit_note WHERE note <> ''")}
+        "SELECT uid, note FROM visit_note WHERE user_id = ? AND note <> ''", (user_id,))}
 
 
-def save_visit_note(con: sqlite3.Connection, uid: str, note: str) -> dict:
+def save_visit_note(con: sqlite3.Connection, uid: str, note: str, *,
+                    user_id: str = LOCAL_USER_ID) -> dict:
     """回ごとのメモを書く。**`work_key` を持たない** ── uid だけで 1 回が決まるので、
     どの作品かは呼ぶ側（`app.py`）がすでに知っている。
     """
     with con:
         con.execute(
-            "INSERT INTO visit_note (uid, note, updated_at) VALUES (?, ?, ?)"
-            " ON CONFLICT(uid) DO UPDATE SET note=excluded.note, updated_at=excluded.updated_at",
-            (uid, note, now()))
+            "INSERT INTO visit_note (user_id, uid, note, updated_at) VALUES (?, ?, ?, ?)"
+            " ON CONFLICT(user_id, uid) DO UPDATE SET note=excluded.note,"
+            " updated_at=excluded.updated_at",
+            (user_id, uid, note, now()))
     return {"uid": uid, "len": len(note)}
 
 
-def stats(con: sqlite3.Connection) -> dict:
+def stats(con: sqlite3.Connection, *, user_id: str = LOCAL_USER_ID) -> dict:
     """付けた件数の内訳。V26（△・× が 2 割以上あるか）をその場で見せる。"""
     c = {v: 0 for v in VERDICTS}
     for r in con.execute("SELECT verdict, COUNT(*) n FROM works"
-                         " WHERE verdict IS NOT NULL GROUP BY verdict"):
+                         " WHERE user_id = ? AND verdict IS NOT NULL GROUP BY verdict",
+                         (user_id,)):
         c[r["verdict"]] = r["n"]
     graded = sum(c[g] for g in GRADES)
     low = c["△"] + c["×"]
     skipped = con.execute(
-        "SELECT COUNT(*) n FROM attendance WHERE attended = 0").fetchone()["n"]
+        "SELECT COUNT(*) n FROM attendance WHERE user_id = ? AND attended = 0",
+        (user_id,)).fetchone()["n"]
     return {"counts": c, "graded": graded, "low": low, "skipped": skipped,
             "low_ratio": (low / graded) if graded else 0.0}
 
 
-def reconcile(con: sqlite3.Connection, works: list[dict]) -> str:
+def reconcile(con: sqlite3.Connection, works: list[dict], *, user_id: str = LOCAL_USER_ID) -> str:
     """束ね方が変わって宙に浮いた評価を、束ねた先へ引き継ぐ。
 
     題名の鍵が変わると work_key も変わる。**評価が消えたように見えるのがいちばん困る**ので、
@@ -963,7 +1051,7 @@ def reconcile(con: sqlite3.Connection, works: list[dict]) -> str:
     """
     live = {w["work_key"]: w for w in works}
     moved = []
-    for row in list(read_works(con).values()):
+    for row in list(read_works(con, user_id=user_id).values()):
         if row["work_key"] in live or not row["verdict"]:
             continue
         ok = row["work_key"].rsplit("#", 1)[0]
@@ -971,12 +1059,14 @@ def reconcile(con: sqlite3.Connection, works: list[dict]) -> str:
                  if any(sh["date"] == row["first_date"] for sh in w["shows"])
                  and (ok in w["work_key"].rsplit("#", 1)[0]
                       or w["work_key"].rsplit("#", 1)[0] in ok)]
-        cands = [w for w in cands if not (read_works(con).get(w["work_key"]) or {}).get("verdict")]
+        cands = [w for w in cands
+                 if not (read_works(con, user_id=user_id).get(w["work_key"]) or {}).get("verdict")]
         if len(cands) != 1:
             continue
         save_work(con, cands[0], {
             "verdict": row["verdict"], "chosen": row["chosen"],
-            "note_impression": row["note_impression"], "note_motive": row["note_motive"]})
+            "note_impression": row["note_impression"], "note_motive": row["note_motive"]},
+            user_id=user_id)
         moved.append((row["title"], cands[0]["title_display"], row["verdict"]))
     if not moved:
         return ""
@@ -997,7 +1087,8 @@ def migrate(con: sqlite3.Connection, works: list[dict]) -> str:
     have = con.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='ratings'")
     if not have.fetchone():
         return ""
-    if con.execute("SELECT COUNT(*) n FROM works").fetchone()["n"]:
+    if con.execute("SELECT COUNT(*) n FROM works WHERE user_id = ?",
+                   (LOCAL_USER_ID,)).fetchone()["n"]:
         return ""
     old = {r["uid"]: dict(r) for r in con.execute("SELECT * FROM ratings")}
     if not old:
@@ -1382,9 +1473,11 @@ def open_in_browser(url: str) -> str:
 # ---------------------------------------------------------------- 待ち受け
 
 class State:
-    def __init__(self, token: str, con: sqlite3.Connection, purchases: list[dict]) -> None:
+    def __init__(self, token: str, con: sqlite3.Connection, purchases: list[dict], *,
+                 user_id: str = LOCAL_USER_ID) -> None:
         self.token = token
         self.con = con
+        self.user_id = user_id
         self.purchases = purchases
         self.by_uid = {r["uid"]: r for r in purchases}
         self.last_seen = time.monotonic()
@@ -1398,19 +1491,19 @@ class State:
         **同じ公演を 2 件として学習する** ── 人が「同じ公演だ」と答えたことが、
         推薦の材料に届かない。
         """
-        self.splits = read_splits(self.con)
-        self.excluded = read_excluded(self.con)
-        self.merges = read_merges(self.con)
+        self.splits = read_splits(self.con, user_id=self.user_id)
+        self.excluded = read_excluded(self.con, user_id=self.user_id)
+        self.merges = read_merges(self.con, user_id=self.user_id)
         self.works = load_works(self.purchases, self.splits, self.excluded, self.merges)
         self.by_key = {w["work_key"]: w for w in self.works}
 
     def payload(self) -> dict:
-        attendance = read_attendance(self.con)
+        attendance = read_attendance(self.con, user_id=self.user_id)
         for w in self.works:
             w["bought_after_seeing"] = bought_after_seeing(w, attendance)
         return {
             "works_list": self.works,
-            "works": read_works(self.con),
+            "works": read_works(self.con, user_id=self.user_id),
             "attendance": attendance,
             "purchases": {r["uid"]: {
                 "title": r["title"], "title_display": norm(r["title"]),
@@ -1426,7 +1519,7 @@ class State:
             } for u, p in sorted(self.excluded,
                                  key=lambda kv: (self.by_uid.get(kv[0]) or {}).get("date") or "",
                                  reverse=True)],
-            "stats": stats(self.con),
+            "stats": stats(self.con, user_id=self.user_id),
             "grades": GRADES, "undecided": UNDECIDED, "chosen": CHOSEN,
         }
 

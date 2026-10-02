@@ -104,9 +104,13 @@ def _rated_fields(rated: list[dict]) -> list[dict]:
 
 
 # ---------------------------------------------------------------- 3 つの軸
-def theme_rows() -> tuple[list[dict], int, int]:
+def theme_rows(mine_keys: set[str] | None = None) -> tuple[list[dict], int, int]:
     """題材のまとまり。**作品ごとに、そのまとまりに入るかどうかを数える**
-    （1 作品に要素が 5 つあっても、同じまとまりは 1 回だけ数える）。"""
+    （1 作品に要素が 5 つあっても、同じまとまりは 1 回だけ数える）。
+
+    `mine_keys` を渡すと、自分の側（`side == "rated"`）をその `work_key` の作品だけに
+    絞る（E3）。`themes.jsonl` の自分の側はローカルの持ち主の記録から作ったもので、
+    渡さなければ今まで通りその全件を数える。"""
     if not GROUPS.exists():
         return [], 0, 0
     g = json.loads(GROUPS.read_text(encoding="utf-8"))
@@ -120,6 +124,8 @@ def theme_rows() -> tuple[list[dict], int, int]:
         t = json.loads(line)
         side = t.get("side")
         if side not in ("rated", "candidate"):
+            continue
+        if side == "rated" and mine_keys is not None and t.get("id") not in mine_keys:
             continue
         gs = {w2g[e["word"]] for e in (t.get("elements") or [])
               if isinstance(e, dict) and e.get("word")
@@ -312,7 +318,7 @@ LEGEND = ('<div class="legend"><span class="lg"><i class="sw s-pos"></i>'
           '<span class="lg">中心線＝同じ割合</span></div>')
 
 
-def panel(rated: list[dict]) -> str:
+def panel(rated: list[dict], *, owner: bool = True) -> str:
     """軸をまとめて返す。**取れなかった軸は、その軸だけ出さない。**
 
     **「座組の大きさ」は外した**（起案者の指示・2026-08-26 ──「『比べる』の…
@@ -324,7 +330,8 @@ def panel(rated: list[dict]) -> str:
     """
     out = []
 
-    th, tm, tw = theme_rows()
+    # **訪問者（`owner=False`）の題材は、その人の記録の分だけで数える**（E3）
+    th, tm, tw = theme_rows(None if owner else {r["key"] for r in rated})
     if th:
         out.append(f"""<section class="card">
 <h2>題材の偏り ── 何の話を観ているか</h2>

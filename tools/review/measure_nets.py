@@ -225,7 +225,8 @@ def _fields_by_stage() -> dict[str, dict]:
     return out
 
 
-def load_rated(*, include_unrated: bool = False) -> list[dict]:
+def load_rated(*, include_unrated: bool = False,
+               user_id: str = R.LOCAL_USER_ID) -> list[dict]:
     """評価が付いた作品を、クレジットと突き合わせて返す。
 
     ## `include_unrated` ── 評価が付いていない記録も返す（2026-08-24）
@@ -235,6 +236,12 @@ def load_rated(*, include_unrated: bool = False) -> list[dict]:
     「探した結果からその場で評価できるように」した以上、**評価が無い記録が出てこないと、
     そこから評価する道が閉じる。** そこで呼ぶ側が明示したときだけ、評価の無い記録を
     `verdict` を空にして混ぜる。**学習側の呼び出しは既定のままなので、正例の定義は動かない。**
+
+    ## `user_id` ── 誰の記録か（E3・Phase 2）
+
+    既定はローカルの持ち主（`R.LOCAL_USER_ID`）。**推薦の計算（`recommend2.py`）と
+    検証用のバッチは持ち主の記録だけを読む**ので既定のままでよい。公開デモの画面
+    （`app.py`）は、見ている訪問者の `user_id` を必ず渡す。
 
     ## 手で足した記録も入れる（2026-08-24・起案者の指示）
 
@@ -250,10 +257,10 @@ def load_rated(*, include_unrated: bool = False) -> list[dict]:
     以上、全体の ◎ 率（基準線）の分母には数える。**メールから導ける作品でも、
     クレジットが引けないものは同じ扱いで入っている**ので、揃えた形である。
     """
-    purchases = R.load_purchases()
+    purchases = R.load_purchases(user_id=user_id)
     con = R.connect()
-    state = R.State("measure", con, purchases)
-    saved = R.read_works(con)
+    state = R.State("measure", con, purchases, user_id=user_id)
+    saved = R.read_works(con, user_id=user_id)
 
     # **まだ 1 度も取り寄せていない状態を、失敗として扱わない。** 初めて使う人の端末には
     # このファイルが無い（2026-08-24 の実測でここで止まった）。無いときはクレジットが
@@ -263,7 +270,7 @@ def load_rated(*, include_unrated: bool = False) -> list[dict]:
                if l.strip()]
     by_key = {(c.get("date"), c.get("mail_title")): c for c in credits}
     fields = _fields_by_stage()          # **1 度だけ読む**（作品ごとに読み直さない）
-    hand = R.read_hand(con)              # 人が手で入れた出演者（公演ページが無い公演）
+    hand = R.read_hand(con, user_id=user_id)  # 人が手で入れた出演者（公演ページが無い公演）
 
     rated = []
     for w in state.works:
@@ -313,21 +320,23 @@ def load_rated(*, include_unrated: bool = False) -> list[dict]:
             "manual": False,
         })
     rated += _manual_rated(con, state, saved, fields, hand,
-                           include_unrated=include_unrated)
+                           include_unrated=include_unrated, user_id=user_id)
     con.close()
     return rated
 
 
 def _manual_rated(con, state, saved: dict, fields: dict, hand: dict | None = None,
-                  *, include_unrated: bool = False) -> list[dict]:
+                  *, include_unrated: bool = False,
+                  user_id: str = R.LOCAL_USER_ID) -> list[dict]:
     """手で足した記録のうち、評価が付いているもの。
 
     **取り消した分と、同じ公演としてまとめた分は入れない。** 画面の一覧から外したものが
     学習にだけ残ると、**外した理由（まちがって拾われた）が推薦に効き続ける。**
     """
     hand = hand or {}
-    merges = R.read_merges(con)
-    dropped = {u[5:] for u, _p in R.read_excluded(con) if u.startswith("work:")}
+    merges = R.read_merges(con, user_id=user_id)
+    dropped = {u[5:] for u, _p in R.read_excluded(con, user_id=user_id)
+               if u.startswith("work:")}
     # **同じ公演を 2 度数えない。** `work_key` は「題名の鍵＋初日」なので、束ね方が変わって
     # 鍵が変わると、**古い鍵の行が `works` に取り残される** ── 実データで「受取人不明」が
     # 同じ日付で 2 行あり、どちらにも ◎ が付いていた。取り残された行をそのまま学習に

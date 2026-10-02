@@ -158,9 +158,10 @@ def halls() -> list[tuple[str, str, int]]:
     import venues as V                                               # noqa: E402
     sys.path.insert(0, str(ROOT / "tools" / "taguri"))
     import app as APP                                                # noqa: E402
+    import auth as AU                                                # noqa: E402
     c: collections.Counter = collections.Counter()
     raw: dict[str, collections.Counter] = {}
-    for w in APP._works():
+    for w in APP._works(AU.LOCAL_USER_ID):
         for s in w.get("shows") or []:
             if s.get("venue"):
                 k = V.hall(s["venue"])

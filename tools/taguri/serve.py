@@ -533,7 +533,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     # **登録画面は覚えない。** 取り込みの進み具合(imp.running等)が
                     # 変わるたびに違う見た目になるはずの画面なので、キャッシュすると
                     # 進捗が固まって見える
-                    html = APP._register_body(srv.imp, srv.imported)
+                    html = APP._register_body(user_id, srv.imp, srv.imported)
                     self._json(200, {"ok": True, "title": "公演情報の登録", "body_html": html})
                     return
                 # 以降は、都道府県の絞り込みのような起動中の状態を持たない画面。
@@ -573,20 +573,20 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     html = APP._tickets_body(user_id)
                     result = {"ok": True, "title": "購入済み公演", "body_html": html}
                 elif path == "/api/screen/records":
-                    html = APP._records_body()
+                    html = APP._records_body(user_id)
                     result = {"ok": True, "title": "眺める", "body_html": html}
                 elif path == "/api/screen/trace":
                     q = urllib.parse.parse_qs(query)
-                    html = APP._trace_body(q.get("name", [""])[0], q.get("via", [""])[0])
+                    html = APP._trace_body(user_id, q.get("name", [""])[0], q.get("via", [""])[0])
                     result = {"ok": True, "title": "たどる", "body_html": html}
                 elif path == "/api/screen/chronicle":
-                    html = APP._chronicle_body()
+                    html = APP._chronicle_body(user_id)
                     result = {"ok": True, "title": "観劇史年表", "body_html": html}
                 elif path == "/api/screen/works":
                     q = urllib.parse.parse_qs(query)
                     y = q.get("y", [""])[0]
                     g = q.get("g", ["work"])[0]
-                    html = APP._works_body(y, _page(query), q.get("w", [""])[0], g)
+                    html = APP._works_body(user_id, y, _page(query), q.get("w", [""])[0], g)
                     result = {"ok": True, "title": "日記帳", "body_html": html}
                 elif path == "/api/screen/start":
                     html = APP._start_body(user_id)
@@ -616,7 +616,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             # **手で足す欄の候補。** 手元にあるものだけを引く読み口で、外へは行かない
             # （守り 5）。**打っている最中に走る**ので、外へ行く口と分けてある
             q = urllib.parse.parse_qs(query).get("q", [""])[0]
-            self._json(200, APP.suggest(q[:120]))
+            self._json(200, APP.suggest(self.user_id, q[:120]))
             return
         if path == "/api/suggest_web":
             # **手で足す欄の「検索」。** ここだけは外の公演情報を見に行く
@@ -635,7 +635,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             if not re.fullmatch(r"\d{1,12}", uid):
                 self._json(400, {"error": "uid"})
                 return
-            self._json(200, APP.mail_hints(uid))
+            self._json(200, APP.mail_hints(self.user_id, uid))
             return
         if path == "/export.json":
             # **持ち出しはそのまま渡す。** トークンの置き換えはしない（HTML ではない）
@@ -722,16 +722,16 @@ class Handler(http.server.BaseHTTPRequestHandler):
             elif path == "/rate/notes":
                 html = APP.page_notes(user_id)
             elif path == "/register":
-                html = APP.page_register(srv.imp, srv.imported)
+                html = APP.page_register(user_id, srv.imp, srv.imported)
             elif path == "/records":
-                html = APP.page_records()
+                html = APP.page_records(user_id)
             elif path == "/records/trace":
                 # **どの名前をたどっているか・どこから来たかは URL だけで持つ**
                 # （日記帳の年の耳・評価の耳と同じ判断）
                 q = urllib.parse.parse_qs(query)
-                html = APP.page_trace(q.get("name", [""])[0], q.get("via", [""])[0])
+                html = APP.page_trace(user_id, q.get("name", [""])[0], q.get("via", [""])[0])
             elif path == "/records/chronicle":
-                html = APP.page_chronicle()
+                html = APP.page_chronicle(user_id)
             elif path == "/records/works":
                 # **どの年を開いているか・作品ごとか観た回ごとかは URL だけで持つ**
                 # （評価の耳と同じ判断）。`g` を読み忘れると、耳を押しても
@@ -740,7 +740,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 q = urllib.parse.parse_qs(query)
                 y = q.get("y", [""])[0]
                 g = q.get("g", ["work"])[0]
-                html = APP.page_works(y, _page(query), q.get("w", [""])[0], g)
+                html = APP.page_works(user_id, y, _page(query), q.get("w", [""])[0], g)
             elif path == "/search":
                 q = urllib.parse.parse_qs(query).get("q", [""])[0]
                 # **暦から選んだ月も受け取る。** 形の合わないものは選ばれていない扱い
@@ -1319,6 +1319,18 @@ class Server(http.server.ThreadingHTTPServer):
         self.enqueue("この公演を手元に加えています…", work)
 
     # ---- 2 観たあとの ◎○△× ----------------------------------------------
+    @staticmethod
+    def _owner_only(user_id: str) -> None:
+        """**ローカルの持ち主にしか許さない操作の入口で呼ぶ**（E3）。
+
+        持ち主の Gmail を読む取り込みと、持ち主の記録から作る 1 ファイル
+        （`chronicle.json`・`people_read.json`）を書き直す操作がこれに当たる。
+        公開デモの訪問者に許すと、他人のメールを取り込ませるか、訪問者の記録で
+        持ち主の分析を上書きすることになる（画面の側も訪問者にはボタンを出さない）。
+        """
+        if user_id != AU.LOCAL_USER_ID:
+            raise ValueError("この操作は公開デモでは使えません")
+
     def on_chronicle(self, _b: dict, user_id: str) -> dict:
         """年表の文を作り直す（起案者の指示 2026-08-25）。
 
@@ -1330,6 +1342,7 @@ class Server(http.server.ThreadingHTTPServer):
         壊れる ── 画面の側には「記録が変わっています」と出しておき、作り直すかどうかは
         本人が決める。
         """
+        self._owner_only(user_id)
         import chronicle as CR
         r = CR.write(force=True)
         return {"ok": bool(r.get("ok")), "line": r.get("line") or ""}
@@ -1341,6 +1354,7 @@ class Server(http.server.ThreadingHTTPServer):
         **`on_chronicle` と同じ形。** 錠は取らず、書く先は `people_read.json` の
         1 ファイルだけなので、ほかの操作とぶつからない。押されたときだけ走らせる。
         """
+        self._owner_only(user_id)
         import people as PE
         r = PE.write(force=True)
         return {"ok": bool(r.get("ok")), "line": r.get("line") or ""}
@@ -1361,7 +1375,7 @@ class Server(http.server.ThreadingHTTPServer):
         if verdict not in VERDICTS:
             raise ValueError(f"verdict が候補にない: {verdict!r}")
         with self.lock:
-            APP.save_work_field(work_key, verdict=verdict)
+            APP.save_work_field(user_id, work_key, verdict=verdict)
             self.n["rate"] += 1
         return {"ok": True, "work_key": work_key, "verdict": verdict}
 
@@ -1375,7 +1389,7 @@ class Server(http.server.ThreadingHTTPServer):
         work_key = str(b.get("work_key") or "")
         note = str(b.get("note_impression") or "")[:4000]
         with self.lock:
-            APP.save_work_field(work_key, note=note)
+            APP.save_work_field(user_id, work_key, note=note)
             self.n["note"] += 1
         return {"ok": True, "work_key": work_key, "len": len(note)}
 
@@ -1391,7 +1405,7 @@ class Server(http.server.ThreadingHTTPServer):
         if not uid:
             raise ValueError("uid が要る")
         with self.lock:
-            out = APP.save_visit_note(uid, note)
+            out = APP.save_visit_note(user_id, uid, note)
             self.n["visit_note"] = self.n.get("visit_note", 0) + 1
         return out
 
@@ -1574,14 +1588,14 @@ class Server(http.server.ThreadingHTTPServer):
             raise ValueError("work_key が要る")
         with self.lock:
             if b.get("clear"):
-                out = APP.unfix_work(work_key)
+                out = APP.unfix_work(user_id, work_key)
             else:
                 title = b.get("title")
                 shows = b.get("shows")
                 if not isinstance(shows, list):
                     shows = []
                 out = APP.fix_work(
-                    work_key,
+                    user_id, work_key,
                     title=str(title)[:200] if title is not None else None,
                     shows=[{"uid": str(s.get("uid") or ""),
                             "date": str(s.get("date") or ""),
@@ -1609,16 +1623,16 @@ class Server(http.server.ThreadingHTTPServer):
         if stage_id and not re.fullmatch(r"\d{1,12}", stage_id):
             raise ValueError("公演の id が数字ではない")
         with self.lock:
-            out = APP.add_work(title, date, venue, stage_id, time_)
+            out = APP.add_work(user_id, title, date, venue, stage_id, time_)
             self.n["add"] += 1
         # **足した直後に材料を取りに行く**（起案者の指示・2026-08-24）。
         # **月 1 回の段では拾われない** ── `link_works.py` が探すのは「評価が付いている
         # のに材料の無い記録」なので、足したばかりで評価の無い記録は対象にならない
-        self._enrich(out.get("stage_id") or stage_id, out.get("work_key") or "",
+        self._enrich(user_id, out.get("stage_id") or stage_id, out.get("work_key") or "",
                      title, date)
         return out
 
-    def _enrich(self, stage_id, work_key: str, title: str, date: str) -> None:
+    def _enrich(self, user_id: str, stage_id, work_key: str, title: str, date: str) -> None:
         """1 公演ぶんの材料（公演ページ・クレジット・ポスター・あらすじ）を取りに行く。
 
         **結び付いていなければ、まず自動で探す**（起案者の指示・2026-08-26 ──
@@ -1644,7 +1658,7 @@ class Server(http.server.ThreadingHTTPServer):
                 r = LW.find({"title": title, "date": date})
                 if r.get("matched"):
                     with self.lock:
-                        APP.link_stage(work_key, r["stage_id"])
+                        APP.link_stage(user_id, work_key, r["stage_id"])
                     found_sid = r["stage_id"]
                     note = f"公演ページを自動で見つけて結び付けました（{r['page_title'][:30]}）／"
                 else:
@@ -1666,9 +1680,9 @@ class Server(http.server.ThreadingHTTPServer):
             raise ValueError("work_key が要る")
         with self.lock:
             if b.get("unmerge"):
-                out = APP.unmerge_work(work_key)
+                out = APP.unmerge_work(user_id, work_key)
             else:
-                out = APP.merge_works(work_key, str(b.get("other") or ""))
+                out = APP.merge_works(user_id, work_key, str(b.get("other") or ""))
             self.n["fix"] = self.n.get("fix", 0) + 1
         return out
 
@@ -1678,7 +1692,7 @@ class Server(http.server.ThreadingHTTPServer):
         if not work_key:
             raise ValueError("work_key が要る")
         with self.lock:
-            out = APP.drop_work(work_key)
+            out = APP.drop_work(user_id, work_key)
             self.n["drop"] = self.n.get("drop", 0) + 1
         return out
 
@@ -1697,7 +1711,7 @@ class Server(http.server.ThreadingHTTPServer):
         if not isinstance(fields, dict):
             raise ValueError("欄が要る")
         with self.lock:
-            out = APP.save_hand_credits(work_key, fields)
+            out = APP.save_hand_credits(user_id, work_key, fields)
             self.n["fix"] = self.n.get("fix", 0) + 1
         return out
 
@@ -1712,9 +1726,9 @@ class Server(http.server.ThreadingHTTPServer):
             raise ValueError("work_key が要る")
         with self.lock:
             if b.get("drop"):
-                out = APP.drop_hand_poster(work_key)
+                out = APP.drop_hand_poster(user_id, work_key)
             else:
-                out = APP.save_hand_poster(work_key, str(b.get("image") or ""))
+                out = APP.save_hand_poster(user_id, work_key, str(b.get("image") or ""))
             self.n["fix"] = self.n.get("fix", 0) + 1
         return out
 
@@ -1782,11 +1796,11 @@ class Server(http.server.ThreadingHTTPServer):
         if stage_id and not re.fullmatch(r"\d{1,12}", stage_id):
             raise ValueError("公演の id が数字ではない")
         with self.lock:
-            out = APP.link_stage(work_key, stage_id)
+            out = APP.link_stage(user_id, work_key, stage_id)
             self.n["fix"] = self.n.get("fix", 0) + 1
         # **結び付けた直後に取りに行く。** 結び付けは「この公演です」と本人が決めた
         # ことなので、**その場で材料が付かないと、決めた甲斐が次の起動まで出ない**
-        self._enrich(stage_id, work_key, str(out.get("title") or ""), "")
+        self._enrich(user_id, stage_id, work_key, str(out.get("title") or ""), "")
         return out
 
     def on_restore_work(self, b: dict, user_id: str) -> dict:
@@ -1795,7 +1809,7 @@ class Server(http.server.ThreadingHTTPServer):
         if not key:
             raise ValueError("key が要る")
         with self.lock:
-            out = APP.restore_work(key)
+            out = APP.restore_work(user_id, key)
             self.n["drop"] = self.n.get("drop", 0) + 1
         return out
 
@@ -1805,7 +1819,7 @@ class Server(http.server.ThreadingHTTPServer):
         if not key:
             raise ValueError("key が要る")
         with self.lock:
-            out = APP.purge_work(key)
+            out = APP.purge_work(user_id, key)
             self.n["drop"] = self.n.get("drop", 0) + 1
         return out
 
@@ -1865,7 +1879,7 @@ class Server(http.server.ThreadingHTTPServer):
         if not isinstance(b.get("unseen"), bool):
             raise ValueError("unseen は真偽で渡す")
         with self.lock:
-            out = APP.set_unseen(work_key, b["unseen"])
+            out = APP.set_unseen(user_id, work_key, b["unseen"])
             self.n["unseen"] = self.n.get("unseen", 0) + 1
         return out
 
@@ -1896,6 +1910,7 @@ class Server(http.server.ThreadingHTTPServer):
         **`@@TAGURI` の行は控えに残さない** ── 終わったときに出す 1 行は
         「〜通を処理し…」という人向けの最後の行であって、進み具合の記録ではない。
         """
+        self._owner_only(user_id)
         if self.imp["running"]:
             raise ValueError("もう走っている")
         self.imp = {"running": True, "line": "取り込みを始めました",

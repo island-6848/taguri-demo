@@ -56,9 +56,10 @@ def bands_of_works() -> dict[str, str]:
     巡演で規模の違うホールを回った作品があり、片方を代表に選ぶと段階が恣意になる。
     """
     import app as APP                                               # noqa: E402
+    import auth as AU                                               # noqa: E402
     info = _info()
     out = {}
-    for w in APP._works():
+    for w in APP._works(AU.LOCAL_USER_ID):
         bs = set()
         for s in w.get("shows") or []:
             if not s.get("venue"):

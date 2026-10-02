@@ -81,6 +81,7 @@ sys.path.insert(0, str(ROOT / "tools" / "review"))
 import measure_nets as M                                           # noqa: E402
 
 DB = ROOT / "data" / "review" / "ratings.db"
+LOCAL_USER_ID = M.R.LOCAL_USER_ID   # 既定はローカルの持ち主（E3。`rate_performances` の注記）
 
 # **引用は ◎ の作品からしか出さない。** 推薦の理由（網 B）は ◎ を付けた作品の
 # クレジットから作るので、○ の作品の感想を引くと、理由と根拠が食い違う
@@ -92,21 +93,25 @@ QUOTE_LEN = 90      # 引用の長さ。**切ったことが分かる形で切�
 def _con() -> sqlite3.Connection:
     con = sqlite3.connect(DB)
     con.row_factory = sqlite3.Row
+    # **この接続は `rate_performances.connect` を通らない**ので、`user_id` を足す移行
+    # （E3）をここでも確かめる。先にこちらが開かれると、古い DB に列が無いまま読む
+    M.R._scope_by_user(con)
     return con
 
 
-def notes() -> dict[str, dict]:
-    """感想が書かれている作品。work_key → 行。"""
+def notes(*, user_id: str = LOCAL_USER_ID) -> dict[str, dict]:
+    """感想が書かれている作品。work_key → 行。**その利用者の分だけ**（E3）。"""
     con = _con()
     rows = {r["work_key"]: dict(r) for r in con.execute(
         "SELECT work_key, title, first_date, verdict, times, note_impression"
-        " FROM works WHERE note_impression IS NOT NULL"
-        " AND TRIM(note_impression) <> ''")}
+        " FROM works WHERE user_id = ? AND note_impression IS NOT NULL"
+        " AND TRIM(note_impression) <> ''", (user_id,))}
     con.close()
     return rows
 
 
-def by_person(rated: list[dict] | None = None) -> dict[str, list[dict]]:
+def by_person(rated: list[dict] | None = None, *,
+              user_id: str = LOCAL_USER_ID) -> dict[str, list[dict]]:
     """作り手の名前 → その人が関わった ◎ の作品のうち、感想が書かれているもの。
 
     **突き合わせは名前そのもので行う。** 推薦の理由に出てくる名前はクレジットから
@@ -116,8 +121,8 @@ def by_person(rated: list[dict] | None = None) -> dict[str, list[dict]]:
     **1 人が複数の作品に出てくることがある。** そのときは何度も観た作品を先に置く
     （**重なった根拠を先に出す**のと同じ理由で、思い入れの強い側から引用する）。
     """
-    have = notes()
-    rated = rated if rated is not None else M.load_rated()
+    have = notes(user_id=user_id)
+    rated = rated if rated is not None else M.load_rated(user_id=user_id)
     out: dict[str, list[dict]] = {}
     for r in rated:
         if r.get("verdict") != QUOTE_GRADE:
@@ -170,17 +175,19 @@ def _neg_date(d: str) -> str:
                    for ch in d) if d else "~"
 
 
-def stats() -> dict:
+def stats(*, user_id: str = LOCAL_USER_ID) -> dict:
     con = _con()
-    n_rated = con.execute("SELECT COUNT(*) FROM works WHERE verdict IN"
-                          " ('◎','○','△','×')").fetchone()[0]
-    n_note = con.execute("SELECT COUNT(*) FROM works WHERE note_impression IS NOT NULL"
-                         " AND TRIM(note_impression) <> ''").fetchone()[0]
-    n_top = con.execute("SELECT COUNT(*) FROM works WHERE verdict = ?",
-                        (QUOTE_GRADE,)).fetchone()[0]
+    n_rated = con.execute("SELECT COUNT(*) FROM works WHERE user_id = ? AND verdict IN"
+                          " ('◎','○','△','×')", (user_id,)).fetchone()[0]
+    n_note = con.execute("SELECT COUNT(*) FROM works WHERE user_id = ?"
+                         " AND note_impression IS NOT NULL"
+                         " AND TRIM(note_impression) <> ''", (user_id,)).fetchone()[0]
+    n_top = con.execute("SELECT COUNT(*) FROM works WHERE user_id = ? AND verdict = ?",
+                        (user_id, QUOTE_GRADE)).fetchone()[0]
     n_top_note = con.execute(
-        "SELECT COUNT(*) FROM works WHERE verdict = ? AND note_impression IS NOT NULL"
-        " AND TRIM(note_impression) <> ''", (QUOTE_GRADE,)).fetchone()[0]
+        "SELECT COUNT(*) FROM works WHERE user_id = ? AND verdict = ?"
+        " AND note_impression IS NOT NULL"
+        " AND TRIM(note_impression) <> ''", (user_id, QUOTE_GRADE)).fetchone()[0]
     con.close()
     return {"評価が付いた作品": n_rated, "感想が書かれた作品": n_note,
             "◎ の作品": n_top, "◎ のうち感想がある": n_top_note}

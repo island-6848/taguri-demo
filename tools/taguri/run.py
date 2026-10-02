@@ -164,9 +164,10 @@ def waiting(today: str) -> list[dict]:
     **聞き直すことは間違った材料を作る入口でもある。**
     """
     import app as APP
+    import auth as AU
     # **数える規則は画面と同じ 1 か所に置く**（`app.waiting_rows`）。ここに写すと、
     # **控えと画面が違う件数を出す**ようになる（画面は開くたびに数え直している）
-    rows = APP.waiting_rows(today)
+    rows = APP.waiting_rows(AU.LOCAL_USER_ID, today)
     WAITING.write_text(json.dumps(rows, ensure_ascii=False, indent=1), encoding="utf-8")
     return rows
 

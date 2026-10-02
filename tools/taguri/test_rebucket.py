@@ -29,6 +29,7 @@ sys.path.insert(0, str(ROOT / "tools" / "taguri"))
 sys.path.insert(0, str(ROOT / "tools" / "review"))
 import app as APP                                                  # noqa: E402
 import feedback as FB                                               # noqa: E402
+import auth as AU                                                  # noqa: E402
 
 ok = fail = 0
 
@@ -56,10 +57,10 @@ def _rebucket_with(react: dict, d: dict) -> dict:
     FB.connect = lambda **_kw: _FakeCon()
     FB.reactions = lambda _con: react
     FB.tickets = lambda _con: {}
-    APP._auto_own_from_mail = lambda _today: None
+    APP._auto_own_from_mail = lambda _uid, _today: None
     APP._upcoming_index = lambda: {"rows": {}}
     try:
-        return APP._rebucket(d)
+        return APP._rebucket(AU.LOCAL_USER_ID, d)
     finally:
         FB.connect, FB.reactions, FB.tickets = _orig_connect, _orig_reactions, _orig_tickets
         APP._auto_own_from_mail = _orig_auto

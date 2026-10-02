@@ -2417,7 +2417,7 @@ def layout(title: str, top: str, body: str, style: str, active_sub: str = "") ->
 # **`recommend` の 15 件は当て直さない。** これは週次の指標の分母（その週に全国で出した
 # 15 件）で、画面に出す一覧は `ranked` から作る。**分母を動かすと、提示 → 興味あり → 購入の
 # 連鎖を数えられなくなる。**
-def waiting_rows(today: str = "") -> list[dict]:
+def waiting_rows(user_id: str, today: str = "") -> list[dict]:
     """評価待ち。**開くたびに数え直す。**
 
     控え（`waiting.json`）を読むのをやめた ── 取り消しても「行かなかった」を付けても、
@@ -2427,8 +2427,8 @@ def waiting_rows(today: str = "") -> list[dict]:
     """
     import datetime
     today = today or datetime.date.today().isoformat()
-    _promote_owned_tickets(today)
-    return [w for w in _works()
+    _promote_owned_tickets(user_id, today)
+    return [w for w in _works(user_id)
             if not w["verdict"] and w["bucket"] != "upcoming" and not w.get("unseen")
             and w["last_date"] and w["last_date"] <= today]
 
@@ -2475,7 +2475,7 @@ def _owned_done_date(stage_ids, c: dict, tickets: dict) -> str:
     return e.isoformat() if e else ""
 
 
-def _promote_owned_tickets(today: str) -> None:
+def _promote_owned_tickets(user_id: str, today: str) -> None:
     """「すでに持っている」と答えた公演のうち、上演が終わった分を works の行にする。
 
     起案者の指摘（2026-08-26）──「フタマツヅキは購入済みにも入っていて、公演日が
@@ -2503,7 +2503,7 @@ def _promote_owned_tickets(today: str) -> None:
     idx = _upcoming_index()["rows"]
     con = R.connect()
     try:
-        have_sid = {str(w.get("stage_id") or "") for w in R.read_works(con).values()
+        have_sid = {str(w.get("stage_id") or "") for w in R.read_works(con, user_id=user_id).values()
                     if w.get("stage_id")}
         wrote = False
         for sid in owned:
@@ -2516,11 +2516,11 @@ def _promote_owned_tickets(today: str) -> None:
                 continue
             key = f"{R.title_key(title)}#{done}"
             con.execute(
-                "INSERT INTO works (work_key, title, first_date, last_date, times, verdict,"
-                " chosen, note_impression, note_motive, stage_id, updated_at)"
-                " VALUES (?,?,?,?,1,NULL,NULL,'','',?,datetime('now','localtime'))"
-                " ON CONFLICT(work_key) DO NOTHING",
-                (key, title, done, done, sid))
+                "INSERT INTO works (user_id, work_key, title, first_date, last_date, times,"
+                " verdict, chosen, note_impression, note_motive, stage_id, updated_at)"
+                " VALUES (?,?,?,?,?,1,NULL,NULL,'','',?,datetime('now','localtime'))"
+                " ON CONFLICT(user_id, work_key) DO NOTHING",
+                (user_id, key, title, done, done, sid))
             wrote = True
         if wrote:
             con.commit()
@@ -2528,7 +2528,7 @@ def _promote_owned_tickets(today: str) -> None:
         con.close()
 
 
-def _auto_own_from_mail(today: str) -> None:
+def _auto_own_from_mail(user_id: str, today: str) -> None:
     """まだ「すでに持っている」を押していない公演でも、購入確認メールが
     あれば自動で「持っている」にする。
 
@@ -2546,7 +2546,7 @@ def _auto_own_from_mail(today: str) -> None:
     """
     import feedback as FB
     import recommend2 as RC2
-    buys = _future_purchases(today)
+    buys = _future_purchases(user_id, today)
     if not buys:
         return
     idx = _upcoming_index()["rows"]
@@ -2634,7 +2634,7 @@ def _collapse_tracking_tours(rows: list, RC2) -> list:
     return out
 
 
-def _rebucket(d: dict) -> dict:
+def _rebucket(user_id: str, d: dict) -> dict:
     """保存された一覧に、**いまの反応を当て直す。**
 
     **点は動かさない。** 並び（`ranked` の順）はそのまま使い、押された反応で
@@ -2648,7 +2648,7 @@ def _rebucket(d: dict) -> dict:
     import feedback as FB
     import recommend2 as RC2
     today = datetime.date.today().isoformat()
-    _auto_own_from_mail(today)
+    _auto_own_from_mail(user_id, today)
     con = FB.connect()
     try:
         react = FB.reactions(con)
@@ -3108,8 +3108,8 @@ def _settings_body(user_id: str) -> str:
 {_account_card_html(user_id)}
 {_export_card_html()}
 {_data_copy_card_html()}
-{_dropped_html()}
-{_skipped_html()}"""
+{_dropped_html(user_id)}
+{_skipped_html(user_id)}"""
 
 
 def _p90(vals) -> float:
@@ -3344,9 +3344,9 @@ def _load(user_id: str) -> tuple[dict, list]:
     自体はすでに`user_id`を受け取る形にしておく。
     """
     raw, _ = RR.load()
-    d = _apply_weights(user_id, _rebucket(raw), read_weights(user_id))
+    d = _apply_weights(user_id, _rebucket(user_id, raw), read_weights(user_id))
     d["w_counts"] = _weight_counts(raw)
-    return _overlay_themes(d), waiting_rows()
+    return _overlay_themes(d), waiting_rows(user_id)
 
 
 def _notes_no() -> dict:
@@ -3476,7 +3476,7 @@ def is_fresh(user_id: str) -> bool:
         return True
     if d.get("recommend") or d.get("favourites") or d.get("tracking"):
         return False
-    return not _works()
+    return not _works(user_id)
 
 
 def _start_state(user_id: str) -> dict:
@@ -3493,7 +3493,7 @@ def _start_state(user_id: str) -> dict:
             # **クレジット付きの候補を取り寄せたかどうかで、2 段目の済みを決める。**
             # カレンダーは毎回落としてくるので、これがあるかどうかでは判定できない
             "fetched": (ROOT / "data" / "review" / "candidates.jsonl").exists(),
-            "n_works": len(_works())}
+            "n_works": len(_works(user_id))}
 
 
 def _step_card(n: int, title: str, done: bool, lead: str, inner: str = "") -> str:
@@ -3943,7 +3943,7 @@ def _promotions_html(open_: bool = False) -> str:
 
 
 # ---------------------------------------------------------------- 公演情報の登録
-def _works() -> list[dict]:
+def _works(user_id: str) -> list[dict]:
     """観た作品の全件。**購入の記録から組み直して、保存済みの評価を重ねる。**
 
     `works` の表だけを読むと、**評価を付けたことのある作品しか出てこない**（96 行に対し
@@ -3951,22 +3951,22 @@ def _works() -> list[dict]:
     「取り込む → 評価する」の輪が閉じない。**表は評価の置き場所で、作品の一覧ではない。**
     """
     import rate_performances as R
-    purchases = R.load_purchases()
+    purchases = R.load_purchases(user_id=user_id)
     con = R.connect()
     try:
-        excluded = R.read_excluded(con)
-        merges = R.read_merges(con)
-        works = R.load_works(purchases, R.read_splits(con), excluded, merges)
-        saved = R.read_works(con)
+        excluded = R.read_excluded(con, user_id=user_id)
+        merges = R.read_merges(con, user_id=user_id)
+        works = R.load_works(purchases, R.read_splits(con, user_id=user_id), excluded, merges)
+        saved = R.read_works(con, user_id=user_id)
         # **行かなかった回を読む。** この表は前の画面（`rate_performances.py`）が書いた
         # もので、実データに 23 回ぶん入っていた。**この画面がそれを読んでいなかったため、
         # 本人が「行かなかった」と答えた 7 件が評価待ちに戻っていた** ── 一度答えたことを
         # 聞き直す画面になっていた。**答えの置き場所は 1 つで、読む側が全部それを見る。**
-        attended = R.read_attendance(con)
+        attended = R.read_attendance(con, user_id=user_id)
         # **手で入れた出演者とポスターを、記録ごとに載せる。** 直す欄がこれを読んで
         # 「いま何が入っているか」を出す（`_edit_html`）── 入れたものが画面に
         # 出ないなら、入れたのか消えたのかが本人に分からない
-        hand = R.read_hand(con)
+        hand = R.read_hand(con, user_id=user_id)
     finally:
         con.close()
     # **いま公演ページの材料が取れているかを、記録ごとに持つ。** 結び付ける欄の文言を
@@ -4083,11 +4083,11 @@ def _works() -> list[dict]:
 #
 # **外へは取りに行かない**（企画書 5 章の守り 5）。手元にあるものだけを出すので、
 # **古い公演は候補に出ない** ── 出ないことは画面に書く。
-def _suggest_pool() -> list[dict]:
+def _suggest_pool(user_id: str) -> list[dict]:
     """候補の母集団を組む。**題名で引けるように、正規化した鍵を添えておく。**"""
     import rate_performances as R
     rows: list[dict] = []
-    for w in _works():
+    for w in _works(user_id):
         rows.append({"kind": "record", "key": w["work_key"], "title": w["title"],
                      "date": w.get("first_date") or "", "venue": "",
                      "note": ("評価 " + w["verdict"] if w.get("verdict") else "評価はまだです"),
@@ -4264,7 +4264,7 @@ def work_group(r: dict) -> str:
     return f'{r["k"]}|{g}' if g else f'{r["k"]}|@{r.get("stage_id") or r.get("key") or ""}'
 
 
-def suggest(q: str, limit: int = 8) -> dict:
+def suggest(user_id: str, q: str, limit: int = 8) -> dict:
     """入力中の題名に当たる「すでにある情報」を返す。
 
     **前方一致を先に出す。** 打ちかけの文字に対して、途中に含むだけのものを先に出すと、
@@ -4276,7 +4276,7 @@ def suggest(q: str, limit: int = 8) -> dict:
     if len(k) < 2:
         return {"q": q, "rows": []}
     seen, out = set(), []
-    for r in _suggest_pool():
+    for r in _suggest_pool(user_id):
         # **畳んだ行は題名を複数持つ。** 出どころによって書き方が違うので、
         # 1 つだけで照合すると、もう一方の書き方で打った人が引けなくなる
         best = None
@@ -4322,7 +4322,7 @@ def suggest(q: str, limit: int = 8) -> dict:
     # **観に行った回の数を、上演ごとに添える**（木の 3 段目）。すでに記録がある上演は、
     # **選ぶときのいちばん強い手がかり**である ── 自分が行ったのはこれだ、と分かる
     mine: dict = {}
-    for r in _suggest_pool():
+    for r in _suggest_pool(user_id):
         if r["kind"] == "record" and r.get("stage_id"):
             mine[str(r["stage_id"])] = mine.get(str(r["stage_id"]), 0) + (r.get("times") or 1)
     return {"q": q, "rows": [dict({x: r[x] for x in
@@ -4335,7 +4335,7 @@ def suggest(q: str, limit: int = 8) -> dict:
 
 
 # ---------------------------------------------------------------- 同じ公演かを確かめる
-def similar_works(title: str, exclude_key: str = "", limit: int = 5) -> list[dict]:
+def similar_works(user_id: str, title: str, exclude_key: str = "", limit: int = 5) -> list[dict]:
     """題名が近い記録を返す。**判定はしない。同じかどうかを知っているのは本人だけである。**
 
     起案者の指示（2026-08-24）──「タイトルをユーザーが編集したときに、同じタイトルとか
@@ -4352,7 +4352,7 @@ def similar_works(title: str, exclude_key: str = "", limit: int = 5) -> list[dic
     if len(k) < 2:
         return []
     out = []
-    for w in _works():
+    for w in _works(user_id):
         if w["work_key"] == exclude_key:
             continue
         wk = R.title_key(w["title"])
@@ -4375,7 +4375,7 @@ def similar_works(title: str, exclude_key: str = "", limit: int = 5) -> list[dic
     return out[:limit]
 
 
-def merge_works(work_key: str, other_key: str) -> dict:
+def merge_works(user_id: str, work_key: str, other_key: str) -> dict:
     """2 つの記録を 1 つの公演にまとめる。
 
     ## 残すほうは機械が決める
@@ -4390,7 +4390,7 @@ def merge_works(work_key: str, other_key: str) -> dict:
     （消える側の行も `works` に残るので、取り消せば戻る）。
     """
     import rate_performances as R
-    ws = {w["work_key"]: w for w in _works()}
+    ws = {w["work_key"]: w for w in _works(user_id)}
     a, b = ws.get(work_key), ws.get(other_key)
     if not a or not b:
         raise ValueError("その記録は見つからない")
@@ -4404,8 +4404,8 @@ def merge_works(work_key: str, other_key: str) -> dict:
                       <= (b.get("first_date") or "9999") else (b, a))
     con = R.connect()
     try:
-        R.save_merge(con, drop["work_key"], keep["work_key"])
-        saved = R.read_works(con)
+        R.save_merge(con, drop["work_key"], keep["work_key"], user_id=user_id)
+        saved = R.read_works(con, user_id=user_id)
         kv, dv = saved.get(keep["work_key"]) or {}, saved.get(drop["work_key"]) or {}
         moved = []
         if not (kv.get("verdict") or "") and (dv.get("verdict") or ""):
@@ -4415,14 +4415,14 @@ def merge_works(work_key: str, other_key: str) -> dict:
             moved.append("感想")
         if moved:
             con.execute(
-                "INSERT INTO works (work_key, title, first_date, last_date, times,"
+                "INSERT INTO works (user_id, work_key, title, first_date, last_date, times,"
                 " verdict, chosen, note_impression, note_motive, updated_at)"
-                " VALUES (?,?,?,?,?,?,?,?,'',datetime('now','localtime'))"
-                " ON CONFLICT(work_key) DO UPDATE SET verdict=COALESCE(works.verdict,"
+                " VALUES (?,?,?,?,?,?,?,?,?,'',datetime('now','localtime'))"
+                " ON CONFLICT(user_id, work_key) DO UPDATE SET verdict=COALESCE(works.verdict,"
                 " excluded.verdict), note_impression=CASE WHEN trim(works.note_impression)=''"
                 " THEN excluded.note_impression ELSE works.note_impression END,"
                 " updated_at=excluded.updated_at",
-                (keep["work_key"], keep["title"], keep.get("first_date") or "",
+                (user_id, keep["work_key"], keep["title"], keep.get("first_date") or "",
                  keep.get("last_date") or "", keep.get("times") or 1,
                  dv.get("verdict"), kv.get("chosen"), dv.get("note_impression") or ""))
             con.commit()
@@ -4430,7 +4430,7 @@ def merge_works(work_key: str, other_key: str) -> dict:
         # 残るほうの欄が空なら消えるほうから移す（起案者の指示・2026-08-26 ──
         # まとめる前にすでに手で入れてあった分を、入れ直させない）。**消えるほうの
         # `hand_credits` の行はそのまま残す** ── 取り消せば戻るのは評価・感想と同じ
-        hand = R.read_hand(con)
+        hand = R.read_hand(con, user_id=user_id)
         kh, dh = hand.get(keep["work_key"]) or {}, hand.get(drop["work_key"]) or {}
         take_fields = (not hand_credit_count(kh.get("fields") or {})
                        and hand_credit_count(dh.get("fields") or {}))
@@ -4442,19 +4442,19 @@ def merge_works(work_key: str, other_key: str) -> dict:
         if take_fields or take_poster:
             R.save_hand(con, keep["work_key"],
                         fields=(dh.get("fields") or {}) if take_fields else None,
-                        poster=(dh.get("poster") or "") if take_poster else None)
+                        poster=(dh.get("poster") or "") if take_poster else None, user_id=user_id)
     finally:
         con.close()
     return {"ok": True, "kept": keep["work_key"], "kept_title": keep["title"],
             "dropped": drop["work_key"], "dropped_title": drop["title"], "moved": moved}
 
 
-def unmerge_work(work_key: str) -> dict:
+def unmerge_work(user_id: str, work_key: str) -> dict:
     """この記録にまとめた分を、全部もとに戻す。**戻せなければ誤操作が取り返せない。**"""
     import rate_performances as R
     con = R.connect()
     try:
-        n = R.delete_merges(con, into_key=work_key)
+        n = R.delete_merges(con, into_key=work_key, user_id=user_id)
     finally:
         con.close()
     return {"ok": True, "n": n}
@@ -4515,14 +4515,14 @@ def hand_credit_count(fields: dict) -> int:
         return 0
 
 
-def save_hand_credits(work_key: str, fields: dict) -> dict:
+def save_hand_credits(user_id: str, work_key: str, fields: dict) -> dict:
     """手で入れた出演者・作り手を書く。**空にした欄は消す。**"""
     import rate_performances as R
     keep = {k: str(fields.get(k) or "").strip()[:4000]
             for k, _l, _h in HAND_FIELDS if str(fields.get(k) or "").strip()}
     con = R.connect()
     try:
-        R.save_hand(con, work_key, fields=keep)
+        R.save_hand(con, work_key, fields=keep, user_id=user_id)
     finally:
         con.close()
     n = hand_credit_count(keep)
@@ -4618,7 +4618,7 @@ def read_hand_theme(user_id: str, stage_id: str) -> dict:
     return {"ok": bool(ws), "words": ws}
 
 
-def save_hand_poster(work_key: str, data_url: str) -> dict:
+def save_hand_poster(user_id: str, work_key: str, data_url: str) -> dict:
     """選んだ画像を端末内に写して、この記録のポスターにする。
 
     **外へは出さない。** 受け取るのは画面が読み込んだファイルの中身だけで、
@@ -4660,13 +4660,13 @@ def save_hand_poster(work_key: str, data_url: str) -> dict:
         name = path.with_suffix(".jpg").name
     con = R.connect()
     try:
-        R.save_hand(con, work_key, poster=name)
+        R.save_hand(con, work_key, poster=name, user_id=user_id)
     finally:
         con.close()
     return {"ok": True, "poster": name, "said": "ポスターを入れ替えました"}
 
 
-def drop_hand_poster(work_key: str) -> dict:
+def drop_hand_poster(user_id: str, work_key: str) -> dict:
     """手で入れたポスターを外す。**元の（結び付け・推測の）絵に戻る。**"""
     import hashlib
     import rate_performances as R
@@ -4674,13 +4674,13 @@ def drop_hand_poster(work_key: str) -> dict:
         stale.unlink()
     con = R.connect()
     try:
-        R.save_hand(con, work_key, poster="")
+        R.save_hand(con, work_key, poster="", user_id=user_id)
     finally:
         con.close()
     return {"ok": True, "said": "手で入れたポスターを外しました"}
 
 
-def link_stage(work_key: str, stage_id: str) -> dict:
+def link_stage(user_id: str, work_key: str, stage_id: str) -> dict:
     """記録を、手元の公演データに結び付ける（`works.stage_id`）。
 
     **これが無いと、手で足した記録は推薦に効かない。** 名簿（網 B）とあらすじの要素（網 C）は
@@ -4697,12 +4697,12 @@ def link_stage(work_key: str, stage_id: str) -> dict:
     import rate_performances as R
     if stage_id and not stage_id.isdigit():
         raise ValueError("公演の id は数字である")
-    w = next((x for x in _works() if x["work_key"] == work_key), None)
+    w = next((x for x in _works(user_id) if x["work_key"] == work_key), None)
     if w is None:
         raise ValueError("その記録は見つからない")
     title = ""
     if stage_id:
-        title = next((r["title"] for r in _suggest_pool()
+        title = next((r["title"] for r in _suggest_pool(user_id)
                       if r["kind"] == "stage" and r["key"] == stage_id), "")
         if not title:
             # **手元に無ければ、その場で取りに行く。**「ネットの公演情報から探す」で
@@ -4715,19 +4715,19 @@ def link_stage(work_key: str, stage_id: str) -> dict:
             import stage_search as SS
             SS.adopt(stage_id, work_key=work_key, title=w["title"],
                      date=w.get("first_date") or "")
-            title = next((r["title"] for r in _suggest_pool()
+            title = next((r["title"] for r in _suggest_pool(user_id)
                           if r["kind"] == "stage" and r["key"] == stage_id), "")
         if not title:
             raise ValueError("その公演の情報を取りに行きましたが、見つかりませんでした")
     con = R.connect()
     try:
         con.execute(
-            "INSERT INTO works (work_key, title, first_date, last_date, times, verdict,"
-            " chosen, note_impression, note_motive, stage_id, updated_at)"
-            " VALUES (?,?,?,?,?,NULL,NULL,'','',?,datetime('now','localtime'))"
-            " ON CONFLICT(work_key) DO UPDATE SET stage_id=excluded.stage_id,"
+            "INSERT INTO works (user_id, work_key, title, first_date, last_date, times,"
+            " verdict, chosen, note_impression, note_motive, stage_id, updated_at)"
+            " VALUES (?,?,?,?,?,?,NULL,NULL,'','',?,datetime('now','localtime'))"
+            " ON CONFLICT(user_id, work_key) DO UPDATE SET stage_id=excluded.stage_id,"
             " updated_at=excluded.updated_at",
-            (work_key, w["title"], w.get("first_date") or "", w.get("last_date") or "",
+            (user_id, work_key, w["title"], w.get("first_date") or "", w.get("last_date") or "",
              w.get("times") or 1, stage_id or None))
         con.commit()
     finally:
@@ -4738,7 +4738,7 @@ def link_stage(work_key: str, stage_id: str) -> dict:
 _STAGE_LABELS: dict = {}
 
 
-def stage_label(stage_id: str) -> str:
+def stage_label(user_id: str, stage_id: str) -> str:
     """結び付けた公演を、人が読める形で返す。**id の数字だけを画面に出さない。**
 
     **1 度だけ組んで使い回す。** 記録の一覧は 119 行あり、行ごとに候補の母集団を
@@ -4753,7 +4753,7 @@ def stage_label(stage_id: str) -> str:
     stamp = tuple(f.stat().st_mtime_ns if f.exists() else 0 for f in files)
     if _STAGE_LABELS.get("stamp") != stamp:
         ix = {}
-        for r in _suggest_pool():
+        for r in _suggest_pool(user_id):
             if r["kind"] == "stage" and r["key"] not in ix:
                 ix[r["key"]] = "／".join(
                     x for x in (r["title"], r.get("venue") or "", r.get("date") or "") if x)
@@ -4780,14 +4780,14 @@ def stage_label(stage_id: str) -> str:
 # **`excluded` は学習の側も見ている**（`measure_nets.load_rated` が使う `R.State`）。
 # 画面用に別の表を作ると、**取り消したはずの公演が名簿の材料に残る** ── まちがって
 # 拾われたものを外したい、という指示の目的がそこで果たされない。
-def drop_work(work_key: str) -> dict:
+def drop_work(user_id: str, work_key: str) -> dict:
     """取り込んだ記録を候補から外す。
 
     **消さずに外す。** 外した内容は `excluded` に残るので、いつでも戻せる ──
     誤操作が取り返せない作りにしない。**メールそのものにも触らない。**
     """
     import rate_performances as R
-    w = next((x for x in _works() if x["work_key"] == work_key), None)
+    w = next((x for x in _works(user_id) if x["work_key"] == work_key), None)
     if w is None:
         raise ValueError("その記録は見つからない")
     pairs = [(s["uid"], s["program"]) for s in (w.get("shows") or [])]
@@ -4796,25 +4796,25 @@ def drop_work(work_key: str) -> dict:
     pairs.append((f"work:{work_key}", w["title"]))
     con = R.connect()
     try:
-        R.save_excluded(con, pairs, True)
+        R.save_excluded(con, pairs, True, user_id=user_id)
     finally:
         con.close()
     return {"ok": True, "work_key": work_key, "title": w["title"],
             "n": len(w.get("shows") or []) or 1}
 
 
-def _dropped_state():
+def _dropped_state(user_id: str):
     """外した記録を、記録の単位に組み直して返す（目印, 目印に属する（回, 演目），
     完全に取り消した work_key，完全に取り消した目印無し演目）。
     """
     import rate_performances as R
     con = R.connect()
     try:
-        ex = R.read_excluded(con)
-        merges = R.read_merges(con)
+        ex = R.read_excluded(con, user_id=user_id)
+        merges = R.read_merges(con, user_id=user_id)
         # **除外を外した状態で組み直す。** 外した記録が何回ぶんだったかは、
         # 外したあとの一覧からは分からない
-        full = R.load_works(R.load_purchases(), R.read_splits(con), set(), merges)
+        full = R.load_works(R.load_purchases(user_id=user_id), R.read_splits(con, user_id=user_id), set(), merges)
     finally:
         con.close()
     marks = {u[5:]: p for u, p in ex if u.startswith("work:")}
@@ -4834,7 +4834,7 @@ def _dropped_state():
     return ex, marks, owned, purged, purged_legacy
 
 
-def dropped_works() -> list[dict]:
+def dropped_works(user_id: str) -> list[dict]:
     """外した記録の一覧。**取り消せる機能には、戻す口が要る。**
 
     **目印の無い古い除外も出す。** 前の画面（`rate_performances.py` の一覧）から外した分が
@@ -4843,7 +4843,7 @@ def dropped_works() -> list[dict]:
     **完全に取り消した分は、ここには出さない。** 一覧をたたむのが「完全取り消し」の
     目的なので、目印（`purged:`／`purged-legacy:`）が付いた分は素通りする。
     """
-    ex, marks, owned, purged, purged_legacy = _dropped_state()
+    ex, marks, owned, purged, purged_legacy = _dropped_state(user_id)
     rows = [{"key": k, "title": t, "n": len(owned.get(k) or ()) or 1, "legacy": False}
             for k, t in marks.items() if k not in purged]
     taken = {pair for v in owned.values() for pair in v}
@@ -4858,10 +4858,10 @@ def dropped_works() -> list[dict]:
     return sorted(rows, key=lambda r: r["title"])
 
 
-def restore_work(key: str) -> dict:
+def restore_work(user_id: str, key: str) -> dict:
     """外した記録を戻す。**目印のあるものは記録ごと、古い除外は演目ごとに戻す。**"""
     import rate_performances as R
-    ex, marks, owned, _purged, _purged_legacy = _dropped_state()
+    ex, marks, owned, _purged, _purged_legacy = _dropped_state(user_id)
     if key in marks:
         pairs = [(f"work:{key}", marks[key])] + sorted(owned.get(key) or ())
     else:
@@ -4870,13 +4870,13 @@ def restore_work(key: str) -> dict:
         raise ValueError("外した記録に見つからない")
     con = R.connect()
     try:
-        R.save_excluded(con, pairs, False)
+        R.save_excluded(con, pairs, False, user_id=user_id)
     finally:
         con.close()
     return {"ok": True, "key": key, "n": len(pairs)}
 
 
-def purge_work(key: str) -> dict:
+def purge_work(user_id: str, key: str) -> dict:
     """取り消した記録を、**戻す口ごと「取り消した記録」の一覧から消す。**
 
     起案者の指示（2026-08-26）──「取り消した記録、には『完全取り消し』のボタンも
@@ -4890,17 +4890,17 @@ def purge_work(key: str) -> dict:
     `dropped_works` がそれを読み飛ばすようにする。
     """
     import rate_performances as R
-    ex, marks, _owned, purged, purged_legacy = _dropped_state()
+    ex, marks, _owned, purged, purged_legacy = _dropped_state(user_id)
     con = R.connect()
     try:
         if key in marks and key not in purged:
             title = marks[key]
-            R.save_excluded(con, [(f"work:{key}", title)], False)
-            R.save_excluded(con, [(f"purged:{key}", title)], True)
+            R.save_excluded(con, [(f"work:{key}", title)], False, user_id=user_id)
+            R.save_excluded(con, [(f"purged:{key}", title)], True, user_id=user_id)
         elif key not in purged_legacy and any(
                 p == key for u, p in ex if not u.startswith(("work:", "purged:", "purged-legacy:"))):
             title = key
-            R.save_excluded(con, [(f"purged-legacy:{key}", key)], True)
+            R.save_excluded(con, [(f"purged-legacy:{key}", key)], True, user_id=user_id)
         else:
             raise ValueError("取り消した記録に見つからない")
     finally:
@@ -4931,7 +4931,7 @@ def purge_work(key: str) -> dict:
 # 23 回ぶん入っている。**新しい画面がこの表を読んでいなかったため、本人が 2026-08-20 に
 # 「行かなかった」と答えた 7 件が評価待ちに戻っていた。** 画面用に別の表を作ると、
 # 同じ答えが 2 か所に散って同じことがまた起きる。
-def set_unseen(work_key: str, unseen: bool) -> dict:
+def set_unseen(user_id: str, work_key: str, unseen: bool) -> dict:
     """「行かなかった」を付ける／外す。**回ごとに書く。**
 
     **単位は回である。** 3 回のうち 1 回を落としたのは観た公演なので、作品の側に
@@ -4941,7 +4941,7 @@ def set_unseen(work_key: str, unseen: bool) -> dict:
     **消さずに外す。** 買った記録はそのまま残るので、いつでも観たほうへ戻せる。
     """
     import rate_performances as R
-    w = next((x for x in _works() if x["work_key"] == work_key), None)
+    w = next((x for x in _works(user_id) if x["work_key"] == work_key), None)
     if w is None:
         raise ValueError("その記録は見つからない")
     shows = w.get("shows") or []
@@ -4952,14 +4952,14 @@ def set_unseen(work_key: str, unseen: bool) -> dict:
     con = R.connect()
     try:
         for s in shows:
-            R.save_attendance(con, w, s["uid"], not unseen)
+            R.save_attendance(con, w, s["uid"], not unseen, user_id=user_id)
     finally:
         con.close()
     return {"ok": True, "work_key": work_key, "title": w["title"],
             "unseen": bool(unseen), "n": len(shows)}
 
 
-def save_work_field(work_key: str, *, verdict=None, note=None) -> dict:
+def save_work_field(user_id: str, work_key: str, *, verdict=None, note=None) -> dict:
     """評価または感想を 1 つ書く。**受け付ける項目は列挙したものだけ**（守り 4）。
 
     **`UPDATE` だけでは足りない。** 取り込んだばかりの作品はまだ `works` に行が無く、
@@ -4969,16 +4969,16 @@ def save_work_field(work_key: str, *, verdict=None, note=None) -> dict:
     import rate_performances as R
     con = R.connect()
     try:
-        works = R.load_works(R.load_purchases(), R.read_splits(con), R.read_excluded(con))
+        works = R.load_works(R.load_purchases(user_id=user_id), R.read_splits(con, user_id=user_id), R.read_excluded(con, user_id=user_id))
         w = next((x for x in works if x["work_key"] == work_key), None)
-        sv = R.read_works(con).get(work_key) or {}
+        sv = R.read_works(con, user_id=user_id).get(work_key) or {}
         if w is None:
             if not sv:
                 raise ValueError("その作品は記録に無い")
             col, val = ("verdict", verdict) if verdict is not None else ("note_impression", note)
             con.execute(f"UPDATE works SET {col}=?,"
-                        " updated_at=datetime('now','localtime') WHERE work_key=?",
-                        (val, work_key))
+                        " updated_at=datetime('now','localtime') WHERE user_id=? AND work_key=?",
+                        (val, user_id, work_key))
             con.commit()
             return {"ok": True, "work_key": work_key, "manual": True}
         # **他の欄を消さない。** 評価を押しただけで感想が消えるのは、いちばん困る失敗である
@@ -4986,13 +4986,13 @@ def save_work_field(work_key: str, *, verdict=None, note=None) -> dict:
             "verdict": verdict if verdict is not None else sv.get("verdict"),
             "chosen": sv.get("chosen"),
             "note_impression": note if note is not None else (sv.get("note_impression") or ""),
-            "note_motive": sv.get("note_motive") or ""})
+            "note_motive": sv.get("note_motive") or ""}, user_id=user_id)
         return {"ok": True, "work_key": work_key, "manual": False}
     finally:
         con.close()
 
 
-def save_visit_note(uid: str, note: str) -> dict:
+def save_visit_note(user_id: str, uid: str, note: str) -> dict:
     """1 回ぶんの、推薦には使わないメモを書く。**`visit_note` 表の注記を見る。**
 
     `save_work_field` と違い、作品（`works`）の行があるかどうかを確かめない ──
@@ -5001,12 +5001,12 @@ def save_visit_note(uid: str, note: str) -> dict:
     import rate_performances as R
     con = R.connect()
     try:
-        return R.save_visit_note(con, uid, note)
+        return R.save_visit_note(con, uid, note, user_id=user_id)
     finally:
         con.close()
 
 
-def add_work(title: str, date: str = "", venue: str = "", stage_id: str = "",
+def add_work(user_id: str, title: str, date: str = "", venue: str = "", stage_id: str = "",
              time: str = "") -> dict:
     """メールに残らない経路（招待・当日窓口・人に取ってもらった分）を手で足す。
 
@@ -5028,7 +5028,8 @@ def add_work(title: str, date: str = "", venue: str = "", stage_id: str = "",
     key = f"{R.title_key(title)}#{date or 'undated'}"
     con = R.connect()
     try:
-        if con.execute("SELECT 1 FROM works WHERE work_key=?", (key,)).fetchone():
+        if con.execute("SELECT 1 FROM works WHERE user_id=? AND work_key=?",
+                       (user_id, key)).fetchone():
             raise ValueError("その作品はもう登録してある")
         # **会場は会場の列に入れる。** ここは以前 `note_impression`（感想）に
         # 「劇場: 〜」と書いていた ── `works` に会場の列が無かったためである。
@@ -5036,10 +5037,10 @@ def add_work(title: str, date: str = "", venue: str = "", stage_id: str = "",
         # 感想の件数に数えられ、◎ の作品なら推薦の理由に「あなたの言葉」として
         # 引用される（起案者の報告 2026-08-24。移行は `rate_performances._add_venue`）
         con.execute(
-            "INSERT INTO works (work_key, title, first_date, last_date, times, verdict,"
+            "INSERT INTO works (user_id, work_key, title, first_date, last_date, times, verdict,"
             " chosen, note_impression, note_motive, stage_id, venue, time, updated_at)"
-            " VALUES (?,?,?,?,1,NULL,NULL,'','',?,?,?,datetime('now','localtime'))",
-            (key, title, date, date, stage_id or None, venue or "", time or ""))
+            " VALUES (?,?,?,?,?,1,NULL,NULL,'','',?,?,?,datetime('now','localtime'))",
+            (user_id, key, title, date, date, stage_id or None, venue or "", time or ""))
         con.commit()
     finally:
         con.close()
@@ -5053,7 +5054,7 @@ def add_work(title: str, date: str = "", venue: str = "", stage_id: str = "",
         import stage_search as SS
         adopted = SS.adopt(stage_id, work_key=key, title=title, date=date)
     return {"ok": True, "work_key": key, "stage_id": stage_id, "adopted": adopted,
-            "similar": similar_works(title, key)}
+            "similar": similar_works(user_id, title, key)}
 
 
 def _import_upto_line() -> str:
@@ -5162,7 +5163,7 @@ def _imported_list(titles: list | None) -> str:
             + "／".join(E(str(t)) for t in titles) + "</span></div>")
 
 
-def page_register(imp: dict | None = None, imported: list | None = None) -> str:
+def page_register(user_id: str, imp: dict | None = None, imported: list | None = None) -> str:
     """入力の画面。**読む画面と分ける。**
 
     週 3 分で一覧を読む動作に「取り込む」「足す」「評価する」を混ぜると、
@@ -5175,14 +5176,32 @@ def page_register(imp: dict | None = None, imported: list | None = None) -> str:
     その違いは札の見出しと本文の両方に書く ── 同じ画面に並ぶと、観た公演を足す口と
     見分けが付かなくなる。
     """
-    body = _register_body(imp, imported)
+    body = _register_body(user_id, imp, imported)
     return layout("公演情報の登録", "/register", body, RR.STYLE)
 
 
-def _register_body(imp: dict | None = None, imported: list | None = None) -> str:
+def _import_card(user_id: str, imp: dict | None, imported: list | None, line: str) -> str:
+    """① 購入確認メールから取り込む。**ローカルの持ち主にだけ出す**（E3）。
+
+    取り込むのは持ち主の Gmail で、進み具合（`imp`）と取り込んだ題名（`imported`）も
+    プロセスに 1 つしか無い ── 公開デモの訪問者に出すと、持ち主が買った公演の題名が
+    見え、押せば持ち主のメールを取り込むことになる（`serve.on_import_mail` も拒む）。
+    """
+    if not _is_owner(user_id):
+        return f"""<div class="card">{IC.h2("mail", "① 購入確認メールから取り込む")}
+<p class="lead">購入確認メールの取り込みは、手元のパソコンで動かしたときだけ使えます。
+<b>この公開デモでは、②の「手で 1 件足す」から記録を足してください。</b></p></div>"""
+    return f"""<div class="card">{IC.h2("mail", "① 購入確認メールから取り込む")}
+<p class="lead">前回より後に届いたメールだけを見ます。{_import_upto_line()}</p>
+<div class="imp"><button data-imp="1"{" disabled" if (imp or {}).get("running") else ""}>{IC.ico("mail")}取り込みを始める</button>
+ <span class="said">{E(line)}</span></div>
+{_import_bar(imp)}{_imported_list(imported)}</div>"""
+
+
+def _register_body(user_id: str, imp: dict | None = None, imported: list | None = None) -> str:
     """`page_register()` の中身だけを組み立てる(#000009、`_recommend_body`と同じ形)。"""
-    wait = waiting_rows()
-    all_w = _works()
+    wait = waiting_rows(user_id)
+    all_w = _works(user_id)
     # **上演前のものは評価待ちに入れない**（企画書 4 章）
     unrated = [w for w in all_w if not w.get("verdict") and w.get("bucket") != "upcoming"]
     line = (imp or {}).get("line") or ""
@@ -5193,11 +5212,7 @@ def _register_body(imp: dict | None = None, imported: list | None = None) -> str
 手で足す、<b>観ればよかった公演（観ていないもの）を足す</b>の 3 つです。
 評価は「観た公演の評価」で付けます。評価が無くても記録は残せます。</p>
 
-<div class="card">{IC.h2("mail", "① 購入確認メールから取り込む")}
-<p class="lead">前回より後に届いたメールだけを見ます。{_import_upto_line()}</p>
-<div class="imp"><button data-imp="1"{" disabled" if (imp or {}).get("running") else ""}>{IC.ico("mail")}取り込みを始める</button>
- <span class="said">{E(line)}</span></div>
-{_import_bar(imp)}{_imported_list(imported)}</div>
+{_import_card(user_id, imp, imported, line)}
 
 <div class="card">{IC.h2("plus", "② 手で 1 件足す ── メールに残らない分")}
 <p class="lead">招待・当日窓口・人に取ってもらった分は購入確認メールに残らないので、
@@ -5402,7 +5417,7 @@ def _rate_base(user_id: str) -> dict:
     18 件しか無い**という食い違いが起きる（「記録を見返す」の 3 枚と同じ判断）。
     """
     d, wait = _load(user_id)
-    all_w = _works()
+    all_w = _works(user_id)
     # **上演前のものは評価待ちに入れない**（企画書 4 章）。
     #
     # **「行かなかった」を付けた記録も出さない**（起案者の指示・2026-08-25 ──
@@ -5649,7 +5664,7 @@ def _rate_body(user_id: str, verdict: str = "", year: str = "", venues=(), page:
         "作品")
     # **押し直す口と感想だけを出す。** 題名・日付・会場を直す欄（`_edit_html`）は
     # 出さない ── それは日記帳の役目（起案者の指示・2026-08-26）
-    rows = "".join(_rec_row(w, poster=_poster_html(w), rate_reopen=True)
+    rows = "".join(_rec_row(user_id, w, poster=_poster_html(w), rate_reopen=True)
                    for w in show)
     body = f"""<h1>評価一覧 ── 付けた {len(rated)} 件</h1>
 <p class="lede">付けた評価を ◎○△× ごとに分けています。<b>付ける基準は
@@ -5705,7 +5720,7 @@ def _unrated_body(user_id: str) -> str:
 <b>実際には観ていない公演が混じっていたら、各行の「公演詳細を直す」から外せます。</b>
 券を買って行かなかった公演と、舞台ではないものが取り込まれた記録を、そこで書き分けられます
 ── どちらもあとで戻せます。</p>
-{"".join(_rec_row(w, poster=_poster_html(w), rate_always=True, editable=True)
+{"".join(_rec_row(user_id, w, poster=_poster_html(w), rate_always=True, editable=True)
          for w in unrated) or '<p class="empty">評価が付いていない記録はありません。</p>'}"""
 
 
@@ -5763,7 +5778,7 @@ def _pending_notes_html(all_w: list[dict], collapsed: bool = True) -> str:
 
 
 # ---------------------------------------------------------------- 公演詳細を直す
-def mail_hints(uid: str) -> dict:
+def mail_hints(user_id: str, uid: str) -> dict:
     """直すための手がかりを、メール本文から拾って返す。
 
     **本文は保存しない**（企画書 2 章）── 端末内のファイルをその場で読むだけである。
@@ -5771,10 +5786,14 @@ def mail_hints(uid: str) -> dict:
     書いてある（「公演名：…」の次の行に続きがある形）。
     """
     import rate_performances as R
+    if not _is_owner(user_id):
+        # **メールは持ち主のものである**（E3）。訪問者の記録はメールから来ないので、
+        # 手がかりを求められる筋も無い ── 持ち主のメール本文の断片を渡さない
+        return {"uid": uid, "hints": []}
     return {"uid": uid, "hints": R.mail_hints(uid, limit=12)}
 
 
-def fix_work(work_key: str, *, title: str | None = None,
+def fix_work(user_id: str, work_key: str, *, title: str | None = None,
              shows: list[dict] | None = None) -> dict:
     """公演詳細を直し、**題名が近い記録があれば一緒に返す。**
 
@@ -5783,14 +5802,14 @@ def fix_work(work_key: str, *, title: str | None = None,
     機械には決められないので、判定はせず、近い記録を並べて本人に確かめてもらう
     （`similar_works` の注記）。
     """
-    out = _fix_work(work_key, title=title, shows=shows)
+    out = _fix_work(user_id, work_key, title=title, shows=shows)
     if title is not None and not out.get("gone"):
-        out["similar"] = similar_works(out.get("title") or title,
+        out["similar"] = similar_works(user_id, out.get("title") or title,
                                        out.get("work_key") or work_key)
     return out
 
 
-def _fix_work(work_key: str, *, title: str | None = None,
+def _fix_work(user_id: str, work_key: str, *, title: str | None = None,
               shows: list[dict] | None = None) -> dict:
     """1 公演の詳細（題名・回ごとの上演日・劇場）を人が確定する。
 
@@ -5827,11 +5846,11 @@ def _fix_work(work_key: str, *, title: str | None = None,
         # （起案者の報告・2026-08-26 ──「観に行った日付を追加して保存しようとしたら
         # 『できなかった：この公演の回ではない』と表示された」。実データで確認 ──
         # 『チェーホフの奏でる物語』が該当）
-        works = R.load_works(R.load_purchases(), R.read_splits(con), R.read_excluded(con),
-                             R.read_merges(con))
+        works = R.load_works(R.load_purchases(user_id=user_id), R.read_splits(con, user_id=user_id), R.read_excluded(con, user_id=user_id),
+                             R.read_merges(con, user_id=user_id))
         w = next((x for x in works if x["work_key"] == work_key), None)
         if w is None:
-            return _fix_manual(con, work_key, title, shows)
+            return _fix_manual(user_id, con, work_key, title, shows)
         by_uid = {s["uid"]: s for s in w["shows"]}
         n = 0
 
@@ -5857,9 +5876,9 @@ def _fix_work(work_key: str, *, title: str | None = None,
             n += put(s, "title", str(title))
             # **旧い画面が使っていた「1 行の splits」を消す。** 残すと題名の直しが
             # 2 か所にあることになり、どちらが効いているのか読めなくなる
-            if len(R.read_splits(con).get(uid) or []) == 1:
+            if len(R.read_splits(con, user_id=user_id).get(uid) or []) == 1:
                 with con:
-                    con.execute("DELETE FROM splits WHERE uid=?", (uid,))
+                    con.execute("DELETE FROM splits WHERE user_id=? AND uid=?", (user_id, uid))
         for row in shows or []:
             s = by_uid.get(str(row.get("uid") or ""))
             if s is None:
@@ -5867,12 +5886,12 @@ def _fix_work(work_key: str, *, title: str | None = None,
             for f in ("date", "venue", "time"):
                 if row.get(f) is not None:
                     n += put(s, f, str(row[f]))
-        return dict(_rekey(con, work_key, set(by_uid)), n=n)
+        return dict(_rekey(user_id, con, work_key, set(by_uid)), n=n)
     finally:
         con.close()
 
 
-def unfix_work(work_key: str) -> dict:
+def unfix_work(user_id: str, work_key: str) -> dict:
     """この公演に付けた直しを全部取り消し、抽出結果に戻す。
 
     **戻せなければ誤操作が取り返せない。** 直しの行は消えるが、評価と感想は
@@ -5882,7 +5901,7 @@ def unfix_work(work_key: str) -> dict:
     import rate_performances as R
     con = R.connect()
     try:
-        works = R.load_works(R.load_purchases(), R.read_splits(con), R.read_excluded(con))
+        works = R.load_works(R.load_purchases(user_id=user_id), R.read_splits(con, user_id=user_id), R.read_excluded(con, user_id=user_id))
         w = next((x for x in works if x["work_key"] == work_key), None)
         if w is None:
             raise ValueError("その記録は購入から導けない（手で足した記録は直しを持たない）")
@@ -5890,12 +5909,12 @@ def unfix_work(work_key: str) -> dict:
         for uid in uids:
             for f in CX.FIELDS:
                 CX.save(con, uid, f, "")
-        return dict(_rekey(con, work_key, uids), n=0, cleared=True)
+        return dict(_rekey(user_id, con, work_key, uids), n=0, cleared=True)
     finally:
         con.close()
 
 
-def _rekey(con, work_key: str, uids: set) -> dict:
+def _rekey(user_id: str, con, work_key: str, uids: set) -> dict:
     """直した後の作品を引き当て、評価・感想・手で入れた分を新しい鍵へ移す。
 
     ## 移した後の古い鍵の行は残さない（起案者の指摘・2026-08-26）
@@ -5912,7 +5931,7 @@ def _rekey(con, work_key: str, uids: set) -> dict:
     付け替えないと、直した後は「まとめた記録」が誰からも指されなくなる。
     """
     import rate_performances as R
-    after = R.load_works(R.load_purchases(), R.read_splits(con), R.read_excluded(con))
+    after = R.load_works(R.load_purchases(user_id=user_id), R.read_splits(con, user_id=user_id), R.read_excluded(con, user_id=user_id))
     new = next((x for x in after if uids & {s["uid"] for s in x["shows"]}), None)
     if new is None:
         # 直した題名が「演劇でない」語に当たると候補から外れる。**黙って消さない**
@@ -5920,19 +5939,19 @@ def _rekey(con, work_key: str, uids: set) -> dict:
                 "gone": True}
     moved = False
     if new["work_key"] != work_key:
-        sv = R.read_works(con).get(work_key) or {}
+        sv = R.read_works(con, user_id=user_id).get(work_key) or {}
         if any(sv.get(k) for k in ("verdict", "chosen", "note_impression", "note_motive")):
             try:
                 R.save_work(con, new, {
                     "verdict": sv.get("verdict"), "chosen": sv.get("chosen"),
                     "note_impression": sv.get("note_impression") or "",
-                    "note_motive": sv.get("note_motive") or ""})
+                    "note_motive": sv.get("note_motive") or ""}, user_id=user_id)
                 moved = True
             except ValueError:
                 pass          # 上演前になった（日付を直した）ときは評価を移さない
         # **手で入れた出演者・ポスターも同じ理由で移す。** 空欄だけ埋める
         # （`merge_works` と同じ規則）
-        hand = R.read_hand(con)
+        hand = R.read_hand(con, user_id=user_id)
         kh, oh = hand.get(new["work_key"]) or {}, hand.get(work_key) or {}
         take_fields = (not hand_credit_count(kh.get("fields") or {})
                        and hand_credit_count(oh.get("fields") or {}))
@@ -5940,23 +5959,24 @@ def _rekey(con, work_key: str, uids: set) -> dict:
         if take_fields or take_poster:
             R.save_hand(con, new["work_key"],
                         fields=(oh.get("fields") or {}) if take_fields else None,
-                        poster=(oh.get("poster") or "") if take_poster else None)
+                        poster=(oh.get("poster") or "") if take_poster else None, user_id=user_id)
         with con:
             con.execute(
                 "UPDATE merges SET into_key = ?, updated_at = datetime('now','localtime')"
-                " WHERE into_key = ?", (new["work_key"], work_key))
-            con.execute("DELETE FROM works WHERE work_key = ?", (work_key,))
+                " WHERE user_id = ? AND into_key = ?", (new["work_key"], user_id, work_key))
+            con.execute("DELETE FROM works WHERE user_id = ? AND work_key = ?",
+                        (user_id, work_key))
     else:
         # 鍵が同じでも、直した題名を表に映しておく（書き出しと探すが読む列である）
         with con:
             con.execute("UPDATE works SET title=?, first_date=?, last_date=?,"
-                        " updated_at=datetime('now','localtime') WHERE work_key=?",
-                        (new["title"], new["first_date"], new["last_date"], work_key))
+                        " updated_at=datetime('now','localtime') WHERE user_id=? AND work_key=?",
+                        (new["title"], new["first_date"], new["last_date"], user_id, work_key))
     return {"ok": True, "work_key": new["work_key"], "title": new["title_display"],
             "moved": moved, "gone": False}
 
 
-def _fix_manual(con, work_key: str, title: str | None, shows: list[dict] | None) -> dict:
+def _fix_manual(user_id: str, con, work_key: str, title: str | None, shows: list[dict] | None) -> dict:
     """購入から導けない記録（手で足した分・束ね直しで浮いた分）を直す。
 
     **`works` の表を直に書き換える。** 直しの表（`corrections.py`）は「メールの抽出を
@@ -5972,7 +5992,7 @@ def _fix_manual(con, work_key: str, title: str | None, shows: list[dict] | None)
     """
     import corrections as CX
     import rate_performances as R
-    sv = R.read_works(con).get(work_key)
+    sv = R.read_works(con, user_id=user_id).get(work_key)
     if not sv:
         raise ValueError("その記録は見つからない")
     new_title = str(title).strip() if title is not None else (sv["title"] or "")
@@ -5987,12 +6007,14 @@ def _fix_manual(con, work_key: str, title: str | None, shows: list[dict] | None)
         if row.get("time") is not None:
             time_ = CX._clean_value("time", str(row["time"]))
     key = f"{R.title_key(new_title)}#{date or 'undated'}"
-    if key != work_key and R.read_works(con).get(key):
+    if key != work_key and R.read_works(con, user_id=user_id).get(key):
         raise ValueError("その題名・日付の記録はもう別にある")
     with con:
         con.execute("UPDATE works SET work_key=?, title=?, first_date=?, last_date=?,"
-                    " venue=?, time=?, updated_at=datetime('now','localtime') WHERE work_key=?",
-                    (key, new_title, date, date or sv["last_date"], venue, time_, work_key))
+                    " venue=?, time=?, updated_at=datetime('now','localtime')"
+                    " WHERE user_id=? AND work_key=?",
+                    (key, new_title, date, date or sv["last_date"], venue, time_,
+                     user_id, work_key))
     return {"ok": True, "work_key": key, "title": R.norm(new_title), "moved": key != work_key,
             "gone": False, "n": 1, "manual": True}
 
@@ -6182,7 +6204,7 @@ def _synopsis_html(text: str) -> str:
             f'<button class="mrb" data-more="1">続きを読む</button></div>')
 
 
-def _rec_row(w: dict, *, poster: str = "", rate_always: bool = False,
+def _rec_row(user_id: str, w: dict, *, poster: str = "", rate_always: bool = False,
              editable: bool = False, extra: str = "", rate_reopen: bool = False,
              id_suffix: str = "", visit_uid: str = "", visit_note: str = "") -> str:
     """1 公演の記録を 1 件出す。**1 件が 1 日ぶんの帳面になる**（起案者の指示・2026-08-24
@@ -6290,7 +6312,7 @@ def _rec_row(w: dict, *, poster: str = "", rate_always: bool = False,
             + (f'<div class="tools">{rate}{imp_head}{vn_head}</div>'
                if (rate or imp_head or vn_head) else "")
             + imp_box + vn_box
-            + (_edit_html(w) if editable else "")
+            + (_edit_html(user_id, w) if editable else "")
             + f'</div>{pin}</article>')
 
 
@@ -6370,7 +6392,7 @@ def _visit_note_html(uid: str, note: str) -> tuple[str, str]:
 
 
 
-def _edit_html(w: dict) -> str:
+def _edit_html(user_id: str, w: dict) -> str:
     """公演詳細を直す欄。**畳んで置く。**
 
     記録を見返す画面は読む画面なので、**開いたときに全部の行に入力欄が並んでいると、
@@ -6492,7 +6514,7 @@ def _edit_html(w: dict) -> str:
     link = (f'<div class="ed-link" data-work="{key}">'
             f'<span class="ed-lk">おすすめに使う公演</span>'
             + (f'<span class="ed-lv{" auto" if w.get("auto_linked") else ""}">'
-               f'{E(stage_label(sid))}</span>'
+               f'{E(stage_label(user_id, sid))}</span>'
                f'<button data-unlink="{key}">結び付けを外す</button>' if sid else "")
             # **欄には、いまの題名を最初から入れておく**（起案者の指示・2026-08-26）。
             # 空欄だと、まず自分でこの記録の題名を打ち直すところから始まる ──
@@ -6601,7 +6623,7 @@ def _hand_html(w: dict, key: str) -> str:
 </details>"""
 
 
-def _dropped_html() -> str:
+def _dropped_html(user_id: str) -> str:
     """取り消した記録の管理。**「設定」の 1 枚の札にする。**（起案者の指示・2026-08-26
     ──「取り消した記録の管理は設定で行うようにして」）。
 
@@ -6618,7 +6640,7 @@ def _dropped_html() -> str:
     おらず、丸い錠剤形（`.card button` の規約）を持つ他の押し口と違って見えていた。
     ここも `.card` の中に置くことで、同じ規約をそのまま使う。
     """
-    rows = dropped_works()
+    rows = dropped_works(user_id)
     if not rows:
         return f"""<details class="card">{_card_h2("check", "取り消した記録")}
 <p class="lead">取り消した記録はありません。<b>まちがって取り込まれたものは、
@@ -6642,7 +6664,7 @@ def _dropped_html() -> str:
 {"".join(body)}</details>"""
 
 
-def _skipped_html() -> str:
+def _skipped_html(user_id: str) -> str:
     """「行かなかった」公演の管理。**「設定」の 1 枚の札にする**（起案者の指示・
     2026-08-26 ──「他の実装と同様に、行かなかったにしたものは設定画面で管理して、
     設定から『やはり観た』で復帰できるようにしてください」）。
@@ -6659,7 +6681,7 @@ def _skipped_html() -> str:
     押せるのは「やはり観た」の 1 つだけで、二重に確認する操作でもない ── 「戻す」と
     同じ重さの操作なので、同じ見た目にする。
     """
-    rows = [w for w in _works() if w.get("unseen")]
+    rows = [w for w in _works(user_id) if w.get("unseen")]
     if not rows:
         return f"""<details class="card">{_card_h2("check", "行かなかった公演")}
 <p class="lead">「行かなかった」と答えた公演はありません。<b>評価待ちや日記帳の
@@ -6738,7 +6760,16 @@ VERDICT_LABEL = {
 
 
 
-def _records_base() -> dict:
+def _is_owner(user_id: str) -> bool:
+    """ローカルの持ち主か（E3）。**持ち主の記録から事前に作ったファイル**
+    （`lookback.json`・`chronicle.json`・`people_read.json`）と、持ち主の Gmail を
+    読む操作は、持ち主にだけ出す・許す。公開デモの訪問者に出すと、他人の分析が
+    自分の記録の画面に載る。"""
+    import auth as AU
+    return user_id == AU.LOCAL_USER_ID
+
+
+def _records_base(user_id: str) -> dict:
     """3 つの画面が共通で使う材料と件数。**数え方を 1 か所に置く。**
 
     起案者の指示（2026-08-24）──「『見返す』の中でも 3 章に分かれてると思うのですが、
@@ -6748,14 +6779,14 @@ def _records_base() -> dict:
     違う数字で出ると、どちらが本当なのか読み手には確かめようがない。**行かなかった記録を
     除く判断も、ここ 1 か所でしか行わない。**
     """
-    ws = _works()
+    ws = _works(user_id)
     # **行かなかった公演を「観た」に数えない。** 図と件数は観た記録だけで作る ──
     # 観ていない公演を本数・年輪・地図に入れると、**行っていない劇場に点が立つ。**
     # **一覧からは外さない** ── 買った事実は残っているし、戻す口がこの行にしか無い
     seen_ws = [w for w in ws if not w.get("unseen")]
     try:
         import measure_nets as M
-        rated_rows = M.load_rated()
+        rated_rows = M.load_rated(user_id=user_id)
     except Exception:                                               # noqa: BLE001
         rated_rows = []
     return {
@@ -6811,7 +6842,7 @@ def _records_lede(d: dict) -> str:
             f'{skip}</p>')
 
 
-def page_records() -> str:
+def page_records(user_id: str) -> str:
     """記録を見返す ▸ **眺める。** 図で見る画面と、これから上演される公演との差を
     見る画面（もとの「比べる」）を、1 枚に統合した画面。
 
@@ -6888,26 +6919,32 @@ def page_records() -> str:
     **「座組の大きさ」（`compare.py` の `panel`）と「まだ行っていない劇場」
     （`venues.py` の `open_panel`）は呼ばなくなったが、中身は削除していない。**
     """
-    body = _records_body()
+    body = _records_body(user_id)
     return layout("眺める", "/records", body,
                   RR.STYLE + SL.STYLE + RL.STYLE, active_sub="/records")
 
 
-def _records_body() -> str:
+def _records_body(user_id: str) -> str:
     """`page_records()` の中身だけを組み立てる(#000009、`_recommend_body`と同じ形)。
 
     **`lstyle`の出し分けは無くした。** フルページ版は「比べる」が組めなかったときに
     `RL.STYLE`を省いていたが、GitHub Pages側は`RL.STYLE`を常時読み込み済み
     （style.cssに結合済み）なので、この関数はHTML片だけを返せばよい。
     """
-    d = _records_base()
+    d = _records_base(user_id)
     seen_ws, rated_rows = d["seen"], d["rated_rows"]
     sl_html = SL.panel(rated_rows) if rated_rows else ""
+    owner = _is_owner(user_id)
     if not d["seen"]:
         # **記録が 0 件のときに、内部の失敗文言を画面に出さない。** 以前はここで
         # 例外が起き、`max() iterable argument is empty` がそのまま出ていた。
         # **空は失敗ではないので、空として書く。**
         cmp_panels = ""
+    elif not owner:
+        # **訪問者には `RL.body` を使わない**（E3）。気づき・名前の挙がらない作り手・
+        # 残りの軸は、持ち主の記録から事前に作った `lookback.json` を読んでいる ──
+        # その場で訪問者の記録から数えられる 2 枚（題材・作りの型）だけを出す
+        cmp_panels = _pop_note(rated_rows) + _compare_panel(rated_rows, owner=False)
     else:
         try:
             # **足した 2 軸は「まだ比較できない軸」の前に入れる。** できないことの説明は、
@@ -6928,7 +6965,7 @@ def _records_body() -> str:
                     if s.get("attended", True) and s.get("venue")]
     for w in seen_ws})}
 {_d3_tag(sl_html)}{sl_html}
-{PE.panel(rated_rows)}
+{PE.panel(rated_rows, owner=owner)}
 </div>
 <h2>比べる ── これから上演される公演との差</h2>
 <p class="lede">観た記録を、これから観られる公演の一覧と並べて、差の大きいところを出しています。</p>
@@ -6936,7 +6973,7 @@ def _records_body() -> str:
 <div class="figs">{cmp_panels}</div>"""
 
 
-def page_chronicle() -> str:
+def page_chronicle(user_id: str) -> str:
     """記録を見返す ▸ **観劇史年表。** 記録を年の順に並べ、その年に何が始まったかを見る画面。
 
     起案者の指示（2026-08-26）──「『観劇の年表』を独立した『観劇史年表』というページに
@@ -6945,15 +6982,15 @@ def page_chronicle() -> str:
     だったものを、専用の画面がほしいという指示に沿ってそこから外し、ここへ移しただけ
     である。中身（事実の抽出・図・LLM の読み）は変えていない。
     """
-    body = _chronicle_body()
+    body = _chronicle_body(user_id)
     return layout("観劇史年表", "/records/chronicle", body,
                   RR.STYLE + CR2.STYLE, active_sub="/records/chronicle")
 
 
-def _chronicle_body() -> str:
+def _chronicle_body(user_id: str) -> str:
     """`page_chronicle()` の中身だけを組み立てる(#000009、`_recommend_body`と同じ形)。"""
-    d = _records_base()
-    main = CR2.panel(d["seen"], d["rated_rows"])
+    d = _records_base(user_id)
+    main = CR2.panel(d["seen"], d["rated_rows"], owner=_is_owner(user_id))
     if not main:
         # **落ちても「記録を見返す」の他の画面は生きている。** ここだけ空にする
         # （`page_trace` と同じ判断）
@@ -6973,7 +7010,7 @@ def _pop_note(rated_rows: list) -> str:
         return ""
 
 
-def _compare_panel(rated_rows: list) -> str:
+def _compare_panel(rated_rows: list, *, owner: bool = True) -> str:
     """題材・作りの型を、これからの公演と比べる 2 枚。**落ちても画面は出す。**
 
     **「座組の大きさ」は外した**（起案者の指示・2026-08-26 ──「『比べる』の…
@@ -6983,12 +7020,12 @@ def _compare_panel(rated_rows: list) -> str:
     if not rated_rows:
         return ""
     try:
-        return CP.panel(rated_rows)
+        return CP.panel(rated_rows, owner=owner)
     except Exception:                                               # noqa: BLE001
         return ""
 
 
-def page_trace(name: str = "", via: str = "") -> str:
+def page_trace(user_id: str, name: str = "", via: str = "") -> str:
     """記録を見返す ▸ **たどる。** 1 つの名前を選び、その名前が通っている公演を読む画面。
 
     起案者の指示（2026-08-25）── 案 1（名前をつまむと、その名前が通っている公演が
@@ -6999,14 +7036,14 @@ def page_trace(name: str = "", via: str = "") -> str:
     ある ── 数え方を画面の側に書くと、`_records_base` に 1 か所だけ置いた数え方が
     画面ごとに分かれる。
     """
-    body = _trace_body(name, via)
+    body = _trace_body(user_id, name, via)
     return layout("たどる", "/records/trace", body,
                   RR.STYLE + TR.STYLE, active_sub="/records/trace")
 
 
-def _trace_body(name: str = "", via: str = "") -> str:
+def _trace_body(user_id: str, name: str = "", via: str = "") -> str:
     """`page_trace()` の中身だけを組み立てる(#000009、`_recommend_body`と同じ形)。"""
-    d = _records_base()
+    d = _records_base(user_id)
     try:
         main = TR.body(d["rated_rows"], name, via)
     except Exception:                                               # noqa: BLE001
@@ -7050,7 +7087,7 @@ def _flatten_visits(ws: list[dict]) -> list[dict]:
     return out
 
 
-def page_works(year: str = "", page: int = 1, want: str = "", group: str = "work") -> str:
+def page_works(user_id: str, year: str = "", page: int = 1, want: str = "", group: str = "work") -> str:
     """記録を見返す ▸ **日記帳。** 1 公演ごとの記録と、直す口を置く画面。
 
     起案者の指示（2026-08-24）──「日記帳のページも同様にして」（評価の一覧を索引の耳で
@@ -7146,14 +7183,14 @@ def page_works(year: str = "", page: int = 1, want: str = "", group: str = "work
     では 1 行が複数回を畳んでいて、どの回のことかが決まらないので出さない。
     詳しくは `_visit_note_html` を見る。
     """
-    body = _works_body(year, page, want, group)
+    body = _works_body(user_id, year, page, want, group)
     return layout("日記帳", "/records/works", body, RR.STYLE,
                   active_sub="/records/works")
 
 
-def _works_body(year: str = "", page: int = 1, want: str = "", group: str = "work") -> str:
+def _works_body(user_id: str, year: str = "", page: int = 1, want: str = "", group: str = "work") -> str:
     """`page_works()` の中身だけを組み立てる(#000009、`_recommend_body`と同じ形)。"""
-    d = _records_base()
+    d = _records_base(user_id)
     ws = d["ws"]
     # **あらすじ・出演者を、記録ごとに引けるようにしておく**（起案者の指示・2026-08-26
     # ──「各作品あらすじとキャストをみられるようにしてほしい」）。
@@ -7167,7 +7204,7 @@ def _works_body(year: str = "", page: int = 1, want: str = "", group: str = "wor
     # 使う画面の既定は変えない）。
     import measure_nets as M
     people_by_key = {r["key"]: r.get("people") or []
-                     for r in M.load_rated(include_unrated=True)}
+                     for r in M.load_rated(include_unrated=True, user_id=user_id)}
     syn_by_key = _synopsis_by_key()
     # **回ごとのメモは「すべて表示」でしか要らない。** 「作品でまとめる」では
     # `row()` から `visit_uid` を渡さないので、読んでも使われない ── それでも
@@ -7178,7 +7215,7 @@ def _works_body(year: str = "", page: int = 1, want: str = "", group: str = "wor
     if group == "visit":
         con = R.connect()
         try:
-            visit_notes = R.read_visit_notes(con)
+            visit_notes = R.read_visit_notes(con, user_id=user_id)
         finally:
             con.close()
 
@@ -7192,7 +7229,7 @@ def _works_body(year: str = "", page: int = 1, want: str = "", group: str = "wor
         sfx = f"-{uid}" if uid else ""
         w = {**w, "people": people_by_key.get(w["work_key"]) or [],
              "synopsis": syn_by_key.get(w["work_key"], "")}
-        return _rec_row(w, poster=p, editable=True, id_suffix=sfx,
+        return _rec_row(user_id, w, poster=p, editable=True, id_suffix=sfx,
                         visit_uid=uid, visit_note=visit_notes.get(uid, ""))
 
     check = [w for w in ws if w.get("suspect")]
@@ -7219,6 +7256,13 @@ def _works_body(year: str = "", page: int = 1, want: str = "", group: str = "wor
         piles["check"] = check
     # 耳の並び ── 確かめてほしい分を左端に、そのあとを年の新しい順にする
     order = (["check"] if check else []) + keys
+    if not order:
+        # **記録が 1 件も無いときに落とさない。** 耳が 1 枚も無いので既定の耳
+        # （`order[0]`）が引けず、`list index out of range` で画面ごと 500 になっていた。
+        # 公開デモの訪問者は全員 0 件から始まる（E3）ので、ここを最初に開く人が必ず踏む
+        return f"""<h1>日記帳 ── 1 公演ごとの記録</h1>
+{_records_lede(d)}
+{_records_empty_note()}"""
     label = {"none": "上演日が分からない", "check": "先に確かめてほしい"}
     tabs = [(k, label.get(k, f"{k} 年"), len(piles[k])) for k in order]
     # **既定はいちばん新しい年。** 確かめてほしい分は開かない（上記）
@@ -7278,10 +7322,14 @@ def _works_body(year: str = "", page: int = 1, want: str = "", group: str = "wor
 
 
 # ---------------------------------------------------------------- 探す
-_INDEX: dict | None = None
+# **利用者ごとに持つ**（E3）。中身は `load_rated` の行 ── その人の観劇記録そのもので
+# ある。1 つだけ持っていた頃は、最初に「探す」を開いた人の記録が、起動のあいだ全員の
+# 検索結果に出ていた。訪問者が増えても膨らみ続けないよう、上限を超えたら捨てて作り直す
+_INDEX: dict[str, dict] = {}
+_INDEX_MAX = 256
 
 
-def _index() -> dict:
+def _index(user_id: str) -> dict:
     """探すための索引 ── 作品ごとの「人」と「題材」。
 
     **評価が付いていない記録も入れる**（`measure_nets.load_rated(include_unrated=True)`）。
@@ -7293,9 +7341,8 @@ def _index() -> dict:
     索引に残っていると**画面が古い評価を出す。** 題名・日付・評価・感想は `_works()` から
     毎回引き直し、索引は「人」と「題材」だけを持つ。
     """
-    global _INDEX
-    if _INDEX is not None:
-        return _INDEX
+    if user_id in _INDEX:
+        return _INDEX[user_id]
     import measure_nets as M
     themes = {}
     # **まだ 1 度も取り寄せていない状態を、失敗として扱わない**（`measure_nets` と同じ）。
@@ -7314,10 +7361,12 @@ def _index() -> dict:
             except ValueError:
                 el = []
         themes[t["id"]] = [w for w in el if isinstance(w, str) and w]
-    rows = M.load_rated(include_unrated=True)
-    _INDEX = {"by_key": {r["key"]: r for r in rows}, "themes": themes,
-              "n_all": len(rows), "n_people": sum(1 for r in rows if r["people"])}
-    return _INDEX
+    rows = M.load_rated(include_unrated=True, user_id=user_id)
+    if len(_INDEX) >= _INDEX_MAX:
+        _INDEX.clear()
+    _INDEX[user_id] = {"by_key": {r["key"]: r for r in rows}, "themes": themes,
+                       "n_all": len(rows), "n_people": sum(1 for r in rows if r["people"])}
+    return _INDEX[user_id]
 
 
 def _hit_why(q: str, w: dict, ix: dict) -> tuple[str, list[tuple[str, str]]]:
@@ -7394,8 +7443,8 @@ def reset_caches() -> None:
     1 件終わるたびにここを呼ぶ）。取ることと使える形にすることを別の実行に分けない、
     という約束の続きである。
     """
-    global _INDEX, _UPCOMING
-    _INDEX = None
+    global _UPCOMING
+    _INDEX.clear()
     _UPCOMING = None
 
 
@@ -7497,7 +7546,7 @@ def _hit_upcoming(q: str, c: dict, themes: dict) -> tuple[str, list]:
     return "".join(out[:6]), names
 
 
-def _web_hits(q: str, on: bool) -> str:
+def _web_hits(user_id: str, q: str, on: bool) -> str:
     """**手元に無ければ、公演情報からその場で探す。**
 
     起案者の指摘（2026-08-24）──「おすすめの 15 件とかにもまだ載ってないけど今後の情報を
@@ -7560,7 +7609,7 @@ def _web_hits(q: str, on: bool) -> str:
     # 「実際に CoRich の検索から...ボタンを押して追加した公演には、『追加済みです』
     # などを赤文字で出して」）。同じ言葉で探し直すと同じ公演がまた出るので、
     # 押す前に「もう済んでいる」と分かるようにする。
-    registered = {str(w.get("stage_id") or "") for w in _works() if w.get("stage_id")}
+    registered = {str(w.get("stage_id") or "") for w in _works(user_id) if w.get("stage_id")}
     n_end = 0
     cards = []
     for c in rows:
@@ -7681,7 +7730,7 @@ def _upcoming_hits(user_id: str, q: str, ym: str = "", top: int = 8) -> tuple[st
             f'{tail}{"".join(cards)}', names, len(hits))
 
 
-def _found_row(w: dict, why: str = "") -> str:
+def _found_row(user_id: str, w: dict, why: str = "") -> str:
     """探した結果の 1 件。**記録を見返す画面と同じ行を出す。**
 
     言葉で引いても暦で引いても、出すものは同じである ── **引き方が違うだけで、
@@ -7696,7 +7745,7 @@ def _found_row(w: dict, why: str = "") -> str:
     f, _sid, _src = poster_of(w)
     poster = (f'<img class="poster" src="/img/{E(f)}?t=__TAGURI_TOKEN__" alt=""'
               f' loading="lazy">' if f else "")
-    return _rec_row(w, poster=poster, rate_always=True, editable=True, extra=why)
+    return _rec_row(user_id, w, poster=poster, rate_always=True, editable=True, extra=why)
 
 
 def _period_months(period: str, cap: int = 18) -> list[str]:
@@ -7812,7 +7861,7 @@ def _month_grid(ws: list, up_rows, side: str, sel: str, q: str = "") -> str:
 {none_cell}</div></div>"""
 
 
-def _month_rows(ws: list, ym: str) -> str:
+def _month_rows(user_id: str, ws: list, ym: str) -> str:
     """暦から選んだ月の記録。**言葉で引いたときと同じ行を出す。**
 
     **月を選んでいないときは、何も出さない。** 72 マスの暦の下に 108 件を全部並べると、
@@ -7835,7 +7884,7 @@ def _month_rows(ws: list, ym: str) -> str:
     if not hit:
         return f'<h2>{E(where)}</h2><p class="empty">この月の記録はありません。</p>'
     return (f'<h2>{E(where)} {len(hit)} 件</h2>{lead}'
-            + "".join(_found_row(w) for w in hit))
+            + "".join(_found_row(user_id, w) for w in hit))
 
 
 def page_search(user_id: str, q: str, ym: str = "", web: bool = False,
@@ -7878,7 +7927,7 @@ def page_search(user_id: str, q: str, ym: str = "", web: bool = False,
 def _search_body(user_id: str, q: str, ym: str = "", web: bool = False,
                  cal_side: str = "past") -> str:
     """`page_search()` の中身だけを組み立てる(#000009、`_recommend_body`と同じ形)。"""
-    ix = _index()
+    ix = _index(user_id)
     n_up = len(_upcoming_index()["rows"])
     note = (f'<p class="note"><b>出演者や題材で引けるのは、公演ページを見つけられた記録だけです</b>'
             f'（観た記録では {ix["n_people"]} 作品／全 {ix["n_all"]} 作品）。'
@@ -7893,7 +7942,7 @@ def _search_body(user_id: str, q: str, ym: str = "", web: bool = False,
 これから観られる公演には「興味あり」を、観た記録には評価と感想を書けます。</p>{form}{note}"""
     # **評価と感想は毎回引き直す。** 索引は起動のあいだ作り直さないので、押した評価が
     # そのまま出てしまう（探した先で評価できる画面なので、これは必ず起きる）
-    ws = _works()
+    ws = _works(user_id)
     seen_ws = [w for w in ws if not w.get("unseen")]
     side = "up" if cal_side == "up" else "past"
     cal = _month_grid(seen_ws, _upcoming_index()["rows"].values(), side, ym, q)
@@ -7904,7 +7953,7 @@ def _search_body(user_id: str, q: str, ym: str = "", web: bool = False,
             body = (up_html if ym else
                     '<p class="empty">上の暦から月を選ぶと、その月に観られる公演が出ます。</p>')
         else:
-            body = _month_rows(seen_ws, ym)
+            body = _month_rows(user_id, seen_ws, ym)
         return head + cal + body
     hits, names = [], []
     for w in ws:
@@ -7913,10 +7962,10 @@ def _search_body(user_id: str, q: str, ym: str = "", web: bool = False,
             hits.append((w, why))
             names += found
     hits.sort(key=lambda x: x[0].get("first_date") or "", reverse=True)
-    rows = [_found_row(w, why) for w, why in hits]
+    rows = [_found_row(user_id, w, why) for w, why in hits]
     up_html, up_names, n_up = _upcoming_hits(user_id, q, ym if side == "up" else "")
     names += up_names
-    web_html = _web_hits(q, web)
+    web_html = _web_hits(user_id, q, web)
     if not hits and not n_up:
         # **月で絞っているときは、そう書く。** 「見つかりません」とだけ出すと、
         # **手元に無いのか、その月に無いのかが分からない**
@@ -8119,11 +8168,11 @@ def _data_copy_card_html() -> str:
 #
 # **探すのは機械、確定は人である。** メールから起こした行は本人が消せる・直せるし、
 # **どの公演の券か決められなかった分は黙って捨てず、暦の下に件数と題名で出す。**
-def _future_purchases(today: str) -> list[dict]:
+def _future_purchases(user_id: str, today: str) -> list[dict]:
     """購入確認メールから起こした、**これから先の回**。**人が直した値を使う。**"""
     import rate_performances as RP
     out = []
-    for r in RP.load_purchases():
+    for r in RP.load_purchases(user_id=user_id):
         d, t = r.get("date_eff") or "", (r.get("title_eff") or "").strip()
         if d >= today and t:
             out.append({"uid": str(r.get("uid") or ""), "title": t, "date": d,
@@ -8132,7 +8181,7 @@ def _future_purchases(today: str) -> list[dict]:
     return out
 
 
-def sync_mail_tickets(owned: list[dict], today: str = "") -> list[dict]:
+def sync_mail_tickets(user_id: str, owned: list[dict], today: str = "") -> list[dict]:
     """メールの券を暦の公演に結び付ける。**結び付かなかった分を返す。**
 
     **作品の題名だけでは足りない。** 同じ作品がツアーで別会場にかかっていると
@@ -8144,7 +8193,7 @@ def sync_mail_tickets(owned: list[dict], today: str = "") -> list[dict]:
     import feedback as FB
     import recommend2 as RC2
     today = today or datetime.date.today().isoformat()
-    buys = _future_purchases(today)
+    buys = _future_purchases(user_id, today)
     if not buys:
         return []
     con = FB.connect()
@@ -8296,7 +8345,7 @@ def _calendar_body(user_id: str, kinds: set[str] | None = None,
     d, _ = _load(user_id)
     # **購入確認メールの券を、開くたびに結び付け直す。**（取り込みと結び付けは
     # 同じ 1 回で走らせる ── 分けると、メールは入っているのに暦に点が出ない状態が残る）
-    left = sync_mail_tickets(d.get("owned") or [])
+    left = sync_mail_tickets(user_id, d.get("owned") or [])
     tickets = ticket_map()
     # **「日程を追加する」はページの上に置く**（起案者の指示・2026-08-26 ──
     # 「行く日を入れる」は畳んだので、その早道になる。組み方は `SC.add_ticket_button_html`
@@ -8382,7 +8431,7 @@ def _tickets_body(user_id: str) -> str:
 
     cards = "".join(RR.ticket(c, mode="owned", my_tickets=_my_tickets(c))
                     for c in sorted(owned, key=_rank))
-    left = sync_mail_tickets(owned)
+    left = sync_mail_tickets(user_id, owned)
     return f"""<h1>購入済み公演 ── {len(owned)} 件</h1>
 <p class="lede">「すでに持っている」と答えた公演と、購入確認メールから見つかった
 公演です。<b>次の推薦は変わりません</b> ── 答えを出すのは推薦だけです。上演日を

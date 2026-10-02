@@ -404,7 +404,8 @@ def write(model: str = MODEL, force: bool = False) -> dict:
     """読みを作って保存する。**記録が変わっていなければ何もしない。**"""
     sys.path.insert(0, str(ROOT / "tools" / "taguri"))
     import app                                                      # noqa: PLC0415
-    d = app._records_base()
+    import auth as AU                                               # noqa: PLC0415
+    d = app._records_base(AU.LOCAL_USER_ID)   # 読みは持ち主の記録からだけ作る（E3）
     f = facts(d["seen"], d["rated_rows"])
     fp = fingerprint(f)
     old = load()
@@ -654,12 +655,18 @@ def _work_link(title: str, links: dict) -> str:
             f' title="{E(title)}">{E(_cut(title))}</a>')
 
 
-def panel(works: list[dict], rated: list[dict]) -> str:
-    """年表。**読みが無くても事実の年表は出す** ── LLM は足し算であって前提ではない。"""
+def panel(works: list[dict], rated: list[dict], *, owner: bool = True) -> str:
+    """年表。**読みが無くても事実の年表は出す** ── LLM は足し算であって前提ではない。
+
+    **`owner=False`（公開デモの訪問者）には読みを出さず、作り直す口も置かない**（E3）。
+    `chronicle.json` はローカルの持ち主の記録から作った 1 ファイルしか無く、訪問者に
+    出すと持ち主の「どんな観客であるか」が他人の年表に載る。作り直しを許すと、
+    訪問者の記録で持ち主の 1 ファイルを上書きすることになる。
+    """
     f = facts(works, rated)
     if not f["years"]:
         return ""
-    read = load()
+    read = load() if owner else {}
     eras = read.get("eras") or []
     era_of = {}
     for e in eras:
@@ -704,7 +711,9 @@ def panel(works: list[dict], rated: list[dict]) -> str:
               f'<p>{E(read["profile"])}</p></div>' if read.get("profile") else "")
     closing = (f'<p class="chclose">{E(read["closing"])}</p>'
                if read.get("closing") else "")
-    if read.get("at"):
+    if not owner:
+        made, btn = "", ""
+    elif read.get("at"):
         # **記録が変わっているかどうかを、その場で言う。**（`specify-when-it-runs`）
         # 週次の実行では作り直さない ── 1 分かかる仕事を毎回の起動に挟むと、
         # 「数秒で一覧が開く」という週次の性質が壊れる。**押したときだけ走らせる。**
@@ -844,7 +853,8 @@ def main() -> int:
         print(r.get("line", ""))
         return 0 if r.get("ok") else 1
     import app                                                      # noqa: PLC0415
-    d = app._records_base()
+    import auth as AU                                               # noqa: PLC0415
+    d = app._records_base(AU.LOCAL_USER_ID)   # 読みは持ち主の記録からだけ作る（E3）
     print(json.dumps(facts(d["seen"], d["rated_rows"]), ensure_ascii=False, indent=1))
     return 0
 
