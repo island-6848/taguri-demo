@@ -55,8 +55,8 @@ def _rebucket_with(react: dict, d: dict) -> dict:
         def close(self):
             pass
     FB.connect = lambda **_kw: _FakeCon()
-    FB.reactions = lambda _con: react
-    FB.tickets = lambda _con: {}
+    FB.reactions = lambda _con, **_kw: react
+    FB.tickets = lambda _con, **_kw: {}
     APP._auto_own_from_mail = lambda _uid, _today: None
     APP._upcoming_index = lambda: {"rows": {}}
     try:

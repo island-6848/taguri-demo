@@ -102,9 +102,11 @@ REACT = {"owned": {"owned": 1}, "interest": {"interest": 1}, "nointerest": {"int
 # 「観ればよかった」の申告。**口が無いままだと絞り込みの穴を永久に測れない**（V35）
 MISSED_SCHEMA = """
 CREATE TABLE IF NOT EXISTS missed (
-    title      TEXT PRIMARY KEY,
+    user_id    TEXT NOT NULL DEFAULT 'local',
+    title      TEXT NOT NULL,
     created_at TEXT NOT NULL,
-    note       TEXT
+    note       TEXT,
+    PRIMARY KEY (user_id, title)
 );
 """
 
@@ -124,6 +126,10 @@ def _migrate_missed(con: sqlite3.Connection) -> None:
         for col, decl in MISSED_LOOKUP_COLUMNS.items():
             if col not in have:
                 con.execute(f"ALTER TABLE missed ADD COLUMN {col} {decl}")
+    # **利用者ごとに分ける**（E3）。登録した題名の演者は推薦の名簿に入る
+    # （`feedback.missed_fields`）ので、混ざると訪問者の登録が持ち主の推薦を動かす
+    import user_scope as US
+    US.scope_table(con, "missed", ("title",))
 
 
 IMG = ROOT / "data" / "review" / "img"
@@ -507,7 +513,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                         self._json(200, cached)
                         return
                     body = APP._recommend_body(user_id, prefs)
-                    srv.mark_viewed("recommend_pref" if prefs else "recommend")
+                    srv.mark_viewed(user_id, "recommend_pref" if prefs else "recommend")
                     result = {"ok": True, "title": "今週のおすすめ", "body_html": body}
                     srv.screen_cache_set(user_id, cache_key, result)
                     self._json(200, result)
@@ -548,7 +554,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     result = {"ok": True, "title": "興味あり", "body_html": html}
                 elif path == "/api/screen/favourites":
                     html = APP._favourites_body(user_id, _month(query), _page(query))
-                    srv.mark_viewed("favourite")
+                    srv.mark_viewed(user_id, "favourite")
                     result = {"ok": True, "title": "お気に入り", "body_html": html}
                 elif path == "/api/screen/calendar":
                     q = urllib.parse.parse_qs(query)
@@ -678,7 +684,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 html = APP.page_recommend(user_id, prefs)
                 # **出した束の名前で印を付ける。** 絞り込んでいるときに出しているのは
                 # 全国の 15 件ではないので、`recommend` と混ぜない
-                srv.mark_viewed("recommend_pref" if prefs else "recommend")
+                srv.mark_viewed(user_id, "recommend_pref" if prefs else "recommend")
             elif path == "/recommend/reminder":
                 # **絞り込みは `/recommend` と同じ絞り込み(`srv.get_prefs`)を使う**
                 # （起案者の指示・2026-08-26 ──「開幕リマインドも選んだ都道府県だけに
@@ -698,7 +704,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 html = APP.page_interest(user_id, _month(query), _page(query))
             elif path == "/recommend/favourites":
                 html = APP.page_favourites(user_id, _month(query), _page(query))
-                srv.mark_viewed("favourite")
+                srv.mark_viewed(user_id, "favourite")
             elif path == "/calendar":
                 # **束・都道府県の絞り込みは URL だけで持つ**（月の札と同じ判断）── 押した
                 # 先の URL がそのまま絞り込みの内容である。起動のあいだ覚える必要は無い
@@ -1024,7 +1030,7 @@ class Server(http.server.ThreadingHTTPServer):
                      FB.now()))
             self.con.commit()
 
-    def mark_viewed(self, bundle: str) -> None:
+    def mark_viewed(self, user_id: str, bundle: str) -> None:
         """**この起動の一覧を、画面に出したことを記録する。**
 
         起案者の指示（2026-08-24）── 提示の記録に、開発中に計算しただけで誰も見ていない
@@ -1039,7 +1045,7 @@ class Server(http.server.ThreadingHTTPServer):
         画面を行き来した回数は分母ではない。
         """
         with self.lock:
-            FB.mark_viewed(self.con, self.label, bundle, "screen")
+            FB.mark_viewed(self.con, self.label, bundle, "screen", user_id=user_id)
             self.con.commit()
 
     # ---- 押した直後に取りに行く -------------------------------------------
@@ -1190,7 +1196,7 @@ class Server(http.server.ThreadingHTTPServer):
         with self.lock:
             # **押し直しで前の列を消さない。** 興味あり → 持っている、という遷移そのものが
             # 連鎖（提示 → 興味あり → 購入 → ◎）の記録である
-            FB.react(self.con, self.label, stage_id, source="screen", **kw)
+            FB.react(self.con, self.label, stage_id, source="screen", user_id=user_id, **kw)
             # **同じ作品の他会場にも同じ答えを付ける**（起案者の指摘・2026-08-26 ──
             # 「作品自体に『興味あり』を押しているのだから、代表会場にしか効かないのは
             # おかしい。興味ありなしは会場に関わらず親データの作品データに付与される
@@ -1206,13 +1212,17 @@ class Server(http.server.ThreadingHTTPServer):
             if value:
                 react_kw = dict(REACT.get(value) or {})
                 for sid in self._siblings(user_id, stage_id):
-                    FB.react(self.con, self.label, sid, source="screen_tour", **react_kw)
+                    FB.react(self.con, self.label, sid, source="screen_tour", user_id=user_id,
+                             **react_kw)
             self.n["react"] += 1
         # **手元の候補に無い公演なら、控えに加える**（起案者の指摘・2026-08-24）。
         # **反応は公演の id に保存されるが、一覧は候補の控えから組む** ── 探して見つけた
         # 公演に「興味あり」を押しても、控えに無ければ**押した記録は残るのにどの一覧にも
         # 出てこない。** 押した本人からは消えたように見える
-        if value:
+        # **持ち主の操作に限る**（E3）。控えに足したうえで推薦の計算をやり直すので、訪問者の
+        # 1 押しで持ち主の一覧が組み直される（外への取得も走る）。訪問者が押した公演は、
+        # 控えに無くても `_rebucket` が手元の索引から拾って「興味あり」に出す
+        if value and user_id == AU.LOCAL_USER_ID:
             self._pick(stage_id)
         out = {"ok": True, "stage_id": stage_id, "value": value,
                "note": "note" in given, "note_no": "note_no" in given}
@@ -1258,7 +1268,8 @@ class Server(http.server.ThreadingHTTPServer):
         # 読んでいる途中の 1 枚の番号が変わる。足した 1 枚に次の番号を与えれば、
         # 点の高い順という並びも番号の意味も壊れない
         rank = len(shown) + 1
-        self.record_presented([c], list(prefs), "recommend_fill", rank)
+        if user_id == AU.LOCAL_USER_ID:          # 持ち主の測定の分母だけに書く（E3）
+            self.record_presented([c], list(prefs), "recommend_fill", rank)
         return {"html": RR.card(rank, c), "left": len(rest),
                 "said": f"記録しました。入れ替わりに 1 件を下に足しました"
                         f"（まだ出していない候補が {len(rest) - 1} 件あります）。"}
@@ -1366,7 +1377,7 @@ class Server(http.server.ThreadingHTTPServer):
         順位でもない ── 暦の点が 1 つ増えるだけなので、画面の側で描き足せば足りる。
         """
         with self.lock:
-            return APP.save_ticket(str(b.get("stage_id") or ""),
+            return APP.save_ticket(user_id, str(b.get("stage_id") or ""),
                                    str(b.get("date") or ""), str(b.get("time") or ""),
                                    action=str(b.get("action") or "add"))
 
@@ -1418,7 +1429,7 @@ class Server(http.server.ThreadingHTTPServer):
         if action not in ("add", "remove") or kind not in RC.KINDS or not name:
             raise ValueError("action（add / remove）・kind・name が要る")
         with self.lock:
-            d = RC.load_declared()
+            d = APP.load_declared(user_id)
             cur = list(d.get(kind) or [])
             if action == "add":
                 if name not in cur:
@@ -1426,9 +1437,15 @@ class Server(http.server.ThreadingHTTPServer):
             else:
                 cur = [x for x in cur if x != name]
             d[kind] = cur
-            RC.save_declared(d)
-            RC.DECLARED = RC.load_declared()      # 同じ起動の中で照合にも効かせる
+            APP.save_declared(user_id, d)          # 持ち主なら照合（`RC.DECLARED`）にも効かせる
             self.n["fav"] += 1
+        if user_id != AU.LOCAL_USER_ID:
+            # **訪問者の登録は、画面を出すときに手元の公演から当て直す**（`APP._rebucket`）。
+            # 名前で外へ取りに行く・推薦を組み直すのは持ち主の分だけ（E3 ── 訪問者の
+            # 操作をきっかけに外部への取得と持ち主の一覧の作り直しを走らせない）
+            self.invalidate_user_cache(user_id)    # 次に開いた画面から効かせる
+            return {"ok": True, "kind": kind, "name": name, "n": len(cur),
+                    "said": "登録しました ── 手元にある公演から探して、お気に入りに出します"}
         # **登録した直後に、その名前で公演を引く**（起案者の指示・2026-08-24）。
         # これまでは「次の起動から新着に出る」と画面に書いていたが、**お気に入りは
         # 見逃したくないものなので、次の起動まで待たせる理由が無い。** 引くのは
@@ -1474,14 +1491,18 @@ class Server(http.server.ThreadingHTTPServer):
         if action not in ("add", "remove") or not word:
             raise ValueError("action（add / remove）と word が要る")
         with self.lock:
-            cur = RC.load_declined()
+            cur = APP.load_declined(user_id)
             if action == "add":
                 if word not in cur:
                     cur.append(word)
             else:
                 cur = [w for w in cur if w != word]
-            RC.save_declined(cur)
+            APP.save_declined(user_id, cur)
             self.n["decline"] = self.n.get("decline", 0) + 1
+        if user_id != AU.LOCAL_USER_ID:
+            # 訪問者の語は画面を出すときに当て直すので、組み直しは要らない（E3）
+            self.invalidate_user_cache(user_id)
+            return {"ok": True, "word": word, "n": len(cur)}
         # **一覧を組み直さないと効かない。** 束の割り振りは `recommend2.py` が決める
         # （`--no-snapshot` は `on_favourite` と同じ理由 ── 週次の指標の分母を動かさない）
         today = datetime.date.today().isoformat()
@@ -1519,16 +1540,17 @@ class Server(http.server.ThreadingHTTPServer):
             raise ValueError("title が要る")
         with self.lock:
             self.con.execute(
-                "INSERT INTO missed (title, created_at, note) VALUES (?,"
+                "INSERT INTO missed (user_id, title, created_at, note) VALUES (?, ?,"
                 " datetime('now','localtime'), ?)"
-                " ON CONFLICT(title) DO UPDATE SET created_at=excluded.created_at",
-                (title, str(b.get("note") or "")[:1000]))
+                " ON CONFLICT(user_id, title) DO UPDATE SET created_at=excluded.created_at",
+                (user_id, title, str(b.get("note") or "")[:1000]))
             self.con.commit()
             self.n["missed"] += 1
-        self.enqueue("演者とあらすじを調べています…", lambda: self._lookup_missed(title))
+        self.enqueue("演者とあらすじを調べています…",
+                     lambda: self._lookup_missed(user_id, title))
         return {"ok": True, "title": title}
 
-    def _lookup_missed(self, title: str) -> str:
+    def _lookup_missed(self, user_id: str, title: str) -> str:
         """`on_missed` が登録した題名から、演者とあらすじを調べて書き戻す。
 
         探し方は手で足す欄の検索と同じもの（`stage_search.py`）を使う ──
@@ -1540,7 +1562,7 @@ class Server(http.server.ThreadingHTTPServer):
         import extract_theme_llm as TH
         r = SS.lookup_one(title)
         if not r.get("ok"):
-            self._save_missed_lookup(title, note=r.get("why") or "見つかりませんでした")
+            self._save_missed_lookup(user_id, title, note=r.get("why") or "見つかりませんでした")
             return "この題名の公演ページが見つかりませんでした"
         sid = str(r["stage_id"])
         f = r.get("fields") or {}
@@ -1550,7 +1572,7 @@ class Server(http.server.ThreadingHTTPServer):
             synopsis = TH.synopsis_of(sid, title)
         except Exception:                                            # noqa: BLE001
             synopsis = ""
-        self._save_missed_lookup(title, stage_id=sid, venue=r.get("venue", ""),
+        self._save_missed_lookup(user_id, title, stage_id=sid, venue=r.get("venue", ""),
                                  period=r.get("period", ""), fields=f,
                                  synopsis=synopsis, note=note)
         return "／".join([
@@ -1558,16 +1580,17 @@ class Server(http.server.ThreadingHTTPServer):
             "あらすじを取り込みました" if synopsis else "あらすじを取れませんでした",
         ])
 
-    def _save_missed_lookup(self, title: str, *, stage_id: str = "", venue: str = "",
+    def _save_missed_lookup(self, user_id: str, title: str, *, stage_id: str = "", venue: str = "",
                             period: str = "", fields: dict | None = None,
                             synopsis: str = "", note: str = "") -> None:
         with self.lock:
             self.con.execute(
                 "UPDATE missed SET stage_id=?, venue=?, period=?, fields_json=?, synopsis=?,"
-                " lookup_note=?, looked_up_at=datetime('now','localtime') WHERE title=?",
+                " lookup_note=?, looked_up_at=datetime('now','localtime')"
+                " WHERE user_id=? AND title=?",
                 (stage_id, venue, period,
                  json.dumps(fields, ensure_ascii=False) if fields else "",
-                 synopsis, note, title))
+                 synopsis, note, user_id, title))
             self.con.commit()
 
 

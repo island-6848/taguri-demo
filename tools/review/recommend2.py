@@ -57,6 +57,7 @@ from __future__ import annotations
 
 import argparse
 import collections
+import os
 import datetime
 import json
 import re
@@ -67,6 +68,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import measure_nets as M                       # noqa: E402
+import user_scope as US                       # noqa: E402
 import net_c as C                             # noqa: E402  網 C（あらすじの要素）
 from recommend import DECLARED, NOT_PLAY_TITLE               # noqa: E402
 import recommend as RC1                                     # noqa: E402
@@ -206,6 +208,57 @@ def onsale(fields: dict, today: datetime.date) -> str:
     return f"{first.month}/{first.day} 発売" if first > today else "発売済み"
 
 
+def declared_hits(c: dict, declared: dict, ws: list[str]) -> tuple[list[str], list[str]]:
+    """網 A ── 申告した名前に当たったか。`(当たった理由の並び, 当たった題材)` を返す。
+
+    **週の計算（下の `main`）と、公開デモの訪問者の画面（`app._rebucket`）の両方が使う**
+    （E3）。推薦の順位は持ち主の記録から作る全員共通のものだが、お気に入りは
+    「その人が登録した名前」なので、訪問者の分は画面を出すときにその人の申告で当て直す。
+    照合の規則を 2 か所に書くと、片方だけ直す事故が起きるので 1 つにしておく。
+
+    `ws` はあらすじの要素（`C.words` の正規化済みの語）。`c["synopsis"]` を見る。
+    """
+    # **団体名は一覧の欄にしか無い。** 公演ページの表（fields）にも題名にも出ないので、
+    # ここに入れないと申告した団体と照合できない（検証 021。「ガリレイの生涯／劇団劇団4」が
+    # 申告した「劇団4」に当たらず推薦側に出ていた）。818 件で誤検出 0・追加 2 件
+    blob = (c["title"] + " " + c.get("group", "") + " "
+            + json.dumps(c.get("fields") or {}, ensure_ascii=False))
+    # **団体と主催は「公演団体名」だけで照合する。** 起案者の指摘 ──「劇団4とか劇団7とか
+    # 言ってるのは、客演まで興味がある人とない人がいる。**団体名を検索したときは原則
+    # 主催公演の情報を拾うだけでよい。客演まで追いたい人は人名で指定する**」。
+    # クレジット（`fields`）まで見ると、**その団体の俳優が他団体の公演に出るものが全部
+    # 当たる** ── 実測で「劇団6」は 8 件当たり、そのすべてが客演だった。
+    # **軸を分けると、登録した本人が範囲を決められる。**
+    #
+    # **`主催` が抜けていた。** 照合する種類に入っていなかったので、主催として登録した
+    # 劇場3・劇場2は**1 度も当たっていなかった。**
+    hits = [f"{k}「{w}」" for k in ("団体", "主催")
+            for w in declared.get(k) or [] if nz(w) and nz(w) in nz(c.get("group", ""))]
+    # 人・作品・原作者はクレジットまで見る（客演を拾うのがこの軸の役目である）
+    hits += [f"{k}「{w}」" for k in ("人", "作品", "原作者")
+             for w in declared.get(k) or [] if nz(w) and nz(w) in nz(blob)]
+    # **申告した題材も網 A に入れる。** 検証 003 で照合先を数えたとき、「題材3」「題材2」は
+    # **あらすじから抽出した要素**に照合するものとして分類してあった。これまでは題名と
+    # 公演ページの表に語があるかで探しており、「ガリレイの生涯」に「題材3」の字が無いため
+    # 1 件も当たらなかった（検証 021 の指摘 4）。**要素経由で照合する。**
+    # （`net_c.declared_hits` と同じ規則 ── 申告した題材・原作者と要素の双方向の部分一致）
+    syn = c.get("synopsis") or ""
+    theme_hits = sorted({d for d in (declared.get("題材") or []) + (declared.get("原作者") or [])
+                         if d and (any(nz(d) in w or w in nz(d) for w in ws)
+                                   or (syn and nz(d) in nz(syn)))})
+    hits += [f"題材「{w}」" for w in theme_hits]
+    return sorted(set(hits)), theme_hits
+
+
+def declined_hit(c: dict, words: list[str], ws: list[str]) -> str:
+    """出さないと決めた語のうち、最初に当たったもの（無ければ空）。`declared_hits` と同じく
+    週の計算と訪問者の画面の両方が使う。題名・団体・劇場・出演・題材のどこかに出ていれば当たり。"""
+    blob = (c["title"] + " " + c.get("group", "") + " "
+            + json.dumps(c.get("fields") or {}, ensure_ascii=False))
+    return next((w for w in words
+                 if nz(w) and (nz(w) in nz(blob) or any(nz(w) in nz(x) for x in ws))), "")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -215,6 +268,11 @@ def main() -> int:
                     help="反応を読まない（反映あり／なしを比べるため。検証 026）")
     ap.add_argument("--out", type=Path, default=OUT)
     ap.add_argument("--no-snapshot", action="store_true")
+    # **誰の記録で順位を作るか**（E3）。推薦の計算は利用者ごとに分けず、1 人の記録から
+    # 全員共通の一覧を作る（起案者との合意）。**公開デモでも訪問者の反応・評価を混ぜない**
+    # ── 混ぜると見知らぬ訪問者の「興味なし」1 つで、持ち主の推薦の精度が崩れる。
+    # 既定はローカルの持ち主。Render では `OWNER_USER_ID` に持ち主の利用者 ID を入れる
+    ap.add_argument("--user-id", default=os.environ.get("OWNER_USER_ID") or US.LOCAL_USER_ID)
     a = ap.parse_args()
     today = datetime.date.fromisoformat(a.today)
 
@@ -223,13 +281,13 @@ def main() -> int:
     # （検証 022）。**保存先を作ったことと、反応が効いていることは別である。**
     import feedback as FB                                   # noqa: E402  循環を避けて遅延
     _con = FB.connect()
-    react = {} if a.no_feedback else FB.reactions(_con)
-    missed = [] if a.no_feedback else FB.missed_fields(_con)
+    react = {} if a.no_feedback else FB.reactions(_con, user_id=a.user_id)
+    missed = [] if a.no_feedback else FB.missed_fields(_con, user_id=a.user_id)
     _con.close()
     # **作品単位にも畳んでおく。** ツアーの別会場は stage_id が違うので、ID だけでは戻ってくる。
     react_w = {work_key(v.get("title") or ""): v for v in react.values() if v.get("title")}
 
-    rated = M.load_rated()
+    rated = M.load_rated(user_id=a.user_id)
     pos = lambda v: 1.0 if v == "◎" else 0.0          # noqa: E731 （検証 009）
     base = sum(pos(r["verdict"]) for r in rated) / max(len(rated), 1)
     roster = M.build_roster(rated, pos)
@@ -295,33 +353,9 @@ def main() -> int:
         end = period_end(c["period"])
         if not end or end < today:
             continue
-        # **団体名は一覧の欄にしか無い。** 公演ページの表（fields）にも題名にも出ないので、
-        # ここに入れないと申告した団体と照合できない（検証 021。「ガリレイの生涯／劇団劇団4」が
-        # 申告した「劇団4」に当たらず推薦側に出ていた）。818 件で誤検出 0・追加 2 件
-        blob = (c["title"] + " " + c.get("group", "") + " "
-                + json.dumps(c["fields"], ensure_ascii=False))
         if any(k in c["title"] for k in NOT_PLAY_TITLE):
             continue
-        # 網 A ── 申告した名前。**推薦と混ぜない**
-        #
-        # **団体と主催は「公演団体名」だけで照合する。** 起案者の指摘 ──「劇団4とか劇団7とか
-        # 言ってるのは、客演まで興味がある人とない人がいる。**団体名を検索したときは原則
-        # 主催公演の情報を拾うだけでよい。客演まで追いたい人は人名で指定する**」。
-        # クレジット（`fields`）まで見ると、**その団体の俳優が他団体の公演に出るものが全部
-        # 当たる** ── 実測で「劇団6」は 8 件当たり、そのすべてが客演だった。
-        # **軸を分けると、登録した本人が範囲を決められる。**
-        #
-        # **`主催` が抜けていた。** 照合する種類に入っていなかったので、主催として登録した
-        # 劇場3・劇場2は**1 度も当たっていなかった。**
-        hits = [f"{k}「{w}」" for k in ("団体", "主催")
-                for w in DECLARED[k] if nz(w) and nz(w) in nz(c.get("group", ""))]
-        # 人・作品・原作者はクレジットまで見る（客演を拾うのがこの軸の役目である）
-        hits += [f"{k}「{w}」" for k in ("人", "作品", "原作者")
-                 for w in DECLARED[k] if nz(w) and nz(w) in nz(blob)]
-        # **申告した題材も網 A に入れる。** 検証 003 で照合先を数えたとき、「題材3」「題材2」は
-        # **あらすじから抽出した要素**に照合するものとして分類してあった。これまでは題名と
-        # 公演ページの表に語があるかで探しており、「ガリレイの生涯」に「題材3」の字が無いため
-        # 1 件も当たらなかった（検証 021 の指摘 4）。**要素経由で照合する。**
+        # 網 A ── 申告した名前。**推薦と混ぜない**（照合の規則は `declared_hits`）
         th = themes.get(("candidate", c["stage_id"]))
         ws = C.words(th)
         c["synopsis"] = ((th or {}).get("synopsis") or "")[:300]   # 表示（検証 021 の指摘 1）
@@ -329,9 +363,8 @@ def main() -> int:
         # `nz` で小文字化と空白落としをしているので、そのまま出すと
         # 「作品1」が「endlessshock」になる。**照合の都合を画面に持ち込まない。**
         c["themes"] = [e["word"] for e in ((th or {}).get("elements") or []) if e.get("word")]
-        theme_hits = C.declared_hits(ws, c["synopsis"])
-        hits += [f"題材「{w}」" for w in theme_hits]
-        c["a"], c["end"] = sorted(set(hits)), end
+        c["a"], theme_hits = declared_hits(c, DECLARED, ws)
+        c["end"] = end
         # **出さないと決めた語に当たったか**（お気に入りの裏返し・起案者の指示 2026-08-24）。
         # 見送った理由から本人が確定した語で、**題名・団体・劇場・出演・題材のどこかに
         # 出ていれば当たり**とする ── 「オペラ」は題名に出ないことがあり（「イタリアの
@@ -344,9 +377,7 @@ def main() -> int:
         # 除外を勝たせる。**団体・人・作品・原作者・題材のどれかでも当たっていれば**、
         # その軸は変えていないので、これまでどおり除外の語には当たらない
         host_only = bool(c["a"]) and all(h.startswith("主催「") for h in c["a"])
-        c["declined"] = "" if (c["a"] and not host_only) else next(
-            (w for w in declined
-             if nz(w) and (nz(w) in nz(blob) or any(nz(w) in nz(x) for x in ws))), "")
+        c["declined"] = "" if (c["a"] and not host_only) else declined_hit(c, declined, ws)
         _s = period_start(c["period"])
         # **初日が読めない行は落とさない。** 読めないものは推薦枠に残し、判断は本人に委ねる
         c["upcoming"] = (not _s) or datetime.date.fromisoformat(_s) > today

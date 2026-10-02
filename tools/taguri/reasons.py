@@ -43,6 +43,17 @@ sys.path.insert(0, str(ROOT / "tools" / "review"))
 import measure_nets as M                                           # noqa: E402
 import recommend as RC                                             # noqa: E402
 import hand_themes as HT                                           # noqa: E402
+import feedback as FB                                              # noqa: E402
+
+LOCAL_USER_ID = FB.LOCAL_USER_ID
+
+
+def _con() -> sqlite3.Connection:
+    """**`FB.connect` を通す**（E3）── 反応の表に `user_id` を足す移行がここで確かめられる。
+    先にこの関数が古い DB を開いても、列が無いまま読まない。"""
+    con = FB.connect(same_thread=False)
+    con.row_factory = sqlite3.Row
+    return con
 
 CAND = ROOT / "data" / "review" / "candidates.jsonl"
 THEMES = ROOT / "data" / "credits" / "themes.jsonl"
@@ -156,24 +167,27 @@ def terms_in(text: str, vocab: list[tuple[str, str, str]]) -> list[dict]:
     return out
 
 
-def promotions() -> list[dict]:
+def promotions(*, user_id: str = LOCAL_USER_ID,
+               declared: dict | None = None) -> list[dict]:
     """理由の文から拾った、**まだ申告に無い**語の一覧。
 
     **押した本人に返る形で出す** ── ここから登録すれば、その名前の公演は次から
     件数の制限なしに新着に出る（企画書 1 章の「お気に入り」）。
+
+    **その利用者の理由の文と申告だけを見る**（E3）。`declared` を渡さなければ
+    持ち主の申告（`declared.json`）を読む。
     """
-    con = sqlite3.connect(DB)
-    con.row_factory = sqlite3.Row
+    con = _con()
     rows = [dict(r) for r in con.execute(
         "SELECT r.stage_id, r.note, r.updated_at, r.interest,"
         " (SELECT p.title FROM presented p WHERE p.stage_id = r.stage_id LIMIT 1) AS title"
-        " FROM reaction r WHERE r.note IS NOT NULL AND TRIM(r.note) <> ''"
-        " ORDER BY r.updated_at DESC")]
+        " FROM reaction r WHERE r.user_id = ? AND r.note IS NOT NULL AND TRIM(r.note) <> ''"
+        " ORDER BY r.updated_at DESC", (user_id,))]
     con.close()
     if not rows:
         return []
     cands, themes = _cands(), _themes()
-    dec = RC.load_declared()
+    dec = RC.load_declared() if declared is None else declared
     # **種類をまたいで、すでに追っている語は出さない。** 種類ごとに見ていたため、
     # 原作者として登録済みの「作品3」が題材の候補として出ていた ── **すでに
     # 新着が届く名前を「追いますか？」と聞くことになる。** 種類は提案の文に添える
@@ -251,25 +265,25 @@ def pool_hits(word: str, pool: list[str] | None = None) -> int:
     return sum(1 for b in (pool if pool is not None else _pool()) if w in b)
 
 
-def demotions() -> list[dict]:
+def demotions(*, user_id: str = LOCAL_USER_ID,
+              declined: list[str] | None = None) -> list[dict]:
     """見送った理由の文から拾った、**出さない語の候補**。
 
     **決めるのは本人である。** 機械がやるのは「文から語を取り出し、何件に当たるかを
     数える」ところまでで、外すかどうかは押して確定していただく ── 候補を消す判断を
     代理の指標で行わない、というこれまでの方針と同じである。
     """
-    con = sqlite3.connect(DB)
-    con.row_factory = sqlite3.Row
+    con = _con()
     rows = [dict(r) for r in con.execute(
         "SELECT r.stage_id, r.note_no, r.updated_at,"
         " (SELECT p.title FROM presented p WHERE p.stage_id = r.stage_id LIMIT 1) AS title"
-        " FROM reaction r WHERE r.note_no IS NOT NULL AND TRIM(r.note_no) <> ''"
-        " ORDER BY r.updated_at DESC")]
+        " FROM reaction r WHERE r.user_id = ? AND r.note_no IS NOT NULL"
+        " AND TRIM(r.note_no) <> '' ORDER BY r.updated_at DESC", (user_id,))]
     con.close()
     if not rows:
         return []
     pool = _pool()
-    already = {nz(w) for w in RC.load_declined()}
+    already = {nz(w) for w in (RC.load_declined() if declined is None else declined)}
     cap = max(1, int(len(pool) * MAX_SHARE))
     agg: dict[str, dict] = {}
     for r in rows:
@@ -290,19 +304,19 @@ def demotions() -> list[dict]:
     return sorted(agg.values(), key=lambda d: (-d["n"], -d["hits"]))
 
 
-def stats() -> dict:
-    con = sqlite3.connect(DB)
-    n_note = con.execute("SELECT COUNT(*) FROM reaction"
-                         " WHERE note IS NOT NULL AND TRIM(note) <> ''").fetchone()[0]
+def stats(*, user_id: str = LOCAL_USER_ID, declared: dict | None = None) -> dict:
+    con = _con()
+    n_note = con.execute("SELECT COUNT(*) FROM reaction WHERE user_id = ?"
+                         " AND note IS NOT NULL AND TRIM(note) <> ''", (user_id,)).fetchone()[0]
     # **`screen_tour`（同じ作品の他会場へ広げた行）は数えない**（起案者の指摘・
     # 2026-08-26 で `on_react` が反応を作品単位に広げるようになった分）。1 回押すと
     # ツアーの会場数ぶん行が増えるので、そのまま数えると押した回数より多く出る
     # （`feedback._interest` と同じ理由）
-    n_int = con.execute("SELECT COUNT(*) FROM reaction"
-                        " WHERE interest=1 AND source != 'screen_tour'").fetchone()[0]
+    n_int = con.execute("SELECT COUNT(*) FROM reaction WHERE user_id = ?"
+                        " AND interest=1 AND source != 'screen_tour'", (user_id,)).fetchone()[0]
     con.close()
     return {"理由が書かれた反応": n_note, "興味ありの反応": n_int,
-            "昇格候補": len(promotions())}
+            "昇格候補": len(promotions(user_id=user_id, declared=declared))}
 
 
 if __name__ == "__main__":

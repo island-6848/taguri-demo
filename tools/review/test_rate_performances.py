@@ -364,7 +364,7 @@ def check_live_lists(check) -> None:
             mock[str(c["stage_id"])] = {field: val, "title": c.get("title") or ""}
     real = FB.reactions
     try:
-        FB.reactions = lambda con: mock
+        FB.reactions = lambda con, **_kw: mock
         live = APP._rebucket(LOCAL, raw)
         bad = [k for k in ("ranked", "others", "owned", "tracking", "favourites", "started")
                if len(live.get(k) or []) != len(raw.get(k) or [])]
@@ -387,7 +387,7 @@ def check_live_lists(check) -> None:
                  "owned": ("owned", {"owned": 1})}
         bad = []
         for label, (dest, val) in moves.items():
-            FB.reactions = lambda con, v=val: {sid: dict(v, title=title)}
+            FB.reactions = lambda con, v=val, **_kw: {sid: dict(v, title=title)}
             e = APP._rebucket(LOCAL, raw)
             here = [k for k in ("ranked", "others", "owned", "tracking")
                     if any(str(c["stage_id"]) == sid for c in e.get(k) or [])]

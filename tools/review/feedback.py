@@ -66,10 +66,24 @@ import argparse
 import datetime
 import json
 import sqlite3
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 DB = ROOT / "data" / "review" / "ratings.db"
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import user_scope as US                                             # noqa: E402
+
+# **利用者ごとのデータ分離（E3）Phase 3。** 反応・券・画面に出した記録（reaction・ticket・
+# viewed）は `user_id` で分ける。**`presented`（出した一覧）は分けない** ── 推薦の
+# 計算は持ち主 1 人の記録から作る全員共通のもので、出した一覧も 1 つしか無い。
+#
+# 既定はローカルの持ち主。推薦の計算（`recommend2.py`）と週次の集計（`report`）は持ち主の
+# 反応だけを読む。公開デモの画面（`app.py`・`serve.py`）は必ず `user_id=` を渡す。
+LOCAL_USER_ID = US.LOCAL_USER_ID
+USER_TABLES = {"viewed": ("label", "bundle"), "reaction": ("label", "stage_id"),
+               "ticket": ("stage_id", "date", "time")}
 
 SCHEMA = """
 -- 出した一覧のスナップショット。**上書きしない**（label は「出した週」の鍵）
@@ -89,15 +103,17 @@ CREATE TABLE IF NOT EXISTS presented (
 -- 効果の連鎖（提示 → 興味あり → 買った → ◎）の**分母はここで決まる** ──
 -- 見ていない一覧を分母に数えると、興味あり率がその分だけ薄まる
 CREATE TABLE IF NOT EXISTS viewed (
+    user_id  TEXT NOT NULL DEFAULT 'local',
     label    TEXT NOT NULL,
     bundle   TEXT NOT NULL,
     first_at TEXT NOT NULL,
     source   TEXT NOT NULL,           -- screen（画面が出した）/ reaction（答えが残っている）
                                       -- / served（開いたときだけ書かれる束から復元した）
-    PRIMARY KEY (label, bundle)
+    PRIMARY KEY (user_id, label, bundle)
 );
 -- 反応。**観る前の評価**なので works.verdict（観た後の ◎○△×）とは別の表にする
 CREATE TABLE IF NOT EXISTS reaction (
+    user_id    TEXT NOT NULL DEFAULT 'local',
     label      TEXT NOT NULL,
     stage_id   TEXT NOT NULL,
     interest   INTEGER,                -- 1 興味あり / 0 興味なし / NULL 未回答
@@ -151,7 +167,7 @@ CREATE TABLE IF NOT EXISTS reaction (
                                     --   「本人が押した回数」を「効いた行数」から
                                     --   区別できるようにした
     updated_at TEXT NOT NULL,
-    PRIMARY KEY (label, stage_id)
+    PRIMARY KEY (user_id, label, stage_id)
 );
 -- 券。**「すでに持っている」の中身、つまり「何日の回に行くのか」を持つ表である。**
 --
@@ -162,6 +178,7 @@ CREATE TABLE IF NOT EXISTS reaction (
 -- **鍵に time を含める。** 同じ日の昼と夜は別の回である。逆に**同じ回の 2 枚
 -- （連れの分）は 1 行に畳まれる** ── 暦に置きたいのは座席の数ではなく行く回だからである。
 CREATE TABLE IF NOT EXISTS ticket (
+    user_id    TEXT NOT NULL DEFAULT 'local',
     stage_id   TEXT NOT NULL,
     date       TEXT NOT NULL,          -- YYYY-MM-DD（その回の上演日）
     time       TEXT NOT NULL DEFAULT '',  -- HH:MM。**空を許す** ── 購入確認メールに
@@ -175,7 +192,7 @@ CREATE TABLE IF NOT EXISTS ticket (
                                        -- 探すのは機械、確定は人、という線をここでも引く
     uid        TEXT NOT NULL DEFAULT '',  -- 購入確認メールの id。同じメールから 2 度作らない
     updated_at TEXT NOT NULL,
-    PRIMARY KEY (stage_id, date, time)
+    PRIMARY KEY (user_id, stage_id, date, time)
 );
 """
 
@@ -201,6 +218,9 @@ def connect(*, same_thread: bool = True) -> sqlite3.Connection:
         # **すでに入っている手入力の行は確定済みとして扱う** ── 本人が入れたものを
         # 「確定してください」と出し直すのは、同じことを 2 度聞くことになる
         con.execute("UPDATE ticket SET confirmed=1 WHERE source<>'mail'")
+    con.commit()
+    for table, key in USER_TABLES.items():
+        US.scope_table(con, table, key)
     backfill_viewed(con)
     con.commit()
     return con
@@ -213,10 +233,11 @@ SERVED_ONLY = ("recommend_pref", "recommend_fill")
 
 
 def mark_viewed(con: sqlite3.Connection, label: str, bundle: str,
-                source: str = "screen", at: str | None = None) -> None:
+                source: str = "screen", at: str | None = None, *,
+                user_id: str = LOCAL_USER_ID) -> None:
     """**この label のこの束を、画面に出したことを記録する。** 2 度目は何もしない。"""
-    con.execute("INSERT OR IGNORE INTO viewed (label, bundle, first_at, source)"
-                " VALUES (?,?,?,?)", (label, bundle, at or now(), source))
+    con.execute("INSERT OR IGNORE INTO viewed (user_id, label, bundle, first_at, source)"
+                " VALUES (?,?,?,?,?)", (user_id, label, bundle, at or now(), source))
 
 
 def backfill_viewed(con: sqlite3.Connection) -> None:
@@ -237,31 +258,35 @@ def backfill_viewed(con: sqlite3.Connection) -> None:
     # `run.py` はブラウザを `/` で開き、`/` は推薦の一覧である（絞り込みは起動のあいだの
     # 設定で、既定は全国なので**最初に出るのは必ず全国の一覧**）。会話で答えた回も、
     # 一覧を貼ってから聞いている。**答えがあるなら、その一覧は本人に届いている。**
+    # **証拠は反応を付けた本人の分として残す**（E3）── 誰が見たかは反応の持ち主である
     con.execute(
-        "INSERT OR IGNORE INTO viewed (label, bundle, first_at, source)"
-        " SELECT r.label, 'recommend', MIN(r.updated_at), 'reaction'"
+        "INSERT OR IGNORE INTO viewed (user_id, label, bundle, first_at, source)"
+        " SELECT r.user_id, r.label, 'recommend', MIN(r.updated_at), 'reaction'"
         " FROM reaction r WHERE EXISTS"
         "  (SELECT 1 FROM presented p WHERE p.label = r.label AND p.bundle = 'recommend')"
-        " GROUP BY r.label")
+        " GROUP BY r.user_id, r.label")
     # ② **反応がその束の行に当たっている → その束の画面も開いている。**
     # お気に入りの新着に答えているなら、お気に入りの画面を開いたということである
     con.execute(
-        "INSERT OR IGNORE INTO viewed (label, bundle, first_at, source)"
-        " SELECT p.label, p.bundle, MIN(r.updated_at), 'reaction'"
+        "INSERT OR IGNORE INTO viewed (user_id, label, bundle, first_at, source)"
+        " SELECT r.user_id, p.label, p.bundle, MIN(r.updated_at), 'reaction'"
         " FROM presented p JOIN reaction r"
         "   ON r.label = p.label AND r.stage_id = p.stage_id"
-        " GROUP BY p.label, p.bundle")
+        " GROUP BY r.user_id, p.label, p.bundle")
     # ③ **開いたときにしか書かれない束は、行があること自体が証拠である。**
+    # `presented` は誰の分とも分けていないが、これらの束を書いていたのはローカルの
+    # 持ち主の画面だけなので、持ち主の分として復元する
     ph = ",".join("?" * len(SERVED_ONLY))
     con.execute(
-        "INSERT OR IGNORE INTO viewed (label, bundle, first_at, source)"
-        f" SELECT label, bundle, MIN(created_at), 'served' FROM presented"
-        f" WHERE bundle IN ({ph}) GROUP BY label, bundle", SERVED_ONLY)
+        "INSERT OR IGNORE INTO viewed (user_id, label, bundle, first_at, source)"
+        f" SELECT ?, label, bundle, MIN(created_at), 'served' FROM presented"
+        f" WHERE bundle IN ({ph}) GROUP BY label, bundle", (LOCAL_USER_ID, *SERVED_ONLY))
 
 
-def viewed_labels(con: sqlite3.Connection, bundle: str) -> set:
+def viewed_labels(con: sqlite3.Connection, bundle: str, *, user_id: str = LOCAL_USER_ID) -> set:
     """その束を実際に出した label。**効果を測るときの分母は、ここから作る。**"""
-    return {r[0] for r in con.execute("SELECT label FROM viewed WHERE bundle=?", (bundle,))}
+    return {r[0] for r in con.execute("SELECT label FROM viewed WHERE user_id=? AND bundle=?",
+                                      (user_id, bundle))}
 
 
 def now() -> str:
@@ -306,7 +331,7 @@ def snapshot(con: sqlite3.Connection, path: Path, label: str) -> tuple[int, str]
 def react(con: sqlite3.Connection, label: str, stage_id: str, *,
           interest=None, known=None, owned=None, decider=None, decider_who=None,
           decider_axes=None, decider_shown=None, note=None, note_no=None,
-          source="screen") -> None:
+          source="screen", user_id: str = LOCAL_USER_ID) -> None:
     """**押し直せるようにする。渡さなかった列は消さない。**
 
     三択は「いま本人がどの状態にいるか」であって一度きりの採点ではないので、
@@ -315,10 +340,10 @@ def react(con: sqlite3.Connection, label: str, stage_id: str, *,
     遷移そのものが V33・V32 の連鎖（提示 → 興味あり → 購入）の記録なので、消してはいけない。
     """
     con.execute("INSERT INTO reaction"
-                " (label, stage_id, interest, known, owned, decider, decider_who,"
+                " (user_id, label, stage_id, interest, known, owned, decider, decider_who,"
                 "  decider_axes, decider_shown, note, note_no, source, updated_at)"
-                " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)"
-                " ON CONFLICT(label, stage_id) DO UPDATE SET"
+                " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+                " ON CONFLICT(user_id, label, stage_id) DO UPDATE SET"
                 "  interest    = COALESCE(excluded.interest, reaction.interest),"
                 "  known       = COALESCE(excluded.known, reaction.known),"
                 "  owned       = COALESCE(excluded.owned, reaction.owned),"
@@ -330,13 +355,14 @@ def react(con: sqlite3.Connection, label: str, stage_id: str, *,
                 "  note_no     = COALESCE(excluded.note_no, reaction.note_no),"
                 "  source      = excluded.source,"
                 "  updated_at  = excluded.updated_at",
-                (label, stage_id, interest, known, owned, decider, decider_who,
+                (user_id, label, stage_id, interest, known, owned, decider, decider_who,
                  decider_axes, decider_shown, note, note_no, source, now()))
     con.commit()
 
 
 def add_ticket(con: sqlite3.Connection, stage_id: str, date: str, time: str = "",
-               *, source: str = "screen", uid: str = "") -> None:
+               *, source: str = "screen", uid: str = "",
+               user_id: str = LOCAL_USER_ID) -> None:
     """券を 1 枚記録する。**同じ回を 2 度入れても増えない。**
 
     **本人が入れた行を、メールの取り込みで上書きしない** ── メールから起こした行に
@@ -349,54 +375,55 @@ def add_ticket(con: sqlite3.Connection, stage_id: str, date: str, time: str = ""
     """
     ok = 0 if source == "mail" else 1
     con.execute("INSERT INTO ticket"
-                " (stage_id, date, time, source, confirmed, uid, updated_at)"
-                " VALUES (?,?,?,?,?,?,?)"
-                " ON CONFLICT(stage_id, date, time) DO UPDATE SET"
+                " (user_id, stage_id, date, time, source, confirmed, uid, updated_at)"
+                " VALUES (?,?,?,?,?,?,?,?)"
+                " ON CONFLICT(user_id, stage_id, date, time) DO UPDATE SET"
                 "  source     = CASE WHEN excluded.source='mail' THEN ticket.source"
                 "                    ELSE excluded.source END,"
                 "  confirmed  = MAX(ticket.confirmed, excluded.confirmed),"
                 "  uid        = CASE WHEN excluded.uid='' THEN ticket.uid"
                 "                    ELSE excluded.uid END,"
                 "  updated_at = excluded.updated_at",
-                (str(stage_id), date, time or "", source, ok, uid or "", now()))
+                (user_id, str(stage_id), date, time or "", source, ok, uid or "", now()))
     con.commit()
 
 
 def confirm_ticket(con: sqlite3.Connection, stage_id: str, date: str,
-                   time: str = "") -> int:
+                   time: str = "", *, user_id: str = LOCAL_USER_ID) -> int:
     """機械が読み取った 1 枚を、本人が確定する。**出どころは書き替えない** ──
     どこから来た値なのかは、確定したあとも記録として要る。
     """
     n = con.execute("UPDATE ticket SET confirmed=1, updated_at=?"
-                    " WHERE stage_id=? AND date=? AND time=?",
-                    (now(), str(stage_id), date, time or "")).rowcount
+                    " WHERE user_id=? AND stage_id=? AND date=? AND time=?",
+                    (now(), user_id, str(stage_id), date, time or "")).rowcount
     con.commit()
     return n
 
 
-def del_ticket(con: sqlite3.Connection, stage_id: str, date: str, time: str = "") -> int:
+def del_ticket(con: sqlite3.Connection, stage_id: str, date: str, time: str = "", *,
+               user_id: str = LOCAL_USER_ID) -> int:
     """券を 1 枚取り消す。**取り消せることが、入れられることと同じだけ要る** ──
     日を間違えて入れたときに直す道が無いと、暦に嘘の点が残る。
     """
-    n = con.execute("DELETE FROM ticket WHERE stage_id=? AND date=? AND time=?",
-                    (str(stage_id), date, time or "")).rowcount
+    n = con.execute("DELETE FROM ticket WHERE user_id=? AND stage_id=? AND date=? AND time=?",
+                    (user_id, str(stage_id), date, time or "")).rowcount
     con.commit()
     return n
 
 
-def tickets(con: sqlite3.Connection) -> dict[str, list[dict]]:
+def tickets(con: sqlite3.Connection, *, user_id: str = LOCAL_USER_ID) -> dict[str, list[dict]]:
     """公演の id → 持っている券（日の早い順）。**1 公演に何枚でも入る。**"""
     out: dict[str, list[dict]] = {}
     for stage_id, date, time, source, confirmed, uid in con.execute(
             "SELECT stage_id, date, time, source, confirmed, uid FROM ticket"
-            " ORDER BY date, time"):
+            " WHERE user_id=? ORDER BY date, time", (user_id,)):
         out.setdefault(str(stage_id), []).append(
             {"date": date, "time": time or "", "source": source,
              "confirmed": int(confirmed or 0), "uid": uid or ""})
     return out
 
 
-def reactions(con: sqlite3.Connection) -> dict[str, dict]:
+def reactions(con: sqlite3.Connection, *, user_id: str = LOCAL_USER_ID) -> dict[str, dict]:
     """公演ごとに、これまでに得た反応をまとめて返す。
 
     **鍵は label ではなく stage_id である。** 反応は「その週に出したもの」に対して付くが、
@@ -413,7 +440,7 @@ def reactions(con: sqlite3.Connection) -> dict[str, dict]:
     for stage_id, interest, owned, title in con.execute(
             "SELECT r.stage_id, r.interest, r.owned,"
             " (SELECT p.title FROM presented p WHERE p.stage_id = r.stage_id LIMIT 1)"
-            " FROM reaction r ORDER BY r.updated_at"):
+            " FROM reaction r WHERE r.user_id=? ORDER BY r.updated_at", (user_id,)):
         d = out.setdefault(str(stage_id), {})
         if interest is not None:
             d["interest"] = int(interest)
@@ -423,7 +450,7 @@ def reactions(con: sqlite3.Connection) -> dict[str, dict]:
     return out
 
 
-def missed_fields(con: sqlite3.Connection) -> list[dict]:
+def missed_fields(con: sqlite3.Connection, *, user_id: str = LOCAL_USER_ID) -> list[dict]:
     """「観ればよかった」に登録した公演の、調べ済みのクレジット（役職・出演者）の並び。
 
     起案者の指示（2026-08-26）──「『観ればよかった』で挙がった人名は『興味あり』の
@@ -435,9 +462,18 @@ def missed_fields(con: sqlite3.Connection) -> list[dict]:
     """
     try:
         rows = con.execute(
-            "SELECT fields_json FROM missed WHERE fields_json IS NOT NULL").fetchall()
+            "SELECT fields_json FROM missed WHERE user_id=? AND fields_json IS NOT NULL",
+            (user_id,)).fetchall()
     except sqlite3.OperationalError:
-        return []
+        # 表が無い、または `user_id` を足す前の古い表（足すのは `serve.py` の起動時）。
+        # 古い表の行はすべて持ち主の分なので、持ち主にだけ返す
+        if user_id != LOCAL_USER_ID:
+            return []
+        try:
+            rows = con.execute(
+                "SELECT fields_json FROM missed WHERE fields_json IS NOT NULL").fetchall()
+        except sqlite3.OperationalError:
+            return []
     out = []
     for (fj,) in rows:
         if not fj:
@@ -451,7 +487,7 @@ def missed_fields(con: sqlite3.Connection) -> list[dict]:
     return out
 
 
-def _interest(con: sqlite3.Connection, label: str) -> int:
+def _interest(con: sqlite3.Connection, label: str, *, user_id: str = LOCAL_USER_ID) -> int:
     """興味ありの**押した回数**。
 
     **同じ作品の他会場へ広げた行（`source='screen_tour'`）は数えない**（起案者の
@@ -461,8 +497,8 @@ def _interest(con: sqlite3.Connection, label: str) -> int:
     """
     return con.execute(
         "SELECT COUNT(*) FROM reaction"
-        " WHERE label=? AND interest=1 AND source != 'screen_tour'",
-        (label,)).fetchone()[0]
+        " WHERE user_id=? AND label=? AND interest=1 AND source != 'screen_tour'",
+        (user_id, label)).fetchone()[0]
 
 
 def report(con: sqlite3.Connection) -> None:
@@ -487,7 +523,8 @@ def report(con: sqlite3.Connection) -> None:
                  if n_lab > len(seen) else ""))
     print("\n出した一覧（label ごと）:")
     for label, bundle, first_at, src in con.execute(
-            "SELECT label, bundle, first_at, source FROM viewed ORDER BY first_at, label"):
+            "SELECT label, bundle, first_at, source FROM viewed WHERE user_id=?"
+            " ORDER BY first_at, label", (LOCAL_USER_ID,)):
         n = con.execute("SELECT COUNT(*) FROM presented WHERE label=? AND bundle=?",
                         (label, bundle)).fetchone()[0]
         note = {"screen": "画面が記録", "reaction": "答えから復元",
@@ -499,7 +536,8 @@ def report(con: sqlite3.Connection) -> None:
     rows = list(con.execute(
         "SELECT r.label, SUM(r.source != 'screen_tour'), SUM(r.known=0),"
         " SUM(r.owned=1 AND r.source != 'screen_tour'), SUM(r.source = 'screen_tour')"
-        " FROM reaction r GROUP BY r.label ORDER BY r.label"))
+        " FROM reaction r WHERE r.user_id=? GROUP BY r.label ORDER BY r.label",
+        (LOCAL_USER_ID,)))
     if not rows:
         print("反応の記録はまだ無い")
         return
@@ -512,7 +550,8 @@ def report(con: sqlite3.Connection) -> None:
                  if tour else ""))
     dec = list(con.execute(
         "SELECT COALESCE(decider,'未回答'), COUNT(*) FROM reaction"
-        " WHERE interest=1 OR owned=1 GROUP BY 1 ORDER BY 2 DESC"))
+        " WHERE user_id=? AND (interest=1 OR owned=1) GROUP BY 1 ORDER BY 2 DESC",
+        (LOCAL_USER_ID,)))
     # **undecided は「決められない」であって「名前で決めなかった」ではない。**
     # 表示が足りないことの記録なので、率を出すときは分母から外す（検証 021 の指摘 1）。
     if dec:

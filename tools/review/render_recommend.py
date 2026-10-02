@@ -705,7 +705,10 @@ def reason_rows(c: dict) -> str:
                    f'<button class="rsx" data-word="{E(person)}"'
                    f' title="この人物を理由に出さない">✕</button></li>')
     # **人物の行の直後に置く。** 引用は上の名前に紐づく事実なので、離すと何の話か分からない
-    out.append(IM.quote_row([p[2] for p in c.get("why_b", [])[:4]], NOTES_BY_PERSON))
+    # **引用は見ている人の感想から引く**（E3）。公開デモの訪問者のカードには
+    # `app._load` がその人の分を `_notes` に入れてある。無ければ持ち主の分（起動時に作る）
+    out.append(IM.quote_row([p[2] for p in c.get("why_b", [])[:4]],
+                            c.get("_notes", NOTES_BY_PERSON)))
     _src, _doubt = synopsis_source(str(c["stage_id"]), c.get("synopsis") or "")
     for it in c.get("why_c", [])[:3]:
         word = it[1] if isinstance(it, (list, tuple)) and len(it) > 1 else it

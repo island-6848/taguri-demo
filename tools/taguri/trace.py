@@ -96,8 +96,13 @@ def build(rated: list[dict]) -> dict:
             "n_undated": len(rated) - len(dated)}
 
 
-def declared_names() -> set:
-    """本人が「お気に入り」に登録した名前。**申告した名前は本人が既に知っている。**"""
+def declared_names(g: dict | None = None) -> set:
+    """本人が「お気に入り」に登録した名前。**申告した名前は本人が既に知っている。**
+
+    `body(declared=...)` で渡された登録があればそれを使う（E3 ── 公開デモの訪問者の
+    登録）。無ければ持ち主の登録（`declared.json`）を読む。"""
+    if g is not None and g.get("declared") is not None:
+        return g["declared"]
     try:
         import recommend as RC
         nz = getattr(RC, "nz", lambda s: s)
@@ -120,7 +125,7 @@ def picks(g: dict) -> list[dict]:
     五十音で 77 名を並べても、どれを押せばよいか分からない。**発見は申告していない側に
     ある**ので（4 回以上観ている 28 人のうち申告は 6 人だけだった）、そちらを先に出す。
     """
-    dec = declared_names()
+    dec = declared_names(g)
     out = []
     for name, rows in g["threads"].items():
         out.append({
@@ -397,7 +402,7 @@ def thread_panel(g: dict, name: str, trail: list[str]) -> str:
     # 画面から無くなり、3 手の道筋という形が成り立たない
     nxt = (f'{HREF}&amp;via={E(_q(ARROW.join((trail + [name])[-TRAIL_MAX:])))}'
            f'&amp;name=')
-    dec = "（お気に入りに登録済みです）" if _nz(name) in declared_names() else ""
+    dec = "（お気に入りに登録済みです）" if _nz(name) in declared_names(g) else ""
     role = "・".join(k for k, _ in g["roles"][name].most_common(3))
     lis = []
     for i, r in enumerate(rows):
@@ -446,8 +451,11 @@ def trail_html(trail: list[str], name: str) -> str:
     return f'<p class="trail">たどってきた道　{parts}</p>'
 
 
-def body(rated: list[dict], name: str = "", via: str = "") -> str:
+def body(rated: list[dict], name: str = "", via: str = "", *,
+         declared: dict | None = None) -> str:
     g = build(rated)
+    if declared is not None:
+        g["declared"] = {_nz(x) for xs in declared.values() for x in xs}
     trail = [t for t in (via or "").split(ARROW) if t.strip()][-TRAIL_MAX:]
     und = ("" if not g["n_undated"] else
            f'<p class="lead"><b>上演日が分からない記録が {g["n_undated"]} 件あります。'

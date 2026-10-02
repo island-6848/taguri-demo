@@ -2492,14 +2492,9 @@ def _promote_owned_tickets(user_id: str, today: str) -> None:
     """
     import feedback as FB
     import rate_performances as R
-    if not _is_owner(user_id):
-        # **反応と券の表（`reaction`・`ticket`）はまだ全員共通である**（E3 の Phase 3 で
-        # 分ける）。ここで訪問者の `works` に書くと、持ち主（デモデータ）の「持っている」
-        # 公演が、評価一覧を開いた訪問者全員の観劇記録に入る。分けるまでは持ち主だけ
-        return
     con = FB.connect()
     try:
-        react, tickets = FB.reactions(con), FB.tickets(con)
+        react, tickets = FB.reactions(con, user_id=user_id), FB.tickets(con, user_id=user_id)
     finally:
         con.close()
     owned = [sid for sid, r in react.items() if r.get("owned") == 1]
@@ -2560,7 +2555,7 @@ def _auto_own_from_mail(user_id: str, today: str) -> None:
         by_workkey.setdefault(RC2.work_key(c.get("title") or ""), []).append((sid, c))
     con = FB.connect()
     try:
-        react = FB.reactions(con)
+        react = FB.reactions(con, user_id=user_id)
         label = f"mail-{today}"
         wrote = False
         for b in buys:
@@ -2579,8 +2574,8 @@ def _auto_own_from_mail(user_id: str, today: str) -> None:
                 " reasons, created_at) VALUES (?,?,0,?,0,'mail','{}',"
                 "datetime('now','localtime')) ON CONFLICT(label, stage_id) DO NOTHING",
                 (label, sid, title))
-            FB.react(con, label, sid, owned=1, source="mail")
-            FB.add_ticket(con, sid, b["date"], b["time"], source="mail", uid=b["uid"])
+            FB.react(con, label, sid, owned=1, source="mail", user_id=user_id)
+            FB.add_ticket(con, sid, b["date"], b["time"], source="mail", uid=b["uid"], user_id=user_id)
             react[sid] = {"owned": 1, "title": title}
             wrote = True
         if wrote:
@@ -2656,14 +2651,33 @@ def _rebucket(user_id: str, d: dict) -> dict:
     _auto_own_from_mail(user_id, today)
     con = FB.connect()
     try:
-        react = FB.reactions(con)
-        tickets = FB.tickets(con)
+        react = FB.reactions(con, user_id=user_id)
+        tickets = FB.tickets(con, user_id=user_id)
     finally:
         con.close()
+    # **題名は `presented` から引いている**（`FB.reactions`）。訪問者が探して押した公演や、
+    # 訪問者の画面で絞り込んで出した公演は `presented` に載らない（E3 ── あの表は持ち主の
+    # 測定の分母なので訪問者の分を書かない）ので、手元の公演の索引で補う
+    for sid, v in react.items():
+        if not v.get("title"):
+            v["title"] = (_upcoming_index()["rows"].get(sid) or {}).get("title") or ""
     # **作品単位にも畳む。** ツアーの別会場は stage_id が違うので、ID だけでは戻ってくる
     react_w = {RC2.work_key(v.get("title") or ""): v
                for v in react.values() if v.get("title")}
     sids_by_workkey = _react_groups(react)
+    owner = _is_owner(user_id)
+    if not owner:
+        # **訪問者のお気に入り（網 A）と出さない語は、その人の登録で当て直す**（E3）。
+        # `recommend2.json` の `a`・`declined` は持ち主の登録で当てた結果である。
+        # 照合の規則は週の計算と同じ関数（`recommend2.declared_hits`）を使う
+        dec, words = load_declared(user_id), load_declined(user_id)
+
+        def _mine(c: dict) -> dict:
+            ws = sorted({RC2.nz(w) for w in c.get("themes") or [] if w})
+            a, _theme = RC2.declared_hits(c, dec, ws)
+            host_only = bool(a) and all(h.startswith("主催「") for h in a)
+            return {**c, "a": a,
+                    "declined": "" if (a and not host_only) else RC2.declined_hit(c, words, ws)}
 
     def r_of(c: dict) -> dict:
         return (react.get(str(c.get("stage_id") or ""))
@@ -2678,21 +2692,27 @@ def _rebucket(user_id: str, d: dict) -> dict:
             if sid in seen:
                 continue
             seen.add(sid)
-            pool.append((k, c))
+            pool.append((k, c if owner else _mine(c)))
     # **「持っている」だけの公演も拾う。** `d[...]` は週次の推薦（`recommend2.json`）
     # から来るので、**一度も推薦に出たことが無い公演**（探して直接買った・メールから
     # 自動で「持っている」にした ── `_auto_own_from_mail`）は、反応が付いていても
     # ここまでの `pool` に入らない。**`_upcoming_index()` から拾い直す**
     # （探す画面が使っているのと同じ、もっと広い索引）
+    #
+    # **訪問者は「興味あり」も同じ理由で拾う。** 持ち主が探して押した公演は `_pick` が
+    # 控えに足して一覧を組み直すが、訪問者の操作では組み直さない（E3）ので、ここで
+    # 拾わないと押した公演が「興味あり」に出てこない
     for sid, r in react.items():
-        if r.get("owned") != 1 or sid in seen:
+        if sid in seen or not (r.get("owned") == 1 or (not owner and r.get("interest") == 1)):
             continue
         c = _upcoming_index()["rows"].get(sid)
         if not c:
             continue
         seen.add(sid)
-        pool.append(("others", {**c, "stage_id": sid}))
+        c = {**c, "stage_id": sid}
+        pool.append(("others", c if owner else _mine(c)))
     out: dict = {k: [] for k in order}
+    mine_declined: list = []
     for k, c in pool:
         r = r_of(c)
         if r.get("owned") == 1:
@@ -2726,8 +2746,18 @@ def _rebucket(user_id: str, d: dict) -> dict:
             out["others"].append(c)
         elif c.get("a"):
             out["favourites"].append(c)
+        elif not owner and c.get("declined"):
+            # 訪問者が出さないと決めた語に当たった公演（持ち主の `declined` の束と同じ扱い）
+            mine_declined.append(c)
         elif k in ("ranked", "others"):
             out["ranked"].append(c)
+        elif not owner and k in ("favourites", "owned", "tracking"):
+            # **持ち主の答えで束に入っていた公演**（持ち主のお気に入り・持っている・
+            # 興味あり）。訪問者はまだ何も答えていないので、持ち主の答えを訪問者の束に
+            # 残さない。点（`s`）が付いていれば推薦へ戻し、付いていなければ出さない
+            # ── 点の無いカードを推薦に並べない（下の `else` と同じ理由）
+            if "s" in c:
+                out["ranked"].append(c)
         else:
             # **点の付いていない行を推薦枠に入れない。** 観る予定・追いかけている・
             # お気に入り・初日を迎えた公演は、点を付ける前に枠から出しているので
@@ -2741,6 +2771,15 @@ def _rebucket(user_id: str, d: dict) -> dict:
     # 点の順ではなく締切の順に並べる（`recommend2.py` と同じ）
     for k in ("favourites", "tracking"):
         out[k].sort(key=lambda c: RC2.period_start(c.get("period") or "") or "9999")
+    if not owner:
+        # **訪問者には、その人の語で外した公演だけを「出さない語」の束に置く**（持ち主の
+        # 語で外した束を見せない）。点の高い順は `ranked` の並びをそのまま保っている
+        out["declined"] = mine_declined
+        out["ranked"].sort(key=lambda c: (-(c.get("strong") or 0), -(c.get("s") or 0)))
+        # **全国の上位（`recommend`）も、その人の答えで当て直した並びにする。** 画面は推薦枠が
+        # 空のとき `recommend` を代わりに出す（`RR.filtered`）── 持ち主の上位のままだと、
+        # 外したはずの公演が全部答え終えた訪問者のカードに戻ってくる
+        out["recommend"] = out["ranked"][:len(d.get("recommend") or []) or RR.TOP]
     e = dict(d)
     e.update(out)
     return e
@@ -3023,6 +3062,86 @@ def save_pref_setting(user_id: str, prefs) -> dict:
     finally:
         con.close()
     return {"ok": True, "prefs": keep}
+
+
+# ---------------------------------------------- お気に入り・出さない語（利用者ごと）
+#
+# **持ち主（ローカル）は今までどおり `declared.json`／`declined.json` を使う。** 推薦の
+# 計算（`recommend2.py`）・お気に入りの取得（`favourites.py`）・振り返り（`build_lookback.py`）
+# がそのファイルを読むので、置き場所を動かすと持ち主の毎週の流れが止まる。
+#
+# **公開デモの訪問者は `app_setting` に持つ**（E3）。あのファイルは 1 つしか無く、訪問者が
+# 登録すると持ち主の申告が書き換わり、推薦の計算と外部への取得まで走っていた。訪問者の
+# お気に入りは、画面を出すときに手元の公演の一覧から当て直す（`_rebucket`）。
+DECLARED_KEY, DECLINED_KEY = "declared", "declined"
+
+
+def _read_setting_json(user_id: str, key: str):
+    import rate_performances as R
+    con = R.connect()
+    try:
+        _migrate_app_setting(con)
+        con.executescript(SETTING_SCHEMA)
+        row = con.execute("SELECT value FROM app_setting WHERE user_id=? AND key=?",
+                          (user_id, key)).fetchone()
+    finally:
+        con.close()
+    try:
+        return json.loads(row["value"]) if row else None
+    except ValueError:
+        return None
+
+
+def _write_setting_json(user_id: str, key: str, value) -> None:
+    import rate_performances as R
+    con = R.connect()
+    try:
+        _migrate_app_setting(con)
+        con.executescript(SETTING_SCHEMA)
+        with con:
+            con.execute(
+                "INSERT INTO app_setting (user_id, key, value, updated_at) VALUES (?, ?, ?, ?)"
+                " ON CONFLICT(user_id, key) DO UPDATE SET value=excluded.value,"
+                " updated_at=excluded.updated_at",
+                (user_id, key, json.dumps(value, ensure_ascii=False), R.now()))
+    finally:
+        con.close()
+
+
+def load_declared(user_id: str) -> dict[str, list[str]]:
+    """その人が登録した名前（種類 → 名前の並び）。**無ければ空**（誰かの登録を引き継がない）。"""
+    if _is_owner(user_id):
+        return RC.load_declared()
+    v = _read_setting_json(user_id, DECLARED_KEY)
+    v = v if isinstance(v, dict) else {}
+    return {k: [str(x) for x in (v.get(k) or []) if isinstance(x, str)] for k in RC.KINDS}
+
+
+def save_declared(user_id: str, d: dict) -> None:
+    if _is_owner(user_id):
+        RC.save_declared(d)
+        RC.DECLARED = RC.load_declared()      # 同じ起動の中で照合にも効かせる
+        return
+    # **件数に上限を置く**（守り 4 ── 1 人が際限なく書き込める口を作らない）
+    out = {k: sorted(dict.fromkeys(str(x).strip()[:80] for x in (d.get(k) or [])
+                                   if str(x).strip()))[:100] for k in RC.KINDS}
+    _write_setting_json(user_id, DECLARED_KEY, out)
+
+
+def load_declined(user_id: str) -> list[str]:
+    """その人が「出さない」と決めた語。**無ければ空。**"""
+    if _is_owner(user_id):
+        return RC.load_declined()
+    v = _read_setting_json(user_id, DECLINED_KEY)
+    return [w for w in (v or []) if isinstance(w, str) and w.strip()] if isinstance(v, list) else []
+
+
+def save_declined(user_id: str, words) -> None:
+    if _is_owner(user_id):
+        RC.save_declined(words)
+        return
+    out = list(dict.fromkeys(w.strip()[:40] for w in words if isinstance(w, str) and w.strip()))
+    _write_setting_json(user_id, DECLINED_KEY, out[:200])
 
 
 def _card_h2(name: str, text: str, extra: str = "") -> str:
@@ -3343,45 +3462,57 @@ def _overlay_themes(d: dict) -> dict:
 def _load(user_id: str) -> tuple[dict, list]:
     """画面が読む材料。**保存された一覧に、いまの反応と効かせ方を当て直して返す。**
 
-    **`user_id`は今のところ効かせ方（`read_weights`）にしか使わない。**
-    `_rebucket`が読む反応・チケット（`reaction`/`ticket`）はまだ利用者ごとに
-    分かれていない（#000009フェーズ2で対応）── 段階的な移行のため、この関数
-    自体はすでに`user_id`を受け取る形にしておく。
+    **一覧（`recommend2.json`）は全員共通で、反応・お気に入り・効かせ方はその人のもの**
+    （E3）。順位の計算は持ち主の記録から作り、束の割り振り（`_rebucket`）と重み
+    （`read_weights`）だけを利用者ごとに当て直す。
     """
     raw, _ = RR.load()
     d = _apply_weights(user_id, _rebucket(user_id, raw), read_weights(user_id))
     d["w_counts"] = _weight_counts(raw)
+    if not _is_owner(user_id):
+        # **推薦の理由に添える「あなたの言葉」（◎ の感想の引用）も、その人の感想から引く。**
+        # 既定の `RR.NOTES_BY_PERSON` は起動時に持ち主の感想から作ったもので、カードは
+        # `c["_notes"]` があればそちらを使う（`render_recommend` の理由の欄）
+        try:
+            notes = IM.by_person(user_id=user_id)
+        except Exception:                                           # noqa: BLE001
+            notes = {}
+        for k, v in d.items():
+            if isinstance(v, list):
+                d[k] = [{**c, "_notes": notes} if isinstance(c, dict) else c for c in v]
     return _overlay_themes(d), waiting_rows(user_id)
 
 
-def _notes_no() -> dict:
+def _notes_no(user_id: str) -> dict:
     """**「興味なし」に添えた、見送った理由。** 公演ごとに引く。
 
     `_notes()` とは列が違う ── **見送った理由から「お気に入り」への昇格候補を作っては
     いけない**ので、そもそも別の列に入れてある（`tools/taguri/reasons.py` は `note` しか
     読まない）。
     """
-    return _note_column("note_no")
+    return _note_column(user_id, "note_no")
 
 
-def _notes() -> dict:
+def _notes(user_id: str) -> dict:
     """「興味あり」に添えた理由の文を、公演ごとに引く。
 
     **書いたものを読み返せるようにするためである。** 理由の文は次の推薦とお気に入りの
     候補に効く入力なので（`tools/taguri/reasons.py`）、**書いた本人が後から確かめられない
     ままにすると、測るためだけの入力に戻ってしまう。**
     """
-    return _note_column("note")
+    return _note_column(user_id, "note")
 
 
-def _note_column(col: str) -> dict:
-    """理由の列を公演ごとに引く。**列の名前は呼ぶ側が決める**（外からは来ない）。"""
+def _note_column(user_id: str, col: str) -> dict:
+    """理由の列を公演ごとに引く。**列の名前は呼ぶ側が決める**（外からは来ない）。
+    **その人の反応だけ**（E3）── 他人の書いた理由を自分の画面に出さない。"""
     assert col in ("note", "note_no")
+    import feedback as FB
     try:
-        con = sqlite3.connect(DB)
+        con = FB.connect(same_thread=False)   # 反応の表の移行（user_id）を通してから読む
         rows = con.execute(f"SELECT stage_id, {col} FROM reaction"                # noqa: S608
-                           f" WHERE {col} IS NOT NULL AND TRIM({col}) <> ''"
-                           " ORDER BY updated_at").fetchall()
+                           f" WHERE user_id=? AND {col} IS NOT NULL AND TRIM({col}) <> ''"
+                           " ORDER BY updated_at", (user_id,)).fetchall()
         con.close()
     except sqlite3.Error:
         return {}
@@ -3486,7 +3617,7 @@ def is_fresh(user_id: str) -> bool:
 
 def _start_state(user_id: str) -> dict:
     """はじめる画面が出す 3 つの段の、いまの状態。"""
-    dec = RC.load_declared()
+    dec = load_declared(user_id)
     try:
         d, _ = _load(user_id)
         n_cand = int(d.get("n_cand") or 0)
@@ -3631,7 +3762,9 @@ def _recommend_body(user_id: str, prefs=()) -> str:
     # **綴りと並びはここで正す。** 選択は URL から来るので、知らない県名は落とす
     prefs = [p for p in RR.PREFS if p in set(prefs or ())]
     rows, n_hit = RR.filtered(d, prefs, RR.TOP)
-    if prefs and rows and RECORD:
+    # **持ち主の画面だけを記録する**（E3）。`presented` は持ち主の週次の指標の分母で、
+    # 訪問者が絞り込んで開くたびに書くと、その分母が見知らぬ人の操作で動く
+    if prefs and rows and RECORD and _is_owner(user_id):
         RECORD(rows, prefs)
     where = "・".join(prefs) if len(prefs) <= 3 else f"{prefs[0]}ほか {len(prefs) - 1} 県"
     if not prefs and not rows:
@@ -3688,7 +3821,7 @@ def _recommend_body(user_id: str, prefs=()) -> str:
 <a href="/recommend/interest?t=__TAGURI_TOKEN__">「興味あり」（いま {n_tr} 件）</a>に移ります。</p>
 {IC.h2("flag", "もう追いかけない公演 ── 畳んでいますが、消していません")}
 <p class="lede">すでに答えた公演です。上の都道府県の絞り込みは、ここには効きません。</p>
-{RR.bundles_html(d, _notes_no())}
+{RR.bundles_html(d, _notes_no(user_id))}
 {RR.limits_html(d, rows)}"""
     return body
 
@@ -3719,7 +3852,7 @@ def _interest_body(user_id: str, month: str = "", page: int = 1) -> str:
 「なぜ気になったか」に書いた名前は、
 <a href="/recommend/favourites?t=__TAGURI_TOKEN__">お気に入り</a>に追う候補として並びます。</p>
 {mfil}
-{RR.tracking_html(d, _notes(), show)}
+{RR.tracking_html(d, _notes(user_id), show)}
 {mfoot}"""
 
 
@@ -3782,7 +3915,7 @@ def _reminder_body(user_id: str, prefs=(), week: str = "this") -> str:
 答える間もなく開幕してしまうのが、見逃しの本当のリスクです。
 未回答の行はその場で答えられます。</p>
 {RR.pref_form(pc, prefs, action="/recommend/reminder", note=note, hidden={"w": week})}
-{DG.panel(d, today, ticket_map(), prefs, week)}"""
+{DG.panel(d, today, ticket_map(user_id), prefs, week)}"""
 
 
 # ---------------------------------------------------------------- おすすめ ▸ お気に入り
@@ -3796,7 +3929,7 @@ def _favourites_body(user_id: str, month: str = "", page: int = 1) -> str:
     d, wait = _load(user_id)
     favs = d.get("favourites") or []
     show, mfil, mfoot = RR.month_pick(favs, month, page, "/recommend/favourites")
-    dec = RC.load_declared()
+    dec = load_declared(user_id)
     kinds = "".join(f'<option value="{E(k)}">{E(k)}</option>' for k in RC.KINDS)
     # **登録済みの札に封蝋を押す。** 押してある名前は「必ず出す」と自分で決めたもので、
     # 解除するまで効き続ける ── **枠の中には名前の頭文字を入れる**（空の蝋を並べると、
@@ -3828,7 +3961,7 @@ def _favourites_body(user_id: str, month: str = "", page: int = 1) -> str:
     # **新着が 0 件のときだけ、道具を開いて出す。** そのときは読むものが無く、
     # 用があるのは「名前を足す」側である。
     keep = not favs
-    tools = (f'<div class="fil2">{_promotions_html(keep)}'
+    tools = (f'<div class="fil2">{_promotions_html(user_id, keep)}'
              f'<details class="pbox" id="names"{" open" if keep else ""}>'
              f'<summary>{IC.ico("star")}登録した名前 <b>{sum(len(v) for v in dec.values())} 件</b>'
              f' ── 足す・外す</summary>'
@@ -3842,7 +3975,7 @@ def _favourites_body(user_id: str, month: str = "", page: int = 1) -> str:
              f' size="26"> <button data-fav="add">登録する</button>'
              f'<span class="said"></span></div>'
              f'<div class="tags">{tags}</div></details>'
-             f'{_declined_html()}</div>')
+             f'{_declined_html(user_id)}</div>')
     return f"""<h1>お気に入り ── 新着 {len(favs)} 件</h1>
 <p class="lede">登録した名前の公演を、内容も件数も問わずにすべて出します。順位は付けていません。
 件数が多いので、上演月で分けて表示しています。</p>
@@ -3852,7 +3985,7 @@ def _favourites_body(user_id: str, month: str = "", page: int = 1) -> str:
 {mfoot}"""
 
 
-def _declined_html() -> str:
+def _declined_html(user_id: str) -> str:
     """**出さないと決めた語**と、見送った理由から拾った候補（お気に入りの裏返し）。
 
     起案者の指摘（2026-08-24）──「今なぜ興味ないのかで入力した理由は今後の推薦には
@@ -3863,9 +3996,9 @@ def _declined_html() -> str:
     枠は登録の札と同じ畳んだ箱（`.pbox`）を使う ── 同じ「畳んである道具」に
     別の見た目を作らない。
     """
-    words = RC.load_declined()
+    words = load_declined(user_id)
     try:
-        rows = RE.demotions()
+        rows = RE.demotions(user_id=user_id, declined=words)
         err = ""
     except Exception as e:                                          # noqa: BLE001
         rows, err = [], f'<p class="empty">見送った理由を読むところで失敗しました（{E(e)}）。</p>'
@@ -3903,7 +4036,7 @@ def _declined_html() -> str:
 </details>"""
 
 
-def _promotions_html(open_: bool = False) -> str:
+def _promotions_html(user_id: str, open_: bool = False) -> str:
     """**理由の文から拾った名前を、登録の候補として出す。**
 
     理由欄が成立する条件はここにある ── **書いた内容が本人に返る。** 名簿（推定）は
@@ -3912,7 +4045,7 @@ def _promotions_html(open_: bool = False) -> str:
     出てこない名前だった。
     """
     try:
-        rows = RE.promotions()
+        rows = RE.promotions(user_id=user_id, declared=load_declared(user_id))
     except Exception as e:                                          # noqa: BLE001
         # **失敗も畳んだ枠の中で言う。** 枠を変えると、この画面の道具が 1 つ
         # 増えたように見える
@@ -3920,7 +4053,7 @@ def _promotions_html(open_: bool = False) -> str:
                 f'理由から拾った名前 <b>読み取れませんでした</b></summary>'
                 f'<p class="lead">理由の文を読むところで失敗しました（{E(e)}）。'
                 f'登録した名前と新着の一覧には影響しません。</p></details>')
-    st = RE.stats()
+    st = RE.stats(user_id=user_id, declared=load_declared(user_id))
     if not rows:
         return f"""<details class="pbox" id="promos"{" open" if open_ else ""}>
 <summary>{IC.ico("user")}理由から拾った名前 <b>まだありません</b></summary>
@@ -7050,7 +7183,7 @@ def _trace_body(user_id: str, name: str = "", via: str = "") -> str:
     """`page_trace()` の中身だけを組み立てる(#000009、`_recommend_body`と同じ形)。"""
     d = _records_base(user_id)
     try:
-        main = TR.body(d["rated_rows"], name, via)
+        main = TR.body(d["rated_rows"], name, via, declared=load_declared(user_id))
     except Exception:                                               # noqa: BLE001
         # **落ちても「記録を見返す」の他の画面は生きている。** ここだけ空にする
         main = ('<section class="card"><p class="empty">この線は、いまの記録では'
@@ -7406,7 +7539,7 @@ def _hit_why(q: str, w: dict, ix: dict) -> tuple[str, list[tuple[str, str]]]:
             + [("題材", t) for t in th])
 
 
-def _search_follow(names: list[tuple[str, str]]) -> str:
+def _search_follow(user_id: str, names: list[tuple[str, str]]) -> str:
     """探した名前を、その場でお気に入りに登録する口。
 
     **探す画面は「この先どうするか」で終わる。** 「あの俳優、前に何で観たっけ」を引いた
@@ -7416,7 +7549,7 @@ def _search_follow(names: list[tuple[str, str]]) -> str:
 
     **すでに登録してある名前は出さない。** 押しても何も起きない口を並べない。
     """
-    dec = RC.load_declared()
+    dec = load_declared(user_id)
     have = {(k, RR._norm(n)) for k, ns in dec.items() for n in ns}
     seen, out = set(), []
     for role, name in names:
@@ -7988,13 +8121,13 @@ def _search_body(user_id: str, q: str, ym: str = "", web: bool = False,
     if not hits:
         past = ('<h2>観た記録</h2>'
                 '<p class="empty">観た記録の中には見つかりませんでした。</p>')
-        return head + _search_follow(names) + up_html + past + web_html + cal
+        return head + _search_follow(user_id, names) + up_html + past + web_html + cal
     n_un = sum(1 for w, _ in hits if not w.get("verdict"))
     lead = (f'<h2>観た記録 {len(hits)} 件</h2>'
             + (f'<p class="lead">このうち {n_un} 件はまだ評価が付いていません。'
                f'<b>この場で ◎○△× を押せます。</b></p>' if n_un else
                '<p class="lead">評価を付け直すことも、感想を足すこともできます。</p>'))
-    return head + _search_follow(names) + up_html + lead + "".join(rows) + web_html + cal
+    return head + _search_follow(user_id, names) + up_html + lead + "".join(rows) + web_html + cal
 
 
 # ---------------------------------------------------------------- 書き出す
@@ -8215,7 +8348,7 @@ def sync_mail_tickets(user_id: str, owned: list[dict], today: str = "") -> list[
                 left.append(b)
                 continue
             FB.add_ticket(con, str(hit[0].get("stage_id") or ""), b["date"],
-                          b["time"], source="mail", uid=b["uid"])
+                          b["time"], source="mail", uid=b["uid"], user_id=user_id)
         return left
     finally:
         con.close()
@@ -8266,17 +8399,17 @@ def ticket_target(stage_id: str, date: str) -> str:
     return stage_id
 
 
-def ticket_map() -> dict[str, list[dict]]:
+def ticket_map(user_id: str) -> dict[str, list[dict]]:
     """公演の id → 持っている券。"""
     import feedback as FB
     con = FB.connect()
     try:
-        return FB.tickets(con)
+        return FB.tickets(con, user_id=user_id)
     finally:
         con.close()
 
 
-def save_ticket(stage_id: str, date: str, time: str = "", *,
+def save_ticket(user_id: str, stage_id: str, date: str, time: str = "", *,
                 action: str = "add") -> dict:
     """券を 1 枚足す・確定する・取り消す。**画面から呼ぶ口である。**
 
@@ -8307,16 +8440,16 @@ def save_ticket(stage_id: str, date: str, time: str = "", *,
     con = FB.connect()
     try:
         if action == "del":
-            FB.del_ticket(con, sid, date, tm)
+            FB.del_ticket(con, sid, date, tm, user_id=user_id)
         elif action == "confirm":
-            FB.confirm_ticket(con, sid, date, tm)
+            FB.confirm_ticket(con, sid, date, tm, user_id=user_id)
         else:
             sid = ticket_target(sid, date)
             c = _upcoming_index()["rows"].get(sid) or {}
             if c and not _in_period(c.get("period") or "", date):
                 raise ValueError(f'{c.get("period") or "上演期間"} の中の日を入れてください')
-            FB.add_ticket(con, sid, date, tm, source="screen")
-        return {"ok": True, "stage_id": sid, "tickets": FB.tickets(con).get(sid) or []}
+            FB.add_ticket(con, sid, date, tm, source="screen", user_id=user_id)
+        return {"ok": True, "stage_id": sid, "tickets": FB.tickets(con, user_id=user_id).get(sid) or []}
     finally:
         con.close()
 
@@ -8351,7 +8484,7 @@ def _calendar_body(user_id: str, kinds: set[str] | None = None,
     # **購入確認メールの券を、開くたびに結び付け直す。**（取り込みと結び付けは
     # 同じ 1 回で走らせる ── 分けると、メールは入っているのに暦に点が出ない状態が残る）
     left = sync_mail_tickets(user_id, d.get("owned") or [])
-    tickets = ticket_map()
+    tickets = ticket_map(user_id)
     # **「日程を追加する」はページの上に置く**（起案者の指示・2026-08-26 ──
     # 「行く日を入れる」は畳んだので、その早道になる。組み方は `SC.add_ticket_button_html`
     # にある。
@@ -8415,7 +8548,7 @@ def _tickets_body(user_id: str) -> str:
         return (RR.PREFS.index(p) if p in RR.PREFS else len(RR.PREFS),
                 e or datetime.date.max, c.get("title") or "")
 
-    tickets = ticket_map()
+    tickets = ticket_map(user_id)
     # **実際に持っている券の日時を、カードにも出す**（起案者の指摘・2026-08-26 ──
     # 「実際にチケットを持っている公演の日時も表示して」）。「行く日を入れる」道具
     # （下の帯）には出ているが、カード自身には出ていなかった。**券は代表会場とは
@@ -8423,7 +8556,7 @@ def _tickets_body(user_id: str) -> str:
     # まとめて集める（`_rebucket` が「観る予定」から外す判定に使うのと同じ集め方）
     con = FB.connect()
     try:
-        groups = _react_groups(FB.reactions(con))
+        groups = _react_groups(FB.reactions(con, user_id=user_id))
     finally:
         con.close()
 

@@ -66,6 +66,8 @@ import corrections as CX                                           # noqa: E402
 from extract_performances import (NOT_A_TITLE, NOT_A_TITLE_PARTS,  # noqa: E402
                                   body_text, is_theater)  # 判定は 1 か所に置く
 from scan_ticket_mail import Gmail                                  # noqa: E402
+sys.path.insert(0, str(ROOT / "tools" / "review"))
+import user_scope as US                                             # noqa: E402
 
 SRC = ROOT / "data" / "tickets" / "performances.jsonl"
 DB = ROOT / "data" / "review" / "ratings.db"
@@ -79,7 +81,7 @@ DB = ROOT / "data" / "review" / "ratings.db"
 # 持ち主のローカルの記録を読むためだけに書かれているからである。** 公開デモの画面
 # （`app.py`）からは必ず `user_id=` を明示して呼ぶ ── 渡し忘れると持ち主の記録が
 # 訪問者に見えることになる。
-LOCAL_USER_ID = "local"
+LOCAL_USER_ID = US.LOCAL_USER_ID
 
 # 段階（◎○△×）と、段階でないもの。企画書 4 章のとおり「まだ判断できない」は
 # 段階の隣に並べず、集計では欠測として扱う。
@@ -689,35 +691,9 @@ USER_TABLES: dict[str, tuple[str, ...]] = {
 
 def _scope_by_user(con: sqlite3.Connection) -> None:
     """観劇記録の 7 表に `user_id` を足し、主キーを `(user_id, …)` へ広げる（E3）。
-
-    `_widen_attendance_key` と同じ手法 ── SQLite は主キーを `ALTER TABLE` で変えられない
-    ので、正しい形の表を作って写し、古い表と差し替える。**既存の行はすべて
-    `LOCAL_USER_ID` として持ち越す**（列の既定値がそれなので、写すだけでそうなる）。
-
-    **列は `PRAGMA table_info` から組み直す。** `works` には後から `ALTER` で足した列
-    （`stage_id`・`venue`・`time`）があり、`SCHEMA` の文面を写すとそれが落ちる。
-    """
+    手順は `user_scope.scope_table`（反応・券の表と共通）。"""
     for table, key in USER_TABLES.items():
-        cols = list(con.execute(f"PRAGMA table_info({table})"))
-        if not cols or any(c["name"] == "user_id" for c in cols):
-            continue
-        defs = [f"user_id TEXT NOT NULL DEFAULT '{LOCAL_USER_ID}'"]
-        for c in cols:
-            d = f'{c["name"]} {c["type"]}'
-            if c["notnull"]:
-                d += " NOT NULL"
-            if c["dflt_value"] is not None:
-                d += f' DEFAULT {c["dflt_value"]}'
-            defs.append(d)
-        defs.append(f"PRIMARY KEY (user_id, {', '.join(key)})")
-        names = ", ".join(c["name"] for c in cols)
-        new = f"{table}__by_user"
-        with con:
-            con.execute(f"DROP TABLE IF EXISTS {new}")
-            con.execute(f"CREATE TABLE {new} ({', '.join(defs)})")
-            con.execute(f"INSERT INTO {new} ({names}) SELECT {names} FROM {table}")
-            con.execute(f"DROP TABLE {table}")
-            con.execute(f"ALTER TABLE {new} RENAME TO {table}")
+        US.scope_table(con, table, key)
 
 
 def _add_stage_id(con: sqlite3.Connection) -> None:
