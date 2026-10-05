@@ -1,10 +1,14 @@
 # たぐり ── 演劇の推薦・観劇記録システム
 
+<p align="center"><img src="docs/assets/taguri-overview.png" alt="たぐりの概要。今週のおすすめのカードと、記録・おすすめ・選ぶ・お知らせ・観にいくのサイクル" width="100%"></p>
+
 観た演劇の記録・評価・お気に入りをもとに、次に観るべき公演を提示するWebアプリです。個人開発。
 
 **デモ**: https://island-6848.github.io/taguri-demo/
 （画面はGitHub Pages配信、推薦計算・データはRender上のAPI（`tools/taguri/serve_cloud.py`）が持つ。
 無料枠のため、しばらくアクセスが無いと初回読み込みに10〜20秒ほどかかることがある）
+
+**プレゼン資料**: https://island-6848.github.io/taguri-demo/docs/000003-final-presentation-taguri.html
 
 ## これは何か
 
@@ -48,7 +52,7 @@ HTML断片を画面に差し込む形にした ── GitHub Pagesは静的配�
 - [`docs/000007-taguri-design.md`](docs/000007-taguri-design.md) ── 全体設計
 - [`docs/000007-taguri-security-rules.md`](docs/000007-taguri-security-rules.md) ── セキュリティ規約
 - [`docs/000007-taguri-terms-of-use.md`](docs/000007-taguri-terms-of-use.md) ── 利用規約
-- [`docs/000003-final-presentation-taguri.html`](docs/000003-final-presentation-taguri.html) ── プレゼン資料
+- [`docs/000003-final-presentation-taguri.html`](https://island-6848.github.io/taguri-demo/docs/000003-final-presentation-taguri.html) ── プレゼン資料（ブラウザで表示。[ソース](docs/000003-final-presentation-taguri.html)）
 
 ## ローカルで動かす
 
