@@ -1,13 +1,14 @@
 name: Deploy web/ to GitHub Pages
 
 # #000009: GitHub Pages移行。web/ 配下の静的フロントエンド(index.html・app.js・
-# style.css・vendor/)だけをPagesにデプロイする。docs/(設計ドキュメント)や
+# style.css・vendor/)をPagesにデプロイする。docs/からはプレゼン資料のHTML 1枚だけを
+# 添える(READMEから直接開けるように)。設計ドキュメントや
 # tools/(Renderで動くAPIサーバ本体)はここでは触らない。
 
 on:
   push:
     branches: ["main", "master"]
-    paths: ["web/**", ".github/workflows/pages.yml"]
+    paths: ["web/**", "docs/000003-final-presentation-taguri.html", ".github/workflows/pages.yml"]
   workflow_dispatch:
 
 permissions:
@@ -28,8 +29,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
+      # web/ にプレゼン資料だけを足した公開用フォルダを作る
+      - name: Assemble site
+        run: |
+          mkdir -p _site/docs
+          cp -r web/. _site/
+          cp docs/000003-final-presentation-taguri.html _site/docs/
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: web
+          path: _site
       - id: deployment
         uses: actions/deploy-pages@v4
