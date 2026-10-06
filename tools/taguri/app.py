@@ -330,10 +330,10 @@ async function post(path, body, group, done) {
       headers: {"X-Taguri-Token": T, "Content-Type": "application/json"},
       body: JSON.stringify(body)});
     const d = await r.json();
-    if (!r.ok) { if (said) said.textContent = "できなかった: " + (d.error || r.status); return null; }
-    if (said && done !== null) said.textContent = done || "記録した";
+    if (!r.ok) { if (said) said.textContent = "できませんでした: " + (d.error || r.status); return null; }
+    if (said && done !== null) said.textContent = done || "記録しました";
     return d;
-  } catch (e) { if (said) said.textContent = "できなかった: " + e; return null; }
+  } catch (e) { if (said) said.textContent = "できませんでした: " + e; return null; }
 }
 
 // 段の名前と札。**画面に出す言葉は 1 か所（WEIGHT_STEPS）から取る** ──
@@ -516,7 +516,7 @@ document.addEventListener("click", ev => {
     // 調べ終わるまで何も起きなかったように見えないようにする。
     // **打っている途中の入力は無い**（欄はここで空にする）ので、読み込み直して困らない
     post("/api/missed", {title: i.value.trim()}, g,
-         "登録しました ── 演者とあらすじを調べています…")
+         "登録しました。出演者とあらすじを調べています…")
       .then(d => { if (d) { i.value = ""; waitJob(g, true); } });
   } else if (b.dataset.imp) {
     const g = b.closest(".imp");
@@ -579,7 +579,7 @@ document.addEventListener("click", ev => {
       g.querySelector(".said").textContent =
         "「" + d.kept_title + "」にまとめました"
         + (d.moved.length ? "（" + d.moved.join("と") + "も移しました）" : "")
-        + " ── 画面を読み込み直します";
+        + "。画面を読み込み直します";
       setTimeout(() => location.reload(), 1400);
     });
   } else if (b.dataset.mergeNo) {
@@ -590,7 +590,7 @@ document.addEventListener("click", ev => {
   } else if (b.dataset.unmerge) {
     const g = b.closest(".ed-btns") || b.parentElement;
     post("/api/merge_work", {work_key: b.dataset.unmerge, unmerge: true}, g,
-      "まとめを取り消しました ── 画面を読み込み直します")
+      "まとめを取り消しました。画面を読み込み直します")
       .then(d => { if (d) setTimeout(() => location.reload(), 1000); });
   } else if (b.dataset.wsave) {
     // **確定を押したときに 1 回だけ書き、そこで読み込み直す**（起案者の指示・2026-08-24）。
@@ -602,7 +602,7 @@ document.addEventListener("click", ev => {
     });
     post("/api/weight", {weights: w}, null, null).then(d => {
       const said = box.querySelector(".wsaid");
-      if (!d) { if (said) said.textContent = "できなかった"; return; }
+      if (!d) { if (said) said.textContent = "できませんでした"; return; }
       box.classList.remove("dirty");
       if (said) said.textContent = "この効かせ方で読み込み直します…";
       // **押した直後だけは開いたまま戻る。** 「推薦に出なくなった公演が N 件」の
@@ -626,7 +626,7 @@ document.addEventListener("click", ev => {
     const prefs = b.dataset.setPrefAll ? [] :
       [...card.querySelectorAll('input[name="pref"]:checked')].map(i => i.value);
     post("/api/pref_setting", {prefs}, card,
-      "保存しました ── 次に開いたときから効きます").then(d => {
+      "保存しました。次に開いたときから反映されます").then(d => {
       if (d) setTimeout(() => location.reload(), 700);
     });
   } else if (b.dataset.unseen) {
@@ -635,7 +635,7 @@ document.addEventListener("click", ev => {
     // ここで読み込み直しても入力が消えることはない**
     const g = b.closest(".ns-body") || b.parentElement;
     post("/api/unseen", {work_key: b.dataset.unseen, unseen: true}, g,
-      "行かなかったと記録しました ── 一覧から外します")
+      "「行かなかった」と記録しました。一覧から外します")
       .then(d => {
         if (!d) return;
         g.classList.add("done");
@@ -646,7 +646,7 @@ document.addEventListener("click", ev => {
   } else if (b.dataset.seen) {
     const g = b.closest(".rb") || b.parentElement;
     post("/api/unseen", {work_key: b.dataset.seen, unseen: false}, g,
-      "観た公演に戻しました ── 画面を読み込み直します")
+      "観た公演に戻しました。画面を読み込み直します")
       .then(d => { if (d) setTimeout(() => location.reload(), 900); });
   } else if (b.dataset.drop) {
     // **2 回押させる。** 取り消しは戻せるが、押し間違いに気づく機会は要る
@@ -657,7 +657,7 @@ document.addEventListener("click", ev => {
       return;
     }
     post("/api/drop_work", {work_key: b.dataset.drop}, g,
-      "取り消しました ── 「取り消した記録」から戻せます")
+      "取り消しました。「取り消した記録」から戻せます")
       .then(d => { if (d) setTimeout(() => location.reload(), 1200); });
   } else if (b.dataset.handtheme) {
     // **入れた内容は、押したときに 1 回だけ送る。** 打っている途中で送ると、
@@ -706,7 +706,7 @@ document.addEventListener("click", ev => {
   } else if (b.dataset.handOff) {
     const g = b.closest(".hand");
     post("/api/hand_poster", {work_key: b.dataset.handOff, drop: true}, g,
-      "手で入れたポスターを外しました ── 画面を読み込み直します")
+      "手で入れたポスターを外しました。画面を読み込み直します")
       .then(d => { if (d) setTimeout(() => location.reload(), 1000); });
   } else if (b.dataset.lkWeb) {
     // **付け替える欄からも外の公演情報を探せるようにする**（起案者の報告・2026-08-24
@@ -719,7 +719,7 @@ document.addEventListener("click", ev => {
   } else if (b.dataset.link) {
     const g = b.closest(".ed-link");
     post("/api/link_stage", {work_key: g.dataset.work, stage_id: b.dataset.link}, g,
-      "結び付けました ── 材料を取りに行きます")
+      "結び付けました。公演の情報を取得しています")
       .then(d => { if (d) waitJob(g, true); });
   } else if (b.dataset.unlink) {
     const g = b.closest(".ed-link");
@@ -739,7 +739,7 @@ document.addEventListener("click", ev => {
       return;
     }
     post("/api/purge_work", {key: b.dataset.purge}, g,
-      "完全に取り消しました ── この一覧から消えます")
+      "完全に取り消しました。この一覧から消えます")
       .then(d => { if (d) setTimeout(() => location.reload(), 900); });
   } else if (b.dataset.fix) {
     // 公演詳細の直し。**題名は作品ごと、上演日・開演時刻・劇場は回ごとに送る**
@@ -757,7 +757,7 @@ document.addEventListener("click", ev => {
       if (!d) return;
       const said = g.querySelector(".ed-btns .said");
       said.textContent = d.n
-        ? (d.gone ? "直しました ── この題名は演劇でないものとして候補から外れます"
+        ? (d.gone ? "直しました。この題名は演劇ではないものとして、候補から外れます"
                   : (d.moved ? "直しました（評価と感想も新しい題名へ引き継ぎました）"
                              : "直しました"))
         : "変わったところはありませんでした";
@@ -768,7 +768,7 @@ document.addEventListener("click", ev => {
   } else if (b.dataset.unfix) {
     const g = b.closest(".editor");
     post("/api/fix_work", {work_key: b.dataset.unfix, clear: true},
-         g.querySelector(".ed-btns"), "抽出結果に戻した ── 画面を読み込み直す").then(d => {
+         g.querySelector(".ed-btns"), "抽出結果に戻しました。画面を読み込み直します").then(d => {
       if (d) setTimeout(() => location.reload(), 900);
     });
   } else if (b.dataset.mail) {
@@ -833,7 +833,7 @@ document.addEventListener("click", ev => {
     (b.closest(".syn") || b.closest(".cast")).classList.toggle("open");
   } else if (b.dataset.close) {
     fetch("/api/close", {method: "POST", headers: {"X-Taguri-Token": T}, keepalive: true});
-    b.textContent = "閉じてよい";
+    b.textContent = "閉じて大丈夫です";
   }
 });
 
@@ -937,14 +937,14 @@ async function lkSearch(i, web, btn) {
     // 無いことは別である ── 前は「古い公演は入っていません」で終わっていたので、
     // **読んだ人にできることが残っていなかった**
     lkSay(box, web
-      ? "「" + q + "」に当たる公演は見つかりませんでした ── 副題や団体名を外して"
-        + "短くすると当たることがあります"
-      : "手元のデータに見つかりませんでした ── 「CoRichの公演情報から探す」を押してください"
-        + "（月 1 回の取り寄せに入っていない公演や、古い公演は手元にありません）");
+      ? "「" + q + "」に一致する公演は見つかりませんでした。副題や団体名を外して"
+        + "短くすると見つかることがあります"
+      : "手元のデータには見つかりませんでした。「CoRichの公演情報から探す」を押してください"
+        + "（月 1 回の取得に含まれていない公演や、古い公演は手元にありません）");
     return;
   }
   if (web) lkSay(box, "CoRichの公演情報から " + rows.length
-    + " 件見つかりました ── 観たものを選んでください。見つからない場合は下の"
+    + " 件見つかりました。観た公演を選んでください。見つからない場合は下の"
     + "「ポスター・クレジットを手入力する」から追加してください。");
   lkRender(box, rows);
 }
@@ -1026,13 +1026,13 @@ function lkRender(box, rows) {
       const sm = document.createElement("summary");
       const mine = xs.reduce((a, x) => a + (x.mine || 0), 0);
       sm.textContent = xs[0].title + "（" + xs.length + " 会場の上演）"
-        + (mine ? "── うち " + mine + " 回の記録があります" : "");
+        + (mine ? "（うち " + mine + " 回の記録があります）" : "");
       d.append(sm);
       const p = document.createElement("p");
       p.className = "sug-head";
-      p.textContent = "観に行った会場と日程を選んでください ──"
+      p.textContent = "観に行った会場と日程を選んでください。"
         + " 会場ごとに出演者や座組が違うことがあるので、"
-        + "別の上演を選ぶと、観ていない公演の作り手が名簿に入ります。";
+        + "別の上演を選ぶと、観ていない公演の作り手がおすすめの材料に入ってしまいます。";
       d.append(p);
       xs.forEach(x => d.append(stageRow(x)));
       if (mine) d.open = true;
@@ -1086,19 +1086,19 @@ async function sugWeb() {
   } catch (e) { d = null; }
   if (btn) btn.disabled = false;
   if (!d) {
-    sugSay(box, "探せませんでした。お手数ですが、手で入れてください", true);
+    sugSay(box, "探せませんでした。お手数ですが、手で入力してください", true);
     return;
   }
   if (d.error) { sugSay(box, d.error, true); return; }
   if (!d.rows || !d.rows.length) {
     // **見つからなかったことを、次に何をすればよいかと一緒に出す。**
     // 「0 件」だけでは、打ち間違いなのか無い公演なのか分からない
-    sugSay(box, "「" + q + "」に当たる公演は見つかりませんでした ── 副題や団体名を外して"
-      + "短くすると当たることがあります。見つからないときは、そのまま手で入れてください", true);
+    sugSay(box, "「" + q + "」に一致する公演は見つかりませんでした。副題や団体名を外して"
+      + "短くすると見つかることがあります。見つからないときは、そのまま手で入れてください", true);
     return;
   }
   sugRender(box, d.rows,
-    "CoRichの公演情報から " + d.rows.length + " 件見つかりました ── 観たものを選んでください");
+    "CoRichの公演情報から " + d.rows.length + " 件見つかりました。観た公演を選んでください");
 }
 
 function sugSay(box, msg, clear) {
@@ -1311,7 +1311,7 @@ root.querySelectorAll(".why-note textarea").forEach(t => {
     if (!live || t.value === t.dataset.was) return;
     t.dataset.was = t.value;
     post("/api/react", {stage_id: g.dataset.stage, note: t.value}, g,
-         "理由を保存した（お気に入りの昇格候補に出る）");
+         "理由を保存しました（お気に入りに加える候補に出ます）");
   });
 });
 
@@ -1325,7 +1325,7 @@ root.querySelectorAll("textarea[data-nono]").forEach(t => {
     if (!live || t.value === t.dataset.was) return;
     t.dataset.was = t.value;
     post("/api/react", {stage_id: g.dataset.stage, note_no: t.value}, g,
-         "理由を保存した").then(d => {
+         "理由を保存しました").then(d => {
       if (!d || !t.value.trim()) return;
       // **畳んだ見出しに書いた文を出す。** 閉じても読めることが、この欄の返りである
       const s = g.querySelector("summary");
@@ -1349,7 +1349,7 @@ root.querySelectorAll("textarea[data-note]").forEach(t => {
     // 評価待ちの行と溜まった分の束に置いた欄では**保存の合図がどこにも出なかった**
     // （消えたのか保存されたのか分からない入力になる）
     post("/api/note", {work_key: t.dataset.note, note_impression: t.value},
-         t.closest(".inote, .wnote, .wait, .rec-row"), "感想を保存した");
+         t.closest(".inote, .wnote, .wait, .rec-row"), "感想を保存しました");
   });
 });
 
@@ -1363,7 +1363,7 @@ root.querySelectorAll("textarea[data-vnote]").forEach(t => {
     if (!live || t.value === t.dataset.was) return;
     t.dataset.was = t.value;
     post("/api/visit_note", {uid: t.dataset.vnote, note: t.value},
-         t.closest(".vnote, .rec-row"), "メモを保存した");
+         t.closest(".vnote, .rec-row"), "メモを保存しました");
   });
 });
 }
@@ -1379,7 +1379,7 @@ document.addEventListener("change", ev => {
   if (!i || !live || !i.files || !i.files[0]) return;
   const g = i.closest(".hand"), said = g.querySelector(".hand-p .said");
   const f = i.files[0];
-  if (said) said.textContent = "写しています…";
+  if (said) said.textContent = "保存しています…";
   const rd = new FileReader();
   rd.onerror = () => { if (said) said.textContent = "画像を読めませんでした"; };
   rd.onload = () => {
@@ -3401,7 +3401,7 @@ def weight_form(user_id: str, d: dict) -> str:
 つまみを動かして「この効かせ方でおすすめを読み込む」を押すと、一覧を作り直します。
 押すまでは変わりません。既定は「ふつう」です。
 いちばん左の「効かせない」にすると、その情報は順位からも理由からも消えます。
-件数は、おすすめの候補のうち、その情報が一致している公演の数です ──
+件数は、おすすめの候補のうち、その情報が一致している公演の数です。
 件数が少ない項目は、動かしても一覧はあまり変わりません。</p>
 {scale}
 {"".join(rows)}
@@ -3551,20 +3551,20 @@ def _note_column(user_id: str, col: str) -> dict:
 # 読んだ人は何を差し引いて一覧を見ればよいのか分からない。**一覧のどこがふだんと違うのかを
 # 書く。**
 RUN_MISS = {
-    "mail": "買った公演を取り込めませんでした ── 最近買ったぶんが、"
+    "mail": "買った公演を取り込めませんでした。最近買った公演が、"
             "評価待ちに出てこないことがあります。",
-    "candidates": "これから観られる公演を取り直せませんでした ── "
-                  "前に取ったときの一覧をそのままお出ししています。",
-    "link": "記録と公演ページの結び付けができませんでした ── "
+    "candidates": "これから観られる公演を取り直せませんでした。"
+                  "前回取得したときの一覧をそのまま表示しています。",
+    "link": "記録と公演ページを結び付けられませんでした。"
             "結び付いていない記録は、おすすめの材料になりません。",
-    "themes": "公演の内容を読み取れませんでした ── "
-              "「どんな話か」を理由に出せない公演があります。",
-    "favourites": "お気に入りに登録した名前で、公演を探せませんでした ── "
+    "themes": "公演の内容を読み取れませんでした。"
+              "「どんな話か」をおすすめの理由に出せない公演があります。",
+    "favourites": "お気に入りに登録した名前で、公演を探せませんでした。"
                   "<b>登録した名前の新着が、今回は届いていないことがあります。</b>",
-    "calendar": "上演予定を取り込めませんでした ── "
+    "calendar": "上演予定を取り込めませんでした。"
                 "<b>一覧の件数が、ふだんより少なくなっています。</b>",
-    "posters": "ポスターを取り込めませんでした ── 絵の出ない公演があります。",
-    "lookback": "「記録を見返す」の材料を組めませんでした ── "
+    "posters": "ポスターを取り込めませんでした。ポスターが表示されない公演があります。",
+    "lookback": "「記録を見返す」の図を作れませんでした。"
                 "図が出ないことがあります。",
 }
 
@@ -3714,8 +3714,8 @@ def _start_body(user_id: str) -> str:
 
     step3 = _step_card(
         3, f"観た公演を入れる（いま {s['n_works']} 件・任意です）", s["n_works"] > 0,
-        "<b>観た記録が 1 件も無いうちは、好みからのおすすめは出ません</b> ── "
-        "おすすめは、◎ を付けた公演の作り手から作るためです。"
+        "<b>観た記録が 1 件もないうちは、好みに合わせたおすすめは出ません。</b>"
+        "おすすめは、◎ を付けた公演の作り手をもとに作るためです。"
         "<b>1 段目で登録した名前の公演は、記録が無くても出ます。</b>"
         '<br><a href="/register?t=__TAGURI_TOKEN__">公演情報の登録</a> から、'
         "購入確認メールの取り込みか、手での追加ができます。"
@@ -3921,8 +3921,8 @@ def _reminder_body(user_id: str, prefs=(), week: str = "this") -> str:
             '<b>順位は付けずに日付が近い順で全部</b>表示します。数字は、その県で'
             f'{dict(DG.WEEKS)[week]}開幕する件数です。<b>選ばなければ全国です。</b>'
             'ツアーで来る公演は、その会場のある県として数えます。<br>'
-            '<b>「今週のおすすめ」と同じ絞り込みです</b>'
-            '── どちらの画面で選んでも、両方に効きます。')
+            '<b>「今週のおすすめ」と同じ絞り込みです。</b>'
+            'どちらの画面で選んでも、両方に反映されます。')
     return f"""<h1>開幕リマインド ── 見逃していませんか</h1>
 <p class="lede"><b>初日が近い公演を、答えたかどうかに関わらず全部出します。</b>「興味あり」も「興味なし」も押さないうちに開幕してしまうのが、いちばんの見逃しだからです。未回答の行は、その場で答えられます。</p>
 {RR.pref_form(pc, prefs, action="/recommend/reminder", note=note, hidden={"w": week})}
@@ -4084,8 +4084,8 @@ def _promotions_html(user_id: str, open_: bool = False) -> str:
     return f"""<details class="pbox" id="promos"{" open" if open_ else ""}>
 <summary>{IC.ico("user")}理由から拾った名前 <b>{len(rows)} 件</b> ── 追いますか？</summary>
 <p class="lead">「興味あり」に添えた理由の文に出てきた言葉のうち、まだ登録していないものです。
-押すとお気に入りに入り、その場でその名前の公演を取りに行きます ──
-以後、その名前の公演は件数の制限なしに新着へ出ます。
+押すとお気に入りに入り、その場でその名前の公演を探します。
+それ以降、その名前の公演は件数の制限なしに新着に出ます。
 文字がそのまま一致したものだけを拾っているので、姓だけ・愛称・略称は出てきません。</p>
 {body}</details>"""
 
@@ -5373,8 +5373,8 @@ def _register_body(user_id: str, imp: dict | None = None, imported: list | None 
 選ぶと劇場・日程・出演者・作り手が一緒に入り、次のおすすめの材料になります。
 すでに記録にあるものは「記録あり」と出るので、二重に足さずに済みます。<br>
 <b>候補に出てこないときは「検索」を押してください。</b>その場で公演情報を探します
-（8 秒ほどかかります）。同じ題名の公演が複数出ることがあります ──
-別の劇場での上演や再演なので、劇場と日程を見て、観たものを選んでください。<br>
+（8 秒ほどかかります）。同じ題名の公演が複数出ることがあります。
+別の劇場での上演や再演なので、劇場と日程を見て、観た公演を選んでください。<br>
 ポスターが出るのは、手元に画像がある公演だけです。</p></div>
 
 <div class="card">{IC.h2("flag", "③ 「観ればよかった」を足す ── 観ていない公演",
@@ -5482,12 +5482,12 @@ MISSED_WHERE = {
     "shown": ("出したのに押されなかった",
               "この公演は一覧に出していました。出し方（理由の書き方・並び順）の側で"
               "見落とされたということです。"),
-    "pool": ("一覧には居たが、出す枠に届かなかった",
-             "取り込んだ公演の中には居ましたが、順位が足りず 15 件の枠に入りませんでした。"
-             "「おすすめの効かせ方」で効かせる情報を変えると入ることがあります。"),
+    "pool": ("一覧にはあったが、表示する枠に入らなかった",
+             "取り込んだ公演の中にはありましたが、順位が足りず 15 件の枠に入りませんでした。"
+             "「設定」の「おすすめの効かせ方」で重視する情報を変えると、入ることがあります。"),
     "none": ("取り込んだ公演の中に無かった",
-             "そもそも母集団に入っていませんでした。順位をいくら変えても出てきません ── "
-             "情報源を増やすしかない分です。"),
+             "取り込んだ公演の一覧に、そもそも入っていませんでした。順位をどう変えても出てきません。"
+             "出すには、公演情報の取得元を増やす必要があります。"),
 }
 
 
@@ -6607,7 +6607,7 @@ def _edit_html(user_id: str, w: dict) -> str:
     # 説明だけを出すと**押せない口を探させることになる**
     if w.get("unseen"):
         skip_lead = ('<b>この記録には「行かなかった」が付いています。</b>'
-                     '観た本数と図、評価待ちからは外れています ── '
+                     '観た本数と図、評価待ちからは外れています。'
                      'この行の上にある「やはり観た」で戻せます。<br>')
     elif skip_btn:
         skip_lead = ('<b>「行かなかった」は、券を買って観に行かなかった公演に'
@@ -6616,7 +6616,7 @@ def _edit_html(user_id: str, w: dict) -> str:
     else:
         skip_lead = ""
     mg_note = ("" if not mg else
-               '<p class="ed-lead">この記録には、同じ公演としてまとめた記録が入っています ── '
+               '<p class="ed-lead">この記録には、同じ公演としてまとめた次の記録が入っています：'
                + "、".join(f'「{E(m["title"])}」' for m in mg[:4])
                + (f' ほか {len(mg) - 4} 件' if len(mg) > 4 else "") + "。</p>")
     # **結び付けは、直す欄の中に置く。** 題名と上演日を直すのと同じ「この記録を正しくする」
@@ -6626,13 +6626,13 @@ def _edit_html(user_id: str, w: dict) -> str:
     # **直す必要の無いものを直せと促すことになる**（実データで 66 件がそれに当たる）
     if sid and w.get("auto_linked"):
         link_note = ("<b>題名から探して、自動で結び付けました。</b>合っているか確かめて"
-                     "ください ── <b>違う公演だと、観ていない公演の作り手が名簿に入ります。</b>"
+                     "ください。<b>違う公演だと、観ていない公演の作り手がおすすめの材料に入ってしまいます。</b>"
                      "違っていたら「結び付けを外す」を押してください。")
     elif sid:
         link_note = "この公演の出演者・作り手・あらすじを、おすすめの材料にしています。"
     elif w.get("has_credits"):
-        link_note = ("メールから公演ページを引けているので、<b>この記録はすでにおすすめの材料に"
-                     "なっています。</b>結び付けは要りません ── 別の公演の情報が出ていたら、"
+        link_note = ("メールから公演ページが分かっているので、<b>この記録はすでにおすすめの材料に"
+                     "なっています。</b>結び付けは必要ありません。別の公演の情報が出ていたら、"
                      "ここで正しい公演を選び直してください。")
     elif hand_credit_count((w.get("hand") or {}).get("fields") or {}):
         # **「推薦に効きません」と書き続けない。** 手で入れた出演者は名簿に入るので、
@@ -6642,7 +6642,7 @@ def _edit_html(user_id: str, w: dict) -> str:
                      "公演ページが見つかったときは、上の欄で選ぶとあらすじも一緒に入ります。")
     else:
         link_note = ("<b>この記録は、まだどの公演とも結び付いていません。</b>結び付けると、"
-                     "その公演の出演者・作り手・あらすじがおすすめの材料に入ります ── "
+                     "その公演の出演者・作り手・あらすじがおすすめの材料に入ります。"
                      "<b>結び付いていない記録は、評価を付けてもおすすめには効きません。</b>"
                      "公演ページが見つからないときは、下の欄に手で入れられます。")
     # **結び付いていても、選び直す欄を出す。**（起案者の指示・2026-08-24 ──「ポスターが
@@ -6677,10 +6677,10 @@ def _edit_html(user_id: str, w: dict) -> str:
                  + tour)
     elif pf:
         pnote = ("<b>観た日から推測して出しています。</b>違っていたら、上の欄で正しい公演を"
-                 "選んでください ── <b>選ぶとポスターも入れ替わります。</b>" + tour)
+                 "選んでください。<b>選ぶとポスターも入れ替わります。</b>" + tour)
     elif sid:
         pnote = ("結び付けた公演のポスターは、まだ手元にありません"
-                 "（月 1 回の取り寄せのときに一緒に写しています）。")
+                 "（月 1 回、公演情報を取得するときに一緒に保存します）。")
     else:
         pnote = ("この記録にポスターはまだありません。上の欄で公演を選ぶと、"
                  "その公演のポスターが出ます。")
@@ -6695,8 +6695,8 @@ def _edit_html(user_id: str, w: dict) -> str:
 <summary>公演詳細を直す{'（直してあります）' if fixed_t else ''}{f'・まとめた {len(mg)} 件' if mg else ''}</summary>
 {mg_note}
 <p class="ed-lead">題名は<b>作品ごと</b>に、上演日と劇場は<b>観た回ごと</b>に直せます。
-直した内容は次の取り込みにも効きます ── 同じ発行元が同じ題名を出したら、
-自動で直した側になります。</p>
+直した内容は、次の取り込みにも反映されます。同じ発行元から同じ題名のメールが届いたら、
+自動で直したほうの内容になります。</p>
 <label class="ed-t">題名
  <input type="text" data-ed-title="{key}" value="{E(fix_t or w["title"])}" size="44"></label>
 {link}
@@ -6711,7 +6711,7 @@ def _edit_html(user_id: str, w: dict) -> str:
  <span class="said"></span></div>
 <p class="ed-lead">{skip_lead}
 <b>「この記録を取り消す」は、舞台ではないものが取り込まれてしまったときです。</b>
-この記録は一覧から外れますが、<b>消してはいません</b> ──
+この記録は一覧から外れますが、<b>消してはいません。</b>
 「設定」の「取り消した記録」から、いつでも戻せます。</p>
 <div class="ed-mail" hidden>{src}</div></details>"""
 
@@ -6746,9 +6746,9 @@ def _hand_html(w: dict, key: str) -> str:
     off = (f'<button data-hand-off="{key}">手で入れた絵を外す</button>' if hp else "")
     return f"""<details class="hand" data-work="{key}">
 <summary>ポスター・クレジットを手入力する{f'（出演者 {n} 名を入れてあります）' if n else ''}{'・ポスターを入れてあります' if hp else ''}</summary>
-<p class="ed-lead"><b>公演ページが見つからない公演は、ここに直に書けます。</b>
+<p class="ed-lead"><b>公演ページが見つからない公演は、ここに直接書き込めます。</b>
 書いた出演者と作り手は、<b>次のおすすめの材料になります</b>（◎ を付けた公演の作り手として
-数えます）。<b>公演ページから取れている分は消えません</b> ── ここに書いた分を足します。</p>
+数えます）。<b>公演ページから取れている分は消えません。</b>ここに書いた分が追加されます。</p>
 <div class="hand-p"><span class="ed-pv">{pv}</span>
  <label class="hand-file">ポスターの画像を選ぶ
   <input type="file" accept="image/*" data-hand-img="{key}"></label>
@@ -6782,8 +6782,8 @@ def _dropped_html(user_id: str) -> str:
     if not rows:
         return f"""<details class="card">{_card_h2("check", "取り消した記録")}
 <p class="lead">取り消した記録はありません。<b>まちがって取り込まれたものは、
-各行の「公演詳細を直す」を開いて「この記録を取り消す」から外せます</b> ──
-外した分はここに並び、いつでも戻せます。</p></details>"""
+各行の「公演詳細を直す」を開いて「この記録を取り消す」から外せます。</b>
+外した記録はここに並び、いつでも戻せます。</p></details>"""
     body = []
     for r in rows:
         n = r["n"]
@@ -6798,7 +6798,7 @@ def _dropped_html(user_id: str) -> str:
      f'<span class="badge part">{len(rows)} 件</span>')}
 <p class="lead">一覧・評価待ち・おすすめの材料から外してあるだけなので、
 「戻す」を押せばもとに戻ります。メールそのものは消していません。<b>「完全に取り消す」
-はこの一覧からも消します</b> ── 外した状態は変わりませんが、戻す口が無くなります。</p>
+はこの一覧からも消します。</b>外れたままになり、もう戻せなくなります。</p>
 {"".join(body)}</details>"""
 
 
@@ -7765,8 +7765,8 @@ def _web_hits(user_id: str, q: str, on: bool) -> str:
                 why += '<li class="rs state">上演は終わっています</li>'
                 mode = "ended"
         cards.append(RR.ticket(c, mode=mode, why_html=why))
-    end_note = (f' うち {n_end} 件は上演が終わっています ── '
-                f'「観た記録として登録する」から記録に足せます。' if n_end else "")
+    end_note = (f' うち {n_end} 件は上演が終わっています。'
+                f'「観た記録として登録する」から記録に追加できます。' if n_end else "")
     return (f'<div class="webq" id="web"><h2>CoRichの公演情報から探した結果 {len(rows)} 件</h2>'
             f'<p class="lead">手元の一覧には無かった公演も含みます。{end_note}'
             f'まだ上演される公演は「興味あり」を押すと手元に加わり、追いかけている一覧に'
@@ -7850,9 +7850,9 @@ def _upcoming_hits(user_id: str, q: str, ym: str = "", top: int = 8) -> tuple[st
                                {str(x.get("stage_id")) for x in (d.get("tracking") or [])}
                                else "recommend", why_html=w))
     tail = ("" if len(hits) <= top else
-            f'<p class="lead">当たったのは {len(hits)} 件で、上演日の近い {top} 件を'
+            f'<p class="lead">見つかったのは {len(hits)} 件で、上演日の近い {top} 件を'
             f'表示しています。<b>残りは'
-            + ("言葉を足すと絞れます" if not q else "言葉を絞ると出てきます")
+            + ("言葉を入れると絞り込めます" if not q else "言葉を変えると出てきます")
             + '</b>（人名・団体名・劇場名など）。</p>')
     if ym:
         _y, _, _m = ym.partition("-")
@@ -7984,12 +7984,12 @@ def _month_grid(ws: list, up_rows, side: str, sel: str, q: str = "") -> str:
     tabs = index_tabs(
         [("past", "観た記録", len(ws)), ("up", "これから観られる公演", len(up_rows))],
         side, lambda k: f"/search?t=__TAGURI_TOKEN__&amp;cal={k}{qs}#cal",
-        "どちらの暦を見るか")
-    lead = ("<b>これから観られる月から引けます。</b>数字はその月に観られる公演の数です"
+        "どちらのカレンダーを見るか")
+    lead = ("<b>これから観られる公演を、月から探せます。</b>数字はその月に観られる公演の数です"
             "（上演期間がその月にかかっているもの）。<b>件数が多い月は、言葉と一緒に"
             "使うと絞れます。</b>"
             if side == "up" else
-            "<b>観た月から引けます。</b>数字はその月に観た作品の数です。"
+            "<b>観た記録を、観た月から探せます。</b>数字はその月に観た作品の数です。"
             "押すと、その月の記録が下に出ます。")
     return f"""<div class="cal" id="cal">
 {tabs}
@@ -8005,13 +8005,13 @@ def _month_rows(user_id: str, ws: list, ym: str) -> str:
     暦が「選ぶもの」に見えなくなる。
     """
     if not ym:
-        return ('<p class="empty">上の暦から月を選ぶと、その月に観た記録が出ます。'
+        return ('<p class="empty">上のカレンダーから月を選ぶと、その月に観た記録が出ます。'
                 'これから観られる公演は、言葉を入れて引いてください。</p>')
     if ym == "none":
         hit = [w for w in ws if len((w.get("first_date") or "")) < 7]
         where = "上演日が分からない記録"
         lead = ('<p class="lead"><b>上演日が入っていない記録です。</b>'
-                '各行の「公演詳細を直す」から日付を入れると、暦から引けるようになります。</p>')
+                '各行の「公演詳細を直す」から日付を入れると、カレンダーから探せるようになります。</p>')
     else:
         hit = [w for w in ws if (w.get("first_date") or "")[:7] == ym]
         y, _, m = ym.partition("-")
@@ -8066,9 +8066,9 @@ def _search_body(user_id: str, q: str, ym: str = "", web: bool = False,
     """`page_search()` の中身だけを組み立てる(#000009、`_recommend_body`と同じ形)。"""
     ix = _index(user_id)
     n_up = len(_upcoming_index()["rows"])
-    note = (f'<p class="note"><b>出演者や題材で引けるのは、公演ページを見つけられた記録だけです</b>'
+    note = (f'<p class="note"><b>出演者や題材で探せるのは、公演ページを見つけられた記録だけです</b>'
             f'（観た記録では {ix["n_people"]} 作品／全 {ix["n_all"]} 作品）。'
-            f'ほかの記録は題名で引けます。</p>')
+            f'ほかの記録は題名で探せます。</p>')
     form = f"""<form class="fav-add" method="get" action="/search">
 <input type="hidden" name="t" value="__TAGURI_TOKEN__">
 <input type="text" name="q" value="{E(q)}" size="28" placeholder="人名・団体・題材・題名">
@@ -8086,7 +8086,7 @@ def _search_body(user_id: str, q: str, ym: str = "", web: bool = False,
         if side == "up":
             up_html, _n, n_up = _upcoming_hits(user_id, "", ym)
             body = (up_html if ym else
-                    '<p class="empty">上の暦から月を選ぶと、その月に観られる公演が出ます。</p>')
+                    '<p class="empty">上のカレンダーから月を選ぶと、その月に観られる公演が出ます。</p>')
         else:
             body = _month_rows(user_id, seen_ws, ym)
         return head + cal + body
@@ -8108,12 +8108,12 @@ def _search_body(user_id: str, q: str, ym: str = "", web: bool = False,
         if ym and side == "up":
             _y, _, _m = ym.partition("-")
             narrowed = (f'<b>いまは {_y} 年 {int(_m)} 月に絞っています。</b>'
-                        f'ほかの月にはあるかもしれません ── 暦の月を押し直すか、'
+                        f'ほかの月にはあるかもしれません。カレンダーの月を押し直すか、'
                         f'<a href="/search?t=__TAGURI_TOKEN__&amp;cal=up&amp;q={E(q)}">'
                         f'月の指定を外して</a>お試しください。<br>')
         body = (f'<p class="empty">{narrowed}手元には、これから観られる公演にも観た記録にも'
                 '見つかりませんでした。<b>公演ページを見つけられなかった記録は、'
-                '出演者や題材では引けません</b> ── その場合は題名でお試しください。</p>')
+                '出演者や題材では探せません。</b>その場合は題名で探してください。</p>')
         return head + body + web_html + cal
     if not hits:
         past = ('<h2>観た記録</h2>'
@@ -8160,7 +8160,7 @@ EXPORT_LABEL = {
     "attendance": "観に行ったかどうかの答え",
     "reaction": "おすすめへの答え（持っている・興味あり・興味なし）",
     "ticket": "券の日にち",
-    "presented": "これまでにお出しした一覧",
+    "presented": "これまでに表示したおすすめの一覧",
     "splits": "1 通のメールを複数の公演に分けた指定",
     "excluded": "取り込みから外した公演",
     "missed": "「観ればよかった」の登録",
@@ -8220,7 +8220,7 @@ def _export_card_html() -> str:
 <a class="dl" href="/export.json?t=__TAGURI_TOKEN__" download="taguri-export.json">
  taguri-export.json を保存する</a>
 <p class="note"><b>ポスター {n_img} 枚と、半券の写真は入りません。</b>
-ポスターは外部サイトの画像を写したものなので、書き出しには含めていません。
+ポスターは外部サイトの画像を保存したものなので、書き出しには含めていません。
 半券の写真は、いまのところ 1 枚も持っていません。</p></details>"""
 
 

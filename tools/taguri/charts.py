@@ -205,7 +205,7 @@ def venue_panel(rated: list[dict], top: int = 10,
     work = _venue_block(cnt_work, top, "本",
                          "同じ公演を何度も観ても、1 本として数えます。")
     show = _venue_block(cnt_show, top, "公演",
-                         "同じ公演を複数回観た分は、その都度数えます ── "
+                         "同じ公演を複数回観た場合は、その都度数えます。"
                          "実際に足を運んだ回数です。")
     # **2 つの数え方を横に並べる**（起案者の指示 2026-08-25 ──「横並びにして。
     # まるまるページの横幅使ってよい。1 カラム」）。縦に積むと、比べたい 2 つの
@@ -550,11 +550,11 @@ def map_panel(works: list[dict], top: int = 0) -> str:
 {IC.h2("building", "行った劇場の地図",
        f'<span class="badge part">{len(placed)} 館・{n_pref} 都道府県</span>')}
 <p class="lead"><b>点の大きさは、足を運んだ回数です。</b>
-<b>左は都道府県ごと、右は東京の館ごと</b>です ──
-東京の {n_tokyo} 館は全国の地図では 1 か所に重なるので、分けています。
+<b>左は都道府県ごと、右は東京の劇場ごと</b>です。
+東京の {n_tokyo} 館は全国の地図では 1 か所に重なるので、分けて表示しています。
 地図に出ているのは<b>座標が分かった {len(placed)} 館ぶんの {sum(n for _, n in placed)} 回</b>で
 （{E("・".join(f"{p} {n} 回" for p, n in prefs.most_common(4)))}）、
-<b>行った回数の全部ではありません</b> ── 残りは下の注記にあります。</p>
+<b>行った回数のすべてではありません。</b>残りは下の注記にあります。</p>
 <div class="maps">
  <figure><svg viewBox="0 0 {W:.0f} {HJ:.0f}" width="100%" role="img"
    aria-label="都道府県ごとの観劇回数">

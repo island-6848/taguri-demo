@@ -214,7 +214,7 @@ const PHASES = [
     + '<line x1="36" y1="43" x2="36" y2="51"/><line x1="43" y1="41" x2="48" y2="49"/></g>' },
 ];
 
-const COLD_START_NOTE = "サーバーが眠っていたら起こしています(無料枠なので少し待ちます)…";
+const COLD_START_NOTE = "サーバーを起動しています。無料枠のため、少し時間がかかることがあります…";
 
 // **周りの舞台美術。** ピクトグラム1体だけだと寂しいので(起案者の指示 ──
 // 「周りのオブジェクトなどをつくりこんで」)、道具箱(左)・脚立(右)・
@@ -388,8 +388,8 @@ function showWelcomeCode(code) {
     const said = wrap.querySelector("[data-wc-copy]");
     (navigator.clipboard && navigator.clipboard.writeText(code)
       .then(() => { said.textContent = "コピーしました"; })
-      .catch(() => { said.textContent = "コピーできませんでした ── 手で選んでください"; }))
-      || (said.textContent = "コピーできませんでした ── 手で選んでください");
+      .catch(() => { said.textContent = "コピーできませんでした。手で選んでコピーしてください"; }))
+      || (said.textContent = "コピーできませんでした。手で選んでコピーしてください");
   });
   wrap.querySelector("[data-wc-ok]").addEventListener("click", () => wrap.remove());
 }
@@ -606,11 +606,11 @@ async function post(path, body, group, done) {
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify(body)});
     const d = await r.json();
-    if (!r.ok) { if (said) said.textContent = "できなかった: " + (d.error || r.status); return null; }
+    if (!r.ok) { if (said) said.textContent = "できませんでした: " + (d.error || r.status); return null; }
     showWelcomeCode(d.welcome_code);
-    if (said && done !== null) said.textContent = done || "記録した";
+    if (said && done !== null) said.textContent = done || "記録しました";
     return d;
-  } catch (e) { if (said) said.textContent = "できなかった: " + e; return null; }
+  } catch (e) { if (said) said.textContent = "できませんでした: " + e; return null; }
 }
 
 // 段の名前と札。**画面に出す言葉は 1 か所（WEIGHT_STEPS）から取る** ──
@@ -793,7 +793,7 @@ document.addEventListener("click", ev => {
     // 調べ終わるまで何も起きなかったように見えないようにする。
     // **打っている途中の入力は無い**（欄はここで空にする）ので、読み込み直して困らない
     post("/api/missed", {title: i.value.trim()}, g,
-         "登録しました ── 演者とあらすじを調べています…")
+         "登録しました。出演者とあらすじを調べています…")
       .then(d => { if (d) { i.value = ""; waitJob(g, true); } });
   } else if (b.dataset.imp) {
     const g = b.closest(".imp");
@@ -856,7 +856,7 @@ document.addEventListener("click", ev => {
       g.querySelector(".said").textContent =
         "「" + d.kept_title + "」にまとめました"
         + (d.moved.length ? "（" + d.moved.join("と") + "も移しました）" : "")
-        + " ── 画面を読み込み直します";
+        + "。画面を読み込み直します";
       setTimeout(() => location.reload(), 1400);
     });
   } else if (b.dataset.mergeNo) {
@@ -867,7 +867,7 @@ document.addEventListener("click", ev => {
   } else if (b.dataset.unmerge) {
     const g = b.closest(".ed-btns") || b.parentElement;
     post("/api/merge_work", {work_key: b.dataset.unmerge, unmerge: true}, g,
-      "まとめを取り消しました ── 画面を読み込み直します")
+      "まとめを取り消しました。画面を読み込み直します")
       .then(d => { if (d) setTimeout(() => location.reload(), 1000); });
   } else if (b.dataset.wsave) {
     // **確定を押したときに 1 回だけ書き、そこで読み込み直す**（起案者の指示・2026-08-24）。
@@ -879,7 +879,7 @@ document.addEventListener("click", ev => {
     });
     post("/api/weight", {weights: w}, null, null).then(d => {
       const said = box.querySelector(".wsaid");
-      if (!d) { if (said) said.textContent = "できなかった"; return; }
+      if (!d) { if (said) said.textContent = "できませんでした"; return; }
       box.classList.remove("dirty");
       if (said) said.textContent = "この効かせ方で読み込み直します…";
       // **押した直後だけは開いたまま戻る。** 「推薦に出なくなった公演が N 件」の
@@ -903,7 +903,7 @@ document.addEventListener("click", ev => {
     const prefs = b.dataset.setPrefAll ? [] :
       [...card.querySelectorAll('input[name="pref"]:checked')].map(i => i.value);
     post("/api/pref_setting", {prefs}, card,
-      "保存しました ── 次に開いたときから効きます").then(d => {
+      "保存しました。次に開いたときから反映されます").then(d => {
       if (d) setTimeout(() => location.reload(), 700);
     });
   } else if (b.dataset.linkCreate) {
@@ -926,7 +926,7 @@ document.addEventListener("click", ev => {
     // ここで読み込み直しても入力が消えることはない**
     const g = b.closest(".ns-body") || b.parentElement;
     post("/api/unseen", {work_key: b.dataset.unseen, unseen: true}, g,
-      "行かなかったと記録しました ── 一覧から外します")
+      "「行かなかった」と記録しました。一覧から外します")
       .then(d => {
         if (!d) return;
         g.classList.add("done");
@@ -937,7 +937,7 @@ document.addEventListener("click", ev => {
   } else if (b.dataset.seen) {
     const g = b.closest(".rb") || b.parentElement;
     post("/api/unseen", {work_key: b.dataset.seen, unseen: false}, g,
-      "観た公演に戻しました ── 画面を読み込み直します")
+      "観た公演に戻しました。画面を読み込み直します")
       .then(d => { if (d) setTimeout(() => location.reload(), 900); });
   } else if (b.dataset.drop) {
     // **2 回押させる。** 取り消しは戻せるが、押し間違いに気づく機会は要る
@@ -948,7 +948,7 @@ document.addEventListener("click", ev => {
       return;
     }
     post("/api/drop_work", {work_key: b.dataset.drop}, g,
-      "取り消しました ── 「取り消した記録」から戻せます")
+      "取り消しました。「取り消した記録」から戻せます")
       .then(d => { if (d) setTimeout(() => location.reload(), 1200); });
   } else if (b.dataset.handtheme) {
     // **入れた内容は、押したときに 1 回だけ送る。** 打っている途中で送ると、
@@ -997,7 +997,7 @@ document.addEventListener("click", ev => {
   } else if (b.dataset.handOff) {
     const g = b.closest(".hand");
     post("/api/hand_poster", {work_key: b.dataset.handOff, drop: true}, g,
-      "手で入れたポスターを外しました ── 画面を読み込み直します")
+      "手で入れたポスターを外しました。画面を読み込み直します")
       .then(d => { if (d) setTimeout(() => location.reload(), 1000); });
   } else if (b.dataset.lkWeb) {
     // **付け替える欄からも外の公演情報を探せるようにする**（起案者の報告・2026-08-24
@@ -1010,7 +1010,7 @@ document.addEventListener("click", ev => {
   } else if (b.dataset.link) {
     const g = b.closest(".ed-link");
     post("/api/link_stage", {work_key: g.dataset.work, stage_id: b.dataset.link}, g,
-      "結び付けました ── 材料を取りに行きます")
+      "結び付けました。公演の情報を取得しています")
       .then(d => { if (d) waitJob(g, true); });
   } else if (b.dataset.unlink) {
     const g = b.closest(".ed-link");
@@ -1030,7 +1030,7 @@ document.addEventListener("click", ev => {
       return;
     }
     post("/api/purge_work", {key: b.dataset.purge}, g,
-      "完全に取り消しました ── この一覧から消えます")
+      "完全に取り消しました。この一覧から消えます")
       .then(d => { if (d) setTimeout(() => location.reload(), 900); });
   } else if (b.dataset.fix) {
     // 公演詳細の直し。**題名は作品ごと、上演日・開演時刻・劇場は回ごとに送る**
@@ -1048,7 +1048,7 @@ document.addEventListener("click", ev => {
       if (!d) return;
       const said = g.querySelector(".ed-btns .said");
       said.textContent = d.n
-        ? (d.gone ? "直しました ── この題名は演劇でないものとして候補から外れます"
+        ? (d.gone ? "直しました。この題名は演劇ではないものとして、候補から外れます"
                   : (d.moved ? "直しました（評価と感想も新しい題名へ引き継ぎました）"
                              : "直しました"))
         : "変わったところはありませんでした";
@@ -1059,7 +1059,7 @@ document.addEventListener("click", ev => {
   } else if (b.dataset.unfix) {
     const g = b.closest(".editor");
     post("/api/fix_work", {work_key: b.dataset.unfix, clear: true},
-         g.querySelector(".ed-btns"), "抽出結果に戻した ── 画面を読み込み直す").then(d => {
+         g.querySelector(".ed-btns"), "抽出結果に戻しました。画面を読み込み直します").then(d => {
       if (d) setTimeout(() => location.reload(), 900);
     });
   } else if (b.dataset.mail) {
@@ -1124,7 +1124,7 @@ document.addEventListener("click", ev => {
     (b.closest(".syn") || b.closest(".cast")).classList.toggle("open");
   } else if (b.dataset.close) {
     fetch(API_BASE + "/api/close", {method: "POST", keepalive: true, credentials: "include"});
-    b.textContent = "閉じてよい";
+    b.textContent = "閉じて大丈夫です";
   }
 });
 
@@ -1228,14 +1228,14 @@ async function lkSearch(i, web, btn) {
     // 無いことは別である ── 前は「古い公演は入っていません」で終わっていたので、
     // **読んだ人にできることが残っていなかった**
     lkSay(box, web
-      ? "「" + q + "」に当たる公演は見つかりませんでした ── 副題や団体名を外して"
-        + "短くすると当たることがあります"
-      : "手元のデータに見つかりませんでした ── 「CoRichの公演情報から探す」を押してください"
-        + "（月 1 回の取り寄せに入っていない公演や、古い公演は手元にありません）");
+      ? "「" + q + "」に一致する公演は見つかりませんでした。副題や団体名を外して"
+        + "短くすると見つかることがあります"
+      : "手元のデータには見つかりませんでした。「CoRichの公演情報から探す」を押してください"
+        + "（月 1 回の取得に含まれていない公演や、古い公演は手元にありません）");
     return;
   }
   if (web) lkSay(box, "CoRichの公演情報から " + rows.length
-    + " 件見つかりました ── 観たものを選んでください。見つからない場合は下の"
+    + " 件見つかりました。観た公演を選んでください。見つからない場合は下の"
     + "「ポスター・クレジットを手入力する」から追加してください。");
   lkRender(box, rows);
 }
@@ -1317,13 +1317,13 @@ function lkRender(box, rows) {
       const sm = document.createElement("summary");
       const mine = xs.reduce((a, x) => a + (x.mine || 0), 0);
       sm.textContent = xs[0].title + "（" + xs.length + " 会場の上演）"
-        + (mine ? "── うち " + mine + " 回の記録があります" : "");
+        + (mine ? "（うち " + mine + " 回の記録があります）" : "");
       d.append(sm);
       const p = document.createElement("p");
       p.className = "sug-head";
-      p.textContent = "観に行った会場と日程を選んでください ──"
+      p.textContent = "観に行った会場と日程を選んでください。"
         + " 会場ごとに出演者や座組が違うことがあるので、"
-        + "別の上演を選ぶと、観ていない公演の作り手が名簿に入ります。";
+        + "別の上演を選ぶと、観ていない公演の作り手がおすすめの材料に入ってしまいます。";
       d.append(p);
       xs.forEach(x => d.append(stageRow(x)));
       if (mine) d.open = true;
@@ -1377,19 +1377,19 @@ async function sugWeb() {
   } catch (e) { d = null; }
   if (btn) btn.disabled = false;
   if (!d) {
-    sugSay(box, "探せませんでした。お手数ですが、手で入れてください", true);
+    sugSay(box, "探せませんでした。お手数ですが、手で入力してください", true);
     return;
   }
   if (d.error) { sugSay(box, d.error, true); return; }
   if (!d.rows || !d.rows.length) {
     // **見つからなかったことを、次に何をすればよいかと一緒に出す。**
     // 「0 件」だけでは、打ち間違いなのか無い公演なのか分からない
-    sugSay(box, "「" + q + "」に当たる公演は見つかりませんでした ── 副題や団体名を外して"
-      + "短くすると当たることがあります。見つからないときは、そのまま手で入れてください", true);
+    sugSay(box, "「" + q + "」に一致する公演は見つかりませんでした。副題や団体名を外して"
+      + "短くすると見つかることがあります。見つからないときは、そのまま手で入れてください", true);
     return;
   }
   sugRender(box, d.rows,
-    "CoRichの公演情報から " + d.rows.length + " 件見つかりました ── 観たものを選んでください");
+    "CoRichの公演情報から " + d.rows.length + " 件見つかりました。観た公演を選んでください");
 }
 
 function sugSay(box, msg, clear) {
@@ -1607,7 +1607,7 @@ root.querySelectorAll(".why-note textarea").forEach(t => {
     if (!live || t.value === t.dataset.was) return;
     t.dataset.was = t.value;
     post("/api/react", {stage_id: g.dataset.stage, note: t.value}, g,
-         "理由を保存した（お気に入りの昇格候補に出る）");
+         "理由を保存しました（お気に入りに加える候補に出ます）");
   });
 });
 
@@ -1621,7 +1621,7 @@ root.querySelectorAll("textarea[data-nono]").forEach(t => {
     if (!live || t.value === t.dataset.was) return;
     t.dataset.was = t.value;
     post("/api/react", {stage_id: g.dataset.stage, note_no: t.value}, g,
-         "理由を保存した").then(d => {
+         "理由を保存しました").then(d => {
       if (!d || !t.value.trim()) return;
       // **畳んだ見出しに書いた文を出す。** 閉じても読めることが、この欄の返りである
       const s = g.querySelector("summary");
@@ -1645,7 +1645,7 @@ root.querySelectorAll("textarea[data-note]").forEach(t => {
     // 評価待ちの行と溜まった分の束に置いた欄では**保存の合図がどこにも出なかった**
     // （消えたのか保存されたのか分からない入力になる）
     post("/api/note", {work_key: t.dataset.note, note_impression: t.value},
-         t.closest(".inote, .wnote, .wait, .rec-row"), "感想を保存した");
+         t.closest(".inote, .wnote, .wait, .rec-row"), "感想を保存しました");
   });
 });
 
@@ -1659,7 +1659,7 @@ root.querySelectorAll("textarea[data-vnote]").forEach(t => {
     if (!live || t.value === t.dataset.was) return;
     t.dataset.was = t.value;
     post("/api/visit_note", {uid: t.dataset.vnote, note: t.value},
-         t.closest(".vnote, .rec-row"), "メモを保存した");
+         t.closest(".vnote, .rec-row"), "メモを保存しました");
   });
 });
 }
@@ -1675,7 +1675,7 @@ document.addEventListener("change", ev => {
   if (!i || !live || !i.files || !i.files[0]) return;
   const g = i.closest(".hand"), said = g.querySelector(".hand-p .said");
   const f = i.files[0];
-  if (said) said.textContent = "写しています…";
+  if (said) said.textContent = "保存しています…";
   const rd = new FileReader();
   rd.onerror = () => { if (said) said.textContent = "画像を読めませんでした"; };
   rd.onload = () => {
@@ -2112,8 +2112,8 @@ function fixupPeopleNet(root) {
     const ts = n.t.slice(0, 3).map(t => cut(t[0])).join("／");
     const more = n.t.length > 3 ? `ほか ${n.t.length - 3} 本` : "";
     tip.innerHTML = `<b>${esc(n.n)}</b>（${n.m ? "作り手" : "出演"}）`
-      + `<span class="tw">観た作品 ${n.w} 本・一緒に居た方 ${n.d} 名`
-      + (n.c ? "・この方を外すと網が割れます" : "") + `</span>`
+      + `<span class="tw">観た作品 ${n.w} 本・共演した人 ${n.d} 名`
+      + (n.c ? "・この人を外すとグループが分かれます" : "") + `</span>`
       + `<span class="tw">${esc(ts)}${esc(more)}</span>`;
     tip.hidden = false;
     // **枠の中に収める。** 下端・右端で出すと吹き出しが切れて読めない
@@ -2240,7 +2240,7 @@ function fixupPeopleNet(root) {
     said.innerHTML = cs.length < 2
       ? `<b>${esc(N[out].n)} を外しても、残りはつながったままです。</b>`
       : `<b>${esc(N[out].n)} を外すと、残り ${sizes.reduce((a, b) => a + b, 0)} 名が `
-        + `${cs.length} つの束に分かれます</b>（${sizes.join(" 名・")} 名）。`
+        + `${cs.length} つのグループに分かれます</b>（${sizes.join(" 名・")} 名）。`
         + `離れるのは ${parts.map(p => "「" + p + "」").join("と")} です。`;
   }
   for (const b of btns) {

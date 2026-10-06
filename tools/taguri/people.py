@@ -223,19 +223,19 @@ def _stage_note(r: dict, added_nodes: list[str], added_edges: list,
     head = f'<a href="{href}">{_fmt_date(r["date"])} ── {E(r.get("title") or "")}</a>'
     bits = []
     if added_nodes:
-        bits.append(f"網に{_people_join(added_nodes)}が加わりました")
+        bits.append(f"つながりに{_people_join(added_nodes)}が加わりました")
     if merged:
         sizes = "、".join(f"{len(o)}名" for o in merged)
-        bits.append(f"<b>それまで別々だった {len(merged)} つの束（{sizes}）が、"
+        bits.append(f"<b>それまで別々だった {len(merged)} つのグループ（{sizes}）が、"
                     "この 1 本で 1 つになりました</b>")
     elif first:
-        bits.append("<b>ここから網ができました</b>")
+        bits.append("<b>ここからつながりができました</b>")
     elif new_cluster:
-        bits.append("<b>ほかとまだつながらない、新しい束ができました</b>")
+        bits.append("<b>ほかとまだつながらない、新しいグループができました</b>")
     if cut_added:
-        bits.append(f"<b>{_people_join(cut_added)}を外すと、網が割れるようになりました</b>")
+        bits.append(f"<b>{_people_join(cut_added)}を外すと、つながりが分かれるようになりました</b>")
     if cut_removed:
-        bits.append(f"<b>{_people_join(cut_removed)}を外しても、網が割れなくなりました</b>")
+        bits.append(f"<b>{_people_join(cut_removed)}を外しても、つながりが分かれなくなりました</b>")
     if not bits:
         bits.append(f"線が {len(added_edges)} 本増えました")
     return f'<p class="pnstage">{head}<br>{"。".join(bits)}。</p>'
@@ -354,27 +354,27 @@ def fingerprint(f: dict) -> str:
                        PROMPT_VERSION], ensure_ascii=False)
 
 
-PROMPT = """あなたは、ある人の観劇記録から組んだ「一緒に出てくる人の網」を読み解く部品である。
+PROMPT = """あなたは、ある人の観劇記録から組んだ「一緒に出てくる人のつながり」を読み解く部品である。
 
 入力は JSON で、**集計した事実だけ**が入っている（本文や記録そのものは渡していない）。
 
-n_people=2 作品以上に出てくる人の総数、n_core=そのうち誰かと共演があり網に出ている人数、
+n_people=2 作品以上に出てくる人の総数、n_core=そのうち誰かと共演がありつながりに出ている人数、
 n_isolated=2 作品以上出ているが誰とも共演していない人数、n_works=作品数、
-bundles=いまの束（共演のつながりで分かれたかたまり）の人数を大きい順に並べたもの、
-bridges=外すと束が割れる人（関節点）。name・role（作り手／出演）・works（観た作品数）・
-people（一緒に居た人数）・splits（外したら何束に割れるか）、
+bundles=いまのグループ（共演のつながりで分かれたかたまり）の人数を大きい順に並べたもの、
+bridges=外すとグループが分かれる人（関節点）。name・role（作り手／出演）・works（観た作品数）・
+people（共演した人数）・splits（外したらいくつのグループに分かれるか）、
 top_people=いちばんよく名前が出てくる人（上位 6 名。bridges と重なることがある）、
-merges=別々だった束が 1 つになった出来事。date・title（公演名）・sizes（合流した束の
-それぞれの人数）、started=網が最初にできたきっかけの公演（date・title）、
-n_stage_changes=観た日のうち網が変わった件数、n_unchanged=変わらなかった件数。
+merges=別々だったグループが 1 つになった出来事。date・title（公演名）・sizes（合流したグループの
+それぞれの人数）、started=つながりが最初にできたきっかけの公演（date・title）、
+n_stage_changes=観た日のうちつながりが変わった件数、n_unchanged=変わらなかった件数。
 
 次の 1 つだけを JSON で返す。**説明や前置きを書かず、JSON だけを返すこと。**
 
 {"read": {"body": "…", "evidence": ["…", "…"]}}
 
 - body ── **120〜220 字、1 段落。** データの可視化やネットワーク図に詳しくない人が
-  読む前提で、この網から何が言えるかを **語って** 聞かせる。含めること ──
-  ① 束がいくつあり、どのくらいの大きさに分かれているか（数字は input の値をそのまま
+  読む前提で、このつながりから何が言えるかを **語って** 聞かせる。含めること ──
+  ① グループがいくつあり、どのくらいの大きさに分かれているか（数字は input の値をそのまま
   使う）。② bridges・top_people の中から**もっとも重要な 1〜2 名**を選び、
   その人がどういう位置にいるか（例:「○○さんを通してこの2つの輪がつながっています」）。
   ③ merges・started に手がかりがあれば、**いつ・どの公演をきっかけに輪が広がった／
@@ -386,9 +386,9 @@ n_stage_changes=観た日のうち網が変わった件数、n_unchanged=変わ�
 
 - **入力に無い名前・公演名を書かない。** 「おそらく」「〜かもしれません」で補わない。
 - **関係の種類を書かない**（同僚・友人・上司など）。入力に無いので作り話になる。
-  分かるのは「同じ束にいる／束をつないでいる」という構造だけである。
+  分かるのは「同じグループにいる／グループをつないでいる」という構造だけである。
 - **人物の評価・優劣を書かない**（「この人が重要」であって「この人が良い」ではない）。
-- 用語は画面と同じ言葉を使う ──「束」「外すと割れる人」。「クラスタ」「ノード」
+- 用語は画面と同じ言葉を使う ──「グループ」「外すと分かれる人」。「クラスタ」「ノード」
   「エッジ」のような分析の言葉は使わない。
 - **「ですます」で書く。** 読み手は記録の本人である。
 
@@ -453,13 +453,13 @@ def write(model: str = MODEL, force: bool = False) -> dict:
     rated = app._records_base(AU.LOCAL_USER_ID)["rated_rows"]   # 持ち主の記録だけ（E3）
     g = build(rated)
     if len(g["core"]) < 3:
-        return {"ok": False, "line": "この図はまだ読みを作れるだけの網がありません"}
+        return {"ok": False, "line": "この図には、まだ文章にできるだけのつながりがありません"}
     idx = {p: i for i, p in enumerate(g["core"])}
     f = facts(g, components(g), timeline(rated, g, idx))
     fp = fingerprint(f)
     old = load()
     if not force and old.get("fingerprint") == fp and old.get("body"):
-        return {"ok": True, "skipped": True, "line": "網は変わっていません"}
+        return {"ok": True, "skipped": True, "line": "つながりは変わっていません"}
     body, dropped = _check(ask(f, model), f)
     if not body:
         return {"ok": False, "line": "読みを作れませんでした（LLM から返りませんでした）"}
@@ -744,7 +744,7 @@ def panel(rated: list[dict], *, owner: bool = True) -> str:
         dots.append(
             f'<g class="nd{" cut" if p in cuts else ""}" data-i="{idx[p]}">'
             f'<title>{E(p)}（{"作り手" if maker else "出演"}）── 観た作品 {g["cnt"][p]} 本・'
-            f'一緒に居た人 {len(g["adj"][p])} 名／{E(ts)}{E(more)}</title>'
+            f'共演した人 {len(g["adj"][p])} 名／{E(ts)}{E(more)}</title>'
             f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{r:.1f}"'
             f' fill="var(--{"s2" if maker else "s1"})"/></g>')
 
@@ -759,19 +759,19 @@ def panel(rated: list[dict], *, owner: bool = True) -> str:
         f'<button data-cut="{idx[p]}">{E(p)}<span class="cn">'
         f'{len(components(g, {p}))} つに割れる</span></button>'
         for p in sorted(g["cuts"], key=lambda q: -len(g["adj"][q])))
-    cut_txt = ("この網には、外すと束が割れる人がいません。" if not g["cuts"] else
-               f'<b>外すと網が割れるのは、この {len(g["cuts"])} 名です。</b>'
-               "名前を押すと、その方を網から外したときに残りがどう分かれるかが出ます。")
+    cut_txt = ("このつながりには、外すとグループが分かれる人がいません。" if not g["cuts"] else
+               f'<b>外すとつながりが分かれるのは、この {len(g["cuts"])} 名です。</b>'
+               "名前を押すと、その人を図から外したときに残りがどう分かれるかが出ます。")
 
     iso_txt = ("" if not g["isolated"] else
-               f'<br>2 作品以上に出てきますが、<b>ほかの誰とも一緒になっていない方が '
+               f'<br>2 作品以上に出てきますが、<b>ほかの誰とも一緒になっていない人が '
                f'{len(g["isolated"])} 名います</b>（'
-               + "、".join(E(p) for p in g["isolated"]) + "）── 線が無いので図には出ません。")
+               + "、".join(E(p) for p in g["isolated"]) + "）。共演の線がないので、図には出ていません。")
 
     rows = [[p, "作り手" if _is_maker(g, p) else "出演", g["cnt"][p], len(g["adj"][p]),
              "／".join(t for t, _k in g["titles"][p])] for p in
             sorted(g["nodes"], key=lambda q: (-g["cnt"][q], q))]
-    table = CH._table(["人", "役", "観た作品", "一緒に居た人", "作品名"], rows)
+    table = CH._table(["人", "役", "観た作品", "共演した人", "作品名"], rows)
 
     data = _payload(g, pos, rad, idx)
     tl = timeline(rated, g, idx)
@@ -784,16 +784,16 @@ def panel(rated: list[dict], *, owner: bool = True) -> str:
         read_block = (
             '<div class="pread"><h3>この図から分かること</h3>'
             f'<p>{E(read["body"])}</p>'
-            f'<p class="pnote">この文章は、上の束の形と数字だけを材料に、'
+            f'<p class="pnote">この文章は、上のグループの形と数字だけを材料に、'
             f'{E(read.get("at") or "")} に作りました。'
-            + ("<b>そのあとで網が変わっていますので、作り直せます。</b>" if stale
-               else "網が変わったら作り直せます。") + "</p>"
+            + ("<b>そのあとでつながりが変わっていますので、作り直せます。</b>" if stale
+               else "つながりが変わったら作り直せます。") + "</p>"
             '<button data-pread="1">この図から分かる文章を作り直す</button>'
             '<span class="said"></span></div>')
     else:
         read_block = (
             '<div class="pread"><p class="pnote"><b>この図から分かる文章はまだ'
-            '作っていません。</b>押すと、上の束の形と数字だけを材料に、'
+            '作っていません。</b>押すと、上のグループの形と数字だけを材料に、'
             'この図で言えることを 1 段落にまとめます（1 分ほどかかります）。</p>'
             '<button data-pread="1">この図から分かる文章を作る</button>'
             '<span class="said"></span></div>')
@@ -803,14 +803,14 @@ def panel(rated: list[dict], *, owner: bool = True) -> str:
     n_unchanged = sum(u.values())
     gap_txt = (
         f'上演日が分からない記録が {tl["n_undated"]} 件あります。時間の上に置けないので、'
-        f'さかのぼるとこの分（{tl["gap_people"]} 名）は網から外れます。'
+        f'さかのぼるとこの分（{tl["gap_people"]} 名）はつながりから外れます。'
         f'<a href="/records/works?t=__TAGURI_TOKEN__">日記帳</a>の「公演詳細を直す」から'
         '日付を入れると載ります。')
     unchanged_txt = (
-        f'このつまみに出るのは、網が変わった {n_stages} 件です。<b>残り {n_unchanged} 件は、'
-        '観た日には網が変わりませんでした</b> ── '
-        f'{u["not_yet"]} 件は、そのときまだ 1 回しか観ていない方ばかりの公演です'
-        '（同じ方をもう 1 本観た日に、網に入りました）。'
+        f'このつまみに出るのは、つながりが変わった {n_stages} 件です。<b>残り {n_unchanged} 件は、'
+        '観た日につながりが変わらなかった公演です。</b>'
+        f'{u["not_yet"]} 件は、そのときまだ 1 回しか観ていない人ばかりの公演です'
+        '（同じ人をもう 1 本観た日に、図に入りました）。'
         f'{u["repeat"]} 件は同じ顔ぶれをもう一度観た公演、{u["no_credit"]} 件は出演者が'
         '取れていない公演です。'
         f'1 件ずつは<a href="/records/works?t=__TAGURI_TOKEN__">日記帳</a>で読めます。')
@@ -818,7 +818,7 @@ def panel(rated: list[dict], *, owner: bool = True) -> str:
 <div class="ptrow">
 <button type="button" class="ptplay" data-pplay>▶ はじめから見る</button>
 <input type="range" class="ptsl" data-psl min="0" max="{n_stages}" value="{n_stages}"
- aria-label="観た順に、網がどう育ったかを見る">
+ aria-label="観た順に、つながりがどう広がったかを見る">
 </div>
 <div data-pnstage aria-live="polite"></div>
 <p class="lead ptgap" data-pgap hidden>{gap_txt}</p>
@@ -828,15 +828,15 @@ def panel(rated: list[dict], *, owner: bool = True) -> str:
     # **横幅いっぱいに 1 つずつ置く**（起案者の指示・2026-08-24）。2 列に詰めると
     # 名前が重なって読めない ── 図の中身は名前そのものである
     return f"""<section class="card wide">
-{IC.h2("user", "一緒に出てくる人の網 ── 束をつないでいるのは誰か",
+{IC.h2("user", "一緒に出てくる人のつながり ── グループをつないでいるのは誰か",
        f'<span class="badge part">{len(ns)} 名・クレジットを取れた {g["n_works"]} 作品</span>')}
-<p class="lead">同じ作品に一緒に居た方どうしを線で結んでいます。<b>2 作品以上で出てきた
+<p class="lead">同じ作品に出ていた人どうしを線で結んでいます。<b>2 作品以上で出てきた
 {len(g["nodes"])} 名のうち、線を持つ {len(ns)} 名</b>を出しています
 （全員は {g["n_people"]} 名です）。{iso_txt}</p>
-<p class="lead">この図で分かるのは、<b>束がいくつあるか</b>と、
-<b>どの方が束をつないでいるか</b>です。
+<p class="lead">この図で分かるのは、<b>グループがいくつあるか</b>と、
+<b>どの人がグループをつないでいるか</b>です。
 いまは、線を持つ {len(ns)} 名が
-<b>{"ひと続きの束です" if len(comps) == 1 else f"{len(comps)} 個の束に分かれています"}</b>。
+<b>{"ひと続きのグループです" if len(comps) == 1 else f"{len(comps)} 個のグループに分かれています"}</b>。
 {cut_txt}</p>
 {read_block}
 {time_block}
@@ -845,7 +845,7 @@ def panel(rated: list[dict], *, owner: bool = True) -> str:
 <p class="psaid" data-psaid aria-live="polite"></p>
 <div class="pnet" data-pnet>
 <svg viewBox="0 0 {W:.0f} {H:.0f}" width="100%" role="img"
- aria-label="一緒に出てくる人の網">
+ aria-label="一緒に出てくる人のつながり">
 <g class="ed" stroke="var(--base)">{"".join(lines)}</g>
 <g class="nds">{"".join(dots)}</g>
 <g class="nls">{labs}</g></svg>
@@ -853,17 +853,17 @@ def panel(rated: list[dict], *, owner: bool = True) -> str:
 <script type="application/json" data-pnet-data>{data}</script></div>
 <p class="pkey"><span class="ky"><span class="sw s1"></span>出演</span>
 <span class="ky"><span class="sw s2"></span>作り手（演出・脚本ほか）</span>
-<span class="ky"><span class="sw ring"></span>外すと束が割れる方</span>
+<span class="ky"><span class="sw ring"></span>外すとグループが分かれる人</span>
 <span class="ky">点の大きさ ＝ 観た作品数</span>
-<span class="ky">線の太さ ＝ 一緒に居た作品数</span></p>
-<p class="lead"><b>点はつまんで動かせます。</b>触れるとその方の線だけが浮きます
+<span class="ky">線の太さ ＝ 共演した作品数</span></p>
+<p class="lead"><b>点はつまんで動かせます。</b>触れるとその人の線だけが浮きます
 （下の表の行に触れても同じところが浮きます）。評価は色にも大きさにも入れていません。
-気になる方がいたら、<a href="/recommend/favourites?t=__TAGURI_TOKEN__">お気に入り</a>に
+気になる人がいたら、<a href="/recommend/favourites?t=__TAGURI_TOKEN__">お気に入り</a>に
 名前で登録してください。<br>
-<b>作り手が分かったのは、評価済み {g["n_rated"]} 作品のうち {g["n_works"]} 件です</b> ──
+<b>作り手が分かったのは、評価済み {g["n_rated"]} 作品のうち {g["n_works"]} 件です。</b>
 残り {g["n_rated"] - g["n_works"]} 件はこの図に入っていません。出演者と作り手（演出・脚本ほか）
 だけを数え、制作・宣伝などの役職は入れていません。図に名前を書いたのは
-{LABEL_MIN} 作品以上の方と、束をつないでいる方だけです。ほかの方は点に触れると名前が出ます。</p>
+{LABEL_MIN} 作品以上の人と、グループをつないでいる人だけです。ほかの人は点に触れると名前が出ます。</p>
 {table}</section>"""
 
 
@@ -1365,7 +1365,7 @@ JS = r"""
     const ts = n.t.slice(0, 3).map(t => cut(t[0])).join("／");
     const more = n.t.length > 3 ? `ほか ${n.t.length - 3} 本` : "";
     tip.innerHTML = `<b>${esc(n.n)}</b>（${n.m ? "作り手" : "出演"}）`
-      + `<span class="tw">観た作品 ${n.w} 本・一緒に居た方 ${n.d} 名`
+      + `<span class="tw">観た作品 ${n.w} 本・共演した人 ${n.d} 名`
       + (n.c ? "・この方を外すと網が割れます" : "") + `</span>`
       + `<span class="tw">${esc(ts)}${esc(more)}</span>`;
     tip.hidden = false;
@@ -1638,7 +1638,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--write", action="store_true", help="この図から分かる文章を作って保存する")
-    ap.add_argument("--force", action="store_true", help="網が変わっていなくても作り直す")
+    ap.add_argument("--force", action="store_true", help="つながりが変わっていなくても作り直す")
     ap.add_argument("--model", default=MODEL)
     a = ap.parse_args()
     if a.write:

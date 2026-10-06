@@ -304,8 +304,8 @@ def open_panel(rated: list[dict], cand_path, keep_roles, parse_credits,
 {d["halls"]} 館です。館ごとの公演は、おすすめや探す画面にも出てきます。</p>
 <details class="nn"><summary>数え方</summary>
 <p class="lead">数えたのは出演者と作り手（演出・脚本ほか）だけです。
-制作・宣伝まで数えると、ツアーの裏方が全国の館に当たってしまいます。<br>
-<b>行った・行っていないは劇場名の一致で決めています</b> ── 表記が違う館は
+制作・宣伝まで数えると、ツアーの裏方スタッフが全国の劇場に引っかかってしまいます。<br>
+<b>行ったかどうかは、劇場名が一致するかで判定しています。</b>表記が違う劇場は
 「行っていない」側に入ります。</p></details>
 <div class="vhs">{rows(d["near"], SHOWN_NEAR)}</div>
 {far}

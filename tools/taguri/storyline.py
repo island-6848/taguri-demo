@@ -792,8 +792,8 @@ def _recent_line(worlds: list[dict]) -> str:
                 f'{w["recent"]} 回です。</b>ほかの流れは、この 1 年は観ていらっしゃいません。')
     top = max(act, key=lambda w: w["recent"])
     parts = "、".join(f'{w["loc"] + 1} つめが {w["recent"]} 回' for w in act)
-    return (f'<b>直近 1 年は{parts}です</b> ── '
-            f'いまは {top["loc"] + 1} つめのほうを多く観ていらっしゃいます。')
+    return (f'<b>直近 1 年は{parts}です。</b>'
+            f'いまは {top["loc"] + 1} つめを多く観ています。')
 
 
 def panel(rated: list[dict], min_times: int = MIN_TIMES) -> str:
@@ -822,13 +822,13 @@ def panel(rated: list[dict], min_times: int = MIN_TIMES) -> str:
     return f"""<div class="card wide">{IC.h2("light", "同じ作品で一緒だった人の流れ")}
 <p class="lead"><b>1 本の線が 1 人、横が時間です。同じ作品に出た方の線は、その日に束になります。</b>
 <b>● が「その日その作品に出ていた」印です。</b>束が 1 つの公演で、押すとその記録へ移動します。<br>
-<b>線の色は {len(ws)} つに分かれています</b> ──
+<b>線の色は {len(ws)} つに分かれています。</b>
 {"、".join(f'{w["n_people"]} 人（{w["from"]} 〜 {w["to"]}）' for w in ws)}で、
 <b>この {len(ws)} つのあいだで一緒に出た方は 1 人もいません。</b>
 {_recent_line(ws)}<br>
 線にしているのは <b>{min_times} 回以上観た {d["n_lines"]} 名</b>です
 （作り手が分かっている {d["n_credited"]} 件の記録には、のべ {d["n_people_all"]} 名が出てきます）。
-横に引っぱると時間を伸ばせます。<b>線を押すと、その方の流れだけが浮き上がります</b> ──
+横に引っぱると時間を伸ばせます。<b>線を押すと、その人の流れだけが浮き上がります。</b>
 何人でも選べます。背景を押すと戻ります。</p>
 <div class="sl-legend">{"".join(
     f'<span class="sl-k sl-w{w["loc"]}">{w["loc"] + 1} つめの世界 ── '

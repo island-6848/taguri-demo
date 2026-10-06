@@ -500,7 +500,7 @@ def month_pick(rows: list, sel: str, page: int, action: str) -> tuple[list, str,
     else:
         now = (f"{where}の <b>{first}〜{first + len(show) - 1} 件目</b>を"
                f"表示しています（全 {len(hit)} 件）。"
-               f"<b>残りは下の「次の {LIST_TOP} 件」か、上の索引の耳で見られます。</b>")
+               f"<b>残りは下の「次の {LIST_TOP} 件」か、上の見出しのタブから見られます。</b>")
     # **耳の下は帳面である。** 耳は下端の 2px を帳面の上端に重ねて 1 枚につながる形なので、
     # 受ける面が無いと耳だけが宙に浮く（`.idxsheet` を閉じるのは `foot` の側）。
     head = f'{tabs}<div class="idxsheet loose"><p class="mnow">{now}</p>'
@@ -523,7 +523,7 @@ EXTRA = None
 _PREF_NOTE = (f'都道府県は<b>いくつでも同時に選べます</b>。選んだ県で観られる公演を、'
               f'好みに合いそうな順に <b>{TOP} 件</b>まで表示します。数字は、その県で'
               f'観られる件数です。<b>選ばなければ全国です。</b>ツアーで来る公演も'
-              f'入ります ── 本拠が他県でも、選んだ県に来るものは、その会場の日程で出します。')
+              f'入ります。本拠地が他県でも、選んだ県の会場に来る公演は、その会場の日程で表示します。')
 
 
 def pref_form(counts: dict, prefs=(), action: str = "/recommend", note: str = "",
@@ -1099,8 +1099,8 @@ def syn_block(c: dict) -> str:
             src, doubt = synopsis_source(str(c["stage_id"]), syn)
             cls = " doubt" if doubt else ""
             cite = (f'<span class="src">［出典: {E(src)}］</span>' if not doubt
-                    else f'<span class="src warn">［出典: {E(src)} ── '
-                         f'この公演自身のページに同じ本文がありません。'
+                    else f'<span class="src warn">［出典: {E(src)}。'
+                         f'この公演のページには同じ本文がありません。'
                          f'別の公演の紹介が混ざっている可能性があります］</span>')
         # **3 行で畳む。** 15 枚を並べる一覧で 4〜5 行のあらすじを全部開くと、
         # 1 枚が画面の高さを超えて「並べて見比べる」ができなくなる。**消さずに畳む**
@@ -2024,8 +2024,8 @@ def bundles_html(d: dict, notes_no: dict | None = None) -> str:
     """
     return (bundle("その他（興味なしと答えた公演）",
                      "消さずに残しています。<b>見送った理由は 1 件ずつ書けます</b>"
-                     "（任意・畳んであります）── 書いておくと、都合で見送ったものと"
-                     "好みに合わなかったものを後から見分けられます。",
+                     "（任意・閉じてあります）。書いておくと、都合で見送った公演と"
+                     "好みに合わなかった公演を、後から見分けられます。",
                      d.get("others") or [], "興味なし",
                      notes_no if notes_no is not None else {})
             + _declined_bundle(d))
@@ -2062,9 +2062,9 @@ def limits_html(d: dict, rows: list | None = None) -> str:
         return ""
     n_syn = sum(1 for c in rec if (c.get("synopsis") or "").strip())
     return f"""<p class="note"><b>この {len(rec)} 件で、出せていない情報です。</b><br>
-・<b>券が買える期限と、販売終了・完売</b> ── 手元の情報には無いので出せません。
-残っているかは公式サイトでお確かめください<br>
-・<b>あらすじ</b> ── {n_syn}/{len(rec)} 件で出せました。残りは公演のページに載っていませんでした<br>
+・<b>チケットの販売期限と、販売終了・完売</b>：手元に情報がないので表示できません。
+残っているかどうかは公式サイトで確認してください<br>
+・<b>あらすじ</b>：{n_syn}/{len(rec)} 件で表示できました。残りは公演のページに載っていませんでした<br>
 ・<b>答えなかった公演は、翌週も同じ順位で出てきます。</b>
 そのぶん枠が埋まるので、新しい公演が出にくくなります</p>"""
 

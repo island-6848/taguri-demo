@@ -1325,7 +1325,7 @@ class Server(http.server.ThreadingHTTPServer):
             return self._sh(["tools/review/recommend2.py", "--today", today,
                              "--top", "15", "--no-snapshot"],
                             f"「{r.get('title', '')[:24]}」を手元に加えました"
-                            " ── 画面を読み込み直してください")
+                            "。画面を読み込み直してください")
 
         self.enqueue("この公演を手元に加えています…", work)
 
@@ -1445,7 +1445,7 @@ class Server(http.server.ThreadingHTTPServer):
             # 操作をきっかけに外部への取得と持ち主の一覧の作り直しを走らせない）
             self.invalidate_user_cache(user_id)    # 次に開いた画面から効かせる
             return {"ok": True, "kind": kind, "name": name, "n": len(cur),
-                    "said": "登録しました ── 手元にある公演から探して、お気に入りに出します"}
+                    "said": "登録しました。手元にある公演から探して、お気に入りに表示します"}
         # **登録した直後に、その名前で公演を引く**（起案者の指示・2026-08-24）。
         # これまでは「次の起動から新着に出る」と画面に書いていたが、**お気に入りは
         # 見逃したくないものなので、次の起動まで待たせる理由が無い。** 引くのは
@@ -1466,9 +1466,9 @@ class Server(http.server.ThreadingHTTPServer):
             # 分母が動く（検証 026 と同じ理由でここを汚さない）
             return self._sh(["tools/review/recommend2.py", "--today", today,
                              "--top", "15", "--no-snapshot"],
-                            "新着に反映しました ── 画面を読み込み直してください"
+                            "新着に反映しました。画面を読み込み直してください"
                             if action == "add" else
-                            "一覧から外しました ── 画面を読み込み直してください")
+                            "一覧から外しました。画面を読み込み直してください")
 
         self.enqueue("この名前の公演を取りに行っています…" if action == "add"
                      else "一覧を組み直しています…", work)
@@ -1510,9 +1510,9 @@ class Server(http.server.ThreadingHTTPServer):
         def work() -> str:
             return self._sh(["tools/review/recommend2.py", "--today", today,
                              "--top", "15", "--no-snapshot"],
-                            ("この語に当たる公演を推薦から外しました"
-                             if action == "add" else "この語の公演を推薦に戻しました")
-                            + " ── 画面を読み込み直してください")
+                            ("この語を含む公演を、おすすめから外しました"
+                             if action == "add" else "この語を含む公演を、おすすめに戻しました")
+                            + "。画面を読み込み直してください")
 
         self.enqueue("一覧を組み直しています…", work)
         return {"ok": True, "word": word, "n": len(cur)}
@@ -1685,7 +1685,7 @@ class Server(http.server.ThreadingHTTPServer):
                     found_sid = r["stage_id"]
                     note = f"公演ページを自動で見つけて結び付けました（{r['page_title'][:30]}）／"
                 else:
-                    return "公演ページを自動では見つけられませんでした ── " \
+                    return "公演ページを自動では見つけられませんでした。" \
                            "「公演詳細を直す」から手で探して結び付けられます"
             return note + EN.stage(found_sid, work_key=work_key, title=title, date=date)
 
@@ -1783,8 +1783,8 @@ class Server(http.server.ThreadingHTTPServer):
         out["read"] = out.pop("read", False)
         if out["read"]:
             threading.Thread(target=self._read_theme, args=(user_id, sid), daemon=True).start()
-            out["said"] = ("保存しました。題材はいま読み取っています ── "
-                           "少し待つとタグが自動で出ます")
+            out["said"] = ("保存しました。いま題材を読み取っています。"
+                           "少し待つと、タグが自動で表示されます")
         return out
 
     def _read_theme(self, user_id: str, sid: str) -> None:

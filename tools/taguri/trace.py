@@ -418,7 +418,7 @@ def thread_panel(g: dict, name: str, trail: list[str]) -> str:
             f'<a href="{nxt}{E(_q(b["name"]))}">{E(b["name"])}</a>'
             f'（{E(b["role"])}・{b["n"]} 作品{"・この公演がはじめて" if b["new"] else ""}）'
             for b in bs)
-        bh = "" if not bs else f'<p class="brl">この公演から移れます ── {links}</p>' 
+        bh = "" if not bs else f'<p class="brl">この公演から移れる名前：{links}</p>' 
         lis.append(
             f'<li><span class="no">{i + 1}</span><div>'
             f'<a href="{CH.ROW_HREF}&amp;w={E(a)}#w-{E(a)}" class="ti">{E(r["title"])}</a>'

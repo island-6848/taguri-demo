@@ -219,7 +219,7 @@ def quote_row(persons: list[str], notes_by_person: dict[str, list[dict]]) -> str
         times = f"（{w['times']} 回観た作品です）" if (w.get("times") or 1) > 1 else ""
         return (f'<li class="rs q"><b>あなたの言葉</b> '
                 f'《{_e(w["title"])}》に「{_e(clip(w["note"]))}」と書いています'
-                f'<span class="n">── 上の {_e(p)} さんが関わった作品です{_e(times)}</span></li>')
+                f'<span class="n">（上の {_e(p)} さんが関わった作品です{_e(times)}）</span></li>')
     return ""
 
 

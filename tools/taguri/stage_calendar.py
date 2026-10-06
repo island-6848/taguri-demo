@@ -344,8 +344,8 @@ def filter_html(rows: list[dict], sel_kinds: set[str] | None,
     return f"""<form class="pfil calfil" method="get" action="/calendar">
 <input type="hidden" name="t" value="__TAGURI_TOKEN__">
 <details class="pbox"{" open" if active else ""}>
-<summary>{IC.ico("search", 15)}束と都道府県で絞り込む ── 束は<b>{E(now_k)}</b>・場所は<b>{E(now_p)}</b></summary>
-<p class="lead">押した束・都道府県だけを、下の暦に出します。<b>いくつでも同時に選べます。</b>
+<summary>{IC.ico("search", 15)}種類と都道府県で絞り込む（種類：<b>{E(now_k)}</b>・場所：<b>{E(now_p)}</b>）</summary>
+<p class="lead">押した種類・都道府県の公演だけを、下のカレンダーに表示します。<b>いくつでも同時に選べます。</b>
 ページの上の「観劇日を追加する」に出す公演は、絞り込みの影響を受けません。</p>
 <div class="pchips">{kind_chips}</div>
 <div class="pchips">{pref_chips}</div>
@@ -361,7 +361,7 @@ def panel(d: dict, today: dt.date | None = None, tickets: dict | None = None,
     today = today or dt.date.today()
     rows = rows_of(d, today, tickets)
     if not rows:
-        return ('<p class="empty">暦に出せる公演がありません。'
+        return ('<p class="empty">カレンダーに表示できる公演がありません。'
                 '推薦の画面で「興味あり」を押した公演と、お気に入りに登録した名前で'
                 '当たった公演が、ここに並びます。</p>')
 
@@ -396,8 +396,8 @@ def panel(d: dict, today: dt.date | None = None, tickets: dict | None = None,
 
     over = [r for r in view if (r["start"].year, r["start"].month) > ms[-1]]
     tail = (f'<p class="lead"><b>{len(over)} 件は {MAX_MONTHS} か月より先なので、'
-            f'この暦には出していません。</b>「おすすめ ▸ 興味あり／お気に入り」の一覧には'
-            f'出ていますので、そちらでご覧ください。</p>' if over else "")
+            f'このカレンダーには表示していません。</b>「おすすめ ▸ 興味あり／お気に入り」の一覧には'
+            f'出ているので、そちらで確認してください。</p>' if over else "")
 
     return (f'{filt}<p class="lead">帯の<b>右端が楽日</b>、つまり締切です。'
             f'縦に目を落とすと、その日に何本かかっているかが数えられます。'
@@ -438,12 +438,12 @@ def _unplaced_html(left: list[dict]) -> str:
     """
     if not left:
         return ""
-    li = "".join(f'<li><b>{E(b["title"])}</b> ── {E(b["date"])}'
-                 f'{" " + E(b["time"]) if b.get("time") else ""}</li>' for b in left)
-    return (f'<div class="tknot"><h3>暦に出せていない券が {len(left)} 件あります</h3>'
+    li = "".join(f'<li><b>{E(b["title"])}</b>（{E(b["date"])}'
+                 f'{" " + E(b["time"]) if b.get("time") else ""}）</li>' for b in left)
+    return (f'<div class="tknot"><h3>カレンダーに表示できていないチケットが {len(left)} 件あります</h3>'
             f'<p class="lead">購入確認メールから読み取りましたが、'
-            f'<b>手元の公演一覧に同じ公演が見当たりません</b>ので、暦には出せていません。'
-            f'「探す」で題名を引いて「興味あり」を押すと手元に加わり、'
+            f'<b>手元の公演一覧に同じ公演が見当たらない</b>ため、カレンダーに表示できていません。'
+            f'「探す」で題名を検索して「興味あり」を押すと手元に加わり、'
             f'ページの上の「観劇日を追加する」に出てきます。</p><ul>{li}</ul></div>')
 
 

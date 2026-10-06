@@ -41,7 +41,7 @@
 画面（`web/`、静的ファイルのみ）はGitHub Pagesから配信し、推薦計算・DB書き込みは
 今までどおりRender上のAPI（`tools/taguri/serve_cloud.py`）が担う。`web/`のJSが
 CORS越しにRenderのJSON API（`/api/screen/*`・`/api/react`等）を叩き、返ってきた
-HTML断片を画面に差し込む形にした ── GitHub Pagesは静的配信専用でサーバサイド
+HTML断片を画面に差し込む形にした。GitHub Pagesは静的配信専用でサーバサイド
 コードを実行できないため、DB書き込みを伴う本体はRenderに残している。
 ローカル・EC2向けの`run.py`経路（`127.0.0.1`固定・起動ごとトークン認証）は
 この移行の影響を受けず、今までどおり動く。
