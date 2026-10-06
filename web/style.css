@@ -200,6 +200,9 @@ body{padding:0}
    同じ帯に並ぶ 1 行なので、行の高さと余白がずれると帯が段違いに見える）。
    **違いは山形 1 つで出す** ── 右を向いていれば畳んである、下を向いていれば開いている。
    文字を「＋／−」にはしない。押した結果は形で出し、名前の欄には名前だけを置く。   */
+/* **行き先の並びは 1 つの箱（`.navrow`）に包む。** 広い画面では箱を消して（`contents`）
+   帯の縦の並びにそのまま加わる ── 狭い画面で 1 行の横送りにするための箱である */
+.side .navrow{display:contents}
 .side .grp{display:flex;flex-direction:column;gap:2px}
 .side .grp>summary{display:flex;align-items:center;gap:9px;cursor:pointer;
  list-style:none;font-size:14.5px;padding:8px 12px;line-height:1.4;
@@ -236,23 +239,29 @@ body{padding:0}
  .shell{flex-direction:column}
  .side{position:static;width:100%;height:auto;flex-direction:row;flex-wrap:wrap;gap:4px;
   padding:10px 12px;border-right:0;border-bottom:1px solid var(--curtain)}
- /* **「たぐり」と検索窓は 1 行に並べる**（起案者の指摘・2026-10-07「スマホから見たら
-    メニューが幅取ってる」）。名前の行と窓の行に分けると、それだけで 2 段使っていた */
- .side{align-items:center}
+ /* **「たぐり」と検索窓を 1 行、行き先を 1 行にする**（起案者の指摘・2026-10-07
+    「スマホから見たらメニューが幅取ってる」→「メニュー1行に収めてほしい」）。
+    折り返すと行き先の数だけ段が増えるので、**行き先は折り返さずに横へ送る。**
+    送れることが分かるように、右端は帯の色へ溶かす                              */
+ .side{align-items:center;row-gap:8px}
  .side .brand{flex:none;padding:0 6px 0 4px}
  .side .search{flex:1 1 140px;min-width:0;margin:0;padding:0 4px}
  .side .search svg{left:14px}
  .side .search input{padding:5px 8px 5px 28px}
- /* **束は block にして、親と子を同じ行に inline で流す。** 束を flex の行にすると、
-    いまのブラウザは `<details>` の中身を 1 つの箱（`::details-content`）に包むので、
-    **子が右の列に縦積みになり、開いた束 1 つが 4 行ぶんの高さを取っていた。**
-    中の 1 つずつを inline にすれば、箱に包まれていてもいなくても横に折り返す。
-    畳んでいる束は幅を取らずに隣の行き先と同じ行に並び、開いた束だけが 1 行を使う */
- .side .grp{display:block;margin:0;font-size:0;line-height:0}
- .side .grp[open]{width:100%}
- .side .grp>summary,.side .grp a.kid{display:inline-flex;vertical-align:top;line-height:1.4}
- .side .grp[open]>summary{margin:0 4px 4px 0}
- .side .grp a.kid{margin:0 4px 4px 0}
+ .side .navrow{display:flex;flex-wrap:nowrap;align-items:center;gap:4px;width:100%;
+  overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;
+  -webkit-mask-image:linear-gradient(to right,#000 calc(100% - 28px),transparent);
+  mask-image:linear-gradient(to right,#000 calc(100% - 28px),transparent);padding-right:24px}
+ .side .navrow::-webkit-scrollbar{display:none}
+ .side .navrow>a,.side .navrow a{flex:none;white-space:nowrap}
+ /* **束も同じ 1 行に並べる。** いまのブラウザは `<details>` の中身を 1 つの箱
+    （`::details-content`）に包み、そのままでは子が親の下の段に落ちる ── 箱を消して
+    親と子を横に並べる。箱を消すと畳んだ状態の隠し方も効かなくなるので、
+    畳んでいる束の子はこちらで隠す                                               */
+ .side .grp{display:flex;flex:none;flex-direction:row;align-items:center;gap:4px;margin:0}
+ .side .grp::details-content{display:contents}
+ .side .grp:not([open]) a.kid{display:none}
+ .side .grp>summary{white-space:nowrap}
  .side .grp .gl{flex:0 0 auto}
  .side a.kid{margin-left:0}
  .side a[href^="/tickets"]{margin-top:0}

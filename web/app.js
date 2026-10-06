@@ -79,10 +79,10 @@ function navGroupHtml(label, icon, kids) {
     + kids.map(c => navItemHtml(c[0], c[1], c[2], true)).join("") + '</details>';
 }
 function renderNav() {
-  return NAV.map(([p, t, k, kids]) => p === null
+  return '<div class="navrow">' + NAV.map(([p, t, k, kids]) => p === null
     ? navGroupHtml(t, k, kids)
     : navItemHtml(p, t, k, false) + kids.map(c => navItemHtml(c[0], c[1], c[2], true)).join("")
-  ).join("");
+  ).join("") + "</div>";
 }
 
 // **開閉状態はlocalStorageに覚える**(元のNAV_FOLD_JSと同じ挙動)。
@@ -116,6 +116,14 @@ function updateNavActive(path) {
     if (on) {
       const grp = a.closest(".grp");
       if (grp) grp.open = true;
+      // **スマホ幅の横1行の帯では、現在地を見える位置まで送る。** 右へ送った先の
+      // 画面を開いたとき、現在地の印が帯の外に隠れたままになるのを避ける
+      const row = a.closest(".navrow");
+      if (row && row.scrollWidth > row.clientWidth) {
+        const x = a.offsetLeft - row.offsetLeft;
+        if (x < row.scrollLeft || x + a.offsetWidth > row.scrollLeft + row.clientWidth - 24)
+          row.scrollLeft = Math.max(0, x - 40);
+      }
     }
   });
 }
