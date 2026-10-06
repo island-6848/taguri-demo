@@ -3,7 +3,7 @@
 .tgt-root[hidden]{display:none}
 /* 光らせる枠: 周りを box-shadow で暗くする。枠自体は押せる(pointer-events:none) */
 .tgt-spot{position:fixed;display:none;border-radius:10px;pointer-events:none;
- box-shadow:0 0 0 9999px rgba(16,18,16,.55),0 0 0 2px var(--curtain);transition:all .25s ease}
+ box-shadow:0 0 0 9999px rgba(16,18,16,.55),0 0 0 2px var(--curtain)}
 .tgt-card{position:fixed;right:20px;bottom:20px;width:min(360px,calc(100vw - 32px));
  background:var(--surf);color:var(--ink);border:1px solid var(--ring);border-radius:14px;
  padding:16px 18px;box-shadow:0 10px 30px rgba(0,0,0,.28);pointer-events:auto}

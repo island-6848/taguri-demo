@@ -15,7 +15,7 @@
   const KEY = "taguri_tour_done_v1";
   const BASE = (typeof REPO_BASE !== "undefined") ? REPO_BASE : "/taguri-demo";
 
-  // 章立て: path=その画面へ移る / sel=光らせる要素(候補を順に試す) / wait="click"=押すまで待つ
+  // 章立て: path=その画面へ移る / sel=光らせる要素(候補を順に試す) / wait="pick"=1件以上押すまで先へ進めない
   const STEPS = [
     {center: true, title: "押すだけで、おすすめが育つ",
      text: "おすすめの公演で「興味あり」を押すと、一覧とカレンダーに載ります。"
@@ -23,10 +23,13 @@
     {path: "/recommend", sel: [".ticket.recommend"],
      title: "今週のおすすめは、1枚が1公演",
      text: "あらすじや出演者のほか、おすすめした理由も書いてあります。気になるかどうかを、ここで決めます。"},
-    {path: "/recommend", sel: [".ticket.recommend .btns"], wait: "click",
-     title: "「興味あり」を押してみましょう",
-     text: "気になる公演なら「興味あり」、もう観る予定なら「すでに持っている」を押します。",
-     hint: "押すと、反映された画面へ進みます"},
+    // **ここで1件も押さずに進むと、この先の画面(興味あり・カレンダー・評価待ち)が
+    // 全部0件になる**(起案者の指摘・2026-10-07)。「押さずに次へ」は置かず、
+    // 「興味あり」か「すでに持っている」を1件以上押すまで次へ進めない。
+    {path: "/recommend", sel: [".ticket.recommend .btns:not([hidden])"], wait: "pick",
+     title: "気になる公演に「興味あり」を押しましょう",
+     text: "おすすめの公演から、気になるものに「興味あり」を押してください。"
+         + "観に行くことが決まっている公演には「すでに持っている」を押します。"},
     {path: "/recommend/interest", fresh: true, sel: [".ticket", ".fav", "#content h1"],
      title: "押した公演は、興味ありの一覧に入ります",
      text: "追いかける公演が、ここに集まります。なぜ気になったかのメモも残せます。"},
@@ -74,7 +77,7 @@
       menu.hidden = true;
       if (b.dataset.tgt === "tour") start(); else openVideo();
     });
-    window.addEventListener("resize", () => { if (running) place(); });
+    window.addEventListener("resize", follow);
   }
 
   // 要素が現れるまで待つ(Renderの目覚めに最大25秒かかる)
@@ -89,6 +92,15 @@
   }
 
   let target = null;
+  // **枠は画面に固定して置くので、スクロールのたびに置き直す。** スマホでは
+  // 指で送ったり、アドレスバーが縮んだりするたびに要素の位置が動き、
+  // 枠だけが元の場所に残ってずれていた(起案者の指摘・2026-10-07)。
+  // 画像の読み込みで下の要素が動くこともあるので、短い間隔でも置き直す。
+  let raf = 0;
+  const follow = () => { if (running && !raf) raf = requestAnimationFrame(() => { raf = 0; place(); }); };
+  window.addEventListener("scroll", follow, {passive: true, capture: true});
+  if (window.visualViewport) window.visualViewport.addEventListener("resize", follow);
+  setInterval(follow, 400);
   function place() {
     if (!target || !document.contains(target)) { spot.style.display = "none"; return; }
     const r = target.getBoundingClientRect();
@@ -101,16 +113,19 @@
   function render(step, hasTarget) {
     const n = STEPS.length;
     const dots = STEPS.map((_, i) => '<i class="' + (i === idx ? "on" : "") + '"></i>').join("");
-    const waiting = step.wait === "click" && hasTarget;
+    const waiting = step.wait === "pick";
     card.className = "tgt-card" + (step.center || !hasTarget ? " mid" : "");
     card.innerHTML = '<div class="tgt-dots">' + dots + "</div>"
       + "<h3>" + step.title + "</h3><p>" + step.text + "</p>"
-      + (waiting ? '<p class="tgt-hint">' + step.hint + "</p>" : "")
+      + (waiting ? '<p class="tgt-hint">' + pickHint() + "</p>" : "")
       + '<div class="tgt-btns">'
       + (step.last ? '<button type="button" data-a="video">説明動画を見る</button>' : '<button type="button" data-a="skip" class="ghost">やめる</button>')
       + (idx > 0 && !step.last ? '<button type="button" data-a="back" class="ghost">戻る</button>' : "")
-      + '<button type="button" data-a="next" class="pri">'
-      + (step.last ? "閉じる" : (waiting ? "押さずに次へ" : (idx === 0 ? "はじめる" : "次へ"))) + "</button></div>";
+      // 答えていない公演がもう無い(枠を置く先が無い)ときは、押せないので進ませる
+      + (waiting && !picked.size && hasTarget ? ""
+         : '<button type="button" data-a="next" class="pri">'
+           + (step.last ? "閉じる" : (idx === 0 ? "はじめる" : "次へ")) + "</button>")
+      + "</div>";
   }
 
   async function show(i) {
@@ -141,20 +156,32 @@
       }
       render(step, !!el);
       place();
-      if (el && step.wait === "click") armClick(el, my);
+      if (step.wait === "pick") armPick(my);
     } else {
       render(step, false);
     }
   }
 
-  // 押した直後の画面更新(.said や .done)を少し待ってから次へ
-  function armClick(el, my) {
+  // **「興味あり」「すでに持っている」を押した公演を数える。** 1件押したら枠と
+  // 暗幕を外して、ほかの公演も見ながら押せるようにする。「興味なし」は数えない
+  // (押しても、この先の画面には何も載らない)。
+  const picked = new Set();
+  function pickHint() {
+    return picked.size
+      ? picked.size + "件に答えました。ほかの公演も見て、気になるものがあれば押してください。"
+        + "終わったら「次へ」で、押した公演がどこに載るかを見に行きます。"
+      : "1件以上押すと、次へ進めます。";
+  }
+  function armPick(my) {
     const h = ev => {
-      const b = ev.target.closest && ev.target.closest("button[data-v]");
-      if (!b || !el.contains(b)) return;
-      document.removeEventListener("click", h, true);
-      card.querySelector("h3").textContent = "押しました。反映を見に行きます…";
-      setTimeout(() => { if (my === token && running) go(1); }, 1600);
+      if (my !== token || !running) { document.removeEventListener("click", h, true); return; }
+      const b = ev.target.closest && ev.target.closest(".ticket.recommend .btns button[data-v]");
+      if (!b || (b.dataset.v !== "interest" && b.dataset.v !== "owned")) return;
+      const box = b.closest(".btns");
+      picked.add((box && box.dataset.stage) || b);
+      target = null; place();
+      card.classList.remove("mid");
+      render(STEPS[idx], true);
     };
     document.addEventListener("click", h, true);
   }
