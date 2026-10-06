@@ -3213,8 +3213,7 @@ def _settings_body(user_id: str) -> str:
     now = ("全国" if not prefs else
            "・".join(prefs) + f"（{len(prefs)} 県）")
     return f"""<h1>設定</h1>
-<p class="lede">この仕組みぜんたいに効く、決めごとを置く場所です。<b>1 件ずつではなく、
-まとめて確かめてから保存します。</b></p>
+<p class="lede">ここで決めたことは、おすすめ全体に効きます。<b>内容をまとめて確かめてから保存します。</b></p>
 <details class="card">{_card_h2("gear", "観に行ける場所を決めておく",
  f'<span class="badge part">いまは{E(now)}</span>')}
 <p class="lead">都道府県を選んで保存すると、<b>「今週のおすすめ」と「公演カレンダー」を
@@ -3703,14 +3702,11 @@ def _start_body(user_id: str) -> str:
         "◎○△× を付けてください。")
 
     return f"""{run_status_html()}<h1>はじめに ── 見逃したくない名前を 1 つ登録してください</h1>
-<p class="lede">たぐりは、<b>これから観られる公演の中から、見逃したくないものを毎週出す</b>
-仕組みです。いまは登録も記録も無いので、出せるものがありません。
-<b>下の 3 つのうち、1 つ目だけで動き始めます。</b></p>
+<p class="lede">たぐりは、<b>これから観られる公演の中から、見逃したくない舞台を毎週届けるアプリ</b>です。まだ登録も記録もないので、届けられるものがありません。<b>下の3つのうち、1つ目だけで始められます。</b></p>
 {step1}
 {step2}
 {step3}
-<p class="lede">ナビゲーションから、それぞれの画面をいま見ることもできます。
-<b>どの画面もまだ 0 件です。</b></p>"""
+<p class="lede">ナビゲーションから、各画面を先に見ることもできます。<b>どの画面もまだ0件です。</b></p>"""
 
 
 START_CSS = """
@@ -3792,7 +3788,7 @@ def _recommend_body(user_id: str, prefs=()) -> str:
         lede = (f'<p class="lede">これから観られる公演 {d["n_cand"]} 件のうち、'
                 f'好みに合いそうだと判断できたのは {d["n_scored"]} 件でした。'
                 f"上位 {len(rows)} 件を表示しています。"
-                "すでに答えた公演は、この一覧から外して下に畳んであります。</p>")
+                "答え済みの公演は、この一覧から外して下にまとめてあります。</p>")
     elif not rows:
         head = f"{where}のおすすめはありません"
         lede = (f'<p class="pnow">これから観られる公演 {d["n_cand"]} 件のうち、'
@@ -3817,7 +3813,7 @@ def _recommend_body(user_id: str, prefs=()) -> str:
 {upd_html}
 <div class="fil2">{RR.pref_form(pc, prefs)}{weight_form(user_id, d)}</div>
 {RR.cards_html(d, rows)}
-<p class="lede">気になった公演の「興味あり」を押すと、
+<p class="lede">気になった公演で「興味あり」を押すと、
 <a href="/recommend/interest?t=__TAGURI_TOKEN__">「興味あり」（いま {n_tr} 件）</a>に移ります。</p>
 {IC.h2("flag", "もう追いかけない公演 ── 畳んでいますが、消していません")}
 <p class="lede">すでに答えた公演です。上の都道府県の絞り込みは、ここには効きません。</p>
@@ -3846,11 +3842,8 @@ def _interest_body(user_id: str, month: str = "", page: int = 1) -> str:
     rows = d.get("tracking") or []
     show, mfil, mfoot = RR.month_pick(rows, month, page, "/recommend/interest")
     return f"""<h1>追いかけている {len(rows)} 件</h1>
-<p class="lede">「興味あり」を押した公演を、上演日の近い順に並べています。順位は付けていません。
-チケットを取れたら「すでに持っている」を押してください ── 観る予定に移り、
-上演日を過ぎると評価待ちに並びます。<br>
-「なぜ気になったか」に書いた名前は、
-<a href="/recommend/favourites?t=__TAGURI_TOKEN__">お気に入り</a>に追う候補として並びます。</p>
+<p class="lede">「興味あり」を押した公演を、上演日の近い順に並べています。順位は付けていません。チケットが取れたら「すでに持っている」を押してください。観る予定に移り、上演日を過ぎると評価待ちに並びます。<br>
+「なぜ気になったか」に書いた名前は、<a href="/recommend/favourites?t=__TAGURI_TOKEN__">お気に入り</a>に加える候補として並びます。</p>
 {mfil}
 {RR.tracking_html(d, _notes(user_id), show)}
 {mfoot}"""
@@ -3910,10 +3903,7 @@ def _reminder_body(user_id: str, prefs=(), week: str = "this") -> str:
             '<b>「今週のおすすめ」と同じ絞り込みです</b>'
             '── どちらの画面で選んでも、両方に効きます。')
     return f"""<h1>開幕リマインド ── 見逃していませんか</h1>
-<p class="lede"><b>好みに合うかどうか、すでに答えたかどうかに関わらず、
-初日が近い公演を全部出します。</b>まだ「興味あり」も「興味なし」も答えていない公演が、
-答える間もなく開幕してしまうのが、見逃しの本当のリスクです。
-未回答の行はその場で答えられます。</p>
+<p class="lede"><b>初日が近い公演を、答えたかどうかに関わらず全部出します。</b>「興味あり」も「興味なし」も押さないうちに開幕してしまうのが、いちばんの見逃しだからです。未回答の行は、その場で答えられます。</p>
 {RR.pref_form(pc, prefs, action="/recommend/reminder", note=note, hidden={"w": week})}
 {DG.panel(d, today, ticket_map(user_id), prefs, week)}"""
 
@@ -3977,8 +3967,7 @@ def _favourites_body(user_id: str, month: str = "", page: int = 1) -> str:
              f'<div class="tags">{tags}</div></details>'
              f'{_declined_html(user_id)}</div>')
     return f"""<h1>お気に入り ── 新着 {len(favs)} 件</h1>
-<p class="lede">登録した名前の公演を、内容も件数も問わずにすべて出します。順位は付けていません。
-件数が多いので、上演月で分けて表示しています。</p>
+<p class="lede">登録した名前の公演を、件数の制限なしにすべて出します。順位は付けていません。件数が多いので、上演月ごとに分けています。</p>
 {tools}
 {mfil}
 {RR.favourites_html(d, show)}
@@ -5345,10 +5334,7 @@ def _register_body(user_id: str, imp: dict | None = None, imported: list | None 
     line = (imp or {}).get("line") or ""
     missed = missed_rows()
     return f"""<h1>公演情報の登録</h1>
-<p class="lede">公演を記録に足す場所です。<b>入口は 3 つあります</b> ──
-購入確認メールから自動で取り込む、メールに残らない分（招待・当日窓口・人に取ってもらった分）を
-手で足す、<b>観ればよかった公演（観ていないもの）を足す</b>の 3 つです。
-評価は「観た公演の評価」で付けます。評価が無くても記録は残せます。</p>
+<p class="lede">公演を記録に足す場所です。<b>入口は3つあります。</b>購入確認メールからの自動取り込み、メールに残らない分（招待・当日券・人に取ってもらった分）の手入力、そして<b>観ればよかった公演（観ていないもの）の追加</b>です。評価は「観た公演の評価」で付けます。評価がなくても、記録は残せます。</p>
 
 {_import_card(user_id, imp, imported, line)}
 
@@ -5805,11 +5791,7 @@ def _rate_body(user_id: str, verdict: str = "", year: str = "", venues=(), page:
     rows = "".join(_rec_row(user_id, w, poster=_poster_html(w), rate_reopen=True)
                    for w in show)
     body = f"""<h1>評価一覧 ── 付けた {len(rated)} 件</h1>
-<p class="lede">付けた評価を ◎○△× ごとに分けています。<b>付ける基準は
-「自分に合っていたか」で、作品の出来ではありません。</b>評価は作品ごとに 1 つです。
-おすすめは ◎ を付けた公演の作り手から作るので、<b>ここに答えると次のおすすめが変わります。</b>
-題名・日付・会場そのものを直したいときは<a href="/records/works?t=__TAGURI_TOKEN__">日記帳</a>
-です。</p>
+<p class="lede">付けた評価を◎○△×ごとに分けています。<b>基準は「自分に合っていたか」で、作品の出来ではありません。</b>評価は作品ごとに1つです。おすすめは◎を付けた公演の作り手から作るので、<b>ここで答えると次のおすすめが変わります。</b>題名・日付・会場そのものを直したいときは、<a href="/records/works?t=__TAGURI_TOKEN__">日記帳</a>で直せます。</p>
 {verdict_fig}
 {chips}
 {ytabs}
@@ -5853,11 +5835,8 @@ def _unrated_body(user_id: str) -> str:
                f'<a href="/records/works?t=__TAGURI_TOKEN__">日記帳</a>に残っていますので、'
                f'付け間違えたときはその行の「やはり観た」で戻してください。')
     return f"""<h1>未評価 ── {len(unrated)} 件</h1>
-<p class="lede">評価が付いていない記録です。<b>上演日が分からない記録も含みます</b> ──
-日付が無いと上演が終わったかを判定できないので、「まだ答えていない」には出てきません。{skipped}<br>
-<b>実際には観ていない公演が混じっていたら、各行の「公演詳細を直す」から外せます。</b>
-券を買って行かなかった公演と、舞台ではないものが取り込まれた記録を、そこで書き分けられます
-── どちらもあとで戻せます。</p>
+<p class="lede">評価がまだ付いていない記録です。<b>上演日が分からない記録も含みます。</b>日付がないと上演が終わったか判定できないので、「まだ答えていない」には出てきません。{skipped}<br>
+<b>実際には観ていない公演が混じっていたら、各行の「公演詳細を直す」から外せます。</b>券を買って行かなかった公演と、舞台ではない記録は、そこで書き分けられます。どちらも、あとで戻せます。</p>
 {"".join(_rec_row(user_id, w, poster=_poster_html(w), rate_always=True, editable=True)
          for w in unrated) or '<p class="empty">評価が付いていない記録はありません。</p>'}"""
 
@@ -7190,8 +7169,7 @@ def _trace_body(user_id: str, name: str = "", via: str = "") -> str:
                 '組めませんでした。観た公演が増えると出るようになります。</p></section>')
     return f"""<h1>たどる ── 1 つの名前をたどる</h1>
 {_records_lede(d)}
-<p class="lede">名前を 1 つ選ぶと、<b>その名前をいつ知って、そこから何につながったか</b>が出ます。
-何本観たか・どの劇場が多いかは「眺める」で見られます。</p>
+<p class="lede">名前を1つ選ぶと、<b>その名前をいつ知って、何につながったか</b>が出ます。何本観たか、どの劇場が多いかは「眺める」で見られます。</p>
 {main}"""
 
 
@@ -8075,9 +8053,7 @@ def _search_body(user_id: str, q: str, ym: str = "", web: bool = False,
 <input type="text" name="q" value="{E(q)}" size="28" placeholder="人名・団体・題材・題名">
 <button type="submit">{IC.ico("search")}探す</button></form>"""
     head = f"""<h1>探す</h1>
-<p class="lede">人名・団体・題材・題名で、<b>これから観られる公演 {n_up} 件と観た記録の
-両方から探します。</b>見つけたものには、この画面のまま答えられます ──
-これから観られる公演には「興味あり」を、観た記録には評価と感想を書けます。</p>{form}{note}"""
+<p class="lede">人名・団体・題材・題名で、<b>これから観られる公演 {n_up} 件と観た記録の両方から探します。</b>見つけたものには、この画面のまま答えられます。これから観られる公演には「興味あり」を、観た記録には評価と感想を付けられます。</p>{form}{note}"""
     # **評価と感想は毎回引き直す。** 索引は起動のあいだ作り直さないので、押した評価が
     # そのまま出てしまう（探した先で評価できる画面なので、これは必ず起きる）
     ws = _works(user_id)
@@ -8490,9 +8466,7 @@ def _calendar_body(user_id: str, kinds: set[str] | None = None,
     # にある。
     return f"""<h1>公演カレンダー</h1>
 {SC.add_ticket_button_html(d, tickets=tickets)}
-<p class="lede">券を持っている公演・「興味あり」を押した公演・お気に入りに当たった公演を、
-上演期間の帯で並べています。<b>いつまで観られるか</b>が 1 枚で分かります。
-券を持っている公演は、行く日を入れるとその日が半券の形になって出ます。</p>
+<p class="lede">券を持っている公演、「興味あり」を押した公演、お気に入りに当たった公演を、上演期間の帯で並べています。<b>いつまで観られるか</b>が1枚で分かります。券を持っている公演は、行く日を入れるとその日が半券の形で出ます。</p>
 {SC.panel(d, tickets=tickets, unplaced=left, sel_kinds=kinds, sel_prefs=prefs)}"""
 
 
@@ -8571,10 +8545,7 @@ def _tickets_body(user_id: str) -> str:
                     for c in sorted(owned, key=_rank))
     left = sync_mail_tickets(user_id, owned)
     return f"""<h1>購入済み公演 ── {len(owned)} 件</h1>
-<p class="lede">「すでに持っている」と答えた公演と、購入確認メールから見つかった
-公演です。<b>次の推薦は変わりません</b> ── 答えを出すのは推薦だけです。上演日を
-過ぎると、この一覧からは外れ、<a href="/rate?t=__TAGURI_TOKEN__">評価一覧</a>の
-評価待ちに移ります。行く日は、各公演の「行く日」の欄から入れられます。</p>
+<p class="lede">「すでに持っている」と答えた公演と、購入確認メールから見つかった公演です。<b>この一覧は、次のおすすめを変えません。</b>上演日を過ぎると一覧から外れ、<a href="/rate?t=__TAGURI_TOKEN__">評価一覧</a>の評価待ちに移ります。行く日は、各公演の「行く日」の欄から入れられます。</p>
 {cards or '<p class="empty">チケットを持っている公演はまだありません。'
           '推薦の画面で「すでに持っている」を押した公演が、ここに並びます。</p>'}
 {SC.ticket_manager_html(unplaced=left)}"""

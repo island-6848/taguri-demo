@@ -1,0 +1,38 @@
+/* 初回ガイドツアー(tour.js)。色は style.css の変数を使い、ダークテーマにも追従する */
+.tgt-root{position:fixed;inset:0;z-index:90;pointer-events:none}
+.tgt-root[hidden]{display:none}
+/* 光らせる枠: 周りを box-shadow で暗くする。枠自体は押せる(pointer-events:none) */
+.tgt-spot{position:fixed;display:none;border-radius:10px;pointer-events:none;
+ box-shadow:0 0 0 9999px rgba(16,18,16,.55),0 0 0 2px var(--curtain);transition:all .25s ease}
+.tgt-card{position:fixed;right:20px;bottom:20px;width:min(360px,calc(100vw - 32px));
+ background:var(--surf);color:var(--ink);border:1px solid var(--ring);border-radius:14px;
+ padding:16px 18px;box-shadow:0 10px 30px rgba(0,0,0,.28);pointer-events:auto}
+.tgt-card.mid{right:auto;bottom:auto;left:50%;top:50%;transform:translate(-50%,-50%)}
+.tgt-card h3{margin:.2em 0 .4em;font-size:1.05em;color:var(--curtain)}
+.tgt-card p{margin:.3em 0;font-size:.93em;line-height:1.7}
+.tgt-hint{color:var(--acc);font-weight:600}
+.tgt-dots{display:flex;gap:5px}
+.tgt-dots i{width:7px;height:7px;border-radius:50%;background:var(--base)}
+.tgt-dots i.on{background:var(--curtain)}
+.tgt-btns{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:12px}
+.tgt-btns button,.tgt-menu button{font:inherit;font-size:.9em;padding:.45em 1em;border-radius:999px;
+ border:1px solid var(--acc);background:transparent;color:var(--acc);cursor:pointer}
+.tgt-btns button.pri{background:var(--acc);color:var(--surf)}
+.tgt-btns button.ghost{border-color:var(--base);color:var(--ink2)}
+/* 右下の「使い方」。ツアー中はカードと重ならないよう左へ寄せる */
+.tgt-fab{position:fixed;right:16px;bottom:16px;z-index:80;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.tgt-root:not([hidden]) ~ .tgt-fab{display:none}
+.tgt-fab-btn{font:inherit;font-size:.88em;padding:.5em 1.1em;border-radius:999px;border:1px solid var(--ring);
+ background:var(--surf);color:var(--ink);cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.18)}
+.tgt-menu{display:flex;flex-direction:column;gap:6px;background:var(--surf);border:1px solid var(--ring);
+ border-radius:12px;padding:8px;box-shadow:0 6px 18px rgba(0,0,0,.22)}
+.tgt-menu[hidden]{display:none}
+.tgt-video{position:fixed;inset:0;z-index:110;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:16px}
+.tgt-video-box{position:relative;width:min(960px,100%)}
+.tgt-video video{width:100%;display:block;border-radius:12px;background:#000}
+.tgt-x{position:absolute;right:6px;top:-38px;width:32px;height:32px;border-radius:50%;border:0;
+ background:var(--surf);color:var(--ink);font-size:20px;line-height:1;cursor:pointer}
+@media (max-width:640px){
+ .tgt-card:not(.mid){right:16px;left:16px;width:auto;bottom:12px}
+}
+@media (prefers-reduced-motion:reduce){.tgt-spot{transition:none}}
