@@ -1527,21 +1527,33 @@ body{padding:0}
 @media(max-width:820px){
  .shell{flex-direction:column}
  .side{position:static;width:100%;height:auto;flex-direction:row;flex-wrap:wrap;gap:4px;
-  padding:12px 14px;border-right:0;border-bottom:1px solid var(--curtain)}
- .side .brand{width:100%;padding:0 4px 6px}
- .side .search{width:100%;padding:0 4px 6px}
- /* **横並びに戻る幅では、束も 1 行として横に流す。** 縦積みのまま残すと、
-    束の中だけが段違いになって帯が 2 段の高さになる                            */
- .side .grp{width:100%;flex-direction:row;flex-wrap:wrap;align-items:center;gap:4px}
+  padding:10px 12px;border-right:0;border-bottom:1px solid var(--curtain)}
+ /* **「たぐり」と検索窓は 1 行に並べる**（起案者の指摘・2026-10-07「スマホから見たら
+    メニューが幅取ってる」）。名前の行と窓の行に分けると、それだけで 2 段使っていた */
+ .side{align-items:center}
+ .side .brand{flex:none;padding:0 6px 0 4px}
+ .side .search{flex:1 1 140px;min-width:0;margin:0;padding:0 4px}
+ .side .search svg{left:14px}
+ .side .search input{padding:5px 8px 5px 28px}
+ /* **束は block にして、親と子を同じ行に inline で流す。** 束を flex の行にすると、
+    いまのブラウザは `<details>` の中身を 1 つの箱（`::details-content`）に包むので、
+    **子が右の列に縦積みになり、開いた束 1 つが 4 行ぶんの高さを取っていた。**
+    中の 1 つずつを inline にすれば、箱に包まれていてもいなくても横に折り返す。
+    畳んでいる束は幅を取らずに隣の行き先と同じ行に並び、開いた束だけが 1 行を使う */
+ .side .grp{display:block;margin:0;font-size:0;line-height:0}
+ .side .grp[open]{width:100%}
+ .side .grp>summary,.side .grp a.kid{display:inline-flex;vertical-align:top;line-height:1.4}
+ .side .grp[open]>summary{margin:0 4px 4px 0}
+ .side .grp a.kid{margin:0 4px 4px 0}
  .side .grp .gl{flex:0 0 auto}
- .side .grp>summary{padding:8px 12px}
  .side a.kid{margin-left:0}
+ .side a[href^="/tickets"]{margin-top:0}
  .shell>.main{width:100%;padding:0 14px 72px}
  /* **横に折り返す帯なので、1行に入る数を増やして段数を減らす**（起案者の指摘・
     2026-08-29「ナビゲーションバーが長い」）。並び方は変えず、文字・余白・アイコンを
     詰めるだけにした ── 縦積みの帯からハンバーガーメニューに変える案もあったが、
     起案者の指示で「今の形のまま、並び方をもっとこまめる」を選んだ。 */
- .side a,.side .grp>summary{font-size:12.5px;padding:5px 9px;gap:5px}
+ .side a,.side .grp>summary{font-size:12.5px;padding:4px 9px;gap:5px}
  .side a.kid{font-size:11.5px;padding:4px 8px;gap:5px}
  .side svg.ico{width:13px;height:13px}
  .side .brand svg.tgm{width:19px;height:19px}}

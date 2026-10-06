@@ -86,11 +86,15 @@ function renderNav() {
 }
 
 // **開閉状態はlocalStorageに覚える**(元のNAV_FOLD_JSと同じ挙動)。
+// **ただしスマホ幅では「開いた」を覚えから戻さない**(起案者の指摘・2026-10-07
+// 「スマホから見たらメニューが幅取ってる」)。帯が本文の上に載る幅では、開いた束が
+// そのまま本文を下へ押し出す ── いま居る束だけを開き(updateNavActive)、ほかは畳む。
 function restoreNavFold() {
   try {
+    const narrow = window.matchMedia("(max-width:820px)").matches;
     document.querySelectorAll(".side .grp").forEach(g => {
       const v = localStorage.getItem("taguri.fold." + g.dataset.grp);
-      if (v === "1") g.open = false; else if (v === "0") g.open = true;
+      if (v === "1") g.open = false; else if (v === "0" && !narrow) g.open = true;
       g.addEventListener("toggle", () => {
         try { localStorage.setItem("taguri.fold." + g.dataset.grp, g.open ? "0" : "1"); } catch (e) {}
       });
