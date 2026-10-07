@@ -5235,6 +5235,14 @@ DEMO_SEED_WORKS: list[dict] = [
 ]
 
 
+# 利用者が公開デモ用に選んだ購入・予約由来の96件。
+# 公演名・日時・会場だけを含め、評価と感想は作らない。
+DEMO_PURCHASE_WORKS = json.loads(
+    Path(__file__).with_name("demo_purchase_works.json").read_text(encoding="utf-8"))
+DEMO_SEED_WORKS.extend(
+    {**s, "verdict": None, "note": ""} for s in DEMO_PURCHASE_WORKS)
+
+
 def seed_demo_works(user_id: str) -> int:
     """新しく登録した訪問者に、見本の記録（`DEMO_SEED_WORKS`）を入れる。入れた件数を返す。
 
@@ -5249,12 +5257,15 @@ def seed_demo_works(user_id: str) -> int:
     try:
         for s in DEMO_SEED_WORKS:
             key = f"{R.title_key(s['title'])}#{s['date']}"
+            if s.get("time"):
+                key += f"#{s['time']}"
             cur = con.execute(
                 "INSERT OR IGNORE INTO works (user_id, work_key, title, first_date, last_date,"
                 " times, verdict, chosen, note_impression, note_motive, stage_id, venue, time,"
                 " updated_at)"
-                " VALUES (?,?,?,?,?,1,?,NULL,?,'',NULL,'','',datetime('now','localtime'))",
-                (user_id, key, s["title"], s["date"], s["date"], s["verdict"], s["note"]))
+                " VALUES (?,?,?,?,?,1,?,NULL,?,'',NULL,?,?,datetime('now','localtime'))",
+                (user_id, key, s["title"], s["date"], s["date"], s["verdict"], s["note"],
+                 s.get("venue") or "", s.get("time") or ""))
             n += cur.rowcount
         con.commit()
     finally:
