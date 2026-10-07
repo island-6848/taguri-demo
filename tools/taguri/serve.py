@@ -255,7 +255,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
         個別に手当てを書き足さずに済む。
         """
         welcome = getattr(self, "_welcome_code", None)
-        payload = {**obj, "welcome_code": welcome} if welcome else obj
+        payload = {**obj, "demo_mode": self.server.demo_mode}
+        if welcome:
+            payload["welcome_code"] = welcome
         body = json.dumps(payload, ensure_ascii=False).replace(
             "__TAGURI_TOKEN__", self.server.token)                  # type: ignore[attr-defined]
         self._send(code, body.encode(), "application/json",
@@ -634,7 +636,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
             # **待つ時間の上限は取得の側が決めている** ── 1 つの相手には 1.1 秒に 1 回、
             # 1 回の検索で最大 8 要求なので 8 秒ほどである
             q = urllib.parse.parse_qs(query).get("q", [""])[0]
-            self._json(200, APP.search_web(q[:120]))
+            if srv.demo_mode:
+                self._json(200, APP.suggest(self.user_id, q[:120]))
+            else:
+                self._json(200, APP.search_web(q[:120]))
             return
         if path == "/api/mail_hints":
             # **直すための手がかりだけを返す読み口である。** 本文そのものは渡さないし、
@@ -784,7 +789,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
         ctype = self.headers.get("Content-Type", "")
         if "application/json" in ctype:
             try:
-                return json.loads(raw or b"{}")
+                body = json.loads(raw or b"{}")
+                return body if isinstance(body, dict) else {}
             except ValueError:
                 return {}
         return {k: v[0] for k, v in urllib.parse.parse_qs(raw.decode("utf-8", "replace")).items()}
@@ -794,6 +800,39 @@ class Handler(http.server.BaseHTTPRequestHandler):
         # **keep-alive接続での使い回し対策（`do_GET`と同じ理由）。**
         self._welcome_code: str | None = None
         self._auth_extra: dict = {}
+
+        # CORS only controls reading responses. Reject foreign browser writes too.
+        if srv.demo_mode:
+            origin = self.headers.get("Origin", "")
+            host = self.headers.get("Host", "")
+            allowed = {srv.cors_origin} if srv.cors_origin else set()
+            if host:
+                allowed.update({"https://" + host, "http://" + host})
+            if origin and origin not in allowed:
+                self.close_connection = True
+                self._json(403, {"error": "このページからの操作は受け付けられません"})
+                return
+            form_routes = {"/api/recover", "/api/link/redeem"}
+            ctype = self.headers.get("Content-Type", "").split(";", 1)[0].strip().lower()
+            if self.path not in form_routes and ctype != "application/json":
+                self.close_connection = True
+                self._json(415, {"error": "application/json が必要です"})
+                return
+            if self.path in {"/api/hand_theme", "/api/hand_poster"}:
+                self.close_connection = True
+                self._json(403, {"error": "デモでは公演情報と画像の編集はできません"})
+                return
+
+        cap = 24 * 1024 * 1024 if self.path == "/api/hand_poster" else 8192
+        try:
+            length = int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            length = -1
+        if length < 0 or length > cap:
+            # Do not parse a truncated body or treat leftovers as a new request.
+            self.close_connection = True
+            self._json(413 if length > cap else 400, {"error": "本文の長さが不正です"})
+            return
 
         # **#000008の新しい道は、既存の起動ごとトークンより前に受ける。**
         # `/api/recover`・`/api/link/redeem`は「まだ鍵を持っていない人」が
@@ -865,6 +904,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
         n = min(int(self.headers.get("Content-Length") or 0), cap)
         try:
             body = json.loads(self.rfile.read(n) or b"{}")
+            if not isinstance(body, dict):
+                raise ValueError("JSON object required")
         except ValueError:
             self._json(400, {"error": "json"})
             return
@@ -895,12 +936,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return
         try:
             result = fn(body, self.user_id)
-            # **書き込みのたびに`screen_cache`を丸ごと消す、はやめた（起案者の指摘
-            # ──「3回目以降でまた再度ロードが入るようになる」）。** 一番頻繁な書き込み
-            # である`/api/react`(三択ボタン)自体がここを通るので、消す方式だと
-            # 「三択を押すたび、次に開く画面が毎回また重い初回読み込みに戻る」ことに
-            # なっていた。`screen_cache_set`が付けたTTL(`SCREEN_CACHE_TTL_SEC`)に
-            # 任せ、ここでは何もしない。
+            # Refresh reads do not change data. Other successful writes must not
+            # leave saved-before-edit fragments visible on the next navigation.
+            # Only this visitor's cache is affected; no automatic reload is made.
+            if result.get("ok", True) and op != "/api/hand_theme_refresh":
+                srv.invalidate_user_cache(self.user_id)
             self._json(200, result)
         except ValueError as e:
             self._json(400, {"error": str(e)})
@@ -1154,17 +1194,7 @@ class Server(http.server.ThreadingHTTPServer):
             time.monotonic() + self.SCREEN_CACHE_TTL_SEC, value)
 
     def invalidate_user_cache(self, user_id: str) -> None:
-        """この利用者が覚えていた画面だけを消す。
-
-        書き込みのたびに`screen_cache`を丸ごと消す方式はやめた（起案者の指摘
-        ──「3回目以降でまた再度ロードが入るようになる」）が、**「設定」画面
-        だけは例外にする** ── 保存ボタンを押した本人が、押した直後に自分の
-        設定画面を開いたとき、TTLが切れるまで古い内容が出るのは「保存した
-        つもりが反映されていない」というバグに見える。押した本人以外には
-        一切影響しない（他の利用者のキーには触れない）ので、書き込みのたびに
-        丸ごと消していたときの問題（三択ボタンを押すたびに他画面のキャッシュ
-        まで巻き添えで消える）は起きない。
-        """
+        """保存した利用者の画面だけを無効にする。他の訪問者は巻き込まない。"""
         prefix = user_id + "|"
         for key in [k for k in self.screen_cache if k.startswith(prefix)]:
             self.screen_cache.pop(key, None)
@@ -1560,8 +1590,9 @@ class Server(http.server.ThreadingHTTPServer):
                 (user_id, title, str(b.get("note") or "")[:1000]))
             self.con.commit()
             self.n["missed"] += 1
-        self.enqueue("演者とあらすじを調べています…",
-                     lambda: self._lookup_missed(user_id, title))
+        if not self.demo_mode:
+            self.enqueue("演者とあらすじを調べています…",
+                         lambda: self._lookup_missed(user_id, title))
         return {"ok": True, "title": title}
 
     def _lookup_missed(self, user_id: str, title: str) -> str:
@@ -1682,6 +1713,8 @@ class Server(http.server.ThreadingHTTPServer):
         ── 日付が無いと安全に当てられない（`on_link_stage` が呼ぶときは日付を渡さない
         ので、そちらでは自動では探さない。「結び付けを外す」を自動で結び直さないためでもある）。
         """
+        if self.demo_mode:
+            return  # Demo interactions use the preloaded catalog only.
         sid = str(stage_id or "")
         if not sid.isdigit() and not (work_key and date):
             return
@@ -1758,6 +1791,8 @@ class Server(http.server.ThreadingHTTPServer):
         **受け取った画像は端末内に写すだけで、どこへも送らない。** 画面から外部サイトを
         叩かないという守り（企画書 5 章の守り 5）は、こちらの向きでも同じである。
         """
+        if self.demo_mode:
+            raise ValueError("デモでは画像の編集はできません")
         work_key = str(b.get("work_key") or "")
         if not work_key:
             raise ValueError("work_key が要る")
@@ -1781,6 +1816,8 @@ class Server(http.server.ThreadingHTTPServer):
         **タグが届いたかどうかは、画面側が `pollHandTheme` で数秒おきに確かめる**
         （`on_hand_theme_refresh`）ので、開き直す必要はない。
         """
+        if self.demo_mode:
+            raise ValueError("デモでは公演情報の編集はできません")
         sid = str(b.get("stage_id") or "").strip()[:16]
         if not sid:
             raise ValueError("どの公演か分かりません")

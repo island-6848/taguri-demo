@@ -4852,7 +4852,7 @@ def link_stage(user_id: str, work_key: str, stage_id: str) -> dict:
     if stage_id:
         title = next((r["title"] for r in _suggest_pool(user_id)
                       if r["kind"] == "stage" and r["key"] == stage_id), "")
-        if not title:
+        if not title and _is_owner(user_id):
             # **手元に無ければ、その場で取りに行く。**「ネットの公演情報から探す」で
             # 見つけて選んだ直後は、まだ手元の控え（`_suggest_pool` が読む 3 つの
             # ファイル）に無い ── 起案者の指摘（2026-08-26）「できなかった、じゃなくて
@@ -4866,7 +4866,8 @@ def link_stage(user_id: str, work_key: str, stage_id: str) -> dict:
             title = next((r["title"] for r in _suggest_pool(user_id)
                           if r["kind"] == "stage" and r["key"] == stage_id), "")
         if not title:
-            raise ValueError("その公演の情報を取りに行きましたが、見つかりませんでした")
+            raise ValueError("デモに用意されている公演から選んでください" if not _is_owner(user_id)
+                             else "その公演の情報を取りに行きましたが、見つかりませんでした")
     con = R.connect()
     try:
         con.execute(
@@ -5198,7 +5199,7 @@ def add_work(user_id: str, title: str, date: str = "", venue: str = "", stage_id
     # **更新の段は評価が付いた記録しか見ない**ので、評価を付けるまで空のままだった。
     # **通信は 0 回で済む**（探したときに公演ページを控えている）。落ちても登録は残す
     adopted = {}
-    if stage_id:
+    if stage_id and _is_owner(user_id):
         import stage_search as SS
         adopted = SS.adopt(stage_id, work_key=key, title=title, date=date)
     return {"ok": True, "work_key": key, "stage_id": stage_id, "adopted": adopted,
@@ -7770,6 +7771,8 @@ def _web_hits(user_id: str, q: str, on: bool) -> str:
     `mode="ended_added"`）。ボタンは同じ検索を打つたびに毎回出るので、押したことを
     覚えていないと二重に押しに行ってしまう ── `works.stage_id` に当たれば済んでいる。
     """
+    if not _is_owner(user_id):
+        return '<p class="note">デモでは、用意されている公演から検索できます。</p>'
     ask = (f'<div class="webq" id="web"><p class="lead">'
            f'手元にあるこれから観られる公演の一覧は、月に 1 度集めた分です。'
            f'<b>そこに無い公演も、CoRichの公演情報からその場で探せます。</b></p>'
