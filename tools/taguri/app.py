@@ -5205,6 +5205,63 @@ def add_work(user_id: str, title: str, date: str = "", venue: str = "", stage_id
             "similar": similar_works(user_id, title, key)}
 
 
+# **公開デモの訪問者に、最初から入れておく観劇記録。**（起案者の指示・2026-10-06 ──
+# 「デモにあらかじめ何件か記録を追加しておいて」）
+#
+# 訪問者は購入確認メールを持たない（`rate_performances.load_purchases` は持ち主以外に
+# 0 件を返す）ので、**記録は手で足すまで 1 件も無い。** 日記帳も評価待ちも空のまま
+# 操作ツアー（`web/tour.js`）が「観たあとは ◎○△× をつけます」と案内することになり、
+# 何を押せばよいのかが画面から分からなかった。
+#
+# **持ち主の記録を写すのではなく、ここに書いた見本を入れる。** 持ち主の記録・感想を
+# 訪問者に見せないのは E3 の決まりである（`_is_owner`）。題名は特定の上演に
+# 結び付かない古典の戯曲にし、`stage_id`・会場は空にする ── どの公演の評価なのかを
+# 名指ししない（架空の評価を、実在する特定の上演に付けない）。
+#
+# **評価の無い記録を 2 件混ぜる。** 評価待ち（`waiting_rows`）が空だと、ツアーの
+# 「◎○△× をつける」段で押すものが無い。**◎ で感想の無いものも 1 件置く** ──
+# 感想を聞く欄（`impressions.pending`）が何をする所なのかも、最初から見える。
+DEMO_SEED_WORKS: list[dict] = [
+    {"title": "ハムレット", "date": "2026-03-14", "verdict": "◎",
+     "note": "独白の間の取り方が忘れられない。台詞の多い古典でも、"
+             "演出しだいでこんなに速く感じるのかと驚いた。"},
+    {"title": "かもめ", "date": "2026-04-19", "verdict": "○",
+     "note": "登場人物の誰にも肩入れできないまま、最後の一発まで目が離せなかった。"},
+    {"title": "夏の夜の夢", "date": "2026-05-24", "verdict": "◎", "note": ""},
+    {"title": "ゴドーを待ちながら", "date": "2026-06-21", "verdict": "△",
+     "note": "何も起きないことを楽しむ余裕が、この日の自分には無かった。"},
+    {"title": "桜の園", "date": "2026-07-26", "verdict": None, "note": ""},
+    {"title": "ロミオとジュリエット", "date": "2026-09-13", "verdict": None, "note": ""},
+]
+
+
+def seed_demo_works(user_id: str) -> int:
+    """新しく登録した訪問者に、見本の記録（`DEMO_SEED_WORKS`）を入れる。入れた件数を返す。
+
+    **持ち主には入れない** ── 持ち主の記録は購入確認メールから組む本物である。
+    **既にある鍵は飛ばす**（同じ人に 2 度呼んでも重ならない）。
+    """
+    if _is_owner(user_id):
+        return 0
+    import rate_performances as R
+    con = R.connect()
+    n = 0
+    try:
+        for s in DEMO_SEED_WORKS:
+            key = f"{R.title_key(s['title'])}#{s['date']}"
+            cur = con.execute(
+                "INSERT OR IGNORE INTO works (user_id, work_key, title, first_date, last_date,"
+                " times, verdict, chosen, note_impression, note_motive, stage_id, venue, time,"
+                " updated_at)"
+                " VALUES (?,?,?,?,?,1,?,NULL,?,'',NULL,'','',datetime('now','localtime'))",
+                (user_id, key, s["title"], s["date"], s["date"], s["verdict"], s["note"]))
+            n += cur.rowcount
+        con.commit()
+    finally:
+        con.close()
+    return n
+
+
 def _import_upto_line() -> str:
     """**どこまで取り込んであるかを、記録から出す。**
 

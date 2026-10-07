@@ -334,6 +334,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         AU.throttle_register(self.client_address[0])
         code = AU.generate_recovery_code()
         new_user_id, _ = AU.access_or_register(code)
+        _seed_demo(new_user_id)
         token = AU.create_session(new_user_id)
         self._auth_extra = self._set_session_cookie(token)
         return new_user_id, code
@@ -384,6 +385,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 return
             code = AU.generate_recovery_code()
             new_user_id, _ = AU.access_or_register(code)
+            _seed_demo(new_user_id)
             token = AU.create_session(new_user_id)
             # **登録直後の一歩目（#000008・2026-08-29）。** 観劇記録・評価は
             # これから積み上がるものなので、統計的な推薦（網B/C）はまだ空である。
@@ -902,6 +904,18 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self._json(200, result)
         except ValueError as e:
             self._json(400, {"error": str(e)})
+
+
+def _seed_demo(user_id: str) -> None:
+    """公開デモで新規登録した訪問者に、見本の記録を入れる（`app.seed_demo_works`）。
+
+    **入れられなくても登録は止めない。** 見本は使い始めを分かりやすくするための
+    もので、無くても画面は動く ── ここで落ちると、訪問者が何も使えなくなる。
+    """
+    try:
+        APP.seed_demo_works(user_id)
+    except Exception as e:                                          # noqa: BLE001
+        print(f"見本の記録を入れられなかった: {e}", flush=True)
 
 
 def _month(query: str) -> str:
