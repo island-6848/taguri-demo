@@ -10,6 +10,8 @@
 
 **プレゼン資料**: https://island-6848.github.io/taguri-demo/docs/000003-final-presentation-taguri.html
 
+**使い方ガイド（使う方向け）**: https://island-6848.github.io/taguri-demo/docs/000010-user-guide-taguri.html
+
 ## たぐりでできること
 
 観たかった舞台が、気づいたら終わっていた。たぐりは、そんな見逃しを減らすための演劇アプリです。これから観られる公演の中から、あなたに合いそうな舞台を毎週届けます。
@@ -54,6 +56,7 @@ HTML断片を画面に差し込む形にした。GitHub Pagesは静的配信専�
 - [`docs/000007-taguri-security-rules.md`](docs/000007-taguri-security-rules.md) ── セキュリティ規約
 - [`docs/000007-taguri-terms-of-use.md`](docs/000007-taguri-terms-of-use.md) ── 利用規約
 - [`docs/000003-final-presentation-taguri.html`](https://island-6848.github.io/taguri-demo/docs/000003-final-presentation-taguri.html) ── プレゼン資料（ブラウザで表示。[ソース](docs/000003-final-presentation-taguri.html)）
+- [`docs/000010-user-guide-taguri.html`](https://island-6848.github.io/taguri-demo/docs/000010-user-guide-taguri.html) ── 使う方向けの使い方ガイド（ブラウザで表示。[ソース](docs/000010-user-guide-taguri.html)）
 
 ## ローカルで動かす
 

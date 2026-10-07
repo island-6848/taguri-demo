@@ -8186,8 +8186,8 @@ def _account_card_html(user_id: str) -> str:
     if user_id == AU.LOCAL_USER_ID:
         return ""
     return f"""<details class="card">{_card_h2("gear", "アカウント")}
-<p class="lead">この仕組みはアカウント登録なしで動きます。**この端末を識別しているのは
-復旧コード1つだけ**で、控えていないと端末を失ったときに記録へ二度と戻れません。</p>
+<p class="lead">この仕組みはアカウント登録なしで動きます。<b>この端末を識別しているのは
+復旧コード 1 つだけ</b>なので、控えていないと、端末を失ったときに記録へ二度と戻れません。</p>
 <p class="lead">利用者ID: <code>{E(user_id[:12])}…</code></p>
 <p class="lead"><a href="/auth/start?t=__TAGURI_TOKEN__">復旧コードをもう一度確認する
 （すでに発行済みなら再発行はしません）</a><br>

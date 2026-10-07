@@ -1,0 +1,641 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>たぐり 使い方ガイド</title>
+<meta name="description" content="演劇のおすすめと観劇記録のアプリ「たぐり」を使う方向けのガイド">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=IBM+Plex+Sans:wght@600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* 000003-final-presentation-taguri.html と同じデザイン（スタイルはそのまま複製） */
+:root{
+ --ink:#050B10;--body:#141F29;--muted:#3C4B59;--line:#D7E0EA;--wash:#F4F7FB;
+ --paper:#FFFFFF;--page:#E9EEF4;
+ --brand:#1F497D;--brand2:#4F81BD;--thread:#A93F3C;--thread-w:#F7ECEA;
+ --good:#1E6B48;--warn:#8A6D2A;--stop:#8A3B3B;
+ --brand-rgb:31,73,125;--thread-rgb:169,63,60;
+ --shadow:0 1px 2px rgba(15,25,34,.06),0 8px 24px rgba(15,25,34,.06);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+ --ink:#EAF1F8;--body:#C4D1DE;--muted:#8FA2B3;--line:#2B3B4A;--wash:#16222E;
+ --paper:#101B26;--page:#0B141C;
+ --brand:#7FA8DE;--brand2:#4F81BD;--thread:#E08A85;--thread-w:#2B1917;
+ --good:#5FC79A;--warn:#D8B65B;--stop:#E08A85;
+ --brand-rgb:127,168,222;--thread-rgb:224,138,133;
+ --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.35);
+}}
+:root[data-theme="dark"]{
+ --ink:#EAF1F8;--body:#C4D1DE;--muted:#8FA2B3;--line:#2B3B4A;--wash:#16222E;
+ --paper:#101B26;--page:#0B141C;
+ --brand:#7FA8DE;--brand2:#4F81BD;--thread:#E08A85;--thread-w:#2B1917;
+ --good:#5FC79A;--warn:#D8B65B;--stop:#E08A85;
+ --brand-rgb:127,168,222;--thread-rgb:224,138,133;
+ --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--page);color:var(--body);
+ font-family:"Noto Sans JP","Hiragino Kaku Gothic ProN",Meiryo,system-ui,sans-serif;
+ font-size:15.5px;line-height:1.85;-webkit-font-smoothing:antialiased}
+h1,h2,h3,h4{font-family:"IBM Plex Sans","Noto Sans JP",sans-serif;color:var(--ink);
+ text-wrap:balance;line-height:1.3}
+code,.mono{font-family:"IBM Plex Mono",ui-monospace,monospace}
+a{color:var(--brand)}
+::selection{background:rgba(var(--brand-rgb),.22)}
+
+/* ---------------------------------------------------------------- レイアウト骨格 */
+.shell{display:flex;min-height:100vh}
+.rail{position:sticky;top:0;align-self:flex-start;width:236px;flex:none;height:100vh;
+ overflow-y:auto;padding:26px 14px 26px 22px;border-right:1px solid var(--line)}
+.rail .brand{display:block;font-family:"IBM Plex Sans";font-weight:700;font-size:15px;
+ color:var(--ink);text-decoration:none;margin:0 0 3px}
+.rail .brand small{display:block;font-family:"Noto Sans JP";font-weight:400;
+ font-size:11.5px;color:var(--muted);margin-top:2px}
+.rail nav{margin-top:22px;display:flex;flex-direction:column;gap:1px}
+.rail nav a{display:flex;align-items:baseline;gap:9px;padding:7px 10px;border-radius:7px;
+ color:var(--body);text-decoration:none;font-size:13px}
+.rail nav a:hover{background:var(--wash)}
+.rail nav a.on{background:rgba(var(--brand-rgb),.1);color:var(--brand);font-weight:600}
+.rail nav a b{font-family:"IBM Plex Mono";font-weight:500;font-size:10.5px;
+ color:var(--muted);flex:none;width:16px}
+.rail nav a.on b{color:var(--brand)}
+main{flex:1;min-width:0}
+.sec{padding:64px clamp(24px,6vw,88px);border-bottom:1px solid var(--line)}
+.sec.tight{padding-top:40px;padding-bottom:40px}
+.col{max-width:760px}
+.wide{max-width:1040px}
+.eyebrow{display:flex;align-items:center;gap:10px;font-family:"IBM Plex Mono";
+ font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--thread);
+ margin:0 0 12px}
+.eyebrow .n{font-size:26px;font-weight:600;color:var(--line);letter-spacing:0;
+ font-family:"IBM Plex Sans"}
+h2.title{font-size:clamp(23px,3vw,30px);font-weight:700;margin:0 0 8px}
+.kicker{font-size:15px;color:var(--muted);margin:0 0 34px;max-width:62em}
+.kicker b{color:var(--body);font-weight:600}
+h3.sub{font-size:16px;font-weight:600;margin:40px 0 14px;padding-top:2px;
+ border-top:1px solid var(--line);padding-top:22px}
+h3.sub:first-of-type{border-top:0;padding-top:0}
+p{margin:0 0 14px}
+ul.plain,ol.plain{margin:0 0 14px;padding-left:22px}
+ul.plain li,ol.plain li{margin:0 0 8px}
+.muted{color:var(--muted);font-size:13px}
+
+/* ---------------------------------------------------------------- 表紙 */
+.cover{min-height:100vh;display:flex;flex-direction:column;justify-content:center;
+ padding:60px clamp(24px,7vw,110px);position:relative;overflow:hidden;
+ background:
+  radial-gradient(620px 420px at 82% 8%,rgba(var(--brand-rgb),.10),transparent 60%),
+  radial-gradient(520px 420px at 6% 92%,rgba(var(--thread-rgb),.08),transparent 60%);}
+.cover .kicker2{font-family:"IBM Plex Mono";font-size:12.5px;letter-spacing:.10em;
+ text-transform:uppercase;color:var(--muted);margin:0 0 22px}
+.cover h1{font-size:clamp(34px,6vw,60px);font-weight:700;margin:0 0 18px;max-width:16em}
+.cover .lede{font-size:18px;color:var(--body);max-width:52em;margin:0 0 40px}
+.cover .meta{display:flex;flex-wrap:wrap;gap:28px 44px;padding-top:26px;
+ border-top:1px solid var(--line);max-width:640px}
+.cover .meta div b{display:block;font-size:11px;letter-spacing:.06em;color:var(--muted);
+ text-transform:uppercase;margin-bottom:4px;font-family:"IBM Plex Mono"}
+.cover .meta div span{font-size:15px;color:var(--ink);font-weight:600}
+.cover .fillme{color:var(--thread);font-style:normal;border-bottom:1.5px dashed var(--thread)}
+
+/* ---------------------------------------------------------------- 目次 */
+.toc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+.toc-grid a{display:flex;gap:16px;align-items:flex-start;padding:18px 20px;
+ border:1px solid var(--line);border-radius:12px;text-decoration:none;color:inherit;
+ background:var(--paper);transition:border-color .15s,transform .15s}
+.toc-grid a:hover{border-color:var(--brand2);transform:translateY(-1px)}
+.toc-grid .n{font-family:"IBM Plex Mono";font-size:22px;font-weight:500;color:var(--line);
+ flex:none;line-height:1.1}
+.toc-grid a:hover .n{color:var(--brand2)}
+.toc-grid h4{margin:0 0 3px;font-size:15px}
+.toc-grid p{margin:0;font-size:12.5px;color:var(--muted)}
+
+/* ---------------------------------------------------------------- カード・グリッド */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:start}
+@media(max-width:860px){.grid2{grid-template-columns:1fr}}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:12px;
+ padding:20px 22px;box-shadow:var(--shadow)}
+.card h4{margin:0 0 8px;font-size:14.5px;display:flex;align-items:center;gap:8px}
+.stat{display:flex;flex-direction:column;gap:4px;padding:16px 18px;border-radius:12px;
+ background:var(--wash);border:1px solid var(--line)}
+.stat .v{font-family:"IBM Plex Mono";font-size:24px;font-weight:500;color:var(--brand);
+ font-variant-numeric:tabular-nums}
+.stat .l{font-size:12px;color:var(--muted)}
+
+/* ---------------------------------------------------------------- 企画カード（課題・価値・対象ユーザー） */
+.pitchcard{display:flex;gap:16px;align-items:flex-start;margin:0 0 16px}
+.pitchcard .icwrap{width:40px;height:40px;border-radius:11px}
+.pitchcard h4{margin:0 0 6px;font-size:13px;font-weight:600;color:var(--thread)}
+.pitchcard p{margin:0;color:var(--body)}
+.pitch{display:flex;gap:16px;align-items:center;background:rgba(var(--brand-rgb),.08);
+ border:1px solid rgba(var(--brand-rgb),.28);border-radius:14px;padding:18px 22px;margin:4px 0 20px}
+.pitch .icwrap{width:44px;height:44px;border-radius:12px;background:rgba(var(--brand-rgb),.16)}
+.pitch p{margin:0;font-size:17.5px;font-weight:600;color:var(--ink);line-height:1.55}
+.statusbox{background:var(--wash);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:0 0 20px}
+.statusbox h4{margin:0 0 12px;font-size:13px;font-weight:600;color:var(--muted);
+  display:flex;align-items:center;gap:8px}
+.statusbox ul{margin:0;padding:0 0 0 1.2em;display:flex;flex-direction:column;gap:8px}
+.statusbox li{font-size:14px;color:var(--body);line-height:1.6}
+.effectbox{background:rgba(var(--thread-rgb),.07);border:1px solid rgba(var(--thread-rgb),.25);
+ border-radius:14px;padding:18px 22px;margin:4px 0 20px}
+.effectbox h4{margin:0 0 12px;font-size:13px;font-weight:600;color:var(--thread);
+ display:flex;align-items:center;gap:8px}
+.effectbox ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:10px}
+.effectbox li{font-size:14px;font-weight:400;color:var(--body);line-height:1.6}
+.effectbox li b{font-weight:600;color:var(--ink)}
+
+/* ---------------------------------------------------------------- 表 */
+.twrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;margin:0 0 20px}
+table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:560px}
+table caption{caption-side:top;text-align:left;padding:12px 16px 0;font-size:12px;
+ color:var(--muted)}
+th,td{padding:11px 16px;text-align:left;border-bottom:1px solid var(--line);
+ vertical-align:top}
+th{font-family:"IBM Plex Sans";font-weight:600;font-size:11.5px;letter-spacing:.03em;
+ color:var(--muted);text-transform:uppercase;background:var(--wash)}
+tr:last-child td{border-bottom:0}
+td code{background:var(--wash);padding:1px 5px;border-radius:4px;font-size:12px}
+.tag{display:inline-flex;align-items:center;gap:5px;padding:2px 9px;border-radius:99px;
+ font-size:11.5px;font-weight:600;white-space:nowrap}
+.tag.good{color:var(--good);background:rgba(30,107,72,.12)}
+.tag.warn{color:var(--warn);background:rgba(138,109,42,.12)}
+.tag.stop{color:var(--stop);background:rgba(138,59,59,.12)}
+
+/* ---------------------------------------------------------------- アイコン */
+svg.ic{stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;
+ stroke-linejoin:round;flex:none;vertical-align:-4px}
+.icwrap{display:inline-flex;align-items:center;justify-content:center;flex:none;
+ width:34px;height:34px;border-radius:9px;background:rgba(var(--brand-rgb),.1);
+ color:var(--brand)}
+
+/* ---------------------------------------------------------------- ツリー */
+.tree,.tree ul{list-style:none;margin:0;padding-left:26px;position:relative}
+.tree{padding-left:0}
+.tree li{position:relative;padding:6px 0 6px 22px}
+.tree li::before{content:"";position:absolute;left:0;top:0;bottom:0;width:1px;
+ background:var(--line)}
+.tree li:last-child::before{bottom:auto;height:22px}
+.tree li::after{content:"";position:absolute;left:0;top:22px;width:16px;height:1px;
+ background:var(--line)}
+.tree>li{padding-left:0}
+.tree>li::before,.tree>li::after{display:none}
+.tree.flush>li{padding-left:22px}
+.tree.flush>li::before,.tree.flush>li::after{display:block}
+.tree .leaf{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.tree .leaf b{font-size:13.5px;color:var(--ink);font-weight:600}
+.tree .leaf span{font-size:12px;color:var(--muted)}
+.tree .node{font-weight:600;color:var(--body);font-size:13.5px}
+
+/* ---------------------------------------------------------------- 使用イメージ図（フロー） */
+.flow{display:flex;flex-direction:column;gap:0;margin:18px 0 8px}
+.step{display:flex;gap:16px;align-items:flex-start;position:relative;padding-bottom:26px}
+.step:last-child{padding-bottom:0}
+.step:not(:last-child)::before{content:"";position:absolute;left:20px;top:42px;
+ bottom:2px;width:2px;background:var(--line)}
+.step .dot{flex:none;width:40px;height:40px;border-radius:50%;background:var(--paper);
+ border:1.5px solid var(--brand2);color:var(--brand);display:flex;align-items:center;
+ justify-content:center;z-index:1}
+.step .dot.act{background:var(--brand);color:#fff;border-color:var(--brand)}
+.step .dot.eval{border-color:var(--thread);color:var(--thread)}
+.step .tx{padding-top:6px}
+.step .tx b{display:block;color:var(--ink);font-size:14px;margin-bottom:3px}
+.step .tx span{font-size:12.5px;color:var(--muted)}
+.step .tx .tree{margin-top:10px}
+.loopback{display:flex;align-items:center;gap:8px;margin:2px 0 0 0;padding-left:56px;
+ color:var(--thread);font-size:12.5px;font-weight:600}
+.loomrow{display:grid;grid-template-columns:5fr 1fr 5fr 1fr 5fr 1fr 5fr;align-items:start}
+.loomcol{position:relative;padding-top:28px}
+.loomcol::before{content:"";position:absolute;left:50%;top:0;height:20px;width:2px;
+ background:var(--muted);transform:translateX(-1px)}
+.loomcol::after{content:"";position:absolute;left:50%;top:20px;width:8px;height:8px;
+ border-radius:50%;background:var(--muted);transform:translateX(-4px)}
+
+/* ---------------------------------------------------------------- 図の凡例 */
+.legend{display:flex;flex-wrap:wrap;gap:10px 20px;margin:16px 0 0;font-size:12px;
+ color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend svg.ic{width:15px;height:15px}
+
+/* ---------------------------------------------------------------- 図 figure */
+figure{margin:0 0 8px}
+figure svg{max-width:100%;height:auto;display:block}
+figcaption{font-size:12.5px;color:var(--muted);margin-top:10px;max-width:70em}
+
+/* ---------------------------------------------------------------- 達成事項リスト */
+.ach{border:1px solid var(--line);border-radius:12px;background:var(--paper);
+ padding:20px 22px;margin:0 0 16px;box-shadow:var(--shadow)}
+.ach .num{display:inline-flex;align-items:center;justify-content:center;width:26px;
+ height:26px;border-radius:50%;background:var(--brand);color:#fff;font-size:12px;
+ font-weight:700;font-family:"IBM Plex Mono";flex:none}
+.ach .head{display:flex;gap:12px;align-items:flex-start;margin-bottom:8px}
+.ach .head p{margin:0;font-weight:600;color:var(--ink);font-size:15px}
+.ach .body{margin:0 0 10px;padding-left:38px;color:var(--body);font-size:13.5px}
+.ach .benefit{margin:0 0 0 38px;padding:11px 15px;border-radius:8px;
+ background:var(--thread-w);border-left:3px solid var(--thread);font-size:13.5px}
+.ach .benefit b{color:var(--thread)}
+
+/* ---------------------------------------------------------------- 未実装 */
+.notdone{display:grid;gap:12px}
+.notdone .row{display:grid;grid-template-columns:1.1fr .7fr 1.6fr;gap:16px;
+ padding:16px 18px;border:1px solid var(--line);border-radius:10px;background:var(--paper)}
+@media(max-width:760px){.notdone .row{grid-template-columns:1fr}}
+.notdone .row b{font-size:13.5px;color:var(--ink)}
+.notdone .row .why{font-size:13px;color:var(--body)}
+
+/* ---------------------------------------------------------------- 骨組み（1章・7章） */
+.skeleton{border:1.5px dashed var(--line);border-radius:12px;padding:22px 24px;
+ background:var(--wash)}
+.skeleton h4{margin:0 0 6px;font-size:13.5px;color:var(--muted);font-weight:600}
+.skeleton .fill{min-height:1.4em;border-bottom:1px dashed var(--muted);margin:0 0 22px;
+ color:var(--muted);font-size:13px}
+.skeleton p.note{margin:0;font-size:12px;color:var(--muted)}
+.rcard{margin:0 0 24px}
+.rcard h4{margin:0 0 10px;font-size:13.5px;font-weight:600;color:var(--muted)}
+.rcard .rfield{display:inline-block;font-family:"IBM Plex Mono";font-size:11.5px;
+ letter-spacing:.06em;color:var(--thread);background:rgba(var(--thread-rgb),.1);
+ padding:3px 10px;border-radius:99px;margin:0 0 10px}
+.rcard .rtitle{margin:0;font-size:19px;font-weight:700;color:var(--ink);line-height:1.55}
+
+/* ---------------------------------------------------------------- モバイル: 上部バー */
+.topbar{display:none}
+@media(max-width:900px){
+ .rail{position:fixed;left:0;top:0;bottom:0;background:var(--paper);z-index:20;
+  transform:translateX(-100%);transition:transform .2s;box-shadow:var(--shadow)}
+ .rail.open{transform:translateX(0)}
+ .topbar{display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:15;
+  background:var(--paper);border-bottom:1px solid var(--line);padding:12px 18px}
+ .topbar button{border:1px solid var(--line);background:var(--wash);border-radius:8px;
+  padding:7px 11px;font:inherit;color:var(--ink);cursor:pointer}
+ .topbar b{font-family:"IBM Plex Sans";font-weight:700;font-size:14px}
+}
+@media print{.rail,.topbar{display:none}}
+</style>
+</head>
+<body>
+<div class="shell">
+<aside class="rail" id="rail">
+  <a class="brand" href="#cover">たぐり 使い方ガイド<small>はじめて使う方へ</small></a>
+  <nav id="railnav">
+    <a href="#cover"><b>―</b>表紙</a>
+    <a href="#toc"><b>―</b>目次</a>
+    <a href="#ch1"><b>01</b>たぐりとは</a>
+    <a href="#ch2"><b>02</b>はじめかた</a>
+    <a href="#ch3"><b>03</b>毎週の使い方</a>
+    <a href="#ch4"><b>04</b>画面ガイド</a>
+    <a href="#ch5"><b>05</b>記録をつける・見返す</a>
+    <a href="#ch6"><b>06</b>データと安心</a>
+    <a href="#ch7"><b>07</b>よくある質問</a>
+  </nav>
+</aside>
+
+<main>
+<div class="topbar"><button id="railBtn" aria-label="目次を開く">☰</button><b>たぐり 使い方ガイド</b></div>
+
+<!-- ============================================================ 表紙 -->
+<section class="cover" id="cover">
+  <p class="kicker2">使い方ガイド</p>
+  <h1>観たかった舞台を、見逃さないために。</h1>
+  <p class="lede">「たぐり」は、これから観られる演劇の公演から、あなたに合いそうな舞台を毎週届けるアプリです。このガイドでは、はじめかたから毎週の使い方、記録の残し方までを順に説明します。</p>
+  <div class="meta">
+    <div><b>対象</b><span>たぐりを使う方</span></div>
+    <div><b>所要時間</b><span>読むのに約 5 分</span></div>
+    <div><b>デモ</b><span><a href="https://island-6848.github.io/taguri-demo/">island-6848.github.io/taguri-demo</a></span></div>
+  </div>
+</section>
+
+<!-- ============================================================ 目次 -->
+<section class="sec" id="toc">
+  <div class="eyebrow"><span>目次</span></div>
+  <h2 class="title">7 章構成</h2>
+  <p class="kicker">急ぐ方は <b>02 はじめかた</b> と <b>03 毎週の使い方</b> だけ読めば使い始められます。</p>
+  <div class="toc-grid wide">
+    <a href="#ch1"><span class="n">01</span><span><h4>たぐりとは</h4><p>何ができるか・どんな人に向いているか</p></span></a>
+    <a href="#ch2"><span class="n">02</span><span><h4>はじめかた</h4><p>最初の画面・復旧コード・最初の 1 歩</p></span></a>
+    <a href="#ch3"><span class="n">03</span><span><h4>毎週の使い方</h4><p>おすすめを開いてから、観て評価するまで</p></span></a>
+    <a href="#ch4"><span class="n">04</span><span><h4>画面ガイド</h4><p>メニューの各画面でできること</p></span></a>
+    <a href="#ch5"><span class="n">05</span><span><h4>記録をつける・見返す</h4><p>観た公演の登録・評価・感想・振り返り</p></span></a>
+    <a href="#ch6"><span class="n">06</span><span><h4>データと安心</h4><p>アカウント・別の端末・書き出し・外部への送信</p></span></a>
+    <a href="#ch7"><span class="n">07</span><span><h4>よくある質問</h4><p>困ったときに</p></span></a>
+  </div>
+</section>
+
+<!-- ============================================================ 1章 たぐりとは -->
+<section class="sec" id="ch1">
+  <div class="eyebrow"><span class="n">01</span><span>たぐりとは</span></div>
+  <h2 class="title">たぐりとは</h2>
+
+  <div class="col">
+    <div class="statusbox">
+      <h4><svg class="ic" viewBox="0 0 24 24" width="16" height="16"><path d="M12 8v5M12 16h.01M12 3 2 20h20L12 3z"/></svg>こんなこと、ありませんか</h4>
+      <ul>
+        <li>気になっていた舞台が、気づいたら千秋楽を過ぎていた</li>
+        <li>公演の数が多すぎて、自分に合うものを探しきれない</li>
+        <li>観た公演の記録が、チケットの半券やメールに散らばっている</li>
+      </ul>
+    </div>
+
+    <div class="pitch">
+      <span class="icwrap"><svg class="ic" viewBox="0 0 24 24" width="22" height="22"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM11 8v3M11 14h.01"/></svg></span>
+      <p>観た公演の記録をもとに、これから観られる舞台を毎週おすすめします</p>
+    </div>
+
+    <div class="effectbox">
+      <h4><svg class="ic" viewBox="0 0 24 24" width="16" height="16"><path d="M3 20h18M6.5 20v-5M11.5 20V6M16.5 20v-9"/></svg>使うと、こう変わります</h4>
+      <ul>
+        <li><b>探す手間が減る</b>：好みに合いそうな公演が、理由つきで毎週届きます</li>
+        <li><b>見逃しが減る</b>：気になる公演がいつまで観られるか、カレンダーで分かります。初日が近い公演も知らせます</li>
+        <li><b>記録が残る</b>：公式サイトの公演ページが消えても、自分の観劇記録は残ります</li>
+      </ul>
+    </div>
+
+    <div class="pitchcard">
+      <span class="icwrap"><svg class="ic" viewBox="0 0 24 24" width="20" height="20"><path d="M12 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM4 20c0-3.3 3.6-5 8-5s8 1.7 8 5"/></svg></span>
+      <div><h4>向いている人</h4><p>演劇をよく観る人。とくに、年に何本も観る人や、追いかけている劇団・俳優・作家がいる人ほど、おすすめが当たりやすくなります。</p></div>
+    </div>
+  </div>
+
+  <h3 class="sub">使い方は 3 つの動きだけ</h3>
+  <div class="grid2 wide">
+    <div class="card">
+      <h4><span class="icwrap"><svg class="ic" viewBox="0 0 24 24" width="18" height="18"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM16.2 16.2 21 21"/></svg></span>① おすすめを開く</h4>
+      <p class="muted">公演ごとに「なぜおすすめなのか」が書いてあります。</p>
+    </div>
+    <div class="card">
+      <h4><span class="icwrap"><svg class="ic" viewBox="0 0 24 24" width="18" height="18"><path d="M5 21V4h13l-2.5 4.5L18 13H5"/></svg></span>② 「興味あり」を押す</h4>
+      <p class="muted">押した公演は一覧と公演カレンダーに並び、いつまで観られるかが分かります。</p>
+    </div>
+    <div class="card">
+      <h4><span class="icwrap"><svg class="ic" viewBox="0 0 24 24" width="18" height="18"><path d="M4 20h4L18 10l-4-4L4 16zM13.5 6.5l4 4"/></svg></span>③ 観たら ◎○△× と感想を残す</h4>
+      <p class="muted">記録は日記帳にたまり、次のおすすめがあなたの好みに近づきます。</p>
+    </div>
+    <div class="card">
+      <h4><span class="icwrap"><svg class="ic" viewBox="0 0 24 24" width="18" height="18"><path d="M4 12a8 8 0 0 1 14-5.3M20 12a8 8 0 0 1-14 5.3M18 3v4h-4M6 21v-4h4"/></svg></span>そして、また ① へ</h4>
+      <p class="muted">反応と評価がたまるほど、おすすめはあなた向けになっていきます。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ 2章 はじめかた -->
+<section class="sec" id="ch2">
+  <div class="eyebrow"><span class="n">02</span><span>はじめかた</span></div>
+  <h2 class="title">はじめかた</h2>
+  <p class="kicker">登録もパスワードもいりません。ページを開けば、すぐに使い始められます。</p>
+
+  <div class="col">
+    <div class="flow">
+      <div class="step">
+        <span class="dot act"><svg class="ic" viewBox="0 0 24 24" width="18" height="18"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+        <div class="tx"><b>デモのページを開く</b><span>無料のサーバーで動いているため、しばらく誰も使っていないと、最初の表示に 10〜20 秒ほどかかります。舞台の準備をしている絵が出ている間は、そのままお待ちください。</span></div>
+      </div>
+      <div class="step">
+        <span class="dot eval"><svg class="ic" viewBox="0 0 24 24" width="18" height="18"><path d="M8 11V7a4 4 0 0 1 8 0v4M5 11h14v10H5z"/></svg></span>
+        <div class="tx"><b>復旧コードを控える</b><span>はじめて開いたときに 1 回だけ、「この端末の復旧コード」が表示されます。<b style="display:inline;color:var(--thread)">二度と表示されない</b>ので、「コピーする」を押して安全な場所に保存してください。Cookie を消したときや端末を替えたときに、記録へ戻るための鍵になります。</span></div>
+      </div>
+      <div class="step">
+        <span class="dot"><svg class="ic" viewBox="0 0 24 24" width="18" height="18"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM10 9l5 3-5 3z"/></svg></span>
+        <div class="tx"><b>操作ツアーを試す</b><span>はじめて開くと、実際の画面で操作を試せるツアーが始まります。途中でやめても、画面右下の「使い方」からいつでも開き直せます。約 70 秒の説明動画も同じ場所にあります。</span></div>
+      </div>
+      <div class="step">
+        <span class="dot act"><svg class="ic" viewBox="0 0 24 24" width="18" height="18"><path d="M5 12.5 10 18 20 6"/></svg></span>
+        <div class="tx"><b>おすすめで、いくつか「興味あり」を押す</b><span>ここがいちばん大事な 1 歩です。何も押さないと、「興味あり」や公演カレンダーなど、ほかの画面がすべて 0 件のままになります。気になる公演をいくつか選んでください。</span></div>
+      </div>
+    </div>
+  </div>
+
+  <h3 class="sub">記録がまだないときは「はじめる」画面から</h3>
+  <div class="col">
+    <p>観た記録が 1 件もないうちは、好みに合わせたおすすめはまだ作れません。そのときは「はじめる」画面が開き、次の 3 つを案内します。<b>1 つ目だけで始められます。</b></p>
+    <div class="twrap">
+      <table>
+        <thead><tr><th>順番</th><th>やること</th><th>何が起きるか</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>見逃したくない名前を登録する</td><td>劇団・俳優・演出家・作品・原作者・題材のどれでも登録できます。登録した名前の公演は、件数の制限なしに「お気に入り」に届きます</td></tr>
+          <tr><td>2</td><td>公演の情報を取得する</td><td>これから観られる公演の一覧を用意します（公開デモでは用意済みです）</td></tr>
+          <tr><td>3</td><td>観た公演を入れる（任意）</td><td>観た公演に ◎ を付けると、その公演の作り手をもとにおすすめが作られます</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ 3章 毎週の使い方 -->
+<section class="sec" id="ch3">
+  <div class="eyebrow"><span class="n">03</span><span>毎週の使い方</span></div>
+  <h2 class="title">毎週の使い方</h2>
+  <p class="kicker">週に 1 回、数分開くだけで使えます。おすすめは毎週作り直され、<b>前の週に押した反応が次のおすすめに反映されます。</b></p>
+
+  <div class="col">
+    <div class="flow">
+      <div class="step">
+        <span class="dot act">1</span>
+        <div class="tx"><b>「今週のおすすめ」を開く</b><span>好みに合いそうな順に、上位 15 件が並びます。1 枚が 1 公演で、あらすじ・出演者・上演期間と、おすすめした理由が書いてあります。</span></div>
+      </div>
+      <div class="step">
+        <span class="dot act">2</span>
+        <div class="tx"><b>1 件ずつ答える</b><span>ボタンは 3 つです。答えた公演は一覧から外れ、まだ候補が残っていれば次の公演が繰り上がります。</span>
+          <ul class="tree flush">
+            <li><div class="leaf"><b>興味あり</b><span>気になる。「興味あり」の一覧と公演カレンダーに並びます</span></div></li>
+            <li><div class="leaf"><b>すでに持っている</b><span>チケットを持っている。「購入済み公演」に並びます</span></div></li>
+            <li><div class="leaf"><b>興味なし</b><span>観ない。理由を書いておくと、合わない公演を避けやすくなります（任意）</span></div></li>
+          </ul>
+        </div>
+      </div>
+      <div class="step">
+        <span class="dot">3</span>
+        <div class="tx"><b>「公演カレンダー」で期限を確かめる</b><span>上演期間が帯で並び、帯の右端が千秋楽です。チケットを持っている公演は、行く日を入れるとその日に半券の形で表示されます。</span></div>
+      </div>
+      <div class="step">
+        <span class="dot">4</span>
+        <div class="tx"><b>観に行く</b><span>チケットは、公演カードの「公式サイト」から各公演の販売ページで購入してください。たぐり自体はチケットを販売しません。</span></div>
+      </div>
+      <div class="step">
+        <span class="dot eval">5</span>
+        <div class="tx"><b>観たら ◎○△× を付ける</b><span>上演日を過ぎた公演は「未評価」に並びます。評価を押すと感想の欄が開きます（任意）。</span></div>
+      </div>
+    </div>
+    <div class="loopback"><svg class="ic" viewBox="0 0 24 24" width="16" height="16"><path d="M4 12a8 8 0 0 1 14-5.3M18 3v4h-4"/></svg>次の週は、反応と評価が反映されたおすすめが届きます</div>
+  </div>
+
+  <h3 class="sub">答えなかった公演はどうなる？</h3>
+  <div class="col">
+    <p>答えなかった公演は、翌週も同じ順位で出てきます。そのぶん枠が埋まって新しい公演が出にくくなるので、<b>迷ったら「興味なし」でも構いません。</b>「興味なし」にした公演も消えてはおらず、おすすめ画面の下にまとめて残っています。</p>
+    <p>答えるかどうかにかかわらず、<b>初日が近い公演は「開幕リマインド」に全部出ます。</b>答えないうちに開幕してしまうのが、いちばんの見逃しだからです。</p>
+  </div>
+</section>
+
+<!-- ============================================================ 4章 画面ガイド -->
+<section class="sec" id="ch4">
+  <div class="eyebrow"><span class="n">04</span><span>画面ガイド</span></div>
+  <h2 class="title">画面ガイド</h2>
+  <p class="kicker">メニューは画面の左（スマホでは上）にあります。「おすすめ」「観た公演の評価」「記録を見返す」は、押すと中の画面が開きます。</p>
+
+  <div class="twrap wide">
+    <table>
+      <thead><tr><th>メニュー</th><th>画面</th><th>できること</th></tr></thead>
+      <tbody>
+        <tr><td rowspan="4"><b>おすすめ</b></td><td>今週のおすすめ</td><td>好みに合いそうな公演を、理由つきで上位 15 件表示します。都道府県で絞り込めます</td></tr>
+        <tr><td>開幕リマインド</td><td>今週・来週に初日を迎える公演を、好みに関係なく全部表示します</td></tr>
+        <tr><td>興味あり</td><td>「興味あり」を押した公演を、上演日の近い順に並べます。なぜ気になったかのメモも残せます</td></tr>
+        <tr><td>お気に入り</td><td>登録した名前（劇団・俳優・作品など）の新着公演を、件数の制限なしに表示します。おすすめに出したくない語もここで決められます</td></tr>
+        <tr><td colspan="2"><b>公演カレンダー</b></td><td>チケットを持っている公演・「興味あり」の公演・お気に入りの公演を、上演期間の帯で並べます</td></tr>
+        <tr><td colspan="2"><b>購入済み公演</b></td><td>「すでに持っている」と答えた公演の一覧です。行く日を入れられます</td></tr>
+        <tr><td rowspan="3"><b>観た公演の評価</b></td><td>評価一覧</td><td>付けた評価を ◎○△× ごとに見られます</td></tr>
+        <tr><td>未評価</td><td>上演日を過ぎて、まだ評価していない公演です</td></tr>
+        <tr><td>感想</td><td>◎ を付けた作品に感想を書き足せます</td></tr>
+        <tr><td colspan="2"><b>公演情報の登録</b></td><td>観た公演を手で追加します。見逃した公演を「観ればよかった」として登録することもできます</td></tr>
+        <tr><td rowspan="4"><b>記録を見返す</b></td><td>眺める</td><td>年ごとの本数・評価の分かれ方・よく行く劇場・行った劇場の地図などを図で見られます</td></tr>
+        <tr><td>たどる</td><td>名前を 1 つ選ぶと、その人をいつ知って、どの作品につながったかをたどれます</td></tr>
+        <tr><td>観劇史年表</td><td>記録を年の順に並べ、通う劇場や作り手が入れ替わった時期を示します</td></tr>
+        <tr><td>日記帳</td><td>1 公演ごとの記録です。日付・評価・感想を見たり、題名や劇場を直したりできます</td></tr>
+        <tr><td colspan="2"><b>探す</b></td><td>人名・団体・題材・題名で、これから観られる公演と観た記録の両方から探せます</td></tr>
+        <tr><td colspan="2"><b>設定</b></td><td>観に行ける都道府県の既定・おすすめで重視する情報・別の端末の追加・記録の書き出しなど</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 class="sub">おすすめの理由の読み方</h3>
+  <div class="grid2 wide">
+    <div class="card">
+      <h4><span class="icwrap"><svg class="ic" viewBox="0 0 24 24" width="18" height="18"><path d="M12 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM4 20c0-3.3 3.6-5 8-5s8 1.7 8 5"/></svg></span>作り手・出演者</h4>
+      <p class="muted">◎ を付けた作品や「興味あり」にした作品に関わった人が出ていると、その名前が理由に出ます。</p>
+    </div>
+    <div class="card">
+      <h4><span class="icwrap"><svg class="ic" viewBox="0 0 24 24" width="18" height="18"><path d="M4 5h16M4 10h16M4 15h10"/></svg></span>あらすじの題材</h4>
+      <p class="muted">◎ を付けた作品に多い題材（家族・法廷など）があらすじに出てくると、理由に添えられます。</p>
+    </div>
+    <div class="card">
+      <h4><span class="icwrap"><svg class="ic" viewBox="0 0 24 24" width="18" height="18"><path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8L3.5 9.2l5.9-.9z"/></svg></span>お気に入り</h4>
+      <p class="muted">登録した名前に一致した公演は、どの登録に一致したかが表示されます。</p>
+    </div>
+    <div class="card">
+      <h4><span class="icwrap"><svg class="ic" viewBox="0 0 24 24" width="18" height="18"><path d="M4 20h4L18 10l-4-4L4 16z"/></svg></span>あなたの言葉</h4>
+      <p class="muted">◎ の作品に書いた感想は、同じ作り手の公演が出てきたときに、理由の横に添えて表示されます。</p>
+    </div>
+  </div>
+  <p class="muted" style="margin-top:14px">理由に出したくない名前や語は、理由の横の ✕ で外せます。</p>
+</section>
+
+<!-- ============================================================ 5章 記録 -->
+<section class="sec" id="ch5">
+  <div class="eyebrow"><span class="n">05</span><span>記録をつける・見返す</span></div>
+  <h2 class="title">記録をつける・見返す</h2>
+  <p class="kicker">記録はおすすめの材料になるだけでなく、あとから自分の観劇を振り返るための日記にもなります。</p>
+
+  <h3 class="sub" style="margin-top:0">評価の付け方</h3>
+  <div class="col">
+    <p>評価の基準は<b>「自分に合っていたか」で、作品の出来ではありません。</b>評価は作品ごとに 1 つです。おすすめの材料になるのは ◎ だけで、◎ を付けた作品の作り手をもとに次のおすすめが作られます。</p>
+    <div class="twrap">
+      <table>
+        <thead><tr><th>記号</th><th>意味</th></tr></thead>
+        <tbody>
+          <tr><td><b>◎</b></td><td>とても合っていた（おすすめの材料になります）</td></tr>
+          <tr><td><b>○</b></td><td>合っていた</td></tr>
+          <tr><td><b>△</b></td><td>あまり合わなかった</td></tr>
+          <tr><td><b>×</b></td><td>合わなかった</td></tr>
+          <tr><td>まだ判断できない</td><td>あとで決めたいとき。評価待ちに残ります</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>◎ を付けた作品に一言感想を書いておくと、同じ作り手の公演が出てきたときに、その言葉がおすすめの理由に添えられます。</p>
+  </div>
+
+  <h3 class="sub">観た公演を追加するには</h3>
+  <div class="grid2 wide">
+    <div class="card">
+      <h4><span class="icwrap"><svg class="ic" viewBox="0 0 24 24" width="18" height="18"><path d="M12 5v14M5 12h14"/></svg></span>手で 1 件追加する</h4>
+      <p class="muted">「公演情報の登録」で題名を 2 文字入れると候補が出ます。選ぶと劇場・日程・出演者が一緒に入ります。候補にないときは「検索」で公演情報を探せます（8 秒ほどかかります）。</p>
+    </div>
+    <div class="card">
+      <h4><span class="icwrap"><svg class="ic" viewBox="0 0 24 24" width="18" height="18"><path d="M5 21V4h13l-2.5 4.5L18 13H5"/></svg></span>「観ればよかった」を登録する</h4>
+      <p class="muted">見逃した公演を登録すると、なぜおすすめに出なかったのかを調べて表示します。観ていない公演なので、本数や評価には入りません。</p>
+    </div>
+    <div class="card">
+      <h4><span class="icwrap"><svg class="ic" viewBox="0 0 24 24" width="18" height="18"><path d="M4 6h16v12H4zM4 7l8 6 8-6"/></svg></span>購入確認メールから取り込む</h4>
+      <p class="muted">手元のパソコンでたぐりを動かしたときだけ使えます。公開デモでは使えないので、手で追加してください。</p>
+    </div>
+    <div class="card">
+      <h4><span class="icwrap"><svg class="ic" viewBox="0 0 24 24" width="18" height="18"><path d="M4 20h4L18 10l-4-4L4 16zM13.5 6.5l4 4"/></svg></span>間違いを直す</h4>
+      <p class="muted">日記帳の各行の「公演詳細を直す」から、題名・上演日・劇場を直せます。行かなかった公演には「行かなかった」を付けられ、あとで戻せます。</p>
+    </div>
+  </div>
+
+  <h3 class="sub">振り返る</h3>
+  <div class="col">
+    <ul class="plain">
+      <li><b>日記帳</b>：1 公演ごとに、日付・評価・感想を年ごとに読めます。</li>
+      <li><b>眺める</b>：年ごとの本数や評価の分かれ方、よく行く劇場、行った劇場の地図を図で見られます。</li>
+      <li><b>観劇史年表</b>：通う劇場や作り手がいつ入れ替わったかを、年表とひとことの文章でまとめます。文章は記録の事実だけを材料に AI が書きます。</li>
+      <li><b>たどる</b>：1 人の名前を選ぶと、その人の作品をどの順に観て、誰につながったかが分かります。</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============================================================ 6章 データと安心 -->
+<section class="sec" id="ch6">
+  <div class="eyebrow"><span class="n">06</span><span>データと安心</span></div>
+  <h2 class="title">データと安心</h2>
+  <p class="kicker">メールアドレスもパスワードも預かりません。記録は利用者ごとに分けて保存され、ほかの利用者からは見えません。</p>
+
+  <div class="col" style="max-width:820px">
+    <div class="ach">
+      <div class="head"><span class="num">1</span><p>アカウント登録はありません</p></div>
+      <p class="body">はじめて開いたときに発行される復旧コードと、ブラウザの Cookie であなたの記録を見分けます。ふだんは何も入力せずに使えます。</p>
+      <p class="benefit"><b>気をつけること：</b>復旧コードを控えていないと、Cookie を消したり端末をなくしたりしたときに、記録へ戻れなくなります。</p>
+    </div>
+    <div class="ach">
+      <div class="head"><span class="num">2</span><p>別の端末でも同じ記録を使えます</p></div>
+      <p class="body">「設定」の「この端末を追加する用のコードを発行する」を押すと、6 桁の一時コードが出ます。別の端末でたぐりを開き、10 分以内に入力してください。コードは 1 回限りです。</p>
+      <p class="benefit"><b>気をつけること：</b>一時コードや復旧コードは、他人に教えないでください。知っている人は、あなたの記録を開けてしまいます。</p>
+    </div>
+    <div class="ach">
+      <div class="head"><span class="num">3</span><p>記録はいつでも書き出せます</p></div>
+      <p class="body">「設定」の「書き出す」から、記録・評価・感想・お気に入りを 1 つのファイル（JSON）にまとめて保存できます。ほかの道具でも読める形です。</p>
+    </div>
+    <div class="ach">
+      <div class="head"><span class="num">4</span><p>外部に送る情報は最小限です</p></div>
+      <p class="body">公演情報は、演劇情報サイトなどから決まった処理だけが取得します。お気に入りの名前で公演を探すときも、全利用者の登録名をまとめて検索するので、誰が登録したかは外に出ません。AI（Gemini）に渡すのは、あらすじからの題材の読み取りと、年表・図の文章づくりに必要な集計だけです。</p>
+      <p class="benefit"><b>おすすめの順位は AI で決めていません。</b>記録から数えた統計で決めているので、毎回理由を示せます。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ 7章 よくある質問 -->
+<section class="sec" id="ch7">
+  <div class="eyebrow"><span class="n">07</span><span>よくある質問</span></div>
+  <h2 class="title">よくある質問</h2>
+
+  <div class="notdone wide">
+    <div class="row"><b>画面がなかなか表示されない</b><span class="tag warn">待つ</span><span class="why">無料のサーバーが眠っていると、起きるまで 10〜20 秒ほどかかります。しばらく待ってから、だめなら再読み込みしてください。</span></div>
+    <div class="row"><b>「興味あり」やカレンダーが 0 件のまま</b><span class="tag good">操作</span><span class="why">「今週のおすすめ」で「興味あり」か「すでに持っている」を押すと並びます。何も押していないと、ほかの画面には何も出ません。</span></div>
+    <div class="row"><b>おすすめが「ありません」と出る</b><span class="tag good">操作</span><span class="why">好みの材料がまだありません。観た公演に ◎ を付けるか、「はじめる」で見逃したくない名前を登録してください。登録した名前の公演は、記録がなくても届きます。</span></div>
+    <div class="row"><b>同じ公演が毎週出てくる</b><span class="tag good">操作</span><span class="why">答えていない公演は翌週も出ます。「興味あり」「すでに持っている」「興味なし」のどれかを押すと、一覧から外れます。</span></div>
+    <div class="row"><b>表記の違う名前が拾われない</b><span class="tag warn">仕様</span><span class="why">漢字とカタカナ、送り仮名の違いなどは自動で同じ名前とみなしません。ありそうなときは、両方の書き方をお気に入りに登録してください。</span></div>
+    <div class="row"><b>チケットの残りや完売が分からない</b><span class="tag warn">仕様</span><span class="why">販売状況の情報は持っていません。公演カードの「公式サイト」から確認してください。</span></div>
+    <div class="row"><b>復旧コードをなくした</b><span class="tag stop">注意</span><span class="why">復旧コードは再表示されません。いまの端末で開けているうちは使い続けられるので、「設定」の「書き出す」で記録をファイルに保存しておくと安心です。端末も Cookie も失うと、記録は戻せません。</span></div>
+    <div class="row"><b>操作が分からなくなった</b><span class="tag good">操作</span><span class="why">画面右下の「使い方」から、操作ツアーと説明動画をいつでも開けます。</span></div>
+  </div>
+</section>
+
+</main>
+</div>
+
+<script>
+(function(){
+  var btn=document.getElementById('railBtn'),rail=document.getElementById('rail');
+  if(btn)btn.addEventListener('click',function(){rail.classList.toggle('open')});
+  var links=[].slice.call(document.querySelectorAll('#railnav a'));
+  var secs=links.map(function(a){return document.querySelector(a.getAttribute('href'))})
+    .filter(Boolean);
+  function onScroll(){
+    var y=window.scrollY+120,cur=secs[0];
+    secs.forEach(function(s){if(s.offsetTop<=y)cur=s});
+    links.forEach(function(a){
+      a.classList.toggle('on', a.getAttribute('href')==='#'+cur.id);
+    });
+  }
+  document.addEventListener('scroll',onScroll,{passive:true});
+  onScroll();
+  links.forEach(function(a){a.addEventListener('click',function(){rail.classList.remove('open')})});
+})();
+</script>
+</body>
+</html>
