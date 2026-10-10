@@ -338,18 +338,9 @@ function startLoading(el) {
   };
 }
 
-// **同じ画面(同じパス+検索条件)を、タブを開いている間だけ覚えておく。**
-// 起案者の指摘 ──「1回の起動内で同じページにアクセスするなら読み込み時間を
-// 短くできないか」。Renderのコールドスタートが終わったあとでも、押すたびに
-// 毎回サーバへ取りに行くと同じだけ待たされていた。**書き込み(反応・評価・
-// 設定変更など)が起きたら全部消す** ── どの画面の材料が変わったかをここでは
-// 判別しないので、安全側に倒して丸ごと作り直す(`post()`から呼ぶ)。
+// Navigation reuses fragments for 45 seconds. Successful mutations invalidate
+// this browser's saved fragments, without reloading the current screen.
 const fragmentCache = new Map();
-// **書き込みのたびに丸ごと消す、はやめた（起案者の指摘 ──「3回目以降でまた
-// 再度ロードが入るようになる」）。** サーバ側の`screen_cache`と同じ理由 ──
-// 一番よく押す三択ボタン自体が書き込みなので、押すたびに他の画面の
-// キャッシュまで消えていた。サーバ側のTTL(`SCREEN_CACHE_TTL_SEC`、45秒)と
-// 揃えた期限だけで古くする。
 const FRAGMENT_CACHE_TTL_MS = 45000;
 function fragmentCacheGet(key) {
   const hit = fragmentCache.get(key);
@@ -374,10 +365,10 @@ function showWelcomeCode(code) {
   wrap.className = "tg-welcome";
   wrap.innerHTML =
     '<div class="tg-welcome-box">'
-    + '<h2>この端末の復旧コードです</h2>'
+    + '<h2>デモ用の復旧コードです</h2>'
     + '<p>他の端末でも同じ記録を使いたいとき、Cookieを消してしまったときに'
     + '必要になります。<b>今だけ表示していて、二度と表示できません。</b>'
-    + '安全な場所に控えてください。</p>'
+    + 'デモの再起動で記録がリセットされると、このコードも使えなくなります。</p>'
     + '<code class="tg-welcome-code">' + E(code) + '</code>'
     + '<div class="tg-welcome-btns">'
     + '<button type="button" data-wc-copy>コピーする</button>'
@@ -429,8 +420,28 @@ function fixupStoryline(root) {
   ensureD3().then(() => runInlineScript(SL_SCRIPT));
 }
 
+function applyDemoRestrictions(root) {
+  root.querySelectorAll(".handt").forEach(editor => {
+    const note = document.createElement("p");
+    note.className = "note";
+    note.textContent = "デモでは、公演情報の編集はできません。";
+    editor.replaceWith(note);
+  });
+  root.querySelectorAll("[data-hand-img], [data-hand-off]").forEach(control => {
+    control.disabled = true;
+    control.title = "デモでは画像の編集はできません";
+  });
+  root.querySelectorAll("[data-sug-web], [data-lk-web]").forEach(button => {
+    if (button.textContent !== "デモの公演から探す") button.textContent = "デモの公演から探す";
+  });
+}
+
 function renderScreen(el, activePath, d) {
   el.innerHTML = d.body_html;
+  if (d.demo_mode) {
+    el.insertAdjacentHTML("afterbegin", '<p class="note">操作を試せるデモです。入力した内容は、デモの再起動時にリセットされます。</p>');
+    applyDemoRestrictions(el);
+  }
   renderCrumbBar(activePath, d.title || "");
   updateNavActive(activePath);
   fixupSynClamp(el);
@@ -565,6 +576,8 @@ window.addEventListener("popstate", () => {
 });
 
 document.addEventListener("DOMContentLoaded", () => {
+  new MutationObserver(() => applyDemoRestrictions(contentEl()))
+    .observe(contentEl(), {childList: true, subtree: true});
   document.querySelector(".side").insertAdjacentHTML("beforeend", renderNav());
   restoreNavFold();
   const path = (location.pathname.slice(REPO_BASE.length) || "/");
@@ -608,6 +621,7 @@ async function post(path, body, group, done) {
     const d = await r.json();
     if (!r.ok) { if (said) said.textContent = "できませんでした: " + (d.error || r.status); return null; }
     showWelcomeCode(d.welcome_code);
+    if (d.ok !== false && path !== "/api/hand_theme_refresh") fragmentCache.clear();
     if (said && done !== null) said.textContent = done || "記録しました";
     return d;
   } catch (e) { if (said) said.textContent = "できませんでした: " + e; return null; }
@@ -1207,7 +1221,7 @@ async function lkSearch(i, web, btn) {
   }
   if (web) {
     box.replaceChildren();
-    lkSay(box, "CoRichの公演情報を探しています… 8 秒ほどかかります");
+    lkSay(box, "デモに用意されている公演を探しています…");
     if (btn) btn.disabled = true;
   }
   let d;
@@ -1230,11 +1244,11 @@ async function lkSearch(i, web, btn) {
     lkSay(box, web
       ? "「" + q + "」に一致する公演は見つかりませんでした。副題や団体名を外して"
         + "短くすると見つかることがあります"
-      : "手元のデータには見つかりませんでした。「CoRichの公演情報から探す」を押してください"
+      : "手元のデータには見つかりませんでした。「デモの公演から探す」を押してください"
         + "（月 1 回の取得に含まれていない公演や、古い公演は手元にありません）");
     return;
   }
-  if (web) lkSay(box, "CoRichの公演情報から " + rows.length
+  if (web) lkSay(box, "デモの公演情報から " + rows.length
     + " 件見つかりました。観た公演を選んでください。見つからない場合は下の"
     + "「ポスター・クレジットを手入力する」から追加してください。");
   lkRender(box, rows);
@@ -1367,7 +1381,7 @@ async function sugWeb() {
   if (!t || !box) return;
   const q = t.value.trim();
   if (q.length < 2) { sugSay(box, "題名を 2 文字以上入れてから押してください", true); return; }
-  sugSay(box, "CoRichの公演情報を探しています… 8 秒ほどかかります", true);
+  sugSay(box, "デモに用意されている公演を探しています…", true);
   if (btn) btn.disabled = true;
   let d = null;
   try {
@@ -1389,7 +1403,7 @@ async function sugWeb() {
     return;
   }
   sugRender(box, d.rows,
-    "CoRichの公演情報から " + d.rows.length + " 件見つかりました。観た公演を選んでください");
+    "デモの公演情報から " + d.rows.length + " 件見つかりました。観た公演を選んでください");
 }
 
 function sugSay(box, msg, clear) {
