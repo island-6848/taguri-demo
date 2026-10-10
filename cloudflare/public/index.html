@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="ja">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer"><title>たぐり</title>
+<link rel="stylesheet" href="/style.css">
+<header><h1>たぐり</h1><p>観た舞台を、次の楽しみへ。</p></header>
+<main>
+<p class="notice">移行版の動作確認中です。観劇記録・評価・お気に入りを保存できます。お気に入りに合う公演の表示には候補データの引き継ぎが必要です。</p>
+<p id="status" role="status" aria-live="polite"></p>
+<section id="account"><h2>記録を始める</h2><button id="register">新しく始める</button><form id="recover"><label>復旧コード<input name="code" required autocomplete="off"></label><button>記録を復旧する</button></form></section>
+<section id="recovery" hidden><h2>復旧コードを控えてください</h2><p>別の端末で記録を開くときに必要です。この画面を閉じると再表示できません。</p><code id="code"></code><button id="copy">コードをコピー</button></section>
+<div id="content" hidden>
+<nav><a href="#discovery">次の公演</a><a href="#records">観劇記録</a><a href="#favourites">お気に入り</a><a href="#backup">持ち出す・取り込む</a></nav>
+<section id="discovery"><h2>お気に入りに合う公演</h2><p id="catalogue-status" role="status"></p><div id="shows"></div></section>
+<section><h2>観劇記録を追加</h2><form id="add"><label>作品名<input name="title" required maxlength="500"></label><div class="row"><label>観劇日<input name="date" type="date" required></label><label>開演時刻<input name="time" type="time"></label></div><label>会場<input name="venue" maxlength="300"></label><button>追加する</button></form></section>
+<section id="records"><h2>観劇記録</h2><p id="count"></p><div id="list"></div></section>
+<section id="favourites"><h2>お気に入り</h2><form id="favourite"><label>名前<input name="name" required maxlength="200"></label><label>種類<select name="kind"><option>人</option><option>団体</option><option>主催</option><option>作品</option><option>題材</option><option>原作者</option></select></label><button>登録する</button></form><ul id="favs"></ul></section>
+<section id="backup"><h2>持ち出す・取り込む</h2><button id="export">記録をJSONで保存</button><label>移行用JSONを取り込む<input id="import" type="file" accept="application/json,.json"></label><p>取り込みは10件ずつ行います。同じIDの記録は更新されます。</p><button id="logout">ログアウト</button></section>
+</div>
+</main><script type="module" src="/app.js"></script>
+</html>

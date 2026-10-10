@@ -1,0 +1,29 @@
+name: Check Cloudflare migration preview
+on:
+  pull_request:
+    paths:
+      - 'cloudflare/**'
+      - '.github/workflows/cloudflare-preview-check.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cloudflare
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: npm install --no-audit --no-fund
+      - run: npm test
+      - run: python3 -m unittest discover -s test -p 'test_*.py'
+      - run: npx wrangler deploy --dry-run --outdir /tmp/taguri-worker
+      - run: npx wrangler d1 migrations apply taguri-demo --local
+      - run: node test/runtime-smoke.js
