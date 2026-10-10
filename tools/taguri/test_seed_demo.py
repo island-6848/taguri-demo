@@ -42,15 +42,23 @@ n = APP.seed_demo_works(VISITOR)
 check("見本をすべて入れる", n == len(APP.DEMO_SEED_WORKS), n)
 works = APP._works(VISITOR)
 check("記録の画面に見本が出る", len(works) == len(APP.DEMO_SEED_WORKS), len(works))
-check("どれも公演に結び付けない", all(not w["stage_id"] and not w["venue"] for w in works))
+check("架空の評価を実在公演に結び付けない",
+      all(not w["stage_id"] and not w["venue"] for w in works if w["verdict"]))
+check("購入由来の96件がある", len(APP.DEMO_PURCHASE_WORKS) == 96)
+check("日時の違う同日公演を両方残す",
+      sum(w["last_date"] == "2024-08-14" for w in works) == 2)
+check("ゴドーの会場と時刻を保存する", any(
+      w["title"] == "ゴドーを待ちながら" and w["last_date"] == "2026-10-19"
+      and w["venue"] == "サンモールスタジオ" and w["time"] == "19:00" for w in works))
 check("新しい順に並ぶ", [w["last_date"] for w in works]
       == sorted((w["last_date"] for w in works), reverse=True))
 # **ツアーの「◎○△× をつける」段で押すものが要る**
 today = datetime.date.today().isoformat()
-check("評価待ちが 2 件ある", len(APP.waiting_rows(VISITOR, today)) == 2,
-      APP.waiting_rows(VISITOR, today))
-check("見本は日付が過ぎている（評価待ちに出られる）",
-      all(s["date"] <= today for s in APP.DEMO_SEED_WORKS))
+expected_waiting = sum(not s["verdict"] and s["date"] <= today for s in APP.DEMO_SEED_WORKS)
+check("上演済みの未評価だけが評価待ちになる",
+      len(APP.waiting_rows(VISITOR, today)) == expected_waiting)
+check("将来の公演は評価待ちに入らない",
+      all(w["last_date"] <= today for w in APP.waiting_rows(VISITOR, today)))
 
 # **2 度呼んでも重ならない**
 check("2 度目は何も入れない", APP.seed_demo_works(VISITOR) == 0)
