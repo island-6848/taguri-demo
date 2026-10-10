@@ -5,3 +5,5 @@ private-exports/
 *.sqlite*
 catalogue.sql
 backup.json
+
+__pycache__/

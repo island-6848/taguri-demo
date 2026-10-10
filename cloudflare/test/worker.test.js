@@ -4,7 +4,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import worker from '../src/worker.js';
 function setup() {
-  const sqlite=new DatabaseSync(':memory:');sqlite.exec(readFileSync(new URL('../migrations/0001.sql',import.meta.url),'utf8'));
+  const sqlite=new DatabaseSync(':memory:');for(const file of ['0001.sql','0002.sql'])sqlite.exec(readFileSync(new URL(`../migrations/${file}`,import.meta.url),'utf8'));
   const wrap=(sql,args=[])=>({bind(...values){return wrap(sql,values);},async first(){return sqlite.prepare(sql).get(...args)??null;},async all(){return {results:sqlite.prepare(sql).all(...args)};},async run(){return sqlite.prepare(sql).run(...args);},async execute(){return /^SELECT/.test(sql)?this.all():this.run();}});
   const env={ALLOW_REGISTRATION:'true',DB:{prepare:sql=>wrap(sql),async batch(commands){sqlite.exec('BEGIN');try{const result=[];for(const c of commands)result.push(await c.execute());sqlite.exec('COMMIT');return result;}catch(e){sqlite.exec('ROLLBACK');throw e;}}},ASSETS:{fetch:()=>new Response('static')}};
   const call=(path,value,cookie='',origin='https://taguri.example')=>worker.fetch(new Request(`https://taguri.example/api/${path}`,{method:value===undefined?'GET':'POST',headers:{cookie,origin,'content-type':'application/json'},body:value===undefined?undefined:JSON.stringify(value)}),env);
@@ -50,5 +50,17 @@ test('batch import validates every item before any write and can be repeated',as
 test('registration can be disabled and catalogue never exposes user data',async()=>{
   const {call,env,sqlite}=setup();env.ALLOW_REGISTRATION='false';assert.equal((await call('register',{})).status,503);
   sqlite.prepare('INSERT INTO catalogue(id,title,date) VALUES(?,?,?)').run('one','作品','2099-01-01');
-  const result=await (await call('catalogue')).json();assert.deepEqual(Object.keys(result.items[0]),['id','title','date','venue','url']);
+  const result=await (await call('catalogue')).json();assert.equal(result.items[0].title,'作品');assert.equal(result.items[0].why_b,undefined);assert.equal(result.items[0].note,undefined);
+});
+test('reactions are scoped, exportable and removable, and imports retain older versions',async()=>{
+  const {call}=setup();const a=await register(call),b=await register(call);
+  await call('reaction',{stage_id:'s1',status:'interest'},a.cookie);
+  assert.equal((await (await call('state',undefined,b.cookie)).json()).reactions.length,0);
+  const backup=await (await call('export',undefined,a.cookie)).json();assert.equal(backup.version,2);
+  assert.equal((await call('import',backup,b.cookie)).status,200);
+  assert.equal((await (await call('state',undefined,b.cookie)).json()).reactions[0].status,'interest');
+  await call('reaction',{stage_id:'s1',status:'interest',remove:true},a.cookie);
+  assert.equal((await (await call('state',undefined,a.cookie)).json()).reactions.length,0);
+  assert.equal((await call('import',{version:1,records:[],favourites:[]},a.cookie)).status,200);
+  assert.equal((await call('record',null,a.cookie)).status,400);
 });

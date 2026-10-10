@@ -22,8 +22,16 @@ function record(value) {
 }
 function favourite(value) {
   const f = {name: string(value?.name, 200, true), kind: string(value?.kind, 20, true)};
-  if (!['人','団体','作品','題材'].includes(f.kind)) fail(400, '種類を確認してください。');
+  if (!['人','団体','主催','作品','題材','原作者'].includes(f.kind)) fail(400, '種類を確認してください。');
   return f;
+}
+function reaction(value) {
+  const r={stage_id:string(value?.stage_id,100,true),status:string(value?.status,10,true)};
+  if(!['interest','no','owned'].includes(r.status))fail(400,'反応を確認してください。');
+  return r;
+}
+function reactionUpsert(db,uid,r) {
+  return db.prepare('INSERT INTO reactions(user_id,stage_id,status,updated_at) VALUES(?,?,?,?) ON CONFLICT(user_id,stage_id) DO UPDATE SET status=excluded.status,updated_at=excluded.updated_at').bind(uid,r.stage_id,r.status,now());
 }
 async function body(request) {
   if (!request.headers.get('content-type')?.startsWith('application/json')) fail(415,'JSON形式で送信してください。');
@@ -33,7 +41,9 @@ async function body(request) {
   while (true) { const {done,value} = await reader.read(); if (done) break; size += value.byteLength; if (size > MAX_BODY) { await reader.cancel(); fail(413,'ファイルが大きすぎます。'); } chunks.push(value); }
   const bytes = new Uint8Array(size); let offset = 0;
   for (const chunk of chunks) {bytes.set(chunk,offset); offset += chunk.length;}
-  try {return JSON.parse(new TextDecoder().decode(bytes));} catch {fail(400,'JSONを読み取れませんでした。');}
+  let value; try {value=JSON.parse(new TextDecoder().decode(bytes));} catch {fail(400,'JSONを読み取れませんでした。');}
+  if (!value || typeof value !== 'object' || Array.isArray(value)) fail(400,'JSONの形式を確認してください。');
+  return value;
 }
 async function user(request, db) {
   const raw = request.headers.get('cookie')?.match(/(?:^|;\s*)taguri_session=([a-f0-9]{64})(?:;|$)/)?.[1];
@@ -46,8 +56,8 @@ function upsert(db, uid, r) {
   return db.prepare('INSERT INTO records(user_id,id,title,date,time,venue,rating,note,updated_at) VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(user_id,id) DO UPDATE SET title=excluded.title,date=excluded.date,time=excluded.time,venue=excluded.venue,rating=excluded.rating,note=excluded.note,updated_at=excluded.updated_at').bind(uid,r.id,r.title,r.date,r.time,r.venue,r.rating,r.note,now());
 }
 async function state(db, uid) {
-  const result = await db.batch([db.prepare('SELECT id,title,date,time,venue,rating,note FROM records WHERE user_id=? ORDER BY date DESC,id LIMIT 500').bind(uid),db.prepare('SELECT name,kind FROM favourites WHERE user_id=? ORDER BY kind,name LIMIT 200').bind(uid)]);
-  return {version:1,records:result[0].results,favourites:result[1].results};
+  const result = await db.batch([db.prepare('SELECT id,title,date,time,venue,rating,note FROM records WHERE user_id=? ORDER BY date DESC,id LIMIT 500').bind(uid),db.prepare('SELECT name,kind FROM favourites WHERE user_id=? ORDER BY kind,name LIMIT 200').bind(uid),db.prepare('SELECT stage_id,status FROM reactions WHERE user_id=? ORDER BY stage_id LIMIT 500').bind(uid)]);
+  return {version:2,records:result[0].results,favourites:result[1].results,reactions:result[2].results};
 }
 export default {
   async fetch(request, env) {
@@ -59,8 +69,9 @@ export default {
       if (method === 'POST' && request.headers.get('origin') !== url.origin) fail(403,'同じサイトから操作してください。');
       if (method === 'GET' && path === '/api/catalogue') {
         // Public catalogue only: never include an owner's ranking or private reasons.
-        const rows = await env.DB.prepare('SELECT id,title,date,venue,url FROM catalogue WHERE date>=? ORDER BY date,id LIMIT 100').bind(new Date().toISOString().slice(0,10)).all();
-        return json({items:rows.results});
+        const rows = await env.DB.prepare('SELECT id,title,date,venue,url,metadata FROM catalogue WHERE date>=? ORDER BY date,id LIMIT 1000').bind(new Date(Date.now()-30*86400000).toISOString().slice(0,10)).all();
+        const items=rows.results.map(({metadata,...c})=>{const m=JSON.parse(metadata);return {...c,group:m.group??'',fields:m.fields??{},synopsis:m.synopsis??'',words:m.words??[],end_date:m.end_date??c.date};});
+        return json({items},200,{'Cache-Control':'public, max-age=300'});
       }
       if (method === 'POST' && ['/api/register','/api/recover'].includes(path)) {
         const input = await body(request);
@@ -107,13 +118,21 @@ export default {
         }
         return json({ok:true});
       }
+      if (path === '/api/reaction') {
+        const r = reaction(input);
+        if (input.remove === true) await env.DB.prepare('DELETE FROM reactions WHERE user_id=? AND stage_id=?').bind(uid,r.stage_id).run();
+        else await reactionUpsert(env.DB,uid,r).run();
+        return json({ok:true});
+      }
       if (path === '/api/import') {
-        if (input.version !== 1 || !Array.isArray(input.records) || !Array.isArray(input.favourites) || input.records.length > 20 || input.favourites.length > 20) fail(400,'1回に記録20件・お気に入り20件まで取り込めます。');
-        const rs = input.records.map(record), fs = input.favourites.map(favourite);
+        if (![1,2].includes(input.version) || !Array.isArray(input.records) || !Array.isArray(input.favourites) || input.records.length > 20 || input.favourites.length > 20) fail(400,'1回に記録20件・お気に入り20件まで取り込めます。');
+        const signals = input.reactions ?? [];
+        if (!Array.isArray(signals) || signals.length>20 || signals.length+input.records.length+input.favourites.length>40) fail(400,'1回に合計40項目まで取り込めます。');
+        const rs = input.records.map(record), fs = input.favourites.map(favourite), reactions = signals.map(reaction);
         // Additive import, never erase an existing account or trust input user IDs.
         const existing = await state(env.DB,uid);
-        if (new Set([...existing.records.map(r=>r.id),...rs.map(r=>r.id)]).size>500 || new Set([...existing.favourites,...fs].map(f=>JSON.stringify([f.name,f.kind]))).size>200) fail(409,'保存件数の上限を超えています。');
-        const commands = [...rs.map(r=>upsert(env.DB,uid,r)),...fs.map(f=>env.DB.prepare('INSERT OR IGNORE INTO favourites(user_id,name,kind) VALUES(?,?,?)').bind(uid,f.name,f.kind))];
+        if (new Set([...existing.records.map(r=>r.id),...rs.map(r=>r.id)]).size>500 || new Set([...existing.favourites,...fs].map(f=>JSON.stringify([f.name,f.kind]))).size>200 || new Set([...existing.reactions,...reactions].map(r=>r.stage_id)).size>500) fail(409,'保存件数の上限を超えています。');
+        const commands = [...rs.map(r=>upsert(env.DB,uid,r)),...fs.map(f=>env.DB.prepare('INSERT OR IGNORE INTO favourites(user_id,name,kind) VALUES(?,?,?)').bind(uid,f.name,f.kind)),...reactions.map(r=>reactionUpsert(env.DB,uid,r))];
         if(commands.length) await env.DB.batch(commands);
         return json({ok:true,imported:rs.length});
       }
