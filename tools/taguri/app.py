@@ -5206,42 +5206,16 @@ def add_work(user_id: str, title: str, date: str = "", venue: str = "", stage_id
             "similar": similar_works(user_id, title, key)}
 
 
-# **公開デモの訪問者に、最初から入れておく観劇記録。**（起案者の指示・2026-10-06 ──
-# 「デモにあらかじめ何件か記録を追加しておいて」）
-#
-# 訪問者は購入確認メールを持たない（`rate_performances.load_purchases` は持ち主以外に
-# 0 件を返す）ので、**記録は手で足すまで 1 件も無い。** 日記帳も評価待ちも空のまま
-# 操作ツアー（`web/tour.js`）が「観たあとは ◎○△× をつけます」と案内することになり、
-# 何を押せばよいのかが画面から分からなかった。
-#
-# **持ち主の記録を写すのではなく、ここに書いた見本を入れる。** 持ち主の記録・感想を
-# 訪問者に見せないのは E3 の決まりである（`_is_owner`）。題名は特定の上演に
-# 結び付かない古典の戯曲にし、`stage_id`・会場は空にする ── どの公演の評価なのかを
-# 名指ししない（架空の評価を、実在する特定の上演に付けない）。
-#
-# **評価の無い記録を 2 件混ぜる。** 評価待ち（`waiting_rows`）が空だと、ツアーの
-# 「◎○△× をつける」段で押すものが無い。**◎ で感想の無いものも 1 件置く** ──
-# 感想を聞く欄（`impressions.pending`）が何をする所なのかも、最初から見える。
-DEMO_SEED_WORKS: list[dict] = [
-    {"title": "ハムレット", "date": "2026-03-14", "verdict": "◎",
-     "note": "独白の間の取り方が忘れられない。台詞の多い古典でも、"
-             "演出しだいでこんなに速く感じるのかと驚いた。"},
-    {"title": "かもめ", "date": "2026-04-19", "verdict": "○",
-     "note": "登場人物の誰にも肩入れできないまま、最後の一発まで目が離せなかった。"},
-    {"title": "夏の夜の夢", "date": "2026-05-24", "verdict": "◎", "note": ""},
-    {"title": "ゴドーを待ちながら", "date": "2026-06-21", "verdict": "△",
-     "note": "何も起きないことを楽しむ余裕が、この日の自分には無かった。"},
-    {"title": "桜の園", "date": "2026-07-26", "verdict": None, "note": ""},
-    {"title": "ロミオとジュリエット", "date": "2026-09-13", "verdict": None, "note": ""},
-]
-
-
-# 利用者が公開デモ用に選んだ購入・予約由来の96件。
-# 公演名・日時・会場だけを含め、評価と感想は作らない。
+# 公開用に選ばれた96件を、訪問者が操作する見本の記録にする。
+# 評価・感想はユーザーの指示で付けた架空のデモ用データ。本人の感想ではない。
+# 旧6件の見本は重ねず、96件のうち3件だけを未評価にする。
+# 実在する特定の上演に架空の評価を結び付けないよう、stage_idは入れない。
 DEMO_PURCHASE_WORKS = json.loads(
     Path(__file__).with_name("demo_purchase_works.json").read_text(encoding="utf-8"))
-DEMO_SEED_WORKS.extend(
-    {**s, "verdict": None, "note": ""} for s in DEMO_PURCHASE_WORKS)
+DEMO_SEED_WORKS: list[dict] = [
+    {**row, "verdict": row.get("verdict"), "note": row.get("note") or ""}
+    for row in DEMO_PURCHASE_WORKS
+]
 
 
 def seed_demo_works(user_id: str) -> int:
