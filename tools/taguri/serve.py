@@ -511,15 +511,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     if "f" in q:
                         srv.set_prefs(user_id, [p for p in q.get("pref", []) if p][:47])
                     prefs = srv.get_prefs(user_id)
-                    cache_key = "recommend|" + ",".join(prefs)
-                    cached = srv.screen_cache_get(user_id, cache_key)
-                    if cached is not None:
-                        self._json(200, cached)
-                        return
+                    # Recompute from committed ratings on each navigation.
+                    # An older concurrent render must not refill a stale cache
+                    # after a rating/link/delete invalidated it.
                     body = APP._recommend_body(user_id, prefs)
                     srv.mark_viewed(user_id, "recommend_pref" if prefs else "recommend")
                     result = {"ok": True, "title": "今週のおすすめ", "body_html": body}
-                    srv.screen_cache_set(user_id, cache_key, result)
                     self._json(200, result)
                     return
                 if path == "/api/screen/reminder":
@@ -1432,7 +1429,8 @@ class Server(http.server.ThreadingHTTPServer):
         with self.lock:
             APP.save_work_field(user_id, work_key, verdict=verdict)
             self.n["rate"] += 1
-        return {"ok": True, "work_key": work_key, "verdict": verdict}
+        return {"ok": True, "work_key": work_key, "verdict": verdict,
+                "recommendation": {"status": "on_next_read"}}
 
     # ---- 3 感想の自由記述 --------------------------------------------------
     def on_note(self, b: dict, user_id: str) -> dict:
@@ -2108,3 +2106,4 @@ if __name__ == "__main__":
     # `_harden_permissions()` が先に umask を絞っているが、単独起動ではそれが効いていない
     os.umask(0o077)
     print(serve(a.label, port=a.port))
+

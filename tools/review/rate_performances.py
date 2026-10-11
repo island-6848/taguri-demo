@@ -678,7 +678,20 @@ def connect() -> sqlite3.Connection:
     _add_venue(con)
     _add_time(con)
     _scope_by_user(con)
+    _add_input_sources(con)
     return con
+
+
+def _add_input_sources(con: sqlite3.Connection) -> None:
+    """Keep generated demo values distinct from explicit user edits.
+
+    Existing values have unknown provenance; never silently call them real.
+    """
+    cols = {r[1] for r in con.execute("PRAGMA table_info(works)")}
+    for col in ("verdict_source", "note_source"):
+        if col not in cols:
+            con.execute(f"ALTER TABLE works ADD COLUMN {col} TEXT NOT NULL DEFAULT 'legacy_unknown'")
+    con.commit()
 
 
 # 利用者ごとに分ける表と、その表の（`user_id` を除いた）主キー
@@ -947,17 +960,20 @@ def save_work(con: sqlite3.Connection, work: dict, payload: dict, *,
         "note_impression": str(payload.get("note_impression") or "")[:4000],
         "note_motive": str(payload.get("note_motive") or "")[:4000],
         "updated_at": now(),
+        "verdict_source": payload.get("verdict_source") or "user",
+        "note_source": payload.get("note_source") or "user",
     }
     with con:
         con.execute(
             "INSERT INTO works (user_id, work_key, title, first_date, last_date, times, verdict,"
-            " chosen, note_impression, note_motive, updated_at)"
+            " chosen, note_impression, note_motive, updated_at, verdict_source, note_source)"
             " VALUES (:user_id, :work_key, :title, :first_date, :last_date, :times, :verdict,"
-            " :chosen, :note_impression, :note_motive, :updated_at)"
+            " :chosen, :note_impression, :note_motive, :updated_at, :verdict_source, :note_source)"
             " ON CONFLICT(user_id, work_key) DO UPDATE SET"
             " times=:times, verdict=:verdict, chosen=:chosen,"
             " note_impression=:note_impression, note_motive=:note_motive,"
-            " updated_at=:updated_at", {**row, "user_id": user_id})
+            " updated_at=:updated_at, verdict_source=:verdict_source, note_source=:note_source",
+            {**row, "user_id": user_id})
     return row
 
 
@@ -1041,7 +1057,9 @@ def reconcile(con: sqlite3.Connection, works: list[dict], *, user_id: str = LOCA
             continue
         save_work(con, cands[0], {
             "verdict": row["verdict"], "chosen": row["chosen"],
-            "note_impression": row["note_impression"], "note_motive": row["note_motive"]},
+            "note_impression": row["note_impression"], "note_motive": row["note_motive"],
+            "verdict_source": row.get("verdict_source") or "legacy_unknown",
+            "note_source": row.get("note_source") or "legacy_unknown"},
             user_id=user_id)
         moved.append((row["title"], cands[0]["title_display"], row["verdict"]))
     if not moved:
@@ -1689,3 +1707,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

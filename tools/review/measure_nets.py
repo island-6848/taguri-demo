@@ -259,6 +259,9 @@ def load_rated(*, include_unrated: bool = False,
     """
     purchases = R.load_purchases(user_id=user_id)
     con = R.connect()
+    # One read snapshot for ratings, exclusions, merges and manual credits.
+    # A concurrent edit cannot mix old ratings with new profile material.
+    con.execute("BEGIN")
     state = R.State("measure", con, purchases, user_id=user_id)
     saved = R.read_works(con, user_id=user_id)
 
@@ -321,6 +324,10 @@ def load_rated(*, include_unrated: bool = False,
         })
     rated += _manual_rated(con, state, saved, fields, hand,
                            include_unrated=include_unrated, user_id=user_id)
+    for r in rated:
+        sv = saved.get(r["key"]) or {}
+        r["verdict_source"] = sv.get("verdict_source") or "legacy_unknown"
+        r["updated_at"] = sv.get("updated_at") or ""
     con.close()
     return rated
 
@@ -605,3 +612,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
