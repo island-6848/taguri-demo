@@ -68,3 +68,7 @@ npx wrangler d1 execute taguri-demo --remote --file catalogue.sql
 ```
 
 APIの候補は公開情報だけで5分キャッシュ可能です。照合はブラウザ内で行い、LLMや外部APIへの従量課金はありません。記録・お気に入り・反応は利用者別のprivate APIで取得します。GitHub ActionsのプレビューチェックはテストとWranglerのdry-runのみ実行し、公開やDB変更をしません。
+
+## Cloudflare Buildsから公開する場合
+
+GitHub連携のProduction branchを `cloudflare-d1-preview`、Root directoryを `cloudflare` に設定します。Build commandは空欄、Deploy commandは `npx wrangler d1 migrations apply taguri-demo --remote && npx wrangler deploy` です。設定を変更した後は移行ブランチの最新コミットを使った新しいビルドで確認してください。以前の失敗ビルドのログと新しいビルドのログを区別し、ビルド詳細のブランチとコミットを確認します。
