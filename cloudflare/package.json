@@ -3,5 +3,5 @@
   "private": true,
   "type": "module",
   "scripts": { "test": "node --test --test-isolation=none test/*.test.js", "dev": "wrangler dev", "deploy": "wrangler deploy" },
-  "devDependencies": { "wrangler": "^4.0.0" }
+  "devDependencies": { "wrangler": "^4.0.0", "playwright": "^1.56.0", "pngjs": "^7.0.0", "pixelmatch": "^7.1.0" }
 }

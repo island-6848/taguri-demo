@@ -6,7 +6,7 @@ const base='http://127.0.0.1:8787';
 const server=spawn('npx',['wrangler','dev','--ip','127.0.0.1','--port','8787'],{detached:true,stdio:['ignore','pipe','pipe'],env:{...process.env,WRANGLER_SEND_METRICS:'false'}});
 let logs='';for(const stream of [server.stdout,server.stderr])stream.on('data',data=>{logs=(logs+data.toString()).slice(-6000);});
 async function request(path,value,cookie='') {
- return fetch(`${base}/api/${path}`,value===undefined?{headers:{cookie}}:{method:'POST',headers:{origin:base,'Content-Type':'application/json',cookie},body:JSON.stringify(value)});
+ return fetch(`${base}/migration-api/${path}`,value===undefined?{headers:{cookie}}:{method:'POST',headers:{origin:base,'Content-Type':'application/json',cookie},body:JSON.stringify(value)});
 }
 try {
  let ready=false;

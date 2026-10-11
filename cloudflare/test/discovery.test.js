@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {declaredHits,discover} from '../public/discovery.js';
+import {declaredHits,discover} from '../public/migration-data/discovery.js';
 test('groups match the producer only; people also match guest credits',()=>{
  const c={title:'舞台',group:'主催劇団',fields:{出演:'客演劇団の俳優Ａ'}};
  assert.deepEqual(declaredHits(c,[{kind:'団体',name:'客演劇団'}]),[]);

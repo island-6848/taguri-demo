@@ -1,3 +1,4 @@
+import {isOriginalRoute, originalUI} from './original-ui.js';
 const MAX_BODY = 262144;
 const COOKIE = 'taguri_session';
 const TTL = 60 * 60 * 24 * 30;
@@ -62,6 +63,9 @@ async function state(db, uid) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    const migrationAPI=url.pathname.startsWith('/migration-api/');
+    if(env.ORIGINAL_UI_BRIDGE==='true' && !migrationAPI && isOriginalRoute(url.pathname))return originalUI(request);
+    if(migrationAPI)url.pathname=url.pathname.replace('/migration-api/','/api/');
     if (!url.pathname.startsWith('/api/')) return env.ASSETS.fetch(request);
     try {
       const path = url.pathname; const method = request.method;

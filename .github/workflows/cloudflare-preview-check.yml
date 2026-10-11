@@ -27,3 +27,11 @@ jobs:
       - run: npx wrangler deploy --dry-run --outdir /tmp/taguri-worker
       - run: npx wrangler d1 migrations apply taguri-demo --local
       - run: node test/runtime-smoke.js
+      - run: python3 scripts/visual_fixtures.py /tmp/taguri-visual-fixtures.json
+      - run: npx playwright install --with-deps chromium
+      - run: node test/visual-check.js
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: original-and-restored-ui
+          path: /tmp/taguri-visual/*.png

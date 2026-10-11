@@ -1,3 +1,15 @@
+# 元の画面を維持する移行途中版
+
+現在の公開ルートは元の `web/` のHTML・CSS・JavaScript・動画・D3を再利用します。画面名と17画面のフラグメントAPI、既存の操作を維持するため、画面生成とその書き込みは一時的に既存Renderへ接続します。**Renderからの完全移行はまだ完了しておらず、この段階でRenderを停止してはいけません。** コールドスタートとSQLiteの再起動時の制約も引き続きあります。
+
+元のCSS、チュートリアル、動画、D3は元リポジトリの同じファイルを配信します。JSの変更はAPIの同一オリジン化と配信パスのみです。元の認証Cookie `tg_session` とD1のCookie `taguri_session` を分離し、D1のCookieをRenderへ送信しません。HTMLフラグメントは変更せず、利用者の応答を共有キャッシュへ入れません。
+
+簡易版で保存済みのD1記録と復旧コードは保持しています。持ち出し用の旧画面は `/migration-data/`、そのAPIは `/migration-api/` に隔離しました。元の画面とD1の記録はまだ自動統合していません。元のサーバーのJSON/ZIP出力は全利用者の記録を含む実装のため、この橋渡しでは公開せず、利用者単位の書き出しを移植してから提供します。
+
+GitHub ActionsではPC(1280px)/スマホ(390px)で元の6画面と復元画面を比較します。同じ合成アカウントのPython生成HTMLを双方で使い、スクリーンショットの差分とJS例外を確認します。このテストは公開中の実データやRenderの可用性の確認とは別です。D1側の96件保存・復旧テストも残します。
+
+---
+
 # Cloudflareへの移行プレビュー
 
 Renderを止める前に検証する独立した移行版です。現行のPython版、GitHub Pagesの公開手順は変更しません。
@@ -68,7 +80,3 @@ npx wrangler d1 execute taguri-demo --remote --file catalogue.sql
 ```
 
 APIの候補は公開情報だけで5分キャッシュ可能です。照合はブラウザ内で行い、LLMや外部APIへの従量課金はありません。記録・お気に入り・反応は利用者別のprivate APIで取得します。GitHub ActionsのプレビューチェックはテストとWranglerのdry-runのみ実行し、公開やDB変更をしません。
-
-## Cloudflare Buildsから公開する場合
-
-GitHub連携のProduction branchを `cloudflare-d1-preview`、Root directoryを `cloudflare` に設定します。Build commandは空欄、Deploy commandは `npx wrangler d1 migrations apply taguri-demo --remote && npx wrangler deploy` です。設定を変更した後は移行ブランチの最新コミットを使った新しいビルドで確認してください。以前の失敗ビルドのログと新しいビルドのログを区別し、ビルド詳細のブランチとコミットを確認します。

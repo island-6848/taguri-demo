@@ -1,21 +1,70 @@
 <!doctype html>
 <html lang="ja">
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="referrer" content="no-referrer"><title>たぐり</title>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<script>
+// **初期読み込みの短縮(起案者の指摘)。** Renderの無料枠のコールドスタートが
+// 支配的なので、CSS/app.jsの読み込みを待たずに、できるだけ早く1回目の
+// APIリクエストを飛ばしてコールドスタートの時計を進めておく。app.js側は
+// window.__prefetchが自分の見ようとしている画面と一致すれば、これを
+// 使い回して二重にフェッチしない(下のloadScreen()参照)。
+// **画面名の出し方(app.jsのSCREENS/detectRepoBaseと同じ規則の最小限の複製)。**
+// 新しい画面をIMPLEMENTEDに足すときも、ここを直す必要は無い ──
+// 画面名は常にパスの最後のセグメント(例外は"/"→"recommend")である。
+(function () {
+  try {
+    var TOP = ["recommend", "start", "calendar", "tickets", "rate",
+      "register", "records", "search", "settings"];
+    var segs = location.pathname.split("/").filter(Boolean);
+    if (segs.length && TOP.indexOf(segs[0]) === -1) segs.shift();
+    var name = segs.length ? segs[segs.length - 1] : "recommend";
+    // **app.jsのDOMContentLoadedが渡すsearchと同じ形にする**
+    // (location.search.replace(/^\?/, "")、トークンの除去なし)。
+    var qs = location.search.replace(/^\?/, "");
+    window.__prefetchKey = name + "?" + qs;
+    window.__prefetch = fetch(
+      "/api/screen/" + name + (qs ? "?" + qs : ""),
+      {credentials: "include"}
+    ).then(function (r) { return r.json(); }).catch(function () { return null; });
+  } catch (e) {}
+})();
+</script>
+<title>たぐり</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%3E%3Cstyle%3E.s%7Bstroke%3A%239b2b3a%3Bfill%3Anone%3Bstroke-linecap%3Around%7D.b%7Bfill%3A%239b2b3a%7D%40media%28prefers-color-scheme%3Adark%29%7B.s%7Bstroke%3A%23b03a4a%7D.b%7Bfill%3A%23b03a4a%7D%7D%3C%2Fstyle%3E%3Cpath%20class%3D%22s%22%20d%3D%22M14%204V20%22%20stroke-width%3D%222.3%22%2F%3E%3Cpath%20class%3D%22s%22%20d%3D%22M19.5%204V20%22%20stroke-width%3D%222.3%22%2F%3E%3Cpath%20class%3D%22s%22%20d%3D%22M14%204C13.2%2011.6%2011.4%2015.8%205.4%2017.6%22%20stroke-width%3D%223%22%2F%3E%3Ccircle%20class%3D%22b%22%20cx%3D%225.4%22%20cy%3D%2217.6%22%20r%3D%222.9%22%2F%3E%3C%2Fsvg%3E">
+<!-- **相対パスにしない。** GitHub Pagesの404.htmlフォールバックは、深い階層の
+     URL(例: /recommend/reminder)でもこのHTMLの中身を返すが、
+     ブラウザの相対パス解決はアドレスバーの階層を基準にする。相対で書くと、
+     2階層以上のURLで開いた/再読み込みしたときだけstyle.css/app.jsが404になり、
+     CSSの無い白画面になっていた(起案者の報告)。オリジンからの絶対パスに
+     固定して、どの深さのURLで読み込まれても同じファイルを指すようにする。 -->
 <link rel="stylesheet" href="/style.css">
-<header><h1>たぐり</h1><p>観た舞台を、次の楽しみへ。</p></header>
-<main>
-<p class="notice">移行版の動作確認中です。観劇記録・評価・お気に入りを保存できます。お気に入りに合う公演の表示には候補データの引き継ぎが必要です。</p>
-<p id="status" role="status" aria-live="polite"></p>
-<section id="account"><h2>記録を始める</h2><button id="register">新しく始める</button><form id="recover"><label>復旧コード<input name="code" required autocomplete="off"></label><button>記録を復旧する</button></form></section>
-<section id="recovery" hidden><h2>復旧コードを控えてください</h2><p>別の端末で記録を開くときに必要です。この画面を閉じると再表示できません。</p><code id="code"></code><button id="copy">コードをコピー</button></section>
-<div id="content" hidden>
-<nav><a href="#discovery">次の公演</a><a href="#records">観劇記録</a><a href="#favourites">お気に入り</a><a href="#backup">持ち出す・取り込む</a></nav>
-<section id="discovery"><h2>お気に入りに合う公演</h2><p id="catalogue-status" role="status"></p><div id="shows"></div></section>
-<section><h2>観劇記録を追加</h2><form id="add"><label>作品名<input name="title" required maxlength="500"></label><div class="row"><label>観劇日<input name="date" type="date" required></label><label>開演時刻<input name="time" type="time"></label></div><label>会場<input name="venue" maxlength="300"></label><button>追加する</button></form></section>
-<section id="records"><h2>観劇記録</h2><p id="count"></p><div id="list"></div></section>
-<section id="favourites"><h2>お気に入り</h2><form id="favourite"><label>名前<input name="name" required maxlength="200"></label><label>種類<select name="kind"><option>人</option><option>団体</option><option>主催</option><option>作品</option><option>題材</option><option>原作者</option></select></label><button>登録する</button></form><ul id="favs"></ul></section>
-<section id="backup"><h2>持ち出す・取り込む</h2><button id="export">記録をJSONで保存</button><label>移行用JSONを取り込む<input id="import" type="file" accept="application/json,.json"></label><p>取り込みは10件ずつ行います。同じIDの記録は更新されます。</p><button id="logout">ログアウト</button></section>
+<link rel="stylesheet" href="/tour.css">
+</head>
+<body>
+<svg width="0" height="0" aria-hidden="true" focusable="false"
+ style="position:absolute">
+<filter id="tg-ink" x="-25%" y="-25%" width="150%" height="150%"
+ color-interpolation-filters="sRGB">
+<feTurbulence type="fractalNoise" baseFrequency="0.58" numOctaves="3" seed="11" result="n"/>
+<feDisplacementMap in="SourceGraphic" in2="n" scale="1.7"
+ xChannelSelector="R" yChannelSelector="G"/></filter>
+<filter id="tg-wax" x="-30%" y="-30%" width="160%" height="160%"
+ color-interpolation-filters="sRGB">
+<feTurbulence type="fractalNoise" baseFrequency="0.055" numOctaves="2" seed="5" result="n"/>
+<feDisplacementMap in="SourceGraphic" in2="n" scale="4.2"
+ xChannelSelector="R" yChannelSelector="G"/></filter></svg>
+<div class="shell">
+<nav class="side" aria-label="画面の行き先"><span class="tglock brand"><svg class="tgm " viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-linecap="round" aria-hidden="true"><path d="M11.0 4.5V19.5" stroke-width="1.6"/><path d="M14.5 4.5V19.5" stroke-width="1.6"/><path d="M18.0 4.5V19.5" stroke-width="1.6"/><path d="M21.5 4.5V19.5" stroke-width="1.6"/><path d="M11 4.5C10.4 12 8.6 16 4.4 17.6" stroke-width="2.45"/><circle cx="4.4" cy="17.6" r="2.15" fill="currentColor" stroke="none"/></svg><span class="tgw">たぐり</span></span><form class="search" method="get" action="/search" role="search"><svg class="ico " viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM16.2 16.2 21 21"/></svg><input type="search" name="q" placeholder="探す" aria-label="探す"></form></nav>
+<main class="main">
+<div class="curtain" aria-hidden="true"></div>
+<div class="crumbbar" id="crumbbar"><button type="button" class="backbtn" onclick="history.length&gt;1?history.back():navigate('/','',false)">← 戻る</button><nav class="crumb" id="crumbnav" aria-label="現在地の道のり"></nav></div>
+<div class="wrap spot">
+<div id="content"><p class="lede">読み込み中…</p></div>
 </div>
-</main><script type="module" src="/app.js"></script>
+</main>
+</div>
+<script src="/app.js"></script>
+<script src="/tour.js"></script>
+</body>
 </html>
