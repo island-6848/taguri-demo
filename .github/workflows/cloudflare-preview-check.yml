@@ -3,6 +3,11 @@ on:
   pull_request:
     paths:
       - 'cloudflare/**'
+      # build_recommend_index.py must keep matching the Python recommender
+      - 'tools/review/user_recommender.py'
+      - 'tools/review/measure_nets.py'
+      - 'tools/review/recommend2.py'
+      - 'tools/taguri/app.py'
       - '.github/workflows/cloudflare-preview-check.yml'
   workflow_dispatch:
 permissions:

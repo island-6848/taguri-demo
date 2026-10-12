@@ -80,3 +80,27 @@ npx wrangler d1 execute taguri-demo --remote --file catalogue.sql
 ```
 
 APIの候補は公開情報だけで5分キャッシュ可能です。照合はブラウザ内で行い、LLMや外部APIへの従量課金はありません。記録・お気に入り・反応は利用者別のprivate APIで取得します。GitHub ActionsのプレビューチェックはテストとWranglerのdry-runのみ実行し、公開やDB変更をしません。
+
+## 推薦をRenderから外す：段1（推薦の索引）
+
+`tools/review/user_recommender.py`（person-feedback-v1）は、表示のたびに公演カタログ全体を読み直し、全公演の出演者・スタッフ欄を分解している。**利用者によらない部分をバッチで1回だけ作り、D1に入れる。** Workerは、本人が◎を付けた人の行だけを読んで点数を足す。
+
+| 表（`migrations/0003.sql`） | 中身 |
+|---|---|
+| `rec_stage` | 候補の公演。公開項目・期間・分解済みのクレジット |
+| `rec_credit` | （役職, 人物）→ 公演。役職の重みとまとめを付けてある |
+| `rec_people` | 公演 → 人物。評価した記録から本人の表を作るため（過去の公演を含む） |
+| `rec_meta` | いま使う版（`current`） |
+
+作り方（カタログのある環境＝EC2で、`publish_catalog.py` の後に）:
+
+```sh
+python3 cloudflare/scripts/build_recommend_index.py --output /tmp/rec.sql --stats /tmp/rec-stats.json
+npx wrangler d1 execute taguri-demo --remote --file /tmp/rec.sql
+```
+
+新しい版を入れてから `rec_meta.current` を切り替え、古い版を消す。途中で失敗しても前の版のまま動く。持ち主の得点・理由・感想・反応は索引に入れない。
+
+**一致の確認。** `scripts/build_recommend_index.py` の `score_from_index` が、Workerが毎回行う計算の仕様（参照実装）である。`test/test_recommend_index.py` は、作った架空のカタログと評価で、これが現行の `user_recommender.prepare` と**同じ公演・順位・点数・理由・強さ**を出すことを、メモリ上の索引とSQLite上の索引（D1と同じ問い合わせ）の両方で確かめる。
+
+**まだ確かめていないこと。** 実カタログでの件数とD1の読み込み行数（`--stats` の `postings_per_person` から見積もる）、WorkerのCPU時間。D1の `records` 表は公演IDを持たないため、評価した記録を `rec_people` に結び付ける列が段2で要る。手で入れた出演者（`hand_credits`）にもまだ対応していない。

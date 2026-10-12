@@ -31,19 +31,12 @@ def independent_ratings(rows: list[dict]) -> list[dict]:
     return list(grouped.values())
 
 
-def prepare(raw: dict, candidates: list[dict], rated: list[dict], *,
-            multipliers: dict[str, float], role_group, today=None) -> dict:
-    """Build fresh scores over the whole local catalog, not the common top 15.
+def candidate_pool(raw: dict, candidates: list[dict]) -> dict[str, dict]:
+    """stage_id -> catalog entry considered for person scores.
 
-    Only person history is enabled in this first implementation. Old owner's
-    theme/person scores and explanations are explicitly replaced. Favorites,
-    reactions and geographic filtering are applied by the caller afterwards.
+    Shared with the Cloudflare index builder (`cloudflare/scripts/
+    build_recommend_index.py`) so both see the same candidates.
     """
-    today = today or datetime.date.today()
-    rated = independent_ratings(rated)
-    positive = lambda v: float(v == "◎")
-    base = sum(positive(r["verdict"]) for r in rated) / max(len(rated), 1)
-    roster = M.build_roster(rated, positive)
     pool = {}
     # Saved JSON may contain catalog entries unavailable in the source files.
     # Source catalog entries take priority and retain all theaters in a tour.
@@ -60,6 +53,23 @@ def prepare(raw: dict, candidates: list[dict], rated: list[dict], *,
         sid = str(entry.get("stage_id") or "")
         if sid:
             pool[sid] = entry
+    return pool
+
+
+def prepare(raw: dict, candidates: list[dict], rated: list[dict], *,
+            multipliers: dict[str, float], role_group, today=None) -> dict:
+    """Build fresh scores over the whole local catalog, not the common top 15.
+
+    Only person history is enabled in this first implementation. Old owner's
+    theme/person scores and explanations are explicitly replaced. Favorites,
+    reactions and geographic filtering are applied by the caller afterwards.
+    """
+    today = today or datetime.date.today()
+    rated = independent_ratings(rated)
+    positive = lambda v: float(v == "◎")
+    base = sum(positive(r["verdict"]) for r in rated) / max(len(rated), 1)
+    roster = M.build_roster(rated, positive)
+    pool = candidate_pool(raw, candidates)
 
     out = {"label": raw.get("label") or today.isoformat(), "today": today.isoformat()}
     out.update({k: [] for k in BUNDLES})

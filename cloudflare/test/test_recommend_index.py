@@ -1,0 +1,181 @@
+"""The index-only computation must reproduce the Python recommender.
+
+Synthetic catalogue (no private data). For several random histories and
+weight settings, `score_from_index` over (a) the in-memory index and (b) the
+generated SQL loaded into SQLite with migration 0003 must give the same stages,
+order, scores, reasons and strength as `user_recommender.prepare` + the b > 0
+filter and ordering of `user_recommender.finish`.
+"""
+import datetime
+import importlib.util
+import random
+import sqlite3
+import sys
+import unittest
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parents[1]
+ROOT = HERE.parent
+SCRIPT = HERE / 'scripts' / 'build_recommend_index.py'
+spec = importlib.util.spec_from_file_location('build_recommend_index', SCRIPT)
+BI = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(BI)
+sys.path.insert(0, str(ROOT / 'tools' / 'taguri'))
+import app as APP                                                  # noqa: E402
+import user_recommender as UR                                      # noqa: E402
+
+TODAY = datetime.date(2026, 10, 12)
+PEOPLE = [f"人物{i:02d}" for i in range(30)] + ["O'Neil"]
+STAFF = ['照明', '美術', '音響', '衣裳', '振付', '制作', '舞台監督']
+
+
+def _fields(rng):
+    cast = rng.sample(PEOPLE, rng.randint(0, 6))
+    f = {'出演': '、'.join(cast)} if cast else {}
+    if rng.random() < .8:
+        f['脚本'] = rng.choice(PEOPLE)
+    if rng.random() < .8:
+        f['演出'] = rng.choice(PEOPLE)
+    lines = [f"{role}：{rng.choice(PEOPLE)}" for role in rng.sample(STAFF, rng.randint(0, 4))]
+    if lines:
+        f['スタッフ'] = '\n'.join(lines)
+    return f
+
+
+def _period(rng):
+    kind = rng.choice(['future', 'future', 'running', 'past', 'none'])
+    d = lambda days: (TODAY + datetime.timedelta(days=days)).strftime('%Y/%m/%d')
+    if kind == 'future':
+        s = rng.randint(1, 90)
+        return f"{d(s)}~{d(s + rng.randint(0, 20))}"
+    if kind == 'running':
+        return f"{d(-rng.randint(1, 10))}~{d(rng.randint(0, 10))}"
+    if kind == 'past':
+        return f"{d(-60)}~{d(-rng.randint(1, 30))}"
+    return ''
+
+
+def catalogue(seed):
+    rng = random.Random(seed)
+    cands = []
+    for i in range(80):
+        title = rng.choice(['舞台', '新作', 'オペラ・ガラ', '朗読劇', "O'Neil作品"]) + str(i)
+        cands.append({'stage_id': str(1000 + i), 'title': title, 'group': rng.choice(['劇団甲', '劇団乙', '']),
+                      'theater': '劇場', 'pref': '東京都', 'period': _period(rng),
+                      'url': rng.choice(['https://example.com/x', 'javascript:alert(1)', '']),
+                      'fields': _fields(rng), 'why_b': ['owner reason'], '_notes': {'x': 'private'}})
+    # Saved bundles add a tour stage that is not in the source files.
+    raw = {'ranked': [dict(cands[0], tours=[{'stage_id': '9001', 'theater': '大阪の劇場',
+                                             'period': cands[0]['period']}])]}
+    past = {str(2000 + i): _fields(rng) for i in range(60)}
+    fields_by_stage = dict(past, **{c['stage_id']: c['fields'] for c in cands if c['fields']})
+    return raw, cands, fields_by_stage
+
+
+def history(seed, fields_by_stage):
+    rng = random.Random(seed)
+    rows = []
+    linked = sorted(fields_by_stage)
+    for i in range(rng.randint(0, 40)):
+        sid = rng.choice(linked) if rng.random() < .85 else ''
+        rows.append({'key': f'w{i}', 'stage_id': sid,
+                     'verdict': rng.choice(['◎', '◎', '○', '△', '×', '']),
+                     'date': f'2026-0{rng.randint(1, 9)}-1{rng.randint(0, 9)}',
+                     'updated_at': f'2026-09-{rng.randint(10, 28)} 10:00:00'})
+    return rows
+
+
+def with_people(rows, people):
+    """What the Worker does: people of a linked record come from rec_people."""
+    return [dict(r, people=[tuple(p) for p in people.get(r['stage_id'], [])]) for r in rows]
+
+
+def expected(raw, cands, rated, multipliers):
+    d = UR.prepare(raw, cands, rated, multipliers=multipliers, role_group=APP.group_of, today=TODAY)
+    keep = [c for c in d['ranked'] if c.get('b', 0) > 0]
+    keep.sort(key=lambda c: (-c['strong'], -c['s'], c['stage_id']))
+    return [(c['stage_id'], c['b'], c['strong'], c['person_parts']) for c in keep]
+
+
+def got(rows):
+    return [(c['stage_id'], c['b'], c['strong'], c['parts']) for c in rows]
+
+
+def load_sql(index):
+    con = sqlite3.connect(':memory:')
+    con.executescript((HERE / 'migrations' / '0003.sql').read_text())
+    ver = BI.version_of(index)
+    for stmt in BI.to_sql(index, ver):
+        con.execute(stmt)
+    return con, ver
+
+
+class ParityTest(unittest.TestCase):
+    def test_index_reproduces_python_recommender(self):
+        weights = [{}, {'cast': 2.0, 'craft': 0.0}, {'author': 4.0, 'cast': 0.5, 'produce': 0.0}]
+        compared = nonempty = 0
+        for seed in range(12):
+            raw, cands, fbs = catalogue(seed)
+            index = BI.build_index(UR.candidate_pool(raw, cands), fbs, APP.group_of)
+            con, ver = load_sql(index)
+            self.addCleanup(con.close)
+            for hseed in range(4):
+                rated = with_people(history(seed * 100 + hseed, fbs), index['people'])
+                for mult in weights:
+                    want = expected(raw, cands, rated, mult)
+                    mem = BI.score_from_index(*BI.memory_access(index), rated,
+                                              multipliers=mult, today=TODAY)
+                    sql = BI.score_from_index(*BI.sql_access(con, ver), rated,
+                                              multipliers=mult, today=TODAY)
+                    self.assertEqual(got(mem), want, (seed, hseed, mult))
+                    self.assertEqual(got(sql), want, (seed, hseed, mult))
+                    compared += 1
+                    nonempty += bool(want)
+        # The comparison must not pass vacuously.
+        self.assertGreater(nonempty, compared // 2)
+
+    def test_index_holds_public_fields_only(self):
+        raw, cands, fbs = catalogue(1)
+        index = BI.build_index(UR.candidate_pool(raw, cands), fbs, APP.group_of)
+        for st in index['stages'].values():
+            self.assertLessEqual(set(st['entry']), set(BI.PUBLIC_KEYS) | {'url'})
+            self.assertTrue(st['entry'].get('url', 'https://').startswith('https://'))
+        self.assertTrue(all('オペラ' not in st['title'] for st in index['stages'].values()))
+        self.assertIn('9001', index['stages'])           # tour stage from saved bundles
+
+    def test_version_switch_and_cleanup(self):
+        raw, cands, fbs = catalogue(2)
+        old = BI.build_index(UR.candidate_pool(raw, cands), fbs, APP.group_of)
+        con, v1 = load_sql(old)
+        self.addCleanup(con.close)
+        new = BI.build_index(UR.candidate_pool(raw, cands[:40]), fbs, APP.group_of)
+        v2 = BI.version_of(new)
+        self.assertNotEqual(v1, v2)
+        for stmt in BI.to_sql(new, v2):
+            con.execute(stmt)
+        self.assertEqual(con.execute("SELECT v FROM rec_meta WHERE k='current'").fetchone()[0], v2)
+        for t in ('rec_stage', 'rec_credit', 'rec_people'):
+            self.assertEqual(con.execute(f"SELECT count(*) FROM {t} WHERE ver<>?", (v2,)).fetchone()[0], 0)
+        self.assertEqual(con.execute("SELECT count(*) FROM rec_stage").fetchone()[0], len(new['stages']))
+
+    def test_statements_fit_d1_limit(self):
+        raw, cands, fbs = catalogue(3)
+        index = BI.build_index(UR.candidate_pool(raw, cands), fbs, APP.group_of)
+        old = BI.MAX_STATEMENT_BYTES
+        BI.MAX_STATEMENT_BYTES = 2000            # force splitting on small data
+        try:
+            stmts = BI.to_sql(index, 'v')
+        finally:
+            BI.MAX_STATEMENT_BYTES = old
+        self.assertTrue(all(len(s.encode()) < 100_000 for s in stmts))
+        con = sqlite3.connect(':memory:')
+        self.addCleanup(con.close)
+        con.executescript((HERE / 'migrations' / '0003.sql').read_text())
+        for s in stmts:
+            con.execute(s)
+        self.assertEqual(con.execute("SELECT count(*) FROM rec_credit").fetchone()[0],
+                         len(set(index['postings'])))
+
+
+if __name__ == '__main__':
+    unittest.main()
