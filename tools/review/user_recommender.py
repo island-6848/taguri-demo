@@ -12,7 +12,7 @@ import measure_nets as M
 import recommend2 as RC
 
 VERSION = "person-feedback-v1"
-BUNDLES = ("favourites", "ranked", "others", "owned", "tracking", "started", "declined")
+BUNDLES = ("favourites", "ranked", "others", "owned", "tracking", "started", "declined", "unscored")
 
 
 def independent_ratings(rows: list[dict]) -> list[dict]:
@@ -60,7 +60,7 @@ def prepare(raw: dict, candidates: list[dict], rated: list[dict], *,
             multipliers: dict[str, float], role_group, today=None) -> dict:
     """Build fresh scores over the whole local catalog, not the common top 15.
 
-    Only person history is enabled in this first implementation. Old owner's
+    This stage computes person history; personal impression adjustments follow in app. Old owner's
     theme/person scores and explanations are explicitly replaced. Favorites,
     reactions and geographic filtering are applied by the caller afterwards.
     """
@@ -136,21 +136,35 @@ def finish(d: dict, *, top: int, weights: dict) -> dict:
     keep = [c for c in rows if c.get("b", 0) > 0]
     d["unscored"] = [c for c in rows if c.get("b", 0) <= 0]
     ordered = sorted(keep, key=lambda c: (-c["strong"], -c["s"], c["stage_id"]))
-    # Same production on tour occupies one slot. Different producers or
-    # credits must not be merged solely because the title is the same.
-    groups = {}
-    for c in ordered:
-        key = (RC.nz(c.get("title") or ""), RC.nz(c.get("group") or ""),
-               tuple(M.parse_credits(c.get("fields") or {})))
-        if key not in groups:
-            groups[key] = copy.deepcopy(c)
-            groups[key]["tours"] = []
-        else:
-            groups[key]["tours"].append({k: c.get(k) or "" for k in
-                ("stage_id", "theater", "pref", "period", "days", "price", "url", "onsale")})
-    d["ranked"] = list(groups.values())
+    d["ranked"] = collapse_tours(ordered)
     d["recommend"] = d["ranked"][:top]
     d["n_scored"] = len(d["ranked"])
     d["weights"] = weights
     d["w_dropped"] = 0
     return d
+
+
+def collapse_tours(rows: list[dict]) -> list[dict]:
+    """One slot per production, preserving all distinct tour venues.
+
+    Reusable after personal impression scoring promotes previously unscored rows.
+    Title alone is insufficient: producer and complete credits must also match.
+    """
+    groups = {}
+    for c in rows:
+        key = (RC.nz(c.get("title") or ""), RC.nz(c.get("group") or ""),
+               tuple(M.parse_credits(c.get("fields") or {})))
+        if key not in groups:
+            groups[key] = copy.deepcopy(c)
+            groups[key]["tours"] = list(groups[key].get("tours") or [])
+        else:
+            representative = groups[key]
+            known = {str(representative.get("stage_id") or "")}
+            known.update(str(t.get("stage_id") or "") for t in representative["tours"])
+            for venue in [c, *(c.get("tours") or [])]:
+                sid = str(venue.get("stage_id") or "")
+                if sid and sid not in known:
+                    representative["tours"].append({k: venue.get(k) or "" for k in
+                        ("stage_id", "theater", "pref", "period", "days", "price", "url", "onsale")})
+                    known.add(sid)
+    return list(groups.values())

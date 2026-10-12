@@ -2,7 +2,7 @@
 
 現在の公開ルートは元の `web/` のHTML・CSS・JavaScript・動画・D3を再利用します。画面名と17画面のフラグメントAPI、既存の操作を維持するため、画面生成とその書き込みは一時的に既存Renderへ接続します。**Renderからの完全移行はまだ完了しておらず、この段階でRenderを停止してはいけません。** コールドスタートとSQLiteの再起動時の制約も引き続きあります。
 
-元のCSS、チュートリアル、動画、D3は元リポジトリの同じファイルを配信します。JSの変更はAPIの同一オリジン化と配信パスのみです。元の認証Cookie `tg_session` とD1のCookie `taguri_session` を分離し、D1のCookieをRenderへ送信しません。HTMLフラグメントは変更せず、利用者の応答を共有キャッシュへ入れません。
+元のCSS、チュートリアル、動画、D3は元リポジトリの同じファイルを配信します。**`public/` の画面ファイルは `web/` の写し**で、masterで `web/` が変わったら、masterを取り込んだあとに `python3 cloudflare/scripts/sync_public_ui.py` で作り直します（古いままだと `test/test_sync_public_ui.py` がCIで落ちます）。JSの変更はAPIの同一オリジン化と配信パスのみです。元の認証Cookie `tg_session` とD1のCookie `taguri_session` を分離し、D1のCookieをRenderへ送信しません。HTMLフラグメントは変更せず、利用者の応答を共有キャッシュへ入れません。
 
 簡易版で保存済みのD1記録と復旧コードは保持しています。持ち出し用の旧画面は `/migration-data/`、そのAPIは `/migration-api/` に隔離しました。元の画面とD1の記録はまだ自動統合していません。元のサーバーのJSON/ZIP出力は全利用者の記録を含む実装のため、この橋渡しでは公開せず、利用者単位の書き出しを移植してから提供します。
 

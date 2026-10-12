@@ -79,6 +79,7 @@ import auth as AU                                                  # noqa: E402
 import feedback as FB                                              # noqa: E402
 import recommend as RC                                             # noqa: E402
 import render_recommend as RR                                       # noqa: E402
+import recommendation_exposure as EX
 import stage_calendar as SC                                        # noqa: E402
 import taguri_state as STATE
 
@@ -954,7 +955,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
         except ValueError:
             self._json(400, {"error": "json"})
             return
-        fn = {"/api/react": srv.on_react, "/api/rate": srv.on_rate,
+        fn = {"/api/recommendation/visit": srv.on_exposure_visit,
+              "/api/recommendation/contact": srv.on_exposure_contact,
+              "/api/react": srv.on_react, "/api/rate": srv.on_rate,
               "/api/note": srv.on_note, "/api/favourite": srv.on_favourite,
               "/api/missed": srv.on_missed, "/api/add_work": srv.on_add_work,
               "/api/search_request": srv.on_search_request,
@@ -985,7 +988,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             # Refresh reads do not change data. Other successful writes must not
             # leave saved-before-edit fragments visible on the next navigation.
             # Only this visitor's cache is affected; no automatic reload is made.
-            if result.get("ok", True) and op != "/api/hand_theme_refresh":
+            if result.get("ok", True) and op != "/api/hand_theme_refresh" and not op.startswith("/api/recommendation/"):
                 srv.invalidate_user_cache(self.user_id)
             STATE.event("write_result", outcome="ok" if result.get("ok", True) else "rejected",
                         operation=WRITE_OPERATIONS.get(op, "other"), status=200)
@@ -1081,6 +1084,16 @@ class Server(http.server.ThreadingHTTPServer):
         self.con.commit()
         _migrate_missed(self.con)
         self.lock = threading.Lock()
+        self.exposure_lock = threading.Lock()
+        self.exposure = None
+        try:
+            exposure_root = STATE.state_dir() or ROOT / "state"
+            exposure_path = Path(os.environ.get("TAGURI_EXPOSURE_DB", str(exposure_root / "recommendation_exposure.db")))
+            exposure_path.parent.mkdir(parents=True, exist_ok=True)
+            self.exposure_con = sqlite3.connect(exposure_path, check_same_thread=False, timeout=2)
+            self.exposure = EX.Store(self.exposure_con)
+        except (OSError, sqlite3.Error):
+            pass  # Telemetry must not prevent startup or recommendations.
         self.n = {"react": 0, "rate": 0, "note": 0, "fav": 0, "missed": 0,
                   "add": 0, "import": 0, "fix": 0}
         # **`/api/screen/*`の応答を、書き込みが起きるまで覚えておく（#000009）。**
@@ -1110,6 +1123,7 @@ class Server(http.server.ThreadingHTTPServer):
         # 各利用者について、初めて触れたときに設定画面で決めた既定から始める。
         self.prefs_by_user: dict[str, list[str]] = {}
         APP.RECORD = self.record_presented
+        APP.EXPOSE = self.register_exposure
         # **デモモードでは監視しない。** クラウドの公開デモは「誰かがブラウザを
         # 開くまでの一時プロセス」ではなく、常時稼働のWebサービスとして動かす
         # 前提なので、`GRACE_SEC`で自動終了させると事故る。
@@ -1378,9 +1392,49 @@ class Server(http.server.ThreadingHTTPServer):
         rank = len(shown) + 1
         if user_id == AU.LOCAL_USER_ID:          # 持ち主の測定の分母だけに書く（E3）
             self.record_presented([c], list(prefs), "recommend_fill", rank)
-        return {"html": RR.card(rank, c), "left": len(rest),
+        pid = self.register_exposure(user_id, [c], prefs, "fill", rank)
+        card = RR.card(rank, c)
+        if pid:
+            card = card.replace('<article ', f'<article data-exposure-presentation="{h_esc(pid)}" ', 1)
+        return {"html": card, "left": len(rest),
                 "said": f"記録しました。入れ替わりに 1 件を下に足しました"
                         f"（まだ出していない候補が {len(rest) - 1} 件あります）。"}
+
+    def register_exposure(self, user_id, rows, prefs, kind="recommend", start_rank=1):
+        if self.exposure is None:
+            return ""
+        try:
+            with self.exposure_lock:
+                pid = self.exposure.register(user_id, rows, prefs, kind, start_rank)
+                self.exposure.fetched(user_id, pid)
+                return pid
+        except (sqlite3.Error, OSError, ValueError, KeyError):
+            return ""
+
+    def record_exposure_fetch(self, user_id, html):
+        match = re.search(r'data-exposure-presentation="([A-Za-z0-9_-]+)"', html)
+        if match and self.exposure is not None:
+            try:
+                with self.exposure_lock:
+                    self.exposure.fetched(user_id, match.group(1))
+            except (sqlite3.Error, OSError, ValueError):
+                pass
+
+    def _exposure_event(self, body, user_id, method):
+        if self.exposure is None:
+            return {"ok": False, "disabled": True}
+        try:
+            with self.exposure_lock:
+                return getattr(self.exposure, method)(user_id, body)
+        except (sqlite3.Error, OSError):
+            return {"ok": False, "disabled": True}
+
+    def on_exposure_visit(self, body, user_id):
+        return self._exposure_event(body, user_id, "begin")
+
+    def on_exposure_contact(self, body, user_id):
+        return self._exposure_event(body, user_id, "contact")
+
 
     def _siblings(self, user_id: str, stage_id: str) -> list[str]:
         """同じ作品の、ツアーの他会場の stage_id を全部返す（自分は含めない）。
@@ -1504,7 +1558,8 @@ class Server(http.server.ThreadingHTTPServer):
         """**感想は任意で、評価とは別に保存する。**
 
         書く本人にとっては分析用のデータではなく、残すためのものである（企画書 2 章）。
-        **推薦の順位には使わない** ── 記録を見返す画面と理由の文面にだけ出す。
+        明示された特徴への評価は、次の画面取得時に本人の推薦順位にも反映する。
+        解析はサーバー内のルールで行い、外部の AI へは送らない。
         """
         work_key = str(b.get("work_key") or "")
         note = str(b.get("note_impression") or "")[:4000]
