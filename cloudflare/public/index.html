@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<script src="/config.js"></script>
 <script>
 // **初期読み込みの短縮(起案者の指摘)。** Renderの無料枠のコールドスタートが
 // 支配的なので、CSS/app.jsの読み込みを待たずに、できるだけ早く1回目の
@@ -16,7 +17,12 @@
   try {
     var TOP = ["recommend", "start", "calendar", "tickets", "rate",
       "register", "records", "search", "settings"];
-    var segs = location.pathname.split("/").filter(Boolean);
+    // 版ごとの配信先（/taguri-demo か /taguri-demo/app）を外してから画面名を読む
+    var T = window.TAGURI || {base: "", api: ""};
+    if (!T.api) return;
+    var path = location.pathname;
+    if (path.indexOf(T.base) === 0) path = path.slice(T.base.length);
+    var segs = path.split("/").filter(Boolean);
     if (segs.length && TOP.indexOf(segs[0]) === -1) segs.shift();
     var name = segs.length ? segs[segs.length - 1] : "recommend";
     // **app.jsのDOMContentLoadedが渡すsearchと同じ形にする**
@@ -24,7 +30,7 @@
     var qs = location.search.replace(/^\?/, "");
     window.__prefetchKey = name + "?" + qs;
     window.__prefetch = fetch(
-      "/api/screen/" + name + (qs ? "?" + qs : ""),
+      T.api + "/api/screen/" + name + (qs ? "?" + qs : ""),
       {credentials: "include"}
     ).then(function (r) { return r.json(); }).catch(function () { return null; });
   } catch (e) {}
