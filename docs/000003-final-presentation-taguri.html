@@ -287,6 +287,28 @@ figcaption{font-size:12.5px;color:var(--muted);margin-top:10px;max-width:70em}
 .calcgrid{grid-template-columns:1fr 1.3fr}.calcgrid>.card{min-width:0}
 @media(max-width:860px){.calcgrid{grid-template-columns:1fr}}
 .notdone .row .tag{align-self:start;justify-self:start;white-space:normal}.aSymM{fill:var(--muted);font-size:10px;font-weight:700}
+
+/* ---------------------------------------------------------------- カードをやめ、区切り線の一覧にする */
+.card,.ach{background:none;border:0;border-radius:0;box-shadow:none}
+.card{border-top:1px solid var(--line);padding:16px 0 12px}
+.grid2:not(.pair){grid-template-columns:1fr;gap:0;max-width:820px}
+.grid2:not(.pair)>.card:last-child{border-bottom:1px solid var(--line)}
+.grid2.pair{gap:40px}
+.grid2.pair>.card{border-top:2px solid var(--ink);padding-top:14px}
+.card h4{margin-bottom:4px}
+.card .icwrap{background:none;width:auto;height:auto;margin-right:2px}
+.ach{border-top:1px solid var(--line);padding:18px 0 14px;margin:0}
+.ach:last-child{border-bottom:1px solid var(--line)}
+.ach .benefit{background:none;border-left:3px solid var(--thread);border-radius:0;padding:4px 0 4px 12px}
+.notdone{gap:0;max-width:1040px}
+.notdone .row{background:none;border:0;border-radius:0;border-top:1px solid var(--line);padding:14px 0}
+.notdone .row:last-child{border-bottom:1px solid var(--line)}
+.toc-grid{display:block;max-width:760px}
+.toc-grid a{background:none;border:0;border-radius:0;border-top:1px solid var(--line);padding:14px 4px;transform:none!important}
+.toc-grid a:last-child{border-bottom:1px solid var(--line)}
+.toc-grid a:hover{background:var(--wash)}
+.toc-grid h4,.toc-grid p{display:inline}
+.toc-grid p{margin-left:14px}
 @media print{.rail,.topbar{display:none}}
 </style>
 
@@ -534,7 +556,7 @@ figcaption{font-size:12.5px;color:var(--muted);margin-top:10px;max-width:70em}
   <h3 class="sub">2-2　ユーザーの使い方</h3>
   <p class="col">公開版は Web アプリとして動く。登録なしで URL を開けば使え、スマホでも PC でも同じ記録を続けられる。</p>
 
-  <div class="grid2 wide" style="align-items:start">
+  <div class="grid2 wide pair" style="align-items:start">
     <div class="card">
       <h4>推薦を使う場合（週 1 回・約 3 分）</h4>
       <div class="flow">
@@ -817,7 +839,7 @@ figcaption{font-size:12.5px;color:var(--muted);margin-top:10px;max-width:70em}
     </svg>
   </figure>
 
-  <div class="grid2 wide calcgrid" style="margin-top:6px">
+  <div class="grid2 wide pair calcgrid" style="margin-top:6px">
     <div class="card">
       <h4>役職の重み（単独の AUC の順に置いた）</h4>
       <svg viewBox="0 0 440 200" role="img" aria-label="役職の重みの棒グラフ。出演1.0、演出・脚本・作・原作0.4、翻訳0.3、裏方0.1。">
