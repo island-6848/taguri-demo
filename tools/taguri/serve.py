@@ -382,10 +382,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self._json(200, {"ok": True, "version": "state-storage-v1"})
             return
 
-        if path == "/api/catalog/favourite-names":
-            # **全利用者のお気に入りの登録名（重複除去・利用者 ID なし）。** 手元の取得
-            # 処理が、他の利用者の登録名でも公演を探しに行くために読む（規約 O2）。
-            # 合言葉（`TAGURI_NAMES_TOKEN`）を設定していなければ、この道は存在しない
+        if path in ("/api/catalog/favourite-names", "/api/catalog/search-requests"):
+            # **手元の取得処理だけが読む口。** 全利用者のお気に入りの登録名と、
+            # 「次の更新で探してほしい」と頼まれた題名を、利用者 ID なしでまとめて返す
+            # （規約 O2）。合言葉（`TAGURI_NAMES_TOKEN`）を設定していなければ存在しない
             token = os.environ.get("TAGURI_NAMES_TOKEN", "")
             if not token:
                 self._send(404, b"not found", "text/plain; charset=utf-8")
@@ -394,8 +394,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
             if not secrets.compare_digest(given.encode(), token.encode()):
                 self._send(403, b"forbidden", "text/plain; charset=utf-8")
                 return
-            self._json(200, {"ok": True, "version": "favourite-names-v1",
-                             "names": APP.aggregate_declared_names()})
+            if path.endswith("favourite-names"):
+                self._json(200, {"ok": True, "version": "favourite-names-v1",
+                                 "names": APP.aggregate_declared_names()})
+            else:
+                self._json(200, {"ok": True, "version": "search-requests-v1",
+                                 "requests": APP.aggregate_search_requests()})
             return
 
         # **#000008の新しい道はここで先に受ける。** 既存のPAGES一覧・起動ごと
@@ -945,6 +949,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         fn = {"/api/react": srv.on_react, "/api/rate": srv.on_rate,
               "/api/note": srv.on_note, "/api/favourite": srv.on_favourite,
               "/api/missed": srv.on_missed, "/api/add_work": srv.on_add_work,
+              "/api/search_request": srv.on_search_request,
               "/api/import_mail": srv.on_import_mail,
               "/api/fix_work": srv.on_fix_work,
               "/api/merge_work": srv.on_merge_work,
@@ -1634,7 +1639,21 @@ class Server(http.server.ThreadingHTTPServer):
         if not self.demo_mode:
             self.enqueue("演者とあらすじを調べています…",
                          lambda: self._lookup_missed(user_id, title))
+        else:
+            # **公開版はその場で調べない代わりに、次の更新で探すよう頼んでおく。**
+            # 見つかれば演者とあらすじが手元に入り、次に開いたときに出る
+            try:
+                APP.add_search_request(user_id, title, "missed")
+            except ValueError:
+                pass
         return {"ok": True, "title": title}
+
+    def on_search_request(self, b: dict, user_id: str) -> dict:
+        """「次の更新で探してほしい」題名を控える（探しても見つからない公演）。
+
+        公開版は訪問者の操作で外部サイトを検索しない。代わりに本人の依頼として控え、
+        手元の取得処理（`fetch_requests.py`）が次の更新でまとめて探す。"""
+        return APP.add_search_request(user_id, str(b.get("q") or ""), str(b.get("source") or "search"))
 
     def _lookup_missed(self, user_id: str, title: str) -> str:
         """`on_missed` が登録した題名から、演者とあらすじを調べて書き戻す。

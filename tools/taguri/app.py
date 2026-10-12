@@ -3197,6 +3197,112 @@ def aggregate_declared_names() -> list[dict]:
             for (k, w), n in sorted(users.items(), key=lambda kv: (-kv[1], kv[0]))]
 
 
+# ---- 「次の更新で探してほしい」題名（探しても見つからない公演）--------------------
+# 公開版は訪問者の操作で外部サイトを検索しない（取得の量を利用者数に比例させない・
+# 取得先への礼儀）。**その代わりに、見つからなかった題名を本人の依頼として控え、
+# 手元の取得処理（`fetch_requests.py`）が次の更新でまとめて探す。** 見つかった公演は
+# カタログの `picked.jsonl` に入り、翌日から「探す」と「手で足す」の候補に出る。
+SEARCH_REQUEST_SCHEMA = """
+CREATE TABLE IF NOT EXISTS search_request (
+    user_id    TEXT NOT NULL,
+    qkey       TEXT NOT NULL,
+    query      TEXT NOT NULL,
+    source     TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (user_id, qkey)
+);
+"""
+REQUEST_SOURCES = ("search", "hand", "missed")
+MAX_REQUESTS_PER_USER = 30     # 1 人が控えておける依頼の数（古いものから消える）
+REQUEST_DAYS = 30              # この日数より古い依頼は探さない
+
+
+def _request_query(q: str) -> str:
+    """依頼として控えてよい題名に整える。だめなら空。登録名と同じく検索語になるので、
+    URL・メールアドレス・制御文字・長すぎる／短すぎるものは控えない。"""
+    import re as _re
+    import unicodedata
+    import rate_performances as R
+    w = _re.sub(r"\s+", " ", unicodedata.normalize("NFKC", str(q or ""))).strip()
+    if not (2 <= len(w) <= 60) or len(R.title_key(w)) < 2:
+        return ""
+    if any(ord(c) < 32 for c in w) or "://" in w or "@" in w or "www." in w.lower():
+        return ""
+    return w
+
+
+def add_search_request(user_id: str, q: str, source: str = "search") -> dict:
+    """題名を「次の更新で探してほしい」として控える。同じ題名は日付だけ新しくする。"""
+    import rate_performances as R
+    w = _request_query(q)
+    if not w:
+        raise ValueError("探す題名を 2〜60 文字で入れてください")
+    if source not in REQUEST_SOURCES:
+        source = "search"
+    con = R.connect()
+    try:
+        con.executescript(SEARCH_REQUEST_SCHEMA)
+        with con:
+            con.execute(
+                "INSERT INTO search_request (user_id, qkey, query, source, created_at)"
+                " VALUES (?, ?, ?, ?, ?) ON CONFLICT(user_id, qkey) DO UPDATE SET"
+                " created_at=excluded.created_at, query=excluded.query",
+                (user_id, R.title_key(w), w, source, R.now()))
+            # **1 人が際限なく積める口を作らない**（守り 4）── 新しい順に上限まで残す
+            con.execute(
+                "DELETE FROM search_request WHERE user_id=? AND qkey NOT IN ("
+                " SELECT qkey FROM search_request WHERE user_id=?"
+                " ORDER BY created_at DESC LIMIT ?)",
+                (user_id, user_id, MAX_REQUESTS_PER_USER))
+    finally:
+        con.close()
+    return {"ok": True, "query": w,
+            "message": "次の更新（毎日 4 時台）で CoRich から探します。"
+                       "見つかれば、翌日からこの画面と「手で足す」の候補に出ます。"}
+
+
+def has_search_request(user_id: str, q: str) -> bool:
+    import rate_performances as R
+    w = _request_query(q)
+    if not w:
+        return False
+    con = R.connect()
+    try:
+        con.executescript(SEARCH_REQUEST_SCHEMA)
+        return con.execute("SELECT 1 FROM search_request WHERE user_id=? AND qkey=?",
+                           (user_id, R.title_key(w))).fetchone() is not None
+    finally:
+        con.close()
+
+
+def aggregate_search_requests(days: int = REQUEST_DAYS) -> list[dict]:
+    """**全利用者の依頼を、誰の依頼かが分からない形でまとめる。** 題名・依頼した人数・
+    どの画面からの依頼かだけを返し、利用者 ID は返さない。依頼した人が多い題名から。"""
+    import collections
+    import datetime as _dt
+    import rate_performances as R
+    cut = (_dt.datetime.now(_dt.timezone.utc) - _dt.timedelta(days=days)
+           ).astimezone().isoformat(timespec="seconds")
+    con = R.connect()
+    try:
+        con.executescript(SEARCH_REQUEST_SCHEMA)
+        rows = con.execute("SELECT qkey, query, source, created_at FROM search_request"
+                           " WHERE created_at >= ?", (cut,)).fetchall()
+    finally:
+        con.close()
+    groups: dict = collections.defaultdict(
+        lambda: {"users": 0, "sources": set(), "latest": "", "query": ""})
+    for r in rows:
+        g = groups[r["qkey"]]
+        g["users"] += 1
+        g["sources"].add(r["source"])
+        if r["created_at"] >= g["latest"]:
+            g["latest"], g["query"] = r["created_at"], r["query"]
+    out = [{"query": g["query"], "users": g["users"], "sources": sorted(g["sources"]),
+            "latest": g["latest"][:10]} for g in groups.values()]
+    return sorted(out, key=lambda x: (-x["users"], x["query"]))
+
+
 def save_declared(user_id: str, d: dict) -> None:
     if _is_owner(user_id):
         RC.save_declared(d)
@@ -3631,6 +3737,7 @@ RUN_MISS = {
                   "<b>登録した名前の新着が、今回は届いていないことがあります。</b>",
     "calendar": "上演予定を取り込めませんでした。"
                 "<b>一覧の件数が、ふだんより少なくなっています。</b>",
+    "requests": "頼まれた題名を探せませんでした。次の更新でもう一度探します。",
     "posters": "ポスターを取り込めませんでした。ポスターが表示されない公演があります。",
     "lookback": "「記録を見返す」の図を作れませんでした。"
                 "図が出ないことがあります。",
@@ -4337,6 +4444,24 @@ def _suggest_pool(user_id: str) -> list[dict]:
                          "date": days if "〜" not in one else "",
                          "venue": c.get("theater") or "",
                          "note": f'{c.get("group") or ""}／{one}（{c.get("pref") or ""}）',
+                         "group": c.get("group") or "",
+                         "times": 1, "stage_id": str(c.get("stage_id") or "")})
+    # **探して拾った公演も候補にする。** 公開版では、見つからなかった題名を次の更新で
+    # 探して `picked.jsonl` に入れる（`fetch_requests.py`）── ここに出さないと、
+    # 頼んで見つかった公演が「手で足す」の候補に出てこない
+    pk = ROOT / "data" / "review" / "picked.jsonl"
+    if pk.exists():
+        for line in pk.read_text(encoding="utf-8").split("\n"):
+            if not line.strip():
+                continue
+            c = json.loads(line)
+            one = RR.short_period(c.get("period") or "")
+            rows.append({"kind": "stage", "src": 0,
+                         "key": str(c.get("stage_id") or ""),
+                         "title": c.get("title") or "",
+                         "date": RR._start(c.get("period") or "") if "〜" not in one else "",
+                         "venue": c.get("theater") or c.get("venue") or "",
+                         "note": f'探して拾った公演／{one}',
                          "group": c.get("group") or "",
                          "times": 1, "stage_id": str(c.get("stage_id") or "")})
     lk = ROOT / "data" / "credits" / "linked.jsonl"
@@ -7843,7 +7968,20 @@ def _web_hits(user_id: str, q: str, on: bool) -> str:
     覚えていないと二重に押しに行ってしまう ── `works.stage_id` に当たれば済んでいる。
     """
     if not _is_owner(user_id):
-        return '<p class="note">デモでは、用意されている公演から検索できます。</p>'
+        # **公開版はその場で外部を検索しない。** 代わりに、次の更新で探すよう頼める
+        if not _request_query(q):
+            return '<p class="note">デモでは、用意されている公演から検索できます。</p>'
+        if has_search_request(user_id, q):
+            return (f'<div class="webq" id="web"><p class="lead">「{E(q)}」は、'
+                    '次の更新（毎日 4 時台）で CoRich から探すよう頼んであります。'
+                    '見つかれば、翌日からここに出ます。</p></div>')
+        return (f'<div class="webq" id="web"><p class="lead">デモでは、その場では CoRich を検索せず、'
+                '毎日の更新で集めた公演から探します。'
+                '<b>そこに無い公演は、次の更新で CoRich から探すよう頼めます。</b>'
+                '見つかれば、翌日からこの画面と「手で足す」の候補に出ます。</p>'
+                f'<button type="button" data-search-request="{E(q)}" data-source="search">'
+                f'{IC.ico("search")}「{E(q)}」を次の更新で探してもらう</button>'
+                '<span class="said"></span></div>')
     ask = (f'<div class="webq" id="web"><p class="lead">'
            f'手元にあるこれから観られる公演の一覧は、月に 1 度集めた分です。'
            f'<b>そこに無い公演も、CoRichの公演情報からその場で探せます。</b></p>'

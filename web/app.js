@@ -772,6 +772,15 @@ document.addEventListener("click", ev => {
     const t = b.closest(".tag");
     post("/api/favourite", {action: "remove", kind: t.dataset.kind, name: t.dataset.name},
       t.parentElement).then(d => { if (d) { t.remove(); waitJob(t.parentElement, true); } });
+  } else if (b.dataset.searchRequest) {
+    const g = b.closest(".webq, .sug-head") || b.parentElement;
+    post("/api/search_request", {q: b.dataset.searchRequest, source: b.dataset.source || "search"},
+      g, null).then(d => {
+        if (!d) return;
+        b.disabled = true;
+        const said = g.querySelector(".said");
+        if (said) said.textContent = d.message || "頼みました";
+      });
   } else if (b.dataset.dec === "add") {
     // **出さない語を確定する。** 候補の札から押す道と、自分で打つ道の 2 つがある
     const r = b.closest(".prom"), box = b.closest(".pbox");
@@ -1196,6 +1205,22 @@ function askMerge(where, workKey, similar) {
 // 押したときだけ外へ行く（守り 5 ── 一覧を眺める操作で外へ要求は出さない）。
 // **並べ方は 1 つにまとめてある** ── 同じ題名で手元と外の結果が違う形で出ると、
 // どちらが正しいのか確かめようがない。
+// **見つからなかった題名を、次の更新で探すよう頼むボタン。** 公開版はその場で外部を
+// 検索しないので、代わりに依頼として控え、毎日の更新でまとめて探す（`/api/search_request`）
+function requestButton(box, q, source) {
+  const wrap = document.createElement("p");
+  wrap.className = "sug-head";
+  const b = document.createElement("button");
+  b.type = "button";
+  b.dataset.searchRequest = q;
+  b.dataset.source = source;
+  b.textContent = "「" + q + "」を次の更新で探してもらう";
+  const said = document.createElement("span");
+  said.className = "said";
+  wrap.append(b, " ", said);
+  box.append(wrap);
+}
+
 function lkSay(box, msg) {
   const p = document.createElement("p");
   p.className = "sug-head";
@@ -1246,6 +1271,7 @@ async function lkSearch(i, web, btn) {
         + "短くすると見つかることがあります"
       : "手元のデータには見つかりませんでした。「デモの公演から探す」を押してください"
         + "（月 1 回の取得に含まれていない公演や、古い公演は手元にありません）");
+    if (web) requestButton(box, q, "hand");
     return;
   }
   if (web) lkSay(box, "デモの公演情報から " + rows.length
@@ -1400,6 +1426,7 @@ async function sugWeb() {
     // 「0 件」だけでは、打ち間違いなのか無い公演なのか分からない
     sugSay(box, "「" + q + "」に一致する公演は見つかりませんでした。副題や団体名を外して"
       + "短くすると見つかることがあります。見つからないときは、そのまま手で入れてください", true);
+    requestButton(box, q, "hand");
     return;
   }
   sugRender(box, d.rows,
