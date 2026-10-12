@@ -469,8 +469,6 @@ def main() -> int:
     sib: dict = collections.defaultdict(list)
     best: dict = {}
     for c in rest:
-        if c["total"] <= 0:
-            continue
         k = work_key(c["title"], c["stage_id"])
         # **他会場は「行けるかどうか」を判断できる形で持つ。** 劇場名と日程だけでは、
         # **都道府県で絞り込んだときに主たる会場として出せない** ── 発売の状況も
@@ -533,8 +531,10 @@ def main() -> int:
     #
     # **tier は計算だけ残す**（scored_all に出して、後から層ごとの当たり率を数えるため）。
     ranked = sorted(pool, key=lambda x: (-x["strong"], -x["s"]))
-    scored = [c for c in ranked if not c.get("folded")]
-    folded = [c for c in ranked if c.get("folded")]
+    scored = [c for c in ranked if not c.get("folded") and c["total"] > 0]
+    folded = [c for c in ranked if c.get("folded") and c["total"] > 0]
+    # 履歴に人物の一致が無くても、本人の感想と特徴が合えば推薦できるよう控えを残す。
+    unscored = [c for c in ranked if not c.get("folded") and c["total"] <= 0]
 
     # 上演中の束は**初日の新しい順**（間に合わなかったばかりのものを上に出す）
     started.sort(key=lambda c: c.get("opened") or "", reverse=True)
@@ -574,6 +574,7 @@ def main() -> int:
                                  # `recommend` は全国の答え（提示の記録と週次の指標の分母）
                                  # なので、意味を変えずにそのまま残す
                                  "ranked": scored,
+                                 "unscored": unscored,
                                  "others": folded, "owned": owned,
                                  # **出さないと決めた語に当たった公演。** 消していない
                                  "declined": declined_rows,

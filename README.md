@@ -31,7 +31,8 @@
 おすすめは、保存済みの全候補に対し、本人の現在の評価から作り手の得点と理由を
 計算します。評価の変更・保留・記録の取り消しは、次におすすめを開いたときに反映されます。
 公演の結び付けや作り手の情報がない記録では、人物の一致を計算できません。
-感想の内容分析・意味類似・自動重み学習は、まだこの画面の順位には使っていません。
+感想で明示された特徴への評価を、公演に登録された題材と照合して本人の順位に補正します。
+意味類似や自動重み学習は使いません。
 この接続は推薦精度の改善を証明するものではありません。
 実装・検証・残る制約は[評価から推薦への接続](docs/user-recommendation-loop.md)に記録しています。
 
@@ -44,6 +45,11 @@
 1. **おすすめを開く。** 公演ごとに「なぜおすすめなのか」の理由が書いてあります。
 2. **「興味あり」を押す。** 押した公演は一覧と公演カレンダーに並び、いつまで観られるかが分かります。
 3. **観たら◎○△×と感想を残す。** 記録は日記帳にたまり、評価に応じて次のおすすめが更新されます。
+
+感想で「家族の描写がよかった」「恋愛は苦手だった」と書くと、公演に登録された特徴と
+照合して、本人のおすすめ順位を補正します。編集・削除は次の画面取得から反映します。
+解析には外部APIを使いません。仕組みと適用範囲は
+[`docs/impression-preferences.md`](docs/impression-preferences.md)にあります。
 
 初めての方は、デモ画面の右下にある「使い方」から、実際の画面で試せる操作ツアーと、約70秒の説明動画を開けます（動画は[`web/assets/taguri-howto.mp4`](web/assets/taguri-howto.mp4)）。
 
@@ -77,6 +83,10 @@ HTML断片を画面に差し込む形にした。GitHub Pagesは静的配信専�
 
 - [`docs/000007-taguri-design.md`](docs/000007-taguri-design.md) ── 全体設計
 - [`docs/editions.md`](docs/editions.md) ── デモ版とサービス版の切り分けと、サービス版の立て方
+- [`docs/recommendation-exposure.md`](docs/recommendation-exposure.md) ── 推薦の取得・画面内接触ログの定義、API、保存と制約
+- [`docs/recommendation-product-ux-plan.md`](docs/recommendation-product-ux-plan.md) ── 推薦中心の機能案・UI/UX・検証計画
+- [`docs/recommendation-ux-design.md`](docs/recommendation-ux-design.md) ── 文献に基づく推薦UI/UXの詳細仕様・検証手順
+- [`docs/research/recommendation-ux-literature.md`](docs/research/recommendation-ux-literature.md) ── 論文・設計指針の読書記録と適用上の限界
 - [`docs/000007-taguri-security-rules.md`](docs/000007-taguri-security-rules.md) ── セキュリティ規約
 - [`docs/000007-taguri-terms-of-use.md`](docs/000007-taguri-terms-of-use.md) ── 利用規約
 - [`docs/000003-final-presentation-taguri.html`](https://island-6848.github.io/taguri-demo/docs/000003-final-presentation-taguri.html) ── プレゼン資料（ブラウザで表示。[ソース](docs/000003-final-presentation-taguri.html)）

@@ -721,6 +721,14 @@ def reason_rows(c: dict) -> str:
                    f'<span class="src">［出典: {E(_src)}のあらすじ］</span>'
                    f'<button class="rsx" data-word="{E(word)}"'
                    f' title="この語を理由に出さない">✕</button></li>')
+    for part in c.get("why_impression") or []:
+        evidence = part["evidence"]
+        direction = "好みに合う可能性があります" if part["value"] > 0 else "好みに合わない可能性があります"
+        out.append('<li class="rs c"><span class="net">感想</span>'
+                   f'<b>{E(part["label"])}</b>は、あなたの感想から{direction}。'
+                   f'<span class="n">（記録 {part["count"]} 本）</span>'
+                   f'<span class="src">《{E(evidence["title"])}》に「{E(evidence["quote"])}」'
+                   'と書いています。</span></li>')
     # **空の行を数えない。** 引用は無いことがあるので、`out` の中身で判定すると
     # 「理由を出せていません」が出るべきときに出なくなる
     out = [r for r in out if r]
