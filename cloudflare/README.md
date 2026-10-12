@@ -104,3 +104,23 @@ npx wrangler d1 execute taguri-demo --remote --file /tmp/rec.sql
 **一致の確認。** `scripts/build_recommend_index.py` の `score_from_index` が、Workerが毎回行う計算の仕様（参照実装）である。`test/test_recommend_index.py` は、作った架空のカタログと評価で、これが現行の `user_recommender.prepare` と**同じ公演・順位・点数・理由・強さ**を出すことを、メモリ上の索引とSQLite上の索引（D1と同じ問い合わせ）の両方で確かめる。
 
 **まだ確かめていないこと。** 実カタログでの件数とD1の読み込み行数（`--stats` の `postings_per_person` から見積もる）、WorkerのCPU時間。D1の `records` 表は公演IDを持たないため、評価した記録を `rec_people` に結び付ける列が段2で要る。手で入れた出演者（`hand_credits`）にもまだ対応していない。
+
+## ログイン：Firebase Authentication（作業中）
+
+会員登録はFirebase Authenticationに任せる。**パスワードは使わない**（Googleログインと、メールに届くリンクだけ）。Workerは、ブラウザから届いたFirebaseのIDトークンを `src/firebase-auth.js` でGoogleの公開鍵を使って確かめ、たぐりのセッションを新しく発行する。
+
+- **D1に入れるのはFirebaseのUIDだけ。** メールアドレス・名前・写真は保存しない（`migrations/0004.sql`）。トークンを確かめる処理もUID以外を返さない。
+- 確かめる項目：RS256の署名、鍵ID、`aud`（プロジェクトID）、`iss`、`sub`、期限、発行時刻、**ログインが5分以内であること**（古いトークンの使い回しを防ぐ）、ログイン方法がGoogleか確認済みメールであること。
+- ログインのたびにセッションを作り直し、ログイン前のセッションは消す。`POST /api/logout/all` で全端末からログアウトできる。
+- 復旧コードで使っている人がログインすると、そのアカウントにFirebaseを結び付け、記録を引き継ぐ。**既にある2つのアカウントは自動で合わせない。**
+- Googleの公開鍵は最大6時間キャッシュする。知らない鍵IDでの取り直しは1分に1回まで。
+- 今は `ORIGINAL_UI_BRIDGE` が `/api/*` をRenderへ渡すため、入口は `/migration-api/auth/firebase`。ログイン画面（ブラウザ側のFirebase SDK）はまだ作っていない。
+
+**Firebaseの設定（持ち主が行う）**
+
+1. Firebaseコンソールでプロジェクトを作る（無料のSparkプラン。カード登録は不要）。
+2. Authentication → ログイン方法で **Google** と **メールリンク（パスワードなしでログイン）** を有効にし、**メール/パスワードのパスワードによるログインは無効**にする。
+3. 承認済みドメインを、たぐりのWorkerのドメインだけにする。
+4. 「メール列挙保護」を有効にする（登録済みかどうかを外から探られないようにする）。
+5. プロジェクトIDを `wrangler.jsonc` の `FIREBASE_PROJECT_ID` に入れる（公開してよい値。秘密鍵やサービスアカウントの鍵は不要で、作ってもリポジトリやチャットに貼らない）。
+6. `npx wrangler d1 migrations apply taguri-demo --remote` で `0003`・`0004` を本番のD1に入れる。

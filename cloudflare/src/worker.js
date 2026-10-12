@@ -1,4 +1,5 @@
 import {isOriginalRoute, originalUI} from './original-ui.js';
+import {verifyIdToken, isAuthError} from './firebase-auth.js';
 const MAX_BODY = 262144;
 const COOKIE = 'taguri_session';
 const TTL = 60 * 60 * 24 * 30;
@@ -46,12 +47,58 @@ async function body(request) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) fail(400,'JSONの形式を確認してください。');
   return value;
 }
+const sessionCookie = request => request.headers.get('cookie')?.match(/(?:^|;\s*)taguri_session=([a-f0-9]{64})(?:;|$)/)?.[1];
 async function user(request, db) {
-  const raw = request.headers.get('cookie')?.match(/(?:^|;\s*)taguri_session=([a-f0-9]{64})(?:;|$)/)?.[1];
+  const raw = sessionCookie(request);
   if (!raw) fail(401,'復旧コードでログインするか、新しく始めてください。');
   const session = await db.prepare('SELECT user_id FROM sessions WHERE hash=? AND expires_at>?').bind(await hash(raw),now()).first();
   if (!session) fail(401,'ログインし直してください。');
   return session.user_id;
+}
+// New session for uid; the caller's old session (if any) is revoked so a
+// session fixed before sign-in cannot carry over (session rotation).
+async function startSession(db, uid, commands, oldRaw) {
+  const session = token();
+  if (oldRaw) commands.push(db.prepare('DELETE FROM sessions WHERE hash=?').bind(await hash(oldRaw)));
+  // Delete expired sessions and bound the number of devices per account.
+  commands.push(db.prepare('DELETE FROM sessions WHERE user_id=? AND (expires_at<=? OR hash NOT IN (SELECT hash FROM sessions WHERE user_id=? ORDER BY expires_at DESC LIMIT 9))').bind(uid,now(),uid));
+  commands.push(db.prepare('INSERT INTO sessions(hash,user_id,expires_at) VALUES(?,?,?)').bind(await hash(session),uid,now()+TTL));
+  await db.batch(commands);
+  return session;
+}
+// Sign in with a Firebase ID token. Only the Firebase UID is kept.
+// - known UID: sign in to that account
+// - unknown UID while signed in with a recovery-code account that has no
+//   Firebase link yet: link it, so existing records carry over
+// - otherwise: create a new account (if registration is open)
+// Two existing accounts are never merged automatically.
+async function firebaseSignIn(request, env) {
+  const input = await body(request);
+  let identity;
+  try { identity = await verifyIdToken(input.id_token, env.FIREBASE_PROJECT_ID); }
+  catch (e) {
+    if (e.config) fail(503,'ログインの準備ができていません。');
+    if (isAuthError(e)) fail(401,'ログインを確認できませんでした。もう一度ログインしてください。');
+    throw e;
+  }
+  const db = env.DB, oldRaw = sessionCookie(request);
+  let uid = (await db.prepare('SELECT id FROM users WHERE firebase_uid=?').bind(identity.uid).first())?.id;
+  let linked = false, created = false;
+  const commands = [];
+  if (!uid && oldRaw) {
+    const current = await db.prepare('SELECT u.id FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.hash=? AND s.expires_at>? AND u.firebase_uid IS NULL').bind(await hash(oldRaw),now()).first();
+    if (current) {
+      uid = current.id; linked = true;
+      commands.push(db.prepare('UPDATE users SET firebase_uid=? WHERE id=? AND firebase_uid IS NULL').bind(identity.uid,uid));
+    }
+  }
+  if (!uid) {
+    if (env.ALLOW_REGISTRATION !== 'true') fail(503,'新規登録を一時停止しています。');
+    uid = crypto.randomUUID(); created = true;
+    commands.push(db.prepare('INSERT INTO users(id,recovery_hash,created_at,firebase_uid) VALUES(?,?,?,?)').bind(uid,'firebase:'+token(),now(),identity.uid));
+  }
+  const session = await startSession(db, uid, commands, oldRaw);
+  return json({linked,created},200,{'Set-Cookie':cookie(session)});
 }
 function upsert(db, uid, r) {
   return db.prepare('INSERT INTO records(user_id,id,title,date,time,venue,rating,note,updated_at) VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(user_id,id) DO UPDATE SET title=excluded.title,date=excluded.date,time=excluded.time,venue=excluded.venue,rating=excluded.rating,note=excluded.note,updated_at=excluded.updated_at').bind(uid,r.id,r.title,r.date,r.time,r.venue,r.rating,r.note,now());
@@ -89,15 +136,12 @@ export default {
           uid = (await env.DB.prepare('SELECT id FROM users WHERE recovery_hash=?').bind(await hash(code)).first())?.id;
           if (!uid) fail(401,'復旧コードを確認してください。');
         }
-        const session = token();
         const commands = [];
         if (recovery) commands.push(env.DB.prepare('INSERT INTO users(id,recovery_hash,created_at) VALUES(?,?,?)').bind(uid,await hash(recovery),now()));
-        // Delete expired sessions and bound the number of devices per account.
-        commands.push(env.DB.prepare('DELETE FROM sessions WHERE user_id=? AND (expires_at<=? OR hash NOT IN (SELECT hash FROM sessions WHERE user_id=? ORDER BY expires_at DESC LIMIT 9))').bind(uid,now(),uid));
-        commands.push(env.DB.prepare('INSERT INTO sessions(hash,user_id,expires_at) VALUES(?,?,?)').bind(await hash(session),uid,now()+TTL));
-        await env.DB.batch(commands);
+        const session = await startSession(env.DB, uid, commands, null);
         return json({recovery_code:recovery},200,{'Set-Cookie':cookie(session)});
       }
+      if (method === 'POST' && path === '/api/auth/firebase') return await firebaseSignIn(request, env);
       const uid = await user(request,env.DB);
       if (method === 'GET' && ['/api/state','/api/export'].includes(path)) return json(await state(env.DB,uid));
       if (method !== 'POST') fail(404,'見つかりませんでした。');
@@ -139,6 +183,11 @@ export default {
         const commands = [...rs.map(r=>upsert(env.DB,uid,r)),...fs.map(f=>env.DB.prepare('INSERT OR IGNORE INTO favourites(user_id,name,kind) VALUES(?,?,?)').bind(uid,f.name,f.kind)),...reactions.map(r=>reactionUpsert(env.DB,uid,r))];
         if(commands.length) await env.DB.batch(commands);
         return json({ok:true,imported:rs.length});
+      }
+      if (path === '/api/logout/all') {
+        // Sign out every device, e.g. after losing a phone.
+        await env.DB.prepare('DELETE FROM sessions WHERE user_id=?').bind(uid).run();
+        return json({ok:true},200,{'Set-Cookie':`${COOKIE}=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0`});
       }
       if (path === '/api/logout') {
         const raw = request.headers.get('cookie')?.match(/taguri_session=([a-f0-9]{64})/)?.[1];
