@@ -60,6 +60,8 @@ import shutil
 import sys
 import tarfile
 import tempfile
+import threading
+import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -71,6 +73,11 @@ import taguri_state as STATE
 S3_BUCKET = os.environ.get("STAGE_CATALOG_BUCKET", "nakaya-mao-private-play-recommendation2026")
 S3_KEY = os.environ.get("STAGE_CATALOG_KEY", "stage-catalog/data.tar.gz")
 S3_REGION = os.environ.get("AWS_DEFAULT_REGION", "ap-northeast-1")
+# **動いている間も、カタログが新しくなったら入れ替える。** カタログは
+# `publish_catalog.py` が定期的に作り直して S3 に載せる。起動時に 1 回読むだけだと、
+# 常時稼働のサーバーは再起動するまで古いカタログのまま動き続ける。0 で止める
+CATALOG_REFRESH_HOURS = float(os.environ.get("CATALOG_REFRESH_HOURS", "6") or 0)
+_installed_etag: list[str | None] = [None]
 
 
 def _install_catalog(archive: Path) -> None:
@@ -133,14 +140,51 @@ def _fetch_catalog() -> None:
     try:
         import boto3
         s3 = boto3.client("s3", region_name=S3_REGION)
+        etag = _remote_etag(s3)
         with tempfile.TemporaryDirectory(prefix=".catalog-download-", dir=ROOT) as work:
             archive = Path(work) / "catalog.tar.gz"
             s3.download_file(S3_BUCKET, S3_KEY, str(archive))
             _install_catalog(archive)
+        _installed_etag[0] = etag
         STATE.event("catalog_refresh")
     except Exception:
         STATE.event("catalog_refresh", outcome="failed")
         raise RuntimeError("catalog refresh failed; existing state retained") from None
+
+
+def _remote_etag(s3) -> str | None:
+    try:
+        return s3.head_object(Bucket=S3_BUCKET, Key=S3_KEY).get("ETag")
+    except Exception:                                               # noqa: BLE001
+        return None
+
+
+def _refresh_loop(srv) -> None:
+    """カタログの ETag を定期的に見て、変わっていれば入れ替える。
+
+    **利用者の保存先がカタログと別の場所にあるときだけ入れ替える**（`TAGURI_STATE_DIR`）。
+    未設定のときは利用者の SQLite が `data/review/` にあり、`data/` ごと入れ替えると
+    **開いている DB の実体を、動いたまま一時ディレクトリへ移して消してしまう。**
+    その場合は入れ替えず、次の再起動（起動時の取得）に任せる。
+    入れ替えに失敗しても、今のカタログで動き続ける（`_install_catalog` は途中で失敗すると
+    元に戻す）。
+    """
+    import boto3
+    s3 = boto3.client("s3", region_name=S3_REGION)
+    while True:
+        time.sleep(CATALOG_REFRESH_HOURS * 3600)
+        if STATE.state_dir() is None:
+            continue
+        etag = _remote_etag(s3)
+        if not etag or etag == _installed_etag[0]:
+            continue
+        try:
+            _fetch_catalog()
+        except RuntimeError:
+            continue
+        # 公演の索引と、訪問者ごとの画面の控えを捨てる（古いカタログで作った分）
+        S.APP.reset_caches()
+        srv.screen_cache.clear()
 
 
 import serve as S                                                  # noqa: E402
@@ -161,6 +205,9 @@ def main() -> int:
         STATE.event("server_start", outcome="failed")
         raise RuntimeError("server startup failed; check storage and service configuration") from None
     STATE.event("server_start")
+    if CATALOG_REFRESH_HOURS > 0:
+        threading.Thread(target=_refresh_loop, args=(srv,), daemon=True,
+                         name="catalog-refresh").start()
     try:
         srv.serve_forever()
     except KeyboardInterrupt:

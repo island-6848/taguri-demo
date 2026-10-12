@@ -30,6 +30,9 @@ import unicodedata
 import urllib.request
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools" / "lib"))
+import polite_http as PH                                   # noqa: E402  取得の作法（名乗り・robots.txt・間隔）
+
 ROOT = Path(__file__).resolve().parents[2]
 PAGES = ROOT / "data" / "credits" / "pages"
 IMG = ROOT / "data" / "review" / "img"
@@ -44,7 +47,7 @@ MAX_W = 360
 JPEG_Q = 82
 
 SRC_RE = re.compile(r"https://stage-image\.corich\.jp/img_stage/([lm])/\d+/stage_\d+\.(jpg|jpeg|png)")
-UA = "taguri/1.0 (personal, 1req/sec)"
+UA = PH.UA
 
 
 def _norm(s: str) -> str:
@@ -77,8 +80,8 @@ def have() -> dict[str, str]:
     return {f.stem: f.name for f in IMG.iterdir() if f.is_file()}
 
 
-def fetch(stage_ids, *, sleep: float = 1.0, limit: int = 0) -> dict[str, int]:
-    """まだ無いものだけ取り込む。**1 リクエスト／秒を守る。**"""
+def fetch(stage_ids, *, sleep: float = 0.0, limit: int = 0) -> dict[str, int]:
+    """まだ無いものだけ取り込む。**間隔（同じホストに 1.1 秒に 1 回）は polite_http が守る。**"""
     IMG.mkdir(parents=True, exist_ok=True)
     got = have()
     n = {"済み": len(got), "取得": 0, "画像なし": 0, "失敗": 0}
@@ -92,9 +95,7 @@ def fetch(stage_ids, *, sleep: float = 1.0, limit: int = 0) -> dict[str, int]:
             continue
         ext = ".jpg" if url.rstrip("0123456789?").endswith((".jpg", ".jpeg")) or ".jpg" in url else ".png"
         try:
-            req = urllib.request.Request(url, headers={"User-Agent": UA})
-            with urllib.request.urlopen(req, timeout=20) as r:
-                data = r.read()
+            data = PH.fetch(url, timeout=20, max_bytes=12_000_000)   # 作法は polite_http
             (IMG / f"{sid}{ext}").write_bytes(data)
             shrink(IMG / f"{sid}{ext}")
             n["取得"] += 1

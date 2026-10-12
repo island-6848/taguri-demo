@@ -1,0 +1,11 @@
+# 週 1 回（日曜）日本時間 4 時台に、候補・クレジット・あらすじまで取り直す（run.py --fetch）。
+[Unit]
+Description=taguri: weekly full catalog refresh
+
+[Timer]
+OnCalendar=Sun *-*-* 04:20:00 Asia/Tokyo
+RandomizedDelaySec=40min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

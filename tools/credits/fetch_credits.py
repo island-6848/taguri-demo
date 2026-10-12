@@ -46,18 +46,22 @@ import difflib
 import gzip
 import json
 import re
+import sys
 import time
 import unicodedata
 import urllib.parse
 import urllib.request
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools" / "lib"))
+import polite_http as PH                                   # noqa: E402  取得の作法（名乗り・robots.txt・間隔）
+
 ROOT = Path(__file__).resolve().parent.parent.parent
 PERF = ROOT / "data" / "tickets" / "performances.jsonl"
 OUT = ROOT / "data" / "credits" / "credits.jsonl"
 CACHE = ROOT / "data" / "credits" / "pages"
 BASE = "https://stage.corich.jp"
-UA = "Mozilla/5.0 (compatible; taguri-verify/1.0; personal use)"
+UA = PH.UA                                      # 名乗りは polite_http の 1 か所で決める
 
 # クレジットの役職。**役職別に取得率を測る**ため、まとめずに持つ
 ROLE_KEYS = ["出演", "脚本", "作", "演出", "翻訳", "原作", "音楽", "振付",
@@ -70,16 +74,9 @@ def get(url: str) -> str:
     key = CACHE / (re.sub(r"[^A-Za-z0-9]", "_", url)[-120:] + ".html")
     if key.exists():
         return key.read_text(encoding="utf-8")
-    wait = 1.1 - (time.monotonic() - _last[0])
-    if wait > 0:
-        time.sleep(wait)
-    _last[0] = time.monotonic()
-    req = urllib.request.Request(url, headers={"User-Agent": UA, "Accept-Encoding": "gzip"})
-    with urllib.request.urlopen(req, timeout=45) as r:
-        raw = r.read()
-        if r.headers.get("Content-Encoding") == "gzip":
-            raw = gzip.decompress(raw)
-        html = raw.decode("utf-8", "replace")
+    # **取得の作法は polite_http に任せる**（名乗り・robots.txt・ホストごとの間隔・
+    # 429/503 で引く）。以前はここで 1.1 秒を自前で数えていた
+    html = PH.fetch(url, timeout=45).decode("utf-8", "replace")
     CACHE.mkdir(parents=True, exist_ok=True)
     key.write_text(html, encoding="utf-8")
     return html

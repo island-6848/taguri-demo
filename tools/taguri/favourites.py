@@ -92,13 +92,16 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools" / "lib"))
+import polite_http as PH                                   # noqa: E402  取得の作法（名乗り・robots.txt・間隔）
+
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools" / "review"))
 import recommend as RC                                             # noqa: E402
 from fetch_credits import credits_of                               # noqa: E402
 
 BASE = "https://stage.corich.jp"
-UA = "taguri/1.0 (personal, 1req/sec)"
+UA = PH.UA
 CAND = ROOT / "data" / "review" / "candidates.jsonl"
 OUT = ROOT / "data" / "review" / "favourites.jsonl"
 CACHE = ROOT / "data" / "review" / "favourites_cache.json"
@@ -108,9 +111,8 @@ ROW = re.compile(r'<a href="/stage/(\d+)" class="list-group-item[^"]*">(.*?)</a>
 
 
 def get(url: str) -> str:
-    req = urllib.request.Request(url, headers={"User-Agent": UA})
-    with urllib.request.urlopen(req, timeout=25) as r:
-        return r.read().decode("utf-8", "replace")
+    # 取得の作法（名乗り・robots.txt・間隔・429/503 で引く）は polite_http が守る
+    return PH.fetch(url, timeout=25).decode("utf-8", "replace")
 
 
 def txt(s: str) -> str:
