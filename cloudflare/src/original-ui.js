@@ -4,8 +4,9 @@ const UPSTREAM = 'https://taguri-demo.onrender.com';
 const GET_PATHS = new Set(['/auth/start','/recover','/link','/api/suggest','/api/suggest_web','/api/import_status','/api/mail_hints']);
 const SCREENS = new Set(['recommend','reminder','interest','favourites','calendar','tickets','rate','unrated','notes','register','records','trace','chronicle','works','search','settings','start']);
 const POST_PATHS = new Set(['react','rate','note','favourite','missed','add_work','import_mail','fix_work','merge_work','drop_work','restore_work','purge_work','unseen','ticket','chronicle','people_read','weight','pref_setting','hand_credits','hand_poster','link_stage','hand_theme','hand_theme_refresh','decline','visit_note','recover','link/create','link/redeem','close'].map(p=>'/api/'+p));
+// /api/auth/* (Firebase sign-in) is answered by this Worker, never the old server.
 export function isOriginalRoute(path) {
- return path.startsWith('/api/') || path.startsWith('/img/') || GET_PATHS.has(path) || path==='/export.json' || path==='/data.zip';
+ return (path.startsWith('/api/') && !path.startsWith('/api/auth/')) || path.startsWith('/img/') || GET_PATHS.has(path) || path==='/export.json' || path==='/data.zip';
 }
 const error = (status,message)=>Response.json({ok:false,error:message},{status,headers:{'Cache-Control':'no-store'}});
 export async function originalUI(request, transport=fetch) {

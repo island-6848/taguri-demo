@@ -107,9 +107,36 @@ async function state(db, uid) {
   const result = await db.batch([db.prepare('SELECT id,title,date,time,venue,rating,note FROM records WHERE user_id=? ORDER BY date DESC,id LIMIT 500').bind(uid),db.prepare('SELECT name,kind FROM favourites WHERE user_id=? ORDER BY kind,name LIMIT 200').bind(uid),db.prepare('SELECT stage_id,status FROM reactions WHERE user_id=? ORDER BY stage_id LIMIT 500').bind(uid)]);
   return {version:2,records:result[0].results,favourites:result[1].results,reactions:result[2].results};
 }
+// Public Firebase web config. apiKey identifies the project to Google; it is
+// not a secret (access is governed by authorized domains and the sign-in
+// methods enabled in the console). Nothing here is read from user input.
+function firebaseConfig(env) {
+  if (!env.FIREBASE_API_KEY || !env.FIREBASE_PROJECT_ID) return null;
+  return {apiKey: env.FIREBASE_API_KEY, projectId: env.FIREBASE_PROJECT_ID,
+          authDomain: env.FIREBASE_AUTH_DOMAIN || `${env.FIREBASE_PROJECT_ID}.firebaseapp.com`};
+}
+// /login is the only page allowed to talk to Google's sign-in endpoints; every
+// other page keeps the site-wide policy in public/_headers. The popup flow loads
+// apis.google.com/js/api.js and frames the project's auth domain; reCAPTCHA
+// (phone sign-in only) stays blocked.
+async function loginPage(request, env) {
+  const config = firebaseConfig(env);
+  const asset = await env.ASSETS.fetch(new Request(new URL('/login', request.url), request));
+  const headers = new Headers(asset.headers);
+  const authOrigin = config ? `https://${config.authDomain}` : '';
+  headers.set('Content-Security-Policy', ["default-src 'self'", "script-src 'self' https://apis.google.com", "style-src 'self'", "img-src 'self' data:",
+    "connect-src 'self' https://identitytoolkit.googleapis.com https://securetoken.googleapis.com",
+    `frame-src ${authOrigin || "'none'"}`, "base-uri 'none'", "form-action 'self'", "frame-ancestors 'none'", "object-src 'none'"].join('; '));
+  headers.set('Referrer-Policy', 'no-referrer');
+  headers.set('X-Content-Type-Options', 'nosniff');
+  headers.set('X-Frame-Options', 'DENY');
+  headers.set('Cache-Control', 'no-store');
+  return new Response(asset.body, {status: asset.status, headers});
+}
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    if (url.pathname === '/login' && request.method === 'GET') return loginPage(request, env);
     const migrationAPI=url.pathname.startsWith('/migration-api/');
     if(env.ORIGINAL_UI_BRIDGE==='true' && !migrationAPI && isOriginalRoute(url.pathname))return originalUI(request);
     if(migrationAPI)url.pathname=url.pathname.replace('/migration-api/','/api/');
@@ -142,6 +169,11 @@ export default {
         return json({recovery_code:recovery},200,{'Set-Cookie':cookie(session)});
       }
       if (method === 'POST' && path === '/api/auth/firebase') return await firebaseSignIn(request, env);
+      if (method === 'GET' && path === '/api/auth/config') {
+        const config = firebaseConfig(env);
+        if (!config) fail(503,'ログインの準備ができていません。');
+        return json(config,200,{'Cache-Control':'public, max-age=300'});
+      }
       const uid = await user(request,env.DB);
       if (method === 'GET' && ['/api/state','/api/export'].includes(path)) return json(await state(env.DB,uid));
       if (method !== 'POST') fail(404,'見つかりませんでした。');

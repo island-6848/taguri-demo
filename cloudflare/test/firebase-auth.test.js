@@ -176,3 +176,29 @@ test('signing in with a different Google account while signed in never lands in 
   assert.equal((await (await call('state', undefined, y.cookie)).json()).records.length, 0);
   assert.equal(sqlite.prepare("SELECT firebase_uid FROM users WHERE id=(SELECT user_id FROM records WHERE id='x')").get().firebase_uid, 'google-x');
 });
+
+test('login page has its own narrow policy; config is public and auth is never bridged to Render', async () => {
+  const {env} = setup();
+  // Like Workers static assets: /login.html redirects to /login, which serves the file.
+  env.ASSETS = {fetch: async req => new URL(req.url).pathname === '/login'
+    ? new Response('<!doctype html>login', {headers: {'content-type': 'text/html', 'Content-Security-Policy': "default-src 'self'"}})
+    : new Response(null, {status: 307, headers: {location: '/login'}})};
+  env.ORIGINAL_UI_BRIDGE = 'true';
+  const get = path => worker.fetch(new Request(`https://taguri.example${path}`), env);
+  // No API key yet: the page still loads, config says not ready.
+  assert.equal((await get('/api/auth/config')).status, 503);
+  env.FIREBASE_API_KEY = 'public-web-key';
+  const config = await (await get('/api/auth/config')).json();
+  assert.deepEqual(config, {apiKey: 'public-web-key', projectId: PROJECT, authDomain: `${PROJECT}.firebaseapp.com`});
+  const page = await get('/login');
+  assert.equal(page.status, 200);
+  const csp = page.headers.get('content-security-policy');
+  assert.match(csp, /script-src 'self' https:\/\/apis\.google\.com(;|$)/);
+  assert.match(csp, new RegExp(`frame-src https://${PROJECT}\\.firebaseapp\\.com(;|$)`));
+  assert.match(csp, /frame-ancestors 'none'/);
+  assert.ok(!csp.includes('recaptcha') && !csp.includes('unsafe-'), csp);
+  assert.equal(page.headers.get('cache-control'), 'no-store');
+  // With the Render bridge on, sign-in still reaches this Worker.
+  const signed = await worker.fetch(new Request('https://taguri.example/api/auth/firebase', {method: 'POST', headers: {origin: 'https://taguri.example', 'content-type': 'application/json'}, body: JSON.stringify({id_token: await idToken()})}), env);
+  assert.equal(signed.status, 200);
+});

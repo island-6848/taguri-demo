@@ -114,7 +114,11 @@ npx wrangler d1 execute taguri-demo --remote --file /tmp/rec.sql
 - ログインのたびにセッションを作り直し、ログイン前のセッションは消す。`POST /api/logout/all` で全端末からログアウトできる。
 - 復旧コードで使っている人がログインすると、そのアカウントにFirebaseを結び付け、記録を引き継ぐ。**既にある2つのアカウントは自動で合わせない。**
 - Googleの公開鍵は最大6時間キャッシュする。知らない鍵IDでの取り直しは1分に1回まで。
-- 今は `ORIGINAL_UI_BRIDGE` が `/api/*` をRenderへ渡すため、入口は `/migration-api/auth/firebase`。ログイン画面（ブラウザ側のFirebase SDK）はまだ作っていない。
+- `/api/auth/*` はRenderへの橋渡し（`ORIGINAL_UI_BRIDGE`）から外し、常にこのWorkerが答える。
+- **ログイン画面は `/login`**（`public/login.html`）。Firebase SDK（`firebase@13.0.0`）は `src/client/login.js` から `npm run build:login` で `public/vendor/firebase-login.js` に組み立てて同梱する（外部のスクリプト配信元を使わない）。SDKを更新したら組み立て直してコミットする。
+- `/login` だけはWorkerが専用のContent-Security-Policyを付ける。許すのは `apis.google.com` のスクリプト（ポップアップでのログインに要る）と、Googleのログイン用API、プロジェクトの認証ドメインの枠だけ。reCAPTCHA（電話番号ログイン用）は許さない。他の画面は `public/_headers` の方針のまま。
+- FirebaseのログインはSDKのメモリ上だけに持ち（`inMemoryPersistence`）、Workerのセッションに切り替えたらすぐFirebase側はログアウトする。ブラウザの保存領域にFirebaseのトークンを残さない。
+- ログイン後は `/migration-data/`（D1の記録の画面）に移る。**元の画面（Renderから橋渡ししている画面）はまだD1の記録を使わない**ので、ログインしても元の画面の中身は変わらない。
 
 **Firebaseの設定（持ち主が行う）**
 
@@ -122,5 +126,5 @@ npx wrangler d1 execute taguri-demo --remote --file /tmp/rec.sql
 2. Authentication → ログイン方法で **Google** と **メールリンク（パスワードなしでログイン）** を有効にし、**メール/パスワードのパスワードによるログインは無効**にする。
 3. 承認済みドメインを、たぐりのWorkerのドメインだけにする。
 4. 「メール列挙保護」を有効にする（登録済みかどうかを外から探られないようにする）。
-5. プロジェクトIDを `wrangler.jsonc` の `FIREBASE_PROJECT_ID` に入れる（公開してよい値。秘密鍵やサービスアカウントの鍵は不要で、作ってもリポジトリやチャットに貼らない）。
+5. プロジェクトIDを `wrangler.jsonc` の `FIREBASE_PROJECT_ID` に、ウェブアプリの `apiKey` を `FIREBASE_API_KEY` に入れる。どちらも公開してよい値（`apiKey` はブラウザに渡す前提の識別子で、使える範囲は承認済みドメインとログイン方法の設定で絞る）。秘密鍵やサービスアカウントの鍵は不要で、作ってもリポジトリやチャットに貼らない。認証ドメインが既定（`<プロジェクトID>.firebaseapp.com`）でなければ `FIREBASE_AUTH_DOMAIN` も入れる。
 6. `npx wrangler d1 migrations apply taguri-demo --remote` で `0003`・`0004` を本番のD1に入れる。
