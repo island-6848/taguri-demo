@@ -324,7 +324,7 @@ figcaption{font-size:12.5px;color:var(--muted);margin-top:10px;max-width:70em}
   <div class="toc-grid wide">
     <a href="#ch2"><span class="n">01</span><span><h4>企画内容</h4><p>課題・価値・対象ユーザー・想定シーン</p></span></a>
     <a href="#ch3"><span class="n">02</span><span><h4>機能概要</h4><p>機能の分類・使用イメージ・使っている技術・システム構成</p></span></a>
-    <a href="#algo"><span class="n">03</span><span><h4>推薦アルゴリズム</h4><p>全体の流れ・点数の式・並べ方・使わない情報</p></span></a>
+    <a href="#algo"><span class="n">03</span><span><h4>推薦アルゴリズム</h4><p>全体の流れ・点数の式・並べ方・使わない情報・利用者ごとの推薦</p></span></a>
     <a href="#ch4"><span class="n">04</span><span><h4>セキュリティ</h4><p>境界線の概念図</p></span></a>
     <a href="#ch5"><span class="n">05</span><span><h4>達成事項</h4><p>実現できたこと・メリット・未実装</p></span></a>
     <a href="#ch6"><span class="n">06</span><span><h4>今後の展望</h4><p>検討中の拡張・応用の可能性</p></span></a>
@@ -1090,6 +1090,37 @@ figcaption{font-size:12.5px;color:var(--muted);margin-top:10px;max-width:70em}
     <div class="card"><h4><span class="tag warn">点に足さない</span>お気に入り（申告）</h4><p class="muted">加点として混ぜると AUC が 0.744 → 0.660 に下がった。点数ではなく「必ず出す」別枠で使う。</p></div>
     <div class="card"><h4><span class="tag good">使わない</span>LLM による順位付け</h4><p class="muted">順位と理由を毎回同じ形で説明できるよう、LLM は題材の取り出しと文章づくりだけに限った。</p></div>
   </div>
+
+  <h3 class="sub">3-6　利用者ごとの推薦：本人の評価が、本人の次の推薦に届く</h3>
+  <figure class="wide">
+    <svg viewBox="0 0 1000 300" role="img" aria-label="利用者ごとの推薦の流れ。本人が◎○△×を保存し、次におすすめを開いたときに本人の評価だけで名簿を作り直し、保存済みの全候補に人物の点を付け、本人のお気に入りや反応で振り分けて上位15件を出す。">
+      <defs><marker id="fd" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1l7 4-7 4z" class="aF-m"/></marker>
+      <marker id="fdt" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1l7 4-7 4z" class="aF-t"/></marker></defs>
+      <g transform="translate(20 40)"><rect width="170" height="90" rx="14" class="aOut"/>
+        <text x="85" y="36" text-anchor="middle" class="aH">本人が評価</text><text x="85" y="66" text-anchor="middle" style="fill:var(--thread);font-size:22px;font-weight:700">◎ ○ △ ×</text></g>
+      <path d="M190 85H222" class="aL" marker-end="url(#fd)"/>
+      <g transform="translate(226 40)"><rect width="170" height="90" rx="14" class="aBox"/>
+        <text x="85" y="36" text-anchor="middle" class="aH">保存だけする</text><text x="85" y="60" text-anchor="middle" class="aS">「次におすすめを</text><text x="85" y="78" text-anchor="middle" class="aS">開くと反映」</text></g>
+      <path d="M396 85H428" class="aL" marker-end="url(#fd)"/>
+      <g transform="translate(432 40)"><rect width="170" height="90" rx="14" class="aBoxB"/>
+        <text x="85" y="36" text-anchor="middle" class="aH">名簿を作り直す</text><text x="85" y="60" text-anchor="middle" class="aS">本人の評価だけ</text><text x="85" y="78" text-anchor="middle" class="aS">同じ公演は 1 作品に</text></g>
+      <path d="M602 85H634" class="aL" marker-end="url(#fd)"/>
+      <g transform="translate(638 40)"><rect width="170" height="90" rx="14" class="aBoxB"/>
+        <text x="85" y="36" text-anchor="middle" class="aH">全候補に点を付ける</text><text x="85" y="60" text-anchor="middle" class="aS">人物の点（3-3 の式）</text><text x="85" y="78" text-anchor="middle" class="aS">× 設定の倍率</text></g>
+      <path d="M808 85H840" class="aL" marker-end="url(#fd)"/>
+      <g transform="translate(844 40)"><rect width="136" height="90" rx="45" class="aGoal"/>
+        <text x="68" y="42" text-anchor="middle" class="aGoalT">本人向けの</text><text x="68" y="64" text-anchor="middle" class="aGoalT">上位 15 件</text></g>
+      <path d="M912 130V160H105V134" class="aLt aDash" marker-end="url(#fdt)"/>
+      <text x="508" y="152" text-anchor="middle" class="aLoop">また評価すると、次に開いたときの順位と理由が変わる</text>
+      <!-- 共通との違い -->
+      <rect x="20" y="186" width="960" height="100" rx="14" class="aTip"/>
+      <text x="40" y="212" class="aH">共通の推薦（3-1〜3-5）との違い</text>
+      <text x="40" y="238" class="aS">・使うのは<tspan class="aSb" font-weight="700">人物の点だけ</tspan>（あらすじの点はまだ入れていない）。90% 点での正規化もしない（設定の倍率が打ち消されるため）</text>
+      <text x="40" y="258" class="aS">・共通の結果は候補を補うためだけに読み、持ち主の点や理由は引き継がない。点が 0 の公演は「好みに合う推薦」と呼ばず別に分ける</text>
+      <text x="40" y="278" class="aS">・振り分け（お気に入り・興味あり・購入済み・出さない語）と地域の絞り込みは、本人の登録で行う</text>
+    </svg>
+    <figcaption>この仕組みで確認できたのは「本人の評価が、本人の次の推薦に届く」ところまで。推薦の当たりやすさが上がるかは、まだ実データで検証していない。</figcaption>
+  </figure>
 </section>
 
 <!-- ============================================================ 4章 セキュリティ -->
