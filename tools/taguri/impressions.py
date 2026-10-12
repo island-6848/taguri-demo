@@ -80,7 +80,9 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools" / "review"))
 import measure_nets as M                                           # noqa: E402
 
-DB = ROOT / "data" / "review" / "ratings.db"
+sys.path.insert(0, str(ROOT / "tools" / "lib"))
+import taguri_state as STATE
+DB = STATE.ratings_path()
 LOCAL_USER_ID = M.R.LOCAL_USER_ID   # 既定はローカルの持ち主（E3。`rate_performances` の注記）
 
 # **引用は ◎ の作品からしか出さない。** 推薦の理由（網 B）は ◎ を付けた作品の
@@ -298,3 +300,4 @@ if __name__ == "__main__":
     print(f"引用を出せる作り手: {len(bp)} 名")
     for p, ws in sorted(bp.items(), key=lambda kv: -len(kv[1]))[:12]:
         print(f'  {p}: 《{ws[0]["title"][:22]}》「{clip(ws[0]["note"], 40)}」')
+

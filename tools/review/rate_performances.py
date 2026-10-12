@@ -70,7 +70,9 @@ sys.path.insert(0, str(ROOT / "tools" / "review"))
 import user_scope as US                                             # noqa: E402
 
 SRC = ROOT / "data" / "tickets" / "performances.jsonl"
-DB = ROOT / "data" / "review" / "ratings.db"
+sys.path.insert(0, str(ROOT / "tools" / "lib"))
+import taguri_state as STATE
+DB = STATE.ratings_path()
 
 # **利用者ごとのデータ分離（E3）Phase 2。** 観劇記録の 7 表（works・attendance・splits・
 # excluded・merges・hand_credits・visit_note）は `user_id` で分ける。値は
@@ -670,6 +672,7 @@ CREATE TABLE IF NOT EXISTS visit_note (
 def connect() -> sqlite3.Connection:
     DB.parent.mkdir(parents=True, exist_ok=True)
     con = sqlite3.connect(DB, check_same_thread=False)
+    DB.chmod(0o600)
     con.row_factory = sqlite3.Row
     _widen_attendance_key(con)
     con.executescript(SCHEMA)

@@ -49,6 +49,9 @@ pepper はコードそのものではなく `~/.config/taguri/auth_pepper.txt`�
 
 from __future__ import annotations
 
+import sys
+import os
+import tempfile
 import base64
 import hashlib
 import secrets
@@ -57,8 +60,10 @@ import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-DB_PATH = ROOT / "data" / "auth" / "auth.db"
-PEPPER_PATH = Path.home() / ".config" / "taguri" / "auth_pepper.txt"
+sys.path.insert(0, str(ROOT / "tools" / "lib"))
+import taguri_state as STATE
+DB_PATH = STATE.auth_path()
+PEPPER_PATH = STATE.pepper_path()
 
 # **ローカル/EC2（`run.py`）専用の固定利用者ID（利用者ごとのデータ分離・E3）。**
 # この経路は今までどおり1人しか使わないので、認証の概念そのものが要らない ──
@@ -96,12 +101,28 @@ class AuthError(Exception):
 def _pepper() -> bytes:
     """アプリ全体で共有する固定saltを読む。無ければ作る（初回起動時のみ）。"""
     if PEPPER_PATH.exists():
-        return bytes.fromhex(PEPPER_PATH.read_text().strip())
+        value = bytes.fromhex(PEPPER_PATH.read_text().strip())
+        if len(value) != 32:
+            raise RuntimeError("authentication pepper is invalid")
+        return value
+    if STATE._has_users(DB_PATH):
+        raise RuntimeError("authentication pepper is missing")
     PEPPER_PATH.parent.mkdir(parents=True, exist_ok=True)
     value = secrets.token_bytes(32)
-    PEPPER_PATH.write_text(value.hex())
-    PEPPER_PATH.chmod(0o600)
-    return value
+    # Publish a completely written file without replacing another thread's key.
+    fd, name = tempfile.mkstemp(prefix=".pepper-", dir=PEPPER_PATH.parent)
+    try:
+        with os.fdopen(fd, "w") as stream:
+            stream.write(value.hex())
+            stream.flush()
+            os.fsync(stream.fileno())
+        try:
+            os.link(name, PEPPER_PATH)
+        except FileExistsError:
+            pass
+    finally:
+        os.unlink(name)
+    return _pepper()
 
 
 def generate_recovery_code() -> str:
@@ -387,3 +408,4 @@ def delete_user(user_id: str) -> None:
         conn.commit()
     finally:
         conn.close()
+

@@ -25,8 +25,13 @@
 体験データは、あらかじめEC2で1回だけ用意する**（#000008の作業ログ参照）。起動のたびに
 外部サイトへ取得しに行く必要は無く、むしろ**リクルーターの操作をきっかけに外部サイトへの
 取得やLLM呼び出しが無制限に走るのは避けたい**（費用・礼儀の両面で）。反応・評価・
-お気に入りの登録に対しては、`serve.py`が既存のとおり`recommend2.py`を都度呼んで
-並べ直す（外部通信は無い、recommend2.pyは公開情報を集計するだけ）。
+お気に入りの登録に対しては、`serve.py`が本人の画面キャッシュを無効化し、
+次の読み込みで本人の保存済みデータから計算する（外部通信は無い）。
+
+利用者の SQLite と認証 pepper は `TAGURI_STATE_DIR` で公演カタログと分離できる。
+この設定だけではホスト側の永続性は保証できないため、永続ディスクの設定と
+再起動・再デプロイ後の確認が必要。未設定時にもカタログ交換で既存DBを削除しないが、
+Render の一時ファイルシステムが失われたときの復元はできない。
 
 ## データは公開Gitリポジトリに同梱しない（#000008・2026-08-29に撤回）
 
@@ -54,56 +59,95 @@ import os
 import shutil
 import sys
 import tarfile
+import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools" / "taguri"))
 sys.path.insert(0, str(ROOT / "tools" / "review"))
+sys.path.insert(0, str(ROOT / "tools" / "lib"))
+import taguri_state as STATE
 
 S3_BUCKET = os.environ.get("STAGE_CATALOG_BUCKET", "nakaya-mao-private-play-recommendation2026")
 S3_KEY = os.environ.get("STAGE_CATALOG_KEY", "stage-catalog/data.tar.gz")
 S3_REGION = os.environ.get("AWS_DEFAULT_REGION", "ap-northeast-1")
 
 
-def _fetch_catalog() -> None:
-    """非公開S3から公演カタログを取得し、`data/`に展開する。
+def _install_catalog(archive: Path) -> None:
+    """Validate in staging, retain legacy mutable state, then swap directories.
 
-    **常に取得し直す（2026-08-29に「無ければ取得」から変更）。** 当初は
-    `data/review/candidates.jsonl`が無いときだけ取得する形にしていたが、
-    **Renderのディスクが再デプロイをまたいで残るケースがあり、S3側のカタログを
-    更新してもいつまでも古いデータのままになる事故が起きた**（起案者の報告 ──
-    「あらすじが取れていないままです」→ S3・Renderを更新しても`これから観られる
-    公演`の件数が古いまま変わらなかった）。**「ディスクは毎回まっさらになる」という
-    前提が誤りだった以上、存在チェックに頼らず、起動のたびに無条件でS3から
-    取り直して上書きする方が安全である。** 起動のたびにCoRichへ取得しに行くわけ
-    ではない点は変わらない（読みに行くのはS3のみ）。ダウンロード自体の時間は
-    かかるが、起動回数は少ない（Render無料枠はアクセスが無いと休止する）ので
-    許容範囲とした。
+    Tar links, traversal and special files are rejected. Catalog archives are
+    never a source of visitor databases or authentication secrets.
     """
+    with tempfile.TemporaryDirectory(prefix=".catalog-", dir=ROOT) as work:
+        work = Path(work)
+        new = work / "new"
+        new.mkdir()
+        with tarfile.open(archive) as tf:
+            for member in tf.getmembers():
+                path = Path(member.name)
+                if path.is_absolute() or ".." in path.parts or not (member.isdir() or member.isfile()):
+                    raise ValueError("unsafe catalog archive")
+                # Older snapshots may include a demo owner's DB. Never import it.
+                if (path.parts and path.parts[0] == "auth") or any(
+                        token in path.name for token in (".db", ".sqlite", "pepper")):
+                    continue
+                dest = new / path
+                if member.isdir():
+                    dest.mkdir(parents=True, exist_ok=True)
+                else:
+                    dest.parent.mkdir(parents=True, exist_ok=True)
+                    source = tf.extractfile(member)
+                    if source is None:
+                        raise ValueError("invalid catalog member")
+                    with source, dest.open("wb") as output:
+                        shutil.copyfileobj(source, output)
+        if not (new / "review" / "candidates.jsonl").is_file():
+            raise ValueError("catalog lacks candidates")
+        current = ROOT / "data"
+        # Compatibility when no external persistent directory is configured.
+        # This protects refreshes, not host filesystem loss on redeployment.
+        for relative in ("auth", "review/ratings.db", "review/ratings.db-wal",
+                         "review/ratings.db-shm", "review/ratings.db-journal", "review/declared.json"):
+            source = current / relative
+            dest = new / relative
+            if source.exists():
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                if source.is_dir():
+                    shutil.copytree(source, dest, dirs_exist_ok=True)
+                else:
+                    shutil.copy2(source, dest)
+        backup = work / "old"
+        if current.exists():
+            current.rename(backup)
+        try:
+            new.rename(current)
+        except BaseException:
+            if backup.exists():
+                backup.rename(current)
+            raise
+
+
+def _fetch_catalog() -> None:
+    """Fetch only catalog data; user storage is never replaced by the archive."""
     try:
         import boto3
-    except ImportError:
-        print("boto3が無いため公演カタログを取得できない。"
-              "Build Commandに`pip install boto3`が要る。", flush=True)
-        return
-    print(f"公演カタログをS3から取得中 ── s3://{S3_BUCKET}/{S3_KEY}", flush=True)
-    s3 = boto3.client("s3", region_name=S3_REGION)
-    archive = ROOT / "_stage_catalog.tar.gz"
-    s3.download_file(S3_BUCKET, S3_KEY, str(archive))
-    # **展開前に古い`data/`を消す。** tarファイルの展開は上書き・追加はするが、
-    # 新しいカタログに無くなったファイル（古いポスター等）を消してはくれない
-    shutil.rmtree(ROOT / "data", ignore_errors=True)
-    (ROOT / "data").mkdir(parents=True, exist_ok=True)
-    with tarfile.open(archive) as tf:
-        tf.extractall(ROOT / "data")            # noqa: S202 自分でS3に置いた信頼できる中身
-    archive.unlink()
-    print("公演カタログの取得が完了", flush=True)
+        s3 = boto3.client("s3", region_name=S3_REGION)
+        with tempfile.TemporaryDirectory(prefix=".catalog-download-", dir=ROOT) as work:
+            archive = Path(work) / "catalog.tar.gz"
+            s3.download_file(S3_BUCKET, S3_KEY, str(archive))
+            _install_catalog(archive)
+        STATE.event("catalog_refresh")
+    except Exception:
+        STATE.event("catalog_refresh", outcome="failed")
+        raise RuntimeError("catalog refresh failed; existing state retained") from None
 
 
 import serve as S                                                  # noqa: E402
 
 
 def main() -> int:
+    STATE.prepare_storage()
     _fetch_catalog()
     port = int(os.environ.get("PORT", "8000"))
     # **GitHub Pages移行（#000009）。** `CORS_ORIGIN`にGitHub Pagesの配信元
@@ -111,15 +155,22 @@ def main() -> int:
     # オリジン`fetch`（`/api/screen/*`等）を許可する。未設定なら今までどおり
     # CORSヘッダを出さない（同一オリジンの旧UIだけがRenderに残る前提）。
     cors_origin = os.environ.get("CORS_ORIGIN", "")
-    srv = S.Server("demo", port, bind_host="0.0.0.0", demo_mode=True, cors_origin=cors_origin)
-    print(f"デモサーバ起動 ── 0.0.0.0:{port}（demo_mode, CORS_ORIGIN={cors_origin or '(未設定)'}）",
-          flush=True)
+    try:
+        srv = S.Server("demo", port, bind_host="0.0.0.0", demo_mode=True, cors_origin=cors_origin)
+    except Exception:
+        STATE.event("server_start", outcome="failed")
+        raise RuntimeError("server startup failed; check storage and service configuration") from None
+    STATE.event("server_start")
     try:
         srv.serve_forever()
     except KeyboardInterrupt:
         pass
+    finally:
+        srv.server_close()
+        STATE.event("server_stop")
     return 0
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

@@ -125,7 +125,9 @@ import recommend as RC                                             # noqa: E402
 import render_recommend as RR                                      # noqa: E402
 import stage_calendar as SC                                        # noqa: E402
 
-DB = ROOT / "data" / "review" / "ratings.db"
+sys.path.insert(0, str(ROOT / "tools" / "lib"))
+import taguri_state as STATE
+DB = STATE.ratings_path()
 E = RR.E
 
 
@@ -8257,7 +8259,11 @@ def _account_card_html(user_id: str) -> str:
     import auth as AU
     if user_id == AU.LOCAL_USER_ID:
         return ""
+    storage_notice = ("<p class=\"warn\">このデモの記録は一時保存です。"
+                      "サーバーの再起動や更新で消える場合があります。復旧コードでも戻せません。</p>"
+                      if STATE.storage_status()["mode"] == "temporary" else "")
     return f"""<details class="card">{_card_h2("gear", "アカウント")}
+{storage_notice}
 <p class="lead">この仕組みはアカウント登録なしで動きます。<b>この端末を識別しているのは
 復旧コード 1 つだけ</b>なので、控えていないと、端末を失ったときに記録へ二度と戻れません。</p>
 <p class="lead">利用者ID: <code>{E(user_id[:12])}…</code></p>

@@ -3,11 +3,15 @@ name: Recommendation feedback loop
 on:
   push:
     paths:
+      - 'tools/lib/**'
+      - 'tools/tickets/**'
       - 'tools/review/**'
       - 'tools/taguri/**'
       - '.github/workflows/recommendation-loop.yml'
   pull_request:
     paths:
+      - 'tools/lib/**'
+      - 'tools/tickets/**'
       - 'tools/review/**'
       - 'tools/taguri/**'
       - '.github/workflows/recommendation-loop.yml'
@@ -26,6 +30,8 @@ jobs:
           python-version: '3.12'
       - name: User feedback, isolation, and HTTP regressions
         run: python tools/taguri/test_user_recommendation.py
+      - name: State persistence, catalog safety, and operational logs
+        run: python tools/taguri/test_cloud_storage.py
       - name: Demo seed data
         run: python tools/taguri/test_seed_demo.py
       - name: Reaction buckets
