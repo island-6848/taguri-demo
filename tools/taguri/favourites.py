@@ -84,6 +84,7 @@ import argparse
 import datetime
 import html as htmlmod
 import json
+import os
 import re
 import sys
 import time
@@ -168,6 +169,51 @@ def load_cache() -> dict:
     return {}
 
 
+# **他の利用者の登録名。** 公開サーバーが全利用者の登録名を重複除去して返す口
+# （`/api/catalog/favourite-names`）から読む。URL と合言葉は環境変数で渡す
+NAMES_URL = os.environ.get("TAGURI_NAMES_URL", "")
+NAMES_TOKEN = os.environ.get("TAGURI_NAMES_TOKEN", "")
+# **1 回の実行で検索に回す他の利用者の名前の上限。** 登録は 1 人 100 件までだが、
+# 利用者が増えれば名前も増える。取得先への負荷を一定に抑えるため、登録している
+# 人数の多い名前から順にこの件数までにする（名前ごとの結果は 3 日間控えるので、
+# 上限を超えた分も日をまたいで順に回る ── 下の `stale_first` を参照）
+MAX_SHARED_NAMES = 300
+
+
+def shared_names() -> list[tuple[str, str]]:
+    """公開サーバーから、他の利用者の登録名を (種類, 名前) で読む。
+
+    **読めなくても止めない。** 持ち主の登録だけで続ける（サーバーが眠っている・
+    合言葉が未設定、など）。利用者 ID は受け取らない（サーバーが返さない）。
+    """
+    if not (NAMES_URL and NAMES_TOKEN):
+        return []
+    req = urllib.request.Request(NAMES_URL, headers={"Authorization": f"Bearer {NAMES_TOKEN}",
+                                                     "User-Agent": PH.UA})
+    try:
+        # 無料枠のサーバーは眠っていると起きるまで時間がかかる
+        with urllib.request.urlopen(req, timeout=90) as r:
+            data = json.loads(r.read().decode("utf-8"))
+    except Exception as e:                                          # noqa: BLE001
+        print(f"  他の利用者の登録名を読めなかった（{type(e).__name__}）。持ち主の登録だけで続ける")
+        return []
+    out = []
+    for x in data.get("names") or []:
+        k, w = x.get("kind"), x.get("name")
+        if k in ("人", "団体", "主催", "作品", "原作者") and isinstance(w, str) and 2 <= len(w.strip()) <= 40:
+            out.append((k, w.strip()))
+    return out
+
+
+def stale_first(words: list[tuple[str, str]], cache: dict) -> list[tuple[str, str]]:
+    """控えが古い（または無い）名前から順に並べる。**上限で切っても、毎回同じ名前だけが
+    検索され続けることにならない**ようにする（並びが同じなら元の順＝人数の多い順）。"""
+    def age(kw):
+        ent = cache.get(f"{kw[0]}|{kw[1]}")
+        return ent["at"] if ent else ""
+    return sorted(words, key=age)
+
+
 def known_ids() -> set[str]:
     if not CAND.exists():
         return set()
@@ -187,6 +233,8 @@ def main() -> int:
                     help="同じ名前をこの時間内に引いていたら、貯めた結果を使う"
                          "（既定は 3 日 ── `run.py` の週 1 回のペースに合わせてある）")
     ap.add_argument("--force", action="store_true", help="貯めた結果を使わず全部引き直す")
+    ap.add_argument("--max-shared", type=int, default=MAX_SHARED_NAMES,
+                    help="他の利用者の登録名を、1 回に何件まで探すか")
     a = ap.parse_args()
     today = datetime.date.fromisoformat(a.today)
     t0 = time.monotonic()
@@ -196,6 +244,15 @@ def main() -> int:
     # 検索語にすると題名にその字が入っただけの公演を大量に拾う
     words = [(k, w) for k in ("人", "団体", "主催", "作品", "原作者") for w in dec.get(k, [])]
     cache = {} if a.force else load_cache()
+    # **他の利用者の登録名も探す**（規約 O2 ── 全利用者分を重複除去して、名前ごとに送る）。
+    # 持ち主の登録と重なる名前は 1 回だけ探す
+    own = set(words)
+    shared = [kw for kw in shared_names() if kw not in own]
+    if shared:
+        picked = stale_first(shared, cache)[:a.max_shared]
+        print(f"  他の利用者の登録名 {len(shared)} 件のうち {len(picked)} 件を探す"
+              f"（上限 {a.max_shared} 件・控えの古い順）")
+        words += picked
     now = datetime.datetime.now()
     fresh_cut = now - datetime.timedelta(hours=a.ttl_hours)
 

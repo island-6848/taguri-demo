@@ -3140,6 +3140,63 @@ def load_declared(user_id: str) -> dict[str, list[str]]:
     return {k: [str(x) for x in (v.get(k) or []) if isinstance(x, str)] for k in RC.KINDS}
 
 
+# **検索に回す名前の種類。** 題材は名前ではないので引かない（`favourites.py` と同じ）
+SEARCH_KINDS = ("人", "団体", "主催", "作品", "原作者")
+
+
+def _searchable_name(name: str) -> str:
+    """検索語として送ってよい名前に整える。送れないものは空を返す。
+
+    **登録名はそのまま外部サイトへの検索語になる**ので、名前らしくないもの
+    （URL・メールアドレス・制御文字・長すぎる／短すぎるもの）はここで落とす。
+    """
+    import unicodedata
+    w = unicodedata.normalize("NFKC", str(name or "")).strip()
+    if not (2 <= len(w) <= 40):
+        return ""
+    if any(ord(c) < 32 for c in w) or "://" in w or "@" in w or "www." in w.lower():
+        return ""
+    return w
+
+
+def aggregate_declared_names() -> list[dict]:
+    """**全利用者のお気に入りの登録名を、誰の登録かが分からない形でまとめる**（規約 O2）。
+
+    手元の取得処理（`favourites.py`）が、これを使って「その名前のこれからの公演」を
+    探しに行く。以前は持ち主の登録しか探しておらず、**他の利用者が登録した名前は、
+    手元にある公演の中で照合されるだけで、新しい公演を探しには行っていなかった。**
+
+    返すのは種類・名前・登録している人数だけで、利用者 ID は返さない。同じ名前は
+    1 つにまとめる（多くの人が登録した名前から順に探せるよう、人数は残す）。
+    """
+    import collections
+    import rate_performances as R
+    con = R.connect()
+    try:
+        _migrate_app_setting(con)
+        con.executescript(SETTING_SCHEMA)
+        rows = con.execute("SELECT value FROM app_setting WHERE key=?", (DECLARED_KEY,)).fetchall()
+    finally:
+        con.close()
+    users: collections.Counter = collections.Counter()
+    for row in rows:
+        try:
+            v = json.loads(row["value"])
+        except (TypeError, ValueError):
+            continue
+        if not isinstance(v, dict):
+            continue
+        mine = set()
+        for k in SEARCH_KINDS:
+            for x in v.get(k) or []:
+                w = _searchable_name(x) if isinstance(x, str) else ""
+                if w:
+                    mine.add((k, w))
+        users.update(mine)
+    return [{"kind": k, "name": w, "users": n}
+            for (k, w), n in sorted(users.items(), key=lambda kv: (-kv[1], kv[0]))]
+
+
 def save_declared(user_id: str, d: dict) -> None:
     if _is_owner(user_id):
         RC.save_declared(d)

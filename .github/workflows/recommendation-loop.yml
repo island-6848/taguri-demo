@@ -42,3 +42,5 @@ jobs:
         run: python tools/lib/test_polite_http.py
       - name: Catalog publishing and live refresh
         run: python tools/taguri/test_catalog_publish.py
+      - name: Shared favourite names for all users
+        run: python tools/taguri/test_shared_favourites.py

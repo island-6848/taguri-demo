@@ -382,6 +382,22 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self._json(200, {"ok": True, "version": "state-storage-v1"})
             return
 
+        if path == "/api/catalog/favourite-names":
+            # **全利用者のお気に入りの登録名（重複除去・利用者 ID なし）。** 手元の取得
+            # 処理が、他の利用者の登録名でも公演を探しに行くために読む（規約 O2）。
+            # 合言葉（`TAGURI_NAMES_TOKEN`）を設定していなければ、この道は存在しない
+            token = os.environ.get("TAGURI_NAMES_TOKEN", "")
+            if not token:
+                self._send(404, b"not found", "text/plain; charset=utf-8")
+                return
+            given = (self.headers.get("Authorization") or "").removeprefix("Bearer ").strip()
+            if not secrets.compare_digest(given.encode(), token.encode()):
+                self._send(403, b"forbidden", "text/plain; charset=utf-8")
+                return
+            self._json(200, {"ok": True, "version": "favourite-names-v1",
+                             "names": APP.aggregate_declared_names()})
+            return
+
         # **#000008の新しい道はここで先に受ける。** 既存のPAGES一覧・起動ごと
         # トークン（`_tok`）より前 ── これらは「まだ鍵を持っていない人」が
         # 最初に触る道なので、既存の鍵を要求できない。
