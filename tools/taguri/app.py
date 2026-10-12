@@ -3657,6 +3657,11 @@ def _load(user_id: str) -> tuple[dict, list]:
     except FileNotFoundError:
         raw = {}
     weights = read_weights(user_id)
+    # 見本を推薦の材料にする前に登録した訪問者の分を、1 回だけ結び付ける
+    try:
+        link_demo_seed(user_id)
+    except Exception:                                               # noqa: BLE001
+        pass
     prepared = UR.prepare(raw, DG.all_candidates(), M.load_rated(user_id=user_id),
                           multipliers={k: STEP_MUL.get(v, 1.0) for k, v in weights.items()},
                           role_group=group_of)
@@ -5418,13 +5423,94 @@ def add_work(user_id: str, title: str, date: str = "", venue: str = "", stage_id
 # 公開用に選ばれた96件を、訪問者が操作する見本の記録にする。
 # 評価・感想はユーザーの指示で付けた架空のデモ用データ。本人の感想ではない。
 # 旧6件の見本は重ねず、96件のうち3件だけを未評価にする。
-# 実在する特定の上演に架空の評価を結び付けないよう、stage_idは入れない。
+#
+# **見本の記録を推薦の材料にする（2026-10-12・起案者の指示）。** 以前は「実在する特定の
+# 上演に架空の評価を結び付けない」ため stage_id を空にしていたが、そのせいで見本の評価が
+# 推薦に 1 件も効かず、デモを開いた人の「今週のおすすめ」は人物の点が付かないままだった。
+# **結び付けるのは、その訪問者自身の記録の中だけ**（共通の順位にも他の訪問者にも混ざらない）。
+# 見本の 96 件は持ち主の購入記録から作ったので、題名と日付が出演者の控え（`credits.jsonl` の
+# (観劇日, メールの件名)）と**完全に一致する**。題名の部分一致や推測では結び付けない
+# （`demo_seed_links`）── 当たらなかった記録は、これまでどおり stage_id を空のまま置く。
 DEMO_PURCHASE_WORKS = json.loads(
     Path(__file__).with_name("demo_purchase_works.json").read_text(encoding="utf-8"))
 DEMO_SEED_WORKS: list[dict] = [
     {**row, "verdict": row.get("verdict"), "note": row.get("note") or ""}
     for row in DEMO_PURCHASE_WORKS
 ]
+
+
+DEMO_LINK_KEY = "demo_seed_linked_v1"
+_DEMO_LINKS: dict = {"stamp": None, "map": {}}
+
+
+def demo_seed_links() -> dict[tuple[str, str], str]:
+    """見本の記録 (観劇日, 題名) → 公演 id。**出演者の控えと完全に一致したものだけ。**
+
+    引く先は 2 つで、どちらも持ち主の購入記録から作った控えである。
+    `credits.jsonl` は (観劇日, メールの件名) で公演ページに当てた結果、`linked.jsonl` は
+    題名から探し直して (観劇日, 題名) で当てた結果。**クレジットが空の公演には結び付けない**
+    （結び付けても推薦の材料にならない）。控えが更新されたら読み直す。
+    """
+    import measure_nets as M
+    files = [M.CREDITS, ROOT / "data" / "credits" / "linked.jsonl"]
+    stamp = tuple(f.stat().st_mtime_ns if f.exists() else 0 for f in files)
+    if _DEMO_LINKS["stamp"] == stamp:
+        return _DEMO_LINKS["map"]
+    want = {(s["date"], s["title"]) for s in DEMO_SEED_WORKS}
+    out: dict[tuple[str, str], str] = {}
+    for f, title_keys in zip(files, (("mail_title",), ("title",))):
+        if not f.exists():
+            continue
+        for line in f.read_text(encoding="utf-8").split("\n"):
+            if not line.strip():
+                continue
+            try:
+                c = json.loads(line)
+            except ValueError:
+                continue
+            sid = str(c.get("stage_id") or "")
+            if not sid or not c.get("fields"):
+                continue
+            for k in title_keys:
+                key = (str(c.get("date") or ""), str(c.get(k) or ""))
+                if key in want:
+                    out.setdefault(key, sid)
+    _DEMO_LINKS.update(stamp=stamp, map=out)
+    return out
+
+
+def _demo_key(s: dict) -> str:
+    import rate_performances as R
+    key = f"{R.title_key(s['title'])}#{s['date']}"
+    return key + (f"#{s['time']}" if s.get("time") else "")
+
+
+def link_demo_seed(user_id: str) -> int:
+    """**すでに見本が入っている訪問者の記録にも、1 回だけ公演を結び付ける。** 結び付けた件数を返す。
+
+    見本を推薦の材料にする前に登録した訪問者の分を、次におすすめを開いたときに埋める。
+    **1 人につき 1 回だけ**（`DEMO_LINK_KEY`）── 本人が「結び付けを外す」を押した記録を、
+    開くたびに結び付け直さないためである。stage_id が空の見本の行だけを書き換える。
+    """
+    if _is_owner(user_id) or _read_setting_json(user_id, DEMO_LINK_KEY):
+        return 0
+    import rate_performances as R
+    links = demo_seed_links()
+    n = 0
+    con = R.connect()
+    try:
+        with con:
+            for s in DEMO_SEED_WORKS:
+                sid = links.get((s["date"], s["title"]))
+                if sid:
+                    n += con.execute(
+                        "UPDATE works SET stage_id=? WHERE user_id=? AND work_key=?"
+                        " AND (stage_id IS NULL OR stage_id='')",
+                        (sid, user_id, _demo_key(s))).rowcount
+    finally:
+        con.close()
+    _write_setting_json(user_id, DEMO_LINK_KEY, {"linked": n})
+    return n
 
 
 def seed_demo_works(user_id: str) -> int:
@@ -5436,24 +5522,25 @@ def seed_demo_works(user_id: str) -> int:
     if _is_owner(user_id):
         return 0
     import rate_performances as R
+    links = demo_seed_links()
     con = R.connect()
     n = 0
     try:
         for s in DEMO_SEED_WORKS:
-            key = f"{R.title_key(s['title'])}#{s['date']}"
-            if s.get("time"):
-                key += f"#{s['time']}"
             cur = con.execute(
                 "INSERT OR IGNORE INTO works (user_id, work_key, title, first_date, last_date,"
                 " times, verdict, chosen, note_impression, note_motive, stage_id, venue, time,"
                 " updated_at, verdict_source, note_source)"
-                " VALUES (?,?,?,?,?,1,?,NULL,?,'',NULL,?,?,datetime('now','localtime'),'demo','demo')",
-                (user_id, key, s["title"], s["date"], s["date"], s["verdict"], s["note"],
+                " VALUES (?,?,?,?,?,1,?,NULL,?,'',?,?,?,datetime('now','localtime'),'demo','demo')",
+                (user_id, _demo_key(s), s["title"], s["date"], s["date"], s["verdict"], s["note"],
+                 links.get((s["date"], s["title"])) or None,
                  s.get("venue") or "", s.get("time") or ""))
             n += cur.rowcount
         con.commit()
     finally:
         con.close()
+    # 入れた時点で結び付け済みなので、後から結び付け直す処理は走らせない
+    _write_setting_json(user_id, DEMO_LINK_KEY, {"linked": "at_seed"})
     return n
 
 
