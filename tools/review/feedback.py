@@ -70,7 +70,9 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent.parent
-DB = ROOT / "data" / "review" / "ratings.db"
+sys.path.insert(0, str(ROOT / "tools" / "lib"))
+import taguri_state as STATE
+DB = STATE.ratings_path()
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import user_scope as US                                             # noqa: E402
@@ -204,7 +206,9 @@ def connect(*, same_thread: bool = True) -> sqlite3.Connection:
     別の接続で送るので、1 スレッドで受けると待たされて画面が固まる。**接続を跨いで使う代わりに、
     呼ぶ側が錠を掛けて直列にする**（`Server.lock`）。既定は今までどおり同一スレッド限定にする。
     """
+    DB.parent.mkdir(parents=True, exist_ok=True)
     con = sqlite3.connect(DB, check_same_thread=same_thread)
+    DB.chmod(0o600)
     con.executescript(SCHEMA)
     # **既存の DB には CREATE TABLE IF NOT EXISTS が効かない**ので、足りない列だけ加える。
     have = {r[1] for r in con.execute("PRAGMA table_info(reaction)")}
@@ -615,3 +619,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

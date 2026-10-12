@@ -37,10 +37,13 @@ import json
 import re
 import sqlite3
 import unicodedata
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-DB = ROOT / "data" / "review" / "ratings.db"
+sys.path.insert(0, str(ROOT / "tools" / "lib"))
+import taguri_state as STATE
+DB = STATE.ratings_path()
 
 # **受け付ける項目は列挙したものだけ**（企画書 5 章の守り 4）
 FIELDS = ("title", "date", "venue", "time")
@@ -241,3 +244,4 @@ def stats() -> dict:
 if __name__ == "__main__":
     print(json.dumps(stats(), ensure_ascii=False, indent=1))
     print(prompt_block() or "（まだ 1 件も直していない）")
+

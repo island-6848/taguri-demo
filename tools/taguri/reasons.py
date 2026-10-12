@@ -57,7 +57,9 @@ def _con() -> sqlite3.Connection:
 
 CAND = ROOT / "data" / "review" / "candidates.jsonl"
 THEMES = ROOT / "data" / "credits" / "themes.jsonl"
-DB = ROOT / "data" / "review" / "ratings.db"
+sys.path.insert(0, str(ROOT / "tools" / "lib"))
+import taguri_state as STATE
+DB = STATE.ratings_path()
 
 # 昇格の宛先。**役職ではなく「何として登録するか」で分ける**（申告の種類に合わせる）
 KIND_PERSON, KIND_GROUP, KIND_THEME, KIND_WORK = "人", "団体", "題材", "作品"
@@ -324,3 +326,4 @@ if __name__ == "__main__":
     for p in promotions()[:20]:
         print(f"  {p['kind']}「{p['word']}」 ×{p['n']}  ← {p['source']}"
               f"  ／理由: {p['notes'][0][:40]}")
+
