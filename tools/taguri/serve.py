@@ -80,6 +80,11 @@ import feedback as FB                                              # noqa: E402
 import recommend as RC                                             # noqa: E402
 import render_recommend as RR                                       # noqa: E402
 import stage_calendar as SC                                        # noqa: E402
+import taguri_state as STATE
+
+WRITE_OPERATIONS = {"/api/rate": "rate", "/api/note": "note",
+                    "/api/visit_note": "visit_note", "/api/react": "react",
+                    "/api/favourite": "favourite", "/api/ticket": "ticket"}
 
 # **#000008: 復旧コード認証。既存の「起動ごとの単一トークン」（`srv.token`・
 # `_tok`）とは別の、利用者ごとの識別経路として追加する。** 既存の道は
@@ -210,6 +215,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self._send(204, b"", "text/plain", extra)
 
     def _send(self, code: int, body: bytes, ctype: str, extra: dict | None = None) -> None:
+        if self.command == "POST" and code >= 400:
+            STATE.event("write_result", outcome="failed" if code >= 500 else "rejected",
+                        operation=WRITE_OPERATIONS.get(self.path, "other"), status=code)
         try:
             self.send_response(code)
             self.send_header("Content-Type", ctype)
@@ -255,7 +263,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
         個別に手当てを書き足さずに済む。
         """
         welcome = getattr(self, "_welcome_code", None)
-        payload = {**obj, "welcome_code": welcome} if welcome else obj
+        payload = {**obj, "demo_mode": self.server.demo_mode,
+                   "storage": STATE.storage_status()}
+        if welcome:
+            payload["welcome_code"] = welcome
         body = json.dumps(payload, ensure_ascii=False).replace(
             "__TAGURI_TOKEN__", self.server.token)                  # type: ignore[attr-defined]
         self._send(code, body.encode(), "application/json",
@@ -334,6 +345,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         AU.throttle_register(self.client_address[0])
         code = AU.generate_recovery_code()
         new_user_id, _ = AU.access_or_register(code)
+        _seed_demo(new_user_id)
         token = AU.create_session(new_user_id)
         self._auth_extra = self._set_session_cookie(token)
         return new_user_id, code
@@ -365,6 +377,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
         # `GRACE_SEC`で落ちる余地があった。
         srv.opened = True
 
+        if path == "/api/health":
+            # No registration, cookie parsing, file paths or user data.
+            self._json(200, {"ok": True, "version": "state-storage-v1"})
+            return
+
         # **#000008の新しい道はここで先に受ける。** 既存のPAGES一覧・起動ごと
         # トークン（`_tok`）より前 ── これらは「まだ鍵を持っていない人」が
         # 最初に触る道なので、既存の鍵を要求できない。
@@ -384,6 +401,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 return
             code = AU.generate_recovery_code()
             new_user_id, _ = AU.access_or_register(code)
+            _seed_demo(new_user_id)
             token = AU.create_session(new_user_id)
             # **登録直後の一歩目（#000008・2026-08-29）。** 観劇記録・評価は
             # これから積み上がるものなので、統計的な推薦（網B/C）はまだ空である。
@@ -507,15 +525,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     if "f" in q:
                         srv.set_prefs(user_id, [p for p in q.get("pref", []) if p][:47])
                     prefs = srv.get_prefs(user_id)
-                    cache_key = "recommend|" + ",".join(prefs)
-                    cached = srv.screen_cache_get(user_id, cache_key)
-                    if cached is not None:
-                        self._json(200, cached)
-                        return
+                    # Recompute from committed ratings on each navigation.
+                    # An older concurrent render must not refill a stale cache
+                    # after a rating/link/delete invalidated it.
                     body = APP._recommend_body(user_id, prefs)
                     srv.mark_viewed(user_id, "recommend_pref" if prefs else "recommend")
                     result = {"ok": True, "title": "今週のおすすめ", "body_html": body}
-                    srv.screen_cache_set(user_id, cache_key, result)
                     self._json(200, result)
                     return
                 if path == "/api/screen/reminder":
@@ -616,7 +631,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 self._json(200, result)
                 return
             except Exception as e:                                      # noqa: BLE001
-                self._json(500, {"ok": False, "error": str(e)})
+                STATE.event("request_failed", outcome="failed")
+                self._json(500, {"ok": False, "error": "画面の読み込みに失敗しました。" if srv.demo_mode else str(e)})
                 return
         if path == "/api/suggest":
             # **手で足す欄の候補。** 手元にあるものだけを引く読み口で、外へは行かない
@@ -632,7 +648,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
             # **待つ時間の上限は取得の側が決めている** ── 1 つの相手には 1.1 秒に 1 回、
             # 1 回の検索で最大 8 要求なので 8 秒ほどである
             q = urllib.parse.parse_qs(query).get("q", [""])[0]
-            self._json(200, APP.search_web(q[:120]))
+            if srv.demo_mode:
+                self._json(200, APP.suggest(self.user_id, q[:120]))
+            else:
+                self._json(200, APP.search_web(q[:120]))
             return
         if path == "/api/mail_hints":
             # **直すための手がかりだけを返す読み口である。** 本文そのものは渡さないし、
@@ -765,6 +784,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 self._send(404, b"not found", "text/plain; charset=utf-8")
                 return
         except Exception as e:                                      # noqa: BLE001
+            if srv.demo_mode:
+                STATE.event("request_failed", outcome="failed")
+                self._send(500, "画面の読み込みに失敗しました。再度お試しください。".encode(),
+                           "text/plain; charset=utf-8")
+                return
             # **画面が組めなかったことを黙って 500 にしない。** 何が足りないのかを画面に出す
             import traceback
             self._send(500, ("<h1>画面が組めなかった</h1><pre>"
@@ -782,7 +806,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
         ctype = self.headers.get("Content-Type", "")
         if "application/json" in ctype:
             try:
-                return json.loads(raw or b"{}")
+                body = json.loads(raw or b"{}")
+                return body if isinstance(body, dict) else {}
             except ValueError:
                 return {}
         return {k: v[0] for k, v in urllib.parse.parse_qs(raw.decode("utf-8", "replace")).items()}
@@ -792,6 +817,39 @@ class Handler(http.server.BaseHTTPRequestHandler):
         # **keep-alive接続での使い回し対策（`do_GET`と同じ理由）。**
         self._welcome_code: str | None = None
         self._auth_extra: dict = {}
+
+        # CORS only controls reading responses. Reject foreign browser writes too.
+        if srv.demo_mode:
+            origin = self.headers.get("Origin", "")
+            host = self.headers.get("Host", "")
+            allowed = {srv.cors_origin} if srv.cors_origin else set()
+            if host:
+                allowed.update({"https://" + host, "http://" + host})
+            if origin and origin not in allowed:
+                self.close_connection = True
+                self._json(403, {"error": "このページからの操作は受け付けられません"})
+                return
+            form_routes = {"/api/recover", "/api/link/redeem"}
+            ctype = self.headers.get("Content-Type", "").split(";", 1)[0].strip().lower()
+            if self.path not in form_routes and ctype != "application/json":
+                self.close_connection = True
+                self._json(415, {"error": "application/json が必要です"})
+                return
+            if self.path in {"/api/hand_theme", "/api/hand_poster"}:
+                self.close_connection = True
+                self._json(403, {"error": "デモでは公演情報と画像の編集はできません"})
+                return
+
+        cap = 24 * 1024 * 1024 if self.path == "/api/hand_poster" else 8192
+        try:
+            length = int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            length = -1
+        if length < 0 or length > cap:
+            # Do not parse a truncated body or treat leftovers as a new request.
+            self.close_connection = True
+            self._json(413 if length > cap else 400, {"error": "本文の長さが不正です"})
+            return
 
         # **#000008の新しい道は、既存の起動ごとトークンより前に受ける。**
         # `/api/recover`・`/api/link/redeem`は「まだ鍵を持っていない人」が
@@ -863,6 +921,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
         n = min(int(self.headers.get("Content-Length") or 0), cap)
         try:
             body = json.loads(self.rfile.read(n) or b"{}")
+            if not isinstance(body, dict):
+                raise ValueError("JSON object required")
         except ValueError:
             self._json(400, {"error": "json"})
             return
@@ -893,15 +953,30 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return
         try:
             result = fn(body, self.user_id)
-            # **書き込みのたびに`screen_cache`を丸ごと消す、はやめた（起案者の指摘
-            # ──「3回目以降でまた再度ロードが入るようになる」）。** 一番頻繁な書き込み
-            # である`/api/react`(三択ボタン)自体がここを通るので、消す方式だと
-            # 「三択を押すたび、次に開く画面が毎回また重い初回読み込みに戻る」ことに
-            # なっていた。`screen_cache_set`が付けたTTL(`SCREEN_CACHE_TTL_SEC`)に
-            # 任せ、ここでは何もしない。
+            # Refresh reads do not change data. Other successful writes must not
+            # leave saved-before-edit fragments visible on the next navigation.
+            # Only this visitor's cache is affected; no automatic reload is made.
+            if result.get("ok", True) and op != "/api/hand_theme_refresh":
+                srv.invalidate_user_cache(self.user_id)
+            STATE.event("write_result", outcome="ok" if result.get("ok", True) else "rejected",
+                        operation=WRITE_OPERATIONS.get(op, "other"), status=200)
             self._json(200, result)
         except ValueError as e:
             self._json(400, {"error": str(e)})
+        except (sqlite3.Error, OSError):
+            self._json(503, {"error": "保存に失敗しました。記録が保存されたか確認し、再度お試しください。"})
+
+
+def _seed_demo(user_id: str) -> None:
+    """公開デモで新規登録した訪問者に、見本の記録を入れる（`app.seed_demo_works`）。
+
+    **入れられなくても登録は止めない。** 見本は使い始めを分かりやすくするための
+    もので、無くても画面は動く ── ここで落ちると、訪問者が何も使えなくなる。
+    """
+    try:
+        APP.seed_demo_works(user_id)
+    except Exception:                                              # noqa: BLE001
+        STATE.event("demo_seed", outcome="failed")
 
 
 def _month(query: str) -> str:
@@ -927,12 +1002,15 @@ class Server(http.server.ThreadingHTTPServer):
 
         既定の実装は traceback を標準エラーに書く。画面を移動するたびに
         `BrokenPipeError` の山が進捗表示に混ざり、本当の失敗が読めなくなっていた。
-        **切断以外は今までどおり出す** ── 握り潰すのは相手都合の切断だけである。
+        **切断以外は固定の失敗イベントだけを出す。** 個人情報を含み得る
+        例外文・traceback・相手のアドレスはログへ出さない。
         """
         if isinstance(sys.exc_info()[1], (BrokenPipeError, ConnectionResetError,
                                           ConnectionAbortedError)):
             return
-        super().handle_error(request, client_address)
+        # A traceback can expose request-derived values through exception text.
+        # Operational diagnostics deliberately omit addresses and exception text.
+        STATE.event("request_failed", outcome="failed")
 
     def __init__(self, label: str, port: int, *, bind_host: str = "127.0.0.1",
                 demo_mode: bool = False, cors_origin: str = "") -> None:
@@ -1140,17 +1218,7 @@ class Server(http.server.ThreadingHTTPServer):
             time.monotonic() + self.SCREEN_CACHE_TTL_SEC, value)
 
     def invalidate_user_cache(self, user_id: str) -> None:
-        """この利用者が覚えていた画面だけを消す。
-
-        書き込みのたびに`screen_cache`を丸ごと消す方式はやめた（起案者の指摘
-        ──「3回目以降でまた再度ロードが入るようになる」）が、**「設定」画面
-        だけは例外にする** ── 保存ボタンを押した本人が、押した直後に自分の
-        設定画面を開いたとき、TTLが切れるまで古い内容が出るのは「保存した
-        つもりが反映されていない」というバグに見える。押した本人以外には
-        一切影響しない（他の利用者のキーには触れない）ので、書き込みのたびに
-        丸ごと消していたときの問題（三択ボタンを押すたびに他画面のキャッシュ
-        まで巻き添えで消える）は起きない。
-        """
+        """保存した利用者の画面だけを無効にする。他の訪問者は巻き込まない。"""
         prefix = user_id + "|"
         for key in [k for k in self.screen_cache if k.startswith(prefix)]:
             self.screen_cache.pop(key, None)
@@ -1388,7 +1456,8 @@ class Server(http.server.ThreadingHTTPServer):
         with self.lock:
             APP.save_work_field(user_id, work_key, verdict=verdict)
             self.n["rate"] += 1
-        return {"ok": True, "work_key": work_key, "verdict": verdict}
+        return {"ok": True, "work_key": work_key, "verdict": verdict,
+                "recommendation": {"status": "on_next_read"}}
 
     # ---- 3 感想の自由記述 --------------------------------------------------
     def on_note(self, b: dict, user_id: str) -> dict:
@@ -1546,8 +1615,9 @@ class Server(http.server.ThreadingHTTPServer):
                 (user_id, title, str(b.get("note") or "")[:1000]))
             self.con.commit()
             self.n["missed"] += 1
-        self.enqueue("演者とあらすじを調べています…",
-                     lambda: self._lookup_missed(user_id, title))
+        if not self.demo_mode:
+            self.enqueue("演者とあらすじを調べています…",
+                         lambda: self._lookup_missed(user_id, title))
         return {"ok": True, "title": title}
 
     def _lookup_missed(self, user_id: str, title: str) -> str:
@@ -1668,6 +1738,8 @@ class Server(http.server.ThreadingHTTPServer):
         ── 日付が無いと安全に当てられない（`on_link_stage` が呼ぶときは日付を渡さない
         ので、そちらでは自動では探さない。「結び付けを外す」を自動で結び直さないためでもある）。
         """
+        if self.demo_mode:
+            return  # Demo interactions use the preloaded catalog only.
         sid = str(stage_id or "")
         if not sid.isdigit() and not (work_key and date):
             return
@@ -1744,6 +1816,8 @@ class Server(http.server.ThreadingHTTPServer):
         **受け取った画像は端末内に写すだけで、どこへも送らない。** 画面から外部サイトを
         叩かないという守り（企画書 5 章の守り 5）は、こちらの向きでも同じである。
         """
+        if self.demo_mode:
+            raise ValueError("デモでは画像の編集はできません")
         work_key = str(b.get("work_key") or "")
         if not work_key:
             raise ValueError("work_key が要る")
@@ -1767,6 +1841,8 @@ class Server(http.server.ThreadingHTTPServer):
         **タグが届いたかどうかは、画面側が `pollHandTheme` で数秒おきに確かめる**
         （`on_hand_theme_refresh`）ので、開き直す必要はない。
         """
+        if self.demo_mode:
+            raise ValueError("デモでは公演情報の編集はできません")
         sid = str(b.get("stage_id") or "").strip()[:16]
         if not sid:
             raise ValueError("どの公演か分かりません")
@@ -2057,3 +2133,4 @@ if __name__ == "__main__":
     # `_harden_permissions()` が先に umask を絞っているが、単独起動ではそれが効いていない
     os.umask(0o077)
     print(serve(a.label, port=a.port))
+

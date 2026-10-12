@@ -27,7 +27,9 @@ import measure_nets as M            # noqa: E402
 import net_c as C                   # noqa: E402
 import recommend2 as R2             # noqa: E402
 
-DB = ROOT / "data" / "review" / "ratings.db"
+sys.path.insert(0, str(ROOT / "tools" / "lib"))
+import taguri_state as STATE
+DB = STATE.ratings_path()
 OUT2 = ROOT / "data" / "review" / "recommend2.json"
 
 
@@ -364,3 +366,4 @@ def part5():
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

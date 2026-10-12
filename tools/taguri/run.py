@@ -68,7 +68,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools" / "taguri"))
-DB = ROOT / "data" / "review" / "ratings.db"
+sys.path.insert(0, str(ROOT / "tools" / "lib"))
+import taguri_state as STATE
+DB = STATE.ratings_path()
 WAITING = ROOT / "data" / "review" / "waiting.json"
 HTML = ROOT / "data" / "review" / "recommend.html"
 # **本人しか読めない場所に持つもの。** 観劇記録・お気に入り・購入メールから抜いた分。
@@ -304,3 +306,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
