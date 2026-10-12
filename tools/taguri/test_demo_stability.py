@@ -186,5 +186,17 @@ class DemoStabilityTests(unittest.TestCase):
         self.assertEqual(status, 200)
 
 
+def service_setup(cls):
+    """同じ用意で、サーバーをサービス版として動かす（他の検査ファイルが借りる）。"""
+    DemoStabilityTests.setUpClass.__func__(cls)
+    cls.srv.edition = "service"
+    APP.EDITION = "service"
+
+
+def service_teardown(cls):
+    APP.EDITION = "demo"
+    DemoStabilityTests.tearDownClass.__func__(cls)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -21,7 +21,7 @@
 2. 手元の `favourites.py` がそれを読み、持ち主の登録と重複を除いて、**1 回に 300 件まで**探す（登録している人数の多い順。名前ごとの結果を 3 日間控えるので、控えの古い名前から順に回る）。公開サーバーが眠っていて読めないときは、持ち主の登録だけで続ける。
 3. 見つかった公演はカタログの `favourites.jsonl` に入り、各利用者の画面では、その人の登録名で照合して「お気に入り」に出る。
 
-設定は、公開サーバー（Render）の環境変数 `TAGURI_NAMES_TOKEN` と、手元の `/etc/taguri/catalog.env` の `TAGURI_NAMES_URL`・`TAGURI_NAMES_TOKEN` に同じ合言葉を入れるだけ。
+この口は**サービス版のサーバーにだけある**（デモ版では常に 404。[デモ版とサービス版](editions.md)）。設定は、サービス版のサーバー（Render）の環境変数 `TAGURI_NAMES_TOKEN` と、手元の `/etc/taguri/catalog.env` の `TAGURI_NAMES_URL`・`TAGURI_NAMES_TOKEN` に同じ合言葉を入れるだけ。
 
 ## 探しても見つからない公演を、次の更新で探す
 

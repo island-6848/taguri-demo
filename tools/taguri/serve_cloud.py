@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""就活向けデモをRender等のクラウドで動かすための入口（#000008・2026-08-29）。
+"""公開版（デモ版・サービス版）をRender等のクラウドで動かすための入口（#000008・2026-08-29）。
 
     python3 tools/taguri/serve_cloud.py
 
@@ -13,10 +13,15 @@
 ## この入口だけがすること
 
 - `PORT`環境変数（Renderが起動時に渡す）を読み、`0.0.0.0`で待ち受ける
-- `Server`を`demo_mode=True`で作る（`serve.py`参照。起動ごとの合言葉を迂回し、
+- `Server`を`public=True`で作る（`serve.py`参照。起動ごとの合言葉を迂回し、
   `/api/close`を無効化する）
+- **どちらの版で動くかを `TAGURI_EDITION`（`demo` か `service`）で決める。** 既定は
+  `demo`。デモ版とサービス版は**別のサービス（別の URL・別の保存先・別の合言葉）として
+  立てる**前提で、1 つのプロセスが両方を兼ねることはない（docs/editions.md）
+- **サービス版は永続の保存先（`TAGURI_STATE_DIR`）が無ければ起動しない。** 利用者の
+  記録が再デプロイで消えるのを、黙って許さない
 - ブラウザを開こうとしない（サーバ側に画面が無い）
-- 監視（`_watchdog`）で自動終了しない（`demo_mode=True`だと自動的に無効になる）
+- 監視（`_watchdog`）で自動終了しない（`public=True`だと自動的に無効になる）
 
 ## 呼ばないもの
 
@@ -78,6 +83,20 @@ S3_REGION = os.environ.get("AWS_DEFAULT_REGION", "ap-northeast-1")
 # 常時稼働のサーバーは再起動するまで古いカタログのまま動き続ける。0 で止める
 CATALOG_REFRESH_HOURS = float(os.environ.get("CATALOG_REFRESH_HOURS", "6") or 0)
 _installed_etag: list[str | None] = [None]
+
+
+def edition() -> str:
+    """`TAGURI_EDITION` を読む。**知らない値では起動しない**（打ち間違いで別の版にならない）。"""
+    value = (os.environ.get("TAGURI_EDITION", "") or "demo").strip().lower()
+    if value not in ("demo", "service"):
+        raise RuntimeError("TAGURI_EDITION must be 'demo' or 'service'")
+    return value
+
+
+def check_service_storage(ed: str) -> None:
+    """サービス版は、利用者の保存先がカタログと別の永続ディレクトリに無ければ止める。"""
+    if ed == "service" and STATE.state_dir() is None:
+        raise RuntimeError("service edition requires TAGURI_STATE_DIR on a persistent disk")
 
 
 def _install_catalog(archive: Path) -> None:
@@ -191,6 +210,8 @@ import serve as S                                                  # noqa: E402
 
 
 def main() -> int:
+    ed = edition()
+    check_service_storage(ed)
     STATE.prepare_storage()
     _fetch_catalog()
     port = int(os.environ.get("PORT", "8000"))
@@ -200,7 +221,8 @@ def main() -> int:
     # CORSヘッダを出さない（同一オリジンの旧UIだけがRenderに残る前提）。
     cors_origin = os.environ.get("CORS_ORIGIN", "")
     try:
-        srv = S.Server("demo", port, bind_host="0.0.0.0", demo_mode=True, cors_origin=cors_origin)
+        srv = S.Server(ed, port, bind_host="0.0.0.0", public=True, edition=ed,
+                       cors_origin=cors_origin)
     except Exception:
         STATE.event("server_start", outcome="failed")
         raise RuntimeError("server startup failed; check storage and service configuration") from None

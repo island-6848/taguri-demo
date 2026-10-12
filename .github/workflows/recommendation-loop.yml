@@ -48,3 +48,7 @@ jobs:
         run: python tools/taguri/test_search_requests.py
       - name: Demo seed records feed recommendations
         run: python tools/taguri/test_demo_seed_links.py
+      - name: Public demo HTTP regressions
+        run: python tools/taguri/test_demo_stability.py
+      - name: Demo and service editions stay separate
+        run: python tools/taguri/test_editions.py

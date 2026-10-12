@@ -263,7 +263,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
         個別に手当てを書き足さずに済む。
         """
         welcome = getattr(self, "_welcome_code", None)
-        payload = {**obj, "demo_mode": self.server.demo_mode,
+        srv = self.server
+        # `demo_mode` は画面の「デモです」の注記に使う（デモ版のときだけ真）。
+        # `public` は公開運用か（復旧コード・編集の制限）で、サービス版でも真になる
+        payload = {**obj, "demo_mode": srv.public and srv.edition == "demo",
+                   "public": srv.public, "edition": srv.edition,
                    "storage": STATE.storage_status()}
         if welcome:
             payload["welcome_code"] = welcome
@@ -273,8 +277,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
                    getattr(self, "_auth_extra", None))
 
     def _tok(self, query: str) -> bool:
-        if self.server.demo_mode:                                  # type: ignore[attr-defined]
-            return True   # デモは公開URLだけで誰でも入れる前提（#000008）
+        if self.server.public:                                  # type: ignore[attr-defined]
+            return True   # 公開版は公開URLだけで誰でも入れる前提（#000008）
         got = urllib.parse.parse_qs(query).get("t", [""])[0]
         return secrets.compare_digest(got, self.server.token)      # type: ignore[attr-defined]
 
@@ -312,11 +316,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def _resolve_user(self) -> tuple[str, str | None]:
         """この要求の利用者IDを解決する(利用者ごとのデータ分離・E3)。
 
-        **`demo_mode`でなければ常に固定値を返す。** ローカル/EC2（`run.py`）は
+        **公開版（`public`）でなければ常に固定値を返す。** ローカル/EC2（`run.py`）は
         今までどおり1人しか使わないので、認証の概念そのものが要らない ──
         Cookie・復旧コードには一切触れない。
 
-        **`demo_mode`のときだけCookieを見る。** 無い/無効なら、その場で新規に
+        **公開版のときだけCookieを見る。** 無い/無効なら、その場で新規に
         ゲスト登録する ── 訪問者は`/auth/start`を踏まずに即座に使い始められる
         （起案者の指示）。戻り値の2つ目は、**今回新規登録した場合だけ**生の
         復旧コードを返す ── サーバは以後これを二度と持たない（`auth.py`の
@@ -337,7 +341,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         srv = self.server                                          # type: ignore[assignment]
         self._auth_extra: dict = {}
         self._welcome_code: str | None = None
-        if not srv.demo_mode:
+        if not srv.public:
             return AU.LOCAL_USER_ID, None
         user_id = self._session_user_id()
         if user_id is not None:
@@ -345,7 +349,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
         AU.throttle_register(self.client_address[0])
         code = AU.generate_recovery_code()
         new_user_id, _ = AU.access_or_register(code)
-        _seed_demo(new_user_id)
+        if srv.edition == "demo":
+            _seed_demo(new_user_id)
         token = AU.create_session(new_user_id)
         self._auth_extra = self._set_session_cookie(token)
         return new_user_id, code
@@ -386,7 +391,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             # **手元の取得処理だけが読む口。** 全利用者のお気に入りの登録名と、
             # 「次の更新で探してほしい」と頼まれた題名を、利用者 ID なしでまとめて返す
             # （規約 O2）。合言葉（`TAGURI_NAMES_TOKEN`）を設定していなければ存在しない
-            token = os.environ.get("TAGURI_NAMES_TOKEN", "")
+            # **デモ版には存在しない**（版の切り分け）── デモの入力で本番の取得を動かさない
+            token = os.environ.get("TAGURI_NAMES_TOKEN", "") if srv.edition == "service" else ""
             if not token:
                 self._send(404, b"not found", "text/plain; charset=utf-8")
                 return
@@ -652,7 +658,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 return
             except Exception as e:                                      # noqa: BLE001
                 STATE.event("request_failed", outcome="failed")
-                self._json(500, {"ok": False, "error": "画面の読み込みに失敗しました。" if srv.demo_mode else str(e)})
+                self._json(500, {"ok": False, "error": "画面の読み込みに失敗しました。" if srv.public else str(e)})
                 return
         if path == "/api/suggest":
             # **手で足す欄の候補。** 手元にあるものだけを引く読み口で、外へは行かない
@@ -668,7 +674,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             # **待つ時間の上限は取得の側が決めている** ── 1 つの相手には 1.1 秒に 1 回、
             # 1 回の検索で最大 8 要求なので 8 秒ほどである
             q = urllib.parse.parse_qs(query).get("q", [""])[0]
-            if srv.demo_mode:
+            if srv.public:
                 self._json(200, APP.suggest(self.user_id, q[:120]))
             else:
                 self._json(200, APP.search_web(q[:120]))
@@ -804,7 +810,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 self._send(404, b"not found", "text/plain; charset=utf-8")
                 return
         except Exception as e:                                      # noqa: BLE001
-            if srv.demo_mode:
+            if srv.public:
                 STATE.event("request_failed", outcome="failed")
                 self._send(500, "画面の読み込みに失敗しました。再度お試しください。".encode(),
                            "text/plain; charset=utf-8")
@@ -839,7 +845,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self._auth_extra: dict = {}
 
         # CORS only controls reading responses. Reject foreign browser writes too.
-        if srv.demo_mode:
+        if srv.public:
             origin = self.headers.get("Origin", "")
             host = self.headers.get("Host", "")
             allowed = {srv.cors_origin} if srv.cors_origin else set()
@@ -857,7 +863,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 return
             if self.path in {"/api/hand_theme", "/api/hand_poster"}:
                 self.close_connection = True
-                self._json(403, {"error": "デモでは公演情報と画像の編集はできません"})
+                self._json(403, {"error": "デモでは公演情報と画像の編集はできません"
+                                 if srv.edition == "demo" else
+                                 "公演情報と画像は全員で共有しているため、ここでは編集できません"})
                 return
 
         cap = 24 * 1024 * 1024 if self.path == "/api/hand_poster" else 8192
@@ -912,7 +920,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self._json(200, {"code": code, "expires_in_sec": AU.LINK_TTL_SEC})
             return
 
-        if not srv.demo_mode and not secrets.compare_digest(
+        if not srv.public and not secrets.compare_digest(
                 self.headers.get("X-Taguri-Token", ""), srv.token):
             self._json(403, {"error": "token"})
             return
@@ -924,7 +932,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         op = self.path
         srv.opened = True
         if op == "/api/close":
-            if srv.demo_mode:
+            if srv.public:
                 # **デモでは、不特定多数の誰でもここに来られる。** 1人がこれを
                 # 押すと全員のデモが止まってしまうため、デモモードでは常に拒否する
                 # （#000008）。
@@ -1034,6 +1042,7 @@ class Server(http.server.ThreadingHTTPServer):
         STATE.event("request_failed", outcome="failed")
 
     def __init__(self, label: str, port: int, *, bind_host: str = "127.0.0.1",
+                public: bool = False, edition: str = "service",
                 demo_mode: bool = False, cors_origin: str = "") -> None:
         # **既定は`127.0.0.1`に固定する。** ここを`0.0.0.0`にすると同じLANの他端末
         # から観劇記録が読める。**`bind_host`を明示的に変えられるのは、就活デモを
@@ -1048,14 +1057,24 @@ class Server(http.server.ThreadingHTTPServer):
         # ローカル・EC2の`run.py`は引数を渡さないので空文字のまま、今までどおり
         # 同一オリジン専用の挙動になる。
         self.cors_origin = cors_origin
-        # **デモモード。** 起動ごとの合言葉（`_tok`・`X-Taguri-Token`）は、就活の
-        # リクルーターが知りようがない秘密なので、デモ環境ではこの2つの検査を
-        # 迂回する。既存のセキュリティは働かなくなるが、それは想定内 ──
-        # デモ用の共有データセットしか置かない前提であり、個人の観劇記録は乗らない
-        # （#000008「就活向けデモ公開への方針転換」）。`/api/close`だけは、
-        # 迂回すると不特定多数がデモを止められてしまうため、デモモードでは
-        # 常に拒否する。
-        self.demo_mode = demo_mode
+        # **公開運用か（`public`）と、どちらの版か（`edition`）を分けて持つ**
+        # （docs/editions.md）。以前は `demo_mode` 1 つが両方を兼ねていた。
+        #
+        # `public` ── 不特定多数が公開URLから入る運用。起動ごとの合言葉（`_tok`・
+        #   `X-Taguri-Token`）は訪問者が知りようがないので検査を迂回し、代わりに
+        #   Cookie と復旧コードで利用者を分ける。`/api/close` は常に拒否し、共有の
+        #   公演情報の編集とその場での外部検索も止める。デモ版・サービス版の両方で真。
+        # `edition` ── "demo"（見本の記録を入れる・取得処理に関わらない）か
+        #   "service"（見本なし・記録は永続・探してほしい題名を受け付ける）。
+        #
+        # `demo_mode=True` は古い呼び方で、公開のデモ版を意味する。
+        if demo_mode:
+            public, edition = True, "demo"
+        if edition not in APP.EDITIONS:
+            raise ValueError(f"edition は {APP.EDITIONS} のどれか")
+        self.public = public
+        self.edition = edition
+        APP.EDITION = edition
         # **書き込みは 1 本の接続を錠で直列化する。** 要求は別スレッドで来る
         self.con = FB.connect(same_thread=False)
         self.con.executescript(MISSED_SCHEMA)
@@ -1094,7 +1113,7 @@ class Server(http.server.ThreadingHTTPServer):
         # **デモモードでは監視しない。** クラウドの公開デモは「誰かがブラウザを
         # 開くまでの一時プロセス」ではなく、常時稼働のWebサービスとして動かす
         # 前提なので、`GRACE_SEC`で自動終了させると事故る。
-        if not self.demo_mode:
+        if not self.public:
             threading.Thread(target=self._watchdog, daemon=True).start()
 
     def record_presented(self, rows: list, prefs: list,
@@ -1429,7 +1448,7 @@ class Server(http.server.ThreadingHTTPServer):
         持ち主の分析を上書きすることになる（画面の側も訪問者にはボタンを出さない）。
         """
         if user_id != AU.LOCAL_USER_ID:
-            raise ValueError("この操作は公開デモでは使えません")
+            raise ValueError("この操作は公開版では使えません")
 
     def on_chronicle(self, _b: dict, user_id: str) -> dict:
         """年表の文を作り直す（起案者の指示 2026-08-25）。
@@ -1636,10 +1655,10 @@ class Server(http.server.ThreadingHTTPServer):
                 (user_id, title, str(b.get("note") or "")[:1000]))
             self.con.commit()
             self.n["missed"] += 1
-        if not self.demo_mode:
+        if not self.public:
             self.enqueue("演者とあらすじを調べています…",
                          lambda: self._lookup_missed(user_id, title))
-        else:
+        elif self.edition == "service":
             # **公開版はその場で調べない代わりに、次の更新で探すよう頼んでおく。**
             # 見つかれば演者とあらすじが手元に入り、次に開いたときに出る
             try:
@@ -1773,7 +1792,7 @@ class Server(http.server.ThreadingHTTPServer):
         ── 日付が無いと安全に当てられない（`on_link_stage` が呼ぶときは日付を渡さない
         ので、そちらでは自動では探さない。「結び付けを外す」を自動で結び直さないためでもある）。
         """
-        if self.demo_mode:
+        if self.public:
             return  # Demo interactions use the preloaded catalog only.
         sid = str(stage_id or "")
         if not sid.isdigit() and not (work_key and date):
@@ -1851,8 +1870,9 @@ class Server(http.server.ThreadingHTTPServer):
         **受け取った画像は端末内に写すだけで、どこへも送らない。** 画面から外部サイトを
         叩かないという守り（企画書 5 章の守り 5）は、こちらの向きでも同じである。
         """
-        if self.demo_mode:
-            raise ValueError("デモでは画像の編集はできません")
+        if self.public:
+            raise ValueError("デモでは画像の編集はできません" if self.edition == "demo"
+                             else "公開版では画像の編集はできません")
         work_key = str(b.get("work_key") or "")
         if not work_key:
             raise ValueError("work_key が要る")
@@ -1876,8 +1896,9 @@ class Server(http.server.ThreadingHTTPServer):
         **タグが届いたかどうかは、画面側が `pollHandTheme` で数秒おきに確かめる**
         （`on_hand_theme_refresh`）ので、開き直す必要はない。
         """
-        if self.demo_mode:
-            raise ValueError("デモでは公演情報の編集はできません")
+        if self.public:
+            raise ValueError("デモでは公演情報の編集はできません" if self.edition == "demo"
+                             else "公開版では公演情報の編集はできません")
         sid = str(b.get("stage_id") or "").strip()[:16]
         if not sid:
             raise ValueError("どの公演か分かりません")

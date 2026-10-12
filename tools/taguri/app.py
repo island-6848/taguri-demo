@@ -3234,6 +3234,10 @@ def _request_query(q: str) -> str:
 def add_search_request(user_id: str, q: str, source: str = "search") -> dict:
     """題名を「次の更新で探してほしい」として控える。同じ題名は日付だけ新しくする。"""
     import rate_performances as R
+    if is_demo():
+        # **デモの入力は取得処理へ渡さない**（版の切り分け）。見本を試す人の操作で、
+        # 本番の取得の量や向きが変わらないようにする
+        raise ValueError("デモでは、探してほしい公演の依頼は受け付けていません")
     w = _request_query(q)
     if not w:
         raise ValueError("探す題名を 2〜60 文字で入れてください")
@@ -5077,8 +5081,11 @@ def link_stage(user_id: str, work_key: str, stage_id: str) -> dict:
             title = next((r["title"] for r in _suggest_pool(user_id)
                           if r["kind"] == "stage" and r["key"] == stage_id), "")
         if not title:
-            raise ValueError("デモに用意されている公演から選んでください" if not _is_owner(user_id)
-                             else "その公演の情報を取りに行きましたが、見つかりませんでした")
+            if _is_owner(user_id):
+                raise ValueError("その公演の情報を取りに行きましたが、見つかりませんでした")
+            raise ValueError("デモに用意されている公演から選んでください" if is_demo() else
+                             "たぐりの公演一覧にある公演から選んでください。"
+                             "無い公演は「探す」から、次の更新で探すよう頼めます")
     con = R.connect()
     try:
         con.execute(
@@ -5492,7 +5499,7 @@ def link_demo_seed(user_id: str) -> int:
     **1 人につき 1 回だけ**（`DEMO_LINK_KEY`）── 本人が「結び付けを外す」を押した記録を、
     開くたびに結び付け直さないためである。stage_id が空の見本の行だけを書き換える。
     """
-    if _is_owner(user_id) or _read_setting_json(user_id, DEMO_LINK_KEY):
+    if _is_owner(user_id) or not is_demo() or _read_setting_json(user_id, DEMO_LINK_KEY):
         return 0
     import rate_performances as R
     links = demo_seed_links()
@@ -5519,8 +5526,8 @@ def seed_demo_works(user_id: str) -> int:
     **持ち主には入れない** ── 持ち主の記録は購入確認メールから組む本物である。
     **既にある鍵は飛ばす**（同じ人に 2 度呼んでも重ならない）。
     """
-    if _is_owner(user_id):
-        return 0
+    if _is_owner(user_id) or not is_demo():
+        return 0   # 見本はデモ版だけ。サービス版の利用者の記録は本人が入れたものだけにする
     import rate_performances as R
     links = demo_seed_links()
     con = R.connect()
@@ -7239,6 +7246,21 @@ VERDICT_LABEL = {
 
 
 
+# **どちらの版として動いているか**（`serve.Server(edition=...)` が起動時に入れる）。
+# 公開の仕組み（Cookie と復旧コード・編集の制限・その場で外部を検索しない）は両方で同じで、
+# 違うのは次の点だけである（docs/editions.md）。
+#   demo    ── 見本の架空の記録を入れる。入力は消えてよい。取得処理には一切関わらない
+#               （お気に入りの登録名も「探してほしい」題名も、手元の取得処理へ渡さない）
+#   service ── 見本を入れない。記録は永続ディスクに残す（無ければ起動しない）。
+#               「探してほしい」題名を受け付け、手元の取得処理へ渡す
+EDITIONS = ("demo", "service")
+EDITION = "demo"
+
+
+def is_demo() -> bool:
+    return EDITION == "demo"
+
+
 def _is_owner(user_id: str) -> bool:
     """ローカルの持ち主か（E3）。**持ち主の記録から事前に作ったファイル**
     （`lookback.json`・`chronicle.json`・`people_read.json`）と、持ち主の Gmail を
@@ -8056,13 +8078,17 @@ def _web_hits(user_id: str, q: str, on: bool) -> str:
     """
     if not _is_owner(user_id):
         # **公開版はその場で外部を検索しない。** 代わりに、次の更新で探すよう頼める
+        if is_demo():
+            # **デモは依頼を受け付けない**（取得処理に関わらない）。サービス版の案内だけ出す
+            return ('<p class="note">デモでは、用意されている公演から検索できます。'
+                    'サービス版では、ここに無い公演を次の更新で CoRich から探すよう頼めます。</p>')
         if not _request_query(q):
-            return '<p class="note">デモでは、用意されている公演から検索できます。</p>'
+            return '<p class="note">たぐりの公演一覧から検索できます。</p>'
         if has_search_request(user_id, q):
             return (f'<div class="webq" id="web"><p class="lead">「{E(q)}」は、'
                     '次の更新（毎日 4 時台）で CoRich から探すよう頼んであります。'
                     '見つかれば、翌日からここに出ます。</p></div>')
-        return (f'<div class="webq" id="web"><p class="lead">デモでは、その場では CoRich を検索せず、'
+        return (f'<div class="webq" id="web"><p class="lead">その場では CoRich を検索せず、'
                 '毎日の更新で集めた公演から探します。'
                 '<b>そこに無い公演は、次の更新で CoRich から探すよう頼めます。</b>'
                 '見つかれば、翌日からこの画面と「手で足す」の候補に出ます。</p>'
@@ -8525,7 +8551,7 @@ EXPORT_LABEL = {
 
 
 def _account_card_html(user_id: str) -> str:
-    """「アカウント」の札。**公開デモ（`demo_mode`）だけに出す**（利用者ごとの
+    """「アカウント」の札。**公開版（`Server.public`。デモ・サービスの両方）だけに出す**（利用者ごとの
     データ分離・E3）。
 
     `auth.py`には復旧コードでの復旧(`/recover`)・別端末の追加
@@ -8541,8 +8567,9 @@ def _account_card_html(user_id: str) -> str:
     import auth as AU
     if user_id == AU.LOCAL_USER_ID:
         return ""
-    storage_notice = ("<p class=\"warn\">このデモの記録は一時保存です。"
-                      "サーバーの再起動や更新で消える場合があります。復旧コードでも戻せません。</p>"
+    storage_notice = ((("<p class=\"warn\">このデモの記録は一時保存です。" if is_demo() else
+                        "<p class=\"warn\">いま記録の保存先が一時領域になっています。")
+                       + "サーバーの再起動や更新で消える場合があります。復旧コードでも戻せません。</p>")
                       if STATE.storage_status()["mode"] == "temporary" else "")
     return f"""<details class="card">{_card_h2("gear", "アカウント")}
 {storage_notice}

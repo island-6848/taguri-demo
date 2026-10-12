@@ -4,7 +4,10 @@
 
 観た演劇の記録と評価をもとに、次に観たい公演を毎週届けるWebアプリです。個人開発です。
 
-**デモ**: https://island-6848.github.io/taguri-demo/
+**デモ版**: https://island-6848.github.io/taguri-demo/ （見本の記録で操作を試せる。入力は消えることがあります）
+
+**サービス版**: https://island-6848.github.io/taguri-demo/app/ （記録を残して使う版。API サーバーと保存先はデモと別。[デモ版とサービス版](docs/editions.md)）
+
 （画面はGitHub Pages配信、推薦計算・データはRender上のAPI（`tools/taguri/serve_cloud.py`）が持つ。
 無料枠のため、しばらくアクセスがないと初回の読み込みに10〜20秒ほどかかることがあります）
 
@@ -73,6 +76,7 @@ HTML断片を画面に差し込む形にした。GitHub Pagesは静的配信専�
 設計判断とその理由を記録したドキュメントを同梱しています。
 
 - [`docs/000007-taguri-design.md`](docs/000007-taguri-design.md) ── 全体設計
+- [`docs/editions.md`](docs/editions.md) ── デモ版とサービス版の切り分けと、サービス版の立て方
 - [`docs/000007-taguri-security-rules.md`](docs/000007-taguri-security-rules.md) ── セキュリティ規約
 - [`docs/000007-taguri-terms-of-use.md`](docs/000007-taguri-terms-of-use.md) ── 利用規約
 - [`docs/000003-final-presentation-taguri.html`](https://island-6848.github.io/taguri-demo/docs/000003-final-presentation-taguri.html) ── プレゼン資料（ブラウザで表示。[ソース](docs/000003-final-presentation-taguri.html)）
