@@ -260,6 +260,30 @@ figcaption{font-size:12.5px;color:var(--muted);margin-top:10px;max-width:70em}
   padding:7px 11px;font:inherit;color:var(--ink);cursor:pointer}
  .topbar b{font-family:"IBM Plex Sans";font-weight:700;font-size:14px}
 }
+
+/* ---------------------------------------------------------------- 推薦アルゴリズムの図 */
+.aBox{fill:var(--paper);stroke:var(--line);stroke-width:1.2}
+.aBoxB{fill:rgba(var(--brand-rgb),.08);stroke:rgba(var(--brand-rgb),.45);stroke-width:1.4}
+.aDia{fill:var(--wash);stroke:var(--brand2);stroke-width:1.4}
+.aOut{fill:rgba(var(--thread-rgb),.10);stroke:var(--thread);stroke-width:1.4}
+.aSide{fill:var(--wash);stroke:var(--line);stroke-width:1.2;stroke-dasharray:5 4}
+.aGoal{fill:var(--brand)}.aGoalT{fill:var(--paper);font-size:15px;font-weight:700}
+.aTip{fill:var(--wash);stroke:var(--line)}
+.aRowH{fill:var(--wash)}.aChip{fill:rgba(var(--thread-rgb),.12);stroke:rgba(var(--thread-rgb),.4)}
+.aL{fill:none;stroke:var(--muted);stroke-width:1.6}.aLt{fill:none;stroke:var(--thread);stroke-width:1.8}
+.aDash{stroke-dasharray:6 5}.aDash2{stroke-dasharray:5 4}
+.aF-m{fill:var(--muted)}.aF-t{fill:var(--thread)}
+.aDotT{fill:var(--thread)}.aDotM{fill:var(--line)}
+.aBarT{fill:var(--thread)}.aBarB{fill:var(--brand2)}.aBarM{fill:var(--muted)}
+#algo svg text{font-family:"Noto Sans JP",sans-serif}
+.aH{fill:var(--ink);font-size:14.5px;font-weight:700}.aS{fill:var(--body);font-size:12.5px}
+.aSb{fill:var(--ink)}.aK{fill:var(--muted);font-size:11.5px}.aN{fill:var(--muted);font-size:11.5px}
+.aD{fill:var(--ink);font-size:13px;font-weight:600}.aY{fill:var(--thread);font-size:11.5px;font-weight:700}
+.aO{fill:var(--ink);font-size:13.5px;font-weight:700}.aLoop{fill:var(--thread);font-size:12px;font-weight:600}
+.aMath{fill:var(--brand);font-family:"IBM Plex Mono",monospace!important;font-size:15px;font-weight:600}
+.aOp{fill:var(--muted);font-size:26px;font-weight:600}
+.aSym{fill:var(--paper);font-size:16px;font-weight:700}
+.calc th,.calc td{white-space:nowrap;padding:9px 10px}.aSymM{fill:var(--muted);font-size:10px;font-weight:700}
 @media print{.rail,.topbar{display:none}}
 </style>
 
@@ -271,9 +295,10 @@ figcaption{font-size:12.5px;color:var(--muted);margin-top:10px;max-width:70em}
     <a href="#toc"><b>―</b>目次</a>
     <a href="#ch2"><b>01</b>企画内容</a>
     <a href="#ch3"><b>02</b>機能概要</a>
-    <a href="#ch4"><b>03</b>セキュリティ</a>
-    <a href="#ch5"><b>04</b>達成事項</a>
-    <a href="#ch6"><b>05</b>今後の展望</a>
+    <a href="#algo"><b>03</b>推薦アルゴリズム</a>
+    <a href="#ch4"><b>04</b>セキュリティ</a>
+    <a href="#ch5"><b>05</b>達成事項</a>
+    <a href="#ch6"><b>06</b>今後の展望</a>
   </nav>
 </aside>
 
@@ -294,14 +319,15 @@ figcaption{font-size:12.5px;color:var(--muted);margin-top:10px;max-width:70em}
 <!-- ============================================================ 目次 -->
 <section class="sec" id="toc">
   <div class="eyebrow"><span>目次</span></div>
-  <h2 class="title">5 章構成</h2>
-  <p class="kicker">企画から、作ったもの・守り方・できたこと・これからまでを順に示す。</p>
+  <h2 class="title">6 章構成</h2>
+  <p class="kicker">企画から、作ったもの・推薦の仕組み・守り方・できたこと・これからまでを順に示す。</p>
   <div class="toc-grid wide">
     <a href="#ch2"><span class="n">01</span><span><h4>企画内容</h4><p>課題・価値・対象ユーザー・想定シーン</p></span></a>
     <a href="#ch3"><span class="n">02</span><span><h4>機能概要</h4><p>機能の分類・使用イメージ・使っている技術・システム構成</p></span></a>
-    <a href="#ch4"><span class="n">03</span><span><h4>セキュリティ</h4><p>境界線の概念図</p></span></a>
-    <a href="#ch5"><span class="n">04</span><span><h4>達成事項</h4><p>実現できたこと・メリット・未実装</p></span></a>
-    <a href="#ch6"><span class="n">05</span><span><h4>今後の展望</h4><p>検討中の拡張・応用の可能性</p></span></a>
+    <a href="#algo"><span class="n">03</span><span><h4>推薦アルゴリズム</h4><p>全体の流れ・点数の式・並べ方・使わない情報</p></span></a>
+    <a href="#ch4"><span class="n">04</span><span><h4>セキュリティ</h4><p>境界線の概念図</p></span></a>
+    <a href="#ch5"><span class="n">05</span><span><h4>達成事項</h4><p>実現できたこと・メリット・未実装</p></span></a>
+    <a href="#ch6"><span class="n">06</span><span><h4>今後の展望</h4><p>検討中の拡張・応用の可能性</p></span></a>
   </div>
 </section>
 
@@ -374,7 +400,7 @@ figcaption{font-size:12.5px;color:var(--muted);margin-top:10px;max-width:70em}
 <section class="sec" id="ch3">
   <div class="eyebrow"><span class="n">02</span><span>機能概要</span></div>
   <h2 class="title">機能概要</h2>
-  <p class="kicker">機能の分類・使い方から、使っている技術・システム構成・設計判断までをまとめて示す。効果やメリットの文章は置かず、すべて 4 章にまとめている。</p>
+  <p class="kicker">機能の分類・使い方から、使っている技術・システム構成・設計判断までをまとめて示す。効果やメリットの文章は置かず、すべて 5 章にまとめている。</p>
 
   <h3 class="sub" style="margin-top:0">2-1　機能の 4 分類と一覧：記録する・見る／学習する／推薦する／評価する</h3>
 
@@ -815,9 +841,260 @@ figcaption{font-size:12.5px;color:var(--muted);margin-top:10px;max-width:70em}
 
 </section>
 
+<!-- ============================================================ 3章 推薦アルゴリズム -->
+<section class="sec" id="algo">
+  <div class="eyebrow"><span class="n">03</span><span>推薦アルゴリズム</span></div>
+  <h2 class="title">推薦アルゴリズム</h2>
+  <p class="kicker">順位は <b>LLM を使わず、記録から数えた統計だけ</b>で決める。同じ記録からは毎回同じ順位と同じ理由が出る。各工程の重みや切り方は、自分の評価履歴に対する当てやすさ（AUC）を実測して選んだ。</p>
+
+  <h3 class="sub" style="margin-top:0">3-1　全体の流れ：候補を集めてから 15 件を出すまで</h3>
+  <figure class="wide">
+    <svg viewBox="0 0 1000 760" role="img" aria-label="推薦の全体フローチャート。候補を集め、終わった公演や演劇以外を除き、お気に入り・出さない語・反応・初日で振り分けたあと、残った公演に人物とあらすじの点を付け、ツアーを1件にまとめ、尺度をそろえて並べ、上位15件を出す。">
+      <defs>
+        <marker id="fa" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1l7 4-7 4z" class="aF-m"/></marker>
+        <marker id="fat" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1l7 4-7 4z" class="aF-t"/></marker>
+      </defs>
+      <!-- 1 候補 -->
+      <g class="aT">
+        <rect x="240" y="10" width="520" height="62" rx="12" class="aBox"/>
+        <text x="500" y="36" text-anchor="middle" class="aH">① 候補を集める</text>
+        <text x="500" y="58" text-anchor="middle" class="aS">CoRich ＋ ステイジーズカレンダー ＋ お気に入りの名前で検索 ＋ 探して拾った公演</text>
+      </g>
+      <line x1="500" y1="72" x2="500" y2="98" class="aL" marker-end="url(#fa)"/>
+      <!-- 2 除外 -->
+      <rect x="290" y="100" width="420" height="52" rx="12" class="aBox"/>
+      <text x="500" y="132" text-anchor="middle" class="aH">② 楽日を過ぎた公演・演劇でないものを除く</text>
+      <line x1="500" y1="152" x2="500" y2="178" class="aL" marker-end="url(#fa)"/>
+
+      <!-- 3 振り分け（菱形の列） -->
+      <g>
+        <path d="M500 180l130 34-130 34-130-34z" class="aDia"/>
+        <text x="500" y="219" text-anchor="middle" class="aD">お気に入りの名前に一致？</text>
+        <line x1="630" y1="214" x2="742" y2="214" class="aLt" marker-end="url(#fat)"/>
+        <text x="686" y="206" text-anchor="middle" class="aY">はい</text>
+        <rect x="746" y="190" width="236" height="48" rx="10" class="aOut"/>
+        <text x="864" y="212" text-anchor="middle" class="aO">お気に入り</text>
+        <text x="864" y="229" text-anchor="middle" class="aS">件数の制限なしで必ず出す</text>
+        <line x1="500" y1="248" x2="500" y2="270" class="aL" marker-end="url(#fa)"/>
+        <text x="514" y="264" class="aN">いいえ</text>
+
+        <path d="M500 272l130 34-130 34-130-34z" class="aDia"/>
+        <text x="500" y="311" text-anchor="middle" class="aD">出さない語に一致？</text>
+        <line x1="630" y1="306" x2="742" y2="306" class="aL" marker-end="url(#fa)"/>
+        <text x="686" y="298" text-anchor="middle" class="aY">はい</text>
+        <rect x="746" y="282" width="236" height="48" rx="10" class="aSide"/>
+        <text x="864" y="304" text-anchor="middle" class="aO">別の束へ（消さない）</text>
+        <text x="864" y="321" text-anchor="middle" class="aS">語を外せば戻る</text>
+        <line x1="500" y1="340" x2="500" y2="362" class="aL" marker-end="url(#fa)"/>
+        <text x="514" y="356" class="aN">いいえ</text>
+
+        <path d="M500 364l130 34-130 34-130-34z" class="aDia"/>
+        <text x="500" y="403" text-anchor="middle" class="aD">もう答えた？</text>
+        <line x1="630" y1="398" x2="742" y2="398" class="aL" marker-end="url(#fa)"/>
+        <text x="686" y="390" text-anchor="middle" class="aY">はい</text>
+        <rect x="746" y="364" width="236" height="68" rx="10" class="aSide"/>
+        <text x="760" y="386" class="aS"><tspan font-weight="700" class="aSb">持っている</tspan> → 購入済み公演</text>
+        <text x="760" y="404" class="aS"><tspan font-weight="700" class="aSb">興味あり</tspan> → 追いかける一覧</text>
+        <text x="760" y="422" class="aS"><tspan font-weight="700" class="aSb">興味なし</tspan> → 下に畳む</text>
+        <line x1="500" y1="432" x2="500" y2="454" class="aL" marker-end="url(#fa)"/>
+        <text x="514" y="448" class="aN">いいえ</text>
+
+        <path d="M500 456l130 34-130 34-130-34z" class="aDia"/>
+        <text x="500" y="495" text-anchor="middle" class="aD">もう初日を過ぎた？</text>
+        <line x1="630" y1="490" x2="742" y2="490" class="aL" marker-end="url(#fa)"/>
+        <text x="686" y="482" text-anchor="middle" class="aY">はい</text>
+        <rect x="746" y="466" width="236" height="48" rx="10" class="aSide"/>
+        <text x="864" y="488" text-anchor="middle" class="aO">推薦枠には出さない</text>
+        <text x="864" y="505" text-anchor="middle" class="aS">初報〜初日前に気づかせるのが目的</text>
+        <line x1="500" y1="524" x2="500" y2="546" class="aL" marker-end="url(#fa)"/>
+        <text x="514" y="540" class="aN">いいえ ＝ まだ判断していない公演</text>
+      </g>
+
+      <!-- 4 点数 -->
+      <rect x="250" y="548" width="500" height="70" rx="12" class="aBoxB"/>
+      <text x="500" y="574" text-anchor="middle" class="aH">④ 点数を付ける</text>
+      <text x="500" y="598" text-anchor="middle" class="aS">人物の点（網 B・3-2〜3-3）＋ あらすじの点（網 C・3-4）</text>
+      <line x1="500" y1="618" x2="500" y2="640" class="aL" marker-end="url(#fa)"/>
+      <!-- 5 まとめ・並べ -->
+      <rect x="130" y="642" width="230" height="56" rx="12" class="aBox"/>
+      <text x="245" y="666" text-anchor="middle" class="aH">⑤ ツアーを 1 件に</text>
+      <text x="245" y="686" text-anchor="middle" class="aS">同じ作品は点の高い会場で代表</text>
+      <rect x="385" y="642" width="230" height="56" rx="12" class="aBox"/>
+      <text x="500" y="666" text-anchor="middle" class="aH">⑥ 尺度をそろえる</text>
+      <text x="500" y="686" text-anchor="middle" class="aS">各網を 90% 点で割る</text>
+      <rect x="640" y="642" width="230" height="56" rx="12" class="aBox"/>
+      <text x="755" y="666" text-anchor="middle" class="aH">⑦ 並べる</text>
+      <text x="755" y="686" text-anchor="middle" class="aS">効く一致の数 → 合計点</text>
+      <line x1="360" y1="670" x2="383" y2="670" class="aL" marker-end="url(#fa)"/>
+      <line x1="615" y1="670" x2="638" y2="670" class="aL" marker-end="url(#fa)"/>
+      <path d="M500 640V630" class="aL"/>
+      <path d="M500 630H245V640" class="aL" marker-end="url(#fa)"/>
+      <path d="M755 698V722H612" class="aL" marker-end="url(#fa)"/>
+      <rect x="388" y="706" width="224" height="46" rx="23" class="aGoal"/>
+      <text x="500" y="735" text-anchor="middle" class="aGoalT">今週のおすすめ 上位 15 件</text>
+      <!-- 反応のループ -->
+      <path d="M388 729H40V41H236" class="aLt aDash" marker-end="url(#fat)"/>
+      <text x="250" y="200" class="aH">③ 振り分ける</text>
+      <text x="66" y="390" text-anchor="middle" class="aLoop" transform="rotate(-90 66 390)">押した反応と ◎ が、翌週の名簿と振り分けに入る</text>
+    </svg>
+    <figcaption>答えた公演は推薦枠から抜け、まだ候補が残っていれば次点が繰り上がる。初日が近い公演は、答えたかどうかに関係なく「開幕リマインド」で別に全部知らせる。</figcaption>
+  </figure>
+
+  <h3 class="sub">3-2　名簿を作る：誰の作品が自分に当たるか</h3>
+  <figure class="wide">
+    <svg viewBox="0 0 1000 300" role="img" aria-label="評価済み作品のクレジットから名簿を作る図。◎は当たり1、○△×は当たり0として数え、興味ありと観ればよかったは0.5の弱い当たりとして加わる。名簿は役職と人物ごとに、観た本数と当たりの数を持つ。">
+      <defs><marker id="fb" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1l7 4-7 4z" class="aF-m"/></marker></defs>
+      <text x="20" y="24" class="aK">評価済みの作品</text>
+      <g transform="translate(20 36)">
+        <rect width="250" height="44" rx="10" class="aBox"/><circle cx="26" cy="22" r="15" class="aDotT"/><text x="26" y="28" text-anchor="middle" class="aSym">◎</text><text x="52" y="27" class="aS">当たり <tspan class="aSb" font-weight="700">1</tspan></text>
+      </g>
+      <g transform="translate(20 88)">
+        <rect width="250" height="44" rx="10" class="aBox"/><circle cx="26" cy="22" r="15" class="aDotM"/><text x="26" y="28" text-anchor="middle" class="aSymM">○△×</text><text x="52" y="27" class="aS">当たり <tspan class="aSb" font-weight="700">0</tspan>（観た本数だけ数える）</text>
+      </g>
+      <text x="20" y="166" class="aK">まだ観ていない反応</text>
+      <g transform="translate(20 178)">
+        <rect width="250" height="44" rx="10" class="aBox aDash2"/><text x="16" y="27" class="aS">興味あり・観ればよかった → 当たり <tspan class="aSb" font-weight="700">0.5</tspan></text>
+      </g>
+      <text x="20" y="250" class="aS">基準（全体の ◎ 率）= 約 0.38</text>
+      <text x="20" y="270" class="aS">※ 興味ありは基準の計算には入れない</text>
+      <path d="M276 58C330 58 330 140 380 140" class="aL" marker-end="url(#fb)"/>
+      <path d="M276 110C330 110 330 144 380 144" class="aL" marker-end="url(#fb)"/>
+      <path d="M276 200C330 200 330 150 380 148" class="aL aDash" marker-end="url(#fb)"/>
+      <text x="282" y="30" class="aK">クレジットを人物に分解</text>
+      <!-- 名簿 -->
+      <g transform="translate(384 30)">
+        <rect width="596" height="240" rx="14" class="aBoxB"/>
+        <text x="20" y="30" class="aH">名簿（役職 × 人物 → 観た本数 n・当たり o）</text>
+        <g class="aS">
+          <rect x="20" y="46" width="556" height="30" rx="6" class="aRowH"/>
+          <text x="34" y="66" class="aSb" font-weight="700">役職</text><text x="130" y="66" class="aSb" font-weight="700">人物</text><text x="330" y="66" class="aSb" font-weight="700">観た本数 n</text><text x="460" y="66" class="aSb" font-weight="700">当たり o</text>
+          <text x="34" y="100">出演</text><text x="130" y="100">俳優 A</text><text x="330" y="100">4</text><text x="460" y="100">3</text>
+          <text x="34" y="132">演出</text><text x="130" y="132">演出家 B</text><text x="330" y="132">2</text><text x="460" y="132">2</text>
+          <text x="34" y="164">照明</text><text x="130" y="164">スタッフ C</text><text x="330" y="164">1</text><text x="460" y="164">1</text>
+          <text x="34" y="196">出演</text><text x="130" y="196">俳優 D</text><text x="330" y="196">3</text><text x="460" y="196">0</text>
+          <text x="34" y="226" class="aK">（例。実データでは約 2,100 件）</text>
+        </g>
+      </g>
+    </svg>
+    <figcaption><b>正例は ◎ だけ。</b>○ 以上を当たりにすると、評価が ○ に寄っているため基準が 0.76 まで上がり、ほとんどの人物の点が 0 以下になる。実測の AUC は ○ 以上で 0.556（ほぼでたらめ）、◎ だけで 0.744。</figcaption>
+  </figure>
+
+  <h3 class="sub">3-3　人物の点（網 B）：当たり率が基準をどれだけ上回るか</h3>
+  <figure class="wide">
+    <svg viewBox="0 0 1000 250" role="img" aria-label="人物1人の点の式。当たり率から基準を引き、信頼度と役職の重みを掛ける。当たり率は観た本数に1と2を足して平滑化し、信頼度は観た本数を観た本数足す3で割る。">
+      <g text-anchor="middle">
+        <rect x="20" y="40" width="200" height="86" rx="14" class="aBoxB"/>
+        <text x="120" y="72" class="aH">当たり率</text><text x="120" y="102" class="aMath">(o + 1) ÷ (n + 2)</text>
+        <text x="245" y="96" class="aOp">−</text>
+        <rect x="270" y="40" width="150" height="86" rx="14" class="aBox"/>
+        <text x="345" y="72" class="aH">基準</text><text x="345" y="102" class="aMath">◎ 率 0.38</text>
+        <text x="445" y="96" class="aOp">×</text>
+        <rect x="470" y="40" width="200" height="86" rx="14" class="aBox"/>
+        <text x="570" y="72" class="aH">信頼度</text><text x="570" y="102" class="aMath">n ÷ (n + 3)</text>
+        <text x="695" y="96" class="aOp">×</text>
+        <rect x="720" y="40" width="190" height="86" rx="14" class="aBox"/>
+        <text x="815" y="72" class="aH">役職の重み</text><text x="815" y="102" class="aMath">出演 1.0 ほか</text>
+        <text x="940" y="96" class="aOp">＝</text>
+        <circle cx="972" cy="83" r="24" class="aDotT"/><text x="972" y="90" class="aSym" style="font-size:15px">点</text>
+      </g>
+      <g class="aS" text-anchor="middle">
+        <text x="120" y="152">1 本だけで 100% に</text><text x="120" y="170">ならないよう平滑化</text>
+        <text x="345" y="152">平均並みなら 0</text><text x="345" y="170">下回れば理由にしない</text>
+        <text x="570" y="152">観た本数が少ないほど</text><text x="570" y="170">割り引く</text>
+        <text x="815" y="152">判別力の実測で</text><text x="815" y="170">決めた（下の図）</text>
+      </g>
+      <rect x="20" y="194" width="960" height="44" rx="10" class="aTip"/>
+      <text x="40" y="221" class="aS"><tspan class="aSb" font-weight="700">1 作品の人物の点 ＝ 点が正の人物の上位 3 人の合計。</tspan>重なるほど上がる（上位 3 人の和 AUC 0.643 ＞ 1 人だけ 0.615 ＝ 全員の和 0.615）</text>
+    </svg>
+  </figure>
+
+  <div class="grid2 wide" style="margin-top:6px;grid-template-columns:1fr 1.3fr">
+    <div class="card">
+      <h4>役職の重み（単独の AUC の順に置いた）</h4>
+      <svg viewBox="0 0 440 200" role="img" aria-label="役職の重みの棒グラフ。出演1.0、演出・脚本・作・原作0.4、翻訳0.3、裏方0.1。">
+        <g class="aS">
+          <text x="0" y="34">出演</text><rect x="110" y="20" width="300" height="20" rx="4" class="aBarT"/><text x="416" y="35" class="aSb" font-weight="700">1.0</text>
+          <text x="0" y="78">演出・脚本・原作</text><rect x="110" y="64" width="120" height="20" rx="4" class="aBarB"/><text x="236" y="79" class="aSb" font-weight="700">0.4</text>
+          <text x="0" y="122">翻訳</text><rect x="110" y="108" width="90" height="20" rx="4" class="aBarB"/><text x="206" y="123" class="aSb" font-weight="700">0.3</text>
+          <text x="0" y="166">裏方（照明など）</text><rect x="110" y="152" width="30" height="20" rx="4" class="aBarM"/><text x="146" y="167" class="aSb" font-weight="700">0.1</text>
+        </g>
+      </svg>
+      <p class="muted">企画時は「演出・脚本を大きく」と考えたが、実測の単独 AUC は 出演 0.611 ＞ 演出・脚本 0.540 ＞ 裏方 0.500 で逆だった。</p>
+    </div>
+    <div class="card">
+      <h4>計算例（基準 0.38）</h4>
+      <div class="twrap" style="margin:0">
+        <table class="calc" style="min-width:0;font-size:12.5px">
+          <thead><tr><th>人物</th><th>当たり/本数</th><th>当たり率</th><th>信頼度</th><th>重み</th><th>点</th></tr></thead>
+          <tbody>
+            <tr><td>俳優 A</td><td>3 / 4</td><td>0.67</td><td>0.57</td><td>1.0</td><td><b>0.164</b></td></tr>
+            <tr><td>演出家 B</td><td>2 / 2</td><td>0.75</td><td>0.40</td><td>0.4</td><td><b>0.059</b></td></tr>
+            <tr><td>スタッフ C</td><td>1 / 1</td><td>0.67</td><td>0.25</td><td>0.1</td><td><b>0.007</b></td></tr>
+            <tr><td>俳優 D</td><td>0 / 3</td><td>0.20</td><td>0.50</td><td>1.0</td><td><span class="tag stop">負→除外</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="muted" style="margin-top:10px">この公演の人物の点 = 0.164 + 0.059 + 0.007 = <b>0.230</b>。理由には上位の名前が「履歴 N 本」付きで出る。</p>
+    </div>
+  </div>
+
+  <h3 class="sub">3-4　あらすじの点（網 C）と、尺度をそろえて並べる</h3>
+  <figure class="wide">
+    <svg viewBox="0 0 1000 300" role="img" aria-label="あらすじから題材を取り出し、◎の作品に多い題材ほど点が付く。人物の点とあらすじの点をそれぞれ90パーセンタイルで割って尺度をそろえ、1.5で頭打ちにして足す。並べるときは効く一致の数を先に、合計点をその次に使う。">
+      <defs><marker id="fc" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1l7 4-7 4z" class="aF-m"/></marker></defs>
+      <!-- 網C -->
+      <rect x="20" y="20" width="300" height="130" rx="14" class="aBox"/>
+      <text x="40" y="46" class="aH">あらすじ</text>
+      <rect x="40" y="58" width="260" height="8" rx="4" class="aRowH"/><rect x="40" y="74" width="220" height="8" rx="4" class="aRowH"/>
+      <g><rect x="40" y="96" width="56" height="26" rx="13" class="aChip"/><text x="68" y="114" text-anchor="middle" class="aS">家族</text>
+      <rect x="104" y="96" width="56" height="26" rx="13" class="aChip"/><text x="132" y="114" text-anchor="middle" class="aS">法廷</text>
+      <rect x="168" y="96" width="76" height="26" rx="13" class="aChip"/><text x="206" y="114" text-anchor="middle" class="aS">会話劇</text></g>
+      <text x="40" y="140" class="aK">題材の取り出しだけ LLM（事前に確定済み）</text>
+      <path d="M320 85H372" class="aL" marker-end="url(#fc)"/>
+      <rect x="376" y="20" width="250" height="130" rx="14" class="aBox"/>
+      <text x="396" y="46" class="aH">題材の持ち上がり</text>
+      <text x="396" y="76" class="aMath" style="font-size:13px">(◎ での出現率 − 全体の出現率)</text>
+      <text x="396" y="98" class="aMath" style="font-size:13px">× 信頼度</text>
+      <text x="396" y="130" class="aS">正の上位 3 語の合計</text>
+      <!-- 正規化 -->
+      <path d="M626 85H668" class="aL" marker-end="url(#fc)"/>
+      <rect x="672" y="20" width="308" height="130" rx="14" class="aBoxB"/>
+      <text x="692" y="46" class="aH">尺度をそろえて足す</text>
+      <text x="692" y="76" class="aS">人物の点 ÷ 90% 点（上限 1.5）</text>
+      <text x="692" y="98" class="aS">＋ あらすじの点 ÷ 90% 点（上限 1.5）</text>
+      <text x="692" y="128" class="aK">揃える前は題材 1 語が裏方 5 人分より重かった</text>
+      <!-- 並べ方 -->
+      <rect x="20" y="176" width="960" height="108" rx="14" class="aTip"/>
+      <text x="40" y="204" class="aH">並べる順</text>
+      <g transform="translate(40 218)">
+        <rect width="420" height="50" rx="10" class="aBoxB"/>
+        <text x="20" y="22" class="aSb" font-weight="700" style="font-size:13.5px">1 段目：効く一致の数</text>
+        <text x="20" y="40" class="aS">出演者、または履歴 2 本以上の人物の一致を数える</text>
+      </g>
+      <path d="M466 243H504" class="aL" marker-end="url(#fc)"/>
+      <g transform="translate(508 218)">
+        <rect width="270" height="50" rx="10" class="aBox"/>
+        <text x="20" y="22" class="aSb" font-weight="700" style="font-size:13.5px">2 段目：合計点</text>
+        <text x="20" y="40" class="aS">同じ数なら点の高い順</text>
+      </g>
+      <text x="800" y="238" class="aS">実測 AUC</text>
+      <text x="800" y="262" class="aMath" style="font-size:16px">0.692 → 0.710</text>
+    </svg>
+    <figcaption>以前は「人物とあらすじの両方に一致したか」を 1 段目に置いていた。外すと AUC が上がり、上位 15 件の同点も 6 件から 2 件に減ったので外した。あらすじが取れないだけの公演を「合わない」と扱わないための見直しでもある。</figcaption>
+  </figure>
+
+  <h3 class="sub">3-5　使わないと決めた情報</h3>
+  <div class="grid2 wide">
+    <div class="card"><h4><span class="tag stop">使わない</span>団体</h4><p class="muted">別の要因と絡む（ある団体の 11 作品のうち 9 作品が同じ系統の舞台）。団体は「お気に入り」で本人が登録したときだけ使う。</p></div>
+    <div class="card"><h4><span class="tag stop">使わない</span>会場</h4><p class="muted">会場だけで ◎ を当てる AUC が 0.285。0.5 を下回り、使うと逆効果。</p></div>
+    <div class="card"><h4><span class="tag warn">点に足さない</span>お気に入り（申告）</h4><p class="muted">加点として混ぜると AUC が 0.744 → 0.660 に下がった。点数ではなく「必ず出す」別枠で使う。</p></div>
+    <div class="card"><h4><span class="tag good">使わない</span>LLM による順位付け</h4><p class="muted">順位と理由を毎回同じ形で説明できるよう、LLM は題材の取り出しと文章づくりだけに限った。</p></div>
+  </div>
+</section>
+
 <!-- ============================================================ 4章 セキュリティ -->
 <section class="sec" id="ch4">
-  <div class="eyebrow"><span class="n">03</span><span>セキュリティ</span></div>
+  <div class="eyebrow"><span class="n">04</span><span>セキュリティ</span></div>
   <h2 class="title">セキュリティ</h2>
   <p class="kicker">外から入れない・同じ端末の他プログラムからも操作できない・記録は端末の外に出ない、の 3 点を 1 枚の図にまとめた。</p>
 
@@ -939,11 +1216,11 @@ figcaption{font-size:12.5px;color:var(--muted);margin-top:10px;max-width:70em}
 
 <!-- ============================================================ 5章 達成事項 -->
 <section class="sec" id="ch5">
-  <div class="eyebrow"><span class="n">04</span><span>達成事項</span></div>
+  <div class="eyebrow"><span class="n">05</span><span>達成事項</span></div>
   <h2 class="title">達成事項</h2>
   <p class="kicker">実現できたこと（動作を確認した事実）と、それによるユーザーへのメリット（何が良くなったか）を対で示す。実装できなかった範囲は省略しない。</p>
 
-  <h3 class="sub" style="margin-top:0">4-1　実現できたこと・ユーザーへのメリット</h3>
+  <h3 class="sub" style="margin-top:0">5-1　実現できたこと・ユーザーへのメリット</h3>
   <div class="col" style="max-width:820px">
 
     <div class="ach">
@@ -986,7 +1263,7 @@ figcaption{font-size:12.5px;color:var(--muted);margin-top:10px;max-width:70em}
 
   </div>
 
-  <h3 class="sub">4-2　実装できなかった範囲</h3>
+  <h3 class="sub">5-2　実装できなかった範囲</h3>
   <div class="notdone wide">
     <div class="row">
       <b>写真からの公演特定</b><span class="tag warn">未着手</span>
@@ -1017,7 +1294,7 @@ figcaption{font-size:12.5px;color:var(--muted);margin-top:10px;max-width:70em}
 
 <!-- ============================================================ 6章 今後の展望 -->
 <section class="sec" id="ch6">
-  <div class="eyebrow"><span class="n">05</span><span>今後の展望</span></div>
+  <div class="eyebrow"><span class="n">06</span><span>今後の展望</span></div>
   <h2 class="title">今後の展望</h2>
   <div class="col">
     <div class="grid2">
