@@ -3197,6 +3197,116 @@ def aggregate_declared_names() -> list[dict]:
             for (k, w), n in sorted(users.items(), key=lambda kv: (-kv[1], kv[0]))]
 
 
+# ---- 「次の更新で探してほしい」題名（探しても見つからない公演）--------------------
+# 公開版は訪問者の操作で外部サイトを検索しない（取得の量を利用者数に比例させない・
+# 取得先への礼儀）。**その代わりに、見つからなかった題名を本人の依頼として控え、
+# 手元の取得処理（`fetch_requests.py`）が次の更新でまとめて探す。** 見つかった公演は
+# カタログの `picked.jsonl` に入り、翌日から「探す」と「手で足す」の候補に出る。
+SEARCH_REQUEST_SCHEMA = """
+CREATE TABLE IF NOT EXISTS search_request (
+    user_id    TEXT NOT NULL,
+    qkey       TEXT NOT NULL,
+    query      TEXT NOT NULL,
+    source     TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (user_id, qkey)
+);
+"""
+REQUEST_SOURCES = ("search", "hand", "missed")
+MAX_REQUESTS_PER_USER = 30     # 1 人が控えておける依頼の数（古いものから消える）
+REQUEST_DAYS = 30              # この日数より古い依頼は探さない
+
+
+def _request_query(q: str) -> str:
+    """依頼として控えてよい題名に整える。だめなら空。登録名と同じく検索語になるので、
+    URL・メールアドレス・制御文字・長すぎる／短すぎるものは控えない。"""
+    import re as _re
+    import unicodedata
+    import rate_performances as R
+    w = _re.sub(r"\s+", " ", unicodedata.normalize("NFKC", str(q or ""))).strip()
+    if not (2 <= len(w) <= 60) or len(R.title_key(w)) < 2:
+        return ""
+    if any(ord(c) < 32 for c in w) or "://" in w or "@" in w or "www." in w.lower():
+        return ""
+    return w
+
+
+def add_search_request(user_id: str, q: str, source: str = "search") -> dict:
+    """題名を「次の更新で探してほしい」として控える。同じ題名は日付だけ新しくする。"""
+    import rate_performances as R
+    if is_demo():
+        # **デモの入力は取得処理へ渡さない**（版の切り分け）。見本を試す人の操作で、
+        # 本番の取得の量や向きが変わらないようにする
+        raise ValueError("デモでは、探してほしい公演の依頼は受け付けていません")
+    w = _request_query(q)
+    if not w:
+        raise ValueError("探す題名を 2〜60 文字で入れてください")
+    if source not in REQUEST_SOURCES:
+        source = "search"
+    con = R.connect()
+    try:
+        con.executescript(SEARCH_REQUEST_SCHEMA)
+        with con:
+            con.execute(
+                "INSERT INTO search_request (user_id, qkey, query, source, created_at)"
+                " VALUES (?, ?, ?, ?, ?) ON CONFLICT(user_id, qkey) DO UPDATE SET"
+                " created_at=excluded.created_at, query=excluded.query",
+                (user_id, R.title_key(w), w, source, R.now()))
+            # **1 人が際限なく積める口を作らない**（守り 4）── 新しい順に上限まで残す
+            con.execute(
+                "DELETE FROM search_request WHERE user_id=? AND qkey NOT IN ("
+                " SELECT qkey FROM search_request WHERE user_id=?"
+                " ORDER BY created_at DESC LIMIT ?)",
+                (user_id, user_id, MAX_REQUESTS_PER_USER))
+    finally:
+        con.close()
+    return {"ok": True, "query": w,
+            "message": "次の更新（毎日 4 時台）で CoRich から探します。"
+                       "見つかれば、翌日からこの画面と「手で足す」の候補に出ます。"}
+
+
+def has_search_request(user_id: str, q: str) -> bool:
+    import rate_performances as R
+    w = _request_query(q)
+    if not w:
+        return False
+    con = R.connect()
+    try:
+        con.executescript(SEARCH_REQUEST_SCHEMA)
+        return con.execute("SELECT 1 FROM search_request WHERE user_id=? AND qkey=?",
+                           (user_id, R.title_key(w))).fetchone() is not None
+    finally:
+        con.close()
+
+
+def aggregate_search_requests(days: int = REQUEST_DAYS) -> list[dict]:
+    """**全利用者の依頼を、誰の依頼かが分からない形でまとめる。** 題名・依頼した人数・
+    どの画面からの依頼かだけを返し、利用者 ID は返さない。依頼した人が多い題名から。"""
+    import collections
+    import datetime as _dt
+    import rate_performances as R
+    cut = (_dt.datetime.now(_dt.timezone.utc) - _dt.timedelta(days=days)
+           ).astimezone().isoformat(timespec="seconds")
+    con = R.connect()
+    try:
+        con.executescript(SEARCH_REQUEST_SCHEMA)
+        rows = con.execute("SELECT qkey, query, source, created_at FROM search_request"
+                           " WHERE created_at >= ?", (cut,)).fetchall()
+    finally:
+        con.close()
+    groups: dict = collections.defaultdict(
+        lambda: {"users": 0, "sources": set(), "latest": "", "query": ""})
+    for r in rows:
+        g = groups[r["qkey"]]
+        g["users"] += 1
+        g["sources"].add(r["source"])
+        if r["created_at"] >= g["latest"]:
+            g["latest"], g["query"] = r["created_at"], r["query"]
+    out = [{"query": g["query"], "users": g["users"], "sources": sorted(g["sources"]),
+            "latest": g["latest"][:10]} for g in groups.values()]
+    return sorted(out, key=lambda x: (-x["users"], x["query"]))
+
+
 def save_declared(user_id: str, d: dict) -> None:
     if _is_owner(user_id):
         RC.save_declared(d)
@@ -3551,6 +3661,11 @@ def _load(user_id: str) -> tuple[dict, list]:
     except FileNotFoundError:
         raw = {}
     weights = read_weights(user_id)
+    # 見本を推薦の材料にする前に登録した訪問者の分を、1 回だけ結び付ける
+    try:
+        link_demo_seed(user_id)
+    except Exception:                                               # noqa: BLE001
+        pass
     prepared = UR.prepare(raw, DG.all_candidates(), M.load_rated(user_id=user_id),
                           multipliers={k: STEP_MUL.get(v, 1.0) for k, v in weights.items()},
                           role_group=group_of)
@@ -3631,6 +3746,7 @@ RUN_MISS = {
                   "<b>登録した名前の新着が、今回は届いていないことがあります。</b>",
     "calendar": "上演予定を取り込めませんでした。"
                 "<b>一覧の件数が、ふだんより少なくなっています。</b>",
+    "requests": "頼まれた題名を探せませんでした。次の更新でもう一度探します。",
     "posters": "ポスターを取り込めませんでした。ポスターが表示されない公演があります。",
     "lookback": "「記録を見返す」の図を作れませんでした。"
                 "図が出ないことがあります。",
@@ -4339,6 +4455,24 @@ def _suggest_pool(user_id: str) -> list[dict]:
                          "note": f'{c.get("group") or ""}／{one}（{c.get("pref") or ""}）',
                          "group": c.get("group") or "",
                          "times": 1, "stage_id": str(c.get("stage_id") or "")})
+    # **探して拾った公演も候補にする。** 公開版では、見つからなかった題名を次の更新で
+    # 探して `picked.jsonl` に入れる（`fetch_requests.py`）── ここに出さないと、
+    # 頼んで見つかった公演が「手で足す」の候補に出てこない
+    pk = ROOT / "data" / "review" / "picked.jsonl"
+    if pk.exists():
+        for line in pk.read_text(encoding="utf-8").split("\n"):
+            if not line.strip():
+                continue
+            c = json.loads(line)
+            one = RR.short_period(c.get("period") or "")
+            rows.append({"kind": "stage", "src": 0,
+                         "key": str(c.get("stage_id") or ""),
+                         "title": c.get("title") or "",
+                         "date": RR._start(c.get("period") or "") if "〜" not in one else "",
+                         "venue": c.get("theater") or c.get("venue") or "",
+                         "note": f'探して拾った公演／{one}',
+                         "group": c.get("group") or "",
+                         "times": 1, "stage_id": str(c.get("stage_id") or "")})
     lk = ROOT / "data" / "credits" / "linked.jsonl"
     if lk.exists():
         for line in lk.read_text(encoding="utf-8").split("\n"):
@@ -4947,8 +5081,11 @@ def link_stage(user_id: str, work_key: str, stage_id: str) -> dict:
             title = next((r["title"] for r in _suggest_pool(user_id)
                           if r["kind"] == "stage" and r["key"] == stage_id), "")
         if not title:
-            raise ValueError("デモに用意されている公演から選んでください" if not _is_owner(user_id)
-                             else "その公演の情報を取りに行きましたが、見つかりませんでした")
+            if _is_owner(user_id):
+                raise ValueError("その公演の情報を取りに行きましたが、見つかりませんでした")
+            raise ValueError("デモに用意されている公演から選んでください" if is_demo() else
+                             "たぐりの公演一覧にある公演から選んでください。"
+                             "無い公演は「探す」から、次の更新で探すよう頼めます")
     con = R.connect()
     try:
         con.execute(
@@ -5293,7 +5430,14 @@ def add_work(user_id: str, title: str, date: str = "", venue: str = "", stage_id
 # 公開用に選ばれた96件を、訪問者が操作する見本の記録にする。
 # 評価・感想はユーザーの指示で付けた架空のデモ用データ。本人の感想ではない。
 # 旧6件の見本は重ねず、96件のうち3件だけを未評価にする。
-# 実在する特定の上演に架空の評価を結び付けないよう、stage_idは入れない。
+#
+# **見本の記録を推薦の材料にする（2026-10-12・起案者の指示）。** 以前は「実在する特定の
+# 上演に架空の評価を結び付けない」ため stage_id を空にしていたが、そのせいで見本の評価が
+# 推薦に 1 件も効かず、デモを開いた人の「今週のおすすめ」は人物の点が付かないままだった。
+# **結び付けるのは、その訪問者自身の記録の中だけ**（共通の順位にも他の訪問者にも混ざらない）。
+# 見本の 96 件は持ち主の購入記録から作ったので、題名と日付が出演者の控え（`credits.jsonl` の
+# (観劇日, メールの件名)）と**完全に一致する**。題名の部分一致や推測では結び付けない
+# （`demo_seed_links`）── 当たらなかった記録は、これまでどおり stage_id を空のまま置く。
 DEMO_PURCHASE_WORKS = json.loads(
     Path(__file__).with_name("demo_purchase_works.json").read_text(encoding="utf-8"))
 DEMO_SEED_WORKS: list[dict] = [
@@ -5302,33 +5446,108 @@ DEMO_SEED_WORKS: list[dict] = [
 ]
 
 
+DEMO_LINK_KEY = "demo_seed_linked_v1"
+_DEMO_LINKS: dict = {"stamp": None, "map": {}}
+
+
+def demo_seed_links() -> dict[tuple[str, str], str]:
+    """見本の記録 (観劇日, 題名) → 公演 id。**出演者の控えと完全に一致したものだけ。**
+
+    引く先は 2 つで、どちらも持ち主の購入記録から作った控えである。
+    `credits.jsonl` は (観劇日, メールの件名) で公演ページに当てた結果、`linked.jsonl` は
+    題名から探し直して (観劇日, 題名) で当てた結果。**クレジットが空の公演には結び付けない**
+    （結び付けても推薦の材料にならない）。控えが更新されたら読み直す。
+    """
+    import measure_nets as M
+    files = [M.CREDITS, ROOT / "data" / "credits" / "linked.jsonl"]
+    stamp = tuple(f.stat().st_mtime_ns if f.exists() else 0 for f in files)
+    if _DEMO_LINKS["stamp"] == stamp:
+        return _DEMO_LINKS["map"]
+    want = {(s["date"], s["title"]) for s in DEMO_SEED_WORKS}
+    out: dict[tuple[str, str], str] = {}
+    for f, title_keys in zip(files, (("mail_title",), ("title",))):
+        if not f.exists():
+            continue
+        for line in f.read_text(encoding="utf-8").split("\n"):
+            if not line.strip():
+                continue
+            try:
+                c = json.loads(line)
+            except ValueError:
+                continue
+            sid = str(c.get("stage_id") or "")
+            if not sid or not c.get("fields"):
+                continue
+            for k in title_keys:
+                key = (str(c.get("date") or ""), str(c.get(k) or ""))
+                if key in want:
+                    out.setdefault(key, sid)
+    _DEMO_LINKS.update(stamp=stamp, map=out)
+    return out
+
+
+def _demo_key(s: dict) -> str:
+    import rate_performances as R
+    key = f"{R.title_key(s['title'])}#{s['date']}"
+    return key + (f"#{s['time']}" if s.get("time") else "")
+
+
+def link_demo_seed(user_id: str) -> int:
+    """**すでに見本が入っている訪問者の記録にも、1 回だけ公演を結び付ける。** 結び付けた件数を返す。
+
+    見本を推薦の材料にする前に登録した訪問者の分を、次におすすめを開いたときに埋める。
+    **1 人につき 1 回だけ**（`DEMO_LINK_KEY`）── 本人が「結び付けを外す」を押した記録を、
+    開くたびに結び付け直さないためである。stage_id が空の見本の行だけを書き換える。
+    """
+    if _is_owner(user_id) or not is_demo() or _read_setting_json(user_id, DEMO_LINK_KEY):
+        return 0
+    import rate_performances as R
+    links = demo_seed_links()
+    n = 0
+    con = R.connect()
+    try:
+        with con:
+            for s in DEMO_SEED_WORKS:
+                sid = links.get((s["date"], s["title"]))
+                if sid:
+                    n += con.execute(
+                        "UPDATE works SET stage_id=? WHERE user_id=? AND work_key=?"
+                        " AND (stage_id IS NULL OR stage_id='')",
+                        (sid, user_id, _demo_key(s))).rowcount
+    finally:
+        con.close()
+    _write_setting_json(user_id, DEMO_LINK_KEY, {"linked": n})
+    return n
+
+
 def seed_demo_works(user_id: str) -> int:
     """新しく登録した訪問者に、見本の記録（`DEMO_SEED_WORKS`）を入れる。入れた件数を返す。
 
     **持ち主には入れない** ── 持ち主の記録は購入確認メールから組む本物である。
     **既にある鍵は飛ばす**（同じ人に 2 度呼んでも重ならない）。
     """
-    if _is_owner(user_id):
-        return 0
+    if _is_owner(user_id) or not is_demo():
+        return 0   # 見本はデモ版だけ。サービス版の利用者の記録は本人が入れたものだけにする
     import rate_performances as R
+    links = demo_seed_links()
     con = R.connect()
     n = 0
     try:
         for s in DEMO_SEED_WORKS:
-            key = f"{R.title_key(s['title'])}#{s['date']}"
-            if s.get("time"):
-                key += f"#{s['time']}"
             cur = con.execute(
                 "INSERT OR IGNORE INTO works (user_id, work_key, title, first_date, last_date,"
                 " times, verdict, chosen, note_impression, note_motive, stage_id, venue, time,"
                 " updated_at, verdict_source, note_source)"
-                " VALUES (?,?,?,?,?,1,?,NULL,?,'',NULL,?,?,datetime('now','localtime'),'demo','demo')",
-                (user_id, key, s["title"], s["date"], s["date"], s["verdict"], s["note"],
+                " VALUES (?,?,?,?,?,1,?,NULL,?,'',?,?,?,datetime('now','localtime'),'demo','demo')",
+                (user_id, _demo_key(s), s["title"], s["date"], s["date"], s["verdict"], s["note"],
+                 links.get((s["date"], s["title"])) or None,
                  s.get("venue") or "", s.get("time") or ""))
             n += cur.rowcount
         con.commit()
     finally:
         con.close()
+    # 入れた時点で結び付け済みなので、後から結び付け直す処理は走らせない
+    _write_setting_json(user_id, DEMO_LINK_KEY, {"linked": "at_seed"})
     return n
 
 
@@ -7027,6 +7246,21 @@ VERDICT_LABEL = {
 
 
 
+# **どちらの版として動いているか**（`serve.Server(edition=...)` が起動時に入れる）。
+# 公開の仕組み（Cookie と復旧コード・編集の制限・その場で外部を検索しない）は両方で同じで、
+# 違うのは次の点だけである（docs/editions.md）。
+#   demo    ── 見本の架空の記録を入れる。入力は消えてよい。取得処理には一切関わらない
+#               （お気に入りの登録名も「探してほしい」題名も、手元の取得処理へ渡さない）
+#   service ── 見本を入れない。記録は永続ディスクに残す（無ければ起動しない）。
+#               「探してほしい」題名を受け付け、手元の取得処理へ渡す
+EDITIONS = ("demo", "service")
+EDITION = "demo"
+
+
+def is_demo() -> bool:
+    return EDITION == "demo"
+
+
 def _is_owner(user_id: str) -> bool:
     """ローカルの持ち主か（E3）。**持ち主の記録から事前に作ったファイル**
     （`lookback.json`・`chronicle.json`・`people_read.json`）と、持ち主の Gmail を
@@ -7843,7 +8077,24 @@ def _web_hits(user_id: str, q: str, on: bool) -> str:
     覚えていないと二重に押しに行ってしまう ── `works.stage_id` に当たれば済んでいる。
     """
     if not _is_owner(user_id):
-        return '<p class="note">デモでは、用意されている公演から検索できます。</p>'
+        # **公開版はその場で外部を検索しない。** 代わりに、次の更新で探すよう頼める
+        if is_demo():
+            # **デモは依頼を受け付けない**（取得処理に関わらない）。サービス版の案内だけ出す
+            return ('<p class="note">デモでは、用意されている公演から検索できます。'
+                    'サービス版では、ここに無い公演を次の更新で CoRich から探すよう頼めます。</p>')
+        if not _request_query(q):
+            return '<p class="note">たぐりの公演一覧から検索できます。</p>'
+        if has_search_request(user_id, q):
+            return (f'<div class="webq" id="web"><p class="lead">「{E(q)}」は、'
+                    '次の更新（毎日 4 時台）で CoRich から探すよう頼んであります。'
+                    '見つかれば、翌日からここに出ます。</p></div>')
+        return (f'<div class="webq" id="web"><p class="lead">その場では CoRich を検索せず、'
+                '毎日の更新で集めた公演から探します。'
+                '<b>そこに無い公演は、次の更新で CoRich から探すよう頼めます。</b>'
+                '見つかれば、翌日からこの画面と「手で足す」の候補に出ます。</p>'
+                f'<button type="button" data-search-request="{E(q)}" data-source="search">'
+                f'{IC.ico("search")}「{E(q)}」を次の更新で探してもらう</button>'
+                '<span class="said"></span></div>')
     ask = (f'<div class="webq" id="web"><p class="lead">'
            f'手元にあるこれから観られる公演の一覧は、月に 1 度集めた分です。'
            f'<b>そこに無い公演も、CoRichの公演情報からその場で探せます。</b></p>'
@@ -8300,7 +8551,7 @@ EXPORT_LABEL = {
 
 
 def _account_card_html(user_id: str) -> str:
-    """「アカウント」の札。**公開デモ（`demo_mode`）だけに出す**（利用者ごとの
+    """「アカウント」の札。**公開版（`Server.public`。デモ・サービスの両方）だけに出す**（利用者ごとの
     データ分離・E3）。
 
     `auth.py`には復旧コードでの復旧(`/recover`)・別端末の追加
@@ -8316,8 +8567,9 @@ def _account_card_html(user_id: str) -> str:
     import auth as AU
     if user_id == AU.LOCAL_USER_ID:
         return ""
-    storage_notice = ("<p class=\"warn\">このデモの記録は一時保存です。"
-                      "サーバーの再起動や更新で消える場合があります。復旧コードでも戻せません。</p>"
+    storage_notice = ((("<p class=\"warn\">このデモの記録は一時保存です。" if is_demo() else
+                        "<p class=\"warn\">いま記録の保存先が一時領域になっています。")
+                       + "サーバーの再起動や更新で消える場合があります。復旧コードでも戻せません。</p>")
                       if STATE.storage_status()["mode"] == "temporary" else "")
     return f"""<details class="card">{_card_h2("gear", "アカウント")}
 {storage_notice}

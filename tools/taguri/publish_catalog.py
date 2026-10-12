@@ -35,7 +35,7 @@
 | `tickets/` | 購入確認メールから読み取った、持ち主の購入の記録 |
 | `lookback.*`・`chronicle.json`・`people_read.json`・`waiting.json`・`recommend.html` | 持ち主の観劇履歴から作った分析。訪問者には出さない（`app._is_owner`） |
 | `declared.json`・`declined.json` | 持ち主のお気に入り・出さない語 |
-| 取得の控え（`official_fail.json`・`*.part` など） | 取得する側だけが使う |
+| 取得の控え（`official_fail.json`・`requests_cache.json`・`*.part` など） | 取得する側だけが使う。`requests_cache.json` には利用者が頼んだ題名が入る |
 
 ## 実行する場所と権限
 
@@ -75,7 +75,8 @@ EXCLUDE_GLOBS = ["*.db", "*.db-wal", "*.db-shm", "*.db-journal", "*.sqlite*", "*
                  "*.part", "*.tmp", ".*"]
 EXCLUDE_FILES = {"review/lookback.json", "review/lookback.html", "review/chronicle.json",
                  "review/people_read.json", "review/waiting.json", "review/recommend.html",
-                 "review/declared.json", "review/declined.json", "credits/official_fail.json"}
+                 "review/declared.json", "review/declined.json", "credits/official_fail.json",
+                 "review/requests_cache.json"}
 
 
 def log(msg: str) -> None:

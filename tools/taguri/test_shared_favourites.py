@@ -23,8 +23,9 @@ PATH = "/api/catalog/favourite-names"
 
 class SharedNames(unittest.TestCase):
     # 一時 DB・仮のサーバー・利用者 2 人の用意は既存の検査から借りる（検査そのものは借りない）
-    setUpClass = classmethod(DS.DemoStabilityTests.setUpClass.__func__)
-    tearDownClass = classmethod(DS.DemoStabilityTests.tearDownClass.__func__)
+    # 依頼と登録名を取得処理へ渡すのはサービス版だけ（デモ版は docs/editions.md の切り分けで断る）
+    setUpClass = classmethod(DS.service_setup)
+    tearDownClass = classmethod(DS.service_teardown)
     request = DS.DemoStabilityTests.request
 
     def setUp(self):

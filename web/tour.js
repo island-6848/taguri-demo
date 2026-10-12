@@ -14,12 +14,16 @@
 (function () {
   const KEY = "taguri_tour_done_v1";
   const BASE = (typeof REPO_BASE !== "undefined") ? REPO_BASE : "/taguri-demo";
+  // 動画などのファイルは1か所(デモ版の配信先)にだけ置く。サービス版(/app)からもそこを読む
+  const ASSET = (typeof EDITION !== "undefined" && BASE === EDITION.base) ? EDITION.demoBase : BASE;
 
   // 章立て: path=その画面へ移る / sel=光らせる要素(候補を順に試す) / wait="pick"=1件以上押すまで先へ進めない
   const STEPS = [
     {center: true, title: "押すだけで、おすすめが育つ",
      text: "おすすめの公演で「興味あり」を押すと、一覧とカレンダーに載ります。"
-         + "実際の画面で試せます。デモなので、押しても大丈夫です。"},
+         + ((typeof IS_DEMO === "undefined" || IS_DEMO)
+            ? "実際の画面で試せます。デモなので、押しても大丈夫です。"
+            : "実際の画面で試せます。押した内容はあとから取り消せます。")},
     {path: "/recommend", sel: [".ticket.recommend"],
      title: "今週のおすすめは、1枚が1公演",
      text: "あらすじや出演者のほか、おすすめした理由も書いてあります。気になるかどうかを、ここで決めます。"},
@@ -212,7 +216,7 @@
     const w = document.createElement("div");
     w.className = "tgt-video";
     w.innerHTML = '<div class="tgt-video-box"><button type="button" class="tgt-x" aria-label="閉じる">×</button>'
-      + '<video controls autoplay playsinline preload="metadata" src="' + BASE + '/assets/taguri-howto.mp4"></video></div>';
+      + '<video controls autoplay playsinline preload="metadata" src="' + ASSET + '/assets/taguri-howto.mp4"></video></div>';
     document.body.appendChild(w);
     const close = () => w.remove();
     w.addEventListener("click", ev => { if (ev.target === w || ev.target.closest(".tgt-x")) close(); });

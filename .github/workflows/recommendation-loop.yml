@@ -44,3 +44,11 @@ jobs:
         run: python tools/taguri/test_catalog_publish.py
       - name: Shared favourite names for all users
         run: python tools/taguri/test_shared_favourites.py
+      - name: Search requests for shows not in the catalog
+        run: python tools/taguri/test_search_requests.py
+      - name: Demo seed records feed recommendations
+        run: python tools/taguri/test_demo_seed_links.py
+      - name: Public demo HTTP regressions
+        run: python tools/taguri/test_demo_stability.py
+      - name: Demo and service editions stay separate
+        run: python tools/taguri/test_editions.py

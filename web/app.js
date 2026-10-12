@@ -9,11 +9,18 @@
  *
  * ポート時の変更点は最小限:
  *  - post()・各fetch呼び出しにAPI_BASEを前置(クロスオリジンなので絶対URLが要る)
- *  - X-Taguri-Tokenヘッダは送らない(demo_modeでは検査されない)
+ *  - X-Taguri-Tokenヘッダは送らない(公開版では検査されない)
  *  - .syn .mrb のクランプ調整を、フラグメント差し込みのたびに呼べる関数に分離
  */
 
-const API_BASE = "https://taguri-demo.onrender.com";
+// **デモ版かサービス版か**(config.js が開いたURLから決める)。2つは別のAPIサーバーに
+// つながるので、記録も Cookie も混ざらない(docs/editions.md)
+const EDITION = window.TAGURI || {edition: "demo", api: "https://taguri-demo.onrender.com",
+  base: "/taguri-demo", demoBase: "/taguri-demo"};
+const IS_DEMO = EDITION.edition === "demo";
+const API_BASE = EDITION.api;
+// 探す先の呼び名。デモは見本の公演、サービス版は毎日更新する公演一覧から探す
+const CATALOG_NAME = IS_DEMO ? "デモに用意されている公演" : "たぐりの公演一覧";
 
 // --- 画面パス -> APIのスクリーン名。実装済みのものだけ IMPLEMENTED に入れる ---
 const SCREENS = {
@@ -56,6 +63,8 @@ function ico(name, size, cls) {
 // (ローカルでは web/ をサーバのルートに置いて確認するので接頭辞は付かない)。
 const TOP_SEGMENTS = new Set(Object.keys(SCREENS).filter(p => p !== "/").map(p => p.split("/")[1]));
 function detectRepoBase() {
+  const p = location.pathname;
+  if (EDITION.base && (p === EDITION.base || p.indexOf(EDITION.base + "/") === 0)) return EDITION.base;
   const segs = location.pathname.split("/").filter(Boolean);
   if (segs.length === 0 || TOP_SEGMENTS.has(segs[0])) return "";
   return "/" + segs[0];
@@ -365,10 +374,12 @@ function showWelcomeCode(code) {
   wrap.className = "tg-welcome";
   wrap.innerHTML =
     '<div class="tg-welcome-box">'
-    + '<h2>デモ用の復旧コードです</h2>'
+    + (IS_DEMO ? '<h2>デモ用の復旧コードです</h2>' : '<h2>あなたの復旧コードです</h2>')
     + '<p>他の端末でも同じ記録を使いたいとき、Cookieを消してしまったときに'
     + '必要になります。<b>今だけ表示していて、二度と表示できません。</b>'
-    + 'デモの再起動で記録がリセットされると、このコードも使えなくなります。</p>'
+    + (IS_DEMO ? 'デモの再起動で記録がリセットされると、このコードも使えなくなります。'
+               : 'このコードがあれば、別の端末からも同じ記録に戻れます。大切に控えてください。')
+    + '</p>'
     + '<code class="tg-welcome-code">' + E(code) + '</code>'
     + '<div class="tg-welcome-btns">'
     + '<button type="button" data-wc-copy>コピーする</button>'
@@ -420,28 +431,33 @@ function fixupStoryline(root) {
   ensureD3().then(() => runInlineScript(SL_SCRIPT));
 }
 
+// **公開版(デモ・サービスとも)の制限。** 公演情報と画像は全員で共有するので編集させず、
+// 外部サイトもその場では検索しない(探す先は手元の公演一覧)。文言だけ版で変える
+const WEB_BUTTON = IS_DEMO ? "デモの公演から探す" : "公演一覧から探す";
 function applyDemoRestrictions(root) {
   root.querySelectorAll(".handt").forEach(editor => {
     const note = document.createElement("p");
     note.className = "note";
-    note.textContent = "デモでは、公演情報の編集はできません。";
+    note.textContent = IS_DEMO ? "デモでは、公演情報の編集はできません。"
+      : "公演情報は全員で共有しているため、ここでは編集できません。";
     editor.replaceWith(note);
   });
   root.querySelectorAll("[data-hand-img], [data-hand-off]").forEach(control => {
     control.disabled = true;
-    control.title = "デモでは画像の編集はできません";
+    control.title = IS_DEMO ? "デモでは画像の編集はできません" : "画像は全員で共有しているため編集できません";
   });
   root.querySelectorAll("[data-sug-web], [data-lk-web]").forEach(button => {
-    if (button.textContent !== "デモの公演から探す") button.textContent = "デモの公演から探す";
+    if (button.textContent !== WEB_BUTTON) button.textContent = WEB_BUTTON;
   });
 }
 
 function renderScreen(el, activePath, d) {
   el.innerHTML = d.body_html;
   if (d.demo_mode) {
-    el.insertAdjacentHTML("afterbegin", '<p class="note">操作を試せるデモです。入力した内容は、デモの再起動時にリセットされます。</p>');
-    applyDemoRestrictions(el);
+    el.insertAdjacentHTML("afterbegin", '<p class="note">操作を試せるデモです。入力した内容は、デモの再起動時にリセットされます。'
+      + '記録を残して使うときは<a href="' + EDITION.demoBase + '/app/">サービス版</a>へ。</p>');
   }
+  if (d.public) applyDemoRestrictions(el);
   renderCrumbBar(activePath, d.title || "");
   updateNavActive(activePath);
   fixupSynClamp(el);
@@ -576,6 +592,12 @@ window.addEventListener("popstate", () => {
 });
 
 document.addEventListener("DOMContentLoaded", () => {
+  if (!API_BASE) {
+    contentEl().innerHTML = "<h1>サービス版は準備中です</h1>"
+      + '<p class="lead">記録を残して使えるサービス版は、まだ公開していません。'
+      + '見本の記録で操作を試せる<a href="' + EDITION.demoBase + '/">デモ版</a>をご覧ください。</p>';
+    return;
+  }
   new MutationObserver(() => applyDemoRestrictions(contentEl()))
     .observe(contentEl(), {childList: true, subtree: true});
   document.querySelector(".side").insertAdjacentHTML("beforeend", renderNav());
@@ -772,6 +794,15 @@ document.addEventListener("click", ev => {
     const t = b.closest(".tag");
     post("/api/favourite", {action: "remove", kind: t.dataset.kind, name: t.dataset.name},
       t.parentElement).then(d => { if (d) { t.remove(); waitJob(t.parentElement, true); } });
+  } else if (b.dataset.searchRequest) {
+    const g = b.closest(".webq, .sug-head") || b.parentElement;
+    post("/api/search_request", {q: b.dataset.searchRequest, source: b.dataset.source || "search"},
+      g, null).then(d => {
+        if (!d) return;
+        b.disabled = true;
+        const said = g.querySelector(".said");
+        if (said) said.textContent = d.message || "頼みました";
+      });
   } else if (b.dataset.dec === "add") {
     // **出さない語を確定する。** 候補の札から押す道と、自分で打つ道の 2 つがある
     const r = b.closest(".prom"), box = b.closest(".pbox");
@@ -1196,6 +1227,24 @@ function askMerge(where, workKey, similar) {
 // 押したときだけ外へ行く（守り 5 ── 一覧を眺める操作で外へ要求は出さない）。
 // **並べ方は 1 つにまとめてある** ── 同じ題名で手元と外の結果が違う形で出ると、
 // どちらが正しいのか確かめようがない。
+// **見つからなかった題名を、次の更新で探すよう頼むボタン。** 公開版はその場で外部を
+// 検索しないので、代わりに依頼として控え、毎日の更新でまとめて探す（`/api/search_request`）
+function requestButton(box, q, source) {
+  // **デモは依頼を受け付けない**(本番の取得に関わらない)。サーバー側でも断る
+  if (IS_DEMO) return;
+  const wrap = document.createElement("p");
+  wrap.className = "sug-head";
+  const b = document.createElement("button");
+  b.type = "button";
+  b.dataset.searchRequest = q;
+  b.dataset.source = source;
+  b.textContent = "「" + q + "」を次の更新で探してもらう";
+  const said = document.createElement("span");
+  said.className = "said";
+  wrap.append(b, " ", said);
+  box.append(wrap);
+}
+
 function lkSay(box, msg) {
   const p = document.createElement("p");
   p.className = "sug-head";
@@ -1221,7 +1270,7 @@ async function lkSearch(i, web, btn) {
   }
   if (web) {
     box.replaceChildren();
-    lkSay(box, "デモに用意されている公演を探しています…");
+    lkSay(box, CATALOG_NAME + "を探しています…");
     if (btn) btn.disabled = true;
   }
   let d;
@@ -1244,11 +1293,12 @@ async function lkSearch(i, web, btn) {
     lkSay(box, web
       ? "「" + q + "」に一致する公演は見つかりませんでした。副題や団体名を外して"
         + "短くすると見つかることがあります"
-      : "手元のデータには見つかりませんでした。「デモの公演から探す」を押してください"
+      : "手元のデータには見つかりませんでした。「" + WEB_BUTTON + "」を押してください"
         + "（月 1 回の取得に含まれていない公演や、古い公演は手元にありません）");
+    if (web) requestButton(box, q, "hand");
     return;
   }
-  if (web) lkSay(box, "デモの公演情報から " + rows.length
+  if (web) lkSay(box, CATALOG_NAME + "から " + rows.length
     + " 件見つかりました。観た公演を選んでください。見つからない場合は下の"
     + "「ポスター・クレジットを手入力する」から追加してください。");
   lkRender(box, rows);
@@ -1381,7 +1431,7 @@ async function sugWeb() {
   if (!t || !box) return;
   const q = t.value.trim();
   if (q.length < 2) { sugSay(box, "題名を 2 文字以上入れてから押してください", true); return; }
-  sugSay(box, "デモに用意されている公演を探しています…", true);
+  sugSay(box, CATALOG_NAME + "を探しています…", true);
   if (btn) btn.disabled = true;
   let d = null;
   try {
@@ -1400,10 +1450,11 @@ async function sugWeb() {
     // 「0 件」だけでは、打ち間違いなのか無い公演なのか分からない
     sugSay(box, "「" + q + "」に一致する公演は見つかりませんでした。副題や団体名を外して"
       + "短くすると見つかることがあります。見つからないときは、そのまま手で入れてください", true);
+    requestButton(box, q, "hand");
     return;
   }
   sugRender(box, d.rows,
-    "デモの公演情報から " + d.rows.length + " 件見つかりました。観た公演を選んでください");
+    CATALOG_NAME + "から " + d.rows.length + " 件見つかりました。観た公演を選んでください");
 }
 
 function sugSay(box, msg, clear) {

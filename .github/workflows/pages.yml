@@ -1,6 +1,6 @@
 name: Deploy web/ to GitHub Pages
 
-# #000009: GitHub Pages移行。web/ 配下の静的フロントエンド(index.html・app.js・
+# #000009: GitHub Pages移行。デモ版とサービス版の2つの入口を同じサイトに置く（下の Assemble site）。web/ 配下の静的フロントエンド(index.html・app.js・
 # style.css・vendor/)をPagesにデプロイする。docs/からはプレゼン資料のHTML 1枚だけを
 # 添える(READMEから直接開けるように)。使用者向けの使い方ガイド(000010)も同じ扱い。設計ドキュメントや
 # tools/(Renderで動くAPIサーバ本体)はここでは触らない。
@@ -30,10 +30,22 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
       # web/ にプレゼン資料だけを足した公開用フォルダを作る
+      # デモ版（/taguri-demo/）とサービス版（/taguri-demo/app/）は同じ画面のファイルを使い、
+      # つなぐAPIサーバーだけを変える（web/config.js・docs/editions.md）。サービス版の
+      # サーバーのURLはリポジトリの変数 TAGURI_SERVICE_API に入れる。未設定なら「準備中」を出す
       - name: Assemble site
+        env:
+          TAGURI_SERVICE_API: ${{ vars.TAGURI_SERVICE_API }}
         run: |
-          mkdir -p _site/docs
+          mkdir -p _site/docs _site/app
           cp -r web/. _site/
+          case "$TAGURI_SERVICE_API" in
+            https://*) ;;
+            "") ;;
+            *) echo "TAGURI_SERVICE_API must start with https://" >&2; exit 1 ;;
+          esac
+          sed -i "s#__TAGURI_SERVICE_API__#${TAGURI_SERVICE_API}#" _site/config.js
+          cp _site/index.html _site/app/index.html
           cp docs/000003-final-presentation-taguri.html _site/docs/
           cp docs/000010-user-guide-taguri.html _site/docs/
       - uses: actions/upload-pages-artifact@v3

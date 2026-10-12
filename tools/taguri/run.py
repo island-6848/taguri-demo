@@ -254,6 +254,9 @@ def main() -> int:
     # 一覧に載っていない公演も引いてくる（企画書 4 章）。**毎回走らせる** ──
     # お気に入りは見逃したくないものなので、月 1 回では最大 4 週遅れる
     sh(["tools/taguri/favourites.py", "--today", a.today], required=False, tag="favourites")
+    # **公開版の利用者が「次の更新で探してほしい」と頼んだ題名も探す**（探しても
+    # 見つからない公演）。依頼を読む先が未設定なら何もしない
+    sh(["tools/taguri/fetch_requests.py", "--today", a.today], required=False, tag="requests")
 
     step(5, "ステイジーズカレンダーの取り込み")
     # **CoRich とほとんど重なっていない。** カレンダーの楽日が今日以降 738 件のうち
