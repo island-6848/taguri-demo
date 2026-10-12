@@ -1,0 +1,12 @@
+# 毎日（日曜を除く）日本時間 4 時台に、一覧・お気に入り・カレンダーを取り直す。
+# 開始は 4:20 から最大 40 分ずらす（毎回同じ時刻に取りに行かない）。
+[Unit]
+Description=taguri: daily catalog refresh
+
+[Timer]
+OnCalendar=Mon..Sat *-*-* 04:20:00 Asia/Tokyo
+RandomizedDelaySec=40min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

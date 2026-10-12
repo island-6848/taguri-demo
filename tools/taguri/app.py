@@ -125,7 +125,9 @@ import recommend as RC                                             # noqa: E402
 import render_recommend as RR                                      # noqa: E402
 import stage_calendar as SC                                        # noqa: E402
 
-DB = ROOT / "data" / "review" / "ratings.db"
+sys.path.insert(0, str(ROOT / "tools" / "lib"))
+import taguri_state as STATE
+DB = STATE.ratings_path()
 E = RR.E
 
 
@@ -2686,7 +2688,7 @@ def _rebucket(user_id: str, d: dict) -> dict:
     react_w = {RC2.work_key(v.get("title") or ""): v
                for v in react.values() if v.get("title")}
     sids_by_workkey = _react_groups(react)
-    owner = _is_owner(user_id)
+    owner = _is_owner(user_id) and not d.get("profile")
     if not owner:
         # **訪問者のお気に入り（網 A）と出さない語は、その人の登録で当て直す**（E3）。
         # `recommend2.json` の `a`・`declined` は持ち主の登録で当てた結果である。
@@ -3138,6 +3140,63 @@ def load_declared(user_id: str) -> dict[str, list[str]]:
     return {k: [str(x) for x in (v.get(k) or []) if isinstance(x, str)] for k in RC.KINDS}
 
 
+# **検索に回す名前の種類。** 題材は名前ではないので引かない（`favourites.py` と同じ）
+SEARCH_KINDS = ("人", "団体", "主催", "作品", "原作者")
+
+
+def _searchable_name(name: str) -> str:
+    """検索語として送ってよい名前に整える。送れないものは空を返す。
+
+    **登録名はそのまま外部サイトへの検索語になる**ので、名前らしくないもの
+    （URL・メールアドレス・制御文字・長すぎる／短すぎるもの）はここで落とす。
+    """
+    import unicodedata
+    w = unicodedata.normalize("NFKC", str(name or "")).strip()
+    if not (2 <= len(w) <= 40):
+        return ""
+    if any(ord(c) < 32 for c in w) or "://" in w or "@" in w or "www." in w.lower():
+        return ""
+    return w
+
+
+def aggregate_declared_names() -> list[dict]:
+    """**全利用者のお気に入りの登録名を、誰の登録かが分からない形でまとめる**（規約 O2）。
+
+    手元の取得処理（`favourites.py`）が、これを使って「その名前のこれからの公演」を
+    探しに行く。以前は持ち主の登録しか探しておらず、**他の利用者が登録した名前は、
+    手元にある公演の中で照合されるだけで、新しい公演を探しには行っていなかった。**
+
+    返すのは種類・名前・登録している人数だけで、利用者 ID は返さない。同じ名前は
+    1 つにまとめる（多くの人が登録した名前から順に探せるよう、人数は残す）。
+    """
+    import collections
+    import rate_performances as R
+    con = R.connect()
+    try:
+        _migrate_app_setting(con)
+        con.executescript(SETTING_SCHEMA)
+        rows = con.execute("SELECT value FROM app_setting WHERE key=?", (DECLARED_KEY,)).fetchall()
+    finally:
+        con.close()
+    users: collections.Counter = collections.Counter()
+    for row in rows:
+        try:
+            v = json.loads(row["value"])
+        except (TypeError, ValueError):
+            continue
+        if not isinstance(v, dict):
+            continue
+        mine = set()
+        for k in SEARCH_KINDS:
+            for x in v.get(k) or []:
+                w = _searchable_name(x) if isinstance(x, str) else ""
+                if w:
+                    mine.add((k, w))
+        users.update(mine)
+    return [{"kind": k, "name": w, "users": n}
+            for (k, w), n in sorted(users.items(), key=lambda kv: (-kv[1], kv[0]))]
+
+
 def save_declared(user_id: str, d: dict) -> None:
     if _is_owner(user_id):
         RC.save_declared(d)
@@ -3480,26 +3539,35 @@ def _overlay_themes(d: dict) -> dict:
 
 
 def _load(user_id: str) -> tuple[dict, list]:
-    """画面が読む材料。**保存された一覧に、いまの反応と効かせ方を当て直して返す。**
+    """本人の現在の評価から得点・理由を計算し、本人の反応を当てる。
 
-    **一覧（`recommend2.json`）は全員共通で、反応・お気に入り・効かせ方はその人のもの**
-    （E3）。順位の計算は持ち主の記録から作り、束の割り振り（`_rebucket`）と重み
-    （`read_weights`）だけを利用者ごとに当て直す。
+    共通JSONは候補の補完にだけ使う。共通順位を書き換えず、本人の記録を
+    毎回読むので、変更・削除・公演の結び付けが次の表示に反映する。
     """
-    raw, _ = RR.load()
-    d = _apply_weights(user_id, _rebucket(user_id, raw), read_weights(user_id))
-    d["w_counts"] = _weight_counts(raw)
-    if not _is_owner(user_id):
-        # **推薦の理由に添える「あなたの言葉」（◎ の感想の引用）も、その人の感想から引く。**
-        # 既定の `RR.NOTES_BY_PERSON` は起動時に持ち主の感想から作ったもので、カードは
-        # `c["_notes"]` があればそちらを使う（`render_recommend` の理由の欄）
-        try:
-            notes = IM.by_person(user_id=user_id)
-        except Exception:                                           # noqa: BLE001
-            notes = {}
-        for k, v in d.items():
-            if isinstance(v, list):
-                d[k] = [{**c, "_notes": notes} if isinstance(c, dict) else c for c in v]
+    import measure_nets as M
+    import user_recommender as UR
+    try:
+        raw, _ = RR.load()
+    except FileNotFoundError:
+        raw = {}
+    weights = read_weights(user_id)
+    prepared = UR.prepare(raw, DG.all_candidates(), M.load_rated(user_id=user_id),
+                          multipliers={k: STEP_MUL.get(v, 1.0) for k, v in weights.items()},
+                          role_group=group_of)
+    # Stored themes remain available for explicit favorites and display;
+    # they are not learned preference scores in this first implementation.
+    prepared = _overlay_themes(prepared)
+    counts = _weight_counts(prepared)
+    d = UR.finish(_rebucket(user_id, prepared), top=RR.TOP, weights=weights)
+    d["w_counts"] = counts
+    # Every user, including the owner, gets their own quotations.
+    try:
+        notes = IM.by_person(user_id=user_id)
+    except Exception:                                           # noqa: BLE001
+        notes = {}
+    for k, v in d.items():
+        if isinstance(v, list):
+            d[k] = [{**c, "_notes": notes} if isinstance(c, dict) else c for c in v]
     return _overlay_themes(d), waiting_rows(user_id)
 
 
@@ -3827,8 +3895,21 @@ def _recommend_body(user_id: str, prefs=()) -> str:
     # 変わらない** ── どちらも同じチェックを反転させるだけの押し口である
     pc = RR.pref_counts(d)
     RR.EXTRA = lambda: PM.panel(pc, PM.region_counts(d))
-    upd = run_updated_at()
-    upd_html = f'<p class="note">この一覧は {E(upd)} に作りました。</p>' if upd else ""
+    profile = d.get("profile") or {}
+    n_rated = profile.get("n_rated", 0)
+    n_people = profile.get("n_with_people", 0)
+    upd_html = (f'<p class="note">現在のあなたの評価 {n_rated} 作品から計算しています。'
+                f'作り手の情報があるのは {n_people} 作品です。'
+                '評価の変更・取り消しは、次におすすめを開くと反映されます。'
+                '感想の内容分析は、まだ順位に使っていません。</p>')
+    if n_rated > n_people:
+        upd_html += ('<p class="note">作り手の情報がない記録は、人物の一致に使えません。'
+                     '<a href="/records/works?t=__TAGURI_TOKEN__">日記帳</a>で公演を結び付けるか、'
+                     '出演者・作り手を登録してください。</p>')
+    if profile.get("n_demo"):
+        upd_html += '<p class="note">見本の架空評価を含むデモ計算です。推薦精度の検証には使えません。</p>'
+    if profile.get("n_unknown"):
+        upd_html += '<p class="note">由来を確認できない過去の評価を含みます。品質改善の証拠には使いません。</p>'
     body = f"""{run_status_html()}<h1>{E(head)}</h1>
 {lede}
 {upd_html}
@@ -5125,7 +5206,8 @@ def save_work_field(user_id: str, work_key: str, *, verdict=None, note=None) -> 
             if not sv:
                 raise ValueError("その作品は記録に無い")
             col, val = ("verdict", verdict) if verdict is not None else ("note_impression", note)
-            con.execute(f"UPDATE works SET {col}=?,"
+            source_col = "verdict_source" if verdict is not None else "note_source"
+            con.execute(f"UPDATE works SET {col}=?, {source_col}='user',"
                         " updated_at=datetime('now','localtime') WHERE user_id=? AND work_key=?",
                         (val, user_id, work_key))
             con.commit()
@@ -5135,7 +5217,9 @@ def save_work_field(user_id: str, work_key: str, *, verdict=None, note=None) -> 
             "verdict": verdict if verdict is not None else sv.get("verdict"),
             "chosen": sv.get("chosen"),
             "note_impression": note if note is not None else (sv.get("note_impression") or ""),
-            "note_motive": sv.get("note_motive") or ""}, user_id=user_id)
+            "note_motive": sv.get("note_motive") or "",
+            "verdict_source": "user" if verdict is not None else (sv.get("verdict_source") or "legacy_unknown"),
+            "note_source": "user" if note is not None else (sv.get("note_source") or "legacy_unknown")}, user_id=user_id)
         return {"ok": True, "work_key": work_key, "manual": False}
     finally:
         con.close()
@@ -5206,42 +5290,16 @@ def add_work(user_id: str, title: str, date: str = "", venue: str = "", stage_id
             "similar": similar_works(user_id, title, key)}
 
 
-# **公開デモの訪問者に、最初から入れておく観劇記録。**（起案者の指示・2026-10-06 ──
-# 「デモにあらかじめ何件か記録を追加しておいて」）
-#
-# 訪問者は購入確認メールを持たない（`rate_performances.load_purchases` は持ち主以外に
-# 0 件を返す）ので、**記録は手で足すまで 1 件も無い。** 日記帳も評価待ちも空のまま
-# 操作ツアー（`web/tour.js`）が「観たあとは ◎○△× をつけます」と案内することになり、
-# 何を押せばよいのかが画面から分からなかった。
-#
-# **持ち主の記録を写すのではなく、ここに書いた見本を入れる。** 持ち主の記録・感想を
-# 訪問者に見せないのは E3 の決まりである（`_is_owner`）。題名は特定の上演に
-# 結び付かない古典の戯曲にし、`stage_id`・会場は空にする ── どの公演の評価なのかを
-# 名指ししない（架空の評価を、実在する特定の上演に付けない）。
-#
-# **評価の無い記録を 2 件混ぜる。** 評価待ち（`waiting_rows`）が空だと、ツアーの
-# 「◎○△× をつける」段で押すものが無い。**◎ で感想の無いものも 1 件置く** ──
-# 感想を聞く欄（`impressions.pending`）が何をする所なのかも、最初から見える。
-DEMO_SEED_WORKS: list[dict] = [
-    {"title": "ハムレット", "date": "2026-03-14", "verdict": "◎",
-     "note": "独白の間の取り方が忘れられない。台詞の多い古典でも、"
-             "演出しだいでこんなに速く感じるのかと驚いた。"},
-    {"title": "かもめ", "date": "2026-04-19", "verdict": "○",
-     "note": "登場人物の誰にも肩入れできないまま、最後の一発まで目が離せなかった。"},
-    {"title": "夏の夜の夢", "date": "2026-05-24", "verdict": "◎", "note": ""},
-    {"title": "ゴドーを待ちながら", "date": "2026-06-21", "verdict": "△",
-     "note": "何も起きないことを楽しむ余裕が、この日の自分には無かった。"},
-    {"title": "桜の園", "date": "2026-07-26", "verdict": None, "note": ""},
-    {"title": "ロミオとジュリエット", "date": "2026-09-13", "verdict": None, "note": ""},
-]
-
-
-# 利用者が公開デモ用に選んだ購入・予約由来の96件。
-# 公演名・日時・会場だけを含め、評価と感想は作らない。
+# 公開用に選ばれた96件を、訪問者が操作する見本の記録にする。
+# 評価・感想はユーザーの指示で付けた架空のデモ用データ。本人の感想ではない。
+# 旧6件の見本は重ねず、96件のうち3件だけを未評価にする。
+# 実在する特定の上演に架空の評価を結び付けないよう、stage_idは入れない。
 DEMO_PURCHASE_WORKS = json.loads(
     Path(__file__).with_name("demo_purchase_works.json").read_text(encoding="utf-8"))
-DEMO_SEED_WORKS.extend(
-    {**s, "verdict": None, "note": ""} for s in DEMO_PURCHASE_WORKS)
+DEMO_SEED_WORKS: list[dict] = [
+    {**row, "verdict": row.get("verdict"), "note": row.get("note") or ""}
+    for row in DEMO_PURCHASE_WORKS
+]
 
 
 def seed_demo_works(user_id: str) -> int:
@@ -5263,8 +5321,8 @@ def seed_demo_works(user_id: str) -> int:
             cur = con.execute(
                 "INSERT OR IGNORE INTO works (user_id, work_key, title, first_date, last_date,"
                 " times, verdict, chosen, note_impression, note_motive, stage_id, venue, time,"
-                " updated_at)"
-                " VALUES (?,?,?,?,?,1,?,NULL,?,'',NULL,?,?,datetime('now','localtime'))",
+                " updated_at, verdict_source, note_source)"
+                " VALUES (?,?,?,?,?,1,?,NULL,?,'',NULL,?,?,datetime('now','localtime'),'demo','demo')",
                 (user_id, key, s["title"], s["date"], s["date"], s["verdict"], s["note"],
                  s.get("venue") or "", s.get("time") or ""))
             n += cur.rowcount
@@ -6152,7 +6210,9 @@ def _rekey(user_id: str, con, work_key: str, uids: set) -> dict:
                 R.save_work(con, new, {
                     "verdict": sv.get("verdict"), "chosen": sv.get("chosen"),
                     "note_impression": sv.get("note_impression") or "",
-                    "note_motive": sv.get("note_motive") or ""}, user_id=user_id)
+                    "note_motive": sv.get("note_motive") or "",
+                    "verdict_source": sv.get("verdict_source") or "legacy_unknown",
+                    "note_source": sv.get("note_source") or "legacy_unknown"}, user_id=user_id)
                 moved = True
             except ValueError:
                 pass          # 上演前になった（日付を直した）ときは評価を移さない
@@ -8256,7 +8316,11 @@ def _account_card_html(user_id: str) -> str:
     import auth as AU
     if user_id == AU.LOCAL_USER_ID:
         return ""
+    storage_notice = ("<p class=\"warn\">このデモの記録は一時保存です。"
+                      "サーバーの再起動や更新で消える場合があります。復旧コードでも戻せません。</p>"
+                      if STATE.storage_status()["mode"] == "temporary" else "")
     return f"""<details class="card">{_card_h2("gear", "アカウント")}
+{storage_notice}
 <p class="lead">この仕組みはアカウント登録なしで動きます。<b>この端末を識別しているのは
 復旧コード 1 つだけ</b>なので、控えていないと、端末を失ったときに記録へ二度と戻れません。</p>
 <p class="lead">利用者ID: <code>{E(user_id[:12])}…</code></p>
@@ -8641,3 +8705,4 @@ def _tickets_body(user_id: str) -> str:
 {cards or '<p class="empty">チケットを持っている公演はまだありません。'
           '推薦の画面で「すでに持っている」を押した公演が、ここに並びます。</p>'}
 {SC.ticket_manager_html(unplaced=left)}"""
+

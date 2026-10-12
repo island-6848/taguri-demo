@@ -111,6 +111,9 @@ import unicodedata
 import urllib.request
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools" / "lib"))
+import polite_http as PH                                   # noqa: E402  取得の作法（名乗り・robots.txt・間隔）
+
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools" / "credits"))
 CAND = ROOT / "data" / "review" / "candidates.jsonl"
@@ -119,7 +122,7 @@ OUT = ROOT / "data" / "review" / "calendar.jsonl"
 
 SHEET = "1OtXzChuCUfy2AnyuRW5ZgnMbsKHUwlCEF9keTA0Gb8c"
 URL = f"https://docs.google.com/spreadsheets/d/{SHEET}/export?format=csv&gid=0"
-UA = "taguri/1.0 (personal, 1req/sec)"
+UA = PH.UA
 # 都道府県の書き方を候補側に揃える（カレンダーは「東京」、CoRich は「東京都」）
 SUFFIX = {"東京": "東京都", "大阪": "大阪府", "京都": "京都府", "北海道": "北海道"}
 
@@ -142,9 +145,10 @@ def pref_of(s: str) -> str:
 
 def fetch_rows() -> tuple[list[dict], str]:
     """カレンダーを 1 回のダウンロードで読む。**1 件ずつ巡回しない。**"""
-    req = urllib.request.Request(URL, headers={"User-Agent": UA})
-    with urllib.request.urlopen(req, timeout=60) as r:
-        body = r.read().decode("utf-8")
+    # **巡回ではなく、公開者が出している CSV 書き出しの出口を 1 回だけ叩く**ので、
+    # robots.txt の巡回規則は当てない（`robots=False`）。名乗り・間隔・429/503 で
+    # 引く作法は polite_http がそのまま守る
+    body = PH.fetch(URL, timeout=60, robots=False).decode("utf-8")
     rows = list(csv.reader(io.StringIO(body)))
     updated = next((c for r in rows[:3] for c in r if "更新" in c), "")
     hi = next(i for i, r in enumerate(rows) if any("都道府県" in c for c in r))

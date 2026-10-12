@@ -80,6 +80,11 @@ import feedback as FB                                              # noqa: E402
 import recommend as RC                                             # noqa: E402
 import render_recommend as RR                                       # noqa: E402
 import stage_calendar as SC                                        # noqa: E402
+import taguri_state as STATE
+
+WRITE_OPERATIONS = {"/api/rate": "rate", "/api/note": "note",
+                    "/api/visit_note": "visit_note", "/api/react": "react",
+                    "/api/favourite": "favourite", "/api/ticket": "ticket"}
 
 # **#000008: 復旧コード認証。既存の「起動ごとの単一トークン」（`srv.token`・
 # `_tok`）とは別の、利用者ごとの識別経路として追加する。** 既存の道は
@@ -210,6 +215,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self._send(204, b"", "text/plain", extra)
 
     def _send(self, code: int, body: bytes, ctype: str, extra: dict | None = None) -> None:
+        if self.command == "POST" and code >= 400:
+            STATE.event("write_result", outcome="failed" if code >= 500 else "rejected",
+                        operation=WRITE_OPERATIONS.get(self.path, "other"), status=code)
         try:
             self.send_response(code)
             self.send_header("Content-Type", ctype)
@@ -255,7 +263,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
         個別に手当てを書き足さずに済む。
         """
         welcome = getattr(self, "_welcome_code", None)
-        payload = {**obj, "demo_mode": self.server.demo_mode}
+        payload = {**obj, "demo_mode": self.server.demo_mode,
+                   "storage": STATE.storage_status()}
         if welcome:
             payload["welcome_code"] = welcome
         body = json.dumps(payload, ensure_ascii=False).replace(
@@ -367,6 +376,27 @@ class Handler(http.server.BaseHTTPRequestHandler):
         # （`/auth/start`等）だけを使う利用者では一度も付かないまま
         # `GRACE_SEC`で落ちる余地があった。
         srv.opened = True
+
+        if path == "/api/health":
+            # No registration, cookie parsing, file paths or user data.
+            self._json(200, {"ok": True, "version": "state-storage-v1"})
+            return
+
+        if path == "/api/catalog/favourite-names":
+            # **全利用者のお気に入りの登録名（重複除去・利用者 ID なし）。** 手元の取得
+            # 処理が、他の利用者の登録名でも公演を探しに行くために読む（規約 O2）。
+            # 合言葉（`TAGURI_NAMES_TOKEN`）を設定していなければ、この道は存在しない
+            token = os.environ.get("TAGURI_NAMES_TOKEN", "")
+            if not token:
+                self._send(404, b"not found", "text/plain; charset=utf-8")
+                return
+            given = (self.headers.get("Authorization") or "").removeprefix("Bearer ").strip()
+            if not secrets.compare_digest(given.encode(), token.encode()):
+                self._send(403, b"forbidden", "text/plain; charset=utf-8")
+                return
+            self._json(200, {"ok": True, "version": "favourite-names-v1",
+                             "names": APP.aggregate_declared_names()})
+            return
 
         # **#000008の新しい道はここで先に受ける。** 既存のPAGES一覧・起動ごと
         # トークン（`_tok`）より前 ── これらは「まだ鍵を持っていない人」が
@@ -511,15 +541,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     if "f" in q:
                         srv.set_prefs(user_id, [p for p in q.get("pref", []) if p][:47])
                     prefs = srv.get_prefs(user_id)
-                    cache_key = "recommend|" + ",".join(prefs)
-                    cached = srv.screen_cache_get(user_id, cache_key)
-                    if cached is not None:
-                        self._json(200, cached)
-                        return
+                    # Recompute from committed ratings on each navigation.
+                    # An older concurrent render must not refill a stale cache
+                    # after a rating/link/delete invalidated it.
                     body = APP._recommend_body(user_id, prefs)
                     srv.mark_viewed(user_id, "recommend_pref" if prefs else "recommend")
                     result = {"ok": True, "title": "今週のおすすめ", "body_html": body}
-                    srv.screen_cache_set(user_id, cache_key, result)
                     self._json(200, result)
                     return
                 if path == "/api/screen/reminder":
@@ -620,7 +647,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 self._json(200, result)
                 return
             except Exception as e:                                      # noqa: BLE001
-                self._json(500, {"ok": False, "error": str(e)})
+                STATE.event("request_failed", outcome="failed")
+                self._json(500, {"ok": False, "error": "画面の読み込みに失敗しました。" if srv.demo_mode else str(e)})
                 return
         if path == "/api/suggest":
             # **手で足す欄の候補。** 手元にあるものだけを引く読み口で、外へは行かない
@@ -772,6 +800,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 self._send(404, b"not found", "text/plain; charset=utf-8")
                 return
         except Exception as e:                                      # noqa: BLE001
+            if srv.demo_mode:
+                STATE.event("request_failed", outcome="failed")
+                self._send(500, "画面の読み込みに失敗しました。再度お試しください。".encode(),
+                           "text/plain; charset=utf-8")
+                return
             # **画面が組めなかったことを黙って 500 にしない。** 何が足りないのかを画面に出す
             import traceback
             self._send(500, ("<h1>画面が組めなかった</h1><pre>"
@@ -941,9 +974,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
             # Only this visitor's cache is affected; no automatic reload is made.
             if result.get("ok", True) and op != "/api/hand_theme_refresh":
                 srv.invalidate_user_cache(self.user_id)
+            STATE.event("write_result", outcome="ok" if result.get("ok", True) else "rejected",
+                        operation=WRITE_OPERATIONS.get(op, "other"), status=200)
             self._json(200, result)
         except ValueError as e:
             self._json(400, {"error": str(e)})
+        except (sqlite3.Error, OSError):
+            self._json(503, {"error": "保存に失敗しました。記録が保存されたか確認し、再度お試しください。"})
 
 
 def _seed_demo(user_id: str) -> None:
@@ -954,8 +991,8 @@ def _seed_demo(user_id: str) -> None:
     """
     try:
         APP.seed_demo_works(user_id)
-    except Exception as e:                                          # noqa: BLE001
-        print(f"見本の記録を入れられなかった: {e}", flush=True)
+    except Exception:                                              # noqa: BLE001
+        STATE.event("demo_seed", outcome="failed")
 
 
 def _month(query: str) -> str:
@@ -981,12 +1018,15 @@ class Server(http.server.ThreadingHTTPServer):
 
         既定の実装は traceback を標準エラーに書く。画面を移動するたびに
         `BrokenPipeError` の山が進捗表示に混ざり、本当の失敗が読めなくなっていた。
-        **切断以外は今までどおり出す** ── 握り潰すのは相手都合の切断だけである。
+        **切断以外は固定の失敗イベントだけを出す。** 個人情報を含み得る
+        例外文・traceback・相手のアドレスはログへ出さない。
         """
         if isinstance(sys.exc_info()[1], (BrokenPipeError, ConnectionResetError,
                                           ConnectionAbortedError)):
             return
-        super().handle_error(request, client_address)
+        # A traceback can expose request-derived values through exception text.
+        # Operational diagnostics deliberately omit addresses and exception text.
+        STATE.event("request_failed", outcome="failed")
 
     def __init__(self, label: str, port: int, *, bind_host: str = "127.0.0.1",
                 demo_mode: bool = False, cors_origin: str = "") -> None:
@@ -1432,7 +1472,8 @@ class Server(http.server.ThreadingHTTPServer):
         with self.lock:
             APP.save_work_field(user_id, work_key, verdict=verdict)
             self.n["rate"] += 1
-        return {"ok": True, "work_key": work_key, "verdict": verdict}
+        return {"ok": True, "work_key": work_key, "verdict": verdict,
+                "recommendation": {"status": "on_next_read"}}
 
     # ---- 3 感想の自由記述 --------------------------------------------------
     def on_note(self, b: dict, user_id: str) -> dict:
@@ -2108,3 +2149,4 @@ if __name__ == "__main__":
     # `_harden_permissions()` が先に umask を絞っているが、単独起動ではそれが効いていない
     os.umask(0o077)
     print(serve(a.label, port=a.port))
+

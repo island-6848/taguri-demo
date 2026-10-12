@@ -38,6 +38,7 @@ import json
 import os
 import re
 import ssl
+import sys
 import threading
 import time
 import urllib.error
@@ -45,11 +46,14 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools" / "lib"))
+import polite_http as PH                                   # noqa: E402  取得の作法（名乗り・robots.txt・間隔）
+
 ROOT = Path(__file__).resolve().parent.parent.parent
 SRC = ROOT / "data" / "credits" / "credits.jsonl"
 OUT = ROOT / "data" / "credits" / "official.jsonl"
 CACHE = ROOT / "data" / "credits" / "official_pages"
-UA = "Mozilla/5.0 (compatible; taguri-verify/1.0; personal use)"
+UA = PH.UA                                      # 名乗りは polite_http の 1 か所で決める
 
 BACKSTAGE = ["美術", "照明", "音響", "衣裳", "衣装", "舞台監督"]
 ALL_ROLES = BACKSTAGE + ["演出", "脚本", "作", "出演", "音楽", "振付", "制作", "宣伝美術"]
@@ -74,7 +78,7 @@ FOLLOW_WORDS = ("スタッフ", "STAFF", "Staff", "キャスト", "CAST", "Cast"
 # **礼儀の単位は相手のサーバーである。** 1 つの相手には 1.1 秒に 1 回までを守り、
 # 別の相手へは同時に行く。x.com のように 1 ホストに 74 件が集まっている先は、
 # ここで自然に直列になる（それが正しい）。
-INTERVAL = 1.1
+INTERVAL = PH.INTERVAL       # ホストごとの間隔は polite_http が守る（ここは表示用）
 # **到達を諦めるまでの秒数。** 25 秒から縮めた（起案者の指摘・2026-08-24 ──
 # 「ステイジーズカレンダーの取り込みに時間がかかっている。短縮して」）。**返事の無い
 # 相手 1 件が、そのまま 1 本の並列枠を 25 秒占める。** 実測で、到達できた先の中央値は
@@ -86,7 +90,6 @@ TIMEOUT = 8
 # 前の月にも落ちた先である）。次の更新（月 1 回）までは再挑戦しない
 FAIL_DAYS = 30
 FAILS = ROOT / "data" / "credits" / "official_fail.json"
-_last: dict[str, float] = {}
 _lock = threading.Lock()
 _fails: dict[str, str] | None = None
 _fail_dirty = False
@@ -100,19 +103,6 @@ def _host(url: str) -> str:
         return (urllib.parse.urlsplit(url).hostname or "").lower()
     except ValueError:
         return ""
-
-
-def _wait_turn(url: str) -> None:
-    """このホストの順番が来るまで待つ。**待っている間、他のホストは止めない。**"""
-    h = _host(url)
-    while True:
-        with _lock:
-            now = time.monotonic()
-            due = _last.get(h, 0.0) + INTERVAL
-            if now >= due:
-                _last[h] = now            # 枠を取ってから抜ける（同じホストで二重取りしない）
-                return
-        time.sleep(min(due - now, INTERVAL))
 
 
 def _load_fails() -> dict:
@@ -174,19 +164,11 @@ def get(url: str, *, retry_failed: bool = False) -> tuple[str, str]:
         why = _skip_failed(url)
         if why:
             return "", f"前に落ちた先なので飛ばした（{why}）"
-    _wait_turn(url)
     try:
-        req = urllib.request.Request(url, headers={"User-Agent": UA,
-                                                   "Accept-Encoding": "gzip"})
-        with urllib.request.urlopen(req, timeout=TIMEOUT, context=_ctx) as r:
-            raw = r.read(3_000_000)
-            if r.headers.get("Content-Encoding") == "gzip":
-                raw = gzip.decompress(raw)
-            enc = "utf-8"
-            m = re.search(rb'charset=["\']?([\w-]+)', raw[:3000], re.I)
-            if m:
-                enc = m.group(1).decode("ascii", "replace")
-            html = raw.decode(enc, "replace")
+        # **取得の作法は polite_http に任せる**（名乗り・robots.txt・ホストごとの間隔・
+        # 429/503 で引く）。robots.txt で禁止された先は通信せずに `Skipped` になり、
+        # 下で「落ちた先」として控えるので、次の更新までは取りに行かない
+        html = PH.fetch_text(url, timeout=TIMEOUT, max_bytes=3_000_000, context=_ctx)
     except Exception as exc:
         # **落ちたことを控える。** 控えないと、毎月の実行が毎回すべての失敗を
         # 取り直す（1 件あたり最大 TIMEOUT 秒）

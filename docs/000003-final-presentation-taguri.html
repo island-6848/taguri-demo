@@ -260,6 +260,55 @@ figcaption{font-size:12.5px;color:var(--muted);margin-top:10px;max-width:70em}
   padding:7px 11px;font:inherit;color:var(--ink);cursor:pointer}
  .topbar b{font-family:"IBM Plex Sans";font-weight:700;font-size:14px}
 }
+
+/* ---------------------------------------------------------------- 推薦アルゴリズムの図 */
+.aBox{fill:var(--paper);stroke:var(--line);stroke-width:1.2}
+.aBoxB{fill:rgba(var(--brand-rgb),.08);stroke:rgba(var(--brand-rgb),.45);stroke-width:1.4}
+.aDia{fill:var(--wash);stroke:var(--brand2);stroke-width:1.4}
+.aOut{fill:rgba(var(--thread-rgb),.10);stroke:var(--thread);stroke-width:1.4}
+.aSide{fill:var(--wash);stroke:var(--line);stroke-width:1.2;stroke-dasharray:5 4}
+.aGoal{fill:var(--brand)}.aGoalT{fill:var(--paper);font-size:15px;font-weight:700}
+.aTip{fill:var(--wash);stroke:var(--line)}
+.aRowH{fill:var(--wash)}.aChip{fill:rgba(var(--thread-rgb),.12);stroke:rgba(var(--thread-rgb),.4)}
+.aL{fill:none;stroke:var(--muted);stroke-width:1.6}.aLt{fill:none;stroke:var(--thread);stroke-width:1.8}
+.aDash{stroke-dasharray:6 5}.aDash2{stroke-dasharray:5 4}
+.aF-m{fill:var(--muted)}.aF-t{fill:var(--thread)}
+.aDotT{fill:var(--thread)}.aDotM{fill:var(--line)}
+.aBarT{fill:var(--thread)}.aBarB{fill:var(--brand2)}.aBarM{fill:var(--muted)}
+#algo svg text,.dg svg text{font-family:"Noto Sans JP",sans-serif}
+.aH{fill:var(--ink);font-size:14.5px;font-weight:700}.aS{fill:var(--body);font-size:12.5px}
+.aSb{fill:var(--ink)}.aK{fill:var(--muted);font-size:11.5px}.aN{fill:var(--muted);font-size:11.5px}
+.aD{fill:var(--ink);font-size:13px;font-weight:600}.aY{fill:var(--thread);font-size:11.5px;font-weight:700}
+.aO{fill:var(--ink);font-size:13.5px;font-weight:700}.aLoop{fill:var(--thread);font-size:12px;font-weight:600}
+.aMath{fill:var(--brand);font-family:"IBM Plex Mono",monospace!important;font-size:15px;font-weight:600}
+.aOp{fill:var(--muted);font-size:26px;font-weight:600}
+.aSym{fill:var(--paper);font-size:16px;font-weight:700}
+.calc th,.calc td{white-space:nowrap;padding:9px 10px}
+.calcgrid{grid-template-columns:1fr 1.3fr}.calcgrid>.card{min-width:0}
+@media(max-width:860px){.calcgrid{grid-template-columns:1fr}}
+.notdone .row .tag{align-self:start;justify-self:start;white-space:normal}.aSymM{fill:var(--muted);font-size:10px;font-weight:700}
+
+/* ---------------------------------------------------------------- カードをやめ、区切り線の一覧にする */
+.card,.ach{background:none;border:0;border-radius:0;box-shadow:none}
+.card{border-top:1px solid var(--line);padding:16px 0 12px}
+.grid2:not(.pair){grid-template-columns:1fr;gap:0;max-width:820px}
+.grid2:not(.pair)>.card:last-child{border-bottom:1px solid var(--line)}
+.grid2.pair{gap:40px}
+.grid2.pair>.card{border-top:2px solid var(--ink);padding-top:14px}
+.card h4{margin-bottom:4px}
+.card .icwrap{background:none;width:auto;height:auto;margin-right:2px}
+.ach{border-top:1px solid var(--line);padding:18px 0 14px;margin:0}
+.ach:last-child{border-bottom:1px solid var(--line)}
+.ach .benefit{background:none;border-left:3px solid var(--thread);border-radius:0;padding:4px 0 4px 12px}
+.notdone{gap:0;max-width:1040px}
+.notdone .row{background:none;border:0;border-radius:0;border-top:1px solid var(--line);padding:14px 0}
+.notdone .row:last-child{border-bottom:1px solid var(--line)}
+.toc-grid{display:block;max-width:760px}
+.toc-grid a{background:none;border:0;border-radius:0;border-top:1px solid var(--line);padding:14px 4px;transform:none!important}
+.toc-grid a:last-child{border-bottom:1px solid var(--line)}
+.toc-grid a:hover{background:var(--wash)}
+.toc-grid h4,.toc-grid p{display:inline}
+.toc-grid p{margin-left:14px}
 @media print{.rail,.topbar{display:none}}
 </style>
 
@@ -271,9 +320,10 @@ figcaption{font-size:12.5px;color:var(--muted);margin-top:10px;max-width:70em}
     <a href="#toc"><b>―</b>目次</a>
     <a href="#ch2"><b>01</b>企画内容</a>
     <a href="#ch3"><b>02</b>機能概要</a>
-    <a href="#ch4"><b>03</b>セキュリティ</a>
-    <a href="#ch5"><b>04</b>達成事項</a>
-    <a href="#ch6"><b>05</b>今後の展望</a>
+    <a href="#algo"><b>03</b>推薦アルゴリズム</a>
+    <a href="#ch4"><b>04</b>セキュリティ</a>
+    <a href="#ch5"><b>05</b>達成事項</a>
+    <a href="#ch6"><b>06</b>今後の展望</a>
   </nav>
 </aside>
 
@@ -288,20 +338,22 @@ figcaption{font-size:12.5px;color:var(--muted);margin-top:10px;max-width:70em}
   <div class="meta">
     <div><b>作成者</b><span><i class="fillme">仲谷茉桜</i></span></div>
     <div><b>提出日</b><span><i class="fillme">2026 年 8 月</i></span></div>
+    <div><b>最終更新</b><span>2026 年 10 月</span></div>
   </div>
 </section>
 
 <!-- ============================================================ 目次 -->
 <section class="sec" id="toc">
   <div class="eyebrow"><span>目次</span></div>
-  <h2 class="title">5 章構成</h2>
-  <p class="kicker">企画から、作ったもの・守り方・できたこと・これからまでを順に示す。</p>
+  <h2 class="title">6 章構成</h2>
+  <p class="kicker">企画から、作ったもの・推薦の仕組み・守り方・できたこと・これからまでを順に示す。</p>
   <div class="toc-grid wide">
     <a href="#ch2"><span class="n">01</span><span><h4>企画内容</h4><p>課題・価値・対象ユーザー・想定シーン</p></span></a>
     <a href="#ch3"><span class="n">02</span><span><h4>機能概要</h4><p>機能の分類・使用イメージ・使っている技術・システム構成</p></span></a>
-    <a href="#ch4"><span class="n">03</span><span><h4>セキュリティ</h4><p>境界線の概念図</p></span></a>
-    <a href="#ch5"><span class="n">04</span><span><h4>達成事項</h4><p>実現できたこと・メリット・未実装</p></span></a>
-    <a href="#ch6"><span class="n">05</span><span><h4>今後の展望</h4><p>検討中の拡張・応用の可能性</p></span></a>
+    <a href="#algo"><span class="n">03</span><span><h4>推薦アルゴリズム</h4><p>全体の流れ・点数の式・並べ方・使わない情報・利用者ごとの推薦</p></span></a>
+    <a href="#ch4"><span class="n">04</span><span><h4>セキュリティ</h4><p>境界線の概念図</p></span></a>
+    <a href="#ch5"><span class="n">05</span><span><h4>達成事項</h4><p>実現できたこと・メリット・未実装</p></span></a>
+    <a href="#ch6"><span class="n">06</span><span><h4>今後の展望</h4><p>検討中の拡張・応用の可能性</p></span></a>
   </div>
 </section>
 
@@ -349,6 +401,35 @@ figcaption{font-size:12.5px;color:var(--muted);margin-top:10px;max-width:70em}
     </div>
   </div>
 
+
+  <h3 class="sub">いつ働くか：初報から観劇後まで</h3>
+  <figure class="wide dg">
+    <svg viewBox="0 0 1000 300" role="img" aria-label="公演の時間軸。初報から初日の前日までは今週のおすすめ、初日の1〜2週前からは開幕リマインド、興味ありを押してから楽日までは興味ありの一覧と公演カレンダー、観たあとは評価と記録が働く。">
+      <defs><marker id="ta" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M1 1l7 4-7 4z" class="aF-m"/></marker></defs>
+      <path d="M40 70H960" class="aL" style="stroke-width:2.4" marker-end="url(#ta)"/>
+      <g text-anchor="middle">
+        <circle cx="90" cy="70" r="9" class="aDotM"/><text x="90" y="44" class="aO">初報</text><text x="90" y="100" class="aK">公演情報が出る</text>
+        <circle cx="330" cy="70" r="9" class="aDotM"/><text x="330" y="44" class="aO">発売</text>
+        <circle cx="560" cy="70" r="11" class="aDotT"/><text x="560" y="44" class="aO">初日</text>
+        <circle cx="760" cy="70" r="9" class="aDotM"/><text x="760" y="44" class="aO">楽日</text><text x="760" y="100" class="aK">ここで観られなくなる</text>
+        <text x="900" y="44" class="aO">観劇後</text>
+      </g>
+      <!-- 帯 -->
+      <g>
+        <rect x="90" y="126" width="466" height="30" rx="15" class="aBarB"/>
+        <text x="104" y="146" class="aGoalT" style="font-size:13px">今週のおすすめ（初日の前日まで）</text>
+        <rect x="400" y="166" width="156" height="30" rx="15" class="aBarT"/>
+        <text x="410" y="186" class="aGoalT" style="font-size:12.5px">開幕リマインド</text>
+        <rect x="250" y="206" width="510" height="30" rx="15" class="aOut"/>
+        <text x="264" y="226" class="aO" style="font-size:13px">興味あり → 一覧・公演カレンダーで期限まで追う</text>
+        <rect x="770" y="246" width="200" height="30" rx="15" class="aBoxB"/>
+        <text x="786" y="266" class="aO" style="font-size:13px">◎○△× と感想を記録</text>
+      </g>
+      <path d="M870 276V292H60V141H84" class="aLt aDash" marker-end="url(#ta)"/>
+    </svg>
+    <figcaption>初日を過ぎた公演は推薦枠に出さない。初報から初日までのあいだに気づかせることが、見逃しを防ぐという目的そのものだからである。観たあとの評価は、次の推薦の材料に戻る。</figcaption>
+  </figure>
+
   <h3 class="sub">想定シーン：どんなときに開くか</h3>
   <div class="grid2 wide">
     <div class="card">
@@ -374,7 +455,7 @@ figcaption{font-size:12.5px;color:var(--muted);margin-top:10px;max-width:70em}
 <section class="sec" id="ch3">
   <div class="eyebrow"><span class="n">02</span><span>機能概要</span></div>
   <h2 class="title">機能概要</h2>
-  <p class="kicker">機能の分類・使い方から、使っている技術・システム構成・設計判断までをまとめて示す。効果やメリットの文章は置かず、すべて 4 章にまとめている。</p>
+  <p class="kicker">機能の分類・使い方から、使っている技術・システム構成・設計判断までをまとめて示す。効果やメリットの文章は置かず、すべて 5 章にまとめている。</p>
 
   <h3 class="sub" style="margin-top:0">2-1　機能の 4 分類と一覧：記録する・見る／学習する／推薦する／評価する</h3>
 
@@ -473,477 +554,499 @@ figcaption{font-size:12.5px;color:var(--muted);margin-top:10px;max-width:70em}
   </figure>
 
   <h3 class="sub">2-2　ユーザーの使い方</h3>
+  <p class="col">公開版は Web アプリとして動く。登録なしで URL を開けば使え、スマホでも PC でも同じ記録を続けられる。</p>
 
-  <div class="grid2 wide" style="align-items:start">
+  <div class="grid2 wide pair" style="align-items:start">
     <div class="card">
       <h4>推薦を使う場合（週 1 回・約 3 分）</h4>
-      <figure style="margin:16px 0 4px">
-        <svg viewBox="0 0 400 540" style="width:100%;height:auto;display:block" role="img" aria-label="ショートカットから起動・一覧が開く・その場で反応する・ウィンドウを閉じるの4ステップのあと、通常は次に開いたときの反映へそのまま直進する。ただし③で興味ありにした公演があれば、観る・起動する・その情報を登録するという横の分岐に分かれる。登録は開かないとできないため、観たあとにもう一度起動する手順を挟んでおり、その結果も同じく次に開いたときの反映へ合流するという分岐図">
-          <defs>
-            <marker id="brFlowArrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-              <path d="M1 1l7 4-7 4z" fill="currentColor"/>
-            </marker>
-          </defs>
-
-          <!-- 主経路（縦の1本） -->
-          <line x1="30" y1="34" x2="30" y2="504" stroke="var(--line)" stroke-width="2"/>
-
-          <!-- 分岐（観る→起動する→登録する）：④からの分かれと⑤への合流 -->
-          <g fill="none" stroke="var(--thread)" color="var(--thread)" stroke-width="1.7">
-            <path d="M48,262 Q150,268 212,304" marker-end="url(#brFlowArrow)"/>
-            <line x1="230" y1="330" x2="230" y2="354" marker-end="url(#brFlowArrow)"/>
-            <line x1="230" y1="390" x2="230" y2="414" marker-end="url(#brFlowArrow)"/>
-            <path d="M212,450 Q120,480 48,496" marker-end="url(#brFlowArrow)"/>
-          </g>
-          <text x="150" y="288" font-size="11" fill="var(--thread)" text-anchor="middle" font-family="IBM Plex Sans">③ で興味ありにした公演があれば（分岐）</text>
-
-          <!-- ① -->
-          <g font-family="IBM Plex Sans">
-            <circle cx="30" cy="34" r="20" fill="var(--brand)" stroke="var(--brand)" stroke-width="1.5"/>
-            <path d="M8 5l11 7-11 7z" transform="translate(21,25) scale(.75)" fill="#fff"/>
-            <text x="64" y="30" font-size="14" font-weight="700" fill="var(--ink)">① ショートカットから起動</text>
-            <text x="64" y="46" font-size="12" fill="var(--muted)">起動から一覧表示まで数秒</text>
-          </g>
-
-          <!-- ② -->
-          <g font-family="IBM Plex Sans">
-            <circle cx="30" cy="106" r="20" fill="var(--paper)" stroke="var(--brand2)" stroke-width="1.5"/>
-            <path d="M3 9a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2 2 2 0 0 0 0 6 2 2 0 0 1-2 2H5a2 2 0 0 1-2-2 2 2 0 0 0 0-6zM11 7v10" transform="translate(21,97) scale(.75)" fill="none" stroke="var(--brand)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-            <text x="64" y="102" font-size="14" font-weight="700" fill="var(--ink)">② ブラウザに一覧が開く</text>
-            <text x="64" y="118" font-size="12" fill="var(--muted)">今週のおすすめ・開幕リマインド・興味ありの追跡・お気に入りの新着</text>
-          </g>
-
-          <!-- ③ -->
-          <g font-family="IBM Plex Sans">
-            <circle cx="30" cy="178" r="20" fill="var(--paper)" stroke="var(--brand2)" stroke-width="1.5"/>
-            <path d="M4.5 12.5 9.5 18 20 6" transform="translate(21,169) scale(.75)" fill="none" stroke="var(--brand)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
-            <text x="64" y="174" font-size="14" font-weight="700" fill="var(--ink)">③ その場で反応する</text>
-            <text x="64" y="190" font-size="12" fill="var(--muted)">興味あり／なし・◎○△×・感想</text>
-          </g>
-
-          <!-- ④ -->
-          <g font-family="IBM Plex Sans">
-            <circle cx="30" cy="250" r="20" fill="var(--paper)" stroke="var(--brand2)" stroke-width="1.5"/>
-            <path d="M6 6l12 12M18 6 6 18" transform="translate(21,241) scale(.75)" fill="none" stroke="var(--brand)" stroke-width="1.7" stroke-linecap="round"/>
-            <text x="64" y="246" font-size="14" font-weight="700" fill="var(--ink)">④ ウィンドウを閉じる</text>
-            <text x="64" y="262" font-size="12" fill="var(--muted)">システムは常駐しない。閉じたら落ちる</text>
-          </g>
-
-          <!-- 分岐: 観る -->
-          <g font-family="IBM Plex Sans">
-            <circle cx="230" cy="312" r="18" fill="var(--paper)" stroke="var(--thread)" stroke-width="1.6"/>
-            <path d="M12 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM4 20c0-3.3 3.6-5 8-5s8 1.7 8 5" transform="translate(219,301) scale(.68)" fill="none" stroke="var(--thread)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
-            <text x="256" y="308" font-size="13" font-weight="700" fill="var(--ink)">観る</text>
-            <text x="256" y="323" font-size="11.5" fill="var(--muted)">実際に観に行く</text>
-          </g>
-
-          <!-- 分岐: 起動する（登録するには一度開く必要がある） -->
-          <g font-family="IBM Plex Sans">
-            <circle cx="230" cy="372" r="18" fill="var(--paper)" stroke="var(--thread)" stroke-width="1.6"/>
-            <path d="M8 5l11 7-11 7z" transform="translate(219,361) scale(.68)" fill="var(--thread)"/>
-            <text x="256" y="368" font-size="13" font-weight="700" fill="var(--ink)">起動する</text>
-            <text x="256" y="383" font-size="11.5" fill="var(--muted)">ショートカットから開く</text>
-          </g>
-
-          <!-- 分岐: その情報を登録する -->
-          <g font-family="IBM Plex Sans">
-            <circle cx="230" cy="432" r="18" fill="var(--paper)" stroke="var(--thread)" stroke-width="1.6"/>
-            <path d="M4 20h4L18 10l-4-4L4 16zM13.5 6.5l4 4" transform="translate(219,421) scale(.68)" fill="none" stroke="var(--thread)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
-            <text x="256" y="428" font-size="13" font-weight="700" fill="var(--ink)">その情報を登録する</text>
-            <text x="256" y="443" font-size="11.5" fill="var(--muted)">評価・感想を記録に加える</text>
-          </g>
-
-          <!-- ⑤ -->
-          <g font-family="IBM Plex Sans">
-            <circle cx="30" cy="504" r="20" fill="var(--paper)" stroke="var(--brand2)" stroke-width="1.5"/>
-            <path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5" transform="translate(21,495) scale(.75)" fill="none" stroke="var(--brand)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-            <text x="64" y="500" font-size="14" font-weight="700" fill="var(--ink)">⑤ 次に開くと、反応が反映された一覧が出ている</text>
-            <text x="64" y="516" font-size="12" fill="var(--muted)">③ の反応、または観た公演の登録が次週の推薦に届いている</text>
-          </g>
-        </svg>
-      </figure>
-      <p class="loopback"><svg class="ic" viewBox="0 0 24 24" width="14" height="14"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5"/></svg>① へ戻る（週 1 回の輪）</p>
-    </div>
-
-    <div class="card">
-      <h4>記録を残す・見たい場合（買うたび・観たあと）</h4>
-      <p style="margin:0 0 14px;color:var(--ink);font-size:14px">推薦を使わず記録だけを残す使い方も成立する。</p>
       <div class="flow">
-        <div class="step">
-          <div class="dot"><svg class="ic" viewBox="0 0 24 24" width="18" height="18"><path d="M3 6h18v12H3zM3 6.5l9 6.5 9-6.5"/></svg></div>
-          <div class="tx"><b>公演を買う</b><span>何もしない（メールから自動で取り込む）</span></div>
-        </div>
-        <div class="step">
-          <div class="dot"><svg class="ic" viewBox="0 0 24 24" width="18" height="18"><path d="M12 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM4 20c0-3.3 3.6-5 8-5s8 1.7 8 5"/></svg></div>
-          <div class="tx"><b>観る</b><span>―</span></div>
-        </div>
-        <div class="step">
-          <div class="dot"><svg class="ic" viewBox="0 0 24 24" width="17" height="17" style="fill:currentColor;stroke:none"><path d="M8 5l11 7-11 7z"/></svg></div>
-          <div class="tx"><b>ショートカットから起動</b><span>記録を残す・振り返るときに毎回</span></div>
-        </div>
-        <div class="step">
-          <div class="dot"><svg class="ic" viewBox="0 0 24 24" width="18" height="18"><path d="M4 20h4L18 10l-4-4L4 16zM13.5 6.5l4 4"/></svg></div>
-          <div class="tx"><b>記録を残す</b><span>感想を書く（1〜3 分）</span></div>
-        </div>
-        <div class="step">
-          <div class="dot"><svg class="ic" viewBox="0 0 24 24" width="18" height="18"><path d="M3 20h18M6.5 20v-5M11.5 20V6M16.5 20v-9"/></svg></div>
-          <div class="tx"><b>振り返る</b><span>眺める・観劇史年表・日記帳</span></div>
-        </div>
+        <div class="step"><span class="dot act">1</span><div class="tx"><b>URL を開く</b><span>はじめての人には復旧コードを 1 回だけ表示し、操作ツアーが始まる</span></div></div>
+        <div class="step"><span class="dot act">2</span><div class="tx"><b>今週のおすすめを見る</b><span>理由つきの 15 件・開幕リマインド・興味ありの追跡・お気に入りの新着</span></div></div>
+        <div class="step"><span class="dot act">3</span><div class="tx"><b>その場で反応する</b><span>興味あり／すでに持っている／興味なし。答えた公演は抜け、次点が繰り上がる</span></div></div>
+        <div class="step"><span class="dot">4</span><div class="tx"><b>閉じてよい</b><span>記録はサーバー側の本人の領域に保存される</span></div></div>
+        <div class="step"><span class="dot eval">5</span><div class="tx"><b>次に開くと、反応と評価が反映されている</b><span>本人の評価から、その場で推薦を計算し直す（3-6）</span></div></div>
       </div>
+      <div class="loopback"><svg class="ic" viewBox="0 0 24 24" width="16" height="16"><path d="M4 12a8 8 0 0 1 14-5.3M18 3v4h-4"/></svg>1 へ戻る（週 1 回の輪）</div>
+    </div>
+    <div class="card">
+      <h4>記録を残す・振り返る場合（観たあと）</h4>
+      <div class="flow">
+        <div class="step"><span class="dot">1</span><div class="tx"><b>観に行く</b><span>上演日を過ぎた公演は「未評価」に並ぶ</span></div></div>
+        <div class="step"><span class="dot eval">2</span><div class="tx"><b>◎○△× を付ける</b><span>押すと感想の欄が開く（任意・1〜3 分）</span></div></div>
+        <div class="step"><span class="dot">3</span><div class="tx"><b>足りない記録を追加する</b><span>題名 2 文字で候補が出て、劇場・日程・出演者ごと入る。購入確認メールからの自動取り込みは手元で動かす版だけ</span></div></div>
+        <div class="step"><span class="dot act">4</span><div class="tx"><b>振り返る</b><span>眺める・たどる・観劇史年表・日記帳</span></div></div>
+      </div>
+      <p class="muted" style="margin-top:14px">推薦を使わず、記録だけを残す使い方も成り立つ。</p>
     </div>
   </div>
 
   <h3 class="sub">2-3　使っている技術・システム構成</h3>
-  <p class="muted" style="margin:2px 0 6px">保存の 2 種類を、具体的に言うと次のとおり。</p>
-  <ul class="plain col">
-    <li><b>状態</b>（<code>ratings.db</code>、SQLite）：自分にしか作れないデータ。失うと戻らない
-      <ul class="plain">
-        <li>観た公演の評価・感想（<code>works</code>／<code>ratings</code>）</li>
-        <li>「興味あり」「観ればよかった」などの反応履歴（<code>reaction</code>）</li>
-        <li>お気に入り・除外にした名前（<code>splits</code>／<code>excluded</code>）</li>
-        <li>購入確認メールのチケット情報（<code>ticket</code>）</li>
-      </ul>
-    </li>
-    <li><b>取得物</b>（JSON・JSONL）：外部から取ったデータのコピー。消えても取り直せる
-      <ul class="plain">
-        <li>候補一覧（<code>candidates.jsonl</code>）</li>
-        <li>あらすじ（<code>synopsis.jsonl</code>）</li>
-        <li>クレジット（<code>credits.jsonl</code>）</li>
-        <li>ステイジーズカレンダー（<code>calendar.jsonl</code>）</li>
-      </ul>
-    </li>
-  </ul>
-  <p class="muted" style="margin:10px 0 16px"><b>JSON と JSONL は、データの形で使い分けている。</b>同じ形の行がたくさん並ぶもの（候補・あらすじ・クレジット・カレンダーのように、1 行が公演 1 件やクレジット 1 件を表す）は JSONL（1 行 1 件）にし、複数の情報を組み合わせた 1 つのまとまり（推薦の計算結果など、行の集まりではない構造）は JSON にする。JSONL には副次的な利点もある。 <b>1 行が壊れても、他の行はそのまま読める。</b>1 つの大きな JSON にまとめていた場合、1 か所の書き込み不良がファイル全体を読めなくするが、1 行 1 件にしておけば被害がその 1 行に閉じる。</p>
-
-  <figure class="wide">
-    <svg viewBox="0 0 1170 820" role="img" aria-label="左から右へ、フロントエンドの黒枠・バックエンドの青枠・外部接続の枠が並ぶ図。バックエンドの中は、記録を管理する・学習する・推薦する・反応を集めるの4つの技術ブロックを東西南北に置いた大きな輪（サークル）として描き、輪の内側にあるAI・JSON・JSONL・SQLiteの3つの補助ブロックは輪の箱より小さく描いている。輪は上に①記録を管理する、右に②学習する、下に③推薦する、左に④反応を集めるを配置し、時計回りに①→②→③→④とつながっている。フロントエンドの画面からのHTTPは輪の左（④反応を集める）へ直進して入り、右端の外部接続（購入確認メール・候補一覧公演情報フィード・ステイジーズカレンダー・OpenStreetMap）からの取得は輪の右（②学習する）へ直進して入る。②の下にはGemini APIを呼ぶAIの箱があり、②からJSON・JSONLへ書く矢印も引かれている。推薦するは固定の計算式で合成するだけで学習・推論はしないと注記されている図">
+  <figure class="wide dg">
+    <svg viewBox="0 0 1000 520" role="img" aria-label="システム構成図。ブラウザの画面はGitHub Pagesから静的に配信され、HTTPSでRender上のAPIサーバーとやり取りする。APIサーバーはPython標準ライブラリで動き、利用者ごとの状態をSQLiteに、共通の公演カタログをJSONとJSONLに持つ。カタログは事前の取得バッチがCoRich、ステイジーズカレンダー、Gemini API、OpenStreetMapから作り、S3経由でサーバーに渡す。">
       <defs>
-        <marker id="ah4" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
-          <path d="M1 1l7 4-7 4z" fill="currentColor"/>
-        </marker>
+        <marker id="ga" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1l7 4-7 4z" class="aF-m"/></marker>
+        <marker id="gat" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1l7 4-7 4z" class="aF-t"/></marker>
       </defs>
-
+      <!-- 列見出し -->
+      <text x="20" y="22" class="aK">利用者の端末</text>
+      <text x="300" y="22" class="aK">公開サーバー（常時稼働）</text>
+      <text x="740" y="22" class="aK">事前の取得（訪問者の操作とは切り離す）</text>
       <!-- 利用者 -->
-      <g font-family="IBM Plex Sans">
-        <rect x="20" y="195" width="190" height="80" rx="12" fill="var(--paper)" stroke="var(--line)"/>
-        <circle cx="46" cy="227" r="14" fill="rgba(var(--brand-rgb),.12)"/>
-        <path d="M12 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM4 20c0-3.3 3.6-5 8-5s8 1.7 8 5" transform="translate(34,219) scale(.8)" fill="none" stroke="var(--brand)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-        <text x="70" y="223" font-size="13" font-weight="700" fill="var(--ink)">利用者</text>
-        <text x="70" y="238" font-size="10.5" fill="var(--body)">演劇鑑賞をする本人</text>
+      <g transform="translate(20 36)">
+        <rect width="240" height="200" rx="14" class="aBox"/>
+        <rect x="20" y="20" width="56" height="96" rx="10" class="aDotM"/><rect x="26" y="30" width="44" height="74" rx="4" class="aBox"/>
+        <rect x="96" y="30" width="120" height="78" rx="6" class="aDotM"/><rect x="102" y="36" width="108" height="64" rx="3" class="aBox"/><rect x="86" y="108" width="140" height="8" rx="3" class="aDotM"/>
+        <text x="120" y="146" text-anchor="middle" class="aH">ブラウザ（スマホ・PC）</text>
+        <text x="120" y="170" text-anchor="middle" class="aS">画面：HTML・CSS・JavaScript</text>
+        <text x="120" y="188" text-anchor="middle" class="aS">フレームワークなし</text>
       </g>
-      <g fill="none" stroke="var(--muted)" color="var(--muted)" stroke-width="1.4">
-        <line x1="115" y1="275" x2="115" y2="311" marker-end="url(#ah4)"/>
+      <g transform="translate(20 268)">
+        <rect width="240" height="74" rx="14" class="aSide"/>
+        <text x="120" y="30" text-anchor="middle" class="aH">GitHub Pages</text>
+        <text x="120" y="52" text-anchor="middle" class="aS">画面のファイルを静的に配信</text>
       </g>
-      <text x="122" y="297" font-size="10" fill="var(--body)">見る／操作する</text>
-
-      <!-- フロントエンド -->
-      <g font-family="IBM Plex Sans">
-        <rect x="20" y="315" width="190" height="220" rx="14" fill="none" stroke="var(--ink)" stroke-width="2.5"/>
-        <text x="36" y="339" font-size="11.5" font-weight="700" fill="var(--ink)">フロントエンド</text>
-        <g transform="translate(36,359)">
-          <rect width="158" height="46" rx="10" fill="var(--paper)" stroke="var(--line)"/>
-          <svg x="10" y="10" width="26" height="26"><rect x="3" y="5" width="18" height="14" rx="2" fill="none" stroke="var(--brand)" stroke-width="1.5"/><path d="M3 9h18" stroke="var(--brand)" stroke-width="1.5"/><path d="M6.5 7h.01M9 7h.01" stroke="var(--brand)" stroke-width="1.7" stroke-linecap="round"/></svg>
-          <text x="44" y="29" font-size="11" font-weight="600" fill="var(--ink)">画面：HTML・CSS・</text>
-          <text x="44" y="42" font-size="11" font-weight="600" fill="var(--ink)">JavaScript</text>
-        </g>
-        <text font-size="10" fill="var(--muted)"><tspan x="36" y="435">反応・評価・感想を</tspan><tspan x="36" dy="16">HTTP で送信する</tspan><tspan x="36" dy="16">（ブラウザの操作）</tspan></text>
+      <path d="M140 268V240" class="aL" marker-end="url(#ga)"/>
+      <!-- API -->
+      <path d="M262 120H296" class="aLt" marker-end="url(#gat)"/><path d="M296 150H262" class="aLt" marker-end="url(#gat)"/>
+      <text x="279" y="108" text-anchor="middle" class="aY">HTTPS</text>
+      <g transform="translate(300 36)">
+        <rect width="410" height="210" rx="14" class="aBoxB"/>
+        <text x="20" y="30" class="aH">API サーバー（Render）</text>
+        <text x="20" y="50" class="aS">Python 標準ライブラリのみ（http.server・sqlite3・urllib）</text>
+        <g transform="translate(20 66)"><rect width="176" height="58" rx="10" class="aBox"/><text x="88" y="25" text-anchor="middle" class="aO">本人を見分ける</text><text x="88" y="45" text-anchor="middle" class="aS">復旧コード・Cookie</text></g>
+        <g transform="translate(214 66)"><rect width="176" height="58" rx="10" class="aBox"/><text x="88" y="25" text-anchor="middle" class="aO">推薦を計算する</text><text x="88" y="45" text-anchor="middle" class="aS">開いたときに本人の分</text></g>
+        <g transform="translate(20 136)"><rect width="176" height="58" rx="10" class="aBox"/><text x="88" y="25" text-anchor="middle" class="aO">反応・評価を保存</text><text x="88" y="45" text-anchor="middle" class="aS">決めた操作だけ受け付ける</text></g>
+        <g transform="translate(214 136)"><rect width="176" height="58" rx="10" class="aBox"/><text x="88" y="25" text-anchor="middle" class="aO">画面の中身を返す</text><text x="88" y="45" text-anchor="middle" class="aS">HTML 断片（JSON）</text></g>
       </g>
-
-      <g fill="none" stroke="var(--muted)" color="var(--muted)" stroke-width="1.4">
-        <line x1="210" y1="416" x2="270" y2="416" marker-end="url(#ah4)"/>
+      <!-- 保存 -->
+      <g transform="translate(300 286)">
+        <path d="M0 14C0 0 190 0 190 14V110C190 124 0 124 0 110z" class="aOut"/><path d="M0 14C0 28 190 28 190 14" class="aLt"/>
+        <text x="95" y="54" text-anchor="middle" class="aO">利用者ごとの状態</text>
+        <text x="95" y="74" text-anchor="middle" class="aS">SQLite（評価・感想・反応・</text>
+        <text x="95" y="92" text-anchor="middle" class="aS">お気に入り／認証）</text>
       </g>
-      <text x="213" y="409" font-size="11" fill="var(--body)">HTTP</text>
-
-      <!-- バックエンド -->
-      <g font-family="IBM Plex Sans" transform="translate(250,20)">
-        <rect x="0" y="0" width="660" height="780" rx="16" fill="none" stroke="var(--brand)" stroke-width="2.5"/>
-        <text x="16" y="30" font-size="11.5" font-weight="700" fill="var(--brand)">バックエンド<tspan font-weight="400" fill="var(--body)"> ── ローカルの一時プロセス（127.0.0.1）。常駐しない：起動のたびに立ち上がり、閉じると落ちる</tspan></text>
-        <text x="16" y="46" font-size="10" fill="var(--muted)">言語：Python（標準ライブラリ）のみ</text>
-
-        <!-- 輪：①→②→③→④、④→①だけ循環として強調 -->
-        <path d="M426,240 Q479,247 480,312" fill="none" stroke="var(--muted)" color="var(--muted)" stroke-width="1.6" marker-end="url(#ah4)"/>
-        <path d="M468,480 Q479,545 426,528" fill="none" stroke="var(--muted)" color="var(--muted)" stroke-width="1.6" marker-end="url(#ah4)"/>
-        <path d="M234,540 Q181,545 180,480" fill="none" stroke="var(--muted)" color="var(--muted)" stroke-width="1.6" marker-end="url(#ah4)"/>
-
-        <!-- ① 記録を管理する（北） -->
-        <g transform="translate(234,102)">
-          <rect width="192" height="168" rx="14" fill="rgba(var(--brand-rgb),.05)" stroke="var(--brand2)" stroke-width="1.4"/>
-          <circle cx="31" cy="34" r="17" fill="rgba(var(--brand-rgb),.14)"/>
-          <path d="M3 12h5l1.5 2.5h5L16 12h5M3 12l3-7h12l3 7v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z" transform="translate(18,20) scale(.8)" fill="none" stroke="var(--brand)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-          <text x="58" y="29" font-size="13" font-weight="700" fill="var(--ink)">記録を管理する</text>
-          <text x="58" y="47" font-size="10.5" fill="var(--body)">① 材料を集める</text>
-          <text x="17" y="84" font-size="10.5" fill="var(--muted)">SQLite（状態の保存）</text>
-          <text x="17" y="103" font-size="10.5" fill="var(--muted)">＋</text>
-          <text x="17" y="122" font-size="10.5" fill="var(--muted)">検索・集計（Python）</text>
-          <text x="17" y="142" font-size="10.5" fill="var(--muted)">観た公演の検索・本数集計</text>
-        </g>
-
-        <!-- ② 学習する（東） -->
-        <g transform="translate(444,312)">
-          <rect width="192" height="168" rx="14" fill="rgba(var(--brand-rgb),.05)" stroke="var(--brand2)" stroke-width="1.4"/>
-          <circle cx="31" cy="34" r="17" fill="rgba(var(--brand-rgb),.14)"/>
-          <path d="M12 3l1.6 5.4L19 10l-5.4 1.6L12 17l-1.6-5.4L5 10l5.4-1.6z" transform="translate(18,20) scale(.8)" fill="none" stroke="var(--brand)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-          <text x="58" y="29" font-size="13" font-weight="700" fill="var(--ink)">学習する</text>
-          <text x="58" y="47" font-size="10.5" fill="var(--body)">② データを構築する</text>
-          <text x="17" y="84" font-size="10.5" fill="var(--muted)">履歴とクレジットの</text>
-          <text x="17" y="103" font-size="10.5" fill="var(--muted)">集計（Python）</text>
-          <text x="17" y="122" font-size="10.5" fill="var(--muted)">＋抽出・作文</text>
-          <text x="17" y="142" font-size="10.5" fill="var(--muted)">（Gemini API）</text>
-        </g>
-
-        <!-- ③ 推薦する（南） -->
-        <g transform="translate(234,510)">
-          <rect width="192" height="168" rx="14" fill="rgba(var(--brand-rgb),.05)" stroke="var(--brand2)" stroke-width="1.4"/>
-          <circle cx="31" cy="34" r="17" fill="rgba(var(--brand-rgb),.14)"/>
-          <path d="M3 9a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2 2 2 0 0 0 0 6 2 2 0 0 1-2 2H5a2 2 0 0 1-2-2 2 2 0 0 0 0-6zM11 7v10" transform="translate(18,20) scale(.8)" fill="none" stroke="var(--brand)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-          <text x="58" y="29" font-size="13" font-weight="700" fill="var(--ink)">推薦する</text>
-          <text x="58" y="47" font-size="10.5" fill="var(--body)">③ 一覧を見る</text>
-          <text x="17" y="84" font-size="10.5" fill="var(--muted)">当たり率・信頼度を</text>
-          <text x="17" y="103" font-size="10.5" fill="var(--muted)">固定式で合成（Python）</text>
-          <text x="96" y="122" font-size="11" fill="var(--muted)" text-anchor="middle">↓</text>
-          <text x="17" y="142" font-size="10.5" fill="var(--muted)">順位付け（Python）</text>
-        </g>
-
-        <!-- ④ 反応を集める（西） -->
-        <g transform="translate(24,312)">
-          <rect width="192" height="168" rx="14" fill="rgba(var(--thread-rgb),.06)" stroke="var(--thread)" stroke-width="1.4"/>
-          <circle cx="31" cy="34" r="17" fill="rgba(var(--thread-rgb),.16)"/>
-          <path d="M4.5 12.5 9.5 18 20 6" transform="translate(18,20) scale(.8)" fill="none" stroke="var(--thread)" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>
-          <text x="58" y="29" font-size="13" font-weight="700" fill="var(--ink)">反応を集める</text>
-          <text x="58" y="47" font-size="10.5" fill="var(--body)">④ 評価を付ける</text>
-          <text x="17" y="84" font-size="10.5" fill="var(--muted)">ローカル一時プロセスが</text>
-          <text x="17" y="103" font-size="10.5" fill="var(--muted)">HTTP 通信を受け取る</text>
-          <text x="96" y="122" font-size="11" fill="var(--muted)" text-anchor="middle">↓</text>
-          <text x="17" y="142" font-size="10.5" fill="var(--muted)">SQLite へ書き込む（Python）</text>
-        </g>
-
-        <!-- AI（学習するから呼ぶ・輪より小さい補助ブロック） -->
-        <g transform="translate(460,510)">
-          <rect width="120" height="50" rx="9" fill="rgba(var(--brand-rgb),.09)" stroke="var(--brand2)"/>
-          <svg x="10" y="10" width="20" height="20"><path d="M12 3l1.6 5.4L19 10l-5.4 1.6L12 17l-1.6-5.4L5 10l5.4-1.6z" fill="none" stroke="var(--brand)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          <text x="36" y="21" font-size="11.5" font-weight="600" fill="var(--ink)">AI</text>
-          <text x="36" y="35" font-size="10" fill="var(--body)">Gemini API</text>
-          <text x="36" y="47" font-size="9.5" fill="var(--body)">urllib（REST）</text>
-        </g>
-        <g fill="none" stroke="var(--muted)" color="var(--muted)" stroke-width="1.4">
-          <line x1="520" y1="480" x2="520" y2="510" marker-end="url(#ah4)"/>
-        </g>
-        <text x="526" y="498" font-size="10" fill="var(--body)">呼ぶ</text>
-        <g fill="none" stroke="var(--muted)" color="var(--muted)" stroke-width="1.4">
-          <path d="M600,480 V600 H580" marker-end="url(#ah4)"/>
-        </g>
-        <text x="606" y="540" font-size="10" fill="var(--body)">書く</text>
-
-        <!-- JSON・JSONL（取得物・輪より小さい補助ブロック） -->
-        <g transform="translate(460,600)">
-          <rect width="120" height="40" rx="9" fill="rgba(var(--brand-rgb),.09)" stroke="var(--brand2)"/>
-          <svg x="10" y="8" width="20" height="20"><ellipse cx="12" cy="6" rx="8" ry="3" fill="none" stroke="var(--brand)" stroke-width="1.5"/><path d="M4 6v11c0 1.7 3.6 3 8 3s8-1.3 8-3V6" fill="none" stroke="var(--brand)" stroke-width="1.5"/></svg>
-          <text x="36" y="19" font-size="11" font-weight="600" fill="var(--ink)">JSON・JSONL</text>
-          <text x="36" y="32" font-size="9" fill="var(--body)">取得物の保存形式</text>
-        </g>
-        <g fill="none" stroke="var(--muted)" color="var(--muted)" stroke-width="1.4">
-          <line x1="460" y1="620" x2="426" y2="620" marker-end="url(#ah4)"/>
-        </g>
-        <text x="443" y="615" font-size="10" fill="var(--body)" text-anchor="middle">読む</text>
-        <g fill="none" stroke="var(--muted)" color="var(--muted)" stroke-width="1.4">
-          <path d="M580,620 H650 V170 H426" marker-end="url(#ah4)"/>
-        </g>
-        <text x="538" y="163" font-size="10" fill="var(--body)" text-anchor="middle">読む</text>
-
-        <!-- SQLite（状態・輪より小さい補助ブロック） -->
-        <g transform="translate(60,240)">
-          <rect width="120" height="40" rx="9" fill="rgba(var(--thread-rgb),.10)" stroke="var(--thread)"/>
-          <svg x="10" y="8" width="20" height="20"><ellipse cx="12" cy="6" rx="8" ry="3" fill="none" stroke="var(--thread)" stroke-width="1.5"/><path d="M4 6v11c0 1.7 3.6 3 8 3s8-1.3 8-3V6" fill="none" stroke="var(--thread)" stroke-width="1.5"/></svg>
-          <text x="36" y="25" font-size="11" font-weight="600" fill="var(--ink)">SQLite</text>
-        </g>
-        <g fill="none" stroke="var(--muted)" color="var(--muted)" stroke-width="1.4">
-          <line x1="120" y1="312" x2="120" y2="280" marker-end="url(#ah4)"/>
-        </g>
-        <text x="127" y="299" font-size="10" fill="var(--body)">書く</text>
-        <g fill="none" stroke="var(--muted)" color="var(--muted)" stroke-width="1.4">
-          <path d="M234,150 H200 V260 H180" marker-end="url(#ah4)"/>
-        </g>
-        <text x="217" y="145" font-size="10" fill="var(--body)" text-anchor="middle">読み書き</text>
-
-        <!-- 保存の補足 -->
-        <text font-size="11" fill="var(--body)" text-anchor="middle"><tspan x="330" y="712">取得物（候補・クレジット・あらすじ）は JSON・JSONL に、</tspan><tspan x="330" dy="18">状態（反応・評価・記録）は SQLite に分けて保存する</tspan></text>
+      <g transform="translate(520 286)">
+        <path d="M0 14C0 0 190 0 190 14V110C190 124 0 124 0 110z" class="aBox"/><path d="M0 14C0 28 190 28 190 14" class="aL"/>
+        <text x="95" y="54" text-anchor="middle" class="aO">共通の公演カタログ</text>
+        <text x="95" y="74" text-anchor="middle" class="aS">JSON・JSONL（候補・あらすじ・</text>
+        <text x="95" y="92" text-anchor="middle" class="aS">クレジット・カレンダー）</text>
       </g>
-
-      <g fill="none" stroke="var(--muted)" color="var(--muted)" stroke-width="1.4">
-        <line x1="950" y1="415" x2="890" y2="415" marker-end="url(#ah4)"/>
+      <path d="M395 246V282" class="aL" marker-end="url(#ga)"/><path d="M615 282V246" class="aL" marker-end="url(#ga)"/>
+      <text x="410" y="270" class="aK">読み書き</text><text x="630" y="270" class="aK">読むだけ</text>
+      <!-- バッチ -->
+      <g transform="translate(740 36)">
+        <rect width="240" height="96" rx="14" class="aBox"/>
+        <text x="120" y="32" text-anchor="middle" class="aH">取得バッチ</text>
+        <text x="120" y="56" text-anchor="middle" class="aS">手元で月 1 回ほど実行</text>
+        <text x="120" y="76" text-anchor="middle" class="aS">1 リクエスト/秒を守る</text>
       </g>
-      <text x="898" y="408" font-size="11" fill="var(--body)">取得</text>
-
-      <!-- 外部接続 -->
-      <g font-family="IBM Plex Sans">
-        <rect x="950" y="265" width="200" height="300" rx="14" fill="var(--paper)" stroke="var(--line)"/>
-        <text x="966" y="289" font-size="11.5" font-weight="700" fill="var(--ink)">外部接続</text>
-        <g transform="translate(966,303)">
-          <rect width="168" height="46" rx="9" fill="var(--wash)" stroke="var(--line)"/>
-          <svg x="10" y="11" width="24" height="24"><path d="M3 6h18v12H3zM3 6.5l9 6.5 9-6.5" fill="none" stroke="var(--brand)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          <text x="42" y="21" font-size="11" fill="var(--ink)">購入確認メール</text>
-          <text x="42" y="35" font-size="11" fill="var(--ink)">（Gmail）</text>
-        </g>
-        <g transform="translate(966,363)">
-          <rect width="168" height="46" rx="9" fill="var(--wash)" stroke="var(--line)"/>
-          <svg x="10" y="11" width="24" height="24"><path d="M12 20h.01M8.5 16.8a5 5 0 0 1 7 0M5.3 13.6a10 10 0 0 1 13.4 0" fill="none" stroke="var(--brand)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          <text x="42" y="21" font-size="11" fill="var(--ink)">候補一覧・</text>
-          <text x="42" y="35" font-size="11" fill="var(--ink)">公演情報フィード</text>
-        </g>
-        <g transform="translate(966,423)">
-          <rect width="168" height="46" rx="9" fill="var(--wash)" stroke="var(--line)"/>
-          <svg x="10" y="11" width="24" height="24"><path d="M4 6.5h16V20H4zM4 10.5h16M8.5 3.5v4M15.5 3.5v4" fill="none" stroke="var(--brand)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          <text x="42" y="21" font-size="11" fill="var(--ink)">ステイジーズ</text>
-          <text x="42" y="35" font-size="11" fill="var(--ink)">カレンダー</text>
-        </g>
-        <g transform="translate(966,483)">
-          <rect width="168" height="46" rx="9" fill="var(--wash)" stroke="var(--line)"/>
-          <svg x="10" y="11" width="24" height="24"><path d="M12 21s7-7.8 7-12.5a7 7 0 1 0-14 0c0 4.7 7 12.5 7 12.5zM12 11.5a2.3 2.3 0 1 0 0-4.6 2.3 2.3 0 0 0 0 4.6z" fill="none" stroke="var(--brand)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          <text x="42" y="26" font-size="11" fill="var(--ink)">OpenStreetMap</text>
-        </g>
+      <g class="aS">
+        <g transform="translate(740 160)"><rect width="114" height="40" rx="8" class="aSide"/><text x="57" y="25" text-anchor="middle">CoRich</text></g>
+        <g transform="translate(866 160)"><rect width="114" height="40" rx="8" class="aSide"/><text x="57" y="18" text-anchor="middle">ステイジーズ</text><text x="57" y="33" text-anchor="middle">カレンダー</text></g>
+        <g transform="translate(740 208)"><rect width="114" height="40" rx="8" class="aSide"/><text x="57" y="18" text-anchor="middle">Gemini API</text><text x="57" y="33" text-anchor="middle" class="aK">題材・文章</text></g>
+        <g transform="translate(866 208)"><rect width="114" height="40" rx="8" class="aSide"/><text x="57" y="18" text-anchor="middle">OpenStreetMap</text><text x="57" y="33" text-anchor="middle" class="aK">劇場の座標</text></g>
       </g>
+      <path d="M860 154V136" class="aL" marker-end="url(#ga)"/>
+      <!-- S3 -->
+      <g transform="translate(780 300)"><rect width="160" height="70" rx="14" class="aBox"/>
+        <text x="80" y="30" text-anchor="middle" class="aH">S3</text><text x="80" y="52" text-anchor="middle" class="aS">カタログ一式を置く</text></g>
+      <path d="M860 250V296" class="aL" marker-end="url(#ga)"/>
+      <path d="M780 335H714" class="aL" marker-end="url(#ga)"/>
+      <text x="747" y="326" text-anchor="middle" class="aK">起動時に取得</text>
+      <!-- 注記 -->
+      <rect x="20" y="430" width="960" height="76" rx="12" class="aTip"/>
+      <text x="40" y="458" class="aS"><tspan class="aSb" font-weight="700">訪問者の操作では、外部サイトへの取得も LLM の呼び出しも走らない。</tspan>サーバーは事前に作ったカタログと、本人の保存データだけで画面を作る。</text>
+      <text x="40" y="484" class="aS">手元で動かす版（run.py）は同じコードを 127.0.0.1 だけで動かし、購入確認メールの取り込みや取得もその場で行う。</text>
     </svg>
+    <figcaption>状態（本人にしか作れないデータ・失うと戻らない）と、取得物（外から取ったコピー・消えても取り直せる）を分けて保存する。取得物は、1 行 1 件の形のものを JSONL にし、1 行が壊れても他の行は読めるようにしている。</figcaption>
   </figure>
 
   <h3 class="sub">2-4　設計判断：測って選んだところ</h3>
   <ul class="plain col">
-    <li><b>状態は SQLite 1 本に集め、取得物は JSONL のまま置く。</b>画面が書き戻すのは状態だけなので、状態が 2 つの形式に分かれると反映漏れが起きる。</li>
-    <li><b>LLM は Gemini API を呼ぶ。</b><code>urllib</code> で REST を直接叩き、専用の SDK は使わない。入出力を JSON に固定しているので、呼び出し方が変わっても中身は変えずに済む。</li>
-    <li><b>常駐しない。</b><code>127.0.0.1</code> に固定し、起動ごとに変わるトークンを持たない要求は受け付けない。受け付ける操作は列挙した数個だけ。閉じるとプロセスが落ちる。</li>
-    <li><b>技術スタックは Python・SQLite・素の HTML/CSS/JS。</b>表示側にフレームワークを使わず、AI への依存は共通の呼び出し口（<code>tools/llm_gemini.py</code>・Gemini API）1 か所に絞っている。</li>
+    <li><b>画面は静的に配信し、計算とデータは API 側に置く。</b>GitHub Pages はサーバー側のコードを動かせないため、DB への書き込みを伴う本体は Render に残した。</li>
+    <li><b>訪問者の操作で外部取得や LLM を走らせない。</b>費用と取得先への礼儀の両面から、取得は事前のバッチだけにまとめた。</li>
+    <li><b>状態は SQLite に集め、取得物は JSONL のまま置く。</b>画面が書き戻すのは状態だけなので、状態が 2 つの形式に分かれると反映漏れが起きる。</li>
+    <li><b>LLM は Gemini API を <code>urllib</code> で直接呼ぶ。</b>専用の SDK は使わず、呼び出し口も <code>tools/llm_gemini.py</code> の 1 か所に絞った。</li>
+    <li><b>技術スタックは Python 標準ライブラリ・SQLite・素の HTML/CSS/JS。</b>追加のインストールがいらないので、環境が変わっても動かなくなりにくい。</li>
   </ul>
 
 </section>
 
-<!-- ============================================================ 4章 セキュリティ -->
-<section class="sec" id="ch4">
-  <div class="eyebrow"><span class="n">03</span><span>セキュリティ</span></div>
-  <h2 class="title">セキュリティ</h2>
-  <p class="kicker">外から入れない・同じ端末の他プログラムからも操作できない・記録は端末の外に出ない、の 3 点を 1 枚の図にまとめた。</p>
+<!-- ============================================================ 3章 推薦アルゴリズム -->
+<section class="sec" id="algo">
+  <div class="eyebrow"><span class="n">03</span><span>推薦アルゴリズム</span></div>
+  <h2 class="title">推薦アルゴリズム</h2>
+  <p class="kicker">順位は <b>LLM を使わず、記録から数えた統計だけ</b>で決める。同じ記録からは毎回同じ順位と同じ理由が出る。各工程の重みや切り方は、自分の評価履歴に対する当てやすさ（AUC）を実測して選んだ。</p>
 
+  <h3 class="sub" style="margin-top:0">3-1　全体の流れ：候補を集めてから 15 件を出すまで</h3>
   <figure class="wide">
-    <svg viewBox="0 0 960 400" role="img" aria-label="外の世界からの操作も、同じ端末で動く他のプログラムからの操作も、合言葉が無いと届かない。合言葉を通った自分のブラウザだけがたぐりを操作できる。観劇記録・購入メールは端末の中だけに残り、他のアカウントからも読めない。外部へ出るのは取得処理からCoRich・Gmail・Claudeへの最小限の送信だけである、という境界線の概念図">
+    <svg viewBox="0 0 1000 760" role="img" aria-label="推薦の全体フローチャート。候補を集め、終わった公演や演劇以外を除き、お気に入り・出さない語・反応・初日で振り分けたあと、残った公演に人物とあらすじの点を付け、ツアーを1件にまとめ、尺度をそろえて並べ、上位15件を出す。">
       <defs>
-        <marker id="ahS" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
-          <path d="M1 1l7 4-7 4z" fill="currentColor"/>
-        </marker>
+        <marker id="fa" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1l7 4-7 4z" class="aF-m"/></marker>
+        <marker id="fat" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1l7 4-7 4z" class="aF-t"/></marker>
       </defs>
+      <!-- 1 候補 -->
+      <g class="aT">
+        <rect x="240" y="10" width="520" height="62" rx="12" class="aBox"/>
+        <text x="500" y="36" text-anchor="middle" class="aH">① 候補を集める</text>
+        <text x="500" y="58" text-anchor="middle" class="aS">CoRich ＋ ステイジーズカレンダー ＋ お気に入りの名前で検索 ＋ 探して拾った公演</text>
+      </g>
+      <line x1="500" y1="72" x2="500" y2="98" class="aL" marker-end="url(#fa)"/>
+      <!-- 2 除外 -->
+      <rect x="290" y="100" width="420" height="52" rx="12" class="aBox"/>
+      <text x="500" y="132" text-anchor="middle" class="aH">② 楽日を過ぎた公演・演劇でないものを除く</text>
+      <line x1="500" y1="152" x2="500" y2="178" class="aL" marker-end="url(#fa)"/>
 
-      <rect x="140" y="30" width="760" height="270" rx="18" fill="none" stroke="var(--muted)" stroke-width="1.6" stroke-dasharray="6 4"/>
-      <text x="160" y="54" font-size="12.5" font-weight="600" fill="var(--ink)" font-family="IBM Plex Sans">端末</text>
+      <!-- 3 振り分け（菱形の列） -->
+      <g>
+        <path d="M500 180l130 34-130 34-130-34z" class="aDia"/>
+        <text x="500" y="219" text-anchor="middle" class="aD">お気に入りの名前に一致？</text>
+        <line x1="630" y1="214" x2="742" y2="214" class="aLt" marker-end="url(#fat)"/>
+        <text x="686" y="206" text-anchor="middle" class="aY">はい</text>
+        <rect x="746" y="190" width="236" height="48" rx="10" class="aOut"/>
+        <text x="864" y="212" text-anchor="middle" class="aO">お気に入り</text>
+        <text x="864" y="229" text-anchor="middle" class="aS">件数の制限なしで必ず出す</text>
+        <line x1="500" y1="248" x2="500" y2="270" class="aL" marker-end="url(#fa)"/>
+        <text x="514" y="264" class="aN">いいえ</text>
 
-      <rect x="176" y="58" width="444" height="202" rx="14" fill="none" stroke="var(--brand)" stroke-width="1.8" stroke-dasharray="5 3"/>
-      <text x="188" y="76" font-size="11" font-weight="700" fill="var(--brand)" font-family="IBM Plex Sans">たぐり</text>
+        <path d="M500 272l130 34-130 34-130-34z" class="aDia"/>
+        <text x="500" y="311" text-anchor="middle" class="aD">出さない語に一致？</text>
+        <line x1="630" y1="306" x2="742" y2="306" class="aL" marker-end="url(#fa)"/>
+        <text x="686" y="298" text-anchor="middle" class="aY">はい</text>
+        <rect x="746" y="282" width="236" height="48" rx="10" class="aSide"/>
+        <text x="864" y="304" text-anchor="middle" class="aO">別の束へ（消さない）</text>
+        <text x="864" y="321" text-anchor="middle" class="aS">語を外せば戻る</text>
+        <line x1="500" y1="340" x2="500" y2="362" class="aL" marker-end="url(#fa)"/>
+        <text x="514" y="356" class="aN">いいえ</text>
 
-      <rect x="666" y="220" width="206" height="75" rx="14" fill="none" stroke="var(--muted)" stroke-width="1.8" stroke-dasharray="5 3"/>
-      <text x="678" y="236" font-size="11" font-weight="700" fill="var(--muted)" font-family="IBM Plex Sans">それ以外のプログラム</text>
+        <path d="M500 364l130 34-130 34-130-34z" class="aDia"/>
+        <text x="500" y="403" text-anchor="middle" class="aD">もう答えた？</text>
+        <line x1="630" y1="398" x2="742" y2="398" class="aL" marker-end="url(#fa)"/>
+        <text x="686" y="390" text-anchor="middle" class="aY">はい</text>
+        <rect x="746" y="364" width="236" height="68" rx="10" class="aSide"/>
+        <text x="760" y="386" class="aS"><tspan font-weight="700" class="aSb">持っている</tspan> → 購入済み公演</text>
+        <text x="760" y="404" class="aS"><tspan font-weight="700" class="aSb">興味あり</tspan> → 追いかける一覧</text>
+        <text x="760" y="422" class="aS"><tspan font-weight="700" class="aSb">興味なし</tspan> → 下に畳む</text>
+        <line x1="500" y1="432" x2="500" y2="454" class="aL" marker-end="url(#fa)"/>
+        <text x="514" y="448" class="aN">いいえ</text>
 
-      <text x="14" y="72" font-size="10.5" fill="var(--thread)" font-family="IBM Plex Sans">✕ 外からは届かない</text>
-      <g fill="none" stroke="var(--muted)" color="var(--muted)" stroke-width="1.5">
-        <line x1="110" y1="110" x2="128" y2="110" marker-end="url(#ahS)"/>
-        <line x1="172" y1="110" x2="220" y2="110" marker-end="url(#ahS)"/>
-        <line x1="370" y1="102" x2="430" y2="102" marker-end="url(#ahS)"/>
-        <line x1="430" y1="118" x2="370" y2="118" marker-end="url(#ahS)"/>
-        <line x1="295" y1="135" x2="295" y2="170" marker-end="url(#ahS)"/>
+        <path d="M500 456l130 34-130 34-130-34z" class="aDia"/>
+        <text x="500" y="495" text-anchor="middle" class="aD">もう初日を過ぎた？</text>
+        <line x1="630" y1="490" x2="742" y2="490" class="aL" marker-end="url(#fa)"/>
+        <text x="686" y="482" text-anchor="middle" class="aY">はい</text>
+        <rect x="746" y="466" width="236" height="48" rx="10" class="aSide"/>
+        <text x="864" y="488" text-anchor="middle" class="aO">推薦枠には出さない</text>
+        <text x="864" y="505" text-anchor="middle" class="aS">初報〜初日前に気づかせるのが目的</text>
+        <line x1="500" y1="524" x2="500" y2="546" class="aL" marker-end="url(#fa)"/>
+        <text x="514" y="540" class="aN">いいえ ＝ まだ判断していない公演</text>
       </g>
 
-      <!-- 外の世界 -->
-      <g transform="translate(0,85)" font-family="IBM Plex Sans">
-        <rect width="110" height="50" rx="10" fill="var(--paper)" stroke="var(--line)"/>
-        <svg x="10" y="13" width="24" height="24"><circle cx="12" cy="12" r="9" fill="none" stroke="var(--muted)" stroke-width="1.6"/><path d="M3 12h18M12 3a15 15 0 0 1 4 9 15 15 0 0 1-4 9 15 15 0 0 1-4-9 15 15 0 0 1 4-9z" fill="none" stroke="var(--muted)" stroke-width="1.4"/></svg>
-        <text x="42" y="29" font-size="12" font-weight="600" fill="var(--ink)">外の世界</text>
+      <!-- 4 点数 -->
+      <rect x="250" y="548" width="500" height="70" rx="12" class="aBoxB"/>
+      <text x="500" y="574" text-anchor="middle" class="aH">④ 点数を付ける</text>
+      <text x="500" y="598" text-anchor="middle" class="aS">人物の点（網 B・3-2〜3-3）＋ あらすじの点（網 C・3-4）</text>
+      <line x1="500" y1="618" x2="500" y2="640" class="aL" marker-end="url(#fa)"/>
+      <!-- 5 まとめ・並べ -->
+      <rect x="130" y="642" width="230" height="56" rx="12" class="aBox"/>
+      <text x="245" y="666" text-anchor="middle" class="aH">⑤ ツアーを 1 件に</text>
+      <text x="245" y="686" text-anchor="middle" class="aS">同じ作品は点の高い会場で代表</text>
+      <rect x="385" y="642" width="230" height="56" rx="12" class="aBox"/>
+      <text x="500" y="666" text-anchor="middle" class="aH">⑥ 尺度をそろえる</text>
+      <text x="500" y="686" text-anchor="middle" class="aS">各網を 90% 点で割る</text>
+      <rect x="640" y="642" width="230" height="56" rx="12" class="aBox"/>
+      <text x="755" y="666" text-anchor="middle" class="aH">⑦ 並べる</text>
+      <text x="755" y="686" text-anchor="middle" class="aS">効く一致の数 → 合計点</text>
+      <line x1="360" y1="670" x2="383" y2="670" class="aL" marker-end="url(#fa)"/>
+      <line x1="615" y1="670" x2="638" y2="670" class="aL" marker-end="url(#fa)"/>
+      <path d="M500 640V630" class="aL"/>
+      <path d="M500 630H245V640" class="aL" marker-end="url(#fa)"/>
+      <path d="M755 698V722H612" class="aL" marker-end="url(#fa)"/>
+      <rect x="388" y="706" width="224" height="46" rx="23" class="aGoal"/>
+      <text x="500" y="735" text-anchor="middle" class="aGoalT">今週のおすすめ 上位 15 件</text>
+      <!-- 反応のループ -->
+      <path d="M388 729H40V41H236" class="aLt aDash" marker-end="url(#fat)"/>
+      <text x="250" y="200" class="aH">③ 振り分ける</text>
+      <text x="66" y="390" text-anchor="middle" class="aLoop" transform="rotate(-90 66 390)">押した反応と ◎ が、翌週の名簿と振り分けに入る</text>
+    </svg>
+    <figcaption>答えた公演は推薦枠から抜け、まだ候補が残っていれば次点が繰り上がる。初日が近い公演は、答えたかどうかに関係なく「開幕リマインド」で別に全部知らせる。</figcaption>
+  </figure>
+
+  <h3 class="sub">3-2　名簿を作る：誰の作品が自分に当たるか</h3>
+  <figure class="wide">
+    <svg viewBox="0 0 1000 300" role="img" aria-label="評価済み作品のクレジットから名簿を作る図。◎は当たり1、○△×は当たり0として数え、興味ありと観ればよかったは0.5の弱い当たりとして加わる。名簿は役職と人物ごとに、観た本数と当たりの数を持つ。">
+      <defs><marker id="fb" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1l7 4-7 4z" class="aF-m"/></marker></defs>
+      <text x="20" y="24" class="aK">評価済みの作品</text>
+      <g transform="translate(20 36)">
+        <rect width="250" height="44" rx="10" class="aBox"/><circle cx="26" cy="22" r="15" class="aDotT"/><text x="26" y="28" text-anchor="middle" class="aSym">◎</text><text x="52" y="27" class="aS">当たり <tspan class="aSb" font-weight="700">1</tspan></text>
       </g>
-
-      <!-- 合言葉ゲート -->
-      <circle cx="150" cy="110" r="22" fill="rgba(var(--thread-rgb),.14)" stroke="var(--thread)" stroke-width="1.6"/>
-      <svg x="138" y="98" width="24" height="24"><rect x="5" y="11" width="14" height="10" rx="2" fill="none" stroke="var(--thread)" stroke-width="1.6"/><path d="M8 11V7a4 4 0 0 1 8 0v4" fill="none" stroke="var(--thread)" stroke-width="1.6" stroke-linecap="round"/></svg>
-      <text x="150" y="150" font-size="11" fill="var(--thread)" text-anchor="middle" font-family="IBM Plex Sans">合言葉</text>
-
-      <!-- たぐり -->
-      <g transform="translate(220,85)" font-family="IBM Plex Sans">
-        <rect width="150" height="50" rx="12" fill="var(--paper)" stroke="var(--line)"/>
-        <svg x="12" y="13" width="24" height="24"><path d="M9 6 3 12l6 6M15 6l6 6-6 6" fill="none" stroke="var(--brand)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <text x="44" y="29" font-size="12.5" font-weight="600" fill="var(--ink)">たぐり</text>
-        <text x="44" y="43" font-size="10.5" fill="var(--muted)">（実行環境）</text>
+      <g transform="translate(20 88)">
+        <rect width="250" height="44" rx="10" class="aBox"/><circle cx="26" cy="22" r="15" class="aDotM"/><text x="26" y="28" text-anchor="middle" class="aSymM">○△×</text><text x="52" y="27" class="aS">当たり <tspan class="aSb" font-weight="700">0</tspan>（観た本数だけ数える）</text>
       </g>
-
-      <!-- 画面 -->
-      <g transform="translate(430,85)" font-family="IBM Plex Sans">
-        <rect width="170" height="50" rx="12" fill="var(--paper)" stroke="var(--line)"/>
-        <svg x="12" y="13" width="24" height="24"><rect x="3" y="5" width="18" height="14" rx="2" fill="none" stroke="var(--brand)" stroke-width="1.5"/><path d="M3 9h18" stroke="var(--brand)" stroke-width="1.5"/><path d="M6.5 7h.01M9 7h.01" stroke="var(--brand)" stroke-width="1.7" stroke-linecap="round"/></svg>
-        <text x="44" y="29" font-size="12.5" font-weight="600" fill="var(--ink)">画面</text>
-        <text x="44" y="43" font-size="10.5" fill="var(--muted)">（自分のブラウザ）</text>
+      <text x="20" y="166" class="aK">まだ観ていない反応</text>
+      <g transform="translate(20 178)">
+        <rect width="250" height="44" rx="10" class="aBox aDash2"/><text x="16" y="27" class="aS">興味あり・観ればよかった → 当たり <tspan class="aSb" font-weight="700">0.5</tspan></text>
       </g>
-
-      <!-- 観劇記録・購入メール -->
-      <g transform="translate(220,170)" font-family="IBM Plex Sans">
-        <rect width="200" height="78" rx="12" fill="rgba(var(--thread-rgb),.07)" stroke="var(--thread)"/>
-        <svg x="12" y="17" width="26" height="26"><rect x="5" y="11" width="14" height="10" rx="2" fill="none" stroke="var(--thread)" stroke-width="1.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4" fill="none" stroke="var(--thread)" stroke-width="1.5" stroke-linecap="round"/></svg>
-        <text x="46" y="27" font-size="12" font-weight="600" fill="var(--ink)">観劇記録・購入メール</text>
-        <text x="46" y="42" font-size="10.5" fill="var(--muted)">（この中だけ）</text>
-        <text x="46" y="57" font-size="10.5" fill="var(--muted)">（他アカウントは読めない）</text>
-      </g>
-
-      <!-- 同じ端末の他プログラム -->
-      <circle cx="645" cy="267" r="18" fill="rgba(var(--thread-rgb),.14)" stroke="var(--thread)" stroke-width="1.5"/>
-      <svg x="634" y="256" width="22" height="22"><rect x="5" y="11" width="14" height="10" rx="2" fill="none" stroke="var(--thread)" stroke-width="1.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4" fill="none" stroke="var(--thread)" stroke-width="1.5" stroke-linecap="round"/></svg>
-      <text x="645" y="297" font-size="10" fill="var(--thread)" text-anchor="middle" font-family="IBM Plex Sans">合言葉</text>
-      <line x1="670" y1="267" x2="663" y2="267" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#ahS)"/>
-      <g transform="translate(670,240)" font-family="IBM Plex Sans">
-        <rect width="190" height="55" rx="10" fill="var(--paper)" stroke="var(--line)"/>
-        <svg x="10" y="14" width="24" height="24"><rect x="3" y="5" width="18" height="14" rx="2" fill="none" stroke="var(--muted)" stroke-width="1.5"/><path d="M3 9h18" stroke="var(--muted)" stroke-width="1.5"/></svg>
-        <text x="42" y="26" font-size="11" font-weight="600" fill="var(--ink)">同じ端末の</text>
-        <text x="42" y="41" font-size="11" font-weight="600" fill="var(--ink)">他プログラム</text>
-      </g>
-
-      <!-- 取得処理 -->
-      <g transform="translate(460,170)" font-family="IBM Plex Sans">
-        <rect width="150" height="60" rx="12" fill="var(--paper)" stroke="var(--line)"/>
-        <svg x="12" y="17" width="26" height="26"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 20h16" fill="none" stroke="var(--brand2)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <text x="48" y="34" font-size="12.5" font-weight="600" fill="var(--ink)">取得処理</text>
-      </g>
-
-      <g fill="none" stroke="var(--muted)" color="var(--muted)" stroke-width="1.5">
-        <path d="M535 230 V300" />
-        <path d="M535 300 V318 H350 V340" marker-end="url(#ahS)"/>
-        <path d="M535 300 V340" marker-end="url(#ahS)"/>
-        <path d="M535 300 V318 H690 V340" marker-end="url(#ahS)"/>
-      </g>
-      <text x="535" y="312" font-size="10" fill="var(--muted)" text-anchor="middle" font-family="IBM Plex Sans">最小限だけ送る</text>
-
-      <!-- CoRich -->
-      <g transform="translate(280,340)" font-family="IBM Plex Sans">
-        <rect width="140" height="50" rx="10" fill="var(--paper)" stroke="var(--line)"/>
-        <svg x="10" y="13" width="24" height="24"><path d="M14 4h6v6M20 4 10 14M18 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h5" fill="none" stroke="var(--brand2)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <text x="42" y="29" font-size="12" font-weight="600" fill="var(--ink)">CoRich</text>
-      </g>
-
-      <!-- Gmail -->
-      <g transform="translate(440,340)" font-family="IBM Plex Sans">
-        <rect width="160" height="50" rx="10" fill="var(--paper)" stroke="var(--line)"/>
-        <svg x="10" y="13" width="24" height="24"><path d="M3 6h18v12H3zM3 6.5l9 6.5 9-6.5" fill="none" stroke="var(--brand2)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <text x="42" y="24" font-size="12" font-weight="600" fill="var(--ink)">Gmail</text>
-        <text x="42" y="38" font-size="10" fill="var(--muted)">（読取専用）</text>
-      </g>
-
-      <!-- Claude -->
-      <g transform="translate(620,340)" font-family="IBM Plex Sans">
-        <rect width="140" height="50" rx="10" fill="var(--paper)" stroke="var(--line)"/>
-        <svg x="10" y="13" width="24" height="24"><path d="M12 3l1.6 5.4L19 10l-5.4 1.6L12 17l-1.6-5.4L5 10l5.4-1.6z" fill="none" stroke="var(--brand2)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <text x="42" y="29" font-size="12" font-weight="600" fill="var(--ink)">Claude</text>
+      <text x="20" y="250" class="aS">基準（全体の ◎ 率）= 約 0.38</text>
+      <text x="20" y="270" class="aS">※ 興味ありは基準の計算には入れない</text>
+      <path d="M276 58C330 58 330 140 380 140" class="aL" marker-end="url(#fb)"/>
+      <path d="M276 110C330 110 330 144 380 144" class="aL" marker-end="url(#fb)"/>
+      <path d="M276 200C330 200 330 150 380 148" class="aL aDash" marker-end="url(#fb)"/>
+      <text x="282" y="30" class="aK">クレジットを人物に分解</text>
+      <!-- 名簿 -->
+      <g transform="translate(384 30)">
+        <rect width="596" height="240" rx="14" class="aBoxB"/>
+        <text x="20" y="30" class="aH">名簿（役職 × 人物 → 観た本数 n・当たり o）</text>
+        <g class="aS">
+          <rect x="20" y="46" width="556" height="30" rx="6" class="aRowH"/>
+          <text x="34" y="66" class="aSb" font-weight="700">役職</text><text x="130" y="66" class="aSb" font-weight="700">人物</text><text x="330" y="66" class="aSb" font-weight="700">観た本数 n</text><text x="460" y="66" class="aSb" font-weight="700">当たり o</text>
+          <text x="34" y="100">出演</text><text x="130" y="100">俳優 A</text><text x="330" y="100">4</text><text x="460" y="100">3</text>
+          <text x="34" y="132">演出</text><text x="130" y="132">演出家 B</text><text x="330" y="132">2</text><text x="460" y="132">2</text>
+          <text x="34" y="164">照明</text><text x="130" y="164">スタッフ C</text><text x="330" y="164">1</text><text x="460" y="164">1</text>
+          <text x="34" y="196">出演</text><text x="130" y="196">俳優 D</text><text x="330" y="196">3</text><text x="460" y="196">0</text>
+          <text x="34" y="226" class="aK">（例。実データでは約 2,100 件）</text>
+        </g>
       </g>
     </svg>
-    <figcaption>外からの操作は届かず、同じ端末で動く他のプログラムも合言葉が無いと操作できない。観劇記録・購入メールはこの端末の中だけに残り、他のアカウントからも読めない。外部へ出るのは取得処理からの最小限の送信だけである。</figcaption>
+    <figcaption><b>正例は ◎ だけ。</b>○ 以上を当たりにすると、評価が ○ に寄っているため基準が 0.76 まで上がり、ほとんどの人物の点が 0 以下になる。実測の AUC は ○ 以上で 0.556（ほぼでたらめ）、◎ だけで 0.744。</figcaption>
   </figure>
+
+  <h3 class="sub">3-3　人物の点（網 B）：当たり率が基準をどれだけ上回るか</h3>
+  <figure class="wide">
+    <svg viewBox="0 0 1000 250" role="img" aria-label="人物1人の点の式。当たり率から基準を引き、信頼度と役職の重みを掛ける。当たり率は観た本数に1と2を足して平滑化し、信頼度は観た本数を観た本数足す3で割る。">
+      <g text-anchor="middle">
+        <rect x="20" y="40" width="200" height="86" rx="14" class="aBoxB"/>
+        <text x="120" y="72" class="aH">当たり率</text><text x="120" y="102" class="aMath">(o + 1) ÷ (n + 2)</text>
+        <text x="245" y="96" class="aOp">−</text>
+        <rect x="270" y="40" width="150" height="86" rx="14" class="aBox"/>
+        <text x="345" y="72" class="aH">基準</text><text x="345" y="102" class="aMath">◎ 率 0.38</text>
+        <text x="445" y="96" class="aOp">×</text>
+        <rect x="470" y="40" width="200" height="86" rx="14" class="aBox"/>
+        <text x="570" y="72" class="aH">信頼度</text><text x="570" y="102" class="aMath">n ÷ (n + 3)</text>
+        <text x="695" y="96" class="aOp">×</text>
+        <rect x="720" y="40" width="190" height="86" rx="14" class="aBox"/>
+        <text x="815" y="72" class="aH">役職の重み</text><text x="815" y="102" class="aMath">出演 1.0 ほか</text>
+        <text x="940" y="96" class="aOp">＝</text>
+        <circle cx="972" cy="83" r="24" class="aDotT"/><text x="972" y="90" class="aSym" style="font-size:15px">点</text>
+      </g>
+      <g class="aS" text-anchor="middle">
+        <text x="120" y="152">1 本だけで 100% に</text><text x="120" y="170">ならないよう平滑化</text>
+        <text x="345" y="152">平均並みなら 0</text><text x="345" y="170">下回れば理由にしない</text>
+        <text x="570" y="152">観た本数が少ないほど</text><text x="570" y="170">割り引く</text>
+        <text x="815" y="152">判別力の実測で</text><text x="815" y="170">決めた（下の図）</text>
+      </g>
+      <rect x="20" y="194" width="960" height="44" rx="10" class="aTip"/>
+      <text x="40" y="221" class="aS"><tspan class="aSb" font-weight="700">1 作品の人物の点 ＝ 点が正の人物の上位 3 人の合計。</tspan>重なるほど上がる（上位 3 人の和 AUC 0.643 ＞ 1 人だけ 0.615 ＝ 全員の和 0.615）</text>
+    </svg>
+  </figure>
+
+  <div class="grid2 wide pair calcgrid" style="margin-top:6px">
+    <div class="card">
+      <h4>役職の重み（単独の AUC の順に置いた）</h4>
+      <svg viewBox="0 0 440 200" role="img" aria-label="役職の重みの棒グラフ。出演1.0、演出・脚本・作・原作0.4、翻訳0.3、裏方0.1。">
+        <g class="aS">
+          <text x="0" y="34">出演</text><rect x="110" y="20" width="300" height="20" rx="4" class="aBarT"/><text x="416" y="35" class="aSb" font-weight="700">1.0</text>
+          <text x="0" y="78">演出・脚本・原作</text><rect x="110" y="64" width="120" height="20" rx="4" class="aBarB"/><text x="236" y="79" class="aSb" font-weight="700">0.4</text>
+          <text x="0" y="122">翻訳</text><rect x="110" y="108" width="90" height="20" rx="4" class="aBarB"/><text x="206" y="123" class="aSb" font-weight="700">0.3</text>
+          <text x="0" y="166">裏方（照明など）</text><rect x="110" y="152" width="30" height="20" rx="4" class="aBarM"/><text x="146" y="167" class="aSb" font-weight="700">0.1</text>
+        </g>
+      </svg>
+      <p class="muted">企画時は「演出・脚本を大きく」と考えたが、実測の単独 AUC は 出演 0.611 ＞ 演出・脚本 0.540 ＞ 裏方 0.500 で逆だった。</p>
+    </div>
+    <div class="card">
+      <h4>計算例（基準 0.38）</h4>
+      <div class="twrap" style="margin:0">
+        <table class="calc" style="min-width:0;font-size:12.5px">
+          <thead><tr><th>人物</th><th>当たり/本数</th><th>当たり率</th><th>信頼度</th><th>重み</th><th>点</th></tr></thead>
+          <tbody>
+            <tr><td>俳優 A</td><td>3 / 4</td><td>0.67</td><td>0.57</td><td>1.0</td><td><b>0.164</b></td></tr>
+            <tr><td>演出家 B</td><td>2 / 2</td><td>0.75</td><td>0.40</td><td>0.4</td><td><b>0.059</b></td></tr>
+            <tr><td>スタッフ C</td><td>1 / 1</td><td>0.67</td><td>0.25</td><td>0.1</td><td><b>0.007</b></td></tr>
+            <tr><td>俳優 D</td><td>0 / 3</td><td>0.20</td><td>0.50</td><td>1.0</td><td><span class="tag stop">負→除外</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="muted" style="margin-top:10px">この公演の人物の点 = 0.164 + 0.059 + 0.007 = <b>0.230</b>。理由には上位の名前が「履歴 N 本」付きで出る。</p>
+    </div>
+  </div>
+
+  <h3 class="sub">3-4　あらすじの点（網 C）と、尺度をそろえて並べる</h3>
+  <figure class="wide">
+    <svg viewBox="0 0 1000 300" role="img" aria-label="あらすじから題材を取り出し、◎の作品に多い題材ほど点が付く。人物の点とあらすじの点をそれぞれ90パーセンタイルで割って尺度をそろえ、1.5で頭打ちにして足す。並べるときは効く一致の数を先に、合計点をその次に使う。">
+      <defs><marker id="fc" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1l7 4-7 4z" class="aF-m"/></marker></defs>
+      <!-- 網C -->
+      <rect x="20" y="20" width="300" height="130" rx="14" class="aBox"/>
+      <text x="40" y="46" class="aH">あらすじ</text>
+      <rect x="40" y="58" width="260" height="8" rx="4" class="aRowH"/><rect x="40" y="74" width="220" height="8" rx="4" class="aRowH"/>
+      <g><rect x="40" y="96" width="56" height="26" rx="13" class="aChip"/><text x="68" y="114" text-anchor="middle" class="aS">家族</text>
+      <rect x="104" y="96" width="56" height="26" rx="13" class="aChip"/><text x="132" y="114" text-anchor="middle" class="aS">法廷</text>
+      <rect x="168" y="96" width="76" height="26" rx="13" class="aChip"/><text x="206" y="114" text-anchor="middle" class="aS">会話劇</text></g>
+      <text x="40" y="140" class="aK">題材の取り出しだけ LLM（事前に確定済み）</text>
+      <path d="M320 85H372" class="aL" marker-end="url(#fc)"/>
+      <rect x="376" y="20" width="250" height="130" rx="14" class="aBox"/>
+      <text x="396" y="46" class="aH">題材の持ち上がり</text>
+      <text x="396" y="76" class="aMath" style="font-size:13px">(◎ での出現率 − 全体の出現率)</text>
+      <text x="396" y="98" class="aMath" style="font-size:13px">× 信頼度</text>
+      <text x="396" y="130" class="aS">正の上位 3 語の合計</text>
+      <!-- 正規化 -->
+      <path d="M626 85H668" class="aL" marker-end="url(#fc)"/>
+      <rect x="672" y="20" width="308" height="130" rx="14" class="aBoxB"/>
+      <text x="692" y="46" class="aH">尺度をそろえて足す</text>
+      <text x="692" y="76" class="aS">人物の点 ÷ 90% 点（上限 1.5）</text>
+      <text x="692" y="98" class="aS">＋ あらすじの点 ÷ 90% 点（上限 1.5）</text>
+      <text x="692" y="128" class="aK">揃える前は題材 1 語が裏方 5 人分より重かった</text>
+      <!-- 並べ方 -->
+      <rect x="20" y="176" width="960" height="108" rx="14" class="aTip"/>
+      <text x="40" y="204" class="aH">並べる順</text>
+      <g transform="translate(40 218)">
+        <rect width="420" height="50" rx="10" class="aBoxB"/>
+        <text x="20" y="22" class="aSb" font-weight="700" style="font-size:13.5px">1 段目：効く一致の数</text>
+        <text x="20" y="40" class="aS">出演者、または履歴 2 本以上の人物の一致を数える</text>
+      </g>
+      <path d="M466 243H504" class="aL" marker-end="url(#fc)"/>
+      <g transform="translate(508 218)">
+        <rect width="270" height="50" rx="10" class="aBox"/>
+        <text x="20" y="22" class="aSb" font-weight="700" style="font-size:13.5px">2 段目：合計点</text>
+        <text x="20" y="40" class="aS">同じ数なら点の高い順</text>
+      </g>
+      <text x="800" y="238" class="aS">実測 AUC</text>
+      <text x="800" y="262" class="aMath" style="font-size:16px">0.692 → 0.710</text>
+    </svg>
+    <figcaption>以前は「人物とあらすじの両方に一致したか」を 1 段目に置いていた。外すと AUC が上がり、上位 15 件の同点も 6 件から 2 件に減ったので外した。あらすじが取れないだけの公演を「合わない」と扱わないための見直しでもある。</figcaption>
+  </figure>
+
+  <h3 class="sub">3-5　使わないと決めた情報</h3>
+  <div class="grid2 wide">
+    <div class="card"><h4><span class="tag stop">使わない</span>団体</h4><p class="muted">別の要因と絡む（ある団体の 11 作品のうち 9 作品が同じ系統の舞台）。団体は「お気に入り」で本人が登録したときだけ使う。</p></div>
+    <div class="card"><h4><span class="tag stop">使わない</span>会場</h4><p class="muted">会場だけで ◎ を当てる AUC が 0.285。0.5 を下回り、使うと逆効果。</p></div>
+    <div class="card"><h4><span class="tag warn">点に足さない</span>お気に入り（申告）</h4><p class="muted">加点として混ぜると AUC が 0.744 → 0.660 に下がった。点数ではなく「必ず出す」別枠で使う。</p></div>
+    <div class="card"><h4><span class="tag good">使わない</span>LLM による順位付け</h4><p class="muted">順位と理由を毎回同じ形で説明できるよう、LLM は題材の取り出しと文章づくりだけに限った。</p></div>
+  </div>
+
+  <h3 class="sub">3-6　利用者ごとの推薦：本人の評価が、本人の次の推薦に届く</h3>
+  <figure class="wide">
+    <svg viewBox="0 0 1000 300" role="img" aria-label="利用者ごとの推薦の流れ。本人が◎○△×を保存し、次におすすめを開いたときに本人の評価だけで名簿を作り直し、保存済みの全候補に人物の点を付け、本人のお気に入りや反応で振り分けて上位15件を出す。">
+      <defs><marker id="fd" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1l7 4-7 4z" class="aF-m"/></marker>
+      <marker id="fdt" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1l7 4-7 4z" class="aF-t"/></marker></defs>
+      <g transform="translate(20 40)"><rect width="170" height="90" rx="14" class="aOut"/>
+        <text x="85" y="36" text-anchor="middle" class="aH">本人が評価</text><text x="85" y="66" text-anchor="middle" style="fill:var(--thread);font-size:22px;font-weight:700">◎ ○ △ ×</text></g>
+      <path d="M190 85H222" class="aL" marker-end="url(#fd)"/>
+      <g transform="translate(226 40)"><rect width="170" height="90" rx="14" class="aBox"/>
+        <text x="85" y="36" text-anchor="middle" class="aH">保存だけする</text><text x="85" y="60" text-anchor="middle" class="aS">「次におすすめを</text><text x="85" y="78" text-anchor="middle" class="aS">開くと反映」</text></g>
+      <path d="M396 85H428" class="aL" marker-end="url(#fd)"/>
+      <g transform="translate(432 40)"><rect width="170" height="90" rx="14" class="aBoxB"/>
+        <text x="85" y="36" text-anchor="middle" class="aH">名簿を作り直す</text><text x="85" y="60" text-anchor="middle" class="aS">本人の評価だけ</text><text x="85" y="78" text-anchor="middle" class="aS">同じ公演は 1 作品に</text></g>
+      <path d="M602 85H634" class="aL" marker-end="url(#fd)"/>
+      <g transform="translate(638 40)"><rect width="170" height="90" rx="14" class="aBoxB"/>
+        <text x="85" y="36" text-anchor="middle" class="aH">全候補に点を付ける</text><text x="85" y="60" text-anchor="middle" class="aS">人物の点（3-3 の式）</text><text x="85" y="78" text-anchor="middle" class="aS">× 設定の倍率</text></g>
+      <path d="M808 85H840" class="aL" marker-end="url(#fd)"/>
+      <g transform="translate(844 40)"><rect width="136" height="90" rx="45" class="aGoal"/>
+        <text x="68" y="42" text-anchor="middle" class="aGoalT">本人向けの</text><text x="68" y="64" text-anchor="middle" class="aGoalT">上位 15 件</text></g>
+      <path d="M912 130V160H105V134" class="aLt aDash" marker-end="url(#fdt)"/>
+      <text x="508" y="152" text-anchor="middle" class="aLoop">また評価すると、次に開いたときの順位と理由が変わる</text>
+      <!-- 共通との違い -->
+      <rect x="20" y="186" width="960" height="100" rx="14" class="aTip"/>
+      <text x="40" y="212" class="aH">共通の推薦（3-1〜3-5）との違い</text>
+      <text x="40" y="238" class="aS">・使うのは<tspan class="aSb" font-weight="700">人物の点だけ</tspan>（あらすじの点はまだ入れていない）。90% 点での正規化もしない（設定の倍率が打ち消されるため）</text>
+      <text x="40" y="258" class="aS">・共通の結果は候補を補うためだけに読み、持ち主の点や理由は引き継がない。点が 0 の公演は「好みに合う推薦」と呼ばず別に分ける</text>
+      <text x="40" y="278" class="aS">・振り分け（お気に入り・興味あり・購入済み・出さない語）と地域の絞り込みは、本人の登録で行う</text>
+    </svg>
+    <figcaption>この仕組みで確認できたのは「本人の評価が、本人の次の推薦に届く」ところまで。推薦の当たりやすさが上がるかは、まだ実データで検証していない。</figcaption>
+  </figure>
+</section>
+
+<!-- ============================================================ 4章 セキュリティ -->
+<section class="sec" id="ch4">
+    <div class="eyebrow"><span class="n">04</span><span>セキュリティ</span></div>
+  <h2 class="title">セキュリティ</h2>
+  <p class="kicker">守るのは、利用者が入れた記録と行動（誰を好きか・何を観たか）。アカウント登録なしで不特定多数が使う前提で、<b>他の利用者から見えない・外に出ない・決めた操作しかできない</b>の 3 点を守る。</p>
+
+  <figure class="wide dg">
+    <svg viewBox="0 0 1000 430" role="img" aria-label="セキュリティの全体図。ブラウザとサーバーはHTTPSでつながり、本人はCookieの鍵で自分の領域だけを読み書きする。復旧コードはハッシュだけを保存し、別の端末は10分で失効する6桁のコードで追加する。外への送信は事前の取得バッチだけで、個人の情報は乗らない。">
+      <defs>
+        <marker id="sa" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1l7 4-7 4z" class="aF-m"/></marker>
+        <marker id="sat" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1l7 4-7 4z" class="aF-t"/></marker>
+      </defs>
+      <!-- 本人の端末 -->
+      <g transform="translate(20 40)">
+        <rect width="200" height="150" rx="14" class="aBox"/>
+        <text x="100" y="30" text-anchor="middle" class="aH">本人のブラウザ</text>
+        <g transform="translate(30 50)"><rect width="140" height="36" rx="8" class="aOut"/><text x="70" y="23" text-anchor="middle" class="aO">Cookie の鍵</text></g>
+        <text x="100" y="112" text-anchor="middle" class="aS">HttpOnly・SameSite</text>
+        <text x="100" y="132" text-anchor="middle" class="aS">JavaScript から読めない</text>
+      </g>
+      <g transform="translate(20 214)">
+        <rect width="200" height="100" rx="14" class="aSide"/>
+        <text x="100" y="28" text-anchor="middle" class="aH">別の端末</text>
+        <text x="100" y="52" text-anchor="middle" class="aS">6 桁の連携コード</text>
+        <text x="100" y="72" text-anchor="middle" class="aS">10 分で失効・1 回限り</text>
+      </g>
+      <!-- 通信 -->
+      <path d="M222 110H330" class="aLt" marker-end="url(#sat)"/>
+      <path d="M222 262C280 262 290 200 330 200" class="aL aDash" marker-end="url(#sa)"/>
+      <g transform="translate(250 72)"><rect width="56" height="24" rx="12" class="aGoal"/><text x="28" y="17" text-anchor="middle" class="aGoalT" style="font-size:11px">HTTPS</text></g>
+      <!-- サーバー -->
+      <g transform="translate(334 30)">
+        <rect width="420" height="310" rx="16" class="aBoxB"/>
+        <text x="20" y="30" class="aH">サーバー</text>
+        <g transform="translate(20 46)"><rect width="380" height="44" rx="10" class="aBox"/>
+          <text x="16" y="28" class="aS"><tspan class="aSb" font-weight="700">入口の検査</tspan>　鍵を照合 → 決めた操作だけ → 長さ・形式を検査</text></g>
+        <!-- 利用者ごとの金庫 -->
+        <g transform="translate(20 104)">
+          <rect width="118" height="106" rx="12" class="aOut"/>
+          <path d="M44 34V24a15 15 0 0 1 30 0v10" class="aLt" style="stroke-width:3"/><rect x="34" y="34" width="50" height="38" rx="6" class="aDotT"/>
+          <text x="59" y="94" text-anchor="middle" class="aO">本人の領域</text>
+        </g>
+        <g transform="translate(150 104)"><rect width="110" height="106" rx="12" class="aSide"/><text x="55" y="58" text-anchor="middle" class="aS">別の利用者</text></g>
+        <g transform="translate(270 104)"><rect width="110" height="106" rx="12" class="aSide"/><text x="55" y="58" text-anchor="middle" class="aS">別の利用者</text></g>
+        <path d="M144 98V216" class="aL aDash"/>
+        <g transform="translate(20 224)"><rect width="380" height="70" rx="10" class="aBox"/>
+          <text x="16" y="28" class="aS"><tspan class="aSb" font-weight="700">復旧コード（128 bit）</tspan>　初回に 1 回だけ表示</text>
+          <text x="16" y="50" class="aS">保存するのは scrypt のハッシュだけ。元のコードは持たない</text></g>
+      </g>
+      <!-- 外 -->
+      <g transform="translate(790 40)">
+        <rect width="190" height="140" rx="14" class="aSide"/>
+        <text x="95" y="30" text-anchor="middle" class="aH">外部サービス</text>
+        <text x="95" y="56" text-anchor="middle" class="aS">CoRich・カレンダー</text>
+        <text x="95" y="76" text-anchor="middle" class="aS">Gemini・OpenStreetMap</text>
+        <text x="95" y="106" text-anchor="middle" class="aK">取得バッチだけが接続</text>
+        <text x="95" y="124" text-anchor="middle" class="aK">個人の情報は乗らない</text>
+      </g>
+      <path d="M756 110H786" class="aL aDash" marker-end="url(#sa)"/>
+      <g transform="translate(790 200)">
+        <rect width="190" height="140" rx="14" class="aSide"/>
+        <text x="95" y="30" text-anchor="middle" class="aH">運用ログ</text>
+        <text x="95" y="56" text-anchor="middle" class="aS">時刻・操作の種類・結果</text>
+        <text x="95" y="76" text-anchor="middle" class="aS">だけを残す</text>
+        <text x="95" y="106" text-anchor="middle" class="aK">感想・公演名・利用者 ID・</text>
+        <text x="95" y="124" text-anchor="middle" class="aK">コード・Cookie は残さない</text>
+      </g>
+      <path d="M756 270H786" class="aL" marker-end="url(#sa)"/>
+      <!-- 試行回数 -->
+      <rect x="20" y="360" width="960" height="56" rx="12" class="aTip"/>
+      <text x="40" y="386" class="aS"><tspan class="aSb" font-weight="700">総当たり対策：</tspan>新規登録・復旧・連携コードの入力は、10 分あたりの試行回数に上限をかける。</text>
+      <text x="40" y="405" class="aS">鍵は Cookie にだけ持ち、URL には載せない。URL を共有したり外部へのリンクを踏んだりしても、鍵は相手に渡らない。</text>
+    </svg>
+  </figure>
+
+  <h3 class="sub">守りと、防いでいるもの</h3>
+  <div class="grid2 wide">
+    <div class="card"><h4><span class="tag good">環境</span>HTTPS で通信を暗号化</h4><p class="muted">復旧コードや Cookie が平文でインターネットを流れない。</p></div>
+    <div class="card"><h4><span class="tag good">コード</span>利用者ごとにデータを分ける</h4><p class="muted">要求ごとに Cookie の鍵から利用者を決め、その人の領域だけを読み書きする。</p></div>
+    <div class="card"><h4><span class="tag good">コード</span>パラメータ化クエリと表示前のエスケープ</h4><p class="muted">入力した文字が SQL の命令や画面のプログラムとして解釈されない。</p></div>
+    <div class="card"><h4><span class="tag good">コード</span>LLM には集計した事実だけを渡す</h4><p class="muted">本文や記録そのものは渡さない。渡していない名前を挙げた文は、画面に載せない。</p></div>
+    <div class="card"><h4><span class="tag warn">未完了</span>公開先の永続保存</h4><p class="muted">保存先を分ける実装は済んだが、公開先の永続ディスクは未設定。再デプロイをまたいだ保存はまだ確認していない。</p></div>
+    <div class="card"><h4><span class="tag warn">凍結</span>購入確認メールの取り込み（公開版）</h4><p class="muted">Gmail の読み取り権限は審査が必要な制限付きスコープのため、公開版では接続しない。手元で動かす版だけで使う。</p></div>
+  </div>
 </section>
 
 <!-- ============================================================ 5章 達成事項 -->
 <section class="sec" id="ch5">
-  <div class="eyebrow"><span class="n">04</span><span>達成事項</span></div>
+  <div class="eyebrow"><span class="n">05</span><span>達成事項</span></div>
   <h2 class="title">達成事項</h2>
   <p class="kicker">実現できたこと（動作を確認した事実）と、それによるユーザーへのメリット（何が良くなったか）を対で示す。実装できなかった範囲は省略しない。</p>
 
-  <h3 class="sub" style="margin-top:0">4-1　実現できたこと・ユーザーへのメリット</h3>
+  <h3 class="sub" style="margin-top:0">5-1　実現できたこと・ユーザーへのメリット</h3>
   <div class="col" style="max-width:820px">
 
     <div class="ach">
@@ -984,9 +1087,21 @@ figcaption{font-size:12.5px;color:var(--muted);margin-top:10px;max-width:70em}
       <p class="benefit"><b>メリット：</b>公演を調べる手間を減らせる。</p>
     </div>
 
+    <div class="ach">
+      <div class="head"><span class="num">6</span><p>登録なしで誰でも使える公開版にした</p></div>
+      <p class="body">画面を GitHub Pages、計算とデータを Render に分けて公開した。初回に発行する復旧コードと Cookie で利用者を見分け、記録は利用者ごとに分けて保存する。別の端末は 6 桁の連携コードで追加できる。はじめての人向けに、実際の画面で試せる操作ツアーと約 70 秒の説明動画を付けた。</p>
+      <p class="benefit"><b>メリット：</b>メールアドレスもパスワードも預けずに、スマホからでもすぐ使い始められる。</p>
+    </div>
+
+    <div class="ach">
+      <div class="head"><span class="num">7</span><p>本人の評価が、本人の次の推薦に届くようにした</p></div>
+      <p class="body">利用者が付けた ◎○△× を保存し、次におすすめを開いたときに、その人の評価だけで名簿を作り直して推薦を計算する（3-6）。評価の変更・取り消し・公演の結び付け直しも次の計算に反映され、他の利用者の推薦には混ざらないことを検査で確認した。</p>
+      <p class="benefit"><b>メリット：</b>持ち主 1 人の好みではなく、使う人それぞれの好みでおすすめが変わる。</p>
+    </div>
+
   </div>
 
-  <h3 class="sub">4-2　実装できなかった範囲</h3>
+  <h3 class="sub">5-2　実装できなかった範囲</h3>
   <div class="notdone wide">
     <div class="row">
       <b>写真からの公演特定</b><span class="tag warn">未着手</span>
@@ -1005,19 +1120,27 @@ figcaption{font-size:12.5px;color:var(--muted);margin-top:10px;max-width:70em}
       <p class="why">実測で判別力ゼロ（<span class="mono">AUC 0.500</span>、裏方だけの名簿は当たった作品が 0 件）。表方だけでも同じ <span class="mono">0.661</span> だった。</p>
     </div>
     <div class="row">
-      <b>あらすじの題材（網 C）でのランキング</b><span class="tag stop">使わない決定（2 段階で検証済み）</span>
-      <p class="why">① 語のまま使うと不成立（<span class="mono">AUC 0.551±0.167</span>）。② 意味の近い語をグループにまとめ直しても、判別力が上がったのは取り直し 40 回中 19 回で半分にとどまった。どちらもスコアには使わず、理由の表示にだけ残している。</p>
+      <b>あらすじの題材（網 C）で順位を決める</b><span class="tag stop">1 段目に使わない</span>
+      <p class="why">① 語のまま使うと判別に効かない（<span class="mono">AUC 0.551±0.167</span>）。② 意味の近い語をグループにまとめ直しても、判別力が上がったのは取り直し 40 回中 19 回で半分にとどまった。ただし外すとスコアの付く候補が 136 件から 29 件に減るため、候補を拾う役として点には残し、並べる順の 1 段目には使わない（3-4）。</p>
     </div>
     <div class="row">
-      <b>会員登録・サーバーを越えた同期</b><span class="tag stop">作らない決定</span>
-      <p class="why"><code>127.0.0.1</code> 固定という守りが崩れるため。持ち出しは記録一式の ZIP ダウンロードまでに限定。</p>
+      <b>購入確認メールの自動取り込み（公開版）</b><span class="tag stop">凍結</span>
+      <p class="why">Gmail の読み取り権限は、Google の審査が必要な制限付きスコープにあたる。公開版では接続せず、手元で動かす版だけで使う。</p>
+    </div>
+    <div class="row">
+      <b>公開先での永続保存</b><span class="tag warn">実装済み・未検証</span>
+      <p class="why">利用者の保存領域を公演カタログから分ける実装は済んだ。公開先の永続ディスクは未設定で、再起動・再デプロイをまたいで記録が残ることはまだ確認していない。</p>
+    </div>
+    <div class="row">
+      <b>利用者ごとの推薦の精度</b><span class="tag warn">未検証</span>
+      <p class="why">確認できたのは「本人の評価が次の推薦に届く」ところまで。あらすじの点は未導入で、当たりやすさが上がるかは実データで測っていない。</p>
     </div>
   </div>
 </section>
 
 <!-- ============================================================ 6章 今後の展望 -->
 <section class="sec" id="ch6">
-  <div class="eyebrow"><span class="n">05</span><span>今後の展望</span></div>
+  <div class="eyebrow"><span class="n">06</span><span>今後の展望</span></div>
   <h2 class="title">今後の展望</h2>
   <div class="col">
     <div class="grid2">
@@ -1032,6 +1155,10 @@ figcaption{font-size:12.5px;color:var(--muted);margin-top:10px;max-width:70em}
       <div class="card">
         <h4><svg class="ic" viewBox="0 0 24 24" width="17" height="17" style="color:var(--brand)"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 1 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>あらすじから想起される感情を推薦に反映する</h4>
         <p class="muted">現在のあらすじ抽出は題材とトーンにとどまっている。悲劇・喜劇のように、そのストーリーが観客に呼び起こしそうな感情までLLMで分析し、推薦の判断材料に加えることを検討している。</p>
+      </div>
+      <div class="card">
+        <h4><svg class="ic" viewBox="0 0 24 24" width="17" height="17" style="color:var(--brand)"><path d="M3 20h18M6.5 20v-5M11.5 20V6M16.5 20v-9"/></svg>利用者ごとの推薦を、実データで育てる</h4>
+        <p class="muted">公開先の永続保存を整えたうえで、利用者ごとの推薦にあらすじの点を加え、当たりやすさを実際の評価で測る。重みを人ごとに学習することも検討している。</p>
       </div>
     </div>
   </div>

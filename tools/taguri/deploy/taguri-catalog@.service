@@ -1,0 +1,21 @@
+# 公演カタログを取り直して S3 に載せ直す（tools/taguri/publish_catalog.py）。
+# %i は daily か weekly。タイマー（taguri-catalog@daily.timer / @weekly.timer）から起動する。
+#
+# 置き場所: /etc/systemd/system/。パスと実行ユーザーは環境に合わせて直すこと。
+[Unit]
+Description=taguri: rebuild the stage catalog and publish it to S3 (%i)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=taguri
+WorkingDirectory=/opt/taguri-demo
+# GEMINI_API_KEY・OWNER_USER_ID・AWS の資格情報（stage-catalog/ への書き込み権限）を置く。
+# このファイルはリポジトリに入れない（chmod 600）
+EnvironmentFile=/etc/taguri/catalog.env
+ExecStart=/usr/bin/python3 tools/taguri/publish_catalog.py --mode %i
+# 相手のサーバーにも自分のサーバーにも負荷をかけない
+Nice=10
+IOSchedulingClass=idle
+TimeoutStartSec=3h

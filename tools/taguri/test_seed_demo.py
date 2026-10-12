@@ -43,8 +43,14 @@ check("見本をすべて入れる", n == len(APP.DEMO_SEED_WORKS), n)
 works = APP._works(VISITOR)
 check("記録の画面に見本が出る", len(works) == len(APP.DEMO_SEED_WORKS), len(works))
 check("架空の評価を実在公演に結び付けない",
-      all(not w["stage_id"] and not w["venue"] for w in works if w["verdict"]))
+      all(not w["stage_id"] for w in works if w["verdict"]))
 check("購入由来の96件がある", len(APP.DEMO_PURCHASE_WORKS) == 96)
+check("旧6件を重ねず見本は96件", len(APP.DEMO_SEED_WORKS) == 96)
+check("評価は93件", sum(bool(w["verdict"]) for w in works) == 93)
+check("未評価は3件", sum(not w["verdict"] for w in works) == 3)
+check("未評価の感想は空", all(not w["note_impression"] for w in works if not w["verdict"]))
+check("評価の4段階がある", {w["verdict"] for w in works if w["verdict"]} == {"◎", "○", "△", "×"})
+check("感想は架空のデモと分かる", all(w["note_impression"].startswith("【デモ用の架空の感想】") for w in works if w["verdict"]))
 check("日時の違う同日公演を両方残す",
       sum(w["last_date"] == "2024-08-14" for w in works) == 2)
 check("ゴドーの会場と時刻を保存する", any(
@@ -80,3 +86,4 @@ con.close()
 
 print(f"{ok} 件通過・{fail} 件失敗")
 sys.exit(1 if fail else 0)
+

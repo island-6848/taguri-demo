@@ -1,0 +1,46 @@
+name: Recommendation feedback loop
+
+on:
+  push:
+    paths:
+      - 'tools/lib/**'
+      - 'tools/tickets/**'
+      - 'tools/review/**'
+      - 'tools/taguri/**'
+      - '.github/workflows/recommendation-loop.yml'
+  pull_request:
+    paths:
+      - 'tools/lib/**'
+      - 'tools/tickets/**'
+      - 'tools/review/**'
+      - 'tools/taguri/**'
+      - '.github/workflows/recommendation-loop.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  feedback-loop:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: User feedback, isolation, and HTTP regressions
+        run: python tools/taguri/test_user_recommendation.py
+      - name: State persistence, catalog safety, and operational logs
+        run: python tools/taguri/test_cloud_storage.py
+      - name: Demo seed data
+        run: python tools/taguri/test_seed_demo.py
+      - name: Reaction buckets
+        run: python tools/taguri/test_rebucket.py
+      - name: Authentication
+        run: python tools/taguri/test_auth.py
+      - name: Polite fetching (robots.txt, intervals, back-off)
+        run: python tools/lib/test_polite_http.py
+      - name: Catalog publishing and live refresh
+        run: python tools/taguri/test_catalog_publish.py
+      - name: Shared favourite names for all users
+        run: python tools/taguri/test_shared_favourites.py
