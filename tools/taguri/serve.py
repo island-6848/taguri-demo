@@ -1002,7 +1002,8 @@ class Server(http.server.ThreadingHTTPServer):
 
         既定の実装は traceback を標準エラーに書く。画面を移動するたびに
         `BrokenPipeError` の山が進捗表示に混ざり、本当の失敗が読めなくなっていた。
-        **切断以外は今までどおり出す** ── 握り潰すのは相手都合の切断だけである。
+        **切断以外は固定の失敗イベントだけを出す。** 個人情報を含み得る
+        例外文・traceback・相手のアドレスはログへ出さない。
         """
         if isinstance(sys.exc_info()[1], (BrokenPipeError, ConnectionResetError,
                                           ConnectionAbortedError)):
