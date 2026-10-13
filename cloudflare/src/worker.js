@@ -3,6 +3,7 @@ import {verifyIdToken, isAuthError} from './firebase-auth.js';
 import {passkeyRoutes} from './passkey.js';
 import {scoreFromIndex, d1Access} from './recommend.js';
 import {searchIndex, d1Search} from './stage-search.js';
+import {SCREEN_TABLES, nativeScreen, nativeAction, screen as nativeScreenBody, action as nativeActionBody} from './screens/index.js';
 const MAX_BODY = 262144;
 const COOKIE = 'taguri_session';
 const TTL = 60 * 60 * 24 * 30;
@@ -125,7 +126,7 @@ async function deleteAccount(request, env, uid, input) {
   // Firebase sign-in, so a linked account must be deleted after signing in
   // with Google or the email link (otherwise the email would stay at Google).
   if (linked && input.firebase_ready !== true) fail(409,'このアカウントは Google またはメールと結び付いています。Google 側の記録も消すため、Google かメールのリンクでログインし直してから削除してください。');
-  await env.DB.batch(['records','favourites','reactions','passkeys','webauthn_challenges','rec_cache','sessions']
+  await env.DB.batch(['records','favourites','reactions','passkeys','webauthn_challenges','rec_cache',...SCREEN_TABLES,'sessions']
     .map(t => env.DB.prepare(`DELETE FROM ${t} WHERE user_id=?`).bind(uid))
     .concat(env.DB.prepare('DELETE FROM users WHERE id=?').bind(uid)));
   return json({deleted:true,firebase_linked:!!linked},200,{'Set-Cookie':`${COOKIE}=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0`});
@@ -247,6 +248,27 @@ function withAccountLink(response) {
     el.append('<a href="/migration-data/" class="acct-link">アカウント・記録</a>', {html: true});
   }}).transform(response);
 }
+// Screens and writes of the original UI already ported to the Worker
+// (src/screens/). Signed-in only: gate() has already sent everyone else away.
+async function nativeRoute(request, env, url) {
+  const m = url.pathname.match(/^\/api\/(?:screen\/([a-z]+)|([a-z_]+(?:\/[a-z_]+)?))$/);
+  if (!m) return null;
+  const isScreen = Boolean(m[1]) && request.method === 'GET';
+  const isAction = Boolean(m[2]) && request.method === 'POST';
+  if (!(isScreen ? nativeScreen(env, m[1]) : isAction && nativeAction(env, m[2]))) return null;
+  try {
+    const uid = await user(request, env.DB);
+    // env.CLOCK exists only in tests (an object cannot come from wrangler vars).
+    const ctx = {db: env.DB, uid, today: env.CLOCK?.today ?? jstToday(), now: env.CLOCK?.now ?? Date.now()};
+    if (isScreen) return json(await nativeScreenBody(m[1], url.searchParams, ctx));
+    if (request.headers.get('origin') !== url.origin) fail(403,'同じサイトから操作してください。');
+    if (!(request.headers.get('content-type') || '').startsWith('application/json')) fail(415,'JSONで送ってください。');
+    const out = await nativeActionBody(m[2], await body(request), ctx);
+    return json(out.body, out.status);
+  } catch (error) {
+    return json({ok:false,error:error.status ? error.message : '画面の読み込みに失敗しました。'}, error.status ?? 500);
+  }
+}
 async function gate(request, env, url) {
   const path = url.pathname;
   if (path.startsWith('/api/auth/') || path.startsWith('/migration-api/') || PUBLIC_PAGES.has(path) || PUBLIC_APIS.has(path)) return null;
@@ -264,6 +286,8 @@ export default {
     if (blocked) return blocked;
     if (url.pathname === '/login' && request.method === 'GET') return loginPage(request, env);
     const migrationAPI=url.pathname.startsWith('/migration-api/');
+    const native = await nativeRoute(request, env, url);
+    if (native) return native;
     if(env.ORIGINAL_UI_BRIDGE==='true' && !migrationAPI && isOriginalRoute(url.pathname))return originalUI(request);
     if(migrationAPI)url.pathname=url.pathname.replace('/migration-api/','/api/');
     if (!url.pathname.startsWith('/api/')) return withAccountLink(await env.ASSETS.fetch(request));
