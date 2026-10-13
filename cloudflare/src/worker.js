@@ -69,7 +69,7 @@ async function startSession(db, uid, commands, oldRaw) {
   if (oldRaw) commands.push(db.prepare('DELETE FROM sessions WHERE hash=?').bind(await hash(oldRaw)));
   // Delete expired sessions and bound the number of devices per account.
   commands.push(db.prepare('DELETE FROM sessions WHERE user_id=? AND (expires_at<=? OR hash NOT IN (SELECT hash FROM sessions WHERE user_id=? ORDER BY expires_at DESC LIMIT 9))').bind(uid,now(),uid));
-  commands.push(db.prepare('INSERT INTO sessions(hash,user_id,expires_at) VALUES(?,?,?)').bind(await hash(session),uid,now()+TTL));
+  commands.push(db.prepare('INSERT INTO sessions(hash,user_id,expires_at,created_at) VALUES(?,?,?,?)').bind(await hash(session),uid,now()+TTL,now()));
   await db.batch(commands);
   return session;
 }
@@ -106,6 +106,26 @@ async function firebaseSignIn(request, env) {
   }
   const session = await startSession(db, uid, commands, oldRaw);
   return json({linked,created},200,{'Set-Cookie':cookie(session)});
+}
+// Account deletion (security rules R7). Irreversible, so it needs a sign-in
+// made within REAUTH_SEC on this device: a stolen long-lived cookie alone
+// cannot delete the account. Every table is cleared explicitly rather than
+// relying on foreign-key cascades. The Firebase user (Google side) is deleted
+// by the browser right after, while it still holds a fresh Firebase sign-in.
+const REAUTH_SEC = 600;
+async function deleteAccount(request, env, uid, input) {
+  if (input.confirm !== '削除') fail(400,'確認のため「削除」と入力してください。');
+  const session = await env.DB.prepare('SELECT created_at FROM sessions WHERE hash=? AND user_id=?').bind(await hash(sessionCookie(request)),uid).first();
+  if (!session?.created_at || session.created_at < now() - REAUTH_SEC) fail(401,'本人確認のため、ログインし直してから削除してください。');
+  const linked = (await env.DB.prepare('SELECT firebase_uid FROM users WHERE id=?').bind(uid).first())?.firebase_uid;
+  // The browser can delete the Google-side user only while it holds a fresh
+  // Firebase sign-in, so a linked account must be deleted after signing in
+  // with Google or the email link (otherwise the email would stay at Google).
+  if (linked && input.firebase_ready !== true) fail(409,'このアカウントは Google またはメールと結び付いています。Google 側の記録も消すため、Google かメールのリンクでログインし直してから削除してください。');
+  await env.DB.batch(['records','favourites','reactions','passkeys','webauthn_challenges','sessions']
+    .map(t => env.DB.prepare(`DELETE FROM ${t} WHERE user_id=?`).bind(uid))
+    .concat(env.DB.prepare('DELETE FROM users WHERE id=?').bind(uid)));
+  return json({deleted:true,firebase_linked:!!linked},200,{'Set-Cookie':`${COOKIE}=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0`});
 }
 function upsert(db, uid, r) {
   return db.prepare('INSERT INTO records(user_id,id,title,date,time,venue,rating,note,updated_at) VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(user_id,id) DO UPDATE SET title=excluded.title,date=excluded.date,time=excluded.time,venue=excluded.venue,rating=excluded.rating,note=excluded.note,updated_at=excluded.updated_at').bind(uid,r.id,r.title,r.date,r.time,r.venue,r.rating,r.note,now());
@@ -230,6 +250,7 @@ export default {
         if(commands.length) await env.DB.batch(commands);
         return json({ok:true,imported:rs.length});
       }
+      if (path === '/api/account/delete') return await deleteAccount(request, env, uid, input);
       if (path === '/api/logout/all') {
         // Sign out every device, e.g. after losing a phone.
         await env.DB.prepare('DELETE FROM sessions WHERE user_id=?').bind(uid).run();

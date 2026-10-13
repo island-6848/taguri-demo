@@ -1,5 +1,5 @@
 import {DatabaseSync} from 'node:sqlite';
-import {readFileSync} from 'node:fs';
+import {readFileSync, readdirSync} from 'node:fs';
 import {test, beforeEach} from 'node:test';
 import assert from 'node:assert/strict';
 import worker from '../src/worker.js';
@@ -33,7 +33,7 @@ async function idToken(claims = {}, {kid = 'k1', pair = google, alg = 'RS256', h
 
 function setup() {
   const sqlite = new DatabaseSync(':memory:');
-  for (const file of ['0001.sql', '0002.sql', '0003.sql', '0004.sql']) sqlite.exec(readFileSync(new URL(`../migrations/${file}`, import.meta.url), 'utf8'));
+  for (const file of readdirSync(new URL('../migrations/', import.meta.url)).filter(n => n.endsWith('.sql')).sort()) sqlite.exec(readFileSync(new URL(`../migrations/${file}`, import.meta.url), 'utf8'));
   const wrap = (sql, args = []) => ({bind(...values) { return wrap(sql, values); }, async first() { return sqlite.prepare(sql).get(...args) ?? null; }, async all() { return {results: sqlite.prepare(sql).all(...args)}; }, async run() { return sqlite.prepare(sql).run(...args); }, async execute() { return /^SELECT/.test(sql) ? this.all() : this.run(); }});
   const env = {ALLOW_REGISTRATION: 'true', FIREBASE_PROJECT_ID: PROJECT, DB: {prepare: sql => wrap(sql), async batch(commands) { sqlite.exec('BEGIN'); try { const result = []; for (const c of commands) result.push(await c.execute()); sqlite.exec('COMMIT'); return result; } catch (e) { sqlite.exec('ROLLBACK'); throw e; } }}, ASSETS: {fetch: () => new Response('static')}};
   const call = (path, value, cookie = '', origin = 'https://taguri.example') => worker.fetch(new Request(`https://taguri.example/api/${path}`, {method: value === undefined ? 'GET' : 'POST', headers: {cookie, origin, 'content-type': 'application/json'}, body: value === undefined ? undefined : JSON.stringify(value)}), env);

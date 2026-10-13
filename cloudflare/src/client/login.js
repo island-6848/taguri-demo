@@ -10,11 +10,14 @@ import {initializeApp} from 'firebase/app';
 import {
   initializeAuth, inMemoryPersistence, browserPopupRedirectResolver,
   GoogleAuthProvider, signInWithPopup, sendSignInLinkToEmail,
-  isSignInWithEmailLink, signInWithEmailLink, signOut,
+  isSignInWithEmailLink, signInWithEmailLink, signOut, deleteUser,
 } from 'firebase/auth';
 import {startAuthentication, startRegistration, browserSupportsWebAuthn} from '@simplewebauthn/browser';
 
 const EMAIL_KEY = 'taguri_login_email';
+// /login?purpose=delete: sign in again, then delete the account (R7).
+const DELETE_MODE = new URLSearchParams(location.search).get('purpose') === 'delete';
+let firebaseUser = null;   // kept only in delete mode, to delete the Google-side user too
 const $ = s => document.querySelector(s);
 const say = (text, bad = false) => { const s = $('#status'); s.textContent = text; s.classList.toggle('bad', bad); };
 const busy = on => document.querySelectorAll('button, input').forEach(el => { el.disabled = on; });
@@ -28,11 +31,20 @@ async function exchange(auth, credential) {
   const idToken = await credential.user.getIdToken();
   const res = await fetch('/api/auth/firebase', {method: 'POST', credentials: 'same-origin',
     headers: {'content-type': 'application/json'}, body: JSON.stringify({id_token: idToken})});
-  await signOut(auth).catch(() => {});
+  if (DELETE_MODE) firebaseUser = credential.user;
+  else await signOut(auth).catch(() => {});
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || 'ログインできませんでした。');
-  say(data.linked ? 'ログインしました。これまでの記録を引き継ぎました。' : 'ログインしました。');
-  location.replace('/migration-data/');
+  signedIn(data.linked ? 'ログインしました。これまでの記録を引き継ぎました。' : 'ログインしました。');
+}
+
+// After any sign-in: go to the records, or (delete mode) ask for confirmation.
+function signedIn(message) {
+  if (!DELETE_MODE) { say(message); location.replace('/migration-data/'); return; }
+  busy(false);
+  for (const id of ['#login', '#passkey', '#recovery-login']) $(id).hidden = true;
+  $('#delete-confirm').hidden = false;
+  say('本人確認ができました。10分以内に削除してください。');
 }
 
 // Firebase error codes -> what the user can do about it. Never echo raw errors.
@@ -58,7 +70,7 @@ async function main() {
   // Returning from the email link.
   const link = location.href;
   if (isSignInWithEmailLink(auth, link)) {
-    history.replaceState(null, '', '/login');          // drop the one-time code from the address bar
+    history.replaceState(null, '', DELETE_MODE ? '/login?purpose=delete' : '/login');   // drop the one-time code
     let email = store.get();
     // Opened on another device/browser: ask again instead of trusting the URL.
     if (!email) email = (prompt('確認のため、リンクを送ったメールアドレスを入力してください。') || '').trim();
@@ -81,7 +93,7 @@ async function main() {
     const email = $('#email').value.trim();
     busy(true);
     try {
-      await sendSignInLinkToEmail(auth, email, {url: location.origin + '/login', handleCodeInApp: true});
+      await sendSignInLinkToEmail(auth, email, {url: location.origin + '/login' + (DELETE_MODE ? '?purpose=delete' : ''), handleCodeInApp: true});
       store.set(email);
       say('ログイン用のリンクを送りました。このブラウザでメールのリンクを開いてください。');
     } catch (e) { say(explain(e), true); }
@@ -121,8 +133,7 @@ function setupPasskeys() {
       const {challenge_id, options} = await postJSON('/api/auth/passkey/login/options', {});
       const response = await startAuthentication({optionsJSON: options});
       await postJSON('/api/auth/passkey/login/verify', {challenge_id, response});
-      say('ログインしました。');
-      location.replace('/migration-data/');
+      signedIn('ログインしました。');
     } catch (e) { busy(false); say(passkeyError(e), true); }
   });
   $('#passkey-signup').addEventListener('click', async () => {
@@ -138,5 +149,40 @@ function setupPasskeys() {
   });
 }
 
+// ---------------------------------------------------------------- account deletion
+// D1 account APIs are called via /migration-api/: while ORIGINAL_UI_BRIDGE is on,
+// other /api/* paths go to the old Render server.
+function setupDelete() {
+  if (!DELETE_MODE) return;
+  document.title = 'アカウントの削除 ― たぐり';
+  $('#delete-intro').hidden = false;
+  $('#recovery-login').hidden = false;
+  for (const id of ['#login-lead', '#passkey-signup', '#passkey-add-note', '#carry-over']) $(id).hidden = true;
+  $('#recovery-login').addEventListener('submit', async ev => {
+    ev.preventDefault();
+    busy(true);
+    try { await postJSON('/migration-api/recover', {code: $('#recovery-input').value}); signedIn(); }
+    catch (e) { busy(false); say(e.server ? e.message : 'ログインできませんでした。', true); }
+  });
+  $('#delete-confirm').addEventListener('submit', async ev => {
+    ev.preventDefault();
+    busy(true); say('削除しています…');
+    try {
+      await postJSON('/migration-api/account/delete', {confirm: $('#delete-word').value, firebase_ready: !!firebaseUser});
+    } catch (e) { busy(false); say(e.server ? e.message : '削除できませんでした。', true); return; }
+    // Records are gone from taguri. Also remove the Google-side login record.
+    let note = '';
+    if (firebaseUser) {
+      try { await deleteUser(firebaseUser); }
+      catch { note = 'Google 側のログイン記録は消せませんでした。もう一度このページからログインして削除すると消えます。'; }
+    }
+    firebaseUser = null;
+    $('#delete-confirm').hidden = true;
+    $('#delete-done').hidden = false;
+    say(note || 'アカウントとすべての記録を削除しました。', !!note);
+  });
+}
+
+setupDelete();
 setupPasskeys();
 main().catch(e => say(explain(e), true));

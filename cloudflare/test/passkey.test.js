@@ -2,7 +2,7 @@
 // @simplewebauthn/server verification. A software authenticator below builds
 // the same responses a browser returns (ES256 key, "none" attestation).
 import {DatabaseSync} from 'node:sqlite';
-import {readFileSync} from 'node:fs';
+import {readFileSync, readdirSync} from 'node:fs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {encodeCBOR} from '@levischuck/tiny-cbor';
@@ -48,7 +48,7 @@ class SoftAuthenticator {
 
 function setup() {
   const sqlite = new DatabaseSync(':memory:');
-  for (const f of ['0001.sql', '0002.sql', '0003.sql', '0004.sql', '0005.sql']) sqlite.exec(readFileSync(new URL(`../migrations/${f}`, import.meta.url), 'utf8'));
+  for (const f of readdirSync(new URL('../migrations/', import.meta.url)).filter(n => n.endsWith('.sql')).sort()) sqlite.exec(readFileSync(new URL(`../migrations/${f}`, import.meta.url), 'utf8'));
   sqlite.exec('PRAGMA foreign_keys = ON');
   const wrap = (sql, args = []) => ({bind(...v) { return wrap(sql, v); }, async first() { return sqlite.prepare(sql).get(...args) ?? null; }, async all() { return {results: sqlite.prepare(sql).all(...args)}; }, async run() { return sqlite.prepare(sql).run(...args); }, async execute() { return /^SELECT/.test(sql) ? this.all() : this.run(); }});
   const env = {ALLOW_REGISTRATION: 'true', DB: {prepare: sql => wrap(sql), async batch(cs) { sqlite.exec('BEGIN'); try { const r = []; for (const c of cs) r.push(await c.execute()); sqlite.exec('COMMIT'); return r; } catch (e) { sqlite.exec('ROLLBACK'); throw e; } }}, ASSETS: {fetch: () => new Response('static')}};

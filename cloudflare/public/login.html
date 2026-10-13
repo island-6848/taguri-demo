@@ -5,20 +5,29 @@
 <link rel="stylesheet" href="/migration-data/style.css">
 <header><h1>たぐり</h1><p>観た舞台を、次の楽しみへ。</p></header>
 <main>
-<section>
+<section id="delete-intro" hidden>
+<h2>アカウントの削除</h2>
+<p>たぐりに保存しているあなたのデータを、すべて削除します。<b>元に戻せません。</b>必要なら、先に記録の画面の「記録をJSONで保存」で書き出してください。</p>
+<ul><li>観劇記録・評価・感想・お気に入り・興味あり／なし</li><li>パスキー・ログイン中のすべての端末・復旧コード</li><li>Google またはメールで使っていた場合は、Google 側のログイン記録（メールアドレス）</li></ul>
+<p>Cloudflare の自動バックアップには最大30日残り、その後に消えます。本人確認のため、いつもの方法でもう一度ログインしてください。Google またはメールで使っていた方は、Google かメールのリンクでログインしてください。</p>
+</section>
+<p id="status" role="status" aria-live="polite"></p>
+<section id="login">
 <h2>ログイン</h2>
-<p>パスワードは使いません。Google アカウントか、メールに届くリンク、またはパスキーでログインします。たぐりが保存するのはログインの識別番号だけで、メールアドレスは保存しません。</p>
+<p id="login-lead">パスワードは使いません。Google アカウントか、メールに届くリンク、またはパスキーでログインします。たぐりが保存するのはログインの識別番号だけで、メールアドレスは保存しません。</p>
 <p><button id="google" type="button">Google でログイン</button></p>
 <form id="email-form"><label>メールアドレス<input id="email" type="email" required autocomplete="email" maxlength="254"></label><button>ログイン用のリンクを送る</button></form>
-<p id="status" role="status" aria-live="polite"></p>
-<p>復旧コードで使っている方も、ここでログインすると、これまでの記録を引き継げます（復旧コードでログインしたままの状態で押してください）。</p>
+<p id="carry-over">復旧コードで使っている方も、ここでログインすると、これまでの記録を引き継げます（復旧コードでログインしたままの状態で押してください）。</p>
 </section>
 <section id="passkey">
 <h2>パスキーでログイン</h2>
 <p>Google を使いたくない方は、パスキー（指紋・顔認証・端末のロック解除）で使えます。メールアドレスもいりません。</p>
 <p><button id="passkey-login" type="button">パスキーでログイン</button> <button id="passkey-signup" type="button">パスキーで新しく始める</button></p>
-<p>Google などでログイン中の方は、記録の画面の「パスキー」から、いまのアカウントにパスキーを追加できます。</p>
+<p id="passkey-add-note">Google などでログイン中の方は、記録の画面の「パスキー」から、いまのアカウントにパスキーを追加できます。</p>
 </section>
+<form id="recovery-login" hidden><h2>復旧コードでログイン</h2><label>復旧コード<input id="recovery-input" required autocomplete="off" maxlength="80"></label><button>ログインする</button></form>
+<form id="delete-confirm" hidden><h2>削除の確認</h2><p>確認のため「削除」と入力してください。</p><label>確認<input id="delete-word" required autocomplete="off" maxlength="10"></label><button>すべて削除する</button></form>
+<section id="delete-done" hidden><h2>削除しました</h2><p>ご利用ありがとうございました。<a href="/login">ログインの画面へ</a></p></section>
 <section id="passkey-recovery" hidden>
 <h2>復旧コードを控えてください</h2>
 <p>パスキーを入れた端末をなくしたとき、このコードで記録に戻れます。<b>いまだけ表示します。</b>二度と表示できません。</p>
