@@ -1,1 +1,466 @@
-[]
+[
+ {
+  "name": "empty screens",
+  "steps": [
+   {
+    "get": "/api/screen/rate"
+   },
+   {
+    "get": "/api/screen/unrated"
+   },
+   {
+    "get": "/api/screen/notes"
+   }
+  ]
+ },
+ {
+  "name": "add, rate and note",
+  "steps": [
+   {
+    "post": "/api/add_work",
+    "body": {
+     "title": "舞台ひとつめ",
+     "date": "2026-09-01",
+     "venue": "劇場A",
+     "time": "19:00"
+    }
+   },
+   {
+    "post": "/api/add_work",
+    "body": {
+     "title": "一日だけの<舞台> & \"夜\"",
+     "date": "2026-09-05",
+     "venue": "劇場 'C'",
+     "stage_id": "104"
+    }
+   },
+   {
+    "post": "/api/add_work",
+    "body": {
+     "title": "日付の無い記録"
+    }
+   },
+   {
+    "post": "/api/add_work",
+    "body": {
+     "title": "舞台ひとつめ",
+     "date": "2026-09-01"
+    }
+   },
+   {
+    "post": "/api/add_work",
+    "body": {
+     "title": ""
+    }
+   },
+   {
+    "post": "/api/add_work",
+    "body": {
+     "title": "日付が変",
+     "date": "2026/09/01"
+    }
+   },
+   {
+    "get": "/api/screen/unrated"
+   },
+   {
+    "get": "/api/screen/rate"
+   },
+   {
+    "post": "/api/rate",
+    "body": {
+     "work_key": "舞台ひとつめ#2026-09-01",
+     "verdict": "◎"
+    }
+   },
+   {
+    "post": "/api/rate",
+    "body": {
+     "work_key": "舞台ひとつめ#2026-09-01",
+     "verdict": "良い"
+    }
+   },
+   {
+    "post": "/api/rate",
+    "body": {
+     "work_key": "無い作品#2026-01-01",
+     "verdict": "○"
+    }
+   },
+   {
+    "get": "/api/screen/rate"
+   },
+   {
+    "get": "/api/screen/notes"
+   },
+   {
+    "post": "/api/note",
+    "body": {
+     "work_key": "舞台ひとつめ#2026-09-01",
+     "note_impression": "俳優甲が良かった"
+    }
+   },
+   {
+    "get": "/api/screen/notes"
+   },
+   {
+    "get": "/api/screen/unrated"
+   }
+  ]
+ },
+ {
+  "name": "many works",
+  "steps": [
+   {
+    "post": "/api/add_work",
+    "body": {
+     "title": "作品00",
+     "venue": "劇場A",
+     "date": "2024-01-01"
+    }
+   },
+   {
+    "post": "/api/rate",
+    "body": {
+     "work_key": "作品00#2024-01-01",
+     "verdict": "◎"
+    }
+   },
+   {
+    "post": "/api/add_work",
+    "body": {
+     "title": "作品01",
+     "venue": "劇場B",
+     "date": "2025-02-04"
+    }
+   },
+   {
+    "post": "/api/rate",
+    "body": {
+     "work_key": "作品01#2025-02-04",
+     "verdict": "○"
+    }
+   },
+   {
+    "post": "/api/add_work",
+    "body": {
+     "title": "作品02",
+     "venue": "",
+     "date": "2026-03-07"
+    }
+   },
+   {
+    "post": "/api/rate",
+    "body": {
+     "work_key": "作品02#2026-03-07",
+     "verdict": "△"
+    }
+   },
+   {
+    "post": "/api/add_work",
+    "body": {
+     "title": "作品03",
+     "venue": "劇場 'C'",
+     "date": "2024-04-10"
+    }
+   },
+   {
+    "post": "/api/rate",
+    "body": {
+     "work_key": "作品03#2024-04-10",
+     "verdict": "×"
+    }
+   },
+   {
+    "post": "/api/add_work",
+    "body": {
+     "title": "作品04",
+     "venue": "劇場A",
+     "date": "2025-05-13"
+    }
+   },
+   {
+    "post": "/api/rate",
+    "body": {
+     "work_key": "作品04#2025-05-13",
+     "verdict": "まだ判断できない"
+    }
+   },
+   {
+    "post": "/api/add_work",
+    "body": {
+     "title": "作品05",
+     "venue": "劇場B",
+     "date": "2026-06-16"
+    }
+   },
+   {
+    "post": "/api/rate",
+    "body": {
+     "work_key": "作品05#2026-06-16",
+     "verdict": "◎"
+    }
+   },
+   {
+    "post": "/api/add_work",
+    "body": {
+     "title": "作品06",
+     "venue": "",
+     "date": "2024-07-19"
+    }
+   },
+   {
+    "post": "/api/rate",
+    "body": {
+     "work_key": "作品06#2024-07-19",
+     "verdict": "◎"
+    }
+   },
+   {
+    "post": "/api/add_work",
+    "body": {
+     "title": "作品07",
+     "venue": "劇場 'C'",
+     "date": "2025-08-22"
+    }
+   },
+   {
+    "post": "/api/rate",
+    "body": {
+     "work_key": "作品07#2025-08-22",
+     "verdict": "◎"
+    }
+   },
+   {
+    "post": "/api/add_work",
+    "body": {
+     "title": "作品08",
+     "venue": "劇場A",
+     "date": "2026-09-25"
+    }
+   },
+   {
+    "post": "/api/rate",
+    "body": {
+     "work_key": "作品08#2026-09-25",
+     "verdict": "○"
+    }
+   },
+   {
+    "post": "/api/add_work",
+    "body": {
+     "title": "作品09",
+     "venue": "劇場B",
+     "date": "2024-10-28"
+    }
+   },
+   {
+    "post": "/api/rate",
+    "body": {
+     "work_key": "作品09#2024-10-28",
+     "verdict": "△"
+    }
+   },
+   {
+    "post": "/api/add_work",
+    "body": {
+     "title": "作品10",
+     "venue": "",
+     "date": "2025-11-03"
+    }
+   },
+   {
+    "post": "/api/rate",
+    "body": {
+     "work_key": "作品10#2025-11-03",
+     "verdict": "×"
+    }
+   },
+   {
+    "post": "/api/add_work",
+    "body": {
+     "title": "作品11",
+     "venue": "劇場 'C'",
+     "date": "2026-12-06"
+    }
+   },
+   {
+    "post": "/api/rate",
+    "body": {
+     "work_key": "作品11#2026-12-06",
+     "verdict": "まだ判断できない"
+    }
+   },
+   {
+    "post": "/api/add_work",
+    "body": {
+     "title": "作品12",
+     "venue": "劇場A",
+     "date": "2024-01-09"
+    }
+   },
+   {
+    "post": "/api/rate",
+    "body": {
+     "work_key": "作品12#2024-01-09",
+     "verdict": "◎"
+    }
+   },
+   {
+    "post": "/api/add_work",
+    "body": {
+     "title": "作品13",
+     "venue": "劇場B",
+     "date": "2025-02-12"
+    }
+   },
+   {
+    "post": "/api/rate",
+    "body": {
+     "work_key": "作品13#2025-02-12",
+     "verdict": "◎"
+    }
+   },
+   {
+    "post": "/api/add_work",
+    "body": {
+     "title": "作品14",
+     "venue": "",
+     "date": "2026-03-15"
+    }
+   },
+   {
+    "post": "/api/rate",
+    "body": {
+     "work_key": "作品14#2026-03-15",
+     "verdict": "◎"
+    }
+   },
+   {
+    "post": "/api/add_work",
+    "body": {
+     "title": "作品15",
+     "venue": "劇場 'C'",
+     "date": "2024-04-18"
+    }
+   },
+   {
+    "post": "/api/rate",
+    "body": {
+     "work_key": "作品15#2024-04-18",
+     "verdict": "○"
+    }
+   },
+   {
+    "post": "/api/add_work",
+    "body": {
+     "title": "作品16",
+     "venue": "劇場A",
+     "date": "2025-05-21"
+    }
+   },
+   {
+    "post": "/api/rate",
+    "body": {
+     "work_key": "作品16#2025-05-21",
+     "verdict": "△"
+    }
+   },
+   {
+    "post": "/api/add_work",
+    "body": {
+     "title": "作品17",
+     "venue": "劇場B",
+     "date": "2026-06-24"
+    }
+   },
+   {
+    "post": "/api/add_work",
+    "body": {
+     "title": "作品18",
+     "venue": ""
+    }
+   },
+   {
+    "get": "/api/screen/rate"
+   },
+   {
+    "get": "/api/screen/rate?v=all"
+   },
+   {
+    "get": "/api/screen/rate?v=all&p=2"
+   },
+   {
+    "get": "/api/screen/rate?v=all&p=9"
+   },
+   {
+    "get": "/api/screen/rate?v=%E2%97%8E"
+   },
+   {
+    "get": "/api/screen/rate?v=%E2%96%B3"
+   },
+   {
+    "get": "/api/screen/rate?v=nothing"
+   },
+   {
+    "get": "/api/screen/rate?v=all&y=2025"
+   },
+   {
+    "get": "/api/screen/rate?v=all&y=none"
+   },
+   {
+    "get": "/api/screen/rate?v=all&y=1999"
+   },
+   {
+    "get": "/api/screen/rate?v=all&venue=%E5%8A%87%E5%A0%B4A"
+   },
+   {
+    "get": "/api/screen/rate?v=all&venue=%E5%8A%87%E5%A0%B4A&venue=none"
+   },
+   {
+    "get": "/api/screen/rate?v=all&y=2024&venue=%E5%8A%87%E5%A0%B4B&p=1"
+   },
+   {
+    "get": "/api/screen/rate?v=all&p=abc"
+   },
+   {
+    "get": "/api/screen/rate?v=all&p=0"
+   },
+   {
+    "get": "/api/screen/unrated"
+   },
+   {
+    "get": "/api/screen/notes"
+   },
+   {
+    "post": "/api/note",
+    "body": {
+     "work_key": "作品00#2024-01-01",
+     "note_impression": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    }
+   },
+   {
+    "post": "/api/note",
+    "body": {
+     "work_key": "作品05#2026-06-16",
+     "note_impression": [
+      "a",
+      1
+     ]
+    }
+   },
+   {
+    "post": "/api/rate",
+    "body": {
+     "work_key": [
+      "作品00#2024-01-01"
+     ],
+     "verdict": "◎"
+    }
+   },
+   {
+    "get": "/api/screen/notes"
+   }
+  ]
+ }
+]
