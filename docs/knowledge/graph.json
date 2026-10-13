@@ -1984,6 +1984,17 @@
    "verifies": []
   },
   {
+   "id": "reco-base-rate-relative",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "今の計算は「その人の◎の割合」を差し引くので、◎が珍しい人の◎ほど強く効き、◎ばかりの人の◎はほとんど効かない",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/blob/master/tools/review/user_recommender.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "reco-computed-per-request",
    "type": "finding",
    "status": "confirmed",
@@ -3674,6 +3685,16 @@
    "from": "reco-accuracy-unverified",
    "rel": "raises",
    "to": "q-reco-eval-harness"
+  },
+  {
+   "from": "reco-base-rate-relative",
+   "rel": "affects",
+   "to": "q-rating-scale"
+  },
+  {
+   "from": "reco-base-rate-relative",
+   "rel": "affects",
+   "to": "comp-recommender"
   },
   {
    "from": "reco-computed-per-request",
