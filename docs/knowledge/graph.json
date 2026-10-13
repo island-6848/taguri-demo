@@ -1249,6 +1249,19 @@
    "verifies": []
   },
   {
+   "id": "lit-genre-reco",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-13",
+   "title": "映画のジャンルを使った推薦の研究は、主に「新しい利用者・新作の立ち上がり」のために使われている",
+   "sources": [
+    "https://pure.uos.ac.kr/en/publications/a-movie-recommendation-algorithm-based-on-genre-correlations/",
+    "https://ideas.repec.org/a/igg/jiit00/v17y2021i3p1-20.html",
+    "https://pureportal.bcu.ac.uk/en/publications/improving-on-line-genre-based-viewer-profiling-tvx2017-workshop-o/"
+   ],
+   "verifies": []
+  },
+  {
    "id": "lit-hierarchical-user-model",
    "type": "finding",
    "status": "confirmed",
@@ -3718,6 +3731,16 @@
    "from": "lit-feedback-loop",
    "rel": "supports",
    "to": "lit-mnar"
+  },
+  {
+   "from": "lit-genre-reco",
+   "rel": "supports",
+   "to": "q-theme-preference"
+  },
+  {
+   "from": "lit-genre-reco",
+   "rel": "supports",
+   "to": "q-favourites-seed"
   },
   {
    "from": "lit-hierarchical-user-model",
