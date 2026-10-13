@@ -4,7 +4,10 @@
    写したもの（docs/knowledge の design-studio・dec-design-default-ito）。値の出どころは
    web/design.json。直すときは調整室で保存し、design.json とここを合わせて直す。
 
-   - 毛糸のあたたかみ: 地はあたたかい灰、紙はわずかに暖かい白、色は毛糸の赤 1 色
+   - 地はうすい灰、紙は白、文字と線は温かみを持たせない無彩の灰。色は差し色のえんじ 1 色だけ
+     （起案者の指示 2026-10-13「赤はえんじ寄りの色で」「差し色がえんじなだけで、他の色はあたたかみは
+     持たせずスタイリッシュなデザインに」「スマホ版も既定の背景色は薄いグレー」）
+   - ロゴ「たぐり」の下に、毛糸を表す赤い線を引く（「たぐりの下に赤線で毛糸を表現するのは続けて」）
    - ボタンは見た目の調整室の押し口と同じ作り（起案者の指摘 2026-10-13「見た目の調整室のUIが
      結構よくない？」「ボタンはなるべく１行に収めてボタンだとわかるスタイリッシュなレイアウト」）:
      角を少し丸めた 40px の押し口。いちばん押してほしいものだけ濃く塗る。回答 3 つは 1 本の
@@ -15,14 +18,14 @@
    - 書体は端末にあるものだけを並べる（配る書体は q-webfont-local で決める） */
 
 @media (prefers-color-scheme:light){:root:where(:not([data-theme=dark])){
- --plane:#f4f1ec;--surf:#fffdfa;--ink:#2b2522;--ink2:#5f5650;--mute:#6e655f;
- --grid:#e8e1d8;--base:#ddd4ca;--ring:#ddd4ca;
- --acc:#b8432f;--curtain:#b8432f;--curtain-w:#f8ebe6;
+ --plane:#f2f2f3;--surf:#ffffff;--ink:#1d1d1f;--ink2:#5c5f66;--mute:#6b6e75;
+ --grid:#e6e6e8;--base:#d9d9dc;--ring:#d9d9dc;
+ --acc:#9b2335;--curtain:#9b2335;--curtain-w:#f4f4f5;
  --mincho:"Zen Old Mincho","Hiragino Mincho ProN","Yu Mincho",YuMincho,"Noto Serif JP",serif}}
 :root[data-theme=light]{
- --plane:#f4f1ec;--surf:#fffdfa;--ink:#2b2522;--ink2:#5f5650;--mute:#6e655f;
- --grid:#e8e1d8;--base:#ddd4ca;--ring:#ddd4ca;
- --acc:#b8432f;--curtain:#b8432f;--curtain-w:#f8ebe6;
+ --plane:#f2f2f3;--surf:#ffffff;--ink:#1d1d1f;--ink2:#5c5f66;--mute:#6b6e75;
+ --grid:#e6e6e8;--base:#d9d9dc;--ring:#d9d9dc;
+ --acc:#9b2335;--curtain:#9b2335;--curtain-w:#f4f4f5;
  --mincho:"Zen Old Mincho","Hiragino Mincho ProN","Yu Mincho",YuMincho,"Noto Serif JP",serif}
 
 body{font-family:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",YuGothic,system-ui,sans-serif}
@@ -33,12 +36,17 @@ body{font-family:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",YuGothic,syst
 
 /* ---- ロゴは今の書体のまま（--mincho を上で替えても、ロゴだけは元の並びで組む） */
 .side .brand{font-family:"Hiragino Mincho ProN","Yu Mincho",YuMincho,"Noto Serif JP",serif}
+/* ---- ロゴの字の下に、毛糸の赤い線。SVG の形を mask にして差し色で塗る（暗い表示でも差し色に従う） */
+.tglock .tgw{position:relative;display:inline-block;padding-bottom:7px}
+.tglock .tgw::after{content:"";position:absolute;left:0;right:0;bottom:0;height:6px;background-color:var(--acc);
+ -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 82 7' preserveAspectRatio='none'%3E%3Cpath d='M1 4 C 16 1, 26 6, 41 3 S 66 1, 81 4' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E") center/100% 100% no-repeat;
+ mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 82 7' preserveAspectRatio='none'%3E%3Cpath d='M1 4 C 16 1, 26 6, 41 3 S 66 1, 81 4' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E") center/100% 100% no-repeat}
 
 /* ---- 押し口 ── 調整室と同じ作り。白地に細い枠、角を少し丸め、高さ 40px */
 .wnb,.pfoot button,.ticket .sitebtn,.mt-add button{
  border-radius:8px;min-height:40px;padding:0 14px;font-size:13px;font-weight:500;
  background:var(--surf);color:var(--ink);border:1px solid var(--ink);border-style:solid;
- box-shadow:0 1px 2px rgba(43,37,34,.12);cursor:pointer;white-space:nowrap;
+ box-shadow:0 1px 2px rgba(29,29,31,.12);cursor:pointer;white-space:nowrap;
  transition:background-color .12s ease,box-shadow .12s ease}
 .wnb:hover,.pfoot button:hover,.ticket .sitebtn:hover,.mt-add button:hover{
  background:var(--curtain-w);color:var(--ink);border-color:var(--ink);border-style:solid}
@@ -50,7 +58,7 @@ body{font-family:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",YuGothic,syst
 .btns{gap:0;flex-wrap:nowrap}
 .btns button{min-height:40px;padding:0 10px;margin:0;font-size:12.5px;font-weight:500;white-space:nowrap;
  background:var(--surf);color:var(--ink);border:1px solid var(--ink);border-radius:0;
- box-shadow:0 1px 2px rgba(43,37,34,.12);cursor:pointer;transition:background-color .12s ease}
+ box-shadow:0 1px 2px rgba(29,29,31,.12);cursor:pointer;transition:background-color .12s ease}
 .btns button:hover{background:var(--curtain-w);color:var(--ink);border-color:var(--ink)}
 .btns button[data-v=interest]{order:1;border-radius:8px 0 0 8px;background:var(--ink);color:var(--surf);font-weight:700}
 .btns button[data-v=interest]:hover{background:var(--ink2);color:var(--surf)}
