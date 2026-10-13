@@ -1269,7 +1269,8 @@ def ticket(c: dict, *, rank=None, mode: str = "recommend", note: str = "",
         top_why = (f'<div class="whyh top">{IC.ico("eye", 14)}ヒットした箇所：</div>'
                    f'<ul class="why top">{why_html}</ul>')
     else:
-        whyh = "なぜお知らせしているか" if mode == "favourite" else "なぜ出てきたか"
+        # 見出しの言葉は見た目の調整室で決めた（web/design.json の copy.reasonHead）
+        whyh = "なぜお知らせしているか" if mode == "favourite" else "おすすめ理由"
         why = declared_rows(c) if mode == "favourite" else reason_rows(c)
     # **もぎった 1 枚は、傾けずに印を付ける。** 押した瞬間に耳を傾ける動き（`.torn`）は
     # **一瞬だから意味がある**もので、19 枚すべてを傾けたまま並べると演出ではなく体裁に

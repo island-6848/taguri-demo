@@ -7788,7 +7788,7 @@ def _works_body(user_id: str, year: str = "", page: int = 1, want: str = "", gro
         # **記録が 1 件も無いときに落とさない。** 耳が 1 枚も無いので既定の耳
         # （`order[0]`）が引けず、`list index out of range` で画面ごと 500 になっていた。
         # 公開デモの訪問者は全員 0 件から始まる（E3）ので、ここを最初に開く人が必ず踏む
-        return f"""<h1>日記帳 ── 1 公演ごとの記録</h1>
+        return f"""<h1>日記帳</h1>
 {_records_lede(d)}
 {_records_empty_note()}"""
     label = {"none": "上演日が分からない", "check": "先に確かめてほしい"}
@@ -7833,7 +7833,7 @@ def _works_body(user_id: str, year: str = "", page: int = 1, want: str = "", gro
              "という意味です）。同じ作品を複数回観ていれば、行った日の数だけ並びます。"
              "評価・感想はどの行にも同じ値が付きます（回ごとには記録していません）。"
              "<b>「この回のメモ」だけは行ごとに別々に持てます</b>（推薦には使いません）。")
-    return f"""<h1>日記帳 ── 1 公演ごとの記録</h1>
+    return f"""<h1>日記帳</h1>
 {_records_lede(d)}
 <p class="lede">1 件ごとに、日付・評価・感想が出ます。<b>感想は各行の「感想を書く」から
 書けます</b>（欄から離れたときに保存されます）。<b>題名・上演日・劇場は、各行の

@@ -1,0 +1,23 @@
+{
+ "source": "https://claude.ai/artifact/NH7Z8DGfij161BfkjEGg3q (design/current, saved 2026-10-13T14:44:20Z)",
+ "note": "見た目の調整室で起案者が決めた値。web/theme.css はこれを写したもの。ground（地のうすい灰）は起案者の指摘（2026-10-13「白地と半券の色一緒すぎる」）で足した",
+ "color": {"ground": "#f0f0ee", "paper": "#ffffff", "ink": "#1d1d1f", "sub": "#5d6066", "rule": "#cfcfca", "accent": "#c2253a", "onAccent": "#ffffff"},
+ "type": {"display": "Zen Old Mincho", "body": "Zen Kaku Gothic New", "base": 14, "title": 24},
+ "button": {"answer": "strip", "radius": 0, "border": 1, "selectedFill": "accent", "rate": "stamp"},
+ "layout": {"nav": "top", "stub": "left", "thread": true, "reason": "after", "order": ["interest", "nointerest", "owned"], "density": "spacious"},
+ "copy": {"navRecommend": "おすすめ", "navPlan": "カレンダー", "navRate": "評価", "navRecord": "日記帳", "navMenu": "メニュー",
+  "recommendTitle": "今週のおすすめ", "diaryTitle": "日記帳", "owned": "すでに持っている", "interest": "興味あり", "nointerest": "興味なし",
+  "reasonHead": "おすすめ理由", "site": "公式サイトを開く", "more": "続きを読む", "rateLegend": "評価をつけてください。",
+  "writeNote": "感想を書く（任意）", "whyNote": "なぜ気になりましたか（任意）"},
+ "applied": {
+  "web/theme.css": "色（地・紙・文字・線・糸の紅）、書体の並び、半券の角と影、ゆとり、回答 3 つの切り取り札と並び、評価の判子",
+  "tools/review/render_recommend.py": "理由の見出し「おすすめ理由」",
+  "tools/taguri/app.py, cloudflare/src/screens/diary.js": "日記帳の見出し「日記帳」"
+ },
+ "not_applied": {
+  "layout.nav, copy.nav*": "画面の行き先の組み方（いまは左の縦帯に 14 項目）を 5 つのタブにする作り替えが要る",
+  "layout.thread": "半券に糸を通す飾りは、いまの画面の部品に無い",
+  "copy.rateLegend": "いまの評価のボタンには問いかけの行が無い",
+  "type.display, type.body": "外部から書体を読み込まない決まりがあるので、端末にあるときだけ効く"
+ }
+}

@@ -1,0 +1,47 @@
+/* たぐり ── 既定の見た目「たぐる糸」。style.css の上に重ねる。
+
+   見た目の調整室（https://claude.ai/artifact/NH7Z8DGfij161BfkjEGg3q）で起案者が決めた値を
+   写したもの（docs/knowledge の design-studio・dec-design-default-ito）。値の出どころは
+   web/design.json。直すときは調整室で保存し、design.json とここを合わせて直す。
+
+   - 地はうすい灰、読むところ（半券・記録）は白い紙。色は糸の紅 1 色だけ
+   - 半券の回答 3 つは、点線で区切った 1 枚の切り取り札（興味あり・興味なし・持っている の順）
+   - 評価 ◎○△× は丸い判子
+   - 暗い表示は style.css のまま（ここでは明るい表示だけを上書きする）
+   - 書体は端末にあるものだけを並べる（外部から読み込まない ── style.css の --mincho の注記） */
+
+@media (prefers-color-scheme:light){:root:where(:not([data-theme=dark])){
+ --plane:#f0f0ee;--surf:#ffffff;--ink:#1d1d1f;--ink2:#5d6066;--mute:#6b6e73;
+ --grid:#e4e3df;--base:#cfcfca;--ring:#cfcfca;
+ --acc:#c2253a;--curtain:#c2253a;--curtain-w:#fbeef0;
+ --mincho:"Zen Old Mincho","Hiragino Mincho ProN","Yu Mincho",YuMincho,"Noto Serif JP",serif}}
+:root[data-theme=light]{
+ --plane:#f0f0ee;--surf:#ffffff;--ink:#1d1d1f;--ink2:#5d6066;--mute:#6b6e73;
+ --grid:#e4e3df;--base:#cfcfca;--ring:#cfcfca;
+ --acc:#c2253a;--curtain:#c2253a;--curtain-w:#fbeef0;
+ --mincho:"Zen Old Mincho","Hiragino Mincho ProN","Yu Mincho",YuMincho,"Noto Serif JP",serif}
+
+body{font-family:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",YuGothic,system-ui,sans-serif}
+
+/* ---- 半券 ── 影と角丸を外し、細い線とミシン目だけで切る。ゆとりは「ゆったり」 */
+.ticket{border-radius:0;box-shadow:none}
+.ticket .body{padding:26px 26px 22px}
+
+/* ---- 回答 3 つ ── 点線で区切った 1 枚の切り取り札。並びは 興味あり・興味なし・持っている */
+.btns{gap:0}
+.btns button{border-radius:0;margin:0;min-height:44px;padding:0 16px;font-size:13.5px;
+ border:1px solid var(--ink);color:var(--ink);background:var(--surf)}
+.btns button:hover{border-color:var(--ink);color:var(--acc)}
+.btns button[data-v=interest]{order:1;border-right:0;color:var(--acc);font-weight:700}
+.btns button[data-v=nointerest]{order:2;border-left:1px dashed var(--ink);border-right:0}
+.btns button[data-v=owned]{order:3;border-left:1px dashed var(--ink)}
+.btns .said{order:4;margin-left:10px}
+
+/* ---- 評価 ◎○△× ── 丸い判子。押せる大きさ（44px）を守る */
+.rb{gap:10px}
+.rb button{width:44px;height:44px;min-width:44px;padding:0;border-radius:50%;
+ border:1px solid var(--ink);background:var(--surf);color:var(--ink);
+ font-family:var(--mincho);font-size:18px;font-weight:700}
+.rb button:hover{border-color:var(--acc);color:var(--acc)}
+.rb.notseen button{width:auto;height:auto;min-height:40px;border-radius:0;padding:0 12px;
+ font-family:inherit;font-size:12.5px}

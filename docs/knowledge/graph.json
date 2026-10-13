@@ -1511,6 +1511,19 @@
    "verifies": []
   },
   {
+   "id": "q-plainwalk-ui",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "起案者が「UI が素敵」と挙げた plainwalk はどのサイトか",
+   "sources": [
+    "https://www.fws.gov/event/plant-walk-dick-cloud-7",
+    "https://hiiker.app/hikes/victoria/alpine/jb-plain-walk",
+    "https://ja.wix.com/blog/2023/09/ui-ux-webdesign-tools/"
+   ],
+   "verifies": []
+  },
+  {
    "id": "q-poster-palette",
    "type": "question",
    "status": "open",
@@ -1662,6 +1675,17 @@
    "verifies": [
     "S20"
    ]
+  },
+  {
+   "id": "q-webfont-local",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "調整室で選んだ書体（Zen Old Mincho など）を、外部から読み込まずに全員の画面で出すには",
+   "sources": [
+    "web/style.css"
+   ],
+   "verifies": []
   },
   {
    "id": "q-workers-cpu-overrun",
@@ -3023,6 +3047,11 @@
    "to": "catalog-terms-no-redistribution"
   },
   {
+   "from": "q-plainwalk-ui",
+   "rel": "affects",
+   "to": "dec-design-default-ito"
+  },
+  {
    "from": "q-poster-palette",
    "rel": "depends_on",
    "to": "dec-theme-user-choice"
@@ -3096,6 +3125,11 @@
    "from": "q-vm-performance",
    "rel": "depends_on",
    "to": "q-vm-host-choice"
+  },
+  {
+   "from": "q-webfont-local",
+   "rel": "depends_on",
+   "to": "design-studio"
   },
   {
    "from": "q-workers-cpu-overrun",

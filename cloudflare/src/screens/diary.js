@@ -352,7 +352,7 @@ async function worksScreen(params, ctx) {
   const order = [...(check.length ? ['check'] : []), ...keys];
   const title = '日記帳';
   if (!order.length) {
-    return {title, body_html: `<h1>日記帳 ── 1 公演ごとの記録</h1>\n${recordsLede(d)}\n${RECORDS_EMPTY}`};
+    return {title, body_html: `<h1>日記帳</h1>\n${recordsLede(d)}\n${RECORDS_EMPTY}`};
   }
   const label = {none: '上演日が分からない', check: '先に確かめてほしい'};
   const tabs = order.map(k => [k, label[k] ?? `${k} 年`, piles.get(k).length]);
@@ -381,7 +381,7 @@ async function worksScreen(params, ctx) {
   const labels = await stageLabels(ctx, show.map(w => w.stage_id));
   const rows = show.map(w => recRow({...w, people: people[w.work_key] || [], synopsis: ''},
     {poster: posterHtml(w), editable: true, label: labels[w.stage_id] || ''})).join('');
-  return {title, body_html: `<h1>日記帳 ── 1 公演ごとの記録</h1>
+  return {title, body_html: `<h1>日記帳</h1>
 ${recordsLede(d)}
 <p class="lede">1 件ごとに、日付・評価・感想が出ます。<b>感想は各行の「感想を書く」から
 書けます</b>（欄から離れたときに保存されます）。<b>題名・上演日・劇場は、各行の

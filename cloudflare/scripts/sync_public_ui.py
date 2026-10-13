@@ -16,7 +16,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 WEB, PUBLIC = ROOT / "web", ROOT / "cloudflare" / "public"
-COPIED = ("tour.js", "style.css", "tour.css", "recommendation-exposure.js")
+COPIED = ("tour.js", "style.css", "tour.css", "theme.css", "recommendation-exposure.js")
 
 
 def expected() -> dict[str, str]:
