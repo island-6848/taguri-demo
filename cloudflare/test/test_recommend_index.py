@@ -72,6 +72,15 @@ def catalogue(seed):
     return raw, cands, fields_by_stage
 
 
+def verdict(rng, seed):
+    """◎○△× (a 4-level scale), and for odd seeds also ratings on scales the
+    user chose ("value/levels", 2–11 levels), as after a change of scale."""
+    if seed % 2 and rng.random() < .4:
+        levels = rng.choice([2, 5, 5, 11])
+        return f"{rng.randint(1, levels)}/{levels}"
+    return rng.choice(['◎', '◎', '○', '△', '×', ''])
+
+
 def history(seed, fields_by_stage):
     rng = random.Random(seed)
     rows = []
@@ -79,7 +88,7 @@ def history(seed, fields_by_stage):
     for i in range(rng.randint(0, 40)):
         sid = rng.choice(linked) if rng.random() < .85 else ''
         rows.append({'key': f'w{i}', 'stage_id': sid,
-                     'verdict': rng.choice(['◎', '◎', '○', '△', '×', '']),
+                     'verdict': verdict(rng, seed),
                      'date': f'2026-0{rng.randint(1, 9)}-1{rng.randint(0, 9)}',
                      'updated_at': f'2026-09-{rng.randint(10, 28)} 10:00:00'})
     return rows

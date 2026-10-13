@@ -9,6 +9,7 @@ import collections
 import copy
 import datetime
 import math
+import re
 
 import measure_nets as M
 import recommend2 as RC
@@ -24,6 +25,23 @@ VERSION = "person-graded-v2"
 # better for 62–82% of them and rising about twice as fast with use
 # (docs/research/person-reco-eval.md).
 GRADE_VALUE = {"◎": 4, "○": 3, "△": 2, "×": 1}
+# Users may choose their own scale (2–11 levels, 5 by default; dec-user-scale-range).
+# Such a rating is stored as "value/levels", e.g. "4/5"; ◎○△× are a 4-level scale.
+MIN_LEVELS, MAX_LEVELS = 2, 11
+_SCALED = re.compile(r"(\d{1,2})/(\d{1,2})")
+
+
+def grade_of(verdict) -> tuple[int, int] | None:
+    """(value, levels) of a saved rating, or None if it is not a rating
+    (empty, 「まだ判断できない」, malformed)."""
+    if verdict in GRADE_VALUE:
+        return GRADE_VALUE[verdict], 4
+    m = _SCALED.fullmatch(str(verdict or ""))
+    if m:
+        value, levels = int(m.group(1)), int(m.group(2))
+        if MIN_LEVELS <= levels <= MAX_LEVELS and 1 <= value <= levels:
+            return value, levels
+    return None
 BUNDLES = ("favourites", "ranked", "others", "owned", "tracking", "started", "declined", "unscored")
 
 
@@ -36,7 +54,7 @@ def independent_ratings(rows: list[dict]) -> list[dict]:
     grouped = {}
     for row in sorted(rows, key=lambda r: (r.get("updated_at") or r.get("date") or "",
                                             r.get("key") or "")):
-        if row.get("verdict") not in M.GRADES:
+        if grade_of(row.get("verdict")) is None:
             continue
         key = ("stage", str(row["stage_id"])) if row.get("stage_id") else ("work", row["key"])
         grouped[key] = row
@@ -48,22 +66,33 @@ def person_values(rated: list[dict]) -> tuple[dict, dict]:
 
     value = Σ z / (n + CONF_K), z = (grade − mean) / spread: the mean of z,
     shrunk towards 0 while few productions back it.
+
+    Ratings made on different scales (a user who changed their scale) are
+    compared only with ratings on the same scale: mean and spread are taken
+    per scale. On public data this kept the old ratings useful and did at
+    least as well as stretching every scale to 0–1 (eval_rating_scales.py).
     """
     # Plain float operations on exact integer sums, in this order, so the
     # Worker's port (cloudflare/src/recommend.js) gets bit-identical values.
-    grades = [GRADE_VALUE[r["verdict"]] for r in rated]
-    n, total, squares = len(grades), sum(grades), sum(g * g for g in grades)
-    mean = total / n if n else 0.0
-    spread = math.sqrt((n * squares - total * total) / (n * n)) if n else 0.0
-    spread = spread or 1.0
+    sums: dict = {}
+    for r in rated:
+        value, levels = grade_of(r["verdict"])
+        n, total, squares = sums.get(levels, (0, 0, 0))
+        sums[levels] = (n + 1, total + value, squares + value * value)
+    scale = {}
+    for levels, (n, total, squares) in sums.items():
+        spread = math.sqrt((n * squares - total * total) / (n * n))
+        scale[levels] = (total / n, spread or 1.0)
     tally = collections.defaultdict(lambda: [0, 0.0])
     for r in rated:
-        z = (GRADE_VALUE[r["verdict"]] - mean) / spread
+        value, levels = grade_of(r["verdict"])
+        mean, spread = scale[levels]
+        z = (value - mean) / spread
         for key in sorted(set(map(tuple, r.get("people") or []))):
             tally[key][0] += 1
             tally[key][1] += z
     values = {k: (n, s / (n + M.CONF_K)) for k, (n, s) in tally.items()}
-    return values, {"mean": mean, "spread": spread}
+    return values, {str(k): {"mean": m, "spread": sp} for k, (m, sp) in sorted(scale.items())}
 
 
 def candidate_pool(raw: dict, candidates: list[dict]) -> dict[str, dict]:

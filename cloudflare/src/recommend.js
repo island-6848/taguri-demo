@@ -12,7 +12,16 @@
 
 export const CONF_K = 3, TOP_N = 3;
 export const GRADE_VALUE = {'◎': 4, '○': 3, '△': 2, '×': 1};
-const GRADES = new Set(Object.keys(GRADE_VALUE));
+export const MIN_LEVELS = 2, MAX_LEVELS = 11;
+
+/** user_recommender.grade_of: [value, levels] of a saved rating ("◎" or "4/5"), or null. */
+export function gradeOf(verdict) {
+  if (Object.hasOwn(GRADE_VALUE, verdict)) return [GRADE_VALUE[verdict], 4];
+  const m = /^(\d{1,2})\/(\d{1,2})$/.exec(String(verdict ?? ''));
+  if (!m) return null;
+  const value = Number(m[1]), levels = Number(m[2]);
+  return levels >= MIN_LEVELS && levels <= MAX_LEVELS && value >= 1 && value <= levels ? [value, levels] : null;
+}
 const KEYS_PER_QUERY = 49;     // D1 binds at most 100 parameters: ver + 2 per key
 const IDS_PER_QUERY = 98;
 
@@ -41,7 +50,7 @@ export function independentRatings(rows) {
   const sorted = [...rows].sort((r, s) => cmpTuple([r.updated_at || r.date || '', r.key || ''], [s.updated_at || s.date || '', s.key || '']));
   const grouped = new Map();
   for (const row of sorted) {
-    if (!GRADES.has(row.verdict)) continue;
+    if (!gradeOf(row.verdict)) continue;
     const key = row.stage_id ? 'stage\u0000' + row.stage_id : 'work\u0000' + row.key;
     grouped.set(key, row);         // like a Python dict: a later row keeps the key's first slot
   }
@@ -54,14 +63,21 @@ export function independentRatings(rows) {
  * (◎○△× = 4/3/2/1). Same float operations in the same order as Python.
  */
 export function personValues(rated) {
-  const grades = rated.map(r => GRADE_VALUE[r.verdict]);
-  const n = grades.length;
-  const total = grades.reduce((a, g) => a + g, 0), squares = grades.reduce((a, g) => a + g * g, 0);
-  const mean = n ? total / n : 0;
-  const spread = (n ? Math.sqrt((n * squares - total * total) / (n * n)) : 0) || 1;
+  // Mean and spread per scale: ratings on different scales are compared only
+  // with ratings on the same scale (a user who changed their scale).
+  const sums = new Map();
+  for (const r of rated) {
+    const [value, levels] = gradeOf(r.verdict);
+    const [n, total, squares] = sums.get(levels) || [0, 0, 0];
+    sums.set(levels, [n + 1, total + value, squares + value * value]);
+  }
+  const scale = new Map();
+  for (const [levels, [n, total, squares]] of sums) scale.set(levels, [total / n, Math.sqrt((n * squares - total * total) / (n * n)) || 1]);
   const tally = new Map();
   for (const r of rated) {
-    const z = (GRADE_VALUE[r.verdict] - mean) / spread;
+    const [value, levels] = gradeOf(r.verdict);
+    const [mean, spread] = scale.get(levels);
+    const z = (value - mean) / spread;
     const keys = [...new Set((r.people || []).map(([role, person]) => role + '\u0000' + person))].sort(cmp);
     for (const k of keys) {
       const t = tally.get(k) || [0, 0];

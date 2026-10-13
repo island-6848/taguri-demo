@@ -1,7 +1,7 @@
 import {isOriginalRoute, originalUI} from './original-ui.js';
 import {verifyIdToken, isAuthError} from './firebase-auth.js';
 import {passkeyRoutes} from './passkey.js';
-import {scoreFromIndex, d1Access} from './recommend.js';
+import {scoreFromIndex, d1Access, gradeOf} from './recommend.js';
 import {searchIndex, d1Search} from './stage-search.js';
 import {SCREEN_TABLES, nativeScreen, nativeAction, screen as nativeScreenBody, action as nativeActionBody, readInput as nativeInput} from './screens/index.js';
 const MAX_BODY = 262144;
@@ -19,12 +19,13 @@ function string(value, max, required = false) {
 }
 function record(value) {
   if (!value || typeof value !== 'object') fail(400, '記録を確認してください。');
-  const r = {id: string(value.id ?? crypto.randomUUID(), 100, true), title: string(value.title, 500, true), date: string(value.date, 10, true), time: string(value.time ?? '', 5), venue: string(value.venue ?? '', 300), rating: string(value.rating ?? '', 2), note: string(value.note ?? '', 4000), stage_id: string(value.stage_id ?? '', 100)};
+  const r = {id: string(value.id ?? crypto.randomUUID(), 100, true), title: string(value.title, 500, true), date: string(value.date, 10, true), time: string(value.time ?? '', 5), venue: string(value.venue ?? '', 300), rating: string(value.rating ?? '', 5), note: string(value.note ?? '', 4000), stage_id: string(value.stage_id ?? '', 100)};
   if (r.stage_id && !/^[A-Za-z0-9_-]+$/.test(r.stage_id)) fail(400,'公演の結び付けを確認してください。');
   const parsed = new Date(`${r.date}T00:00:00Z`);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(r.date) || Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0,10) !== r.date) fail(400,'日付を確認してください。');
   if (r.time && !/^([01]\d|2[0-3]):[0-5]\d$/.test(r.time)) fail(400,'時刻を確認してください。');
-  if (!['','◎','○','△','×'].includes(r.rating)) fail(400,'評価を確認してください。');
+  // ◎○△× or "value/levels" on a scale the user chose (2–11 levels, e.g. "4/5").
+  if (r.rating && !gradeOf(r.rating)) fail(400,'評価を確認してください。');
   return r;
 }
 function favourite(value) {

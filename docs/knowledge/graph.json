@@ -938,6 +938,18 @@
    "verifies": []
   },
   {
+   "id": "eval-douban-scales",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "評価の段階を粗くしても当たりは少し下がるだけで、途中で段階を変えた人は「同じ段階どうしで比べる」のがよい",
+   "sources": [
+    "docs/research/person-reco-eval.md",
+    "tools/review/eval_rating_scales.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "firebase-apikey-public",
    "type": "finding",
    "status": "unverified",
@@ -3392,6 +3404,16 @@
    "from": "eval-douban-role-learning-no-gain",
    "rel": "affects",
    "to": "q-reco-learning-design"
+  },
+  {
+   "from": "eval-douban-scales",
+   "rel": "supports",
+   "to": "dec-user-scale-range"
+  },
+  {
+   "from": "eval-douban-scales",
+   "rel": "affects",
+   "to": "comp-recommender"
   },
   {
    "from": "firebase-apikey-public",
