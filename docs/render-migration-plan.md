@@ -20,7 +20,7 @@
 
 ## 進め方
 
-**本番は最後に一度だけ切り替える。** 移植途中の画面を本番に出すと、Worker側とRender側で記録が分かれて混乱する。移した画面は環境変数 `NATIVE_SCREENS`（移した画面の名前の一覧）で手元とテストだけで有効にし、全部そろったら本番で有効にしてRenderへの中継を外す。
+**本番は最後に一度だけ切り替える。** 移植途中の画面を本番に出すと、Worker側とRender側で記録が分かれて混乱する。移した画面は環境変数 `NATIVE_UI`（移した画面の名前の一覧）で手元とテストだけで有効にし、全部そろったら本番で有効にしてRenderへの中継を外す。
 
 **一致の確かめ方。** Python側は既存の試験用サーバー（`tools/taguri/test_demo_stability.py` と同じ、一時DB・外部通信なし・service版）で、決めた手順（記録を足す・評価する・画面を開く…）を流し、各応答を書き出す。Worker側は同じ手順を同じ架空カタログで流し、`body_html` と応答が一致することを確かめる。日付は固定する。
 
@@ -31,7 +31,7 @@
 | 2 | おすすめ | recommend・interest・favourites | react・favourite・decline・weight・pref_setting・recommendation/visit・contact |
 | 3 | 予定 | reminder・calendar・tickets | ticket |
 | 4 | 探す・ふりかえり・設定 | search・records・trace・chronicle・settings・start・register | missed・search_request |
-| 5 | 切り替え | — | 本番で `NATIVE_SCREENS` を全画面にし、中継（`original-ui.js`）を外す。D1の旧 `records` 表（「アカウント・記録」の画面）を works に移す。Renderを止める |
+| 5 | 切り替え | — | 本番で `NATIVE_UI` を全画面にし、中継（`original-ui.js`）を外す。D1の旧 `records` 表（「アカウント・記録」の画面）を works に移す。Renderを止める |
 
 持ち主専用で移さないもの: import_mail・mail_hints・chronicle/people_read の作り直し（Gemini）・hand_theme・hand_poster・close・ふりかえり（lookback）・外部の公演検索（suggest_web の外部分）。Renderの公開版でもすでに止まっているもの。デモ版の96件の種まきも移さない（本番は空から始まる）。
 

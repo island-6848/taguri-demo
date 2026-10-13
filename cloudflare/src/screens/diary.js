@@ -263,6 +263,24 @@ async function linkStageAction(b, ctx) {
   return {body: {ok: true, work_key: workKey, stage_id: stageId, title}};
 }
 
+// ---------------------------------------------------------------- unseen
+/**
+ * serve.on_unseen + app.set_unseen (POST /api/unseen): 「行かなかった」. It is
+ * written per visit of a purchase; a public-service user's records are all
+ * added by hand (no visits), so set_unseen always names the other way out.
+ */
+async function unseenAction(b, ctx) {
+  const workKey = field(b, 'work_key');
+  if (!workKey) throw new ValueError('work_key が要る');
+  if (typeof b.unseen !== 'boolean') throw new ValueError('unseen は真偽で渡す');
+  const w = (await loadWorks(ctx)).find(x => x.work_key === workKey);
+  if (!w) throw new ValueError('その記録は見つからない');
+  if (!(w.shows || []).length) {
+    throw new ValueError('この記録は購入から来ていないので、「この記録を取り消す」から外してほしい');
+  }
+  throw new ValueError('購入から来た記録は、この版にはない');
+}
+
 // ---------------------------------------------------------------- visit_note
 /** serve.on_visit_note + rate_performances.save_visit_note (POST /api/visit_note) */
 async function visitNoteAction(b, ctx) {
@@ -411,5 +429,5 @@ export const diaryScreens = {
   screens: {works: worksScreen},
   actions: {fix_work: fixWorkAction, merge_work: mergeWorkAction, drop_work: dropWorkAction,
     restore_work: restoreWorkAction, purge_work: purgeWorkAction, hand_credits: handCreditsAction,
-    link_stage: linkStageAction, visit_note: visitNoteAction},
+    link_stage: linkStageAction, visit_note: visitNoteAction, unseen: unseenAction},
 };
