@@ -4,44 +4,72 @@
    写したもの（docs/knowledge の design-studio・dec-design-default-ito）。値の出どころは
    web/design.json。直すときは調整室で保存し、design.json とここを合わせて直す。
 
-   - 地はうすい灰、読むところ（半券・記録）は白い紙。色は糸の紅 1 色だけ
-   - 半券の回答 3 つは、点線で区切った 1 枚の切り取り札（興味あり・興味なし・持っている の順）
-   - 評価 ◎○△× は丸い判子
+   - 毛糸のあたたかみ: 地はあたたかい灰、紙はわずかに暖かい白、色は毛糸の赤 1 色
+   - 読むところ（半券）は四角、押すところ（ボタン）は毛糸玉のように丸く、ふっくらさせる
+     ── 形で役割を分ける（起案者の指摘 2026-10-13「半券が四角なのでボタンは別のアクセント」）
+   - ボタンは塗りと下の影で浮かせ、押すと沈む（「ボタンだとわかりにくい」への手当て）
    - 暗い表示は style.css のまま（ここでは明るい表示だけを上書きする）
-   - 書体は端末にあるものだけを並べる（外部から読み込まない ── style.css の --mincho の注記） */
+   - 書体は端末にあるものだけを並べる（配る書体は q-webfont-local で決める） */
+
+/* 暗い表示でもボタンの語が引けるようにする（色は style.css の暗い値から作る）。
+   明るい表示の値より前に置く ── 同じ詳細度なので、後に書いたほうが勝つ */
+:root{--felt:var(--surf);--felt-edge:var(--ring);--yarn-deep:var(--curtain)}
 
 @media (prefers-color-scheme:light){:root:where(:not([data-theme=dark])){
- --plane:#f0f0ee;--surf:#ffffff;--ink:#1d1d1f;--ink2:#5d6066;--mute:#6b6e73;
- --grid:#e4e3df;--base:#cfcfca;--ring:#cfcfca;
- --acc:#c2253a;--curtain:#c2253a;--curtain-w:#fbeef0;
+ --plane:#f4f1ec;--surf:#fffdfa;--ink:#2b2522;--ink2:#5f5650;--mute:#6e655f;
+ --grid:#e8e1d8;--base:#ddd4ca;--ring:#ddd4ca;
+ --acc:#b8432f;--curtain:#b8432f;--curtain-w:#f8ebe6;
+ --felt:#f3e6dd;--felt-edge:#d9c2b3;--yarn-deep:#8c2f20;
  --mincho:"Zen Old Mincho","Hiragino Mincho ProN","Yu Mincho",YuMincho,"Noto Serif JP",serif}}
 :root[data-theme=light]{
- --plane:#f0f0ee;--surf:#ffffff;--ink:#1d1d1f;--ink2:#5d6066;--mute:#6b6e73;
- --grid:#e4e3df;--base:#cfcfca;--ring:#cfcfca;
- --acc:#c2253a;--curtain:#c2253a;--curtain-w:#fbeef0;
+ --plane:#f4f1ec;--surf:#fffdfa;--ink:#2b2522;--ink2:#5f5650;--mute:#6e655f;
+ --grid:#e8e1d8;--base:#ddd4ca;--ring:#ddd4ca;
+ --acc:#b8432f;--curtain:#b8432f;--curtain-w:#f8ebe6;
+ --felt:#f3e6dd;--felt-edge:#d9c2b3;--yarn-deep:#8c2f20;
  --mincho:"Zen Old Mincho","Hiragino Mincho ProN","Yu Mincho",YuMincho,"Noto Serif JP",serif}
 
 body{font-family:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",YuGothic,system-ui,sans-serif}
 
-/* ---- 半券 ── 影と角丸を外し、細い線とミシン目だけで切る。ゆとりは「ゆったり」 */
+/* ---- 半券 ── 四角のまま。影と角丸を外し、細い線とミシン目だけで切る。ゆとりは「ゆったり」 */
 .ticket{border-radius:0;box-shadow:none}
 .ticket .body{padding:26px 26px 22px}
 
-/* ---- 回答 3 つ ── 点線で区切った 1 枚の切り取り札。並びは 興味あり・興味なし・持っている */
-.btns{gap:0}
-.btns button{border-radius:0;margin:0;min-height:44px;padding:0 16px;font-size:13.5px;
- border:1px solid var(--ink);color:var(--ink);background:var(--surf)}
-.btns button:hover{border-color:var(--ink);color:var(--acc)}
-.btns button[data-v=interest]{order:1;border-right:0;color:var(--acc);font-weight:700}
-.btns button[data-v=nointerest]{order:2;border-left:1px dashed var(--ink);border-right:0}
-.btns button[data-v=owned]{order:3;border-left:1px dashed var(--ink)}
-.btns .said{order:4;margin-left:10px}
+/* ---- 押すところ ── 毛糸玉のように丸く、ふっくら。塗りと下の影で浮かせ、押すと沈む */
+.btns button,.wnb,.pfoot button,.ticket .sitebtn,.mt-add button{
+ border-radius:999px;min-height:44px;padding:0 18px;font-size:13.5px;font-weight:600;
+ background:var(--felt);color:var(--ink);border:1px solid var(--felt-edge);border-style:solid;
+ box-shadow:0 2px 0 var(--felt-edge);cursor:pointer;
+ transition:transform .08s ease,box-shadow .08s ease,background-color .12s ease}
+.btns button:hover,.wnb:hover,.pfoot button:hover,.ticket .sitebtn:hover,.mt-add button:hover{
+ background:var(--curtain-w);color:var(--ink);border-color:var(--felt-edge);border-style:solid}
+.btns button:active,.wnb:active,.pfoot button:active,.ticket .sitebtn:active,.mt-add button:active{
+ transform:translateY(2px);box-shadow:0 0 0 var(--felt-edge)}
+.btns button:focus-visible,.wnb:focus-visible,.pfoot button:focus-visible,.rb button:focus-visible,
+.ticket .sitebtn:focus-visible,.mt-add button:focus-visible{outline:2px solid var(--acc);outline-offset:3px}
+.ticket .sitebtn{display:inline-flex;align-items:center;justify-content:center}
 
-/* ---- 評価 ◎○△× ── 丸い判子。押せる大きさ（44px）を守る */
+/* ---- 回答 3 つ ── 「興味あり」だけを毛糸の赤で塗る。並びは 興味あり・興味なし・持っている */
+.btns{gap:8px}
+.btns button[data-v=interest]{order:1;background:var(--acc);color:#fff;border-color:var(--yarn-deep);
+ box-shadow:0 2px 0 var(--yarn-deep)}
+.btns button[data-v=interest]:hover{background:var(--yarn-deep);color:#fff}
+.btns button[data-v=interest]:active{box-shadow:0 0 0 var(--yarn-deep)}
+.btns button[data-v=nointerest]{order:2}
+.btns button[data-v=owned]{order:3}
+.btns .said{order:4;margin-left:6px}
+
+/* ---- 評価 ◎○△× ── 毛糸玉の丸。押せる大きさ（44px）を守る */
 .rb{gap:10px}
 .rb button{width:44px;height:44px;min-width:44px;padding:0;border-radius:50%;
- border:1px solid var(--ink);background:var(--surf);color:var(--ink);
- font-family:var(--mincho);font-size:18px;font-weight:700}
-.rb button:hover{border-color:var(--acc);color:var(--acc)}
-.rb.notseen button{width:auto;height:auto;min-height:40px;border-radius:0;padding:0 12px;
+ border:1px solid var(--felt-edge);background:var(--felt);color:var(--ink);
+ box-shadow:0 2px 0 var(--felt-edge);font-family:var(--mincho);font-size:18px;font-weight:700;
+ transition:transform .08s ease,box-shadow .08s ease}
+.rb button:hover{background:var(--curtain-w);border-color:var(--acc);color:var(--acc)}
+.rb button:active{transform:translateY(2px);box-shadow:0 0 0 var(--felt-edge)}
+.rb.notseen button{width:auto;height:auto;min-height:40px;border-radius:999px;padding:0 14px;
  font-family:inherit;font-size:12.5px}
+
+@media (prefers-reduced-motion:reduce){
+ .btns button,.wnb,.pfoot button,.rb button,.ticket .sitebtn,.mt-add button{transition:none}
+ .btns button:active,.wnb:active,.pfoot button:active,.rb button:active,.ticket .sitebtn:active,
+ .mt-add button:active{transform:none}}

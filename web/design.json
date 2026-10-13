@@ -1,16 +1,64 @@
 {
  "source": "https://claude.ai/artifact/NH7Z8DGfij161BfkjEGg3q (design/current, saved 2026-10-13T14:44:20Z)",
- "note": "見た目の調整室で起案者が決めた値。web/theme.css はこれを写したもの。ground（地のうすい灰）は起案者の指摘（2026-10-13「白地と半券の色一緒すぎる」）で足した",
- "color": {"ground": "#f0f0ee", "paper": "#ffffff", "ink": "#1d1d1f", "sub": "#5d6066", "rule": "#cfcfca", "accent": "#c2253a", "onAccent": "#ffffff"},
- "type": {"display": "Zen Old Mincho", "body": "Zen Kaku Gothic New", "base": 14, "title": 24},
- "button": {"answer": "strip", "radius": 0, "border": 1, "selectedFill": "accent", "rate": "stamp"},
- "layout": {"nav": "top", "stub": "left", "thread": true, "reason": "after", "order": ["interest", "nointerest", "owned"], "density": "spacious"},
- "copy": {"navRecommend": "おすすめ", "navPlan": "カレンダー", "navRate": "評価", "navRecord": "日記帳", "navMenu": "メニュー",
-  "recommendTitle": "今週のおすすめ", "diaryTitle": "日記帳", "owned": "すでに持っている", "interest": "興味あり", "nointerest": "興味なし",
-  "reasonHead": "おすすめ理由", "site": "公式サイトを開く", "more": "続きを読む", "rateLegend": "評価をつけてください。",
-  "writeNote": "感想を書く（任意）", "whyNote": "なぜ気になりましたか（任意）"},
+ "note": "見た目の調整室で起案者が決めた値（2026-10-13T14:44:20Z の保存）に、同じ日の起案者の指摘を足したもの。ground: 「白地と半券の色一緒すぎる」。毛糸のあたたかみ・ボタンを丸くふっくら: 「半券が四角なのでボタンは別のアクセント」「たぐりって毛糸がモチーフだからあたたかみがほしい」「ボタンだってわかりにくい」。web/theme.css はこれを写したもの",
+ "color": {
+  "ground": "#f4f1ec",
+  "paper": "#fffdfa",
+  "stub": "#fffdfa",
+  "ink": "#2b2522",
+  "sub": "#5f5650",
+  "rule": "#ddd4ca",
+  "accent": "#b8432f",
+  "onAccent": "#ffffff",
+  "felt": "#f3e6dd",
+  "feltEdge": "#d9c2b3",
+  "accentDeep": "#8c2f20"
+ },
+ "type": {
+  "display": "Zen Old Mincho",
+  "body": "Zen Kaku Gothic New",
+  "base": 14,
+  "title": 24
+ },
+ "button": {
+  "answer": "felt",
+  "rate": "felt",
+  "radius": 999,
+  "border": 1,
+  "selectedFill": "accent"
+ },
+ "layout": {
+  "nav": "top",
+  "stub": "left",
+  "thread": true,
+  "reason": "after",
+  "order": [
+   "interest",
+   "nointerest",
+   "owned"
+  ],
+  "density": "spacious"
+ },
+ "copy": {
+  "navRecommend": "おすすめ",
+  "navPlan": "カレンダー",
+  "navRate": "評価",
+  "navRecord": "日記帳",
+  "navMenu": "メニュー",
+  "recommendTitle": "今週のおすすめ",
+  "diaryTitle": "日記帳",
+  "owned": "すでに持っている",
+  "interest": "興味あり",
+  "nointerest": "興味なし",
+  "reasonHead": "おすすめ理由",
+  "site": "公式サイトを開く",
+  "more": "続きを読む",
+  "rateLegend": "評価をつけてください。",
+  "writeNote": "感想を書く（任意）",
+  "whyNote": "なぜ気になりましたか（任意）"
+ },
  "applied": {
-  "web/theme.css": "色（地・紙・文字・線・糸の紅）、書体の並び、半券の角と影、ゆとり、回答 3 つの切り取り札と並び、評価の判子",
+  "web/theme.css": "色（あたたかい灰の地・暖かい白の紙・毛糸の赤）、書体の並び、半券は四角のまま角と影を外す、ゆとり、押すところ（回答・感想を書く・公式サイト・評価）を丸くふっくら塗って下に影、押すと沈む、興味ありだけ赤で塗る、回答の並び（興味あり・興味なし・持っている）",
   "tools/review/render_recommend.py": "理由の見出し「おすすめ理由」",
   "tools/taguri/app.py, cloudflare/src/screens/diary.js": "日記帳の見出し「日記帳」"
  },
@@ -19,5 +67,6 @@
   "layout.thread": "半券に糸を通す飾りは、いまの画面の部品に無い",
   "copy.rateLegend": "いまの評価のボタンには問いかけの行が無い",
   "type.display, type.body": "外部から書体を読み込まない決まりがあるので、端末にあるときだけ効く"
- }
+ },
+ "pending": "調整室の design/current は 2026-10-13T14:58:17Z に、文言と並びが調整室の既定（たぐった糸・日記帳 ── 1 公演ごとの記録・持っている が先）に戻った形で保存された。意図したものか起案者に確かめている。画面はひとつ前の保存の文言のまま"
 }
