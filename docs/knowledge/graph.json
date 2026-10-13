@@ -874,6 +874,18 @@
    "verifies": []
   },
   {
+   "id": "four-level-unsupported",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "◎○△× の 4 段階が適切だという直接の証拠は無い（「残す」は手間と既存の評価を理由にした判断）",
+   "sources": [
+    "https://doi.org/10.1016/S0001-6918(99)00050-5",
+    "https://researchdiscovery.drexel.edu/esploro/outputs/conferenceProceeding/How-many-bits-per-rating/991021818387504721"
+   ],
+   "verifies": []
+  },
+  {
    "id": "gemini-budget-cap",
    "type": "finding",
    "status": "confirmed",
@@ -1152,6 +1164,19 @@
    "title": "新しい方式は「前より悪くないと高い確信で言えるときだけ」採る、という考え方がある（Thomas ほか 2015）",
    "sources": [
     "https://proceedings.mlr.press/v37/thomas15.html"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "lit-scale-points",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "評価の段階数の研究では 2〜4 段階は信頼性・妥当性が低く、7 段階前後がよいとされる。ただし多ければ良いとも限らない",
+   "sources": [
+    "https://doi.org/10.1016/S0001-6918(99)00050-5",
+    "https://portalinvestigacion.uniovi.es/documentos/5e78cab32999521b3d11f205",
+    "https://doaj.org/article/a5896b795c2f4b778520d8cfb5680e27"
    ],
    "verifies": []
   },
@@ -3065,6 +3090,11 @@
    "to": "q-firebase-key-restriction"
   },
   {
+   "from": "four-level-unsupported",
+   "rel": "affects",
+   "to": "q-rating-scale"
+  },
+  {
    "from": "gemini-budget-cap",
    "rel": "affects",
    "to": "comp-catalog-pipeline"
@@ -3203,6 +3233,11 @@
    "from": "lit-safe-improvement",
    "rel": "supports",
    "to": "q-reco-learning-design"
+  },
+  {
+   "from": "lit-scale-points",
+   "rel": "contradicts",
+   "to": "q-rating-scale"
   },
   {
    "from": "lit-syskill-webert-prior",
