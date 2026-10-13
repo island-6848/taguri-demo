@@ -282,7 +282,9 @@ async function peopleByKey(ctx, ws) {
     const part = sids.slice(i, i + 90);
     const {results} = await ctx.db.prepare("SELECT stage_id, people FROM rec_people WHERE ver=(SELECT v FROM rec_meta WHERE k='current')"
       + ` AND stage_id IN (${part.map(() => '?').join(',')})`).bind(...part).all();
-    for (const r of results) stage[r.stage_id] = JSON.parse(r.people);
+    // Rows whose role starts with "#" (形式・原作・翻訳・会場, person-ordinal-v3) describe
+    // the stage, not its people: load_rated's parse_credits never returns them.
+    for (const r of results) stage[r.stage_id] = JSON.parse(r.people).filter(([role]) => !String(role).startsWith('#'));
   }
   const out = {};
   for (const w of ws) {
