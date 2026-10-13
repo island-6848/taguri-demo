@@ -2,6 +2,23 @@
  "version": "taguri-knowledge-v1",
  "nodes": [
   {
+   "id": "auto-link-current-state",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "記録と公演ページの自動の結び付けは、いまは持ち主の手元でしか動かない",
+   "sources": [
+    "tools/credits/link_works.py",
+    "tools/taguri/serve.py",
+    "tools/taguri/app.py",
+    "tools/credits/fetch_credits.py",
+    "cloudflare/src/screens/diary.js",
+    "cloudflare/src/stage-search.js",
+    "tools/review/build_recommend_index.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "aws-free-plan-2025",
    "type": "finding",
    "status": "confirmed",
@@ -1242,6 +1259,15 @@
    "verifies": []
   },
   {
+   "id": "q-auto-link-past",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "古い記録を自動で結び付けるための「過去の公演の一覧」を、CoRich のページを読んで作ってよいか",
+   "sources": [],
+   "verifies": []
+  },
+  {
    "id": "q-catalog-source",
    "type": "question",
    "status": "open",
@@ -2201,6 +2227,16 @@
  ],
  "edges": [
   {
+   "from": "auto-link-current-state",
+   "rel": "raises",
+   "to": "q-auto-link-past"
+  },
+  {
+   "from": "auto-link-current-state",
+   "rel": "affects",
+   "to": "q-past-stage-catalogue"
+  },
+  {
    "from": "aws-free-plan-2025",
    "rel": "affects",
    "to": "q-ec2-cost"
@@ -3109,6 +3145,16 @@
    "from": "q-aspects-ui",
    "rel": "affects",
    "to": "migration-stage1-parity"
+  },
+  {
+   "from": "q-auto-link-past",
+   "rel": "depends_on",
+   "to": "auto-link-current-state"
+  },
+  {
+   "from": "q-auto-link-past",
+   "rel": "affects",
+   "to": "q-past-stage-catalogue"
   },
   {
    "from": "q-catalog-source",
