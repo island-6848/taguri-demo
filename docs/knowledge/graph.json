@@ -907,6 +907,17 @@
    "verifies": []
   },
   {
+   "id": "eval-douban-learning-curve",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "答え合わせの問題を固定しても、使うほど当たりは上がる（今の計算で 63%、graded で 74% の人）。ただし水準は低い",
+   "sources": [
+    "docs/research/person-reco-eval.md"
+   ],
+   "verifies": []
+  },
+  {
    "id": "eval-douban-role-learning-no-gain",
    "type": "finding",
    "status": "confirmed",
@@ -1325,6 +1336,17 @@
    "verifies": []
   },
   {
+   "id": "lit-yahoo-multicriteria",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-13",
+   "title": "観点ごとの評価がある公開データ（Yahoo! Movies：物語・演技・演出・映像＋総合）が研究で使われている",
+   "sources": [
+    "https://arxiv.org/pdf/2502.19271"
+   ],
+   "verifies": []
+  },
+  {
    "id": "migration-handover-stage0",
    "type": "finding",
    "status": "confirmed",
@@ -1503,6 +1525,15 @@
    "sources": [
     "https://github.com/island-6848/taguri-demo/blob/cloudflare-complete-migration/docs/verification/2026-10-13-cloudflare-migration-final-review.md"
    ],
+   "verifies": []
+  },
+  {
+   "id": "q-aspect-attribution-check",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "観点（値段・脚本・演出など）ごとに下げる相手を変える案を、どう確かめるか",
+   "sources": [],
    "verifies": []
   },
   {
@@ -3311,6 +3342,16 @@
    "to": "comp-recommender"
   },
   {
+   "from": "eval-douban-learning-curve",
+   "rel": "supports",
+   "to": "dec-reco-graded"
+  },
+  {
+   "from": "eval-douban-learning-curve",
+   "rel": "raises",
+   "to": "q-public-reputation-signal"
+  },
+  {
    "from": "eval-douban-role-learning-no-gain",
    "rel": "affects",
    "to": "q-reco-learning-design"
@@ -3506,6 +3547,11 @@
    "to": "q-user-chosen-scale"
   },
   {
+   "from": "lit-yahoo-multicriteria",
+   "rel": "affects",
+   "to": "q-aspect-attribution-check"
+  },
+  {
    "from": "migration-handover-stage0",
    "rel": "affects",
    "to": "dec-render-full-migration"
@@ -3664,6 +3710,16 @@
    "from": "python-workers-migration-state",
    "rel": "raises",
    "to": "q-d1-python-workers"
+  },
+  {
+   "from": "q-aspect-attribution-check",
+   "rel": "depends_on",
+   "to": "q-rating-aspects"
+  },
+  {
+   "from": "q-aspect-attribution-check",
+   "rel": "depends_on",
+   "to": "dec-reco-per-user-eval"
   },
   {
    "from": "q-catalog-source",
