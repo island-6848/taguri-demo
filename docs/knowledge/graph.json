@@ -1086,6 +1086,30 @@
    "verifies": []
   },
   {
+   "id": "lit-rating-noise",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-13",
+   "title": "同じ人が同じ作品を付け直しても評価はぶれる（Amatriain ほか 2009）",
+   "sources": [
+    "https://www.bibsonomy.org/bibtex/f34c21b12d3abf33bc512fcccdbe9531"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "lit-rating-scale-granularity",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "評価の段階は「付ける手間」と「推薦に使える情報量」の引き換えで、粗い段階は速いが情報が少ない（Sparling & Sen 2011・Kluver ほか 2012）",
+   "sources": [
+    "https://unpaywall.org/10.1145%2F1989493.1989528",
+    "https://researchdiscovery.drexel.edu/esploro/outputs/conferenceProceeding/How-many-bits-per-rating/991021818387504721",
+    "https://experts.umn.edu/en/publications/is-seeing-believing-how-recommender-interfaces-affect-users-opini/"
+   ],
+   "verifies": []
+  },
+  {
    "id": "lit-safe-improvement",
    "type": "finding",
    "status": "confirmed",
@@ -1742,6 +1766,15 @@
    "verifies": []
   },
   {
+   "id": "q-rating-scale",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "◎○△× の 4 段階は適切か。△をどう読み、どう推薦に使うか",
+   "sources": [],
+   "verifies": []
+  },
+  {
    "id": "q-real-catalog-stats",
    "type": "question",
    "status": "open",
@@ -2170,6 +2203,17 @@
    "sources": [
     "https://github.com/island-6848/taguri-demo/blob/cloudflare-d1-preview/cloudflare/src/stage-search.js",
     "https://github.com/island-6848/taguri-demo/blob/cloudflare-d1-preview/cloudflare/test/stage-search.test.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "triangle-label-mismatch",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "画面の△の説明「あまり合わなかった」は、起案者の考える△（まあ良いが気になる所がある）と食い違う",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/blob/master/tools/taguri/app.py"
    ],
    "verifies": []
   },
@@ -3068,6 +3112,16 @@
    "to": "q-reco-learning-design"
   },
   {
+   "from": "lit-rating-noise",
+   "rel": "affects",
+   "to": "q-rating-scale"
+  },
+  {
+   "from": "lit-rating-scale-granularity",
+   "rel": "affects",
+   "to": "q-rating-scale"
+  },
+  {
    "from": "lit-safe-improvement",
    "rel": "supports",
    "to": "q-reco-learning-design"
@@ -3433,6 +3487,16 @@
    "to": "comp-cf-worker"
   },
   {
+   "from": "q-rating-scale",
+   "rel": "depends_on",
+   "to": "triangle-label-mismatch"
+  },
+  {
+   "from": "q-rating-scale",
+   "rel": "affects",
+   "to": "q-reco-learning-design"
+  },
+  {
    "from": "q-real-catalog-stats",
    "rel": "depends_on",
    "to": "q-ec2-cost"
@@ -3741,6 +3805,16 @@
    "from": "throttle-keyed-by-client-address",
    "rel": "raises",
    "to": "q-cf-connecting-ip-trust"
+  },
+  {
+   "from": "triangle-label-mismatch",
+   "rel": "raises",
+   "to": "q-rating-scale"
+  },
+  {
+   "from": "triangle-label-mismatch",
+   "rel": "affects",
+   "to": "comp-recommender"
   },
   {
    "from": "white-record-sites",
