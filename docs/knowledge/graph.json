@@ -678,6 +678,15 @@
    ]
   },
   {
+   "id": "dec-reco-graded",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-13",
+   "title": "推薦は「全部の段階を、その人基準（いつもより高いか低いか）で使う」形に変える。役職の重みの学習は入れない",
+   "sources": [],
+   "verifies": []
+  },
+  {
    "id": "dec-reco-measure-first",
    "type": "decision",
    "status": "proposed",
@@ -861,6 +870,52 @@
    "verifies": [
     "S12"
    ]
+  },
+  {
+   "id": "eval-douban-consensus-strong",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "作品そのものの評判（他の人の平均）は、人物の手がかりよりずっと強い（AUC 0.79 対 0.57）",
+   "sources": [
+    "docs/research/person-reco-eval.md"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "eval-douban-current-weak",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "公開の映画評価データ（実在の 500 人）では、今の推薦は当てずっぽうに近い（AUC 0.50〜0.53）",
+   "sources": [
+    "docs/research/person-reco-eval.md",
+    "tools/review/eval_person_reco.py",
+    "https://raw.githubusercontent.com/librahu/HIN-Datasets-for-Recommendation-and-Network-Embedding/master/README.md"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "eval-douban-graded-better",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "全部の段階をその人基準（いつもより高いか低いか）で使うと、62〜82% の人で今の推薦より良く、使うほど差が広がる",
+   "sources": [
+    "docs/research/person-reco-eval.md"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "eval-douban-role-learning-no-gain",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "役職（出演・監督）の重みを人ごとに学んでも、この条件では良くならなかった",
+   "sources": [
+    "docs/research/person-reco-eval.md"
+   ],
+   "verifies": []
   },
   {
    "id": "firebase-apikey-public",
@@ -1870,6 +1925,15 @@
    "status": "answered",
    "date": "2026-10-13",
    "title": "本番に deploy するブランチをどれにするか（PR のブランチのままにしない）",
+   "sources": [],
+   "verifies": []
+  },
+  {
+   "id": "q-public-reputation-signal",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "公開の評判（取得元の公開の評価・クチコミ）を推薦に使えるか",
    "sources": [],
    "verifies": []
   },
@@ -2972,6 +3036,26 @@
    "to": "comp-crawler"
   },
   {
+   "from": "dec-reco-graded",
+   "rel": "depends_on",
+   "to": "eval-douban-graded-better"
+  },
+  {
+   "from": "dec-reco-graded",
+   "rel": "supersedes",
+   "to": "dec-reco-measure-first"
+  },
+  {
+   "from": "dec-reco-graded",
+   "rel": "affects",
+   "to": "comp-recommender"
+  },
+  {
+   "from": "dec-reco-graded",
+   "rel": "affects",
+   "to": "q-rating-aspects"
+  },
+  {
    "from": "dec-reco-measure-first",
    "rel": "depends_on",
    "to": "q-reco-eval-harness"
@@ -3190,6 +3274,46 @@
    "from": "ec2-tokyo-price",
    "rel": "affects",
    "to": "q-ec2-cost"
+  },
+  {
+   "from": "eval-douban-consensus-strong",
+   "rel": "raises",
+   "to": "q-public-reputation-signal"
+  },
+  {
+   "from": "eval-douban-current-weak",
+   "rel": "affects",
+   "to": "comp-recommender"
+  },
+  {
+   "from": "eval-douban-current-weak",
+   "rel": "answers",
+   "to": "q-reco-learning-design"
+  },
+  {
+   "from": "eval-douban-graded-better",
+   "rel": "supports",
+   "to": "q-rating-scale"
+  },
+  {
+   "from": "eval-douban-graded-better",
+   "rel": "supports",
+   "to": "lit-decoupled-rating"
+  },
+  {
+   "from": "eval-douban-graded-better",
+   "rel": "supports",
+   "to": "lit-negative-ratings"
+  },
+  {
+   "from": "eval-douban-graded-better",
+   "rel": "affects",
+   "to": "comp-recommender"
+  },
+  {
+   "from": "eval-douban-role-learning-no-gain",
+   "rel": "affects",
+   "to": "q-reco-learning-design"
   },
   {
    "from": "firebase-apikey-public",
@@ -3720,6 +3844,21 @@
    "from": "q-poster-palette",
    "rel": "depends_on",
    "to": "dec-theme-user-choice"
+  },
+  {
+   "from": "q-public-reputation-signal",
+   "rel": "depends_on",
+   "to": "catalog-terms-no-redistribution"
+  },
+  {
+   "from": "q-public-reputation-signal",
+   "rel": "depends_on",
+   "to": "dec-polite-crawling"
+  },
+  {
+   "from": "q-public-reputation-signal",
+   "rel": "affects",
+   "to": "comp-recommender"
   },
   {
    "from": "q-r2-boto3",
