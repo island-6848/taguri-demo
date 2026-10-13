@@ -7,6 +7,7 @@
 // "screen:rate,api:rate"); everything else still goes to Render until the
 // switch-over (docs/render-migration-plan.md).
 import {rateScreens} from './rate.js';
+import {ValueError} from './py.js';
 
 export const SCREEN_TABLES = ['works', 'excluded', 'merges', 'hand_credits', 'visit_note', 'reaction', 'viewed',
   'ticket', 'missed', 'rank_weight', 'app_setting', 'search_request'];
@@ -34,6 +35,33 @@ export async function screen(name, params, ctx) {
 }
 
 export async function action(name, input, ctx) {
-  const out = await ACTIONS[name](input, ctx);
+  let out;
+  try {
+    out = await ACTIONS[name](input, ctx);
+  } catch (error) {
+    // do_POST: `except ValueError as e: self._json(400, {"error": str(e)})`
+    if (!(error instanceof ValueError)) throw error;
+    out = {status: 400, body: {error: error.message}};
+  }
   return {status: out.status || 200, body: withToken(envelope(out.body))};
+}
+
+/**
+ * The request body as do_POST reads it: at most 8 KB (Content-Length over the
+ * cap is 413), an empty body is {}, anything but a JSON object is 400 "json".
+ * Returns {input} or {status, body} (already wrapped like Handler._json).
+ */
+export async function readInput(request) {
+  const cap = 8192;
+  const declared = Number(request.headers.get('content-length') || 0);
+  const tooLong = {status: 413, body: envelope({error: '本文の長さが不正です'})};
+  if (!Number.isInteger(declared) || declared < 0) return {status: 400, body: tooLong.body};
+  if (declared > cap) return tooLong;
+  const bytes = new Uint8Array(await request.arrayBuffer());
+  if (bytes.length > cap) return tooLong;
+  try {
+    const value = bytes.length ? JSON.parse(new TextDecoder('utf-8', {fatal: true}).decode(bytes)) : {};
+    if (value && typeof value === 'object' && !Array.isArray(value)) return {input: value};
+  } catch { /* fall through */ }
+  return {status: 400, body: envelope({error: 'json'})};
 }
