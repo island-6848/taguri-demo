@@ -13,6 +13,6 @@ links:
 2. 「アカウント・記録」の画面（/migration-data/）で入れた records を works に移すか（変換を作るか、捨てるか）
 3. Render の記録・見本は移らないことを、利用者にどう伝えるか（移さないこと自体は決めてある）
 4. ポスターを Worker で出すか（q-worker-posters）
-5. 無料枠の CPU 10ms を超えたら有料（Workers Paid）にするか
+5. ~~無料枠の CPU 10ms を超えたら有料（Workers Paid）にするか~~ → 有料にはしない（dec-free-tier-only）。超えるなら、その画面は移さず Render のままにする
 6. Render をいつ止めるか、デモ版をどうするか（q-demo-trial-design）
 どちらの場合も先に要ること（進める）: 本番の D1 に一覧が入ったことを /api/health と rec_meta で確かめる → suggest（結び付ける公演の候補）を Worker に移す → 本物の量で CPU 時間・D1 の行数を測る → 別の Worker（wrangler の env）で NATIVE_UI=all を通しで試す。切り替えは wrangler.jsonc の vars に NATIVE_UI を書いて master に入れる（戻すときはその変更を戻す。D1 に書かれた分は残る）。

@@ -30,6 +30,7 @@ sys.path.insert(0, str(HERE))
 
 import measure_nets as M                                           # noqa: E402
 from build_recommend_index import _inserts                         # noqa: E402
+import free_tier as FT                                             # noqa: E402
 
 STATE = Path("d1") / "past_delivered.json"
 ROWS = Path("past") / "stages.jsonl"
@@ -51,13 +52,13 @@ def row_values(r: dict) -> tuple:
 def build(data: Path, out: Path, budget: int) -> dict:
     prev = json.loads((data / STATE).read_text(encoding="utf-8")) if (data / STATE).exists() else {}
     done = int(prev.get("lines") or 0)
-    lines = (data / ROWS).read_text(encoding="utf-8").splitlines() if (data / ROWS).exists() else []
+    # 改行は "\n" だけで区切る（splitlines は題名の中の U+2028 などでも切ってしまう）
+    text = (data / ROWS).read_text(encoding="utf-8") if (data / ROWS).exists() else ""
+    lines = [line for line in text.split("\n") if line.strip()]
     take = max(0, budget // WRITES_PER_ROW)
     new = lines[done:done + take]
     rows = []
     for line in new:
-        if not line.strip():
-            continue
         r = json.loads(line)
         if r.get("stage_id") and r.get("title"):
             rows.append(row_values(r))
@@ -89,7 +90,11 @@ def main() -> int:
         commit(a.data, a.out)
         print("past stages: delivered state saved")
         return 0
-    print(json.dumps(build(a.data, a.out, a.budget), ensure_ascii=False))
+    # 今日（UTC）の D1 の書き込みの残り（free_tier.py の控え）を越えない。書く前に控えに足す
+    report = build(a.data, a.out, min(a.budget, FT.d1_left(a.data)))
+    FT.d1_spend(a.data, report["writes"])
+    report["d1_left_today"] = FT.d1_left(a.data)
+    print(json.dumps(report, ensure_ascii=False))
     return 0
 
 

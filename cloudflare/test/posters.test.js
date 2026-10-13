@@ -48,3 +48,38 @@ test('the native 日記帳 shows the poster of a record linked to a stage in R2'
     assert.match(html, /src="\/img\/777\.jpg\?t=__TAGURI_TOKEN__"/);
   } finally { sqlite.close(); }
 });
+
+test('R2 reads stop at the monthly cap (free tier) and fall through to Render', async () => {
+  const {env, sqlite} = setup();
+  const {r2ReadAllowed, r2Gate, R2_READS_CAP} = await import('../src/free-tier.js');
+  const t = Date.parse('2026-10-20T00:00:00Z');
+  try {
+    Object.assign(r2Gate, {month: '', off: false, at: 0});
+    // Every sampled read adds the sample size, so the total tracks the real reads.
+    env.R2_READ_SAMPLE = '1';
+    assert.equal(await r2ReadAllowed(env, t, () => 0), true);
+    assert.equal(sqlite.prepare("SELECT n FROM usage WHERE k='r2_get:2026-10'").get().n, 1);
+    sqlite.prepare("UPDATE usage SET n=? WHERE k='r2_get:2026-10'").run(R2_READS_CAP - 1);
+    assert.equal(await r2ReadAllowed(env, t + 1000, () => 0), false);       // this read reaches the cap
+    assert.equal(await r2ReadAllowed(env, t + 2000, () => 0.99), false);    // and the isolate remembers
+    // Another isolate learns it from D1 within a minute, even without sampling.
+    Object.assign(r2Gate, {month: '', off: false, at: 0});
+    assert.equal(await r2ReadAllowed(env, t + 3000, () => 0.99), false);
+    // A new month starts from zero.
+    assert.equal(await r2ReadAllowed(env, Date.parse('2026-11-01T00:00:00Z'), () => 0.99), true);
+    // Without the usage table (or any D1 error) R2 is not read at all.
+    sqlite.exec('DROP TABLE usage');
+    Object.assign(r2Gate, {month: '', off: false, at: 0});
+    assert.equal(await r2ReadAllowed(env, t, () => 0.99), false);
+  } finally { Object.assign(r2Gate, {month: '', off: false, at: 0}); sqlite.close(); }
+});
+
+test('/api/health reports the R2 read counter (counts only)', async () => {
+  const {env, sqlite} = setup();
+  try {
+    const month = new Date().toISOString().slice(0, 7);
+    sqlite.prepare('INSERT INTO usage(k, n) VALUES (?, 40)').run(`r2_get:${month}`);
+    const h = await (await worker.fetch(new Request(`${ORIGIN}/api/health`), env)).json();
+    assert.deepEqual(h.free_tier, {r2_reads_month: 40, r2_reads_cap: 3_000_000});
+  } finally { sqlite.close(); }
+});

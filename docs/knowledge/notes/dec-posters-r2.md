@@ -26,3 +26,4 @@ links:
 2. taguri-crawler の GitHub Secrets にある CLOUDFLARE_API_TOKEN の権限に「Workers R2 Storage: Edit」を足す（ダッシュボードの「API トークン」で、そのトークンを編集）
 3. 1 と 2 が済んだら知らせてもらう → wrangler.jsonc に r2_buckets（binding POSTERS、bucket_name taguri-posters）を足す。**バケットより先に足すと、本番の配信（Workers Builds）が失敗する**ので、それまでは足さない
 確かめたこと: Worker の試験 64 件（R2 から返す・R2 に無ければ Render へ・未ログインは 401・日記帳に結び付いた公演のポスターが出る）、deliver_posters の試験（新しい分だけ・403 では何も変えない）、crawler_state の試験（R2 に入れた分は state に入れない）、migration 0013 の適用、runtime-smoke。
+2026-10-13 追記: 起案者がバケット taguri-posters を作り、鍵に「Workers R2 Storage: Edit」を足した。wrangler.jsonc に r2_buckets（POSTERS）を足した。R2 は無料枠を越えると請求が来るので、保存 8 GB・Class A 月 30 万回・Class B 月 300 万回の上限を付けた（dec-free-tier-only）。1 回に入れるのは 2,000 枚まで。

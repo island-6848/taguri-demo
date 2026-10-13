@@ -4,6 +4,22 @@ EC2 も AWS も使っていない（docs/knowledge の no-ec2・no-aws）。毎�
 `island-6848/taguri-crawler`** の GitHub Actions で動かす（dec-crawler-gha-private）。
 コードは公開リポジトリ `taguri-demo` の master を毎回取り出して使う。
 
+## 無料枠（いちばん大事な約束）
+
+**有料のものは 1 つも使わない。無料枠を越えそうなら、使う前に止める**
+（起案者の指示 2026-10-13「必ず無料の範囲内にして。絶対超えないで。つねに警戒してチェックして」。
+上限の一覧は `docs/free-tier-budget.md`、数字は `cloudflare/scripts/free_tier.py` の `CAPS` にだけ書く）。
+
+- 非公開リポジトリの Actions は **月 2,000 分まで無料**。ジョブの最初の段（Plan within the free tier）が
+  直近 31 日のジョブの分数を数え、**1,500 分**に収まるときだけ動かす。届く見込みなら失敗して何もしない
+- 過去の公演を読む分数は、その残りから毎日決める（1 日 0〜135 分）。起案者の「1 日 6,000 件」は、
+  無料枠に収まらない日は減らす（6,000 件は 1 日 約 120 分で、毎日だと月 3,600 分になる）
+- D1 の書き込みは 1 日 8 万行まで（無料は 10 万行）、R2 は保存 8 GB・書き込み月 30 万回まで（無料は 10 GB・100 万回。
+  **R2 は越えると請求が来る**）。どの段も上限の手前で止まる
+- 最後の段（Free-tier check）が使った量を表にし（実行の Summary に出る）、上限の 8 割を越えたか読めなければ失敗する。
+  失敗すると GitHub から持ち主に通知が届く
+- 最後の歯止めは GitHub 側の支払いの上限 0 ドル（既定）。**変えないこと**
+
 ## 置くもの
 
 - `catalog.yml` → 非公開リポジトリの `.github/workflows/catalog.yml`
@@ -19,8 +35,12 @@ EC2 も AWS も使っていない（docs/knowledge の no-ec2・no-aws）。毎�
 
 1. 公開リポジトリのコードを取り出し、`state` ブランチ（前回の作業データ）を `state/` に取り出す
 2. `crawler_state.py restore --from state`: 作業データを `data/` に戻す（`state` が無ければ週 1 の取り直しで始める）
-3. `publish_catalog.py --mode daily|weekly --dry-run --out catalog.tar.gz`: 取り直して検査する（S3 には載せない）
-4. `crawler_state.py save --to state` と `git push -f`: 作業データを `state` ブランチに 1 コミットで置き換える（失敗しても置く）
+3. `free_tier.py plan`: 無料枠の残りを見て、動かすか・週 1 か毎日か・過去の公演を何分読むかを決める
+4. `publish_catalog.py --mode daily|weekly --dry-run --out catalog.tar.gz`: 取り直して検査する（S3 には載せない）
+5. D1 に入れる（下）・ポスターを R2 に入れる（`deliver_posters.py`）
+6. 過去の公演のページを読み（`fetch_past_stages.py`、q-auto-link-past）、D1 の `past_stage` に入れる（`deliver_past.py`）
+7. `free_tier.py check`: 使った量の表。上限の 8 割を越えたら失敗する
+8. `crawler_state.py save --to state` と `git push -f`: 作業データを `state` ブランチに 1 コミットで置き換える（失敗しても置く）
 
 利用者の記録・認証・持ち主の購入の記録は、作業データに入れない。
 
@@ -40,7 +60,8 @@ EC2 も AWS も使っていない（docs/knowledge の no-ec2・no-aws）。毎�
 
 - 入れるのは終わっていない公演の公開の欄と、一度だけ読んだあらすじ・内容の要素（`themes.jsonl`）。消さずに上書きだけする
 - 何を入れたかは `data/d1/delivered.json`（`state` ブランチ）に、wrangler が成功したあとで書く。失敗した分は次回まるごと入れ直す
-- 1 日の書き込みが 6 万行を超えるなら止める（無料枠は 10 万行。残りは利用者の操作のため）
+- 1 日の書き込みが 6 万行を超えるなら止める。さらに、その日（UTC）の取得の書き込みの合計が 8 万行を越えないように、
+  書く前に `data/free_tier/usage.json` に足す（無料枠は 10 万行。残りは利用者の操作のため）
 - 推薦の索引（`build_recommend_index.py`）は、版が変わり、枠に収まるときだけ入れる
 - 秘密 `CLOUDFLARE_API_TOKEN`・`CLOUDFLARE_ACCOUNT_ID` が無ければこの段は飛ばす。鍵はこの段にだけ渡す
 - `rec_meta` に取り直した日・入れた時刻・これからの公演の数を書き、Worker の公開の `/api/health` が返す

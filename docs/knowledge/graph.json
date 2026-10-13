@@ -60,6 +60,19 @@
    ]
   },
   {
+   "id": "catalog-daily-splitlines",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "最初の毎日の Catalog は D1 に入れる段で落ちた。題名の中の U+2028 を splitlines が行の区切りにしたため（直した）",
+   "sources": [
+    "https://github.com/island-6848/taguri-crawler/actions/runs/38483279440",
+    "cloudflare/scripts/deliver_catalogue.py",
+    "cloudflare/test/test_deliver_catalogue.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "catalog-terms-no-redistribution",
    "type": "finding",
    "status": "confirmed",
@@ -85,6 +98,18 @@
    "verifies": [
     "S30"
    ]
+  },
+  {
+   "id": "cf-budget-alerts-not-cap",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "Cloudflare には R2 の使いすぎを止める仕組みが無い。予算の通知（Budget alerts）は知らせるだけ",
+   "sources": [
+    "https://developers.cloudflare.com/billing/manage/budget-alerts/",
+    "https://developers.cloudflare.com/changelog/post/2026-04-13-billable-usage-dashboard-and-budget-alerts/"
+   ],
+   "verifies": []
   },
   {
    "id": "cf-docs-blocked-here",
@@ -389,6 +414,18 @@
    ]
   },
   {
+   "id": "crawler-actions-minutes",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "取得の Actions は毎日の更新が 1 回 約 9 分。過去の公演を 1 日 6,000 枚読むと月 3,600 分を越え、無料の 2,000 分に収まらない",
+   "sources": [
+    "https://github.com/island-6848/taguri-crawler/actions/runs/38483279440",
+    "https://github.com/island-6848/taguri-crawler/actions/runs/38404782069"
+   ],
+   "verifies": []
+  },
+  {
    "id": "crawler-state-between-runs",
    "type": "finding",
    "status": "confirmed",
@@ -626,6 +663,21 @@
    "verifies": []
   },
   {
+   "id": "dec-free-tier-only",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-13",
+   "title": "たぐりは無料枠の中だけで動かす。上限は無料枠より低く取り、越えそうなら使う前に止めて知らせる",
+   "sources": [
+    "docs/free-tier-budget.md",
+    "cloudflare/scripts/free_tier.py",
+    "cloudflare/src/free-tier.js",
+    "cloudflare/migrations/0014.sql",
+    "tools/taguri/deploy/github-actions/catalog.yml"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-hide-own-words",
    "type": "decision",
    "status": "adopted",
@@ -815,7 +867,7 @@
   {
    "id": "dec-scale-workers",
    "type": "decision",
-   "status": "adopted",
+   "status": "superseded",
    "date": "2026-10-13",
    "title": "1000 人規模を見込むなら Workers＋D1 に寄せ、上限に近づいたら月 5 ドルの有料プランに上げる",
    "sources": [
@@ -1005,6 +1057,18 @@
    "verifies": [
     "S24"
    ]
+  },
+  {
+   "id": "gha-minutes-reset-budget",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "Actions の無料の分は毎月 0 に戻り、月払いの支払いの上限は既定で 0 ドル（越えると止まる）",
+   "sources": [
+    "https://docs.github.com/en/billing/concepts/product-billing/github-actions",
+    "https://docs.github.com/en/billing/reference/product-usage-included"
+   ],
+   "verifies": []
   },
   {
    "id": "gha-private-free-minutes",
@@ -1606,6 +1670,15 @@
    "verifies": []
   },
   {
+   "id": "q-free-tier-account-settings",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "起案者のアカウントの設定で、無料枠を越えても請求されないようになっているか",
+   "sources": [],
+   "verifies": []
+  },
+  {
    "id": "q-lockfile-reproducible",
    "type": "question",
    "status": "open",
@@ -1802,6 +1875,15 @@
    "verifies": []
   },
   {
+   "id": "q-r2-poster-growth",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "ポスターが R2 の上限 8 GB に近づいたら、どれを消すか",
+   "sources": [],
+   "verifies": []
+  },
+  {
    "id": "q-rate-limiting",
    "type": "question",
    "status": "open",
@@ -1954,6 +2036,17 @@
    "date": "2026-10-13",
    "title": "Cloudflare の無料枠だけで、今のコードのまま動かせるか",
    "sources": [],
+   "verifies": []
+  },
+  {
+   "id": "r2-free-tier-billed",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "R2 の無料枠は保存 10 GB・Class A 月 100 万回・Class B 月 1,000 万回で、越えた分は請求される（取り出しの通信料は無料）",
+   "sources": [
+    "https://developers.cloudflare.com/r2/pricing/"
+   ],
    "verifies": []
   },
   {
@@ -2224,6 +2317,19 @@
    "verifies": []
   },
   {
+   "id": "worker-health-bridged-404",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "本番の Worker の /api/health は、Render への橋渡しに取られて 404 になっていた（直した）",
+   "sources": [
+    "cloudflare/src/worker.js",
+    "cloudflare/src/original-ui.js",
+    "cloudflare/test/posters.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "worker-reco-cpu-estimate",
    "type": "finding",
    "status": "unverified",
@@ -2248,6 +2354,17 @@
    "verifies": []
   },
   {
+   "id": "workers-builds-free-3000",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "Workers Builds（GitHub からの自動配信）は無料プランで月 3,000 分・同時 1 本・1 回 20 分まで",
+   "sources": [
+    "https://developers.cloudflare.com/workers/ci-cd/builds/limits-and-pricing/"
+   ],
+   "verifies": []
+  },
+  {
    "id": "workers-builds-master-fail",
    "type": "finding",
    "status": "confirmed",
@@ -2255,6 +2372,18 @@
    "title": "コミットの ✗ は Workers Builds が cloudflare/ の無い master を組もうとして失敗していたため",
    "sources": [
     "https://github.com/island-6848/taguri-demo/pull/5"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "workers-cache-api-workers-dev",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "Workers の Cache API は *.workers.dev では何もしない（独自ドメインでだけ効く）",
+   "sources": [
+    "https://developers.cloudflare.com/workers/runtime-apis/cache/",
+    "https://community.cloudflare.com/t/cloudflare-worker-cache-does-not-work/298125"
    ],
    "verifies": []
   },
@@ -2359,6 +2488,16 @@
    "to": "q-monitoring"
   },
   {
+   "from": "catalog-daily-splitlines",
+   "rel": "affects",
+   "to": "dec-d1-catalogue-delivery"
+  },
+  {
+   "from": "catalog-daily-splitlines",
+   "rel": "affects",
+   "to": "sitemap-first-run"
+  },
+  {
    "from": "catalog-terms-no-redistribution",
    "rel": "raises",
    "to": "q-source-terms"
@@ -2372,6 +2511,16 @@
    "from": "cf-access-free-50",
    "rel": "affects",
    "to": "q-cf-access"
+  },
+  {
+   "from": "cf-budget-alerts-not-cap",
+   "rel": "supports",
+   "to": "dec-free-tier-only"
+  },
+  {
+   "from": "cf-budget-alerts-not-cap",
+   "rel": "raises",
+   "to": "q-free-tier-account-settings"
   },
   {
    "from": "cf-registrar-no-jp",
@@ -2477,6 +2626,21 @@
    "from": "corich-sitemap-stage-ids",
    "rel": "affects",
    "to": "dec-crawler-gha-private"
+  },
+  {
+   "from": "crawler-actions-minutes",
+   "rel": "supports",
+   "to": "dec-free-tier-only"
+  },
+  {
+   "from": "crawler-actions-minutes",
+   "rel": "affects",
+   "to": "dec-auto-link-past"
+  },
+  {
+   "from": "crawler-actions-minutes",
+   "rel": "affects",
+   "to": "gha-private-free-minutes"
   },
   {
    "from": "crawler-state-between-runs",
@@ -2712,6 +2876,56 @@
    "from": "dec-firebase-auth",
    "rel": "raises",
    "to": "q-firebase-free-tier"
+  },
+  {
+   "from": "dec-free-tier-only",
+   "rel": "supersedes",
+   "to": "dec-scale-workers"
+  },
+  {
+   "from": "dec-free-tier-only",
+   "rel": "depends_on",
+   "to": "r2-free-tier-billed"
+  },
+  {
+   "from": "dec-free-tier-only",
+   "rel": "depends_on",
+   "to": "gha-minutes-reset-budget"
+  },
+  {
+   "from": "dec-free-tier-only",
+   "rel": "depends_on",
+   "to": "d1-free-limits"
+  },
+  {
+   "from": "dec-free-tier-only",
+   "rel": "depends_on",
+   "to": "workers-free-cpu-10ms"
+  },
+  {
+   "from": "dec-free-tier-only",
+   "rel": "affects",
+   "to": "dec-auto-link-past"
+  },
+  {
+   "from": "dec-free-tier-only",
+   "rel": "affects",
+   "to": "dec-posters-r2"
+  },
+  {
+   "from": "dec-free-tier-only",
+   "rel": "affects",
+   "to": "q-native-cutover"
+  },
+  {
+   "from": "dec-free-tier-only",
+   "rel": "raises",
+   "to": "q-free-tier-account-settings"
+  },
+  {
+   "from": "dec-free-tier-only",
+   "rel": "raises",
+   "to": "q-r2-poster-growth"
   },
   {
    "from": "dec-hide-own-words",
@@ -3062,6 +3276,16 @@
    "from": "gha-first-run-corich-search-403",
    "rel": "affects",
    "to": "dec-polite-crawling"
+  },
+  {
+   "from": "gha-minutes-reset-budget",
+   "rel": "supports",
+   "to": "gha-private-free-minutes"
+  },
+  {
+   "from": "gha-minutes-reset-budget",
+   "rel": "supports",
+   "to": "dec-free-tier-only"
   },
   {
    "from": "gha-private-free-minutes",
@@ -3424,6 +3648,11 @@
    "to": "q-direction"
   },
   {
+   "from": "q-free-tier-account-settings",
+   "rel": "affects",
+   "to": "dec-free-tier-only"
+  },
+  {
    "from": "q-lockfile-reproducible",
    "rel": "affects",
    "to": "comp-cf-worker"
@@ -3492,6 +3721,16 @@
    "from": "q-r2-boto3",
    "rel": "depends_on",
    "to": "q-vm-host-choice"
+  },
+  {
+   "from": "q-r2-poster-growth",
+   "rel": "affects",
+   "to": "dec-posters-r2"
+  },
+  {
+   "from": "q-r2-poster-growth",
+   "rel": "affects",
+   "to": "dec-free-tier-only"
   },
   {
    "from": "q-rate-limiting",
@@ -3587,6 +3826,21 @@
    "from": "q-workers-cpu-real",
    "rel": "affects",
    "to": "comp-native-screens"
+  },
+  {
+   "from": "r2-free-tier-billed",
+   "rel": "verifies",
+   "to": "r2-free-tier"
+  },
+  {
+   "from": "r2-free-tier-billed",
+   "rel": "supports",
+   "to": "dec-free-tier-only"
+  },
+  {
+   "from": "r2-free-tier-billed",
+   "rel": "affects",
+   "to": "dec-posters-r2"
   },
   {
    "from": "r2-free-tier",
@@ -3779,6 +4033,16 @@
    "to": "dec-design-default-ito"
   },
   {
+   "from": "worker-health-bridged-404",
+   "rel": "affects",
+   "to": "catalog-age-check"
+  },
+  {
+   "from": "worker-health-bridged-404",
+   "rel": "supports",
+   "to": "dec-free-tier-only"
+  },
+  {
    "from": "worker-reco-cpu-estimate",
    "rel": "contradicts",
    "to": "dec-defer-workers"
@@ -3799,9 +4063,19 @@
    "to": "comp-d1"
   },
   {
+   "from": "workers-builds-free-3000",
+   "rel": "supports",
+   "to": "dec-free-tier-only"
+  },
+  {
    "from": "workers-builds-master-fail",
    "rel": "affects",
    "to": "comp-cf-worker"
+  },
+  {
+   "from": "workers-cache-api-workers-dev",
+   "rel": "affects",
+   "to": "dec-free-tier-only"
   },
   {
    "from": "workers-cron-free-limits",

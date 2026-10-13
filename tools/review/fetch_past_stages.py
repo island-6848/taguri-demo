@@ -117,7 +117,7 @@ def known_ids() -> set[str]:
     for path in (ROWS, CANDIDATES):
         if not path.exists():
             continue
-        for line in path.read_text(encoding="utf-8").splitlines():
+        for line in path.read_text(encoding="utf-8").split("\n"):
             if line.strip():
                 try:
                     out.add(str(json.loads(line).get("stage_id") or ""))
@@ -200,7 +200,7 @@ def run(ids: list[int], *, limit: int, since: str, stop_after: int, max_minutes:
 
 def report() -> None:
     p = load_progress()
-    n = sum(1 for line in ROWS.read_text(encoding="utf-8").splitlines() if line.strip()) if ROWS.exists() else 0
+    n = sum(1 for line in ROWS.read_text(encoding="utf-8").split("\n") if line.strip()) if ROWS.exists() else 0
     print(json.dumps({**p, "rows": n}, ensure_ascii=False, indent=1))
 
 

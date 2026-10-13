@@ -3,6 +3,14 @@
 # 作業データをこの非公開リポジトリの state ブランチに書き戻す。AWS は使わない（no-aws）。
 # 非公開リポジトリで動かすのは、実行ログや作業データに公演の題名などが出ても外から見えないようにするため
 # （docs/knowledge の dec-crawler-gha-private・gha-public-logs）。
+#
+# **無料枠の中だけで動かす**（起案者の指示「必ず無料の範囲内にして。絶対超えないで」、docs/free-tier-budget.md）。
+# 非公開リポジトリの Actions は月 2,000 分まで無料。最初の段（Plan within the free tier）が直近 31 日の分数を
+# GitHub の API で数え、上限 1,500 分に収まるときだけ動かし、過去の公演を読む分数を決める
+# （cloudflare/scripts/free_tier.py）。D1・R2 に入れる段も、それぞれの上限の手前で止まる。
+# 最後の段（Free-tier check）が使った量を表にし、上限の 8 割を越えたら失敗して持ち主に通知が届く。
+# 過去の公演の一覧（q-auto-link-past）は、別のワークフローにすると準備と書き戻しで毎日 10 分ほど
+# 余計にかかるので、このジョブの中で読む（以前の past-stages.yml はやめた）。
 name: Catalog
 
 on:
@@ -24,10 +32,12 @@ concurrency:
 
 permissions:
   contents: write   # state ブランチへの書き戻しに使う
+  actions: read     # 無料枠の点検で、このリポジトリのジョブの分数を読む
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    # ジョブの上限（最後の歯止め）。ふだんの長さは Plan の段が決める
     timeout-minutes: 300
     env:
       # あらすじは LLM を呼ばずに読み取り待ち（data/credits/synopsis_queue.jsonl）へ書き出す。
@@ -65,9 +75,18 @@ jobs:
             rm -rf state
           fi
           python tools/taguri/crawler_state.py restore --from state
+      - name: Plan within the free tier
+        # 直近 31 日の分数が上限に届く見込みなら、ここで失敗して何もしない（通知が届く）。
+        # 週 1 の分が無ければ毎日の更新だけにし、過去の公演を読む分数（0 もある）を決める
+        id: plan
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python cloudflare/scripts/free_tier.py plan --data data --mode "$MODE"
       - name: Rebuild the catalog
-        run: python tools/taguri/publish_catalog.py --mode "$MODE" --dry-run --out catalog.tar.gz
+        timeout-minutes: ${{ fromJSON(steps.plan.outputs.catalog_minutes) }}
+        run: python tools/taguri/publish_catalog.py --mode "${{ steps.plan.outputs.mode }}" --dry-run --out catalog.tar.gz
       - name: Deliver the catalogue to D1 (changed rows only)
+        if: steps.plan.outputs.run == 'true'
         # 公演一覧と、一度だけ読んだあらすじを本番の D1 に入れる（cloudflare/scripts/deliver_catalogue.py）。
         # 変わった行だけを書く（D1 の無料枠は 1 日 10 万行の書き込み）。鍵はこの段にだけ渡す
         env:
@@ -89,9 +108,10 @@ jobs:
           python scripts/deliver_catalogue.py commit --data ../data --out ../d1-out
       - name: Upload posters to R2 (new ones only)
         # 取り込んだポスターを R2 に移し、D1 の poster 表に載せる（cloudflare/scripts/deliver_posters.py）。
+        # R2 は無料枠を越えると請求が来るので、保存 8 GB・月 30 万回の手前で止まる（free_tier.py）。
         # R2 に入れ終えた分は作業データから外れる（crawler_state.py）。鍵に R2 の権限が無いか、
         # バケットが無いときは何も変えずに先へ進む（ポスターは今までどおり作業データに残る）
-        if: always()
+        if: always() && steps.plan.outputs.run == 'true'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -105,9 +125,47 @@ jobs:
             npx --yes wrangler@4 d1 execute taguri-demo --remote --yes --file ../d1-posters/posters-upload.sql
           fi
           python scripts/deliver_posters.py commit --data ../data --out ../d1-posters
+      - name: Read past stage pages (2019 onwards, newest first)
+        # 過去の公演の一覧（q-auto-link-past）。1.1 秒に 1 枚（polite_http）。読む枚数と分数は Plan の段が
+        # 無料枠から決める（起案者の「1 日 6,000 件」は、無料枠に収まる分だけにした。free-tier-budget.md）
+        if: always() && steps.plan.outputs.run == 'true' && steps.plan.outputs.past_minutes != '0'
+        timeout-minutes: ${{ fromJSON(steps.plan.outputs.past_timeout) }}
+        run: |
+          python tools/review/fetch_past_stages.py --limit "${{ steps.plan.outputs.past_limit }}" \
+            --since 2019-01-01 --max-minutes "${{ steps.plan.outputs.past_minutes }}"
+          python tools/review/fetch_past_stages.py --report | head -20
+      - name: Deliver the new past stages to D1 (past_stage)
+        if: always() && steps.plan.outputs.run == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        working-directory: cloudflare
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "Cloudflare の鍵が無いので D1 には入れない"; exit 0
+          fi
+          python scripts/deliver_past.py build --data ../data --out ../d1-past
+          if [ -f ../d1-past/past-upload.sql ]; then
+            npx --yes wrangler@4 d1 execute taguri-demo --remote --yes --file ../d1-past/past-upload.sql
+          fi
+          python scripts/deliver_past.py commit --data ../data --out ../d1-past
+      - name: Free-tier check
+        # 使った量（Actions の分・D1 の書き込み・R2 の保存と回数・Worker の R2 の読み出し）を表にする。
+        # 上限の 8 割を越えたか、読めなかったら失敗する（GitHub から持ち主に通知が届く）
+        if: always()
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -n "$CLOUDFLARE_API_TOKEN" ] && [ -n "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            (cd cloudflare && npx --yes wrangler@4 d1 execute taguri-demo --remote --json \
+              --command "SELECT k, n FROM usage" > ../worker-usage.json) || echo "Worker の数えが読めなかった"
+          fi
+          python cloudflare/scripts/free_tier.py check --data data --d1-usage worker-usage.json
       # 失敗しても、そこまでの取得の控えは残す（次回に同じものを取り直さない）
       - name: Save the working data to the state branch
-        if: always()
+        if: always() && steps.plan.outputs.run == 'true'
         run: |
           rm -rf state && mkdir state && cd state
           git init -q -b state
@@ -117,6 +175,6 @@ jobs:
           git config user.name "taguri-crawler"
           git config user.email "taguri-crawler@users.noreply.github.com"
           git add -A
-          git commit -q -m "作業データ $(date -u +%Y-%m-%dT%H:%MZ) ($MODE)"
+          git commit -q -m "作業データ $(date -u +%Y-%m-%dT%H:%MZ) (${{ steps.plan.outputs.mode }})"
           # 履歴は持たない（毎回 1 コミットだけの state で置き換え、リポジトリが膨らまないようにする）
           git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" state:state

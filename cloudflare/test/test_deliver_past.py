@@ -14,7 +14,7 @@ MIGRATION = HERE.parent / 'migrations' / '0012.sql'
 ROWS = [
     {"stage_id": "30", "title": "夜の果て", "start": "2024-03-01", "end": "2024-03-10", "theater": "本多劇場",
      "group": "劇団あおば", "pref": "東京都", "fields": {"出演": "山田太郎、鈴木花子", "演出": "佐藤一郎"}},
-    {"stage_id": "20", "title": "O'Neill の夜", "start": "2022-07-01", "end": "2022-07-03", "fields": {}},
+    {"stage_id": "20", "title": "O'Neill の夜\u2028第二部", "start": "2022-07-01", "end": "2022-07-03", "fields": {}},
 ]
 
 
@@ -44,7 +44,7 @@ class DeliverPastTest(unittest.TestCase):
             self.assertEqual((second['rows'], second['left'], second['delivered_before']), (1, 0, 1))
             con.executescript((d / 'out' / 'past-upload.sql').read_text(encoding='utf-8'))
             got = dict(con.execute('SELECT stage_id, tkey FROM past_stage').fetchall())
-            self.assertEqual(got, {'30': '夜の果て', '20': 'oneillの夜'})
+            self.assertEqual(got, {'30': '夜の果て', '20': 'oneillの夜第二部'})
             people = json.loads(con.execute("SELECT people FROM past_stage WHERE stage_id='30'").fetchone()[0])
             self.assertIn(['出演', '山田太郎'], people)
             cols = [r[1] for r in con.execute('PRAGMA table_info(works)')]
