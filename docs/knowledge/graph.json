@@ -729,6 +729,19 @@
    "verifies": []
   },
   {
+   "id": "dec-record-row-card",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-13",
+   "title": "評価一覧などの記録の 1 件をおすすめの 1 枚と同じ形にし、感想はその文の上で書き直す",
+   "sources": [
+    "web/theme.css",
+    "web/app.js",
+    "tools/taguri/app.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-render-full-migration",
    "type": "decision",
    "status": "adopted",
@@ -2666,6 +2679,16 @@
    "from": "dec-recommend-compact-poster",
    "rel": "raises",
    "to": "q-worker-posters"
+  },
+  {
+   "from": "dec-record-row-card",
+   "rel": "affects",
+   "to": "dec-design-adopted"
+  },
+  {
+   "from": "dec-record-row-card",
+   "rel": "depends_on",
+   "to": "dec-recommend-compact-poster"
   },
   {
    "from": "dec-render-full-migration",

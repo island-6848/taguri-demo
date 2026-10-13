@@ -1219,6 +1219,13 @@ document.addEventListener("click", ev => {
     // 押し口の列（`.tools`）に並ぶので、行そのものから欄を探す
     const w = b.closest(".inw") || b.closest(".rec-row") || b.closest(".wait");
     const box = w.querySelector(".inote"), r = w.querySelector(".inr");
+    // **書いてある感想は、その文をそのまま書き直す**（起案者の指示 2026-10-13「書き直す押したら下に
+    // テキストボックス出すのではなく、そのうえに書いてある斜体の文章直接編集できるようにして」）
+    if (r && r.querySelector(".int")) {
+      editInPlace(b, r.querySelector(".int"), box.querySelector("textarea"), r, "/api/note",
+                  t => ({work_key: t.dataset.note, note_impression: t.value}), "感想を保存しました");
+      return;
+    }
     if (r) r.hidden = true; else b.hidden = true;
     box.hidden = false;
     box.querySelector("textarea").focus();
@@ -1227,6 +1234,11 @@ document.addEventListener("click", ev => {
     // と同じ判断）
     const w = b.closest(".vnw") || b.closest(".rec-row");
     const box = w.querySelector(".vnote"), r = w.querySelector(".vnr");
+    if (r && r.querySelector(".vnt")) {
+      editInPlace(b, r.querySelector(".vnt"), box.querySelector("textarea"), r, "/api/visit_note",
+                  t => ({uid: t.dataset.vnote, note: t.value}), "メモを保存しました");
+      return;
+    }
     if (r) r.hidden = true; else b.hidden = true;
     box.hidden = false;
     box.querySelector("textarea").focus();
@@ -1752,6 +1764,50 @@ fixupImportBar(document);
 
 // **入力欄の動きは、後から足した 1 枚にも付ける。**
 //
+// **書いてある文を、その場で書き直せる欄にする。** 下に入力欄を開くのではなく、読んでいた文の上で
+// そのまま書く。離れたら（または「書き終える」を押したら）保存し、Esc で元に戻す。保存は今までと
+// 同じ口（感想は /api/note、回のメモは /api/visit_note）。隠れている textarea も同じ値にそろえておく
+function editInPlace(btn, el, ta, row, path, bodyOf, okMsg) {
+  if (el.isContentEditable) { el.blur(); return; }
+  // 「書き終える」を押すと、先に文から離れた（blur）ことで保存が済む。そのあとに届く押下で
+  // また書き始めないようにする
+  if (btn._finishedAt && Date.now() - btn._finishedAt < 600) return;
+  const before = el.textContent;
+  try { el.contentEditable = "plaintext-only"; } catch (e) {}
+  if (!el.isContentEditable) el.contentEditable = "true";
+  el.setAttribute("role", "textbox");
+  el.setAttribute("aria-multiline", "true");
+  btn.textContent = "書き終える";
+  let said = row.querySelector(":scope > .said");
+  if (!said) { said = document.createElement("span"); said.className = "said"; row.appendChild(said); }
+  said.textContent = "";
+  el.focus();
+  const sel = window.getSelection(), range = document.createRange();
+  range.selectNodeContents(el); range.collapse(false); sel.removeAllRanges(); sel.addRange(range);
+  const finish = save => {
+    el.removeEventListener("blur", onBlur);
+    el.removeEventListener("keydown", onKey);
+    el.removeAttribute("contenteditable");
+    el.removeAttribute("role");
+    el.removeAttribute("aria-multiline");
+    btn.textContent = "書き直す";
+    const text = el.textContent.trim();
+    if (!save || text === before.trim()) { el.textContent = before; return; }
+    el.textContent = text;
+    if (ta) { ta.value = text; ta.dataset.was = text; }
+    if (!live) return;
+    post(path, bodyOf(ta || {dataset: {}, value: text}), row, okMsg).then(d => {
+      if (!d) { el.textContent = before; if (ta) { ta.value = before; ta.dataset.was = before; } }
+    });
+  };
+  const onBlur = () => { btn._finishedAt = Date.now(); finish(true); };
+  const onKey = ev => {
+    if (ev.key === "Escape") { ev.preventDefault(); el.removeEventListener("blur", onBlur); finish(false); el.blur(); }
+  };
+  el.addEventListener("blur", onBlur);
+  el.addEventListener("keydown", onKey);
+}
+
 // ボタンは `document` で受けているので足した 1 枚でも効くが、**入力欄は読み込みのときに
 // 1 度だけ結んでいた** ── 入れ替わりに差し込んだカードの欄は、書けるのに保存されない
 // 欄になる。**2 度結ばないように印を付ける**（同じ blur で 2 回送ることになる）。

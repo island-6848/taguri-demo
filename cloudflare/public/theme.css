@@ -264,3 +264,89 @@ body{font-family:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",YuGothic,syst
 
 /* ---- パンくずの後ろの黄色いぼんやりした光（.spot::before、前の「舞台の照明」）は出さない（起案者の指示 2026-10-13） */
 .spot::before{display:none}
+
+/* ---- 評価一覧などの記録の 1 件（.rec-row）── おすすめの 1 枚と同じ形にそろえる
+   （起案者の指示 2026-10-13「評価一覧の画面も同じデザインにそろえて」）。
+   前は罫を敷いた帳面（左の余白に日付と判子、明朝、右にテープで貼った傾いた半券）だった。
+   今は 1 件 1 枚の白い紙で、切り取り線の左にポスター、右に 日付・題名・どこで観たか・判子、
+   その下に全幅で あらすじ・出演・感想・押し口。HTML は Render のまま変えず、.marg と .page の
+   箱を消して（display:contents）中身を 1 枚の格子に並べ直す */
+.rec-row{display:grid;grid-template-columns:106px minmax(0,1fr);column-gap:12px;align-items:start;
+ background:var(--surf);border:1px solid var(--ring);border-radius:0;margin:0 0 10px;padding:0 14px 12px 0}
+.rec-row:first-of-type,.rec-row:last-of-type{border-top:1px solid var(--ring);border-radius:0}
+.rec-row>.marg,.rec-row>.page{display:contents}
+.rec-row .page{background:none}
+.rec-row .pin{grid-column:1;grid-row:1/span 4;align-self:stretch;width:auto;box-sizing:border-box;
+ padding:12px 10px 10px 12px;border-right:1.5px dotted var(--base);justify-content:flex-start}
+.rec-row .pin>*,.rec-row:nth-of-type(2n) .pin>*{width:84px;height:118px;border:0;border-radius:0;
+ transform:none;box-shadow:none}
+.rec-row .pin>*::after{display:none}
+.rec-row .noposter{background:var(--plane);border:1px solid var(--grid)}
+.rec-row .dt{grid-column:2;grid-row:1;padding-top:12px;font-family:inherit;line-height:1.3;
+ display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+.rec-row .dt .md{order:1;font-size:15px;font-weight:700;letter-spacing:0}
+.rec-row .dt .wd{order:2;font-size:12px}
+.rec-row .dt .y{order:3;font-size:12px;letter-spacing:0}
+.rec-row .dt.no{padding-top:12px}
+.rec-row .ttl{grid-column:2;grid-row:2;font-family:inherit;font-size:17px;font-weight:700;line-height:1.4;margin:2px 0 2px}
+.rec-row .where{grid-column:2;grid-row:3;font-size:12px;line-height:1.6}
+.rec-row .stamp{grid-column:2;grid-row:4;justify-self:start;margin:8px 0 4px 2px}
+.rec-row>.page>:not(.ttl):not(.where){grid-column:1/-1;margin-left:14px}
+.rec-row .tools{min-height:0;margin-top:10px}
+.rec-row .syn,.rec-row .cast{margin-top:8px}
+.rec-row.check{border-left:3px solid var(--warn)}
+@media(max-width:700px){
+ .rec-row{flex-wrap:nowrap}
+ .rec-row .marg{width:auto;padding:0}
+ .rec-row .dt .md{font-size:15px}
+ .rec-row .page{padding:0}
+ .rec-row .pin{width:auto;padding:12px 10px 10px 12px;justify-content:flex-start}}
+@media(min-width:701px){
+ .rec-row{grid-template-columns:140px minmax(0,1fr);padding-right:22px}
+ .rec-row .pin{padding:16px 12px 12px 16px}
+ .rec-row .pin>*,.rec-row:nth-of-type(2n) .pin>*{width:112px;height:158px}
+ .rec-row>.page>:not(.ttl):not(.where){margin-left:22px}}
+
+/* 書いてある感想は、明朝の斜体をやめて本文と同じ字で置く。見出し「感想」は左の列にそろえる
+   （おすすめの「出演」「あらすじ」と同じ形）。書き直すときは、この文がそのまま書ける欄になる（app.js） */
+.inr{display:grid;grid-template-columns:4em minmax(0,1fr) auto;column-gap:6px;align-items:baseline;
+ font-family:inherit;font-size:13.5px;line-height:1.7}
+.inl{font-size:11.5px;font-weight:700}
+.int{font-style:normal;color:var(--ink)}
+.int::before,.int::after{content:none}
+.inr .wnb{min-height:32px;padding:0 4px;border:0;background:none;box-shadow:none;font-size:12px;
+ text-decoration:underline;text-underline-offset:3px}
+.int[contenteditable]{outline:0;border-bottom:1.5px solid var(--curtain);padding:2px 0;cursor:text;
+ background:color-mix(in srgb,var(--curtain) 4%,transparent)}
+.inr .said:not(:empty){grid-column:2/-1}
+.vnr{display:grid;grid-template-columns:6em minmax(0,1fr) auto;column-gap:6px;align-items:baseline}
+.vnt[contenteditable]{outline:0;border-bottom:1.5px solid var(--ink2);padding:2px 0;cursor:text}
+.vnr .wnb{min-height:32px;padding:0 4px;border:0;background:none;box-shadow:none;font-size:12px;
+ text-decoration:underline;text-underline-offset:3px}
+.vnr .said:not(:empty){grid-column:2/-1}
+
+/* 年の見出しは、えんじの耳をやめて、小さく字間を空けた見出しに細い線を添える（行き先の帯の組の名前と同じ形） */
+.yr>h3,.yr>summary{display:flex;width:100%;box-sizing:border-box;align-items:baseline;gap:10px;
+ background:none;color:var(--ink);border-radius:0;padding:0 0 6px;margin:22px 0 10px;
+ border-bottom:1px solid var(--ring);font-size:15px;letter-spacing:.04em}
+.yr>summary::after{margin-left:auto;color:var(--mute)}
+.yr>h3 .badge,.yr>summary .badge{color:var(--mute)}
+.yr>.rec-row:first-of-type,.yr>h3+.rec-row,.yr>summary+.rec-row{border-top:1px solid var(--ring)}
+/* あらすじ・出演・作り手・感想の見出しを、どれも同じ左の列（4em）にそろえる */
+.rec-row .dt,.rec-row .dt.no{text-align:left;justify-self:start}
+.rec-row .syn{display:grid;grid-template-columns:4em minmax(0,1fr);column-gap:6px;align-items:baseline;
+ background:none;border:0;padding:0;border-radius:0;font-size:13px;line-height:1.7}
+.rec-row .syn::before{content:"あらすじ";grid-column:1;color:var(--mute);font-size:11.5px}
+.rec-row .syn>*{grid-column:2}
+.rec-row .syn .txt{color:var(--ink2)}
+.rec-row .cast .cr{display:grid;grid-template-columns:4em minmax(0,1fr);column-gap:6px;align-items:baseline}
+.rec-row .cast .cl{color:var(--mute);font-size:11.5px;width:auto;min-width:0}
+.yr>h3,.yr>summary{font-family:inherit}
+/* 「書き直す」は文の右に置くと、電話の幅で文が細い柱になる ── 文の下に置く */
+.inr,.rec-row .inr{grid-template-columns:4em minmax(0,1fr)}
+.inr .wnb{grid-column:2;justify-self:start;padding:0;margin-left:0}
+.vnr{grid-template-columns:6em minmax(0,1fr)}
+.vnr .wnb{grid-column:2;justify-self:start;padding:0;margin-left:0}
+/* 日付の 3 つ（月日・曜日・年）は中身の幅で 1 行に並べる（別画面の .wd{width:150px} が効かないように） */
+.rec-row .dt>*{width:auto;min-width:0;flex:none;text-align:left}
+.rec-row .rb{margin-left:0}
