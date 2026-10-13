@@ -12,6 +12,7 @@ import {
   GoogleAuthProvider, signInWithPopup, sendSignInLinkToEmail,
   isSignInWithEmailLink, signInWithEmailLink, signOut,
 } from 'firebase/auth';
+import {startAuthentication, startRegistration, browserSupportsWebAuthn} from '@simplewebauthn/browser';
 
 const EMAIL_KEY = 'taguri_login_email';
 const $ = s => document.querySelector(s);
@@ -48,7 +49,7 @@ function explain(e) {
 
 async function main() {
   const res = await fetch('/api/auth/config', {credentials: 'omit'});
-  if (!res.ok) { say('ログインの準備ができていません。', true); busy(true); return; }
+  if (!res.ok) { $('#google').disabled = true; $('#email-form').hidden = true; return; }
   const config = await res.json();
   const app = initializeApp({apiKey: config.apiKey, authDomain: config.authDomain, projectId: config.projectId});
   const auth = initializeAuth(app, {persistence: inMemoryPersistence, popupRedirectResolver: browserPopupRedirectResolver});
@@ -88,4 +89,54 @@ async function main() {
   });
 }
 
+// ---------------------------------------------------------------- passkeys
+// Works without Firebase: the Worker verifies passkeys itself.
+const postJSON = async (path, body) => {
+  const res = await fetch(path, {method: 'POST', credentials: 'same-origin', headers: {'content-type': 'application/json'}, body: JSON.stringify(body)});
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw Object.assign(new Error(data.error || 'うまくいきませんでした。'), {server: true});
+  return data;
+};
+// Server messages are written for users; browser errors are mapped, never echoed.
+function passkeyError(e) {
+  const name = e?.cause?.name || e?.name;
+  if (e?.server) return e.message;
+  if (name === 'NotAllowedError' || name === 'AbortError') return '取りやめました。もう一度押すとやり直せます。';
+  if (name === 'InvalidStateError') return 'この端末のパスキーは登録済みです。';
+  return 'パスキーを使えませんでした。もう一度お試しください。';
+}
+
+function showRecovery(code) {
+  $('#passkey-recovery').hidden = false;
+  $('#recovery-code').textContent = code;
+  $('#copy-recovery').onclick = () => navigator.clipboard?.writeText(code).then(() => say('コピーしました。'), () => {});
+  $('#recovery-done').onclick = () => location.replace('/migration-data/');
+}
+
+function setupPasskeys() {
+  if (!browserSupportsWebAuthn()) { $('#passkey').hidden = true; return; }
+  $('#passkey-login').addEventListener('click', async () => {
+    busy(true); say('端末の画面でパスキーを選んでください…');
+    try {
+      const {challenge_id, options} = await postJSON('/api/auth/passkey/login/options', {});
+      const response = await startAuthentication({optionsJSON: options});
+      await postJSON('/api/auth/passkey/login/verify', {challenge_id, response});
+      say('ログインしました。');
+      location.replace('/migration-data/');
+    } catch (e) { busy(false); say(passkeyError(e), true); }
+  });
+  $('#passkey-signup').addEventListener('click', async () => {
+    busy(true); say('端末の画面でパスキーを作ってください…');
+    try {
+      const {challenge_id, options} = await postJSON('/api/auth/passkey/register/options', {});
+      const response = await startRegistration({optionsJSON: options});
+      const data = await postJSON('/api/auth/passkey/register/verify', {challenge_id, response});
+      busy(false);
+      if (data.recovery_code) { say('パスキーを作りました。下の復旧コードを控えてから進んでください。'); showRecovery(data.recovery_code); }
+      else { say('パスキーを追加しました。'); location.replace('/migration-data/'); }
+    } catch (e) { busy(false); say(passkeyError(e), true); }
+  });
+}
+
+setupPasskeys();
 main().catch(e => say(explain(e), true));

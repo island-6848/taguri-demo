@@ -15,7 +15,8 @@
 <section><h2>観劇記録を追加</h2><form id="add"><label>作品名<input name="title" required maxlength="500"></label><div class="row"><label>観劇日<input name="date" type="date" required></label><label>開演時刻<input name="time" type="time"></label></div><label>会場<input name="venue" maxlength="300"></label><button>追加する</button></form></section>
 <section id="records"><h2>観劇記録</h2><p id="count"></p><div id="list"></div></section>
 <section id="favourites"><h2>お気に入り</h2><form id="favourite"><label>名前<input name="name" required maxlength="200"></label><label>種類<select name="kind"><option>人</option><option>団体</option><option>主催</option><option>作品</option><option>題材</option><option>原作者</option></select></label><button>登録する</button></form><ul id="favs"></ul></section>
+<section id="passkeys" hidden><h2>パスキー</h2><p>指紋・顔認証・端末のロック解除でログインできるようにします。端末をなくしたときは、ここでその端末のパスキーを削除してください。</p><ul id="passkey-list"></ul><button id="passkey-add" type="button">この端末のパスキーを追加</button><p id="passkey-status" role="status" aria-live="polite"></p></section>
 <section id="backup"><h2>持ち出す・取り込む</h2><button id="export">記録をJSONで保存</button><label>移行用JSONを取り込む<input id="import" type="file" accept="application/json,.json"></label><p>取り込みは10件ずつ行います。同じIDの記録は更新されます。</p><button id="logout">ログアウト</button></section>
 </div>
-</main><script type="module" src="/migration-data/app.js"></script>
+</main><script type="module" src="/migration-data/app.js"></script><script type="module" src="/vendor/passkeys.js"></script>
 </html>

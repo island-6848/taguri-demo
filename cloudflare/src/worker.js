@@ -1,5 +1,6 @@
 import {isOriginalRoute, originalUI} from './original-ui.js';
 import {verifyIdToken, isAuthError} from './firebase-auth.js';
+import {passkeyRoutes} from './passkey.js';
 const MAX_BODY = 262144;
 const COOKIE = 'taguri_session';
 const TTL = 60 * 60 * 24 * 30;
@@ -55,6 +56,12 @@ async function user(request, db) {
   if (!session) fail(401,'ログインし直してください。');
   return session.user_id;
 }
+// The signed-in user, or null (never throws for a missing/expired session).
+async function currentUser(request, db) {
+  const raw = sessionCookie(request);
+  if (!raw) return null;
+  return (await db.prepare('SELECT user_id FROM sessions WHERE hash=? AND expires_at>?').bind(await hash(raw),now()).first())?.user_id ?? null;
+}
 // New session for uid; the caller's old session (if any) is revoked so a
 // session fixed before sign-in cannot carry over (session rotation).
 async function startSession(db, uid, commands, oldRaw) {
@@ -107,6 +114,7 @@ async function state(db, uid) {
   const result = await db.batch([db.prepare('SELECT id,title,date,time,venue,rating,note FROM records WHERE user_id=? ORDER BY date DESC,id LIMIT 500').bind(uid),db.prepare('SELECT name,kind FROM favourites WHERE user_id=? ORDER BY kind,name LIMIT 200').bind(uid),db.prepare('SELECT stage_id,status FROM reactions WHERE user_id=? ORDER BY stage_id LIMIT 500').bind(uid)]);
   return {version:2,records:result[0].results,favourites:result[1].results,reactions:result[2].results};
 }
+const passkey = passkeyRoutes({fail, json, token, hash, now, body, cookie, sessionCookie, currentUser, startSession});
 // Public Firebase web config. apiKey identifies the project to Google; it is
 // not a secret (access is governed by authorized domains and the sign-in
 // methods enabled in the console). Nothing here is read from user input.
@@ -169,12 +177,18 @@ export default {
         return json({recovery_code:recovery},200,{'Set-Cookie':cookie(session)});
       }
       if (method === 'POST' && path === '/api/auth/firebase') return await firebaseSignIn(request, env);
+      if (method === 'POST' && path === '/api/auth/passkey/register/options') return await passkey.registerOptions(request, env);
+      if (method === 'POST' && path === '/api/auth/passkey/register/verify') return await passkey.registerVerify(request, env);
+      if (method === 'POST' && path === '/api/auth/passkey/login/options') return await passkey.loginOptions(request, env);
+      if (method === 'POST' && path === '/api/auth/passkey/login/verify') return await passkey.loginVerify(request, env);
       if (method === 'GET' && path === '/api/auth/config') {
         const config = firebaseConfig(env);
         if (!config) fail(503,'ログインの準備ができていません。');
         return json(config,200,{'Cache-Control':'public, max-age=300'});
       }
       const uid = await user(request,env.DB);
+      if (method === 'GET' && path === '/api/auth/passkeys') return await passkey.list(request, env, uid);
+      if (method === 'POST' && path === '/api/auth/passkeys/delete') return await passkey.remove(request, env, uid);
       if (method === 'GET' && ['/api/state','/api/export'].includes(path)) return json(await state(env.DB,uid));
       if (method !== 'POST') fail(404,'見つかりませんでした。');
       const input = await body(request);
