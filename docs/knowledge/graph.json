@@ -798,6 +798,17 @@
    "verifies": []
   },
   {
+   "id": "design-studio",
+   "type": "component",
+   "status": "current",
+   "date": "2026-10-13",
+   "title": "見た目の調整室（起案者が色・文字・ボタン・配置・文言を決めて保存し、Claude が読み取って実際の画面に反映する）",
+   "sources": [
+    "https://claude.ai/artifact/NH7Z8DGfij161BfkjEGg3q"
+   ],
+   "verifies": []
+  },
+  {
    "id": "ec2-tokyo-price",
    "type": "finding",
    "status": "unverified",
@@ -2600,6 +2611,16 @@
    "from": "demo-seed-link-rate",
    "rel": "affects",
    "to": "comp-recommender"
+  },
+  {
+   "from": "design-studio",
+   "rel": "depends_on",
+   "to": "dec-design-default-ito"
+  },
+  {
+   "from": "design-studio",
+   "rel": "affects",
+   "to": "dec-theme-user-choice"
   },
   {
    "from": "ec2-tokyo-price",
