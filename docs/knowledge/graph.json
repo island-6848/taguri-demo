@@ -238,6 +238,19 @@
    ]
   },
   {
+   "id": "d1-free-db-size",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-13",
+   "title": "D1 の無料プランは 1 つのデータベースが 500MB まで（二次情報）",
+   "sources": [
+    "https://cdn.jsdelivr.net/npm/memory-journal-mcp@8.0.1/skills/cloudflare/references/d1/README.md"
+   ],
+   "verifies": [
+    "S21"
+   ]
+  },
+  {
    "id": "d1-free-limits",
    "type": "finding",
    "status": "confirmed",
@@ -249,6 +262,20 @@
    "verifies": [
     "S20",
     "S21"
+   ]
+  },
+  {
+   "id": "d1-time-travel",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "D1 は無料プランで 7 日前、有料プランで 30 日前まで戻せる（Time Travel）",
+   "sources": [
+    "https://developers.cloudflare.com/d1/reference/time-travel/"
+   ],
+   "verifies": [
+    "S07",
+    "S10"
    ]
   },
   {
@@ -327,6 +354,19 @@
    "verifies": []
   },
   {
+   "id": "dec-scale-workers",
+   "type": "decision",
+   "status": "proposed",
+   "date": "2026-10-13",
+   "title": "1000 人規模を見込むなら Workers＋D1 に寄せ、上限に近づいたら月 5 ドルの有料プランに上げる",
+   "sources": [
+    "docs/service-roadmap.md"
+   ],
+   "verifies": [
+    "S12"
+   ]
+  },
+  {
    "id": "dec-service-starts-empty",
    "type": "decision",
    "status": "adopted",
@@ -391,6 +431,17 @@
    "verifies": [
     "S27"
    ]
+  },
+  {
+   "id": "github-actions-public-free",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "公開リポジトリでは GitHub Actions の標準の実行環境が無料。ただし 60 日動きが無いと定期実行が止まる",
+   "sources": [
+    "https://docs.github.com/en/actions/reference/usage-limits-billing-and-administration"
+   ],
+   "verifies": []
   },
   {
    "id": "gmail-restricted-scope",
@@ -526,6 +577,18 @@
    "sources": [],
    "verifies": [
     "S22"
+   ]
+  },
+  {
+   "id": "q-crawler-host",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "公演情報の取得処理をどこで動かすか",
+   "sources": [],
+   "verifies": [
+    "S23",
+    "S24"
    ]
   },
   {
@@ -714,6 +777,17 @@
    ]
   },
   {
+   "id": "q-workers-cpu-overrun",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "無料プランで CPU 10 ミリ秒を超えると、実際にはどうなるか",
+   "sources": [],
+   "verifies": [
+    "S20"
+   ]
+  },
+  {
    "id": "q-workers-free-viable",
    "type": "question",
    "status": "answered",
@@ -795,6 +869,20 @@
     "tools/lib/test_polite_http.py"
    ],
    "verifies": []
+  },
+  {
+   "id": "scale-1000-estimate",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-13",
+   "title": "1000 人で使うと、Workers の無料枠は推薦の計算（CPU）と D1 の読み行数で足りなくなりそう（見積もり）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/blob/cloudflare-d1-preview/cloudflare/README.md"
+   ],
+   "verifies": [
+    "S20",
+    "S21"
+   ]
   },
   {
    "id": "serve-cloud-render-guard",
@@ -883,6 +971,34 @@
     "https://developers.cloudflare.com/workers/platform/pricing/"
    ],
    "verifies": []
+  },
+  {
+   "id": "workers-paid-plan",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "Workers の有料プランは月 5 ドルで、要求 1000 万回・CPU 3000 万ミリ秒・D1 の読み 250 億行が含まれる",
+   "sources": [
+    "https://developers.cloudflare.com/workers/platform/pricing/",
+    "https://developers.cloudflare.com/d1/platform/pricing/"
+   ],
+   "verifies": [
+    "S12"
+   ]
+  },
+  {
+   "id": "workers-static-assets-free",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "Workers の静的ファイルへの要求は無料・無制限で、要求数の上限に数えない",
+   "sources": [
+    "https://developers.cloudflare.com/workers/static-assets/billing-and-limitations",
+    "https://developers.cloudflare.com/workers/platform/pricing/"
+   ],
+   "verifies": [
+    "S20"
+   ]
   }
  ],
  "edges": [
@@ -972,6 +1088,11 @@
    "to": "comp-frontend"
   },
   {
+   "from": "d1-free-db-size",
+   "rel": "affects",
+   "to": "scale-1000-estimate"
+  },
+  {
    "from": "d1-free-limits",
    "rel": "affects",
    "to": "q-d1-python-workers"
@@ -980,6 +1101,16 @@
    "from": "d1-free-limits",
    "rel": "affects",
    "to": "q-direction"
+  },
+  {
+   "from": "d1-time-travel",
+   "rel": "affects",
+   "to": "q-offsite-backup"
+  },
+  {
+   "from": "d1-time-travel",
+   "rel": "affects",
+   "to": "workers-d1-preview-state"
   },
   {
    "from": "dec-defer-workers",
@@ -1020,6 +1151,21 @@
    "from": "dec-polite-crawling",
    "rel": "affects",
    "to": "comp-crawler"
+  },
+  {
+   "from": "dec-scale-workers",
+   "rel": "affects",
+   "to": "q-direction"
+  },
+  {
+   "from": "dec-scale-workers",
+   "rel": "depends_on",
+   "to": "q-real-catalog-stats"
+  },
+  {
+   "from": "dec-scale-workers",
+   "rel": "depends_on",
+   "to": "q-crawler-host"
   },
   {
    "from": "dec-service-starts-empty",
@@ -1065,6 +1211,11 @@
    "from": "gemini-budget-cap",
    "rel": "affects",
    "to": "comp-catalog-pipeline"
+  },
+  {
+   "from": "github-actions-public-free",
+   "rel": "raises",
+   "to": "q-crawler-host"
   },
   {
    "from": "jp-domain-price",
@@ -1122,6 +1273,11 @@
    "to": "dec-vm-cloudflare"
   },
   {
+   "from": "q-crawler-host",
+   "rel": "depends_on",
+   "to": "q-ec2-cost"
+  },
+  {
    "from": "q-direction",
    "rel": "depends_on",
    "to": "q-real-catalog-stats"
@@ -1175,6 +1331,11 @@
    "from": "q-vm-performance",
    "rel": "depends_on",
    "to": "q-vm-host-choice"
+  },
+  {
+   "from": "q-workers-cpu-overrun",
+   "rel": "depends_on",
+   "to": "q-real-catalog-stats"
   },
   {
    "from": "r2-free-tier",
@@ -1240,6 +1401,21 @@
    "from": "robotparser-decimal-delay",
    "rel": "affects",
    "to": "comp-crawler"
+  },
+  {
+   "from": "scale-1000-estimate",
+   "rel": "supports",
+   "to": "dec-scale-workers"
+  },
+  {
+   "from": "scale-1000-estimate",
+   "rel": "affects",
+   "to": "q-direction"
+  },
+  {
+   "from": "scale-1000-estimate",
+   "rel": "depends_on",
+   "to": "q-real-catalog-stats"
   },
   {
    "from": "serve-cloud-render-guard",
@@ -1325,6 +1501,21 @@
    "from": "workers-free-cpu-10ms",
    "rel": "answers",
    "to": "q-workers-free-viable"
+  },
+  {
+   "from": "workers-paid-plan",
+   "rel": "supports",
+   "to": "dec-scale-workers"
+  },
+  {
+   "from": "workers-paid-plan",
+   "rel": "affects",
+   "to": "q-direction"
+  },
+  {
+   "from": "workers-static-assets-free",
+   "rel": "affects",
+   "to": "scale-1000-estimate"
   }
  ]
 }
