@@ -127,7 +127,7 @@ npx wrangler d1 execute taguri-demo --remote --file /tmp/rec.sql
 3. 承認済みドメインを、たぐりのWorkerのドメインだけにする。
 4. 「メール列挙保護」を有効にする（登録済みかどうかを外から探られないようにする）。
 5. プロジェクトIDを `wrangler.jsonc` の `FIREBASE_PROJECT_ID` に、ウェブアプリの `apiKey` を `FIREBASE_API_KEY` に入れる。どちらも公開してよい値（`apiKey` はブラウザに渡す前提の識別子で、使える範囲は承認済みドメインとログイン方法の設定で絞る）。秘密鍵やサービスアカウントの鍵は不要で、作ってもリポジトリやチャットに貼らない。認証ドメインが既定（`<プロジェクトID>.firebaseapp.com`）でなければ `FIREBASE_AUTH_DOMAIN` も入れる。
-6. 本番のD1に `0003`・`0004` を入れる。`.github/workflows/d1-migrate.yml` が、`cloudflare-d1-preview` で `migrations/` が変わるたびに自動で適用する（リポジトリのSecret `CLOUDFLARE_API_TOKEN` が要る。権限は Account / D1 / Edit だけにする）。手元からなら `npx wrangler d1 migrations apply taguri-demo --remote`。
+6. 本番のD1への移行（`migrations/`）は、Workers BuildsのDeploy command（`npx wrangler d1 migrations apply taguri-demo --remote && npx wrangler deploy`）がデプロイのたびに適用する。手で入れる必要はない。
 
 ## ログイン：パスキー（Googleを使わない人向け）
 
