@@ -15,7 +15,8 @@
    - 評価 ◎○△× は判子のまま（「評価はハンコのまま」）
    - ロゴの「たぐり」の字は今の書体のまま（「たぐりのロゴの文字は今のフォントがいい」）
    - 暗い表示は style.css のまま（ここでは明るい表示だけを上書きする）
-   - 書体は端末にあるものだけを並べる（配る書体は q-webfont-local で決める） */
+   - 書体は端末にあるものを並べる。題字だけは Zen Kaku Gothic Antique（SIL OFL）を、各画面の題字に
+     使う字だけに絞って自分のサイトから配る（assets/fonts、約 43KB。title-font-candidates） */
 
 @media (prefers-color-scheme:light){:root:where(:not([data-theme=dark])){
  --plane:#f2f2f3;--surf:#ffffff;--ink:#1d1d1f;--ink2:#5c5f66;--mute:#6b6e75;
@@ -27,6 +28,9 @@
  --grid:#e6e6e8;--base:#d9d9dc;--ring:#d9d9dc;
  --acc:#9b2335;--curtain:#9b2335;--curtain-w:#f4f4f5;
  --mincho:"Zen Old Mincho","Hiragino Mincho ProN","Yu Mincho",YuMincho,"Noto Serif JP",serif}
+
+@font-face{font-family:"Taguri Title";src:url("assets/fonts/zkga-title.woff2") format("woff2");
+ font-weight:700;font-style:normal;font-display:swap}
 
 body{font-family:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",YuGothic,system-ui,sans-serif}
 
@@ -69,10 +73,12 @@ body{font-family:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",YuGothic,syst
  .side .grp>summary{color:var(--ink2)}
  .side .grp>summary:hover{background:var(--plane);color:var(--ink)}}
 
-/* ---- 各画面の題字 ── どの画面も最初の見出しを同じ「題字」の形にそろえる。明朝で大きく、
+/* ---- 各画面の題字 ── どの画面も最初の見出しを同じ「題字」の形にそろえる。明朝と本文のゴシックの
+   間の書体（Zen Kaku Gothic Antique。起案者の指摘 2026-10-13「明朝すぎるかも」）で大きく、
    下に全幅の細い線、その上に毛糸の線を短く重ねる（ロゴの線と同じ形）
    （起案者の指示 2026-10-13「各ページのタイトル題字、もっとタイトルっぽく強調して。各ページの…として統一」） */
-.shell>.main h1:first-of-type{position:relative;font-size:30px;font-weight:700;line-height:1.35;
+.shell>.main h1:first-of-type{position:relative;font-size:30px;
+ font-family:"Taguri Title","Zen Kaku Gothic Antique","Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",YuGothic,sans-serif;font-weight:700;line-height:1.35;
  letter-spacing:.02em;margin:8px 0 20px;padding:0 0 16px;border-bottom:1px solid var(--ring)}
 .shell>.main h1:first-of-type::after{content:"";position:absolute;left:0;bottom:-4px;width:96px;height:7px;
  background-color:var(--acc);-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 82 7' preserveAspectRatio='none'%3E%3Cpath d='M1 4 C 16 1, 26 6, 41 3 S 66 1, 81 4' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E") center/100% 100% no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 82 7' preserveAspectRatio='none'%3E%3Cpath d='M1 4 C 16 1, 26 6, 41 3 S 66 1, 81 4' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E") center/100% 100% no-repeat}
@@ -123,3 +129,87 @@ body{font-family:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",YuGothic,syst
 
 @media (prefers-reduced-motion:reduce){
  .btns button,.wnb,.pfoot button,.ticket .sitebtn,.mt-add button{transition:none}}
+
+/* ---- スマホ幅の行き先 ── 4 つの大メニューを均等に並べて常に出し、子はその下にすだれで下ろす
+   （起案者の指示 2026-10-13・dec-phone-nav-four）。絵記号は大メニューにだけ付ける。
+   いまいる組は薄いえんじで塗り、下線は使わない（ロゴと題字の毛糸の線と混ざらないように） */
+.side .pset,.side .pnav,.side .psud{display:none}
+@media(max-width:820px){
+ .side .navrow{display:none}
+ .side .pset{display:flex;flex:none;width:40px;height:40px;padding:0;align-items:center;justify-content:center}
+ .side .pset svg.ico{width:20px;height:20px}
+ .side .pnav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;width:100%}
+ .side .pm{min-height:54px;padding:5px 0 4px;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:3px;border:0;border-radius:8px;background:transparent;color:var(--ink);
+  font:inherit;font-size:12.5px;font-weight:500;cursor:pointer}
+ .side .pm svg.ico{width:22px;height:22px}
+ .side .pm .pl{display:flex;align-items:center;gap:2px}
+ .side .pm .pl svg.cv{width:9px;height:9px;transform:rotate(90deg);transition:transform .15s}
+ .side .pm[aria-expanded=true]{background:var(--plane)}
+ .side .pm[aria-expanded=true] .pl svg.cv{transform:rotate(-90deg)}
+ .side .pm.on{background:#f0e6e8;color:var(--acc);font-weight:700}
+ .side .pm:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
+ .side .psud{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px 6px;width:100%;
+  padding:4px;box-sizing:border-box;background:var(--plane);border-radius:8px}
+ .side .psud[hidden]{display:none}
+ .side .psud a{min-height:44px;display:flex;align-items:center;gap:8px;padding:0 10px;font-size:14px;font-weight:400}
+ .side .psud a i{width:6px;height:6px;border-radius:3px;flex:none}
+ .side .psud a.on{background:var(--surf);font-weight:700}
+ .side .psud a.on i{background:var(--acc)}}
+@media (prefers-reduced-motion:reduce){.side .pm .pl svg.cv{transition:none}}
+
+/* ---- おすすめの 1 枚を詰める（app.js の compactTickets・dec-recommend-compact-poster）。
+   切り取り線の左にポスター、右に 日付・公演名・団体と劇場・発売。その下に全幅で 出演 5 人・
+   あらすじの最初の 1 文・おすすめ理由（4 本目からは畳む）・回答の帯・「くわしく」 */
+.ticket.cmp{flex-wrap:wrap}
+.ticket.cmp .stub{display:none}
+.ticket.cmp::after{display:none}
+.ticket.cmp::before{left:101px}
+.ticket.cmp>.pcol{flex:none;position:relative;box-sizing:content-box;width:84px;padding:12px 10px 10px 12px;display:flex;flex-direction:column;gap:8px}
+.ticket.cmp>.pcol .pwrap,.ticket.cmp>.pcol .noposter{width:84px;height:118px}
+.ticket.cmp>.pcol .poster{width:100%;height:100%}
+.ticket.cmp>.pcol .rk{position:absolute;left:6px;top:6px;z-index:1;min-width:22px;height:22px;padding:0 5px;
+ box-sizing:border-box;display:flex;align-items:center;justify-content:center;background:var(--ink);color:var(--surf);
+ font-size:11px;font-weight:700;letter-spacing:0}
+.ticket.cmp>.pcol .wax.rk{background:none}
+.ticket.cmp .noposter{box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;
+ padding:8px 6px;border:1px solid var(--grid);background:var(--plane);font-size:11.5px;line-height:1.35;overflow:hidden}
+.ticket.cmp .noposter span{font-size:9.5px;color:var(--mute)}
+.ticket.cmp .perf{margin:10px 0 0}
+.ticket.cmp .body{flex:1 1 0;min-width:0;padding:12px 14px 6px 12px}
+.ticket.cmp .cdate{display:flex;align-items:baseline;gap:6px;font-size:12px;color:var(--ink2)}
+.ticket.cmp .cdate b{font-size:15px;color:var(--ink);font-variant-numeric:tabular-nums}
+.ticket.cmp .main h3{margin:2px 0 4px}
+.ticket.cmp .sale{margin:6px 0 0}
+.ticket.cmp .cfoot{flex:0 0 100%;min-width:0;box-sizing:border-box;padding:4px 14px 12px}
+.ticket.cmp .leadbox{display:flex;flex-direction:column;gap:4px;margin:0 0 10px;font-size:12.5px;line-height:1.65}
+.ticket.cmp .leadbox p{margin:0}
+.ticket.cmp .lcast .cl{color:var(--ink2);margin-right:6px}
+.ticket.cmp .lcast .n{color:var(--mute)}
+.ticket.cmp .lsyn{color:var(--ink2)}
+.ticket.cmp .rs{font-size:12.5px;line-height:1.55;padding:2px 0}
+.ticket.cmp .rs .n{font-size:11px}
+.ticket.cmp .rs .src{font-size:10px}
+.ticket.cmp .why.fold>li:nth-child(n+4){display:none}
+.ticket.cmp .whyfold{min-height:32px;padding:0;border:0;background:none;color:var(--ink);font:inherit;font-size:12px;
+ text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.ticket.cmp .act{margin-top:10px}
+.ticket.cmp .more{margin-top:10px;border-top:1px solid var(--grid)}
+.ticket.cmp .more>summary{min-height:40px;display:flex;align-items:center;gap:8px;list-style:none;cursor:pointer;
+ font-size:13px;font-weight:700}
+.ticket.cmp .more>summary::-webkit-details-marker{display:none}
+.ticket.cmp .more>summary::before{content:"";flex:none;width:6px;height:6px;border-right:1.5px solid currentColor;
+ border-bottom:1.5px solid currentColor;transform:translateY(-2px) rotate(45deg);transition:transform .15s}
+.ticket.cmp .more[open]>summary::before{transform:translateY(1px) rotate(-135deg)}
+.ticket.cmp .more>summary b{flex:none;white-space:nowrap;font-weight:700}
+.ticket.cmp .more>summary span{min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;
+ font-size:11.5px;font-weight:400;color:var(--mute)}
+.ticket.cmp .morebody{display:flex;flex-direction:column;gap:10px;padding:2px 0 6px}
+.ticket.cmp .morebody .sitebtn{align-self:flex-start}
+@media(min-width:641px){
+ .ticket.cmp>.pcol{width:112px;padding:16px 12px 12px 16px}
+ .ticket.cmp>.pcol .pwrap,.ticket.cmp>.pcol .noposter{width:112px;height:158px}
+ .ticket.cmp::before{left:135px}
+ .ticket.cmp .body{padding:16px 22px 6px 16px}
+ .ticket.cmp .cfoot{padding:4px 22px 16px}}
+@media (prefers-reduced-motion:reduce){.ticket.cmp .more>summary::before{transition:none}}

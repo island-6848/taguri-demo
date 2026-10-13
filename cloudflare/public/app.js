@@ -48,6 +48,8 @@ const NAV = [[null, "おすすめ", "ticket", [["/recommend", "今週のおす�
 
 // --- 絵記号(icons.py の P/ALIAS をそのまま) --------------------------------
 const ICON_P = {"ticket": "M3 9a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2 2 2 0 0 0 0 6 2 2 0 0 1-2 2H5a2 2 0 0 1-2-2 2 2 0 0 0 0-6zM11 7v10", "star": "M12 3.8l2.5 5.1 5.6.8-4 3.9 1 5.6-5.1-2.7-5.1 2.7 1-5.6-4-3.9 5.6-.8z", "inbox": "M3 12h5l1.5 2.5h5L16 12h5M3 12l3-7h12l3 7v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z", "chart": "M3 20h18M6.5 20v-5M11.5 20V6M16.5 20v-9", "search": "M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM16.2 16.2 21 21", "download": "M12 3v12m0 0 4-4m-4 4-4-4M4 20h16", "mail": "M3 6h18v12H3zM3 6.5l9 6.5 9-6.5", "plus": "M12 5v14M5 12h14", "clock": "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7.5V12l3.5 2", "pencil": "M4 20h4L18 10l-4-4L4 16zM13.5 6.5l4 4", "tag": "M4 12.5 12.5 4H20v7.5L11.5 20zM16.4 7.6h.01", "image": "M3 5h18v14H3zM3 15.5l5-4 4 3 3-2.5 6 4.5M8 9.5h.01", "user": "M12 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM4 20c0-3.3 3.6-5 8-5s8 1.7 8 5", "building": "M4 20V6l6-2.5V20M10 20h10V10.5L10 7M13.5 12h.01M13.5 16h.01M17 12h.01M17 16h.01", "book": "M4 5h7v15H4zM13 5h7v15h-7M11 5v15", "light": "M12 3v3.5M12 17.5V21M3 12h3.5M17.5 12H21M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18", "eye": "M2.5 12S6 6 12 6s9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6zM12 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z", "check": "M4.5 12.5 9.5 18 20 6", "flag": "M5 21V4h13l-2.5 4.5L18 13H5", "calendar": "M4 6.5h16V20H4zM4 10.5h16M8.5 3.5v4M15.5 3.5v4", "chevron": "M9.5 5.5 16 12l-6.5 6.5", "network": "M6 18a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM18 18a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM6.9 15.3 10.6 9M17.1 15.3 13.4 9M8 17.3h8", "gear": "M10.6 3.1 13.4 3.1 15.2 6.5 19.0 6.3 20.4 8.8 18.4 12.0 20.4 15.2 19.0 17.7 15.2 17.5 13.4 20.9 10.6 20.9 8.8 17.5 5.0 17.7 3.6 15.2 5.6 12.0 3.6 8.8 5.0 6.3 8.8 6.5ZM12 9.8a2.2 2.2 0 1 0 0 4.4 2.2 2.2 0 0 0 0-4.4z", "link": "M14 4h6v6M20 4 10 14M18 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h5"};
+// スマホ幅の 4 つの大メニューの絵記号（dec-phone-nav-four）: 毛糸玉・判子・帳面
+Object.assign(ICON_P, {"yarn": "M11 4a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15zM5.2 7.6c4.6.8 8.6 4.6 9.6 10.6M3.7 11.3c4.4.4 7.7 3.4 8.4 7.6M8.6 4.4c4.6 1.4 8.3 5.4 9.5 10M16.3 16.3c1.8 1.6 3.4 2.6 5.2 2.9", "stamp": "M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16zM12 7.8a4.2 4.2 0 1 0 0 8.4 4.2 4.2 0 0 0 0-8.4z", "notebook": "M5 4.5h11.5a2 2 0 0 1 2 2V20H7a2 2 0 0 1-2-2zM5 17.5a2 2 0 0 1 2-2h11.5M9 8.5h6"});
 const ICON_ALIAS = {"おすすめ": "ticket", "お気に入り": "star", "登録": "inbox", "記録": "chart", "探す": "search", "書き出す": "download", "暦": "calendar"};
 function ico(name, size, cls) {
   size = size || 16; cls = cls || "";
@@ -94,6 +96,35 @@ function renderNav() {
   ).join("") + "</div>";
 }
 
+// **スマホ幅の行き先 ── 4 つの大メニューを均等に並べて常に出し、子はその下にすだれで下ろす。**
+// （起案者の指示 2026-10-13「スマホ版はメインの４つの大きいメニューは固定で表示して、それより子の
+// メニューは各メニューの下にすだれで出てくるように」「大きい４つのメニューは均等割り付け」
+// 「４つの大きいメニューにアイコンをつけて」）。パソコン幅では今までどおり左の帯（NAV）を使う。
+// 探すは帯の検索窓、設定は右上の歯車から入る。
+const PNAV = [
+  ["rec", "おすすめ", "yarn", [["/recommend", "今週のおすすめ"], ["/recommend/reminder", "開幕リマインド"], ["/recommend/interest", "興味あり"], ["/recommend/favourites", "お気に入り"]]],
+  ["plan", "予定", "calendar", [["/calendar", "公演カレンダー"], ["/tickets", "購入済み公演"]]],
+  ["rate", "評価", "stamp", [["/rate", "評価一覧"], ["/rate/unrated", "未評価"], ["/rate/notes", "感想"]]],
+  ["rec2", "記録", "notebook", [["/records/works", "日記帳"], ["/records", "眺める"], ["/records/trace", "たどる"], ["/records/chronicle", "観劇史年表"], ["/register", "公演情報の登録"]]],
+];
+function renderPNav() {
+  return '<a class="pset" href="/settings" data-path="/settings" aria-label="設定">' + ico("gear", 20) + "</a>"
+    + '<div class="pnav">' + PNAV.map(([id, label, icon]) =>
+      '<button type="button" class="pm" data-pm="' + id + '" aria-expanded="false">' + ico(icon, 22)
+      + '<span class="pl">' + E(label) + ico("chevron", 9, "cv") + "</span></button>").join("") + "</div>"
+    + PNAV.map(([id, , , kids]) => '<div class="psud" data-psud="' + id + '" hidden>'
+      + kids.map(([p, t]) => '<a href="' + p + '" data-path="' + p + '"><i aria-hidden="true"></i>' + E(t) + "</a>").join("")
+      + "</div>").join("");
+}
+function openPSud(id) {
+  document.querySelectorAll(".side .pm").forEach(b => b.setAttribute("aria-expanded", b.dataset.pm === id ? "true" : "false"));
+  document.querySelectorAll(".side .psud").forEach(d => { d.hidden = d.dataset.psud !== id; });
+}
+document.addEventListener("click", ev => {
+  const b = ev.target.closest(".side .pm");
+  if (b) openPSud(b.getAttribute("aria-expanded") === "true" ? null : b.dataset.pm);
+});
+
 // **開閉状態はlocalStorageに覚える**(元のNAV_FOLD_JSと同じ挙動)。
 // **ただしスマホ幅では「開いた」を覚えから戻さない**(起案者の指摘・2026-10-07
 // 「スマホから見たらメニューが幅取ってる」)。帯が本文の上に載る幅では、開いた束が
@@ -119,6 +150,10 @@ function crumbsFor(path, title) {
   return [["たぐり", "/"], [title, null]];
 }
 function updateNavActive(path) {
+  // スマホ幅の大メニュー: いまいる組を塗り、開いていたすだれは画面を移ったら閉じる
+  const here = PNAV.find(m => m[3].some(k => k[0] === path));
+  document.querySelectorAll(".side .pm").forEach(b => b.classList.toggle("on", !!here && b.dataset.pm === here[0]));
+  openPSud(null);
   document.querySelectorAll(".side a[data-path]").forEach(a => {
     const on = a.dataset.path === path;
     a.classList.toggle("on", on);
@@ -453,6 +488,7 @@ function applyDemoRestrictions(root) {
 
 function renderScreen(el, activePath, d, exposureSource) {
   el.innerHTML = d.body_html;
+  compactTickets(el);
   if (window.TaguriExposure) TaguriExposure.start(el, exposureSource || "network", async (path, body) => {
     const r = await fetch(API_BASE + path, {method: "POST", credentials: "include", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
     const result = await r.json(); return r.ok && result.ok === true;
@@ -605,7 +641,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   new MutationObserver(() => applyDemoRestrictions(contentEl()))
     .observe(contentEl(), {childList: true, subtree: true});
-  document.querySelector(".side").insertAdjacentHTML("beforeend", renderNav());
+  document.querySelector(".side").insertAdjacentHTML("beforeend", renderNav() + renderPNav());
   restoreNavFold();
   const path = (location.pathname.slice(REPO_BASE.length) || "/");
   loadScreen(path, location.search.replace(/^\?/, ""));
@@ -638,6 +674,120 @@ function fixupSynClamp(root) {
   });
 }
 fixupSynClamp(document);
+
+// **おすすめの 1 枚を詰める**（起案者の指示 2026-10-13「縦スクロールになりすぎないように」
+// 「折りたたむとき、出演者順に５人とあらすじ（最初の１文くらい）が表示されるように」
+// 「おすすめ理由は全部表示（ただし多すぎるときは折りたためるように）」・dec-recommend-compact-poster）。
+// 閉じた 1 枚に出すのは ポスター・初日・公演名・団体と劇場・発売・出演 5 人・あらすじの最初の 1 文・
+// おすすめ理由の全部（4 本目からは畳む）・回答の帯。会期と料金・日程・出演と作り手の全員・
+// あらすじの全文と入れ口・公式サイトは「くわしく」の中へ移す。**画面の HTML は Render の
+// Python が組むので、ここで組み替える**（Render を起こし直さずにデモとサービスの両方へ届く）。
+const WHY_SHOWN = 3, CAST_LEAD = 5;
+function firstSentence(t) {
+  t = (t || "").replace(/\s+/g, " ").trim();
+  const m = t.match(/^.*?[。！？!?][」』）)]*/);
+  let s = m ? m[0] : t;
+  if (s.length > 90) s = s.slice(0, 88) + "…";
+  return s.length < t.length && !s.endsWith("…") ? s + "…" : s;
+}
+function compactTickets(root) {
+  root.querySelectorAll("article.ticket.recommend, article.ticket.interest").forEach(t => {
+    if (t.classList.contains("cmp")) return;
+    const main = t.querySelector(".main");
+    if (!main) return;
+    t.classList.add("cmp");
+    const more = document.createElement("details");
+    more.className = "more";
+    more.innerHTML = "<summary><b>くわしく</b><span>会期・料金・出演の全員・あらすじの全文・公式サイト</span></summary>";
+    const box = document.createElement("div");
+    box.className = "morebody";
+    more.appendChild(box);
+    const lead = document.createElement("div");
+    lead.className = "leadbox";
+    // 出演: 出演順に 5 人まで
+    const cv = t.querySelector(".cast .cr .cv");
+    if (cv && cv.closest(".cr").querySelector(".cl")?.textContent === "出演") {
+      const c = cv.cloneNode(true);
+      c.querySelectorAll("button").forEach(b => b.remove());
+      const names = c.textContent.split("、").map(x => x.trim()).filter(Boolean);
+      const p = document.createElement("p");
+      p.className = "lcast";
+      p.innerHTML = '<span class="cl">出演</span>' + E(names.slice(0, CAST_LEAD).join("、"))
+        + (names.length > CAST_LEAD ? '<span class="n">　ほか ' + (names.length - CAST_LEAD) + " 名</span>" : "");
+      lead.appendChild(p);
+    }
+    // あらすじ: 最初の 1 文
+    const txt = t.querySelector(".syn .txt");
+    if (txt && txt.textContent.trim()) {
+      const p = document.createElement("p");
+      p.className = "lsyn";
+      p.textContent = firstSentence(txt.textContent);
+      lead.appendChild(p);
+    }
+    const sale = main.querySelector(".sale");
+    (sale || main.querySelector(".meta")).after(lead);
+    // おすすめ理由: 全部出す。WHY_SHOWN 本を超えたら残りを畳む
+    const ul = main.querySelector("ul.why:not(.top)");
+    const lis = ul ? ul.querySelectorAll(":scope > li") : [];
+    if (ul && lis.length > WHY_SHOWN) {
+      ul.classList.add("fold");
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "whyfold";
+      const label = () => ul.classList.contains("fold") ? "ほか " + (lis.length - WHY_SHOWN) + " 本の理由を見る" : "理由をたたむ";
+      b.textContent = label();
+      b.setAttribute("aria-expanded", "false");
+      b.addEventListener("click", () => {
+        ul.classList.toggle("fold");
+        b.textContent = label();
+        b.setAttribute("aria-expanded", ul.classList.contains("fold") ? "false" : "true");
+      });
+      ul.after(b);
+    }
+    // くわしく: 会期と料金・日程・出演と作り手・あらすじ（全文と入れ口）・公式サイト
+    [".when", ".tourfull", ".cast", ".syn", ".nolink"].forEach(sel => {
+      const n = main.querySelector(":scope > " + sel) || main.querySelector(sel);
+      if (n && !n.closest(".leadbox")) box.appendChild(n);
+    });
+    // 「くわしく」の中は全部を読む場所なので、あらすじと出演者は最初から開いておく
+    box.querySelectorAll(".syn, .cast").forEach(n => n.classList.add("open"));
+    const site = t.querySelector(".pcol .sitebtn");
+    if (site) box.appendChild(site);
+    const act = main.querySelector(".act");
+    if (act) act.after(more); else main.appendChild(more);
+    // 耳（日付の札）の代わりに、ポスターを切り取り線の左に立てる。順位はポスターの左上、
+    // 日付は公演名の上に移す。ポスターの無い公演は、灰の地に公演名を置く
+    const stub = t.querySelector(".stub"), perf = t.querySelector(".perf");
+    let pcol = t.querySelector(".body > .pcol");
+    if (!pcol) { pcol = document.createElement("div"); pcol.className = "pcol"; }
+    if (!pcol.querySelector(".pwrap")) {
+      const np = document.createElement("div");
+      np.className = "noposter";
+      np.innerHTML = "<b>" + E(main.querySelector("h3")?.textContent || "") + "</b><span>ポスターなし</span>";
+      pcol.prepend(np);
+    }
+    if (stub) {
+      const mark = stub.querySelector(".sn, .wax");
+      if (mark) { const rk = mark.cloneNode(true); rk.classList.add("rk"); pcol.prepend(rk); }
+      const sd = stub.querySelector(".sd");
+      if (sd) {
+        const cd = document.createElement("div");
+        cd.className = "cdate";
+        cd.innerHTML = "<b>" + E(sd.querySelector("b")?.textContent || "") + "</b>" + E(sd.querySelector(".sk")?.textContent || "");
+        main.prepend(cd);
+      }
+    }
+    if (perf) perf.before(pcol); else t.prepend(pcol);
+    // 出演・あらすじ・理由・回答の帯・くわしくは、ポスターの下に全幅で並べる（電話の幅でも 1 行に収める）
+    const foot = document.createElement("div");
+    foot.className = "cfoot";
+    foot.appendChild(lead);
+    let n = main.querySelector(":scope > .whyh:not(.top)") || main.querySelector(":scope > .act") || more;
+    while (n) { const nx = n.nextSibling; foot.appendChild(n); n = nx; }
+    t.appendChild(foot);
+    fixupSynClamp(box);
+  });
+}
 
 async function post(path, body, group, done) {
   const said = group ? group.querySelector(".said") : null;
@@ -768,6 +918,7 @@ document.addEventListener("click", ev => {
           const all = document.querySelectorAll(".ticket.recommend");
           const box = document.createElement("div");
           box.innerHTML = d.fill.html;
+          compactTickets(box);
           const fresh = box.firstElementChild;
           if (fresh && all.length) {
             fresh.classList.add("filled");

@@ -24,3 +24,5 @@ google/fonts の ofl/ に下の 6 書体の OFL.txt があることを確かめ�
 - Zen Maru Gothic・Kiwi Maru ── 丸み。やさしいが「スタイリッシュに」という方針からは外れる
 デザイン案キャンバスに「題字の書体くらべ」の画板を足し、いまの Zen Old Mincho と並べた。
 分からないこと: Zen Kaku Gothic Antique を JIS 第 1 水準に絞ったときの重さはまだ測っていない（Zen Kaku Gothic New と同程度の 0.45 MB 前後と見込むが見積もり）。
+
+追記（2026-10-13）: 題字に Zen Kaku Gothic Antique Bold を当てて本番に反映した。各画面の題字に使う字（app.py などの layout()・<h1> から拾った漢字 75 字と、かな・英数・記号）だけに pyftsubset で絞った woff2 が 43,904 バイト。web/assets/fonts/zkga-title.woff2（OFL の本文を OFL-ZenKakuGothicAntique.txt として同じ場所に置いた）を自分のサイトから配る。外部から読み込まない守りは保つ。絞った字に無い字は端末の書体で出る。

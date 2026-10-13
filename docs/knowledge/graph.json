@@ -657,7 +657,7 @@
   {
    "id": "dec-phone-nav-four",
    "type": "decision",
-   "status": "proposed",
+   "status": "adopted",
    "date": "2026-10-13",
    "title": "スマホの見出し ── 4 つの大メニューを均等割りで常に出し、子メニューはすだれで出す",
    "sources": [
@@ -693,9 +693,9 @@
   {
    "id": "dec-recommend-compact-poster",
    "type": "decision",
-   "status": "proposed",
+   "status": "adopted",
    "date": "2026-10-13",
-   "title": "スマホの「今週のおすすめ」── ポスターを半券の左に置き、1 件を詰めて、くわしくはすだれで開く",
+   "title": "「今週のおすすめ」── ポスターを切り取り線の左に置き、1 件を詰めて、くわしくは畳む（本番に反映）",
    "sources": [
     "https://claude.ai/artifact/4o7QY23vNLcZF7wcrqVQg9",
     "tools/taguri/posters.py",
