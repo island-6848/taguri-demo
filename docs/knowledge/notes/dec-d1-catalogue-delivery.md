@@ -23,4 +23,5 @@ verifies:
 前回入れた行のハッシュを data/d1/delivered.json（state ブランチ）に持ち、変わった行だけ upsert する。消さない（記録が結び付いた公演の名前が消えないように）。wrangler が成功してから commit で控えを更新するので、失敗した分は次回まるごと入れ直す。
 書き込みは 1 行につき索引と合わせて 2 行と見積もり、1 日 6 万行を超えるなら入れる前に止める（D1 の無料枠 10 万行の残りは利用者の操作のため）。推薦の索引（build_recommend_index.py）は版が変わり、枠に収まるときだけ入れる。
 rec_meta に catalogue_scan・catalogue_delivered・catalogue_upcoming を書き、Worker の公開の /api/health が日付と件数だけを返す。catalog-age.yml はその URL を毎日見る（変数 TAGURI_HEALTH_URL は起案者が 2026-10-13 に入れた。日本時間 9:43 に動く）。
+Cloudflare の鍵（CLOUDFLARE_API_TOKEN・CLOUDFLARE_ACCOUNT_ID）は taguri-crawler の Secrets に入っている（起案者が 2026-10-13 に確かめた）。
 テスト（cloudflare/test/test_deliver_catalogue.py・worker.test.js）は通ったが、本番の D1 にはまだ一度も入れていない。初回の結果で q-catalog-to-worker を閉じる。

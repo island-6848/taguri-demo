@@ -15,7 +15,7 @@
 ## 移したあとの形
 
 - `/api/screen/*` と `POST /api/*` をWorkerが自分で答える。保存先はD1、利用者はログインしたアカウント（`users.id`）。
-- 公演カタログなど利用者によらないものは、EC2のバッチで作ってD1に入れる（推薦の索引 `rec_*` と同じやり方）。Workerは表示に要る行だけを読む。
+- 公演カタログなど利用者によらないものは、非公開リポジトリ taguri-crawler の毎日の取得（GitHub Actions）で作ってD1に入れる（`cloudflare/scripts/deliver_catalogue.py`、〔dec-d1-catalogue-delivery〕）。EC2 は無い（〔no-ec2〕）。Workerは表示に要る行だけを読む。
 - Workers無料枠（1回のCPU約10ms）に収めるため、重い計算は前もってバッチで済ませ、利用者ごとの結果は保存して使い回す（`rec_cache` と同じ）。
 
 ## 進め方
