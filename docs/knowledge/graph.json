@@ -1171,6 +1171,15 @@
    "verifies": []
   },
   {
+   "id": "q-aspects-ui",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "評価の画面に「気になった所」（任意・複数選択）のボタンを付けるか",
+   "sources": [],
+   "verifies": []
+  },
+  {
    "id": "q-catalog-source",
    "type": "question",
    "status": "open",
@@ -2954,6 +2963,16 @@
    "from": "python-workers-migration-state",
    "rel": "raises",
    "to": "q-d1-python-workers"
+  },
+  {
+   "from": "q-aspects-ui",
+   "rel": "depends_on",
+   "to": "reco-v2-index-compatible"
+  },
+  {
+   "from": "q-aspects-ui",
+   "rel": "affects",
+   "to": "migration-stage1-parity"
   },
   {
    "from": "q-catalog-source",
