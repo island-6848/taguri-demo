@@ -209,6 +209,51 @@ def evaluate_one(score, test, rng):
             "coverage": len(sc) / len(test), "auc_scored": auc_s}
 
 
+TEST_SIZE = 40
+
+
+def learning_curve(ratings, people, users, seed, methods=("B0_current", "graded"), shuffles=3):
+    """"The more you use it, the better", measured cleanly: per user and order,
+    the last TEST_SIZE ratings are a fixed test set, and only the number of
+    earlier ratings the method may use (k) changes. Returns, per method, the
+    mean AUC at each k and the share of users whose AUC rose from the smallest
+    to the largest k (and fell)."""
+    ks = [k for k in KS]
+    curves = {m: defaultdict(list) for m in methods}
+    rise = {m: [] for m in methods}
+    for u in users:
+        CURRENT["ratings"] = ratings[u]
+        items = sorted(ratings[u].items())
+        if len(items) < max(ks) + TEST_SIZE:
+            continue
+        per = {m: defaultdict(list) for m in methods}
+        for s in range(shuffles):
+            rng = random.Random(f"lc:{seed}:{u}:{s}")
+            order = items[:]
+            rng.shuffle(order)
+            test, train = order[-TEST_SIZE:], order[:-TEST_SIZE]
+            for k in ks:
+                for m in methods:
+                    res = evaluate_one(METHODS[m](train[:k], people), test, random.Random(f"lc:{seed}:{u}:{s}:t"))
+                    if res["auc_top"] is not None:
+                        per[m][k].append(res["auc_top"])
+        for m in methods:
+            if all(per[m][k] for k in ks):
+                vals = [statistics.fmean(per[m][k]) for k in ks]
+                for k, v in zip(ks, vals):
+                    curves[m][k].append(v)
+                rise[m].append(vals[-1] - vals[0])
+    out = {}
+    for m in methods:
+        d = rise[m]
+        out[m] = {"auc_by_k": {k: round(statistics.fmean(curves[m][k]), 4) for k in ks if curves[m][k]},
+                  "users": len(d),
+                  "rose": round(sum(x > 0 for x in d) / len(d), 3) if d else None,
+                  "fell": round(sum(x < 0 for x in d) / len(d), 3) if d else None,
+                  "mean_rise": round(statistics.fmean(d), 4) if d else None}
+    return out
+
+
 def run(ratings, people, users, seed, shuffles=3):
     out = {name: {k: defaultdict(list) for k in KS} for name in METHODS}
     per_user = defaultdict(lambda: defaultdict(list))     # (method, k) -> user -> values
@@ -302,6 +347,7 @@ def main() -> int:
     out, per_user = run(ratings, people, users, a.seed)
     result = summary(out, per_user)
     result["by_rater"] = by_rater(per_user, ratings, users)
+    result["learning_curve_fixed_test"] = learning_curve(ratings, people, users, a.seed)
     print(json.dumps(result, ensure_ascii=False, indent=1))
     return 0
 
