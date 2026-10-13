@@ -320,12 +320,39 @@
    "verifies": []
   },
   {
+   "id": "corich-robots-sitemap-only",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "CoRich の robots.txt は禁止を書いておらず、サイトマップを 2 つ示している",
+   "sources": [
+    "https://github.com/island-6848/taguri-crawler/actions/runs/38403367059（非公開）",
+    "https://stage.corich.jp/robots.txt"
+   ],
+   "verifies": [
+    "S24"
+   ]
+  },
+  {
    "id": "corich-robots-unchecked",
    "type": "finding",
-   "status": "unverified",
+   "status": "outdated",
    "date": "2026-10-12",
    "title": "取得元の実際の robots.txt はまだ読めていない",
    "sources": [],
+   "verifies": [
+    "S24"
+   ]
+  },
+  {
+   "id": "corich-search-waf-403",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "CoRich の検索ページは、サーバー手前のロードバランサーが 403 で断っている（公演ページは 200）",
+   "sources": [
+    "https://github.com/island-6848/taguri-crawler/actions/runs/38403367059（非公開）"
+   ],
    "verifies": [
     "S24"
    ]
@@ -721,6 +748,19 @@
    ]
   },
   {
+   "id": "gha-first-run-corich-search-403",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "GitHub Actions からは CoRich の公演一覧の検索（/stage/search）が 403 で断られた",
+   "sources": [
+    "https://github.com/island-6848/taguri-crawler/actions/runs/38402020387（非公開）"
+   ],
+   "verifies": [
+    "S24"
+   ]
+  },
+  {
    "id": "gha-private-free-minutes",
    "type": "finding",
    "status": "confirmed",
@@ -1020,6 +1060,29 @@
    "verifies": [
     "S10",
     "S25"
+   ]
+  },
+  {
+   "id": "q-corich-search-refusal",
+   "type": "question",
+   "status": "answered",
+   "date": "2026-10-13",
+   "title": "CoRich の検索ページが断る理由と、代わりに公演一覧をどこから取るか",
+   "sources": [],
+   "verifies": [
+    "S11",
+    "S24"
+   ]
+  },
+  {
+   "id": "q-corich-sitemap",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "CoRich のサイトマップから、これからの公演を見つけられるか",
+   "sources": [],
+   "verifies": [
+    "S24"
    ]
   },
   {
@@ -1809,9 +1872,29 @@
    "to": "q-vm-host-choice"
   },
   {
+   "from": "corich-robots-sitemap-only",
+   "rel": "affects",
+   "to": "q-source-terms"
+  },
+  {
+   "from": "corich-robots-sitemap-only",
+   "rel": "supersedes",
+   "to": "corich-robots-unchecked"
+  },
+  {
    "from": "corich-robots-unchecked",
    "rel": "raises",
    "to": "q-source-terms"
+  },
+  {
+   "from": "corich-search-waf-403",
+   "rel": "answers",
+   "to": "q-corich-search-refusal"
+  },
+  {
+   "from": "corich-search-waf-403",
+   "rel": "affects",
+   "to": "dec-crawler-gha-private"
   },
   {
    "from": "crawler-state-between-runs",
@@ -2169,6 +2252,21 @@
    "to": "comp-catalog-pipeline"
   },
   {
+   "from": "gha-first-run-corich-search-403",
+   "rel": "affects",
+   "to": "q-crawler-repo"
+  },
+  {
+   "from": "gha-first-run-corich-search-403",
+   "rel": "raises",
+   "to": "q-corich-search-refusal"
+  },
+  {
+   "from": "gha-first-run-corich-search-403",
+   "rel": "affects",
+   "to": "dec-polite-crawling"
+  },
+  {
    "from": "gha-private-free-minutes",
    "rel": "affects",
    "to": "q-crawler-host"
@@ -2367,6 +2465,21 @@
    "from": "q-contact-email",
    "rel": "depends_on",
    "to": "dec-operator-name"
+  },
+  {
+   "from": "q-corich-search-refusal",
+   "rel": "depends_on",
+   "to": "gha-first-run-corich-search-403"
+  },
+  {
+   "from": "q-corich-search-refusal",
+   "rel": "affects",
+   "to": "q-source-terms"
+  },
+  {
+   "from": "q-corich-sitemap",
+   "rel": "depends_on",
+   "to": "corich-robots-sitemap-only"
   },
   {
    "from": "q-crawler-host",
