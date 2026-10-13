@@ -25,10 +25,18 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools" / "lib"))
 import taguri_state as STATE
 
-FORMAT = "taguri-state-backup-v1"
-FILES = ("auth/auth.db", "auth/auth_pepper.txt", "review/ratings.db")
+FORMAT = "taguri-state-backup-v2"
+LEGACY_FORMAT = "taguri-state-backup-v1"
+LEGACY_FILES = ("auth/auth.db", "auth/auth_pepper.txt", "review/ratings.db")
+FILES = LEGACY_FILES + ("recommendation_exposure.db",)
 SCHEMAS = {"auth/auth.db": {"users": {"user_id"}, "sessions": {"session_token", "user_id"}},
-           "review/ratings.db": {"works": {"user_id", "work_key"}}}
+           "review/ratings.db": {"works": {"user_id", "work_key"}},
+           "recommendation_exposure.db": {
+               "recommendation_presentations": {"presentation_id", "user_id"},
+               "recommendation_candidates": {"presentation_id", "stage_id"},
+               "recommendation_fetches": {"presentation_id", "user_id"},
+               "recommendation_visits": {"presentation_id", "user_id"},
+               "recommendation_contacts": {"presentation_id", "user_id"}}}
 
 
 class BackupError(Exception):
@@ -133,11 +141,12 @@ def backup_state(output: Path, *, server_stopped: bool = False) -> None:
     if not server_stopped:
         raise BackupError("stop all writers and acknowledge server-stopped")
     target = _destination(Path(output), allow_empty=False)
-    sources = (STATE.auth_path(), STATE.pepper_path(), STATE.ratings_path())
+    sources = (STATE.auth_path(), STATE.pepper_path(), STATE.ratings_path(), STATE.exposure_path())
     _separate(target, tuple(path.parent for path in sources))
     _key(sources[1])
     _database(sources[0], "auth/auth.db")
     _database(sources[2], "review/ratings.db")
+    _database(sources[3], "recommendation_exposure.db")
     staging = Path(tempfile.mkdtemp(prefix=".taguri-backup-", dir=target.parent))
     try:
         for relative, source in zip(FILES, sources):
@@ -170,51 +179,61 @@ def backup_state(output: Path, *, server_stopped: bool = False) -> None:
             shutil.rmtree(staging)
 
 
-def _validate_snapshot(source: Path) -> dict:
+def _validate_snapshot(source: Path, *, allow_legacy_without_exposure: bool = False) -> dict:
     if not source.is_absolute() or source.is_symlink() or not source.is_dir():
         raise BackupError("backup directory is invalid")
-    # Exactly the known files; links and unexpected WAL/sidecar data are rejected.
-    expected = set(FILES) | {"manifest.json", "auth", "review"}
-    entries = list(source.rglob("*"))
-    if any(path.is_symlink() for path in entries) or {str(path.relative_to(source)) for path in entries} != expected:
-        raise BackupError("backup contents are invalid")
     path = source / "manifest.json"
     _file(path)
     if path.stat().st_size > 64 * 1024:
         raise BackupError("backup manifest is invalid")
     manifest = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(manifest, dict) or manifest.get("format") != FORMAT or set(manifest.get("files", {})) != set(FILES):
+    if not isinstance(manifest, dict):
         raise BackupError("backup manifest is invalid")
-    for relative in FILES:
+    if manifest.get("format") == FORMAT:
+        files = FILES
+    elif manifest.get("format") == LEGACY_FORMAT and allow_legacy_without_exposure:
+        files = LEGACY_FILES
+    else:
+        raise BackupError("backup format is unsupported or lacks exposure data")
+    expected = set(files) | {"manifest.json", "auth", "review"}
+    entries = list(source.rglob("*"))
+    if any(p.is_symlink() for p in entries) or {str(p.relative_to(source)) for p in entries} != expected:
+        raise BackupError("backup contents are invalid")
+    if set(manifest.get("files", {})) != set(files):
+        raise BackupError("backup manifest is invalid")
+    for relative in files:
         _file(source / relative)
         if manifest["files"][relative] != _digest(source / relative):
             raise BackupError("backup checksum check failed")
     _key(source / "auth" / "auth_pepper.txt")
-    for relative in SCHEMAS:
-        _database(source / relative, relative)
+    for relative in files:
+        if relative in SCHEMAS:
+            _database(source / relative, relative)
     return manifest["files"]
 
 
-def restore_state(backup: Path, target: Path, *, server_stopped: bool = False) -> None:
+def restore_state(backup: Path, target: Path, *, server_stopped: bool = False,
+                  allow_legacy_without_exposure: bool = False) -> None:
     """Restore to a nonexistent or empty directory. Never overwrite live state."""
     if not server_stopped:
         raise BackupError("stop all writers and acknowledge server-stopped")
     source = Path(backup)
     destination = _destination(Path(target), allow_empty=True)
     _separate(destination, (source,))
-    expected = _validate_snapshot(source)
+    expected = _validate_snapshot(source, allow_legacy_without_exposure=allow_legacy_without_exposure)
     staging = Path(tempfile.mkdtemp(prefix=".taguri-restore-", dir=destination.parent))
     try:
-        for relative in FILES:
+        for relative in expected:
             path = staging / relative
             path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
             shutil.copyfile(source / relative, path)
             _sync_file(path)
         _key(staging / "auth" / "auth_pepper.txt")
-        for relative in SCHEMAS:
-            _database(staging / relative, relative)
+        for relative in expected:
+            if relative in SCHEMAS:
+                _database(staging / relative, relative)
         # Check copied bytes against the validated snapshot, including its key.
-        for relative in FILES:
+        for relative in expected:
             if _digest(staging / relative) != expected[relative]:
                 raise BackupError("restored checksum check failed")
         _publish(staging, destination, allow_empty=True)
@@ -241,12 +260,14 @@ def main(argv: list[str] | None = None) -> int:
         restore.add_argument("--backup", type=Path, required=True)
         restore.add_argument("--target", type=Path, required=True)
         restore.add_argument("--server-stopped", action="store_true")
+        restore.add_argument("--allow-legacy-without-exposure", action="store_true")
         args = parser.parse_args(argv)
         operation = args.operation
         if operation == "backup":
             backup_state(args.output, server_stopped=args.server_stopped)
         else:
-            restore_state(args.backup, args.target, server_stopped=args.server_stopped)
+            restore_state(args.backup, args.target, server_stopped=args.server_stopped,
+                          allow_legacy_without_exposure=args.allow_legacy_without_exposure)
     except Exception:
         print(json.dumps({"event": "state_snapshot", "operation": operation, "outcome": "failed"}), flush=True)
         return 1

@@ -309,6 +309,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
         """
         if self.server.cors_origin:                                  # type: ignore[attr-defined]
             same_site = "SameSite=None; Secure"
+        elif self.server.public:
+            same_site = "SameSite=Lax; Secure"
         else:
             same_site = "SameSite=Lax"
         return {"Set-Cookie": f"{SESSION_COOKIE}={token}; Path=/; HttpOnly; {same_site}; "
@@ -385,7 +387,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
         if path == "/api/health":
             # No registration, cookie parsing, file paths or user data.
-            self._json(200, {"ok": True, "version": "state-storage-v1"})
+            self._json(200, {"ok": True, "version": "state-storage-v1",
+                             "export_scope": "authenticated-user" if srv.public else "local",
+                             "public_zip": False})
             return
 
         if path in ("/api/catalog/favourite-names", "/api/catalog/search-requests"):
@@ -482,6 +486,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 and not path.startswith("/img/") \
                 and not path.startswith("/api/screen/"):
             self._send(404, b"not found", "text/plain; charset=utf-8")
+            return
+        if srv.public and path == "/data.zip":
+            self._send(403, b"shared archive is unavailable", "text/plain; charset=utf-8")
+            return
+        if srv.public and path == "/export.json" and self._session_user_id() is None:
+            self._send(403, b"authenticated session required", "text/plain; charset=utf-8")
             return
         if not self._tok(query):
             self._send(403, b"token mismatch", "text/plain; charset=utf-8")
@@ -691,7 +701,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return
         if path == "/export.json":
             # **持ち出しはそのまま渡す。** トークンの置き換えはしない（HTML ではない）
-            body = json.dumps(APP.export_payload(), ensure_ascii=False, indent=1).encode()
+            body = json.dumps(APP.export_payload(self.user_id if srv.public else None), ensure_ascii=False, indent=1).encode()
             self._send(200, body, "application/json; charset=utf-8",
                        {"Content-Disposition": 'attachment; filename="taguri-export.json"'})
             return
@@ -1087,10 +1097,10 @@ class Server(http.server.ThreadingHTTPServer):
         self.exposure_lock = threading.Lock()
         self.exposure = None
         try:
-            exposure_root = STATE.state_dir() or ROOT / "state"
-            exposure_path = Path(os.environ.get("TAGURI_EXPOSURE_DB", str(exposure_root / "recommendation_exposure.db")))
+            exposure_path = STATE.exposure_path()
             exposure_path.parent.mkdir(parents=True, exist_ok=True)
             self.exposure_con = sqlite3.connect(exposure_path, check_same_thread=False, timeout=2)
+            exposure_path.chmod(0o600)
             self.exposure = EX.Store(self.exposure_con)
         except (OSError, sqlite3.Error):
             pass  # Telemetry must not prevent startup or recommendations.
@@ -2244,4 +2254,5 @@ if __name__ == "__main__":
     # `_harden_permissions()` が先に umask を絞っているが、単独起動ではそれが効いていない
     os.umask(0o077)
     print(serve(a.label, port=a.port))
+
 

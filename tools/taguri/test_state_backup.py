@@ -19,6 +19,7 @@ import state_backup as B
 import taguri_state as S
 import auth as A
 import rate_performances as R
+import recommendation_exposure as EX
 
 
 class SnapshotTests(unittest.TestCase):
@@ -48,6 +49,9 @@ class SnapshotTests(unittest.TestCase):
             # Latest releases can introduce tables; snapshots must retain them.
             con.execute('CREATE TABLE future_schema(value TEXT)')
             con.execute("INSERT INTO future_schema VALUES('schema survives')")
+        with sqlite3.connect(S.exposure_path()) as exposure:
+            EX.Store(exposure)
+            exposure.execute("INSERT INTO recommendation_presentations VALUES('presentation','snapshot-user','now','[]','v1','recommend','current')")
         self.addCleanup(self.stack.close)
 
     def backup(self):
@@ -58,6 +62,47 @@ class SnapshotTests(unittest.TestCase):
         data = json.loads(path.read_text())
         data['files'][relative] = B._digest(self.snapshot / relative)
         path.write_text(json.dumps(data))
+
+    def test_legacy_v1_requires_explicit_override(self):
+        self.backup()
+        (self.snapshot / 'recommendation_exposure.db').unlink()
+        manifest = json.loads((self.snapshot / 'manifest.json').read_text())
+        manifest['format'] = B.LEGACY_FORMAT
+        del manifest['files']['recommendation_exposure.db']
+        (self.snapshot / 'manifest.json').write_text(json.dumps(manifest))
+        with self.assertRaises(B.BackupError):
+            B.restore_state(self.snapshot, self.restored, server_stopped=True)
+        B.restore_state(self.snapshot, self.restored, server_stopped=True, allow_legacy_without_exposure=True)
+        self.assertTrue((self.restored / 'auth/auth.db').exists())
+        self.assertFalse((self.restored / 'recommendation_exposure.db').exists())
+        self.assertEqual(B.main(['restore', '--backup', str(self.snapshot), '--target', str(self.tmp / 'cli-v1'), '--server-stopped', '--allow-legacy-without-exposure']), 0)
+
+    def test_exposure_committed_wal_survives_snapshot(self):
+        con = sqlite3.connect(S.exposure_path())
+        self.addCleanup(con.close)
+        con.execute('PRAGMA journal_mode=WAL')
+        con.execute('PRAGMA wal_autocheckpoint=0')
+        con.execute("INSERT INTO recommendation_presentations VALUES('wal-presentation','wal-user','now','[]','v1','recommend','current')")
+        con.commit()
+        self.backup()
+        with sqlite3.connect(self.snapshot / 'recommendation_exposure.db') as copied:
+            self.assertEqual(copied.execute("SELECT user_id FROM recommendation_presentations WHERE presentation_id='wal-presentation'").fetchone()[0], 'wal-user')
+            self.assertEqual(copied.execute('PRAGMA journal_mode').fetchone()[0], 'delete')
+
+    def test_exposure_required_and_corruption_rejected(self):
+        path = S.exposure_path()
+        before = path.read_bytes()
+        path.unlink()
+        with self.assertRaises(B.BackupError):
+            self.backup()
+        path.write_bytes(b'corrupt telemetry')
+        with self.assertRaises((sqlite3.Error, B.BackupError)):
+            self.backup()
+        path.write_bytes(before)
+        with sqlite3.connect(path) as con:
+            con.execute('DROP TABLE recommendation_contacts')
+        with self.assertRaises(B.BackupError):
+            self.backup()
 
     def test_requires_explicit_stopped_acknowledgement(self):
         with self.assertRaises(B.BackupError):
@@ -75,7 +120,7 @@ class SnapshotTests(unittest.TestCase):
             self.assertEqual(path.stat().st_mode & 0o777, 0o700 if path.is_dir() else 0o600)
         self.assertEqual(self.snapshot.stat().st_mode & 0o777, 0o700)
         manifest = json.loads((self.snapshot / 'manifest.json').read_text())
-        self.assertEqual(manifest['format'], 'taguri-state-backup-v1')
+        self.assertEqual(manifest['format'], 'taguri-state-backup-v2')
         self.assertEqual(set(manifest['files']), set(B.FILES))
         for relative in B.FILES:
             self.assertEqual(manifest['files'][relative], B._digest(self.snapshot / relative))
@@ -83,7 +128,7 @@ class SnapshotTests(unittest.TestCase):
     def test_real_auth_and_history_restore_in_fresh_process(self):
         self.backup()
         B.restore_state(self.snapshot, self.restored, server_stopped=True)
-        code = "import sys;sys.path[:0]=" + repr([str(ROOT / 'tools/lib'),str(ROOT / 'tools/taguri'),str(ROOT / 'tools/review')]) + ";import auth as a,rate_performances as r;code,uid,token=" + repr((self.code,self.uid,self.token)) + "; assert a.access_or_register(code)==(uid,False);assert a.resolve_session(token)==uid;con=r.connect();w=r.read_works(con,user_id=uid)['work'];assert w['verdict']=='◎' and w['note_impression']=='PRIVATE-STORY';assert not r.read_works(con,user_id='another');assert con.execute('SELECT value FROM future_schema').fetchone()[0]=='schema survives';con.close()"
+        code = "import sys;sys.path[:0]=" + repr([str(ROOT / 'tools/lib'),str(ROOT / 'tools/taguri'),str(ROOT / 'tools/review')]) + ";import auth as a,rate_performances as r;code,uid,token=" + repr((self.code,self.uid,self.token)) + "; assert a.access_or_register(code)==(uid,False);assert a.resolve_session(token)==uid;con=r.connect();w=r.read_works(con,user_id=uid)['work'];assert w['verdict']=='◎' and w['note_impression']=='PRIVATE-STORY';assert not r.read_works(con,user_id='another');assert con.execute('SELECT value FROM future_schema').fetchone()[0]=='schema survives';con.close();import sqlite3,taguri_state as s;e=sqlite3.connect(s.exposure_path());assert e.execute('SELECT user_id FROM recommendation_presentations').fetchone()[0]=='snapshot-user';e.close()"
         env = dict(os.environ, TAGURI_STATE_DIR=str(self.restored))
         result = subprocess.run([sys.executable,'-c',code],env=env,capture_output=True,text=True)
         self.assertEqual(result.returncode,0,result.stderr)
