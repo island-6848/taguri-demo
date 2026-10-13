@@ -1,0 +1,9 @@
+node_modules/
+.wrangler/
+.dev.vars
+private-exports/
+*.sqlite*
+catalogue.sql
+backup.json
+
+__pycache__/

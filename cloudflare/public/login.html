@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer"><title>ログイン ― たぐり</title>
+<meta name="description" content="観た演劇の記録から、次に観たい公演を届けるアプリ。">
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/account.css">
+<link rel="stylesheet" href="/auth.css">
+</head>
+<body class="auth">
+<header class="auth-top"><a class="brand" href="/about"><svg class="tgm " viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-linecap="round" aria-hidden="true"><path d="M11.0 4.5V19.5" stroke-width="1.6"/><path d="M14.5 4.5V19.5" stroke-width="1.6"/><path d="M18.0 4.5V19.5" stroke-width="1.6"/><path d="M21.5 4.5V19.5" stroke-width="1.6"/><path d="M11 4.5C10.4 12 8.6 16 4.4 17.6" stroke-width="2.45"/><circle cx="4.4" cy="17.6" r="2.15" fill="currentColor" stroke="none"/></svg><span>たぐり</span></a><nav><a href="/about">たぐりとは</a><a href="/login" aria-current="page">ログイン</a></nav></header>
+<main class="auth-main acct">
+<section id="delete-intro" class="auth-card danger-zone" hidden>
+<h1>アカウントの削除</h1>
+<p>たぐりに保存しているあなたのデータを、すべて削除します。<b>元に戻せません。</b>必要なら、先に「アカウント・記録」の「記録をJSONで保存」で書き出してください。</p>
+<ul><li>観劇記録・評価・感想・お気に入り・興味あり／なし</li><li>パスキー・ログイン中のすべての端末・復旧コード</li><li>Google またはメールで使っていた場合は、Google 側のログイン記録（メールアドレス）</li></ul>
+<p class="fine">Cloudflare の自動バックアップには、無料プランでは7日（有料プランでは30日）残り、その後に消えます。本人確認のため、いつもの方法でもう一度ログインしてください。Google またはメールで使っていた方は、Google かメールのリンクでログインしてください。</p>
+</section>
+<p id="status" class="status" role="status" aria-live="polite"></p>
+<section id="login" class="auth-card">
+<h1>ログイン</h1>
+<p id="login-lead" class="lead-c">はじめての方も、ここから始められます。<br>パスワードは使いません。</p>
+<div class="block">
+<button id="google" type="button" class="wide primary">Google で続ける</button>
+<button id="passkey-login" type="button" class="wide">パスキーでログイン</button>
+</div>
+<div class="or">または</div>
+<form id="email-form"><label>メールアドレス<input id="email" type="email" required autocomplete="email" maxlength="254" placeholder="name@example.com"></label><button class="wide">ログイン用のリンクを受け取る</button></form>
+<div id="passkey" class="newbie">
+<p class="fine" id="passkey-add-note">Google もメールも使いたくない方は、パスキー（指紋・顔認証・端末のロック解除）だけで始められます。</p>
+<button id="passkey-signup" type="button" class="wide">パスキーで新しく始める</button>
+</div>
+<p class="fine" id="carry-over">たぐりが保存するのはログインの識別番号だけで、メールアドレスは保存しません。復旧コードで使っていた方は、復旧コードでログインした状態でここからログインすると、記録を引き継げます。</p>
+</section>
+<form id="recovery-login" class="auth-card" hidden><h1>復旧コードでログイン</h1><label>復旧コード<input id="recovery-input" required autocomplete="off" maxlength="80"></label><button class="wide">ログインする</button></form>
+<form id="delete-confirm" class="auth-card danger-zone" hidden><h1>削除の確認</h1><p>確認のため「削除」と入力してください。</p><label>確認<input id="delete-word" required autocomplete="off" maxlength="10"></label><button class="wide">すべて削除する</button></form>
+<section id="delete-done" class="auth-card" hidden><h1>削除しました</h1><p class="lead-c">ご利用ありがとうございました。</p><p class="auth-foot"><a href="/about">たぐりとは</a></p></section>
+<section id="passkey-recovery" class="auth-card" hidden>
+<h1>復旧コードを控えてください</h1>
+<p>パスキーを入れた端末をなくしたとき、このコードで記録に戻れます。<b>いまだけ表示します。</b>二度と表示できません。</p>
+<code id="recovery-code"></code>
+<div class="block"><button id="copy-recovery" type="button" class="wide">コピーする</button><button id="recovery-done" type="button" class="wide primary">控えました</button></div>
+</section>
+<p class="auth-foot"><a href="/about">たぐりとは</a></p>
+</main>
+<script type="module" src="/vendor/firebase-login.js"></script>
+</body>
+</html>
