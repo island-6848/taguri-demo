@@ -739,6 +739,17 @@
    "verifies": []
   },
   {
+   "id": "dec-theme-user-choice",
+   "type": "decision",
+   "status": "proposed",
+   "date": "2026-10-13",
+   "title": "見た目は 1 つに決めず、いくつかの型から利用者が選べるようにする（ポスターの色で染める型も含む）",
+   "sources": [
+    "https://claude.ai/artifact/4o7QY23vNLcZF7wcrqVQg9 （デザイン案のキャンバス、「見た目を利用者が選ぶ」の段）"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-vm-cloudflare",
    "type": "decision",
    "status": "superseded",
@@ -1474,6 +1485,15 @@
    "status": "open",
    "date": "2026-10-13",
    "title": "昔の公演を、公開情報だけで探せるようにするにはどうするか",
+   "sources": [],
+   "verifies": []
+  },
+  {
+   "id": "q-poster-palette",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "好きな作品のポスターから色を取り出して画面を染めるには、何が要るか",
    "sources": [],
    "verifies": []
   },
@@ -2464,6 +2484,16 @@
    "to": "q-synopsis-routine-quota"
   },
   {
+   "from": "dec-theme-user-choice",
+   "rel": "affects",
+   "to": "q-design-direction"
+  },
+  {
+   "from": "dec-theme-user-choice",
+   "rel": "raises",
+   "to": "q-poster-palette"
+  },
+  {
    "from": "dec-vm-cloudflare",
    "rel": "supersedes",
    "to": "dec-render-service-beta"
@@ -2927,6 +2957,11 @@
    "from": "q-past-stage-catalogue",
    "rel": "depends_on",
    "to": "catalog-terms-no-redistribution"
+  },
+  {
+   "from": "q-poster-palette",
+   "rel": "depends_on",
+   "to": "dec-theme-user-choice"
   },
   {
    "from": "q-r2-boto3",
