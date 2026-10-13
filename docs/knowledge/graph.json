@@ -1627,6 +1627,17 @@
    "verifies": []
   },
   {
+   "id": "reco-v2-index-compatible",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "推薦の計算 person-graded-v2 は、D1 の索引の作り（表と行）を変えない",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/blob/claude/demo-records-setup-yqo65u/cloudflare/scripts/build_recommend_index.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "render-free-no-disk",
    "type": "finding",
    "status": "confirmed",
@@ -2935,6 +2946,11 @@
    "from": "reco-js-parity",
    "rel": "affects",
    "to": "comp-recommender"
+  },
+  {
+   "from": "reco-v2-index-compatible",
+   "rel": "affects",
+   "to": "dec-d1-catalogue-delivery"
   },
   {
    "from": "render-free-no-disk",
