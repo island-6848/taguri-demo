@@ -570,6 +570,17 @@
    "verifies": []
   },
   {
+   "id": "dec-migration-branch-wip",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-13",
+   "title": "画面の移行は wip-screens-port で進め、段ごとに試験が通ってから master に入れる",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/tree/wip-screens-port"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-migration-owner-push",
    "type": "decision",
    "status": "adopted",
@@ -930,6 +941,18 @@
    "sources": [
     "https://github.com/island-6848/taguri-demo/commit/1b2571f",
     "https://github.com/island-6848/taguri-demo/blob/cloudflare-d1-preview/docs/render-migration-plan.md"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "migration-wip-received",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "段 1 の作りかけを受け取った。読み込めない原因は py.js の正規表現に入った生の行区切り文字だった",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/commit/7da8985",
+    "https://github.com/island-6848/taguri-demo/commit/165358c"
    ],
    "verifies": []
   },
@@ -1328,7 +1351,7 @@
   {
    "id": "q-migration-branch",
    "type": "question",
-   "status": "open",
+   "status": "answered",
    "date": "2026-10-13",
    "title": "移行の作業をどのブランチで進めるか（cloudflare-d1-preview は push すると本番に出る）",
    "sources": [],
@@ -2249,6 +2272,21 @@
    "to": "q-firebase-free-tier"
   },
   {
+   "from": "dec-migration-branch-wip",
+   "rel": "answers",
+   "to": "q-migration-branch"
+  },
+  {
+   "from": "dec-migration-branch-wip",
+   "rel": "depends_on",
+   "to": "production-branch-master"
+  },
+  {
+   "from": "dec-migration-branch-wip",
+   "rel": "depends_on",
+   "to": "dec-migration-owner-push"
+  },
+  {
    "from": "dec-migration-owner-push",
    "rel": "answers",
    "to": "q-migration-owner"
@@ -2552,6 +2590,16 @@
    "from": "migration-handover-stage0",
    "rel": "raises",
    "to": "q-migration-branch"
+  },
+  {
+   "from": "migration-wip-received",
+   "rel": "answers",
+   "to": "q-migration-branch"
+  },
+  {
+   "from": "migration-wip-received",
+   "rel": "affects",
+   "to": "migration-handover-stage0"
   },
   {
    "from": "no-aws",

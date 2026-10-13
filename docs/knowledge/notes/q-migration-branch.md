@@ -1,7 +1,7 @@
 ---
 id: q-migration-branch
 type: question
-status: open
+status: answered
 date: 2026-10-13
 title: 移行の作業をどのブランチで進めるか（cloudflare-d1-preview は push すると本番に出る）
 links:
