@@ -2,6 +2,7 @@ import {isOriginalRoute, originalUI} from './original-ui.js';
 import {verifyIdToken, isAuthError} from './firebase-auth.js';
 import {passkeyRoutes} from './passkey.js';
 import {scoreFromIndex, d1Access} from './recommend.js';
+import {searchIndex, d1Search} from './stage-search.js';
 const MAX_BODY = 262144;
 const COOKIE = 'taguri_session';
 const TTL = 60 * 60 * 24 * 30;
@@ -176,6 +177,23 @@ async function computeRecommendations(db, uid, ver, today) {
         reasons: c.parts.slice(0, 3).map(([, role, person, n]) => ({role, person, n}))};
     })};
 }
+// Stages for linking a record: ?q=title[&date=YYYY-MM-DD] searches by title,
+// ?ids=a,b,... returns the linked stages' names. Public catalogue fields only.
+export async function stagesFor(db, params) {
+  const ver = (await db.prepare("SELECT v FROM rec_meta WHERE k='current'").first())?.v;
+  if (!ver) return {ready: false, items: []};
+  const access = d1Search(db, ver);
+  let ids;
+  if (params.has('ids')) {
+    ids = [...new Set(params.get('ids').split(',').filter(Boolean))];
+    if (ids.length > 100 || ids.some(id => !/^[A-Za-z0-9_-]{1,100}$/.test(id))) fail(400,'公演の指定を確認してください。');
+  } else {
+    const q = params.get('q') ?? '', date = params.get('date') ?? '';
+    if (q.length > 100 || (date && !/^\d{4}-\d{2}-\d{2}$/.test(date))) fail(400,'検索する題名を確認してください。');
+    ids = await searchIndex(access.entriesFor, q, date);
+  }
+  return {ready: true, items: await access.stages(ids)};
+}
 function upsert(db, uid, r) {
   return db.prepare('INSERT INTO records(user_id,id,title,date,time,venue,rating,note,stage_id,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(user_id,id) DO UPDATE SET title=excluded.title,date=excluded.date,time=excluded.time,venue=excluded.venue,rating=excluded.rating,note=excluded.note,stage_id=excluded.stage_id,updated_at=excluded.updated_at').bind(uid,r.id,r.title,r.date,r.time,r.venue,r.rating,r.note,r.stage_id||null,now());
 }
@@ -291,6 +309,7 @@ export default {
       if (method === 'POST' && path === '/api/auth/passkeys/delete') return await passkey.remove(request, env, uid);
       if (method === 'GET' && ['/api/state','/api/export'].includes(path)) return json(await state(env.DB,uid));
       if (method === 'GET' && path === '/api/recommend') return json(await recommendFor(env.DB, uid));
+      if (method === 'GET' && path === '/api/stages') return json(await stagesFor(env.DB, url.searchParams));
       if (method !== 'POST') fail(404,'見つかりませんでした。');
       const input = await body(request);
       // Writes that change what is recommended drop the cached result (the stamp

@@ -26,5 +26,18 @@ for seed in range(12):
         for mult in WEIGHTS:
             expected = BI.score_from_index(*BI.memory_access(index), rated, multipliers=mult, today=T.TODAY)
             cases.append({'rated': rated, 'multipliers': mult, 'expected': expected})
-    out['catalogues'].append({'seed': seed, 'ver': ver, 'sql': BI.to_sql(index, ver), 'cases': cases})
+    searches = [{'q': q, 'date': d, 'expected': BI.search_index(BI.memory_search(index), q, d)}
+                for q in T.SEARCHES for d in T.search_dates(index)]
+    out['catalogues'].append({'seed': seed, 'ver': ver, 'sql': BI.to_sql(index, ver), 'cases': cases,
+                              'searches': searches})
+
+# Title keys: the Worker normalises the query as rate_performances.title_key does.
+TITLES = ['【Premium限定】ミュージカル『エリザベート』', '〈セット券〉 夏の夜の夢', '(再演)ハムレット',
+          '【とても長い冠の文字が十二文字を超える】題名', '【改行\nを含む】題名', 'ＡＢＣ　ｄｅｆ', 'ΑΣ ΣΑ ΟΔΥΣΣΕΥΣ',
+          'İstanbul', '\ufeffBOM付き\ufeff', '\x1c区切り\x1f', '\x85次行', '\u3000全角空白\u3000', '🎭ミュージカル🎭',
+          'Ⅻ夜・十二夜', 'ﾊﾟﾘの恋人', 'Mr.&Mrs. ~smith~', "O'Neil “作品” ’26", '', '  ', '【】', '[a]b', '<<x>>y']
+rng = T.random.Random(7)
+POOL = list('あア亜aAＡ１1 　・『』【】〈〉()（）[]-−–—~〜/／:：!！?？\'"“”’.,。，Σσİı\ufeff\x1c\x85\u2028\n\tÅﬁ㍿')
+TITLES += [''.join(rng.choice(POOL) for _ in range(rng.randint(0, 16))) for _ in range(3000)]
+out['title_keys'] = [[t, BI.M.R.title_key(t)] for t in TITLES]
 json.dump(out, sys.stdout, ensure_ascii=False)

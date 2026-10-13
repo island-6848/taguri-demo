@@ -59,7 +59,7 @@ def catalogue(seed):
     rng = random.Random(seed)
     cands = []
     for i in range(80):
-        title = rng.choice(['舞台', '新作', 'オペラ・ガラ', '朗読劇', "O'Neil作品"]) + str(i)
+        title = rng.choice(['舞台', '【再演】新作', 'オペラ・ガラ', '朗読劇『夜の声』', '夜舞台']) + str(i)
         cands.append({'stage_id': str(1000 + i), 'title': title, 'group': rng.choice(['劇団甲', '劇団乙', '']),
                       'theater': '劇場', 'pref': '東京都', 'period': _period(rng),
                       'url': rng.choice(['https://example.com/x', 'javascript:alert(1)', '']),
@@ -103,7 +103,8 @@ def got(rows):
 
 def load_sql(index):
     con = sqlite3.connect(':memory:')
-    con.executescript((HERE / 'migrations' / '0003.sql').read_text())
+    for name in ('0003.sql', '0009.sql'):
+        con.executescript((HERE / 'migrations' / name).read_text())
     ver = BI.version_of(index)
     for stmt in BI.to_sql(index, ver):
         con.execute(stmt)
@@ -154,7 +155,7 @@ class ParityTest(unittest.TestCase):
         for stmt in BI.to_sql(new, v2):
             con.execute(stmt)
         self.assertEqual(con.execute("SELECT v FROM rec_meta WHERE k='current'").fetchone()[0], v2)
-        for t in ('rec_stage', 'rec_credit', 'rec_people'):
+        for t in BI.TABLES:
             self.assertEqual(con.execute(f"SELECT count(*) FROM {t} WHERE ver<>?", (v2,)).fetchone()[0], 0)
         self.assertEqual(con.execute("SELECT count(*) FROM rec_stage").fetchone()[0], len(new['stages']))
 
@@ -170,11 +171,73 @@ class ParityTest(unittest.TestCase):
         self.assertTrue(all(len(s.encode()) < 100_000 for s in stmts))
         con = sqlite3.connect(':memory:')
         self.addCleanup(con.close)
-        con.executescript((HERE / 'migrations' / '0003.sql').read_text())
+        for name in ('0003.sql', '0009.sql'):
+            con.executescript((HERE / 'migrations' / name).read_text())
         for s in stmts:
             con.execute(s)
         self.assertEqual(con.execute("SELECT count(*) FROM rec_credit").fetchone()[0],
                          len(set(index['postings'])))
+
+
+# '舞台' starts some titles and is inside others of the same length (夜舞台1, 舞台12).
+SEARCHES = ['舞台', '舞台1', '新作', '再演', '朗読劇夜', '『夜の声』', '夜舞台', 'ＯＮＥＩＬ', '台1',
+            'x', '', '存在しない題名', '1']
+
+
+def search_dates(index):
+    starts = sorted({st['start'] for st in index['stages'].values() if st['start']})
+    return [''] + starts[::max(len(starts) // 3, 1)]
+
+
+class SearchTest(unittest.TestCase):
+    def test_sql_search_equals_reference(self):
+        found = 0
+        for seed in range(12):
+            raw, cands, fbs = catalogue(seed)
+            index = BI.build_index(UR.candidate_pool(raw, cands), fbs, APP.group_of)
+            con, ver = load_sql(index)
+            self.addCleanup(con.close)
+            for q in SEARCHES:
+                for date in search_dates(index):
+                    mem = BI.search_index(BI.memory_search(index), q, date)
+                    self.assertEqual(BI.search_index(BI.sql_search(con, ver), q, date), mem, (seed, q, date))
+                    found += bool(mem)
+        self.assertGreater(found, 100)
+
+    def test_search_finds_every_containing_title_in_order(self):
+        raw, cands, fbs = catalogue(4)
+        index = BI.build_index(UR.candidate_pool(raw, cands), fbs, APP.group_of)
+        k = BI.M.R.title_key('舞台')
+        want = sorted((sid for sid, st in index['stages'].items() if k in st['tkey']),
+                      key=lambda sid: (index['stages'][sid]['tkey'] != k,
+                                       not index['stages'][sid]['tkey'].startswith(k),
+                                       len(index['stages'][sid]['tkey']), sid))
+        self.assertGreater(len(want), 2)
+        self.assertEqual(BI.search_index(BI.memory_search(index), '舞台', limit=100), want)
+        # The record's date brings the stage running on that day to the top.
+        target = [sid for sid in want[1:] if index['stages'][sid]['start']][-1]
+        day = index['stages'][target]['start']
+        got = BI.search_index(BI.memory_search(index), '舞台', day, limit=100)
+        running = lambda sid: index['stages'][sid]['start'] and index['stages'][sid]['start'] <= day \
+            and (not index['stages'][sid]['end'] or day <= index['stages'][sid]['end'])
+        self.assertEqual(got, sorted(want, key=lambda sid: not running(sid)))
+        self.assertLess(got.index(target), want.index(target))
+        self.assertEqual(BI.search_index(BI.memory_search(index), '台'), [])
+
+    def test_long_gram_lists_are_split(self):
+        raw, cands, fbs = catalogue(5)
+        index = BI.build_index(UR.candidate_pool(raw, cands), fbs, APP.group_of)
+        old = BI.GRAM_PART
+        BI.GRAM_PART = 3
+        try:
+            con, ver = load_sql(index)
+            self.addCleanup(con.close)
+            self.assertGreater(con.execute("SELECT max(part) FROM rec_gram").fetchone()[0], 0)
+            for q in SEARCHES:
+                self.assertEqual(BI.search_index(BI.sql_search(con, ver), q),
+                                 BI.search_index(BI.memory_search(index), q), q)
+        finally:
+            BI.GRAM_PART = old
 
 
 if __name__ == '__main__':

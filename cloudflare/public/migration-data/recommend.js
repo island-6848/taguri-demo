@@ -18,7 +18,7 @@ async function load() {
   if (!data.ready) { note.textContent = '公演の索引がまだ作られていません。'; return; }
   if (!data.items.length) {
     note.textContent = data.n_linked ? 'いまの記録からは、おすすめできる公演が見つかりませんでした。◎の記録が増えると出やすくなります。'
-      : '記録が公演に結び付いていないため、まだおすすめを出せません。';
+      : '記録が公演に結び付いていないため、まだおすすめを出せません。下の「観劇記録」で、記録ごとに「公演を探して結び付ける」を押してください。';
     return;
   }
   note.textContent = `◎をつけた作品に関わった人が出る、これからの公演です（評価${data.n_rated}件・公演に結び付いた記録${data.n_linked}件から）。`;
@@ -38,4 +38,5 @@ if (content) {
   if (!content.hidden) load();
   new MutationObserver(() => { if (!content.hidden) load(); else $('#recommend').hidden = true; })
     .observe(content, {attributes: true, attributeFilter: ['hidden']});
+  document.addEventListener('taguri:records-changed', () => { if (!content.hidden) load(); });
 }

@@ -1,4 +1,5 @@
 import {discover} from './discovery.js';
+import {linkBlock, loadNames} from './link.js';
 const $ = s => document.querySelector(s);
 let data = {records:[],favourites:[],reactions:[]};
 let catalogue=null;
@@ -19,7 +20,8 @@ function render() {
     const a=node('article');a.append(node('h3',r.title),node('p',`${r.date} ${r.time} ${r.venue}`));
     const label=node('label','評価');const rating=node('select');for(const v of ['','◎','○','△','×']){const o=node('option',v||'未評価');o.value=v;rating.append(o);}rating.value=r.rating;label.append(rating);
     const nl=node('label','感想');const note=node('textarea');note.maxLength=4000;note.value=r.note;nl.append(note);
-    a.append(label,nl,button('評価・感想を保存',async()=>{const saved=await api('record',{...r,rating:rating.value,note:note.value});Object.assign(r,saved.record);status('保存しました。');}),button('削除',async()=>{if(!confirm(`「${r.title}」を削除しますか？`))return;await api('record/delete',{id:r.id});data.records=data.records.filter(x=>x.id!==r.id);render();status('削除しました。');}));return a;
+    a.append(linkBlock(r,async stage_id=>{const saved=await api('record',{...r,stage_id});status(stage_id?'公演に結び付けました。':'結び付けを外しました。');changed();return saved.record;}));
+    a.append(label,nl,button('評価・感想を保存',async()=>{const saved=await api('record',{...r,rating:rating.value,note:note.value});Object.assign(r,saved.record);status('保存しました。');changed();}),button('削除',async()=>{if(!confirm(`「${r.title}」を削除しますか？`))return;await api('record/delete',{id:r.id});data.records=data.records.filter(x=>x.id!==r.id);render();status('削除しました。');changed();}));return a;
   }));
   $('#favs').replaceChildren(...data.favourites.map(f=>{const li=node('li',`${f.kind}：${f.name}`);li.append(button('解除',async()=>{await api('favourite',{...f,remove:true});data.favourites=data.favourites.filter(x=>x!==f);render();}));return li;}));
   renderDiscovery();
@@ -46,7 +48,9 @@ function renderDiscovery() {
   }
   if(!Object.values(buckets).some(rows=>rows.length))$('#shows').append(node('p','一致する公演はありません。お気に入りを追加してください。'));
 }
-async function refresh(){data=await api('state');render();if(catalogue===null)api('catalogue').then(r=>{catalogue=r.items;renderDiscovery();}).catch(e=>{$('#catalogue-status').textContent=e.message;});}
+// Tell the recommendations section that ratings or links changed.
+const changed = () => document.dispatchEvent(new Event('taguri:records-changed'));
+async function refresh(){data=await api('state');await loadNames(data.records).catch(()=>{});render();if(catalogue===null)api('catalogue').then(r=>{catalogue=r.items;renderDiscovery();}).catch(e=>{$('#catalogue-status').textContent=e.message;});}
 $('#register').onclick=()=>run($('#register'),async()=>{const result=await api('register',{});$('#code').textContent=result.recovery_code;$('#recovery').hidden=false;await refresh();status('保存先を作りました。復旧コードを控えてください。');});
 $('#copy').onclick=()=>run($('#copy'),async()=>{await navigator.clipboard.writeText($('#code').textContent);status('復旧コードをコピーしました。');});
 $('#recover').onsubmit=e=>{e.preventDefault();run(e.submitter,async()=>{await api('recover',Object.fromEntries(new FormData(e.target)));$('#recovery').hidden=true;$('#code').textContent='';await refresh();status('記録を復旧しました。');});};

@@ -11,6 +11,8 @@ does not depend on the user is computed here once:
 - rec_stage: candidate stages with run dates and parsed credits
 - rec_credit: (role, person) -> stages, with role weight and role group
 - rec_people: stage -> parsed credits, to build a user's roster from records
+- rec_gram: two-character pieces of title keys, to find a stage by title when
+  a user links a record to it (`search_index` is the reference)
 
 The Worker then only reads postings for people the user rated ◎ at least once.
 `score_from_index` is the reference for that request-time computation; the
@@ -64,7 +66,7 @@ def build_index(pool: dict[str, dict], fields_by_stage: dict[str, dict], role_gr
             continue
         period = entry.get("period") or ""
         credits = sorted(set(M.parse_credits(entry.get("fields") or {})))
-        stages[sid] = {"title": title, "grp": entry.get("group") or "",
+        stages[sid] = {"title": title, "tkey": M.R.title_key(title), "grp": entry.get("group") or "",
                        "start": RC.period_start(period), "end": _period_end(period),
                        "credits": [list(c) for c in credits],
                        "entry": _public_entry(entry)}
@@ -128,6 +130,56 @@ def memory_access(index: dict):
             lambda sid: index["stages"].get(sid))
 
 
+# ---------------------------------------------------------------- title search (reference)
+
+SEARCH_LIMIT = 20
+GRAM_PART = 400                    # entries per rec_gram row
+
+
+def bigrams(key: str) -> list[str]:
+    return sorted({key[i:i + 2] for i in range(len(key) - 1)})
+
+
+def gram_lists(index: dict) -> dict[str, list]:
+    """piece -> [[stage_id, tkey, start, end], ...] ordered by stage_id."""
+    out: dict[str, list] = {}
+    for sid, st in sorted(index["stages"].items()):
+        for g in bigrams(st["tkey"]):
+            out.setdefault(g, []).append([sid, st["tkey"], st["start"], st["end"]])
+    return out
+
+
+def search_index(entries_for, q: str, date: str = "", limit: int = SEARCH_LIMIT) -> list[str]:
+    """Stage ids whose title key contains the query's key, best first.
+
+    Stages running on the record's date come first, then an exact title, then
+    a title starting with the query, then shorter titles. Fewer than two
+    characters find nothing (like `app.suggest`). `entries_for(grams)` returns
+    {gram: entries} for the grams present in the index.
+    """
+    k = M.R.title_key(q or "")
+    if len(k) < 2:
+        return []
+    grams = bigrams(k)
+    lists = entries_for(grams)
+    if any(g not in lists for g in grams):
+        return []
+    hits = []
+    for sid, tkey, start, end in min((lists[g] for g in grams), key=len):
+        if k not in tkey:
+            continue
+        miss = 0 if date and start and start <= date and (not end or date <= end) else 1
+        score = 0 if tkey == k else 1 if tkey.startswith(k) else 2
+        hits.append((miss, score, len(tkey), sid))
+    hits.sort()
+    return [h[3] for h in hits[:limit]]
+
+
+def memory_search(index: dict):
+    lists = gram_lists(index)
+    return lambda grams: {g: lists[g] for g in grams if g in lists}
+
+
 KEYS_PER_QUERY = 49                # D1 binds at most 100 parameters: ver + 2 per key
 
 
@@ -161,6 +213,19 @@ def sql_access(con, ver: str, counter: dict | None = None):
     return postings_for, stage_of
 
 
+def sql_search(con, ver: str):
+    """`entries_for` over D1/SQLite (the Worker's query)."""
+    def entries_for(grams):
+        rows = con.execute(
+            f"SELECT gram,entries FROM rec_gram WHERE ver=? AND gram IN ({','.join('?' for _ in grams)})"
+            " ORDER BY gram,part", [ver, *grams]).fetchall()
+        out: dict = {}
+        for g, entries in rows:
+            out.setdefault(g, []).extend(json.loads(entries))
+        return out
+    return entries_for
+
+
 # ---------------------------------------------------------------- SQL
 
 def version_of(index: dict) -> str:
@@ -192,20 +257,29 @@ def _inserts(table: str, cols: str, rows: list[tuple]) -> list[str]:
 def to_sql(index: dict, ver: str) -> list[str]:
     """Insert `ver`, switch to it, then drop other versions (in that order)."""
     dumps = lambda v: json.dumps(v, ensure_ascii=False, sort_keys=True)
-    stmts = [f"DELETE FROM {t} WHERE ver={_q(ver)};"
-             for t in ("rec_stage", "rec_credit", "rec_people")]
-    stmts += _inserts("rec_stage", "ver,stage_id,title,grp,start,end,credits,entry", [
-        (ver, sid, s["title"], s["grp"], s["start"], s["end"], dumps(s["credits"]),
+    stmts = [f"DELETE FROM {t} WHERE ver={_q(ver)};" for t in TABLES]
+    stmts += _inserts("rec_stage", "ver,stage_id,title,tkey,grp,start,end,credits,entry", [
+        (ver, sid, s["title"], s["tkey"], s["grp"], s["start"], s["end"], dumps(s["credits"]),
          dumps(s["entry"])) for sid, s in sorted(index["stages"].items())])
     stmts += _inserts("rec_credit", "ver,role,person,stage_id,role_w,role_group",
                       [(ver, *r) for r in sorted(set(index["postings"]))])
     stmts += _inserts("rec_people", "ver,stage_id,people",
                       [(ver, sid, dumps(p)) for sid, p in sorted(index["people"].items())])
+    stmts += _inserts("rec_gram", "ver,gram,part,entries", gram_rows(index, ver))
     stmts.append(f"INSERT INTO rec_meta(k,v) VALUES('current',{_q(ver)}) "
                  "ON CONFLICT(k) DO UPDATE SET v=excluded.v;")
-    stmts += [f"DELETE FROM {t} WHERE ver<>{_q(ver)};"
-              for t in ("rec_stage", "rec_credit", "rec_people")]
+    stmts += [f"DELETE FROM {t} WHERE ver<>{_q(ver)};" for t in TABLES]
     return stmts
+
+
+TABLES = ("rec_stage", "rec_credit", "rec_people", "rec_gram")
+
+
+def gram_rows(index: dict, ver: str) -> list[tuple]:
+    dumps = lambda v: json.dumps(v, ensure_ascii=False, separators=(",", ":"))
+    return [(ver, g, i // GRAM_PART, dumps(entries[i:i + GRAM_PART]))
+            for g, entries in sorted(gram_lists(index).items())
+            for i in range(0, len(entries), GRAM_PART)]
 
 
 def stats(index: dict, sql_bytes: int) -> dict:
@@ -219,6 +293,11 @@ def stats(index: dict, sql_bytes: int) -> dict:
             "postings_per_person": {"median": statistics.median(sizes),
                                     "p90": sizes[int(len(sizes) * 0.9) - 1 if len(sizes) > 1 else 0],
                                     "max": sizes[-1]},
+            "gram_rows": len(gram_rows(index, "")),
+            # D1 free tier: 100,000 rows written per day. Uploading a version
+            # writes every row once, and deleting the previous one writes again.
+            "rows_written": len(index["stages"]) + len(set(index["postings"]))
+            + len(index["people"]) + len(gram_rows(index, "")),
             "sql_bytes": sql_bytes}
 
 
