@@ -161,14 +161,45 @@ async function loginPage(request, env) {
   headers.set('Cache-Control', 'no-store');
   return new Response(asset.body, {status: asset.status, headers});
 }
+// ---------------------------------------------------------------- sign-in gate
+// Signed-out visitors may see only /login and /about (and the static files
+// those pages need). Every other page sends them to sign in; the original
+// screens' data (bridged to Render) answers 401.
+const PUBLIC_PAGES = new Set(['/login', '/about']);
+// APIs that start a session (or hold no user data) must work before sign-in.
+const PUBLIC_APIS = new Set(['/api/register', '/api/recover', '/api/catalogue']);
+const STATIC_FILE = /\.(css|js|mjs|map|png|jpe?g|gif|webp|svg|ico|mp4|webmanifest|txt)$/;
+// Only same-site paths are accepted as a place to return to after sign-in.
+export const safeNext = value => (typeof value === 'string' && /^\/(?![\/\\])/.test(value) && !value.startsWith('/login')) ? value : '/';
+const redirect = location => new Response(null, {status: 302, headers: {Location: location, 'Cache-Control': 'no-store'}});
+// The original screens get an entry to the account page in their menu. Done
+// here (not in web/, shared with the GitHub Pages demo) with HTMLRewriter.
+function withAccountLink(response) {
+  if (!(response.headers.get('content-type') || '').includes('text/html') || typeof HTMLRewriter === 'undefined') return response;
+  return new HTMLRewriter().on('nav.side', {element(el) {
+    el.append('<a href="/migration-data/" class="acct-link">アカウント・記録</a>', {html: true});
+  }}).transform(response);
+}
+async function gate(request, env, url) {
+  const path = url.pathname;
+  if (path.startsWith('/api/auth/') || path.startsWith('/migration-api/') || PUBLIC_PAGES.has(path) || PUBLIC_APIS.has(path)) return null;
+  if (path.startsWith('/vendor/') || path.startsWith('/assets/') || (STATIC_FILE.test(path) && !path.startsWith('/img/'))) return null;
+  if (await currentUser(request, env.DB)) return null;
+  const page = request.method === 'GET' && !path.startsWith('/api/') && !path.startsWith('/img/');
+  if (!page) return json({error:'ログインしてください。'}, 401);
+  if (path === '/') return redirect('/about');
+  return redirect('/login?next=' + encodeURIComponent(path + url.search));
+}
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    const blocked = await gate(request, env, url);
+    if (blocked) return blocked;
     if (url.pathname === '/login' && request.method === 'GET') return loginPage(request, env);
     const migrationAPI=url.pathname.startsWith('/migration-api/');
     if(env.ORIGINAL_UI_BRIDGE==='true' && !migrationAPI && isOriginalRoute(url.pathname))return originalUI(request);
     if(migrationAPI)url.pathname=url.pathname.replace('/migration-api/','/api/');
-    if (!url.pathname.startsWith('/api/')) return env.ASSETS.fetch(request);
+    if (!url.pathname.startsWith('/api/')) return withAccountLink(await env.ASSETS.fetch(request));
     try {
       const path = url.pathname; const method = request.method;
       if (method !== 'GET' && method !== 'POST') fail(405,'対応していない操作です。');

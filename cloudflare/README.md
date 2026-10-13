@@ -150,3 +150,14 @@ npx wrangler d1 execute taguri-demo --remote --file /tmp/rec.sql
 - GoogleかメールのリンクでFirebaseと結び付いたアカウントは、Googleかメールでログインし直したときだけ削除できる。ブラウザがその場でFirebaseの利用者も消し、Google側にメールアドレスを残さない。
 - Cloudflareの自動バックアップ（D1のTime Travel）には最大30日残る（画面にもそう書いた）。
 - `test/account-delete.test.js`：全表から消えること、他人のデータは残ること、他の端末と復旧コードが使えなくなること、古いセッション・確認の誤り・別のオリジンの拒否、Firebaseと結び付いたアカウントの扱い、Renderへの橋渡しが有効でも届くこと。`wrangler dev` とブラウザでも、パスキーと復旧コードのアカウントで削除まで通した。
+
+## ログインしていない人に見せるもの
+
+ログインしていない人が開けるのは、**`/login`（ログイン）と `/about`（たぐりとは）だけ**。どちらもアプリのメニューを出さない、ロゴと中央のカードだけの画面（`public/auth.css`）。
+
+- トップ（`/`）は `/about` へ、それ以外の画面は `/login?next=<元のパス>` へ転送する（`src/worker.js` の `gate`）。ログインすると `next` に戻る。`next` は同じサイトのパスだけを受け付ける（`//host`・`/\host`・外部URLは `/` に置き換える）。
+- 元の画面の材料（Renderへの橋渡し：`/api/screen/*`・`/api/react` など）とポスター（`/img/*`）は、ログインしていなければ401。
+- ログイン前でも使えるのは、ログインそのもの（`/api/auth/*`）、セッションを始めるAPI（`/api/register`・`/api/recover`、`/migration-api/*` は各APIが自分でログインを確かめる）、公開の公演一覧（`/api/catalogue`）、静的ファイル。
+- 判定のため、`wrangler.jsonc` の `run_worker_first` を `/*` にし、CSS・JS・`/vendor/*`・`/assets/*` だけを外した（Workerの呼び出し回数を増やしすぎないため）。
+- ログイン後の元の画面には、左のメニューに「アカウント・記録」（`/migration-data/`）を差し込む。`web/`（GitHub Pagesのデモと共通）は変えず、WorkerがHTMLRewriterで足す。
+- `test/gate.test.js` と、`wrangler dev` とブラウザで確認した（未ログインでトップ→たぐりとは、他の画面→ログイン、ログイン後に元の画面へ戻る、メニューの入口、CSPの遮断なし）。

@@ -16,7 +16,13 @@ import {startAuthentication, startRegistration, browserSupportsWebAuthn} from '@
 
 const EMAIL_KEY = 'taguri_login_email';
 // /login?purpose=delete: sign in again, then delete the account (R7).
-const DELETE_MODE = new URLSearchParams(location.search).get('purpose') === 'delete';
+const PARAMS = new URLSearchParams(location.search);
+const DELETE_MODE = PARAMS.get('purpose') === 'delete';
+// Where to go after signing in: only a same-site path (no //host, no \\host).
+const safeNext = v => (typeof v === 'string' && /^\/(?![\/\\])/.test(v) && !v.startsWith('/login')) ? v : '/';
+const NEXT = safeNext(PARAMS.get('next'));
+// Keep purpose/next across the email link round trip.
+const loginUrl = () => '/login' + (DELETE_MODE ? '?purpose=delete' : (NEXT !== '/' ? '?next=' + encodeURIComponent(NEXT) : ''));
 let firebaseUser = null;   // kept only in delete mode, to delete the Google-side user too
 const $ = s => document.querySelector(s);
 const say = (text, bad = false) => { const s = $('#status'); s.textContent = text; s.classList.toggle('bad', bad); };
@@ -40,7 +46,7 @@ async function exchange(auth, credential) {
 
 // After any sign-in: go to the records, or (delete mode) ask for confirmation.
 function signedIn(message) {
-  if (!DELETE_MODE) { say(message); location.replace('/migration-data/'); return; }
+  if (!DELETE_MODE) { say(message); location.replace(NEXT); return; }
   busy(false);
   for (const id of ['#login', '#passkey', '#recovery-login']) $(id).hidden = true;
   $('#delete-confirm').hidden = false;
@@ -70,7 +76,7 @@ async function main() {
   // Returning from the email link.
   const link = location.href;
   if (isSignInWithEmailLink(auth, link)) {
-    history.replaceState(null, '', DELETE_MODE ? '/login?purpose=delete' : '/login');   // drop the one-time code
+    history.replaceState(null, '', loginUrl());   // drop the one-time code
     let email = store.get();
     // Opened on another device/browser: ask again instead of trusting the URL.
     if (!email) email = (prompt('確認のため、リンクを送ったメールアドレスを入力してください。') || '').trim();
@@ -93,7 +99,7 @@ async function main() {
     const email = $('#email').value.trim();
     busy(true);
     try {
-      await sendSignInLinkToEmail(auth, email, {url: location.origin + '/login' + (DELETE_MODE ? '?purpose=delete' : ''), handleCodeInApp: true});
+      await sendSignInLinkToEmail(auth, email, {url: location.origin + loginUrl(), handleCodeInApp: true});
       store.set(email);
       say('ログイン用のリンクを送りました。このブラウザでメールのリンクを開いてください。');
     } catch (e) { say(explain(e), true); }
@@ -122,11 +128,11 @@ function showRecovery(code) {
   $('#passkey-recovery').hidden = false;
   $('#recovery-code').textContent = code;
   $('#copy-recovery').onclick = () => navigator.clipboard?.writeText(code).then(() => say('コピーしました。'), () => {});
-  $('#recovery-done').onclick = () => location.replace('/migration-data/');
+  $('#recovery-done').onclick = () => location.replace(NEXT);
 }
 
 function setupPasskeys() {
-  if (!browserSupportsWebAuthn()) { $('#passkey').hidden = true; return; }
+  if (!browserSupportsWebAuthn()) { $('#passkey').hidden = true; $('#passkey-login').hidden = true; return; }
   $('#passkey-login').addEventListener('click', async () => {
     busy(true); say('端末の画面でパスキーを選んでください…');
     try {
@@ -143,8 +149,8 @@ function setupPasskeys() {
       const response = await startRegistration({optionsJSON: options});
       const data = await postJSON('/api/auth/passkey/register/verify', {challenge_id, response});
       busy(false);
-      if (data.recovery_code) { say('パスキーを作りました。下の復旧コードを控えてから進んでください。'); showRecovery(data.recovery_code); }
-      else { say('パスキーを追加しました。'); location.replace('/migration-data/'); }
+      if (data.recovery_code) { $('#login').hidden = true; say('パスキーを作りました。下の復旧コードを控えてから進んでください。'); showRecovery(data.recovery_code); }
+      else { say('パスキーを追加しました。'); location.replace(NEXT); }
     } catch (e) { busy(false); say(passkeyError(e), true); }
   });
 }
