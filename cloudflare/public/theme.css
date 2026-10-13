@@ -42,7 +42,7 @@ body{font-family:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",YuGothic,syst
 .side .brand{font-family:"Hiragino Mincho ProN","Yu Mincho",YuMincho,"Noto Serif JP",serif}
 /* ---- ロゴの字の下に、毛糸の赤い線。SVG の形を mask にして差し色で塗る（暗い表示でも差し色に従う） */
 .tglock .tgw{position:relative;display:inline-block;padding-bottom:7px}
-.tglock .tgw::after{content:"";position:absolute;left:0;right:0;bottom:0;height:6px;background-color:var(--acc);
+.tglock .tgw::after{content:"";position:absolute;left:0;right:0;bottom:0;height:6px;background-color:var(--curtain);
  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 82 7' preserveAspectRatio='none'%3E%3Cpath d='M1 4 C 16 1, 26 6, 41 3 S 66 1, 81 4' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E") center/100% 100% no-repeat;
  mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 82 7' preserveAspectRatio='none'%3E%3Cpath d='M1 4 C 16 1, 26 6, 41 3 S 66 1, 81 4' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E") center/100% 100% no-repeat}
 
@@ -81,7 +81,7 @@ body{font-family:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",YuGothic,syst
  font-family:"Taguri Title","Zen Kaku Gothic Antique","Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",YuGothic,sans-serif;font-weight:700;line-height:1.35;
  letter-spacing:.02em;margin:8px 0 20px;padding:0 0 16px;border-bottom:1px solid var(--ring)}
 .shell>.main h1:first-of-type::after{content:"";position:absolute;left:0;bottom:-4px;width:96px;height:7px;
- background-color:var(--acc);-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 82 7' preserveAspectRatio='none'%3E%3Cpath d='M1 4 C 16 1, 26 6, 41 3 S 66 1, 81 4' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E") center/100% 100% no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 82 7' preserveAspectRatio='none'%3E%3Cpath d='M1 4 C 16 1, 26 6, 41 3 S 66 1, 81 4' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E") center/100% 100% no-repeat}
+ background-color:var(--curtain);-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 82 7' preserveAspectRatio='none'%3E%3Cpath d='M1 4 C 16 1, 26 6, 41 3 S 66 1, 81 4' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E") center/100% 100% no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 82 7' preserveAspectRatio='none'%3E%3Cpath d='M1 4 C 16 1, 26 6, 41 3 S 66 1, 81 4' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E") center/100% 100% no-repeat}
 @media(max-width:820px){.shell>.main h1:first-of-type{font-size:24px;margin:4px 0 16px;padding-bottom:12px}}
 
 /* ---- 押し口 ── 調整室と同じ作り。白地に細い枠、角を少し丸め、高さ 40px */

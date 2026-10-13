@@ -594,6 +594,18 @@
    "verifies": []
   },
   {
+   "id": "dec-loading-yarn",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-13",
+   "title": "読み込み画面 ── 幕と歩くピクトグラムをやめ、毛糸玉が転がって糸をたぐる形にする",
+   "sources": [
+    "web/app.js",
+    "web/style.css"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-migration-branch-wip",
    "type": "decision",
    "status": "adopted",
@@ -2526,6 +2538,11 @@
    "from": "dec-firebase-auth",
    "rel": "raises",
    "to": "q-firebase-free-tier"
+  },
+  {
+   "from": "dec-loading-yarn",
+   "rel": "affects",
+   "to": "dec-design-adopted"
   },
   {
    "from": "dec-migration-branch-wip",

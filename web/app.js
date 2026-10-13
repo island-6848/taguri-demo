@@ -187,184 +187,81 @@ function renderCrumbBar(path, title) {
 // --- フラグメント読み込み ---------------------------------------------------
 const contentEl = () => document.getElementById("content");
 
-// **舞台の幕と、開幕準備で動き回る人型のピクトグラム。** 文章で「何をして
-// いるか」を語るのではなく、ピクトグラム自身が舞台の上を歩いて回り、
-// 立ち止まった先で小道具を手に取る形で見せる(起案者の指示)。枠は持たず、
-// 幕もピクトグラムも背景に直接置く。色はサイト基調のえんじ
-// (var(--curtain))一色 ── 案内標識のピクトグラムと同じ、顔の無い幾何学的な
-// 単色シルエットにした。小道具の細部は背景色を「切り抜く」技法で表す。
-function curtainValanceD(w, h, dip, scallops) {
-  const seg = w / scallops;
-  let d = "M0 " + h;
-  for (let i = 0; i < scallops; i++) {
-    d += " Q" + (i * seg + seg / 2) + " " + (h + dip) + " " + ((i + 1) * seg) + " " + h;
-  }
-  return d + " L" + w + " 0 L0 0 Z";
-}
-const CURTAIN_W = 220, CURTAIN_H = 10;
-const CURTAIN_SVG = '<svg class="tg-curtain" viewBox="0 0 ' + CURTAIN_W + ' 74" aria-hidden="true">'
-  + '<path class="tg-curtain-leg" d="M6 6C-6 26 0 54 14 70C22 50 14 24 6 6Z"/>'
-  + '<path class="tg-curtain-leg" d="M' + (CURTAIN_W - 6) + ' 6C' + (CURTAIN_W + 6) + ' 26 '
-  + CURTAIN_W + ' 54 ' + (CURTAIN_W - 14) + ' 70C' + (CURTAIN_W - 22) + ' 50 '
-  + (CURTAIN_W - 14) + ' 24 ' + (CURTAIN_W - 6) + ' 6Z"/>'
-  + '<path class="tg-curtain-valance" d="' + curtainValanceD(CURTAIN_W, CURTAIN_H, 16, 9) + '"/>'
-  + '</svg>';
-
-// **案内標識と同じ、幾何学的な人型ピクトグラム。** 顔・毛など飾りは持たない
-// (円+角丸の四角だけの構成)。腕は前へ寄せた角度で固定し、その先(手の
-// あたり)に`.tg-prop`が乗るので、小道具は常に手に持っている形になる。
-// **腕・脚はそれぞれ別グループにして、歩いている間だけ振る(起案者の指示
-// ──「手足も動かしてよりリアルに」)。手(circle)は腕グループの子にして
-// あるので、腕が振れても手だけ置いていかれることはない。静止時(小道具を
-// 持って支度をしている間)は今までどおりの構え(肩から前へ寄せた角度)。 */
-const PICTO_SVG = '<svg viewBox="0 0 64 64" aria-hidden="true">'
-  + '<g class="tg-picto">'
-  + '<rect class="tg-leg tg-leg-r" x="33" y="37" width="6" height="16" rx="3"/>'
-  + '<rect class="tg-leg tg-leg-l" x="25" y="37" width="6" height="16" rx="3"/>'
-  + '<rect x="26" y="21" width="12" height="17" rx="5"/>'
-  + '<g class="tg-arm tg-arm-r"><rect x="37" y="23" width="6" height="19" rx="3"/>'
-  + '<circle cx="40" cy="42" r="2.2"/></g>'
-  + '<g class="tg-arm tg-arm-l"><rect x="21" y="23" width="6" height="19" rx="3"/>'
-  + '<circle cx="24" cy="42" r="2.2"/></g>'
-  + '<circle cx="32" cy="14" r="6"/>'
-  + '<g class="tg-prop"></g>'
-  + '</g></svg>';
-
-// **立ち止まった先でする支度。** 持ち替えるだけでなく、段ごとに合った
-// 動き(小道具自身のアニメーション)を付ける ── ページをめくる・面を顔に
-// 当てる・金槌を振る・針を運針させる・照明を振る。`name`はCSS側で
-// `.tg-picto-wrap[data-phase]`のセレクタに使う(style.cssのtg-act-*)。
-// 塗りはえんじ色のまま(`tg-cutout`/`tg-stroke`/`tg-beam`で濃淡だけ作る)。
-const PHASES = [
-  { name: "book", prop:
-    '<rect x="29" y="30" width="15" height="11" rx="1.3"/>'                  // 台本
-    + '<g class="tg-cutout-line"><line x1="36.5" y1="31.5" x2="36.5" y2="39.5"/>'
-    + '<line x1="31" y1="34" x2="35" y2="34"/><line x1="31" y1="37" x2="35" y2="37"/>'
-    + '<line x1="38" y1="34" x2="42" y2="34"/><line x1="38" y1="37" x2="42" y2="37"/></g>' },
-  { name: "mask", prop:
-    '<ellipse cx="37" cy="35" rx="8" ry="9"/>'                                // 面(稽古)
-    + '<g class="tg-cutout"><circle cx="34" cy="33" r="1.4"/><circle cx="40" cy="33" r="1.4"/></g>'
-    + '<path class="tg-cutout-line" d="M33 39q4 3 8 0"/>' },
-  { name: "hammer", prop:
-    '<rect x="32" y="27" width="12" height="5" rx="1.4"/>'                    // 金槌(大道具)
-    + '<rect x="36.5" y="32" width="3" height="13" rx="1.4"/>' },
-  { name: "sewing", prop:
-    '<path class="tg-stroke" d="M29 45 43 28"/>'                              // 針と糸(衣装)
-    + '<circle class="tg-cutout" cx="43.5" cy="27" r="1.8"/>'
-    + '<path class="tg-stroke" d="M29 45q-4 2 -3 7q4-1 5-5"/>' },
-  { name: "light", prop:
-    '<path d="M31 27h10l4 13H27z"/>'                                        // 照明
-    + '<g class="tg-beam"><line x1="29" y1="41" x2="24" y2="49"/>'
-    + '<line x1="36" y1="43" x2="36" y2="51"/><line x1="43" y1="41" x2="48" y2="49"/></g>' },
-];
-
+// **読み込み中は、毛糸玉が転がって糸をたぐる。**（起案者の指示 2026-10-13
+// 「読み込み画面もデザインに合わせてスタイリッシュに。でもかわいく」）
+// 前の「幕と、舞台を歩き回る人型のピクトグラム」は、えんじで塗った幕や道具が多く、
+// 今の見た目（うすい灰の地・白い紙・差し色はえんじだけ）の中では重かった。
+// ロゴの下の毛糸の線と同じ波の線を、うすい灰の「これから引く糸」として先に敷き、
+// 毛糸玉がその上を転がって、通ったあとをえんじの糸にしていく ── 引いた糸の長さが
+// そのまま進み具合になる（棒の進捗の代わり）。かわいさは毛糸玉の弾みとつぶれ、
+// 転がるぶんだけの回転、ほどけた糸の端の揺れで出す。顔は描かない。
+const YARN_W = 240, YARN_H = 40;
+// ロゴの毛糸の線（M1 4 C 16 1, 26 6, 41 3 S 66 1, 81 4）と同じ波を、横に 3 回つなぐ
+const YARN_PATH = "M8 30 C 24 26, 34 33, 50 29 S 76 25, 88 30 S 112 34, 128 29 S 154 25, 166 30 S 190 34, 206 29 S 226 26, 232 30";
+const YARN_BALL = '<svg class="tg-ball" viewBox="-14 -14 28 28" aria-hidden="true">'
+  + '<g class="tg-ball-spin">'
+  + '<circle r="11" class="tg-ball-body"/>'
+  + '<g class="tg-ball-wrap">'
+  + '<path d="M-9.5 -4.5c6 1 13 5.5 15.5 13"/>'
+  + '<path d="M-10.8 1c5 .4 9.6 3.4 11 8.8"/>'
+  + '<path d="M-5.8 -9.4c6 2 11 7.8 12.6 14"/>'
+  + '<path d="M2 -10.8c4 2.2 7.2 6 8.4 10.6"/>'
+  + '</g></g></svg>';
 const COLD_START_NOTE = "サーバーを起動しています。無料枠のため、少し時間がかかることがあります…";
 
-// **周りの舞台美術。** ピクトグラム1体だけだと寂しいので(起案者の指示 ──
-// 「周りのオブジェクトなどをつくりこんで」)、道具箱(左)・脚立(右)・
-// 作業灯(中央奥)を舞台に置いた。歩く先の左右の立ち位置にちょうど道具箱・
-// 脚立が来るので、「そこへ向かって支度している」ように見える。ピクトグラムと
-// 同じくえんじ一色、`.tg-picto-wrap`より先に置いて背景に回す(DOM順=重なり順)。
-const SCENE_PROPS_SVG = '<svg class="tg-scenery" viewBox="0 0 ' + CURTAIN_W + ' 84" aria-hidden="true">'
-  + '<g class="tg-obj-crates">'
-  + '<rect x="10" y="58" width="24" height="20" rx="1.5"/>'
-  + '<rect x="15" y="42" width="15" height="17" rx="1.5"/>'
-  + '<g class="tg-cutout-line">'
-  + '<line x1="22" y1="58" x2="22" y2="78"/><line x1="10" y1="68" x2="34" y2="68"/>'
-  + '<line x1="22.5" y1="42" x2="22.5" y2="59"/><line x1="15" y1="50.5" x2="30" y2="50.5"/>'
-  + '</g></g>'
-  + '<g class="tg-obj-ladder tg-stroke">'
-  + '<line x1="194" y1="78" x2="202" y2="30"/>'
-  + '<line x1="182" y1="78" x2="190" y2="30"/>'
-  + '<line x1="184" y1="66" x2="196" y2="66"/>'
-  + '<line x1="185.6" y1="56.4" x2="197.6" y2="56.4"/>'
-  + '<line x1="187.2" y1="46.8" x2="199.2" y2="46.8"/>'
-  + '<line x1="188.8" y1="37.2" x2="200.8" y2="37.2"/>'
-  + '</g>'
-  + '<g class="tg-obj-lamp">'
-  + '<line x1="112" y1="4" x2="112" y2="20" class="tg-stroke"/>'
-  + '<circle cx="112" cy="24" r="3.6"/>'
-  + '</g>'
-  + '</svg>';
-
 function loadingHtml() {
-  const picto = PICTO_SVG.replace('<g class="tg-prop"></g>',
-    '<g class="tg-prop">' + PHASES[0].prop + '</g>');
-  return '<div class="tg-loading">'
-    + CURTAIN_SVG
-    + '<div class="tg-scene" aria-label="舞台の準備をしているピクトグラムのアニメーション">'
-    + SCENE_PROPS_SVG
-    + '<div class="tg-picto-wrap" data-phase="' + PHASES[0].name + '">' + picto + '</div></div>'
-    + '<div class="tg-load-bar"><div class="tg-load-fill"></div></div>'
-    + '<p class="tg-load-pct">0%</p>'
+  return '<div class="tg-loading" role="status" aria-label="読み込み中">'
+    + '<div class="tg-yarn">'
+    + '<svg class="tg-thread" viewBox="0 0 ' + YARN_W + ' ' + YARN_H + '" aria-hidden="true">'
+    + '<path class="tg-thread-ahead" d="' + YARN_PATH + '" pathLength="100"/>'
+    + '<path class="tg-thread-done" d="' + YARN_PATH + '" pathLength="100" stroke-dasharray="100" stroke-dashoffset="100"/>'
+    + '</svg>'
+    + '<div class="tg-ball-pos"><div class="tg-ball-hop">' + YARN_BALL + '</div></div>'
+    + '</div>'
+    + '<p class="tg-load-say">公演の糸をたぐっています<span class="tg-dots" aria-hidden="true"><i>.</i><i>.</i><i>.</i></span>'
+    + '<span class="tg-load-pct">0%</span></p>'
     + '<p class="tg-load-note" hidden>' + COLD_START_NOTE + '</p>'
     + '</div>';
 }
 
-// **ピクトグラムを舞台の上で歩かせ、立ち止まった先ごとに段(PHASES)を
-// 切り替える。** 歩いているあいだは`.walking`で足取りの弾みを速め、
-// 止まったら`data-phase`を差し替える ── そのCSSセレクタで小道具ごとの
-// 動作アニメーションが決まる(style.cssのtg-act-*)。
-// `prefers-reduced-motion`のときは動かさず、中央で静止させる。
-function startPictoWalk(scene, wrap, propEl) {
-  const reduced = typeof matchMedia === "function"
-    && matchMedia("(prefers-reduced-motion: reduce)").matches;
-  if (reduced) return () => {};
-  const waypoints = [0.06, 0.5, 0.94];
-  // **ph は1から。** 最初の段(PHASES[0])はloadingHtml()で最初から
-  // 出してあるので、最初の到着でまた同じものにすると変わり映えしない。
-  let wp = 0, ph = 1, x = 0, stopped = false;
-  const timers = [];
-  const t = (fn, ms) => { const id = setTimeout(fn, ms); timers.push(id); return id; };
-
-  function step() {
-    if (stopped) return;
-    const travel = Math.max(0, scene.clientWidth - wrap.offsetWidth);
-    const nx = Math.round(waypoints[wp] * travel);
-    wrap.style.setProperty("--facing", nx >= x ? 1 : -1);
-    wrap.style.setProperty("--x", nx + "px");
-    x = nx;
-    wrap.classList.add("walking");
-    if (propEl) propEl.classList.add("swap");
-    t(() => {
-      if (stopped) return;
-      wrap.classList.remove("walking");
-      if (propEl) {
-        const phase = PHASES[ph % PHASES.length];
-        propEl.innerHTML = phase.prop;
-        propEl.classList.remove("swap");
-        wrap.dataset.phase = phase.name;
-        ph++;
-      }
-      t(() => { wp = (wp + 1) % waypoints.length; step(); }, 2200);
-    }, 700);
-  }
-  step();
-  return () => { stopped = true; timers.forEach(clearTimeout); };
+// **毛糸玉を、糸の上の p% の位置に置く。** 位置は糸の形そのもの（getPointAtLength）
+// から取るので、波の山と谷を玉がなぞる。回した角度は進んだ道のり ÷ 半径で出す
+// （滑らずに転がっているように見える）。
+function placeYarn(el, p) {
+  const done = el.querySelector(".tg-thread-done");
+  const pos = el.querySelector(".tg-ball-pos");
+  const spin = el.querySelector(".tg-ball-spin");
+  const svg = el.querySelector(".tg-thread");
+  if (!done || !pos || !svg) return;
+  done.setAttribute("stroke-dashoffset", String(100 - p));
+  let x = 8 + (232 - 8) * p / 100, y = 30;
+  try {
+    const len = done.getTotalLength();
+    const pt = done.getPointAtLength(len * p / 100);
+    x = pt.x; y = pt.y;
+  } catch (e) {}
+  const k = svg.clientWidth ? svg.clientWidth / YARN_W : 1;
+  pos.style.transform = "translate(" + (x * k).toFixed(1) + "px," + (y * k).toFixed(1) + "px)";
+  if (spin) spin.style.transform = "rotate(" + Math.round((x - 8) * k / 11 * 57.3) + "deg)";
 }
 
-// **表示 → ピクトグラムを歩かせる・進捗%を進める → 呼び出し側が止める、
-// までを1つにまとめる。** 本当の進み具合(コールドスタートでサーバが
-// 起きるまでの時間)は分からないので、経過時間から95%まで滑らかに近づける
-// 「気持ちの上では正しい」進捗にする。5秒以上かかっていたら、コールド
-// スタートの案内をそっと添える(待たされる理由が分からないと不安になるため)。
+// **表示 → 糸をたぐる・進捗%を進める → 呼び出し側が止める、までを1つにまとめる。**
+// 本当の進み具合(コールドスタートでサーバが起きるまでの時間)は分からないので、
+// 経過時間から95%まで滑らかに近づける「気持ちの上では正しい」進捗にする。
+// 5秒以上かかっていたら、コールドスタートの案内をそっと添える(待たされる理由が
+// 分からないと不安になるため)。
 function startLoading(el) {
   el.innerHTML = loadingHtml();
   const t0 = performance.now();
-  const fill = el.querySelector(".tg-load-fill");
+  const box = el.querySelector(".tg-loading");
   const pct = el.querySelector(".tg-load-pct");
   const note = el.querySelector(".tg-load-note");
-  const scene = el.querySelector(".tg-scene");
-  const wrap = el.querySelector(".tg-picto-wrap");
-  const propEl = el.querySelector(".tg-prop");
-
-  const stopWalk = (scene && wrap) ? startPictoWalk(scene, wrap, propEl) : () => {};
 
   const tick = () => {
-    if (!fill || !fill.isConnected) return;
+    if (!box || !box.isConnected) return;
     const elapsed = performance.now() - t0;
     const p = Math.min(95, Math.round(95 * (1 - Math.exp(-elapsed / 6000))));
-    fill.style.width = p + "%";
+    placeYarn(box, p);
     if (pct) pct.textContent = p + "%";
   };
   tick();
@@ -374,9 +271,9 @@ function startLoading(el) {
   return () => {
     clearInterval(progressTimer);
     clearTimeout(noteTimer);
-    stopWalk();
-    if (fill && fill.isConnected) {
-      fill.style.width = "100%";
+    if (box && box.isConnected) {
+      placeYarn(box, 100);
+      box.classList.add("done");
       if (pct) pct.textContent = "100%";
     }
   };
