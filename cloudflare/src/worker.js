@@ -1,6 +1,7 @@
 import {isOriginalRoute, originalUI} from './original-ui.js';
 import {verifyIdToken, isAuthError} from './firebase-auth.js';
 import {passkeyRoutes} from './passkey.js';
+import {scoreFromIndex, d1Access} from './recommend.js';
 const MAX_BODY = 262144;
 const COOKIE = 'taguri_session';
 const TTL = 60 * 60 * 24 * 30;
@@ -16,7 +17,8 @@ function string(value, max, required = false) {
 }
 function record(value) {
   if (!value || typeof value !== 'object') fail(400, '記録を確認してください。');
-  const r = {id: string(value.id ?? crypto.randomUUID(), 100, true), title: string(value.title, 500, true), date: string(value.date, 10, true), time: string(value.time ?? '', 5), venue: string(value.venue ?? '', 300), rating: string(value.rating ?? '', 2), note: string(value.note ?? '', 4000)};
+  const r = {id: string(value.id ?? crypto.randomUUID(), 100, true), title: string(value.title, 500, true), date: string(value.date, 10, true), time: string(value.time ?? '', 5), venue: string(value.venue ?? '', 300), rating: string(value.rating ?? '', 2), note: string(value.note ?? '', 4000), stage_id: string(value.stage_id ?? '', 100)};
+  if (r.stage_id && !/^[A-Za-z0-9_-]+$/.test(r.stage_id)) fail(400,'公演の結び付けを確認してください。');
   const parsed = new Date(`${r.date}T00:00:00Z`);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(r.date) || Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0,10) !== r.date) fail(400,'日付を確認してください。');
   if (r.time && !/^([01]\d|2[0-3]):[0-5]\d$/.test(r.time)) fail(400,'時刻を確認してください。');
@@ -122,16 +124,63 @@ async function deleteAccount(request, env, uid, input) {
   // Firebase sign-in, so a linked account must be deleted after signing in
   // with Google or the email link (otherwise the email would stay at Google).
   if (linked && input.firebase_ready !== true) fail(409,'このアカウントは Google またはメールと結び付いています。Google 側の記録も消すため、Google かメールのリンクでログインし直してから削除してください。');
-  await env.DB.batch(['records','favourites','reactions','passkeys','webauthn_challenges','sessions']
+  await env.DB.batch(['records','favourites','reactions','passkeys','webauthn_challenges','rec_cache','sessions']
     .map(t => env.DB.prepare(`DELETE FROM ${t} WHERE user_id=?`).bind(uid))
     .concat(env.DB.prepare('DELETE FROM users WHERE id=?').bind(uid)));
   return json({deleted:true,firebase_linked:!!linked},200,{'Set-Cookie':`${COOKIE}=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0`});
 }
+// ---------------------------------------------------------------- recommendations
+// Person scores from the batch-built index (migrations/0003, scripts/
+// build_recommend_index.py) and the user's own ratings. Same results as the
+// Python recommender (test/recommend.test.js). Stages the user already reacted
+// to (interest / no / owned) are left out, as the Python app moves them to
+// other lists. Tour grouping and impression preferences are not ported yet.
+const RECOMMEND_TOP = 15;
+const jstToday = () => new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
+// Served from rec_cache unless the index version, the date, or the user's
+// records/reactions changed since it was computed (a few rows read per view).
+export async function recommendFor(db, uid, today = jstToday()) {
+  const ver = (await db.prepare("SELECT v FROM rec_meta WHERE k='current'").first())?.v;
+  if (!ver) return {ready: false, items: []};
+  const st = await db.prepare('SELECT (SELECT count(*) FROM records WHERE user_id=?1) AS rn, (SELECT max(updated_at) FROM records WHERE user_id=?1) AS rm, (SELECT count(*) FROM reactions WHERE user_id=?1) AS an, (SELECT max(updated_at) FROM reactions WHERE user_id=?1) AS am').bind(uid).first();
+  const stamp = [ver, today, st.rn, st.rm, st.an, st.am].join('|');
+  const cached = await db.prepare('SELECT body FROM rec_cache WHERE user_id=? AND stamp=?').bind(uid, stamp).first();
+  if (cached) return {...JSON.parse(cached.body), cached: true};
+  const body = await computeRecommendations(db, uid, ver, today);
+  await db.prepare('INSERT INTO rec_cache(user_id,stamp,body,created_at) VALUES(?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET stamp=excluded.stamp,body=excluded.body,created_at=excluded.created_at')
+    .bind(uid, stamp, JSON.stringify(body), now()).run();
+  return {...body, cached: false};
+}
+async function computeRecommendations(db, uid, ver, today) {
+  const records = (await db.prepare("SELECT id,rating,COALESCE(stage_id,'') AS stage_id,date,updated_at FROM records WHERE user_id=? AND rating<>''").bind(uid).all()).results;
+  const access = d1Access(db, ver);
+  const linked = [...new Set(records.map(r => r.stage_id).filter(Boolean))];
+  const people = await access.peopleFor(linked);
+  // updated_at is epoch seconds here; as text it orders like the Python timestamps.
+  const rated = records.map(r => ({key: r.id, stage_id: r.stage_id, verdict: r.rating, date: r.date,
+    updated_at: new Date(r.updated_at * 1000).toISOString(), people: people.get(r.stage_id) || []}));
+  const ranked = await scoreFromIndex({...access, rated, multipliers: {}, today});
+  const reacted = new Set((await db.prepare('SELECT stage_id FROM reactions WHERE user_id=?').bind(uid).all()).results.map(r => r.stage_id));
+  const top = ranked.filter(c => !reacted.has(c.stage_id)).slice(0, RECOMMEND_TOP);
+  const entries = new Map();
+  if (top.length) {
+    const ids = top.map(c => c.stage_id);
+    const rows = (await db.prepare(`SELECT stage_id,title,grp,start,end,entry FROM rec_stage WHERE ver=? AND stage_id IN (${ids.map(() => '?').join(',')})`).bind(ver, ...ids).all()).results;
+    for (const r of rows) entries.set(r.stage_id, r);
+  }
+  return {ready: true, n_rated: records.length, n_linked: records.filter(r => people.get(r.stage_id)?.length).length,
+    rows_read: access.counter.rows, items: top.map(c => {
+      const e = entries.get(c.stage_id) || {}, entry = JSON.parse(e.entry || '{}');
+      return {stage_id: c.stage_id, title: e.title || '', group: e.grp || '', start: e.start || '', end: e.end || '',
+        theater: entry.theater || '', pref: entry.pref || '', url: entry.url || '', score: c.b,
+        reasons: c.parts.slice(0, 3).map(([, role, person, n]) => ({role, person, n}))};
+    })};
+}
 function upsert(db, uid, r) {
-  return db.prepare('INSERT INTO records(user_id,id,title,date,time,venue,rating,note,updated_at) VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(user_id,id) DO UPDATE SET title=excluded.title,date=excluded.date,time=excluded.time,venue=excluded.venue,rating=excluded.rating,note=excluded.note,updated_at=excluded.updated_at').bind(uid,r.id,r.title,r.date,r.time,r.venue,r.rating,r.note,now());
+  return db.prepare('INSERT INTO records(user_id,id,title,date,time,venue,rating,note,stage_id,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(user_id,id) DO UPDATE SET title=excluded.title,date=excluded.date,time=excluded.time,venue=excluded.venue,rating=excluded.rating,note=excluded.note,stage_id=excluded.stage_id,updated_at=excluded.updated_at').bind(uid,r.id,r.title,r.date,r.time,r.venue,r.rating,r.note,r.stage_id||null,now());
 }
 async function state(db, uid) {
-  const result = await db.batch([db.prepare('SELECT id,title,date,time,venue,rating,note FROM records WHERE user_id=? ORDER BY date DESC,id LIMIT 500').bind(uid),db.prepare('SELECT name,kind FROM favourites WHERE user_id=? ORDER BY kind,name LIMIT 200').bind(uid),db.prepare('SELECT stage_id,status FROM reactions WHERE user_id=? ORDER BY stage_id LIMIT 500').bind(uid)]);
+  const result = await db.batch([db.prepare("SELECT id,title,date,time,venue,rating,note,COALESCE(stage_id,'') AS stage_id FROM records WHERE user_id=? ORDER BY date DESC,id LIMIT 500").bind(uid),db.prepare('SELECT name,kind FROM favourites WHERE user_id=? ORDER BY kind,name LIMIT 200').bind(uid),db.prepare('SELECT stage_id,status FROM reactions WHERE user_id=? ORDER BY stage_id LIMIT 500').bind(uid)]);
   return {version:2,records:result[0].results,favourites:result[1].results,reactions:result[2].results};
 }
 const passkey = passkeyRoutes({fail, json, token, hash, now, body, cookie, sessionCookie, currentUser, startSession});
@@ -241,8 +290,13 @@ export default {
       if (method === 'GET' && path === '/api/auth/passkeys') return await passkey.list(request, env, uid);
       if (method === 'POST' && path === '/api/auth/passkeys/delete') return await passkey.remove(request, env, uid);
       if (method === 'GET' && ['/api/state','/api/export'].includes(path)) return json(await state(env.DB,uid));
+      if (method === 'GET' && path === '/api/recommend') return json(await recommendFor(env.DB, uid));
       if (method !== 'POST') fail(404,'見つかりませんでした。');
       const input = await body(request);
+      // Writes that change what is recommended drop the cached result (the stamp
+      // alone misses two edits within the same second).
+      if (['/api/record','/api/record/delete','/api/reaction','/api/import'].includes(path))
+        await env.DB.prepare('DELETE FROM rec_cache WHERE user_id=?').bind(uid).run();
       if (path === '/api/record') {
         const r = record(input);
         const existing = await env.DB.prepare('SELECT id FROM records WHERE user_id=? AND id=?').bind(uid,r.id).first();

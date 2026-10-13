@@ -18,7 +18,8 @@
 <section id="account" class="card"><h2>記録を始める</h2><p><a href="/login">ログイン</a>するか、ここで始めます。</p><button id="register" class="primary">新しく始める</button><form id="recover"><label>復旧コード<input name="code" required autocomplete="off"></label><button>記録を復旧する</button></form></section>
 <section id="recovery" class="card" hidden><h2>復旧コードを控えてください</h2><p>別の端末で記録を開くときに必要です。この画面を閉じると再表示できません。</p><code id="code"></code><button id="copy">コードをコピー</button></section>
 <div id="content" hidden>
-<nav class="inpage"><a href="#discovery">次の公演</a><a href="#records">観劇記録</a><a href="#favourites">お気に入り</a><a href="#passkeys">パスキー</a><a href="#backup">持ち出す・取り込む</a></nav>
+<nav class="inpage"><a href="#recommend">おすすめ</a><a href="#discovery">次の公演</a><a href="#records">観劇記録</a><a href="#favourites">お気に入り</a><a href="#passkeys">パスキー</a><a href="#backup">持ち出す・取り込む</a></nav>
+<section id="recommend" class="card" hidden><h2>あなたへのおすすめ（試験版）</h2><p id="rec-status"></p><div id="rec-list"></div></section>
 <section id="discovery" class="card"><h2>お気に入りに合う公演</h2><p id="catalogue-status" role="status"></p><div id="shows"></div></section>
 <section class="card"><h2>観劇記録を追加</h2><form id="add"><label>作品名<input name="title" required maxlength="500"></label><div class="row"><label>観劇日<input name="date" type="date" required></label><label>開演時刻<input name="time" type="time"></label></div><label>会場<input name="venue" maxlength="300"></label><button>追加する</button></form></section>
 <section id="records" class="card"><h2>観劇記録</h2><p id="count"></p><div id="list"></div></section>
@@ -31,6 +32,6 @@
 </div>
 </main>
 </div>
-<script type="module" src="/migration-data/app.js"></script><script type="module" src="/vendor/passkeys.js"></script>
+<script type="module" src="/migration-data/app.js"></script><script type="module" src="/migration-data/recommend.js"></script><script type="module" src="/vendor/passkeys.js"></script>
 </body>
 </html>

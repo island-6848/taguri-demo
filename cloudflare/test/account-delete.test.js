@@ -25,9 +25,10 @@ async function account(call, sqlite, label) {
   const uid = sqlite.prepare('SELECT user_id FROM records WHERE id=?').get(`${label}-r`).user_id;
   sqlite.prepare("INSERT INTO passkeys(id,user_id,user_handle,public_key,created_at) VALUES(?,?,'h','k',0)").run(`${label}-key`, uid);
   sqlite.prepare("INSERT INTO webauthn_challenges(id,challenge,purpose,user_id,expires_at) VALUES(?,'c','register',?,?)").run(`${label}-ch`, uid, Math.floor(Date.now() / 1000) + 300);
+  sqlite.prepare("INSERT INTO rec_cache(user_id,stamp,body,created_at) VALUES(?,'s','{}',0)").run(uid);
   return {cookie, recovery_code, uid};
 }
-const TABLES = ['users', 'sessions', 'records', 'favourites', 'reactions', 'passkeys', 'webauthn_challenges'];
+const TABLES = ['users', 'sessions', 'records', 'favourites', 'reactions', 'passkeys', 'webauthn_challenges', 'rec_cache'];
 const rowsOf = (sqlite, uid) => Object.fromEntries(TABLES.map(t => [t, sqlite.prepare(`SELECT count(*) AS n FROM ${t} WHERE ${t === 'users' ? 'id' : 'user_id'}=?`).get(uid).n]));
 
 test('deleting removes every row of the account and nothing of anyone else', async () => {
