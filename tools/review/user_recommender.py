@@ -88,10 +88,32 @@ _FORM_WORDS = (("ミュージカル", "ミュージカル"), ("朗読", "朗読"
                ("歌舞伎", "古典"), ("狂言", "古典"), ("文楽", "古典"),
                ("落語", "お笑い"), ("コント", "お笑い"), ("漫才", "お笑い"))
 _MUSIC_ROLES = {"作曲", "音楽", "編曲", "音楽監督", "歌唱指導"}
+# Ticket price band (#値段), from the highest yen amount in the price text, so
+# that "not worth the price" can land on price rather than on the people.
+_YEN = re.compile(r"(\d{1,3}(?:,\d{3})+|\d{3,6})\s*円")
+PRICE_BANDS = ((5000, "5千円未満"), (9000, "5千〜9千円"), (13000, "9千〜1万3千円"), (None, "1万3千円以上"))
 
 
-def stage_tags(title: str, venues, credits) -> list[tuple[str, str]]:
-    """Kind-of-show tags of one production. `credits`: (role, person) pairs."""
+def price_band(texts) -> str:
+    """Band of the highest price found in `texts` ('' when none)."""
+    yen = [int(x.replace(",", "")) for t in texts or () for x in _YEN.findall(str(t or ""))]
+    yen = [y for y in yen if y >= 500]
+    if not yen:
+        return ""
+    top = max(yen)
+    return next(name for limit, name in PRICE_BANDS if limit is None or top < limit)
+
+
+def price_texts(entry: dict) -> list[str]:
+    """Price text of a catalogue entry: its price field and 料金… credit fields."""
+    fields = entry.get("fields") or {}
+    return [entry.get("price") or ""] + [v for k, v in sorted(fields.items())
+                                          if k.startswith("料金") and isinstance(v, str)]
+
+
+def stage_tags(title: str, venues, credits, prices=()) -> list[tuple[str, str]]:
+    """Kind-of-show tags of one production. `credits`: (role, person) pairs;
+    `prices`: price texts (price_texts)."""
     roles = {role for role, _ in credits if not role.startswith("#")}
     tags = set()
     t = M.norm(title or "")
@@ -108,14 +130,52 @@ def stage_tags(title: str, venues, credits) -> list[tuple[str, str]]:
         v = M.norm(v)
         if v:
             tags.add(("#会場", v))
+    band = price_band(prices)
+    if band:
+        tags.add(("#値段", band))
     return sorted(tags)
+
+
+# 気になった所 (q-rating-aspects, stage-roles): what a rating marks as the
+# trouble decides who a low rating lands on. share: 1 = mainly, 0.5 = a
+# little, 0.2 = only slightly (acting → director, as the owner asked); roles
+# and tag axes not listed get 0. Several aspects: the largest share. Only a
+# rating below the user's middle (z < 0) is redistributed; with no aspect the
+# rating lands on everyone as before.
+ASPECTS = {
+    "story": ("話・脚本・構成", {"脚本": 1.0, "作": 1.0, "原作": 1.0, "原案": 1.0, "翻訳": 1.0, "潤色": 1.0,
+                              "構成": 1.0, "演出": 0.5, "演出・振付": 0.5,
+                              "#形式": 0.5, "#原作": 0.5, "#翻訳": 0.5}),
+    "direction": ("演出・見せ方", {"演出": 1.0, "演出・振付": 1.0, "美術": 0.5, "照明": 0.5, "音響": 0.5,
+                               "映像": 0.5, "#形式": 0.5}),
+    "acting": ("演技・出演", {"出演": 1.0, "演出": 0.2, "演出・振付": 0.2}),
+    "music": ("歌・音楽", {"作曲": 1.0, "音楽": 1.0, "編曲": 1.0, "音楽監督": 1.0, "歌唱指導": 1.0,
+                        "出演": 0.5, "#形式": 0.5}),
+    "dance": ("ダンス", {"振付": 1.0, "演出・振付": 1.0, "出演": 0.5}),
+    "design": ("美術・衣裳", {"美術": 1.0, "衣裳": 1.0, "衣装": 1.0, "ヘアメイク": 1.0, "メイク": 1.0,
+                         "小道具": 1.0, "演出": 0.5}),
+    "price": ("値段に見合わない", {"#値段": 1.0}),
+    "venue": ("会場・座席", {"#会場": 1.0}),
+}
+
+
+def aspect_codes(value) -> list[str]:
+    """Known aspect codes of a record (list or comma-separated text), in ASPECTS order."""
+    given = set(value.split(",") if isinstance(value, str) else value or ())
+    return [code for code in ASPECTS if code in given]
+
+
+def aspect_share(codes, role: str) -> float:
+    """How much of a low rating lands on `role` (or tag axis) given the aspects."""
+    return max((ASPECTS[c][1].get(role, 0.0) for c in codes), default=1.0)
 
 
 def rated_keys(r: dict) -> list[tuple]:
     """People and kind-of-show tags of one rated record."""
     people = {tuple(p) for p in r.get("people") or []}
     credits = [p for p in people if not p[0].startswith("#")]
-    return sorted(people | set(stage_tags(r.get("title") or "", r.get("venues") or [], credits)))
+    return sorted(people | set(stage_tags(r.get("title") or "", r.get("venues") or [], credits,
+                                          r.get("prices") or ())))
 
 
 def person_values(rated: list[dict], seeds: list[dict] = (), skip: set = frozenset()) -> tuple[dict, dict]:
@@ -148,9 +208,10 @@ def person_values(rated: list[dict], seeds: list[dict] = (), skip: set = frozens
         below = sum(1 for v in vals if v < value)
         same = sum(1 for v in vals if v == value)
         z = ((below + 0.5 * same) / len(vals) - 0.5) * SQRT12
+        codes = aspect_codes(r.get("aspects")) if z < 0 else []
         for key in rated_keys(r):
             tally[key][0] += 1
-            tally[key][1] += z
+            tally[key][1] += z * aspect_share(codes, key[0]) if codes else z
             tally[key][2] += 1.0
     w = SEED_K / (SEED_K + len(rated))
     for r in seeds:
@@ -225,7 +286,8 @@ def prepare(raw: dict, candidates: list[dict], rated: list[dict], *,
                 parts.append([contrib, role, person, n])
             elif contrib < 0:
                 negative.append([contrib, role, person, n])
-        for axis, tag in stage_tags(c.get("title") or "", [fields.get("劇場", "")], credits):
+        for axis, tag in stage_tags(c.get("title") or "", [fields.get("劇場", "")], credits,
+                                    price_texts(c)):
             if (axis, tag) in values:
                 n, value = values[(axis, tag)]
                 contrib = round(value * (GENRE_W * multipliers.get("theme", 1.0)), 6)

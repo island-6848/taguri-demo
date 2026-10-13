@@ -1,7 +1,7 @@
 import {isOriginalRoute, originalUI} from './original-ui.js';
 import {verifyIdToken, isAuthError} from './firebase-auth.js';
 import {passkeyRoutes} from './passkey.js';
-import {scoreFromIndex, d1Access, gradeOf, seedsFromFavourites, SEED_KINDS, SEED_ROLES, MAX_SEED_FAVS, cmp} from './recommend.js';
+import {scoreFromIndex, d1Access, gradeOf, seedsFromFavourites, aspectCodes, SEED_KINDS, SEED_ROLES, MAX_SEED_FAVS, cmp} from './recommend.js';
 import {searchIndex, d1Search} from './stage-search.js';
 import {chooseVariant} from './reco-gate.js';
 import {SCREEN_TABLES, nativeScreen, nativeAction, screen as nativeScreenBody, action as nativeActionBody, readInput as nativeInput} from './screens/index.js';
@@ -27,6 +27,11 @@ function record(value) {
   if (r.time && !/^([01]\d|2[0-3]):[0-5]\d$/.test(r.time)) fail(400,'時刻を確認してください。');
   // ◎○△× or "value/levels" on a scale the user chose (2–11 levels, e.g. "4/5").
   if (r.rating && !gradeOf(r.rating)) fail(400,'評価を確認してください。');
+  // 気になった所: known codes only, stored comma-separated in a fixed order.
+  const given = value.aspects ?? [];
+  if (!Array.isArray(given) || given.length > 8 || given.some(a => typeof a !== 'string')) fail(400,'気になった所を確認してください。');
+  r.aspects = aspectCodes(given).join(',');
+  if (r.aspects.split(',').filter(Boolean).length !== new Set(given).size) fail(400,'気になった所を確認してください。');
   return r;
 }
 function favourite(value) {
@@ -140,7 +145,7 @@ async function deleteAccount(request, env, uid, input) {
 // to (interest / no / owned) are left out, as the Python app moves them to
 // other lists. Tour grouping and impression preferences are not ported yet.
 const RECOMMEND_TOP = 15;
-const RECOMMENDER = 'person-ordinal-v3+fav1';   // +fav1: favourites as fading pseudo ratings
+const RECOMMENDER = 'person-ordinal-v3+fav1+asp1';   // +fav1: favourites as fading pseudo ratings; +asp1: 気になった所
 const jstToday = () => new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
 // Served from rec_cache unless the index version, the date, or the user's
 // records/reactions changed since it was computed (a few rows read per view).
@@ -158,12 +163,12 @@ export async function recommendFor(db, uid, today = jstToday()) {
   return {...body, cached: false};
 }
 async function computeRecommendations(db, uid, ver, today) {
-  const records = (await db.prepare("SELECT id,rating,COALESCE(stage_id,'') AS stage_id,date,updated_at FROM records WHERE user_id=? AND rating<>''").bind(uid).all()).results;
+  const records = (await db.prepare("SELECT id,rating,COALESCE(stage_id,'') AS stage_id,date,updated_at,aspects FROM records WHERE user_id=? AND rating<>''").bind(uid).all()).results;
   const access = d1Access(db, ver);
   const linked = [...new Set(records.map(r => r.stage_id).filter(Boolean))];
   const people = await access.peopleFor(linked);
   // updated_at is epoch seconds here; as text it orders like the Python timestamps.
-  const rated = records.map(r => ({key: r.id, stage_id: r.stage_id, verdict: r.rating, date: r.date,
+  const rated = records.map(r => ({key: r.id, stage_id: r.stage_id, verdict: r.rating, date: r.date, aspects: aspectCodes(r.aspects),
     updated_at: new Date(r.updated_at * 1000).toISOString(), people: people.get(r.stage_id) || []}));
   // 裏の答え合わせ: use a variant of the rules only if it clearly predicted
   // this user's own later ratings better (src/reco-gate.js). Kept out of the
@@ -173,7 +178,8 @@ async function computeRecommendations(db, uid, ver, today) {
   // ratings come in (q-favourites-seed); their own shows are left out here.
   const favourites = (await db.prepare('SELECT name,kind FROM favourites WHERE user_id=? ORDER BY kind,name LIMIT 200').bind(uid).all()).results;
   const {seeds, skip} = await seedsFromFavourites(access, favourites);
-  const ranked = await scoreFromIndex({...access, rated, multipliers: gate.multipliers, today, seeds, skip});
+  const ranked = await scoreFromIndex({...access, rated: gate.aspects ? rated : rated.map(r => ({...r, aspects: []})),
+    multipliers: gate.multipliers, today, seeds, skip});
   const reacted = new Set((await db.prepare('SELECT stage_id FROM reactions WHERE user_id=?').bind(uid).all()).results.map(r => r.stage_id));
   const top = ranked.filter(c => !reacted.has(c.stage_id)).slice(0, RECOMMEND_TOP);
   const entries = new Map();
@@ -245,10 +251,10 @@ export async function onboardingFor(db, uid, today = jstToday()) {
   return {ready: true, items: items.map(i => ({...i, because: fav.has(i.stage_id) ? 'favourite' : 'catalogue'}))};
 }
 function upsert(db, uid, r) {
-  return db.prepare('INSERT INTO records(user_id,id,title,date,time,venue,rating,note,stage_id,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(user_id,id) DO UPDATE SET title=excluded.title,date=excluded.date,time=excluded.time,venue=excluded.venue,rating=excluded.rating,note=excluded.note,stage_id=excluded.stage_id,updated_at=excluded.updated_at').bind(uid,r.id,r.title,r.date,r.time,r.venue,r.rating,r.note,r.stage_id||null,now());
+  return db.prepare('INSERT INTO records(user_id,id,title,date,time,venue,rating,note,stage_id,aspects,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(user_id,id) DO UPDATE SET title=excluded.title,date=excluded.date,time=excluded.time,venue=excluded.venue,rating=excluded.rating,note=excluded.note,stage_id=excluded.stage_id,aspects=excluded.aspects,updated_at=excluded.updated_at').bind(uid,r.id,r.title,r.date,r.time,r.venue,r.rating,r.note,r.stage_id||null,r.aspects,now());
 }
 async function state(db, uid) {
-  const result = await db.batch([db.prepare("SELECT id,title,date,time,venue,rating,note,COALESCE(stage_id,'') AS stage_id FROM records WHERE user_id=? ORDER BY date DESC,id LIMIT 500").bind(uid),db.prepare('SELECT name,kind FROM favourites WHERE user_id=? ORDER BY kind,name LIMIT 200').bind(uid),db.prepare('SELECT stage_id,status FROM reactions WHERE user_id=? ORDER BY stage_id LIMIT 500').bind(uid)]);
+  const result = await db.batch([db.prepare("SELECT id,title,date,time,venue,rating,note,COALESCE(stage_id,'') AS stage_id,aspects FROM records WHERE user_id=? ORDER BY date DESC,id LIMIT 500").bind(uid),db.prepare('SELECT name,kind FROM favourites WHERE user_id=? ORDER BY kind,name LIMIT 200').bind(uid),db.prepare('SELECT stage_id,status FROM reactions WHERE user_id=? ORDER BY stage_id LIMIT 500').bind(uid)]);
   return {version:2,records:result[0].results,favourites:result[1].results,reactions:result[2].results};
 }
 const passkey = passkeyRoutes({fail, json, token, hash, now, body, cookie, sessionCookie, currentUser, startSession});

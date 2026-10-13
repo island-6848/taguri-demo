@@ -40,6 +40,8 @@ def _fields(rng):
     lines = [f"{role}：{rng.choice(PEOPLE)}" for role in rng.sample(STAFF, rng.randint(0, 4))]
     if lines:
         f['スタッフ'] = '\n'.join(lines)
+    if rng.random() < .6:
+        f['料金（1枚あたり）'] = rng.choice(['3,500円', '一般 7,800円 / 学生 4,000円', 'S席 12,000円', '15000円', '無料'])
     return f
 
 
@@ -82,13 +84,17 @@ def verdict(rng, seed):
     return rng.choice(['◎', '◎', '○', '△', '×', ''])
 
 
+ASPECT_CODES = ['story', 'direction', 'acting', 'music', 'dance', 'design', 'price', 'venue']
+
+
 def history(seed, fields_by_stage):
     rng = random.Random(seed)
     rows = []
     linked = sorted(fields_by_stage)
     for i in range(rng.randint(0, 40)):
         sid = rng.choice(linked) if rng.random() < .85 else ''
-        rows.append({'key': f'w{i}', 'stage_id': sid,
+        aspects = rng.sample(ASPECT_CODES, rng.randint(1, 2)) if rng.random() < .4 else []
+        rows.append({'key': f'w{i}', 'stage_id': sid, 'aspects': aspects,
                      'verdict': verdict(rng, seed),
                      'date': f'2026-0{rng.randint(1, 9)}-1{rng.randint(0, 9)}',
                      'updated_at': f'2026-09-{rng.randint(10, 28)} 10:00:00'})

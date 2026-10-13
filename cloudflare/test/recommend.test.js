@@ -69,7 +69,7 @@ test('records saved through the API give the same recommendations as Python, min
       const cookie = reg.headers.get('set-cookie').split(';')[0];
       const uid = sqlite.prepare('SELECT id FROM users').get().id;
       for (const r of c.rated) {
-        const res = await call(env, 'record', {id: r.key, title: r.key, date: r.date, rating: r.verdict, stage_id: r.stage_id}, cookie);
+        const res = await call(env, 'record', {id: r.key, title: r.key, date: r.date, rating: r.verdict, stage_id: r.stage_id, aspects: r.aspects}, cookie);
         assert.equal(res.status, 200, await res.text());
         // Keep Python's order of rating times (latest rating of a stage wins).
         sqlite.prepare('UPDATE records SET updated_at=? WHERE user_id=? AND id=?').run(Date.parse(r.updated_at.replace(' ', 'T') + 'Z') / 1000, uid, r.key);
@@ -84,7 +84,7 @@ test('records saved through the API give the same recommendations as Python, min
       assert.deepEqual(got.items[0].reasons, want[0].parts.slice(0, 3).map(([, role, person, n]) => ({role, person, n})));
       assert.ok(got.items.every(i => i.title), 'display fields come from rec_stage');
       // The cache is keyed by the scoring rules too (a rule change recomputes).
-      assert.ok(sqlite.prepare('SELECT stamp FROM rec_cache WHERE user_id=?').get(uid).stamp.startsWith('person-ordinal-v3+fav1|'));
+      assert.ok(sqlite.prepare('SELECT stamp FROM rec_cache WHERE user_id=?').get(uid).stamp.startsWith('person-ordinal-v3+fav1+asp1|'));
       // Second view: served from the cache, same answer.
       const again = await recommendFor(env.DB, uid, fixture.today);
       assert.equal(again.cached, true);
@@ -160,6 +160,20 @@ test('the first stages to ask about: favourites already on, then the batch list,
     sqlite.close();
   }
   assert.ok(checked >= 2, `favourites' stages found for ${checked} catalogues`);
+});
+
+test('気になった所 are saved as known codes in a fixed order, and unknown ones are refused', async () => {
+  const cat = fixture.catalogues[0];
+  const sqlite = load(cat), env = envFor(sqlite);
+  const cookie = (await call(env, 'register', {})).headers.get('set-cookie').split(';')[0];
+  const base = {id: 'a1', title: 't', date: '2026-09-01', rating: '2/5'};
+  assert.equal((await call(env, 'record', {...base, aspects: ['venue', 'price']}, cookie)).status, 200);
+  assert.equal(sqlite.prepare("SELECT aspects FROM records WHERE id='a1'").get().aspects, 'price,venue');
+  assert.equal((await call(env, 'record', {...base, aspects: ['もやもや']}, cookie)).status, 400);
+  assert.equal((await call(env, 'record', {...base, aspects: 'price'}, cookie)).status, 400);
+  assert.equal((await call(env, 'record', base, cookie)).status, 200);
+  assert.equal(sqlite.prepare("SELECT aspects FROM records WHERE id='a1'").get().aspects, '');
+  sqlite.close();
 });
 
 test('the API needs sign-in, and says when the index is not built yet', async () => {

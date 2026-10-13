@@ -37,7 +37,11 @@ export const VARIANTS = {
   base: {},
   kinds_strong: {theme: 2},        // kinds of show weigh 2.0 instead of 1.0
   author_strong: {author: 2.5},    // director / writer weigh as much as the cast
+  aspects_off: {},                 // 気になった所 ignored: a low rating lands on everyone
 };
+// Variants that read the ratings without their 気になった所 (q-aspect-attribution-check).
+export const WITHOUT_ASPECTS = new Set(['aspects_off']);
+const plain = rows => rows.map(r => (r.aspects && r.aspects.length ? {...r, aspects: []} : r));
 export const MIN_UNITS = 6, Z = 1.96, WINDOW = 120, MIN_HISTORY = 5, BLOCK = 6;
 
 /** A production's score from its people and kind tags (user_recommender.b_score). */
@@ -64,7 +68,8 @@ export function stageScore(values, people, multipliers = {}) {
 /**
  * Which variant to use for this user. `rated`: records with verdict, people,
  * updated_at (same shape as scoreFromIndex). Returns
- * {variant, multipliers, checked: {name: {wins, losses}}}.
+ * {variant, multipliers, aspects (false: score with the ratings' 気になった所 ignored),
+ * checked: {name: {wins, losses}}}.
  */
 export function chooseVariant(rated, {variants = VARIANTS, minUnits = MIN_UNITS, z = Z, window = WINDOW, block = BLOCK} = {}) {
   const ordered = independentRatings(rated).filter(r => (r.people || []).length);
@@ -79,10 +84,13 @@ export function chooseVariant(rated, {variants = VARIANTS, minUnits = MIN_UNITS,
   // with random ratings pass the test far more often than 1 in 40.
   const tally = Object.fromEntries(names.map(n => [n, {wins: 0, losses: 0}]));
   for (let t = Math.max(MIN_HISTORY, ordered.length - window); t + 1 < ordered.length; t += block) {
-    const values = personValues(ordered.slice(0, t));
+    const past = ordered.slice(0, t);
+    const values = personValues(past);
+    const anyAspects = past.some(r => r.aspects && r.aspects.length);
+    const plainValues = names.some(n => WITHOUT_ASPECTS.has(n)) && anyAspects ? personValues(plain(past)) : values;
     const items = ordered.slice(t, t + block).map(r => [r, gradeOf(r.verdict)]);
-    const right = mult => {
-      const sc = items.map(([r]) => stageScore(values, r.people, mult) ?? 0);
+    const right = (mult, vals = values) => {
+      const sc = items.map(([r]) => stageScore(vals, r.people, mult) ?? 0);
       let n = 0;
       for (let i = 0; i < items.length; i++) {
         for (let j = i + 1; j < items.length; j++) {
@@ -96,7 +104,7 @@ export function chooseVariant(rated, {variants = VARIANTS, minUnits = MIN_UNITS,
     };
     const base = right(variants.base || {});
     for (const n of names) {
-      const r = right(variants[n]);
+      const r = right(variants[n], WITHOUT_ASPECTS.has(n) ? plainValues : values);
       if (r > base) tally[n].wins += 1;
       else if (r < base) tally[n].losses += 1;
     }
@@ -108,5 +116,5 @@ export function chooseVariant(rated, {variants = VARIANTS, minUnits = MIN_UNITS,
     const deciding = wins + losses, margin = wins - losses;
     if (deciding >= minUnits && margin >= z * Math.sqrt(deciding) && margin > bestMargin) { best = n; bestMargin = margin; }
   }
-  return {variant: best, multipliers: variants[best], checked};
+  return {variant: best, multipliers: variants[best], aspects: !WITHOUT_ASPECTS.has(best), checked};
 }

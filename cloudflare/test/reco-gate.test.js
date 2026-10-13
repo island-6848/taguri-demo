@@ -5,7 +5,7 @@ import {execFileSync} from 'node:child_process';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {chooseVariant, stageScore, ROLE_W, BACKSTAGE_W, GENRE_W, groupOf} from '../src/reco-gate.js';
-import {personValues} from '../src/recommend.js';
+import {personValues, ASPECTS} from '../src/recommend.js';
 
 test('role weights and groups are the same as Python', () => {
   const py = JSON.parse(execFileSync('python3', ['-c', `
@@ -13,10 +13,12 @@ import json, sys
 sys.path[:0] = ['../tools/review', '../tools/taguri']
 import recommend2 as RC, app as APP, user_recommender as UR
 print(json.dumps({"w": RC.ROLE_W, "back": RC.BACKSTAGE_W, "genre": UR.GENRE_W,
+  "aspects": {k: [l, m] for k, (l, m) in UR.ASPECTS.items()},
   "groups": {r: g for g, _l, roles in APP.ROLE_GROUPS for r in roles}}, ensure_ascii=False))`], {encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore']}));
   assert.deepEqual(ROLE_W, py.w);
   assert.equal(BACKSTAGE_W, py.back);
   assert.equal(GENRE_W, py.genre);
+  assert.deepEqual(ASPECTS, py.aspects);
   for (const [role, g] of Object.entries(py.groups)) assert.equal(groupOf(role), g, role);
   assert.equal(groupOf('#形式'), 'theme');
   assert.equal(groupOf('知らない役職'), 'other');
@@ -83,4 +85,44 @@ test('stage scores follow person-ordinal-v3 (people top 3 up and down, plus the 
   const exp = v.get('出演\u0000甲')[1] + v.get('出演\u0000乙')[1] + v.get('#形式\u0000ミュージカル')[1];
   assert.ok(Math.abs(s - exp) < 1e-12);
   assert.equal(stageScore(v, [['出演', '知らない人']]), null);
+});
+
+// 気になった所: a user who rates by the cast but marks "price" when an
+// expensive show disappointed. Using the aspects should predict them better
+// than ignoring them, and the check must not switch the aspects off.
+function priceUser(n, seed, marks) {
+  let x = seed;
+  const rnd = () => (x = (x * 1103515245 + 12345) % 2147483648) / 2147483648;
+  const rows = [];
+  for (let i = 0; i < n; i++) {
+    const cast = [0, 1, 2, 3].map(() => Math.floor(rnd() * 16));
+    const dir = Math.floor(rnd() * 6), pricey = rnd() < 0.4;
+    const people = [...cast.map(c => ['出演', `俳優${c}`]), ['演出', `演出家${dir}`], ['#値段', pricey ? '高い' : '安い']];
+    const liked = cast.filter(c => c < 8).length;
+    let v = liked >= 3 ? 5 : liked === 2 ? 4 : liked === 1 ? 2 : 1, aspects = [];
+    if (pricey && rnd() < 0.7) { v = Math.max(1, v - 2); aspects = ['price']; }
+    if (marks === 'random') aspects = rnd() < 0.4 ? [['price', 'acting', 'story', 'venue'][Math.floor(rnd() * 4)]] : [];
+    rows.push({key: `w${i}`, stage_id: `s${i}`, verdict: `${v}/5`, aspects, updated_at: new Date(Date.UTC(2026, 0, 1, 0, 0, i)).toISOString(), people});
+  }
+  return rows;
+}
+
+test('marked 気になった所 predict the user better than ignoring them, and stay on', () => {
+  let wins = 0, losses = 0;
+  for (let seed = 1; seed <= 60; seed++) {
+    const g = chooseVariant(priceUser(60, seed, 'price'));
+    assert.equal(g.aspects, true, `seed ${seed}`);
+    wins += g.checked.aspects_off.wins; losses += g.checked.aspects_off.losses;
+  }
+  assert.ok(losses > wins * 1.15, `ignoring aspects won ${wins} blocks, lost ${losses}`);
+});
+
+test('aspects marked at random can be switched off by the check', () => {
+  let wins = 0, losses = 0;
+  for (let seed = 1; seed <= 60; seed++) {
+    const g = chooseVariant(priceUser(120, seed, 'random'));
+    wins += g.checked.aspects_off.wins; losses += g.checked.aspects_off.losses;
+    if (!g.aspects) assert.equal(g.variant, 'aspects_off');
+  }
+  assert.ok(wins > losses, `ignoring random aspects won ${wins} blocks, lost ${losses}`);
 });

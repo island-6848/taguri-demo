@@ -316,5 +316,76 @@ class FavouriteSeedTests(unittest.TestCase):
         self.assertEqual(UR.person_values(rated)[0], UR.person_values(rated, [], set())[0])
 
 
+class AspectTests(unittest.TestCase):
+    """気になった所: a low rating lands on the roles the aspects point at."""
+
+    def rated(self, aspects):
+        people = [["出演", "役者"], ["演出", "演出家"], ["脚本", "作家"], ["#値段", "1万3千円以上"], ["#会場", "大劇場"]]
+        low = {"key": "low", "verdict": "×", "people": people, "aspects": aspects}
+        others = [{"key": f"o{i}", "verdict": "○", "people": [["出演", f"別人{i}"]]} for i in range(3)]
+        return UR.person_values([low] + others)[0]
+
+    def test_no_aspect_lands_on_everyone(self):
+        v = self.rated([])
+        self.assertLess(v[("出演", "役者")][1], 0)
+        self.assertEqual(v[("出演", "役者")][1], v[("演出", "演出家")][1])
+
+    def test_price_lowers_the_price_band_not_the_people(self):
+        v = self.rated(["price"])
+        self.assertEqual(v[("出演", "役者")][1], 0)
+        self.assertEqual(v[("脚本", "作家")][1], 0)
+        self.assertLess(v[("#値段", "1万3千円以上")][1], 0)
+        self.assertEqual(v[("#会場", "大劇場")][1], 0)
+
+    def test_acting_lands_on_the_cast_and_only_slightly_on_the_director(self):
+        v = self.rated(["acting"])
+        cast, director = v[("出演", "役者")][1], v[("演出", "演出家")][1]
+        self.assertAlmostEqual(director, 0.2 * cast)
+        self.assertEqual(v[("脚本", "作家")][1], 0)
+
+    def test_several_aspects_take_the_largest_share(self):
+        v = self.rated(["story", "acting"])
+        self.assertAlmostEqual(v[("演出", "演出家")][1], 0.5 * v[("脚本", "作家")][1])
+        self.assertEqual(v[("出演", "役者")][1], v[("脚本", "作家")][1])
+
+    def test_a_high_rating_is_not_redistributed(self):
+        hi = {"key": "hi", "verdict": "◎", "people": [["出演", "役者"]], "aspects": ["price"]}
+        lo = {"key": "lo", "verdict": "×", "people": [["出演", "別人"]]}
+        self.assertGreater(UR.person_values([hi, lo])[0][("出演", "役者")][1], 0)
+
+    def test_unknown_codes_are_ignored_and_text_is_accepted(self):
+        self.assertEqual(UR.aspect_codes("venue,xx,price"), ["price", "venue"])
+
+    def test_saved_codes_match_the_recommender(self):
+        import rate_performances as R
+        self.assertEqual(list(R.ASPECT_CODES), list(UR.ASPECTS))
+        self.assertEqual(R.clean_aspects(["venue", "price"]), "price,venue")
+        with self.assertRaises(ValueError):
+            R.clean_aspects(["もやもや"])
+
+    def test_saving_a_rating_keeps_aspects_unless_given(self):
+        import sqlite3
+        import rate_performances as R
+        con = sqlite3.connect(":memory:")
+        con.row_factory = sqlite3.Row
+        R._widen_attendance_key(con)
+        con.executescript(R.SCHEMA)
+        for step in (R._add_stage_id, R._add_venue, R._add_time, R._scope_by_user, R._add_input_sources, R._add_aspects):
+            step(con)
+        work = {"work_key": "k", "title": "t", "first_date": "2026-01-01", "last_date": "2026-01-01",
+                "times": 1, "bucket": "past"}
+        R.save_work(con, work, {"verdict": "△", "aspects": ["venue", "price"]}, user_id="u")
+        R.save_work(con, work, {"verdict": "×"}, user_id="u")
+        self.assertEqual(R.read_works(con, user_id="u")["k"]["aspects"], "price,venue")
+        R.save_work(con, work, {"verdict": "×", "aspects": []}, user_id="u")
+        self.assertEqual(R.read_works(con, user_id="u")["k"]["aspects"], "")
+
+    def test_price_band(self):
+        self.assertEqual(UR.price_band(["一般 7,800円 / 学生 4,000円"]), "5千〜9千円")
+        self.assertEqual(UR.price_band(["S席 13,000円"]), "1万3千円以上")
+        self.assertEqual(UR.price_band(["無料", ""]), "")
+        self.assertIn(("#値段", "5千円未満"), UR.stage_tags("舞台", [], [], ["3,500円"]))
+
+
 if __name__ == "__main__":
     unittest.main()

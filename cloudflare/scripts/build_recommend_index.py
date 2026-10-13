@@ -75,7 +75,8 @@ def build_index(pool: dict[str, dict], fields_by_stage: dict[str, dict], role_gr
         period = entry.get("period") or ""
         credits = sorted(set(M.parse_credits(entry.get("fields") or {})))
         titles.setdefault(sid, title)
-        tags = UR.stage_tags(title, [(entry.get("fields") or {}).get("劇場", "")], credits)
+        tags = UR.stage_tags(title, [(entry.get("fields") or {}).get("劇場", "")], credits,
+                             UR.price_texts(entry))
         stages[sid] = {"title": title, "tkey": M.R.title_key(title), "grp": entry.get("group") or "",
                        "start": RC.period_start(period), "end": _period_end(period),
                        "credits": [list(c) for c in credits],
@@ -90,7 +91,8 @@ def build_index(pool: dict[str, dict], fields_by_stage: dict[str, dict], role_gr
         if not f:
             continue
         credits = sorted(set(M.parse_credits(f)))
-        tags = UR.stage_tags(titles.get(sid, ""), [f.get("劇場", "")], credits)
+        tags = UR.stage_tags(titles.get(sid, ""), [f.get("劇場", "")], credits,
+                             UR.price_texts(pool.get(sid) or {"fields": f}))
         people[sid] = [list(c) for c in sorted(set(credits) | set(tags))]
     people = {sid: p for sid, p in people.items() if p}
     return {"stages": stages, "postings": postings, "people": people}

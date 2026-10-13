@@ -881,6 +881,17 @@
    ]
   },
   {
+   "id": "eval-aspects-sim",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-13",
+   "title": "作ったデータでは、気になった所を仮定どおりに付ける人には効き、でたらめに付ける人には害があり、裏の答え合わせはその害をあまり拾えない",
+   "sources": [
+    "cloudflare/test/reco-gate.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "eval-design-choices",
    "type": "finding",
    "status": "confirmed",
@@ -1238,6 +1249,21 @@
     "tools/review/user_recommender.py",
     "cloudflare/src/recommend.js",
     "cloudflare/scripts/build_recommend_index.py"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "impl-rating-aspects",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "「気になった所」を記録に付けられるようにし、低い評価を観点に応じた役職に効かせるようにした（+asp1）",
+   "sources": [
+    "tools/review/user_recommender.py",
+    "cloudflare/src/recommend.js",
+    "cloudflare/src/reco-gate.js",
+    "cloudflare/migrations/0012.sql",
+    "tools/review/rate_performances.py"
    ],
    "verifies": []
   },
@@ -2259,7 +2285,7 @@
   {
    "id": "q-rating-aspects",
    "type": "question",
-   "status": "open",
+   "status": "answered",
    "date": "2026-10-13",
    "title": "総合の評価のほかに、何が良く何が悪かったか（内容・構成・演出・出演・値段・会場）をどう取るか",
    "sources": [],
@@ -3614,6 +3640,21 @@
    "to": "q-ec2-cost"
   },
   {
+   "from": "eval-aspects-sim",
+   "rel": "affects",
+   "to": "impl-rating-aspects"
+  },
+  {
+   "from": "eval-aspects-sim",
+   "rel": "depends_on",
+   "to": "q-aspect-attribution-check"
+  },
+  {
+   "from": "eval-aspects-sim",
+   "rel": "depends_on",
+   "to": "dec-no-n1-evidence"
+  },
+  {
    "from": "eval-design-choices",
    "rel": "affects",
    "to": "comp-recommender"
@@ -3902,6 +3943,31 @@
    "from": "impl-person-ordinal-v3",
    "rel": "answers",
    "to": "q-theme-preference"
+  },
+  {
+   "from": "impl-rating-aspects",
+   "rel": "answers",
+   "to": "q-rating-aspects"
+  },
+  {
+   "from": "impl-rating-aspects",
+   "rel": "depends_on",
+   "to": "stage-roles"
+  },
+  {
+   "from": "impl-rating-aspects",
+   "rel": "depends_on",
+   "to": "rating-mixes-aspects"
+  },
+  {
+   "from": "impl-rating-aspects",
+   "rel": "depends_on",
+   "to": "impl-hidden-gate"
+  },
+  {
+   "from": "impl-rating-aspects",
+   "rel": "affects",
+   "to": "comp-recommender"
   },
   {
    "from": "jp-domain-price",

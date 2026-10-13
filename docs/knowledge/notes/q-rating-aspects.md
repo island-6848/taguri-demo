@@ -1,7 +1,7 @@
 ---
 id: q-rating-aspects
 type: question
-status: open
+status: answered
 date: 2026-10-13
 title: 総合の評価のほかに、何が良く何が悪かったか（内容・構成・演出・出演・値段・会場）をどう取るか
 links:
