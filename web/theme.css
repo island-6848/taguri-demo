@@ -236,9 +236,9 @@ body{font-family:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",YuGothic,syst
 /* ---- 見出しの下のえんじの縞の帯（.curtain、前の「幕」の飾り）は出さない（起案者の指示 2026-10-13） */
 .curtain{display:none}
 
-/* ---- 公式サイトへの道 ── 「発売済み」などの丸の右に小さな押し口で出し、「くわしく」の中のボタンは隠す。
-   スマホもパソコンも同じ形（起案者の指示 2026-10-13「スマホ版で公式サイトへのリンクは発売済みの丸の右に」
-   「パソコン版のおすすめ画面も同じ形にそろえて」） */
+/* ---- 公式サイトへの道 ── ポスターの真下に、ポスターと同じ幅の小さな押し口で出し、「くわしく」の中の
+   ボタンは隠す。スマホもパソコンも同じ形（起案者の指示 2026-10-13「パソコン版のおすすめ画面も同じ形に
+   そろえて」→「やっぱ公式サイトのボタンはポスターの下に」） */
 .ticket.cmp .sale{flex-wrap:wrap;align-items:center;gap:8px}
 .ticket.cmp .sitelink{display:inline-flex;align-items:center;gap:4px;min-height:32px;padding:0 10px;
  border:1px solid var(--ink);border-radius:8px;background:var(--surf);color:var(--ink);
@@ -246,6 +246,8 @@ body{font-family:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",YuGothic,syst
 .ticket.cmp .sitelink:hover{background:var(--curtain-w);color:var(--ink)}
 .ticket.cmp .sitelink:focus-visible{outline:2px solid var(--curtain);outline-offset:2px}
 .ticket.cmp .morebody .sitebtn{display:none}
+.ticket.cmp>.pcol .sitelink{width:100%;box-sizing:border-box;justify-content:center;padding:0 4px;gap:3px;font-size:11px}
+.ticket.cmp>.pcol .sitelink svg{flex:none;width:12px;height:12px}
 
 /* ---- 回答の帯 ── 3 つとも同じ白い押し口で並べ、押した 1 つだけ色を変えて弾ませる。
    興味ありはえんじ、興味なし・持っているは濃い灰。ほかの 2 つは薄くする

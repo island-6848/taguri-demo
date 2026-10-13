@@ -675,14 +675,16 @@ function compactTickets(root) {
     const site = t.querySelector(".pcol .sitebtn");
     if (site) {
       box.appendChild(site);
-      // 公式サイトへの道は「発売済み」の丸の右に出す（起案者の指示 2026-10-13。スマホもパソコンも同じ）
+      // 公式サイトへの道はポスターの真下に出す（起案者の指示 2026-10-13「やっぱ公式サイトのボタンはポスターの下に」。
+      // スマホもパソコンも同じ）
       const a = document.createElement("a");
       a.className = "sitelink";
       a.href = site.getAttribute("href");
       a.target = "_blank";
       a.rel = "noopener noreferrer";
       a.innerHTML = ico("link", 13) + "公式サイト";
-      if (sale) sale.appendChild(a); else main.querySelector(".meta")?.after(a);
+      const pc = t.querySelector(".body > .pcol");
+      if (pc) pc.appendChild(a); else if (sale) sale.appendChild(a); else main.querySelector(".meta")?.after(a);
     }
     const act = main.querySelector(".act");
     if (act) act.after(more); else main.appendChild(more);
