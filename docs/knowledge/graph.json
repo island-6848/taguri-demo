@@ -691,6 +691,19 @@
    "verifies": []
   },
   {
+   "id": "dec-recommend-compact-poster",
+   "type": "decision",
+   "status": "proposed",
+   "date": "2026-10-13",
+   "title": "スマホの「今週のおすすめ」── ポスターを半券の左に置き、1 件を詰めて、くわしくはすだれで開く",
+   "sources": [
+    "https://claude.ai/artifact/4o7QY23vNLcZF7wcrqVQg9",
+    "tools/taguri/posters.py",
+    "cloudflare/src/screens/rate.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-render-full-migration",
    "type": "decision",
    "status": "adopted",
@@ -1748,6 +1761,18 @@
    "verifies": []
   },
   {
+   "id": "q-worker-posters",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "Cloudflare 版でポスターをどこに置いて出すか",
+   "sources": [
+    "tools/taguri/posters.py",
+    "cloudflare/src/screens/rate.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "q-workers-cpu-overrun",
    "type": "question",
    "status": "dropped",
@@ -2593,6 +2618,21 @@
    "to": "comp-recommender"
   },
   {
+   "from": "dec-recommend-compact-poster",
+   "rel": "affects",
+   "to": "dec-design-adopted"
+  },
+  {
+   "from": "dec-recommend-compact-poster",
+   "rel": "depends_on",
+   "to": "dec-phone-nav-four"
+  },
+  {
+   "from": "dec-recommend-compact-poster",
+   "rel": "raises",
+   "to": "q-worker-posters"
+  },
+  {
    "from": "dec-render-full-migration",
    "rel": "contradicts",
    "to": "dec-defer-workers"
@@ -3266,6 +3306,11 @@
    "from": "q-webfont-local",
    "rel": "depends_on",
    "to": "design-studio"
+  },
+  {
+   "from": "q-worker-posters",
+   "rel": "depends_on",
+   "to": "dec-recommend-compact-poster"
   },
   {
    "from": "q-workers-cpu-overrun",
