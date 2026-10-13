@@ -655,6 +655,17 @@
    "verifies": []
   },
   {
+   "id": "dec-phone-nav-four",
+   "type": "decision",
+   "status": "proposed",
+   "date": "2026-10-13",
+   "title": "スマホの見出し ── 4 つの大メニューを均等割りで常に出し、子メニューはすだれで出す",
+   "sources": [
+    "https://claude.ai/artifact/4o7QY23vNLcZF7wcrqVQg9"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-polite-crawling",
    "type": "decision",
    "status": "adopted",
@@ -1979,6 +1990,23 @@
    ]
   },
   {
+   "id": "title-font-candidates",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "題字の書体の候補（明朝と本文ゴシックの間）── どれも SIL OFL",
+   "sources": [
+    "https://raw.githubusercontent.com/google/fonts/main/ofl/zenkakugothicantique/OFL.txt",
+    "https://raw.githubusercontent.com/google/fonts/main/ofl/shipporiantiqueb1/OFL.txt",
+    "https://raw.githubusercontent.com/google/fonts/main/ofl/shipporiantique/OFL.txt",
+    "https://raw.githubusercontent.com/google/fonts/main/ofl/kleeone/OFL.txt",
+    "https://raw.githubusercontent.com/google/fonts/main/ofl/zenmarugothic/OFL.txt",
+    "https://raw.githubusercontent.com/google/fonts/main/ofl/kiwimaru/OFL.txt",
+    "https://claude.ai/artifact/4o7QY23vNLcZF7wcrqVQg9"
+   ],
+   "verifies": []
+  },
+  {
    "id": "title-key-parity",
    "type": "finding",
    "status": "confirmed",
@@ -2533,6 +2561,16 @@
    "from": "dec-passkeys",
    "rel": "raises",
    "to": "q-passkey-real-devices"
+  },
+  {
+   "from": "dec-phone-nav-four",
+   "rel": "affects",
+   "to": "dec-design-adopted"
+  },
+  {
+   "from": "dec-phone-nav-four",
+   "rel": "depends_on",
+   "to": "title-font-candidates"
   },
   {
    "from": "dec-polite-crawling",
@@ -3408,6 +3446,16 @@
    "from": "throttle-keyed-by-client-address",
    "rel": "raises",
    "to": "q-cf-connecting-ip-trust"
+  },
+  {
+   "from": "title-font-candidates",
+   "rel": "supports",
+   "to": "ofl-japanese-fonts"
+  },
+  {
+   "from": "title-font-candidates",
+   "rel": "affects",
+   "to": "dec-design-adopted"
   },
   {
    "from": "white-record-sites",
