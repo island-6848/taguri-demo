@@ -1,44 +1,31 @@
 # 公演カタログの毎日の取得を GitHub Actions で動かす
 
-EC2 は無い（docs/knowledge の no-ec2）。毎日の取得は、**非公開リポジトリ `island-6848/taguri-crawler`** の
-GitHub Actions で動かす（dec-crawler-gha-private）。コードは公開リポジトリ `taguri-demo` の master を毎回取り出して使う。
+EC2 も AWS も使っていない（docs/knowledge の no-ec2・no-aws）。毎日の取得は、**非公開リポジトリ
+`island-6848/taguri-crawler`** の GitHub Actions で動かす（dec-crawler-gha-private）。
+コードは公開リポジトリ `taguri-demo` の master を毎回取り出して使う。
 
 ## 置くもの
 
 - `catalog.yml` → 非公開リポジトリの `.github/workflows/catalog.yml`
 
-## 非公開リポジトリに入れる秘密（Settings → Secrets and variables → Actions）
+## 設定
 
-| 名前 | 中身 |
-| --- | --- |
-| `AWS_ACCESS_KEY_ID`・`AWS_SECRET_ACCESS_KEY` | `stage-catalog/` だけに書き込める IAM ユーザーの鍵（下の権限） |
-| `STAGE_CATALOG_BUCKET` | カタログを置いている S3 のバケット名 |
-| `GEMINI_API_KEY` | あらすじから題材を読む段で使う（無ければその段は飛ばされる） |
-
-IAM の権限（`<bucket>` を置き換える）:
-
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {"Effect": "Allow", "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
-     "Resource": "arn:aws:s3:::<bucket>/stage-catalog/*"},
-    {"Effect": "Allow", "Action": "s3:ListBucket", "Resource": "arn:aws:s3:::<bucket>",
-     "Condition": {"StringLike": {"s3:prefix": "stage-catalog/*"}}}
-  ]
-}
-```
+- 秘密は要らない（作業データは同じリポジトリの `state` ブランチに書き戻すので、`GITHUB_TOKEN` だけで足りる）
+- `GEMINI_API_KEY`（任意）: あらすじから題材を読む段で使う。無ければその段は飛ばされる
+- 初回は Actions → Catalog → Run workflow を mode=weekly で手動で動かす（前回の作業データが無いので、候補から取り直す）
 
 ## 動き
 
-1. `crawler_state.py restore`: 前回の作業データ（`stage-catalog/crawler-state.tar.gz`）を戻す。初回は公開カタログを種にする
-2. `publish_catalog.py --mode daily|weekly`: 取り直し、検査し、`stage-catalog/data.tar.gz` に載せる（前のものは `history/` に控える）
-3. `crawler_state.py save`: 作業データを置く（失敗しても置く）
+1. 公開リポジトリのコードを取り出し、`state` ブランチ（前回の作業データ）を `state/` に取り出す
+2. `crawler_state.py restore --from state`: 作業データを `data/` に戻す（`state` が無ければ週 1 の取り直しで始める）
+3. `publish_catalog.py --mode daily|weekly --dry-run --out catalog.tar.gz`: 取り直して検査する（S3 には載せない）
+4. `crawler_state.py save --to state` と `git push -f`: 作業データを `state` ブランチに 1 コミットで置き換える（失敗しても置く）
 
-月〜土は毎日の更新、日曜は候補・クレジットまで取り直す。手動でも起動できる（Actions → Catalog → Run workflow）。
-カタログが古くなったら、公開リポジトリの `Catalog age` が知らせる。
+利用者の記録・認証・持ち主の購入の記録は、作業データに入れない。
 
 ## まだ足りないもの
 
-- Cloudflare 版が使う推薦の索引（`cloudflare/scripts/build_recommend_index.py`）を D1 に入れる段。Cloudflare の API トークンが要る
-- 定期実行は遅れたり飛ばされたりすることがある（gha-schedule-unreliable）。`Catalog age` で気付く
+- **できたカタログを Cloudflare 版（D1）に届ける段**（q-catalog-to-worker）。推薦の索引
+  （`cloudflare/scripts/build_recommend_index.py`）を作り、`wrangler d1 execute` で入れる。Cloudflare の API トークンが要る。
+  D1 の無料枠は 1 日 10 万行の書き込みなので、索引の入れ替えの行数を先に測る（q-real-catalog-stats）
+- 定期実行は遅れたり飛ばされたりすることがある（gha-schedule-unreliable）

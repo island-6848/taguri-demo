@@ -3,10 +3,10 @@ name: Catalog age
 # 公開版の公演カタログが古くなっていないかを毎日確かめる（tools/taguri/check_catalog_age.py）。
 # EC2 が無く、毎日の作り直しが止まっているかもしれないため（docs/knowledge の no-ec2・q-catalog-source）。
 # 失敗するとリポジトリの持ち主に GitHub から通知が届く。見るのは公開の /api/health の日付と件数だけ。
+# **毎日の自動実行は止めている。** AWS を使わなくなり（no-aws）、Render のデモ版が読む S3 の
+# カタログはもう更新されないため、毎日失敗の通知が届くだけになる。Cloudflare 版がカタログの日付を
+# 返すようになったら、その URL で再開する（q-catalog-to-worker）。手動では今も動かせる。
 on:
-  schedule:
-    # 日本時間 9:17（毎時 0 分は GitHub が混むので避ける）
-    - cron: '17 0 * * *'
   workflow_dispatch:
     inputs:
       url:

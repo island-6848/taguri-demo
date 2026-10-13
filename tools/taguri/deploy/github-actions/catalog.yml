@@ -1,6 +1,7 @@
 # 非公開リポジトリ（island-6848/taguri-crawler）の .github/workflows/catalog.yml に置く。
-# 公開リポジトリ（taguri-demo）のコードを取り出して、公演カタログを取り直し、非公開の S3 に載せる。
-# 非公開リポジトリで動かすのは、実行ログに公演の題名などが出ても外から見えないようにするため
+# 公開リポジトリ（taguri-demo）のコードを取り出して公演カタログを取り直し、
+# 作業データをこの非公開リポジトリの state ブランチに書き戻す。AWS は使わない（no-aws）。
+# 非公開リポジトリで動かすのは、実行ログや作業データに公演の題名などが出ても外から見えないようにするため
 # （docs/knowledge の dec-crawler-gha-private・gha-public-logs）。
 name: Catalog
 
@@ -12,9 +13,9 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'daily か weekly'
+        description: 'daily か weekly（初回は weekly）'
         required: false
-        default: 'daily'
+        default: 'weekly'
 
 # 2 本同時に走らせない（作業データを取り合わない）。走っている方は止めない
 concurrency:
@@ -22,17 +23,13 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: read
+  contents: write   # state ブランチへの書き戻しに使う
 
 jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 300
     env:
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      AWS_DEFAULT_REGION: ap-northeast-1
-      STAGE_CATALOG_BUCKET: ${{ secrets.STAGE_CATALOG_BUCKET }}
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       MODE: ${{ github.event.inputs.mode || (github.event.schedule == '17 19 * * 6' && 'weekly') || 'daily' }}
     steps:
@@ -41,16 +38,38 @@ jobs:
         with:
           repository: island-6848/taguri-demo
           ref: master
+      - name: Check out the previous working data (state branch)
+        id: state
+        continue-on-error: true
+        uses: actions/checkout@v4
+        with:
+          ref: state
+          path: state
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Install boto3
-        run: python -m pip install --quiet boto3
       - name: Restore the previous working data
-        run: python tools/taguri/crawler_state.py restore
-      - name: Rebuild and publish the catalog
-        run: python tools/taguri/publish_catalog.py --mode "$MODE"
+        run: |
+          if [ "${{ steps.state.outcome }}" != "success" ]; then
+            echo "state ブランチがまだ無い。初回なので週 1 の取り直しで始める"
+            echo "MODE=weekly" >> "$GITHUB_ENV"
+            rm -rf state
+          fi
+          python tools/taguri/crawler_state.py restore --from state
+      - name: Rebuild the catalog
+        run: python tools/taguri/publish_catalog.py --mode "$MODE" --dry-run --out catalog.tar.gz
       # 失敗しても、そこまでの取得の控えは残す（次回に同じものを取り直さない）
-      - name: Save the working data
+      - name: Save the working data to the state branch
         if: always()
-        run: python tools/taguri/crawler_state.py save
+        run: |
+          rm -rf state && mkdir state && cd state
+          git init -q -b state
+          cd ..
+          python tools/taguri/crawler_state.py save --to state
+          cd state
+          git config user.name "taguri-crawler"
+          git config user.email "taguri-crawler@users.noreply.github.com"
+          git add -A
+          git commit -q -m "作業データ $(date -u +%Y-%m-%dT%H:%MZ) ($MODE)"
+          # 履歴は持たない（毎回 1 コミットだけの state で置き換え、リポジトリが膨らまないようにする）
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" state:state

@@ -120,6 +120,17 @@
    ]
   },
   {
+   "id": "claude-app-repo-access",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "Claude の GitHub アプリは taguri-crawler にまだ入っていない",
+   "sources": [
+    "https://claude.ai/code/session_015xXsQ9C4423EMquRbg7m3U（add_repo・list_repos の結果）"
+   ],
+   "verifies": []
+  },
+  {
    "id": "com-wholesale-2026",
    "type": "finding",
    "status": "confirmed",
@@ -817,6 +828,17 @@
    "verifies": []
   },
   {
+   "id": "no-aws",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "AWS はもう使っていない",
+   "sources": [
+    "https://claude.ai/code/session_015xXsQ9C4423EMquRbg7m3U（起案者の回答）"
+   ],
+   "verifies": []
+  },
+  {
    "id": "no-ec2",
    "type": "finding",
    "status": "confirmed",
@@ -940,6 +962,18 @@
    "title": "今の公演カタログ（S3）は、いつ・どこで作られたものか",
    "sources": [],
    "verifies": [
+    "S23"
+   ]
+  },
+  {
+   "id": "q-catalog-to-worker",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "取得したカタログを Cloudflare 版（D1）にどう届けるか",
+   "sources": [],
+   "verifies": [
+    "S21",
     "S23"
    ]
   },
@@ -1291,6 +1325,15 @@
    "status": "answered",
    "date": "2026-10-13",
    "title": "Render の無料プランでサービス版を動かせるか",
+   "sources": [],
+   "verifies": []
+  },
+  {
+   "id": "q-render-s3-dependency",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "Render のデモ版は、起動し直すと動かなくなるのではないか",
    "sources": [],
    "verifies": []
   },
@@ -1724,6 +1767,11 @@
    "from": "cf-tunnel-origin-localhost",
    "rel": "raises",
    "to": "q-cf-connecting-ip-trust"
+  },
+  {
+   "from": "claude-app-repo-access",
+   "rel": "affects",
+   "to": "q-crawler-repo"
   },
   {
    "from": "com-wholesale-2026",
@@ -2176,6 +2224,26 @@
    "to": "q-migration-branch"
   },
   {
+   "from": "no-aws",
+   "rel": "affects",
+   "to": "dec-crawler-gha-private"
+  },
+  {
+   "from": "no-aws",
+   "rel": "raises",
+   "to": "q-render-s3-dependency"
+  },
+  {
+   "from": "no-aws",
+   "rel": "raises",
+   "to": "q-catalog-to-worker"
+  },
+  {
+   "from": "no-aws",
+   "rel": "affects",
+   "to": "q-catalog-source"
+  },
+  {
    "from": "no-ec2",
    "rel": "answers",
    "to": "q-ec2-cost"
@@ -2279,6 +2347,16 @@
    "from": "q-catalog-source",
    "rel": "depends_on",
    "to": "q-crawler-host"
+  },
+  {
+   "from": "q-catalog-to-worker",
+   "rel": "depends_on",
+   "to": "q-real-catalog-stats"
+  },
+  {
+   "from": "q-catalog-to-worker",
+   "rel": "depends_on",
+   "to": "no-aws"
   },
   {
    "from": "q-cf-access",
@@ -2404,6 +2482,16 @@
    "from": "q-real-catalog-stats",
    "rel": "depends_on",
    "to": "q-ec2-cost"
+  },
+  {
+   "from": "q-render-s3-dependency",
+   "rel": "depends_on",
+   "to": "no-aws"
+  },
+  {
+   "from": "q-render-s3-dependency",
+   "rel": "affects",
+   "to": "q-demo-trial-design"
   },
   {
    "from": "q-safari-cookies",
