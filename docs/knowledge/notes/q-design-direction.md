@@ -1,7 +1,7 @@
 ---
 id: q-design-direction
 type: question
-status: open
+status: answered
 date: 2026-10-13
 title: たぐりの見た目をどの方向に変えるか（A 幕と半券・B 観劇ノート・C 客電が落ちる）
 sources:

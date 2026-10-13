@@ -547,6 +547,17 @@
    "verifies": []
   },
   {
+   "id": "dec-design-default-ito",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-13",
+   "title": "既定の見た目は「たぐる糸」に半券を合わせたものにし、A（幕と半券）はやめる。カード型のレイアウトは使わない",
+   "sources": [
+    "https://claude.ai/artifact/4o7QY23vNLcZF7wcrqVQg9 （デザイン案のキャンバス）"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-edition-split",
    "type": "decision",
    "status": "adopted",
@@ -1294,7 +1305,7 @@
   {
    "id": "q-design-direction",
    "type": "question",
-   "status": "open",
+   "status": "answered",
    "date": "2026-10-13",
    "title": "たぐりの見た目をどの方向に変えるか（A 幕と半券・B 観劇ノート・C 客電が落ちる）",
    "sources": [
@@ -1819,6 +1830,23 @@
    ]
   },
   {
+   "id": "simple-design-principles",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-13",
+   "title": "シンプルなデザインは「削る」ことではなく、要るものを一つに絞って際立たせ、押せる手がかりは残すこと",
+   "sources": [
+    "https://www.grahammann.net/book-notes/the-laws-of-simplicity-john-maeda",
+    "https://www.designprinciplesftw.com/collections/laws-of-simplicity",
+    "https://domusweb.it/en/from-the-archive/2023/03/14/dieter-rams-and-the-10-principles-for-a-good-design.html",
+    "https://www.Wikipedia.org/wiki/Dieter_Rams",
+    "https://www.muji.com/jp/flagship/huaihai755/archive/hara.html",
+    "https://uxdesign.cc/material-3-expressive-building-on-the-failures-of-flat-design-d7a9bb627298",
+    "https://experiencedynamics.com/blog/2018/04/flat-design-pitfalls-skip-these-5-most-common-mistakes"
+   ],
+   "verifies": []
+  },
+  {
    "id": "state-backup-py313",
    "type": "finding",
    "status": "unverified",
@@ -2292,6 +2320,21 @@
    "from": "dec-demo-trial-no-data",
    "rel": "supersedes",
    "to": "dec-demo-stays-render-free"
+  },
+  {
+   "from": "dec-design-default-ito",
+   "rel": "answers",
+   "to": "q-design-direction"
+  },
+  {
+   "from": "dec-design-default-ito",
+   "rel": "depends_on",
+   "to": "dec-theme-user-choice"
+  },
+  {
+   "from": "dec-design-default-ito",
+   "rel": "depends_on",
+   "to": "simple-design-principles"
   },
   {
    "from": "dec-edition-split",
@@ -3167,6 +3210,11 @@
    "from": "serve-cloud-render-guard",
    "rel": "affects",
    "to": "comp-vm-host"
+  },
+  {
+   "from": "simple-design-principles",
+   "rel": "affects",
+   "to": "dec-theme-user-choice"
   },
   {
    "from": "state-backup-py313",
