@@ -614,6 +614,15 @@
    "verifies": []
   },
   {
+   "id": "dec-no-n1-evidence",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-13",
+   "title": "持ち主 1 人（n=1）の実験結果は、推薦の改善の根拠にしない",
+   "sources": [],
+   "verifies": []
+  },
+  {
    "id": "dec-no-render-data-migration",
    "type": "decision",
    "status": "adopted",
@@ -1827,9 +1836,9 @@
   {
    "id": "reco-past-auc",
    "type": "finding",
-   "status": "confirmed",
+   "status": "unverified",
    "date": "2026-10-13",
-   "title": "過去の改善の実験結果は、持ち主 1 人の評価での leave-one-out AUC としてコードの注記に残っている",
+   "title": "過去の改善の実験結果（持ち主 1 人の評価での AUC）は、判断の根拠に使わない",
    "sources": [
     "https://github.com/island-6848/taguri-demo/blob/master/tools/review/recommend2.py"
    ],
@@ -2549,6 +2558,21 @@
    "to": "migration-handover-stage0"
   },
   {
+   "from": "dec-no-n1-evidence",
+   "rel": "affects",
+   "to": "reco-past-auc"
+  },
+  {
+   "from": "dec-no-n1-evidence",
+   "rel": "affects",
+   "to": "q-reco-eval-harness"
+  },
+  {
+   "from": "dec-no-n1-evidence",
+   "rel": "affects",
+   "to": "comp-recommender"
+  },
+  {
    "from": "dec-no-render-data-migration",
    "rel": "supports",
    "to": "dec-service-starts-empty"
@@ -3212,6 +3236,11 @@
    "from": "q-real-catalog-stats",
    "rel": "depends_on",
    "to": "q-ec2-cost"
+  },
+  {
+   "from": "q-reco-eval-harness",
+   "rel": "depends_on",
+   "to": "dec-no-n1-evidence"
   },
   {
    "from": "q-reco-eval-harness",
