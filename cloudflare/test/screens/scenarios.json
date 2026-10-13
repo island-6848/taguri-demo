@@ -462,5 +462,331 @@
     "get": "/api/screen/notes"
    }
   ]
+ },
+ {
+  "name": "diary writes",
+  "steps": [
+   {
+    "post": "/api/add_work",
+    "body": {
+     "title": "同じ舞台",
+     "date": "2026-08-01",
+     "venue": "劇場A"
+    }
+   },
+   {
+    "post": "/api/add_work",
+    "body": {
+     "title": "同じ舞台（再演）",
+     "date": "2026-08-20"
+    }
+   },
+   {
+    "post": "/api/add_work",
+    "body": {
+     "title": "別の舞台",
+     "date": "2026-07-01"
+    }
+   },
+   {
+    "post": "/api/rate",
+    "body": {
+     "work_key": "同じ舞台再演#2026-08-20",
+     "verdict": "◎"
+    }
+   },
+   {
+    "post": "/api/note",
+    "body": {
+     "work_key": "同じ舞台再演#2026-08-20",
+     "note_impression": "良かった"
+    }
+   },
+   {
+    "post": "/api/hand_credits",
+    "body": {
+     "work_key": "同じ舞台再演#2026-08-20",
+     "fields": {
+      "出演": "俳優甲、俳優乙・俳優丙\n（Wキャスト）俳優丁",
+      "演出": "【演出】 演出家丙",
+      "スタッフ": "美術：美術家A　照明:照明家B\n音響\n  音響家C\n【衣裳】衣裳家D\n2026年10月1日 劇場A"
+     }
+    }
+   },
+   {
+    "post": "/api/hand_credits",
+    "body": {
+     "work_key": "同じ舞台再演#2026-08-20",
+     "fields": [
+      "x"
+     ]
+    }
+   },
+   {
+    "post": "/api/hand_credits",
+    "body": {
+     "work_key": "",
+     "fields": {}
+    }
+   },
+   {
+    "post": "/api/merge_work",
+    "body": {
+     "work_key": "同じ舞台#2026-08-01",
+     "other": "同じ舞台再演#2026-08-20"
+    }
+   },
+   {
+    "post": "/api/merge_work",
+    "body": {
+     "work_key": "同じ舞台#2026-08-01",
+     "other": "同じ舞台#2026-08-01"
+    }
+   },
+   {
+    "post": "/api/merge_work",
+    "body": {
+     "work_key": "同じ舞台#2026-08-01",
+     "other": "無い"
+    }
+   },
+   {
+    "get": "/api/screen/rate"
+   },
+   {
+    "get": "/api/screen/unrated"
+   },
+   {
+    "get": "/api/screen/notes"
+   },
+   {
+    "post": "/api/merge_work",
+    "body": {
+     "work_key": "同じ舞台#2026-08-01",
+     "unmerge": true
+    }
+   },
+   {
+    "post": "/api/merge_work",
+    "body": {
+     "work_key": "同じ舞台#2026-08-01",
+     "unmerge": 1
+    }
+   },
+   {
+    "get": "/api/screen/rate"
+   },
+   {
+    "post": "/api/fix_work",
+    "body": {
+     "work_key": "別の舞台#2026-07-01",
+     "title": "別の舞台 改",
+     "shows": [
+      {
+       "uid": "x",
+       "date": "2026-07-02",
+       "time": "18:30",
+       "venue": " 劇場  B "
+      }
+     ]
+    }
+   },
+   {
+    "post": "/api/fix_work",
+    "body": {
+     "work_key": "別の舞台改#2026-07-02",
+     "title": "  "
+    }
+   },
+   {
+    "post": "/api/fix_work",
+    "body": {
+     "work_key": "別の舞台改#2026-07-02",
+     "shows": [
+      {
+       "date": "7/2"
+      }
+     ]
+    }
+   },
+   {
+    "post": "/api/fix_work",
+    "body": {
+     "work_key": "別の舞台改#2026-07-02",
+     "shows": [
+      {
+       "time": "7時"
+      }
+     ]
+    }
+   },
+   {
+    "post": "/api/fix_work",
+    "body": {
+     "work_key": "別の舞台改#2026-07-02",
+     "title": "同じ舞台",
+     "shows": [
+      {
+       "date": "2026-08-01"
+      }
+     ]
+    }
+   },
+   {
+    "post": "/api/fix_work",
+    "body": {
+     "work_key": "別の舞台改#2026-07-02",
+     "clear": true
+    }
+   },
+   {
+    "post": "/api/fix_work",
+    "body": {
+     "work_key": "無い#undated",
+     "title": "x"
+    }
+   },
+   {
+    "post": "/api/fix_work",
+    "body": {
+     "work_key": "別の舞台改#2026-07-02",
+     "title": "同じ舞台(再)"
+    }
+   },
+   {
+    "post": "/api/link_stage",
+    "body": {
+     "work_key": "同じ舞台#2026-08-01",
+     "stage_id": "101"
+    }
+   },
+   {
+    "post": "/api/link_stage",
+    "body": {
+     "work_key": "同じ舞台#2026-08-01",
+     "stage_id": "999"
+    }
+   },
+   {
+    "post": "/api/link_stage",
+    "body": {
+     "work_key": "同じ舞台#2026-08-01",
+     "stage_id": "10a"
+    }
+   },
+   {
+    "post": "/api/link_stage",
+    "body": {
+     "work_key": "無い",
+     "stage_id": "101"
+    }
+   },
+   {
+    "post": "/api/link_stage",
+    "body": {
+     "work_key": "同じ舞台再演#2026-08-20",
+     "stage_id": "201"
+    }
+   },
+   {
+    "get": "/api/screen/unrated"
+   },
+   {
+    "post": "/api/link_stage",
+    "body": {
+     "work_key": "同じ舞台#2026-08-01",
+     "stage_id": ""
+    }
+   },
+   {
+    "post": "/api/drop_work",
+    "body": {
+     "work_key": "同じ舞台#2026-08-01"
+    }
+   },
+   {
+    "post": "/api/drop_work",
+    "body": {
+     "work_key": "同じ舞台#2026-08-01"
+    }
+   },
+   {
+    "get": "/api/screen/unrated"
+   },
+   {
+    "get": "/api/screen/rate"
+   },
+   {
+    "post": "/api/purge_work",
+    "body": {
+     "key": "同じ舞台#2026-08-01"
+    }
+   },
+   {
+    "post": "/api/restore_work",
+    "body": {
+     "key": "同じ舞台#2026-08-01"
+    }
+   },
+   {
+    "post": "/api/purge_work",
+    "body": {
+     "key": "同じ舞台#2026-08-01"
+    }
+   },
+   {
+    "post": "/api/restore_work",
+    "body": {
+     "key": ""
+    }
+   },
+   {
+    "post": "/api/drop_work",
+    "body": {
+     "work_key": "同じ舞台再演#2026-08-20"
+    }
+   },
+   {
+    "post": "/api/restore_work",
+    "body": {
+     "key": "同じ舞台再演#2026-08-20"
+    }
+   },
+   {
+    "get": "/api/screen/rate"
+   },
+   {
+    "post": "/api/visit_note",
+    "body": {
+     "uid": "u1",
+     "note": "一回目"
+    }
+   },
+   {
+    "post": "/api/visit_note",
+    "body": {
+     "uid": "u1",
+     "note": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    }
+   },
+   {
+    "post": "/api/visit_note",
+    "body": {
+     "note": "x"
+    }
+   },
+   {
+    "post": "/api/hand_credits",
+    "body": {
+     "work_key": "同じ舞台再演#2026-08-20",
+     "fields": {
+      "出演": ""
+     }
+    }
+   },
+   {
+    "get": "/api/screen/rate"
+   }
+  ]
  }
 ]

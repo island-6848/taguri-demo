@@ -3,6 +3,7 @@
 // _date_parts, _venue_of, _edit_html, _hand_html, stage_label), charts._anchor
 // and icons.ico/h2. Each returns exactly the Python HTML.
 import {E, WS, strip} from './py.js';
+import {handCreditCount} from './credits.js';
 
 // ---------------------------------------------------------------- icons.py
 const ICONS = {
@@ -148,14 +149,6 @@ const HAND_FIELDS = [
   ['脚本', '脚本・原作・翻訳', ''],
   ['スタッフ', 'そのほかの作り手', '「美術：〇〇」のように役職を添えると、役職ごとに数えられます。役職が分からないものは名前だけで構いません'],
 ];
-
-/** app.hand_credit_count. Hand-entered credits are written only by the
- * hand_credits action, which is ported together with measure_nets.parse_credits;
- * until then a non-empty value must not be rendered with a wrong count. */
-function handCreditCount(fields) {
-  if (!fields || !Object.keys(fields).length) return 0;
-  throw new Error('hand_credit_count: port measure_nets.parse_credits with the hand_credits action');
-}
 
 /** app._hand_html */
 function handHtml(w, key) {

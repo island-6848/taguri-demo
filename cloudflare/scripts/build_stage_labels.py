@@ -56,21 +56,23 @@ def stage_rows(candidates: list[dict], picked: list[dict]) -> list[dict]:
     return [r for r in rows if r["k"]]
 
 
-def build(candidates: list[dict], picked: list[dict]) -> dict[str, str]:
-    """stage_id -> label, as app.stage_label returns it."""
+def build(candidates: list[dict], picked: list[dict]) -> dict[str, tuple[str, str]]:
+    """stage_id -> (label as app.stage_label returns it, title as app.link_stage returns it)."""
     import app as APP
-    ix: dict[str, str] = {}
+    ix: dict[str, tuple[str, str]] = {}
     for r in APP._merge_by_stage(stage_rows(candidates, picked)):
         if r["kind"] == "stage" and r["key"] and r["key"] not in ix:
-            ix[r["key"]] = "／".join(x for x in (r["title"], r.get("venue") or "", r.get("date") or "") if x)
+            ix[r["key"]] = ("／".join(x for x in (r["title"], r.get("venue") or "", r.get("date") or "") if x),
+                            r["title"])
     return ix
 
 
-def to_sql(labels: dict[str, str]) -> list[str]:
+def to_sql(labels: dict[str, tuple[str, str]]) -> list[str]:
     """Insert a version, switch rec_meta 'stage_label' to it, drop the others."""
     ver = hashlib.sha256(json.dumps(labels, ensure_ascii=False, sort_keys=True).encode()).hexdigest()[:16]
     stmts = [f"DELETE FROM stage_label WHERE ver={BI._q(ver)};"]
-    stmts += BI._inserts("stage_label", "ver,stage_id,label", [(ver, sid, lab) for sid, lab in sorted(labels.items())])
+    stmts += BI._inserts("stage_label", "ver,stage_id,label,title",
+                         [(ver, sid, lab, title) for sid, (lab, title) in sorted(labels.items())])
     stmts.append(f"INSERT INTO rec_meta(k,v) VALUES('stage_label',{BI._q(ver)}) "
                  "ON CONFLICT(k) DO UPDATE SET v=excluded.v;")
     stmts.append(f"DELETE FROM stage_label WHERE ver<>{BI._q(ver)};")

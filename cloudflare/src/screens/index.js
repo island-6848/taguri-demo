@@ -7,6 +7,7 @@
 // "screen:rate,api:rate"); everything else still goes to Render until the
 // switch-over (docs/render-migration-plan.md).
 import {rateScreens} from './rate.js';
+import {diaryScreens} from './diary.js';
 import {ValueError} from './py.js';
 
 export const SCREEN_TABLES = ['works', 'excluded', 'merges', 'hand_credits', 'visit_note', 'reaction', 'viewed',
@@ -15,8 +16,8 @@ export const SCREEN_TABLES = ['works', 'excluded', 'merges', 'hand_credits', 'vi
 // public service never checks it; screens only carry it in links.
 export const TOKEN = 'cfw0000000000000000000000000000000';
 
-const SCREENS = {...rateScreens.screens};
-const ACTIONS = {...rateScreens.actions};
+const SCREENS = {...rateScreens.screens, ...diaryScreens.screens};
+const ACTIONS = {...rateScreens.actions, ...diaryScreens.actions};
 
 const enabled = (env, kind, name) => {
   const list = String(env.NATIVE_UI || '').split(',').map(s => s.trim());
