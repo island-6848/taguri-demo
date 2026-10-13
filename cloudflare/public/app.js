@@ -100,15 +100,17 @@ function renderNav() {
 // （起案者の指示 2026-10-13「スマホ版はメインの４つの大きいメニューは固定で表示して、それより子の
 // メニューは各メニューの下にすだれで出てくるように」「大きい４つのメニューは均等割り付け」
 // 「４つの大きいメニューにアイコンをつけて」）。パソコン幅では今までどおり左の帯（NAV）を使う。
-// 探すは帯の検索窓、設定は右上の歯車から入る。
+// 探すは帯の検索窓、設定は右上の歯車、公演情報の登録はその左の「＋」から入る。
 const PNAV = [
   ["rec", "おすすめ", "yarn", [["/recommend", "今週のおすすめ"], ["/recommend/reminder", "開幕リマインド"], ["/recommend/interest", "興味あり"], ["/recommend/favourites", "お気に入り"]]],
   ["plan", "予定", "calendar", [["/calendar", "公演カレンダー"], ["/tickets", "購入済み公演"]]],
   ["rate", "評価", "stamp", [["/rate", "評価一覧"], ["/rate/unrated", "未評価"], ["/rate/notes", "感想"]]],
-  ["rec2", "記録", "notebook", [["/records/works", "日記帳"], ["/records", "眺める"], ["/records/trace", "たどる"], ["/records/chronicle", "観劇史年表"], ["/register", "公演情報の登録"]]],
+  ["rec2", "記録", "notebook", [["/records/works", "日記帳"], ["/records", "眺める"], ["/records/trace", "たどる"], ["/records/chronicle", "観劇史年表"]]],
 ];
 function renderPNav() {
-  return '<a class="pset" href="/settings" data-path="/settings" aria-label="設定">' + ico("gear", 20) + "</a>"
+  // 公演情報の登録は「記録」の子から外し、歯車の左の「＋」から入る（起案者の指示 2026-10-13「スマホ版のみ」）
+  return '<a class="padd" href="/register" data-path="/register" aria-label="公演情報の登録" title="公演情報の登録">' + ico("plus", 22) + "</a>"
+    + '<a class="pset" href="/settings" data-path="/settings" aria-label="設定">' + ico("gear", 20) + "</a>"
     + '<div class="pnav">' + PNAV.map(([id, label, icon]) =>
       '<button type="button" class="pm" data-pm="' + id + '" aria-expanded="false">' + ico(icon, 22)
       + '<span class="pl">' + E(label) + ico("chevron", 9, "cv") + "</span></button>").join("") + "</div>"
