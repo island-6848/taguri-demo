@@ -1,7 +1,7 @@
 import {isOriginalRoute, originalUI} from './original-ui.js';
 import {verifyIdToken, isAuthError} from './firebase-auth.js';
 import {passkeyRoutes} from './passkey.js';
-import {scoreFromIndex, d1Access, gradeOf} from './recommend.js';
+import {scoreFromIndex, d1Access, gradeOf, seedsFromFavourites} from './recommend.js';
 import {searchIndex, d1Search} from './stage-search.js';
 import {chooseVariant} from './reco-gate.js';
 import {SCREEN_TABLES, nativeScreen, nativeAction, screen as nativeScreenBody, action as nativeActionBody, readInput as nativeInput} from './screens/index.js';
@@ -140,7 +140,7 @@ async function deleteAccount(request, env, uid, input) {
 // to (interest / no / owned) are left out, as the Python app moves them to
 // other lists. Tour grouping and impression preferences are not ported yet.
 const RECOMMEND_TOP = 15;
-const RECOMMENDER = 'person-ordinal-v3';
+const RECOMMENDER = 'person-ordinal-v3+fav1';   // +fav1: favourites as fading pseudo ratings
 const jstToday = () => new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
 // Served from rec_cache unless the index version, the date, or the user's
 // records/reactions changed since it was computed (a few rows read per view).
@@ -169,7 +169,11 @@ async function computeRecommendations(db, uid, ver, today) {
   // this user's own later ratings better (src/reco-gate.js). Kept out of the
   // answer shown on screen.
   const gate = chooseVariant(rated);
-  const ranked = await scoreFromIndex({...access, rated, multipliers: gate.multipliers, today});
+  // Favourite people's productions count as pseudo ratings that fade as real
+  // ratings come in (q-favourites-seed); their own shows are left out here.
+  const favourites = (await db.prepare('SELECT name,kind FROM favourites WHERE user_id=? ORDER BY kind,name LIMIT 200').bind(uid).all()).results;
+  const {seeds, skip} = await seedsFromFavourites(access, favourites);
+  const ranked = await scoreFromIndex({...access, rated, multipliers: gate.multipliers, today, seeds, skip});
   const reacted = new Set((await db.prepare('SELECT stage_id FROM reactions WHERE user_id=?').bind(uid).all()).results.map(r => r.stage_id));
   const top = ranked.filter(c => !reacted.has(c.stage_id)).slice(0, RECOMMEND_TOP);
   const entries = new Map();
@@ -179,7 +183,7 @@ async function computeRecommendations(db, uid, ver, today) {
     for (const r of rows) entries.set(r.stage_id, r);
   }
   return {ready: true, n_rated: records.length, n_linked: records.filter(r => people.get(r.stage_id)?.length).length,
-    rows_read: access.counter.rows, variant: gate.variant, items: top.map(c => {
+    rows_read: access.counter.rows, variant: gate.variant, n_seeds: seeds.length, items: top.map(c => {
       const e = entries.get(c.stage_id) || {}, entry = JSON.parse(e.entry || '{}');
       return {stage_id: c.stage_id, title: e.title || '', group: e.grp || '', start: e.start || '', end: e.end || '',
         theater: entry.theater || '', pref: entry.pref || '', url: entry.url || '', score: c.b,
@@ -360,7 +364,7 @@ export default {
       const input = await body(request);
       // Writes that change what is recommended drop the cached result (the stamp
       // alone misses two edits within the same second).
-      if (['/api/record','/api/record/delete','/api/reaction','/api/import'].includes(path))
+      if (['/api/record','/api/record/delete','/api/reaction','/api/favourite','/api/import'].includes(path))
         await env.DB.prepare('DELETE FROM rec_cache WHERE user_id=?').bind(uid).run();
       if (path === '/api/record') {
         const r = record(input);

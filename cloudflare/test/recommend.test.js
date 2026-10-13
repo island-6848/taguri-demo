@@ -7,7 +7,7 @@ import {readFileSync, readdirSync} from 'node:fs';
 import {execFileSync} from 'node:child_process';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {scoreFromIndex, d1Access, independentRatings} from '../src/recommend.js';
+import {scoreFromIndex, d1Access, independentRatings, seedsFromFavourites} from '../src/recommend.js';
 
 const fixture = JSON.parse(execFileSync('python3', [new URL('./parity_fixture.py', import.meta.url).pathname], {maxBuffer: 256 * 1024 * 1024, encoding: 'utf8'}));
 
@@ -23,18 +23,21 @@ function load(cat) {
 }
 
 test('JS scores equal Python for every catalogue, history and weight setting', async () => {
-  let compared = 0, nonEmpty = 0, rowsRead = 0;
+  let compared = 0, nonEmpty = 0, rowsRead = 0, seeded = 0;
   for (const cat of fixture.catalogues) {
     const sqlite = load(cat);
     for (const c of cat.cases) {
       const access = d1Access(d1(sqlite), cat.ver);
-      const got = await scoreFromIndex({...access, rated: c.rated, multipliers: c.multipliers, today: fixture.today});
-      assert.deepStrictEqual(got, c.expected, `seed ${cat.seed}, weights ${JSON.stringify(c.multipliers)}`);
+      const {seeds, skip} = c.favourites ? await seedsFromFavourites(access, c.favourites) : {};
+      if (c.favourites) { assert.deepEqual(seeds.map(s => s.stage_id), c.seeds); seeded += seeds.length > 0; }
+      const got = await scoreFromIndex({...access, rated: c.rated, multipliers: c.multipliers, today: fixture.today, seeds, skip});
+      assert.deepStrictEqual(got, c.expected, `seed ${cat.seed}, weights ${JSON.stringify(c.multipliers)}${c.favourites ? ', favourites' : ''}`);
       compared++; nonEmpty += c.expected.length > 0; rowsRead += access.counter.rows;
     }
     sqlite.close();
   }
-  assert.equal(compared, 144);
+  assert.equal(compared, 144 + 24);
+  assert.ok(seeded >= 18, `favourites found seed stages in ${seeded} of 24 cases`);
   assert.ok(nonEmpty > compared / 2, 'the comparison must not pass vacuously');
 });
 
@@ -60,7 +63,7 @@ const call = (env, path, value, cookie = '') => worker.fetch(new Request(`${ORIG
 test('records saved through the API give the same recommendations as Python, minus reacted stages', async () => {
   let checked = 0;
   for (const cat of fixture.catalogues.slice(0, 6)) {
-    for (const c of cat.cases.filter(x => Object.keys(x.multipliers).length === 0 && x.expected.length >= 3)) {
+    for (const c of cat.cases.filter(x => !x.favourites && Object.keys(x.multipliers).length === 0 && x.expected.length >= 3)) {
       const sqlite = load(cat), env = envFor(sqlite);
       const reg = await call(env, 'register', {});
       const cookie = reg.headers.get('set-cookie').split(';')[0];
@@ -81,7 +84,7 @@ test('records saved through the API give the same recommendations as Python, min
       assert.deepEqual(got.items[0].reasons, want[0].parts.slice(0, 3).map(([, role, person, n]) => ({role, person, n})));
       assert.ok(got.items.every(i => i.title), 'display fields come from rec_stage');
       // The cache is keyed by the scoring rules too (a rule change recomputes).
-      assert.ok(sqlite.prepare('SELECT stamp FROM rec_cache WHERE user_id=?').get(uid).stamp.startsWith('person-ordinal-v3|'));
+      assert.ok(sqlite.prepare('SELECT stamp FROM rec_cache WHERE user_id=?').get(uid).stamp.startsWith('person-ordinal-v3+fav1|'));
       // Second view: served from the cache, same answer.
       const again = await recommendFor(env.DB, uid, fixture.today);
       assert.equal(again.cached, true);
@@ -104,6 +107,28 @@ test('records saved through the API give the same recommendations as Python, min
     }
   }
   assert.ok(checked >= 5, `checked ${checked}`);
+});
+
+test('favourites give recommendations before any rating, as Python, and fade as ratings come in', async () => {
+  let checked = 0;
+  for (const cat of fixture.catalogues.slice(0, 6)) {
+    const c = cat.cases.find(x => x.favourites && !x.rated.length && x.expected.length >= 3);
+    if (!c) continue;
+    const sqlite = load(cat), env = envFor(sqlite);
+    const cookie = (await call(env, 'register', {})).headers.get('set-cookie').split(';')[0];
+    const uid = sqlite.prepare('SELECT id FROM users').get().id;
+    assert.equal((await recommendFor(env.DB, uid, fixture.today)).items.length, 0, 'nothing to go on yet');
+    for (const f of c.favourites) assert.equal((await call(env, 'favourite', f, cookie)).status, 200);
+    const got = await recommendFor(env.DB, uid, fixture.today);
+    assert.equal(got.cached, false, 'adding a favourite drops the cached result');
+    assert.equal(got.n_seeds, c.seeds.length);
+    assert.deepEqual(got.items.map(i => [i.stage_id, i.score]), c.expected.slice(0, 15).map(x => [x.stage_id, x.b]));
+    // The favourites' own shows are listed elsewhere, not recommended here.
+    assert.ok(!got.items.some(i => c.seeds.includes(i.stage_id)));
+    checked++;
+    sqlite.close();
+  }
+  assert.ok(checked >= 3, `checked ${checked}`);
 });
 
 test('the API needs sign-in, and says when the index is not built yet', async () => {

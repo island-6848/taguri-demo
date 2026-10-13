@@ -290,5 +290,31 @@ class KindOfShowTests(unittest.TestCase):
         self.assertEqual(UR.person_values(a)[0], UR.person_values(b)[0])
 
 
+class FavouriteSeedTests(unittest.TestCase):
+    """Favourites as fading pseudo ratings (q-favourites-seed)."""
+
+    seeds = [{"stage_id": "s1", "people": [["出演", "推し"], ["出演", "共演者"], ["#形式", "ミュージカル"]]}]
+
+    def test_seed_reaches_co_workers_and_kinds_not_the_favourite(self):
+        values, _ = UR.person_values([], self.seeds, {"推し"})
+        self.assertNotIn(("出演", "推し"), values)
+        n, v = values[("出演", "共演者")]
+        self.assertEqual(n, 0)                       # n counts the user's own ratings only
+        self.assertAlmostEqual(v, UR.SEED_Z / (1 + 3))
+        self.assertGreater(values[("#形式", "ミュージカル")][1], 0)
+
+    def test_seed_fades_as_ratings_come_in(self):
+        other = [{"key": f"r{i}", "verdict": "○", "people": [["出演", f"別人{i}"]]} for i in range(9)]
+        early = UR.person_values([], self.seeds, {"推し"})[0][("出演", "共演者")][1]
+        later = UR.person_values(other, self.seeds, {"推し"})[0][("出演", "共演者")][1]
+        self.assertAlmostEqual(later, (3 / 12) * UR.SEED_Z / (3 / 12 + 3))
+        self.assertLess(later, early / 3)
+
+    def test_no_seeds_changes_nothing(self):
+        rated = [{"key": "a", "verdict": "◎", "people": [["出演", "甲"]]},
+                 {"key": "b", "verdict": "×", "people": [["出演", "甲"], ["出演", "乙"]]}]
+        self.assertEqual(UR.person_values(rated)[0], UR.person_values(rated, [], set())[0])
+
+
 if __name__ == "__main__":
     unittest.main()

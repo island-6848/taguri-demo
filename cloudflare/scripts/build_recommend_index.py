@@ -98,18 +98,45 @@ def build_index(pool: dict[str, dict], fields_by_stage: dict[str, dict], role_gr
 
 # ---------------------------------------------------------------- request time (reference)
 
+SEED_ROLES = ("出演", "演出", "脚本", "作", "原作", "翻訳", "潤色", "構成", "振付", "作曲", "音楽")
+SEED_KINDS = ("人", "原作者")
+MAX_SEED_FAVS = 20
+MAX_SEED_STAGES = 60
+
+
+def seeds_from_favourites(postings_for, people_of, favourites: list[dict]) -> tuple[list[dict], set]:
+    """Seed productions for the user's favourite people (q-favourites-seed).
+
+    The candidate stages crediting a favourite person or original author in
+    one of SEED_ROLES (first MAX_SEED_FAVS names, first MAX_SEED_STAGES stage
+    ids in order), with their people from rec_people. Returns (seeds, names).
+    """
+    names = sorted({f["name"] for f in favourites if f.get("kind") in SEED_KINDS})[:MAX_SEED_FAVS]
+    keys = sorted((role, name) for name in names for role in SEED_ROLES)
+    sids = sorted({row[2] for row in postings_for(keys)})[:MAX_SEED_STAGES]
+    seeds = []
+    for sid in sids:
+        people = people_of(sid)
+        if people:
+            seeds.append({"stage_id": sid, "people": people})
+    return seeds, set(names)
+
+
 def score_from_index(postings_for, stage_of, rated: list[dict], *, multipliers: dict,
-                     today: datetime.date) -> list[dict]:
+                     today: datetime.date, seeds: list[dict] = (), skip: set = frozenset()) -> list[dict]:
     """What the Worker computes per request, using only the index.
 
     `rated`: the user's records with `verdict`, `stage_id`/`key`, `people`
     (from rec_people), `updated_at`, `date`. `postings_for(keys)` returns
     rec_credit rows for (role, person) keys; `stage_of(sid)` returns rec_stage.
     Returns ranked stages with b > 0, ordered as `UR.finish` orders them
-    before tour grouping.
+    before tour grouping. `seeds`/`skip` from `seeds_from_favourites`: the
+    seed stages themselves are left out (they are the favourites' own shows,
+    listed apart).
     """
     rated = UR.independent_ratings(rated)
-    values, _scale = UR.person_values(rated)
+    values, _scale = UR.person_values(rated, seeds, skip)
+    seeded = {r["stage_id"] for r in seeds}
     # person-graded-v2: everyone the user has a non-zero value for can raise or
     # lower a show, so their postings are read.
     keys = sorted(k for k, (n, v) in values.items() if v)
@@ -124,7 +151,7 @@ def score_from_index(postings_for, stage_of, rated: list[dict], *, multipliers: 
     out, iso = [], today.isoformat()
     for sid, all_parts in by_stage.items():
         st = stage_of(sid)
-        if st is None or (st["end"] and st["end"] < iso):
+        if sid in seeded or st is None or (st["end"] and st["end"] < iso):
             continue
         if st["start"] and st["start"] <= iso:
             continue                     # already running: "started", not "ranked"
@@ -148,6 +175,11 @@ def memory_access(index: dict):
         by_key.setdefault((row[0], row[1]), []).append(row)
     return (lambda keys: [r for k in keys for r in by_key.get(k, [])],
             lambda sid: index["stages"].get(sid))
+
+
+def memory_people(index: dict):
+    """people_of(sid) over the in-memory index (rec_people)."""
+    return lambda sid: index["people"].get(sid)
 
 
 # ---------------------------------------------------------------- title search (reference)

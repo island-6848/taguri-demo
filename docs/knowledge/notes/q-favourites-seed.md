@@ -1,7 +1,7 @@
 ---
 id: q-favourites-seed
 type: question
-status: open
+status: answered
 date: 2026-10-13
 title: 最初に入れる「お気に入り」から、評価が付く前の推薦を作るか（起案者の案）
 links:

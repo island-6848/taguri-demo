@@ -26,6 +26,17 @@ for seed in range(12):
         for mult in WEIGHTS:
             expected = BI.score_from_index(*BI.memory_access(index), rated, multipliers=mult, today=T.TODAY)
             cases.append({'rated': rated, 'multipliers': mult, 'expected': expected})
+    # Favourites as seeds (q-favourites-seed): with no ratings and with a history.
+    cast = sorted({(p[0], p[1]) for p in index['postings'] if not p[0].startswith('#')})
+    picks = [cast[(seed * 7 + i * 13) % len(cast)][1] for i in range(3)]
+    favs = [{'name': picks[0], 'kind': '人'}, {'name': picks[1], 'kind': '原作者'},
+            {'name': picks[2], 'kind': '団体'}, {'name': '誰でもない人', 'kind': '人'}]
+    seeds, skip = BI.seeds_from_favourites(BI.memory_access(index)[0], BI.memory_people(index), favs)
+    for rated in ([], T.with_people(T.history(seed * 100 + 9, fbs), index['people'])):
+        expected = BI.score_from_index(*BI.memory_access(index), rated, multipliers={}, today=T.TODAY,
+                                       seeds=seeds, skip=skip)
+        cases.append({'rated': rated, 'multipliers': {}, 'favourites': favs, 'seeds': [s['stage_id'] for s in seeds],
+                      'expected': expected})
     searches = [{'q': q, 'date': d, 'expected': BI.search_index(BI.memory_search(index), q, d)}
                 for q in T.SEARCHES for d in T.search_dates(index)]
     out['catalogues'].append({'seed': seed, 'ver': ver, 'sql': BI.to_sql(index, ver), 'cases': cases,

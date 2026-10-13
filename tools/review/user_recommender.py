@@ -36,6 +36,11 @@ VERSION = "person-ordinal-v3"
 #   63–76% of users.
 GENRE_W = 1.0           # weight of the kind-of-show term (chosen range 1–2 on public data)
 SQRT12 = math.sqrt(12)  # standardises a mid-rank position (uniform on −0.5..0.5)
+# Favourites as pseudo ratings before real ones (q-favourites-seed,
+# eval_favourite_seed.py): the favourite's productions count as rated in the
+# user's top fifth, weighted SEED_K / (SEED_K + real ratings).
+SEED_Z = 0.4 * SQRT12
+SEED_K = 3
 GRADE_VALUE = {"◎": 4, "○": 3, "△": 2, "×": 1}
 # Users may choose their own scale (2–11 levels, 5 by default; dec-user-scale-range).
 # Such a rating is stored as "value/levels", e.g. "4/5"; ◎○△× are a 4-level scale.
@@ -113,7 +118,7 @@ def rated_keys(r: dict) -> list[tuple]:
     return sorted(people | set(stage_tags(r.get("title") or "", r.get("venues") or [], credits)))
 
 
-def person_values(rated: list[dict]) -> tuple[dict, dict]:
+def person_values(rated: list[dict], seeds: list[dict] = (), skip: set = frozenset()) -> tuple[dict, dict]:
     """(role, person) -> (n, value) and the user's scale {mean, spread}.
 
     value = Σ z / (n + CONF_K), z = (grade − mean) / spread: the mean of z,
@@ -124,6 +129,11 @@ def person_values(rated: list[dict]) -> tuple[dict, dict]:
     on different scales (a user who changed their scale) are each placed among
     their own scale, so old ratings keep counting without a conversion table
     (eval_rating_scales.py: as good as or better than stretching scales to 0–1).
+
+    `seeds`: productions of the user's favourites (each with "people"), added
+    as pseudo ratings z = SEED_Z with weight w = SEED_K / (SEED_K + ratings),
+    skipping the favourites themselves (`skip`, person names). They add to the
+    weight in the denominator but not to n (n counts the user's own ratings).
     """
     # Integer counts and plain float operations in this order, so the
     # Worker's port (cloudflare/src/recommend.js) gets bit-identical values.
@@ -131,7 +141,7 @@ def person_values(rated: list[dict]) -> tuple[dict, dict]:
     for r in rated:
         value, levels = grade_of(r["verdict"])
         by_scale.setdefault(levels, []).append(value)
-    tally = collections.defaultdict(lambda: [0, 0.0])
+    tally = collections.defaultdict(lambda: [0, 0.0, 0.0])
     for r in rated:
         value, levels = grade_of(r["verdict"])
         vals = by_scale[levels]
@@ -141,7 +151,15 @@ def person_values(rated: list[dict]) -> tuple[dict, dict]:
         for key in rated_keys(r):
             tally[key][0] += 1
             tally[key][1] += z
-    values = {k: (n, s / (n + M.CONF_K)) for k, (n, s) in tally.items()}
+            tally[key][2] += 1.0
+    w = SEED_K / (SEED_K + len(rated))
+    for r in seeds:
+        for key in rated_keys(r):
+            if key[1] in skip:
+                continue
+            tally[key][1] += w * SEED_Z
+            tally[key][2] += w
+    values = {k: (n, s / (wt + M.CONF_K)) for k, (n, s, wt) in tally.items()}
     return values, {str(k): len(v) for k, v in sorted(by_scale.items())}
 
 

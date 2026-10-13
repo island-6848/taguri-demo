@@ -14,6 +14,11 @@ export const CONF_K = 3, TOP_N = 3;
 export const GRADE_VALUE = {'◎': 4, '○': 3, '△': 2, '×': 1};
 export const MIN_LEVELS = 2, MAX_LEVELS = 11;
 const SQRT12 = Math.sqrt(12);
+// Favourites as pseudo ratings (user_recommender.SEED_Z / SEED_K and
+// build_recommend_index.seeds_from_favourites).
+export const SEED_Z = 0.4 * SQRT12, SEED_K = 3;
+export const SEED_ROLES = ['出演', '演出', '脚本', '作', '原作', '翻訳', '潤色', '構成', '振付', '作曲', '音楽'];
+export const SEED_KINDS = ['人', '原作者'], MAX_SEED_FAVS = 20, MAX_SEED_STAGES = 60;
 
 /** user_recommender.grade_of: [value, levels] of a saved rating ("◎" or "4/5"), or null. */
 export function gradeOf(verdict) {
@@ -63,7 +68,7 @@ export function independentRatings(rows) {
  * Σ z / (n + CONF_K) and z = (grade − the user's mean) / the user's spread
  * (◎○△× = 4/3/2/1). Same float operations in the same order as Python.
  */
-export function personValues(rated) {
+export function personValues(rated, seeds = [], skip = new Set()) {
   // person-ordinal-v3: a rating's place among the user's own ratings on the
   // same scale, ((lower) + ½ (equal)) / n − ½, times √12.
   const byScale = new Map();
@@ -81,13 +86,23 @@ export function personValues(rated) {
     const z = ((below + 0.5 * same) / vals.length - 0.5) * SQRT12;
     const keys = [...new Set((r.people || []).map(([role, person]) => role + '\u0000' + person))].sort(cmp);
     for (const k of keys) {
-      const t = tally.get(k) || [0, 0];
-      t[0] += 1; t[1] += z;
+      const t = tally.get(k) || [0, 0, 0];
+      t[0] += 1; t[1] += z; t[2] += 1.0;
+      tally.set(k, t);
+    }
+  }
+  // Seeds: z = SEED_Z with weight w; they add to the weight, not to n.
+  const w = SEED_K / (SEED_K + rated.length);
+  for (const r of seeds) {
+    const keys = [...new Set((r.people || []).filter(([, person]) => !skip.has(person)).map(([role, person]) => role + '\u0000' + person))].sort(cmp);
+    for (const k of keys) {
+      const t = tally.get(k) || [0, 0, 0];
+      t[1] += w * SEED_Z; t[2] += w;
       tally.set(k, t);
     }
   }
   const values = new Map();
-  for (const [k, [cnt, sum]] of tally) values.set(k, [cnt, sum / (cnt + CONF_K)]);
+  for (const [k, [cnt, sum, wt]] of tally) values.set(k, [cnt, sum / (wt + CONF_K)]);
   return values;
 }
 
@@ -97,9 +112,10 @@ export function personValues(rated) {
  * postingsFor(keys [[role, person]...]) -> [[role, person, stage_id, role_w, group]...]
  * stagesFor(stageIds) -> Map(stage_id -> {start, end})
  */
-export async function scoreFromIndex({postingsFor, stagesFor, rated, multipliers = {}, today}) {
+export async function scoreFromIndex({postingsFor, stagesFor, rated, multipliers = {}, today, seeds = [], skip = new Set()}) {
   rated = independentRatings(rated);
-  const values = personValues(rated);
+  const values = personValues(rated, seeds, skip);
+  const seeded = new Set(seeds.map(r => r.stage_id));
   // Everyone with a non-zero value can raise or lower a show.
   const keys = [...values.entries()].filter(([, [, v]]) => v).map(([k]) => k.split('\u0000')).sort((a, b) => cmpTuple(a, b));
   const byStage = new Map();
@@ -117,7 +133,7 @@ export async function scoreFromIndex({postingsFor, stagesFor, rated, multipliers
   const out = [];
   for (const [sid, all] of byStage) {
     const st = stages.get(sid);
-    if (!st || (st.end && st.end < today)) continue;
+    if (seeded.has(sid) || !st || (st.end && st.end < today)) continue;
     if (st.start && st.start <= today) continue;          // already running
     // Kind-of-show tags ("#axis") add their mean; people add the strongest 3
     // up and 3 down (user_recommender.b_score).
@@ -136,6 +152,19 @@ export async function scoreFromIndex({postingsFor, stagesFor, rated, multipliers
   }
   out.sort((x, y) => (y.strong - x.strong) || (y.b - x.b) || cmp(x.stage_id, y.stage_id));
   return out;
+}
+
+/**
+ * build_recommend_index.seeds_from_favourites: candidate stages crediting a
+ * favourite person / original author, with their people. Returns {seeds, skip}.
+ */
+export async function seedsFromFavourites({postingsFor, peopleFor}, favourites) {
+  const names = [...new Set(favourites.filter(f => SEED_KINDS.includes(f.kind)).map(f => f.name))].sort(cmp).slice(0, MAX_SEED_FAVS);
+  if (!names.length) return {seeds: [], skip: new Set()};
+  const keys = names.flatMap(name => SEED_ROLES.map(role => [role, name])).sort(cmpTuple);
+  const sids = [...new Set((await postingsFor(keys)).map(r => r[2]))].sort(cmp).slice(0, MAX_SEED_STAGES);
+  const people = await peopleFor(sids);
+  return {seeds: sids.filter(sid => people.get(sid)?.length).map(sid => ({stage_id: sid, people: people.get(sid)})), skip: new Set(names)};
 }
 
 /** The same contract over D1 (or SQLite in tests): the queries the Worker issues. */

@@ -962,6 +962,18 @@
    "verifies": []
   },
   {
+   "id": "eval-favourite-seed",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "お気に入りを仮の評価にすると、評価0件のときだけ当たりが上がる（+0.014〜0.015）。すぐ薄めれば後で下がらない",
+   "sources": [
+    "docs/research/person-reco-eval.md",
+    "tools/review/eval_favourite_seed.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "eval-genre-preference",
    "type": "finding",
    "status": "confirmed",
@@ -1160,6 +1172,20 @@
    "title": "Gmail の読み取りは制限付きの権限で、毎年の第三者の審査が要る",
    "sources": [
     "docs/000007-taguri-security-rules.md"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "impl-favourite-seed",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "評価が無いうちの推薦をお気に入りから作るようにした（person-ordinal-v3+fav1、Worker）",
+   "sources": [
+    "tools/review/user_recommender.py",
+    "cloudflare/scripts/build_recommend_index.py",
+    "cloudflare/src/recommend.js",
+    "cloudflare/src/worker.js"
    ],
    "verifies": []
   },
@@ -1961,7 +1987,7 @@
   {
    "id": "q-favourites-seed",
    "type": "question",
-   "status": "open",
+   "status": "answered",
    "date": "2026-10-13",
    "title": "最初に入れる「お気に入り」から、評価が付く前の推薦を作るか（起案者の案）",
    "sources": [],
@@ -3645,6 +3671,21 @@
    "to": "comp-recommender"
   },
   {
+   "from": "eval-favourite-seed",
+   "rel": "depends_on",
+   "to": "lit-syskill-webert-prior"
+  },
+  {
+   "from": "eval-favourite-seed",
+   "rel": "depends_on",
+   "to": "dec-no-n1-evidence"
+  },
+  {
+   "from": "eval-favourite-seed",
+   "rel": "affects",
+   "to": "comp-recommender"
+  },
+  {
    "from": "eval-genre-preference",
    "rel": "affects",
    "to": "comp-recommender"
@@ -3758,6 +3799,26 @@
    "from": "github-actions-public-free",
    "rel": "raises",
    "to": "q-crawler-host"
+  },
+  {
+   "from": "impl-favourite-seed",
+   "rel": "answers",
+   "to": "q-favourites-seed"
+  },
+  {
+   "from": "impl-favourite-seed",
+   "rel": "depends_on",
+   "to": "eval-favourite-seed"
+  },
+  {
+   "from": "impl-favourite-seed",
+   "rel": "depends_on",
+   "to": "impl-person-ordinal-v3"
+  },
+  {
+   "from": "impl-favourite-seed",
+   "rel": "affects",
+   "to": "comp-recommender"
   },
   {
    "from": "impl-hidden-gate",
