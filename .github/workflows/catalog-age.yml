@@ -1,0 +1,38 @@
+name: Catalog age
+
+# 公開版の公演カタログが古くなっていないかを毎日確かめる（tools/taguri/check_catalog_age.py）。
+# EC2 が無く、毎日の作り直しが止まっているかもしれないため（docs/knowledge の no-ec2・q-catalog-source）。
+# 失敗するとリポジトリの持ち主に GitHub から通知が届く。見るのは公開の /api/health の日付と件数だけ。
+on:
+  schedule:
+    # 日本時間 9:17（毎時 0 分は GitHub が混むので避ける）
+    - cron: '17 0 * * *'
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'health の URL'
+        required: false
+        default: 'https://taguri-demo.onrender.com/api/health'
+      max_days:
+        description: 'これより古ければ失敗（日）'
+        required: false
+        default: '3'
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check the catalog age on the public server
+        # 入力は環境変数で渡す（シェルの文字列に直接埋め込まない）
+        env:
+          HEALTH_URL: ${{ github.event.inputs.url || 'https://taguri-demo.onrender.com/api/health' }}
+          MAX_DAYS: ${{ github.event.inputs.max_days || '3' }}
+        run: python tools/taguri/check_catalog_age.py --url "$HEALTH_URL" --max-days "$MAX_DAYS"

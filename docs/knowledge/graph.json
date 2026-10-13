@@ -28,6 +28,21 @@
    ]
   },
   {
+   "id": "catalog-age-check",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "カタログの日付は、公開の /api/health と毎日の GitHub Actions で確かめられるようにした",
+   "sources": [
+    "tools/lib/catalog_info.py",
+    "tools/taguri/check_catalog_age.py",
+    ".github/workflows/catalog-age.yml"
+   ],
+   "verifies": [
+    "S23"
+   ]
+  },
+  {
    "id": "catalog-terms-no-redistribution",
    "type": "finding",
    "status": "confirmed",
@@ -305,6 +320,19 @@
    ]
   },
   {
+   "id": "crawler-state-between-runs",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "取得処理は前回までの控えを引き継いで動く（毎回まっさらでは動かない）",
+   "sources": [
+    "docs/catalog-refresh.md",
+    "tools/taguri/fetch_requests.py",
+    "tools/taguri/favourites.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "cross-origin-cookies",
    "type": "finding",
    "status": "confirmed",
@@ -393,6 +421,20 @@
    "verifies": []
   },
   {
+   "id": "dec-crawler-gha-private",
+   "type": "decision",
+   "status": "proposed",
+   "date": "2026-10-13",
+   "title": "取得処理は、非公開の別リポジトリの GitHub Actions で動かす（勧め）",
+   "sources": [
+    "docs/service-roadmap.md"
+   ],
+   "verifies": [
+    "S23",
+    "S24"
+   ]
+  },
+  {
    "id": "dec-defer-workers",
    "type": "decision",
    "status": "superseded",
@@ -443,6 +485,15 @@
    "status": "adopted",
    "date": "2026-10-13",
    "title": "会員ログインは Firebase Authentication にする",
+   "sources": [],
+   "verifies": []
+  },
+  {
+   "id": "dec-migration-owner-push",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-13",
+   "title": "画面の移行（段 1〜5）は Push セッションが引き継ぎ、途中のコードも受け取る",
    "sources": [],
    "verifies": []
   },
@@ -656,6 +707,44 @@
    ],
    "verifies": [
     "S27"
+   ]
+  },
+  {
+   "id": "gha-private-free-minutes",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "非公開リポジトリの GitHub Actions は、無料アカウントで月 2,000 分まで無料",
+   "sources": [
+    "https://docs.github.com/en/billing/concepts/product-billing/github-actions"
+   ],
+   "verifies": [
+    "S12"
+   ]
+  },
+  {
+   "id": "gha-public-logs",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-13",
+   "title": "公開リポジトリの Actions の実行ログは誰でも読める。成果物はログインした人が取れる",
+   "sources": [
+    "https://docs.github.com/en/actions/how-tos/manage-workflow-runs/download-workflow-artifacts"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "gha-schedule-unreliable",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-13",
+   "title": "GitHub Actions の定期実行は遅れたり、混雑時に飛ばされたりする",
+   "sources": [
+    "https://upptime.js.org/blog/2021/01/22/github-actions-schedule-not-working/",
+    "https://itime.day/articles/github-actions-cron-delays"
+   ],
+   "verifies": [
+    "S23"
    ]
   },
   {
@@ -1032,7 +1121,7 @@
   {
    "id": "q-migration-owner",
    "type": "question",
-   "status": "open",
+   "status": "answered",
    "date": "2026-10-13",
    "title": "画面の移行の続き（段 1〜5）をどのセッションが受け持つか",
    "sources": [],
@@ -1479,6 +1568,21 @@
    "verifies": []
   },
   {
+   "id": "workers-cron-free-limits",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "Workers の定期実行は、無料プランだと 1 回あたり CPU 10 ミリ秒・外部への要求 50 回まで",
+   "sources": [
+    "https://developers.cloudflare.com/workers/platform/limits",
+    "https://developers.cloudflare.com/workflows/reference/limits",
+    "https://cronuru.com/guides/cloudflare-workers-cron-triggers"
+   ],
+   "verifies": [
+    "S23"
+   ]
+  },
+  {
    "id": "workers-d1-preview-state",
    "type": "finding",
    "status": "confirmed",
@@ -1542,6 +1646,16 @@
    "from": "aws-ipv4-charge",
    "rel": "affects",
    "to": "q-ec2-cost"
+  },
+  {
+   "from": "catalog-age-check",
+   "rel": "affects",
+   "to": "q-catalog-source"
+  },
+  {
+   "from": "catalog-age-check",
+   "rel": "affects",
+   "to": "q-monitoring"
   },
   {
    "from": "catalog-terms-no-redistribution",
@@ -1629,6 +1743,11 @@
    "to": "q-source-terms"
   },
   {
+   "from": "crawler-state-between-runs",
+   "rel": "affects",
+   "to": "q-crawler-host"
+  },
+  {
    "from": "cross-origin-cookies",
    "rel": "supports",
    "to": "dec-own-domain"
@@ -1699,6 +1818,26 @@
    "to": "q-firebase-user-deletion"
   },
   {
+   "from": "dec-crawler-gha-private",
+   "rel": "affects",
+   "to": "q-crawler-host"
+  },
+  {
+   "from": "dec-crawler-gha-private",
+   "rel": "depends_on",
+   "to": "gha-private-free-minutes"
+  },
+  {
+   "from": "dec-crawler-gha-private",
+   "rel": "depends_on",
+   "to": "gha-public-logs"
+  },
+  {
+   "from": "dec-crawler-gha-private",
+   "rel": "depends_on",
+   "to": "crawler-state-between-runs"
+  },
+  {
    "from": "dec-defer-workers",
    "rel": "affects",
    "to": "comp-recommender"
@@ -1752,6 +1891,21 @@
    "from": "dec-firebase-auth",
    "rel": "raises",
    "to": "q-firebase-free-tier"
+  },
+  {
+   "from": "dec-migration-owner-push",
+   "rel": "answers",
+   "to": "q-migration-owner"
+  },
+  {
+   "from": "dec-migration-owner-push",
+   "rel": "depends_on",
+   "to": "dec-render-full-migration"
+  },
+  {
+   "from": "dec-migration-owner-push",
+   "rel": "affects",
+   "to": "migration-handover-stage0"
   },
   {
    "from": "dec-no-render-data-migration",
@@ -1942,6 +2096,26 @@
    "from": "gemini-budget-cap",
    "rel": "affects",
    "to": "comp-catalog-pipeline"
+  },
+  {
+   "from": "gha-private-free-minutes",
+   "rel": "affects",
+   "to": "q-crawler-host"
+  },
+  {
+   "from": "gha-public-logs",
+   "rel": "affects",
+   "to": "q-crawler-host"
+  },
+  {
+   "from": "gha-public-logs",
+   "rel": "affects",
+   "to": "catalog-terms-no-redistribution"
+  },
+  {
+   "from": "gha-schedule-unreliable",
+   "rel": "affects",
+   "to": "q-crawler-host"
   },
   {
    "from": "github-actions-public-free",
@@ -2407,6 +2581,11 @@
    "from": "workers-builds-master-fail",
    "rel": "affects",
    "to": "comp-cf-worker"
+  },
+  {
+   "from": "workers-cron-free-limits",
+   "rel": "affects",
+   "to": "q-crawler-host"
   },
   {
    "from": "workers-d1-preview-state",

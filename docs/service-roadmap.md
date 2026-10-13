@@ -24,7 +24,7 @@ flowchart LR
 | 保存 | D1。誤操作や障害からは無料で 7 日前、有料で 30 日前まで戻せる | 〔d1-time-travel〕〔d1-free-limits〕 |
 | ログイン | Firebase（Google・メールのリンク）とパスキー、復旧コード | 〔dec-firebase-auth〕〔dec-passkeys〕 |
 | おすすめ | 利用者によらない索引を前もって作り、Worker は本人の分だけ計算して保存する | 〔dec-reco-on-worker〕 |
-| 公演情報の取得 | 置き場所は未定。**EC2 は無い**ので、毎日の更新は今どこでも動いていない可能性が高い | 〔no-ec2〕〔q-crawler-host〕〔q-catalog-source〕 |
+| 公演情報の取得 | **EC2 は無い**ので、毎日の更新は今どこでも動いていない可能性が高い。置き場所は、非公開の別リポジトリの GitHub Actions を勧める（今のコードがそのまま動き、月 2,000 分の無料枠に収まる見込み、ログが公開されない） | 〔no-ec2〕〔dec-crawler-gha-private〕〔q-catalog-source〕 |
 | 持ち主専用の機能 | 持ち主のパソコンの run.py に残す | 〔dec-render-full-migration〕〔no-ec2〕 |
 
 **費用の方針:** 小さいうちは Workers と D1 の無料プランで 0 円。1000 人規模が見えてきたら、推薦の計算（CPU）と D1 の読み込みが無料枠を超えそうなので、**月 5 ドルの有料プランに上げる**〔dec-scale-workers〕〔scale-1000-estimate〕〔workers-paid-plan〕。取得処理は無料で動かせる場所を探す〔q-crawler-host〕。
@@ -155,7 +155,7 @@ VM 案のときに足した S28（OS の更新）・S29（VM の回収）・S30�
 
 ## 次の一手
 
-1. **公演カタログの出どころを確かめる**〔q-catalog-source〕。EC2 が無いので、毎日の更新が止まっているかもしれない
+1. **公演カタログの古さを確かめる**〔q-catalog-source〕。公開の `/api/health` と、毎日の GitHub Actions（Catalog age）で日付が分かるようにした〔catalog-age-check〕
 2. **取得処理の置き場所を決める**〔q-crawler-host〕。無料の候補は GitHub Actions（ログが公開される点に注意）と Workers の定期実行
 3. 無料枠に収まるかを測る〔q-real-catalog-stats〕。カタログのある場所で `cloudflare/scripts/build_recommend_index.py --stats` を実行する
 4. PR のブランチに push しても本番に出ないことを確かめる（S33）

@@ -74,6 +74,7 @@ sys.path.insert(0, str(ROOT / "tools" / "taguri"))
 sys.path.insert(0, str(ROOT / "tools" / "review"))
 sys.path.insert(0, str(ROOT / "tools" / "lib"))
 import taguri_state as STATE
+import catalog_info as CI
 
 S3_BUCKET = os.environ.get("STAGE_CATALOG_BUCKET", "nakaya-mao-private-play-recommendation2026")
 S3_KEY = os.environ.get("STAGE_CATALOG_KEY", "stage-catalog/data.tar.gz")
@@ -129,8 +130,11 @@ def check_service_storage(ed: str) -> None:
         raise RuntimeError("service storage must be below an actual mounted volume")
 
 
-def _install_catalog(archive: Path) -> None:
+def _install_catalog(archive: Path, uploaded_at: str | None = None) -> None:
     """Validate in staging, retain legacy mutable state, then swap directories.
+
+    カタログの日付の手がかり（S3 に置かれた時刻・tar の中のいちばん新しいファイルの時刻）を
+    `data/.catalog-info.json` に残す（`catalog_info`。`/api/health` が返す）。
 
     Tar links, traversal and special files are rejected. Catalog archives are
     never a source of visitor databases or authentication secrets.
@@ -160,6 +164,10 @@ def _install_catalog(archive: Path) -> None:
                         shutil.copyfileobj(source, output)
         if not (new / "review" / "candidates.jsonl").is_file():
             raise ValueError("catalog lacks candidates")
+        info = CI.archive_info(archive)
+        info["uploaded_at"] = uploaded_at
+        info["installed_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        CI.write_info(new, info)
         current = ROOT / "data"
         # Compatibility when no external persistent directory is configured.
         # This protects refreshes, not host filesystem loss on redeployment.
@@ -189,11 +197,11 @@ def _fetch_catalog() -> None:
     try:
         import boto3
         s3 = boto3.client("s3", region_name=S3_REGION)
-        etag = _remote_etag(s3)
+        etag, uploaded_at = _remote_head(s3)
         with tempfile.TemporaryDirectory(prefix=".catalog-download-", dir=ROOT) as work:
             archive = Path(work) / "catalog.tar.gz"
             s3.download_file(S3_BUCKET, S3_KEY, str(archive))
-            _install_catalog(archive)
+            _install_catalog(archive, uploaded_at)
         _installed_etag[0] = etag
         STATE.event("catalog_refresh")
     except Exception:
@@ -202,10 +210,17 @@ def _fetch_catalog() -> None:
 
 
 def _remote_etag(s3) -> str | None:
+    return _remote_head(s3)[0]
+
+
+def _remote_head(s3) -> tuple[str | None, str | None]:
+    """S3 のカタログの ETag と、置かれた時刻（ISO 8601・UTC）。読めなければ None。"""
     try:
-        return s3.head_object(Bucket=S3_BUCKET, Key=S3_KEY).get("ETag")
+        head = s3.head_object(Bucket=S3_BUCKET, Key=S3_KEY)
     except Exception:                                               # noqa: BLE001
-        return None
+        return None, None
+    modified = head.get("LastModified")
+    return head.get("ETag"), (modified.isoformat(timespec="seconds") if hasattr(modified, "isoformat") else None)
 
 
 def _refresh_loop(srv) -> None:

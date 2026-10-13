@@ -75,3 +75,5 @@ jobs:
       - name: Demo and service editions stay separate
         run: python tools/taguri/test_editions.py
 
+      - name: Catalog dates on the public health endpoint
+        run: python tools/taguri/test_catalog_info.py

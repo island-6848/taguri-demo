@@ -2,6 +2,8 @@
 
 公開サーバーが読む公演カタログ（S3 の `stage-catalog/data.tar.gz`）を、手元のサーバー（EC2）で定期的に作り直して載せ直す。
 
+> **2026-10-13: EC2 は無い**〔no-ec2〕。この文書の「EC2」で動かす手順は、いまどこでも動いていない。置き場所は非公開リポジトリの GitHub Actions を勧めている〔dec-crawler-gha-private〕。カタログの古さは公開の `/api/health` の `catalog` と、毎日の `Catalog age` ワークフローで確かめられる〔catalog-age-check〕。
+
 ## 流れ
 
 | いつ | 何をする | 取得の量 |

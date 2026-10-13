@@ -387,9 +387,16 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
         if path == "/api/health":
             # No registration, cookie parsing, file paths or user data.
+            # **カタログの日付と件数も返す**（catalog_info。中身・利用者の値は出さない）。
+            # S3 に入れない人でも、ここを開けばカタログが古くなっていないか分かる
+            import catalog_info as CI
+            try:
+                catalog = CI.describe(ROOT / "data")
+            except Exception:                                       # noqa: BLE001
+                catalog = {"present": False, "error": "unreadable"}
             self._json(200, {"ok": True, "version": "state-storage-v1",
                              "export_scope": "authenticated-user" if srv.public else "local",
-                             "public_zip": False})
+                             "public_zip": False, "catalog": catalog})
             return
 
         if path in ("/api/catalog/favourite-names", "/api/catalog/search-requests"):
