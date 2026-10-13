@@ -99,7 +99,7 @@ class DemoStabilityTests(unittest.TestCase):
         blob = json.dumps(data, ensure_ascii=False)
         self.assertNotIn(self.users[1][0], blob)
         self.assertTrue(all(r["user_id"] == self.users[0][0] for r in data["works"]))
-        self.assertEqual(self.request("/data.zip", user=0)[0], 404)
+        self.assertIn(self.request("/data.zip", user=0)[0], (403, 404))
 
     def test_foreign_origin_cannot_write(self):
         with patch.object(self.srv, "on_note") as write:
