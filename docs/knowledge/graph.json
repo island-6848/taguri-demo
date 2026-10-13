@@ -687,6 +687,18 @@
    "verifies": []
   },
   {
+   "id": "migration-handover-stage0",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "Render からの画面移行は段 0 まで済み、段 1 の途中は別セッションの手元にしかない",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/commit/1b2571f",
+    "https://github.com/island-6848/taguri-demo/blob/cloudflare-d1-preview/docs/render-migration-plan.md"
+   ],
+   "verifies": []
+  },
+  {
    "id": "oracle-always-free",
    "type": "finding",
    "status": "confirmed",
@@ -928,6 +940,26 @@
    "sources": [
     "https://github.com/island-6848/taguri-demo/blob/cloudflare-d1-preview/docs/cloudflare-security-review.md"
    ],
+   "verifies": []
+  },
+  {
+   "id": "q-migration-branch",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "移行の作業をどのブランチで進めるか（cloudflare-d1-preview は push すると本番に出る）",
+   "sources": [],
+   "verifies": [
+    "S33"
+   ]
+  },
+  {
+   "id": "q-migration-owner",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "画面の移行の続き（段 1〜5）をどのセッションが受け持つか",
+   "sources": [],
    "verifies": []
   },
   {
@@ -1831,6 +1863,21 @@
    "to": "q-domain"
   },
   {
+   "from": "migration-handover-stage0",
+   "rel": "affects",
+   "to": "dec-render-full-migration"
+  },
+  {
+   "from": "migration-handover-stage0",
+   "rel": "raises",
+   "to": "q-migration-owner"
+  },
+  {
+   "from": "migration-handover-stage0",
+   "rel": "raises",
+   "to": "q-migration-branch"
+  },
+  {
    "from": "oracle-always-free",
    "rel": "answers",
    "to": "q-oracle-official"
@@ -1939,6 +1986,21 @@
    "from": "q-login-email-storage",
    "rel": "affects",
    "to": "comp-firebase-login"
+  },
+  {
+   "from": "q-migration-branch",
+   "rel": "depends_on",
+   "to": "q-production-branch"
+  },
+  {
+   "from": "q-migration-branch",
+   "rel": "affects",
+   "to": "migration-handover-stage0"
+  },
+  {
+   "from": "q-migration-owner",
+   "rel": "depends_on",
+   "to": "dec-render-full-migration"
   },
   {
    "from": "q-offsite-backup",
