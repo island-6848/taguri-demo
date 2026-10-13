@@ -5,27 +5,24 @@
    web/design.json。直すときは調整室で保存し、design.json とここを合わせて直す。
 
    - 毛糸のあたたかみ: 地はあたたかい灰、紙はわずかに暖かい白、色は毛糸の赤 1 色
-   - 読むところ（半券）は四角、押すところ（ボタン）は毛糸玉のように丸く、ふっくらさせる
-     ── 形で役割を分ける（起案者の指摘 2026-10-13「半券が四角なのでボタンは別のアクセント」）
-   - ボタンは塗りと下の影で浮かせ、押すと沈む（「ボタンだとわかりにくい」への手当て）
+   - ボタンは見た目の調整室の押し口と同じ作り（起案者の指摘 2026-10-13「見た目の調整室のUIが
+     結構よくない？」「ボタンはなるべく１行に収めてボタンだとわかるスタイリッシュなレイアウト」）:
+     角を少し丸めた 40px の押し口。いちばん押してほしいものだけ濃く塗る。回答 3 つは 1 本の
+     区切りの帯にして、電話の幅でも 1 行に収める
+   - 評価 ◎○△× は判子のまま（「評価はハンコのまま」）
+   - ロゴの「たぐり」の字は今の書体のまま（「たぐりのロゴの文字は今のフォントがいい」）
    - 暗い表示は style.css のまま（ここでは明るい表示だけを上書きする）
    - 書体は端末にあるものだけを並べる（配る書体は q-webfont-local で決める） */
-
-/* 暗い表示でもボタンの語が引けるようにする（色は style.css の暗い値から作る）。
-   明るい表示の値より前に置く ── 同じ詳細度なので、後に書いたほうが勝つ */
-:root{--felt:var(--surf);--felt-edge:var(--ring);--yarn-deep:var(--curtain)}
 
 @media (prefers-color-scheme:light){:root:where(:not([data-theme=dark])){
  --plane:#f4f1ec;--surf:#fffdfa;--ink:#2b2522;--ink2:#5f5650;--mute:#6e655f;
  --grid:#e8e1d8;--base:#ddd4ca;--ring:#ddd4ca;
  --acc:#b8432f;--curtain:#b8432f;--curtain-w:#f8ebe6;
- --felt:#f3e6dd;--felt-edge:#d9c2b3;--yarn-deep:#8c2f20;
  --mincho:"Zen Old Mincho","Hiragino Mincho ProN","Yu Mincho",YuMincho,"Noto Serif JP",serif}}
 :root[data-theme=light]{
  --plane:#f4f1ec;--surf:#fffdfa;--ink:#2b2522;--ink2:#5f5650;--mute:#6e655f;
  --grid:#e8e1d8;--base:#ddd4ca;--ring:#ddd4ca;
  --acc:#b8432f;--curtain:#b8432f;--curtain-w:#f8ebe6;
- --felt:#f3e6dd;--felt-edge:#d9c2b3;--yarn-deep:#8c2f20;
  --mincho:"Zen Old Mincho","Hiragino Mincho ProN","Yu Mincho",YuMincho,"Noto Serif JP",serif}
 
 body{font-family:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",YuGothic,system-ui,sans-serif}
@@ -34,42 +31,51 @@ body{font-family:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",YuGothic,syst
 .ticket{border-radius:0;box-shadow:none}
 .ticket .body{padding:26px 26px 22px}
 
-/* ---- 押すところ ── 毛糸玉のように丸く、ふっくら。塗りと下の影で浮かせ、押すと沈む */
-.btns button,.wnb,.pfoot button,.ticket .sitebtn,.mt-add button{
- border-radius:999px;min-height:44px;padding:0 18px;font-size:13.5px;font-weight:600;
- background:var(--felt);color:var(--ink);border:1px solid var(--felt-edge);border-style:solid;
- box-shadow:0 2px 0 var(--felt-edge);cursor:pointer;
- transition:transform .08s ease,box-shadow .08s ease,background-color .12s ease}
-.btns button:hover,.wnb:hover,.pfoot button:hover,.ticket .sitebtn:hover,.mt-add button:hover{
- background:var(--curtain-w);color:var(--ink);border-color:var(--felt-edge);border-style:solid}
-.btns button:active,.wnb:active,.pfoot button:active,.ticket .sitebtn:active,.mt-add button:active{
- transform:translateY(2px);box-shadow:0 0 0 var(--felt-edge)}
-.btns button:focus-visible,.wnb:focus-visible,.pfoot button:focus-visible,.rb button:focus-visible,
-.ticket .sitebtn:focus-visible,.mt-add button:focus-visible{outline:2px solid var(--acc);outline-offset:3px}
+/* ---- ロゴは今の書体のまま（--mincho を上で替えても、ロゴだけは元の並びで組む） */
+.side .brand{font-family:"Hiragino Mincho ProN","Yu Mincho",YuMincho,"Noto Serif JP",serif}
+
+/* ---- 押し口 ── 調整室と同じ作り。白地に細い枠、角を少し丸め、高さ 40px */
+.wnb,.pfoot button,.ticket .sitebtn,.mt-add button{
+ border-radius:8px;min-height:40px;padding:0 14px;font-size:13px;font-weight:500;
+ background:var(--surf);color:var(--ink);border:1px solid var(--ink);border-style:solid;
+ box-shadow:0 1px 2px rgba(43,37,34,.12);cursor:pointer;white-space:nowrap;
+ transition:background-color .12s ease,box-shadow .12s ease}
+.wnb:hover,.pfoot button:hover,.ticket .sitebtn:hover,.mt-add button:hover{
+ background:var(--curtain-w);color:var(--ink);border-color:var(--ink);border-style:solid}
+.wnb:active,.pfoot button:active,.ticket .sitebtn:active,.mt-add button:active{box-shadow:none}
 .ticket .sitebtn{display:inline-flex;align-items:center;justify-content:center}
 
-/* ---- 回答 3 つ ── 「興味あり」だけを毛糸の赤で塗る。並びは 興味あり・興味なし・持っている */
-.btns{gap:8px}
-.btns button[data-v=interest]{order:1;background:var(--acc);color:#fff;border-color:var(--yarn-deep);
- box-shadow:0 2px 0 var(--yarn-deep)}
-.btns button[data-v=interest]:hover{background:var(--yarn-deep);color:#fff}
-.btns button[data-v=interest]:active{box-shadow:0 0 0 var(--yarn-deep)}
-.btns button[data-v=nointerest]{order:2}
-.btns button[data-v=owned]{order:3}
-.btns .said{order:4;margin-left:6px}
+/* ---- 回答 3 つ ── 1 本の区切りの帯。外側だけ角を丸め、「興味あり」だけ濃く塗る。
+   並びは 興味あり・興味なし・持っている。電話の幅でも 1 行に収める（折り返さない） */
+.btns{gap:0;flex-wrap:nowrap}
+.btns button{min-height:40px;padding:0 10px;margin:0;font-size:12.5px;font-weight:500;white-space:nowrap;
+ background:var(--surf);color:var(--ink);border:1px solid var(--ink);border-radius:0;
+ box-shadow:0 1px 2px rgba(43,37,34,.12);cursor:pointer;transition:background-color .12s ease}
+.btns button:hover{background:var(--curtain-w);color:var(--ink);border-color:var(--ink)}
+.btns button[data-v=interest]{order:1;border-radius:8px 0 0 8px;background:var(--ink);color:var(--surf);font-weight:700}
+.btns button[data-v=interest]:hover{background:var(--ink2);color:var(--surf)}
+.btns button[data-v=nointerest]{order:2;border-left:0}
+.btns button[data-v=owned]{order:3;border-left:0;border-radius:0 8px 8px 0}
+.btns .said{order:4;margin-left:8px;white-space:normal}
+/* 押し口が 1 つだけの帯（「追加する」など）は、四隅を丸める */
+.btns button:only-of-type{border-radius:8px;border-left:1px solid var(--ink)}
 
-/* ---- 評価 ◎○△× ── 毛糸玉の丸。押せる大きさ（44px）を守る */
-.rb{gap:10px}
+/* ---- 評価 ◎○△× ── 判子。朱の枠で丸く、明朝の字。押すと押した印（.stamp）が残る */
+.rb{gap:8px}
 .rb button{width:44px;height:44px;min-width:44px;padding:0;border-radius:50%;
- border:1px solid var(--felt-edge);background:var(--felt);color:var(--ink);
- box-shadow:0 2px 0 var(--felt-edge);font-family:var(--mincho);font-size:18px;font-weight:700;
- transition:transform .08s ease,box-shadow .08s ease}
-.rb button:hover{background:var(--curtain-w);border-color:var(--acc);color:var(--acc)}
-.rb button:active{transform:translateY(2px);box-shadow:0 0 0 var(--felt-edge)}
-.rb.notseen button{width:auto;height:auto;min-height:40px;border-radius:999px;padding:0 14px;
+ border:1.5px solid var(--ink);background:var(--surf);color:var(--ink);
+ font-family:var(--mincho);font-size:19px;font-weight:700;cursor:pointer}
+.rb button:hover{border-color:var(--acc);color:var(--acc);background:var(--curtain-w)}
+.rb.notseen button{width:auto;height:auto;min-height:40px;border-radius:8px;padding:0 12px;
  font-family:inherit;font-size:12.5px}
 
+.btns button:focus-visible,.wnb:focus-visible,.pfoot button:focus-visible,.rb button:focus-visible,
+.ticket .sitebtn:focus-visible,.mt-add button:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+
+/* ---- 電話の幅 ── 半券の中の余白を詰めて、回答の帯を 1 行に収める */
+@media(max-width:560px){.ticket .body{padding:16px 14px 16px}}
+/* 幅 380px 未満の電話では、帯の文字と余白をもう一段詰める（360px 幅でも 1 行に収める） */
+@media(max-width:380px){.btns button{padding:0 7px;font-size:12px}.ticket .body{padding:14px 10px}}
+
 @media (prefers-reduced-motion:reduce){
- .btns button,.wnb,.pfoot button,.rb button,.ticket .sitebtn,.mt-add button{transition:none}
- .btns button:active,.wnb:active,.pfoot button:active,.rb button:active,.ticket .sitebtn:active,
- .mt-add button:active{transform:none}}
+ .btns button,.wnb,.pfoot button,.ticket .sitebtn,.mt-add button{transition:none}}
