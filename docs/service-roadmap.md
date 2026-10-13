@@ -15,7 +15,7 @@ flowchart LR
   W --> D[(D1<br>記録・アカウント・推薦の索引)]
   W -. 静的ファイル（無料・無制限） .-> A[画面のファイル]
   J[取得処理<br>（置き場所は未定）] -->|毎日の公演カタログ・推薦の索引| D
-  E[持ち主専用の処理<br>メール取り込み・Gemini] --- EC2[EC2]
+  E[持ち主専用の処理<br>メール取り込み・Gemini] --- PC[持ち主のパソコン run.py]
 ```
 
 | 部分 | 使うもの | 根拠 |
@@ -24,19 +24,19 @@ flowchart LR
 | 保存 | D1。誤操作や障害からは無料で 7 日前、有料で 30 日前まで戻せる | 〔d1-time-travel〕〔d1-free-limits〕 |
 | ログイン | Firebase（Google・メールのリンク）とパスキー、復旧コード | 〔dec-firebase-auth〕〔dec-passkeys〕 |
 | おすすめ | 利用者によらない索引を前もって作り、Worker は本人の分だけ計算して保存する | 〔dec-reco-on-worker〕 |
-| 公演情報の取得 | 別の機械（今は EC2）。置き場所は未定 | 〔q-crawler-host〕 |
-| 持ち主専用の機能 | EC2 に残す | 〔dec-render-full-migration〕 |
+| 公演情報の取得 | 置き場所は未定。**EC2 は無い**ので、毎日の更新は今どこでも動いていない可能性が高い | 〔no-ec2〕〔q-crawler-host〕〔q-catalog-source〕 |
+| 持ち主専用の機能 | 持ち主のパソコンの run.py に残す | 〔dec-render-full-migration〕〔no-ec2〕 |
 
-**費用の方針:** 小さいうちは Workers と D1 の無料プランで 0 円。1000 人規模が見えてきたら、推薦の計算（CPU）と D1 の読み込みが無料枠を超えそうなので、**月 5 ドルの有料プランに上げる**〔dec-scale-workers〕〔scale-1000-estimate〕〔workers-paid-plan〕。取得処理の機械代は別に考える〔q-ec2-cost〕。
+**費用の方針:** 小さいうちは Workers と D1 の無料プランで 0 円。1000 人規模が見えてきたら、推薦の計算（CPU）と D1 の読み込みが無料枠を超えそうなので、**月 5 ドルの有料プランに上げる**〔dec-scale-workers〕〔scale-1000-estimate〕〔workers-paid-plan〕。取得処理は無料で動かせる場所を探す〔q-crawler-host〕。
 
-**やめるもの:** Render（画面の移行がそろったら止める）。Render の利用者の記録と持ち主の EC2 の記録は新しいアカウントへ移さない〔dec-no-render-data-migration〕。
+**やめるもの:** Render（画面の移行がそろったら止める）。Render の利用者の記録と持ち主の手元の記録は新しいアカウントへ移さない〔dec-no-render-data-migration〕。
 
 ## いまどこまで来ているか
 
 | 区分 | 済んでいること | 残っていること |
 | --- | --- | --- |
 | Worker 版 | workers.dev で動いている。ログイン・完全削除・推薦の計算〔workers-d1-preview-state〕 | 元の画面の移行（段 0〜5）。今はまだ Render へ中継している |
-| 本番への出し方 | Workers Builds で自動 deploy | **本番が PR のブランチから自動で出ている**〔pr-branch-is-production〕。レビュー前の変更がそのまま出る |
+| 本番への出し方 | Workers Builds で自動 deploy。**本番の公開元を master にした**（PR #5 はマージ済み）〔production-branch-master〕 | PR のブランチに push しても本番に出ないことの確認（S33） |
 | 無料枠に収まるか | 手元の見積もり | 実カタログでの測定〔q-real-catalog-stats〕〔q-workers-cpu-real〕 |
 | 説明と規約 | 説明の草案（[保存に関する説明](service-privacy-draft.md)） | 運営者・問い合わせ先・保持期間・取得元の許諾 |
 
@@ -56,10 +56,10 @@ flowchart LR
 
 | 決めること | 勧め |
 | --- | --- |
-| 運営者名と問い合わせ先 | 専用のアドレスを 1 つ作る |
+| 運営者名と問い合わせ先 | **運営者名は @return1_end（X）に決めた**〔dec-operator-name〕。問い合わせ用のアドレスは起案者が後で作る〔q-contact-email〕 |
 | ドメイン | workers.dev のまま始めるか、独自ドメインを取るか。**パスキーはドメインに結び付くので、独自ドメインにするなら公開前に決める**〔passkey-rpid-domain〕〔q-domain〕 |
 | 有料プランに上げる時期 | 無料で始め、使用量が無料枠の半分を超えたら上げる。実カタログでの測定で無料枠に収まらないと分かれば最初から上げる |
-| Render を止めたあとのデモ版 | 試用アカウントを残すか、資料と動画だけにするか〔q-demo-after-render〕 |
+| Render を止めたあとのデモ版 | **触れるがデータを持たないお試し版にすると決めた**〔dec-demo-trial-no-data〕。作り方は〔q-demo-trial-design〕 |
 | 公演情報・ポスターの扱い | 取得元の条件を読んでから決める〔q-source-terms〕 |
 
 ### 1. 画面を Worker へ移す
@@ -155,7 +155,8 @@ VM 案のときに足した S28（OS の更新）・S29（VM の回収）・S30�
 
 ## 次の一手
 
-1. 起案者: 運営者・問い合わせ先、ドメイン（パスキーのため早めに）、デモ版の扱いを決める
-2. 本番の deploy 元を master にする〔q-production-branch〕（S33）
-3. EC2 で `cloudflare/scripts/build_recommend_index.py --stats` を実行し、無料枠に収まるかを測る〔q-real-catalog-stats〕
-4. 取得処理の置き場所を決める〔q-crawler-host〕
+1. **公演カタログの出どころを確かめる**〔q-catalog-source〕。EC2 が無いので、毎日の更新が止まっているかもしれない
+2. **取得処理の置き場所を決める**〔q-crawler-host〕。無料の候補は GitHub Actions（ログが公開される点に注意）と Workers の定期実行
+3. 無料枠に収まるかを測る〔q-real-catalog-stats〕。カタログのある場所で `cloudflare/scripts/build_recommend_index.py --stats` を実行する
+4. PR のブランチに push しても本番に出ないことを確かめる（S33）
+5. 画面の移行の続きをどのセッションが受け持つかを決める〔q-migration-owner〕

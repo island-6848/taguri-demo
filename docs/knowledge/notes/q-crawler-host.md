@@ -11,3 +11,4 @@ verifies:
   - S24
 ---
 候補: 今の EC2（費用は q-ec2-cost）、GitHub Actions（無料だがログが公開・60 日で止まる・github-actions-public-free）、Oracle の無料 VM、Workers の定期実行（1.1 秒に 1 回の丁寧な取得を長く続けられるかは未確認）。どの基盤に寄せても要る。
+2026-10-13、EC2 は無いと分かった（no-ec2）。候補は GitHub Actions・Cloudflare Workers の定期実行・持ち主のパソコン。

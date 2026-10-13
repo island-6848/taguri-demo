@@ -406,12 +406,21 @@
   {
    "id": "dec-demo-stays-render-free",
    "type": "decision",
-   "status": "proposed",
+   "status": "superseded",
    "date": "2026-10-13",
    "title": "デモ版は Render の無料プランのまま残す",
    "sources": [
     "docs/editions.md"
    ],
+   "verifies": []
+  },
+  {
+   "id": "dec-demo-trial-no-data",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-13",
+   "title": "デモ版は、触れるがデータを持たないお試し版にする",
+   "sources": [],
    "verifies": []
   },
   {
@@ -443,6 +452,15 @@
    "status": "adopted",
    "date": "2026-10-13",
    "title": "Render の他人の記録も、持ち主の EC2 の記録も、新しいアカウントには移さない",
+   "sources": [],
+   "verifies": []
+  },
+  {
+   "id": "dec-operator-name",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-13",
+   "title": "運営者名は @return1_end（X）にする",
    "sources": [],
    "verifies": []
   },
@@ -699,6 +717,19 @@
    "verifies": []
   },
   {
+   "id": "no-ec2",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "EC2 は無い",
+   "sources": [
+    "https://claude.ai/code/session_015xXsQ9C4423EMquRbg7m3U（起案者の回答）"
+   ],
+   "verifies": [
+    "S23"
+   ]
+  },
+  {
    "id": "oracle-always-free",
    "type": "finding",
    "status": "confirmed",
@@ -744,13 +775,26 @@
   {
    "id": "pr-branch-is-production",
    "type": "finding",
-   "status": "confirmed",
+   "status": "outdated",
    "date": "2026-10-13",
    "title": "本番の Worker は PR のブランチ（cloudflare-d1-preview）から自動で deploy されている",
    "sources": [
     "https://github.com/island-6848/taguri-demo/blob/cloudflare-d1-preview/docs/cloudflare-security-review.md"
    ],
    "verifies": []
+  },
+  {
+   "id": "production-branch-master",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "本番の Worker の公開元を master に切り替えた（PR #5 は master にマージ済み）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/commit/669e6dc"
+   ],
+   "verifies": [
+    "S33"
+   ]
   },
   {
    "id": "public-export-leak",
@@ -789,6 +833,17 @@
    "verifies": []
   },
   {
+   "id": "q-catalog-source",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "今の公演カタログ（S3）は、いつ・どこで作られたものか",
+   "sources": [],
+   "verifies": [
+    "S23"
+   ]
+  },
+  {
    "id": "q-cf-access",
    "type": "question",
    "status": "dropped",
@@ -819,6 +874,18 @@
    "sources": [],
    "verifies": [
     "S22"
+   ]
+  },
+  {
+   "id": "q-contact-email",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "問い合わせ用のメールアドレス",
+   "sources": [],
+   "verifies": [
+    "S10",
+    "S25"
    ]
   },
   {
@@ -854,9 +921,18 @@
   {
    "id": "q-demo-after-render",
    "type": "question",
-   "status": "open",
+   "status": "answered",
    "date": "2026-10-13",
    "title": "Render を止めたあと、デモ版（見本の記録で試す版）をどうするか",
+   "sources": [],
+   "verifies": []
+  },
+  {
+   "id": "q-demo-trial-design",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "データを持たないお試し版をどう作るか",
    "sources": [],
    "verifies": []
   },
@@ -885,7 +961,7 @@
   {
    "id": "q-ec2-cost",
    "type": "question",
-   "status": "open",
+   "status": "answered",
    "date": "2026-10-13",
    "title": "今の EC2 の種類・口座の作成日・月額",
    "sources": [],
@@ -1050,7 +1126,7 @@
   {
    "id": "q-production-branch",
    "type": "question",
-   "status": "open",
+   "status": "answered",
    "date": "2026-10-13",
    "title": "本番に deploy するブランチをどれにするか（PR のブランチのままにしない）",
    "sources": [],
@@ -1638,6 +1714,21 @@
    "to": "dec-edition-split"
   },
   {
+   "from": "dec-demo-trial-no-data",
+   "rel": "answers",
+   "to": "q-demo-after-render"
+  },
+  {
+   "from": "dec-demo-trial-no-data",
+   "rel": "affects",
+   "to": "dec-edition-split"
+  },
+  {
+   "from": "dec-demo-trial-no-data",
+   "rel": "supersedes",
+   "to": "dec-demo-stays-render-free"
+  },
+  {
    "from": "dec-edition-split",
    "rel": "affects",
    "to": "comp-public-server"
@@ -1878,6 +1969,36 @@
    "to": "q-migration-branch"
   },
   {
+   "from": "no-ec2",
+   "rel": "answers",
+   "to": "q-ec2-cost"
+  },
+  {
+   "from": "no-ec2",
+   "rel": "raises",
+   "to": "q-catalog-source"
+  },
+  {
+   "from": "no-ec2",
+   "rel": "affects",
+   "to": "q-crawler-host"
+  },
+  {
+   "from": "no-ec2",
+   "rel": "affects",
+   "to": "q-real-catalog-stats"
+  },
+  {
+   "from": "no-ec2",
+   "rel": "affects",
+   "to": "dec-render-full-migration"
+  },
+  {
+   "from": "no-ec2",
+   "rel": "affects",
+   "to": "comp-catalog-pipeline"
+  },
+  {
    "from": "oracle-always-free",
    "rel": "answers",
    "to": "q-oracle-official"
@@ -1913,6 +2034,21 @@
    "to": "q-production-branch"
   },
   {
+   "from": "production-branch-master",
+   "rel": "answers",
+   "to": "q-production-branch"
+  },
+  {
+   "from": "production-branch-master",
+   "rel": "supersedes",
+   "to": "pr-branch-is-production"
+  },
+  {
+   "from": "production-branch-master",
+   "rel": "affects",
+   "to": "q-migration-branch"
+  },
+  {
    "from": "public-export-leak",
    "rel": "affects",
    "to": "comp-export"
@@ -1933,9 +2069,19 @@
    "to": "q-d1-python-workers"
   },
   {
+   "from": "q-catalog-source",
+   "rel": "depends_on",
+   "to": "q-crawler-host"
+  },
+  {
    "from": "q-cf-access",
    "rel": "depends_on",
    "to": "dec-vm-cloudflare"
+  },
+  {
+   "from": "q-contact-email",
+   "rel": "depends_on",
+   "to": "dec-operator-name"
   },
   {
    "from": "q-crawler-host",
@@ -1961,6 +2107,11 @@
    "from": "q-demo-after-render",
    "rel": "affects",
    "to": "dec-edition-split"
+  },
+  {
+   "from": "q-demo-trial-design",
+   "rel": "depends_on",
+   "to": "dec-demo-trial-no-data"
   },
   {
    "from": "q-direction",
