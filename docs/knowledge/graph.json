@@ -698,6 +698,15 @@
    "verifies": []
   },
   {
+   "id": "dec-reco-per-user-eval",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-13",
+   "title": "推薦の改善は、利用者ごとに「その人にとって良くなったか」だけを確かめる（記録を集めない）",
+   "sources": [],
+   "verifies": []
+  },
+  {
    "id": "dec-render-full-migration",
    "type": "decision",
    "status": "adopted",
@@ -1647,6 +1656,15 @@
    "status": "open",
    "date": "2026-10-13",
    "title": "推薦の改善を判断するための評価の仕組みをどう作るか（何のデータで・どの指標で）",
+   "sources": [],
+   "verifies": []
+  },
+  {
+   "id": "q-reco-personal-backtest",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "その人の記録だけで、計算方式の良し悪しをどう確かめるか（振り返りでの検証）",
    "sources": [],
    "verifies": []
   },
@@ -2633,6 +2651,26 @@
    "to": "comp-recommender"
   },
   {
+   "from": "dec-reco-per-user-eval",
+   "rel": "affects",
+   "to": "q-reco-eval-harness"
+  },
+  {
+   "from": "dec-reco-per-user-eval",
+   "rel": "affects",
+   "to": "dec-reco-measure-first"
+  },
+  {
+   "from": "dec-reco-per-user-eval",
+   "rel": "affects",
+   "to": "comp-recommender"
+  },
+  {
+   "from": "dec-reco-per-user-eval",
+   "rel": "raises",
+   "to": "q-reco-personal-backtest"
+  },
+  {
    "from": "dec-render-full-migration",
    "rel": "contradicts",
    "to": "dec-defer-workers"
@@ -3240,6 +3278,11 @@
   {
    "from": "q-reco-eval-harness",
    "rel": "depends_on",
+   "to": "dec-reco-per-user-eval"
+  },
+  {
+   "from": "q-reco-eval-harness",
+   "rel": "depends_on",
    "to": "dec-no-n1-evidence"
   },
   {
@@ -3249,6 +3292,16 @@
   },
   {
    "from": "q-reco-eval-harness",
+   "rel": "affects",
+   "to": "comp-recommender"
+  },
+  {
+   "from": "q-reco-personal-backtest",
+   "rel": "depends_on",
+   "to": "dec-reco-per-user-eval"
+  },
+  {
+   "from": "q-reco-personal-backtest",
    "rel": "affects",
    "to": "comp-recommender"
   },
