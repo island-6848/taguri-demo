@@ -1,0 +1,1030 @@
+{
+ "version": "taguri-knowledge-v1",
+ "nodes": [
+  {
+   "id": "catalog-terms-no-redistribution",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "利用規約は公演情報を第三者へ再配布しないと約束している",
+   "sources": [
+    "docs/000007-taguri-terms-of-use.md"
+   ],
+   "verifies": [
+    "S11"
+   ]
+  },
+  {
+   "id": "cf-tunnel-free",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-13",
+   "title": "Cloudflare Tunnel は無料で使え、ドメインを Cloudflare の DNS に置く必要がある",
+   "sources": [
+    "https://flaviocopes.com/cloudflare-tunnel/",
+    "https://dev.to/realchaika/how-to-setup-a-cloudflare-tunnel-new-using-gui-method-4maf"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "cf-tunnel-origin-localhost",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-13",
+   "title": "Tunnel の後ろのサーバーからは、すべての接続元が自分自身に見える",
+   "sources": [
+    "https://dev.to/realchaika/how-to-setup-a-cloudflare-tunnel-new-using-gui-method-4maf"
+   ],
+   "verifies": [
+    "S13"
+   ]
+  },
+  {
+   "id": "comp-auth-throttle",
+   "type": "component",
+   "status": "current",
+   "date": "2026-10-13",
+   "title": "登録・復旧の試行回数の制限（auth.py）",
+   "sources": [
+    "tools/taguri/auth.py"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "comp-catalog-pipeline",
+   "type": "component",
+   "status": "current",
+   "date": "2026-10-13",
+   "title": "公演カタログの取得と配布（publish_catalog.py）",
+   "sources": [
+    "tools/taguri/publish_catalog.py",
+    "docs/catalog-refresh.md"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "comp-crawler",
+   "type": "component",
+   "status": "current",
+   "date": "2026-10-12",
+   "title": "取得の作法（polite_http.py）",
+   "sources": [
+    "tools/lib/polite_http.py",
+    "docs/crawler-policy.md"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "comp-export",
+   "type": "component",
+   "status": "current",
+   "date": "2026-10-13",
+   "title": "本人の書き出し（/export.json・/data.zip）",
+   "sources": [
+    "tools/taguri/serve.py",
+    "tools/taguri/app.py"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "comp-frontend",
+   "type": "component",
+   "status": "current",
+   "date": "2026-10-13",
+   "title": "画面（web/・config.js）",
+   "sources": [
+    "web/config.js",
+    "web/app.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "comp-public-server",
+   "type": "component",
+   "status": "current",
+   "date": "2026-10-13",
+   "title": "公開版のサーバー（serve_cloud.py・serve.py）",
+   "sources": [
+    "tools/taguri/serve_cloud.py",
+    "tools/taguri/serve.py"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "comp-recommender",
+   "type": "component",
+   "status": "current",
+   "date": "2026-10-12",
+   "title": "本人向けのおすすめ計算（user_recommender.py）",
+   "sources": [
+    "tools/review/user_recommender.py",
+    "docs/user-recommendation-loop.md"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "comp-state-storage",
+   "type": "component",
+   "status": "current",
+   "date": "2026-10-13",
+   "title": "利用者の保存先とバックアップ",
+   "sources": [
+    "tools/lib/taguri_state.py",
+    "tools/taguri/state_backup.py",
+    "docs/demo-state-storage.md"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "comp-vm-host",
+   "type": "component",
+   "status": "planned",
+   "date": "2026-10-13",
+   "title": "サービス版の VM（cloudflared・systemd）",
+   "sources": [
+    "docs/service-roadmap.md"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "corich-robots-unchecked",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-12",
+   "title": "取得元の実際の robots.txt はまだ読めていない",
+   "sources": [],
+   "verifies": [
+    "S24"
+   ]
+  },
+  {
+   "id": "cross-origin-cookies",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "Pages と Render は別サイトなので、Cookie が別サイトの扱いになる",
+   "sources": [
+    "tools/taguri/serve.py",
+    "web/app.js"
+   ],
+   "verifies": [
+    "S04"
+   ]
+  },
+  {
+   "id": "d1-free-limits",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-13",
+   "title": "D1 の無料枠は日ごとの読み書き上限（数値は未確認）",
+   "sources": [
+    "https://developers.cloudflare.com/d1/reference/faq",
+    "https://eastondev.com/blog/en/posts/dev/20260526-cloudflare-free-limits/"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-defer-workers",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-13",
+   "title": "Cloudflare Workers への完全移行は今は見送る",
+   "sources": [
+    "docs/service-roadmap.md"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-demo-stays-render-free",
+   "type": "decision",
+   "status": "proposed",
+   "date": "2026-10-13",
+   "title": "デモ版は Render の無料プランのまま残す",
+   "sources": [
+    "docs/editions.md"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-edition-split",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-12",
+   "title": "デモ版とサービス版を分ける",
+   "sources": [
+    "docs/editions.md"
+   ],
+   "verifies": [
+    "S01",
+    "S09"
+   ]
+  },
+  {
+   "id": "dec-own-domain",
+   "type": "decision",
+   "status": "proposed",
+   "date": "2026-10-13",
+   "title": "独自ドメインを取り、画面と API を同じドメインの下に置く",
+   "sources": [
+    "docs/service-roadmap.md"
+   ],
+   "verifies": [
+    "S04",
+    "S09"
+   ]
+  },
+  {
+   "id": "dec-polite-crawling",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-12",
+   "title": "取得はすべて polite_http を通す",
+   "sources": [
+    "docs/crawler-policy.md"
+   ],
+   "verifies": [
+    "S15",
+    "S24"
+   ]
+  },
+  {
+   "id": "dec-render-service-beta",
+   "type": "decision",
+   "status": "superseded",
+   "date": "2026-10-13",
+   "title": "サービス版を Render の有料サービスで立てる",
+   "sources": [
+    "deploy/render-service.yaml"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-service-starts-empty",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-12",
+   "title": "サービス版は空から始め、デモの記録を移さない",
+   "sources": [
+    "docs/editions.md"
+   ],
+   "verifies": [
+    "S01"
+   ]
+  },
+  {
+   "id": "dec-vm-cloudflare",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-13",
+   "title": "サービス版は常時稼働の VM で動かし、前段に Cloudflare を置く",
+   "sources": [
+    "docs/service-roadmap.md"
+   ],
+   "verifies": [
+    "S02",
+    "S13",
+    "S22"
+   ]
+  },
+  {
+   "id": "demo-seed-link-rate",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-12",
+   "title": "見本の記録のうち推薦の材料になるのは 6 割ほど（見積もり）",
+   "sources": [
+    "docs/demo-seed-ratings.md"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "gemini-budget-cap",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "LLM の呼び出しには月の上限がある（既定 300 回）",
+   "sources": [
+    "tools/llm_gemini.py"
+   ],
+   "verifies": [
+    "S27"
+   ]
+  },
+  {
+   "id": "gmail-restricted-scope",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-08-28",
+   "title": "Gmail の読み取りは制限付きの権限で、毎年の第三者の審査が要る",
+   "sources": [
+    "docs/000007-taguri-security-rules.md"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "legacy-test-failures",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-12",
+   "title": "test_digest と test_impressions は以前から失敗している",
+   "sources": [
+    "tools/taguri/test_digest.py",
+    "tools/taguri/test_impressions.py"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "oracle-always-free",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-13",
+   "title": "Oracle Always Free は ARM の VM とディスクが無料。ただし放置判定で回収されうる",
+   "sources": [
+    "https://braindetox.kr/en/posts/oracle_always_free_tier_reduced_2026.html",
+    "https://terminalbytes.com/oracle-cloud-free-tier-changes-2026",
+    "https://space-node.net/blog/oracle-cloud-free-vps-guide-2026"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "pages-404-fallback",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-12",
+   "title": "GitHub Pages は知らない道に 404.html を返し、画面はそれで深い道を開いている",
+   "sources": [
+    "web/404.html",
+    "web/index.html"
+   ],
+   "verifies": [
+    "S09"
+   ]
+  },
+  {
+   "id": "public-export-leak",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "公開版の書き出しが他の利用者の記録まで渡していた（修正済み）",
+   "sources": [
+    "tools/taguri/test_demo_stability.py",
+    "docs/service-launch-verification.md"
+   ],
+   "verifies": [
+    "S03"
+   ]
+  },
+  {
+   "id": "q-cf-access",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "検証中に自分だけを通す方法（Cloudflare Access の無料枠）",
+   "sources": [],
+   "verifies": [
+    "S30"
+   ]
+  },
+  {
+   "id": "q-cf-connecting-ip-trust",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "CF-Connecting-IP をどう信頼するか",
+   "sources": [],
+   "verifies": [
+    "S13"
+   ]
+  },
+  {
+   "id": "q-cf-tunnel-official",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "Tunnel の公式の制限・料金・必要な設定",
+   "sources": [],
+   "verifies": [
+    "S22"
+   ]
+  },
+  {
+   "id": "q-d1-python-workers",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "将来の移行に向けた D1 と Python Workers の制限",
+   "sources": [],
+   "verifies": []
+  },
+  {
+   "id": "q-domain",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "どのドメインをどこで取るか",
+   "sources": [],
+   "verifies": [
+    "S04"
+   ]
+  },
+  {
+   "id": "q-ec2-cost",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "今の EC2 の種類・月額・無料期間",
+   "sources": [],
+   "verifies": [
+    "S12"
+   ]
+  },
+  {
+   "id": "q-monitoring",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "無料で使える外形監視と通知",
+   "sources": [],
+   "verifies": [
+    "S22",
+    "S23"
+   ]
+  },
+  {
+   "id": "q-offsite-backup",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "バックアップをどこに、どう暗号化して、いつまで置くか",
+   "sources": [],
+   "verifies": [
+    "S07",
+    "S10"
+   ]
+  },
+  {
+   "id": "q-oracle-official",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "Oracle の公式の無料枠・回収の条件・従量課金にした場合の扱い",
+   "sources": [],
+   "verifies": [
+    "S12"
+   ]
+  },
+  {
+   "id": "q-privacy-law",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "個人情報保護法で何が求められるか",
+   "sources": [],
+   "verifies": [
+    "S10",
+    "S25"
+   ]
+  },
+  {
+   "id": "q-python-version",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "サーバーの Python を何版に揃えるか",
+   "sources": [],
+   "verifies": [
+    "S07"
+   ]
+  },
+  {
+   "id": "q-r2-boto3",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "R2 の公式料金と、今の boto3 のコードで読み書きできるか",
+   "sources": [],
+   "verifies": []
+  },
+  {
+   "id": "q-render-free-viable",
+   "type": "question",
+   "status": "answered",
+   "date": "2026-10-13",
+   "title": "Render の無料プランでサービス版を動かせるか",
+   "sources": [],
+   "verifies": []
+  },
+  {
+   "id": "q-safari-cookies",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "Safari で Cookie が通るか（実機）",
+   "sources": [],
+   "verifies": [
+    "S04",
+    "S19"
+   ]
+  },
+  {
+   "id": "q-source-terms",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "取得元の利用規約・robots.txt・ポスター画像の権利",
+   "sources": [],
+   "verifies": [
+    "S11",
+    "S24"
+   ]
+  },
+  {
+   "id": "q-vm-host-choice",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "サービス版の VM は Oracle Always Free と今の EC2 のどちらにするか",
+   "sources": [],
+   "verifies": [
+    "S12"
+   ]
+  },
+  {
+   "id": "q-vm-performance",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "VM でおすすめが 3 秒以内に開くか",
+   "sources": [],
+   "verifies": [
+    "S20"
+   ]
+  },
+  {
+   "id": "q-workers-free-viable",
+   "type": "question",
+   "status": "answered",
+   "date": "2026-10-13",
+   "title": "Cloudflare の無料枠だけで、今のコードのまま動かせるか",
+   "sources": [],
+   "verifies": []
+  },
+  {
+   "id": "r2-free-tier",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-13",
+   "title": "R2 は 10GB まで無料で、取り出しの通信料がかからない",
+   "sources": [
+    "https://flarecalc.com/calculators/r2",
+    "https://www.spendbase.co/?p=35561"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "reco-computed-per-request",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-12",
+   "title": "おすすめは開くたびに全候補を計算している",
+   "sources": [
+    "docs/user-recommendation-loop.md"
+   ],
+   "verifies": [
+    "S20"
+   ]
+  },
+  {
+   "id": "render-free-no-disk",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "Render の無料プランは永続ディスクを付けられない",
+   "sources": [
+    "https://render.com/docs/free"
+   ],
+   "verifies": [
+    "S02"
+   ]
+  },
+  {
+   "id": "render-free-spin-down",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "Render の無料プランは 15 分でスリープし、起動に約 1 分かかる",
+   "sources": [
+    "https://render.com/docs/free",
+    "https://render.com/docs/faq"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "render-paid-disk-cost",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-13",
+   "title": "Render の有料プランならスリープせずディスクも付く（単価は二次情報）",
+   "sources": [
+    "https://livemy.app/blog/render-pricing",
+    "https://temps.sh/blog/render-pricing-2026"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "robotparser-decimal-delay",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-12",
+   "title": "Python の robotparser は小数の Crawl-delay を読めない",
+   "sources": [
+    "tools/lib/polite_http.py",
+    "tools/lib/test_polite_http.py"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "serve-cloud-render-guard",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "サービス版の保存先の検査が Render を前提にしている",
+   "sources": [
+    "tools/taguri/serve_cloud.py"
+   ],
+   "verifies": [
+    "S02"
+   ]
+  },
+  {
+   "id": "state-backup-py313",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-13",
+   "title": "バックアップの検査が Python 3.13 では 1 件失敗する",
+   "sources": [
+    "tools/taguri/test_state_backup.py"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "stdlib-server-sqlite",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "サーバーは標準ライブラリの http.server と sqlite3 で書いてある",
+   "sources": [
+    "tools/taguri/serve.py",
+    "tools/review/rate_performances.py"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "throttle-keyed-by-client-address",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "試行回数の制限は接続元のアドレスで数えている",
+   "sources": [
+    "tools/taguri/serve.py",
+    "tools/taguri/auth.py"
+   ],
+   "verifies": [
+    "S13"
+   ]
+  },
+  {
+   "id": "workers-free-cpu-10ms",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "Workers の無料プランは 1 要求あたり CPU 10 ミリ秒・1 日 10 万要求まで",
+   "sources": [
+    "https://developers.cloudflare.com/workers/platform/pricing/"
+   ],
+   "verifies": []
+  }
+ ],
+ "edges": [
+  {
+   "from": "catalog-terms-no-redistribution",
+   "rel": "raises",
+   "to": "q-source-terms"
+  },
+  {
+   "from": "catalog-terms-no-redistribution",
+   "rel": "affects",
+   "to": "comp-catalog-pipeline"
+  },
+  {
+   "from": "cf-tunnel-free",
+   "rel": "supports",
+   "to": "dec-vm-cloudflare"
+  },
+  {
+   "from": "cf-tunnel-free",
+   "rel": "supports",
+   "to": "dec-own-domain"
+  },
+  {
+   "from": "cf-tunnel-free",
+   "rel": "raises",
+   "to": "q-cf-tunnel-official"
+  },
+  {
+   "from": "cf-tunnel-origin-localhost",
+   "rel": "affects",
+   "to": "comp-auth-throttle"
+  },
+  {
+   "from": "cf-tunnel-origin-localhost",
+   "rel": "raises",
+   "to": "q-cf-connecting-ip-trust"
+  },
+  {
+   "from": "comp-vm-host",
+   "rel": "depends_on",
+   "to": "q-vm-host-choice"
+  },
+  {
+   "from": "corich-robots-unchecked",
+   "rel": "raises",
+   "to": "q-source-terms"
+  },
+  {
+   "from": "cross-origin-cookies",
+   "rel": "supports",
+   "to": "dec-own-domain"
+  },
+  {
+   "from": "cross-origin-cookies",
+   "rel": "raises",
+   "to": "q-safari-cookies"
+  },
+  {
+   "from": "cross-origin-cookies",
+   "rel": "affects",
+   "to": "comp-frontend"
+  },
+  {
+   "from": "d1-free-limits",
+   "rel": "raises",
+   "to": "q-d1-python-workers"
+  },
+  {
+   "from": "dec-defer-workers",
+   "rel": "affects",
+   "to": "comp-recommender"
+  },
+  {
+   "from": "dec-demo-stays-render-free",
+   "rel": "depends_on",
+   "to": "dec-edition-split"
+  },
+  {
+   "from": "dec-edition-split",
+   "rel": "affects",
+   "to": "comp-public-server"
+  },
+  {
+   "from": "dec-edition-split",
+   "rel": "affects",
+   "to": "comp-frontend"
+  },
+  {
+   "from": "dec-own-domain",
+   "rel": "affects",
+   "to": "comp-frontend"
+  },
+  {
+   "from": "dec-own-domain",
+   "rel": "depends_on",
+   "to": "q-domain"
+  },
+  {
+   "from": "dec-polite-crawling",
+   "rel": "affects",
+   "to": "comp-crawler"
+  },
+  {
+   "from": "dec-service-starts-empty",
+   "rel": "depends_on",
+   "to": "dec-edition-split"
+  },
+  {
+   "from": "dec-vm-cloudflare",
+   "rel": "supersedes",
+   "to": "dec-render-service-beta"
+  },
+  {
+   "from": "dec-vm-cloudflare",
+   "rel": "depends_on",
+   "to": "dec-own-domain"
+  },
+  {
+   "from": "dec-vm-cloudflare",
+   "rel": "affects",
+   "to": "comp-public-server"
+  },
+  {
+   "from": "dec-vm-cloudflare",
+   "rel": "affects",
+   "to": "comp-auth-throttle"
+  },
+  {
+   "from": "dec-vm-cloudflare",
+   "rel": "affects",
+   "to": "comp-vm-host"
+  },
+  {
+   "from": "demo-seed-link-rate",
+   "rel": "affects",
+   "to": "comp-recommender"
+  },
+  {
+   "from": "gemini-budget-cap",
+   "rel": "affects",
+   "to": "comp-catalog-pipeline"
+  },
+  {
+   "from": "oracle-always-free",
+   "rel": "raises",
+   "to": "q-oracle-official"
+  },
+  {
+   "from": "oracle-always-free",
+   "rel": "supports",
+   "to": "dec-vm-cloudflare"
+  },
+  {
+   "from": "pages-404-fallback",
+   "rel": "affects",
+   "to": "comp-frontend"
+  },
+  {
+   "from": "public-export-leak",
+   "rel": "affects",
+   "to": "comp-export"
+  },
+  {
+   "from": "q-cf-access",
+   "rel": "depends_on",
+   "to": "dec-vm-cloudflare"
+  },
+  {
+   "from": "q-d1-python-workers",
+   "rel": "depends_on",
+   "to": "dec-defer-workers"
+  },
+  {
+   "from": "q-offsite-backup",
+   "rel": "depends_on",
+   "to": "q-r2-boto3"
+  },
+  {
+   "from": "q-r2-boto3",
+   "rel": "depends_on",
+   "to": "q-vm-host-choice"
+  },
+  {
+   "from": "q-safari-cookies",
+   "rel": "depends_on",
+   "to": "dec-own-domain"
+  },
+  {
+   "from": "q-vm-host-choice",
+   "rel": "depends_on",
+   "to": "q-oracle-official"
+  },
+  {
+   "from": "q-vm-host-choice",
+   "rel": "depends_on",
+   "to": "q-ec2-cost"
+  },
+  {
+   "from": "q-vm-performance",
+   "rel": "depends_on",
+   "to": "q-vm-host-choice"
+  },
+  {
+   "from": "r2-free-tier",
+   "rel": "supports",
+   "to": "dec-vm-cloudflare"
+  },
+  {
+   "from": "r2-free-tier",
+   "rel": "raises",
+   "to": "q-r2-boto3"
+  },
+  {
+   "from": "r2-free-tier",
+   "rel": "affects",
+   "to": "comp-catalog-pipeline"
+  },
+  {
+   "from": "reco-computed-per-request",
+   "rel": "supports",
+   "to": "dec-defer-workers"
+  },
+  {
+   "from": "reco-computed-per-request",
+   "rel": "affects",
+   "to": "comp-recommender"
+  },
+  {
+   "from": "reco-computed-per-request",
+   "rel": "answers",
+   "to": "q-workers-free-viable"
+  },
+  {
+   "from": "render-free-no-disk",
+   "rel": "supports",
+   "to": "dec-vm-cloudflare"
+  },
+  {
+   "from": "render-free-no-disk",
+   "rel": "answers",
+   "to": "q-render-free-viable"
+  },
+  {
+   "from": "render-free-no-disk",
+   "rel": "affects",
+   "to": "comp-state-storage"
+  },
+  {
+   "from": "render-free-spin-down",
+   "rel": "supports",
+   "to": "dec-vm-cloudflare"
+  },
+  {
+   "from": "render-free-spin-down",
+   "rel": "supports",
+   "to": "dec-demo-stays-render-free"
+  },
+  {
+   "from": "render-paid-disk-cost",
+   "rel": "supports",
+   "to": "dec-render-service-beta"
+  },
+  {
+   "from": "robotparser-decimal-delay",
+   "rel": "affects",
+   "to": "comp-crawler"
+  },
+  {
+   "from": "serve-cloud-render-guard",
+   "rel": "affects",
+   "to": "comp-public-server"
+  },
+  {
+   "from": "serve-cloud-render-guard",
+   "rel": "affects",
+   "to": "comp-vm-host"
+  },
+  {
+   "from": "state-backup-py313",
+   "rel": "raises",
+   "to": "q-python-version"
+  },
+  {
+   "from": "state-backup-py313",
+   "rel": "affects",
+   "to": "comp-state-storage"
+  },
+  {
+   "from": "stdlib-server-sqlite",
+   "rel": "supports",
+   "to": "dec-defer-workers"
+  },
+  {
+   "from": "stdlib-server-sqlite",
+   "rel": "supports",
+   "to": "dec-vm-cloudflare"
+  },
+  {
+   "from": "stdlib-server-sqlite",
+   "rel": "answers",
+   "to": "q-workers-free-viable"
+  },
+  {
+   "from": "throttle-keyed-by-client-address",
+   "rel": "affects",
+   "to": "comp-auth-throttle"
+  },
+  {
+   "from": "throttle-keyed-by-client-address",
+   "rel": "raises",
+   "to": "q-cf-connecting-ip-trust"
+  },
+  {
+   "from": "workers-free-cpu-10ms",
+   "rel": "supports",
+   "to": "dec-defer-workers"
+  },
+  {
+   "from": "workers-free-cpu-10ms",
+   "rel": "answers",
+   "to": "q-workers-free-viable"
+  }
+ ]
+}

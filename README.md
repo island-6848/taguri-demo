@@ -6,7 +6,7 @@
 
 **デモ版**: https://island-6848.github.io/taguri-demo/ （見本の記録で操作を試せる。入力は消えることがあります）
 
-**サービス版**: https://island-6848.github.io/taguri-demo/app/ （記録を残して使う版。API サーバーと保存先はデモと別。[デモ版とサービス版](docs/editions.md)）
+**サービス版**: 準備中（記録を残して使う版。常時稼働の VM ＋ Cloudflare で立てる。[サービス化の進め方](docs/service-roadmap.md)・[デモ版とサービス版](docs/editions.md)）
 
 （画面はGitHub Pages配信、推薦計算・データはRender上のAPI（`tools/taguri/serve_cloud.py`）が持つ。
 無料枠のため、しばらくアクセスがないと初回の読み込みに10〜20秒ほどかかることがあります）
@@ -84,6 +84,7 @@ HTML断片を画面に差し込む形にした。GitHub Pagesは静的配信専�
 - [`docs/000007-taguri-design.md`](docs/000007-taguri-design.md) ── 全体設計
 - [`docs/editions.md`](docs/editions.md) ── デモ版とサービス版の切り分けと、サービス版の立て方
 - [`docs/service-roadmap.md`](docs/service-roadmap.md) ── サービス化の進め方と検証項目
+- [`docs/knowledge/README.md`](docs/knowledge/README.md) ── 調べたこと・今後調べること・決めたことのナレッジグラフ
 - [`docs/recommendation-exposure.md`](docs/recommendation-exposure.md) ── 推薦の取得・画面内接触ログの定義、API、保存と制約
 - [`docs/recommendation-product-ux-plan.md`](docs/recommendation-product-ux-plan.md) ── 推薦中心の機能案・UI/UX・検証計画
 - [`docs/recommendation-ux-design.md`](docs/recommendation-ux-design.md) ── 文献に基づく推薦UI/UXの詳細仕様・検証手順

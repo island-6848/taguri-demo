@@ -1,0 +1,26 @@
+name: Knowledge graph
+
+# 調べたこと・今後調べること・決めたこと（docs/knowledge/notes）のつながりが壊れていないか、
+# 索引（README.md・graph.json）が作り直されているかを確かめる。
+on:
+  push:
+    paths: ["docs/knowledge/**", "tools/knowledge/**", ".github/workflows/knowledge.yml"]
+  pull_request:
+    paths: ["docs/knowledge/**", "tools/knowledge/**", ".github/workflows/knowledge.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Builder rules
+        run: python tools/knowledge/test_build_graph.py
+      - name: Notes are valid and the index is up to date
+        run: python tools/knowledge/build_graph.py --check

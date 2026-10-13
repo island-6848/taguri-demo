@@ -5,8 +5,8 @@
 
 | | デモ版 | サービス版 |
 |---|---|---|
-| 画面の URL | `https://island-6848.github.io/taguri-demo/` | `https://island-6848.github.io/taguri-demo/app/` |
-| API サーバー | Render のサービス `taguri-demo` | Render の別サービス（URL はリポジトリ変数 `TAGURI_SERVICE_API`） |
+| 画面の URL | `https://island-6848.github.io/taguri-demo/` | 最初は VM が配る画面（独自ドメイン。未定〔q-domain〕）。Pages の `/taguri-demo/app/` は独自ドメインを付けてから |
+| API サーバー | Render の無料プランのサービス `taguri-demo`〔dec-demo-stays-render-free〕 | 常時稼働の VM ＋ Cloudflare Tunnel〔dec-vm-cloudflare〕 |
 | `TAGURI_EDITION` | `demo`（未設定でもこれ） | `service` |
 | 最初の記録 | 見本の架空の記録 96 件が入る | 何も入らない（本人が入れた記録だけ） |
 | 記録の保存 | 一時保存でよい（消えると注記） | **永続ディスクの `TAGURI_STATE_DIR` が無いと起動しない** |
@@ -51,24 +51,28 @@
 
 ## サービス版を立てる手順
 
-1. **Render に新しい Web サービスを作る**（デモの `taguri-demo` とは別）。
-   起動コマンドはデモと同じ `python3 tools/taguri/serve_cloud.py`
-2. **永続ディスクを付ける**（例: `/var/data` にマウント）
-3. 環境変数を入れる:
-   - `TAGURI_EDITION=service`
-   - `TAGURI_STATE_DIR=/var/data/taguri`（永続ディスクの中。カタログの `data/` とは別）
-   - `CORS_ORIGIN=https://island-6848.github.io`
-   - `TAGURI_NAMES_TOKEN=<長い乱数>`（`python3 -c "import secrets; print(secrets.token_urlsafe(32))"`）
-   - カタログの読み取り: `STAGE_CATALOG_BUCKET`・`STAGE_CATALOG_KEY`・`AWS_DEFAULT_REGION`・
-     読み取り専用 IAM の鍵（デモと同じものでよい）
-4. **GitHub のリポジトリ変数 `TAGURI_SERVICE_API`** に、そのサービスの URL
-   （例 `https://taguri-service.onrender.com`）を入れ、Pages のワークフローを再実行する
-5. **手元（EC2）の `/etc/taguri/catalog.env`** の `TAGURI_NAMES_URL` を、
-   サービス版の `/api/catalog/favourite-names` に向ける。`TAGURI_NAMES_TOKEN` は 3 と同じ値
-6. 確かめる: `/api/health` が `"edition": "service"` を返す。`/taguri-demo/app/` で
-   見本の記録が入っていない。再デプロイしても記録が残っている
+**2026-10-13 に、Render の有料サービスから「常時稼働の VM ＋ Cloudflare の前段」に変えた**〔dec-vm-cloudflare〕。
+理由と全体の段階は [サービス化の進め方](service-roadmap.md) にある。VM で動かす前に、コードの直しが要る
+（保存先の検査を VM でも効かせる・127.0.0.1 で待ち受ける・接続元を Cloudflare のヘッダで数える）。
 
-デモ版の Render サービスは `TAGURI_EDITION` を設定しないか `demo` にする。
+1. **VM を用意する**（Oracle Always Free か今の EC2〔q-vm-host-choice〕）。サービス専用のユーザーを作り、
+   永続のディスクに保存先を置く（例: `/var/data/taguri`）
+2. **環境変数を入れる**（systemd の EnvironmentFile。リポジトリには入れない）:
+   - `TAGURI_EDITION=service`
+   - `TAGURI_STATE_DIR=/var/data/taguri`（カタログの `data/` とは別）
+   - `TAGURI_NAMES_TOKEN=<長い乱数>`（`python3 -c "import secrets; print(secrets.token_urlsafe(32))"`）
+   - カタログの受け取り方に応じた設定（同じ VM で取得するなら手元の出力、別の機械なら S3 か R2〔q-r2-boto3〕）
+3. **ドメインを Cloudflare の DNS に置き、Tunnel で VM の 127.0.0.1 へつなぐ**。受け口のポートは開けない
+4. **取得処理の `/etc/taguri/catalog.env`** の `TAGURI_NAMES_URL` を、サービス版の
+   `/api/catalog/favourite-names` に向ける。`TAGURI_NAMES_TOKEN` は 2 と同じ値
+5. **確かめる**: `/api/health` が `"edition": "service"` を返す。見本の記録が入っていない。
+   VM を再起動しても記録が残っている。検証項目の全体は [進め方](service-roadmap.md) の S01〜S31
+
+Pages の `/taguri-demo/app/` を使うのは、独自ドメインを付けて画面と API を同じサイトにしてから
+（リポジトリ変数 `TAGURI_SERVICE_API` に API の URL を入れ、Pages のワークフローを再実行する）。
+それまでは「準備中」を出したままにする。
+
+デモ版は Render の無料プランのまま、`TAGURI_EDITION` を設定しないか `demo` にする。
 `TAGURI_NAMES_TOKEN` はデモ版には要らない（入れても口は開かない）。
 
 ## 既存のデモの記録
