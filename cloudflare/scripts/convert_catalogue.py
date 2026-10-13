@@ -36,7 +36,7 @@ def main():
     p.add_argument('--input', required=True, type=Path)
     p.add_argument('--output', required=True, type=Path)
     a = p.parse_args()
-    rows = [public_candidate(json.loads(line)) for line in a.input.read_text().splitlines() if line.strip()]
+    rows = [public_candidate(json.loads(line)) for line in a.input.read_text(encoding="utf-8").split("\n") if line.strip()]
     if len(rows) > 1000:
         p.error('preview catalogue supports 1000 candidates; select the current public candidates first')
     quote = lambda v: "'" + v.replace("'", "''") + "'"
