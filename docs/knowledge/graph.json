@@ -669,6 +669,15 @@
    ]
   },
   {
+   "id": "dec-reco-measure-first",
+   "type": "decision",
+   "status": "proposed",
+   "date": "2026-10-13",
+   "title": "推薦の改善は、先に測る仕組みを作ってから計算を変える",
+   "sources": [],
+   "verifies": []
+  },
+  {
    "id": "dec-reco-on-worker",
    "type": "decision",
    "status": "adopted",
@@ -1624,6 +1633,15 @@
    ]
   },
   {
+   "id": "q-reco-eval-harness",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "推薦の改善を判断するための評価の仕組みをどう作るか（何のデータで・どの指標で）",
+   "sources": [],
+   "verifies": []
+  },
+  {
    "id": "q-render-free-viable",
    "type": "question",
    "status": "answered",
@@ -1758,6 +1776,18 @@
    "verifies": []
   },
   {
+   "id": "reco-accuracy-unverified",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "今の推薦（person-feedback-v1）の精度は、公開版の利用者では測っていない",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/blob/master/docs/user-recommendation-loop.md",
+    "https://github.com/island-6848/taguri-demo/blob/master/tools/review/user_recommender.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "reco-computed-per-request",
    "type": "finding",
    "status": "confirmed",
@@ -1771,6 +1801,18 @@
    ]
   },
   {
+   "id": "reco-eval-gaps",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "推薦の良し悪しを測る仕組みが足りない（利用者ごとの時系列評価・正解データ・提示と結果の結び付け）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/blob/master/docs/recommendation-ux-design.md",
+    "https://github.com/island-6848/taguri-demo/blob/master/docs/recommendation-exposure-verification.md"
+   ],
+   "verifies": []
+  },
+  {
    "id": "reco-js-parity",
    "type": "finding",
    "status": "confirmed",
@@ -1779,6 +1821,28 @@
    "sources": [
     "https://github.com/island-6848/taguri-demo/blob/cloudflare-d1-preview/cloudflare/test/recommend.test.js",
     "https://github.com/island-6848/taguri-demo/blob/cloudflare-d1-preview/cloudflare/test/test_recommend_index.py"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "reco-past-auc",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "過去の改善の実験結果は、持ち主 1 人の評価での leave-one-out AUC としてコードの注記に残っている",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/blob/master/tools/review/recommend2.py"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "reco-plan-unmerged",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "推薦の計算を改善する計画書はあるが、master に入っておらず内容が一部古い",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/blob/docs/personalized-recommendation-plan/docs/personalized-recommendation-plan.md"
    ],
    "verifies": []
   },
@@ -2520,6 +2584,16 @@
    "to": "comp-crawler"
   },
   {
+   "from": "dec-reco-measure-first",
+   "rel": "depends_on",
+   "to": "q-reco-eval-harness"
+  },
+  {
+   "from": "dec-reco-measure-first",
+   "rel": "supports",
+   "to": "reco-plan-unmerged"
+  },
+  {
    "from": "dec-reco-on-worker",
    "rel": "supersedes",
    "to": "reco-computed-per-request"
@@ -3140,6 +3214,16 @@
    "to": "q-ec2-cost"
   },
   {
+   "from": "q-reco-eval-harness",
+   "rel": "depends_on",
+   "to": "q-real-catalog-stats"
+  },
+  {
+   "from": "q-reco-eval-harness",
+   "rel": "affects",
+   "to": "comp-recommender"
+  },
+  {
    "from": "q-render-s3-dependency",
    "rel": "depends_on",
    "to": "no-aws"
@@ -3230,6 +3314,16 @@
    "to": "comp-catalog-pipeline"
   },
   {
+   "from": "reco-accuracy-unverified",
+   "rel": "affects",
+   "to": "comp-recommender"
+  },
+  {
+   "from": "reco-accuracy-unverified",
+   "rel": "raises",
+   "to": "q-reco-eval-harness"
+  },
+  {
    "from": "reco-computed-per-request",
    "rel": "supports",
    "to": "dec-defer-workers"
@@ -3245,9 +3339,29 @@
    "to": "q-workers-free-viable"
   },
   {
+   "from": "reco-eval-gaps",
+   "rel": "raises",
+   "to": "q-reco-eval-harness"
+  },
+  {
    "from": "reco-js-parity",
    "rel": "affects",
    "to": "comp-recommender"
+  },
+  {
+   "from": "reco-past-auc",
+   "rel": "affects",
+   "to": "comp-recommender"
+  },
+  {
+   "from": "reco-plan-unmerged",
+   "rel": "affects",
+   "to": "comp-recommender"
+  },
+  {
+   "from": "reco-plan-unmerged",
+   "rel": "raises",
+   "to": "q-reco-eval-harness"
   },
   {
    "from": "reco-v2-index-compatible",
