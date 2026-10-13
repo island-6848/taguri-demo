@@ -292,12 +292,30 @@ async function gate(request, env, url) {
   if (path === '/') return redirect('/about');
   return redirect('/login?next=' + encodeURIComponent(path + url.search));
 }
+/**
+ * GET /img/<file>: a poster from R2 (the POSTERS bucket, filled by the crawler's
+ * scripts/deliver_posters.py). Only signed-in users get here (gate). A file not
+ * in R2, or no bucket bound, falls through to the Render bridge as before.
+ */
+async function posterFromR2(request, env, url) {
+  const m = /^\/img\/([A-Za-z0-9_.-]{1,80})$/.exec(url.pathname);
+  if (!m || request.method !== 'GET' || !env.POSTERS) return null;
+  const obj = await env.POSTERS.get(m[1]);
+  if (!obj) return null;
+  const headers = new Headers({'Cache-Control': 'private, max-age=604800', 'X-Content-Type-Options': 'nosniff'});
+  headers.set('Content-Type', obj.httpMetadata?.contentType || (/\.png$/i.test(m[1]) ? 'image/png' : 'image/jpeg'));
+  if (obj.httpEtag) headers.set('ETag', obj.httpEtag);
+  return new Response(obj.body, {headers});
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     const blocked = await gate(request, env, url);
     if (blocked) return blocked;
     if (url.pathname === '/login' && request.method === 'GET') return loginPage(request, env);
+    const poster = await posterFromR2(request, env, url);
+    if (poster) return poster;
     const migrationAPI=url.pathname.startsWith('/migration-api/');
     const native = await nativeRoute(request, env, url);
     if (native) return native;

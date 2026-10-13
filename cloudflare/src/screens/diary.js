@@ -10,7 +10,7 @@ import {E, strip, slice, field, pyRepr, localNow, dumps, ValueError, WS, quote, 
 import {loadWorks, similarWorks, titleKey, norm} from './works.js';
 import {handCreditCount, parseCredits} from './credits.js';
 import {recRow, anchor, stageLabels} from './row.js';
-import {indexTabs, paginate, page as pageOf, SHEET_TOP, posterHtml} from './rate.js';
+import {indexTabs, paginate, page as pageOf, SHEET_TOP, posterHtml, posterFiles} from './rate.js';
 
 /** Python truthiness of a value parsed from a JSON body. */
 export const truthy = v => !(v === undefined || v === null || v === false || v === 0 || v === ''
@@ -408,8 +408,9 @@ async function worksScreen(params, ctx) {
       + '評価・感想はどの行にも同じ値が付きます（回ごとには記録していません）。'
       + '<b>「この回のメモ」だけは行ごとに別々に持てます</b>（推薦には使いません）。';
   const labels = await stageLabels(ctx, show.map(w => w.stage_id));
+  const files = await posterFiles(ctx, show);
   const rows = show.map(w => recRow({...w, people: people[w.work_key] || [], synopsis: ''},
-    {poster: posterHtml(w), editable: true, label: labels[w.stage_id] || ''})).join('');
+    {poster: posterHtml(w, files), editable: true, label: labels[w.stage_id] || ''})).join('');
   return {title, body_html: `<h1>日記帳</h1>
 ${recordsLede(d)}
 <p class="lede">1 件ごとに、日付・評価・感想が出ます。<b>感想は各行の「感想を書く」から

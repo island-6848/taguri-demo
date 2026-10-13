@@ -1,7 +1,7 @@
 ---
 id: q-worker-posters
 type: question
-status: open
+status: answered
 date: 2026-10-13
 title: Cloudflare 版でポスターをどこに置いて出すか
 sources:

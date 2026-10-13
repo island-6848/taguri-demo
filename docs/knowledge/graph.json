@@ -737,6 +737,23 @@
    ]
   },
   {
+   "id": "dec-posters-r2",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-13",
+   "title": "ポスターは R2 に置き、Worker の画面にも出す。R2 に入れた分は取得の作業データから外す",
+   "sources": [
+    "cloudflare/scripts/deliver_posters.py",
+    "cloudflare/migrations/0013.sql",
+    "cloudflare/src/worker.js",
+    "cloudflare/src/screens/rate.js",
+    "tools/taguri/posters.py",
+    "tools/taguri/crawler_state.py",
+    "tools/taguri/deploy/github-actions/catalog.yml"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-reco-on-worker",
    "type": "decision",
    "status": "adopted",
@@ -1473,7 +1490,7 @@
   {
    "id": "q-crawler-state-size",
    "type": "question",
-   "status": "open",
+   "status": "answered",
    "date": "2026-10-13",
    "title": "取得の作業データ（state ブランチ）が 2 GB になった。ポスターと公演ページの HTML の控えをどうするか",
    "sources": [],
@@ -1901,7 +1918,7 @@
   {
    "id": "q-worker-posters",
    "type": "question",
-   "status": "open",
+   "status": "answered",
    "date": "2026-10-13",
    "title": "Cloudflare 版でポスターをどこに置いて出すか",
    "sources": [
@@ -2780,6 +2797,16 @@
    "from": "dec-polite-crawling",
    "rel": "affects",
    "to": "comp-crawler"
+  },
+  {
+   "from": "dec-posters-r2",
+   "rel": "answers",
+   "to": "q-crawler-state-size"
+  },
+  {
+   "from": "dec-posters-r2",
+   "rel": "answers",
+   "to": "q-worker-posters"
   },
   {
    "from": "dec-reco-on-worker",

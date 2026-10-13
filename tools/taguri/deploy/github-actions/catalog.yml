@@ -87,6 +87,24 @@ jobs:
           done
           # 入れ終えてから「入れた」と記録する（失敗した分は次回まるごと入れ直す）
           python scripts/deliver_catalogue.py commit --data ../data --out ../d1-out
+      - name: Upload posters to R2 (new ones only)
+        # 取り込んだポスターを R2 に移し、D1 の poster 表に載せる（cloudflare/scripts/deliver_posters.py）。
+        # R2 に入れ終えた分は作業データから外れる（crawler_state.py）。鍵に R2 の権限が無いか、
+        # バケットが無いときは何も変えずに先へ進む（ポスターは今までどおり作業データに残る）
+        if: always()
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        working-directory: cloudflare
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "Cloudflare の鍵が無いので R2 には入れない"; exit 0
+          fi
+          python scripts/deliver_posters.py build --data ../data --out ../d1-posters
+          if [ -f ../d1-posters/posters-upload.sql ]; then
+            npx --yes wrangler@4 d1 execute taguri-demo --remote --yes --file ../d1-posters/posters-upload.sql
+          fi
+          python scripts/deliver_posters.py commit --data ../data --out ../d1-posters
       # 失敗しても、そこまでの取得の控えは残す（次回に同じものを取り直さない）
       - name: Save the working data to the state branch
         if: always()

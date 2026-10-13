@@ -1,7 +1,7 @@
 ---
 id: q-crawler-state-size
 type: question
-status: open
+status: answered
 date: 2026-10-13
 title: 取得の作業データ（state ブランチ）が 2 GB になった。ポスターと公演ページの HTML の控えをどうするか
 links:

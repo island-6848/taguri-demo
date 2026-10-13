@@ -194,7 +194,31 @@ export function page(params) {
 }
 
 /** app._poster_html: no poster files on the Worker (see row.editHtml). */
-export const posterHtml = () => '';
+/**
+ * app._poster_html for a public user: the poster of the linked stage when it is
+ * in R2 (the D1 table `poster`, written by scripts/deliver_posters.py). Hand
+ * posters are off on the public service and the owner's date guess
+ * (posters.match) is not ported. `files` is posterFiles(ctx, works).
+ */
+export const posterHtml = (w, files = {}) => {
+  const sid = String(w.stage_id || '');
+  const f = sid ? files[sid] : '';
+  return f ? `<img class="poster" src="/img/${E(f)}?t=__TAGURI_TOKEN__" alt="" loading="lazy">` : '';
+};
+
+/** stage_id -> poster file for the given works (D1 `poster`; empty before migration 0013). */
+export async function posterFiles(ctx, works) {
+  const ids = [...new Set(works.map(w => String(w.stage_id || '')).filter(Boolean))];
+  const out = {};
+  for (let i = 0; i < ids.length; i += 90) {
+    const part = ids.slice(i, i + 90);
+    try {
+      const {results} = await ctx.db.prepare(`SELECT stage_id, file FROM poster WHERE stage_id IN (${part.map(() => '?').join(',')})`).bind(...part).all();
+      for (const r of results) out[r.stage_id] = r.file;
+    } catch { return out; }
+  }
+  return out;
+}
 
 // ---------------------------------------------------------------- screens
 /** app._rate_body (GET /api/screen/rate?v=&y=&venue=&p=) */
@@ -243,7 +267,8 @@ async function rateScreen(params, ctx) {
   const [show, now, foot] = paginate(wsV, page(params), SHEET_TOP,
     pg => `/rate?t=__TAGURI_TOKEN__&amp;v=${quote(sel)}` + (ysel ? `&amp;y=${quote(ysel)}` : '') + venueQs
       + (pg > 1 ? `&amp;p=${pg}` : ''), '作品');
-  const rows = show.map(w => recRow(w, {poster: posterHtml(w), rateReopen: true})).join('');
+  const files = await posterFiles(ctx, show);
+  const rows = show.map(w => recRow(w, {poster: posterHtml(w, files), rateReopen: true})).join('');
   return {title, body_html: `<h1>評価一覧 ── 付けた ${rated.length} 件</h1>
 <p class="lede">付けた評価を◎○△×ごとに分けています。<b>基準は「自分に合っていたか」で、作品の出来ではありません。</b>評価は作品ごとに1つです。おすすめは◎を付けた公演の作り手から作るので、<b>ここで答えると次のおすすめが変わります。</b>題名・日付・会場そのものを直したいときは、<a href="/records/works?t=__TAGURI_TOKEN__">日記帳</a>で直せます。</p>
 ${verdictFig}
@@ -267,7 +292,8 @@ async function unratedScreen(_params, ctx) {
     + `<a href="/records/works?t=__TAGURI_TOKEN__">日記帳</a>に残っていますので、`
     + `付け間違えたときはその行の「やはり観た」で戻してください。`;
   const labels = await stageLabels(ctx, unrated.map(w => w.stage_id));
-  const rows = unrated.map(w => recRow(w, {poster: posterHtml(w), rateAlways: true, editable: true, label: labels[w.stage_id] || ''})).join('');
+  const files = await posterFiles(ctx, unrated);
+  const rows = unrated.map(w => recRow(w, {poster: posterHtml(w, files), rateAlways: true, editable: true, label: labels[w.stage_id] || ''})).join('');
   return {title: '未評価', body_html: `<h1>未評価 ── ${unrated.length} 件</h1>
 <p class="lede">評価がまだ付いていない記録です。<b>上演日が分からない記録も含みます。</b>日付がないと上演が終わったか判定できないので、「まだ答えていない」には出てきません。${skipped}<br>
 <b>実際には観ていない公演が混じっていたら、各行の「公演詳細を直す」から外せます。</b>券を買って行かなかった公演と、舞台ではない記録は、そこで書き分けられます。どちらも、あとで戻せます。</p>
