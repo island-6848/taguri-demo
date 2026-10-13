@@ -122,7 +122,7 @@
   {
    "id": "claude-app-repo-access",
    "type": "finding",
-   "status": "confirmed",
+   "status": "outdated",
    "date": "2026-10-13",
    "title": "Claude の GitHub アプリは taguri-crawler にまだ入っていない",
    "sources": [
