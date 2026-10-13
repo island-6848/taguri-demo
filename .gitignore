@@ -1,4 +1,10 @@
+
 __pycache__/
 *.pyc
 .env
 data/
+
+# Generated vendor bundle/public snapshot; private operator inputs never tracked.
+cloudflare/python/python_modules/
+cloudflare/python/.venv/
+cloudflare/python/public_snapshot.py

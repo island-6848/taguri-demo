@@ -1,0 +1,28 @@
+test_expired_and_legacy_cookie_never_create_blank_identity (test_auth_migration.AuthTests.test_expired_and_legacy_cookie_never_create_blank_identity) ... ok
+test_guest_restore_link_once_and_scoped_delete (test_auth_migration.AuthTests.test_guest_restore_link_once_and_scoped_delete) ... ok
+test_native_96_archive_and_idempotent_conversion (test_auth_migration.AuthTests.test_native_96_archive_and_idempotent_conversion) ... ok
+test_old_code_requires_pepper_and_imported_identity (test_auth_migration.AuthTests.test_old_code_requires_pepper_and_imported_identity) ... ok
+test_origin_sql_input_and_throttle (test_auth_migration.AuthTests.test_origin_sql_input_and_throttle) ... ok
+test_dates_and_public_fields_without_owner_reasons (test_convert_catalogue.CatalogueTest.test_dates_and_public_fields_without_owner_reasons) ... ok
+test_missing_and_impossible_dates_fail (test_convert_catalogue.CatalogueTest.test_missing_and_impossible_dates_fail) ... ok
+test_database_is_read_only_and_user_scoped (test_convert_records.MigrationTest.test_database_is_read_only_and_user_scoped) ... ok
+test_stable_ids_and_no_private_auth_fields (test_convert_records.MigrationTest.test_stable_ids_and_no_private_auth_fields) ... ok
+test_96_records_d1_roundtrip_stays_within_50_query_budget (test_full_migration.SnapshotTests.test_96_records_d1_roundtrip_stays_within_50_query_budget) ... ok
+test_capture_and_materialize_reject_cross_account (test_full_migration.SnapshotTests.test_capture_and_materialize_reject_cross_account) ... ok
+test_conflicting_revision_never_overwrites_winning_write (test_full_migration.SnapshotTests.test_conflicting_revision_never_overwrites_winning_write) ... ok
+test_foreign_rows_fail_before_mutation (test_full_migration.SnapshotTests.test_foreign_rows_fail_before_mutation) ... ok
+test_roundtrip_preserves_all_fields_blob_null_duplicate_and_visits (test_full_migration.SnapshotTests.test_roundtrip_preserves_all_fields_blob_null_duplicate_and_visits) ... ok
+test_cli_credential_private_no_overwrite_and_failed_pair_creation_cleanup (test_owner_transfer.OwnerTests.test_cli_credential_private_no_overwrite_and_failed_pair_creation_cleanup) ... ok
+test_explicit_transfer_rekeys_all_rows_and_checksums_and_conflict_rollback (test_owner_transfer.OwnerTests.test_explicit_transfer_rekeys_all_rows_and_checksums_and_conflict_rollback) ... ok
+test_failed_batch_rolls_back_account_schema_and_rows (test_protected_migration.ProtectedTests.test_failed_batch_rolls_back_account_schema_and_rows) ... ok
+test_read_only_full_snapshot_scoping_and_shared_inventory (test_protected_migration.ProtectedTests.test_read_only_full_snapshot_scoping_and_shared_inventory) ... ok
+test_17_original_screens_nonempty_catalogue_and_private_export (test_renderer_migration.RendererTests.test_17_original_screens_nonempty_catalogue_and_private_export) ... ok
+test_log_masks_secrets_and_readiness_fails_closed (test_renderer_migration.RendererTests.test_log_masks_secrets_and_readiness_fails_closed) ... ok
+test_original_add_rate_note_visit_export_and_failure_rollback (test_renderer_migration.RendererTests.test_original_add_rate_note_visit_export_and_failure_rollback) ... ok
+test_preferences_follow_request_and_remain_account_scoped (test_renderer_migration.RendererTests.test_preferences_follow_request_and_remain_account_scoped) ... ok
+test_public_fields_theater_tours_prices_credits_and_no_private_notes (test_renderer_migration.RendererTests.test_public_fields_theater_tours_prices_credits_and_no_private_notes) ... ok
+
+----------------------------------------------------------------------
+Ran 23 tests in 0.415s
+
+OK

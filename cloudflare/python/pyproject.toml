@@ -1,0 +1,8 @@
+[project]
+name = "taguri-python-migration-preview"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = ["workers-runtime-sdk"]
+
+[dependency-groups]
+dev = ["workers-py"]

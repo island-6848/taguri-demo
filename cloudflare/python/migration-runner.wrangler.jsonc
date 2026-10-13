@@ -1,0 +1,8 @@
+{
+ "$schema":"../node_modules/wrangler/config-schema.json",
+ "name":"taguri-protected-migration-runner",
+ "main":"migration-runner.js",
+ "compatibility_date":"2026-10-01",
+ "d1_databases":[{"binding":"DB","database_name":"taguri-python-migration-preview","database_id":"REPLACE_WITH_SEPARATE_PREVIEW_DATABASE_ID"}],
+ "workers_dev":false
+}

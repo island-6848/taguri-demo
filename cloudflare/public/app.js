@@ -358,17 +358,17 @@ function fragmentCacheSet(key, data) {
 // この応答に一度だけ乗る**（サーバは以後これを二度と持たない）ので、ここで
 // 受け取ったらその場で見せて控えてもらう。二度と同じコードは見せられない。
 let welcomeShown = false;
-function showWelcomeCode(code) {
+function showWelcomeCode(code, persistentMode = false) {
   if (!code || welcomeShown) return;
   welcomeShown = true;
   const wrap = document.createElement("div");
   wrap.className = "tg-welcome";
   wrap.innerHTML =
     '<div class="tg-welcome-box">'
-    + '<h2>デモ用の復旧コードです</h2>'
+    + (persistentMode ? '<h2>復旧コードを控えてください</h2>' : '<h2>デモ用の復旧コードです</h2>')
     + '<p>他の端末でも同じ記録を使いたいとき、Cookieを消してしまったときに'
     + '必要になります。<b>今だけ表示していて、二度と表示できません。</b>'
-    + 'デモの再起動で記録がリセットされると、このコードも使えなくなります。</p>'
+    + (persistentMode ? 'このコードは安全な場所に控えてください。</p>' : 'デモの再起動で記録がリセットされると、このコードも使えなくなります。</p>')
     + '<code class="tg-welcome-code">' + E(code) + '</code>'
     + '<div class="tg-welcome-btns">'
     + '<button type="button" data-wc-copy>コピーする</button>'
@@ -439,7 +439,7 @@ function applyDemoRestrictions(root) {
 function renderScreen(el, activePath, d) {
   el.innerHTML = d.body_html;
   if (d.demo_mode) {
-    el.insertAdjacentHTML("afterbegin", '<p class="note">操作を試せるデモです。入力した内容は、デモの再起動時にリセットされます。</p>');
+    el.insertAdjacentHTML("afterbegin", d.persistent_mode ? '<p class="note">操作を試せるデモです。入力した記録は保存されます。</p>' : '<p class="note">操作を試せるデモです。入力した内容は、デモの再起動時にリセットされます。</p>');
     applyDemoRestrictions(el);
   }
   renderCrumbBar(activePath, d.title || "");
@@ -521,7 +521,7 @@ async function loadScreen(path, search) {
     el.innerHTML = "<h1>読み込めませんでした</h1><p>" + E(String(e)) + "</p>";
     return;
   }
-  showWelcomeCode(d.welcome_code);
+  showWelcomeCode(d.welcome_code, d.persistent_mode === true);
   fragmentCacheSet(cacheKey, d);
   stopLoading();
   if (stale()) return;
@@ -620,7 +620,7 @@ async function post(path, body, group, done) {
       body: JSON.stringify(body)});
     const d = await r.json();
     if (!r.ok) { if (said) said.textContent = "できませんでした: " + (d.error || r.status); return null; }
-    showWelcomeCode(d.welcome_code);
+    showWelcomeCode(d.welcome_code, d.persistent_mode === true);
     if (d.ok !== false && path !== "/api/hand_theme_refresh") fragmentCache.clear();
     if (said && done !== null) said.textContent = done || "記録しました";
     return d;
@@ -2517,4 +2517,17 @@ document.addEventListener("click", ev => {
     box.querySelector(".said").textContent =
       r ? (r.line || "作りました") + "　画面を読み込み直すと出ます" : "";
   });
+});
+
+// This control is rendered only by the persistent D1 settings response.
+document.addEventListener("click", async ev => {
+  const button = ev.target.closest("[data-account-delete]");
+  if (!button) return;
+  ev.preventDefault();
+  if (!window.confirm("このアカウントの記録をすべて削除します。元には戻せません。削除しますか？")) return;
+  button.disabled = true;
+  const group = button.closest(".account-delete");
+  const result = await post("/api/delete_account", {confirm: "DELETE"}, group, "削除しました");
+  if (result && result.ok) window.location.assign("/recover");
+  else button.disabled = false;
 });

@@ -1,3 +1,4 @@
+import {observeOperation} from './operation-log.js';
 import {isOriginalRoute, originalUI} from './original-ui.js';
 const MAX_BODY = 262144;
 const COOKIE = 'taguri_session';
@@ -60,8 +61,7 @@ async function state(db, uid) {
   const result = await db.batch([db.prepare('SELECT id,title,date,time,venue,rating,note FROM records WHERE user_id=? ORDER BY date DESC,id LIMIT 500').bind(uid),db.prepare('SELECT name,kind FROM favourites WHERE user_id=? ORDER BY kind,name LIMIT 200').bind(uid),db.prepare('SELECT stage_id,status FROM reactions WHERE user_id=? ORDER BY stage_id LIMIT 500').bind(uid)]);
   return {version:2,records:result[0].results,favourites:result[1].results,reactions:result[2].results};
 }
-export default {
-  async fetch(request, env) {
+async function handleRequest(request, env) {
     const url = new URL(request.url);
     const migrationAPI=url.pathname.startsWith('/migration-api/');
     if(env.ORIGINAL_UI_BRIDGE==='true' && !migrationAPI && isOriginalRoute(url.pathname))return originalUI(request);
@@ -150,5 +150,5 @@ export default {
       // Do not expose SQL, private records, or environment configuration.
       return json({error:error.status ? error.message : '保存先に接続できませんでした。時間を置いてもう一度お試しください。'},error.status ?? 503);
     }
-  }
-};
+}
+export default {fetch(request, env) {return observeOperation(request, env, () => handleRequest(request, env));}};

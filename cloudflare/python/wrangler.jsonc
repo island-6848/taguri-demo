@@ -1,0 +1,23 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "taguri-python-migration-preview",
+  "main": "entry.py",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["python_workers"],
+  "python_modules": {"exclude": ["**/__pycache__/**", "**/*.pyc"]},
+  "assets": {
+    "directory": "../public",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*", "/auth/*", "/recover", "/link", "/img/*", "/export.json", "/data.zip", "/migration-api/*", "/migration-data/*", "/migration-data"]
+  },
+  "durable_objects": {"bindings": [{"name": "ORIGINAL_RENDERER", "class_name": "OriginalRenderer"}]},
+  "migrations": [{"tag": "original-renderer-v1", "new_sqlite_classes": ["OriginalRenderer"]}],
+  "d1_databases": [{
+    "binding": "DB",
+    "database_name": "taguri-python-migration-preview",
+    "database_id": "REPLACE_WITH_SEPARATE_PREVIEW_DATABASE_ID"
+  }],
+  "vars": {"ALLOW_REGISTRATION": "false", "MIGRATION_READY": "false"},
+  "workers_dev": true
+}

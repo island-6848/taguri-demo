@@ -1,0 +1,74 @@
+✔ groups match the producer only; people also match guest credits (1.687213ms)
+✔ theme and original author match normalized synopsis and extracted words (0.231118ms)
+✔ signals override favourites; opening day and ended shows are separated (0.39776ms)
+✔ operator runner is absent without key and rejects auth or arbitrary SQL (29.025002ms)
+✔ auth imports are idempotent and identity collision rolls back entire batch (6.818297ms)
+✔ auth cannot reference missing snapshots or owner local identity (1.67835ms)
+✔ owner import requires explicit transfer and preserves target identity (2.116971ms)
+✔ all original screen names are transported without changing fragment HTML (4.839114ms)
+✔ original saves retain the body; foreign origins cannot write (0.903932ms)
+✔ session cookies and redirects stay on this site; global backups are not exposed (1.461152ms)
+{"event":"taguri.operation","route":"register","method":"POST","status":503,"duration_ms":1,"backend":"d1"}
+✔ D1 migration API and its records stay accessible after restoring the original frontend (2.404204ms)
+{"event":"taguri.operation","route":"register","method":"POST","status":200,"duration_ms":2,"backend":"d1"}
+{"event":"taguri.operation","route":"record","method":"POST","status":200,"duration_ms":1,"backend":"d1"}
+{"event":"taguri.operation","route":"favourite","method":"POST","status":200,"duration_ms":0,"backend":"d1"}
+{"event":"taguri.operation","route":"recover","method":"POST","status":200,"duration_ms":1,"backend":"d1"}
+{"event":"taguri.operation","route":"state","method":"GET","status":200,"duration_ms":0,"backend":"d1"}
+{"event":"taguri.operation","route":"logout","method":"POST","status":200,"duration_ms":0,"backend":"d1"}
+{"event":"taguri.operation","route":"state","method":"GET","status":401,"duration_ms":0,"backend":"d1"}
+✔ records, ratings, favourites persist; recovery restores the same account (6.84728ms)
+{"event":"taguri.operation","route":"register","method":"POST","status":200,"duration_ms":1,"backend":"d1"}
+{"event":"taguri.operation","route":"register","method":"POST","status":200,"duration_ms":0,"backend":"d1"}
+{"event":"taguri.operation","route":"record","method":"POST","status":200,"duration_ms":1,"backend":"d1"}
+{"event":"taguri.operation","route":"state","method":"GET","status":200,"duration_ms":0,"backend":"d1"}
+{"event":"taguri.operation","route":"record/delete","method":"POST","status":200,"duration_ms":1,"backend":"d1"}
+{"event":"taguri.operation","route":"import","method":"POST","status":200,"duration_ms":0,"backend":"d1"}
+{"event":"taguri.operation","route":"state","method":"GET","status":200,"duration_ms":0,"backend":"d1"}
+✔ other users cannot read, update or delete records; imports ignore supplied user IDs (4.071626ms)
+{"event":"taguri.operation","route":"register","method":"POST","status":200,"duration_ms":1,"backend":"d1"}
+{"event":"taguri.operation","route":"record","method":"POST","status":400,"duration_ms":0,"backend":"d1"}
+{"event":"taguri.operation","route":"record","method":"POST","status":400,"duration_ms":0,"backend":"d1"}
+{"event":"taguri.operation","route":"register","method":"POST","status":403,"duration_ms":0,"backend":"d1"}
+{"event":"taguri.operation","route":"recover","method":"POST","status":401,"duration_ms":0,"backend":"d1"}
+{"event":"taguri.operation","route":"record","method":"POST","status":413,"duration_ms":1,"backend":"d1"}
+{"event":"taguri.operation","route":"state","method":"GET","status":401,"duration_ms":0,"backend":"d1"}
+✔ cross-origin mutations, malformed input and expired sessions fail safely (4.693434ms)
+{"event":"taguri.operation","route":"register","method":"POST","status":200,"duration_ms":1,"backend":"d1"}
+{"event":"taguri.operation","route":"import","method":"POST","status":400,"duration_ms":0,"backend":"d1"}
+{"event":"taguri.operation","route":"state","method":"GET","status":200,"duration_ms":0,"backend":"d1"}
+{"event":"taguri.operation","route":"import","method":"POST","status":200,"duration_ms":1,"backend":"d1"}
+{"event":"taguri.operation","route":"import","method":"POST","status":200,"duration_ms":1,"backend":"d1"}
+{"event":"taguri.operation","route":"import","method":"POST","status":200,"duration_ms":3,"backend":"d1"}
+{"event":"taguri.operation","route":"import","method":"POST","status":200,"duration_ms":1,"backend":"d1"}
+{"event":"taguri.operation","route":"import","method":"POST","status":200,"duration_ms":2,"backend":"d1"}
+{"event":"taguri.operation","route":"import","method":"POST","status":200,"duration_ms":1,"backend":"d1"}
+{"event":"taguri.operation","route":"import","method":"POST","status":200,"duration_ms":1,"backend":"d1"}
+{"event":"taguri.operation","route":"import","method":"POST","status":200,"duration_ms":1,"backend":"d1"}
+{"event":"taguri.operation","route":"import","method":"POST","status":200,"duration_ms":2,"backend":"d1"}
+{"event":"taguri.operation","route":"import","method":"POST","status":200,"duration_ms":1,"backend":"d1"}
+{"event":"taguri.operation","route":"export","method":"GET","status":200,"duration_ms":0,"backend":"d1"}
+✔ batch import validates every item before any write and can be repeated (18.220276ms)
+{"event":"taguri.operation","route":"register","method":"POST","status":503,"duration_ms":0,"backend":"d1"}
+{"event":"taguri.operation","route":"catalogue","method":"GET","status":200,"duration_ms":0,"backend":"d1"}
+✔ registration can be disabled and catalogue never exposes user data (1.623767ms)
+{"event":"taguri.operation","route":"register","method":"POST","status":200,"duration_ms":1,"backend":"d1"}
+{"event":"taguri.operation","route":"register","method":"POST","status":200,"duration_ms":0,"backend":"d1"}
+{"event":"taguri.operation","route":"reaction","method":"POST","status":200,"duration_ms":1,"backend":"d1"}
+{"event":"taguri.operation","route":"state","method":"GET","status":200,"duration_ms":0,"backend":"d1"}
+{"event":"taguri.operation","route":"export","method":"GET","status":200,"duration_ms":0,"backend":"d1"}
+{"event":"taguri.operation","route":"import","method":"POST","status":200,"duration_ms":1,"backend":"d1"}
+{"event":"taguri.operation","route":"state","method":"GET","status":200,"duration_ms":0,"backend":"d1"}
+{"event":"taguri.operation","route":"reaction","method":"POST","status":200,"duration_ms":0,"backend":"d1"}
+{"event":"taguri.operation","route":"state","method":"GET","status":200,"duration_ms":1,"backend":"d1"}
+{"event":"taguri.operation","route":"import","method":"POST","status":200,"duration_ms":0,"backend":"d1"}
+{"event":"taguri.operation","route":"record","method":"POST","status":400,"duration_ms":0,"backend":"d1"}
+✔ reactions are scoped, exportable and removable, and imports retain older versions (5.073858ms)
+ℹ tests 17
+ℹ suites 0
+ℹ pass 17
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 111.339001
