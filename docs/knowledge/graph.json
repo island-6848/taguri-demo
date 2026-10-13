@@ -1224,6 +1224,17 @@
    "verifies": []
   },
   {
+   "id": "lit-feedback-loop",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "推薦が利用者の行動を変え、その行動で次の推薦を学ぶ「輪」で、推薦は偏りやすくなる（Chaney・Stewart・Engelhardt 2018）",
+   "sources": [
+    "https://www.arxiv.org/abs/1710.11214"
+   ],
+   "verifies": []
+  },
+  {
    "id": "lit-hierarchical-user-model",
    "type": "finding",
    "status": "confirmed",
@@ -2586,6 +2597,19 @@
    "verifies": []
   },
   {
+   "id": "theatre-genre-sources",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-13",
+   "title": "舞台の公演に業界共通の公式のジャンル分けは見つからない。近いものは日本劇作家協会「戯曲デジタルアーカイブ」のジャンル（戯曲向け）",
+   "sources": [
+    "https://www.j-cast.com/2021/03/20407358.html?p=all",
+    "https://current.ndl.go.jp/car/43435",
+    "https://github.com/island-6848/taguri-demo/blob/master/tools/review/net_c_axes.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "theme-words-sparse-past",
    "type": "finding",
    "status": "unverified",
@@ -3658,6 +3682,16 @@
    "to": "q-user-chosen-scale"
   },
   {
+   "from": "lit-feedback-loop",
+   "rel": "affects",
+   "to": "q-favourites-seed"
+  },
+  {
+   "from": "lit-feedback-loop",
+   "rel": "supports",
+   "to": "lit-mnar"
+  },
+  {
    "from": "lit-hierarchical-user-model",
    "rel": "supports",
    "to": "q-reco-learning-design"
@@ -4511,6 +4545,11 @@
    "from": "synopsis-llm-history",
    "rel": "affects",
    "to": "q-synopsis-reader"
+  },
+  {
+   "from": "theatre-genre-sources",
+   "rel": "affects",
+   "to": "q-theme-preference"
   },
   {
    "from": "theme-words-sparse-past",
