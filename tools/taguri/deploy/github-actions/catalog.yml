@@ -80,9 +80,11 @@ jobs:
           fi
           python scripts/deliver_catalogue.py build --data ../data --out ../d1-out --index
           npx --yes wrangler@4 d1 execute taguri-demo --remote --yes --file ../d1-out/catalogue.sql
-          if [ -f ../d1-out/index-upload.sql ]; then
-            npx --yes wrangler@4 d1 execute taguri-demo --remote --yes --file ../d1-out/index-upload.sql
-          fi
+          for f in index-upload.sql labels-upload.sql; do
+            if [ -f "../d1-out/$f" ]; then
+              npx --yes wrangler@4 d1 execute taguri-demo --remote --yes --file "../d1-out/$f"
+            fi
+          done
           # 入れ終えてから「入れた」と記録する（失敗した分は次回まるごと入れ直す）
           python scripts/deliver_catalogue.py commit --data ../data --out ../d1-out
       # 失敗しても、そこまでの取得の控えは残す（次回に同じものを取り直さない）

@@ -19,8 +19,9 @@ wrangler succeeded, so a failed upload is retried in full the next day.
   once per stage by the owner's Claude (docs/knowledge dec-synopsis-reader-claude).
 - rec_meta: `catalogue_scan` / `catalogue_delivered` / `catalogue_upcoming`, for
   the public `/api/health` (dates and counts only).
-- `--index`: the person-score index (`build_recommend_index.py`), uploaded only
-  when its version changed and the day's write budget allows it.
+- `--index`: the person-score index (`build_recommend_index.py`) and the stage
+  names the original screens show (`build_stage_labels.py`, migration 0011),
+  each uploaded only when its version changed and the day's write budget allows it.
 """
 from __future__ import annotations
 
@@ -133,6 +134,22 @@ def build_index(out: Path) -> tuple[str, int, Path] | None:
     return m.group(1), 2 * json.loads(st.read_text(encoding="utf-8"))["rows_written"], sql
 
 
+def build_labels(out: Path) -> tuple[str, int, Path] | None:
+    """Run build_stage_labels.py; (version, rows written, sql). None if it cannot run here."""
+    sql = out / "labels.sql"
+    sql.unlink(missing_ok=True)
+    r = subprocess.run([sys.executable, str(HERE / "build_stage_labels.py"), "--output", str(sql)],
+                       cwd=ROOT, capture_output=True, text=True)
+    print(r.stderr, end="", file=sys.stderr)
+    if r.returncode != 0 or not sql.exists():
+        return None
+    m = re.search(r"VALUES\('stage_label','([0-9a-f]+)'\)", sql.read_text(encoding="utf-8"))
+    if not m:
+        return None
+    # Inserting a version and deleting the previous one write each row twice.
+    return m.group(1), 2 * json.loads(r.stdout.strip().splitlines()[-1])["stages"], sql
+
+
 def build(data: Path, out: Path, today: datetime.date, with_index: bool, budget: int) -> dict:
     prev = json.loads((data / STATE).read_text(encoding="utf-8")) if (data / STATE).exists() else {}
     seen: dict[str, str] = dict(prev.get("rows") or {})
@@ -152,7 +169,7 @@ def build(data: Path, out: Path, today: datetime.date, with_index: bool, budget:
     writes += len(meta)
     report = {"stages": len(rows), "changed": len(changed), "writes": writes,
               "with_synopsis": sum(1 for r in rows.values() if json.loads(r[5]).get("synopsis"))}
-    state = {"rows": seen, "index": prev.get("index", "")}
+    state = {"rows": seen, "index": prev.get("index", ""), "labels": prev.get("labels", "")}
     if out.exists():
         shutil.rmtree(out)
     out.mkdir(parents=True)
@@ -168,6 +185,19 @@ def build(data: Path, out: Path, today: datetime.date, with_index: bool, budget:
             shutil.move(got[2], out / "index-upload.sql")
             state["index"] = got[0]
             report["index"] = f"version {got[0]} ({got[1]} writes)"
+            writes += got[1]
+            report["writes"] = writes
+        got = build_labels(out)
+        if got is None:
+            report["labels"] = "not built (see the log above)"
+        elif got[0] == prev.get("labels"):
+            report["labels"] = "unchanged"
+        elif writes + got[1] > budget:
+            report["labels"] = f"skipped: {got[1]} writes would exceed the budget"
+        else:
+            shutil.move(got[2], out / "labels-upload.sql")
+            state["labels"] = got[0]
+            report["labels"] = f"version {got[0]} ({got[1]} writes)"
             writes += got[1]
             report["writes"] = writes
     (out / "catalogue.sql").write_text("\n".join(stmts) + "\n", encoding="utf-8")
