@@ -5,8 +5,8 @@
 
 | | デモ版 | サービス版 |
 |---|---|---|
-| 画面の URL | `https://island-6848.github.io/taguri-demo/` | 最初は VM が配る画面（独自ドメイン。未定〔q-domain〕）。Pages の `/taguri-demo/app/` は独自ドメインを付けてから |
-| API サーバー | Render の無料プランのサービス `taguri-demo`〔dec-demo-stays-render-free〕 | 常時稼働の VM ＋ Cloudflare Tunnel〔dec-vm-cloudflare〕 |
+| 画面の URL | `https://island-6848.github.io/taguri-demo/` | Cloudflare Worker（今は workers.dev。独自ドメインは未定〔q-domain〕） |
+| API サーバー | Render の無料プランのサービス `taguri-demo`。Render を止めたあとの扱いは未定〔q-demo-after-render〕 | Cloudflare Worker＋D1〔dec-workers-d1〕 |
 | `TAGURI_EDITION` | `demo`（未設定でもこれ） | `service` |
 | 最初の記録 | 見本の架空の記録 96 件が入る | 何も入らない（本人が入れた記録だけ） |
 | 記録の保存 | 一時保存でよい（消えると注記） | **永続ディスクの `TAGURI_STATE_DIR` が無いと起動しない** |
@@ -51,29 +51,12 @@
 
 ## サービス版を立てる手順
 
-**2026-10-13 に、Render の有料サービスから「常時稼働の VM ＋ Cloudflare の前段」に変えた**〔dec-vm-cloudflare〕。
-理由と全体の段階は [サービス化の進め方](service-roadmap.md) にある。VM で動かす前に、コードの直しが要る
-（保存先の検査を VM でも効かせる・127.0.0.1 で待ち受ける・接続元を Cloudflare のヘッダで数える）。
+**2026-10-13、サービス版は Cloudflare Workers＋D1 で動かすと決めた**〔dec-workers-d1〕〔dec-render-full-migration〕。
+その前に書いた「Render の有料サービス」案と「VM＋Cloudflare の前段」案は置き換えた〔dec-render-service-beta〕〔dec-vm-cloudflare〕。
+立て方・段取り・検証項目は [サービス化の進め方](service-roadmap.md) と、ブランチ `cloudflare-d1-preview` の `cloudflare/README.md` にある。
 
-1. **VM を用意する**（Oracle Always Free か今の EC2〔q-vm-host-choice〕）。サービス専用のユーザーを作り、
-   永続のディスクに保存先を置く（例: `/var/data/taguri`）
-2. **環境変数を入れる**（systemd の EnvironmentFile。リポジトリには入れない）:
-   - `TAGURI_EDITION=service`
-   - `TAGURI_STATE_DIR=/var/data/taguri`（カタログの `data/` とは別）
-   - `TAGURI_NAMES_TOKEN=<長い乱数>`（`python3 -c "import secrets; print(secrets.token_urlsafe(32))"`）
-   - カタログの受け取り方に応じた設定（同じ VM で取得するなら手元の出力、別の機械なら S3 か R2〔q-r2-boto3〕）
-3. **ドメインを Cloudflare の DNS に置き、Tunnel で VM の 127.0.0.1 へつなぐ**。受け口のポートは開けない
-4. **取得処理の `/etc/taguri/catalog.env`** の `TAGURI_NAMES_URL` を、サービス版の
-   `/api/catalog/favourite-names` に向ける。`TAGURI_NAMES_TOKEN` は 2 と同じ値
-5. **確かめる**: `/api/health` が `"edition": "service"` を返す。見本の記録が入っていない。
-   VM を再起動しても記録が残っている。検証項目の全体は [進め方](service-roadmap.md) の S01〜S31
-
-Pages の `/taguri-demo/app/` を使うのは、独自ドメインを付けて画面と API を同じサイトにしてから
-（リポジトリ変数 `TAGURI_SERVICE_API` に API の URL を入れ、Pages のワークフローを再実行する）。
-それまでは「準備中」を出したままにする。
-
-デモ版は Render の無料プランのまま、`TAGURI_EDITION` を設定しないか `demo` にする。
-`TAGURI_NAMES_TOKEN` はデモ版には要らない（入れても口は開かない）。
+この文書の `TAGURI_EDITION=service` は、Render（`serve_cloud.py`）の上でサービス版を動かすときの切り分けとして残っている。
+Worker 版でも、新しい利用者に見本を入れない・デモの入力を本番の取得に使わない、という切り分けは引き継ぐ。
 
 ## 既存のデモの記録
 

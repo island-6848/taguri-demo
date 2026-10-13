@@ -6,7 +6,7 @@
 
 **デモ版**: https://island-6848.github.io/taguri-demo/ （見本の記録で操作を試せる。入力は消えることがあります）
 
-**サービス版**: 準備中（記録を残して使う版。常時稼働の VM ＋ Cloudflare で立てる。[サービス化の進め方](docs/service-roadmap.md)・[デモ版とサービス版](docs/editions.md)）
+**サービス版**: 準備中（記録を残して使う版。Cloudflare Workers＋D1 へ移している。[サービス化の進め方](docs/service-roadmap.md)・[デモ版とサービス版](docs/editions.md)）
 
 （画面はGitHub Pages配信、推薦計算・データはRender上のAPI（`tools/taguri/serve_cloud.py`）が持つ。
 無料枠のため、しばらくアクセスがないと初回の読み込みに10〜20秒ほどかかることがあります）

@@ -55,6 +55,17 @@
    ]
   },
   {
+   "id": "cf-docs-blocked-here",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "この作業環境からは Cloudflare・Firebase の公式文書や外部サイトが読めない",
+   "sources": [
+    "作業環境で curl https://developers.cloudflare.com/d1/platform/pricing/ が接続できないことを確認（2026-10-13）"
+   ],
+   "verifies": []
+  },
+  {
    "id": "cf-registrar-no-jp",
    "type": "finding",
    "status": "unverified",
@@ -129,6 +140,19 @@
    "verifies": []
   },
   {
+   "id": "comp-cf-worker",
+   "type": "component",
+   "status": "current",
+   "date": "2026-10-13",
+   "title": "Cloudflare Worker（cloudflare/src/worker.js）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/blob/cloudflare-d1-preview/cloudflare/src/worker.js",
+    "https://github.com/island-6848/taguri-demo/blob/cloudflare-d1-preview/cloudflare/wrangler.jsonc",
+    "https://github.com/island-6848/taguri-demo/pull/5"
+   ],
+   "verifies": []
+  },
+  {
    "id": "comp-crawler",
    "type": "component",
    "status": "current",
@@ -137,6 +161,17 @@
    "sources": [
     "tools/lib/polite_http.py",
     "docs/crawler-policy.md"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "comp-d1",
+   "type": "component",
+   "status": "current",
+   "date": "2026-10-13",
+   "title": "Cloudflare D1（taguri-demo データベース）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/blob/cloudflare-d1-preview/cloudflare/migrations/"
    ],
    "verifies": []
   },
@@ -153,6 +188,18 @@
    "verifies": []
   },
   {
+   "id": "comp-firebase-login",
+   "type": "component",
+   "status": "current",
+   "date": "2026-10-13",
+   "title": "ログイン：Firebase Authentication（Google・メールリンク）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/blob/cloudflare-d1-preview/cloudflare/src/firebase-auth.js",
+    "https://github.com/island-6848/taguri-demo/blob/cloudflare-d1-preview/cloudflare/src/client/login.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "comp-frontend",
    "type": "component",
    "status": "current",
@@ -165,6 +212,29 @@
    "verifies": []
   },
   {
+   "id": "comp-native-screens",
+   "type": "component",
+   "status": "planned",
+   "date": "2026-10-13",
+   "title": "元の画面の Worker 版（cloudflare/src/screens/）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/blob/cloudflare-d1-preview/cloudflare/src/screens/index.js",
+    "https://github.com/island-6848/taguri-demo/blob/cloudflare-d1-preview/docs/render-migration-plan.md"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "comp-passkeys",
+   "type": "component",
+   "status": "current",
+   "date": "2026-10-13",
+   "title": "ログイン：パスキー（Google を使わない人向け）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/blob/cloudflare-d1-preview/cloudflare/src/passkey.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "comp-public-server",
    "type": "component",
    "status": "current",
@@ -173,6 +243,17 @@
    "sources": [
     "tools/taguri/serve_cloud.py",
     "tools/taguri/serve.py"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "comp-rec-index",
+   "type": "component",
+   "status": "current",
+   "date": "2026-10-13",
+   "title": "推薦の索引の作成（build_recommend_index.py）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/blob/cloudflare-d1-preview/cloudflare/scripts/build_recommend_index.py"
    ],
    "verifies": []
   },
@@ -204,7 +285,7 @@
   {
    "id": "comp-vm-host",
    "type": "component",
-   "status": "planned",
+   "status": "retired",
    "date": "2026-10-13",
    "title": "サービス版の VM（cloudflared・systemd）",
    "sources": [
@@ -265,6 +346,28 @@
    ]
   },
   {
+   "id": "d1-free-write-limit",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-13",
+   "title": "D1 の無料枠は 1 日 10 万行の書き込み・500 万行の読み込み（記憶による数値）",
+   "sources": [
+    "https://developers.cloudflare.com/d1/platform/pricing/"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "d1-query-limits",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-13",
+   "title": "D1 は 1 つの問い合わせに 100 個までの値しか渡せず、1 文は 100 KB まで",
+   "sources": [
+    "https://developers.cloudflare.com/d1/platform/limits/"
+   ],
+   "verifies": []
+  },
+  {
    "id": "d1-time-travel",
    "type": "finding",
    "status": "confirmed",
@@ -279,9 +382,20 @@
    ]
   },
   {
+   "id": "dec-account-deletion",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-13",
+   "title": "アカウント削除は「削除」の入力と直近 10 分以内のログインを求める",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/blob/cloudflare-d1-preview/cloudflare/test/account-delete.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-defer-workers",
    "type": "decision",
-   "status": "proposed",
+   "status": "superseded",
    "date": "2026-10-13",
    "title": "Cloudflare Workers への完全移行は今は見送る（見直し中）",
    "sources": [
@@ -315,6 +429,24 @@
    ]
   },
   {
+   "id": "dec-firebase-auth",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-13",
+   "title": "会員ログインは Firebase Authentication にする",
+   "sources": [],
+   "verifies": []
+  },
+  {
+   "id": "dec-no-render-data-migration",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-13",
+   "title": "Render の他人の記録も、持ち主の EC2 の記録も、新しいアカウントには移さない",
+   "sources": [],
+   "verifies": []
+  },
+  {
    "id": "dec-own-domain",
    "type": "decision",
    "status": "proposed",
@@ -327,6 +459,15 @@
     "S04",
     "S09"
    ]
+  },
+  {
+   "id": "dec-passkeys",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-13",
+   "title": "Google を使いたくない人のために、パスキーを新しく作る",
+   "sources": [],
+   "verifies": []
   },
   {
    "id": "dec-polite-crawling",
@@ -343,6 +484,28 @@
    ]
   },
   {
+   "id": "dec-reco-on-worker",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-13",
+   "title": "おすすめ（人物得点）は索引をバッチで作り、Worker で計算する",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/blob/cloudflare-d1-preview/cloudflare/src/recommend.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-render-full-migration",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-13",
+   "title": "Render をやめ、元の画面を Worker に移す（見た目はそのまま・最後に一度だけ切り替え）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/blob/cloudflare-d1-preview/docs/render-migration-plan.md"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-render-service-beta",
    "type": "decision",
    "status": "superseded",
@@ -356,7 +519,7 @@
   {
    "id": "dec-scale-workers",
    "type": "decision",
-   "status": "proposed",
+   "status": "adopted",
    "date": "2026-10-13",
    "title": "1000 人規模を見込むなら Workers＋D1 に寄せ、上限に近づいたら月 5 ドルの有料プランに上げる",
    "sources": [
@@ -365,6 +528,17 @@
    "verifies": [
     "S12"
    ]
+  },
+  {
+   "id": "dec-search-public-only",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-13",
+   "title": "記録を公演に結び付ける検索には、公開カタログの公演だけを出す",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/blob/cloudflare-d1-preview/cloudflare/src/stage-search.js"
+   ],
+   "verifies": []
   },
   {
    "id": "dec-service-starts-empty",
@@ -380,9 +554,21 @@
    ]
   },
   {
-   "id": "dec-vm-cloudflare",
+   "id": "dec-signed-out-gate",
    "type": "decision",
    "status": "adopted",
+   "date": "2026-10-13",
+   "title": "ログインしていない人に見せるのは「ログイン」と「たぐりとは」だけ",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/blob/cloudflare-d1-preview/cloudflare/src/worker.js",
+    "https://github.com/island-6848/taguri-demo/blob/cloudflare-d1-preview/cloudflare/test/gate.test.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-vm-cloudflare",
+   "type": "decision",
+   "status": "superseded",
    "date": "2026-10-13",
    "title": "サービス版は常時稼働の VM で動かし、前段に Cloudflare を置く",
    "sources": [
@@ -393,6 +579,17 @@
     "S13",
     "S22"
    ]
+  },
+  {
+   "id": "dec-workers-d1",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-13",
+   "title": "無料で起動を速くするため、Cloudflare Workers＋D1 で動かす",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/pull/5"
+   ],
+   "verifies": []
   },
   {
    "id": "demo-seed-link-rate",
@@ -418,6 +615,17 @@
    "verifies": [
     "S12"
    ]
+  },
+  {
+   "id": "firebase-apikey-public",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-13",
+   "title": "Firebase の Web 用 API キーは秘密ではない（使える範囲は承認済みドメインとキーの制限で絞る）",
+   "sources": [
+    "https://firebase.google.com/docs/projects/api-keys"
+   ],
+   "verifies": []
   },
   {
    "id": "gemini-budget-cap",
@@ -522,6 +730,17 @@
    ]
   },
   {
+   "id": "pr-branch-is-production",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "本番の Worker は PR のブランチ（cloudflare-d1-preview）から自動で deploy されている",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/blob/cloudflare-d1-preview/docs/cloudflare-security-review.md"
+   ],
+   "verifies": []
+  },
+  {
    "id": "public-export-leak",
    "type": "finding",
    "status": "confirmed",
@@ -534,6 +753,17 @@
    "verifies": [
     "S03"
    ]
+  },
+  {
+   "id": "python-screens-harness",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "Python の画面は一時保存先・固定日付・通信なしで、テストの中から動かせる",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/blob/cloudflare-d1-preview/cloudflare/test/screens/python_screens.py"
+   ],
+   "verifies": []
   },
   {
    "id": "python-workers-migration-state",
@@ -549,7 +779,7 @@
   {
    "id": "q-cf-access",
    "type": "question",
-   "status": "open",
+   "status": "dropped",
    "date": "2026-10-13",
    "title": "検証中に自分だけを通す方法（Cloudflare Access の無料枠）",
    "sources": [],
@@ -560,7 +790,7 @@
   {
    "id": "q-cf-connecting-ip-trust",
    "type": "question",
-   "status": "open",
+   "status": "dropped",
    "date": "2026-10-13",
    "title": "CF-Connecting-IP をどう信頼するか",
    "sources": [],
@@ -571,7 +801,7 @@
   {
    "id": "q-cf-tunnel-official",
    "type": "question",
-   "status": "open",
+   "status": "dropped",
    "date": "2026-10-13",
    "title": "Tunnel の公式の制限・料金・必要な設定",
    "sources": [],
@@ -592,6 +822,15 @@
    ]
   },
   {
+   "id": "q-d1-backup",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "D1 のバックアップと復元をどうするか",
+   "sources": [],
+   "verifies": []
+  },
+  {
    "id": "q-d1-python-workers",
    "type": "question",
    "status": "open",
@@ -601,9 +840,18 @@
    "verifies": []
   },
   {
-   "id": "q-direction",
+   "id": "q-demo-after-render",
    "type": "question",
    "status": "open",
+   "date": "2026-10-13",
+   "title": "Render を止めたあと、デモ版（見本の記録で試す版）をどうするか",
+   "sources": [],
+   "verifies": []
+  },
+  {
+   "id": "q-direction",
+   "type": "question",
+   "status": "answered",
    "date": "2026-10-13",
    "title": "サービス版の基盤を「VM＋Cloudflare の前段」と「Workers＋D1」のどちらに寄せるか",
    "sources": [],
@@ -634,6 +882,55 @@
    ]
   },
   {
+   "id": "q-firebase-free-tier",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "Firebase Authentication の無料枠の正確な範囲（メールリンク・利用者数）",
+   "sources": [],
+   "verifies": []
+  },
+  {
+   "id": "q-firebase-key-restriction",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "Firebase の API キーに制限（Web サイト・使う API）を掛けたか",
+   "sources": [],
+   "verifies": []
+  },
+  {
+   "id": "q-firebase-user-deletion",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "アカウント削除で Firebase 側の利用者も本当に消えているか",
+   "sources": [],
+   "verifies": []
+  },
+  {
+   "id": "q-lockfile-reproducible",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "Worker の依存とログイン画面の組み立てを再現できるようにするか（lockfile）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/blob/cloudflare-d1-preview/docs/cloudflare-security-review.md"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "q-login-email-storage",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "メールリンクのログインで、メールアドレスを端末に残してよいか",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/blob/cloudflare-d1-preview/docs/cloudflare-security-review.md"
+   ],
+   "verifies": []
+  },
+  {
    "id": "q-monitoring",
    "type": "question",
    "status": "open",
@@ -650,7 +947,7 @@
    "type": "question",
    "status": "open",
    "date": "2026-10-13",
-   "title": "バックアップをどこに、どう暗号化して、いつまで置くか",
+   "title": "D1 のバックアップを、Time Travel の期間より長くどこに残すか",
    "sources": [],
    "verifies": [
     "S07",
@@ -669,13 +966,42 @@
   {
    "id": "q-oracle-payg",
    "type": "question",
-   "status": "open",
+   "status": "dropped",
    "date": "2026-10-13",
    "title": "Oracle を従量課金の契約にすると、無料枠と回収の扱いは変わるか",
    "sources": [],
    "verifies": [
     "S29"
    ]
+  },
+  {
+   "id": "q-original-ui-csp",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "元の画面の Content-Security-Policy を強められるか",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/blob/cloudflare-d1-preview/docs/cloudflare-security-review.md"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "q-passkey-real-devices",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "パスキーは実機（iPhone・Android・Mac・Windows）で登録・ログインできるか",
+   "sources": [],
+   "verifies": []
+  },
+  {
+   "id": "q-past-stage-catalogue",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "昔の公演を、公開情報だけで探せるようにするにはどうするか",
+   "sources": [],
+   "verifies": []
   },
   {
    "id": "q-privacy-law",
@@ -688,6 +1014,15 @@
     "S10",
     "S25"
    ]
+  },
+  {
+   "id": "q-production-branch",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "本番に deploy するブランチをどれにするか（PR のブランチのままにしない）",
+   "sources": [],
+   "verifies": []
   },
   {
    "id": "q-python-version",
@@ -703,9 +1038,18 @@
   {
    "id": "q-r2-boto3",
    "type": "question",
-   "status": "open",
+   "status": "dropped",
    "date": "2026-10-13",
    "title": "R2 の公式料金と、今の boto3 のコードで読み書きできるか",
+   "sources": [],
+   "verifies": []
+  },
+  {
+   "id": "q-rate-limiting",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "ログイン・登録・検索の回数制限を Worker でどう掛けるか",
    "sources": [],
    "verifies": []
   },
@@ -757,7 +1101,7 @@
   {
    "id": "q-vm-host-choice",
    "type": "question",
-   "status": "open",
+   "status": "dropped",
    "date": "2026-10-13",
    "title": "サービス版の VM は Oracle Always Free と今の EC2 のどちらにするか",
    "sources": [],
@@ -768,7 +1112,7 @@
   {
    "id": "q-vm-performance",
    "type": "question",
-   "status": "open",
+   "status": "dropped",
    "date": "2026-10-13",
    "title": "VM でおすすめが 3 秒以内に開くか",
    "sources": [],
@@ -779,13 +1123,22 @@
   {
    "id": "q-workers-cpu-overrun",
    "type": "question",
-   "status": "open",
+   "status": "dropped",
    "date": "2026-10-13",
    "title": "無料プランで CPU 10 ミリ秒を超えると、実際にはどうなるか",
    "sources": [],
    "verifies": [
     "S20"
    ]
+  },
+  {
+   "id": "q-workers-cpu-real",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "移した画面は Workers 無料枠の CPU 10 ミリ秒に収まるか",
+   "sources": [],
+   "verifies": []
   },
   {
    "id": "q-workers-free-viable",
@@ -822,6 +1175,18 @@
    ]
   },
   {
+   "id": "reco-js-parity",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "Worker の推薦は Python（person-feedback-v1）と同じ結果を出す",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/blob/cloudflare-d1-preview/cloudflare/test/recommend.test.js",
+    "https://github.com/island-6848/taguri-demo/blob/cloudflare-d1-preview/cloudflare/test/test_recommend_index.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "render-free-no-disk",
    "type": "finding",
    "status": "confirmed",
@@ -855,6 +1220,30 @@
    "sources": [
     "https://livemy.app/blog/render-pricing",
     "https://temps.sh/blog/render-pricing-2026"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "render-two-identities",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "Render の利用者（tg_session）とログインしたアカウント（D1）は別人として扱われている",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/blob/cloudflare-d1-preview/cloudflare/src/original-ui.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "render-ui-server-rendered",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "元の画面は Python が HTML を組んで JSON で返している（約 2.5 万行）",
+   "sources": [
+    "tools/taguri/serve.py",
+    "tools/taguri/app.py",
+    "web/app.js"
    ],
    "verifies": []
   },
@@ -935,6 +1324,18 @@
    ]
   },
   {
+   "id": "title-key-parity",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "題名の正規化（title_key）は JS でも Python と同じにできる",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/blob/cloudflare-d1-preview/cloudflare/src/stage-search.js",
+    "https://github.com/island-6848/taguri-demo/blob/cloudflare-d1-preview/cloudflare/test/stage-search.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "worker-reco-cpu-estimate",
    "type": "finding",
    "status": "unverified",
@@ -946,6 +1347,28 @@
    "verifies": [
     "S20"
    ]
+  },
+  {
+   "id": "workers-builds-applies-migrations",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "push するたびに Workers Builds が D1 の migration を当ててから deploy する",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/blob/cloudflare-d1-preview/cloudflare/README.md"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "workers-builds-master-fail",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "コミットの ✗ は Workers Builds が cloudflare/ の無い master を組もうとして失敗していたため",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/pull/5"
+   ],
+   "verifies": []
   },
   {
    "id": "workers-d1-preview-state",
@@ -1063,6 +1486,31 @@
    "to": "q-domain"
   },
   {
+   "from": "comp-d1",
+   "rel": "affects",
+   "to": "comp-state-storage"
+  },
+  {
+   "from": "comp-native-screens",
+   "rel": "affects",
+   "to": "comp-public-server"
+  },
+  {
+   "from": "comp-native-screens",
+   "rel": "affects",
+   "to": "comp-frontend"
+  },
+  {
+   "from": "comp-rec-index",
+   "rel": "depends_on",
+   "to": "comp-catalog-pipeline"
+  },
+  {
+   "from": "comp-rec-index",
+   "rel": "affects",
+   "to": "comp-recommender"
+  },
+  {
    "from": "comp-vm-host",
    "rel": "depends_on",
    "to": "q-vm-host-choice"
@@ -1103,6 +1551,26 @@
    "to": "q-direction"
   },
   {
+   "from": "d1-free-write-limit",
+   "rel": "answers",
+   "to": "q-d1-python-workers"
+  },
+  {
+   "from": "d1-free-write-limit",
+   "rel": "raises",
+   "to": "q-real-catalog-stats"
+  },
+  {
+   "from": "d1-free-write-limit",
+   "rel": "supports",
+   "to": "d1-free-limits"
+  },
+  {
+   "from": "d1-query-limits",
+   "rel": "affects",
+   "to": "comp-rec-index"
+  },
+  {
    "from": "d1-time-travel",
    "rel": "affects",
    "to": "q-offsite-backup"
@@ -1111,6 +1579,16 @@
    "from": "d1-time-travel",
    "rel": "affects",
    "to": "workers-d1-preview-state"
+  },
+  {
+   "from": "dec-account-deletion",
+   "rel": "affects",
+   "to": "comp-d1"
+  },
+  {
+   "from": "dec-account-deletion",
+   "rel": "raises",
+   "to": "q-firebase-user-deletion"
   },
   {
    "from": "dec-defer-workers",
@@ -1138,6 +1616,31 @@
    "to": "comp-frontend"
   },
   {
+   "from": "dec-firebase-auth",
+   "rel": "affects",
+   "to": "comp-firebase-login"
+  },
+  {
+   "from": "dec-firebase-auth",
+   "rel": "raises",
+   "to": "q-firebase-key-restriction"
+  },
+  {
+   "from": "dec-firebase-auth",
+   "rel": "raises",
+   "to": "q-firebase-free-tier"
+  },
+  {
+   "from": "dec-no-render-data-migration",
+   "rel": "supports",
+   "to": "dec-service-starts-empty"
+  },
+  {
+   "from": "dec-no-render-data-migration",
+   "rel": "depends_on",
+   "to": "render-free-no-disk"
+  },
+  {
    "from": "dec-own-domain",
    "rel": "affects",
    "to": "comp-frontend"
@@ -1148,9 +1651,64 @@
    "to": "q-domain"
   },
   {
+   "from": "dec-passkeys",
+   "rel": "affects",
+   "to": "comp-passkeys"
+  },
+  {
+   "from": "dec-passkeys",
+   "rel": "raises",
+   "to": "q-passkey-real-devices"
+  },
+  {
    "from": "dec-polite-crawling",
    "rel": "affects",
    "to": "comp-crawler"
+  },
+  {
+   "from": "dec-reco-on-worker",
+   "rel": "supersedes",
+   "to": "reco-computed-per-request"
+  },
+  {
+   "from": "dec-reco-on-worker",
+   "rel": "depends_on",
+   "to": "reco-js-parity"
+  },
+  {
+   "from": "dec-reco-on-worker",
+   "rel": "affects",
+   "to": "comp-recommender"
+  },
+  {
+   "from": "dec-render-full-migration",
+   "rel": "contradicts",
+   "to": "dec-defer-workers"
+  },
+  {
+   "from": "dec-render-full-migration",
+   "rel": "contradicts",
+   "to": "dec-vm-cloudflare"
+  },
+  {
+   "from": "dec-render-full-migration",
+   "rel": "depends_on",
+   "to": "render-ui-server-rendered"
+  },
+  {
+   "from": "dec-render-full-migration",
+   "rel": "affects",
+   "to": "comp-native-screens"
+  },
+  {
+   "from": "dec-render-full-migration",
+   "rel": "affects",
+   "to": "comp-public-server"
+  },
+  {
+   "from": "dec-render-full-migration",
+   "rel": "affects",
+   "to": "q-direction"
   },
   {
    "from": "dec-scale-workers",
@@ -1168,9 +1726,19 @@
    "to": "q-crawler-host"
   },
   {
+   "from": "dec-search-public-only",
+   "rel": "raises",
+   "to": "q-past-stage-catalogue"
+  },
+  {
    "from": "dec-service-starts-empty",
    "rel": "depends_on",
    "to": "dec-edition-split"
+  },
+  {
+   "from": "dec-signed-out-gate",
+   "rel": "affects",
+   "to": "comp-cf-worker"
   },
   {
    "from": "dec-vm-cloudflare",
@@ -1198,6 +1766,41 @@
    "to": "comp-vm-host"
   },
   {
+   "from": "dec-workers-d1",
+   "rel": "answers",
+   "to": "q-direction"
+  },
+  {
+   "from": "dec-workers-d1",
+   "rel": "supersedes",
+   "to": "dec-defer-workers"
+  },
+  {
+   "from": "dec-workers-d1",
+   "rel": "supersedes",
+   "to": "dec-vm-cloudflare"
+  },
+  {
+   "from": "dec-workers-d1",
+   "rel": "contradicts",
+   "to": "dec-defer-workers"
+  },
+  {
+   "from": "dec-workers-d1",
+   "rel": "depends_on",
+   "to": "workers-free-cpu-10ms"
+  },
+  {
+   "from": "dec-workers-d1",
+   "rel": "affects",
+   "to": "comp-cf-worker"
+  },
+  {
+   "from": "dec-workers-d1",
+   "rel": "affects",
+   "to": "q-direction"
+  },
+  {
    "from": "demo-seed-link-rate",
    "rel": "affects",
    "to": "comp-recommender"
@@ -1206,6 +1809,11 @@
    "from": "ec2-tokyo-price",
    "rel": "affects",
    "to": "q-ec2-cost"
+  },
+  {
+   "from": "firebase-apikey-public",
+   "rel": "raises",
+   "to": "q-firebase-key-restriction"
   },
   {
    "from": "gemini-budget-cap",
@@ -1253,9 +1861,19 @@
    "to": "dec-own-domain"
   },
   {
+   "from": "pr-branch-is-production",
+   "rel": "raises",
+   "to": "q-production-branch"
+  },
+  {
    "from": "public-export-leak",
    "rel": "affects",
    "to": "comp-export"
+  },
+  {
+   "from": "python-screens-harness",
+   "rel": "supports",
+   "to": "dec-render-full-migration"
   },
   {
    "from": "python-workers-migration-state",
@@ -1278,6 +1896,26 @@
    "to": "q-ec2-cost"
   },
   {
+   "from": "q-d1-backup",
+   "rel": "affects",
+   "to": "comp-d1"
+  },
+  {
+   "from": "q-d1-backup",
+   "rel": "depends_on",
+   "to": "q-offsite-backup"
+  },
+  {
+   "from": "q-demo-after-render",
+   "rel": "depends_on",
+   "to": "dec-render-full-migration"
+  },
+  {
+   "from": "q-demo-after-render",
+   "rel": "affects",
+   "to": "dec-edition-split"
+  },
+  {
    "from": "q-direction",
    "rel": "depends_on",
    "to": "q-real-catalog-stats"
@@ -1293,14 +1931,49 @@
    "to": "q-direction"
   },
   {
+   "from": "q-lockfile-reproducible",
+   "rel": "affects",
+   "to": "comp-cf-worker"
+  },
+  {
+   "from": "q-login-email-storage",
+   "rel": "affects",
+   "to": "comp-firebase-login"
+  },
+  {
    "from": "q-offsite-backup",
    "rel": "depends_on",
    "to": "q-r2-boto3"
   },
   {
+   "from": "q-original-ui-csp",
+   "rel": "affects",
+   "to": "comp-native-screens"
+  },
+  {
+   "from": "q-past-stage-catalogue",
+   "rel": "depends_on",
+   "to": "dec-polite-crawling"
+  },
+  {
+   "from": "q-past-stage-catalogue",
+   "rel": "depends_on",
+   "to": "catalog-terms-no-redistribution"
+  },
+  {
    "from": "q-r2-boto3",
    "rel": "depends_on",
    "to": "q-vm-host-choice"
+  },
+  {
+   "from": "q-rate-limiting",
+   "rel": "depends_on",
+   "to": "comp-auth-throttle"
+  },
+  {
+   "from": "q-rate-limiting",
+   "rel": "affects",
+   "to": "comp-cf-worker"
   },
   {
    "from": "q-real-catalog-stats",
@@ -1335,7 +2008,22 @@
   {
    "from": "q-workers-cpu-overrun",
    "rel": "depends_on",
+   "to": "q-workers-cpu-real"
+  },
+  {
+   "from": "q-workers-cpu-overrun",
+   "rel": "depends_on",
    "to": "q-real-catalog-stats"
+  },
+  {
+   "from": "q-workers-cpu-real",
+   "rel": "depends_on",
+   "to": "workers-free-cpu-10ms"
+  },
+  {
+   "from": "q-workers-cpu-real",
+   "rel": "affects",
+   "to": "comp-native-screens"
   },
   {
    "from": "r2-free-tier",
@@ -1368,6 +2056,11 @@
    "to": "q-workers-free-viable"
   },
   {
+   "from": "reco-js-parity",
+   "rel": "affects",
+   "to": "comp-recommender"
+  },
+  {
    "from": "render-free-no-disk",
    "rel": "supports",
    "to": "dec-vm-cloudflare"
@@ -1396,6 +2089,21 @@
    "from": "render-paid-disk-cost",
    "rel": "supports",
    "to": "dec-render-service-beta"
+  },
+  {
+   "from": "render-two-identities",
+   "rel": "raises",
+   "to": "q-direction"
+  },
+  {
+   "from": "render-two-identities",
+   "rel": "supports",
+   "to": "dec-render-full-migration"
+  },
+  {
+   "from": "render-ui-server-rendered",
+   "rel": "affects",
+   "to": "comp-public-server"
   },
   {
    "from": "robotparser-decimal-delay",
@@ -1476,6 +2184,16 @@
    "from": "worker-reco-cpu-estimate",
    "rel": "affects",
    "to": "q-direction"
+  },
+  {
+   "from": "workers-builds-applies-migrations",
+   "rel": "affects",
+   "to": "comp-d1"
+  },
+  {
+   "from": "workers-builds-master-fail",
+   "rel": "affects",
+   "to": "comp-cf-worker"
   },
   {
    "from": "workers-d1-preview-state",

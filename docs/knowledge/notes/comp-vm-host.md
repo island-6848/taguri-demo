@@ -1,7 +1,7 @@
 ---
 id: comp-vm-host
 type: component
-status: planned
+status: retired
 date: 2026-10-13
 title: サービス版の VM（cloudflared・systemd）
 sources:
@@ -10,3 +10,4 @@ links:
   - depends_on: q-vm-host-choice
 ---
 サービス版を常時動かす VM。外へはポートを開けず、cloudflared が Cloudflare へ外向きにつなぐ。サーバーは 127.0.0.1 で待ち受ける。
+（2026-10-13、起案者が Workers＋D1 に寄せると決めた）作らない。
