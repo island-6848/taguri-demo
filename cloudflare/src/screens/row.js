@@ -2,7 +2,7 @@
 // Ports of tools/taguri/app.py (_rec_row, _impression_parts, _stamp,
 // _date_parts, _venue_of, _edit_html, _hand_html, stage_label), charts._anchor
 // and icons.ico/h2. Each returns exactly the Python HTML.
-import {E, WS, strip} from './py.js';
+import {E, WS, strip, cmp} from './py.js';
 import {handCreditCount} from './credits.js';
 
 // ---------------------------------------------------------------- icons.py
@@ -90,13 +90,47 @@ export function impressionParts(w) {
   `<div class="inw">${box}</div>`];
 }
 
+/** app._synopsis_html */
+function synopsisHtml(text) {
+  text = strip(text || '');
+  if (!text) return '';
+  return `<div class="syn"><p class="txt">${E(text)}</p>`
+    + `<button class="mrb" data-more="1">続きを読む</button></div>`;
+}
+
+/** render_recommend.CAST_SHOWN */
+const CAST_SHOWN = 12;
+/** app._cast_html: people is a list of [role, person]. */
+function castHtml(people) {
+  if (!people || !people.length) return '';
+  const cast = [...new Set(people.filter(([r]) => r === '出演').map(([, n]) => n))].sort(cmp);
+  const others = {};
+  for (const [r, n] of people) if (r === '演出' || r === '脚本') (others[r] ||= []).push(n);
+  if (!cast.length && !Object.keys(others).length) return '';
+  const rows = [];
+  if (cast.length) {
+    const head = cast.slice(0, CAST_SHOWN).map(E).join('、');
+    const rest = cast.slice(CAST_SHOWN);
+    const more = rest.length ? `<span class="rest">、${rest.map(E).join('、')}</span>`
+      + `<button class="mrb" data-more="1">ほか ${rest.length} 名を見る</button>` : '';
+    rows.push(`<div class="cr"><span class="cl">出演</span><span class="cv">${head}${more}</span></div>`);
+  }
+  for (const role of ['演出', '脚本']) {
+    const ns = [...new Set(others[role] || [])].sort(cmp);
+    if (ns.length) rows.push(`<div class="cr"><span class="cl">${E(role)}</span><span class="cv">${ns.map(E).join('、')}</span></div>`);
+  }
+  return `<div class="cast">${rows.join('')}</div>`;
+}
+
 // ---------------------------------------------------------------- the row
 /**
  * app._rec_row. Options as in Python (poster, rate_always, editable,
- * rate_reopen); `label` is stage_label(w.stage_id) for the edit box. Synopsis,
- * cast, extra and the per-visit note are not passed by the ported screens.
+ * rate_reopen, id_suffix); `label` is stage_label(w.stage_id) for the edit box.
+ * w.synopsis and w.people (measure_nets.load_rated) are shown when present.
+ * `extra` (the search screen) and the per-visit note (only for rows opened
+ * from mails, which a public user does not have) are not passed yet.
  */
-export function recRow(w, {poster = '', rateAlways = false, editable = false, rateReopen = false, label = ''} = {}) {
+export function recRow(w, {poster = '', rateAlways = false, editable = false, rateReopen = false, label = '', idSuffix = ''} = {}) {
   const v = w.verdict || '';
   const unseen = Boolean(w.unseen);
   let rate;
@@ -130,11 +164,13 @@ export function recRow(w, {poster = '', rateAlways = false, editable = false, ra
     : '<span class="pin"><span class="noposter" aria-hidden="true"></span></span>';
   return `<article class="rec-row${w.suspect ? ' check' : ''}`
     + `${unseen ? ' skipped' : ''}"`
-    + ` id="w-${E(anchor(w.work_key))}">`
+    + ` id="w-${E(anchor(w.work_key))}${E(idSuffix)}">`
     + `<span class="marg">${dt}${unseen ? '' : stamp(w, v)}</span>`
     + `<div class="page">`
     + `<div class="ttl">${E(w.title)}</div>`
     + (where ? `<div class="where">${where}</div>` : '')
+    + synopsisHtml(w.synopsis)
+    + castHtml(w.people)
     + ((rate || impHead) ? `<div class="tools">${rate}${impHead}</div>` : '')
     + impBox
     + (editable ? editHtml(w, label) : '')

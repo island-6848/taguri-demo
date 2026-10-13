@@ -11,7 +11,7 @@ const VERDICTS = ['◎', '○', '△', '×', 'まだ判断できない'];
 /** app.VERDICT_LABEL */
 const VERDICT_LABEL = {'◎': 'とても合っていた', '○': '合っていた', '△': 'あまり合わなかった', '×': '合わなかった'};
 /** app.SHEET_TOP */
-const SHEET_TOP = 15;
+export const SHEET_TOP = 15;
 
 /**
  * app._rate_base: what the three screens count from.
@@ -73,7 +73,7 @@ ${table(['評価', '件数', '割合'], order.map(g => [g, cnt[g], pct(cnt[g] / 
 
 // ---------------------------------------------------------------- render_recommend
 /** render_recommend.index_tabs */
-function indexTabs(items, sel, url, label, showLabel = false) {
+export function indexTabs(items, sel, url, label, showLabel = false) {
   const out = items.map(([k, lab, n]) => {
     const on = k === sel;
     return `<a class="ix${on ? ' on' : ''}"${on ? ' aria-current="page"' : ''}`
@@ -84,7 +84,7 @@ function indexTabs(items, sel, url, label, showLabel = false) {
 }
 
 /** render_recommend.paginate: [rows shown, status sentence, footer]. */
-function paginate(rows, page, per, url, unit = '件') {
+export function paginate(rows, page, per, url, unit = '件') {
   const last = Math.max(1, Math.ceil(rows.length / per));
   page = Math.min(Math.max(page, 1), last);
   const show = rows.slice((page - 1) * per, page * per);
@@ -186,13 +186,13 @@ ${hiddenIn}
 }
 
 /** serve._page: ?p= as a number (1-3 digits), else 1. */
-function page(params) {
+export function page(params) {
   const v = qsFirst(params, 'p', '1');
   return /^\p{Nd}{1,3}$/u.test(v) ? digitsInt(v) : 1;
 }
 
 /** app._poster_html: no poster files on the Worker (see row.editHtml). */
-const posterHtml = () => '';
+export const posterHtml = () => '';
 
 // ---------------------------------------------------------------- screens
 /** app._rate_body (GET /api/screen/rate?v=&y=&venue=&p=) */

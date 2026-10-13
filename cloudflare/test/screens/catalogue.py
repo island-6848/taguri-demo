@@ -54,7 +54,17 @@ def worker_sql() -> list[str]:
     spec = importlib.util.spec_from_file_location("build_stage_labels", path)
     SL = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(SL)
-    return SL.to_sql(SL.build(CANDIDATES, PICKED))
+    # rec_people (stage -> parsed credits), as build_recommend_index.py writes it
+    # from measure_nets._fields_by_stage: here only the candidates carry fields.
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "tools" / "review"))
+    import measure_nets as M
+    people = {c["stage_id"]: [list(x) for x in M.parse_credits(c["fields"])] for c in CANDIDATES if c["fields"]}
+    q = lambda v: "'" + v.replace("'", "''") + "'"
+    rec = [f"INSERT INTO rec_people(ver,stage_id,people) VALUES('t',{q(sid)},{q(json.dumps(p, ensure_ascii=False))});"
+           for sid, p in people.items() if p]
+    rec.append("INSERT INTO rec_meta(k,v) VALUES('current','t') ON CONFLICT(k) DO UPDATE SET v=excluded.v;")
+    return SL.to_sql(SL.build(CANDIDATES, PICKED)) + rec
 
 
 if __name__ == "__main__":

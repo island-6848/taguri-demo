@@ -5,9 +5,11 @@
 // user: every record is a manual one (no purchases, so no `shows`, no
 // corrections table), and serve._enrich (fetching a stage's material) is
 // skipped on the public service.
-import {strip, slice, field, pyRepr, localNow, dumps, ValueError, WS} from './py.js';
+import {E, strip, slice, field, pyRepr, localNow, dumps, ValueError, WS, quote, qsFirst, sortBy, cmp, isdigit} from './py.js';
 import {loadWorks, similarWorks, titleKey, norm} from './works.js';
-import {handCreditCount} from './credits.js';
+import {handCreditCount, parseCredits} from './credits.js';
+import {recRow, anchor, stageLabels} from './row.js';
+import {indexTabs, paginate, page as pageOf, SHEET_TOP, posterHtml} from './rate.js';
 
 /** Python truthiness of a value parsed from a JSON body. */
 export const truthy = v => !(v === undefined || v === null || v === false || v === 0 || v === ''
@@ -266,8 +268,134 @@ async function visitNoteAction(b, ctx) {
   return {body: {uid, len: Array.from(note).length}};
 }
 
+// ---------------------------------------------------------------- 日記帳 (screen)
+/**
+ * measure_nets.load_rated(include_unrated=True) for a public user: work_key ->
+ * sorted unique [role, person] from the linked stage's credits (rec_people,
+ * built from measure_nets._fields_by_stage by build_recommend_index.py) plus
+ * the hand-entered ones.
+ */
+async function peopleByKey(ctx, ws) {
+  const sids = [...new Set(ws.map(w => w.stage_id).filter(Boolean))];
+  const stage = {};
+  for (let i = 0; i < sids.length; i += 90) {
+    const part = sids.slice(i, i + 90);
+    const {results} = await ctx.db.prepare("SELECT stage_id, people FROM rec_people WHERE ver=(SELECT v FROM rec_meta WHERE k='current')"
+      + ` AND stage_id IN (${part.map(() => '?').join(',')})`).bind(...part).all();
+    for (const r of results) stage[r.stage_id] = JSON.parse(r.people);
+  }
+  const out = {};
+  for (const w of ws) {
+    const people = [...(stage[w.stage_id] || []), ...parseCredits((w.hand || {}).fields || {})];
+    const seen = new Map(people.map(p => [p[0] + '\u0000' + p[1], p]));
+    out[w.work_key] = [...seen.values()].sort((a, b) => cmp(a[0], b[0]) || cmp(a[1], b[1]));
+  }
+  return out;
+}
+
+/** app._records_lede */
+function recordsLede(d) {
+  const skip = !d.nSkip ? '' : `<br>「行かなかった」と答えた ${d.nSkip} 件は、件数と図から外しています。`
+    + '「日記帳」には出さず、「設定」の「行かなかった公演」にまとめてあり、「やはり観た」で戻せます。';
+  return `<p class="lede">観た記録は <b>${d.seen.length} 作品</b>です`
+    + `（評価が付いているのは ${d.nRated} 件、感想が書いてあるのは `
+    + `${d.nNotes} 件）。この画面の数字は、すべて手元のデータだけで作っています。`
+    + `${skip}</p>`;
+}
+
+/** app._records_empty_note */
+const RECORDS_EMPTY = '<p class="pnow">観た公演の記録がまだ無いので、図は出せません。'
+  + '<a href="/register?t=__TAGURI_TOKEN__">公演情報の登録</a>で'
+  + '購入確認メールを取り込むか、観た公演を手で足すと、'
+  + '<b>本数・評価の分かれ方・行った場所・時期</b>がここに出ます。</p>';
+
+/** app._check_line */
+const checkLine = n => !n
+  ? '<b>いまのところ、読み取りを間違えたらしい記録はありません。</b>見つかったものは、この一覧の先頭に出します。'
+  : `購入確認メールからの読み取りに失敗した跡がある記録が ${n} 件あります`
+    + `（括弧が閉じていないなど）。<b>この ${n} 件を先に出しています。</b>`
+    + '直した内容は、次の取り込みと公演ページの検索にも効きます。';
+
+/**
+ * app._works_body (GET /api/screen/works?y=&p=&w=&g=). Posters are not on the
+ * Worker (rate.posterHtml), and the rated-side synopses (themes.jsonl) are the
+ * owner's batch output keyed by the owner's records, so none are shown.
+ */
+async function worksScreen(params, ctx) {
+  const ws = await loadWorks(ctx);
+  const seen = ws.filter(w => !w.unseen);
+  const d = {seen, nSkip: ws.length - seen.length, nRated: seen.filter(w => w.verdict).length,
+    nNotes: seen.filter(w => strip(w.note_impression || '')).length};
+  const people = await peopleByKey(ctx, ws);
+  let year = qsFirst(params, 'y'), group = qsFirst(params, 'g', 'work'), page = pageOf(params);
+  const want = qsFirst(params, 'w');
+  const check = ws.filter(w => w.suspect);
+  let rest = ws.filter(w => !w.suspect && !w.unseen);
+  // app._flatten_visits: a manual record has no mails to open, so only the order changes.
+  const restVisit = sortBy(rest, w => w.first_date || '0000', true);
+  const groups = [['work', '作品でまとめる', rest.length], ['visit', 'すべて表示', restVisit.length]];
+  group = ['work', 'visit'].includes(group) ? group : 'work';
+  if (group === 'visit') rest = restVisit;
+  const years = new Map();
+  for (const w of rest) {
+    const y = slice(w.first_date || '', 0, 4);
+    const k = isdigit(y) ? y : 'none';
+    if (!years.has(k)) years.set(k, []);
+    years.get(k).push(w);
+  }
+  const keys = [...years.keys()].filter(k => k !== 'none').sort(cmp).reverse();
+  if (years.has('none')) keys.push('none');
+  const piles = new Map(keys.map(k => [k, years.get(k)]));
+  if (check.length) piles.set('check', check);
+  const order = [...(check.length ? ['check'] : []), ...keys];
+  const title = '日記帳';
+  if (!order.length) {
+    return {title, body_html: `<h1>日記帳 ── 1 公演ごとの記録</h1>\n${recordsLede(d)}\n${RECORDS_EMPTY}`};
+  }
+  const label = {none: '上演日が分からない', check: '先に確かめてほしい'};
+  const tabs = order.map(k => [k, label[k] ?? `${k} 年`, piles.get(k).length]);
+  let sel = piles.has(year) ? year : (keys.length ? keys[0] : order[0]);
+  if (want) {
+    found: for (const k of order) {
+      for (const [n, w] of piles.get(k).entries()) {
+        if (anchor(w.work_key) === want) { sel = k; page = Math.floor(n / SHEET_TOP) + 1; break found; }
+      }
+    }
+  }
+  const hit = piles.get(sel);
+  const url = (k, pg = 1, g = '') => '/records/works?t=__TAGURI_TOKEN__'
+    + (k ? `&amp;y=${quote(k)}` : '') + (pg > 1 ? `&amp;p=${pg}` : '') + (g && g !== 'work' ? `&amp;g=${g}` : '');
+  const [show, now, foot] = paginate(hit, page, SHEET_TOP, pg => url(sel, pg, group), '件');
+  const lead = sel === 'check' ? '読み取りに失敗した跡がある記録です。年をまたいで散らばるので、1 枚にまとめてあります。'
+    : sel === 'none' ? '上演日が分からない記録です。日付が無いと年で切れないので、1 枚にまとめてあります。'
+      : `${sel} 年に観た記録です。`;
+  const nCast = ws.filter(w => (people[w.work_key] || []).some(([r]) => r === '出演')).length;
+  const gnote = group === 'work'
+    ? '同じ作品は 1 行にまとめています。複数回観ていれば、日付は最初に観た日を出し、「N 回観た」と添えます。'
+    : '観た回ごとに 1 行で出しています（すべて表示は、畳まずに 1 回ずつ出す、という意味です）。'
+      + '同じ作品を複数回観ていれば、行った日の数だけ並びます。'
+      + '評価・感想はどの行にも同じ値が付きます（回ごとには記録していません）。'
+      + '<b>「この回のメモ」だけは行ごとに別々に持てます</b>（推薦には使いません）。';
+  const labels = await stageLabels(ctx, show.map(w => w.stage_id));
+  const rows = show.map(w => recRow({...w, people: people[w.work_key] || [], synopsis: ''},
+    {poster: posterHtml(w), editable: true, label: labels[w.stage_id] || ''})).join('');
+  return {title, body_html: `<h1>日記帳 ── 1 公演ごとの記録</h1>
+${recordsLede(d)}
+<p class="lede">1 件ごとに、日付・評価・感想が出ます。<b>感想は各行の「感想を書く」から
+書けます</b>（欄から離れたときに保存されます）。<b>題名・上演日・劇場は、各行の
+「公演詳細を直す」から直せます。</b>ポスターを出せたのは 0 件、
+あらすじが出せたのは 0 件、出演者が出せたのは ${nCast} 件です。${gnote}
+${checkLine(check.length)}</p>
+${indexTabs(groups, group, g => url(piles.has(sel) ? sel : '', 1, g), '作品でまとめる・すべて表示を切り替える')}
+${indexTabs(tabs, sel, k => url(k, 1, group), '年で切り替える')}
+<div class="idxsheet">
+<p class="mnow">${lead}${now}ほかの年は、上のインデックスで切り替えられます。</p>
+${rows}</div>
+${foot}`};
+}
+
 export const diaryScreens = {
-  screens: {},
+  screens: {works: worksScreen},
   actions: {fix_work: fixWorkAction, merge_work: mergeWorkAction, drop_work: dropWorkAction,
     restore_work: restoreWorkAction, purge_work: purgeWorkAction, hand_credits: handCreditsAction,
     link_stage: linkStageAction, visit_note: visitNoteAction},
