@@ -15,7 +15,7 @@
 | サービス | 無料枠 | 越えたとき | たぐりの上限 | 守り方 |
 |---|---|---|---|---|
 | **Cloudflare R2**（ポスター） | 保存 10 GB-月・Class A 月 100 万回・Class B 月 1,000 万回〔r2-free-tier-billed〕 | **請求される** | 保存 8 GB・Class A 月 30 万回・Class B 月 300 万回 | 入れる前に控えで数える（`deliver_posters.py`）。読み出しは Worker が D1 の `usage` 表に数え、上限で R2 を読むのをやめる（`free-tier.js`）。数えられないときも読まない |
-| **GitHub Actions**（非公開の taguri-crawler） | 月 2,000 分（アカウント全体）〔gha-private-free-minutes〕〔gha-minutes-reset-budget〕 | 支払いの上限 0 ドル（既定）なら止まる | 直近 31 日で 1,500 分 | ジョブの最初の段（`free_tier.py plan`）が API で分数を数え、これからの 31 日のどの区切りでも収まるときだけ動かす。過去の公演を読む分数もここで決める |
+| **GitHub Actions**（非公開の taguri-crawler） | 月 2,000 分（アカウント全体）〔gha-private-free-minutes〕〔gha-minutes-reset-budget〕 | 止まる（起案者の GitHub には支払い方法が無いので請求されない〔q-free-tier-account-settings〕）。月末まで取得が止まる | 直近 31 日で 1,500 分 | ジョブの最初の段（`free_tier.py plan`）が API で分数を数え、これからの 31 日のどの区切りでも収まるときだけ動かす。過去の公演を読む分数もここで決める |
 | GitHub Actions（公開の taguri-demo） | 標準の実行環境は無料〔github-actions-public-free〕 | ― | ― | 非公開の作業はここで動かさない（ログが公開されるため） |
 | **Cloudflare D1** | 1 日 読み 500 万行・書き 10 万行、保存 5 GB〔d1-free-limits〕 | その日はエラー（請求なし） | 取得の書き込み 1 日 8 万行（残りは利用者の操作） | 書く前に控え（`data/free_tier/usage.json`）に足す。公演一覧 6 万行・過去の公演 2 万行・ポスター 4,000 行の各上限もある |
 | **Cloudflare Workers** | 1 日 10 万要求・1 回 CPU 10 ミリ秒〔workers-free-cpu-10ms〕 | 止まる（請求なし） | ― | 静的ファイルは数えない〔workers-static-assets-free〕。ポスターはブラウザに 1 週間置く（`immutable`） |
@@ -33,7 +33,7 @@ R2 だけは **越えると止まらずに請求される**。Cloudflare には�
 - **毎日:** Catalog のジョブの最後の段（Free-tier check、`free_tier.py check`）が、使った量と上限の表を
   実行の Summary に出す。どれかが **上限の 8 割** を越えたか、数えられなかったら失敗する。失敗すると GitHub から持ち主に通知が届く
 - **いつでも:** Worker の公開の `/api/health` が、今月の R2 の読み出しの数と上限を返す（数だけ。利用者のことは出さない）
-- **最後の歯止め（起案者の設定）:** GitHub の Actions の予算 0 ドル（上限で止める）、Cloudflare の Budget alerts 0.01 ドル
+- **最後の歯止め（起案者の設定）:** GitHub には支払い方法を登録しない（登録しなければ使い切った時点で止まり、請求されない）。Cloudflare は R2 のために支払い方法を登録したので、Budget alerts 0.01 ドルを作る
   〔q-free-tier-account-settings〕
 
 ## 作業するときの約束
