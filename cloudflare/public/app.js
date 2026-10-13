@@ -392,6 +392,7 @@ function renderScreen(el, activePath, d, exposureSource) {
   // サーバー（render_recommend.reason_rows）も出さないようにしたが、古いサーバーの HTML にも効かせる
   el.querySelectorAll("li.rs.q").forEach(n => n.remove());
   compactTickets(el);
+  penNotes(el);
   if (window.TaguriExposure) TaguriExposure.start(el, exposureSource || "network", async (path, body) => {
     const r = await fetch(API_BASE + path, {method: "POST", credentials: "include", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
     const result = await r.json(); return r.ok && result.ok === true;
@@ -1766,6 +1767,28 @@ fixupImportBar(document);
 
 // **入力欄の動きは、後から足した 1 枚にも付ける。**
 //
+// **書いてある感想・回のメモの「書き直す」を、文の末尾の鉛筆にする。**（起案者の指摘 2026-10-13
+// 「『書き直す』のボタンがあるせいで文字の折り返しが多くて感想が縦に伸びてる…鉛筆のアイコンボタンを
+// 感想の末尾につけるとかだけでも伝わる」）。文と鉛筆を 1 つの箱に入れ、鉛筆は文の最後の行に続けて置く
+function penNotes(root) {
+  root.querySelectorAll(".inr, .vnr").forEach(r => {
+    const t = r.querySelector(":scope > .int, :scope > .vnt"), b = r.querySelector(":scope > .wnb");
+    if (!t || !b) return;
+    const box = document.createElement("span");
+    box.className = "inb";
+    t.before(box);
+    box.append(t, b);
+    b.classList.add("pen");
+    setPen(b, false);
+  });
+}
+function setPen(b, editing) {
+  if (!b.classList.contains("pen")) { b.textContent = editing ? "書き終える" : "書き直す"; return; }
+  b.innerHTML = ico(editing ? "check" : "pencil", 15);
+  b.setAttribute("aria-label", editing ? "書き終える" : "書き直す");
+  b.title = editing ? "書き終える" : "書き直す";
+}
+
 // **書いてある文を、その場で書き直せる欄にする。** 下に入力欄を開くのではなく、読んでいた文の上で
 // そのまま書く。離れたら（または「書き終える」を押したら）保存し、Esc で元に戻す。保存は今までと
 // 同じ口（感想は /api/note、回のメモは /api/visit_note）。隠れている textarea も同じ値にそろえておく
@@ -1779,7 +1802,7 @@ function editInPlace(btn, el, ta, row, path, bodyOf, okMsg) {
   if (!el.isContentEditable) el.contentEditable = "true";
   el.setAttribute("role", "textbox");
   el.setAttribute("aria-multiline", "true");
-  btn.textContent = "書き終える";
+  setPen(btn, true);
   let said = row.querySelector(":scope > .said");
   if (!said) { said = document.createElement("span"); said.className = "said"; row.appendChild(said); }
   said.textContent = "";
@@ -1792,7 +1815,7 @@ function editInPlace(btn, el, ta, row, path, bodyOf, okMsg) {
     el.removeAttribute("contenteditable");
     el.removeAttribute("role");
     el.removeAttribute("aria-multiline");
-    btn.textContent = "書き直す";
+    setPen(btn, false);
     const text = el.textContent.trim();
     if (!save || text === before.trim()) { el.textContent = before; return; }
     el.textContent = text;

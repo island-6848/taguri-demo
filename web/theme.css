@@ -378,3 +378,12 @@ body{font-family:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",YuGothic,syst
  .side .search{flex:1 1 0;min-width:0}
  .side .search input{width:100%;min-width:0;box-sizing:border-box}
  .side .padd,.side .pset{width:36px}}
+/* 感想・回のメモの文と、その末尾の鉛筆（app.js の penNotes）。文は折り返しても鉛筆は最後の行に続く */
+.inb{grid-column:2;min-width:0}
+.inb>.int,.inb>.vnt{display:inline}
+.inb>.wnb.pen{display:inline-flex;align-items:center;justify-content:center;vertical-align:-3px;
+ width:28px;height:28px;min-height:0;margin:0 0 0 4px;padding:0;border:0;border-radius:6px;
+ background:none;box-shadow:none;color:var(--mute);text-decoration:none;cursor:pointer}
+.inb>.wnb.pen:hover{color:var(--curtain);background:var(--plane)}
+.inb>.wnb.pen:focus-visible{outline:2px solid var(--curtain);outline-offset:1px}
+.inb>.int[contenteditable],.inb>.vnt[contenteditable]{display:inline-block;width:calc(100% - 36px);vertical-align:top}
