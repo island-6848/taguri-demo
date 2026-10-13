@@ -306,7 +306,44 @@ def _inserts(table: str, cols: str, rows: list[tuple]) -> list[str]:
     return out
 
 
-def to_sql(index: dict, ver: str) -> list[str]:
+ONBOARDING_SIZE = 40
+
+
+def onboarding_list(index: dict, today: datetime.date, size: int = ONBOARDING_SIZE) -> list[str]:
+    """Stages already on (or over) to ask a new user about first (q-first-rating-onboarding).
+
+    Greedy cover of the coming catalogue: each pick adds the most weight of
+    people and kind tags not yet covered, a key weighing as many coming stages
+    as credit it. Rating these first gives the recommender values for the
+    people it will have to rank (eval-onboarding-selection; Rashid et al.
+    2002). Uses public catalogue fields only; ties go to the smaller stage id.
+    """
+    iso = today.isoformat()
+    coming = {sid for sid, st in index["stages"].items() if st["start"] and st["start"] > iso}
+    weight: dict = {}
+    for role, person, sid, *_ in index["postings"]:
+        if sid in coming:
+            weight[(role, person)] = weight.get((role, person), 0) + 1
+    keys_of: dict = {}
+    for role, person, sid, *_ in index["postings"]:
+        if sid not in coming and index["stages"][sid]["start"]:
+            keys_of.setdefault(sid, set()).add((role, person))
+    covered: set = set()
+    out = []
+    for _ in range(min(size, len(keys_of))):
+        best, gain = None, 0
+        for sid in sorted(keys_of):
+            g = sum(weight.get(k, 0) for k in keys_of[sid] - covered)
+            if g > gain:
+                best, gain = sid, g
+        if best is None:
+            break
+        out.append(best)
+        covered |= keys_of.pop(best)
+    return out
+
+
+def to_sql(index: dict, ver: str, onboarding: list[str] | None = None) -> list[str]:
     """Insert `ver`, switch to it, then drop other versions (in that order)."""
     dumps = lambda v: json.dumps(v, ensure_ascii=False, sort_keys=True)
     stmts = [f"DELETE FROM {t} WHERE ver={_q(ver)};" for t in TABLES]
@@ -318,6 +355,9 @@ def to_sql(index: dict, ver: str) -> list[str]:
     stmts += _inserts("rec_people", "ver,stage_id,people",
                       [(ver, sid, dumps(p)) for sid, p in sorted(index["people"].items())])
     stmts += _inserts("rec_gram", "ver,gram,part,entries", gram_rows(index, ver))
+    if onboarding is not None:
+        stmts.append("INSERT INTO rec_meta(k,v) VALUES('onboarding',"
+                     f"{_q(dumps({'ver': ver, 'ids': onboarding}))}) ON CONFLICT(k) DO UPDATE SET v=excluded.v;")
     stmts.append(f"INSERT INTO rec_meta(k,v) VALUES('current',{_q(ver)}) "
                  "ON CONFLICT(k) DO UPDATE SET v=excluded.v;")
     stmts += [f"DELETE FROM {t} WHERE ver<>{_q(ver)};" for t in TABLES]
@@ -357,6 +397,9 @@ def main() -> int:
     p = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     p.add_argument("--output", required=True, type=Path, help="SQL for wrangler d1 execute --file")
     p.add_argument("--stats", type=Path, help="write size statistics as JSON")
+    p.add_argument("--today", type=datetime.date.fromisoformat,
+                   default=(datetime.datetime.utcnow() + datetime.timedelta(hours=9)).date(),
+                   help="date (JST) splitting stages to ask about from the coming ones")
     a = p.parse_args()
     import app as APP
     import digest as DG
@@ -378,7 +421,7 @@ def main() -> int:
                 if r.get("matched") and r.get("stage_id") and r.get("page_title"):
                     titles.setdefault(str(r["stage_id"]), r["page_title"])
     index = build_index(pool, M._fields_by_stage(), APP.group_of, titles)
-    stmts = to_sql(index, version_of(index))
+    stmts = to_sql(index, version_of(index), onboarding_list(index, a.today))
     body = "\n".join(stmts) + "\n"
     with os.fdopen(os.open(a.output, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), "w") as out:
         out.write(body)

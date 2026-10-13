@@ -1,7 +1,7 @@
 import {isOriginalRoute, originalUI} from './original-ui.js';
 import {verifyIdToken, isAuthError} from './firebase-auth.js';
 import {passkeyRoutes} from './passkey.js';
-import {scoreFromIndex, d1Access, gradeOf, seedsFromFavourites} from './recommend.js';
+import {scoreFromIndex, d1Access, gradeOf, seedsFromFavourites, SEED_KINDS, SEED_ROLES, MAX_SEED_FAVS, cmp} from './recommend.js';
 import {searchIndex, d1Search} from './stage-search.js';
 import {chooseVariant} from './reco-gate.js';
 import {SCREEN_TABLES, nativeScreen, nativeAction, screen as nativeScreenBody, action as nativeActionBody, readInput as nativeInput} from './screens/index.js';
@@ -218,6 +218,32 @@ export async function stagesFor(db, params) {
   }
   return {ready: true, items: await access.stages(ids)};
 }
+// Past stages to ask a new user about first (q-first-rating-onboarding): the
+// favourites' stages that have already opened, then the batch's list of
+// stages covering the coming catalogue (build_recommend_index.onboarding_list),
+// leaving out stages the user has already recorded. Which screen asks, and
+// only on the first rating, is up to the screens.
+const ONBOARDING_TOP = 20;
+export async function onboardingFor(db, uid, today = jstToday()) {
+  const ver = (await db.prepare("SELECT v FROM rec_meta WHERE k='current'").first())?.v;
+  if (!ver) return {ready: false, items: []};
+  let listed = [];
+  try {
+    const meta = JSON.parse((await db.prepare("SELECT v FROM rec_meta WHERE k='onboarding'").first())?.v || '{}');
+    if (meta.ver === ver && Array.isArray(meta.ids)) listed = meta.ids.filter(id => typeof id === 'string');
+  } catch { listed = []; }
+  const access = d1Access(db, ver);
+  const favourites = (await db.prepare('SELECT name,kind FROM favourites WHERE user_id=? ORDER BY kind,name LIMIT 200').bind(uid).all()).results;
+  const names = [...new Set(favourites.filter(f => SEED_KINDS.includes(f.kind)).map(f => f.name))].sort(cmp).slice(0, MAX_SEED_FAVS);
+  const favSids = names.length ? [...new Set((await access.postingsFor(names.flatMap(n => SEED_ROLES.map(role => [role, n])))).map(r => r[2]))].sort(cmp) : [];
+  const runs = await access.stagesFor(favSids);
+  const opened = favSids.filter(sid => runs.get(sid)?.start && runs.get(sid).start <= today);
+  const recorded = new Set((await db.prepare('SELECT stage_id FROM records WHERE user_id=? AND stage_id IS NOT NULL').bind(uid).all()).results.map(r => r.stage_id));
+  const fav = new Set(opened);
+  const ids = [...new Set([...opened, ...listed])].filter(sid => !recorded.has(sid)).slice(0, ONBOARDING_TOP);
+  const items = await d1Search(db, ver).stages(ids);
+  return {ready: true, items: items.map(i => ({...i, because: fav.has(i.stage_id) ? 'favourite' : 'catalogue'}))};
+}
 function upsert(db, uid, r) {
   return db.prepare('INSERT INTO records(user_id,id,title,date,time,venue,rating,note,stage_id,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(user_id,id) DO UPDATE SET title=excluded.title,date=excluded.date,time=excluded.time,venue=excluded.venue,rating=excluded.rating,note=excluded.note,stage_id=excluded.stage_id,updated_at=excluded.updated_at').bind(uid,r.id,r.title,r.date,r.time,r.venue,r.rating,r.note,r.stage_id||null,now());
 }
@@ -360,6 +386,7 @@ export default {
       if (method === 'GET' && ['/api/state','/api/export'].includes(path)) return json(await state(env.DB,uid));
       if (method === 'GET' && path === '/api/recommend') return json(await recommendFor(env.DB, uid));
       if (method === 'GET' && path === '/api/stages') return json(await stagesFor(env.DB, url.searchParams));
+      if (method === 'GET' && path === '/api/onboarding') return json(await onboardingFor(env.DB, uid));
       if (method !== 'POST') fail(404,'見つかりませんでした。');
       const input = await body(request);
       // Writes that change what is recommended drop the cached result (the stamp

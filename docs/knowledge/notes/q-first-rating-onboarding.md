@@ -1,7 +1,7 @@
 ---
 id: q-first-rating-onboarding
 type: question
-status: open
+status: answered
 date: 2026-10-13
 title: 登録して最初の 1 回目の評価だけ、これから並ぶ公演に関係する過去作から聞く形にするか（起案者の案）
 links:

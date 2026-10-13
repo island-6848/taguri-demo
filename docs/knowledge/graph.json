@@ -1203,6 +1203,19 @@
    "verifies": []
   },
   {
+   "id": "impl-onboarding-list",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "最初の評価で聞く過去作の一覧を出す API を作った（お気に入りの公演 → 今後の候補を一番多く覆う公演）",
+   "sources": [
+    "cloudflare/scripts/build_recommend_index.py",
+    "cloudflare/src/worker.js",
+    "cloudflare/test/recommend.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "impl-person-graded-v2",
    "type": "finding",
    "status": "confirmed",
@@ -2023,7 +2036,7 @@
   {
    "id": "q-first-rating-onboarding",
    "type": "question",
-   "status": "open",
+   "status": "answered",
    "date": "2026-10-13",
    "title": "登録して最初の 1 回目の評価だけ、これから並ぶ公演に関係する過去作から聞く形にするか（起案者の案）",
    "sources": [],
@@ -3842,6 +3855,26 @@
   },
   {
    "from": "impl-hidden-gate",
+   "rel": "affects",
+   "to": "comp-recommender"
+  },
+  {
+   "from": "impl-onboarding-list",
+   "rel": "answers",
+   "to": "q-first-rating-onboarding"
+  },
+  {
+   "from": "impl-onboarding-list",
+   "rel": "depends_on",
+   "to": "eval-onboarding-selection"
+  },
+  {
+   "from": "impl-onboarding-list",
+   "rel": "depends_on",
+   "to": "impl-favourite-seed"
+  },
+  {
+   "from": "impl-onboarding-list",
    "rel": "affects",
    "to": "comp-recommender"
   },

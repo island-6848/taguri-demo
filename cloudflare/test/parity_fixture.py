@@ -39,8 +39,9 @@ for seed in range(12):
                       'expected': expected})
     searches = [{'q': q, 'date': d, 'expected': BI.search_index(BI.memory_search(index), q, d)}
                 for q in T.SEARCHES for d in T.search_dates(index)]
-    out['catalogues'].append({'seed': seed, 'ver': ver, 'sql': BI.to_sql(index, ver), 'cases': cases,
-                              'searches': searches})
+    onboarding = BI.onboarding_list(index, T.TODAY)
+    out['catalogues'].append({'seed': seed, 'ver': ver, 'sql': BI.to_sql(index, ver, onboarding), 'cases': cases,
+                              'searches': searches, 'onboarding': onboarding})
 
 # Title keys: the Worker normalises the query as rate_performances.title_key does.
 TITLES = ['【Premium限定】ミュージカル『エリザベート』', '〈セット券〉 夏の夜の夢', '(再演)ハムレット',

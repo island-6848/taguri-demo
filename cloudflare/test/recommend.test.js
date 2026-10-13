@@ -52,7 +52,7 @@ test('only the latest rating per linked stage counts; unlinked records stay sepa
 });
 
 // ---------------------------------------------------------------- through the Worker
-import worker, {recommendFor} from '../src/worker.js';
+import worker, {recommendFor, onboardingFor} from '../src/worker.js';
 const ORIGIN = 'https://taguri.example';
 function envFor(sqlite) {
   const wrap = (sql, args = []) => ({bind(...v) { return wrap(sql, v); }, async first() { return sqlite.prepare(sql).get(...args) ?? null; }, async all() { return {results: sqlite.prepare(sql).all(...args)}; }, async run() { return sqlite.prepare(sql).run(...args); }, async execute() { return /^SELECT/.test(sql) ? this.all() : this.run(); }});
@@ -129,6 +129,37 @@ test('favourites give recommendations before any rating, as Python, and fade as 
     sqlite.close();
   }
   assert.ok(checked >= 3, `checked ${checked}`);
+});
+
+test('the first stages to ask about: favourites already on, then the batch list, minus recorded ones', async () => {
+  let checked = 0;
+  for (const cat of fixture.catalogues.slice(0, 6)) {
+    const c = cat.cases.find(x => x.favourites);
+    const sqlite = load(cat), env = envFor(sqlite);
+    const cookie = (await call(env, 'register', {})).headers.get('set-cookie').split(';')[0];
+    const uid = sqlite.prepare('SELECT id FROM users').get().id;
+    const plain = await onboardingFor(env.DB, uid, fixture.today);
+    assert.deepEqual(plain.items.map(i => i.stage_id), cat.onboarding.slice(0, 20));
+    assert.ok(plain.items.every(i => i.because === 'catalogue' && i.title && i.start <= fixture.today));
+    const res = await call(env, 'onboarding', undefined, cookie);
+    assert.equal(res.status, 200);
+    for (const f of c.favourites) await call(env, 'favourite', f, cookie);
+    const withFav = await onboardingFor(env.DB, uid, fixture.today);
+    const favFirst = withFav.items.filter(i => i.because === 'favourite').map(i => i.stage_id);
+    assert.deepEqual(withFav.items.slice(0, favFirst.length).map(i => i.stage_id), favFirst, 'favourites come first');
+    const names = c.favourites.filter(f => ['人', '原作者'].includes(f.kind)).map(f => f.name);
+    for (const sid of favFirst) assert.ok(sqlite.prepare(`SELECT 1 FROM rec_credit WHERE stage_id=? AND person IN (${names.map(() => '?').join(',')})`).get(sid, ...names), sid);
+    checked += favFirst.length > 0;
+    // A recorded stage is not asked about again.
+    const first = withFav.items[0].stage_id;
+    await call(env, 'record', {id: 'r1', title: 't', date: fixture.today, rating: '', stage_id: first}, cookie);
+    assert.ok(!(await onboardingFor(env.DB, uid, fixture.today)).items.some(i => i.stage_id === first));
+    // A list built for another index version is not used.
+    sqlite.prepare("UPDATE rec_meta SET v=? WHERE k='onboarding'").run(JSON.stringify({ver: 'old', ids: cat.onboarding}));
+    assert.ok((await onboardingFor(env.DB, uid, fixture.today)).items.every(i => i.because === 'favourite'));
+    sqlite.close();
+  }
+  assert.ok(checked >= 2, `favourites' stages found for ${checked} catalogues`);
 });
 
 test('the API needs sign-in, and says when the index is not built yet', async () => {

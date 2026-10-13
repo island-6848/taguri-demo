@@ -7,6 +7,7 @@ order, scores, reasons and strength as `user_recommender.prepare` + the b > 0
 filter and ordering of `user_recommender.finish`.
 """
 import datetime
+import json
 import importlib.util
 import random
 import sqlite3
@@ -247,6 +248,42 @@ class SearchTest(unittest.TestCase):
                                  BI.search_index(BI.memory_search(index), q), q)
         finally:
             BI.GRAM_PART = old
+
+
+class OnboardingTest(unittest.TestCase):
+    """onboarding_list: stages already on, covering the coming catalogue."""
+
+    def index(self):
+        st = lambda start: {"start": start}
+        return {"stages": {"p1": st("2026-09-01"), "p2": st("2026-09-02"), "p3": st("2026-09-03"),
+                           "c1": st("2026-11-01"), "c2": st("2026-11-02"), "c3": st("2026-12-01")},
+                "postings": [("出演", "甲", "c1", 1.0, "cast"), ("出演", "甲", "c2", 1.0, "cast"),
+                             ("出演", "乙", "c3", 1.0, "cast"), ("#形式", "朗読", "c3", 1.0, "theme"),
+                             ("出演", "甲", "p1", 1.0, "cast"), ("出演", "甲", "p2", 1.0, "cast"),
+                             ("出演", "乙", "p2", 1.0, "cast"), ("出演", "丙", "p3", 1.0, "cast")]}
+
+    def test_greedy_cover_of_coming_stages(self):
+        # p2 covers 甲 (2 coming) and 乙 (1); p1 then adds nothing new; p3 nothing.
+        self.assertEqual(BI.onboarding_list(self.index(), TODAY), ["p2"])
+
+    def test_only_stages_already_on_are_asked(self):
+        out = BI.onboarding_list(self.index(), datetime.date(2026, 11, 1))
+        self.assertNotIn("c2", out)
+        self.assertNotIn("c3", out)
+
+    def test_written_with_its_version(self):
+        raw, cands, fbs = catalogue(0)
+        index = BI.build_index(UR.candidate_pool(raw, cands), fbs, APP.group_of)
+        ver = BI.version_of(index)
+        ids = BI.onboarding_list(index, TODAY)
+        self.assertTrue(ids)
+        con = sqlite3.connect(":memory:")
+        for f in sorted((HERE / "migrations").glob("*.sql")):
+            con.executescript(f.read_text())
+        for stmt in BI.to_sql(index, ver, ids):
+            con.execute(stmt)
+        v = json.loads(con.execute("SELECT v FROM rec_meta WHERE k='onboarding'").fetchone()[0])
+        self.assertEqual(v, {"ver": ver, "ids": ids})
 
 
 if __name__ == '__main__':
