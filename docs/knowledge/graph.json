@@ -594,6 +594,19 @@
    "verifies": []
   },
   {
+   "id": "dec-hide-own-words",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-13",
+   "title": "推薦の理由に本人の感想（「あなたの言葉」）を引かない ── デモ版もサービス版も",
+   "sources": [
+    "tools/review/render_recommend.py",
+    "tools/taguri/impressions.py",
+    "web/app.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-loading-yarn",
    "type": "decision",
    "status": "adopted",
@@ -2538,6 +2551,11 @@
    "from": "dec-firebase-auth",
    "rel": "raises",
    "to": "q-firebase-free-tier"
+  },
+  {
+   "from": "dec-hide-own-words",
+   "rel": "affects",
+   "to": "dec-recommend-compact-poster"
   },
   {
    "from": "dec-loading-yarn",

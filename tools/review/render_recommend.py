@@ -704,11 +704,11 @@ def reason_rows(c: dict) -> str:
                    f'<span class="src">［出典: {E(ROLE_SRC)}］</span>'
                    f'<button class="rsx" data-word="{E(person)}"'
                    f' title="この人物を理由に出さない">✕</button></li>')
-    # **人物の行の直後に置く。** 引用は上の名前に紐づく事実なので、離すと何の話か分からない
-    # **引用は見ている人の感想から引く**（E3）。公開デモの訪問者のカードには
-    # `app._load` がその人の分を `_notes` に入れてある。無ければ持ち主の分（起動時に作る）
-    out.append(IM.quote_row([p[2] for p in c.get("why_b", [])[:4]],
-                            c.get("_notes", NOTES_BY_PERSON)))
+    # **本人の感想の引用（「あなたの言葉」）は出さない**（起案者の指示・2026-10-13 ──
+    # 「あなたの言葉は個人情報すぎるので表示しないで。サービス版もデモ版も」）。感想の文が
+    # そのまま推薦の画面に並ぶと、画面を人に見せたとき・写したときに個人の文が漏れる。
+    # 感想は今までどおり名簿と内容の好みの材料にはなる（`impressions` の他の関数）── 出すのを
+    # やめるのは画面への引用だけ。`IM.quote_row` 自体は残してある（試験と、戻すときのため）
     _src, _doubt = synopsis_source(str(c["stage_id"]), c.get("synopsis") or "")
     for it in c.get("why_c", [])[:3]:
         word = it[1] if isinstance(it, (list, tuple)) and len(it) > 1 else it

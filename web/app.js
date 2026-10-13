@@ -385,6 +385,10 @@ function applyDemoRestrictions(root) {
 
 function renderScreen(el, activePath, d, exposureSource) {
   el.innerHTML = d.body_html;
+  // 推薦の理由に引いていた本人の感想（「あなたの言葉」）は出さない。個人の文がそのまま画面に出るため
+  // （起案者の指示 2026-10-13「あなたの言葉は個人情報すぎるので表示しないで。サービス版もデモ版も」）。
+  // サーバー（render_recommend.reason_rows）も出さないようにしたが、古いサーバーの HTML にも効かせる
+  el.querySelectorAll("li.rs.q").forEach(n => n.remove());
   compactTickets(el);
   if (window.TaguriExposure) TaguriExposure.start(el, exposureSource || "network", async (path, body) => {
     const r = await fetch(API_BASE + path, {method: "POST", credentials: "include", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
@@ -599,6 +603,7 @@ function compactTickets(root) {
     const box = document.createElement("div");
     box.className = "morebody";
     more.appendChild(box);
+    more.addEventListener("toggle", () => t.classList.toggle("moreopen", more.open));
     const lead = document.createElement("div");
     lead.className = "leadbox";
     // 出演: 出演順に 5 人まで
@@ -609,17 +614,34 @@ function compactTickets(root) {
       const names = c.textContent.split("、").map(x => x.trim()).filter(Boolean);
       const p = document.createElement("p");
       p.className = "lcast";
+      // 6 人目からは隠しておき、「くわしく」を開いたらこの行のまま続きを出す（起案者の指示 2026-10-13
+      // 「くわしく、を押したとき『ほか6名』が展開されて…名前たちが出るように」）
       p.innerHTML = '<span class="cl">出演</span>' + E(names.slice(0, CAST_LEAD).join("、"))
-        + (names.length > CAST_LEAD ? '<span class="n">　ほか ' + (names.length - CAST_LEAD) + " 名</span>" : "");
+        + (names.length > CAST_LEAD ? '<span class="lrest">、' + E(names.slice(CAST_LEAD).join("、")) + "</span>"
+          + '<span class="n">　ほか ' + (names.length - CAST_LEAD) + " 名</span>" : "");
       lead.appendChild(p);
+      // 「くわしく」の中では出演の行を重ねて出さない（作り手の行と出典は残す）
+      const row = cv.closest(".cr"), cast = row.closest(".cast");
+      row.remove();
+      if (cast && !cast.querySelector(".cr")) cast.remove();
     }
     // あらすじ: 最初の 1 文
-    const txt = t.querySelector(".syn .txt");
-    if (txt && txt.textContent.trim()) {
-      const p = document.createElement("p");
-      p.className = "lsyn";
-      p.textContent = firstSentence(txt.textContent);
-      lead.appendChild(p);
+    // 閉じていても、あらすじの最初の 1 文は必ず出す。本文の枠（.txt）が無い古い形の HTML でも、
+    // 出典・タグ・押し口・入れ口を除いた残りから拾う。あらすじが無い公演（.no・.part）は出さない
+    const syn = t.querySelector(".syn");
+    if (syn && !syn.classList.contains("no") && !syn.classList.contains("part")) {
+      let text = syn.querySelector(".txt")?.textContent || "";
+      if (!text.trim()) {
+        const c = syn.cloneNode(true);
+        c.querySelectorAll(".tags, .src, button, form, details, label, textarea, input, .hand").forEach(n => n.remove());
+        text = c.textContent;
+      }
+      if (text.trim()) {
+        const p = document.createElement("p");
+        p.className = "lsyn";
+        p.textContent = firstSentence(text);
+        lead.appendChild(p);
+      }
     }
     const sale = main.querySelector(".sale");
     (sale || main.querySelector(".meta")).after(lead);
@@ -815,6 +837,7 @@ document.addEventListener("click", ev => {
           const all = document.querySelectorAll(".ticket.recommend");
           const box = document.createElement("div");
           box.innerHTML = d.fill.html;
+          box.querySelectorAll("li.rs.q").forEach(n => n.remove());
           compactTickets(box);
           const fresh = box.firstElementChild;
           if (fresh && all.length) {

@@ -186,6 +186,9 @@ body{font-family:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",YuGothic,syst
 .ticket.cmp .leadbox p{margin:0}
 .ticket.cmp .lcast .cl{color:var(--ink2);margin-right:6px}
 .ticket.cmp .lcast .n{color:var(--mute)}
+.ticket.cmp .lcast .lrest{display:none}
+.ticket.cmp.moreopen .lcast .lrest{display:inline}
+.ticket.cmp.moreopen .lcast .n{display:none}
 .ticket.cmp .lsyn{color:var(--ink2)}
 .ticket.cmp .rs{font-size:12.5px;line-height:1.55;padding:2px 0}
 .ticket.cmp .rs .n{font-size:11px}
