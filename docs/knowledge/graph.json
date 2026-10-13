@@ -868,6 +868,18 @@
    "verifies": []
   },
   {
+   "id": "dec-verdict-diverging",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-13",
+   "title": "評価の分布を発散型の帯にし、判子から評価を選び直す。＋は登録の 3 つの入口を開く",
+   "sources": [
+    "web/app.js",
+    "web/theme.css"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-vm-cloudflare",
    "type": "decision",
    "status": "superseded",
@@ -1080,6 +1092,20 @@
    "sources": [
     "tools/taguri/test_digest.py",
     "tools/taguri/test_impressions.py"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "likert-diverging-bars",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-13",
+   "title": "評定（◎○△×）の分布は、0 を中心に左右へ分ける積み上げ棒がよい ── 可視化の論文から",
+   "sources": [
+    "https://www.jstatsoft.org/v57/i05",
+    "https://ww2.amstat.org/meetings/proceedings/2012/data/assets/pdf/305235_74490.pdf",
+    "https://blog.datawrapper.de/divergingbars",
+    "https://info3312.infosci.cornell.edu/ae/graphical-perception-A.html"
    ],
    "verifies": []
   },
@@ -2847,6 +2873,16 @@
    "to": "q-poster-palette"
   },
   {
+   "from": "dec-verdict-diverging",
+   "rel": "depends_on",
+   "to": "likert-diverging-bars"
+  },
+  {
+   "from": "dec-verdict-diverging",
+   "rel": "affects",
+   "to": "dec-record-row-card"
+  },
+  {
    "from": "dec-vm-cloudflare",
    "rel": "supersedes",
    "to": "dec-render-service-beta"
@@ -3000,6 +3036,11 @@
    "from": "jp-domain-price",
    "rel": "affects",
    "to": "q-domain"
+  },
+  {
+   "from": "likert-diverging-bars",
+   "rel": "supports",
+   "to": "dec-verdict-diverging"
   },
   {
    "from": "migration-handover-stage0",

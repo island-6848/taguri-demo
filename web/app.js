@@ -109,7 +109,8 @@ const PNAV = [
 ];
 function renderPNav() {
   // 公演情報の登録は「記録」の子から外し、歯車の左の「＋」から入る（起案者の指示 2026-10-13「スマホ版のみ」）
-  return '<a class="padd" href="/register" data-path="/register" aria-label="公演情報の登録" title="公演情報の登録">' + ico("plus", 22) + "</a>"
+  return '<a class="padd" href="/register" data-path="/register" aria-label="公演情報の登録" title="公演情報の登録"'
+    + ' aria-haspopup="menu" aria-expanded="false">' + ico("plus", 22) + "</a>" + regPopHtml()
     + '<a class="pset" href="/settings" data-path="/settings" aria-label="設定">' + ico("gear", 20) + "</a>"
     + '<div class="pnav">' + PNAV.map(([id, label, icon]) =>
       '<button type="button" class="pm" data-pm="' + id + '" aria-expanded="false">' + ico(icon, 22)
@@ -393,6 +394,10 @@ function renderScreen(el, activePath, d, exposureSource) {
   el.querySelectorAll("li.rs.q").forEach(n => n.remove());
   compactTickets(el);
   penNotes(el);
+  shortAddButtons(el);
+  divergeVerdicts(el);
+  stampRerate(el);
+  gotoRegisterCard(el);
   if (window.TaguriExposure) TaguriExposure.start(el, exposureSource || "network", async (path, body) => {
     const r = await fetch(API_BASE + path, {method: "POST", credentials: "include", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
     const result = await r.json(); return r.ok && result.ok === true;
@@ -595,7 +600,7 @@ function firstSentence(t) {
   return s.length < t.length && !s.endsWith("…") ? s + "…" : s;
 }
 function compactTickets(root) {
-  root.querySelectorAll("article.ticket.recommend, article.ticket.interest").forEach(t => {
+  root.querySelectorAll("article.ticket.recommend, article.ticket.interest, article.ticket.owned").forEach(t => {
     if (t.classList.contains("cmp")) return;
     const main = t.querySelector(".main");
     if (!main) return;
@@ -732,6 +737,9 @@ function compactTickets(root) {
     const foot = document.createElement("div");
     foot.className = "cfoot";
     foot.appendChild(lead);
+    // 購入済み公演の「行く日」は、出演・あらすじの下に全幅で置く（おすすめと同じ並び）
+    const mytix = main.querySelector(":scope > .mytix");
+    if (mytix) foot.appendChild(mytix);
     let n = main.querySelector(":scope > .whyh:not(.top)") || main.querySelector(":scope > .act") || more;
     while (n) { const nx = n.nextSibling; foot.appendChild(n); n = nx; }
     t.appendChild(foot);
@@ -1781,6 +1789,157 @@ fixupImportBar(document);
 
 // **入力欄の動きは、後から足した 1 枚にも付ける。**
 //
+// **「行く日を追加」は、時刻の欄の右に「追加」だけを置き、日付・時刻・押し口を 1 行に収める**
+// （起案者の指示 2026-10-13「時刻入力フォームの右に『追加』だけ表示して。同じ行に表示して改行されないように」）
+function shortAddButtons(root) {
+  root.querySelectorAll(".mt-add button[data-mt-add]").forEach(b => {
+    b.innerHTML = ico("plus", 13) + "追加";
+    b.setAttribute("aria-label", "行く日を追加");
+  });
+}
+
+// **評価の分布を、0 を中心に左右へ分ける帯（発散型の積み上げ棒）に描き直す。**
+// 起案者の指示 2026-10-13「評価の分布、もうちょっといい可視化方法を可視化分野の論文読んで実装」。
+// - Heiberger & Robbins (2014, J. Stat. Softw. 57(5))：評定尺度は、肯定側と否定側を 0 の基線から
+//   左右に伸ばす発散型の積み上げ棒を主に使う。両側の合計を同じ基線から比べられる
+// - Cleveland & McGill (1984, JASA 79(387))：位置の判断（共通の目盛りの上の位置）が最も正確で、
+//   長さ・角度・面積の順に落ちる ── 「合っていた／合わなかった」の大きさを 0 からの位置で読ませる
+// 前の帯は ◎○△× を左から 1 本に積んでいたので、△× 側の合計は帯の途中から読むしかなかった。
+// 「まだ判断できない」などの中立の分は帯に入れず、横に件数だけを添える（中立を真ん中で割ると
+// 左右の合計が読みにくくなるという批判を避ける）。数字は今までどおり「数字で見る」の表にある
+function divergeVerdicts(root) {
+  root.querySelectorAll(".card .dbar").forEach(bar => {
+    const card = bar.closest(".card");
+    if (!card || card.dataset.diverged) return;
+    const cnt = {};
+    card.querySelectorAll("table tr").forEach(tr => {
+      const td = tr.querySelectorAll("td");
+      if (td.length >= 2) cnt[td[0].textContent.trim()] = parseInt(td[1].textContent, 10) || 0;
+    });
+    const pos = [["○", cnt["○"] || 0], ["◎", cnt["◎"] || 0]];       // 中心から外へ: ○ → ◎
+    const neg = [["△", cnt["△"] || 0], ["×", cnt["×"] || 0]];       // 中心から外へ: △ → ×
+    const P = pos[0][1] + pos[1][1], N = neg[0][1] + neg[1][1];
+    if (!P && !N) return;
+    card.dataset.diverged = "1";
+    const others = Object.entries(cnt).filter(([g]) => !"◎○△×".includes(g) && cnt[g]);
+    const side = Math.max(P, N);                                     // 左右とも同じ目盛り（0〜side）
+    const pct = v => (v / side * 100).toFixed(2) + "%";     // 左右それぞれの半分の幅に対する割合
+    const all = P + N;
+    const seg = (g, v) => v ? '<span class="vdv-s vdv-' + ({"◎": "a", "○": "b", "△": "c", "×": "d"}[g])
+      + '" style="width:' + pct(v) + '" title="' + g + " " + v + ' 件"><i>' + g + " " + v + "</i></span>" : "";
+    const html = '<div class="vdv" role="img" aria-label="'
+      + E("合っていた（◎○）" + P + " 件、合わなかった（△×）" + N + " 件") + '">'
+      + '<div class="vdv-tot"><span class="vdv-n">合わなかった <b>' + N + "</b> 件<small>（" + Math.round(N / all * 100) + "%）</small></span>"
+      + '<span class="vdv-p">合っていた <b>' + P + "</b> 件<small>（" + Math.round(P / all * 100) + "%）</small></span></div>"
+      + '<div class="vdv-row"><div class="vdv-l">' + seg(neg[1][0], neg[1][1]) + seg(neg[0][0], neg[0][1]) + "</div>"
+      + '<div class="vdv-0" aria-hidden="true"></div>'
+      + '<div class="vdv-r">' + seg(pos[0][0], pos[0][1]) + seg(pos[1][0], pos[1][1]) + "</div></div>"
+      + '<div class="vdv-ax" aria-hidden="true"><span>' + side + "</span><span>0</span><span>" + side + "</span></div>"
+      + (others.length ? '<p class="vdv-o">帯に入れていないもの: ' + others.map(([g, v]) => E(g) + " " + v + " 件").join("、") + "</p>" : "")
+      + "</div>";
+    bar.insertAdjacentHTML("afterend", html);
+    bar.remove();
+    const lead = card.querySelector("p.lead");
+    if (lead) lead.insertAdjacentHTML("beforeend", "真ん中の線から右が「合っていた」、左が「合わなかった」です。");
+  });
+}
+
+// **評価を押し直すのは、判子の丸から。**（起案者の指示 2026-10-13「『評価を押し直す』ってボタンは消して、
+// 各ハンコの丸を押したらポップアップで選びなおしできるのがでて、押し直せるようにして」）。
+// 判子を押すと、その横に ◎○△× の小さな札が開く。押すと今までどおり記録し（同じ押し口 data-v）、判子が
+// 押し直され、札は閉じる。札の外を押すか Esc で閉じる
+function stampRerate(root) {
+  root.querySelectorAll(".rec-row").forEach(row => {
+    const open = row.querySelector("button[data-rate-open]"), rb = row.querySelector(".rb:not(.notseen)");
+    const st = row.querySelector("[data-stamp]");
+    if (!open || !rb || !st || st.dataset.rerate) return;
+    st.dataset.rerate = "1";
+    open.remove();
+    st.setAttribute("role", "button");
+    st.setAttribute("tabindex", "0");
+    st.setAttribute("aria-label", "評価を選び直す（いまは " + (st.textContent.trim() || "未評価") + "）");
+    st.setAttribute("aria-haspopup", "true");
+    st.setAttribute("aria-expanded", "false");
+    rb.classList.add("rbpop");
+    rb.setAttribute("role", "group");
+    rb.setAttribute("aria-label", "評価を選び直す");
+    const place = () => {
+      const r = row.getBoundingClientRect(), s = st.getBoundingClientRect();
+      rb.style.left = Math.max(8, s.left - r.left) + "px";
+      rb.style.top = (s.bottom - r.top + 6) + "px";
+    };
+    const close = () => { rb.hidden = true; st.setAttribute("aria-expanded", "false"); };
+    const toggle = () => {
+      if (!rb.hidden) { close(); return; }
+      rb.classList.remove("done");
+      rb.hidden = false;
+      place();
+      st.setAttribute("aria-expanded", "true");
+      rb.querySelector("button[data-v]")?.focus();
+    };
+    st.addEventListener("click", ev => { ev.stopPropagation(); toggle(); });
+    st.addEventListener("keydown", ev => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); toggle(); } });
+    rb.addEventListener("keydown", ev => { if (ev.key === "Escape") { close(); st.focus(); } });
+    // 押して記録できたら（押し口の列に done が付いたら）閉じる
+    new MutationObserver(() => { if (rb.classList.contains("done")) setTimeout(close, 450); })
+      .observe(rb, {attributes: true, attributeFilter: ["class"]});
+    document.addEventListener("click", ev => { if (!rb.hidden && !rb.contains(ev.target) && ev.target !== st) close(); });
+  });
+}
+
+// **右上の「＋」は、登録の 3 つの入口を選ぶ小さな札を開く**（起案者の指示 2026-10-13「右上のプラスを押した際は
+// ページに飛ぶんじゃなくてポップアップで追加方法の3種類選べるようにして」）。選ぶと公演情報の登録の画面の
+// その札（① メール ② 手で 1 件 ③ 観ればよかった）へ移り、最初の入力欄に焦点を置く
+const REG_WAYS = [
+  ["1", "mail", "購入確認メールから取り込む", "手元のパソコンで動かしているときだけ"],
+  ["2", "plus", "手で 1 件足す", "招待・当日券など、メールに残らない分"],
+  ["3", "flag", "「観ればよかった」を足す", "出てこなかったせいで見逃した公演（観ていない公演）"],
+];
+let regGoto = "";
+function regPopHtml() {
+  return '<div class="padd-pop" role="menu" aria-label="公演情報の登録" hidden>'
+    + REG_WAYS.map(([n, icon, t, sub]) => '<button type="button" role="menuitem" data-reg="' + n + '">'
+      + ico(icon, 18) + '<span><b>' + E(t) + "</b><small>" + E(sub) + "</small></span></button>").join("")
+    + "</div>";
+}
+function gotoRegisterCard(root) {
+  if (!regGoto) return;
+  const n = regGoto;
+  regGoto = "";
+  const mark = ["①", "②", "③"][Number(n) - 1];
+  const card = [...root.querySelectorAll(".card")].find(c => (c.querySelector("h2")?.textContent || "").includes(mark));
+  if (!card) return;
+  card.scrollIntoView({behavior: "smooth", block: "start"});
+  card.classList.add("reg-hi");
+  setTimeout(() => card.classList.remove("reg-hi"), 1600);
+  card.querySelector("input:not([type=hidden]), button")?.focus({preventScroll: true});
+}
+document.addEventListener("click", ev => {
+  const add = ev.target.closest(".side .padd");
+  const pop = document.querySelector(".side .padd-pop");
+  if (add && pop) {
+    ev.preventDefault();
+    ev.stopPropagation();
+    pop.hidden = !pop.hidden;
+    add.setAttribute("aria-expanded", pop.hidden ? "false" : "true");
+    if (!pop.hidden) pop.querySelector("button")?.focus();
+    return;
+  }
+  const way = ev.target.closest(".padd-pop [data-reg]");
+  if (way) {
+    pop.hidden = true;
+    regGoto = way.dataset.reg;
+    if ((location.pathname.slice(REPO_BASE.length) || "/") === "/register") gotoRegisterCard(contentEl());
+    else navigate("/register", "");
+    return;
+  }
+  if (pop && !pop.hidden && !ev.target.closest(".padd-pop")) pop.hidden = true;
+}, true);
+document.addEventListener("keydown", ev => {
+  const pop = document.querySelector(".side .padd-pop");
+  if (ev.key === "Escape" && pop && !pop.hidden) { pop.hidden = true; document.querySelector(".side .padd")?.focus(); }
+});
+
 // **書いてある感想・回のメモの「書き直す」を、文の末尾の鉛筆にする。**（起案者の指摘 2026-10-13
 // 「『書き直す』のボタンがあるせいで文字の折り返しが多くて感想が縦に伸びてる…鉛筆のアイコンボタンを
 // 感想の末尾につけるとかだけでも伝わる」）。文と鉛筆を 1 つの箱に入れ、鉛筆は文の最後の行に続けて置く
