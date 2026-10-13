@@ -689,7 +689,7 @@
   {
    "id": "dec-reco-measure-first",
    "type": "decision",
-   "status": "proposed",
+   "status": "superseded",
    "date": "2026-10-13",
    "title": "推薦の改善は、先に測る仕組みを作ってから計算を変える",
    "sources": [],
