@@ -799,8 +799,11 @@ document.addEventListener("click", ev => {
     const tear = (tk && b.dataset.v === "interest")
               || (wt && "◎○△×".indexOf(b.dataset.v) >= 0);
     if (tear) row.classList.add("torn");
+    // 押した 1 つだけに印を付ける（色が変わって弾む・theme.css の .picked）。記録できなかったら外す
+    // （起案者の指摘 2026-10-13「興味ありだけ黒いのなぜ？押したら色変わるとかなにかしらのアニメーション」）
+    g.querySelectorAll("button[data-v]").forEach(x => x.classList.toggle("picked", x === b));
     post(path, body, g).then(d => {
-      if (!d) { if (tear) row.classList.remove("torn"); return; }
+      if (!d) { if (tear) row.classList.remove("torn"); b.classList.remove("picked"); return; }
       g.classList.add("done");
       // **押した評価を、その場で余白に押す**（起案者の指示 ──「一個操作したら適宜
       // リロードしてほしい」の趣旨。ここは読み込み直さずに済む）。**判子が出ないと、
