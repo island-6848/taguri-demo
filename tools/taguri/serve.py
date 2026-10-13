@@ -690,9 +690,15 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return
         if path == "/export.json":
             # **持ち出しはそのまま渡す。** トークンの置き換えはしない（HTML ではない）
-            body = json.dumps(APP.export_payload(), ensure_ascii=False, indent=1).encode()
+            # **公開版では本人の行だけ**（全員分を渡さない。E3）
+            body = json.dumps(APP.export_payload(self.user_id if srv.public else None),
+                              ensure_ascii=False, indent=1).encode()
             self._send(200, body, "application/json; charset=utf-8",
                        {"Content-Disposition": 'attachment; filename="taguri-export.json"'})
+            return
+        if path == "/data.zip" and srv.public:
+            # **公開版には無い。** `data/review` には全員の記録（`ratings.db`）が入りうる（E3）
+            self._send(404, b"not found", "text/plain; charset=utf-8")
             return
         if path == "/data.zip":
             # **「別の端末に記録を移す」の実体。** `data/review` 配下（記録・取得物・

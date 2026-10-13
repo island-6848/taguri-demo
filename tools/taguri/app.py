@@ -8510,19 +8510,29 @@ def _search_body(user_id: str, q: str, ym: str = "", web: bool = False,
 
 
 # ---------------------------------------------------------------- 書き出す
-def export_payload() -> dict:
-    """持ち出せる形。**囲い込まないことが記録としての価値の条件である**（企画書 2 章）。"""
+def export_payload(user_id: str | None = None) -> dict:
+    """持ち出せる形。**囲い込まないことが記録としての価値の条件である**（企画書 2 章）。
+
+    `user_id` を渡したとき（公開版の訪問者）は、**その人の行だけを返す。** 利用者の列
+    （`user_id`）を持たない表は、誰の行か分けられないので返さない。以前は公開版でも
+    全員分をそのまま返していた（2026-10-13 に修正）。"""
+    owner = user_id is None or _is_owner(user_id)
     con = sqlite3.connect(DB)
     con.row_factory = sqlite3.Row
     out: dict = {}
     for t in ("works", "ratings", "attendance", "reaction", "ticket", "presented",
               "splits", "excluded", "missed"):
         try:
-            out[t] = [dict(r) for r in con.execute(f"SELECT * FROM {t}")]
+            if owner:
+                out[t] = [dict(r) for r in con.execute(f"SELECT * FROM {t}")]
+                continue
+            cols = {r[1] for r in con.execute(f"PRAGMA table_info({t})")}
+            out[t] = ([dict(r) for r in con.execute(f"SELECT * FROM {t} WHERE user_id=?", (user_id,))]
+                      if "user_id" in cols else [])
         except sqlite3.Error:
             out[t] = []
     con.close()
-    out["declared"] = RC.load_declared()
+    out["declared"] = RC.load_declared() if owner else load_declared(user_id)
     return out
 
 

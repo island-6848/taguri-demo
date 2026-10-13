@@ -91,6 +91,16 @@ class DemoStabilityTests(unittest.TestCase):
         payload = res.read()
         return res.status, json.loads(payload) if res.getheader("Content-Type", "").startswith("application/json") else payload
 
+    def test_export_returns_only_my_rows_and_zip_is_absent(self):
+        APP.seed_demo_works(self.users[1][0])
+        status, body = self.request("/export.json", user=0)
+        self.assertEqual(status, 200)
+        data = body if isinstance(body, dict) else json.loads(body)
+        blob = json.dumps(data, ensure_ascii=False)
+        self.assertNotIn(self.users[1][0], blob)
+        self.assertTrue(all(r["user_id"] == self.users[0][0] for r in data["works"]))
+        self.assertEqual(self.request("/data.zip", user=0)[0], 404)
+
     def test_foreign_origin_cannot_write(self):
         with patch.object(self.srv, "on_note") as write:
             status, _ = self.request("/api/note", body={}, origin="https://other.invalid")
