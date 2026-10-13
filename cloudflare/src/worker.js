@@ -178,6 +178,17 @@ async function computeRecommendations(db, uid, ver, today) {
         reasons: c.parts.slice(0, 3).map(([, role, person, n]) => ({role, person, n}))};
     })};
 }
+// How old the delivered catalogue is: dates and counts only, written by
+// scripts/deliver_catalogue.py (tools/taguri/check_catalog_age.py reads it).
+export async function health(db) {
+  const rows = (await db.prepare("SELECT k,v FROM rec_meta WHERE k IN ('catalogue_scan','catalogue_delivered','catalogue_upcoming')").all()).results;
+  const m = Object.fromEntries(rows.map(r => [r.k, r.v]));
+  const catalog = {present: Boolean(m.catalogue_delivered)};
+  if (m.catalogue_delivered) catalog.uploaded_at = m.catalogue_delivered;
+  if (m.catalogue_scan) catalog.scan_date = m.catalogue_scan;
+  catalog.upcoming = {candidates: Number(m.catalogue_upcoming || 0)};
+  return {ok: true, catalog};
+}
 // Stages for linking a record: ?q=title[&date=YYYY-MM-DD] searches by title,
 // ?ids=a,b,... returns the linked stages' names. Public catalogue fields only.
 export async function stagesFor(db, params) {
@@ -235,7 +246,7 @@ async function loginPage(request, env) {
 // screens' data (bridged to Render) answers 401.
 const PUBLIC_PAGES = new Set(['/login', '/about']);
 // APIs that start a session (or hold no user data) must work before sign-in.
-const PUBLIC_APIS = new Set(['/api/register', '/api/recover', '/api/catalogue']);
+const PUBLIC_APIS = new Set(['/api/register', '/api/recover', '/api/catalogue', '/api/health']);
 const STATIC_FILE = /\.(css|js|mjs|map|png|jpe?g|gif|webp|svg|ico|mp4|webmanifest|txt)$/;
 // Only same-site paths are accepted as a place to return to after sign-in.
 export const safeNext = value => (typeof value === 'string' && /^\/(?![\/\\])/.test(value) && !value.startsWith('/login')) ? value : '/';
@@ -295,6 +306,7 @@ export default {
       const path = url.pathname; const method = request.method;
       if (method !== 'GET' && method !== 'POST') fail(405,'対応していない操作です。');
       if (method === 'POST' && request.headers.get('origin') !== url.origin) fail(403,'同じサイトから操作してください。');
+      if (method === 'GET' && path === '/api/health') return json(await health(env.DB),200,{'Cache-Control':'public, max-age=300'});
       if (method === 'GET' && path === '/api/catalogue') {
         // Public catalogue only: never include an owner's ranking or private reasons.
         const rows = await env.DB.prepare('SELECT id,title,date,venue,url,metadata FROM catalogue WHERE date>=? ORDER BY date,id LIMIT 1000').bind(new Date(Date.now()-30*86400000).toISOString().slice(0,10)).all();

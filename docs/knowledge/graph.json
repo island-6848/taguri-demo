@@ -500,6 +500,22 @@
    ]
   },
   {
+   "id": "dec-d1-catalogue-delivery",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-13",
+   "title": "取得処理のあとに、変わった公演の行だけを wrangler で本番の D1 に入れる",
+   "sources": [
+    "cloudflare/scripts/deliver_catalogue.py",
+    "tools/taguri/deploy/github-actions/catalog.yml",
+    "https://claude.ai/code/session_015xXsQ9C4423EMquRbg7m3U （起案者の指示「D1に入れる段も進めて」）"
+   ],
+   "verifies": [
+    "S21",
+    "S23"
+   ]
+  },
+  {
    "id": "dec-defer-workers",
    "type": "decision",
    "status": "superseded",
@@ -1055,6 +1071,29 @@
     "S21",
     "S23"
    ]
+  },
+  {
+   "id": "q-catalogue-api-limit",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "Worker の /api/catalogue は 1,000 件までしか返さない。これからの公演がそれより多いときどうするか",
+   "sources": [
+    "cloudflare/src/worker.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "q-catalogue-python-snapshot-vs-d1",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "移行ブランチの Python 版はカタログをコードの束に同梱する。D1 に毎日入れる作りとどう揃えるか",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/blob/cloudflare-complete-migration/cloudflare/python/README.md",
+    "https://github.com/island-6848/taguri-demo/blob/cloudflare-complete-migration/cloudflare/scripts/build_public_snapshot.py"
+   ],
+   "verifies": []
   },
   {
    "id": "q-cf-access",
@@ -2103,6 +2142,36 @@
    "to": "crawler-state-between-runs"
   },
   {
+   "from": "dec-d1-catalogue-delivery",
+   "rel": "answers",
+   "to": "q-catalog-to-worker"
+  },
+  {
+   "from": "dec-d1-catalogue-delivery",
+   "rel": "depends_on",
+   "to": "dec-crawler-gha-private"
+  },
+  {
+   "from": "dec-d1-catalogue-delivery",
+   "rel": "depends_on",
+   "to": "dec-synopsis-reader-claude"
+  },
+  {
+   "from": "dec-d1-catalogue-delivery",
+   "rel": "depends_on",
+   "to": "dec-workers-d1"
+  },
+  {
+   "from": "dec-d1-catalogue-delivery",
+   "rel": "raises",
+   "to": "q-catalogue-api-limit"
+  },
+  {
+   "from": "dec-d1-catalogue-delivery",
+   "rel": "raises",
+   "to": "q-catalogue-python-snapshot-vs-d1"
+  },
+  {
    "from": "dec-defer-workers",
    "rel": "affects",
    "to": "comp-recommender"
@@ -2591,6 +2660,26 @@
    "from": "q-catalog-to-worker",
    "rel": "depends_on",
    "to": "no-aws"
+  },
+  {
+   "from": "q-catalogue-api-limit",
+   "rel": "depends_on",
+   "to": "dec-d1-catalogue-delivery"
+  },
+  {
+   "from": "q-catalogue-api-limit",
+   "rel": "depends_on",
+   "to": "q-real-catalog-stats"
+  },
+  {
+   "from": "q-catalogue-python-snapshot-vs-d1",
+   "rel": "depends_on",
+   "to": "dec-d1-catalogue-delivery"
+  },
+  {
+   "from": "q-catalogue-python-snapshot-vs-d1",
+   "rel": "depends_on",
+   "to": "dec-migration-owner-push"
   },
   {
    "from": "q-cf-access",

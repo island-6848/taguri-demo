@@ -64,3 +64,10 @@ test('reactions are scoped, exportable and removable, and imports retain older v
   assert.equal((await call('import',{version:1,records:[],favourites:[]},a.cookie)).status,200);
   assert.equal((await call('record',null,a.cookie)).status,400);
 });
+test('health returns only the delivered catalogue dates and counts, without a login',async()=>{
+  const {call,sqlite}=setup();
+  assert.deepEqual((await (await call('health')).json()).catalog,{present:false,upcoming:{candidates:0}});
+  sqlite.exec("INSERT INTO rec_meta(k,v) VALUES('catalogue_scan','2026-10-13'),('catalogue_delivered','2026-10-13T20:00:00+00:00'),('catalogue_upcoming','1532'),('current','abc')");
+  const response=await call('health');assert.equal(response.status,200);
+  assert.deepEqual((await response.json()).catalog,{present:true,uploaded_at:'2026-10-13T20:00:00+00:00',scan_date:'2026-10-13',upcoming:{candidates:1532}});
+});

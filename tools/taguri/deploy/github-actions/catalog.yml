@@ -54,6 +54,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
       - name: Restore the previous working data
         run: |
           if [ "${{ steps.state.outcome }}" != "success" ]; then
@@ -64,6 +67,24 @@ jobs:
           python tools/taguri/crawler_state.py restore --from state
       - name: Rebuild the catalog
         run: python tools/taguri/publish_catalog.py --mode "$MODE" --dry-run --out catalog.tar.gz
+      - name: Deliver the catalogue to D1 (changed rows only)
+        # 公演一覧と、一度だけ読んだあらすじを本番の D1 に入れる（cloudflare/scripts/deliver_catalogue.py）。
+        # 変わった行だけを書く（D1 の無料枠は 1 日 10 万行の書き込み）。鍵はこの段にだけ渡す
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        working-directory: cloudflare
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "Cloudflare の鍵が無いので D1 には入れない"; exit 0
+          fi
+          python scripts/deliver_catalogue.py build --data ../data --out ../d1-out --index
+          npx --yes wrangler@4 d1 execute taguri-demo --remote --yes --file ../d1-out/catalogue.sql
+          if [ -f ../d1-out/index-upload.sql ]; then
+            npx --yes wrangler@4 d1 execute taguri-demo --remote --yes --file ../d1-out/index-upload.sql
+          fi
+          # 入れ終えてから「入れた」と記録する（失敗した分は次回まるごと入れ直す）
+          python scripts/deliver_catalogue.py commit --data ../data --out ../d1-out
       # 失敗しても、そこまでの取得の控えは残す（次回に同じものを取り直さない）
       - name: Save the working data to the state branch
         if: always()

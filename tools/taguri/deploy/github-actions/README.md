@@ -33,9 +33,21 @@ EC2 も AWS も使っていない（docs/knowledge の no-ec2・no-aws）。毎�
 3. `python3 tools/credits/extract_theme_llm.py --import-answers answers.json`（本文に実在しないあらすじは落ちる）
 4. `crawler_state.py save --to state` してコミットし、`state` に push（取得処理の実行中は避ける）
 
+## D1 に入れる段
+
+取り直しのあと、`cloudflare/scripts/deliver_catalogue.py` が**前回から変わった公演の行だけ**を SQL にし、
+`wrangler d1 execute taguri-demo --remote` で本番の D1 に入れる（dec-d1-catalogue-delivery）。
+
+- 入れるのは終わっていない公演の公開の欄と、一度だけ読んだあらすじ・内容の要素（`themes.jsonl`）。消さずに上書きだけする
+- 何を入れたかは `data/d1/delivered.json`（`state` ブランチ）に、wrangler が成功したあとで書く。失敗した分は次回まるごと入れ直す
+- 1 日の書き込みが 6 万行を超えるなら止める（無料枠は 10 万行。残りは利用者の操作のため）
+- 推薦の索引（`build_recommend_index.py`）は、版が変わり、枠に収まるときだけ入れる
+- 秘密 `CLOUDFLARE_API_TOKEN`・`CLOUDFLARE_ACCOUNT_ID` が無ければこの段は飛ばす。鍵はこの段にだけ渡す
+- `rec_meta` に取り直した日・入れた時刻・これからの公演の数を書き、Worker の公開の `/api/health` が返す
+  （`.github/workflows/catalog-age.yml` が毎日見る。変数 `TAGURI_HEALTH_URL` を入れると動く）
+
 ## まだ足りないもの
 
-- **できたカタログを Cloudflare 版（D1）に届ける段**（q-catalog-to-worker）。推薦の索引
-  （`cloudflare/scripts/build_recommend_index.py`）を作り、`wrangler d1 execute` で入れる。Cloudflare の API トークンが要る。
-  D1 の無料枠は 1 日 10 万行の書き込みなので、索引の入れ替えの行数を先に測る（q-real-catalog-stats）
+- 実際のカタログで、初回と毎日の書き込み行数・索引の大きさを測る（q-real-catalog-stats）
+- Worker の `/api/catalogue` は 1,000 件までしか返さない（q-catalogue-api-limit）
 - 定期実行は遅れたり飛ばされたりすることがある（gha-schedule-unreliable）

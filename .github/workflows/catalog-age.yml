@@ -3,16 +3,18 @@ name: Catalog age
 # 公開版の公演カタログが古くなっていないかを毎日確かめる（tools/taguri/check_catalog_age.py）。
 # EC2 が無く、毎日の作り直しが止まっているかもしれないため（docs/knowledge の no-ec2・q-catalog-source）。
 # 失敗するとリポジトリの持ち主に GitHub から通知が届く。見るのは公開の /api/health の日付と件数だけ。
-# **毎日の自動実行は止めている。** AWS を使わなくなり（no-aws）、Render のデモ版が読む S3 の
-# カタログはもう更新されないため、毎日失敗の通知が届くだけになる。Cloudflare 版がカタログの日付を
-# 返すようになったら、その URL で再開する（q-catalog-to-worker）。手動では今も動かせる。
+# **見る先は Cloudflare 版の /api/health。** 取得処理が D1 に入れた日付と件数を返す
+# （cloudflare/scripts/deliver_catalogue.py）。Render のデモ版は S3 のカタログがもう更新されない（no-aws）。
+# 毎日の実行は、リポジトリの変数 TAGURI_HEALTH_URL（例: https://<Worker の URL>/api/health）を
+# 入れたときだけ動く。入れるまでは手動で URL を渡して動かす。
 on:
+  schedule:
+    - cron: '43 0 * * *'   # 日本時間 9:43（取得処理の 4:17 開始から十分あと）
   workflow_dispatch:
     inputs:
       url:
         description: 'health の URL'
         required: false
-        default: 'https://taguri-demo.onrender.com/api/health'
       max_days:
         description: 'これより古ければ失敗（日）'
         required: false
@@ -23,6 +25,7 @@ permissions:
 
 jobs:
   check:
+    if: github.event_name == 'workflow_dispatch' || vars.TAGURI_HEALTH_URL != ''
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -33,6 +36,8 @@ jobs:
       - name: Check the catalog age on the public server
         # 入力は環境変数で渡す（シェルの文字列に直接埋め込まない）
         env:
-          HEALTH_URL: ${{ github.event.inputs.url || 'https://taguri-demo.onrender.com/api/health' }}
+          HEALTH_URL: ${{ github.event.inputs.url || vars.TAGURI_HEALTH_URL }}
           MAX_DAYS: ${{ github.event.inputs.max_days || '3' }}
-        run: python tools/taguri/check_catalog_age.py --url "$HEALTH_URL" --max-days "$MAX_DAYS"
+        run: |
+          if [ -z "$HEALTH_URL" ]; then echo "URL を入れて動かす（入力の url か、変数 TAGURI_HEALTH_URL）"; exit 1; fi
+          python tools/taguri/check_catalog_age.py --url "$HEALTH_URL" --max-days "$MAX_DAYS"

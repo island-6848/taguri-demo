@@ -79,6 +79,8 @@ python3 scripts/convert_catalogue.py --input /secure/candidates.jsonl --output c
 npx wrangler d1 execute taguri-demo --remote --file catalogue.sql
 ```
 
+**毎日の取得のあとは自動で入れる。** 非公開リポジトリ taguri-crawler の取得処理が `scripts/deliver_catalogue.py` で前回から変わった公演だけを入れ、あらすじ（一度だけ読んだもの）も metadata に足す。取り直した日と件数は公開の `/api/health` で見られる（`tools/taguri/deploy/github-actions/README.md`）。
+
 APIの候補は公開情報だけで5分キャッシュ可能です。照合はブラウザ内で行い、LLMや外部APIへの従量課金はありません。記録・お気に入り・反応は利用者別のprivate APIで取得します。GitHub ActionsのプレビューチェックはテストとWranglerのdry-runのみ実行し、公開やDB変更をしません。
 
 ## 推薦をRenderから外す：段1（推薦の索引）
