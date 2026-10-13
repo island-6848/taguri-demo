@@ -1,6 +1,6 @@
 // Person-score recommendations in the Worker (step 2 of moving them off
 // Render). A port of score_from_index in scripts/build_recommend_index.py,
-// itself checked against tools/review/user_recommender.py (person-feedback-v1).
+// itself checked against tools/review/user_recommender.py (person-graded-v2).
 // test/recommend.test.js runs this against Python's output on the same
 // synthetic catalogue and must agree on stages, order, scores and reasons.
 //
@@ -10,8 +10,9 @@
 //   binary value, and an exact decimal tie at the 7th digit cannot occur.
 // - Strings compare by code point, as Python does (not UTF-16 units).
 
-export const SMOOTH_A = 1, SMOOTH_B = 2, CONF_K = 3, TOP_N = 3;
-const GRADES = new Set(['◎', '○', '△', '×']);
+export const CONF_K = 3, TOP_N = 3;
+export const GRADE_VALUE = {'◎': 4, '○': 3, '△': 2, '×': 1};
+const GRADES = new Set(Object.keys(GRADE_VALUE));
 const KEYS_PER_QUERY = 49;     // D1 binds at most 100 parameters: ver + 2 per key
 const IDS_PER_QUERY = 98;
 
@@ -47,64 +48,69 @@ export function independentRatings(rows) {
   return [...grouped.values()];
 }
 
-/** (role, person) -> [n, o]: records naming the person, and how many were ◎. */
-export function buildRoster(rated) {
+/**
+ * user_recommender.person_values: (role, person) -> [n, value], where value is
+ * Σ z / (n + CONF_K) and z = (grade − the user's mean) / the user's spread
+ * (◎○△× = 4/3/2/1). Same float operations in the same order as Python.
+ */
+export function personValues(rated) {
+  const grades = rated.map(r => GRADE_VALUE[r.verdict]);
+  const n = grades.length;
+  const total = grades.reduce((a, g) => a + g, 0), squares = grades.reduce((a, g) => a + g * g, 0);
+  const mean = n ? total / n : 0;
+  const spread = (n ? Math.sqrt((n * squares - total * total) / (n * n)) : 0) || 1;
   const tally = new Map();
   for (const r of rated) {
-    const pos = r.verdict === '◎' ? 1 : 0;
-    for (const [role, person] of r.people || []) {
-      const k = role + '\u0000' + person;
+    const z = (GRADE_VALUE[r.verdict] - mean) / spread;
+    const keys = [...new Set((r.people || []).map(([role, person]) => role + '\u0000' + person))].sort(cmp);
+    for (const k of keys) {
       const t = tally.get(k) || [0, 0];
-      t[0] += 1; t[1] += pos;
+      t[0] += 1; t[1] += z;
       tally.set(k, t);
     }
   }
-  return tally;
+  const values = new Map();
+  for (const [k, [cnt, sum]] of tally) values.set(k, [cnt, sum / (cnt + CONF_K)]);
+  return values;
 }
 
 /**
- * Ranked upcoming stages with a positive person score, ordered like
- * user_recommender.finish before tour grouping.
+ * Ranked upcoming stages with a positive score, ordered like
+ * user_recommender.finish before tour grouping (person-graded-v2).
  * postingsFor(keys [[role, person]...]) -> [[role, person, stage_id, role_w, group]...]
  * stagesFor(stageIds) -> Map(stage_id -> {start, end})
  */
 export async function scoreFromIndex({postingsFor, stagesFor, rated, multipliers = {}, today}) {
   rated = independentRatings(rated);
-  const base = rated.filter(r => r.verdict === '◎').length / Math.max(rated.length, 1);
-  const roster = buildRoster(rated);
-  // Per person: x = ◎ rate (smoothed) minus the user's overall ◎ rate, and the
-  // confidence n/(n+3). A part's contribution is x times positive weights, so a
-  // person with x <= 0 can never add to any stage: such people are not even
-  // queried (fewer D1 rows and less CPU, same result as Python).
-  const factor = new Map();
-  for (const [k, [n, o]] of roster) {
-    if (!n || !o) continue;
-    const x = (o + SMOOTH_A) / (n + SMOOTH_B) - base;
-    if (x > 0) factor.set(k, [x, n / (n + CONF_K), n]);
-  }
-  const keys = [...factor.keys()].map(k => k.split('\u0000')).sort((a, b) => cmpTuple(a, b));
+  const values = personValues(rated);
+  // Everyone with a non-zero value can raise or lower a show.
+  const keys = [...values.entries()].filter(([, [, v]]) => v).map(([k]) => k.split('\u0000')).sort((a, b) => cmpTuple(a, b));
   const byStage = new Map();
   const mult = g => (Object.prototype.hasOwnProperty.call(multipliers, g) ? multipliers[g] : 1.0);
   for (const [role, person, sid, roleW, group] of await postingsFor(keys)) {
-    const [x, conf, n] = factor.get(role + '\u0000' + person);
-    // Same operations and order as Python: contrib *= n/(n+3) * role_w * multiplier
-    const contrib = x * (conf * roleW * mult(group));
-    if (contrib > 0) {
+    const [n, value] = values.get(role + '\u0000' + person);
+    // Same operations and order as Python: value * (role_w * multiplier)
+    const contrib = round6(value * (roleW * mult(group)));
+    if (contrib) {
       if (!byStage.has(sid)) byStage.set(sid, []);
-      byStage.get(sid).push([round6(contrib), role, person, n, group]);
+      byStage.get(sid).push([contrib, role, person, n, group]);
     }
   }
   const stages = await stagesFor([...byStage.keys()]);
   const out = [];
-  for (const [sid, parts] of byStage) {
+  for (const [sid, all] of byStage) {
     const st = stages.get(sid);
     if (!st || (st.end && st.end < today)) continue;
     if (st.start && st.start <= today) continue;          // already running
-    parts.sort((p, q) => (q[0] - p[0]) || cmp(p[1], q[1]) || cmp(p[2], q[2]));
-    const b = round6(parts.slice(0, TOP_N).reduce((s, p) => s + p[0], 0));
+    const parts = all.filter(p => p[0] > 0).sort((p, q) => (q[0] - p[0]) || cmp(p[1], q[1]) || cmp(p[2], q[2]));
+    const negative = all.filter(p => p[0] < 0).sort((p, q) => (p[0] - q[0]) || cmp(p[1], q[1]) || cmp(p[2], q[2]));
+    // Python: sum(positive top 3) + sum(negative top 3), each sum from 0.
+    let pos = 0, neg = 0;
+    for (const p of parts.slice(0, TOP_N)) pos += p[0];
+    for (const p of negative.slice(0, TOP_N)) neg += p[0];
+    const b = round6(pos + neg);
     if (b <= 0) continue;
-    const strong = parts.filter(p => p[1] === '出演' || p[3] >= 2).reduce((s, p) => s + mult(p[4]), 0);
-    out.push({stage_id: sid, b, strong, parts: parts.map(p => p.slice(0, 4))});
+    out.push({stage_id: sid, b, strong: b, parts: parts.map(p => p.slice(0, 4))});
   }
   out.sort((x, y) => (y.strong - x.strong) || (y.b - x.b) || cmp(x.stage_id, y.stage_id));
   return out;

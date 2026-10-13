@@ -102,7 +102,11 @@ class FeedbackLoopTests(DemoStabilityTests):
         self.assertEqual(status, 200)
         self.assertEqual(result["recommendation"]["status"], "on_next_read")
         after = self.load()
-        self.assertEqual(after["recommend"], [])
+        # person-graded-v2 reads grades relative to the user: with ×, ×, △ the
+        # △ production is this user's best, so its actor is the only one
+        # recommended; the actors of the two × productions are not.
+        self.assertEqual([c["stage_id"] for c in after["recommend"]], ["103"])
+        self.assertEqual(after["recommend"][0]["why_b"][0][2], "俳優丙")
         self.assertEqual(self.load(1), before_other)
 
     def test_clearing_and_dropping_remove_old_positive_signal(self):
@@ -113,7 +117,8 @@ class FeedbackLoopTests(DemoStabilityTests):
                 self.assertFalse(any(c["stage_id"] == "101" for c in self.load()["recommend"]))
         status, result = self.request("/api/drop_work", body={"work_key": key})
         self.assertEqual(status, 200, result)
-        self.assertEqual(self.load()["recommend"], [])
+        # Without the ◎ record, the △ production is the user's best (v2).
+        self.assertEqual([c["stage_id"] for c in self.load()["recommend"]], ["103"])
         status, result = self.request("/api/restore_work", body={"key": key})
         self.assertEqual(status, 200, result)
         self.assertEqual(self.load()["recommend"][0]["stage_id"], "101")

@@ -92,30 +92,29 @@ def score_from_index(postings_for, stage_of, rated: list[dict], *, multipliers: 
     before tour grouping.
     """
     rated = UR.independent_ratings(rated)
-    base = sum(r["verdict"] == "◎" for r in rated) / max(len(rated), 1)
-    roster = M.build_roster(rated, lambda v: float(v == "◎"))
-    # n > 0 and o > 0 are required for a positive part, so only ◎ people are read.
-    keys = sorted(k for k, (n, o) in roster.items() if n and o)
+    values, _scale = UR.person_values(rated)
+    # person-graded-v2: everyone the user has a non-zero value for can raise or
+    # lower a show, so their postings are read.
+    keys = sorted(k for k, (n, v) in values.items() if v)
     by_stage: dict[str, list] = {}
     for role, person, sid, role_w, group in postings_for(keys):
-        n, o = roster[(role, person)]
-        contrib = (o + M.SMOOTH_A) / (n + M.SMOOTH_B) - base
-        contrib *= n / (n + M.CONF_K) * role_w * multipliers.get(group, 1.0)
-        if contrib > 0:
-            by_stage.setdefault(sid, []).append([round(contrib, 6), role, person, n, group])
+        n, value = values[(role, person)]
+        contrib = round(value * (role_w * multipliers.get(group, 1.0)), 6)
+        if contrib:
+            by_stage.setdefault(sid, []).append([contrib, role, person, n, group])
     out, iso = [], today.isoformat()
-    for sid, parts in by_stage.items():
+    for sid, all_parts in by_stage.items():
         st = stage_of(sid)
         if st is None or (st["end"] and st["end"] < iso):
             continue
         if st["start"] and st["start"] <= iso:
             continue                     # already running: "started", not "ranked"
-        parts.sort(key=lambda p: (-p[0], p[1], p[2]))
-        b = round(sum(p[0] for p in parts[:M.TOP_N]), 6)
+        parts = sorted((p for p in all_parts if p[0] > 0), key=lambda p: (-p[0], p[1], p[2]))
+        negative = sorted((p for p in all_parts if p[0] < 0), key=lambda p: (p[0], p[1], p[2]))
+        b = round(sum(p[0] for p in parts[:M.TOP_N]) + sum(p[0] for p in negative[:M.TOP_N]), 6)
         if b <= 0:
             continue
-        strong = sum(multipliers.get(p[4], 1.0) for p in parts if p[1] == "出演" or p[3] >= 2)
-        out.append({"stage_id": sid, "b": b, "strong": strong,
+        out.append({"stage_id": sid, "b": b, "strong": b,
                     "parts": [p[:4] for p in parts]})
     out.sort(key=lambda c: (-c["strong"], -c["b"], c["stage_id"]))
     return out

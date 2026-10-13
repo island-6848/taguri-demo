@@ -6,7 +6,7 @@ import re
 import secrets
 
 VERSION = "major-region-50pct-1000ms-v1"
-RECOMMENDER_VERSION = "person-feedback-v1+impression-v1"
+RECOMMENDER_VERSION = "person-graded-v2+impression-v1"
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS recommendation_presentations (
  presentation_id TEXT PRIMARY KEY, user_id TEXT NOT NULL, created_at TEXT NOT NULL,

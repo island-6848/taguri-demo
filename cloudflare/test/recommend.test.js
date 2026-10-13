@@ -1,4 +1,4 @@
-// The Worker's recommendations must equal Python's (person-feedback-v1).
+// The Worker's recommendations must equal Python's (person-graded-v2).
 // Python writes its answers for synthetic catalogues (test/parity_fixture.py);
 // here the same index is loaded into SQLite with migration 0003 and scored
 // through the same queries the Worker sends to D1.
@@ -79,6 +79,8 @@ test('records saved through the API give the same recommendations as Python, min
       assert.deepEqual(got.items.map(i => [i.stage_id, i.score]), want.map(x => [x.stage_id, x.b]));
       assert.deepEqual(got.items[0].reasons, want[0].parts.slice(0, 3).map(([, role, person, n]) => ({role, person, n})));
       assert.ok(got.items.every(i => i.title), 'display fields come from rec_stage');
+      // The cache is keyed by the scoring rules too (a rule change recomputes).
+      assert.ok(sqlite.prepare('SELECT stamp FROM rec_cache WHERE user_id=?').get(uid).stamp.startsWith('person-graded-v2|'));
       // Second view: served from the cache, same answer.
       const again = await recommendFor(env.DB, uid, fixture.today);
       assert.equal(again.cached, true);

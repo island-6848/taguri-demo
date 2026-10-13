@@ -138,6 +138,7 @@ async function deleteAccount(request, env, uid, input) {
 // to (interest / no / owned) are left out, as the Python app moves them to
 // other lists. Tour grouping and impression preferences are not ported yet.
 const RECOMMEND_TOP = 15;
+const RECOMMENDER = 'person-graded-v2';
 const jstToday = () => new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
 // Served from rec_cache unless the index version, the date, or the user's
 // records/reactions changed since it was computed (a few rows read per view).
@@ -145,7 +146,8 @@ export async function recommendFor(db, uid, today = jstToday()) {
   const ver = (await db.prepare("SELECT v FROM rec_meta WHERE k='current'").first())?.v;
   if (!ver) return {ready: false, items: []};
   const st = await db.prepare('SELECT (SELECT count(*) FROM records WHERE user_id=?1) AS rn, (SELECT max(updated_at) FROM records WHERE user_id=?1) AS rm, (SELECT count(*) FROM reactions WHERE user_id=?1) AS an, (SELECT max(updated_at) FROM reactions WHERE user_id=?1) AS am').bind(uid).first();
-  const stamp = [ver, today, st.rn, st.rm, st.an, st.am].join('|');
+  // RECOMMENDER names the scoring rules: changing them must not serve old results.
+  const stamp = [RECOMMENDER, ver, today, st.rn, st.rm, st.an, st.am].join('|');
   const cached = await db.prepare('SELECT body FROM rec_cache WHERE user_id=? AND stamp=?').bind(uid, stamp).first();
   if (cached) return {...JSON.parse(cached.body), cached: true};
   const body = await computeRecommendations(db, uid, ver, today);

@@ -1060,6 +1060,19 @@
    "verifies": []
   },
   {
+   "id": "impl-person-graded-v2",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "推薦の計算を person-graded-v2 に変えた（Python 版と Worker 版の両方、同じ結果になることをテストで確認）",
+   "sources": [
+    "tools/review/user_recommender.py",
+    "cloudflare/src/recommend.js",
+    "cloudflare/test/recommend.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "jp-domain-price",
    "type": "finding",
    "status": "unverified",
@@ -3425,6 +3438,16 @@
    "from": "github-actions-public-free",
    "rel": "raises",
    "to": "q-crawler-host"
+  },
+  {
+   "from": "impl-person-graded-v2",
+   "rel": "depends_on",
+   "to": "dec-reco-graded"
+  },
+  {
+   "from": "impl-person-graded-v2",
+   "rel": "affects",
+   "to": "comp-recommender"
   },
   {
    "from": "jp-domain-price",

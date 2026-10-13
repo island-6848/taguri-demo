@@ -5,13 +5,25 @@ LLM, shared recommendation writes, or persistent profile cache is used here.
 """
 from __future__ import annotations
 
+import collections
 import copy
 import datetime
+import math
 
 import measure_nets as M
 import recommend2 as RC
 
-VERSION = "person-feedback-v1"
+VERSION = "person-graded-v2"
+# person-graded-v2 (2026-10-13): every grade counts, relative to how this user
+# usually rates. ◎○△× become 4/3/2/1, then (grade − the user's mean) / the
+# user's spread, so a strict user's ◎ weighs more than a lenient user's, and a
+# lenient user's ○ counts as "below usual". A person's value is the shrunken
+# mean of that over the productions they were in (n/(n+CONF_K)); a show's score
+# is its strongest 3 positive parts plus its strongest 3 negative parts.
+# Chosen over person-feedback-v1 (◎ only) on public data from 500 real users:
+# better for 62–82% of them and rising about twice as fast with use
+# (docs/research/person-reco-eval.md).
+GRADE_VALUE = {"◎": 4, "○": 3, "△": 2, "×": 1}
 BUNDLES = ("favourites", "ranked", "others", "owned", "tracking", "started", "declined", "unscored")
 
 
@@ -29,6 +41,29 @@ def independent_ratings(rows: list[dict]) -> list[dict]:
         key = ("stage", str(row["stage_id"])) if row.get("stage_id") else ("work", row["key"])
         grouped[key] = row
     return list(grouped.values())
+
+
+def person_values(rated: list[dict]) -> tuple[dict, dict]:
+    """(role, person) -> (n, value) and the user's scale {mean, spread}.
+
+    value = Σ z / (n + CONF_K), z = (grade − mean) / spread: the mean of z,
+    shrunk towards 0 while few productions back it.
+    """
+    # Plain float operations on exact integer sums, in this order, so the
+    # Worker's port (cloudflare/src/recommend.js) gets bit-identical values.
+    grades = [GRADE_VALUE[r["verdict"]] for r in rated]
+    n, total, squares = len(grades), sum(grades), sum(g * g for g in grades)
+    mean = total / n if n else 0.0
+    spread = math.sqrt((n * squares - total * total) / (n * n)) if n else 0.0
+    spread = spread or 1.0
+    tally = collections.defaultdict(lambda: [0, 0.0])
+    for r in rated:
+        z = (GRADE_VALUE[r["verdict"]] - mean) / spread
+        for key in sorted(set(map(tuple, r.get("people") or []))):
+            tally[key][0] += 1
+            tally[key][1] += z
+    values = {k: (n, s / (n + M.CONF_K)) for k, (n, s) in tally.items()}
+    return values, {"mean": mean, "spread": spread}
 
 
 def candidate_pool(raw: dict, candidates: list[dict]) -> dict[str, dict]:
@@ -66,9 +101,7 @@ def prepare(raw: dict, candidates: list[dict], rated: list[dict], *,
     """
     today = today or datetime.date.today()
     rated = independent_ratings(rated)
-    positive = lambda v: float(v == "◎")
-    base = sum(positive(r["verdict"]) for r in rated) / max(len(rated), 1)
-    roster = M.build_roster(rated, positive)
+    values, scale = person_values(rated)
     pool = candidate_pool(raw, candidates)
 
     out = {"label": raw.get("label") or today.isoformat(), "today": today.isoformat()}
@@ -83,25 +116,28 @@ def prepare(raw: dict, candidates: list[dict], rated: list[dict], *,
         if any(word in (c.get("title") or "") for word in RC.NOT_PLAY_TITLE):
             continue
         fields = c.get("fields") or {}
-        parts = []
+        parts, negative = [], []
         for role, person in sorted(set(M.parse_credits(fields))):
-            n, o = roster.get((role, person), (0, 0))
-            # A smoothing prior cannot be the only positive evidence. With an
-            # all-negative history it otherwise recommends disliked people.
-            if not n or not o:
+            if (role, person) not in values:
                 continue
+            n, value = values[(role, person)]
             multiplier = multipliers.get(role_group(role), 1.0)
-            contrib = ((o + M.SMOOTH_A) / (n + M.SMOOTH_B) - base)
-            contrib *= n / (n + M.CONF_K) * RC.ROLE_W.get(role, RC.BACKSTAGE_W) * multiplier
+            contrib = round(value * (RC.ROLE_W.get(role, RC.BACKSTAGE_W) * multiplier), 6)
             if contrib > 0:
-                parts.append([round(contrib, 6), role, person, n])
+                parts.append([contrib, role, person, n])
+            elif contrib < 0:
+                negative.append([contrib, role, person, n])
         parts.sort(key=lambda p: (-p[0], p[1], p[2]))
-        b = round(sum(p[0] for p in parts[:M.TOP_N]), 6)
+        negative.sort(key=lambda p: (p[0], p[1], p[2]))
+        b = round(sum(p[0] for p in parts[:M.TOP_N]) + sum(p[0] for p in negative[:M.TOP_N]), 6)
         start = RC.period_start(period)
-        c.update(stage_id=sid, b=b, c=0.0, total=b, why_b=parts[:6],
+        # Reasons shown to the user are the positive parts; the negative ones
+        # only lower the score. `strong` (the first sort key everywhere) is the
+        # score itself in v2: tiers by the number of strong matches were part of
+        # v1 and were not what the comparison validated.
+        c.update(stage_id=sid, b=b, c=0.0, total=b, why_b=parts[:6], why_b_neg=negative[:M.TOP_N],
                  person_parts=parts, why_c=[], why_v="", vr=0.0,
-                 n_match=len(parts), strong=sum(multipliers.get(role_group(p[1]), 1.0)
-                    for p in parts if p[1] == "出演" or p[3] >= 2),
+                 n_match=len(parts), strong=b,
                  cn=0.0, both=False, a=[], theme=[], declined="",
                  upcoming=not start or start > today.isoformat(),
                  opened=start if start and start <= today.isoformat() else "",
@@ -122,7 +158,7 @@ def prepare(raw: dict, candidates: list[dict], rated: list[dict], *,
                         "n_demo": sum(r.get("verdict_source") == "demo" for r in rated),
                         "n_user": sum(r.get("verdict_source") == "user" for r in rated),
                         "n_unknown": sum(r.get("verdict_source") not in ("demo", "user") for r in rated),
-                        "base": base, "n_people": len(roster)})
+                        "scale": scale, "n_people": len(values)})
     return out
 
 
