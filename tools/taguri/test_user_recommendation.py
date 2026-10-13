@@ -223,7 +223,11 @@ class ScoringTests(unittest.TestCase):
         c = d["ranked"][0]
         self.assertEqual(len(c["person_parts"]), 8)
         self.assertEqual(len(c["why_b"]), 6)
-        self.assertAlmostEqual(c["b"], sum(p[0] for p in c["person_parts"][:3]))
+        # v3: the strongest 3 people, plus the mean of the kind-of-show tags
+        # (here 「オリジナル」, shared by the ◎ records that have credits).
+        kinds = c["why_kind"]
+        self.assertEqual([k[1:3] for k in kinds], [["#原作", "オリジナル"]])
+        self.assertAlmostEqual(c["b"], sum(p[0] for p in c["person_parts"][:3]) + kinds[0][0])
 
     def test_no_history_does_not_inherit_owner_ranking(self):
         d = self.prepare([], [candidate(101, "俳優甲")])
@@ -247,6 +251,43 @@ class ScoringTests(unittest.TestCase):
         rows, n = APP.RR.filtered(d, ["大阪府"])
         self.assertEqual(n, 1)
         self.assertEqual(rows[0]["stage_id"], "102")
+
+
+
+class KindOfShowTests(unittest.TestCase):
+    """person-ordinal-v3: kinds of show (form, source, venue) from the title,
+    credits and venue; a user who rates musicals higher than usual gets
+    upcoming musicals raised, even with no shared people."""
+
+    def test_tags_from_title_credits_and_venue(self):
+        T = UR.stage_tags
+        self.assertEqual(T("ミュージカル『夏』", ["劇場A"], [("出演", "甲")]),
+                         [("#会場", "劇場A"), ("#原作", "オリジナル"), ("#形式", "ミュージカル")])
+        self.assertEqual(T("夏の夜", [], [("翻訳", "乙"), ("音楽", "丙")]),
+                         [("#原作", "オリジナル"), ("#形式", "音楽劇"), ("#翻訳", "翻訳劇")])
+        self.assertEqual(T("朗読劇『夜』", [], [("原作", "丁")]),
+                         [("#原作", "原作もの"), ("#形式", "朗読")])
+        self.assertEqual(T("", [], []), [])          # nothing known, nothing guessed
+
+    def test_kind_preference_reaches_shows_without_shared_people(self):
+        rows = [{"key": f"m{i}", "verdict": "◎", "title": f"ミュージカル{i}", "people": [("出演", f"甲{i}")]}
+                for i in range(3)]
+        rows += [{"key": f"p{i}", "verdict": "×", "title": f"芝居{i}", "people": [("出演", f"乙{i}")]}
+                 for i in range(3)]
+        cands = [dict(candidate(201, "知らない人"), title="ミュージカル新作"),
+                 dict(candidate(202, "別の知らない人"), title="芝居の新作")]
+        d = UR.finish(ScoringTests.prepare(self, rows, cands), top=15, weights={})
+        self.assertEqual([c["stage_id"] for c in d["recommend"]], ["201"])
+        self.assertEqual(d["recommend"][0]["why_kind"][-1][1:3], ["#形式", "ミュージカル"])
+
+    def test_rating_order_not_equal_steps(self):
+        # Only the order within the user's ratings matters: ◎ > ○ > × and
+        # 4/5 > 3/5 > 1/5 give the same values.
+        a = [{"key": "1", "verdict": "◎", "people": [("出演", "甲")]},
+             {"key": "2", "verdict": "○", "people": [("出演", "乙")]},
+             {"key": "3", "verdict": "×", "people": [("出演", "丙")]}]
+        b = [dict(r, verdict=v) for r, v in zip(a, ("4/5", "3/5", "1/5"))]
+        self.assertEqual(UR.person_values(a)[0], UR.person_values(b)[0])
 
 
 if __name__ == "__main__":

@@ -1166,6 +1166,19 @@
    "verifies": []
   },
   {
+   "id": "impl-person-ordinal-v3",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "推薦の計算を person-ordinal-v3 に変えた（評価を順序として読み、公演の種類の好みを足す）",
+   "sources": [
+    "tools/review/user_recommender.py",
+    "cloudflare/src/recommend.js",
+    "cloudflare/scripts/build_recommend_index.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "jp-domain-price",
    "type": "finding",
    "status": "unverified",
@@ -3721,6 +3734,21 @@
    "from": "impl-person-graded-v2",
    "rel": "affects",
    "to": "comp-recommender"
+  },
+  {
+   "from": "impl-person-ordinal-v3",
+   "rel": "depends_on",
+   "to": "eval-design-choices"
+  },
+  {
+   "from": "impl-person-ordinal-v3",
+   "rel": "affects",
+   "to": "comp-recommender"
+  },
+  {
+   "from": "impl-person-ordinal-v3",
+   "rel": "answers",
+   "to": "q-theme-preference"
   },
   {
    "from": "jp-domain-price",

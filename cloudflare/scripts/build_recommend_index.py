@@ -57,8 +57,16 @@ def _public_entry(entry: dict) -> dict:
     return out
 
 
-def build_index(pool: dict[str, dict], fields_by_stage: dict[str, dict], role_group) -> dict:
-    """User-independent material. `pool` is `UR.candidate_pool(...)`."""
+def build_index(pool: dict[str, dict], fields_by_stage: dict[str, dict], role_group,
+                titles: dict[str, str] | None = None) -> dict:
+    """User-independent material. `pool` is `UR.candidate_pool(...)`.
+
+    Kind-of-show tags (UR.stage_tags: form, source, venue) are stored with the
+    credits, as ("#axis", value) pairs with role group "theme", so the Worker
+    reads them through the same tables. `titles` gives titles of past stages
+    (for the form tags); candidates carry their own.
+    """
+    titles = dict(titles or {})
     stages, postings = {}, []
     for sid, entry in pool.items():
         title = entry.get("title") or ""
@@ -66,6 +74,8 @@ def build_index(pool: dict[str, dict], fields_by_stage: dict[str, dict], role_gr
             continue
         period = entry.get("period") or ""
         credits = sorted(set(M.parse_credits(entry.get("fields") or {})))
+        titles.setdefault(sid, title)
+        tags = UR.stage_tags(title, [(entry.get("fields") or {}).get("劇場", "")], credits)
         stages[sid] = {"title": title, "tkey": M.R.title_key(title), "grp": entry.get("group") or "",
                        "start": RC.period_start(period), "end": _period_end(period),
                        "credits": [list(c) for c in credits],
@@ -73,8 +83,15 @@ def build_index(pool: dict[str, dict], fields_by_stage: dict[str, dict], role_gr
         for role, person in credits:
             postings.append((role, person, sid, RC.ROLE_W.get(role, RC.BACKSTAGE_W),
                              role_group(role)))
-    people = {sid: [list(c) for c in sorted(set(M.parse_credits(f)))]
-              for sid, f in fields_by_stage.items() if f}
+        for axis, tag in tags:
+            postings.append((axis, tag, sid, UR.GENRE_W, "theme"))
+    people = {}
+    for sid, f in fields_by_stage.items():
+        if not f:
+            continue
+        credits = sorted(set(M.parse_credits(f)))
+        tags = UR.stage_tags(titles.get(sid, ""), [f.get("劇場", "")], credits)
+        people[sid] = [list(c) for c in sorted(set(credits) | set(tags))]
     people = {sid: p for sid, p in people.items() if p}
     return {"stages": stages, "postings": postings, "people": people}
 
@@ -102,6 +119,8 @@ def score_from_index(postings_for, stage_of, rated: list[dict], *, multipliers: 
         contrib = round(value * (role_w * multipliers.get(group, 1.0)), 6)
         if contrib:
             by_stage.setdefault(sid, []).append([contrib, role, person, n, group])
+    # person-ordinal-v3: kind-of-show tags ("#axis") add their mean; people
+    # add the strongest 3 up and 3 down (UR.b_score).
     out, iso = [], today.isoformat()
     for sid, all_parts in by_stage.items():
         st = stage_of(sid)
@@ -109,9 +128,11 @@ def score_from_index(postings_for, stage_of, rated: list[dict], *, multipliers: 
             continue
         if st["start"] and st["start"] <= iso:
             continue                     # already running: "started", not "ranked"
-        parts = sorted((p for p in all_parts if p[0] > 0), key=lambda p: (-p[0], p[1], p[2]))
-        negative = sorted((p for p in all_parts if p[0] < 0), key=lambda p: (p[0], p[1], p[2]))
-        b = round(sum(p[0] for p in parts[:M.TOP_N]) + sum(p[0] for p in negative[:M.TOP_N]), 6)
+        people = [p for p in all_parts if not p[1].startswith("#")]
+        kinds = sorted((p for p in all_parts if p[1].startswith("#")), key=lambda p: (p[1], p[2]))
+        parts = sorted((p for p in people if p[0] > 0), key=lambda p: (-p[0], p[1], p[2]))
+        negative = sorted((p for p in people if p[0] < 0), key=lambda p: (p[0], p[1], p[2]))
+        b = UR.b_score(parts, negative, kinds)
         if b <= 0:
             continue
         out.append({"stage_id": sid, "b": b, "strong": b,
@@ -315,7 +336,16 @@ def main() -> int:
     pool = UR.candidate_pool(raw, DG.all_candidates())
     if not pool:
         p.error("no candidates under data/; fetch the catalogue first")
-    index = build_index(pool, M._fields_by_stage(), APP.group_of)
+    # Titles of past stages for the form tags (public page titles only).
+    titles = {}
+    linked = ROOT / "data" / "credits" / "linked.jsonl"
+    if linked.exists():
+        for line in linked.read_text(encoding="utf-8").split("\n"):
+            if line.strip():
+                r = json.loads(line)
+                if r.get("matched") and r.get("stage_id") and r.get("page_title"):
+                    titles.setdefault(str(r["stage_id"]), r["page_title"])
+    index = build_index(pool, M._fields_by_stage(), APP.group_of, titles)
     stmts = to_sql(index, version_of(index))
     body = "\n".join(stmts) + "\n"
     with os.fdopen(os.open(a.output, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), "w") as out:

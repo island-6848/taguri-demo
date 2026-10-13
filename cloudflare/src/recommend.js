@@ -1,6 +1,6 @@
 // Person-score recommendations in the Worker (step 2 of moving them off
 // Render). A port of score_from_index in scripts/build_recommend_index.py,
-// itself checked against tools/review/user_recommender.py (person-graded-v2).
+// itself checked against tools/review/user_recommender.py (person-ordinal-v3).
 // test/recommend.test.js runs this against Python's output on the same
 // synthetic catalogue and must agree on stages, order, scores and reasons.
 //
@@ -13,6 +13,7 @@
 export const CONF_K = 3, TOP_N = 3;
 export const GRADE_VALUE = {'◎': 4, '○': 3, '△': 2, '×': 1};
 export const MIN_LEVELS = 2, MAX_LEVELS = 11;
+const SQRT12 = Math.sqrt(12);
 
 /** user_recommender.grade_of: [value, levels] of a saved rating ("◎" or "4/5"), or null. */
 export function gradeOf(verdict) {
@@ -63,21 +64,21 @@ export function independentRatings(rows) {
  * (◎○△× = 4/3/2/1). Same float operations in the same order as Python.
  */
 export function personValues(rated) {
-  // Mean and spread per scale: ratings on different scales are compared only
-  // with ratings on the same scale (a user who changed their scale).
-  const sums = new Map();
+  // person-ordinal-v3: a rating's place among the user's own ratings on the
+  // same scale, ((lower) + ½ (equal)) / n − ½, times √12.
+  const byScale = new Map();
   for (const r of rated) {
     const [value, levels] = gradeOf(r.verdict);
-    const [n, total, squares] = sums.get(levels) || [0, 0, 0];
-    sums.set(levels, [n + 1, total + value, squares + value * value]);
+    if (!byScale.has(levels)) byScale.set(levels, []);
+    byScale.get(levels).push(value);
   }
-  const scale = new Map();
-  for (const [levels, [n, total, squares]] of sums) scale.set(levels, [total / n, Math.sqrt((n * squares - total * total) / (n * n)) || 1]);
   const tally = new Map();
   for (const r of rated) {
     const [value, levels] = gradeOf(r.verdict);
-    const [mean, spread] = scale.get(levels);
-    const z = (value - mean) / spread;
+    const vals = byScale.get(levels);
+    let below = 0, same = 0;
+    for (const v of vals) { if (v < value) below += 1; else if (v === value) same += 1; }
+    const z = ((below + 0.5 * same) / vals.length - 0.5) * SQRT12;
     const keys = [...new Set((r.people || []).map(([role, person]) => role + '\u0000' + person))].sort(cmp);
     for (const k of keys) {
       const t = tally.get(k) || [0, 0];
@@ -92,7 +93,7 @@ export function personValues(rated) {
 
 /**
  * Ranked upcoming stages with a positive score, ordered like
- * user_recommender.finish before tour grouping (person-graded-v2).
+ * user_recommender.finish before tour grouping (person-ordinal-v3).
  * postingsFor(keys [[role, person]...]) -> [[role, person, stage_id, role_w, group]...]
  * stagesFor(stageIds) -> Map(stage_id -> {start, end})
  */
@@ -118,13 +119,18 @@ export async function scoreFromIndex({postingsFor, stagesFor, rated, multipliers
     const st = stages.get(sid);
     if (!st || (st.end && st.end < today)) continue;
     if (st.start && st.start <= today) continue;          // already running
-    const parts = all.filter(p => p[0] > 0).sort((p, q) => (q[0] - p[0]) || cmp(p[1], q[1]) || cmp(p[2], q[2]));
-    const negative = all.filter(p => p[0] < 0).sort((p, q) => (p[0] - q[0]) || cmp(p[1], q[1]) || cmp(p[2], q[2]));
-    // Python: sum(positive top 3) + sum(negative top 3), each sum from 0.
-    let pos = 0, neg = 0;
+    // Kind-of-show tags ("#axis") add their mean; people add the strongest 3
+    // up and 3 down (user_recommender.b_score).
+    const people = all.filter(p => !p[1].startsWith('#'));
+    const kinds = all.filter(p => p[1].startsWith('#')).sort((p, q) => cmp(p[1], q[1]) || cmp(p[2], q[2]));
+    const parts = people.filter(p => p[0] > 0).sort((p, q) => (q[0] - p[0]) || cmp(p[1], q[1]) || cmp(p[2], q[2]));
+    const negative = people.filter(p => p[0] < 0).sort((p, q) => (p[0] - q[0]) || cmp(p[1], q[1]) || cmp(p[2], q[2]));
+    // Python: sum(positive top 3) + sum(negative top 3) + sum(kinds) / len, each sum from 0.
+    let pos = 0, neg = 0, ks = 0;
     for (const p of parts.slice(0, TOP_N)) pos += p[0];
     for (const p of negative.slice(0, TOP_N)) neg += p[0];
-    const b = round6(pos + neg);
+    for (const p of kinds) ks += p[0];
+    const b = round6(pos + neg + (kinds.length ? ks / kinds.length : 0));
     if (b <= 0) continue;
     out.push({stage_id: sid, b, strong: b, parts: parts.map(p => p.slice(0, 4))});
   }

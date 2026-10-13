@@ -14,7 +14,7 @@ import re
 import measure_nets as M
 import recommend2 as RC
 
-VERSION = "person-graded-v2"
+VERSION = "person-ordinal-v3"
 # person-graded-v2 (2026-10-13): every grade counts, relative to how this user
 # usually rates. ◎○△× become 4/3/2/1, then (grade − the user's mean) / the
 # user's spread, so a strict user's ◎ weighs more than a lenient user's, and a
@@ -24,6 +24,18 @@ VERSION = "person-graded-v2"
 # Chosen over person-feedback-v1 (◎ only) on public data from 500 real users:
 # better for 62–82% of them and rising about twice as fast with use
 # (docs/research/person-reco-eval.md).
+# person-ordinal-v3 (2026-10-13): two changes on top of v2, both checked on the
+# same public data with users not used to choose them (docs/research/
+# person-reco-eval.md, eval_design_choices.py):
+# - a rating is read as an order, not an equal-step number: its mid-rank
+#   among the user's own ratings on the same scale ("where it sits for this
+#   person"), standardised. No better or worse than equal steps there, but it
+#   does not assume ◎−○ = ○−△ = △−×, and treats a change of scale the same way.
+# - the user's own preference for kinds of show (form, source, venue — the
+#   theatre counterpart of a film genre) is added: +0.024–0.036 AUC, better for
+#   63–76% of users.
+GENRE_W = 1.0           # weight of the kind-of-show term (chosen range 1–2 on public data)
+SQRT12 = math.sqrt(12)  # standardises a mid-rank position (uniform on −0.5..0.5)
 GRADE_VALUE = {"◎": 4, "○": 3, "△": 2, "×": 1}
 # Users may choose their own scale (2–11 levels, 5 by default; dec-user-scale-range).
 # Such a rating is stored as "value/levels", e.g. "4/5"; ◎○△× are a 4-level scale.
@@ -61,38 +73,76 @@ def independent_ratings(rows: list[dict]) -> list[dict]:
     return list(grouped.values())
 
 
+# Kinds of show (dec: q-theme-preference). No official genre list exists for
+# stage productions, so they are read from what every catalogue entry has:
+# words in the title, the credits (原作・翻訳・music roles) and the venue.
+# Tags are ("#axis", value) pairs and travel with the credits (rec_people, the
+# index) so the Worker needs no extra table.
+_FORM_WORDS = (("ミュージカル", "ミュージカル"), ("朗読", "朗読"), ("リーディング", "朗読"),
+               ("人形劇", "人形劇"), ("バレエ", "ダンス"), ("ダンス", "ダンス"),
+               ("歌舞伎", "古典"), ("狂言", "古典"), ("文楽", "古典"),
+               ("落語", "お笑い"), ("コント", "お笑い"), ("漫才", "お笑い"))
+_MUSIC_ROLES = {"作曲", "音楽", "編曲", "音楽監督", "歌唱指導"}
+
+
+def stage_tags(title: str, venues, credits) -> list[tuple[str, str]]:
+    """Kind-of-show tags of one production. `credits`: (role, person) pairs."""
+    roles = {role for role, _ in credits if not role.startswith("#")}
+    tags = set()
+    t = M.norm(title or "")
+    form = next((name for word, name in _FORM_WORDS if word in t), "")
+    if not form and roles & _MUSIC_ROLES:
+        form = "音楽劇"
+    if form:
+        tags.add(("#形式", form))
+    if roles:
+        tags.add(("#原作", "原作もの" if roles & {"原作", "原案"} else "オリジナル"))
+        if "翻訳" in roles:
+            tags.add(("#翻訳", "翻訳劇"))
+    for v in venues or ():
+        v = M.norm(v)
+        if v:
+            tags.add(("#会場", v))
+    return sorted(tags)
+
+
+def rated_keys(r: dict) -> list[tuple]:
+    """People and kind-of-show tags of one rated record."""
+    people = {tuple(p) for p in r.get("people") or []}
+    credits = [p for p in people if not p[0].startswith("#")]
+    return sorted(people | set(stage_tags(r.get("title") or "", r.get("venues") or [], credits)))
+
+
 def person_values(rated: list[dict]) -> tuple[dict, dict]:
     """(role, person) -> (n, value) and the user's scale {mean, spread}.
 
     value = Σ z / (n + CONF_K), z = (grade − mean) / spread: the mean of z,
     shrunk towards 0 while few productions back it.
 
-    Ratings made on different scales (a user who changed their scale) are
-    compared only with ratings on the same scale: mean and spread are taken
-    per scale. On public data this kept the old ratings useful and did at
-    least as well as stretching every scale to 0–1 (eval_rating_scales.py).
+    z is the rating's place among the user's own ratings on the same scale:
+    ((how many are lower) + ½ (how many are equal)) / n − ½, times √12. Ratings
+    on different scales (a user who changed their scale) are each placed among
+    their own scale, so old ratings keep counting without a conversion table
+    (eval_rating_scales.py: as good as or better than stretching scales to 0–1).
     """
-    # Plain float operations on exact integer sums, in this order, so the
+    # Integer counts and plain float operations in this order, so the
     # Worker's port (cloudflare/src/recommend.js) gets bit-identical values.
-    sums: dict = {}
+    by_scale: dict = {}
     for r in rated:
         value, levels = grade_of(r["verdict"])
-        n, total, squares = sums.get(levels, (0, 0, 0))
-        sums[levels] = (n + 1, total + value, squares + value * value)
-    scale = {}
-    for levels, (n, total, squares) in sums.items():
-        spread = math.sqrt((n * squares - total * total) / (n * n))
-        scale[levels] = (total / n, spread or 1.0)
+        by_scale.setdefault(levels, []).append(value)
     tally = collections.defaultdict(lambda: [0, 0.0])
     for r in rated:
         value, levels = grade_of(r["verdict"])
-        mean, spread = scale[levels]
-        z = (value - mean) / spread
-        for key in sorted(set(map(tuple, r.get("people") or []))):
+        vals = by_scale[levels]
+        below = sum(1 for v in vals if v < value)
+        same = sum(1 for v in vals if v == value)
+        z = ((below + 0.5 * same) / len(vals) - 0.5) * SQRT12
+        for key in rated_keys(r):
             tally[key][0] += 1
             tally[key][1] += z
     values = {k: (n, s / (n + M.CONF_K)) for k, (n, s) in tally.items()}
-    return values, {str(k): {"mean": m, "spread": sp} for k, (m, sp) in sorted(scale.items())}
+    return values, {str(k): len(v) for k, v in sorted(by_scale.items())}
 
 
 def candidate_pool(raw: dict, candidates: list[dict]) -> dict[str, dict]:
@@ -145,8 +195,9 @@ def prepare(raw: dict, candidates: list[dict], rated: list[dict], *,
         if any(word in (c.get("title") or "") for word in RC.NOT_PLAY_TITLE):
             continue
         fields = c.get("fields") or {}
-        parts, negative = [], []
-        for role, person in sorted(set(M.parse_credits(fields))):
+        parts, negative, kinds = [], [], []
+        credits = sorted(set(M.parse_credits(fields)))
+        for role, person in credits:
             if (role, person) not in values:
                 continue
             n, value = values[(role, person)]
@@ -156,15 +207,22 @@ def prepare(raw: dict, candidates: list[dict], rated: list[dict], *,
                 parts.append([contrib, role, person, n])
             elif contrib < 0:
                 negative.append([contrib, role, person, n])
+        for axis, tag in stage_tags(c.get("title") or "", [fields.get("劇場", "")], credits):
+            if (axis, tag) in values:
+                n, value = values[(axis, tag)]
+                contrib = round(value * (GENRE_W * multipliers.get("theme", 1.0)), 6)
+                if contrib:
+                    kinds.append([contrib, axis, tag, n])
         parts.sort(key=lambda p: (-p[0], p[1], p[2]))
         negative.sort(key=lambda p: (p[0], p[1], p[2]))
-        b = round(sum(p[0] for p in parts[:M.TOP_N]) + sum(p[0] for p in negative[:M.TOP_N]), 6)
+        b = b_score(parts, negative, kinds)
         start = RC.period_start(period)
         # Reasons shown to the user are the positive parts; the negative ones
         # only lower the score. `strong` (the first sort key everywhere) is the
         # score itself in v2: tiers by the number of strong matches were part of
         # v1 and were not what the comparison validated.
         c.update(stage_id=sid, b=b, c=0.0, total=b, why_b=parts[:6], why_b_neg=negative[:M.TOP_N],
+                 why_kind=kinds,
                  person_parts=parts, why_c=[], why_v="", vr=0.0,
                  n_match=len(parts), strong=b,
                  cn=0.0, both=False, a=[], theme=[], declined="",
@@ -189,6 +247,23 @@ def prepare(raw: dict, candidates: list[dict], rated: list[dict], *,
                         "n_unknown": sum(r.get("verdict_source") not in ("demo", "user") for r in rated),
                         "scale": scale, "n_people": len(values)})
     return out
+
+
+def plain_sum(values) -> float:
+    """Left-to-right float addition. Python 3.12+ `sum()` compensates rounding
+    errors for floats, which the Worker's port (plain `+=`) cannot reproduce."""
+    total = 0.0
+    for v in values:
+        total += v
+    return total
+
+
+def b_score(parts, negative, kinds) -> float:
+    """A show's score: strongest 3 people up, strongest 3 down, plus the mean
+    of its kind-of-show tags (kinds in (axis, tag) order)."""
+    kind = plain_sum(k[0] for k in kinds) / len(kinds) if kinds else 0.0
+    return round(plain_sum(p[0] for p in parts[:M.TOP_N])
+                 + plain_sum(p[0] for p in negative[:M.TOP_N]) + kind, 6)
 
 
 def finish(d: dict, *, top: int, weights: dict) -> dict:

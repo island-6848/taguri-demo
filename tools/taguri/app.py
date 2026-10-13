@@ -3479,14 +3479,18 @@ def _apply_weights(user_id: str, d: dict, w: dict | None = None) -> dict:
         # 履歴 2 本以上を 1 件として数える。検証 028）。既定の並びは実測どおりに保たれる。
         c["strong"] = round(sum(mul(group_of(x[1])) for x in wb
                                 if x[1] == "出演" or x[3] >= 2), 3)
-        if c.get("recommendation_version") == "person-graded-v2":
-            # v2 (user_recommender.VERSION): the score is the order; parts that
-            # lowered the show are reweighted too.
+        if c.get("recommendation_version") == "person-ordinal-v3":
+            # v3 (user_recommender.VERSION): the score is the order; parts that
+            # lowered the show and the kind-of-show tags ("作品の内容") are
+            # reweighted too.
+            import user_recommender as UR
             neg = [[round(x[0] * mul(group_of(x[1])), 6)] + list(x[1:])
                    for x in (c.get("why_b_neg") or []) if mul(group_of(x[1])) > 0]
-            c["why_b_neg"] = neg
-            c["b"] = round(sum(x[0] for x in sorted(wb, key=lambda x: -x[0])[:3])
-                           + sum(x[0] for x in sorted(neg, key=lambda x: x[0])[:3]), 4)
+            kinds = ([] if mul("theme") <= 0 else
+                     [[round(x[0] * mul("theme"), 6)] + list(x[1:]) for x in (c.get("why_kind") or [])])
+            c["why_b_neg"], c["why_kind"] = neg, kinds
+            c["b"] = round(UR.b_score(sorted(wb, key=lambda x: -x[0]),
+                                      sorted(neg, key=lambda x: x[0]), kinds), 4)
             c["strong"] = c["b"]
         c["total"] = round(c["b"] + RC2.W_C * c["c"], 4)
         return c
