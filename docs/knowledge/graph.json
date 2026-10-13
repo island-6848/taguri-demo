@@ -1098,6 +1098,19 @@
    "verifies": []
   },
   {
+   "id": "lit-multi-criteria",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "総合評価に加えて観点ごとの評価を使う推薦（多基準推薦）は、1 つの評価だけより精度が上がったと報告されている（Adomavicius & Kwon 2007 ほか）",
+   "sources": [
+    "https://web-ainf.aau.at/pub/jannach/files/Conference_ACMEC2012.pdf",
+    "https://www.springerprofessional.de/en/multi-criteria-recommender-systems/1519568",
+    "https://ir.webis.de/anthology/2014.sigirconf_conference-2014.10"
+   ],
+   "verifies": []
+  },
+  {
    "id": "lit-negative-ratings",
    "type": "finding",
    "status": "unverified",
@@ -1129,6 +1142,18 @@
    "sources": [
     "https://arxiv.org/abs/1504.08175",
     "https://investigadores.anid.cl/es/public_search/work?id=233531"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "lit-price-value",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "「値段に見合うか（知覚価値）」は品質と支払う犠牲の釣り合いで決まり、推薦でも価格を別に扱う研究がある（Zeithaml 1988・Zheng ほか 2020）",
+   "sources": [
+    "https://www.sodanet.gr/publications/bibliography/consumer-perceptions-of-price-quality-and-value-a-means-end-model-and-synthesis-of-evidence",
+    "https://fi.ee.tsinghua.edu.cn/~gaochen/papers/ICDE2020.pdf"
    ],
    "verifies": []
   },
@@ -1878,6 +1903,15 @@
    "verifies": []
   },
   {
+   "id": "q-rating-aspects",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "総合の評価のほかに、何が良く何が悪かったか（内容・構成・演出・出演・値段・会場）をどう取るか",
+   "sources": [],
+   "verifies": []
+  },
+  {
    "id": "q-rating-scale",
    "type": "question",
    "status": "open",
@@ -2065,6 +2099,17 @@
    "sources": [
     "https://flarecalc.com/calculators/r2",
     "https://www.spendbase.co/?p=35561"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "rating-mixes-aspects",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "観劇の評価は内容だけでなく、値段に見合うか・構成・演出などが混ざって 1 つの記号になる",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/blob/master/tools/review/user_recommender.py"
    ],
    "verifies": []
   },
@@ -3254,6 +3299,11 @@
    "to": "q-reco-learning-design"
   },
   {
+   "from": "lit-multi-criteria",
+   "rel": "supports",
+   "to": "q-rating-aspects"
+  },
+  {
    "from": "lit-negative-ratings",
    "rel": "supports",
    "to": "q-rating-scale"
@@ -3267,6 +3317,11 @@
    "from": "lit-prequential",
    "rel": "supports",
    "to": "q-reco-learning-design"
+  },
+  {
+   "from": "lit-price-value",
+   "rel": "supports",
+   "to": "q-rating-aspects"
   },
   {
    "from": "lit-rating-noise",
@@ -3669,6 +3724,16 @@
    "to": "comp-cf-worker"
   },
   {
+   "from": "q-rating-aspects",
+   "rel": "depends_on",
+   "to": "q-rating-scale"
+  },
+  {
+   "from": "q-rating-aspects",
+   "rel": "affects",
+   "to": "q-reco-learning-design"
+  },
+  {
    "from": "q-rating-scale",
    "rel": "depends_on",
    "to": "triangle-label-mismatch"
@@ -3817,6 +3882,16 @@
    "from": "r2-free-tier",
    "rel": "affects",
    "to": "comp-catalog-pipeline"
+  },
+  {
+   "from": "rating-mixes-aspects",
+   "rel": "raises",
+   "to": "q-rating-aspects"
+  },
+  {
+   "from": "rating-mixes-aspects",
+   "rel": "affects",
+   "to": "comp-recommender"
   },
   {
    "from": "reco-accuracy-unverified",
