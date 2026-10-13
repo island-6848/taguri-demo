@@ -423,7 +423,7 @@
   {
    "id": "dec-crawler-gha-private",
    "type": "decision",
-   "status": "proposed",
+   "status": "adopted",
    "date": "2026-10-13",
    "title": "取得処理は、非公開の別リポジトリの GitHub Actions で動かす（勧め）",
    "sources": [
@@ -980,7 +980,7 @@
   {
    "id": "q-crawler-host",
    "type": "question",
-   "status": "open",
+   "status": "answered",
    "date": "2026-10-13",
    "title": "公演情報の取得処理をどこで動かすか",
    "sources": [],
@@ -1819,7 +1819,7 @@
   },
   {
    "from": "dec-crawler-gha-private",
-   "rel": "affects",
+   "rel": "answers",
    "to": "q-crawler-host"
   },
   {
