@@ -213,3 +213,10 @@ body{font-family:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",YuGothic,syst
  .ticket.cmp .body{padding:16px 22px 6px 16px}
  .ticket.cmp .cfoot{padding:4px 22px 16px}}
 @media (prefers-reduced-motion:reduce){.ticket.cmp .more>summary::before{transition:none}}
+
+/* ---- 注記（.note）── 枠で囲まない。白い紙の箱に入れると、半券（公演の 1 枚）と同じ重さに見えて
+   「押せる何か」や「別の札」に見える（起案者の指摘 2026-10-13「謎の枠で表示されてるのなんで」）。
+   小さな灰の地の文として本文の流れに置き、続く注記どうしは詰めて並べる */
+.note{background:none;border:0;border-radius:0;padding:0;margin:10px 0 0;
+ color:var(--mute);font-size:12.5px;line-height:1.7}
+.note+.note{margin-top:4px}
