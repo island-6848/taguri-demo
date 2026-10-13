@@ -811,6 +811,17 @@
    "verifies": []
   },
   {
+   "id": "design-desktop",
+   "type": "decision",
+   "status": "proposed",
+   "date": "2026-10-13",
+   "title": "パソコンの見た目の案（左の行き先の帯に 14 項目を組で並べ、本文は 920px 幅、半券にポスターの列）",
+   "sources": [
+    "https://claude.ai/artifact/4o7QY23vNLcZF7wcrqVQg9 （デザイン案のキャンバス、「パソコン」の段）"
+   ],
+   "verifies": []
+  },
+  {
    "id": "design-studio",
    "type": "component",
    "status": "retired",
@@ -2693,6 +2704,11 @@
    "from": "demo-seed-link-rate",
    "rel": "affects",
    "to": "comp-recommender"
+  },
+  {
+   "from": "design-desktop",
+   "rel": "depends_on",
+   "to": "dec-design-adopted"
   },
   {
    "from": "design-studio",
