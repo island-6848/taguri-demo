@@ -50,7 +50,9 @@ export function dumps(x) {
   if (x === true) return 'true';
   if (x === false) return 'false';
   if (typeof x === 'number') return Number.isInteger(x) ? String(x) : pyFloat(x);
-  if (typeof x === 'string') return JSON.stringify(x).replace(/[  ]/g, c => c);
+  // JSON.stringify and json.dumps(ensure_ascii=False) escape the same characters
+  // (U+2028/U+2029 are left as they are by both).
+  if (typeof x === 'string') return JSON.stringify(x);
   if (Array.isArray(x)) return '[' + x.map(dumps).join(', ') + ']';
   return '{' + Object.entries(x).map(([k, v]) => JSON.stringify(k) + ': ' + dumps(v)).join(', ') + '}';
 }
