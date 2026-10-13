@@ -599,7 +599,7 @@ function compactTickets(root) {
     t.classList.add("cmp");
     const more = document.createElement("details");
     more.className = "more";
-    more.innerHTML = "<summary><b>くわしく</b><span>会期・料金・出演の全員・あらすじの全文・公式サイト</span></summary>";
+    more.innerHTML = "<summary><b>くわしく</b><span>会期・料金・出演の全員・あらすじの全文</span></summary>";
     const box = document.createElement("div");
     box.className = "morebody";
     more.appendChild(box);
@@ -675,8 +675,7 @@ function compactTickets(root) {
     const site = t.querySelector(".pcol .sitebtn");
     if (site) {
       box.appendChild(site);
-      // スマホでは公式サイトへの道を「発売済み」の丸の右に出す（起案者の指示 2026-10-13）。
-      // パソコンでは今までどおり「くわしく」の中のボタン（出し分けは theme.css）
+      // 公式サイトへの道は「発売済み」の丸の右に出す（起案者の指示 2026-10-13。スマホもパソコンも同じ）
       const a = document.createElement("a");
       a.className = "sitelink";
       a.href = site.getAttribute("href");

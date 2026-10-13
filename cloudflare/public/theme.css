@@ -202,7 +202,10 @@ body{font-family:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",YuGothic,syst
 .ticket.cmp .why.fold>li:nth-child(n+4){display:none}
 .ticket.cmp .whyfold{min-height:32px;padding:0;border:0;background:none;color:var(--ink);font:inherit;font-size:12px;
  text-decoration:underline;text-underline-offset:3px;cursor:pointer}
-.ticket.cmp .act{margin-top:10px}
+/* 回答の帯は左に寄せて全幅で置く。style.css の別画面向けの `.act{width:33%}` と、`.btns{margin-left:auto}`
+   （右寄せ）が効くと、パソコンでは帯が右へずれ、上の線が短く切れていた */
+.ticket.cmp .act{margin-top:10px;width:auto;min-width:0;border-top:0;padding-top:0}
+.ticket.cmp .act .btns{margin-left:0}
 .ticket.cmp .more{margin-top:10px;border-top:1px solid var(--grid)}
 .ticket.cmp .more>summary{min-height:40px;display:flex;align-items:center;gap:8px;list-style:none;cursor:pointer;
  font-size:13px;font-weight:700}
@@ -233,17 +236,16 @@ body{font-family:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",YuGothic,syst
 /* ---- 見出しの下のえんじの縞の帯（.curtain、前の「幕」の飾り）は出さない（起案者の指示 2026-10-13） */
 .curtain{display:none}
 
-/* ---- 公式サイトへの道 ── スマホでは「発売済み」の丸の右に小さな押し口で出し、「くわしく」の中の
-   ボタンは隠す。パソコンでは「くわしく」の中のボタンだけ（起案者の指示 2026-10-13） */
-.ticket.cmp .sitelink{display:none}
-@media(max-width:640px){
- .ticket.cmp .sale{flex-wrap:wrap;align-items:center;gap:8px}
- .ticket.cmp .sitelink{display:inline-flex;align-items:center;gap:4px;min-height:32px;padding:0 10px;
-  border:1px solid var(--ink);border-radius:8px;background:var(--surf);color:var(--ink);
-  font-size:12px;font-weight:500;text-decoration:none;white-space:nowrap}
- .ticket.cmp .sitelink:hover{background:var(--curtain-w)}
- .ticket.cmp .sitelink:focus-visible{outline:2px solid var(--curtain);outline-offset:2px}
- .ticket.cmp .morebody .sitebtn{display:none}}
+/* ---- 公式サイトへの道 ── 「発売済み」などの丸の右に小さな押し口で出し、「くわしく」の中のボタンは隠す。
+   スマホもパソコンも同じ形（起案者の指示 2026-10-13「スマホ版で公式サイトへのリンクは発売済みの丸の右に」
+   「パソコン版のおすすめ画面も同じ形にそろえて」） */
+.ticket.cmp .sale{flex-wrap:wrap;align-items:center;gap:8px}
+.ticket.cmp .sitelink{display:inline-flex;align-items:center;gap:4px;min-height:32px;padding:0 10px;
+ border:1px solid var(--ink);border-radius:8px;background:var(--surf);color:var(--ink);
+ font-size:12px;font-weight:500;text-decoration:none;white-space:nowrap}
+.ticket.cmp .sitelink:hover{background:var(--curtain-w);color:var(--ink)}
+.ticket.cmp .sitelink:focus-visible{outline:2px solid var(--curtain);outline-offset:2px}
+.ticket.cmp .morebody .sitebtn{display:none}
 
 /* ---- 回答の帯 ── 3 つとも同じ白い押し口で並べ、押した 1 つだけ色を変えて弾ませる。
    興味ありはえんじ、興味なし・持っているは濃い灰。ほかの 2 つは薄くする
