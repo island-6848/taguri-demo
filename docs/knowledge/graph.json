@@ -358,6 +358,20 @@
    ]
   },
   {
+   "id": "corich-sitemap-stage-ids",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "CoRich のサイトマップには、すべての公演ページ（/stage/<id>）が更新日つきで載っている",
+   "sources": [
+    "https://github.com/island-6848/taguri-crawler/actions/runs/38403569197（非公開）",
+    "https://stage.corich.jp/sitemaps/sitemap.xml.gz"
+   ],
+   "verifies": [
+    "S24"
+   ]
+  },
+  {
    "id": "crawler-state-between-runs",
    "type": "finding",
    "status": "confirmed",
@@ -1077,7 +1091,7 @@
   {
    "id": "q-corich-sitemap",
    "type": "question",
-   "status": "open",
+   "status": "answered",
    "date": "2026-10-13",
    "title": "CoRich のサイトマップから、これからの公演を見つけられるか",
    "sources": [],
@@ -1893,6 +1907,16 @@
   },
   {
    "from": "corich-search-waf-403",
+   "rel": "affects",
+   "to": "dec-crawler-gha-private"
+  },
+  {
+   "from": "corich-sitemap-stage-ids",
+   "rel": "answers",
+   "to": "q-corich-sitemap"
+  },
+  {
+   "from": "corich-sitemap-stage-ids",
    "rel": "affects",
    "to": "dec-crawler-gha-private"
   },
