@@ -881,6 +881,18 @@
    ]
   },
   {
+   "id": "eval-design-choices",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "推薦の計算の細部（数字への直し方・平均か合計か・割り引き・足す人数）はほぼ差が無く、効くのはジャンルの好みと監督の重みを上げること",
+   "sources": [
+    "docs/research/person-reco-eval.md",
+    "tools/review/eval_design_choices.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "eval-douban-consensus-strong",
    "type": "finding",
    "status": "confirmed",
@@ -1315,6 +1327,19 @@
    "title": "低い評価は、とくにデータが少ないときに推薦の役に立つ（Negative ratings play a positive role in information filtering）",
    "sources": [
     "https://core.ac.uk/display/20656098"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "lit-ordinal-damping",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-13",
+   "title": "評価を等間隔の数ではなく順序として扱う研究（OrdRec）と、少ない件数を割り引く「damping」は推薦の定番",
+   "sources": [
+    "https://recsys.acm.org/recsys11/session-methodological-issues/",
+    "https://lkpy.readthedocs.io/en/0.14.1/bias.html",
+    "https://evanmiller.org/bayesian-average-ratings.html"
    ],
    "verifies": []
   },
@@ -3513,6 +3538,16 @@
    "to": "q-ec2-cost"
   },
   {
+   "from": "eval-design-choices",
+   "rel": "affects",
+   "to": "comp-recommender"
+  },
+  {
+   "from": "eval-design-choices",
+   "rel": "supports",
+   "to": "eval-genre-preference"
+  },
+  {
    "from": "eval-douban-consensus-strong",
    "rel": "raises",
    "to": "q-public-reputation-signal"
@@ -3771,6 +3806,16 @@
    "from": "lit-negative-ratings",
    "rel": "supports",
    "to": "q-rating-scale"
+  },
+  {
+   "from": "lit-ordinal-damping",
+   "rel": "affects",
+   "to": "q-rating-scale"
+  },
+  {
+   "from": "lit-ordinal-damping",
+   "rel": "supports",
+   "to": "eval-design-choices"
   },
   {
    "from": "lit-performing-arts",

@@ -14,6 +14,8 @@ scales part-way? Checked on the same public data as eval_person_reco.py.
   1. per_scale: 同じ段階の評価どうしで「いつもより高いか低いか」を出す（提案）
   2. linear: どの段階も 0〜1 に引き伸ばしてから、まとめて比べる
   3. latest_only: 変えたあとの段階の評価だけを使う
+  4. per_scale_percentile: 同じ段階の評価の中での順位（0〜1 の位置）にそろえる。
+     段階どうしは「その人の中での位置」で対応づける（段階の数を問わない）
 """
 from __future__ import annotations
 
@@ -41,6 +43,18 @@ def coarsen(r: int, k: int) -> int:
 def graded_mixed(history, people, how="per_scale"):
     """history: [(movie, value, scale)]. Same as person-graded-v2, except how
     ratings on different scales become one 'higher/lower than usual' value."""
+    if how == "per_scale_percentile":
+        by = defaultdict(list)
+        for _, v, k in history:
+            by[k].append(v)
+        acc = defaultdict(lambda: [0, 0.0])
+        for m, v, k in history:
+            vs = by[k]
+            z = (sum(x < v for x in vs) + 0.5 * sum(x == v for x in vs)) / len(vs) - 0.5
+            for rp in set(people.get(m, ())):
+                acc[rp][0] += 1
+                acc[rp][1] += z
+        return _score(acc, people)
     if how == "latest_only":
         last = history[-1][2] if history else 5
         history = [h for h in history if h[2] == last]
@@ -62,6 +76,10 @@ def graded_mixed(history, people, how="per_scale"):
         for rp in set(people.get(m, ())):
             acc[rp][0] += 1
             acc[rp][1] += z
+    return _score(acc, people)
+
+
+def _score(acc, people):
     def score(m):
         parts = [s / (n + E.CONF_K) * E.ROLE_W[role] for (role, p) in set(people.get(m, ()))
                  if (n_s := acc.get((role, p))) for n, s in [n_s]]
@@ -101,7 +119,7 @@ def main() -> int:
             half = TRAIN // 2
             for k2 in (2, 3):
                 mixed = [(m, r, 5) for m, r in train[:half]] + [(m, coarsen(r, k2), k2) for m, r in train[half:]]
-                for how in ("per_scale", "linear", "latest_only"):
+                for how in ("per_scale", "per_scale_percentile", "linear", "latest_only"):
                     run(f"switch_5to{k2}_{how}", mixed, how)
     out = {}
     base = res["fixed_5"]
@@ -115,7 +133,7 @@ def main() -> int:
                      "worse_than_5": round(sum(x < 0 for x in d) / len(d), 3)}
     # Paired: the proposed per-scale handling against the alternatives.
     for k2 in (2, 3):
-        for other in ("linear", "latest_only"):
+        for other in ("linear", "latest_only", "per_scale_percentile"):
             x, y = res[f"switch_5to{k2}_per_scale"], res[f"switch_5to{k2}_{other}"]
             common = [u for u in x if u in y]
             d = [statistics.fmean(x[u]) - statistics.fmean(y[u]) for u in common]
