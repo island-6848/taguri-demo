@@ -49,7 +49,7 @@ const NAV = [[null, "おすすめ", "ticket", [["/recommend", "今週のおす�
 // --- 絵記号(icons.py の P/ALIAS をそのまま) --------------------------------
 const ICON_P = {"ticket": "M3 9a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2 2 2 0 0 0 0 6 2 2 0 0 1-2 2H5a2 2 0 0 1-2-2 2 2 0 0 0 0-6zM11 7v10", "star": "M12 3.8l2.5 5.1 5.6.8-4 3.9 1 5.6-5.1-2.7-5.1 2.7 1-5.6-4-3.9 5.6-.8z", "inbox": "M3 12h5l1.5 2.5h5L16 12h5M3 12l3-7h12l3 7v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z", "chart": "M3 20h18M6.5 20v-5M11.5 20V6M16.5 20v-9", "search": "M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM16.2 16.2 21 21", "download": "M12 3v12m0 0 4-4m-4 4-4-4M4 20h16", "mail": "M3 6h18v12H3zM3 6.5l9 6.5 9-6.5", "plus": "M12 5v14M5 12h14", "clock": "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7.5V12l3.5 2", "pencil": "M4 20h4L18 10l-4-4L4 16zM13.5 6.5l4 4", "tag": "M4 12.5 12.5 4H20v7.5L11.5 20zM16.4 7.6h.01", "image": "M3 5h18v14H3zM3 15.5l5-4 4 3 3-2.5 6 4.5M8 9.5h.01", "user": "M12 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM4 20c0-3.3 3.6-5 8-5s8 1.7 8 5", "building": "M4 20V6l6-2.5V20M10 20h10V10.5L10 7M13.5 12h.01M13.5 16h.01M17 12h.01M17 16h.01", "book": "M4 5h7v15H4zM13 5h7v15h-7M11 5v15", "light": "M12 3v3.5M12 17.5V21M3 12h3.5M17.5 12H21M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18", "eye": "M2.5 12S6 6 12 6s9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6zM12 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z", "check": "M4.5 12.5 9.5 18 20 6", "flag": "M5 21V4h13l-2.5 4.5L18 13H5", "calendar": "M4 6.5h16V20H4zM4 10.5h16M8.5 3.5v4M15.5 3.5v4", "chevron": "M9.5 5.5 16 12l-6.5 6.5", "network": "M6 18a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM18 18a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM6.9 15.3 10.6 9M17.1 15.3 13.4 9M8 17.3h8", "gear": "M10.6 3.1 13.4 3.1 15.2 6.5 19.0 6.3 20.4 8.8 18.4 12.0 20.4 15.2 19.0 17.7 15.2 17.5 13.4 20.9 10.6 20.9 8.8 17.5 5.0 17.7 3.6 15.2 5.6 12.0 3.6 8.8 5.0 6.3 8.8 6.5ZM12 9.8a2.2 2.2 0 1 0 0 4.4 2.2 2.2 0 0 0 0-4.4z", "link": "M14 4h6v6M20 4 10 14M18 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h5"};
 // スマホ幅の 4 つの大メニューの絵記号（dec-phone-nav-four）: 毛糸玉・判子・帳面
-Object.assign(ICON_P, {"yarn": "M11 4a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15zM5.2 7.6c4.6.8 8.6 4.6 9.6 10.6M3.7 11.3c4.4.4 7.7 3.4 8.4 7.6M8.6 4.4c4.6 1.4 8.3 5.4 9.5 10M16.3 16.3c1.8 1.6 3.4 2.6 5.2 2.9", "stamp": "M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16zM12 7.8a4.2 4.2 0 1 0 0 8.4 4.2 4.2 0 0 0 0-8.4z", "notebook": "M5 4.5h11.5a2 2 0 0 1 2 2V20H7a2 2 0 0 1-2-2zM5 17.5a2 2 0 0 1 2-2h11.5M9 8.5h6"});
+Object.assign(ICON_P, {"info": "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 11v5.5M12 7.6h.01", "yarn": "M11 4a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15zM5.2 7.6c4.6.8 8.6 4.6 9.6 10.6M3.7 11.3c4.4.4 7.7 3.4 8.4 7.6M8.6 4.4c4.6 1.4 8.3 5.4 9.5 10M16.3 16.3c1.8 1.6 3.4 2.6 5.2 2.9", "stamp": "M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16zM12 7.8a4.2 4.2 0 1 0 0 8.4 4.2 4.2 0 0 0 0-8.4z", "notebook": "M5 4.5h11.5a2 2 0 0 1 2 2V20H7a2 2 0 0 1-2-2zM5 17.5a2 2 0 0 1 2-2h11.5M9 8.5h6"});
 const ICON_ALIAS = {"おすすめ": "ticket", "お気に入り": "star", "登録": "inbox", "記録": "chart", "探す": "search", "書き出す": "download", "暦": "calendar"};
 function ico(name, size, cls) {
   size = size || 16; cls = cls || "";
@@ -408,6 +408,7 @@ function renderScreen(el, activePath, d, exposureSource) {
   }
   if (d.public) applyDemoRestrictions(el);
   renderCrumbBar(activePath, d.title || "");
+  infoFromLede(el);
   updateNavActive(activePath);
   fixupSynClamp(el);
   fixupMonthScroll(el);
@@ -1939,6 +1940,55 @@ document.addEventListener("keydown", ev => {
   const pop = document.querySelector(".side .padd-pop");
   if (ev.key === "Escape" && pop && !pop.hidden) { pop.hidden = true; document.querySelector(".side .padd")?.focus(); }
 });
+
+// **画面の説明文は、パンくずの右端の「ⓘ」から開く。**（起案者の指示 2026-10-13「こういう文章はパンくずリストの
+// 一番右にあるやつの右に、インフォーメーションマークつけて、押したらポップアップで説明出るように（パソコンも）。
+// それでこの文は消して。全ページに適用」）。題字（最初の h1）のすぐ後に続く説明の段落（p.lede・p.lead・p.note）を
+// 本文から外し、説明の札に移す。リンクや強調はそのまま動く（押すと移動する）。説明が無い画面には ⓘ を出さない
+function infoFromLede(root) {
+  const bar = document.getElementById("crumbbar"), nav = document.getElementById("crumbnav");
+  if (!bar || !nav) return;
+  bar.querySelectorAll(".infopop").forEach(n => n.remove());
+  const h1 = root.querySelector("h1");
+  if (!h1) return;
+  const isLede = n => n && n.nodeType === 1 && n.matches("p.lede, p.lead, p.note");
+  let n = h1.nextElementSibling;
+  if (!n && h1.parentElement && h1.parentElement !== root) n = h1.parentElement.nextElementSibling;
+  const take = [];
+  while (isLede(n)) { take.push(n); n = n.nextElementSibling; }
+  if (!take.length) return;
+  const pop = document.createElement("div");
+  pop.className = "infopop";
+  pop.id = "infopop";
+  pop.setAttribute("role", "dialog");
+  pop.setAttribute("aria-label", "この画面の説明");
+  pop.hidden = true;
+  take.forEach(p => pop.appendChild(p));
+  bar.appendChild(pop);
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "crumbinfo";
+  btn.setAttribute("aria-label", "この画面の説明");
+  btn.setAttribute("aria-expanded", "false");
+  btn.setAttribute("aria-controls", "infopop");
+  btn.title = "この画面の説明";
+  btn.innerHTML = ico("info", 18);
+  nav.appendChild(btn);
+  const close = () => { pop.hidden = true; btn.setAttribute("aria-expanded", "false"); };
+  btn.addEventListener("click", ev => {
+    ev.stopPropagation();
+    if (!pop.hidden) { close(); return; }
+    const b = bar.getBoundingClientRect(), r = btn.getBoundingClientRect();
+    pop.style.top = (r.bottom - b.top + 8) + "px";
+    pop.hidden = false;
+    btn.setAttribute("aria-expanded", "true");
+  });
+  pop.addEventListener("keydown", ev => { if (ev.key === "Escape") { close(); btn.focus(); } });
+  btn.addEventListener("keydown", ev => { if (ev.key === "Escape") close(); });
+  document.addEventListener("click", ev => {
+    if (!pop.hidden && !pop.contains(ev.target) && ev.target !== btn) close();
+  });
+}
 
 // **書いてある感想・回のメモの「書き直す」を、文の末尾の鉛筆にする。**（起案者の指摘 2026-10-13
 // 「『書き直す』のボタンがあるせいで文字の折り返しが多くて感想が縦に伸びてる…鉛筆のアイコンボタンを
