@@ -547,6 +547,19 @@
    "verifies": []
   },
   {
+   "id": "dec-design-adopted",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-13",
+   "title": "いまの見た目（たぐる糸・あたたかい灰の地・1 行の回答の帯・判子）を採用し、調整室は一旦閉じる",
+   "sources": [
+    "web/theme.css",
+    "web/design.json",
+    "https://claude.ai/artifact/NH7Z8DGfij161BfkjEGg3q"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-design-default-ito",
    "type": "decision",
    "status": "adopted",
@@ -800,7 +813,7 @@
   {
    "id": "design-studio",
    "type": "component",
-   "status": "current",
+   "status": "retired",
    "date": "2026-10-13",
    "title": "見た目の調整室（起案者が色・文字・ボタン・配置・文言を決めて保存し、Claude が読み取って実際の画面に反映する）",
    "sources": [
@@ -2385,6 +2398,21 @@
    "from": "dec-demo-trial-no-data",
    "rel": "supersedes",
    "to": "dec-demo-stays-render-free"
+  },
+  {
+   "from": "dec-design-adopted",
+   "rel": "depends_on",
+   "to": "dec-design-default-ito"
+  },
+  {
+   "from": "dec-design-adopted",
+   "rel": "depends_on",
+   "to": "design-studio"
+  },
+  {
+   "from": "dec-design-adopted",
+   "rel": "affects",
+   "to": "dec-theme-user-choice"
   },
   {
    "from": "dec-design-default-ito",

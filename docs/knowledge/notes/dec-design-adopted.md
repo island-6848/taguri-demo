@@ -1,0 +1,19 @@
+---
+id: dec-design-adopted
+type: decision
+status: adopted
+date: 2026-10-13
+title: いまの見た目（たぐる糸・あたたかい灰の地・1 行の回答の帯・判子）を採用し、調整室は一旦閉じる
+sources:
+  - web/theme.css
+  - web/design.json
+  - https://claude.ai/artifact/NH7Z8DGfij161BfkjEGg3q
+links:
+  - depends_on: dec-design-default-ito
+  - depends_on: design-studio
+  - affects: dec-theme-user-choice
+---
+起案者の指示（2026-10-13）「一旦調整室閉じて、今のデザインを採用」。
+採用したもの: あたたかい灰の地（#f4f1ec）と暖かい白の紙（#fffdfa）、文字 #2b2522、毛糸の赤 #b8432f を 1 色だけ。半券は四角（角と影なし）。押し口は調整室と同じ作り（白地・細い枠・角 8px・高さ 40px）、回答 3 つは 1 本の帯で「興味あり」だけ濃く塗り、並びは 興味あり・興味なし・すでに持っている。評価 ◎○△× は判子。ロゴの字は元の書体。文言は「おすすめ理由」「日記帳」。暗い表示は元のまま。
+2026-10-13T14:58 に調整室へ保存された、文言を既定に戻した版は採らなかった（いまの画面を採用したため）。調整室の design/current は採用した値に書き直した。
+調整室は一旦使わない（消してはいない）。まだ入れていないもの: 画面の行き先を上に 5 つ並べる作り替え、半券に糸を通す飾り、書体を自分のサイトから配ること（q-webfont-local）、利用者が見た目を選ぶ設定（dec-theme-user-choice は proposed のまま）。
