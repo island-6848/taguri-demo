@@ -616,9 +616,9 @@ function compactTickets(root) {
       p.className = "lcast";
       // 6 人目からは隠しておき、「くわしく」を開いたらこの行のまま続きを出す（起案者の指示 2026-10-13
       // 「くわしく、を押したとき『ほか6名』が展開されて…名前たちが出るように」）
-      p.innerHTML = '<span class="cl">出演</span>' + E(names.slice(0, CAST_LEAD).join("、"))
+      p.innerHTML = '<span class="cl">出演</span><span class="lv">' + E(names.slice(0, CAST_LEAD).join("、"))
         + (names.length > CAST_LEAD ? '<span class="lrest">、' + E(names.slice(CAST_LEAD).join("、")) + "</span>"
-          + '<span class="n">　ほか ' + (names.length - CAST_LEAD) + " 名</span>" : "");
+          + '<span class="n">　ほか ' + (names.length - CAST_LEAD) + " 名</span>" : "") + "</span>";
       lead.appendChild(p);
       // 「くわしく」の中では出演の行を重ねて出さない（作り手の行と出典は残す）
       const row = cv.closest(".cr"), cast = row.closest(".cast");
@@ -639,7 +639,9 @@ function compactTickets(root) {
       if (text.trim()) {
         const p = document.createElement("p");
         p.className = "lsyn";
-        p.textContent = firstSentence(text);
+        // 「出演」と同じく見出しを付ける ── 無いと出演の続きと区別が付かない（起案者の指摘 2026-10-13
+        // 「どこからがあらすじの1文目なのかわかりにくい」）
+        p.innerHTML = '<span class="cl">あらすじ</span><span class="lv">' + E(firstSentence(text)) + "</span>";
         lead.appendChild(p);
       }
     }
