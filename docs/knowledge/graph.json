@@ -1859,6 +1859,15 @@
    ]
   },
   {
+   "id": "q-favourites-seed",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "最初に入れる「お気に入り」から、評価が付く前の推薦を作るか（起案者の案）",
+   "sources": [],
+   "verifies": []
+  },
+  {
    "id": "q-firebase-free-tier",
    "type": "question",
    "status": "open",
@@ -1882,6 +1891,15 @@
    "status": "open",
    "date": "2026-10-13",
    "title": "アカウント削除で Firebase 側の利用者も本当に消えているか",
+   "sources": [],
+   "verifies": []
+  },
+  {
+   "id": "q-hidden-gate",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "新しい要素を安全に入れる「裏の答え合わせ」をどう作るか（起案者が良いと判断）",
    "sources": [],
    "verifies": []
   },
@@ -2564,6 +2582,17 @@
    "title": "あらすじの読み取りは Gemini API。以前の claude CLI 呼び出しは起案者の判断でやめている",
    "sources": [
     "tools/credits/extract_theme_llm.py"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "theme-words-sparse-past",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-13",
+   "title": "持ち主の過去の検証では、あらすじのテーマ語は作品間で重なりにくく、一般的な語（家族・恋愛・コメディ・友情）に偏っていた",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/blob/master/tools/review/recommend2.py"
    ],
    "verifies": []
   },
@@ -4014,6 +4043,31 @@
    "to": "q-direction"
   },
   {
+   "from": "q-favourites-seed",
+   "rel": "depends_on",
+   "to": "lit-syskill-webert-prior"
+  },
+  {
+   "from": "q-favourites-seed",
+   "rel": "depends_on",
+   "to": "q-hidden-gate"
+  },
+  {
+   "from": "q-favourites-seed",
+   "rel": "affects",
+   "to": "comp-recommender"
+  },
+  {
+   "from": "q-hidden-gate",
+   "rel": "depends_on",
+   "to": "dec-reco-per-user-eval"
+  },
+  {
+   "from": "q-hidden-gate",
+   "rel": "affects",
+   "to": "comp-recommender"
+  },
+  {
    "from": "q-lockfile-reproducible",
    "rel": "affects",
    "to": "comp-cf-worker"
@@ -4457,6 +4511,11 @@
    "from": "synopsis-llm-history",
    "rel": "affects",
    "to": "q-synopsis-reader"
+  },
+  {
+   "from": "theme-words-sparse-past",
+   "rel": "affects",
+   "to": "q-theme-preference"
   },
   {
    "from": "throttle-keyed-by-client-address",
