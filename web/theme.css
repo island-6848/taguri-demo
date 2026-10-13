@@ -225,3 +225,18 @@ body{font-family:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",YuGothic,syst
 .note{background:none;border:0;border-radius:0;padding:0;margin:10px 0 0;
  color:var(--mute);font-size:12.5px;line-height:1.7}
 .note+.note{margin-top:4px}
+
+/* ---- 見出しの下のえんじの縞の帯（.curtain、前の「幕」の飾り）は出さない（起案者の指示 2026-10-13） */
+.curtain{display:none}
+
+/* ---- 公式サイトへの道 ── スマホでは「発売済み」の丸の右に小さな押し口で出し、「くわしく」の中の
+   ボタンは隠す。パソコンでは「くわしく」の中のボタンだけ（起案者の指示 2026-10-13） */
+.ticket.cmp .sitelink{display:none}
+@media(max-width:640px){
+ .ticket.cmp .sale{flex-wrap:wrap;align-items:center;gap:8px}
+ .ticket.cmp .sitelink{display:inline-flex;align-items:center;gap:4px;min-height:32px;padding:0 10px;
+  border:1px solid var(--ink);border-radius:8px;background:var(--surf);color:var(--ink);
+  font-size:12px;font-weight:500;text-decoration:none;white-space:nowrap}
+ .ticket.cmp .sitelink:hover{background:var(--curtain-w)}
+ .ticket.cmp .sitelink:focus-visible{outline:2px solid var(--curtain);outline-offset:2px}
+ .ticket.cmp .morebody .sitebtn{display:none}}

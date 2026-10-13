@@ -673,7 +673,18 @@ function compactTickets(root) {
     // 「くわしく」の中は全部を読む場所なので、あらすじと出演者は最初から開いておく
     box.querySelectorAll(".syn, .cast").forEach(n => n.classList.add("open"));
     const site = t.querySelector(".pcol .sitebtn");
-    if (site) box.appendChild(site);
+    if (site) {
+      box.appendChild(site);
+      // スマホでは公式サイトへの道を「発売済み」の丸の右に出す（起案者の指示 2026-10-13）。
+      // パソコンでは今までどおり「くわしく」の中のボタン（出し分けは theme.css）
+      const a = document.createElement("a");
+      a.className = "sitelink";
+      a.href = site.getAttribute("href");
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      a.innerHTML = ico("link", 13) + "公式サイト";
+      if (sale) sale.appendChild(a); else main.querySelector(".meta")?.after(a);
+    }
     const act = main.querySelector(".act");
     if (act) act.after(more); else main.appendChild(more);
     // 耳（日付の札）の代わりに、ポスターを切り取り線の左に立てる。順位はポスターの左上、
