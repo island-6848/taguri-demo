@@ -2324,6 +2324,19 @@
    "verifies": []
   },
   {
+   "id": "stage-roles",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-13",
+   "title": "舞台の仕事の分担：演出家が作品全体の芸術面の責任者で、舞台監督は現場の進行、制作・プロデューサーは予算と運営（値段を決める側）",
+   "sources": [
+    "https://www.toshin.com/mirai/joblab/job/373",
+    "https://kumi.app/dictionary/word-舞台監督",
+    "https://crexgroup.com/ja/tenshoku/?p=10859"
+   ],
+   "verifies": []
+  },
+  {
    "id": "state-backup-py313",
    "type": "finding",
    "status": "unverified",
@@ -4037,6 +4050,11 @@
    "from": "simple-design-principles",
    "rel": "affects",
    "to": "dec-theme-user-choice"
+  },
+  {
+   "from": "stage-roles",
+   "rel": "affects",
+   "to": "q-rating-aspects"
   },
   {
    "from": "state-backup-py313",
