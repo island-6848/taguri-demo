@@ -28,7 +28,9 @@ function record(value) {
   // ◎○△× or "value/levels" on a scale the user chose (2–11 levels, e.g. "4/5").
   if (r.rating && !gradeOf(r.rating)) fail(400,'評価を確認してください。');
   // 気になった所: known codes only, stored comma-separated in a fixed order.
-  const given = value.aspects ?? [];
+  // An array, or the comma-separated text /api/state returns.
+  const raw = value.aspects ?? [];
+  const given = typeof raw === 'string' && raw.length <= 200 ? raw.split(',').filter(Boolean) : raw;
   if (!Array.isArray(given) || given.length > 8 || given.some(a => typeof a !== 'string')) fail(400,'気になった所を確認してください。');
   r.aspects = aspectCodes(given).join(',');
   if (r.aspects.split(',').filter(Boolean).length !== new Set(given).size) fail(400,'気になった所を確認してください。');

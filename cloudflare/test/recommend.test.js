@@ -170,7 +170,10 @@ test('気になった所 are saved as known codes in a fixed order, and unknown 
   assert.equal((await call(env, 'record', {...base, aspects: ['venue', 'price']}, cookie)).status, 200);
   assert.equal(sqlite.prepare("SELECT aspects FROM records WHERE id='a1'").get().aspects, 'price,venue');
   assert.equal((await call(env, 'record', {...base, aspects: ['もやもや']}, cookie)).status, 400);
-  assert.equal((await call(env, 'record', {...base, aspects: 'price'}, cookie)).status, 400);
+  // The text form /api/state returns is accepted back.
+  assert.equal((await call(env, 'record', {...base, aspects: 'venue,price'}, cookie)).status, 200);
+  assert.equal(sqlite.prepare("SELECT aspects FROM records WHERE id='a1'").get().aspects, 'price,venue');
+  assert.equal((await call(env, 'record', {...base, aspects: 7}, cookie)).status, 400);
   assert.equal((await call(env, 'record', base, cookie)).status, 200);
   assert.equal(sqlite.prepare("SELECT aspects FROM records WHERE id='a1'").get().aspects, '');
   sqlite.close();
