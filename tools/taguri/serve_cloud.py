@@ -94,9 +94,39 @@ def edition() -> str:
 
 
 def check_service_storage(ed: str) -> None:
-    """サービス版は、利用者の保存先がカタログと別の永続ディレクトリに無ければ止める。"""
-    if ed == "service" and STATE.state_dir() is None:
-        raise RuntimeError("service edition requires TAGURI_STATE_DIR on a persistent disk")
+    """Fail closed for service storage; a path alone is not a persistent volume."""
+    if ed != "service":
+        return
+    state = STATE.state_dir()
+    if state is None:
+        raise RuntimeError("service edition requires a configured persistent storage directory")
+    exposure = STATE.exposure_path().resolve()
+    if state not in exposure.parents:
+        raise RuntimeError("service telemetry must be inside the configured storage directory")
+    on_render = os.environ.get("RENDER", "").lower() == "true" or bool(os.environ.get("RENDER_SERVICE_ID"))
+    if not on_render:
+        if os.environ.get("TAGURI_ALLOW_LOCAL_SERVICE") != "1":
+            raise RuntimeError("non-Render service requires explicit local configuration")
+        return  # Local tests do not attest to host persistence.
+    raw_mount = os.environ.get("TAGURI_STATE_MOUNT", "")
+    mount = Path(raw_mount)
+    if not raw_mount or not mount.is_absolute():
+        raise RuntimeError("Render service requires a persistent mount configuration")
+    mount = mount.resolve()
+    if mount == Path("/"):
+        raise RuntimeError("service storage cannot use the container root filesystem")
+    mounted = os.path.ismount(mount)
+    # Linux bind mounts may share the parent's device; inspect mountinfo too.
+    try:
+        for line in Path("/proc/self/mountinfo").read_text().splitlines():
+            if line.split()[4] == str(mount):
+                filesystem = line.split(" - ", 1)[1].split()[0]
+                mounted = filesystem not in {"tmpfs", "ramfs", "overlay", "rootfs"}
+                break
+    except (OSError, IndexError):
+        pass
+    if not mounted or mount not in state.parents:
+        raise RuntimeError("service storage must be below an actual mounted volume")
 
 
 def _install_catalog(archive: Path) -> None:
@@ -242,4 +272,5 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
 

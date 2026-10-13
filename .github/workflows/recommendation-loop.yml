@@ -3,6 +3,7 @@ name: Recommendation feedback loop
 on:
   push:
     paths:
+      - 'deploy/**'
       - 'tools/lib/**'
       - 'tools/tickets/**'
       - 'tools/review/**'
@@ -10,6 +11,7 @@ on:
       - '.github/workflows/recommendation-loop.yml'
   pull_request:
     paths:
+      - 'deploy/**'
       - 'tools/lib/**'
       - 'tools/tickets/**'
       - 'tools/review/**'
@@ -28,10 +30,30 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Install Blueprint validation tools
+        run: python -m pip install PyYAML jsonschema
+      - name: Validate service Blueprint against official Render schema
+        run: |
+          python - <<'PYSCHEMA'
+          import json
+          import urllib.request
+          import yaml
+          import jsonschema
+          with urllib.request.urlopen("https://render.com/schema/render.yaml.json", timeout=30) as response:
+              schema = json.load(response)
+          with open("deploy/render-service.yaml", encoding="utf-8") as source:
+              blueprint = yaml.safe_load(source)
+          jsonschema.Draft202012Validator(schema).validate(blueprint)
+          print("Service Blueprint conforms to the current official Render schema")
+          PYSCHEMA
       - name: User feedback, isolation, and HTTP regressions
         run: python tools/taguri/test_user_recommendation.py
       - name: State persistence, catalog safety, and operational logs
         run: python tools/taguri/test_cloud_storage.py
+      - name: Offline state backup and restore
+        run: python tools/taguri/test_state_backup.py
+      - name: Service export privacy and persistence guards
+        run: python tools/taguri/test_service_release.py
       - name: Demo seed data
         run: python tools/taguri/test_seed_demo.py
       - name: Reaction buckets
@@ -52,3 +74,4 @@ jobs:
         run: python tools/taguri/test_demo_stability.py
       - name: Demo and service editions stay separate
         run: python tools/taguri/test_editions.py
+

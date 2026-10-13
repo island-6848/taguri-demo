@@ -3423,8 +3423,8 @@ def _settings_body(user_id: str) -> str:
 <span class="said"></span></div>
 </form></details>
 {_account_card_html(user_id)}
-{_export_card_html()}
-{_data_copy_card_html()}
+{_export_card_html(None if _is_owner(user_id) else user_id)}
+{_data_copy_card_html() if _is_owner(user_id) else ""}
 {_dropped_html(user_id)}
 {_skipped_html(user_id)}"""
 
@@ -8538,7 +8538,7 @@ def _search_body(user_id: str, q: str, ym: str = "", web: bool = False,
 
 
 # ---------------------------------------------------------------- 書き出す
-def export_payload() -> dict:
+def export_payload(user_id: str | None = None) -> dict:
     """持ち出せる形。**囲い込まないことが記録としての価値の条件である**（企画書 2 章）。"""
     con = sqlite3.connect(DB)
     con.row_factory = sqlite3.Row
@@ -8546,11 +8546,26 @@ def export_payload() -> dict:
     for t in ("works", "ratings", "attendance", "reaction", "ticket", "presented",
               "splits", "excluded", "missed"):
         try:
-            out[t] = [dict(r) for r in con.execute(f"SELECT * FROM {t}")]
+            if user_id is not None:
+                columns = {r[1] for r in con.execute(f"PRAGMA table_info({t})")}
+                # An unscoped legacy/shared table must never enter public export.
+                if "user_id" not in columns:
+                    out[t] = []
+                    continue
+                out[t] = [dict(r) for r in con.execute(
+                    f"SELECT * FROM {t} WHERE user_id=?", (user_id,))]
+            else:
+                out[t] = [dict(r) for r in con.execute(f"SELECT * FROM {t}")]
         except sqlite3.Error:
             out[t] = []
     con.close()
-    out["declared"] = RC.load_declared()
+    if user_id is None:
+        out["declared"] = RC.load_declared()
+    else:
+        values = _read_setting_json(user_id, DECLARED_KEY)
+        values = values if isinstance(values, dict) else {}
+        out["declared"] = {k: [x for x in (values.get(k) or []) if isinstance(x, str)]
+                           for k in RC.KINDS}
     return out
 
 
@@ -8616,12 +8631,12 @@ def _account_card_html(user_id: str) -> str:
 </details>"""
 
 
-def _export_card_html() -> str:
+def _export_card_html(user_id: str | None = None) -> str:
     """「書き出す」の札。**もとは独立の画面だった**（起案者の指示・2026-08-26 ──
     「とりあえず書き出し機能はあまり使わないので設定に移動してしまって」）。
     たまにしか押さない道具という点で、「設定」の他の項目と役目が近い。
     """
-    d = export_payload()
+    d = export_payload(user_id)
     li = "".join(
         f'<li>{E(EXPORT_LABEL.get(k, k))} <b>'
         f"{len(v) if isinstance(v, list) else sum(len(x) for x in v.values())} 件</b>"
@@ -8985,4 +9000,5 @@ def _tickets_body(user_id: str) -> str:
 {cards or '<p class="empty">チケットを持っている公演はまだありません。'
           '推薦の画面で「すでに持っている」を押した公演が、ここに並びます。</p>'}
 {SC.ticket_manager_html(unplaced=left)}"""
+
 

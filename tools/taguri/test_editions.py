@@ -95,7 +95,7 @@ class CloudEntry(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 SC.check_service_storage("service")
             SC.check_service_storage("demo")                    # デモは一時保存でよい
-        with patch.object(SC.STATE, "state_dir", return_value=Path("/var/taguri")):
+        with patch.object(SC.STATE, "state_dir", return_value=Path("/var/taguri")), patch.object(SC.STATE, "exposure_path", return_value=Path("/var/taguri/recommendation_exposure.db")), patch.dict(os.environ, {"TAGURI_ALLOW_LOCAL_SERVICE": "1", "RENDER": "", "RENDER_SERVICE_ID": ""}):
             SC.check_service_storage("service")
 
     def test_server_rejects_unknown_edition_and_keeps_old_flag(self):
@@ -108,3 +108,4 @@ class CloudEntry(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
