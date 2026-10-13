@@ -3,7 +3,7 @@ import {verifyIdToken, isAuthError} from './firebase-auth.js';
 import {passkeyRoutes} from './passkey.js';
 import {scoreFromIndex, d1Access} from './recommend.js';
 import {searchIndex, d1Search} from './stage-search.js';
-import {SCREEN_TABLES, nativeScreen, nativeAction, screen as nativeScreenBody, action as nativeActionBody} from './screens/index.js';
+import {SCREEN_TABLES, nativeScreen, nativeAction, screen as nativeScreenBody, action as nativeActionBody, readInput as nativeInput} from './screens/index.js';
 const MAX_BODY = 262144;
 const COOKIE = 'taguri_session';
 const TTL = 60 * 60 * 24 * 30;
@@ -274,7 +274,9 @@ async function nativeRoute(request, env, url) {
     if (isScreen) return json(await nativeScreenBody(m[1], url.searchParams, ctx));
     if (request.headers.get('origin') !== url.origin) fail(403,'同じサイトから操作してください。');
     if (!(request.headers.get('content-type') || '').startsWith('application/json')) fail(415,'JSONで送ってください。');
-    const out = await nativeActionBody(m[2], await body(request), ctx);
+    const read = await nativeInput(request);
+    if (!read.input) return json(read.body, read.status);
+    const out = await nativeActionBody(m[2], read.input, ctx);
     return json(out.body, out.status);
   } catch (error) {
     return json({ok:false,error:error.status ? error.message : '画面の読み込みに失敗しました。'}, error.status ?? 500);
