@@ -648,6 +648,20 @@ function compactTickets(root) {
         lead.appendChild(p);
       }
     }
+    // 主催（団体）と会場は別の行に分ける。ツアーで会場が複数あるときは「ほか n 会場」を添える
+    // （一覧は「くわしく」の中）（起案者の指摘 2026-10-13「タイトル、主催団体、会場の文字サイズが同じで
+    // わかりにくい…主催団体と会場は改行して表示（ツアー公演で複数会場ある場合も考えて）」）
+    const meta = main.querySelector(":scope > .meta");
+    if (meta && !meta.querySelector(".mg, .mv")) {
+      const grp = meta.querySelector(".grp")?.textContent.trim() || "";
+      const v = meta.cloneNode(true);
+      v.querySelectorAll(".grp, .sep").forEach(n => n.remove());
+      const venue = v.textContent.trim();
+      const stops = t.querySelectorAll(".tourfull .tf-row").length;
+      meta.innerHTML = (grp ? '<span class="mg">' + E(grp) + "</span>" : "")
+        + (venue ? '<span class="mv">' + E(venue)
+          + (stops > 1 ? '<span class="mt">ほか ' + (stops - 1) + " 会場</span>" : "") + "</span>" : "");
+    }
     const sale = main.querySelector(".sale");
     (sale || main.querySelector(".meta")).after(lead);
     // おすすめ理由: 全部出す。WHY_SHOWN 本を超えたら残りを畳む
