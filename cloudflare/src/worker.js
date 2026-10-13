@@ -3,6 +3,7 @@ import {verifyIdToken, isAuthError} from './firebase-auth.js';
 import {passkeyRoutes} from './passkey.js';
 import {scoreFromIndex, d1Access, gradeOf} from './recommend.js';
 import {searchIndex, d1Search} from './stage-search.js';
+import {chooseVariant} from './reco-gate.js';
 import {SCREEN_TABLES, nativeScreen, nativeAction, screen as nativeScreenBody, action as nativeActionBody, readInput as nativeInput} from './screens/index.js';
 const MAX_BODY = 262144;
 const COOKIE = 'taguri_session';
@@ -164,7 +165,11 @@ async function computeRecommendations(db, uid, ver, today) {
   // updated_at is epoch seconds here; as text it orders like the Python timestamps.
   const rated = records.map(r => ({key: r.id, stage_id: r.stage_id, verdict: r.rating, date: r.date,
     updated_at: new Date(r.updated_at * 1000).toISOString(), people: people.get(r.stage_id) || []}));
-  const ranked = await scoreFromIndex({...access, rated, multipliers: {}, today});
+  // 裏の答え合わせ: use a variant of the rules only if it clearly predicted
+  // this user's own later ratings better (src/reco-gate.js). Kept out of the
+  // answer shown on screen.
+  const gate = chooseVariant(rated);
+  const ranked = await scoreFromIndex({...access, rated, multipliers: gate.multipliers, today});
   const reacted = new Set((await db.prepare('SELECT stage_id FROM reactions WHERE user_id=?').bind(uid).all()).results.map(r => r.stage_id));
   const top = ranked.filter(c => !reacted.has(c.stage_id)).slice(0, RECOMMEND_TOP);
   const entries = new Map();
@@ -174,7 +179,7 @@ async function computeRecommendations(db, uid, ver, today) {
     for (const r of rows) entries.set(r.stage_id, r);
   }
   return {ready: true, n_rated: records.length, n_linked: records.filter(r => people.get(r.stage_id)?.length).length,
-    rows_read: access.counter.rows, items: top.map(c => {
+    rows_read: access.counter.rows, variant: gate.variant, items: top.map(c => {
       const e = entries.get(c.stage_id) || {}, entry = JSON.parse(e.entry || '{}');
       return {stage_id: c.stage_id, title: e.title || '', group: e.grp || '', start: e.start || '', end: e.end || '',
         theater: entry.theater || '', pref: entry.pref || '', url: entry.url || '', score: c.b,

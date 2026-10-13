@@ -76,6 +76,7 @@ test('records saved through the API give the same recommendations as Python, min
       const got = await recommendFor(env.DB, uid, fixture.today);
       const want = c.expected.filter(x => x.stage_id !== reacted).slice(0, 15);
       assert.equal(got.ready, true);
+      assert.equal(got.variant, 'base', 'few ratings: the hidden check keeps the default rules');
       assert.deepEqual(got.items.map(i => [i.stage_id, i.score]), want.map(x => [x.stage_id, x.b]));
       assert.deepEqual(got.items[0].reasons, want[0].parts.slice(0, 3).map(([, role, person, n]) => ({role, person, n})));
       assert.ok(got.items.every(i => i.title), 'display fields come from rec_stage');
