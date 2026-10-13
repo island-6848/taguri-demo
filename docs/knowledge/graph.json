@@ -1470,6 +1470,15 @@
    ]
   },
   {
+   "id": "q-synopsis-reader",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "あらすじの読み取りを誰が担うか（Claude の定期実行・Gemini API・当面読まない）",
+   "sources": [],
+   "verifies": []
+  },
+  {
    "id": "q-vm-host-choice",
    "type": "question",
    "status": "dropped",
@@ -1677,6 +1686,17 @@
    "sources": [
     "tools/taguri/serve.py",
     "tools/review/rate_performances.py"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "synopsis-llm-history",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "あらすじの読み取りは Gemini API。以前の claude CLI 呼び出しは起案者の判断でやめている",
+   "sources": [
+    "tools/credits/extract_theme_llm.py"
    ],
    "verifies": []
   },
@@ -2692,6 +2712,16 @@
    "to": "dec-own-domain"
   },
   {
+   "from": "q-synopsis-reader",
+   "rel": "depends_on",
+   "to": "synopsis-llm-history"
+  },
+  {
+   "from": "q-synopsis-reader",
+   "rel": "depends_on",
+   "to": "dec-crawler-gha-private"
+  },
+  {
    "from": "q-vm-host-choice",
    "rel": "depends_on",
    "to": "q-oracle-payg"
@@ -2865,6 +2895,11 @@
    "from": "stdlib-server-sqlite",
    "rel": "answers",
    "to": "q-workers-free-viable"
+  },
+  {
+   "from": "synopsis-llm-history",
+   "rel": "affects",
+   "to": "q-synopsis-reader"
   },
   {
    "from": "throttle-keyed-by-client-address",
