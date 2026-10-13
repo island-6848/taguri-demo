@@ -700,6 +700,18 @@
    "verifies": []
   },
   {
+   "id": "dec-synopsis-reader-claude",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-13",
+   "title": "公演のあらすじは起案者の Claude が一度だけ読み、結果をデータベースに置く。Gemini API は利用者の感想を読むときだけ",
+   "sources": [
+    "tools/credits/extract_theme_llm.py",
+    "https://claude.ai/code/session_015xXsQ9C4423EMquRbg7m3U （起案者の指示）"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-vm-cloudflare",
    "type": "decision",
    "status": "superseded",
@@ -1472,9 +1484,18 @@
   {
    "id": "q-synopsis-reader",
    "type": "question",
-   "status": "open",
+   "status": "answered",
    "date": "2026-10-13",
    "title": "あらすじの読み取りを誰が担うか（Claude の定期実行・Gemini API・当面読まない）",
+   "sources": [],
+   "verifies": []
+  },
+  {
+   "id": "q-synopsis-routine-quota",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "あらすじを Claude の定期実行で読むと、1 日にどれだけ読め、起案者の使用枠をどれだけ使うか",
    "sources": [],
    "verifies": []
   },
@@ -2262,6 +2283,31 @@
    "to": "comp-cf-worker"
   },
   {
+   "from": "dec-synopsis-reader-claude",
+   "rel": "answers",
+   "to": "q-synopsis-reader"
+  },
+  {
+   "from": "dec-synopsis-reader-claude",
+   "rel": "depends_on",
+   "to": "synopsis-llm-history"
+  },
+  {
+   "from": "dec-synopsis-reader-claude",
+   "rel": "depends_on",
+   "to": "dec-crawler-gha-private"
+  },
+  {
+   "from": "dec-synopsis-reader-claude",
+   "rel": "affects",
+   "to": "q-catalog-to-worker"
+  },
+  {
+   "from": "dec-synopsis-reader-claude",
+   "rel": "raises",
+   "to": "q-synopsis-routine-quota"
+  },
+  {
    "from": "dec-vm-cloudflare",
    "rel": "supersedes",
    "to": "dec-render-service-beta"
@@ -2720,6 +2766,11 @@
    "from": "q-synopsis-reader",
    "rel": "depends_on",
    "to": "dec-crawler-gha-private"
+  },
+  {
+   "from": "q-synopsis-routine-quota",
+   "rel": "depends_on",
+   "to": "dec-synopsis-reader-claude"
   },
   {
    "from": "q-vm-host-choice",

@@ -11,7 +11,8 @@ EC2 も AWS も使っていない（docs/knowledge の no-ec2・no-aws）。毎�
 ## 設定
 
 - 秘密は要らない（作業データは同じリポジトリの `state` ブランチに書き戻すので、`GITHUB_TOKEN` だけで足りる）
-- `GEMINI_API_KEY`（任意）: あらすじから題材を読む段で使う。無ければその段は飛ばされる
+- `GEMINI_API_KEY` は渡さない。あらすじは LLM を呼ばずに読み取り待ち（`data/credits/synopsis_queue.jsonl`）に書き出し、
+  起案者の Claude の定期実行が読む（dec-synopsis-reader-claude。下の「あらすじの読み取り」）
 - 初回は Actions → Catalog → Run workflow を mode=weekly で手動で動かす（前回の作業データが無いので、候補から取り直す）
 
 ## 動き
@@ -22,6 +23,15 @@ EC2 も AWS も使っていない（docs/knowledge の no-ec2・no-aws）。毎�
 4. `crawler_state.py save --to state` と `git push -f`: 作業データを `state` ブランチに 1 コミットで置き換える（失敗しても置く）
 
 利用者の記録・認証・持ち主の購入の記録は、作業データに入れない。
+
+## あらすじの読み取り（起案者の Claude）
+
+`state` ブランチの `credits/synopsis_queue.jsonl` が読み取り待ち。定期実行は次をする:
+
+1. `taguri-demo`（master）と `taguri-crawler` の `state` ブランチを取り出し、`crawler_state.py restore --from state`
+2. `python3 tools/credits/extract_theme_llm.py --print-queue 40` の指示どおりに読み、答えの JSON 配列を `answers.json` に書く
+3. `python3 tools/credits/extract_theme_llm.py --import-answers answers.json`（本文に実在しないあらすじは落ちる）
+4. `crawler_state.py save --to state` してコミットし、`state` に push（取得処理の実行中は避ける）
 
 ## まだ足りないもの
 

@@ -30,7 +30,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 300
     env:
-      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      # あらすじは LLM を呼ばずに読み取り待ち（data/credits/synopsis_queue.jsonl）へ書き出す。
+      # 読むのは起案者の Claude の定期実行（docs/knowledge の dec-synopsis-reader-claude）。
+      # Gemini API は利用者の感想を読むときだけに使うので、ここでは鍵を渡さない
+      TAGURI_THEME_READER: 'queue'
       # CoRich の検索ページはデータセンターからの接続を断るので使わない。新しい公演はサイトマップで見つける
       # （docs/knowledge の corich-search-waf-403・dec-corich-sitemap）
       TAGURI_CORICH_SEARCH: 'off'

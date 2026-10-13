@@ -31,8 +31,19 @@
 （起案者・2026-08-27）を受けて切り離した。入出力の型（JSON 配列）を固定して
 いるので、担い手を替えても呼び出し側は変わらない。
 
+## 読み取りを起案者の Claude に任せる（`TAGURI_THEME_READER=queue`）
+
+あらすじの読み取りは公演ごとに一度で済む（済んだ行は二度と読まない）。そこで取得処理
+（GitHub Actions）は LLM を呼ばず、**読み取り待ちの本文を `synopsis_queue.jsonl` に、
+指示を `synopsis_prompt.txt` に書き出すだけ**にする。起案者の Claude（定期実行）が
+それを読んで答えを JSON で書き、`--import-answers` が**同じ検査**（本文に実在するか・
+要素の数）を通して themes.jsonl に足す。Gemini API は利用者の感想を読むときだけに使う
+（docs/knowledge の dec-synopsis-reader-claude）。
+
     python3 tools/credits/extract_theme_llm.py --side candidate --limit 40
     python3 tools/credits/extract_theme_llm.py --side both
+    TAGURI_THEME_READER=queue python3 tools/credits/extract_theme_llm.py --side candidate
+    python3 tools/credits/extract_theme_llm.py --import-answers answers.json
 """
 
 from __future__ import annotations
@@ -40,6 +51,7 @@ from __future__ import annotations
 import argparse
 import datetime
 import json
+import os
 import re
 import sys
 import threading
@@ -59,9 +71,15 @@ CAND = ROOT / "data" / "review" / "candidates.jsonl"
 CORICH = ROOT / "data" / "credits" / "pages"      # CoRich の公演ページ（取得済み）
 CREDITS = ROOT / "data" / "credits" / "credits.jsonl"
 OUT = ROOT / "data" / "credits" / "themes.jsonl"
+# **読み取り待ちの一覧**（`TAGURI_THEME_READER=queue` のとき）。本文と版を書き出すだけで LLM は呼ばない。
+# 起案者の Claude が読んで答えを書き、`--import-answers` で検査して themes.jsonl に足す
+QUEUE = ROOT / "data" / "credits" / "synopsis_queue.jsonl"
+QUEUE_PROMPT = ROOT / "data" / "credits" / "synopsis_prompt.txt"
 
 PROMPT_VERSION = "g2"
 MODEL = LLM.MODEL
+READER = os.environ.get("TAGURI_THEME_READER", "gemini").lower()
+CLAUDE_MODEL = "claude-routine"
 
 PROMPT_C2 = """あなたは演劇の公演ページの本文から、あらすじと内容の要素を抜き出す部品である。
 入力は複数の公演で、それぞれ「### id: <id>」の行で始まり、次の「###」までがその公演の本文である。
@@ -328,6 +346,9 @@ def targets(side: str, fetch: bool) -> list[dict]:
             rows.append({"id": c["stage_id"], "title": c["title"][:60],
                          "stage_id": c["stage_id"],
                          "url": url_of(f.get("公式／劇場サイト", ""))})
+    elif not CREDITS.exists():
+        # **取得処理（GitHub Actions）には利用者の記録が無い。** 学習側は起案者の手元でだけ動く
+        print(f"{side}: {CREDITS.name} が無いので飛ばす（利用者の記録が無い環境）")
     else:                                   # 学習側 ── 評価済みの作品
         # **公式 URL は (観劇日, メールの件名) で引く。** 日付だけで引くと、
         # 1 日に 2 本観た日（実データにある）で別の作品の URL を掴む。
@@ -541,6 +562,93 @@ def enrich_one(stage_id: str, work_key: str, title: str) -> str:
             else "あらすじは公演ページに見つかりませんでした")
 
 
+def to_row(r: dict, g: dict, model: str, version: str) -> dict:
+    """答え 1 件を、themes.jsonl の 1 行にする。**本文に無いあらすじは落とす**（出典が付けられない）。"""
+    els = [{"kind": str(e.get("kind", "")), "word": str(e["word"])}
+           for e in (g.get("elements") or [])
+           if isinstance(e, dict) and e.get("word")][:MAX_ELEMENTS.get(version, 5)]
+    syn = str(g.get("synopsis") or "")[:400]
+    vb = verbatim(syn, r["text"]) if syn else False
+    if syn and not vb:
+        syn, els = "", []
+    return {"side": r["side"], "id": r["id"], "title": r["title"], "url": r["url"],
+            "synopsis": syn, "elements": els,
+            "reason": "" if (vb or not g.get("synopsis")) else "本文に無い",
+            "model": model, "prompt_version": version,
+            "at": datetime.date.today().isoformat()}
+
+
+def _read_jsonl(path: Path) -> list[dict]:
+    if not path.exists():
+        return []
+    return [json.loads(l) for l in path.read_text(encoding="utf-8").split("\n") if l.strip()]
+
+
+def write_queue(todo: list[dict], sides: list[str], version: str) -> int:
+    """読み取り待ちを書き出す。**--side で指定しなかった側の待ちは残す。**"""
+    keep = [q for q in _read_jsonl(QUEUE) if q.get("side") not in sides]
+    rows = keep + [{"side": r["side"], "id": r["id"], "title": r["title"], "url": r["url"],
+                    "text": r["text"], "prompt_version": version} for r in todo]
+    QUEUE.parent.mkdir(parents=True, exist_ok=True)
+    QUEUE.write_text("".join(json.dumps(q, ensure_ascii=False) + "\n" for q in rows),
+                     encoding="utf-8")
+    QUEUE_PROMPT.write_text(PROMPTS[version], encoding="utf-8")
+    return len(rows)
+
+
+def queue_prompt(n: int) -> str:
+    """待ちの先頭 n 件を、**Gemini に渡すのと同じ指示・同じ本文の形**で返す（担い手が変わっても入力は同じ）。
+
+    答えには `side` を足す（学習側と候補側で id が重なり得るため）。版が混ざっていたら先頭の版だけ出す。
+    """
+    queue = _read_jsonl(QUEUE)
+    if not queue:
+        return ""
+    version = queue[0].get("prompt_version") or PROMPT_VERSION
+    batch = [q for q in queue if (q.get("prompt_version") or PROMPT_VERSION) == version][:n]
+    note = ("（前置き）各公演の見出しの次の行に side がある。答えの各要素に side もそのまま入れる: "
+            '{"side":"candidate","id":"<id>","synopsis":"...","elements":[...]}\n\n')
+    head = "".join(f"### id: {q['id']}\nside: {q['side']}\n題名: {q['title']}\n{q['text']}\n\n"
+                   for q in batch)
+    return note + PROMPTS[version] + head
+
+
+def import_answers(path: Path, model: str) -> tuple[int, int, int]:
+    """Claude の答え（JSON 配列か JSONL。{side?, id, synopsis, elements}）を検査して足す。
+
+    照合する本文は待ちの一覧のものを使う（答えに書かれた本文は信じない）。
+    待ちに無い id の答えは捨てる。足した分は待ちから外す。戻り値は (足した, うち取れた, 捨てた)。
+    """
+    raw = path.read_text(encoding="utf-8").strip()
+    answers = json.loads(raw) if raw.startswith("[") else \
+        [json.loads(l) for l in raw.split("\n") if l.strip()]
+    queue = _read_jsonl(QUEUE)
+    by_key = {(q["side"], str(q["id"])): q for q in queue}
+    sides = {q["side"] for q in queue}
+    added: list[dict] = []
+    used: set[tuple[str, str]] = set()
+    dropped = 0
+    for g in answers:
+        if not isinstance(g, dict):
+            dropped += 1
+            continue
+        sid = str(g.get("id"))
+        side = g.get("side") or (next(iter(sides)) if len(sides) == 1 else "candidate")
+        q = by_key.get((side, sid))
+        if q is None or (side, sid) in used:
+            dropped += 1
+            continue
+        used.add((side, sid))
+        added.append(to_row(q, g, model, q.get("prompt_version") or PROMPT_VERSION))
+    with _lock:
+        with OUT.open("a", encoding="utf-8") as fp:
+            fp.write("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in added))
+    rest = [q for q in queue if (q["side"], str(q["id"])) not in used]
+    QUEUE.write_text("".join(json.dumps(q, ensure_ascii=False) + "\n" for q in rest),
+                     encoding="utf-8")
+    return len(added), sum(1 for r in added if r["synopsis"]), dropped
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -548,7 +656,8 @@ def main() -> int:
     ap.add_argument("--batch", type=int, default=6)
     ap.add_argument("--jobs", type=int, default=4)
     ap.add_argument("--limit", type=int, default=0, help="0 なら全件")
-    ap.add_argument("--model", default=MODEL)
+    ap.add_argument("--model", default=None,
+                    help=f"既定は Gemini の {MODEL}。読み取り待ちを書くとき・答えを足すときは {CLAUDE_MODEL}")
     ap.add_argument("--refresh", action="store_true", help="版を上げるとき。全件を引き直す")
     ap.add_argument("--prompt-version", default=PROMPT_VERSION, choices=sorted(PROMPTS),
                     help="測り直しのために古い版を指定する。既定は最新版")
@@ -557,7 +666,22 @@ def main() -> int:
     ap.add_argument("--no-fetch", action="store_true", help="キャッシュにあるページだけ使う")
     ap.add_argument("--recheck", action="store_true",
                     help="LLM を呼ばず、既存の抽出が本文に実在するかだけ検査し直す")
+    ap.add_argument("--import-answers", type=Path, metavar="FILE",
+                    help="起案者の Claude が書いた答えを検査して themes.jsonl に足す（LLM は呼ばない）")
+    ap.add_argument("--print-queue", type=int, metavar="N",
+                    help="読み取り待ちの先頭 N 件を、Gemini に渡すのと同じ形（指示＋本文）で表示する")
     a = ap.parse_args()
+    if a.print_queue:
+        print(queue_prompt(a.print_queue), end="")
+        return 0
+    queue_mode = READER == "queue"
+    a.model = a.model or (CLAUDE_MODEL if (queue_mode or a.import_answers) else MODEL)
+
+    if a.import_answers:
+        n, ok, dropped = import_answers(a.import_answers, a.model)
+        print(f"答えを {n} 件足した（あらすじが本文に実在したのは {ok} 件）／"
+              f"待ちに無い・重複で捨てた {dropped} 件／残りの待ち {len(_read_jsonl(QUEUE))} 件")
+        return 0
 
     # **「本文なし」は抽出済みではない。** 取りに行く先を直せば本文が出てくることがある
     # （学習側の URL の出どころを official.jsonl から credits.jsonl に変えたら 31 → 56 件に増えた）。
@@ -659,6 +783,11 @@ def main() -> int:
             todo.append(r)
     if a.limit:
         todo = todo[:a.limit]
+    if queue_mode:
+        n = write_queue(todo, sides, a.prompt_version)
+        print(f"LLM は呼ばない。読み取り待ち {n} 件を {QUEUE.name} に書き出した"
+              f"（今回増えた {len(todo)} 件）")
+        return 0
     batches = [todo[i:i + a.batch] for i in range(0, len(todo), a.batch)]
     print(f"LLM に渡すのは {len(todo)} 件（{len(batches)} 回・{a.jobs} 並列・model={a.model}）",
           flush=True)
@@ -673,19 +802,7 @@ def main() -> int:
             g = got.get(str(r["id"]))
             if g is None:
                 continue                            # 取れなかった分は次回の実行で拾う
-            els = [e for e in (g.get("elements") or [])
-                   if isinstance(e, dict) and e.get("word")][:MAX_ELEMENTS.get(a.prompt_version, 5)]
-            syn = (g.get("synopsis") or "")[:400]
-            vb = verbatim(syn, r["text"]) if syn else False
-            if syn and not vb:                  # **本文に無いものは落とす**（出典が付けられない）
-                syn, els = "", []
-            lines.append(json.dumps({"side": r["side"], "id": r["id"], "title": r["title"],
-                                     "url": r["url"], "synopsis": syn,
-                                     "elements": els,
-                                     "reason": "" if (vb or not g.get("synopsis")) else "本文に無い",
-                                     "model": a.model, "prompt_version": a.prompt_version,
-                                     "at": datetime.date.today().isoformat()},
-                                    ensure_ascii=False))
+            lines.append(json.dumps(to_row(r, g, a.model, a.prompt_version), ensure_ascii=False))
         with _lock:
             with OUT.open("a", encoding="utf-8") as fp:
                 fp.write("\n".join(lines) + ("\n" if lines else ""))

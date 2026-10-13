@@ -81,3 +81,5 @@ jobs:
         run: python tools/taguri/test_crawler_state.py
       - name: Candidates from the CoRich sitemap (search page refused from data centers)
         run: python tools/review/test_fetch_candidates_sitemap.py
+      - name: Synopsis queue for the owner's Claude
+        run: python tools/credits/test_theme_queue.py

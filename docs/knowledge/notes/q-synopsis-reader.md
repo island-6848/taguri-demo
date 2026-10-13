@@ -1,7 +1,7 @@
 ---
 id: q-synopsis-reader
 type: question
-status: open
+status: answered
 date: 2026-10-13
 title: あらすじの読み取りを誰が担うか（Claude の定期実行・Gemini API・当面読まない）
 links:
