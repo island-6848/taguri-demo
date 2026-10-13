@@ -41,6 +41,11 @@ def pepper_path() -> Path:
     return (state_dir() / "auth" / "auth_pepper.txt") if state_dir() else Path.home() / ".config" / "taguri" / "auth_pepper.txt"
 
 
+def exposure_path() -> Path:
+    root = state_dir() or ROOT / "state"
+    return Path(os.environ.get("TAGURI_EXPOSURE_DB", str(root / "recommendation_exposure.db")))
+
+
 def storage_status() -> dict:
     # Configuration alone cannot prove a host volume survives redeployment.
     return {"version": "state-storage-v1", "mode": "configured" if state_dir() else "temporary",

@@ -451,8 +451,12 @@ function applyDemoRestrictions(root) {
   });
 }
 
-function renderScreen(el, activePath, d) {
+function renderScreen(el, activePath, d, exposureSource) {
   el.innerHTML = d.body_html;
+  if (window.TaguriExposure) TaguriExposure.start(el, exposureSource || "network", async (path, body) => {
+    const r = await fetch(API_BASE + path, {method: "POST", credentials: "include", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
+    const result = await r.json(); return r.ok && result.ok === true;
+  });
   if (d.demo_mode) {
     el.insertAdjacentHTML("afterbegin", '<p class="note">操作を試せるデモです。入力した内容は、デモの再起動時にリセットされます。'
       + '記録を残して使うときは<a href="' + EDITION.demoBase + '/app/">サービス版</a>へ。</p>');
@@ -482,6 +486,7 @@ function renderScreen(el, activePath, d) {
 let loadSeq = 0;
 
 async function loadScreen(path, search) {
+  if (window.TaguriExposure) TaguriExposure.stop();
   const seq = ++loadSeq;
   const name = SCREENS[path];
   const el = contentEl();
@@ -510,7 +515,7 @@ async function loadScreen(path, search) {
   const cached = fragmentCacheGet(cacheKey);
   if (cached) {
     if (stale()) return;
-    renderScreen(el, activePath, cached);
+    renderScreen(el, activePath, cached, "cache");
     return;
   }
   const stopLoading = startLoading(el);
@@ -643,7 +648,7 @@ async function post(path, body, group, done) {
     const d = await r.json();
     if (!r.ok) { if (said) said.textContent = "できませんでした: " + (d.error || r.status); return null; }
     showWelcomeCode(d.welcome_code);
-    if (d.ok !== false && path !== "/api/hand_theme_refresh") fragmentCache.clear();
+    if (d.ok !== false && path !== "/api/hand_theme_refresh" && !path.startsWith("/api/recommendation/")) fragmentCache.clear();
     if (said && done !== null) said.textContent = done || "記録しました";
     return d;
   } catch (e) { if (said) said.textContent = "できませんでした: " + e; return null; }
@@ -767,6 +772,7 @@ document.addEventListener("click", ev => {
           if (fresh && all.length) {
             fresh.classList.add("filled");
             all[all.length - 1].after(fresh);
+            if (window.TaguriExposure) TaguriExposure.refresh(contentEl(), "fill");
             bindNotes(fresh);          // 足した 1 枚の入力欄にも動きを付ける
           }
         }

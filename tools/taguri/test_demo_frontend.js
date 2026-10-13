@@ -8,7 +8,7 @@ const source = fs.readFileSync(path.join(__dirname, '../../web/app.js'), 'utf8')
 const cache = source.slice(source.indexOf('const fragmentCache ='), source.indexOf('// **初めての訪問者'));
 const post = source.slice(source.indexOf('async function post('), source.indexOf('// 段の名前と札。'));
 const restrictions = source.slice(source.indexOf('function applyDemoRestrictions('), source.indexOf('function renderScreen('));
-const context = vm.createContext({assert, Date, Map, API_BASE: 'https://api.example', showWelcomeCode() {}});
+const context = vm.createContext({assert, Date, Map, API_BASE: 'https://api.example', IS_DEMO: true, WEB_BUTTON: 'デモの公演から探す', showWelcomeCode() {}});
 vm.runInContext(cache + post + restrictions, context);
 vm.runInContext(`
   let reply = {ok: true};

@@ -1,0 +1,46 @@
+# Unapplied beta service blueprint. Paid resources require an approved budget.
+# Official schema validation: see service verification record. Host unapplied.
+# Keep maintenance enabled until operator checks and public release gates pass.
+# Existing taguri-demo is deliberately not included.
+services:
+  - type: web
+    name: taguri-service-beta
+    runtime: python
+    repo: https://github.com/island-6848/taguri-demo
+    branch: master
+    region: singapore
+    plan: 0.5c-512mb
+    numInstances: 1
+    maintenanceMode:
+      enabled: true
+    autoDeployTrigger: 'off'
+    buildCommand: pip install boto3
+    startCommand: python3 tools/taguri/serve_cloud.py
+    healthCheckPath: /api/health
+    disk:
+      name: taguri-state
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: TAGURI_EDITION
+        value: service
+      - key: TAGURI_STATE_DIR
+        value: /var/data/taguri
+      - key: TAGURI_STATE_MOUNT
+        value: /var/data
+      - key: CATALOG_REFRESH_HOURS
+        value: '6'
+      - key: CORS_ORIGIN
+        value: ""
+      - key: TAGURI_NAMES_TOKEN
+        generateValue: true
+      - key: STAGE_CATALOG_BUCKET
+        sync: false
+      - key: STAGE_CATALOG_KEY
+        sync: false
+      - key: AWS_DEFAULT_REGION
+        sync: false
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false

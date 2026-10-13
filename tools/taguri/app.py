@@ -117,6 +117,7 @@ import venues as VE                                                  # noqa: E40
 import icons as IC                                                 # noqa: E402
 import logo as LG                                                  # noqa: E402
 import impressions as IM                                           # noqa: E402
+import impression_preferences as IP                                # noqa: E402
 import people as PE                                               # noqa: E402
 import posters as PO                                               # noqa: E402
 import prefmap as PM                                               # noqa: E402
@@ -456,6 +457,7 @@ document.addEventListener("click", ev => {
           if (fresh && all.length) {
             fresh.classList.add("filled");
             all[all.length - 1].after(fresh);
+            if (window.TaguriExposure) TaguriExposure.refresh(document, "fill");
             bindNotes(fresh);          // 足した 1 枚の入力欄にも動きを付ける
           }
         }
@@ -2417,7 +2419,7 @@ def layout(title: str, top: str, body: str, style: str, active_sub: str = "") ->
  <code>python3 tools/taguri/run.py</code> から開いてください。</div>
 {body}
 <div class="foot"><button data-close="1">終わる（システムを閉じる）</button></div>
-</div></main></div><script>{SCRIPT}{PE.JS}{PM.JS}</script></body></html>"""
+</div></main></div><script>{SCRIPT}{PE.JS}{PM.JS}</script><script>{(ROOT / "web" / "recommendation-exposure.js").read_text()}</script><script>TaguriExposure.start(document,"local");</script></body></html>"""
 
 
 # ------------------------------------------------- 開くたびに一覧を作り直す
@@ -2706,7 +2708,7 @@ def _rebucket(user_id: str, d: dict) -> dict:
         return (react.get(str(c.get("stage_id") or ""))
                 or react_w.get(RC2.work_key(c.get("title") or "")) or {})
 
-    order = ("favourites", "ranked", "others", "owned", "tracking", "started")
+    order = ("favourites", "ranked", "others", "owned", "tracking", "started", "unscored")
     seen: set = set()
     pool: list = []
     for k in order:
@@ -2772,6 +2774,8 @@ def _rebucket(user_id: str, d: dict) -> dict:
         elif not owner and c.get("declined"):
             # 訪問者が出さないと決めた語に当たった公演（持ち主の `declined` の束と同じ扱い）
             mine_declined.append(c)
+        elif k == "unscored":
+            out["unscored"].append(c)
         elif k in ("ranked", "others"):
             out["ranked"].append(c)
         elif not owner and k in ("favourites", "owned", "tracking"):
@@ -3419,8 +3423,8 @@ def _settings_body(user_id: str) -> str:
 <span class="said"></span></div>
 </form></details>
 {_account_card_html(user_id)}
-{_export_card_html()}
-{_data_copy_card_html()}
+{_export_card_html(None if _is_owner(user_id) else user_id)}
+{_data_copy_card_html() if _is_owner(user_id) else ""}
 {_dropped_html(user_id)}
 {_skipped_html(user_id)}"""
 
@@ -3479,7 +3483,7 @@ def _apply_weights(user_id: str, d: dict, w: dict | None = None) -> dict:
         return c
 
     e = dict(d)
-    for k in ("favourites", "ranked", "others", "owned", "tracking", "started"):
+    for k in ("favourites", "ranked", "others", "owned", "tracking", "started", "unscored"):
         e[k] = [redo(c) for c in (d.get(k) or [])]
     keep = {id(c) for c in e["others"]}
     rows = e["ranked"] + e["others"]
@@ -3669,11 +3673,15 @@ def _load(user_id: str) -> tuple[dict, list]:
     prepared = UR.prepare(raw, DG.all_candidates(), M.load_rated(user_id=user_id),
                           multipliers={k: STEP_MUL.get(v, 1.0) for k, v in weights.items()},
                           role_group=group_of)
-    # Stored themes remain available for explicit favorites and display;
-    # they are not learned preference scores in this first implementation.
+    # Overlay registered features before applying personal impression signals.
     prepared = _overlay_themes(prepared)
     counts = _weight_counts(prepared)
     d = UR.finish(_rebucket(user_id, prepared), top=RR.TOP, weights=weights)
+    d = _apply_impression_preferences(user_id, d, weights)
+    # Feature-only promotions follow the same production/tour grouping as people.
+    d["ranked"] = UR.collapse_tours(d.get("ranked") or [])
+    d["recommend"] = d["ranked"][:RR.TOP]
+    d["n_scored"] = len(d["ranked"])
     d["w_counts"] = counts
     # Every user, including the owner, gets their own quotations.
     try:
@@ -3683,7 +3691,21 @@ def _load(user_id: str) -> tuple[dict, list]:
     for k, v in d.items():
         if isinstance(v, list):
             d[k] = [{**c, "_notes": notes} if isinstance(c, dict) else c for c in v]
-    return _overlay_themes(d), waiting_rows(user_id)
+    return d, waiting_rows(user_id)
+
+
+def _apply_impression_preferences(user_id: str, data: dict, weights: dict) -> dict:
+    """感想の保存・編集・削除は、次の画面取得で順位と理由に反映する。"""
+    import datetime
+    import net_c as C
+    multiplier = STEP_MUL.get(weights.get("theme") or DEFAULT_STEP, 1.0)
+    profile = {}
+    if multiplier > 0:
+        today = datetime.date.today().isoformat()
+        works = [w for w in _works(user_id)
+                 if not w.get("unseen") and (w.get("first_date") or "") <= today]
+        profile = IP.build_profile(works, C.load_themes())
+    return IP.rerank(data, profile, multiplier=multiplier, top=RR.TOP)
 
 
 def _notes_no(user_id: str) -> dict:
@@ -3929,6 +3951,7 @@ code.cmd{display:inline-block;margin:10px 0 4px;padding:8px 14px;border-radius:8
 # **絞り込んだ一覧を「出した」と記録する差し込み口。** `tools/taguri/serve.py` が入れる
 # （ポスターの差し込み口と同じ形）。**なぜ要るかは `page_recommend` の説明にある。**
 RECORD = None
+EXPOSE = None  # Separate, best-effort telemetry; never modifies presented.
 
 
 def page_recommend(user_id: str, prefs=()) -> str:
@@ -3947,6 +3970,11 @@ def page_recommend(user_id: str, prefs=()) -> str:
     """
     body = _recommend_body(user_id, prefs)
     return layout("今週のおすすめ", "/recommend", body, RR.STYLE, active_sub="/recommend")
+
+
+def _exposure_cards(user_id, rows, prefs, html):
+    pid = EXPOSE(user_id, rows, prefs) if EXPOSE else ""
+    return f'<section data-exposure-presentation="{E(pid)}">{html}</section>' if pid else html
 
 
 def _recommend_body(user_id: str, prefs=()) -> str:
@@ -4017,7 +4045,7 @@ def _recommend_body(user_id: str, prefs=()) -> str:
     upd_html = (f'<p class="note">現在のあなたの評価 {n_rated} 作品から計算しています。'
                 f'作り手の情報があるのは {n_people} 作品です。'
                 '評価の変更・取り消しは、次におすすめを開くと反映されます。'
-                '感想の内容分析は、まだ順位に使っていません。</p>')
+                '感想で明示した特徴への好みも、公演の登録情報と一致すると順位と理由を補正します。</p>')
     if n_rated > n_people:
         upd_html += ('<p class="note">作り手の情報がない記録は、人物の一致に使えません。'
                      '<a href="/records/works?t=__TAGURI_TOKEN__">日記帳</a>で公演を結び付けるか、'
@@ -4030,7 +4058,7 @@ def _recommend_body(user_id: str, prefs=()) -> str:
 {lede}
 {upd_html}
 <div class="fil2">{RR.pref_form(pc, prefs)}{weight_form(user_id, d)}</div>
-{RR.cards_html(d, rows)}
+{_exposure_cards(user_id, rows, prefs, RR.cards_html(d, rows))}
 <p class="lede">気になった公演で「興味あり」を押すと、
 <a href="/recommend/interest?t=__TAGURI_TOKEN__">「興味あり」（いま {n_tr} 件）</a>に移ります。</p>
 {IC.h2("flag", "もう追いかけない公演 ── 畳んでいますが、消していません")}
@@ -8511,28 +8539,33 @@ def _search_body(user_id: str, q: str, ym: str = "", web: bool = False,
 
 # ---------------------------------------------------------------- 書き出す
 def export_payload(user_id: str | None = None) -> dict:
-    """持ち出せる形。**囲い込まないことが記録としての価値の条件である**（企画書 2 章）。
-
-    `user_id` を渡したとき（公開版の訪問者）は、**その人の行だけを返す。** 利用者の列
-    （`user_id`）を持たない表は、誰の行か分けられないので返さない。以前は公開版でも
-    全員分をそのまま返していた（2026-10-13 に修正）。"""
-    owner = user_id is None or _is_owner(user_id)
+    """持ち出せる形。**囲い込まないことが記録としての価値の条件である**（企画書 2 章）。"""
     con = sqlite3.connect(DB)
     con.row_factory = sqlite3.Row
     out: dict = {}
     for t in ("works", "ratings", "attendance", "reaction", "ticket", "presented",
               "splits", "excluded", "missed"):
         try:
-            if owner:
+            if user_id is not None:
+                columns = {r[1] for r in con.execute(f"PRAGMA table_info({t})")}
+                # An unscoped legacy/shared table must never enter public export.
+                if "user_id" not in columns:
+                    out[t] = []
+                    continue
+                out[t] = [dict(r) for r in con.execute(
+                    f"SELECT * FROM {t} WHERE user_id=?", (user_id,))]
+            else:
                 out[t] = [dict(r) for r in con.execute(f"SELECT * FROM {t}")]
-                continue
-            cols = {r[1] for r in con.execute(f"PRAGMA table_info({t})")}
-            out[t] = ([dict(r) for r in con.execute(f"SELECT * FROM {t} WHERE user_id=?", (user_id,))]
-                      if "user_id" in cols else [])
         except sqlite3.Error:
             out[t] = []
     con.close()
-    out["declared"] = RC.load_declared() if owner else load_declared(user_id)
+    if user_id is None:
+        out["declared"] = RC.load_declared()
+    else:
+        values = _read_setting_json(user_id, DECLARED_KEY)
+        values = values if isinstance(values, dict) else {}
+        out["declared"] = {k: [x for x in (values.get(k) or []) if isinstance(x, str)]
+                           for k in RC.KINDS}
     return out
 
 
@@ -8598,12 +8631,12 @@ def _account_card_html(user_id: str) -> str:
 </details>"""
 
 
-def _export_card_html() -> str:
+def _export_card_html(user_id: str | None = None) -> str:
     """「書き出す」の札。**もとは独立の画面だった**（起案者の指示・2026-08-26 ──
     「とりあえず書き出し機能はあまり使わないので設定に移動してしまって」）。
     たまにしか押さない道具という点で、「設定」の他の項目と役目が近い。
     """
-    d = export_payload()
+    d = export_payload(user_id)
     li = "".join(
         f'<li>{E(EXPORT_LABEL.get(k, k))} <b>'
         f"{len(v) if isinstance(v, list) else sum(len(x) for x in v.values())} 件</b>"
@@ -8967,4 +9000,5 @@ def _tickets_body(user_id: str) -> str:
 {cards or '<p class="empty">チケットを持っている公演はまだありません。'
           '推薦の画面で「すでに持っている」を押した公演が、ここに並びます。</p>'}
 {SC.ticket_manager_html(unplaced=left)}"""
+
 

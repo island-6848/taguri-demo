@@ -79,6 +79,7 @@ import auth as AU                                                  # noqa: E402
 import feedback as FB                                              # noqa: E402
 import recommend as RC                                             # noqa: E402
 import render_recommend as RR                                       # noqa: E402
+import recommendation_exposure as EX
 import stage_calendar as SC                                        # noqa: E402
 import taguri_state as STATE
 
@@ -308,6 +309,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
         """
         if self.server.cors_origin:                                  # type: ignore[attr-defined]
             same_site = "SameSite=None; Secure"
+        elif self.server.public:
+            same_site = "SameSite=Lax; Secure"
         else:
             same_site = "SameSite=Lax"
         return {"Set-Cookie": f"{SESSION_COOKIE}={token}; Path=/; HttpOnly; {same_site}; "
@@ -384,7 +387,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
         if path == "/api/health":
             # No registration, cookie parsing, file paths or user data.
-            self._json(200, {"ok": True, "version": "state-storage-v1"})
+            self._json(200, {"ok": True, "version": "state-storage-v1",
+                             "export_scope": "authenticated-user" if srv.public else "local",
+                             "public_zip": False})
             return
 
         if path in ("/api/catalog/favourite-names", "/api/catalog/search-requests"):
@@ -481,6 +486,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 and not path.startswith("/img/") \
                 and not path.startswith("/api/screen/"):
             self._send(404, b"not found", "text/plain; charset=utf-8")
+            return
+        if srv.public and path == "/data.zip":
+            self._send(403, b"shared archive is unavailable", "text/plain; charset=utf-8")
+            return
+        if srv.public and path == "/export.json" and self._session_user_id() is None:
+            self._send(403, b"authenticated session required", "text/plain; charset=utf-8")
             return
         if not self._tok(query):
             self._send(403, b"token mismatch", "text/plain; charset=utf-8")
@@ -690,15 +701,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return
         if path == "/export.json":
             # **持ち出しはそのまま渡す。** トークンの置き換えはしない（HTML ではない）
-            # **公開版では本人の行だけ**（全員分を渡さない。E3）
-            body = json.dumps(APP.export_payload(self.user_id if srv.public else None),
-                              ensure_ascii=False, indent=1).encode()
+            body = json.dumps(APP.export_payload(self.user_id if srv.public else None), ensure_ascii=False, indent=1).encode()
             self._send(200, body, "application/json; charset=utf-8",
                        {"Content-Disposition": 'attachment; filename="taguri-export.json"'})
-            return
-        if path == "/data.zip" and srv.public:
-            # **公開版には無い。** `data/review` には全員の記録（`ratings.db`）が入りうる（E3）
-            self._send(404, b"not found", "text/plain; charset=utf-8")
             return
         if path == "/data.zip":
             # **「別の端末に記録を移す」の実体。** `data/review` 配下（記録・取得物・
@@ -960,7 +965,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
         except ValueError:
             self._json(400, {"error": "json"})
             return
-        fn = {"/api/react": srv.on_react, "/api/rate": srv.on_rate,
+        fn = {"/api/recommendation/visit": srv.on_exposure_visit,
+              "/api/recommendation/contact": srv.on_exposure_contact,
+              "/api/react": srv.on_react, "/api/rate": srv.on_rate,
               "/api/note": srv.on_note, "/api/favourite": srv.on_favourite,
               "/api/missed": srv.on_missed, "/api/add_work": srv.on_add_work,
               "/api/search_request": srv.on_search_request,
@@ -991,7 +998,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             # Refresh reads do not change data. Other successful writes must not
             # leave saved-before-edit fragments visible on the next navigation.
             # Only this visitor's cache is affected; no automatic reload is made.
-            if result.get("ok", True) and op != "/api/hand_theme_refresh":
+            if result.get("ok", True) and op != "/api/hand_theme_refresh" and not op.startswith("/api/recommendation/"):
                 srv.invalidate_user_cache(self.user_id)
             STATE.event("write_result", outcome="ok" if result.get("ok", True) else "rejected",
                         operation=WRITE_OPERATIONS.get(op, "other"), status=200)
@@ -1087,6 +1094,16 @@ class Server(http.server.ThreadingHTTPServer):
         self.con.commit()
         _migrate_missed(self.con)
         self.lock = threading.Lock()
+        self.exposure_lock = threading.Lock()
+        self.exposure = None
+        try:
+            exposure_path = STATE.exposure_path()
+            exposure_path.parent.mkdir(parents=True, exist_ok=True)
+            self.exposure_con = sqlite3.connect(exposure_path, check_same_thread=False, timeout=2)
+            exposure_path.chmod(0o600)
+            self.exposure = EX.Store(self.exposure_con)
+        except (OSError, sqlite3.Error):
+            pass  # Telemetry must not prevent startup or recommendations.
         self.n = {"react": 0, "rate": 0, "note": 0, "fav": 0, "missed": 0,
                   "add": 0, "import": 0, "fix": 0}
         # **`/api/screen/*`の応答を、書き込みが起きるまで覚えておく（#000009）。**
@@ -1116,6 +1133,7 @@ class Server(http.server.ThreadingHTTPServer):
         # 各利用者について、初めて触れたときに設定画面で決めた既定から始める。
         self.prefs_by_user: dict[str, list[str]] = {}
         APP.RECORD = self.record_presented
+        APP.EXPOSE = self.register_exposure
         # **デモモードでは監視しない。** クラウドの公開デモは「誰かがブラウザを
         # 開くまでの一時プロセス」ではなく、常時稼働のWebサービスとして動かす
         # 前提なので、`GRACE_SEC`で自動終了させると事故る。
@@ -1384,9 +1402,49 @@ class Server(http.server.ThreadingHTTPServer):
         rank = len(shown) + 1
         if user_id == AU.LOCAL_USER_ID:          # 持ち主の測定の分母だけに書く（E3）
             self.record_presented([c], list(prefs), "recommend_fill", rank)
-        return {"html": RR.card(rank, c), "left": len(rest),
+        pid = self.register_exposure(user_id, [c], prefs, "fill", rank)
+        card = RR.card(rank, c)
+        if pid:
+            card = card.replace('<article ', f'<article data-exposure-presentation="{h_esc(pid)}" ', 1)
+        return {"html": card, "left": len(rest),
                 "said": f"記録しました。入れ替わりに 1 件を下に足しました"
                         f"（まだ出していない候補が {len(rest) - 1} 件あります）。"}
+
+    def register_exposure(self, user_id, rows, prefs, kind="recommend", start_rank=1):
+        if self.exposure is None:
+            return ""
+        try:
+            with self.exposure_lock:
+                pid = self.exposure.register(user_id, rows, prefs, kind, start_rank)
+                self.exposure.fetched(user_id, pid)
+                return pid
+        except (sqlite3.Error, OSError, ValueError, KeyError):
+            return ""
+
+    def record_exposure_fetch(self, user_id, html):
+        match = re.search(r'data-exposure-presentation="([A-Za-z0-9_-]+)"', html)
+        if match and self.exposure is not None:
+            try:
+                with self.exposure_lock:
+                    self.exposure.fetched(user_id, match.group(1))
+            except (sqlite3.Error, OSError, ValueError):
+                pass
+
+    def _exposure_event(self, body, user_id, method):
+        if self.exposure is None:
+            return {"ok": False, "disabled": True}
+        try:
+            with self.exposure_lock:
+                return getattr(self.exposure, method)(user_id, body)
+        except (sqlite3.Error, OSError):
+            return {"ok": False, "disabled": True}
+
+    def on_exposure_visit(self, body, user_id):
+        return self._exposure_event(body, user_id, "begin")
+
+    def on_exposure_contact(self, body, user_id):
+        return self._exposure_event(body, user_id, "contact")
+
 
     def _siblings(self, user_id: str, stage_id: str) -> list[str]:
         """同じ作品の、ツアーの他会場の stage_id を全部返す（自分は含めない）。
@@ -1510,7 +1568,8 @@ class Server(http.server.ThreadingHTTPServer):
         """**感想は任意で、評価とは別に保存する。**
 
         書く本人にとっては分析用のデータではなく、残すためのものである（企画書 2 章）。
-        **推薦の順位には使わない** ── 記録を見返す画面と理由の文面にだけ出す。
+        明示された特徴への評価は、次の画面取得時に本人の推薦順位にも反映する。
+        解析はサーバー内のルールで行い、外部の AI へは送らない。
         """
         work_key = str(b.get("work_key") or "")
         note = str(b.get("note_impression") or "")[:4000]
@@ -2195,4 +2254,5 @@ if __name__ == "__main__":
     # `_harden_permissions()` が先に umask を絞っているが、単独起動ではそれが効いていない
     os.umask(0o077)
     print(serve(a.label, port=a.port))
+
 
