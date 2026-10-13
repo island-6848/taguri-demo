@@ -810,6 +810,15 @@
    "verifies": []
   },
   {
+   "id": "dec-user-scale-range",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-13",
+   "title": "評価の段階は利用者が選べる。初期設定は 5 段階、最小 2 段階・最大 11 段階",
+   "sources": [],
+   "verifies": []
+  },
+  {
    "id": "dec-vm-cloudflare",
    "type": "decision",
    "status": "superseded",
@@ -2130,7 +2139,7 @@
   {
    "id": "q-user-chosen-scale",
    "type": "question",
-   "status": "open",
+   "status": "answered",
    "date": "2026-10-13",
    "title": "評価の段階を利用者自身に選んでもらうか（起案者の案）",
    "sources": [],
@@ -3238,6 +3247,21 @@
    "from": "dec-theme-user-choice",
    "rel": "raises",
    "to": "q-poster-palette"
+  },
+  {
+   "from": "dec-user-scale-range",
+   "rel": "answers",
+   "to": "q-user-chosen-scale"
+  },
+  {
+   "from": "dec-user-scale-range",
+   "rel": "affects",
+   "to": "comp-recommender"
+  },
+  {
+   "from": "dec-user-scale-range",
+   "rel": "affects",
+   "to": "q-rating-scale"
   },
   {
    "from": "dec-vm-cloudflare",

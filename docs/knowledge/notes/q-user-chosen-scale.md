@@ -1,7 +1,7 @@
 ---
 id: q-user-chosen-scale
 type: question
-status: open
+status: answered
 date: 2026-10-13
 title: 評価の段階を利用者自身に選んでもらうか（起案者の案）
 links:
