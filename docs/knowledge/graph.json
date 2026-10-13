@@ -1006,6 +1006,109 @@
    "verifies": []
   },
   {
+   "id": "lit-beyond-accuracy",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "当てる精度だけを上げると、役に立つ推薦から外れることがある（McNee ほか 2006・Ferrari Dacrema ほか 2019）",
+   "sources": [
+    "https://grouplens.org/site-content/uploads/accurate-CHI-20061.pdf",
+    "https://arxiv.org/abs/1907.06902"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "lit-bpr-pairwise",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "順位を直接学ぶ「組で比べる」学習（BPR）は、AUC を最大にするのと同じ形（Rendle ほか 2009）",
+   "sources": [
+    "https://proceedings.mlr.press/r7/rendle09a.html"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "lit-hierarchical-user-model",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "利用者ごとの好みを、全体の事前分布から少しずつ個人に寄せる学習は確立した方法（Zhang & Koren 2007）",
+   "sources": [
+    "https://www.ssrc.ucsc.edu/pub/zhang-sigir07.html"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "lit-implicit-confidence",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "観る前の反応（興味あり・購入）は「好みの信号」だが確からしさが違うので、重みを変えて扱う（Hu・Koren・Volinsky 2008）",
+   "sources": [
+    "https://andrewclark.super.site/all-media/collaborative-filtering-for-implicit-feedback-datasets"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "lit-mnar",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "評価が付いていないこと自体が情報になり、付いた評価だけで学ぶ・測ると偏る（Steck 2010）",
+   "sources": [
+    "https://www.nokia.com/bell-labs/publications-and-media/publications/training-and-testing-of-recommender-systems-on-data-missing-not-at-random"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "lit-performing-arts",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-13",
+   "title": "舞台芸術の推薦の先行例は少なく、主に劇場側の販売データでの協調フィルタリング",
+   "sources": [
+    "https://www.arxiv.org/abs/1611.05788",
+    "https://access.intix.org/Full-Article/creating-a-netflix-for-theatre-an-unlikely-experiment-with-a-box-office-and-a-recommendation-algorithm"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "lit-prequential",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "届いた順に「予想してから答え合わせ」する評価（prequential）は、変わり続ける推薦の評価に使われている（Vinagre ほか 2014）",
+   "sources": [
+    "https://arxiv.org/abs/1504.08175",
+    "https://investigadores.anid.cl/es/public_search/work?id=233531"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "lit-safe-improvement",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "新しい方式は「前より悪くないと高い確信で言えるときだけ」採る、という考え方がある（Thomas ほか 2015）",
+   "sources": [
+    "https://proceedings.mlr.press/v37/thomas15.html"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "lit-syskill-webert-prior",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "内容ベースの推薦で、本人の初期の好みを評価が増えるたびに修正する方法がある（Billsus & Pazzani）",
+   "sources": [
+    "https://cdn.aaai.org/MSL/1996/MSL96-023.pdf",
+    "https://www.doi.org/10.1007/978-3-540-72079-9_10"
+   ],
+   "verifies": []
+  },
+  {
    "id": "migration-handover-stage0",
    "type": "finding",
    "status": "confirmed",
@@ -1656,6 +1759,15 @@
    "status": "open",
    "date": "2026-10-13",
    "title": "推薦の改善を判断するための評価の仕組みをどう作るか（何のデータで・どの指標で）",
+   "sources": [],
+   "verifies": []
+  },
+  {
+   "id": "q-reco-learning-design",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "「使うほど精度が上がる」推薦をどう作るか（何を好きとし、何を精度の向上とするか）",
    "sources": [],
    "verifies": []
   },
@@ -2916,6 +3028,56 @@
    "to": "q-domain"
   },
   {
+   "from": "lit-beyond-accuracy",
+   "rel": "supports",
+   "to": "q-reco-learning-design"
+  },
+  {
+   "from": "lit-bpr-pairwise",
+   "rel": "supports",
+   "to": "q-reco-learning-design"
+  },
+  {
+   "from": "lit-hierarchical-user-model",
+   "rel": "supports",
+   "to": "q-reco-learning-design"
+  },
+  {
+   "from": "lit-hierarchical-user-model",
+   "rel": "contradicts",
+   "to": "dec-reco-per-user-eval"
+  },
+  {
+   "from": "lit-implicit-confidence",
+   "rel": "supports",
+   "to": "q-reco-learning-design"
+  },
+  {
+   "from": "lit-mnar",
+   "rel": "contradicts",
+   "to": "q-reco-learning-design"
+  },
+  {
+   "from": "lit-performing-arts",
+   "rel": "affects",
+   "to": "q-reco-learning-design"
+  },
+  {
+   "from": "lit-prequential",
+   "rel": "supports",
+   "to": "q-reco-learning-design"
+  },
+  {
+   "from": "lit-safe-improvement",
+   "rel": "supports",
+   "to": "q-reco-learning-design"
+  },
+  {
+   "from": "lit-syskill-webert-prior",
+   "rel": "supports",
+   "to": "q-reco-learning-design"
+  },
+  {
    "from": "migration-handover-stage0",
    "rel": "affects",
    "to": "dec-render-full-migration"
@@ -3292,6 +3454,16 @@
   },
   {
    "from": "q-reco-eval-harness",
+   "rel": "affects",
+   "to": "comp-recommender"
+  },
+  {
+   "from": "q-reco-learning-design",
+   "rel": "depends_on",
+   "to": "dec-reco-per-user-eval"
+  },
+  {
+   "from": "q-reco-learning-design",
    "rel": "affects",
    "to": "comp-recommender"
   },
