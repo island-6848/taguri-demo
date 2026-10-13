@@ -950,6 +950,52 @@
    "verifies": []
   },
   {
+   "id": "eval-genre-preference",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "本人のジャンルの好みを足すと、人物だけより当たりが上がり、使うほどの伸びも大きくなる（映画の公開データ）",
+   "sources": [
+    "docs/research/reco-without-reputation.md",
+    "tools/review/eval_privacy_reco.py"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "eval-meta-learned-weights",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "組み合わせの重みを公開データの別の人で学んで固定すると少し上がる（+0.006）。人ごとに学び直すのと小さな MLP は効かない",
+   "sources": [
+    "docs/research/reco-without-reputation.md"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "eval-onboarding-selection",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "最初に評価してもらう過去作を、これから並べる候補に多い人物・ジャンルから選ぶと、同じ件数で当たりが上がる（楽観的な条件）",
+   "sources": [
+    "docs/research/reco-without-reputation.md",
+    "https://files.grouplens.org/papers/voi-final.pdf"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "eval-reputation-signals",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "水準を大きく上げたのは「作り手・ジャンルの世間の評判」だけで、それは使っても上がらない",
+   "sources": [
+    "docs/research/reco-without-reputation.md"
+   ],
+   "verifies": []
+  },
+  {
    "id": "firebase-apikey-public",
    "type": "finding",
    "status": "unverified",
@@ -1137,6 +1183,19 @@
    "title": "順位を直接学ぶ「組で比べる」学習（BPR）は、AUC を最大にするのと同じ形（Rendle ほか 2009）",
    "sources": [
     "https://proceedings.mlr.press/r7/rendle09a.html"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "lit-cold-start-dl",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-13",
+   "title": "新作向けの深層学習の推薦（DropoutNet・CB2CF・two-tower・言語モデル）は、対象分野の協調データか外部への送信が要り、たぐりの方針にそのままは合わない",
+   "sources": [
+    "https://arxiv.org/abs/2305.06474",
+    "https://arxiv.org/abs/2305.08845",
+    "https://arxiv.org/abs/1908.10084"
    ],
    "verifies": []
   },
@@ -2145,6 +2204,15 @@
    "status": "open",
    "date": "2026-10-13",
    "title": "あらすじを Claude の定期実行で読むと、1 日にどれだけ読め、起案者の使用枠をどれだけ使うか",
+   "sources": [],
+   "verifies": []
+  },
+  {
+   "id": "q-theme-preference",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "観劇でジャンルにあたる手がかり（テーマ語・劇団・会場など）をどう取り、本人の好みとして足すか",
    "sources": [],
    "verifies": []
   },
@@ -3416,6 +3484,36 @@
    "to": "comp-recommender"
   },
   {
+   "from": "eval-genre-preference",
+   "rel": "affects",
+   "to": "comp-recommender"
+  },
+  {
+   "from": "eval-genre-preference",
+   "rel": "raises",
+   "to": "q-theme-preference"
+  },
+  {
+   "from": "eval-meta-learned-weights",
+   "rel": "supports",
+   "to": "lit-hierarchical-user-model"
+  },
+  {
+   "from": "eval-meta-learned-weights",
+   "rel": "affects",
+   "to": "comp-recommender"
+  },
+  {
+   "from": "eval-onboarding-selection",
+   "rel": "affects",
+   "to": "comp-recommender"
+  },
+  {
+   "from": "eval-reputation-signals",
+   "rel": "affects",
+   "to": "q-public-reputation-signal"
+  },
+  {
    "from": "firebase-apikey-public",
    "rel": "raises",
    "to": "q-firebase-key-restriction"
@@ -3509,6 +3607,11 @@
    "from": "lit-bpr-pairwise",
    "rel": "supports",
    "to": "q-reco-learning-design"
+  },
+  {
+   "from": "lit-cold-start-dl",
+   "rel": "affects",
+   "to": "comp-recommender"
   },
   {
    "from": "lit-decoupled-rating",
@@ -4094,6 +4197,11 @@
    "from": "q-synopsis-routine-quota",
    "rel": "depends_on",
    "to": "dec-synopsis-reader-claude"
+  },
+  {
+   "from": "q-theme-preference",
+   "rel": "affects",
+   "to": "comp-recommender"
   },
   {
    "from": "q-user-chosen-scale",
