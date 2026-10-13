@@ -10,4 +10,4 @@ links:
   - supports: dec-defer-workers
   - answers: q-workers-free-viable
 ---
-上限は毎日 0 時（UTC）に戻る。超えるとその種類の処理が失敗する。
+上限は毎日 0 時（UTC）に戻る。超えるとその種類の処理が失敗する。（公式ページの記述を検索結果の引用で確かめた。作業環境の通信制限でページを直接は開けていない）

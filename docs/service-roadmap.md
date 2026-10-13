@@ -5,6 +5,19 @@
 - 合否の条件（S01〜S12）は [サービス公開計画](service-launch-plan.md) にある。この文書はそれを土台に、**何をどの順で進めるか、誰が何を決めるか、足りない検証項目（S13〜）**を足したもの
 - **調べたこと・今後調べること・決めたことは [ナレッジグラフ](knowledge/README.md) で管理する。** この文書の判断の根拠は、そこから辿れる。文中の `〔…〕` はナレッジグラフの項目
 
+## 先に決めること: 基盤を 1 つに寄せる〔q-direction〕
+
+**この計画（VM＋Cloudflare の前段）とは別に、Workers＋D1 へ移す作業が並行して進んでいる。**
+
+| | この計画 | Workers＋D1 の版（ブランチ `cloudflare-d1-preview`） | Python Workers の版（ブランチ `cloudflare-complete-migration`） |
+| --- | --- | --- | --- |
+| どこまで来たか | 計画と検証項目。VM・ドメインは未選択 | workers.dev で動いている。Firebase とパスキーのログイン、完全削除、推薦の事前計算〔workers-d1-preview-state〕 | 元の 17 画面を Python Workers で動かす下書き。本番の切り替えは不可の判定〔python-workers-migration-state〕 |
+| 費用 | ドメイン代。VM は回収・課金の心配〔oracle-always-free〕〔ec2-tokyo-price〕 | 無料プランに収まるかは実カタログでの測定次第〔worker-reco-cpu-estimate〕〔d1-free-limits〕 | 同左。全利用者を 1 つの Durable Object に送る作りで、待ち時間は未測定 |
+| 残っていること | VM 向けの直し、基盤づくり | 元の画面はまだ Render へ橋渡し。推薦の一部（ツアーの 1 枠化・感想の好み） | 実環境での起動、全件の移行、見た目と操作の同等性 |
+
+2 つ以上を並行して進めると、削除・認証・推薦・検証を二重に作ることになる。**起案者が 1 つに寄せる。** 判断に要る測定は、実カタログでの索引の行数と CPU 時間〔q-real-catalog-stats〕と、今の EC2 の口座の状態〔q-ec2-cost〕。
+Workers 版に寄せる場合も、この文書の検証項目（S01〜S31）のうち VM に固有のもの（S28・S29・S30）以外はそのまま使える。
+
 ## 構成（2026-10-13 に変更）
 
 **サービス版は、常時稼働の VM で今の Python のサーバーをそのまま動かし、前段に Cloudflare を置く**〔dec-vm-cloudflare〕。Render の有料サービスで立てる案は置き換えた〔dec-render-service-beta〕。
@@ -202,6 +215,6 @@ flowchart LR
 
 ## 次の一手
 
-1. 起案者が「0. 決める」を決める。とくに運営者・問い合わせ先、VM、ドメイン
-2. 並行して、今後調べることのうち VM とドメインの選択に効くもの〔q-oracle-official〕〔q-ec2-cost〕〔q-domain〕〔q-cf-tunnel-official〕を調べ、ナレッジグラフに記録する
-3. 「1. コードを VM 向けに直す」の、保存先の検査・待ち受け・接続元の扱いから実装する
+1. **起案者が基盤を 1 つに寄せる**〔q-direction〕。そのための測定として、EC2 で `cloudflare/scripts/build_recommend_index.py --stats` を実行する〔q-real-catalog-stats〕
+2. 起案者が「0. 決める」の運営者・問い合わせ先とドメインを決める。Workers 版でパスキーを使うなら、ドメインは早めに決めた方がよい〔passkey-rpid-domain〕
+3. VM に寄せる場合: 今の EC2 の口座の状態を確かめ〔q-ec2-cost〕、Oracle の従量課金の扱いを書面で確かめる〔q-oracle-payg〕。そのうえで「1. コードを VM 向けに直す」から実装する

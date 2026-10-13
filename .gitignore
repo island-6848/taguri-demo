@@ -4,3 +4,4 @@ __pycache__/
 data/
 
 state/
+.claude/knowledge-inbox.jsonl

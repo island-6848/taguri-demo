@@ -1,10 +1,8 @@
 ---
 id: q-oracle-official
 type: question
-status: open
+status: answered
 date: 2026-10-13
-title: Oracle の公式の無料枠・回収の条件・従量課金にした場合の扱い
-verifies:
-  - S12
+title: Oracle の公式の無料枠と回収の条件
 ---
-公式ページで ARM の無料枠の今の量と、放置判定の条件を確かめる。従量課金の契約にすると回収されないという話の真偽も確かめる。
+答え: 2 OCPU・12GB、放置判定は 7 日間で各指標 20% 未満（oracle-always-free）。従量課金の契約での扱いは別の問い（q-oracle-payg）に分けた。

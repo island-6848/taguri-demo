@@ -2,6 +2,32 @@
  "version": "taguri-knowledge-v1",
  "nodes": [
   {
+   "id": "aws-free-plan-2025",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "AWS の無料枠は 2025 年 7 月 15 日以降の新しい口座ではクレジット制（最大 200 ドル・6 か月）",
+   "sources": [
+    "https://aws.amazon.com/about-aws/whats-new/2025/07/aws-free-tier-credits-month-free-plan/"
+   ],
+   "verifies": [
+    "S12"
+   ]
+  },
+  {
+   "id": "aws-ipv4-charge",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "AWS は公開 IPv4 アドレス 1 つにつき 1 時間 0.005 ドル（月 3.6 ドルほど）かかる",
+   "sources": [
+    "https://aws.amazon.com/blogs/aws/new-aws-public-ipv4-address-charge-public-ip-insights"
+   ],
+   "verifies": [
+    "S12"
+   ]
+  },
+  {
    "id": "catalog-terms-no-redistribution",
    "type": "finding",
    "status": "confirmed",
@@ -12,6 +38,34 @@
    ],
    "verifies": [
     "S11"
+   ]
+  },
+  {
+   "id": "cf-access-free-50",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-13",
+   "title": "Cloudflare Access は 50 人まで無料（古い公式資料）",
+   "sources": [
+    "https://blog.cloudflare.com/teams-plans",
+    "https://costbench.com/software/business-vpn/cloudflare-zero-trust/free-plan/"
+   ],
+   "verifies": [
+    "S30"
+   ]
+  },
+  {
+   "id": "cf-registrar-no-jp",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-13",
+   "title": "Cloudflare Registrar では .jp を取れない。DNS だけ Cloudflare に置くことはできる",
+   "sources": [
+    "https://dev.classmethod.jp/articles/cloudflare-registrar-transfer/",
+    "https://www.issoh.co.jp/tech/details/17851/"
+   ],
+   "verifies": [
+    "S04"
    ]
   },
   {
@@ -38,6 +92,18 @@
    "verifies": [
     "S13"
    ]
+  },
+  {
+   "id": "com-wholesale-2026",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": ".com の卸値は 2026 年 11 月 1 日から年 10.97 ドルに上がる",
+   "sources": [
+    "https://www.fool.com/earnings/call-transcripts/2026/04/23/verisign-vrsn-q1-2026-earnings-transcript/",
+    "https://osir.com/en/blog/verisign-com-price-update-2026/"
+   ],
+   "verifies": []
   },
   {
    "id": "comp-auth-throttle",
@@ -174,21 +240,23 @@
   {
    "id": "d1-free-limits",
    "type": "finding",
-   "status": "unverified",
+   "status": "confirmed",
    "date": "2026-10-13",
-   "title": "D1 の無料枠は日ごとの読み書き上限（数値は未確認）",
+   "title": "D1 の無料枠は 1 日に読み 500 万行・書き 10 万行、保存 5GB",
    "sources": [
-    "https://developers.cloudflare.com/d1/reference/faq",
-    "https://eastondev.com/blog/en/posts/dev/20260526-cloudflare-free-limits/"
+    "https://developers.cloudflare.com/d1/platform/pricing/"
    ],
-   "verifies": []
+   "verifies": [
+    "S20",
+    "S21"
+   ]
   },
   {
    "id": "dec-defer-workers",
    "type": "decision",
-   "status": "adopted",
+   "status": "proposed",
    "date": "2026-10-13",
-   "title": "Cloudflare Workers への完全移行は今は見送る",
+   "title": "Cloudflare Workers への完全移行は今は見送る（見直し中）",
    "sources": [
     "docs/service-roadmap.md"
    ],
@@ -298,6 +366,20 @@
    "verifies": []
   },
   {
+   "id": "ec2-tokyo-price",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-13",
+   "title": "東京の t4g.micro は 1 時間 0.0108 ドル（月 8 ドルほど）、t3.micro は 0.0136 ドル",
+   "sources": [
+    "https://aws-pricing.com/t4g.micro.html",
+    "https://www.doit.com/compute/spot/ap-northeast-1/t3.micro"
+   ],
+   "verifies": [
+    "S12"
+   ]
+  },
+  {
    "id": "gemini-budget-cap",
    "type": "finding",
    "status": "confirmed",
@@ -322,6 +404,18 @@
    "verifies": []
   },
   {
+   "id": "jp-domain-price",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-13",
+   "title": ".jp は年 4,000 円前後（税の扱い・年額かは未確認）",
+   "sources": [
+    "https://www.itreview.jp/compares/domain-sakura_vs_onamae-com",
+    "https://www.onamae.com/service/d-renew/price.html"
+   ],
+   "verifies": []
+  },
+  {
    "id": "legacy-test-failures",
    "type": "finding",
    "status": "confirmed",
@@ -336,15 +430,18 @@
   {
    "id": "oracle-always-free",
    "type": "finding",
-   "status": "unverified",
+   "status": "confirmed",
    "date": "2026-10-13",
-   "title": "Oracle Always Free は ARM の VM とディスクが無料。ただし放置判定で回収されうる",
+   "title": "Oracle Always Free の ARM は 2 OCPU・12GB まで。使用が少ないと回収されうる",
    "sources": [
-    "https://braindetox.kr/en/posts/oracle_always_free_tier_reduced_2026.html",
-    "https://terminalbytes.com/oracle-cloud-free-tier-changes-2026",
-    "https://space-node.net/blog/oracle-cloud-free-vps-guide-2026"
+    "https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier_topic-Always_Free_Resources.htm",
+    "https://www.infoq.com/news/2026/07/oracle-cloud-free-tier-limits/",
+    "https://linuxiac.com/oracle-quietly-cuts-free-tier-ampere-a1-resources-in-half/"
    ],
-   "verifies": []
+   "verifies": [
+    "S12",
+    "S29"
+   ]
   },
   {
    "id": "pages-404-fallback",
@@ -361,6 +458,19 @@
    ]
   },
   {
+   "id": "passkey-rpid-domain",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "パスキーはドメインに結び付くので、ドメインを変えると使えなくなる",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/blob/cloudflare-d1-preview/cloudflare/README.md"
+   ],
+   "verifies": [
+    "S04"
+   ]
+  },
+  {
    "id": "public-export-leak",
    "type": "finding",
    "status": "confirmed",
@@ -373,6 +483,17 @@
    "verifies": [
     "S03"
    ]
+  },
+  {
+   "id": "python-workers-migration-state",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "別の作業で、元の画面の Python を Python Workers で動かす移行版も作られている",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/blob/cloudflare-complete-migration/docs/verification/2026-10-13-cloudflare-migration-final-review.md"
+   ],
+   "verifies": []
   },
   {
    "id": "q-cf-access",
@@ -412,9 +533,20 @@
    "type": "question",
    "status": "open",
    "date": "2026-10-13",
-   "title": "将来の移行に向けた D1 と Python Workers の制限",
+   "title": "Python Workers の CPU の制限と成熟度",
    "sources": [],
    "verifies": []
+  },
+  {
+   "id": "q-direction",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "サービス版の基盤を「VM＋Cloudflare の前段」と「Workers＋D1」のどちらに寄せるか",
+   "sources": [],
+   "verifies": [
+    "S12"
+   ]
   },
   {
    "id": "q-domain",
@@ -432,7 +564,7 @@
    "type": "question",
    "status": "open",
    "date": "2026-10-13",
-   "title": "今の EC2 の種類・月額・無料期間",
+   "title": "今の EC2 の種類・口座の作成日・月額",
    "sources": [],
    "verifies": [
     "S12"
@@ -465,12 +597,21 @@
   {
    "id": "q-oracle-official",
    "type": "question",
+   "status": "answered",
+   "date": "2026-10-13",
+   "title": "Oracle の公式の無料枠と回収の条件",
+   "sources": [],
+   "verifies": []
+  },
+  {
+   "id": "q-oracle-payg",
+   "type": "question",
    "status": "open",
    "date": "2026-10-13",
-   "title": "Oracle の公式の無料枠・回収の条件・従量課金にした場合の扱い",
+   "title": "Oracle を従量課金の契約にすると、無料枠と回収の扱いは変わるか",
    "sources": [],
    "verifies": [
-    "S12"
+    "S29"
    ]
   },
   {
@@ -504,6 +645,18 @@
    "title": "R2 の公式料金と、今の boto3 のコードで読み書きできるか",
    "sources": [],
    "verifies": []
+  },
+  {
+   "id": "q-real-catalog-stats",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "実カタログで、推薦の索引の行数と Worker の CPU 時間がどうなるか",
+   "sources": [],
+   "verifies": [
+    "S20",
+    "S21"
+   ]
   },
   {
    "id": "q-render-free-viable",
@@ -694,6 +847,33 @@
    ]
   },
   {
+   "id": "worker-reco-cpu-estimate",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-13",
+   "title": "Worker での推薦計算は 1 回 10〜12 ミリ秒、重い想定で 39 ミリ秒（見積もり）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/blob/cloudflare-d1-preview/cloudflare/README.md"
+   ],
+   "verifies": [
+    "S20"
+   ]
+  },
+  {
+   "id": "workers-d1-preview-state",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "別の作業で、Workers＋D1 の版が workers.dev で動き始めている",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/tree/cloudflare-d1-preview/cloudflare"
+   ],
+   "verifies": [
+    "S10",
+    "S20"
+   ]
+  },
+  {
    "id": "workers-free-cpu-10ms",
    "type": "finding",
    "status": "confirmed",
@@ -707,6 +887,16 @@
  ],
  "edges": [
   {
+   "from": "aws-free-plan-2025",
+   "rel": "affects",
+   "to": "q-ec2-cost"
+  },
+  {
+   "from": "aws-ipv4-charge",
+   "rel": "affects",
+   "to": "q-ec2-cost"
+  },
+  {
    "from": "catalog-terms-no-redistribution",
    "rel": "raises",
    "to": "q-source-terms"
@@ -715,6 +905,16 @@
    "from": "catalog-terms-no-redistribution",
    "rel": "affects",
    "to": "comp-catalog-pipeline"
+  },
+  {
+   "from": "cf-access-free-50",
+   "rel": "affects",
+   "to": "q-cf-access"
+  },
+  {
+   "from": "cf-registrar-no-jp",
+   "rel": "affects",
+   "to": "q-domain"
   },
   {
    "from": "cf-tunnel-free",
@@ -740,6 +940,11 @@
    "from": "cf-tunnel-origin-localhost",
    "rel": "raises",
    "to": "q-cf-connecting-ip-trust"
+  },
+  {
+   "from": "com-wholesale-2026",
+   "rel": "affects",
+   "to": "q-domain"
   },
   {
    "from": "comp-vm-host",
@@ -768,13 +973,23 @@
   },
   {
    "from": "d1-free-limits",
-   "rel": "raises",
+   "rel": "affects",
    "to": "q-d1-python-workers"
+  },
+  {
+   "from": "d1-free-limits",
+   "rel": "affects",
+   "to": "q-direction"
   },
   {
    "from": "dec-defer-workers",
    "rel": "affects",
    "to": "comp-recommender"
+  },
+  {
+   "from": "dec-defer-workers",
+   "rel": "depends_on",
+   "to": "q-direction"
   },
   {
    "from": "dec-demo-stays-render-free",
@@ -842,14 +1057,29 @@
    "to": "comp-recommender"
   },
   {
+   "from": "ec2-tokyo-price",
+   "rel": "affects",
+   "to": "q-ec2-cost"
+  },
+  {
    "from": "gemini-budget-cap",
    "rel": "affects",
    "to": "comp-catalog-pipeline"
   },
   {
+   "from": "jp-domain-price",
+   "rel": "affects",
+   "to": "q-domain"
+  },
+  {
+   "from": "oracle-always-free",
+   "rel": "answers",
+   "to": "q-oracle-official"
+  },
+  {
    "from": "oracle-always-free",
    "rel": "raises",
-   "to": "q-oracle-official"
+   "to": "q-oracle-payg"
   },
   {
    "from": "oracle-always-free",
@@ -862,9 +1092,29 @@
    "to": "comp-frontend"
   },
   {
+   "from": "passkey-rpid-domain",
+   "rel": "affects",
+   "to": "q-domain"
+  },
+  {
+   "from": "passkey-rpid-domain",
+   "rel": "supports",
+   "to": "dec-own-domain"
+  },
+  {
    "from": "public-export-leak",
    "rel": "affects",
    "to": "comp-export"
+  },
+  {
+   "from": "python-workers-migration-state",
+   "rel": "affects",
+   "to": "q-direction"
+  },
+  {
+   "from": "python-workers-migration-state",
+   "rel": "raises",
+   "to": "q-d1-python-workers"
   },
   {
    "from": "q-cf-access",
@@ -872,9 +1122,19 @@
    "to": "dec-vm-cloudflare"
   },
   {
-   "from": "q-d1-python-workers",
+   "from": "q-direction",
    "rel": "depends_on",
-   "to": "dec-defer-workers"
+   "to": "q-real-catalog-stats"
+  },
+  {
+   "from": "q-direction",
+   "rel": "depends_on",
+   "to": "q-vm-host-choice"
+  },
+  {
+   "from": "q-domain",
+   "rel": "depends_on",
+   "to": "q-direction"
   },
   {
    "from": "q-offsite-backup",
@@ -887,6 +1147,11 @@
    "to": "q-vm-host-choice"
   },
   {
+   "from": "q-real-catalog-stats",
+   "rel": "depends_on",
+   "to": "q-ec2-cost"
+  },
+  {
    "from": "q-safari-cookies",
    "rel": "depends_on",
    "to": "dec-own-domain"
@@ -894,12 +1159,17 @@
   {
    "from": "q-vm-host-choice",
    "rel": "depends_on",
-   "to": "q-oracle-official"
+   "to": "q-oracle-payg"
   },
   {
    "from": "q-vm-host-choice",
    "rel": "depends_on",
    "to": "q-ec2-cost"
+  },
+  {
+   "from": "q-vm-host-choice",
+   "rel": "depends_on",
+   "to": "q-direction"
   },
   {
    "from": "q-vm-performance",
@@ -1015,6 +1285,36 @@
    "from": "throttle-keyed-by-client-address",
    "rel": "raises",
    "to": "q-cf-connecting-ip-trust"
+  },
+  {
+   "from": "worker-reco-cpu-estimate",
+   "rel": "contradicts",
+   "to": "dec-defer-workers"
+  },
+  {
+   "from": "worker-reco-cpu-estimate",
+   "rel": "raises",
+   "to": "q-real-catalog-stats"
+  },
+  {
+   "from": "worker-reco-cpu-estimate",
+   "rel": "affects",
+   "to": "q-direction"
+  },
+  {
+   "from": "workers-d1-preview-state",
+   "rel": "contradicts",
+   "to": "dec-defer-workers"
+  },
+  {
+   "from": "workers-d1-preview-state",
+   "rel": "affects",
+   "to": "q-direction"
+  },
+  {
+   "from": "workers-d1-preview-state",
+   "rel": "affects",
+   "to": "comp-recommender"
   },
   {
    "from": "workers-free-cpu-10ms",
