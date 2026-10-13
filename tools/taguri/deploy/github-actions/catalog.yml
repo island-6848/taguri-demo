@@ -31,6 +31,9 @@ jobs:
     timeout-minutes: 300
     env:
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      # CoRich の検索ページはデータセンターからの接続を断るので使わない。新しい公演はサイトマップで見つける
+      # （docs/knowledge の corich-search-waf-403・dec-corich-sitemap）
+      TAGURI_CORICH_SEARCH: 'off'
       MODE: ${{ github.event.inputs.mode || (github.event.schedule == '17 19 * * 6' && 'weekly') || 'daily' }}
     steps:
       - name: Check out the public code

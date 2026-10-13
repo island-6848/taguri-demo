@@ -101,7 +101,11 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT / "tools" / "credits"))
-from fetch_credits import get, credits_of, BASE      # noqa: E402
+from fetch_credits import get, credits_of, parse_stage, BASE   # noqa: E402
+import fetch_credits as FC                           # noqa: E402
+import polite_http as PH                             # noqa: E402
+import gzip                                          # noqa: E402
+import os                                            # noqa: E402
 import unicodedata                                   # noqa: E402
 
 OUT = ROOT / "data" / "review" / "candidates.jsonl"
@@ -147,6 +151,52 @@ def listing(page: int, y: int, m: int, d: int) -> list[dict]:
     return rows
 
 
+SITEMAP_INDEX = f"{BASE}/sitemaps/sitemap.xml.gz"
+
+
+def sitemap_stage_ids() -> list[int]:
+    """CoRich のサイトマップに載っている公演ページの id（昇順）。
+
+    **検索ページを使わずに新しい公演を見つける道。** robots.txt が示すサイトマップは毎日作り直され、
+    すべての公演ページ（/stage/<id>）が載っている（docs/knowledge の corich-sitemap-stage-ids）。
+    公演が載るのは前のほうのファイルだけなので、公演の無いファイルに当たったら読むのをやめる。"""
+    idx = gzip.decompress(PH.fetch(SITEMAP_INDEX, timeout=60)).decode("utf-8", "replace")
+    ids: list[int] = []
+    for url in re.findall(r"<loc>([^<]+)</loc>", idx):
+        x = gzip.decompress(PH.fetch(url, timeout=120)).decode("utf-8", "replace")
+        got = [int(i) for i in re.findall(r"/stage/(\d+)</loc>", x)]
+        if not got and ids:
+            break
+        ids += got
+    return sorted(set(ids))
+
+
+def stage_row(sid: str) -> dict:
+    """公演ページ 1 枚から、一覧の行と同じ形（題名・団体・劇場・都道府県・料金・期間）とクレジットを作る。
+
+    公演ページの上部には、検索の一覧と同じ `<p class="group">`・`<p class="theater">…<span class="pref">` が
+    ある（点検で確かめた）。題名は <title> から取る。"""
+    html = get(f"{BASE}/stage/{sid}")
+    c = parse_stage(html, sid)
+    f = c["fields"]
+    mp = re.search(r'<span class="pref">(.*?)</span>', html, re.S)
+    theater = re.sub(r"\(.*?\)$", "", pick(html, "theater")).strip()
+    period = re.sub(r"\s*\([^)]*\)", "", c["period"] or "").replace("～", "〜").strip()
+    return {
+        "stage_id": str(sid),
+        "title": unicodedata.normalize("NFKC", c["page_title"] or "").strip(),
+        "group": pick(html, "group"),
+        "theater": theater or f.get("劇場", ""),
+        "pref": txt(mp.group(1)).strip("()（）") if mp else "",
+        "price": f.get("料金（1枚あたり）", ""),
+        "period": period,
+        "status": "",
+        "venue": f.get("劇場", "") or theater,
+        "fields": f,
+        "source": "sitemap",
+    }
+
+
 def period_end(period: str):
     ms = re.findall(r"(20\d\d)/(\d{1,2})/(\d{1,2})", period or "")
     if not ms:
@@ -169,6 +219,12 @@ def main() -> int:
     ap.add_argument("--keep-days", type=int, default=180,
                     help="楽日を過ぎた公演を何日ぶん候補に残すか。0 で従来どおり"
                          "「楽日が今日以降」だけになる")
+    ap.add_argument("--source", choices=("search", "sitemap"),
+                    default="sitemap" if FC.SEARCH_OFF else "search",
+                    help="新しい公演の見つけ方。search は CoRich の検索ページ、sitemap はサイトマップ"
+                         "（TAGURI_CORICH_SEARCH=off のときの既定）")
+    ap.add_argument("--initial-ids", type=int, default=6000,
+                    help="sitemap で前回の控えが無いとき、新しいほうから何件の公演ページを読むか")
     ap.add_argument("--since-days", type=int, default=None,
                     help="初日を何日さかのぼって引くか。既定は --keep-days + 45"
                          "（上演日数の 99 パーセンタイルが 44 日）")
@@ -184,7 +240,38 @@ def main() -> int:
 
     rows: list[dict] = []
     seen: set[str] = set()
-    for p in range(1, a.pages + 1):
+    max_id = None
+    if a.source == "sitemap":
+        # **サイトマップで、前回より新しい公演の id だけを読む。** 前回の候補は下の引き継ぎが拾う
+        prev_scan = json.loads(SCAN.read_text(encoding="utf-8")) if SCAN.exists() else {}
+        ids = sitemap_stage_ids()
+        max_id = max(ids) if ids else prev_scan.get("max_id")
+        last = prev_scan.get("max_id")
+        targets = [i for i in ids if i > last] if last else ids[-a.initial_ids:]
+        print(f"サイトマップの公演 {len(ids)} 件・最新 {max_id} ── 読むのは "
+              f"{'前回（' + str(last) + '）より新しい' if last else '新しいほうから'} {len(targets)} 件", flush=True)
+        for n, sid in enumerate(targets, 1):
+            r = None
+            for attempt in range(2):
+                try:
+                    r = stage_row(str(sid))
+                    break
+                except PH.Skipped:
+                    break                       # 取得元に断られた（作法どおり引く）
+                except Exception:               # noqa: BLE001
+                    if attempt == 0:
+                        time.sleep(2.0)
+            if r is None:
+                continue
+            seen.add(r["stage_id"])
+            end = period_end(r["period"])
+            if end is None or end >= keep_from:
+                r["period_unparsed"] = end is None
+                r["ended"] = bool(end and end < today)
+                rows.append(r)
+            if n % 50 == 0:
+                print(f"  公演ページ {n}/{len(targets)} / 残す {len(rows)} 件", flush=True)
+    for p in range(1, (a.pages if a.source == "search" else 0) + 1):
         got = listing(p, frm.year, frm.month, frm.day)
         if not got:
             break
@@ -204,7 +291,7 @@ def main() -> int:
                 rows.append(r)
         print(f"  一覧 {p} ページ目 / 生存 {len(rows)} 件（走査 {len(seen)} 件）",
               end="\r", flush=True)
-    if p >= a.pages:
+    if a.source == "search" and p >= a.pages:
         print(f"\n** 一覧を {a.pages} ページで打ち切った。--pages を上げること **")
     print()
 
@@ -245,6 +332,12 @@ def main() -> int:
         carried += 1
     if carried:
         print(f"前回の候補から {carried} 件を引き継ぎました（取得はしません）")
+    if a.source == "sitemap":
+        # **サイトマップでは前回の候補を一覧で見直さないので、クレジットが空のまま残った
+        # これからの公演だけは、公演ページを読み直す**（初報では空のことがある）
+        for r in rows:
+            if r.get("carried") and not r.get("ended") and not r.get("fields"):
+                r["carried"] = False
 
     # **前回すでにクレジットが取れている候補は、取り直さない。** もとは「取得済みの
     # 公演も毎回取り直す」だった ── 初報の時点ではあらすじもクレジットも載っていない
@@ -346,7 +439,8 @@ def main() -> int:
               f"（うち新規登録 {len(fresh)} 件）／消えた {len(gone)} 件")
         if len(gone) > len(added):
             print("  ** 消えた件数が増えた件数を上回っている。走査の取りこぼしを疑う **")
-    SCAN.write_text(json.dumps({"date": str(today), "ids": now_ids,
+    SCAN.write_text(json.dumps({"date": str(today), "ids": now_ids, "source": a.source,
+                                "max_id": max_id if a.source == "sitemap" else prev.get("max_id"),
                                 "credits_failed": failed}, ensure_ascii=False),
                     encoding="utf-8")
 

@@ -61,6 +61,11 @@ PERF = ROOT / "data" / "tickets" / "performances.jsonl"
 OUT = ROOT / "data" / "credits" / "credits.jsonl"
 CACHE = ROOT / "data" / "credits" / "pages"
 BASE = "https://stage.corich.jp"
+# **CoRich の検索ページを使わない運用。** GitHub Actions など、データセンターからの接続は
+# 検索ページ（/stage/search）だけがサーバー手前で 403 になる（docs/knowledge の corich-search-waf-403）。
+# 断られたものはすり抜けないので、その環境では `TAGURI_CORICH_SEARCH=off` にし、
+# 新しい公演はサイトマップで見つける（fetch_candidates.py の --source sitemap）。
+SEARCH_OFF = (__import__("os").environ.get("TAGURI_CORICH_SEARCH", "on").lower() == "off")
 UA = PH.UA                                      # 名乗りは polite_http の 1 か所で決める
 
 # クレジットの役職。**役職別に取得率を測る**ため、まとめずに持つ
@@ -288,6 +293,8 @@ def best_match(r: dict, words: list[str], seen: set) -> dict | None:
 
 
 def search(word: str) -> list[str]:
+    if SEARCH_OFF:
+        return []
     q = urllib.parse.urlencode({"search": 1, "freeword": word,
                                 "freeword_type": "title", "sort": "start_desc"})
     html = get(f"{BASE}/stage/search?{q}")
@@ -299,7 +306,11 @@ def search(word: str) -> list[str]:
 
 
 def credits_of(stage_id: str) -> dict:
-    html = get(f"{BASE}/stage/{stage_id}")
+    return parse_stage(get(f"{BASE}/stage/{stage_id}"), stage_id)
+
+
+def parse_stage(html: str, stage_id: str) -> dict:
+    """公演ページの HTML から、期間・題名・クレジットを読む（取得は呼ぶ側）。"""
     out: dict = {}
     # **ラベルは <th>/<td> にある。** <dt>/<dd> は画面下部の案内メニューで、
     # そちらだけを拾うと「公演情報・クチコミ・団体／劇場…」が取れて中身が空になる。

@@ -473,6 +473,19 @@
    "verifies": []
   },
   {
+   "id": "dec-corich-sitemap",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-13",
+   "title": "GitHub Actions では CoRich の検索を使わず、サイトマップで新しい公演を見つけて公演ページを読む",
+   "sources": [
+    "tools/review/fetch_candidates.py"
+   ],
+   "verifies": [
+    "S24"
+   ]
+  },
+  {
    "id": "dec-crawler-gha-private",
    "type": "decision",
    "status": "adopted",
@@ -1100,6 +1113,15 @@
    ]
   },
   {
+   "id": "q-corich-updates-after-first-read",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "一度読んだ公演ページの更新（出演者の追加など）をどう拾い直すか",
+   "sources": [],
+   "verifies": []
+  },
+  {
    "id": "q-crawler-host",
    "type": "question",
    "status": "answered",
@@ -1272,6 +1294,15 @@
     "S22",
     "S23"
    ]
+  },
+  {
+   "id": "q-name-search-without-corich-search",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "CoRich の検索を使えないとき、お気に入りの登録名や探してほしい題名で公演をどう探すか",
+   "sources": [],
+   "verifies": []
   },
   {
    "id": "q-offsite-backup",
@@ -1996,6 +2027,21 @@
    "to": "q-firebase-user-deletion"
   },
   {
+   "from": "dec-corich-sitemap",
+   "rel": "depends_on",
+   "to": "corich-search-waf-403"
+  },
+  {
+   "from": "dec-corich-sitemap",
+   "rel": "depends_on",
+   "to": "corich-sitemap-stage-ids"
+  },
+  {
+   "from": "dec-corich-sitemap",
+   "rel": "affects",
+   "to": "dec-crawler-gha-private"
+  },
+  {
    "from": "dec-crawler-gha-private",
    "rel": "answers",
    "to": "q-crawler-host"
@@ -2506,6 +2552,11 @@
    "to": "corich-robots-sitemap-only"
   },
   {
+   "from": "q-corich-updates-after-first-read",
+   "rel": "depends_on",
+   "to": "dec-corich-sitemap"
+  },
+  {
    "from": "q-crawler-host",
    "rel": "depends_on",
    "to": "q-ec2-cost"
@@ -2579,6 +2630,11 @@
    "from": "q-migration-owner",
    "rel": "depends_on",
    "to": "dec-render-full-migration"
+  },
+  {
+   "from": "q-name-search-without-corich-search",
+   "rel": "depends_on",
+   "to": "dec-corich-sitemap"
   },
   {
    "from": "q-offsite-backup",

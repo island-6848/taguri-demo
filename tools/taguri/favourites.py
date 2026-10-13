@@ -127,6 +127,9 @@ def pick(block: str, cls: str) -> str:
 
 def search(word: str, today: datetime.date, page: int = 1) -> list[dict]:
     """名前で引く。**初日が今日以降のものだけ**を、初日の近い順で返す。"""
+    import fetch_credits as FC
+    if FC.SEARCH_OFF:
+        return []      # 検索ページを使わない運用（fetch_credits.SEARCH_OFF）
     q = urllib.parse.urlencode({
         "utf8": "✓", "search": 1, "freeword": word, "freeword_type": "all",
         "sort": "start_asc", "page": page,

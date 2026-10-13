@@ -79,3 +79,5 @@ jobs:
         run: python tools/taguri/test_catalog_info.py
       - name: Crawler working data between runs
         run: python tools/taguri/test_crawler_state.py
+      - name: Candidates from the CoRich sitemap (search page refused from data centers)
+        run: python tools/review/test_fetch_candidates_sitemap.py
