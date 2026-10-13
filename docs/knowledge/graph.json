@@ -734,6 +734,17 @@
    "verifies": []
   },
   {
+   "id": "gha-repo-create-forbidden",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "この作業環境の GitHub 連携では、新しいリポジトリを作れない",
+   "sources": [
+    "https://claude.ai/code/session_015xXsQ9C4423EMquRbg7m3U（create_repository が 403 Resource not accessible by integration）"
+   ],
+   "verifies": []
+  },
+  {
    "id": "gha-schedule-unreliable",
    "type": "finding",
    "status": "unverified",
@@ -983,6 +994,18 @@
    "status": "answered",
    "date": "2026-10-13",
    "title": "公演情報の取得処理をどこで動かすか",
+   "sources": [],
+   "verifies": [
+    "S23",
+    "S24"
+   ]
+  },
+  {
+   "id": "q-crawler-repo",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "取得処理用の非公開リポジトリ（taguri-crawler）と、その秘密の設定",
    "sources": [],
    "verifies": [
     "S23",
@@ -2113,6 +2136,16 @@
    "to": "catalog-terms-no-redistribution"
   },
   {
+   "from": "gha-repo-create-forbidden",
+   "rel": "affects",
+   "to": "dec-crawler-gha-private"
+  },
+  {
+   "from": "gha-repo-create-forbidden",
+   "rel": "raises",
+   "to": "q-crawler-repo"
+  },
+  {
    "from": "gha-schedule-unreliable",
    "rel": "affects",
    "to": "q-crawler-host"
@@ -2261,6 +2294,11 @@
    "from": "q-crawler-host",
    "rel": "depends_on",
    "to": "q-ec2-cost"
+  },
+  {
+   "from": "q-crawler-repo",
+   "rel": "depends_on",
+   "to": "dec-crawler-gha-private"
   },
   {
    "from": "q-d1-backup",
