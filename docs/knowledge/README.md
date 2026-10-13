@@ -127,109 +127,110 @@ flowchart LR
   n104{{"Python Workers の CPU の制限と成熟度"}}
   n105{{"Render を止めたあと、デモ版（見本の記録で試す版）をどうするか"}}
   n106{{"データを持たないお試し版をどう作るか"}}
-  n107{{"サービス版の基盤を「VM＋Cloudflare の前段」と「Workers＋D1」のどちらに寄せるか"}}
-  n108{{"どのドメインをどこで取るか"}}
-  n109{{"今の EC2 の種類・口座の作成日・月額"}}
-  n110{{"Firebase Authentication の無料枠の正確な範囲（メールリンク・利用者数）"}}
-  n111{{"Firebase の API キーに制限（Web サイト・使う API）を掛けたか"}}
-  n112{{"アカウント削除で Firebase 側の利用者も本当に消えているか"}}
-  n113{{"Worker の依存とログイン画面の組み立てを再現できるようにするか（lockfile）"}}
-  n114{{"メールリンクのログインで、メールアドレスを端末に残してよいか"}}
-  n115{{"移行の作業をどのブランチで進めるか（cloudflare-d1-preview は push すると本番に出る）"}}
-  n116{{"画面の移行の続き（段 1〜5）をどのセッションが受け持つか"}}
-  n117{{"無料で使える外形監視と通知"}}
-  n118{{"CoRich の検索を使えないとき、お気に入りの登録名や探してほしい題名で公演をどう探すか"}}
-  n119{{"D1 のバックアップを、Time Travel の期間より長くどこに残すか"}}
-  n120{{"Oracle の公式の無料枠と回収の条件"}}
-  n121{{"Oracle を従量課金の契約にすると、無料枠と回収の扱いは変わるか"}}
-  n122{{"元の画面の Content-Security-Policy を強められるか"}}
-  n123{{"パスキーは実機（iPhone・Android・Mac・Windows）で登録・ログインできるか"}}
-  n124{{"昔の公演を、公開情報だけで探せるようにするにはどうするか"}}
-  n125{{"個人情報保護法で何が求められるか"}}
-  n126{{"本番に deploy するブランチをどれにするか（PR のブランチのままにしない）"}}
-  n127{{"サーバーの Python を何版に揃えるか"}}
-  n128{{"R2 の公式料金と、今の boto3 のコードで読み書きできるか"}}
-  n129{{"ログイン・登録・検索の回数制限を Worker でどう掛けるか"}}
-  n130{{"実カタログで、推薦の索引の行数と Worker の CPU 時間がどうなるか"}}
-  n131{{"Render の無料プランでサービス版を動かせるか"}}
-  n132{{"Render のデモ版は、起動し直すと動かなくなるのではないか"}}
-  n133{{"Safari で Cookie が通るか（実機）"}}
-  n134{{"取得元の利用規約・robots.txt・ポスター画像の権利"}}
-  n135{{"あらすじの読み取りを誰が担うか（Claude の定期実行・Gemini API・当面読まない）"}}
-  n136{{"あらすじを Claude の定期実行で読むと、1 日にどれだけ読め、起案者の使用枠をどれだけ使うか"}}
-  n137{{"サービス版の VM は Oracle Always Free と今の EC2 のどちらにするか"}}
-  n138{{"VM でおすすめが 3 秒以内に開くか"}}
-  n139{{"無料プランで CPU 10 ミリ秒を超えると、実際にはどうなるか"}}
-  n140{{"移した画面は Workers 無料枠の CPU 10 ミリ秒に収まるか"}}
-  n141{{"Cloudflare の無料枠だけで、今のコードのまま動かせるか"}}
-  n142("R2 は 10GB まで無料で、取り出しの通信料がかからない")
-  n143("おすすめは開くたびに全候補を計算している")
-  n144("Worker の推薦は Python（person-feedback-v1）と同じ結果を出す")
-  n145("推薦の計算 person-graded-v2 は、D1 の索引の作り（表と行）を変えない")
-  n146("Render の無料プランは永続ディスクを付けられない")
-  n147("Render の無料プランは 15 分でスリープし、起動に約 1 分かかる")
-  n148("Render の有料プランならスリープせずディスクも付く（単価は二次情報）")
-  n149("Render の利用者（tg_session）とログインしたアカウント（D1）は別人として扱われている")
-  n150("元の画面は Python が HTML を組んで JSON で返している（約 2.5 万行）")
-  n151("Python の robotparser は小数の Crawl-delay を読めない")
-  n152("1000 人で使うと、Workers の無料枠は推薦の計算（CPU）と D1 の読み行数で足りなくなりそう（見積もり）")
-  n153("サービス版の保存先の検査が Render を前提にしている")
-  n154("バックアップの検査が Python 3.13 では 1 件失敗する")
-  n155("サーバーは標準ライブラリの http.server と sqlite3 で書いてある")
-  n156("あらすじの読み取りは Gemini API。以前の claude CLI 呼び出しは起案者の判断でやめている")
-  n157("試行回数の制限は接続元のアドレスで数えている")
-  n158("題名の正規化（title_key）は JS でも Python と同じにできる")
-  n159("Worker での推薦計算は 1 回 10〜12 ミリ秒、重い想定で 39 ミリ秒（見積もり）")
-  n160("push するたびに Workers Builds が D1 の migration を当ててから deploy する")
-  n161("コミットの ✗ は Workers Builds が cloudflare/ の無い master を組もうとして失敗していたため")
-  n162("Workers の定期実行は、無料プランだと 1 回あたり CPU 10 ミリ秒・外部への要求 50 回まで")
-  n163("別の作業で、Workers＋D1 の版が workers.dev で動き始めている")
-  n164("Workers の無料プランは 1 要求あたり CPU 10 ミリ秒・1 日 10 万要求まで")
-  n165("Workers の有料プランは月 5 ドルで、要求 1000 万回・CPU 3000 万ミリ秒・D1 の読み 250 億行が含まれる")
-  n166("Workers の静的ファイルへの要求は無料・無制限で、要求数の上限に数えない")
-  n0 -- 影響する --> n109
-  n1 -- 影響する --> n109
+  n107{{"たぐりの見た目をどの方向に変えるか（A 幕と半券・B 観劇ノート・C 客電が落ちる）"}}
+  n108{{"サービス版の基盤を「VM＋Cloudflare の前段」と「Workers＋D1」のどちらに寄せるか"}}
+  n109{{"どのドメインをどこで取るか"}}
+  n110{{"今の EC2 の種類・口座の作成日・月額"}}
+  n111{{"Firebase Authentication の無料枠の正確な範囲（メールリンク・利用者数）"}}
+  n112{{"Firebase の API キーに制限（Web サイト・使う API）を掛けたか"}}
+  n113{{"アカウント削除で Firebase 側の利用者も本当に消えているか"}}
+  n114{{"Worker の依存とログイン画面の組み立てを再現できるようにするか（lockfile）"}}
+  n115{{"メールリンクのログインで、メールアドレスを端末に残してよいか"}}
+  n116{{"移行の作業をどのブランチで進めるか（cloudflare-d1-preview は push すると本番に出る）"}}
+  n117{{"画面の移行の続き（段 1〜5）をどのセッションが受け持つか"}}
+  n118{{"無料で使える外形監視と通知"}}
+  n119{{"CoRich の検索を使えないとき、お気に入りの登録名や探してほしい題名で公演をどう探すか"}}
+  n120{{"D1 のバックアップを、Time Travel の期間より長くどこに残すか"}}
+  n121{{"Oracle の公式の無料枠と回収の条件"}}
+  n122{{"Oracle を従量課金の契約にすると、無料枠と回収の扱いは変わるか"}}
+  n123{{"元の画面の Content-Security-Policy を強められるか"}}
+  n124{{"パスキーは実機（iPhone・Android・Mac・Windows）で登録・ログインできるか"}}
+  n125{{"昔の公演を、公開情報だけで探せるようにするにはどうするか"}}
+  n126{{"個人情報保護法で何が求められるか"}}
+  n127{{"本番に deploy するブランチをどれにするか（PR のブランチのままにしない）"}}
+  n128{{"サーバーの Python を何版に揃えるか"}}
+  n129{{"R2 の公式料金と、今の boto3 のコードで読み書きできるか"}}
+  n130{{"ログイン・登録・検索の回数制限を Worker でどう掛けるか"}}
+  n131{{"実カタログで、推薦の索引の行数と Worker の CPU 時間がどうなるか"}}
+  n132{{"Render の無料プランでサービス版を動かせるか"}}
+  n133{{"Render のデモ版は、起動し直すと動かなくなるのではないか"}}
+  n134{{"Safari で Cookie が通るか（実機）"}}
+  n135{{"取得元の利用規約・robots.txt・ポスター画像の権利"}}
+  n136{{"あらすじの読み取りを誰が担うか（Claude の定期実行・Gemini API・当面読まない）"}}
+  n137{{"あらすじを Claude の定期実行で読むと、1 日にどれだけ読め、起案者の使用枠をどれだけ使うか"}}
+  n138{{"サービス版の VM は Oracle Always Free と今の EC2 のどちらにするか"}}
+  n139{{"VM でおすすめが 3 秒以内に開くか"}}
+  n140{{"無料プランで CPU 10 ミリ秒を超えると、実際にはどうなるか"}}
+  n141{{"移した画面は Workers 無料枠の CPU 10 ミリ秒に収まるか"}}
+  n142{{"Cloudflare の無料枠だけで、今のコードのまま動かせるか"}}
+  n143("R2 は 10GB まで無料で、取り出しの通信料がかからない")
+  n144("おすすめは開くたびに全候補を計算している")
+  n145("Worker の推薦は Python（person-feedback-v1）と同じ結果を出す")
+  n146("推薦の計算 person-graded-v2 は、D1 の索引の作り（表と行）を変えない")
+  n147("Render の無料プランは永続ディスクを付けられない")
+  n148("Render の無料プランは 15 分でスリープし、起動に約 1 分かかる")
+  n149("Render の有料プランならスリープせずディスクも付く（単価は二次情報）")
+  n150("Render の利用者（tg_session）とログインしたアカウント（D1）は別人として扱われている")
+  n151("元の画面は Python が HTML を組んで JSON で返している（約 2.5 万行）")
+  n152("Python の robotparser は小数の Crawl-delay を読めない")
+  n153("1000 人で使うと、Workers の無料枠は推薦の計算（CPU）と D1 の読み行数で足りなくなりそう（見積もり）")
+  n154("サービス版の保存先の検査が Render を前提にしている")
+  n155("バックアップの検査が Python 3.13 では 1 件失敗する")
+  n156("サーバーは標準ライブラリの http.server と sqlite3 で書いてある")
+  n157("あらすじの読み取りは Gemini API。以前の claude CLI 呼び出しは起案者の判断でやめている")
+  n158("試行回数の制限は接続元のアドレスで数えている")
+  n159("題名の正規化（title_key）は JS でも Python と同じにできる")
+  n160("Worker での推薦計算は 1 回 10〜12 ミリ秒、重い想定で 39 ミリ秒（見積もり）")
+  n161("push するたびに Workers Builds が D1 の migration を当ててから deploy する")
+  n162("コミットの ✗ は Workers Builds が cloudflare/ の無い master を組もうとして失敗していたため")
+  n163("Workers の定期実行は、無料プランだと 1 回あたり CPU 10 ミリ秒・外部への要求 50 回まで")
+  n164("別の作業で、Workers＋D1 の版が workers.dev で動き始めている")
+  n165("Workers の無料プランは 1 要求あたり CPU 10 ミリ秒・1 日 10 万要求まで")
+  n166("Workers の有料プランは月 5 ドルで、要求 1000 万回・CPU 3000 万ミリ秒・D1 の読み 250 億行が含まれる")
+  n167("Workers の静的ファイルへの要求は無料・無制限で、要求数の上限に数えない")
+  n0 -- 影響する --> n110
+  n1 -- 影響する --> n110
   n2 -- 影響する --> n90
-  n2 -- 影響する --> n117
-  n3 -- 新たな問いを生む --> n134
+  n2 -- 影響する --> n118
+  n3 -- 新たな問いを生む --> n135
   n3 -- 影響する --> n12
   n4 -- 影響する --> n94
-  n6 -- 影響する --> n108
+  n6 -- 影響する --> n109
   n7 -- 根拠になる --> n61
   n7 -- 根拠になる --> n50
   n7 -- 新たな問いを生む --> n96
   n8 -- 影響する --> n11
   n8 -- 新たな問いを生む --> n95
   n9 -- 影響する --> n102
-  n10 -- 影響する --> n108
+  n10 -- 影響する --> n109
   n15 -- 影響する --> n24
   n19 -- 影響する --> n21
   n19 -- 影響する --> n18
   n22 -- 前提にする --> n12
   n22 -- 影響する --> n23
-  n25 -- 前提にする --> n137
-  n26 -- 影響する --> n134
+  n25 -- 前提にする --> n138
+  n26 -- 影響する --> n135
   n26 -- 置き換える --> n27
-  n27 -- 新たな問いを生む --> n134
+  n27 -- 新たな問いを生む --> n135
   n28 -- 答える --> n98
   n28 -- 影響する --> n39
   n29 -- 答える --> n99
   n29 -- 影響する --> n39
   n30 -- 影響する --> n101
   n31 -- 根拠になる --> n50
-  n31 -- 新たな問いを生む --> n133
+  n31 -- 新たな問いを生む --> n134
   n31 -- 影響する --> n18
-  n32 -- 影響する --> n152
+  n32 -- 影響する --> n153
   n33 -- 影響する --> n104
-  n33 -- 影響する --> n107
+  n33 -- 影響する --> n108
   n34 -- 答える --> n104
-  n34 -- 新たな問いを生む --> n130
+  n34 -- 新たな問いを生む --> n131
   n34 -- 根拠になる --> n33
   n35 -- 影響する --> n22
-  n36 -- 影響する --> n119
-  n36 -- 影響する --> n163
+  n36 -- 影響する --> n120
+  n36 -- 影響する --> n164
   n37 -- 影響する --> n15
-  n37 -- 新たな問いを生む --> n112
+  n37 -- 新たな問いを生む --> n113
   n38 -- 前提にする --> n28
   n38 -- 前提にする --> n29
   n38 -- 影響する --> n39
@@ -244,7 +245,7 @@ flowchart LR
   n40 -- 新たな問いを生む --> n92
   n40 -- 新たな問いを生む --> n93
   n41 -- 影響する --> n23
-  n41 -- 前提にする --> n107
+  n41 -- 前提にする --> n108
   n42 -- 前提にする --> n44
   n43 -- 答える --> n105
   n43 -- 影響する --> n44
@@ -252,56 +253,56 @@ flowchart LR
   n44 -- 影響する --> n21
   n44 -- 影響する --> n18
   n45 -- 影響する --> n17
+  n45 -- 新たな問いを生む --> n112
   n45 -- 新たな問いを生む --> n111
-  n45 -- 新たな問いを生む --> n110
-  n46 -- 答える --> n115
+  n46 -- 答える --> n116
   n46 -- 前提にする --> n86
   n46 -- 前提にする --> n47
-  n47 -- 答える --> n116
+  n47 -- 答える --> n117
   n47 -- 前提にする --> n54
   n47 -- 影響する --> n77
   n48 -- 根拠になる --> n58
-  n48 -- 前提にする --> n146
+  n48 -- 前提にする --> n147
   n50 -- 影響する --> n18
-  n50 -- 前提にする --> n108
+  n50 -- 前提にする --> n109
   n51 -- 影響する --> n20
-  n51 -- 新たな問いを生む --> n123
+  n51 -- 新たな問いを生む --> n124
   n52 -- 影響する --> n14
-  n53 -- 置き換える --> n143
-  n53 -- 前提にする --> n144
+  n53 -- 置き換える --> n144
+  n53 -- 前提にする --> n145
   n53 -- 影響する --> n23
   n54 -- 食い違う --> n41
   n54 -- 食い違う --> n61
-  n54 -- 前提にする --> n150
+  n54 -- 前提にする --> n151
   n54 -- 影響する --> n19
   n54 -- 影響する --> n21
-  n54 -- 影響する --> n107
-  n56 -- 影響する --> n107
-  n56 -- 前提にする --> n130
+  n54 -- 影響する --> n108
+  n56 -- 影響する --> n108
+  n56 -- 前提にする --> n131
   n56 -- 前提にする --> n101
-  n57 -- 新たな問いを生む --> n124
+  n57 -- 新たな問いを生む --> n125
   n58 -- 前提にする --> n44
   n59 -- 影響する --> n13
-  n60 -- 答える --> n135
-  n60 -- 前提にする --> n156
+  n60 -- 答える --> n136
+  n60 -- 前提にする --> n157
   n60 -- 前提にする --> n39
   n60 -- 影響する --> n91
-  n60 -- 新たな問いを生む --> n136
+  n60 -- 新たな問いを生む --> n137
   n61 -- 置き換える --> n55
   n61 -- 前提にする --> n50
   n61 -- 影響する --> n21
   n61 -- 影響する --> n11
   n61 -- 影響する --> n25
-  n62 -- 答える --> n107
+  n62 -- 答える --> n108
   n62 -- 置き換える --> n41
   n62 -- 置き換える --> n61
   n62 -- 食い違う --> n41
-  n62 -- 前提にする --> n164
+  n62 -- 前提にする --> n165
   n62 -- 影響する --> n13
-  n62 -- 影響する --> n107
+  n62 -- 影響する --> n108
   n63 -- 影響する --> n23
-  n64 -- 影響する --> n109
-  n65 -- 新たな問いを生む --> n111
+  n64 -- 影響する --> n110
+  n65 -- 新たな問いを生む --> n112
   n66 -- 影響する --> n12
   n67 -- 影響する --> n102
   n67 -- 新たな問いを生む --> n98
@@ -314,134 +315,135 @@ flowchart LR
   n71 -- 影響する --> n39
   n72 -- 影響する --> n101
   n73 -- 新たな問いを生む --> n101
-  n75 -- 影響する --> n108
+  n75 -- 影響する --> n109
   n77 -- 影響する --> n54
+  n77 -- 新たな問いを生む --> n117
   n77 -- 新たな問いを生む --> n116
-  n77 -- 新たな問いを生む --> n115
   n78 -- 影響する --> n54
   n78 -- 前提にする --> n46
-  n79 -- 答える --> n115
+  n79 -- 答える --> n116
   n79 -- 影響する --> n77
   n80 -- 影響する --> n39
-  n80 -- 新たな問いを生む --> n132
+  n80 -- 新たな問いを生む --> n133
   n80 -- 新たな問いを生む --> n91
   n80 -- 影響する --> n90
-  n81 -- 答える --> n109
+  n81 -- 答える --> n110
   n81 -- 新たな問いを生む --> n90
   n81 -- 影響する --> n101
-  n81 -- 影響する --> n130
+  n81 -- 影響する --> n131
   n81 -- 影響する --> n54
   n81 -- 影響する --> n12
-  n82 -- 答える --> n120
-  n82 -- 新たな問いを生む --> n121
+  n82 -- 答える --> n121
+  n82 -- 新たな問いを生む --> n122
   n82 -- 根拠になる --> n61
   n83 -- 影響する --> n18
-  n84 -- 影響する --> n108
+  n84 -- 影響する --> n109
   n84 -- 根拠になる --> n50
-  n85 -- 新たな問いを生む --> n126
-  n86 -- 答える --> n126
+  n85 -- 新たな問いを生む --> n127
+  n86 -- 答える --> n127
   n86 -- 置き換える --> n85
-  n86 -- 影響する --> n115
+  n86 -- 影響する --> n116
   n87 -- 影響する --> n16
   n88 -- 根拠になる --> n54
-  n89 -- 影響する --> n107
+  n89 -- 影響する --> n108
   n89 -- 新たな問いを生む --> n104
   n90 -- 前提にする --> n101
-  n91 -- 前提にする --> n130
+  n91 -- 前提にする --> n131
   n91 -- 前提にする --> n80
   n92 -- 前提にする --> n40
-  n92 -- 前提にする --> n130
+  n92 -- 前提にする --> n131
   n93 -- 前提にする --> n40
   n93 -- 前提にする --> n47
   n94 -- 前提にする --> n61
   n97 -- 前提にする --> n49
   n98 -- 前提にする --> n67
-  n98 -- 影響する --> n134
+  n98 -- 影響する --> n135
   n99 -- 前提にする --> n26
   n100 -- 前提にする --> n38
-  n101 -- 前提にする --> n109
+  n101 -- 前提にする --> n110
   n102 -- 前提にする --> n39
   n103 -- 影響する --> n15
-  n103 -- 前提にする --> n119
+  n103 -- 前提にする --> n120
   n105 -- 前提にする --> n54
   n105 -- 影響する --> n44
   n106 -- 前提にする --> n43
-  n107 -- 前提にする --> n130
-  n107 -- 前提にする --> n137
-  n108 -- 前提にする --> n107
-  n113 -- 影響する --> n13
-  n114 -- 影響する --> n17
-  n115 -- 前提にする --> n126
-  n115 -- 影響する --> n77
-  n116 -- 前提にする --> n54
-  n118 -- 前提にする --> n38
-  n119 -- 前提にする --> n128
-  n122 -- 影響する --> n19
-  n124 -- 前提にする --> n52
-  n124 -- 前提にする --> n3
-  n128 -- 前提にする --> n137
-  n129 -- 前提にする --> n11
-  n129 -- 影響する --> n13
-  n130 -- 前提にする --> n109
-  n132 -- 前提にする --> n80
-  n132 -- 影響する --> n106
-  n133 -- 前提にする --> n50
-  n135 -- 前提にする --> n156
-  n135 -- 前提にする --> n39
-  n136 -- 前提にする --> n60
-  n137 -- 前提にする --> n121
-  n137 -- 前提にする --> n109
-  n137 -- 前提にする --> n107
-  n138 -- 前提にする --> n137
-  n139 -- 前提にする --> n140
-  n139 -- 前提にする --> n130
-  n140 -- 前提にする --> n164
-  n140 -- 影響する --> n19
-  n142 -- 根拠になる --> n61
-  n142 -- 新たな問いを生む --> n128
-  n142 -- 影響する --> n12
-  n143 -- 根拠になる --> n41
-  n143 -- 影響する --> n23
-  n143 -- 答える --> n141
+  n107 -- 影響する --> n54
+  n108 -- 前提にする --> n131
+  n108 -- 前提にする --> n138
+  n109 -- 前提にする --> n108
+  n114 -- 影響する --> n13
+  n115 -- 影響する --> n17
+  n116 -- 前提にする --> n127
+  n116 -- 影響する --> n77
+  n117 -- 前提にする --> n54
+  n119 -- 前提にする --> n38
+  n120 -- 前提にする --> n129
+  n123 -- 影響する --> n19
+  n125 -- 前提にする --> n52
+  n125 -- 前提にする --> n3
+  n129 -- 前提にする --> n138
+  n130 -- 前提にする --> n11
+  n130 -- 影響する --> n13
+  n131 -- 前提にする --> n110
+  n133 -- 前提にする --> n80
+  n133 -- 影響する --> n106
+  n134 -- 前提にする --> n50
+  n136 -- 前提にする --> n157
+  n136 -- 前提にする --> n39
+  n137 -- 前提にする --> n60
+  n138 -- 前提にする --> n122
+  n138 -- 前提にする --> n110
+  n138 -- 前提にする --> n108
+  n139 -- 前提にする --> n138
+  n140 -- 前提にする --> n141
+  n140 -- 前提にする --> n131
+  n141 -- 前提にする --> n165
+  n141 -- 影響する --> n19
+  n143 -- 根拠になる --> n61
+  n143 -- 新たな問いを生む --> n129
+  n143 -- 影響する --> n12
+  n144 -- 根拠になる --> n41
   n144 -- 影響する --> n23
-  n145 -- 影響する --> n40
-  n146 -- 根拠になる --> n61
-  n146 -- 答える --> n131
-  n146 -- 影響する --> n24
+  n144 -- 答える --> n142
+  n145 -- 影響する --> n23
+  n146 -- 影響する --> n40
   n147 -- 根拠になる --> n61
-  n147 -- 根拠になる --> n42
-  n148 -- 根拠になる --> n55
-  n149 -- 新たな問いを生む --> n107
-  n149 -- 根拠になる --> n54
-  n150 -- 影響する --> n21
-  n151 -- 影響する --> n14
-  n152 -- 根拠になる --> n56
-  n152 -- 影響する --> n107
-  n152 -- 前提にする --> n130
-  n153 -- 影響する --> n21
-  n153 -- 影響する --> n25
-  n154 -- 新たな問いを生む --> n127
-  n154 -- 影響する --> n24
-  n155 -- 根拠になる --> n41
-  n155 -- 根拠になる --> n61
-  n155 -- 答える --> n141
-  n156 -- 影響する --> n135
-  n157 -- 影響する --> n11
-  n157 -- 新たな問いを生む --> n95
-  n159 -- 食い違う --> n41
-  n159 -- 新たな問いを生む --> n130
-  n159 -- 影響する --> n107
-  n160 -- 影響する --> n15
-  n161 -- 影響する --> n13
-  n162 -- 影響する --> n101
-  n163 -- 食い違う --> n41
-  n163 -- 影響する --> n107
-  n163 -- 影響する --> n23
-  n164 -- 根拠になる --> n41
-  n164 -- 答える --> n141
-  n165 -- 根拠になる --> n56
-  n165 -- 影響する --> n107
-  n166 -- 影響する --> n152
+  n147 -- 答える --> n132
+  n147 -- 影響する --> n24
+  n148 -- 根拠になる --> n61
+  n148 -- 根拠になる --> n42
+  n149 -- 根拠になる --> n55
+  n150 -- 新たな問いを生む --> n108
+  n150 -- 根拠になる --> n54
+  n151 -- 影響する --> n21
+  n152 -- 影響する --> n14
+  n153 -- 根拠になる --> n56
+  n153 -- 影響する --> n108
+  n153 -- 前提にする --> n131
+  n154 -- 影響する --> n21
+  n154 -- 影響する --> n25
+  n155 -- 新たな問いを生む --> n128
+  n155 -- 影響する --> n24
+  n156 -- 根拠になる --> n41
+  n156 -- 根拠になる --> n61
+  n156 -- 答える --> n142
+  n157 -- 影響する --> n136
+  n158 -- 影響する --> n11
+  n158 -- 新たな問いを生む --> n95
+  n160 -- 食い違う --> n41
+  n160 -- 新たな問いを生む --> n131
+  n160 -- 影響する --> n108
+  n161 -- 影響する --> n15
+  n162 -- 影響する --> n13
+  n163 -- 影響する --> n101
+  n164 -- 食い違う --> n41
+  n164 -- 影響する --> n108
+  n164 -- 影響する --> n23
+  n165 -- 根拠になる --> n41
+  n165 -- 答える --> n142
+  n166 -- 根拠になる --> n56
+  n166 -- 影響する --> n108
+  n167 -- 影響する --> n153
   class n0 finding_confirmed
   class n1 finding_confirmed
   class n2 finding_confirmed
@@ -549,66 +551,67 @@ flowchart LR
   class n104 question_open
   class n105 question_answered
   class n106 question_open
-  class n107 question_answered
-  class n108 question_open
-  class n109 question_answered
-  class n110 question_open
+  class n107 question_open
+  class n108 question_answered
+  class n109 question_open
+  class n110 question_answered
   class n111 question_open
   class n112 question_open
   class n113 question_open
   class n114 question_open
-  class n115 question_answered
+  class n115 question_open
   class n116 question_answered
-  class n117 question_open
+  class n117 question_answered
   class n118 question_open
   class n119 question_open
-  class n120 question_answered
-  class n121 question_dropped
-  class n122 question_open
+  class n120 question_open
+  class n121 question_answered
+  class n122 question_dropped
   class n123 question_open
   class n124 question_open
   class n125 question_open
-  class n126 question_answered
-  class n127 question_open
-  class n128 question_dropped
-  class n129 question_open
+  class n126 question_open
+  class n127 question_answered
+  class n128 question_open
+  class n129 question_dropped
   class n130 question_open
-  class n131 question_answered
-  class n132 question_open
+  class n131 question_open
+  class n132 question_answered
   class n133 question_open
   class n134 question_open
-  class n135 question_answered
-  class n136 question_open
-  class n137 question_dropped
+  class n135 question_open
+  class n136 question_answered
+  class n137 question_open
   class n138 question_dropped
   class n139 question_dropped
-  class n140 question_open
-  class n141 question_answered
-  class n142 finding_unverified
-  class n143 finding_confirmed
+  class n140 question_dropped
+  class n141 question_open
+  class n142 question_answered
+  class n143 finding_unverified
   class n144 finding_confirmed
   class n145 finding_confirmed
   class n146 finding_confirmed
   class n147 finding_confirmed
-  class n148 finding_unverified
-  class n149 finding_confirmed
+  class n148 finding_confirmed
+  class n149 finding_unverified
   class n150 finding_confirmed
   class n151 finding_confirmed
-  class n152 finding_unverified
-  class n153 finding_confirmed
-  class n154 finding_unverified
-  class n155 finding_confirmed
+  class n152 finding_confirmed
+  class n153 finding_unverified
+  class n154 finding_confirmed
+  class n155 finding_unverified
   class n156 finding_confirmed
   class n157 finding_confirmed
   class n158 finding_confirmed
-  class n159 finding_unverified
-  class n160 finding_confirmed
+  class n159 finding_confirmed
+  class n160 finding_unverified
   class n161 finding_confirmed
   class n162 finding_confirmed
   class n163 finding_confirmed
   class n164 finding_confirmed
   class n165 finding_confirmed
   class n166 finding_confirmed
+  class n167 finding_confirmed
   classDef finding_confirmed fill:#e6f4ea,stroke:#2e7d32
   classDef finding_unverified fill:#fff8e1,stroke:#b26a00,stroke-dasharray:4 3
   classDef finding_outdated fill:#eeeeee,stroke:#9e9e9e
@@ -623,7 +626,7 @@ flowchart LR
   classDef component_retired fill:#eeeeee,stroke:#9e9e9e
 ```
 
-## 今後調べること（31 件）
+## 今後調べること（32 件）
 
 | 項目 | 状態 | 日付 | 検証項目 | つながり |
 | --- | --- | --- | --- | --- |
@@ -637,6 +640,7 @@ flowchart LR
 | [D1 のバックアップと復元をどうするか](notes/q-d1-backup.md) | 未着手 | 2026-10-13 | ─ | 影響する → [Cloudflare D1（taguri-demo データベース）](notes/comp-d1.md)<br>前提にする → [D1 のバックアップを、Time Travel の期間より長くどこに残すか](notes/q-offsite-backup.md) |
 | [Python Workers の CPU の制限と成熟度](notes/q-d1-python-workers.md) | 未着手 | 2026-10-13 | ─ | [D1 の無料枠は 1 日に読み 500 万行・書き 10 万行、保存 5GB](notes/d1-free-limits.md) が影響する<br>[D1 の無料枠は 1 日 10 万行の書き込み・500 万行の読み込み（記憶による数値）](notes/d1-free-write-limit.md) が答える<br>[別の作業で、元の画面の Python を Python Workers で動かす移行版も作られている](notes/python-workers-migration-state.md) が新たな問いを生む |
 | [データを持たないお試し版をどう作るか](notes/q-demo-trial-design.md) | 未着手 | 2026-10-13 | ─ | 前提にする → [デモ版は、触れるがデータを持たないお試し版にする](notes/dec-demo-trial-no-data.md)<br>[Render のデモ版は、起動し直すと動かなくなるのではないか](notes/q-render-s3-dependency.md) が影響する |
+| [たぐりの見た目をどの方向に変えるか（A 幕と半券・B 観劇ノート・C 客電が落ちる）](notes/q-design-direction.md) | 未着手 | 2026-10-13 | ─ | 影響する → [Render をやめ、元の画面を Worker に移す（見た目はそのまま・最後に一度だけ切り替え）](notes/dec-render-full-migration.md) |
 | [どのドメインをどこで取るか](notes/q-domain.md) | 未着手 | 2026-10-13 | S04 | 前提にする → [サービス版の基盤を「VM＋Cloudflare の前段」と「Workers＋D1」のどちらに寄せるか](notes/q-direction.md)<br>[Cloudflare Registrar では .jp を取れない。DNS だけ Cloudflare に置くことはできる](notes/cf-registrar-no-jp.md) が影響する<br>[.com の卸値は 2026 年 11 月 1 日から年 10.97 ドルに上がる](notes/com-wholesale-2026.md) が影響する<br>[独自ドメインを取り、画面と API を同じドメインの下に置く](notes/dec-own-domain.md) が前提にする<br>[.jp は年 4,000 円前後（税の扱い・年額かは未確認）](notes/jp-domain-price.md) が影響する<br>[パスキーはドメインに結び付くので、ドメインを変えると使えなくなる](notes/passkey-rpid-domain.md) が影響する |
 | [Firebase Authentication の無料枠の正確な範囲（メールリンク・利用者数）](notes/q-firebase-free-tier.md) | 未着手 | 2026-10-13 | ─ | [会員ログインは Firebase Authentication にする](notes/dec-firebase-auth.md) が新たな問いを生む |
 | [Firebase の API キーに制限（Web サイト・使う API）を掛けたか](notes/q-firebase-key-restriction.md) | 未着手 | 2026-10-13 | ─ | [会員ログインは Firebase Authentication にする](notes/dec-firebase-auth.md) が新たな問いを生む<br>[Firebase の Web 用 API キーは秘密ではない（使える範囲は承認済みドメインとキーの制限で絞る）](notes/firebase-apikey-public.md) が新たな問いを生む |
@@ -678,7 +682,7 @@ flowchart LR
 | [運営者名は @return1_end（X）にする](notes/dec-operator-name.md) | 採用 | 2026-10-13 | ─ | [問い合わせ用のメールアドレス](notes/q-contact-email.md) が前提にする |
 | [Google を使いたくない人のために、パスキーを新しく作る](notes/dec-passkeys.md) | 採用 | 2026-10-13 | ─ | 影響する → [ログイン：パスキー（Google を使わない人向け）](notes/comp-passkeys.md)<br>新たな問いを生む → [パスキーは実機（iPhone・Android・Mac・Windows）で登録・ログインできるか](notes/q-passkey-real-devices.md) |
 | [おすすめ（人物得点）は索引をバッチで作り、Worker で計算する](notes/dec-reco-on-worker.md) | 採用 | 2026-10-13 | ─ | 置き換える → [おすすめは開くたびに全候補を計算している](notes/reco-computed-per-request.md)<br>前提にする → [Worker の推薦は Python（person-feedback-v1）と同じ結果を出す](notes/reco-js-parity.md)<br>影響する → [本人向けのおすすめ計算（user_recommender.py）](notes/comp-recommender.md) |
-| [Render をやめ、元の画面を Worker に移す（見た目はそのまま・最後に一度だけ切り替え）](notes/dec-render-full-migration.md) | 採用 | 2026-10-13 | ─ | 食い違う → [Cloudflare Workers への完全移行は今は見送る（見直し中）](notes/dec-defer-workers.md)<br>食い違う → [サービス版は常時稼働の VM で動かし、前段に Cloudflare を置く](notes/dec-vm-cloudflare.md)<br>前提にする → [元の画面は Python が HTML を組んで JSON で返している（約 2.5 万行）](notes/render-ui-server-rendered.md)<br>影響する → [元の画面の Worker 版（cloudflare/src/screens/）](notes/comp-native-screens.md)<br>影響する → [公開版のサーバー（serve_cloud.py・serve.py）](notes/comp-public-server.md)<br>影響する → [サービス版の基盤を「VM＋Cloudflare の前段」と「Workers＋D1」のどちらに寄せるか](notes/q-direction.md)<br>[画面の移行（段 1〜5）は Push セッションが引き継ぎ、途中のコードも受け取る](notes/dec-migration-owner-push.md) が前提にする<br>[Render からの画面移行は段 0 まで済み、段 1 の途中は別セッションの手元にしかない](notes/migration-handover-stage0.md) が影響する<br>[段 1（記録と評価）の画面 4 枚と書き込み 11 種が、Python と同じ応答を返すようになった](notes/migration-stage1-parity.md) が影響する<br>[EC2 は無い](notes/no-ec2.md) が影響する<br>[Python の画面は一時保存先・固定日付・通信なしで、テストの中から動かせる](notes/python-screens-harness.md) が根拠になる<br>[Render を止めたあと、デモ版（見本の記録で試す版）をどうするか](notes/q-demo-after-render.md) が前提にする<br>[画面の移行の続き（段 1〜5）をどのセッションが受け持つか](notes/q-migration-owner.md) が前提にする<br>[Render の利用者（tg_session）とログインしたアカウント（D1）は別人として扱われている](notes/render-two-identities.md) が根拠になる |
+| [Render をやめ、元の画面を Worker に移す（見た目はそのまま・最後に一度だけ切り替え）](notes/dec-render-full-migration.md) | 採用 | 2026-10-13 | ─ | 食い違う → [Cloudflare Workers への完全移行は今は見送る（見直し中）](notes/dec-defer-workers.md)<br>食い違う → [サービス版は常時稼働の VM で動かし、前段に Cloudflare を置く](notes/dec-vm-cloudflare.md)<br>前提にする → [元の画面は Python が HTML を組んで JSON で返している（約 2.5 万行）](notes/render-ui-server-rendered.md)<br>影響する → [元の画面の Worker 版（cloudflare/src/screens/）](notes/comp-native-screens.md)<br>影響する → [公開版のサーバー（serve_cloud.py・serve.py）](notes/comp-public-server.md)<br>影響する → [サービス版の基盤を「VM＋Cloudflare の前段」と「Workers＋D1」のどちらに寄せるか](notes/q-direction.md)<br>[画面の移行（段 1〜5）は Push セッションが引き継ぎ、途中のコードも受け取る](notes/dec-migration-owner-push.md) が前提にする<br>[Render からの画面移行は段 0 まで済み、段 1 の途中は別セッションの手元にしかない](notes/migration-handover-stage0.md) が影響する<br>[段 1（記録と評価）の画面 4 枚と書き込み 11 種が、Python と同じ応答を返すようになった](notes/migration-stage1-parity.md) が影響する<br>[EC2 は無い](notes/no-ec2.md) が影響する<br>[Python の画面は一時保存先・固定日付・通信なしで、テストの中から動かせる](notes/python-screens-harness.md) が根拠になる<br>[Render を止めたあと、デモ版（見本の記録で試す版）をどうするか](notes/q-demo-after-render.md) が前提にする<br>[たぐりの見た目をどの方向に変えるか（A 幕と半券・B 観劇ノート・C 客電が落ちる）](notes/q-design-direction.md) が影響する<br>[画面の移行の続き（段 1〜5）をどのセッションが受け持つか](notes/q-migration-owner.md) が前提にする<br>[Render の利用者（tg_session）とログインしたアカウント（D1）は別人として扱われている](notes/render-two-identities.md) が根拠になる |
 | [1000 人規模を見込むなら Workers＋D1 に寄せ、上限に近づいたら月 5 ドルの有料プランに上げる](notes/dec-scale-workers.md) | 採用 | 2026-10-13 | S12 | 影響する → [サービス版の基盤を「VM＋Cloudflare の前段」と「Workers＋D1」のどちらに寄せるか](notes/q-direction.md)<br>前提にする → [実カタログで、推薦の索引の行数と Worker の CPU 時間がどうなるか](notes/q-real-catalog-stats.md)<br>前提にする → [公演情報の取得処理をどこで動かすか](notes/q-crawler-host.md)<br>[1000 人で使うと、Workers の無料枠は推薦の計算（CPU）と D1 の読み行数で足りなくなりそう（見積もり）](notes/scale-1000-estimate.md) が根拠になる<br>[Workers の有料プランは月 5 ドルで、要求 1000 万回・CPU 3000 万ミリ秒・D1 の読み 250 億行が含まれる](notes/workers-paid-plan.md) が根拠になる |
 | [記録を公演に結び付ける検索には、公開カタログの公演だけを出す](notes/dec-search-public-only.md) | 採用 | 2026-10-13 | ─ | 新たな問いを生む → [昔の公演を、公開情報だけで探せるようにするにはどうするか](notes/q-past-stage-catalogue.md) |
 | [ログインしていない人に見せるのは「ログイン」と「たぐりとは」だけ](notes/dec-signed-out-gate.md) | 採用 | 2026-10-13 | ─ | 影響する → [Cloudflare Worker（cloudflare/src/worker.js）](notes/comp-cf-worker.md) |

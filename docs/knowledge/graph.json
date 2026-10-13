@@ -1281,6 +1281,19 @@
    "verifies": []
   },
   {
+   "id": "q-design-direction",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-13",
+   "title": "たぐりの見た目をどの方向に変えるか（A 幕と半券・B 観劇ノート・C 客電が落ちる）",
+   "sources": [
+    "https://claude.ai/artifact/4o7QY23vNLcZF7wcrqVQg9 （デザイン案のキャンバス）",
+    "web/style.css",
+    "tools/taguri/app.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "q-direction",
    "type": "question",
    "status": "answered",
@@ -2844,6 +2857,11 @@
    "from": "q-demo-trial-design",
    "rel": "depends_on",
    "to": "dec-demo-trial-no-data"
+  },
+  {
+   "from": "q-design-direction",
+   "rel": "affects",
+   "to": "dec-render-full-migration"
   },
   {
    "from": "q-direction",
