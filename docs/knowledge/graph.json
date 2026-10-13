@@ -1029,6 +1029,18 @@
    "verifies": []
   },
   {
+   "id": "lit-decoupled-rating",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "「好み」と「評価の付け方の癖」を分けて扱うと精度が上がり、順位だけを使うと情報を捨てすぎる（Jin・Si・Zhai 2003）",
+   "sources": [
+    "https://timan.cs.illinois.edu/czhai/pub/uai2003-cf.pdf",
+    "https://mlanthology.org/uai/2003/jin2003uai-preference"
+   ],
+   "verifies": []
+  },
+  {
    "id": "lit-hierarchical-user-model",
    "type": "finding",
    "status": "confirmed",
@@ -1058,6 +1070,17 @@
    "title": "評価が付いていないこと自体が情報になり、付いた評価だけで学ぶ・測ると偏る（Steck 2010）",
    "sources": [
     "https://www.nokia.com/bell-labs/publications-and-media/publications/training-and-testing-of-recommender-systems-on-data-missing-not-at-random"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "lit-negative-ratings",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-13",
+   "title": "低い評価は、とくにデータが少ないときに推薦の役に立つ（Negative ratings play a positive role in information filtering）",
+   "sources": [
+    "https://core.ac.uk/display/20656098"
    ],
    "verifies": []
   },
@@ -3117,6 +3140,16 @@
    "to": "q-reco-learning-design"
   },
   {
+   "from": "lit-decoupled-rating",
+   "rel": "supports",
+   "to": "q-rating-scale"
+  },
+  {
+   "from": "lit-decoupled-rating",
+   "rel": "contradicts",
+   "to": "reco-base-rate-relative"
+  },
+  {
    "from": "lit-hierarchical-user-model",
    "rel": "supports",
    "to": "q-reco-learning-design"
@@ -3135,6 +3168,11 @@
    "from": "lit-mnar",
    "rel": "contradicts",
    "to": "q-reco-learning-design"
+  },
+  {
+   "from": "lit-negative-ratings",
+   "rel": "supports",
+   "to": "q-rating-scale"
   },
   {
    "from": "lit-performing-arts",
