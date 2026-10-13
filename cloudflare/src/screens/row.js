@@ -2,6 +2,7 @@
 // Ports of tools/taguri/app.py (_rec_row, _impression_parts, _stamp,
 // _date_parts, _venue_of, _edit_html, _hand_html, stage_label), charts._anchor
 // and icons.ico/h2. Each returns exactly the Python HTML.
+import {pastStages} from './autolink.js';
 import {E, WS, strip, cmp} from './py.js';
 import {handCreditCount} from './credits.js';
 
@@ -316,6 +317,9 @@ export async function stageLabels(ctx, sids) {
       + ` AND stage_id IN (${part.map(() => '?').join(',')})`).bind(...part).all();
     for (const r of results) got[r.stage_id] = r.label;
   }
+  // Past stages (past_stage) are labelled the same way: 題名／劇場／初日.
+  const past = await pastStages(ctx.db, want.filter(s => !got[s]));
+  for (const [sid, p] of Object.entries(past)) got[sid] = [p.title, p.venue, p.start].filter(Boolean).join('／');
   for (const sid of want) out[sid] = got[sid] || `公演 ${sid}（手元のデータに見当たりません）`;
   return out;
 }

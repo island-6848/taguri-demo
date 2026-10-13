@@ -370,10 +370,13 @@ def main() -> int:
         for r in rows:
             if not r["matched"]:
                 continue
+            # **持ち主の記録だけに書く。** 照合の相手は持ち主の記録（`targets` は `R.read_works` の
+            # 既定＝LOCAL_USER_ID）なので、同じ work_key を持つ他の利用者の行に書いてはいけない
+            # （docs/knowledge の auto-link-current-state で見つけた不具合）
             con.execute("UPDATE works SET stage_id=?,"
                         " updated_at=datetime('now','localtime')"
-                        " WHERE work_key=? AND (stage_id IS NULL OR stage_id='')",
-                        (r["stage_id"], r["work_key"]))
+                        " WHERE user_id=? AND work_key=? AND (stage_id IS NULL OR stage_id='')",
+                        (r["stage_id"], R.LOCAL_USER_ID, r["work_key"]))
         con.commit()
     finally:
         con.close()

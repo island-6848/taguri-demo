@@ -1,7 +1,7 @@
 ---
 id: q-auto-link-past
 type: question
-status: open
+status: answered
 date: 2026-10-13
 title: 古い記録を自動で結び付けるための「過去の公演の一覧」を、CoRich のページを読んで作ってよいか
 links:

@@ -5,6 +5,7 @@
 // user: every record is a manual one (no purchases, so no `shows`, no
 // corrections table), and serve._enrich (fetching a stage's material) is
 // skipped on the public service.
+import {autoLink, pastStages} from './autolink.js';
 import {E, strip, slice, field, pyRepr, localNow, dumps, ValueError, WS, quote, qsFirst, sortBy, cmp, isdigit} from './py.js';
 import {loadWorks, similarWorks, titleKey, norm} from './works.js';
 import {handCreditCount, parseCredits} from './credits.js';
@@ -90,6 +91,7 @@ async function fixManual(ctx, workKey, title, shows) {
   await ctx.db.prepare('UPDATE works SET work_key=?, title=?, first_date=?, last_date=?, venue=?, time=?, updated_at=?'
     + ' WHERE user_id=? AND work_key=?')
     .bind(key, newTitle, date, date || sv.last_date, venue, time, now(ctx), ctx.uid, workKey).run();
+  await autoLink(ctx, [key]);
   return {ok: true, work_key: key, title: norm(newTitle), moved: key !== workKey, gone: false, n: 1, manual: true};
 }
 
@@ -231,7 +233,9 @@ async function handCreditsAction(b, ctx) {
 /** The stage's title in the public catalogue (stage_label.title), '' if it is not there. */
 async function stageTitle(ctx, sid) {
   const r = await ctx.db.prepare("SELECT title FROM stage_label WHERE ver=(SELECT v FROM rec_meta WHERE k='stage_label') AND stage_id=?").bind(sid).first();
-  return r?.title || '';
+  if (r?.title) return r.title;
+  // A past stage (past_stage, 2019 onwards) can be linked by hand too.
+  return (await pastStages(ctx.db, [sid]))[sid]?.title || '';
 }
 
 /** serve.on_link_stage + app.link_stage (POST /api/link_stage) */
@@ -253,6 +257,9 @@ async function linkStageAction(b, ctx) {
     + " VALUES (?,?,?,?,?,?,NULL,NULL,'','',?,?)"
     + ' ON CONFLICT(user_id, work_key) DO UPDATE SET stage_id=excluded.stage_id, updated_at=excluded.updated_at')
     .bind(ctx.uid, workKey, w.title, w.first_date || '', w.last_date || '', w.times || 1, stageId || null, now(ctx)).run();
+  // Linked by hand: no longer an automatic link. Unlinked: never link this record automatically again.
+  await ctx.db.prepare('UPDATE works SET stage_auto=0, stage_off=? WHERE user_id=? AND work_key=?')
+    .bind(stageId ? 0 : 1, ctx.uid, workKey).run();
   return {body: {ok: true, work_key: workKey, stage_id: stageId, title}};
 }
 
@@ -286,6 +293,9 @@ async function peopleByKey(ctx, ws) {
     // the stage, not its people: load_rated's parse_credits never returns them.
     for (const r of results) stage[r.stage_id] = JSON.parse(r.people).filter(([role]) => !String(role).startsWith('#'));
   }
+  // Stages linked from past_stage (older than the current index) bring their own credits.
+  const past = await pastStages(ctx.db, sids.filter(s => !stage[s]));
+  for (const [sid, p] of Object.entries(past)) stage[sid] = p.people.filter(([role]) => !String(role).startsWith('#'));
   const out = {};
   for (const w of ws) {
     const people = [...(stage[w.stage_id] || []), ...parseCredits((w.hand || {}).fields || {})];
@@ -324,6 +334,7 @@ const checkLine = n => !n
  * owner's batch output keyed by the owner's records, so none are shown.
  */
 async function worksScreen(params, ctx) {
+  await autoLink(ctx);
   const ws = await loadWorks(ctx);
   const seen = ws.filter(w => !w.unseen);
   const d = {seen, nSkip: ws.length - seen.length, nRated: seen.filter(w => w.verdict).length,

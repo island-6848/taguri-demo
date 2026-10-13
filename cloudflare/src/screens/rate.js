@@ -2,6 +2,7 @@
 // Ports of tools/taguri/app.py (_rate_body, _unrated_body, _notes_body, ...),
 // the serve.py handlers (on_rate, on_note, on_add_work) and the helpers they
 // call in charts.py, render_recommend.py and impressions.py.
+import {autoLink} from './autolink.js';
 import {E, quote, sortBy, cmp, fmtF, strip, slice, field, qsFirst, qsAll, digitsInt, isdigit, strRepr, localNow, ValueError} from './py.js';
 import {loadWorks, similarWorks, titleKey} from './works.js';
 import {recRow, venueOf, venueKey, ico, h2, stageLabels} from './row.js';
@@ -21,6 +22,7 @@ export const SHEET_TOP = 15;
  * `react` action, which is not ported yet: port it with `react`.
  */
 async function rateBase(ctx) {
+  await autoLink(ctx);
   const all = await loadWorks(ctx);
   const unrated = all.filter(w => !w.verdict && w.bucket !== 'upcoming' && !w.unseen);
   const nSkip = all.filter(w => w.unseen && !w.verdict && w.bucket !== 'upcoming').length;
@@ -328,8 +330,10 @@ async function addWorkAction(b, ctx) {
     + " VALUES (?,?,?,?,?,1,NULL,NULL,'','',?,?,?,?)")
     .bind(ctx.uid, key, title, date, date, stageId || null, venue, time, localNow(ctx.now)).run();
   // stage_search.adopt runs only for the owner, and serve._enrich (fetching
-  // the stage's material) is skipped on the public service.
-  return {body: {ok: true, work_key: key, stage_id: stageId, adopted: {}, similar: await similarWorks(ctx, title, key)}};
+  // the stage's material) is skipped on the public service. Instead, a record
+  // with a date is linked to the one stage running that day under the same title.
+  const linked = stageId ? '' : ((await autoLink(ctx, [key]))[key] || '');
+  return {body: {ok: true, work_key: key, stage_id: stageId || linked, adopted: {}, similar: await similarWorks(ctx, title, key)}};
 }
 
 export const rateScreens = {

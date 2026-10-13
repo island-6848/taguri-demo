@@ -1,0 +1,91 @@
+# 非公開リポジトリ（island-6848/taguri-crawler）の .github/workflows/past-stages.yml に置く。
+# 過去の公演の一覧を、CoRich の公演ページから 1 日 6,000 枚ずつ読んで作る（2019 年以降）。
+# 利用者の記録を公演ページへ自動で結び付けるための照合の相手（docs/knowledge の q-auto-link-past）。
+# 作業データは毎日の Catalog と同じ state ブランチに置くので、同じ concurrency で順番に走らせる。
+name: Past stages
+
+on:
+  schedule:
+    # 日本時間 22:47（毎日の Catalog は 4:17。重ならない時間にずらす。毎時 0 分は混むので避ける）
+    - cron: '47 13 * * *'
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: '読む公演ページの枚数'
+        required: false
+        default: '6000'
+
+concurrency:
+  group: catalog
+  cancel-in-progress: false
+
+permissions:
+  contents: write   # state ブランチへの書き戻しに使う
+
+jobs:
+  read:
+    runs-on: ubuntu-latest
+    timeout-minutes: 170
+    env:
+      TAGURI_CORICH_SEARCH: 'off'
+      LIMIT: ${{ github.event.inputs.limit || '6000' }}
+    steps:
+      - name: Check out the public code
+        uses: actions/checkout@v4
+        with:
+          repository: island-6848/taguri-demo
+          ref: master
+      - name: Check out the previous working data (state branch)
+        id: state
+        continue-on-error: true
+        uses: actions/checkout@v4
+        with:
+          ref: state
+          path: state
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Restore the previous working data
+        run: |
+          if [ "${{ steps.state.outcome }}" != "success" ]; then
+            echo "state ブランチがまだ無い。Catalog を先に 1 度動かす"; exit 1
+          fi
+          python tools/taguri/crawler_state.py restore --from state
+      - name: Read past stage pages (2019 onwards, newest first)
+        # 1.1 秒に 1 枚（polite_http）。6,000 枚でおよそ 110 分。時間の上限の前に止めて、読んだ分は残す
+        run: python tools/review/fetch_past_stages.py --limit "$LIMIT" --since 2019-01-01 --max-minutes 135
+      - name: Deliver the new rows to D1 (past_stage)
+        if: always()
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        working-directory: cloudflare
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "Cloudflare の鍵が無いので D1 には入れない"; exit 0
+          fi
+          python scripts/deliver_past.py build --data ../data --out ../d1-past
+          if [ -f ../d1-past/past-upload.sql ]; then
+            npx --yes wrangler@4 d1 execute taguri-demo --remote --yes --file ../d1-past/past-upload.sql
+          fi
+          python scripts/deliver_past.py commit --data ../data --out ../d1-past
+      - name: Report
+        if: always()
+        run: python tools/review/fetch_past_stages.py --report | head -20
+      # 失敗しても、そこまでの取得の控えは残す（次回に同じものを取り直さない）
+      - name: Save the working data to the state branch
+        if: always()
+        run: |
+          rm -rf state && mkdir state && cd state
+          git init -q -b state
+          cd ..
+          python tools/taguri/crawler_state.py save --to state
+          cd state
+          git config user.name "taguri-crawler"
+          git config user.email "taguri-crawler@users.noreply.github.com"
+          git add -A
+          git commit -q -m "作業データ $(date -u +%Y-%m-%dT%H:%MZ) (past stages)"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" state:state
