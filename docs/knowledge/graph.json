@@ -851,6 +851,17 @@
    "verifies": []
   },
   {
+   "id": "gha-running-job-logs-404",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "実行中の GitHub Actions のジョブのログは API で取れない（404）。進み具合は手順の状態でしか見えない",
+   "sources": [
+    "https://github.com/island-6848/taguri-crawler/actions/runs/38404782069"
+   ],
+   "verifies": []
+  },
+  {
    "id": "gha-schedule-unreliable",
    "type": "finding",
    "status": "unverified",
@@ -2506,6 +2517,11 @@
    "from": "gha-repo-create-forbidden",
    "rel": "raises",
    "to": "q-crawler-repo"
+  },
+  {
+   "from": "gha-running-job-logs-404",
+   "rel": "affects",
+   "to": "dec-crawler-gha-private"
   },
   {
    "from": "gha-schedule-unreliable",
