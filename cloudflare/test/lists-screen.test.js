@@ -208,7 +208,7 @@ test('設定・はじめる・登録, the default prefectures, 観ればよか�
     assert.equal((await step(env, a, {post: '/api/missed', body: {title: '舞台ひとつめ'}})).status, 200);
     assert.equal((await step(env, a, {post: '/api/missed', body: {title: '聞いたことのない舞台'}})).status, 200);
     const reg = (await screen(env, a, 'register')).body_html;
-    assert.match(reg, /<h1>公演情報の登録<\/h1>/);
+    assert.match(reg, /<h1>観劇記録を追加<\/h1>/);
     assert.match(reg, /<span class="badge part">2 件<\/span>/);
     assert.match(reg, /一覧にはあったが、表示する枠に入らなかった<\/span><span class="w">舞台ひとつめ<\/span>[\s\S]*<span class="cl">出演<\/span><span class="cv">俳優甲、俳優乙<\/span>/);
     assert.match(reg, /取り込んだ公演の中に無かった<\/span><span class="w">聞いたことのない舞台/);

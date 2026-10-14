@@ -51,7 +51,7 @@ const IMPLEMENTED = new Set(["recommend", "interest", "reminder", "favourites", 
 // おすすめ＝これから観るものを選ぶ（今週のおすすめ・興味あり・お気に入り）／予定＝観に行く日を確かめる
 // （公演カレンダー・開幕リマインド・購入済み公演）。開幕リマインドは「初日が近い公演の知らせ」で、選ぶ画面
 // ではなく日程を見る画面なので、予定に移した。URL（/recommend/reminder）は変えない（覚えた道を壊さない）
-const NAV = [[null, "おすすめ", "ticket", [["/recommend", "今週のおすすめ", "ticket"], ["/recommend/interest", "興味あり", "flag"], ["/recommend/favourites", "お気に入り", "star"]]], [null, "予定", "calendar", [["/calendar", "公演カレンダー", "calendar"], ["/recommend/reminder", "開幕リマインド", "inbox"], ["/tickets", "購入済み公演", "ticket"]]], [null, "観た公演の評価", "check", [["/rate", "評価一覧", "check"], ["/rate/unrated", "未評価", "clock"], ["/rate/notes", "感想", "pencil"]]], ["/register", "公演情報の登録", "inbox", []], [null, "記録を見返す", "chart", [["/records", "眺める", "chart"], ["/records/trace", "たどる", "user"], ["/records/chronicle", "観劇史年表", "calendar"], ["/records/works", "日記帳", "book"]]], ["/search", "探す", "search", []], ["/settings", "設定", "gear", []]];
+const NAV = [[null, "おすすめ", "ticket", [["/recommend", "今週のおすすめ", "ticket"], ["/recommend/interest", "興味あり", "flag"], ["/recommend/favourites", "お気に入り", "star"]]], [null, "予定", "calendar", [["/calendar", "公演カレンダー", "calendar"], ["/recommend/reminder", "開幕リマインド", "inbox"], ["/tickets", "購入済み公演", "ticket"]]], [null, "観た公演の評価", "check", [["/rate", "評価一覧", "check"], ["/rate/unrated", "未評価", "clock"], ["/rate/notes", "感想", "pencil"], ["/register", "観劇記録を追加", "plus"]]], [null, "記録を見返す", "chart", [["/records", "眺める", "chart"], ["/records/trace", "たどる", "user"], ["/records/chronicle", "観劇史年表", "calendar"], ["/records/works", "日記帳", "book"]]], ["/search", "探す", "search", []], ["/settings", "設定", "gear", []]];
 if (!IS_DEMO) NAV.push(["/account", "アカウント", "user", []]);
 
 // --- 絵記号(icons.py の P/ALIAS をそのまま) --------------------------------
@@ -112,12 +112,12 @@ function renderNav() {
 const PNAV = [
   ["rec", "おすすめ", "yarn", [["/recommend", "今週のおすすめ"], ["/recommend/interest", "興味あり"], ["/recommend/favourites", "お気に入り"]]],
   ["plan", "予定", "calendar", [["/calendar", "公演カレンダー"], ["/recommend/reminder", "開幕リマインド"], ["/tickets", "購入済み公演"]]],
-  ["rate", "評価", "stamp", [["/rate", "評価一覧"], ["/rate/unrated", "未評価"], ["/rate/notes", "感想"]]],
+  ["rate", "評価", "stamp", [["/rate", "評価一覧"], ["/rate/unrated", "未評価"], ["/rate/notes", "感想"], ["/register", "観劇記録を追加"]]],
   ["rec2", "記録", "notebook", [["/records/works", "日記帳"], ["/records", "眺める"], ["/records/trace", "たどる"], ["/records/chronicle", "観劇史年表"]]],
 ];
 function renderPNav() {
   // 公演情報の登録は「記録」の子から外し、歯車の左の「＋」から入る（起案者の指示 2026-10-13「スマホ版のみ」）
-  return '<a class="padd" href="/register" data-path="/register" aria-label="公演情報の登録" title="公演情報の登録"'
+  return '<a class="padd" href="/register" data-path="/register" aria-label="観劇記録を追加" title="観劇記録を追加"'
     + ' aria-haspopup="menu" aria-expanded="false">' + ico("plus", 22) + "</a>" + regPopHtml()
     + (IS_DEMO ? "" : '<a class="pacct" href="/account" data-path="/account" aria-label="アカウント" title="アカウント">' + ico("user", 20) + "</a>")
     + '<a class="pset" href="/settings" data-path="/settings" aria-label="設定">' + ico("gear", 20) + "</a>"
@@ -2228,13 +2228,14 @@ function stampRerate(root) {
 // ページに飛ぶんじゃなくてポップアップで追加方法の3種類選べるようにして」）。選ぶと公演情報の登録の画面の
 // その札（① メール ② 手で 1 件 ③ 観ればよかった）へ移り、最初の入力欄に焦点を置く
 const REG_WAYS = [
-  ["1", "mail", "購入確認メールから取り込む", "手元のパソコンで動かしているときだけ"],
+  ["1", "mail", IS_DEMO ? "購入確認メールから取り込む" : "Google カレンダー・購入確認メールから取り込む",
+   IS_DEMO ? "手元のパソコンで動かしているときだけ" : "カレンダーの予定や購入確認メールから見つけて足す"],
   ["2", "plus", "手で 1 件足す", "招待・当日券など、メールに残らない分"],
   ["3", "flag", "「観ればよかった」を足す", "出てこなかったせいで見逃した公演（観ていない公演）"],
 ];
 let regGoto = "";
 function regPopHtml() {
-  return '<div class="padd-pop" role="menu" aria-label="公演情報の登録" hidden>'
+  return '<div class="padd-pop" role="menu" aria-label="観劇記録を追加" hidden>'
     + REG_WAYS.map(([n, icon, t, sub]) => '<button type="button" role="menuitem" data-reg="' + n + '">'
       + ico(icon, 18) + '<span><b>' + E(t) + "</b><small>" + E(sub) + "</small></span></button>").join("")
     + "</div>";

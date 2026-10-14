@@ -205,8 +205,10 @@ NAV = ((None, "おすすめ", "ticket",
        (None, "観た公演の評価", "check",
         (("/rate", "評価一覧", "check"),
          ("/rate/unrated", "未評価", "clock"),
-         ("/rate/notes", "感想", "pencil"))),
-       ("/register", "公演情報の登録", "inbox", ()),
+         ("/rate/notes", "感想", "pencil"),
+         # 起案者の指示（2026-10-14）「『公演情報の登録』を『観劇記録を追加』に名前を変えて、
+         # 『観た公演の評価』の下に置いて」
+         ("/register", "観劇記録を追加", "plus"))),
        # **「記録を見返す」の中は 3 つの画面だった**（起案者の指示・2026-08-24）。
        # 開く理由が違う ── 図は全体の形、比べるは自分の偏り、日記帳は 1 本の公演。
        # 1 枚に積むと、日記帳に用がある人が毎回 8 枚の図を通り過ぎることになる。
@@ -3950,7 +3952,7 @@ def _start_body(user_id: str) -> str:
         "<b>観た記録が 1 件もないうちは、好みに合わせたおすすめは出ません。</b>"
         "おすすめは、◎ を付けた公演の作り手をもとに作るためです。"
         "<b>1 段目で登録した名前の公演は、記録が無くても出ます。</b>"
-        '<br><a href="/register?t=__TAGURI_TOKEN__">公演情報の登録</a> から、'
+        '<br><a href="/register?t=__TAGURI_TOKEN__">観劇記録を追加</a> から、'
         "購入確認メールの取り込みか、手での追加ができます。"
         '観た公演には <a href="/rate?t=__TAGURI_TOKEN__">観た公演の評価</a> で '
         "◎○△× を付けてください。")
@@ -5734,7 +5736,7 @@ def page_register(user_id: str, imp: dict | None = None, imported: list | None =
     見分けが付かなくなる。
     """
     body = _register_body(user_id, imp, imported)
-    return layout("公演情報の登録", "/register", body, RR.STYLE)
+    return layout("観劇記録を追加", "/register", body, RR.STYLE)
 
 
 def _import_card(user_id: str, imp: dict | None, imported: list | None, line: str) -> str:
@@ -5763,7 +5765,7 @@ def _register_body(user_id: str, imp: dict | None = None, imported: list | None 
     unrated = [w for w in all_w if not w.get("verdict") and w.get("bucket") != "upcoming"]
     line = (imp or {}).get("line") or ""
     missed = missed_rows()
-    return f"""<h1>公演情報の登録</h1>
+    return f"""<h1>観劇記録を追加</h1>
 <p class="lede">公演を記録に足す場所です。<b>入口は3つあります。</b>購入確認メールからの自動取り込み、メールに残らない分（招待・当日券・人に取ってもらった分）の手入力、そして<b>観ればよかった公演（観ていないもの）の追加</b>です。評価は「観た公演の評価」で付けます。評価がなくても、記録は残せます。</p>
 
 {_import_card(user_id, imp, imported, line)}
@@ -7297,7 +7299,7 @@ def _skipped_html(user_id: str) -> str:
 def _records_empty_note() -> str:
     """記録が 1 件も無いときに、図の代わりに出す文。**空欄のまま見出しだけを残さない。**"""
     return ('<p class="pnow">観た公演の記録がまだ無いので、図は出せません。'
-            '<a href="/register?t=__TAGURI_TOKEN__">公演情報の登録</a>で'
+            '<a href="/register?t=__TAGURI_TOKEN__">観劇記録を追加</a>で'
             '購入確認メールを取り込むか、観た公演を手で足すと、'
             '<b>本数・評価の分かれ方・行った場所・時期</b>がここに出ます。</p>')
 

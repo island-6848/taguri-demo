@@ -1,4 +1,4 @@
-// 設定・はじめる・公演情報の登録, and their writes (pref_setting, missed), answered by the
+// 設定・はじめる・観劇記録を追加, and their writes (pref_setting, missed), answered by the
 // Worker from D1 (起案者の指示 2026-10-14「残りの画面も順に移して」).
 //
 // Same layout and words as app._settings_body / _start_body / _register_body, except where
@@ -156,7 +156,7 @@ export async function startScreen(_params, ctx) {
     : 'まだ公演の情報が届いていません。毎日の取得のあとに、ここに件数が出ます。');
   const step3 = stepCard(3, `観た公演を入れる（いま ${nWorks} 件・任意です）`, nWorks > 0,
     '<b>観た記録が 1 件もないうちは、好みに合わせたおすすめは出ません。</b>おすすめは、◎ を付けた公演の作り手をもとに作るためです。<b>1 段目で登録した名前の公演は、記録が無くても出ます。</b>'
-    + '<br><a href="/register?t=__TAGURI_TOKEN__">公演情報の登録</a> から、手での追加ができます。観た公演には <a href="/rate?t=__TAGURI_TOKEN__">観た公演の評価</a> で ◎○△× を付けてください。');
+    + '<br><a href="/register?t=__TAGURI_TOKEN__">観劇記録を追加</a> から、手での追加ができます。観た公演には <a href="/rate?t=__TAGURI_TOKEN__">観た公演の評価</a> で ◎○△× を付けてください。');
   const body = `<h1>はじめに ── 見逃したくない名前を 1 つ登録してください</h1>
 <p class="lede">たぐりは、<b>これから観られる公演の中から、見逃したくない舞台を毎週届けるアプリ</b>です。まだ登録も記録もないので、届けられるものがありません。<b>下の3つのうち、1つ目だけで始められます。</b></p>
 ${step1}
@@ -166,7 +166,7 @@ ${step3}
   return {title: 'はじめる', body_html: body};
 }
 
-// ---------------------------------------------------------------- 公演情報の登録
+// ---------------------------------------------------------------- 観劇記録を追加
 const MISSED_WHERE = {
   pool: ['一覧にはあったが、表示する枠に入らなかった', '取り込んだ公演の中にはありましたが、順位が足りず 15 件の枠に入りませんでした。「設定」の「おすすめの効かせ方」で重視する情報を変えると、入ることがあります。'],
   none: ['取り込んだ公演の中に無かった', '取り込んだ公演の一覧に、そもそも入っていませんでした。順位をどう変えても出てきません。出すには、公演情報の取得元を増やす必要があります。'],
@@ -221,7 +221,7 @@ export async function registerScreen(_params, ctx) {
   const works = await loadWorks(ctx);
   const wait = works.filter(w => !w.verdict && !w.unseen && w.last_date && w.last_date <= ctx.today);
   const missed = await missedRows(ctx);
-  const body = `<h1>公演情報の登録</h1>
+  const body = `<h1>観劇記録を追加</h1>
 <p class="lede">公演を記録に足す場所です。<b>入口は3つあります。</b>Google カレンダー・購入確認メールからの取り込み、メールに残らない分（招待・当日券・人に取ってもらった分）の手入力、そして<b>観ればよかった公演（観ていないもの）の追加</b>です。評価は「観た公演の評価」で付けます。評価がなくても、記録は残せます。</p>
 
 <div class="card imx" data-import>${h2('mail', '① Google カレンダー・購入確認メールから取り込む')}
@@ -284,7 +284,7 @@ ${missedHtml(missed)}</div>
 <p class="lede">①② で登録した公演は、上演が終わると
 <a href="/rate?t=__TAGURI_TOKEN__">「観た公演の評価」（いま ${wait.length} 件）</a>に並びます。
 評価はそちらで付けてください。</p>`;
-  return {title: '公演情報の登録', body_html: body};
+  return {title: '観劇記録を追加', body_html: body};
 }
 
 /** serve.on_missed, looked up in D1 at once: the current stage, else a past one, whose title key matches. */
