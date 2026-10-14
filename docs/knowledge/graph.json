@@ -2257,6 +2257,17 @@
    "verifies": []
   },
   {
+   "id": "pr14-reason-kinds",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-14",
+   "title": "PR #14 で、おすすめは「点を上げた人物」か「公演の種類（#形式・#原作・#翻訳・#題材）」がある公演だけになり、/api/recommend の reasons に種類が入る",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/pull/14"
+   ],
+   "verifies": []
+  },
+  {
    "id": "production-branch-master",
    "type": "finding",
    "status": "confirmed",
@@ -2814,6 +2825,17 @@
    "title": "推薦側の PR #13（person-graded-v2・評価の段階・評価の「詳細」8 項目）を入れるか。入れるなら「詳細」の画面をこちらで作るか",
    "sources": [
     "https://github.com/island-6848/taguri-demo/pull/13"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "q-pr14-free-tier",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-14",
+   "title": "推薦側の PR #14（回数制限・見張り・D1 の控え・CPU の測定）が無料枠に収まるか。取得のジョブにどう載せるか",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/pull/14"
    ],
    "verifies": []
   },
@@ -5484,6 +5506,16 @@
    "to": "q-production-branch"
   },
   {
+   "from": "pr14-reason-kinds",
+   "rel": "affects",
+   "to": "dec-reason-work-titles"
+  },
+  {
+   "from": "pr14-reason-kinds",
+   "rel": "affects",
+   "to": "q-pr14-free-tier"
+  },
+  {
    "from": "production-branch-master",
    "rel": "answers",
    "to": "q-production-branch"
@@ -5807,6 +5839,16 @@
    "from": "q-pr13-aspects-screen",
    "rel": "affects",
    "to": "dec-reason-work-titles"
+  },
+  {
+   "from": "q-pr14-free-tier",
+   "rel": "affects",
+   "to": "dec-free-tier-only"
+  },
+  {
+   "from": "q-pr14-free-tier",
+   "rel": "affects",
+   "to": "crawler-actions-minutes"
   },
   {
    "from": "q-public-reputation-signal",
