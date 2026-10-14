@@ -105,7 +105,9 @@ export async function settingsScreen(_params, ctx) {
   const counts = prefCounts(data.groups);
   const rcounts = regionCounts(data.groups.map(g => ({key: g.stage_id, prefs: g.venues.map(v => v.pref)})));
   const keep = new Set(prefs);
-  const chips = PREFS.filter(p => counts[p]).map(p => `<label class="pchip${keep.has(p) ? ' on' : ''}">`
+  // Every prefecture can be chosen as the default, also ones with nothing to recommend now
+  // (起案者の指摘 2026-10-14「地方選ぶ機能が使えなくなってる」: a new account had no chips at all).
+  const chips = PREFS.map(p => `<label class="pchip${keep.has(p) ? ' on' : ''}">`
     + `<input type="checkbox" name="pref" value="${E(p)}"${keep.has(p) ? ' checked' : ''}>`
     + `<span class="pl">${E(p)}</span><span class="pn">${counts[p] || 0}</span></label>`).join('');
   const now = !prefs.length ? '全国' : prefs.join('・') + `（${prefs.length} 県）`;
@@ -119,7 +121,7 @@ export async function settingsScreen(_params, ctx) {
 <b>すでに「興味あり」を押した公演・お気に入り・買った券には効きません。</b>
 一度決めたことを、この設定で見えなくすることはありません。</p>
 <form class="pfil" id="pref-setting" onsubmit="return false">
-${regionsHtml(counts, rcounts)}
+${regionsHtml(counts, rcounts, true)}
 <div class="pchips">${chips}</div>
 <div class="pfoot"><button type="button" data-set-pref="1">${ico('gear')}この都道府県を既定にする</button>
 <button type="button" class="pall-btn" data-set-pref-all="1">全国に戻す</button>

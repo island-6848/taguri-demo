@@ -30,9 +30,9 @@ export function regionCounts(items) {
   return Object.fromEntries(Object.entries(n).map(([r, v]) => [r, v.size]));
 }
 /** prefmap.regions_html */
-export function regionsHtml(counts, rcounts) {
+export function regionsHtml(counts, rcounts, all = false) {
   const out = REGIONS.map(([r, ps]) => {
-    const live = ps.filter(p => counts[p]);
+    const live = all ? ps : ps.filter(p => counts[p]);
     return live.length ? `<button type="button" class="prg" data-prefs="${live.join(' ')}">${r}地方<span class="pn">${rcounts[r] || 0}</span></button>` : '';
   }).join('');
   return `<div class="prgs" role="group" aria-label="地方でまとめて選ぶ"><span class="prgl">地方でまとめて選ぶ</span>${out}<button type="button" class="prg clr">選択を消す</button></div>`;

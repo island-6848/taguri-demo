@@ -110,10 +110,10 @@ test('開幕リマインド: every stage opening this week, with the shared pref
     assert.match(html, /今週<span class="mn">0<\/span>/);
     assert.match(html, /来週<span class="mn">1<\/span>/);
     const next = (await screen(env, a, 'reminder', '?w=next')).body_html;
-    assert.match(next, /<li class="dgli und" data-stage="101">/);
+    assert.match(next, /<li class="dgli dgfold und" data-stage="101"><details class="dgopen"><summary>/);
     assert.match(next, /<input type="hidden" name="w" value="next">/);
     await step(env, a, {post: '/api/react', body: {stage_id: '101', value: 'interest', nofill: true}});
-    assert.match((await screen(env, a, 'reminder', '?w=next')).body_html, /<li class="dgli trk" data-stage="101">/);
+    assert.match((await screen(env, a, 'reminder', '?w=next')).body_html, /<li class="dgli dgfold trk" data-stage="101">/);
     // The filter chosen here applies to おすすめ too.
     await screen(env, a, 'reminder', '?w=next&f=1&pref=' + encodeURIComponent('大阪府'));
     assert.match((await screen(env, a, 'recommend')).body_html, /いまは<b>大阪府（1 県）<\/b>/);
@@ -133,10 +133,30 @@ test('開幕リマインド also lists the catalogue openings that a stale index
     sqlite.prepare("INSERT INTO catalogue(id,title,date,venue,url,metadata) VALUES('778','終わった公演','2026-09-01','劇場Z','','{}')").run();
     const html = (await screen(env, a, 'reminder')).body_html;
     assert.match(html, /今週<span class="mn">1<\/span>/);
-    assert.match(html, /<li class="dgli und" data-stage="777">[\s\S]*?索引に無い新作 &amp; 夜[\s\S]*?劇場Z/);
+    assert.match(html, /<li class="dgli dgfold und" data-stage="777">[\s\S]*?索引に無い新作 &amp; 夜[\s\S]*?劇場Z/);
     assert.doesNotMatch(html, /終わった公演/);
     // A stage in both keeps the index's row (it has the prefecture).
     assert.equal((await screen(env, a, 'reminder', '?w=next')).body_html.match(/<li class="dgli[^"]*" data-stage="101">/g).length, 1);
+  } finally { sqlite.close(); }
+});
+
+// 2026-10-14 起案者「開幕リマインドで『興味あり』押して、そのまま開いても 0 件になる」: a stage
+// only in the catalogue (no prebuilt card) was answered but dropped from 興味あり and
+// stayed 未回答 here. Rows fold by title and open to the credits and synopsis.
+test('開幕リマインド: a catalogue-only stage keeps its answer, shows in 興味あり, and opens to its credits', async () => {
+  const {env, sqlite} = withIndex();
+  const a = await signIn(env);
+  try {
+    env.CLOCK = {today: '2026-10-20', now: Date.parse('2026-10-20T03:00:00Z')};
+    sqlite.prepare("INSERT INTO catalogue(id,title,date,venue,url,metadata) VALUES('777','索引に無い新作','2026-10-22','劇場Z','https://example.com/z',?)")
+      .run(JSON.stringify({end_date: '2026-10-30', group: '劇団Z', synopsis: '海辺の町の三姉妹の話。', fields: {出演: '山田太郎、鈴木花子'}}));
+    const html = (await screen(env, a, 'reminder')).body_html;
+    assert.match(html, /data-stage="777"><details class="dgopen"><summary>[\s\S]*?<\/summary><div class="dgdetail">[\s\S]*?山田太郎、鈴木花子[\s\S]*?海辺の町の三姉妹の話。/);
+    await step(env, a, {post: '/api/react', body: {stage_id: '777', value: 'interest', nofill: true}});
+    assert.match((await screen(env, a, 'reminder')).body_html, /<li class="dgli dgfold trk" data-stage="777">/);
+    const it = (await screen(env, a, 'interest')).body_html;
+    assert.match(it, /<h1>追いかけている 1 件<\/h1>/);
+    assert.match(it, /<article class="ticket interest" data-stage="777"[\s\S]*?索引に無い新作[\s\S]*?山田太郎/);
   } finally { sqlite.close(); }
 });
 
@@ -168,6 +188,11 @@ test('設定・はじめる・登録, the default prefectures, 観ればよか�
     assert.match(set, /いまは全国/);
     assert.match(set, /<a href="\/account">アカウント<\/a>/);
     assert.match(set, /取り消した記録はありません/);
+    // Every prefecture and region can be chosen, also with nothing recommended there yet
+    // (2026-10-14 起案者「地方選ぶ機能が使えなくなってる」).
+    assert.equal(set.match(/<input type="checkbox" name="pref"/g).length, 47);
+    assert.equal(set.match(/class="prg" data-prefs=/g).length, 8);
+    assert.match(set, /data-prefs="鳥取県 島根県 岡山県 広島県 山口県">中国地方/);
     // The default set here applies to おすすめ (until a filter is chosen there).
     assert.equal((await step(env, a, {post: '/api/pref_setting', body: {prefs: ['大阪府', '火星']}})).body.prefs.join(), '大阪府');
     assert.match((await screen(env, a, 'settings')).body_html, /いまは大阪府（1 県）/);

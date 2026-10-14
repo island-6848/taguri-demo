@@ -8,6 +8,7 @@
 // with each card (migration 0018), so the Worker never scans every stage itself.
 // Left out for now: the name candidates picked from notes (reasons.promotions /
 // demotions), the matching of a subject word inside a longer registered subject.
+import {stageInfo, fallbackTemplate} from './fallback.js';
 import {E, ValueError} from './py.js';
 import {compose, cardTemplates, posterHtml, mytixHtml} from './cards.js';
 import {titleKey} from './works.js';
@@ -187,6 +188,12 @@ export async function buckets(ctx) {
   const [react, tickets, declared, words] = await Promise.all([reactionsOf(ctx), ticketsOf(ctx), loadDeclared(ctx), loadDeclined(ctx)]);
   const {hits, declined} = await nameHits(ctx, declared, words);
   const meta = await cardMeta(ctx, [...react.keys()]);
+  // Answered stages without a prebuilt card (only in the catalogue, see fallback.js) still count.
+  const bare = [...react.keys()].filter(sid => !meta.has(sid));
+  if (bare.length) for (const [sid, s] of await stageInfo(ctx.db, bare)) {
+    if (s.end && s.end < ctx.today) continue;
+    meta.set(sid, {stage_id: sid, title: s.title, tour: '', start: s.start, end: s.end, pref: s.pref, gnz: '', blob: '', ws: '', synz: ''});
+  }
   for (const [sid, h] of hits) meta.set(sid, h.meta);
   const tourOf = m => m.tour || 'stage:' + m.stage_id;
   // Every venue of the productions on these lists (an answer is copied to the whole tour).
@@ -256,6 +263,8 @@ export function monthPick(rows, sel, page, action) {
 /** Filled cards for these rows in one list. */
 async function cards(ctx, rows, mode, extra = () => ({})) {
   const {html, posters} = await cardTemplates(ctx.db, rows.map(r => r.stage_id));
+  const bare = rows.map(r => r.stage_id).filter(sid => !html.has(sid));
+  if (bare.length) for (const [sid, s] of await stageInfo(ctx.db, bare)) html.set(sid, fallbackTemplate(s));
   return rows.filter(r => html.has(r.stage_id)).map(r => {
     const pic = posters.get(r.stage_id) || r.sids?.map(s => posters.get(s)).find(Boolean);
     return compose(html.get(r.stage_id), r.stage_id, mode, {poster: pic ? posterHtml(pic) : '', ...extra(r)});

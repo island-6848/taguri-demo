@@ -111,6 +111,11 @@ body{font-family:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",YuGothic,syst
 .ticket .btns{display:grid;grid-template-columns:repeat(3,auto) minmax(0,1fr);justify-content:start;row-gap:8px}
 .ticket .btns .said{grid-column:1/-1;margin:0;line-height:1.6}
 .ticket .btns .said:empty{display:none}
+/* カードの外の帯（開幕リマインドなど）でも、「記録しました」は横ではなく帯の下に出す
+   （起案者の指摘 2026-10-14「記録しましたは横に出すより下で出したほうがいい」） */
+.btns:not(.ticket .btns):not([hidden]){display:grid;grid-template-columns:repeat(3,auto) minmax(0,1fr);justify-content:start;row-gap:8px}
+.btns:not(.ticket .btns) .said{grid-column:1/-1;margin:0;line-height:1.6}
+.btns:not(.ticket .btns) .said:empty{display:none}
 /* 押し口が 1 つだけの帯（「追加する」など）は、四隅を丸める */
 .btns button:only-of-type{border-radius:8px;border-left:1px solid var(--ink)}
 
