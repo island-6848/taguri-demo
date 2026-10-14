@@ -52,5 +52,17 @@ class DeliverPastTest(unittest.TestCase):
             self.assertIn('stage_off', cols)
 
 
+class StatementSizeTest(unittest.TestCase):
+    def test_statements_fit_d1_in_bytes(self):
+        # 2026-10-14: 文字数で数えていたので、日本語の多い 7,016 行が SQLITE_TOOBIG で断られた
+        sys.path.insert(0, str(HERE.parent / 'scripts'))
+        import build_recommend_index as BI
+        rows = [(str(i), '夜の果ての劇場' * 20, '出演' * 300) for i in range(400)]
+        stmts = BI._inserts('past_stage', 'stage_id,title,people', rows)
+        self.assertGreater(len(stmts), 1)
+        self.assertTrue(all(len(x.encode('utf-8')) <= BI.MAX_STATEMENT_BYTES for x in stmts))
+        self.assertEqual(sum(x.count("('") for x in stmts), 400)
+
+
 if __name__ == '__main__':
     unittest.main()

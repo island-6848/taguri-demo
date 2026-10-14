@@ -437,6 +437,17 @@
    "verifies": []
   },
   {
+   "id": "crawler-run-1014",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-14",
+   "title": "無料枠の守りを入れた最初の Catalog（手動・daily）── D1・R2 は入り、過去の公演 7,016 件は読んだが D1 への取り込みが SQLITE_TOOBIG で落ちた（直した）",
+   "sources": [
+    "https://github.com/island-6848/taguri-crawler/actions/runs/38486187595"
+   ],
+   "verifies": []
+  },
+  {
    "id": "crawler-state-between-runs",
    "type": "finding",
    "status": "confirmed",
@@ -3780,6 +3791,26 @@
    "from": "crawler-actions-minutes",
    "rel": "affects",
    "to": "gha-private-free-minutes"
+  },
+  {
+   "from": "crawler-run-1014",
+   "rel": "verifies",
+   "to": "dec-free-tier-only"
+  },
+  {
+   "from": "crawler-run-1014",
+   "rel": "affects",
+   "to": "crawler-actions-minutes"
+  },
+  {
+   "from": "crawler-run-1014",
+   "rel": "affects",
+   "to": "dec-posters-r2"
+  },
+  {
+   "from": "crawler-run-1014",
+   "rel": "affects",
+   "to": "q-r2-poster-growth"
   },
   {
    "from": "crawler-state-between-runs",
