@@ -236,12 +236,31 @@ ${tkHtml}</section>`;
 
 const chunk90 = xs => Array.from({length: Math.ceil(xs.length / 90)}, (_, i) => xs.slice(i * 90, i * 90 + 90));
 
-/** Stages of the current index opening from today to the end of next week, as candidates. */
+/**
+ * Stages opening from today to the end of next week, as candidates: the current
+ * recommendation index (rec_stage), plus the delivered catalogue for the stages the
+ * index does not have. The index is replaced only on days its rows fit the write
+ * budget (deliver_catalogue.py skips it otherwise), so on its own it can go stale and
+ * leave this screen empty; the catalogue is upserted every day (changed rows only).
+ * Catalogue rows carry no prefecture, so they are left out when prefectures are chosen.
+ */
 export async function openingCandidates(ctx) {
   const hi = addDays(ctx.today, WINDOW * WEEKS.length - 1);
   const {results} = await ctx.db.prepare("SELECT stage_id,title,entry FROM rec_stage WHERE ver=(SELECT v FROM rec_meta WHERE k='current') AND start>=? AND start<=? ORDER BY stage_id")
     .bind(ctx.today, hi).all();
-  return results.map(r => ({...JSON.parse(r.entry || '{}'), title: r.title, stage_id: r.stage_id}));
+  const out = results.map(r => ({...JSON.parse(r.entry || '{}'), title: r.title, stage_id: r.stage_id}));
+  const have = new Set(out.map(c => String(c.stage_id)));
+  const cat = await ctx.db.prepare('SELECT id,title,date,venue,url,metadata FROM catalogue WHERE date>=? AND date<=? ORDER BY id').bind(ctx.today, hi).all();
+  const slash = d => d.replaceAll('-', '/');
+  for (const r of cat.results) {
+    if (have.has(String(r.id))) continue;
+    let m = {};
+    try { m = JSON.parse(r.metadata || '{}') || {}; } catch { /* no metadata */ }
+    const end = /^\d{4}-\d{2}-\d{2}$/.test(m.end_date || '') ? m.end_date : r.date;
+    out.push({stage_id: String(r.id), title: r.title, period: `${slash(r.date)} ～ ${slash(end)}`, theater: r.venue || '', venue: r.venue || '',
+      group: m.group || '', ...(m.fields ? {fields: m.fields} : {}), ...(r.url ? {url: r.url} : {})});
+  }
+  return out;
 }
 
 /** stage_id -> kind key for every venue of the user's answered / registered productions. */

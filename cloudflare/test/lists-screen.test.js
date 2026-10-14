@@ -120,6 +120,26 @@ test('開幕リマインド: every stage opening this week, with the shared pref
   } finally { sqlite.close(); }
 });
 
+// 2026-10-14 起案者「開幕リマインドは推薦がなくても表示されるはずだけど、出ないのなんで？」:
+// the index is replaced only on days it fits the write budget, so it can lack this
+// week's openings; the catalogue (upserted daily) fills them in.
+test('開幕リマインド also lists the catalogue openings that a stale index lacks, for a new account', async () => {
+  const {env, sqlite} = withIndex();
+  const a = await signIn(env);
+  try {
+    env.CLOCK = {today: '2026-10-20', now: Date.parse('2026-10-20T03:00:00Z')};
+    sqlite.prepare("INSERT INTO catalogue(id,title,date,venue,url,metadata) VALUES('777','索引に無い新作 & 夜','2026-10-22','劇場Z','',?)")
+      .run(JSON.stringify({end_date: '2026-10-30', group: '劇団Z'}));
+    sqlite.prepare("INSERT INTO catalogue(id,title,date,venue,url,metadata) VALUES('778','終わった公演','2026-09-01','劇場Z','','{}')").run();
+    const html = (await screen(env, a, 'reminder')).body_html;
+    assert.match(html, /今週<span class="mn">1<\/span>/);
+    assert.match(html, /<li class="dgli und" data-stage="777">[\s\S]*?索引に無い新作 &amp; 夜[\s\S]*?劇場Z/);
+    assert.doesNotMatch(html, /終わった公演/);
+    // A stage in both keeps the index's row (it has the prefecture).
+    assert.equal((await screen(env, a, 'reminder', '?w=next')).body_html.match(/<li class="dgli[^"]*" data-stage="101">/g).length, 1);
+  } finally { sqlite.close(); }
+});
+
 test('公演カレンダー shows the stages owned, followed and of a registered name', async () => {
   const {env, sqlite} = withIndex();
   const a = await signIn(env);

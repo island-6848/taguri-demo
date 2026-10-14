@@ -1189,6 +1189,20 @@
    "verifies": []
   },
   {
+   "id": "dec-reminder-catalogue-fill",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "開幕リマインドは、推薦の索引（rec_stage）に無い今週・来週の初日を、毎日入れている公演一覧（catalogue）で補う。/api/health に 14 日以内の初日の件数を出す",
+   "sources": [
+    "cloudflare/src/screens/reminder.js",
+    "cloudflare/src/worker.js",
+    "cloudflare/test/lists-screen.test.js",
+    "https://github.com/island-6848/taguri-crawler/actions/runs/38486187595"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-reminder-worker",
    "type": "decision",
    "status": "adopted",
@@ -4927,6 +4941,16 @@
    "from": "dec-records-worker",
    "rel": "affects",
    "to": "comp-native-screens"
+  },
+  {
+   "from": "dec-reminder-catalogue-fill",
+   "rel": "depends_on",
+   "to": "dec-reminder-worker"
+  },
+  {
+   "from": "dec-reminder-catalogue-fill",
+   "rel": "affects",
+   "to": "dec-free-tier-only"
   },
   {
    "from": "dec-reminder-worker",

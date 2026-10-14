@@ -238,6 +238,18 @@ export async function health(db) {
   if (m.catalogue_delivered) catalog.uploaded_at = m.catalogue_delivered;
   if (m.catalogue_scan) catalog.scan_date = m.catalogue_scan;
   catalog.upcoming = {candidates: Number(m.catalogue_upcoming || 0)};
+  // Whether 開幕リマインド has anything to show: stages first playing in the next 14 days,
+  // in the recommendation index (replaced only on days it fits the write budget) and in
+  // the catalogue (upserted daily). Counts only, read through the start/date indexes.
+  try {
+    const today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+    const hi = new Date(Date.parse(today) + 13 * 864e5).toISOString().slice(0, 10);
+    const ver = (await db.prepare("SELECT v FROM rec_meta WHERE k='current'").first())?.v || '';
+    const idx = ver ? (await db.prepare('SELECT count(*) n FROM rec_stage WHERE ver=? AND start>=? AND start<=?').bind(ver, today, hi).first())?.n || 0 : 0;
+    const cat = (await db.prepare('SELECT count(*) n FROM catalogue WHERE date>=? AND date<=?').bind(today, hi).first())?.n || 0;
+    catalog.opening_14d = {index: idx, catalogue: cat};
+    if (ver) catalog.index_version = ver;
+  } catch { /* tables not there yet */ }
   // Free-tier counters (docs/free-tier-budget.md): counts only, nothing about users.
   let r2Reads = null;
   try {
