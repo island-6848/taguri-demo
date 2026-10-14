@@ -34,7 +34,13 @@ for seed in range(12):
     picks = [cast[(seed * 7 + i * 13) % len(cast)][1] for i in range(3)]
     favs = [{'name': picks[0], 'kind': '人'}, {'name': picks[1], 'kind': '原作者'},
             {'name': picks[2], 'kind': '団体'}, {'name': '誰でもない人', 'kind': '人'}]
-    seeds, skip = BI.seeds_from_favourites(BI.memory_access(index)[0], BI.memory_people(index), favs)
+    # Troupes / producers by the producing company, works by the title (some seeds only).
+    if seed % 3 == 1:
+        favs += [{'name': '劇団　甲', 'kind': '団体'}]
+    if seed % 3 == 2:
+        favs += [{'name': '『夜の声』', 'kind': '作品'}, {'name': '劇団乙', 'kind': '主催'}]
+    seeds, skip = BI.seeds_from_favourites(BI.memory_access(index)[0], BI.memory_people(index), favs,
+                                           BI.memory_matching(index))
     for rated in ([], T.with_people(T.history(seed * 100 + 9, fbs), index['people'])):
         expected = BI.score_from_index(*BI.memory_access(index), rated, multipliers={}, today=T.TODAY,
                                        seeds=seeds, skip=skip)

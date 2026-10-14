@@ -58,11 +58,28 @@ GRID += [{"z": z, "K": K, "own": own} for z in (0.4 * SQRT12, 0.2 * SQRT12)
          for K in (3, 10, 30, None) for own in (False, True)]
 
 
-def favourites(aside, people):
+def favourites(aside, people, kind="person", types=None):
+    """Favourites a user would declare, from the aside ratings.
+
+    kind "person": people (actors, directors) rated at the top every time, at
+    least twice. "director": directors only — stands in for a troupe or
+    producer (a set of productions sharing a recurring creative core).
+    "genre": a genre rated near the top (mean within half a grade of the top,
+    at least 3 movies) — stands in for a subject (題材). Genres are returned
+    as ("genre", name)."""
     top = max(r for _, r in aside)
     seen = defaultdict(list)
+    if kind == "genre":
+        for m, r in aside:
+            for t in set(types.get(m, ())):
+                seen[("genre", t)].append(r)
+        favs = sorted((g for g, rs in seen.items() if len(rs) >= 3 and statistics.fmean(rs) >= top - 0.5),
+                      key=lambda g: (-statistics.fmean(seen[g]), -len(seen[g]), g))
+        return favs[:1]
     for m, r in aside:
         for rp in set(people.get(m, ())):
+            if kind == "director" and rp[0] != "director":
+                continue
             seen[rp].append(r)
     favs = sorted((rp for rp, rs in seen.items() if len(rs) >= 2 and all(r == top for r in rs)),
                   key=lambda rp: (-len(seen[rp]), rp))
@@ -91,6 +108,8 @@ def scorer(history, seeds, favs, people, types, s):
                 acc[rp][0] += w
                 acc[rp][1] += w * s["z"]
             for t in set(types.get(m, ())):
+                if ("genre", t) in fav and not s["own"]:
+                    continue
                 gacc[t][0] += w
                 gacc[t][1] += w * s["z"]
 
@@ -105,7 +124,7 @@ def scorer(history, seeds, favs, people, types, s):
     return score
 
 
-def evaluate(settings, users, ratings, people, types, by_person, seed, shuffles=3):
+def evaluate(settings, users, ratings, people, types, by_person, seed, shuffles=3, kind="person"):
     """{k: mean over users of (auc_top + pairs)/2} per setting index, and per user."""
     per_user = [{k: {} for k in KS} for _ in settings]
     for u in users:
@@ -116,7 +135,7 @@ def evaluate(settings, users, ratings, people, types, by_person, seed, shuffles=
             order = items[:]
             rng.shuffle(order)
             test, aside, train = order[-TEST:], order[-TEST - ASIDE:-TEST], order[:-TEST - ASIDE]
-            favs = favourites(aside, people)
+            favs = favourites(aside, people, kind, types)
             if not favs:
                 continue
             test_ids = {m for m, _ in test}
@@ -144,6 +163,7 @@ def main() -> int:
     ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--tune-users", type=int, default=300)
     ap.add_argument("--test-users", type=int, default=500)
+    ap.add_argument("--kind", choices=("person", "director", "genre"), default="person")
     a = ap.parse_args()
     ratings, people = E.load(a.data)
     types = D.load_types(a.types)
@@ -151,18 +171,21 @@ def main() -> int:
     for m, ps in people.items():
         for rp in set(ps):
             by_person[rp].append(m)
+    for m, ts in types.items():
+        for t in set(ts):
+            by_person[("genre", t)].append(m)
     eligible = sorted(u for u, rs in ratings.items() if len(rs) >= max(KS) + TEST + ASIDE)
     rng = random.Random(a.seed)
     rng.shuffle(eligible)
     tune, check = eligible[:a.tune_users], eligible[a.tune_users:a.tune_users + a.test_users]
-    means, _ = evaluate(GRID, tune, ratings, people, types, by_person, a.seed)
+    means, _ = evaluate(GRID, tune, ratings, people, types, by_person, a.seed, kind=a.kind)
     rows = [{"setting": s, **{f"k{k}": round(m[k], 4) for k in KS}} for s, m in zip(GRID, means)]
     # Chosen on the mean over k (every stage of use counts), never below no-seed at any k.
     base = means[0]
     ok = [i for i in range(1, len(GRID)) if all(means[i][k] >= base[k] - 0.002 for k in KS)]
     best = max(ok or [0], key=lambda i: statistics.fmean(means[i].values()))
-    out = {"tune_users": len(tune), "check_users": len(check), "grid": rows, "chosen": GRID[best]}
-    m2, pu = evaluate([GRID[0], GRID[best]], check, ratings, people, types, by_person, a.seed + 100)
+    out = {"kind": a.kind, "tune_users": len(tune), "check_users": len(check), "grid": rows, "chosen": GRID[best]}
+    m2, pu = evaluate([GRID[0], GRID[best]], check, ratings, people, types, by_person, a.seed + 100, kind=a.kind)
     conf = {}
     for k in KS:
         common = [u for u in pu[1][k] if u in pu[0][k]]

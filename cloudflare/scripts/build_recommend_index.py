@@ -79,6 +79,7 @@ def build_index(pool: dict[str, dict], fields_by_stage: dict[str, dict], role_gr
                              UR.price_texts(entry))
         stages[sid] = {"title": title, "tkey": M.R.title_key(title), "grp": entry.get("group") or "",
                        "tour": UR.tour_key(title, entry.get("group") or "", credits),
+                       "gkey": RC.nz(entry.get("group") or ""),
                        "start": RC.period_start(period), "end": _period_end(period),
                        "credits": [list(c) for c in credits],
                        "entry": _public_entry(entry)}
@@ -107,18 +108,33 @@ MAX_SEED_FAVS = 20
 MAX_SEED_STAGES = 60
 
 
-def seeds_from_favourites(postings_for, people_of, favourites: list[dict]) -> tuple[list[dict], set]:
-    """Seed productions for the user's favourite people (q-favourites-seed).
+SEED_GROUP_KINDS = ("団体", "主催")
+SEED_WORK_KINDS = ("作品",)
 
-    The candidate stages crediting a favourite person or original author in
-    one of SEED_ROLES (first MAX_SEED_FAVS names, first MAX_SEED_STAGES stage
-    ids in order), with their people from rec_people. Returns (seeds, names).
+
+def seeds_from_favourites(postings_for, people_of, favourites: list[dict],
+                          stages_matching=None) -> tuple[list[dict], set]:
+    """Seed productions for the user's favourites (q-favourites-seed).
+
+    People and original authors: the candidate stages crediting them in one of
+    SEED_ROLES. Troupes and producers: stages whose producing company contains
+    the name; works: stages whose title contains it (the matching rules of
+    recommend2.declared_hits, on normalised text: RC.nz / title_key).
+    `stages_matching(groups, works)` returns those stage ids. At most
+    MAX_SEED_FAVS names of each kind; the first MAX_SEED_STAGES stage ids in
+    order; people from rec_people. Returns (seeds, person names to skip).
     """
     names = sorted({f["name"] for f in favourites if f.get("kind") in SEED_KINDS})[:MAX_SEED_FAVS]
     keys = sorted((role, name) for name in names for role in SEED_ROLES)
-    sids = sorted({row[2] for row in postings_for(keys)})[:MAX_SEED_STAGES]
+    sids = {row[2] for row in postings_for(keys)}
+    groups = sorted({g for f in favourites if f.get("kind") in SEED_GROUP_KINDS
+                     for g in [RC.nz(f["name"])] if len(g) >= 2})[:MAX_SEED_FAVS]
+    works = sorted({w for f in favourites if f.get("kind") in SEED_WORK_KINDS
+                    for w in [M.R.title_key(f["name"])] if len(w) >= 2})[:MAX_SEED_FAVS]
+    if (groups or works) and stages_matching:
+        sids |= set(stages_matching(groups, works))
     seeds = []
-    for sid in sids:
+    for sid in sorted(sids)[:MAX_SEED_STAGES]:
         people = people_of(sid)
         if people:
             seeds.append({"stage_id": sid, "people": people})
@@ -192,6 +208,13 @@ def memory_access(index: dict):
         by_key.setdefault((row[0], row[1]), []).append(row)
     return (lambda keys: [r for k in keys for r in by_key.get(k, [])],
             lambda sid: index["stages"].get(sid))
+
+
+def memory_matching(index: dict):
+    """stages_matching(groups, works) over the in-memory index."""
+    return lambda groups, works: sorted(
+        sid for sid, st in index["stages"].items()
+        if any(g in st["gkey"] for g in groups) or any(w in st["tkey"] for w in works))
 
 
 def memory_people(index: dict):
@@ -364,8 +387,8 @@ def to_sql(index: dict, ver: str, onboarding: list[str] | None = None) -> list[s
     """Insert `ver`, switch to it, then drop other versions (in that order)."""
     dumps = lambda v: json.dumps(v, ensure_ascii=False, sort_keys=True)
     stmts = [f"DELETE FROM {t} WHERE ver={_q(ver)};" for t in TABLES]
-    stmts += _inserts("rec_stage", "ver,stage_id,title,tkey,grp,tour,start,end,credits,entry", [
-        (ver, sid, s["title"], s["tkey"], s["grp"], s["tour"], s["start"], s["end"], dumps(s["credits"]),
+    stmts += _inserts("rec_stage", "ver,stage_id,title,tkey,grp,tour,gkey,start,end,credits,entry", [
+        (ver, sid, s["title"], s["tkey"], s["grp"], s["tour"], s["gkey"], s["start"], s["end"], dumps(s["credits"]),
          dumps(s["entry"])) for sid, s in sorted(index["stages"].items())])
     stmts += _inserts("rec_credit", "ver,role,person,stage_id,role_w,role_group",
                       [(ver, *r) for r in sorted(set(index["postings"]))])

@@ -10,6 +10,8 @@
 //   binary value, and an exact decimal tie at the 7th digit cannot occur.
 // - Strings compare by code point, as Python does (not UTF-16 units).
 
+import {titleKey} from './stage-search.js';
+
 export const CONF_K = 3, TOP_N = 3;
 export const GRADE_VALUE = {'◎': 4, '○': 3, '△': 2, '×': 1};
 export const MIN_LEVELS = 2, MAX_LEVELS = 11;
@@ -19,6 +21,9 @@ const SQRT12 = Math.sqrt(12);
 export const SEED_Z = 0.4 * SQRT12, SEED_K = 3;
 export const SEED_ROLES = ['出演', '演出', '脚本', '作', '原作', '翻訳', '潤色', '構成', '振付', '作曲', '音楽'];
 export const SEED_KINDS = ['人', '原作者'], MAX_SEED_FAVS = 20, MAX_SEED_STAGES = 60;
+export const SEED_GROUP_KINDS = ['団体', '主催'], SEED_WORK_KINDS = ['作品'];
+/** recommend2.nz: NFKC, no spaces (ASCII or full-width), lower case. */
+export const nz = s => String(s ?? '').normalize('NFKC').replaceAll(' ', '').replaceAll('\u3000', '').toLowerCase();
 // 詳細 (good / trouble per aspect): user_recommender.ASPECTS (checked against Python in the test).
 export const ASPECTS = {
   story: ['話・脚本・構成', {'脚本': 1.0, '作': 1.0, '原作': 1.0, '原案': 1.0, '翻訳': 1.0, '潤色': 1.0, '構成': 1.0,
@@ -193,13 +198,22 @@ export async function scoreFromIndex({postingsFor, stagesFor, rated, multipliers
  * build_recommend_index.seeds_from_favourites: candidate stages crediting a
  * favourite person / original author, with their people. Returns {seeds, skip}.
  */
-export async function seedsFromFavourites({postingsFor, peopleFor}, favourites) {
+export async function seedsFromFavourites({postingsFor, peopleFor, stagesMatching}, favourites) {
   const names = [...new Set(favourites.filter(f => SEED_KINDS.includes(f.kind)).map(f => f.name))].sort(cmp).slice(0, MAX_SEED_FAVS);
-  if (!names.length) return {seeds: [], skip: new Set()};
-  const keys = names.flatMap(name => SEED_ROLES.map(role => [role, name])).sort(cmpTuple);
-  const sids = [...new Set((await postingsFor(keys)).map(r => r[2]))].sort(cmp).slice(0, MAX_SEED_STAGES);
-  const people = await peopleFor(sids);
-  return {seeds: sids.filter(sid => people.get(sid)?.length).map(sid => ({stage_id: sid, people: people.get(sid)})), skip: new Set(names)};
+  const sids = new Set();
+  if (names.length) {
+    const keys = names.flatMap(name => SEED_ROLES.map(role => [role, name])).sort(cmpTuple);
+    for (const r of await postingsFor(keys)) sids.add(r[2]);
+  }
+  // Troupes / producers by the producing company, works by the title
+  // (recommend2.declared_hits' rules on normalised text).
+  const pick = (kinds, norm) => [...new Set(favourites.filter(f => kinds.includes(f.kind)).map(f => norm(f.name)).filter(x => x.length >= 2))].sort(cmp).slice(0, MAX_SEED_FAVS);
+  const groups = pick(SEED_GROUP_KINDS, nz), works = pick(SEED_WORK_KINDS, titleKey);
+  if ((groups.length || works.length) && stagesMatching) for (const sid of await stagesMatching(groups, works)) sids.add(sid);
+  const chosen = [...sids].sort(cmp).slice(0, MAX_SEED_STAGES);
+  if (!chosen.length) return {seeds: [], skip: new Set(names)};
+  const people = await peopleFor(chosen);
+  return {seeds: chosen.filter(sid => people.get(sid)?.length).map(sid => ({stage_id: sid, people: people.get(sid)})), skip: new Set(names)};
 }
 
 /**
@@ -243,6 +257,14 @@ export function d1Access(db, ver, counter = {rows: 0, queries: 0}) {
         for (const r of results) map.set(r.stage_id, {start: r.start, end: r.end, tour: r.tour});
       }
       return map;
+    },
+    async stagesMatching(groups, works) {
+      // One pass over this version's stages (rec_stage has no index on these).
+      const conds = [...groups.map(() => 'instr(gkey,?)>0'), ...works.map(() => 'instr(tkey,?)>0')];
+      if (!conds.length) return [];
+      const {results} = await db.prepare(`SELECT stage_id FROM rec_stage WHERE ver=? AND (${conds.join(' OR ')})`).bind(ver, ...groups, ...works).all();
+      counter.rows += results.length; counter.queries += 1;
+      return results.map(r => r.stage_id);
     },
     async peopleFor(ids) {
       const map = new Map();

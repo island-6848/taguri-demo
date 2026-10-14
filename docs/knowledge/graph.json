@@ -1240,6 +1240,18 @@
    "verifies": []
   },
   {
+   "id": "eval-favourite-kinds",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-14",
+   "title": "劇団・主催（監督の作品群で代用）と題材（ジャンルで代用）のお気に入りも、評価が無いうちの当たりを上げる",
+   "sources": [
+    "docs/research/person-reco-eval.md",
+    "tools/review/eval_favourite_seed.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "eval-favourite-seed",
    "type": "finding",
    "status": "confirmed",
@@ -2793,6 +2805,15 @@
    "status": "open",
    "date": "2026-10-13",
    "title": "あらすじを Claude の定期実行で読むと、1 日にどれだけ読め、起案者の使用枠をどれだけ使うか",
+   "sources": [],
+   "verifies": []
+  },
+  {
+   "id": "q-theme-favourite",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-14",
+   "title": "題材のお気に入りを推薦の種に使うには、あらすじの題材を Worker の索引に入れる必要がある",
    "sources": [],
    "verifies": []
   },
@@ -4414,6 +4435,16 @@
    "to": "comp-recommender"
   },
   {
+   "from": "eval-favourite-kinds",
+   "rel": "supports",
+   "to": "eval-favourite-seed"
+  },
+  {
+   "from": "eval-favourite-kinds",
+   "rel": "affects",
+   "to": "comp-recommender"
+  },
+  {
    "from": "eval-favourite-seed",
    "rel": "depends_on",
    "to": "lit-syskill-webert-prior"
@@ -4577,6 +4608,11 @@
    "from": "impl-favourite-seed",
    "rel": "depends_on",
    "to": "impl-person-ordinal-v3"
+  },
+  {
+   "from": "impl-favourite-seed",
+   "rel": "depends_on",
+   "to": "eval-favourite-kinds"
   },
   {
    "from": "impl-favourite-seed",
@@ -5422,6 +5458,16 @@
    "from": "q-synopsis-routine-quota",
    "rel": "depends_on",
    "to": "dec-synopsis-reader-claude"
+  },
+  {
+   "from": "q-theme-favourite",
+   "rel": "depends_on",
+   "to": "eval-favourite-kinds"
+  },
+  {
+   "from": "q-theme-favourite",
+   "rel": "affects",
+   "to": "comp-recommender"
   },
   {
    "from": "q-theme-preference",

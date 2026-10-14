@@ -281,6 +281,33 @@ class SearchTest(unittest.TestCase):
             BI.GRAM_PART = old
 
 
+class FavouriteSeedKindsTest(unittest.TestCase):
+    """Troupes / producers and works as favourites (q-favourites-seed)."""
+
+    def setUp(self):
+        raw, cands, fbs = catalogue(4)
+        self.index = BI.build_index(UR.candidate_pool(raw, cands), fbs, APP.group_of)
+
+    def seeds(self, favs):
+        seeds, _ = BI.seeds_from_favourites(BI.memory_access(self.index)[0], BI.memory_people(self.index),
+                                            favs, BI.memory_matching(self.index))
+        return {s['stage_id'] for s in seeds}
+
+    def test_troupe_matches_the_producing_company_written_any_way(self):
+        got = self.seeds([{'name': '劇団　甲', 'kind': '団体'}])
+        self.assertTrue(got)
+        self.assertTrue(all(self.index['stages'][sid]['grp'] == '劇団甲' for sid in got))
+        self.assertEqual(got, self.seeds([{'name': '劇団甲', 'kind': '主催'}]))
+
+    def test_work_matches_the_title(self):
+        got = self.seeds([{'name': '『夜の声』', 'kind': '作品'}])
+        self.assertTrue(got)
+        self.assertTrue(all('夜の声' in self.index['stages'][sid]['title'] for sid in got))
+
+    def test_too_short_or_unknown_names_add_nothing(self):
+        self.assertEqual(self.seeds([{'name': '劇', 'kind': '団体'}, {'name': '題材', 'kind': '題材'}]), set())
+
+
 class OnboardingTest(unittest.TestCase):
     """onboarding_list: stages already on, covering the coming catalogue."""
 

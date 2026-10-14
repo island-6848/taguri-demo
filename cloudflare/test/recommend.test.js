@@ -88,7 +88,7 @@ test('records saved through the API give the same recommendations as Python, min
       assert.ok(got.items.every(i => i.tours.every(t => t.theater)), 'tour venues carry their display fields');
       assert.ok(got.items.every(i => i.title), 'display fields come from rec_stage');
       // The cache is keyed by the scoring rules too (a rule change recomputes).
-      assert.ok(sqlite.prepare('SELECT stamp FROM rec_cache WHERE user_id=?').get(uid).stamp.startsWith('person-ordinal-v3+fav1+asp1+tour1|'));
+      assert.ok(sqlite.prepare('SELECT stamp FROM rec_cache WHERE user_id=?').get(uid).stamp.startsWith('person-ordinal-v3+fav2+asp1+tour1|'));
       // Second view: served from the cache, same answer.
       const again = await recommendFor(env.DB, uid, fixture.today);
       assert.equal(again.cached, true);
