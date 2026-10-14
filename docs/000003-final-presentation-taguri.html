@@ -1,5 +1,5 @@
 <title>たぐり 成果報告</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=IBM+Plex+Sans:wght@600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=IBM+Plex+Sans:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+Math&display=swap">
 <style>
 :root{
  --ink:#050B10;--body:#141F29;--muted:#3C4B59;--line:#D7E0EA;--wash:#F4F7FB;
@@ -310,6 +310,38 @@ figcaption{font-size:12.5px;color:var(--muted);margin-top:10px;max-width:70em}
 .toc-grid h4,.toc-grid p{display:inline}
 .toc-grid p{margin-left:14px}
 @media print{.rail,.topbar{display:none}}
+#algo .calc td{white-space:normal}
+#algo .calc td:first-child{min-width:6em;max-width:12em}
+/* 3章：論文の形（式・図・文献） */
+.abstract{background:var(--wash);border:1px solid var(--line);border-left:3px solid var(--brand);border-radius:10px;padding:14px 18px;margin:0 0 8px;max-width:62em}
+.abstract h4{margin:0 0 6px;font-size:13px;color:var(--brand);letter-spacing:.06em}
+.abstract p{margin:0;font-size:13.5px;color:var(--body)}
+.abstract p+p,.abstract ol+p{margin-top:8px}
+.abstract ol{margin:8px 0 0;padding-left:1.6em;font-size:13.5px;color:var(--body)}
+.abstract li+li{margin-top:2px}
+#algo .para{font-size:14px;color:var(--body);max-width:62em;margin:0 0 12px}
+#algo ul.para{padding-left:1.4em}
+#algo ul.para li+li{margin-top:2px}
+#algo .card ul{margin:6px 0 0;padding-left:1.2em}
+#algo .card ul li+li{margin-top:6px}
+#algo h4.eqhead{font-size:14px;margin:26px 0 8px;color:var(--ink)}
+.eq{display:flex;align-items:center;gap:12px;max-width:62em;margin:6px 0 16px;overflow-x:auto;overflow-y:hidden;padding:4px 0}
+.eq math{flex:1;font-size:1.12em;color:var(--ink);min-width:max-content;font-family:"Noto Sans Math",math}
+.eq mtext{font-family:"Noto Sans JP",sans-serif;font-size:.9em}
+.eq mtd{text-align:left;padding:1px .5em}
+@media (max-width:600px){.eq math{font-size:.95em}}
+.eq .eqn{flex:none;font-family:"IBM Plex Mono",monospace;font-size:13px;color:var(--muted)}
+#algo figure svg{width:100%;height:auto;display:block}
+ol.refs{font-size:12.5px;color:var(--body);padding-left:2.2em;max-width:70em}
+ol.refs li{margin:0 0 4px}
+ol.refs li:target{background:rgba(var(--brand-rgb),.12)}
+#algo a[href^="#ref-"]{text-decoration:none;font-family:"IBM Plex Mono",monospace;font-size:.92em}
+.fS{fill:var(--thread);fill-opacity:.55}.fW{fill:var(--warn);fill-opacity:.45}
+.fN{fill:var(--brand2);fill-opacity:.45}.fG{fill:var(--good);fill-opacity:.55}.fN2{fill:var(--brand);fill-opacity:.8}
+.fT{fill:var(--ink);font-size:14px;font-weight:700}.fDot{fill:var(--thread)}
+.fGrid{fill:none;stroke:var(--line);stroke-width:1}.fGrid2{fill:var(--wash);stroke:var(--line)}
+.fLine1{fill:none;stroke:var(--brand);stroke-width:3}.fLine2{fill:none;stroke:var(--thread);stroke-width:3;stroke-dasharray:8 6}
+.fL1{fill:var(--brand);font-size:13px;font-weight:700}.fL2{fill:var(--thread);font-size:13px;font-weight:700}
 </style>
 
 <div class="shell">
@@ -350,7 +382,7 @@ figcaption{font-size:12.5px;color:var(--muted);margin-top:10px;max-width:70em}
   <div class="toc-grid wide">
     <a href="#ch2"><span class="n">01</span><span><h4>企画内容</h4><p>課題・価値・対象ユーザー・想定シーン</p></span></a>
     <a href="#ch3"><span class="n">02</span><span><h4>機能概要</h4><p>機能の分類・使用イメージ・使っている技術・システム構成</p></span></a>
-    <a href="#algo"><span class="n">03</span><span><h4>推薦アルゴリズム</h4><p>全体の流れ・評価を順位として読む・点の式・詳細とお気に入り・裏の答え合わせ・以前からの変更</p></span></a>
+    <a href="#algo"><span class="n">03</span><span><h4>推薦アルゴリズム</h4><p>問題設定・評価の順序化・縮約した人物の値・点の式と出す条件・お気に入りの事前・裏の答え合わせ（符号検定）・検証と限界</p></span></a>
     <a href="#ch4"><span class="n">04</span><span><h4>セキュリティ</h4><p>境界線の概念図</p></span></a>
     <a href="#ch5"><span class="n">05</span><span><h4>達成事項</h4><p>実現できたこと・メリット・未実装</p></span></a>
     <a href="#ch6"><span class="n">06</span><span><h4>今後の展望</h4><p>検討中の拡張・応用の可能性</p></span></a>
@@ -676,9 +708,54 @@ figcaption{font-size:12.5px;color:var(--muted);margin-top:10px;max-width:70em}
 <section class="sec" id="algo">
   <div class="eyebrow"><span class="n">03</span><span>推薦アルゴリズム</span></div>
   <h2 class="title">推薦アルゴリズム</h2>
-  <p class="kicker">順位は <b>LLM を使わず、本人の記録から数えた統計だけ</b>で決める。同じ記録からは毎回同じ順位と同じ理由が出る。いま本番（Cloudflare Workers）で動いているのは <code>person-ordinal-v3+fav3+asp1+tour1+why1</code>。Python で作った計算と、Worker の計算が同じ公演・同じ順・同じ点・同じ理由を出すことを、テストで毎回確かめている。</p>
+  <p class="kicker">本章では、いま本番（Cloudflare Workers）で動いている推薦 <code>person-ordinal-v3+fav3+asp1+tour1+why1</code> を、式・根拠・検証の順に述べる。順位は <b>LLM を使わず、本人の記録から数えた統計だけ</b>で決める。そのため、同じ記録からは毎回同じ順位と同じ理由が出る。Python の参照実装と Worker の実装が、同じ公演・同じ順・同じ点・同じ理由を出すことは、変更のたびにテストで確かめている。</p>
 
-  <h3 class="sub" style="margin-top:0">3-1　全体の流れ：候補を集めてから 15 件を出すまで</h3>
+  <div class="abstract">
+    <h4>要旨</h4>
+    <p>観劇の記録は 1 人あたり数十件と少なく、他の利用者の記録は方針として集めない。そこで、公開されているクレジット（役職と人物）と公演の種類のタグを手がかりに、<b>本人の評価だけ</b>で、これからの公演に点を付ける。手順は 4 つある。</p>
+    <ol>
+      <li>評価 ◎○△× を、本人の評価の分布の中での位置 <i>z</i> に直し、人による付け方の癖を消す（式 1–2）。</li>
+      <li>人物とタグごとに <i>z</i> を縮約して平均し、その「値」を作る（式 4）。</li>
+      <li>公演の点を、上げる人物の上位 3、下げる人物の上位 3、種類の平均の和とする（式 7）。理由を言える公演だけを残す（式 8）。</li>
+      <li>評価が少ないうちは、お気に入りを仮の評価として足す（式 9）。</li>
+    </ol>
+    <p>さらに、本人の過去の評価を時間順に再生する符号検定で、重み付けを人ごとに切り替える（式 10–12）。公開の映画評価データ（500 人）では、以前の計算より AUC が +0.024〜0.036 上がった。<b>舞台の実データでの効果は、まだ測っていない</b>（3.9）。</p>
+  </div>
+
+  <h3 class="sub">3.1　問題設定と記法</h3>
+  <div class="grid2 wide pair calcgrid">
+    <div class="card">
+      <h4>問題</h4>
+      <p class="muted">利用者 <i>u</i> が評価した公演の集合を <i>R<sub>u</sub></i>（件数 <i>N<sub>u</sub></i>）とし、公演 <i>s</i> への評価を <i>g<sub>s</sub></i> とする。これから初日を迎える公演の集合 <i>C</i> を並べ、上位 15 件を理由と一緒に出したい。制約は次の 3 つ。</p>
+      <ul class="muted">
+        <li><b>本人の記録だけで計算する。</b>他の利用者の記録は集めないので、協調フィルタリングは使えない。</li>
+        <li><b>毎回同じ結果を出し、理由を説明できる。</b></li>
+        <li><b>無料プランの CPU（1 回 10 ms）に収める。</b></li>
+      </ul>
+      <p class="muted">手がかりは、公演ごとのクレジットの組（役職 <i>r</i>, 人物 <i>p</i>）の集合 <i>P</i>(<i>s</i>) と、種類のタグの集合 <i>K</i>(<i>s</i>) である。</p>
+    </div>
+    <div class="card">
+      <h4>記法</h4>
+      <div class="twrap" style="margin:0">
+        <table class="calc" style="min-width:0;font-size:12.5px">
+          <thead><tr><th>記号</th><th>意味</th></tr></thead>
+          <tbody>
+            <tr><td><i>g<sub>s</sub></i></td><td>公演 <i>s</i> への評価。◎○△× ＝ 4/3/2/1 の 4 段階。または「値/段階数」（例 4/5）</td></tr>
+            <tr><td><i>z<sub>s</sub></i></td><td>評価を本人の中での位置に直した値（式 2）</td></tr>
+            <tr><td><i>q</i></td><td>手がかり 1 つ。（役職, 人物）の組か、種類のタグ（#形式 など）</td></tr>
+            <tr><td><i>R<sub>u</sub></i>(<i>q</i>)、<i>n<sub>u</sub></i>(<i>q</i>)</td><td><i>q</i> が関わる評価済みの公演と、その本数</td></tr>
+            <tr><td><i>v<sub>u</sub></i>(<i>q</i>)</td><td><i>q</i> の値（式 4）</td></tr>
+            <tr><td><i>ρ</i>(<i>r</i>)</td><td>役職の重み（式 6）</td></tr>
+            <tr><td><i>μ<sub>u</sub></i>(<i>G</i>)</td><td>役職のまとまりごとの倍率（本人の「効かせ方」×裏の答え合わせ）</td></tr>
+            <tr><td><i>S</i>(<i>s</i>)</td><td>公演の点（式 7）</td></tr>
+            <tr><td><i>κ</i> ＝ 3</td><td>縮約の強さ（仮の「ふつう」評価が何件ぶんか）</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <h3 class="sub">3.2　全体の流れ</h3>
   <figure class="wide">
     <svg viewBox="0 0 1000 560" role="img" aria-label="推薦の全体の流れ。毎日の取得で公演の索引を作り、本人の評価を順位として読み、人物と公演の種類ごとの値を作る。お気に入りは仮の評価として足す。候補の公演に点を付け、理由のある公演だけを残し、お気に入りに一致する公演・出さない語の公演・答えた公演を振り分け、ツアーを1枠にまとめて上位15件を出す。">
       <defs>
@@ -700,21 +777,21 @@ figcaption{font-size:12.5px;color:var(--muted);margin-top:10px;max-width:70em}
       <g>
         <rect x="330" y="10" width="340" height="56" rx="12" class="aBox"/>
         <text x="500" y="34" text-anchor="middle" class="aH">① 評価を「本人の中での順位」に直す</text>
-        <text x="500" y="55" text-anchor="middle" class="aS">人ごとの付け方の癖をそろえる（3-2）</text>
+        <text x="500" y="55" text-anchor="middle" class="aS">人ごとの付け方の癖をそろえる（3.3）</text>
       </g>
       <path d="M690 60H674" class="aL" marker-end="url(#fn)"/>
       <path d="M500 66V84" class="aL" marker-end="url(#fn)"/>
       <g>
         <rect x="330" y="86" width="340" height="56" rx="12" class="aBoxB"/>
         <text x="500" y="110" text-anchor="middle" class="aH">② 人物と種類ごとの「値」を作る</text>
-        <text x="500" y="131" text-anchor="middle" class="aS">お気に入りは評価が少ないうち仮の ◎ に（3-4）</text>
+        <text x="500" y="131" text-anchor="middle" class="aS">お気に入りは評価が少ないうち仮の ◎ に（3.4・3.6）</text>
       </g>
       <path d="M500 142V160" class="aL" marker-end="url(#fn)"/>
       <path d="M160 128V190H326" class="aL" marker-end="url(#fn)"/>
       <g>
         <rect x="330" y="162" width="340" height="56" rx="12" class="aBoxB"/>
         <text x="500" y="186" text-anchor="middle" class="aH">③ これからの公演すべてに点を付ける</text>
-        <text x="500" y="207" text-anchor="middle" class="aS">上げる人 3 ＋ 下げる人 3 ＋ 種類の平均（3-3）</text>
+        <text x="500" y="207" text-anchor="middle" class="aS">上げる人 3 ＋ 下げる人 3 ＋ 種類の平均（3.5）</text>
       </g>
       <path d="M500 218V236" class="aL" marker-end="url(#fn)"/>
       <g>
@@ -741,7 +818,7 @@ figcaption{font-size:12.5px;color:var(--muted);margin-top:10px;max-width:70em}
       <text x="500" y="528" text-anchor="middle" class="aGoalT" style="font-size:12px">観に行ける都道府県でも絞れる</text>
       <!-- 右下: 裏の答え合わせ -->
       <rect x="690" y="162" width="300" height="132" rx="12" class="aTip"/>
-      <text x="840" y="190" text-anchor="middle" class="aH">裏の答え合わせ（3-5）</text>
+      <text x="840" y="190" text-anchor="middle" class="aH">裏の答え合わせ（3.7）</text>
       <text x="840" y="214" text-anchor="middle" class="aS">本人の過去の評価を時間順に再生し、</text>
       <text x="840" y="234" text-anchor="middle" class="aS">別の重み付けがはっきり勝ったときだけ</text>
       <text x="840" y="254" text-anchor="middle" class="aS">その人にはそちらを使う</text>
@@ -753,121 +830,202 @@ figcaption{font-size:12.5px;color:var(--muted);margin-top:10px;max-width:70em}
       <text x="160" y="386" text-anchor="middle" class="aS">公演を全部出す。答えないうちに開幕する</text>
       <text x="160" y="406" text-anchor="middle" class="aS">のが、いちばんの見逃しだから</text>
     </svg>
-    <figcaption>答えた公演は推薦枠から抜け、次の候補が繰り上がる。計算の結果は本人ごとに D1 に控え、評価・答え・お気に入り・索引のどれかが変わったときだけ計算し直す。</figcaption>
+    <figcaption><b>図 1.</b>　推薦の全体の流れ。答えた公演は推薦枠から抜け、次の候補が繰り上がる。計算の結果は本人ごとに D1 に控え、評価・答え・お気に入り・索引のどれかが変わったときだけ計算し直す。</figcaption>
   </figure>
 
-  <h3 class="sub">3-2　評価を「本人の中での順位」として読む（ordinal）</h3>
-  <div class="grid2 wide pair calcgrid">
-    <div class="card">
-      <h4>式：その評価より下の数と同じ数から、本人の中での位置を出す</h4>
-      <p><span class="mono">z ＝ ( (下の数 ＋ ½ × 同じ数) ÷ 評価の総数 − ½ ) × √12</span></p>
-      <p class="muted">◎○△× を 4・3・2・1 という等間隔の数として扱わない。<b>本人がその段階をどれだけ使っているか</b>で値が決まるので、◎ をよく付ける人の ◎ は控えめに、めったに付けない人の ◎ は強く効く。√12 は、ばらつきを 1 にそろえるための係数（一様分布の標準偏差が 1/√12）。評価の段階は ◎○△× のほか「値/段階数」（例 4/5）も読める。同じ公演への評価は最新の 1 件だけを数える。</p>
-    </div>
-    <div class="card">
-      <h4>計算例（評価 10 件：◎ 3・○ 4・△ 2・× 1）</h4>
-      <div class="twrap" style="margin:0">
-        <table class="calc" style="min-width:0;font-size:12.5px">
-          <thead><tr><th>評価</th><th>下の数</th><th>同じ数</th><th>z</th></tr></thead>
-          <tbody>
-            <tr><td>◎</td><td>7</td><td>3</td><td><b>＋1.212</b></td></tr>
-            <tr><td>○</td><td>3</td><td>4</td><td><b>0</b></td></tr>
-            <tr><td>△</td><td>1</td><td>2</td><td><b>−1.039</b></td></tr>
-            <tr><td>×</td><td>0</td><td>1</td><td><b>−1.559</b></td></tr>
-          </tbody>
-        </table>
-      </div>
-      <p class="muted" style="margin-top:10px">この人は ○ がいちばん多いので、○ は「ふつう」（0）になる。以前の仕組みは ◎ だけを当たり（1）にしていたので、△ と × の区別が点に入っていなかった。</p>
-    </div>
-  </div>
-
-  <h3 class="sub">3-3　公演の点：人物と、公演の種類</h3>
-  <div class="grid2 wide pair calcgrid">
-    <div class="card">
-      <h4>人物の値と、公演の点</h4>
-      <p><span class="mono">人物の値 ＝ その人が出た公演の z の合計 ÷ (出た本数 ＋ 3)</span></p>
-      <p class="muted">「＋3」は、観た本数が少ない人を 0 のほうへ割り引くため（評価を 3 件ぶん「ふつう」と仮定するのと同じ）。</p>
-      <p><span class="mono">公演の点 ＝ 上げる人物の上位 3 ＋ 下げる人物の上位 3 ＋ 種類の値の平均</span></p>
-      <p class="muted">人物の値には役職の重みを掛ける：出演 1.0、演出・脚本・作・原作 0.4、翻訳 0.3、裏方 0.1（以前に本人の評価履歴での当てやすさを測って決めた重み）。<b>苦手な人の分は点を下げる</b>（以前は 0 で切っていた）。</p>
-      <p class="muted">公演の種類のタグ：<b>#形式</b>（ミュージカル・朗読・人形劇・ダンス・古典・お笑い。作曲・音楽の役職があれば音楽劇）、<b>#原作</b>（原作もの／オリジナル）、<b>#翻訳</b>、<b>#題材</b>（あらすじから一度だけ取り出した語）、<b>#会場</b>、<b>#値段</b>。人物と同じ式で本人の値を作り、その公演のタグの平均を重み 1.0 で足す。</p>
-    </div>
-    <div class="card">
-      <h4>計算例（3-2 の人。ある公演に 4 つが一致）</h4>
-      <div class="twrap" style="margin:0">
-        <table class="calc" style="min-width:0;font-size:12.5px">
-          <thead><tr><th>一致</th><th>出た公演の評価</th><th>値</th><th>重み</th><th>点への寄与</th></tr></thead>
-          <tbody>
-            <tr><td>出演 俳優 A</td><td>◎ ◎ ○</td><td>0.404</td><td>1.0</td><td><b>＋0.404</b></td></tr>
-            <tr><td>演出 演出家 B</td><td>◎ △</td><td>0.035</td><td>0.4</td><td><b>＋0.014</b></td></tr>
-            <tr><td>出演 俳優 D</td><td>△ ×</td><td>−0.520</td><td>1.0</td><td><b>−0.520</b></td></tr>
-            <tr><td>#形式 ミュージカル</td><td>◎ ◎</td><td>0.485</td><td>1.0</td><td><b>＋0.485</b></td></tr>
-          </tbody>
-        </table>
-      </div>
-      <p class="muted" style="margin-top:10px">公演の点 ＝ 0.404 ＋ 0.014 − 0.520 ＋ 0.485 ＝ <b>0.383</b>（正なので候補に残る）。理由の欄には、上げた人物（「俳優 A ── 履歴 3 本」と、その人の出た自分の作品名）と種類が出る。</p>
-      <p class="muted"><b>理由を言える公演だけ出す</b>（why1）：点が正でも、上げた人物か作品の種類（#形式・#原作・#翻訳・#題材）が無い公演は出さない。会場と値段は並べ替えにだけ効く。クレジットの無い公演が「同じ劇場」だけで上位に入り、「理由を出せていません」が並んだのを直した。</p>
-    </div>
-  </div>
-
-  <h3 class="sub">3-4　評価の詳細と、お気に入り</h3>
+  <h3 class="sub">3.3　評価を本人の中での位置に直す（順序化）</h3>
+  <p class="para">◎○△× を 4・3・2・1 という等間隔の数としては扱わない。本人の評価の分布での<b>中央順位</b>（mid-rank）に直す。この値は、評価の段階数 <i>L</i> ごとに別々に数える。</p>
+  <div class="eq"><math display="block"><mrow><msub><mi>F</mi><mi>u</mi></msub><mo stretchy="false">(</mo><mi>g</mi><mo stretchy="false">)</mo><mo>=</mo><mfrac><mrow><mo form="prefix">#</mo><mo stretchy="false">{</mo><msup><mi>s</mi><mo>′</mo></msup><mo>:</mo><msub><mi>g</mi><msup><mi>s</mi><mo>′</mo></msup></msub><mo>&lt;</mo><mi>g</mi><mo stretchy="false">}</mo><mo>+</mo><mfrac><mn>1</mn><mn>2</mn></mfrac><mo form="prefix">#</mo><mo stretchy="false">{</mo><msup><mi>s</mi><mo>′</mo></msup><mo>:</mo><msub><mi>g</mi><msup><mi>s</mi><mo>′</mo></msup></msub><mo>=</mo><mi>g</mi><mo stretchy="false">}</mo></mrow><msub><mi>N</mi><mi>u</mi></msub></mfrac></mrow></math><span class="eqn">(1)</span></div>
+  <div class="eq"><math display="block"><mrow><msub><mi>z</mi><mi>s</mi></msub><mo>=</mo><msqrt><mn>12</mn></msqrt><mspace width="0.2em"/><mrow><mo>(</mo><msub><mi>F</mi><mi>u</mi></msub><mo stretchy="false">(</mo><msub><mi>g</mi><mi>s</mi></msub><mo stretchy="false">)</mo><mo>−</mo><mfrac><mn>1</mn><mn>2</mn></mfrac><mo>)</mo></mrow></mrow></math><span class="eqn">(2)</span></div>
+  <p class="para"><b>性質。</b>式 1 の分子を全評価について足すと <i>N<sub>u</sub></i><sup>2</sup>/2 になる（評価の違う組は高い側に 1、同じ組は両方に ½、各評価が自分自身に ½）。したがって</p>
+  <div class="eq"><math display="block"><mrow><mfrac><mn>1</mn><msub><mi>N</mi><mi>u</mi></msub></mfrac><munder><mo>∑</mo><mrow><mi>s</mi><mo>∈</mo><msub><mi>R</mi><mi>u</mi></msub></mrow></munder><msub><mi>z</mi><mi>s</mi></msub><mo>=</mo><mn>0</mn></mrow></math><span class="eqn">(3)</span></div>
+  <p class="para">となる。どの人でも <i>z</i> の平均は 0 である。√12 は、[0,1] の一様分布の標準偏差 1/√12 で割る係数で、評価に同順位が無ければ、<i>z</i> のばらつきはほぼ 1 になる。</p>
+  <p class="para"><b>推薦が出始める条件。</b>式 3 から、評価が 1 件だけの人や、全部同じ評価の人は、<i>z</i> がすべて 0 になる。そのため、誰の値も 0 のままで推薦は出ない。評価だけで推薦が出るには、公演に結び付いた記録が 2 件以上あり、評価が 2 種類以上あることが要る。それまでは、3.6 のお気に入りの仮の評価だけが推薦の材料になる。</p>
+  <figure class="wide">
+    <svg viewBox="0 0 960 325" role="img" aria-label="評価の分布から z を求める図。利用者 A は ○ が多く ◎ が 1.212、利用者 B は ◎ が多く ◎ が 0.693。"><text x="30" y="40" class="aH">利用者 A</text><rect x="30.0" y="50" width="90.0" height="34" class="fS"/><text x="75.0" y="73" text-anchor="middle" class="fT">× ×1</text><path d="M75.0 84V102" class="aL"/><circle cx="75.0" cy="102" r="4" class="fDot"/><text x="75.0" y="122" text-anchor="middle" class="aS">z = -1.559</text><rect x="120.0" y="50" width="180.0" height="34" class="fW"/><text x="210.0" y="73" text-anchor="middle" class="fT">△ ×2</text><path d="M210.0 84V102" class="aL"/><circle cx="210.0" cy="102" r="4" class="fDot"/><text x="210.0" y="122" text-anchor="middle" class="aS">z = -1.039</text><rect x="300.0" y="50" width="360.0" height="34" class="fN"/><text x="480.0" y="73" text-anchor="middle" class="fT">○ ×4</text><path d="M480.0 84V102" class="aL"/><circle cx="480.0" cy="102" r="4" class="fDot"/><text x="480.0" y="122" text-anchor="middle" class="aS">z = +0.000</text><rect x="660.0" y="50" width="270.0" height="34" class="fG"/><text x="795.0" y="73" text-anchor="middle" class="fT">◎ ×3</text><path d="M795.0 84V102" class="aL"/><circle cx="795.0" cy="102" r="4" class="fDot"/><text x="795.0" y="122" text-anchor="middle" class="aS">z = +1.212</text><text x="30" y="165" class="aH">利用者 B（◎ をよく付ける）</text><rect x="30.0" y="175" width="90.0" height="34" class="fW"/><text x="75.0" y="198" text-anchor="middle" class="fT">△ ×1</text><path d="M75.0 209V227" class="aL"/><circle cx="75.0" cy="227" r="4" class="fDot"/><text x="75.0" y="247" text-anchor="middle" class="aS">z = -1.559</text><rect x="120.0" y="175" width="270.0" height="34" class="fN"/><text x="255.0" y="198" text-anchor="middle" class="fT">○ ×3</text><path d="M255.0 209V227" class="aL"/><circle cx="255.0" cy="227" r="4" class="fDot"/><text x="255.0" y="247" text-anchor="middle" class="aS">z = -0.866</text><rect x="390.0" y="175" width="540.0" height="34" class="fG"/><text x="660.0" y="198" text-anchor="middle" class="fT">◎ ×6</text><path d="M660.0 209V227" class="aL"/><circle cx="660.0" cy="227" r="4" class="fDot"/><text x="660.0" y="247" text-anchor="middle" class="aS">z = +0.693</text><path d="M30.0 268V276" class="aL"/><text x="30.0" y="292" text-anchor="middle" class="aS">0</text><path d="M255.0 268V276" class="aL"/><text x="255.0" y="292" text-anchor="middle" class="aS">0.25</text><path d="M480.0 268V276" class="aL"/><text x="480.0" y="292" text-anchor="middle" class="aS">0.5</text><path d="M705.0 268V276" class="aL"/><text x="705.0" y="292" text-anchor="middle" class="aS">0.75</text><path d="M930.0 268V276" class="aL"/><text x="930.0" y="292" text-anchor="middle" class="aS">1</text><path d="M30 268H930" class="aL"/><text x="480.0" y="314" text-anchor="middle" class="aS">本人の評価の中での位置 F（下の数＋同じ数の半分）／総数。z ＝ (F − ½)·√12</text></svg>
+    <figcaption><b>図 2.</b>　同じ ◎ でも、人によって <i>z</i> が違う。○ が最も多い利用者 A の ◎ は <i>z</i> ＝ +1.212。◎ をよく付ける利用者 B の ◎ は +0.693 で、B の ○ は −0.866 と「平均より下」になる。</figcaption>
+  </figure>
   <div class="grid2 wide">
     <div class="card">
-      <h4><span class="tag good">asp1</span>良かった所・気になった所</h4>
-      <p class="muted">評価に「話・脚本」「演出」「演技」「歌・音楽」「ダンス」「美術・衣裳」「値段」「会場・座席」の良かった所・気になった所を付けられる。付けた評価は、<b>その項目に関わる役職の人に主に届く</b>。たとえば × に「演技」を付けると、下がるのは主に出演者で、脚本家にはほとんど届かない。何も付けなければ、これまでどおり全員に同じだけ届く。</p>
+      <h4>根拠</h4>
+      <ul class="muted">
+        <li>利用者ごとの評価の甘さ・辛さ（user bias）を差し引くのは、推薦の基準の予測の定番である <a href="#ref-2">[2]</a>。</li>
+        <li>評価を等間隔の数ではなく順序として扱う枠組みに、OrdRec <a href="#ref-1">[1]</a> がある。</li>
+        <li>評価の付け方の癖には、文化差と個人差がある。日本の回答者は真ん中を選びやすい <a href="#ref-4">[4]</a>。そのため、めったに付けない ◎ ほど強く効くようにした。</li>
+      </ul>
     </div>
     <div class="card">
-      <h4><span class="tag good">fav3</span>お気に入りを「仮の ◎」として使う</h4>
-      <p class="muted">お気に入りの人・原作者（最大 20 人）、団体・主催、作品名、題材が関わる公演（最大 60 件）を、<b>評価が少ないうちだけ効く仮の評価</b>（z ＝ 0.4×√12、重み 3 ÷ (3 ＋ 本人の評価の数)）として足す。登録したばかりで評価が 0 件の人にも、好みに沿った推薦が出る。お気に入りの名前そのものの公演は、点とは別に「お気に入り」で必ず知らせる。</p>
+      <h4>設計上の判断</h4>
+      <ul class="muted">
+        <li>公演の順位そのものだけを使う方法は、情報を捨てすぎて精度が落ちたと報告されている <a href="#ref-3">[3]</a>。式 1 は公演どうしの順位ではなく、<b>段階の使われ方</b>を使うので、◎ と ○ の差の大きさは分布に応じて残る。</li>
+        <li>同じ公演への評価は、最新の 1 件だけを数える。</li>
+      </ul>
     </div>
   </div>
 
-  <h3 class="sub">3-5　裏の答え合わせ：本人に合う重み付けを、本人の記録で選ぶ</h3>
-  <div class="grid2 wide pair calcgrid">
+  <h3 class="sub">3.4　人物と種類の値（縮約つきの平均）</h3>
+  <p class="para">手がかり <i>q</i>（役職と人物の組、または種類のタグ）ごとに、<i>q</i> が関わった公演の <i>z</i> を平均する。ただし、分母に <i>κ</i> を足して 0 のほうへ縮める。第 2 項はお気に入りから作る仮の評価で、3.6 で述べる。</p>
+  <div class="eq"><math display="block"><mrow><msub><mi>v</mi><mi>u</mi></msub><mo stretchy="false">(</mo><mi>q</mi><mo stretchy="false">)</mo><mo>=</mo><mfrac><mrow><munder><mo>∑</mo><mrow><mi>s</mi><mo>∈</mo><msub><mi>R</mi><mi>u</mi></msub><mo stretchy="false">(</mo><mi>q</mi><mo stretchy="false">)</mo></mrow></munder><msub><mi>a</mi><mi>s</mi></msub><mo stretchy="false">(</mo><mi>q</mi><mo stretchy="false">)</mo><mspace width="0.1em"/><msub><mi>z</mi><mi>s</mi></msub><mo>+</mo><msub><mi>ω</mi><mi>u</mi></msub><mspace width="0.1em"/><msub><mi>z</mi><mn>0</mn></msub><mspace width="0.1em"/><mo stretchy="false">|</mo><msub><mi>Φ</mi><mi>u</mi></msub><mo stretchy="false">(</mo><mi>q</mi><mo stretchy="false">)</mo><mo stretchy="false">|</mo></mrow><mrow><msub><mi>n</mi><mi>u</mi></msub><mo stretchy="false">(</mo><mi>q</mi><mo stretchy="false">)</mo><mo>+</mo><msub><mi>ω</mi><mi>u</mi></msub><mspace width="0.1em"/><mo stretchy="false">|</mo><msub><mi>Φ</mi><mi>u</mi></msub><mo stretchy="false">(</mo><mi>q</mi><mo stretchy="false">)</mo><mo stretchy="false">|</mo><mo>+</mo><mi>κ</mi></mrow></mfrac><mo>,</mo><mspace width="1em"/><mi>κ</mi><mo>=</mo><mn>3</mn></mrow></math><span class="eqn">(4)</span></div>
+  <p class="para"><i>Φ<sub>u</sub></i>(<i>q</i>) は、お気に入りから選んだ、<i>q</i> が関わる公演である。お気に入りが無く、評価の詳細も付けていなければ、式 4 は <i>v</i> ＝ Σ<i>z</i> / (<i>n</i> ＋ <i>κ</i>) になる。これは「<i>z</i> ＝ 0（ふつう）の評価を <i>κ</i> 件ぶん足した平均」と同じである。真の平均が <i>μ</i> なら、期待値は <i>n</i><i>μ</i> / (<i>n</i> ＋ <i>κ</i>) になる。つまり、1 本しか観ていない人物は値が 1/4 に割り引かれる（図 4 の実線）。</p>
+
+  <h4 class="eqhead">評価の詳細の振り分け（asp1）</h4>
+  <p class="para">評価に「良かった所」「気になった所」の項目 <i>c</i> が付いているときは、式 4 の <i>a<sub>s</sub></i>(<i>q</i>) で、評価が届く強さを役職ごとに変える。<i>z</i> &gt; 0 なら良かった所が主（<i>M<sub>s</sub></i>）で、気になった所が従（<i>O<sub>s</sub></i>）になる。<i>z</i> &lt; 0 なら逆になる。</p>
+  <div class="eq"><math display="block"><mrow><msub><mi>a</mi><mi>s</mi></msub><mo stretchy="false">(</mo><mi>q</mi><mo stretchy="false">)</mo><mo>=</mo><mi>τ</mi><mo stretchy="false">(</mo><msub><mi>M</mi><mi>s</mi></msub><mo>,</mo><mi>r</mi><mo>;</mo><mn>1</mn><mo stretchy="false">)</mo><mspace width="0.2em"/><mrow><mo>(</mo><mn>1</mn><mo>−</mo><mi>τ</mi><mo stretchy="false">(</mo><msub><mi>O</mi><mi>s</mi></msub><mo>,</mo><mi>r</mi><mo>;</mo><mn>0</mn><mo stretchy="false">)</mo><mo>)</mo></mrow></mrow></math><span class="eqn">(5)</span></div>
+  <div class="eq"><math display="block"><mrow><mi>τ</mi><mo stretchy="false">(</mo><mi>A</mi><mo>,</mo><mi>r</mi><mo>;</mo><mi>d</mi><mo stretchy="false">)</mo><mo>=</mo><mrow><mo>{</mo><mtable columnalign="left"><mtr><mtd><munder><mo movablelimits="false">max</mo><mrow><mi>c</mi><mo>∈</mo><mi>A</mi></mrow></munder><msub><mi>α</mi><mi>c</mi></msub><mo stretchy="false">(</mo><mi>r</mi><mo stretchy="false">)</mo></mtd><mtd><mrow><mi>A</mi><mo>≠</mo><mi>∅</mi></mrow></mtd></mtr><mtr><mtd><mi>d</mi></mtd><mtd><mrow><mi>A</mi><mo>=</mo><mi>∅</mi></mrow></mtd></mtr></mtable></mrow></mrow></math><span class="eqn"></span></div>
+  <p class="para"><i>α<sub>c</sub></i>(<i>r</i>) は、項目 <i>c</i> と役職 <i>r</i> の関わりの強さである。値の例を挙げる。</p>
+  <ul class="para">
+    <li>「演技・出演」：出演 1.0、演出 0.2</li>
+    <li>「話・脚本・構成」：脚本・作・原作・翻訳 1.0、演出・#形式 0.5</li>
+    <li>「値段」：#値段 1.0</li>
+  </ul>
+  <p class="para">何も付けていない評価では <i>a</i> ＝ 1 で、関わった全員に同じだけ届く。たとえば × に「演技」だけを付けると、出演者に届く強さは 1 になり、脚本家には 0 になる。観点ごとの評価を推薦に使うと精度が上がるという報告がある <a href="#ref-6">[6]</a>。</p>
+
+  <h3 class="sub">3.5　公演の点と、出す条件</h3>
+  <p class="para">公演 <i>s</i> の手がかり <i>q</i>（役職 <i>r</i>）の寄与は、値に役職の重み <i>ρ</i> と、役職のまとまり <i>G</i>(<i>r</i>) ごとの倍率 <i>μ<sub>u</sub></i> を掛けたものとする。</p>
+  <div class="eq"><math display="block"><mrow><msub><mi>c</mi><mi>s</mi></msub><mo stretchy="false">(</mo><mi>q</mi><mo stretchy="false">)</mo><mo>=</mo><mi>ρ</mi><mo stretchy="false">(</mo><mi>r</mi><mo stretchy="false">)</mo><mspace width="0.15em"/><msub><mi>μ</mi><mi>u</mi></msub><mo stretchy="false">(</mo><mi>G</mi><mo stretchy="false">(</mo><mi>r</mi><mo stretchy="false">)</mo><mo stretchy="false">)</mo><mspace width="0.15em"/><msub><mi>v</mi><mi>u</mi></msub><mo stretchy="false">(</mo><mi>q</mi><mo stretchy="false">)</mo><mo>,</mo><mspace width="1em"/><msub><mi>μ</mi><mi>u</mi></msub><mo stretchy="false">(</mo><mi>G</mi><mo stretchy="false">)</mo><mo>=</mo><msubsup><mi>μ</mi><mi>u</mi><mtext>答え合わせ</mtext></msubsup><mo stretchy="false">(</mo><mi>G</mi><mo stretchy="false">)</mo><mo>·</mo><msubsup><mi>μ</mi><mi>u</mi><mtext>本人</mtext></msubsup><mo stretchy="false">(</mo><mi>G</mi><mo stretchy="false">)</mo></mrow></math><span class="eqn"></span></div>
+  <p class="para"><i>G</i>(<i>r</i>) は、出演者・演出・脚本・翻訳・つくり・進行・制作・宣伝・その他・作品の内容（種類のタグ）の 7 つのまとまりである。<i>μ</i><sup>本人</sup> は、本人がおすすめの画面の「効かせ方」で選ぶ 5 段階 {0, 0.5, 1, 2, 4}（既定 1）。<i>μ</i><sup>答え合わせ</sup> は 3.7 で選ばれた案の倍率（標準なら 1）。役職の重みは次のとおり。</p>
+  <div class="eq"><math display="block"><mrow><mi>ρ</mi><mo stretchy="false">(</mo><mi>r</mi><mo stretchy="false">)</mo><mo>=</mo><mrow><mo>{</mo><mtable columnalign="left"><mtr><mtd><mn>1.0</mn></mtd><mtd><mtext>出演、および種類のタグ</mtext></mtd></mtr><mtr><mtd><mn>0.4</mn></mtd><mtd><mtext>演出・脚本・作・原作</mtext></mtd></mtr><mtr><mtd><mn>0.3</mn></mtd><mtd><mtext>翻訳</mtext></mtd></mtr><mtr><mtd><mn>0.1</mn></mtd><mtd><mtext>そのほか（裏方）</mtext></mtd></mtr></mtable></mrow></mrow></math><span class="eqn">(6)</span></div>
+  <p class="para">人物の寄与を正のもの <i>c</i><sup>+</sup> と負のもの <i>c</i><sup>−</sup> に分け、それぞれ絶対値の大きい順に並べる。並べた <i>i</i> 番目を <i>c</i><sub>(<i>i</i>)</sub> と書く。種類のタグ <i>K</i>(<i>s</i>) は平均で足す。</p>
+  <div class="eq"><math display="block"><mrow><mi>S</mi><mo stretchy="false">(</mo><mi>s</mi><mo stretchy="false">)</mo><mo>=</mo><munderover><mo>∑</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mn>3</mn></munderover><msubsup><mi>c</mi><mrow><mo stretchy="false">(</mo><mi>i</mi><mo stretchy="false">)</mo></mrow><mo>+</mo></msubsup><mo>+</mo><munderover><mo>∑</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mn>3</mn></munderover><msubsup><mi>c</mi><mrow><mo stretchy="false">(</mo><mi>i</mi><mo stretchy="false">)</mo></mrow><mo>−</mo></msubsup><mo>+</mo><mfrac><mn>1</mn><mrow><mo stretchy="false">|</mo><mi>K</mi><mo stretchy="false">(</mo><mi>s</mi><mo stretchy="false">)</mo><mo stretchy="false">|</mo></mrow></mfrac><munder><mo>∑</mo><mrow><mi>k</mi><mo>∈</mo><mi>K</mi><mo stretchy="false">(</mo><mi>s</mi><mo stretchy="false">)</mo></mrow></munder><msub><mi>c</mi><mi>s</mi></msub><mo stretchy="false">(</mo><mi>k</mi><mo stretchy="false">)</mo></mrow></math><span class="eqn">(7)</span></div>
+  <p class="para">公演を推薦に出すのは、点が正で、かつ<b>理由を言える</b>ときだけである（why1）。</p>
+  <div class="eq"><math display="block"><mrow><mi>s</mi><mtext>&#160;を出す</mtext><mspace width="0.5em"/><mo>⟺</mo><mspace width="0.5em"/><mi>S</mi><mo stretchy="false">(</mo><mi>s</mi><mo stretchy="false">)</mo><mo>&gt;</mo><mn>0</mn><mspace width="0.3em"/><mo>∧</mo><mspace width="0.3em"/><mrow><mo>(</mo><mo>∃</mo><msup><mi>c</mi><mo>+</mo></msup><mspace width="0.3em"/><mo>∨</mo><mspace width="0.3em"/><mo>∃</mo><mi>k</mi><mo>∈</mo><mi>K</mi><mo stretchy="false">(</mo><mi>s</mi><mo stretchy="false">)</mo><mo>∩</mo><mi mathvariant="script">C</mi><mo>:</mo><msub><mi>c</mi><mi>s</mi></msub><mo stretchy="false">(</mo><mi>k</mi><mo stretchy="false">)</mo><mo>&gt;</mo><mn>0</mn><mo>)</mo></mrow></mrow></math><span class="eqn">(8)</span></div>
+  <p class="para"><i>𝒞</i> は作品の内容に関わるタグ {#形式, #原作, #翻訳, #題材} である。#会場 と #値段 は式 7 の並べ替えには効くが、それだけでは推薦の理由にしない。</p>
+  <figure class="wide">
+    <svg viewBox="0 0 960 262" role="img" aria-label="公演の点の内訳。上げる人物 +0.404 と +0.014、下げる人物 −0.520、種類の平均 +0.485 を足して +0.383。"><text x="216" y="41" text-anchor="end" class="aS">出演 俳優 A</text><rect x="351.8" y="20" width="246.1" height="30" class="fG"/><text x="605.9" y="41" class="aS">+0.404</text><text x="216" y="85" text-anchor="end" class="aS">演出 演出家 B</text><rect x="597.9" y="64" width="8.5" height="30" class="fG"/><text x="614.4" y="85" class="aS">+0.014</text><text x="216" y="129" text-anchor="end" class="aS">出演 俳優 D</text><rect x="289.7" y="108" width="316.7" height="30" class="fS"/><text x="614.4" y="129" class="aS">-0.520</text><text x="216" y="173" text-anchor="end" class="aS">#形式 ミュージカル</text><rect x="289.7" y="152" width="295.4" height="30" class="fG"/><text x="593.1" y="173" class="aS">+0.485</text><text x="216" y="217" text-anchor="end" class="aH">公演の点 S</text><rect x="351.8" y="196" width="233.3" height="30" class="fN2"/><text x="593.1" y="217" class="aH">+0.383</text><path d="M351.8 10V236" class="aL"/><text x="351.8" y="252" text-anchor="middle" class="aS">0</text></svg>
+    <figcaption><b>図 3.</b>　式 7 の計算例。3.3 の利用者 A のある公演に、手がかりが 4 つ一致した場合。俳優 A（◎◎○）は <i>v</i> ＝ 0.404 × <i>ρ</i> 1.0、演出家 B（◎△）は 0.035 × 0.4、俳優 D（△×）は −0.520 × 1.0、#形式 ミュージカル（◎◎）は 0.485 × 1.0。点は正で、上げる人物がいるので出す（式 8）。理由の欄には、俳優 A と、A が出ていた本人の観た作品名が出る。</figcaption>
+  </figure>
+  <div class="grid2 wide">
     <div class="card">
-      <h4>やり方（予想してから確かめる）</h4>
-      <p class="muted">推薦を計算するたびに、本人の直近 120 件の評価を<b>付けた順に再生</b>する。6 件ずつの区切りごとに、それより前の評価だけで点を付け、区切りの中で本人が付けた順位の組をどちらの計算が多く当てたかを数える。別の計算が<b>勝った区切りが負けた区切りよりはっきり多い</b>とき（符号検定で z ≥ 1.96、決着した区切りが 6 つ以上）だけ、その人にはそちらを使う。評価が少ないうちは全員が標準のまま。予想点を保存も送信もしない。</p>
+      <h4>なぜ上位 3 人なのか</h4>
+      <p class="muted">全員の和にすると、出演者の多い大作ほど点が高くなる。劇場側の販売データで推薦した実務の報告でも、大作ミュージカルが多くの人の推薦に出続ける問題があった <a href="#ref-16">[16]</a>。上位 <i>k</i> に限ると、1 公演の点は 6 人ぶんと種類の平均で抑えられ、キャストの人数の影響を受けにくい。</p>
     </div>
     <div class="card">
-      <h4>比べる計算（標準のほか 3 通り）</h4>
+      <h4>なぜ下げる人も数えるのか</h4>
+      <p class="muted">以前は、負の値を 0 で切っていた。低い評価は、とくにデータがまばらなときに推薦の役に立つと報告されている <a href="#ref-7">[7]</a>。記録が数十件しかないたぐりは、まさにこの状況にある。種類のタグは、新しい利用者や新作の立ち上がりを補う手がかりとして使われてきた <a href="#ref-8">[8]</a>。値段は、品質と支払う犠牲の釣り合いという別の軸として扱う <a href="#ref-9">[9]</a>。</p>
+    </div>
+  </div>
+
+  <h3 class="sub">3.6　お気に入りを仮の評価にする（fav3）</h3>
+  <p class="para">登録したばかりで評価が 0 件の人にも、好みに沿った推薦を出したい。そこで、お気に入りの手がかりが関わる公演を、<b>評価が少ないうちだけ効く仮の評価</b>として式 4 に入れる。お気に入りに登録できるのは、人・原作者（最大 20 人）と、団体・主催、作品、題材である（対象の公演は最大 60 件）。</p>
+  <div class="eq"><math display="block"><mrow><msub><mi>z</mi><mn>0</mn></msub><mo>=</mo><mn>0.4</mn><msqrt><mn>12</mn></msqrt><mo>≈</mo><mn>1.386</mn><mspace width="0.3em"/><mrow><mo>(</mo><mi>F</mi><mo>=</mo><mn>0.9</mn><mo>)</mo></mrow><mo>,</mo><mspace width="1.5em"/><msub><mi>ω</mi><mi>u</mi></msub><mo>=</mo><mfrac><mi>κ</mi><mrow><mi>κ</mi><mo>+</mo><msub><mi>N</mi><mi>u</mi></msub></mrow></mfrac></mrow></math><span class="eqn">(9)</span></div>
+  <p class="para"><i>z</i><sub>0</sub> は、本人の評価の上から 1 割の位置にあたる。重み <i>ω</i> は、評価が 0 件のとき 1、3 件で ½、27 件で 0.1 と減っていく。仮の評価は分母の重みには入るが、件数 <i>n</i> には数えない。お気に入りの名前そのものが載っている公演は、点とは別の枠「お気に入り」で必ず知らせる。</p>
+  <figure class="wide">
+    <svg viewBox="0 0 960 300" role="img" aria-label="評価の件数が増えると、人物の値の縮みは1に近づき、お気に入りの仮の評価の重みは0に近づく。3件で半々。"><path d="M90 250.0H920" class="fGrid"/><text x="80" y="254.0" text-anchor="end" class="aS">0</text><path d="M90 197.5H920" class="fGrid"/><text x="80" y="201.5" text-anchor="end" class="aS">0.25</text><path d="M90 145.0H920" class="fGrid"/><text x="80" y="149.0" text-anchor="end" class="aS">0.5</text><path d="M90 92.5H920" class="fGrid"/><text x="80" y="96.5" text-anchor="end" class="aS">0.75</text><path d="M90 40.0H920" class="fGrid"/><text x="80" y="44.0" text-anchor="end" class="aS">1</text><text x="90.0" y="270" text-anchor="middle" class="aS">0</text><text x="173.0" y="270" text-anchor="middle" class="aS">3</text><text x="228.3" y="270" text-anchor="middle" class="aS">5</text><text x="366.7" y="270" text-anchor="middle" class="aS">10</text><text x="643.3" y="270" text-anchor="middle" class="aS">20</text><text x="920.0" y="270" text-anchor="middle" class="aS">30</text><text x="505.0" y="292" text-anchor="middle" class="aS">件数（n または N）</text><path d="M90.0 250.0 L117.7 197.5 L145.3 166.0 L173.0 145.0 L200.7 130.0 L228.3 118.8 L256.0 110.0 L283.7 103.0 L311.3 97.3 L339.0 92.5 L366.7 88.5 L394.3 85.0 L422.0 82.0 L449.7 79.4 L477.3 77.1 L505.0 75.0 L532.7 73.2 L560.3 71.5 L588.0 70.0 L615.7 68.6 L643.3 67.4 L671.0 66.2 L698.7 65.2 L726.3 64.2 L754.0 63.3 L781.7 62.5 L809.3 61.7 L837.0 61.0 L864.7 60.3 L892.3 59.7 L920.0 59.1" class="fLine1"/><path d="M90.0 40.0 L117.7 92.5 L145.3 124.0 L173.0 145.0 L200.7 160.0 L228.3 171.2 L256.0 180.0 L283.7 187.0 L311.3 192.7 L339.0 197.5 L366.7 201.5 L394.3 205.0 L422.0 208.0 L449.7 210.6 L477.3 212.9 L505.0 215.0 L532.7 216.8 L560.3 218.5 L588.0 220.0 L615.7 221.4 L643.3 222.6 L671.0 223.8 L698.7 224.8 L726.3 225.8 L754.0 226.7 L781.7 227.5 L809.3 228.3 L837.0 229.0 L864.7 229.7 L892.3 230.3 L920.0 230.9" class="fLine2"/><circle cx="173.0" cy="145.0" r="5" class="fDot"/><text x="187.0" y="167.0" class="aS">件数 ＝ κ ＝ 3 で半々</text><text x="920" y="45.1" text-anchor="end" class="fL1">人物の値の縮み n／(n＋κ)（その人の公演を n 本評価）</text><text x="920" y="216.9" text-anchor="end" class="fL2">お気に入りの仮の評価の重み κ／(κ＋N)（評価が全部で N 件）</text></svg>
+    <figcaption><b>図 4.</b>　縮約の 2 つの重み。実線：人物の値が、その人の公演を観た本数とともに 1 に近づく様子（式 4 で <i>z</i> がそろっている場合の掛け目）。破線：お気に入りの仮の評価の重みが、本人の評価の件数とともに 0 に近づく様子（式 9）。どちらも <i>κ</i> ＝ 3 で半々になる。</figcaption>
+  </figure>
+  <p class="para"><b>根拠。</b>本人の初期の profile を事前にして、評価が届くたびに更新する方法は、内容ベースの推薦で古くから使われている <a href="#ref-10">[10]</a>。データの少ない人は事前に近く、多い人は本人に寄るという階層ベイズの考え方 <a href="#ref-5">[5]</a> を、全体の事前を学ばずに「人が決めた既定の値」で置き換えたものにあたる。公開の映画評価データでお気に入りの代わりを確かめた（団体の代わりに監督、題材の代わりにジャンル）。評価 0 件のとき AUC は +0.024〜0.031 上がり、評価が 10〜20 件を超えると差は消えた。式 9 が狙ったとおりの振る舞いである。</p>
+
+  <h3 class="sub">3.7　裏の答え合わせ：本人に合う重み付けを、本人の記録で選ぶ</h3>
+  <p class="para">公開データでは決めきれなかった選び方がある。たとえば、舞台では作り手と出演のどちらが効くか、である。これを、人ごとに本人の記録で選ぶ。直近 120 件の評価を<b>付けた順に</b>再生し、重ならない 6 件ずつの区切り <i>B<sub>j</sub></i> に分ける。各区切りの点 <i>S<sub>m</sub></i><sup>(<i>j</i>)</sup> は、その区切りより前の評価だけで計算する。予想してから答え合わせをする prequential 評価 <a href="#ref-11">[11]</a> の形である。各案 <i>m</i> について、区切りの中で本人が付けた順位の組を正しく並べた数を数える。</p>
+  <div class="eq"><math display="block"><mrow><msub><mi>A</mi><mi>m</mi></msub><mo stretchy="false">(</mo><mi>j</mi><mo stretchy="false">)</mo><mo>=</mo><munder><mo>∑</mo><mrow><mi>i</mi><mo>&lt;</mo><msup><mi>i</mi><mo>′</mo></msup><mo>∈</mo><msub><mi>B</mi><mi>j</mi></msub><mo>,</mo><mspace width="0.2em"/><msub><mi>g</mi><mi>i</mi></msub><mo>≠</mo><msub><mi>g</mi><msup><mi>i</mi><mo>′</mo></msup></msub></mrow></munder><mn mathvariant="bold">1</mn><mrow><mo>[</mo><mi>sgn</mi><mo stretchy="false">(</mo><msubsup><mi>S</mi><mi>m</mi><mrow><mo stretchy="false">(</mo><mi>j</mi><mo stretchy="false">)</mo></mrow></msubsup><mo stretchy="false">(</mo><mi>i</mi><mo stretchy="false">)</mo><mo>−</mo><msubsup><mi>S</mi><mi>m</mi><mrow><mo stretchy="false">(</mo><mi>j</mi><mo stretchy="false">)</mo></mrow></msubsup><mo stretchy="false">(</mo><msup><mi>i</mi><mo>′</mo></msup><mo stretchy="false">)</mo><mo stretchy="false">)</mo><mo>=</mo><mi>sgn</mi><mo stretchy="false">(</mo><msub><mi>g</mi><mi>i</mi></msub><mo>−</mo><msub><mi>g</mi><msup><mi>i</mi><mo>′</mo></msup></msub><mo stretchy="false">)</mo><mo>]</mo></mrow></mrow></math><span class="eqn">(10)</span></div>
+  <p class="para">区切り <i>j</i> で <i>A<sub>m</sub></i> ＞ <i>A</i><sub>標準</sub> なら案 <i>m</i> の勝ち、<i>A<sub>m</sub></i> ＜ <i>A</i><sub>標準</sub> なら負けとし、勝ちの数 <i>W<sub>m</sub></i> と負けの数 <i>L<sub>m</sub></i> を数える。帰無仮説「どちらも同じくらい当たる」のもとでは、決着した区切りの勝ち負けは確率 ½ の二項分布に従う。<i>W</i> − <i>L</i> の平均は 0、分散は <i>W</i> ＋ <i>L</i> なので、片側の符号検定（正規近似）を使う。</p>
+  <div class="eq"><math display="block"><mrow><msub><mi mathvariant="script">M</mi><mi>u</mi></msub><mo>=</mo><mrow><mo>{</mo><mi>m</mi><mo>:</mo><mspace width="0.3em"/><msub><mi>W</mi><mi>m</mi></msub><mo>+</mo><msub><mi>L</mi><mi>m</mi></msub><mo>≥</mo><mn>6</mn><mo>,</mo><mspace width="0.6em"/><mfrac><mrow><msub><mi>W</mi><mi>m</mi></msub><mo>−</mo><msub><mi>L</mi><mi>m</mi></msub></mrow><msqrt><mrow><msub><mi>W</mi><mi>m</mi></msub><mo>+</mo><msub><mi>L</mi><mi>m</mi></msub></mrow></msqrt></mfrac><mo>≥</mo><mn>1.96</mn><mo>}</mo></mrow></mrow></math><span class="eqn">(11)</span></div>
+  <div class="eq"><math display="block"><mrow><msup><mi>m</mi><mo>*</mo></msup><mo>=</mo><munder><mrow><mi>arg</mi><mspace width="0.2em"/><mi>max</mi></mrow><mrow><mi>m</mi><mo>∈</mo><msub><mi mathvariant="script">M</mi><mi>u</mi></msub></mrow></munder><mspace width="0.2em"/><mo stretchy="false">(</mo><msub><mi>W</mi><mi>m</mi></msub><mo>−</mo><msub><mi>L</mi><mi>m</mi></msub><mo stretchy="false">)</mo></mrow></math><span class="eqn">(12)</span></div>
+  <p class="para"><i>𝓜<sub>u</sub></i> が空なら標準を使う。評価が少ないうちは、全員が標準のままになる。予想した点は保存も送信もしない。</p>
+  <figure class="wide">
+    <svg viewBox="0 0 960 160" role="img" aria-label="裏の答え合わせ。20の区切りのうち勝ち14、負け4、引き分け2で、zが2.36となり1.96を超えるので切り替える例。"><defs><marker id="fg" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M1 1l7 4-7 4z" class="aF-m"/></marker></defs><rect x="40" y="40" width="40" height="40" rx="6" class="fG"/><text x="60.0" y="66" text-anchor="middle" class="fT">勝</text><rect x="84" y="40" width="40" height="40" rx="6" class="fG"/><text x="104.0" y="66" text-anchor="middle" class="fT">勝</text><rect x="128" y="40" width="40" height="40" rx="6" class="fS"/><text x="148.0" y="66" text-anchor="middle" class="fT">負</text><rect x="172" y="40" width="40" height="40" rx="6" class="fG"/><text x="192.0" y="66" text-anchor="middle" class="fT">勝</text><rect x="216" y="40" width="40" height="40" rx="6" class="fGrid2"/><text x="236.0" y="66" text-anchor="middle" class="fT">分</text><rect x="260" y="40" width="40" height="40" rx="6" class="fG"/><text x="280.0" y="66" text-anchor="middle" class="fT">勝</text><rect x="304" y="40" width="40" height="40" rx="6" class="fG"/><text x="324.0" y="66" text-anchor="middle" class="fT">勝</text><rect x="348" y="40" width="40" height="40" rx="6" class="fS"/><text x="368.0" y="66" text-anchor="middle" class="fT">負</text><rect x="392" y="40" width="40" height="40" rx="6" class="fG"/><text x="412.0" y="66" text-anchor="middle" class="fT">勝</text><rect x="436" y="40" width="40" height="40" rx="6" class="fG"/><text x="456.0" y="66" text-anchor="middle" class="fT">勝</text><rect x="480" y="40" width="40" height="40" rx="6" class="fG"/><text x="500.0" y="66" text-anchor="middle" class="fT">勝</text><rect x="524" y="40" width="40" height="40" rx="6" class="fGrid2"/><text x="544.0" y="66" text-anchor="middle" class="fT">分</text><rect x="568" y="40" width="40" height="40" rx="6" class="fG"/><text x="588.0" y="66" text-anchor="middle" class="fT">勝</text><rect x="612" y="40" width="40" height="40" rx="6" class="fS"/><text x="632.0" y="66" text-anchor="middle" class="fT">負</text><rect x="656" y="40" width="40" height="40" rx="6" class="fG"/><text x="676.0" y="66" text-anchor="middle" class="fT">勝</text><rect x="700" y="40" width="40" height="40" rx="6" class="fG"/><text x="720.0" y="66" text-anchor="middle" class="fT">勝</text><rect x="744" y="40" width="40" height="40" rx="6" class="fG"/><text x="764.0" y="66" text-anchor="middle" class="fT">勝</text><rect x="788" y="40" width="40" height="40" rx="6" class="fG"/><text x="808.0" y="66" text-anchor="middle" class="fT">勝</text><rect x="832" y="40" width="40" height="40" rx="6" class="fS"/><text x="852.0" y="66" text-anchor="middle" class="fT">負</text><rect x="876" y="40" width="40" height="40" rx="6" class="fG"/><text x="896.0" y="66" text-anchor="middle" class="fT">勝</text><text x="40" y="26" class="aS">直近 120 件の評価を付けた順に 6 件ずつ 20 区切り。各区切りは、それより前の評価だけで予想して答え合わせする</text><path d="M40 96H916" class="aL" marker-end="url(#fg)"/><text x="916" y="114" text-anchor="end" class="aS">時間</text><text x="40" y="146" class="aH">例：勝 W ＝ 14、負 L ＝ 4 → z ＝ (W − L)／√(W ＋ L) ＝ 2.36 ≥ 1.96 なので、この人には別の計算を使う</text></svg>
+    <figcaption><b>図 5.</b>　式 11–12 の判定の例。20 の区切りのうち、勝ち 14、負け 4、引き分け 2（引き分けは数えない）。<i>z</i> ＝ 10/√18 ≈ 2.36 ≥ 1.96 なので、この人には案 <i>m</i> を使う。</figcaption>
+  </figure>
+  <div class="grid2 wide pair calcgrid">
+    <div class="card">
+      <h4>比べる案（標準のほか 3 通り）</h4>
       <div class="twrap" style="margin:0">
         <table class="calc" style="min-width:0;font-size:12.5px">
-          <thead><tr><th>名前</th><th>変えるところ</th></tr></thead>
+          <thead><tr><th>案 <i>m</i></th><th>標準から変えるところ</th></tr></thead>
           <tbody>
-            <tr><td>標準</td><td>3-2〜3-4 のとおり</td></tr>
-            <tr><td>種類を強く</td><td>公演の種類の重みを 1.0 → 2.0</td></tr>
-            <tr><td>作り手を強く</td><td>演出・脚本などを出演と同じくらいに（×2.5）</td></tr>
-            <tr><td>詳細を使わない</td><td>気になった所を無視し、全員に届ける</td></tr>
+            <tr><td>種類を強く</td><td>作品の内容の <i>μ</i><sup>答え合わせ</sup> ＝ 2</td></tr>
+            <tr><td>作り手を強く</td><td>演出・脚本・翻訳の <i>μ</i><sup>答え合わせ</sup> ＝ 2.5</td></tr>
+            <tr><td>詳細を使わない</td><td>式 5 を使わず <i>a</i> ≡ 1</td></tr>
           </tbody>
         </table>
       </div>
-      <p class="muted" style="margin-top:10px">公開データでは決めきれなかった選び方（舞台で作り手と出演のどちらが効くか、など）を、人ごとに本人の記録で決める。</p>
+    </div>
+    <div class="card">
+      <h4>なぜ区切り単位で数えるのか（誤りの確かめ）</h4>
+      <p class="muted">新しい方式は、前より悪くないと高い確信で言えるときだけ採るべきだ <a href="#ref-12">[12]</a>。最初の作りでは、評価の組を 1 つずつ数えていた。この形では、評価がでたらめな利用者でも別の案に切り替わった（例：94 勝 70 敗）。組どうしが同じ公演を共有していて独立でなく、前の評価が後の点に漏れていたためである。</p>
+      <p class="muted">重ならない区切りで数える今の形で、作った利用者（各 200〜400 人）を使って確かめた。結果は次のとおり。</p>
+      <ul class="muted">
+        <li><b>でたらめな人が切り替わる割合</b>：120 件で 3% 以下。3 案の多重比較を含めても、片側 2.5% の目安に近い。</li>
+        <li><b>演出家で選んでいる人が、正しく「作り手を強く」に切り替わる割合</b>：60 件で 4 割、120 件で 7〜9 割。</li>
+      </ul>
     </div>
   </div>
 
-  <h3 class="sub">3-6　どこで、どれだけの量で計算しているか</h3>
+  <h3 class="sub">3.8　計算の置き場所</h3>
   <div class="grid2 wide">
-    <div class="card"><h4><span class="tag good">毎日 1 回</span>取得側（GitHub Actions）</h4><p class="muted">公演の索引（公演・役職×人物・種類のタグ）と、おすすめのカードの下書き（題名・会期・出演・あらすじの HTML）を作って D1 に入れる。書き込みは無料枠の 8 割の予算に収まる日だけ入れ替える。</p></div>
-    <div class="card"><h4><span class="tag good">開いたとき</span>Worker</h4><p class="muted">本人の記録だけで 3-1〜3-5 を計算し、カードに理由と印を差し込む。結果は本人ごとに控え、記録が変わるまで使い回す（ふだんは数行読むだけ）。無料プランの CPU は 1 回 10 ミリ秒なので、重い計算は取得側に寄せてある。</p></div>
-    <div class="card"><h4><span class="tag warn">確かめ方</span>Python と一字一句</h4><p class="muted">同じ架空の公演一覧と記録で、Python の計算と Worker の計算が同じ公演・順・点・理由を出すことを、変更のたびにテストで確かめる。</p></div>
-    <div class="card"><h4><span class="tag stop">使わない</span>LLM による順位付け</h4><p class="muted">順位と理由を毎回同じ形で説明できるよう、LLM はあらすじの題材の取り出し（一度だけ）と文章づくりに限った。</p></div>
+    <div class="card"><h4><span class="tag good">毎日 1 回</span>取得側（GitHub Actions）</h4><p class="muted">公演の索引（公演・役職×人物・種類のタグ）と、おすすめのカードの下書き（題名・会期・出演・あらすじの HTML）を作って D1 に入れる。書き込みは、無料枠の 8 割の予算に収まる日だけ入れ替える。</p></div>
+    <div class="card"><h4><span class="tag good">開いたとき</span>Worker</h4><p class="muted">本人の記録だけで式 1〜12 を計算し、カードに理由と印を差し込む。結果は本人ごとに控え、記録が変わるまで使い回す（ふだんは数行を読むだけ）。無料プランの CPU は 1 回 10 ms なので、重い計算は取得側に寄せてある。</p></div>
+    <div class="card"><h4><span class="tag warn">一致の確認</span>Python と一字一句</h4><p class="muted">同じ架空の公演一覧と記録で、Python と Worker が同じ公演・順・点・理由を出すことを確かめる。浮動小数の足し算の順序もそろえてある（Python 3.12 以降の <code>sum()</code> は誤差を補正するので使わない）。</p></div>
+    <div class="card"><h4><span class="tag stop">使わない</span>LLM による順位付け</h4><p class="muted">順位と理由を毎回同じ形で説明できるようにするため、LLM の用途は 2 つに限った。あらすじからの題材の取り出し（一度だけ）と、文章づくりである。</p></div>
   </div>
 
-  <h3 class="sub">3-7　以前の仕組みから変えたところと、まだ確かめていないこと</h3>
+  <h3 class="sub">3.9　検証と限界</h3>
   <div class="twrap wide">
     <table class="calc" style="font-size:13px">
-      <thead><tr><th>項目</th><th>以前（Render・共通の推薦）</th><th>いま（Worker・本人ごと）</th></tr></thead>
+      <thead><tr><th>確かめたこと</th><th>データ</th><th>結果</th></tr></thead>
       <tbody>
-        <tr><td>評価の読み方</td><td>◎ だけを当たり 1、ほかは 0</td><td>本人の中での順位（z）。△ と × も点を下げる</td></tr>
-        <tr><td>苦手な人物</td><td>0 で切って理由にしない</td><td>下げる人物の上位 3 人ぶん点を下げる</td></tr>
-        <tr><td>あらすじ</td><td>別の網（網 C）を 90% 点でそろえて足す</td><td>#題材 のタグとして、人物と同じ式で足す</td></tr>
-        <tr><td>会場</td><td>使わない（当てやすさが逆効果）</td><td>#会場 のタグとして並べ替えにだけ使い、理由にはしない</td></tr>
-        <tr><td>お気に入り</td><td>点に足さず、必ず出す別枠だけ</td><td>別枠に加えて、評価が少ないうちだけ仮の ◎ として足す</td></tr>
-        <tr><td>重みの選び方</td><td>持ち主の記録で一度決めた</td><td>本人の記録で、はっきり勝ったときだけ切り替える</td></tr>
+        <tr><td>順序化（式 1–8）と、以前の計算の比較</td><td>公開の映画評価（Douban）。選ぶのに使っていない 500 人を 2 回抽出。公演の種類はジャンルで代用</td><td>AUC +0.024〜0.036、良くなった人 63〜76%</td></tr>
+        <tr><td>お気に入りの仮の評価（式 9）</td><td>同上。選ぶ 300 人と確かめる 500 人は別</td><td>評価 0 件で +0.024〜0.031。10〜20 件で差なし</td></tr>
+        <tr><td>使うほど当たるか</td><td>同上（439 人、記録を 5→80 件に増やす）</td><td>AUC 0.507 → 0.537。上がった人 63%</td></tr>
+        <tr><td>裏の答え合わせ（式 10–12）</td><td>作った利用者（各 200〜400 人）</td><td>誤って切り替わる割合 3% 以下（120 件）</td></tr>
+        <tr><td>Python と Worker の一致</td><td>架空の公演一覧と記録</td><td>公演・順・点・理由が一致（変更のたびにテスト）</td></tr>
       </tbody>
     </table>
   </div>
-  <figure class="wide" style="margin-top:14px">
-    <figcaption><b>まだ確かめていないこと。</b>順位として読む計算は、選ぶのに使っていない公開の映画評価データ（500 人・2 回抽出）で、それまでの計算より当てやすさが ＋0.024〜0.036 上がり、63〜76% の人で良くなった（公演の種類はジャンルで代用）。<b>舞台の実データ（本番の利用者）での効き目は、まだ測っていない。</b>「本人の評価が本人の次の推薦に届く」ことはテストで確かめてある。</figcaption>
-  </figure>
+  <div class="grid2 wide">
+    <div class="card">
+      <h4><span class="tag stop">限界</span>まだ言えないこと</h4>
+      <ul class="muted">
+        <li><b>舞台の実データ（本番の利用者）での効き目は、まだ測っていない。</b>上の数値は映画のデータで、公演の種類をジャンルで代用している。</li>
+        <li>持ち主 1 人の記録での AUC は、n ＝ 1 なので判断の根拠に使わない方針にした。</li>
+        <li><b>当たりの水準は低い。</b>80 件でも AUC は 0.54〜0.57 にとどまる。参考に測った「他の人の平均評価」は 0.79 で、作品そのものの評判のほうがずっと強い手がかりだった。たぐりは利用者の記録を集めないので、この手がかりは使えない。取得元の公開の評判を使う道は、まだ検討中である。</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4><span class="tag warn">偏り</span>運用で気をつけること</h4>
+      <ul class="muted">
+        <li><b>付いた評価だけで学ぶと偏る。</b>利用者は推薦されたものを観て評価しやすいので、付いた評価だけで学ぶ・測ると偏る <a href="#ref-15">[15]</a>。推薦が行動を変え、その行動で次を学ぶ輪は、推薦を同じ方向に寄せる <a href="#ref-14">[14]</a>。開幕リマインドで点と関係なく全公演を出しているのは、この輪の外の公演に触れる窓でもある。</li>
+        <li><b>精度だけを上げても役に立つとは限らない</b> <a href="#ref-13">[13]</a>。同じ人ばかり勧めていないかも、合わせて見る必要がある。</li>
+        <li><b>舞台芸術の推薦は先行例が少ない</b> <a href="#ref-16">[16]</a>。</li>
+      </ul>
+    </div>
+  </div>
+
+  <h4 class="eqhead">以前の仕組み（Render・共通の推薦）からの変更</h4>
+  <div class="twrap wide">
+    <table class="calc" style="font-size:13px">
+      <thead><tr><th>項目</th><th>以前</th><th>いま</th></tr></thead>
+      <tbody>
+        <tr><td>評価の読み方</td><td>◎ だけを当たり 1、ほかは 0</td><td>本人の中での位置 <i>z</i>（式 2）。△ と × も点を下げる</td></tr>
+        <tr><td>苦手な人物</td><td>0 で切って理由にしない</td><td>下げる人物の上位 3 人ぶん点を下げる（式 7）</td></tr>
+        <tr><td>あらすじ</td><td>別の網（網 C）を 90% 点でそろえて足す</td><td>#題材 のタグとして、人物と同じ式 4 で足す</td></tr>
+        <tr><td>会場</td><td>使わない</td><td>#会場 のタグとして並べ替えにだけ使い、理由にはしない（式 8）</td></tr>
+        <tr><td>お気に入り</td><td>点に足さず、必ず出す別枠だけ</td><td>別枠に加えて、仮の評価として足す（式 9）</td></tr>
+        <tr><td>重みの選び方</td><td>持ち主の記録で一度決めた</td><td>本人の記録で、はっきり勝ったときだけ切り替える（式 12）</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h4 class="eqhead">参考文献</h4>
+  <p class="muted">各文献の確かめ方（原文・要旨・二次資料）は、ナレッジのノート（<code>docs/knowledge/notes/lit-*.md</code>）に書いてある。原文を読めず要旨で確かめたものが多い。</p>
+  <ol class="refs">
+    <li id="ref-1">Y. Koren, J. Sill. OrdRec: An Ordinal Model for Predicting Personalized Item Rating Distributions. <i>RecSys</i> 2011.（<code>lit-ordinal-damping</code>）</li>
+    <li id="ref-2">Y. Koren. Factorization Meets the Neighborhood. <i>KDD</i> 2008／J. Herlocker ほか. <i>SIGIR</i> 1999.（<code>lit-user-bias</code>）</li>
+    <li id="ref-3">R. Jin, L. Si, C. Zhai. Preference-based Graphic Models for Collaborative Filtering. <i>UAI</i> 2003.（<code>lit-decoupled-rating</code>）</li>
+    <li id="ref-4">C. Chen, S. Lee, H. W. Stevenson. Response Style and Cross-Cultural Comparisons of Rating Scales. <i>Psychological Science</i> 1995／A.-W. Harzing 2006.（<code>lit-response-style-culture</code>）</li>
+    <li id="ref-5">Y. Zhang, J. Koren. Efficient Bayesian Hierarchical User Modeling for Recommendation Systems. <i>SIGIR</i> 2007.（<code>lit-hierarchical-user-model</code>）</li>
+    <li id="ref-6">G. Adomavicius, Y. Kwon. New Recommendation Techniques for Multicriteria Rating Systems. <i>IEEE Intelligent Systems</i> 2007.（<code>lit-multi-criteria</code>）</li>
+    <li id="ref-7">Negative Ratings Play a Positive Role in Information Filtering.（著者・掲載誌は未確認）（<code>lit-negative-ratings</code>）</li>
+    <li id="ref-8">S.-M. Choi ほか. A Movie Recommendation Algorithm Based on Genre Correlations. <i>Expert Systems with Applications</i> 2012／Moses &amp; Babu 2021／Veloso ほか 2017.（<code>lit-genre-reco</code>）</li>
+    <li id="ref-9">V. A. Zeithaml. Consumer Perceptions of Price, Quality, and Value. <i>Journal of Marketing</i> 1988／Zheng ほか. <i>ICDE</i> 2020.（<code>lit-price-value</code>）</li>
+    <li id="ref-10">M. Pazzani, D. Billsus. Content-Based Recommendation Systems. <i>The Adaptive Web</i> 2007（Syskill &amp; Webert）.（<code>lit-syskill-webert-prior</code>）</li>
+    <li id="ref-11">J. Vinagre, A. M. Jorge, J. Gama. Evaluation of Recommender Systems in Streaming Environments. 2014（arXiv:1504.08175）.（<code>lit-prequential</code>）</li>
+    <li id="ref-12">P. Thomas, G. Theocharous, M. Ghavamzadeh. High Confidence Policy Improvement. <i>ICML</i> 2015.（<code>lit-safe-improvement</code>）</li>
+    <li id="ref-13">S. McNee, J. Riedl, J. Konstan. Being Accurate Is Not Enough. <i>CHI</i> 2006／M. Ferrari Dacrema ほか. <i>RecSys</i> 2019.（<code>lit-beyond-accuracy</code>）</li>
+    <li id="ref-14">A. Chaney, B. Stewart, B. Engelhardt. How Algorithmic Confounding in Recommendation Systems Increases Homogeneity. <i>RecSys</i> 2018（arXiv:1710.11214）.（<code>lit-feedback-loop</code>）</li>
+    <li id="ref-15">H. Steck. Training and Testing of Recommender Systems on Data Missing Not at Random. <i>KDD</i> 2010.（<code>lit-mnar</code>）</li>
+    <li id="ref-16">J. Abernethy ほか. arXiv:1611.05788／INTIX の実務報告.（<code>lit-performing-arts</code>）</li>
+  </ol>
 </section>
 
 
