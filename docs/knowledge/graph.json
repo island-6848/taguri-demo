@@ -1078,6 +1078,20 @@
    ]
   },
   {
+   "id": "dec-service-watch",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "サービス版の見張りは公開リポジトリの GitHub Actions で 1 時間ごと（動いているか）と毎日（カタログの日付）。失敗の通知は GitHub のメール",
+   "sources": [
+    "tools/taguri/check_service.py",
+    "tools/taguri/test_check_service.py",
+    ".github/workflows/service-watch.yml",
+    ".github/workflows/catalog-age.yml"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-signed-out-gate",
    "type": "decision",
    "status": "adopted",
@@ -2642,7 +2656,7 @@
   {
    "id": "q-monitoring",
    "type": "question",
-   "status": "open",
+   "status": "answered",
    "date": "2026-10-13",
    "title": "無料で使える外形監視と通知",
    "sources": [],
@@ -4476,6 +4490,21 @@
    "from": "dec-service-starts-empty",
    "rel": "depends_on",
    "to": "dec-edition-split"
+  },
+  {
+   "from": "dec-service-watch",
+   "rel": "answers",
+   "to": "q-monitoring"
+  },
+  {
+   "from": "dec-service-watch",
+   "rel": "supports",
+   "to": "dec-free-tier-only"
+  },
+  {
+   "from": "dec-service-watch",
+   "rel": "depends_on",
+   "to": "catalog-age-check"
   },
   {
    "from": "dec-signed-out-gate",

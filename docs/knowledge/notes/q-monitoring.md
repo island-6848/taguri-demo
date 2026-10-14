@@ -1,7 +1,7 @@
 ---
 id: q-monitoring
 type: question
-status: open
+status: answered
 date: 2026-10-13
 title: 無料で使える外形監視と通知
 verifies:

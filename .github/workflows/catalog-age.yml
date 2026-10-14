@@ -2,7 +2,7 @@ name: Catalog age
 
 # 公開版の公演カタログが古くなっていないかを毎日確かめる（tools/taguri/check_catalog_age.py）。
 # EC2 が無く、毎日の作り直しが止まっているかもしれないため（docs/knowledge の no-ec2・q-catalog-source）。
-# 失敗するとリポジトリの持ち主に GitHub から通知が届く。見るのは公開の /api/health の日付と件数だけ。
+# 失敗するとリポジトリの持ち主に GitHub から通知が届く。上限 1 日: 取得が 2 日続けて止まると、2 日目の朝に鳴る（S23）。見るのは公開の /api/health の日付と件数だけ。
 # **見る先は Cloudflare 版の /api/health。** 取得処理が D1 に入れた日付と件数を返す
 # （cloudflare/scripts/deliver_catalogue.py）。Render のデモ版は S3 のカタログがもう更新されない（no-aws）。
 # 毎日の実行は、リポジトリの変数 TAGURI_HEALTH_URL（例: https://<Worker の URL>/api/health）を
@@ -18,7 +18,7 @@ on:
       max_days:
         description: 'これより古ければ失敗（日）'
         required: false
-        default: '3'
+        default: '1'
 
 permissions:
   contents: read
@@ -37,7 +37,7 @@ jobs:
         # 入力は環境変数で渡す（シェルの文字列に直接埋め込まない）
         env:
           HEALTH_URL: ${{ github.event.inputs.url || vars.TAGURI_HEALTH_URL }}
-          MAX_DAYS: ${{ github.event.inputs.max_days || '3' }}
+          MAX_DAYS: ${{ github.event.inputs.max_days || '1' }}
         run: |
           if [ -z "$HEALTH_URL" ]; then echo "URL を入れて動かす（入力の url か、変数 TAGURI_HEALTH_URL）"; exit 1; fi
           python tools/taguri/check_catalog_age.py --url "$HEALTH_URL" --max-days "$MAX_DAYS"

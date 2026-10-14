@@ -85,6 +85,8 @@ jobs:
 
       - name: Catalog dates on the public health endpoint
         run: python tools/taguri/test_catalog_info.py
+      - name: Service watch checks
+        run: python tools/taguri/test_check_service.py
       - name: Crawler working data between runs
         run: python tools/taguri/test_crawler_state.py
       - name: Candidates from the CoRich sitemap (search page refused from data centers)
