@@ -401,6 +401,8 @@ function renderScreen(el, activePath, d, exposureSource) {
   shortAddButtons(el);
   divergeVerdicts(el);
   stampRerate(el);
+  aspectsPanel(el);
+  if (activePath === "/settings") aspectsSetting(el);
   gotoRegisterCard(el);
   if (window.TaguriExposure) TaguriExposure.start(el, exposureSource || "network", async (path, body) => {
     const r = await fetch(API_BASE + path, {method: "POST", credentials: "include", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
@@ -2060,6 +2062,83 @@ function divergeVerdicts(root) {
 // 各ハンコの丸を押したらポップアップで選びなおしできるのがでて、押し直せるようにして」）。
 // 判子を押すと、その横に ◎○△× の小さな札が開く。押すと今までどおり記録し（同じ押し口 data-v）、判子が
 // 押し直され、札は閉じる。札の外を押すか Esc で閉じる
+// ---- 評価の「詳細」（起案者の指示 2026-10-14「詳細の画面を作って」・q-pr13-aspects-screen）。
+// 評価を付けた記録に「詳細」を出し、8 項目それぞれに 良かった／ふつう／気になった を選ぶ。保存の形は
+// works.aspects（気になった項目はコード、良かった項目は先頭に +、カンマ区切り。「ふつう」は書かない）で、
+// POST /api/rate {work_key, aspects}。推薦は付いた印だけを見る（user_recommender.ASPECTS）。
+// 出し方は人ごとに選べる: 「あっさり」（既定。詳細は閉じておく）と「詳しく」（開いた状態で出す）。画面だけの設定
+const ASPECTS = [["story", "話・脚本・構成"], ["direction", "演出・見せ方"], ["acting", "演技・出演"], ["music", "歌・音楽"],
+  ["dance", "ダンス"], ["design", "美術・衣裳"], ["price", "値段"], ["venue", "会場・座席"]];
+const ASPECT_MODE_KEY = "taguri.aspectsMode";       // "plain"（あっさり・既定）か "full"（詳しく）
+function aspectsMode() { try { return localStorage.getItem(ASPECT_MODE_KEY) === "full" ? "full" : "plain"; } catch (e) { return "plain"; } }
+function aspectsSummary(state) {
+  const good = ASPECTS.filter(([c]) => state[c] === "+").map(x => x[1]), bad = ASPECTS.filter(([c]) => state[c] === "-").map(x => x[1]);
+  return [good.length ? "良かった: " + good.join("・") : "", bad.length ? "気になった: " + bad.join("・") : ""].filter(Boolean).join("／") || "まだ選んでいません";
+}
+function aspectsPanel(root) {
+  root.querySelectorAll(".rec-row[data-aspects]").forEach(row => {
+    if (row.querySelector(".asp")) return;
+    const rb = row.querySelector(".rb[data-work]"), st = row.querySelector("[data-stamp]");
+    if (!rb) return;
+    const rated = () => "◎○△×".includes((st && st.textContent.trim()) || "x") && (st && st.textContent.trim()) !== "";
+    const state = {};
+    (row.dataset.aspects || "").split(",").filter(Boolean).forEach(x => { state[x.replace(/^\+/, "")] = x.startsWith("+") ? "+" : "-"; });
+    const box = document.createElement("details");
+    box.className = "asp";
+    if (aspectsMode() === "full") box.open = true;
+    const sum = document.createElement("summary");
+    const items = ASPECTS.map(([c, label]) => '<div class="aspr" role="radiogroup" aria-label="' + E(label) + '"><span class="aspl">' + E(label) + "</span>"
+      + [["+", "良かった"], ["", "ふつう"], ["-", "気になった"]].map(([v, t]) =>
+        '<button type="button" class="aspb" role="radio" data-a="' + c + '" data-av="' + v + '" aria-checked="'
+        + ((state[c] || "") === v ? "true" : "false") + '">' + t + "</button>").join("") + "</div>").join("");
+    box.innerHTML = '<summary><span class="aspt">詳細</span><span class="asps"></span></summary>'
+      + '<p class="asph">項目ごとに選べます（任意）。選んだ印は、次のおすすめで「どの人のおかげ・せいだったか」を分けるのに使います。</p>'
+      + '<div class="aspg">' + items + '</div><p class="said" role="status"></p>';
+    const paint = () => {
+      box.querySelector(".asps").textContent = aspectsSummary(state);
+      box.querySelectorAll(".aspb").forEach(b => b.setAttribute("aria-checked", (state[b.dataset.a] || "") === b.dataset.av ? "true" : "false"));
+    };
+    box.addEventListener("click", async ev => {
+      const b = ev.target.closest(".aspb");
+      if (!b) return;
+      const before = {...state};
+      if (b.dataset.av) state[b.dataset.a] = b.dataset.av; else delete state[b.dataset.a];
+      paint();
+      const aspects = ASPECTS.filter(([c]) => state[c] === "-").map(([c]) => c)
+        .concat(ASPECTS.filter(([c]) => state[c] === "+").map(([c]) => "+" + c));
+      const d = await post("/api/rate", {work_key: rb.dataset.work, aspects}, box, "詳細を保存しました");
+      if (!d) { Object.keys(state).forEach(k => delete state[k]); Object.assign(state, before); paint(); }
+      else row.dataset.aspects = d.aspects ?? aspects.join(",");
+    });
+    paint();
+    box.hidden = !rated();
+    // 評価を付けた（押し直した）あとに出す
+    rb.addEventListener("click", () => setTimeout(() => { box.hidden = !rated(); }, 600));
+    (row.querySelector(".page") || row).appendChild(box);
+  });
+}
+// 設定の画面に「評価の詳細の出し方」を足す（この端末に覚える。画面だけの設定）
+function aspectsSetting(el) {
+  if (el.querySelector(".aspset")) return;
+  const h1 = el.querySelector("h1");
+  if (!h1) return;
+  const cur = aspectsMode();
+  const sec = document.createElement("section");
+  sec.className = "aspset pbox";
+  sec.innerHTML = '<h2>評価の詳細の出し方</h2><p class="lead">評価を付けた記録の「詳細」（話・演出・演技などの 良かった／気になった）を、'
+    + 'ふだん閉じておくか、開いて出すかを選べます。表示だけの設定で、おすすめの計算は変わりません。</p>'
+    + '<div class="aspmode" role="radiogroup" aria-label="評価の詳細の出し方">'
+    + [["plain", "あっさり", "詳細は閉じておく（押すと開く）"], ["full", "詳しく", "詳細を開いた状態で出す"]].map(([v, t, d]) =>
+      '<label class="aspm"><input type="radio" name="aspmode" value="' + v + '"' + (v === cur ? " checked" : "") + '><b>' + t + "</b><span>" + d + "</span></label>").join("")
+    + '</div><p class="said" role="status"></p>';
+  sec.addEventListener("change", ev => {
+    try { localStorage.setItem(ASPECT_MODE_KEY, ev.target.value); } catch (e) { /* 覚えられなくても既定で動く */ }
+    sec.querySelector(".said").textContent = "保存しました（この端末で有効です）";
+  });
+  const last = [...el.querySelectorAll("section, .pbox, details")].filter(n => n.parentElement === el).pop();
+  (last || h1).after(sec);
+}
+
 function stampRerate(root) {
   root.querySelectorAll(".rec-row").forEach(row => {
     const open = row.querySelector("button[data-rate-open]"), rb = row.querySelector(".rb:not(.notseen)");

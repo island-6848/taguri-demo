@@ -609,3 +609,37 @@ a.htag-in:hover{text-decoration:underline}
 .htagged .hd{margin-right:8px;font-size:12px;color:var(--mute);font-variant-numeric:tabular-nums}
 .htagged .int{margin:4px 0 0;font-size:13px;line-height:1.7}
 .favpop .fpi.added:disabled{opacity:1;color:var(--acc);cursor:default}
+
+/* ---- 評価の「詳細」（app.js の aspectsPanel・aspectsSetting） */
+.asp{margin:10px 0 0;border-top:1px solid var(--grid)}
+.asp>summary{min-height:40px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;list-style:none;cursor:pointer;font-size:13px}
+.asp>summary::-webkit-details-marker{display:none}
+.asp>summary::before{content:"";flex:none;width:6px;height:6px;border-right:1.5px solid currentColor;
+ border-bottom:1.5px solid currentColor;transform:translateY(-2px) rotate(45deg);transition:transform .15s}
+.asp[open]>summary::before{transform:translateY(1px) rotate(-135deg)}
+.asp .aspt{font-weight:700}
+.asp .asps{font-size:12px;color:var(--ink2)}
+.asp .asph{margin:0 0 8px;font-size:11.5px;color:var(--mute);line-height:1.6}
+.aspg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 16px}
+@media(max-width:620px){.aspg{grid-template-columns:1fr}}
+.aspr{display:grid;grid-template-columns:7.5em repeat(3,minmax(0,1fr));align-items:center}
+.aspr .aspl{font-size:12.5px}
+.aspb{min-height:36px;padding:0 4px;margin:0;border:1px solid var(--ink);border-left-width:0;background:var(--surf);color:var(--ink);
+ font:inherit;font-size:12px;cursor:pointer;white-space:nowrap}
+.aspr .aspb:nth-child(2){border-left-width:1px;border-radius:8px 0 0 8px}
+.aspr .aspb:last-child{border-radius:0 8px 8px 0}
+.aspb[aria-checked=true][data-av="+"]{background:var(--curtain);border-color:var(--curtain);color:var(--surf)}
+.aspb[aria-checked=true][data-av=""]{background:var(--plane)}
+.aspb[aria-checked=true][data-av="-"]{background:var(--base)}
+.aspb:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.asp .said{margin:6px 0 0;font-size:12px}
+.asp .said:empty{display:none}
+.aspset{margin:0 0 22px}
+.aspmode{display:flex;flex-wrap:wrap;gap:8px}
+.aspm{display:flex;align-items:flex-start;gap:8px;min-height:44px;padding:8px 12px;border:1px solid var(--grid);border-radius:8px;cursor:pointer}
+.aspm span{display:block;font-size:11.5px;color:var(--mute)}
+.aspm:has(input:checked){border-color:var(--acc);background:#f0e6e8}
+.aspset .said:empty{display:none}
+@media(max-width:620px){.aspr{grid-template-columns:repeat(3,minmax(0,1fr));row-gap:2px}
+ .aspr .aspl{grid-column:1/-1;font-weight:700}
+ .aspr .aspb:nth-child(2){border-left-width:1px}}

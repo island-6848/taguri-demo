@@ -1,7 +1,7 @@
 ---
 id: q-pr13-aspects-screen
 type: question
-status: open
+status: answered
 date: 2026-10-14
 title: 推薦側の PR #13（person-graded-v2・評価の段階・評価の「詳細」8 項目）を入れるか。入れるなら「詳細」の画面をこちらで作るか
 sources:
@@ -15,3 +15,4 @@ links:
 起案者に聞くこと: PR #13 を入れるか。入れるなら、「詳細」の画面と設定をこちらで作るか。
 2026-10-14 00:54 UTC 追記（同じセッションからの知らせ、PR #13 の 379fb16）: master を取り込み、「詳細」の列を migration 0015.sql に、rec_stage の tour・gkey の列を 0016.sql にした。**こちらで migration を足すときは 0017 以降を使う**（PR #13 が未決のあいだも番号を空けておく）。/migration-api/recommend の items にツアーのほかの会場（tours）が付き、ツアーは 1 枠にまとまる。お気に入りの団体・主催・作品も推薦の種になった（題材は未対応）。
 2026-10-14 追記: PR #13 は master に入った（c06ae0b「Merge pull request #13」）。こちらの作業（作品名の理由・料金・ハッシュタグなど）と突き合わせて取り込み、試験はすべて通った（Worker 79 件）。**残る問いは「詳細」の 8 項目の画面と表示の設定をこちらで作るか**。
+2026-10-14 追記: 起案者の指示「詳細の画面を作って」で作った（dec-aspects-screen）。

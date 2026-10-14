@@ -4419,6 +4419,7 @@ def _works(user_id: str) -> list[dict]:
                     "unseen": _unseen, "skipped": len(_gone),
                     "verdict": sv.get("verdict") or "",
                     "note_impression": sv.get("note_impression") or "",
+                    "aspects": sv.get("aspects") or "",
                     "stage_id": sv.get("stage_id") or "",
                     "auto_linked": bool(sv.get("stage_id")
                                         and auto.get(w["work_key"]) == sv.get("stage_id")),
@@ -4446,6 +4447,7 @@ def _works(user_id: str) -> list[dict]:
                     "first_date": sv.get("first_date") or "", "last_date": sv.get("last_date") or "",
                     "times": sv.get("times") or 1, "verdict": sv.get("verdict") or "",
                     "note_impression": sv.get("note_impression") or "",
+                    "aspects": sv.get("aspects") or "",
                     # **手で足すときに入力した会場。** 以前は感想の欄に入れられていて
                     # どこからも読まれていなかった（`rate_performances._add_venue`）。
                     # **本人が入力した事実は、読まれる場所に出す**
@@ -5381,7 +5383,7 @@ def set_unseen(user_id: str, work_key: str, unseen: bool) -> dict:
             "unseen": bool(unseen), "n": len(shows)}
 
 
-def save_work_field(user_id: str, work_key: str, *, verdict=None, note=None) -> dict:
+def save_work_field(user_id: str, work_key: str, *, verdict=None, note=None, aspects=None) -> dict:
     """評価または感想を 1 つ書く。**受け付ける項目は列挙したものだけ**（守り 4）。
 
     **`UPDATE` だけでは足りない。** 取り込んだばかりの作品はまだ `works` に行が無く、
@@ -5397,6 +5399,11 @@ def save_work_field(user_id: str, work_key: str, *, verdict=None, note=None) -> 
         if w is None:
             if not sv:
                 raise ValueError("その作品は記録に無い")
+            if aspects is not None:          # 評価の「詳細」（入力の出どころの列は持たない）
+                con.execute("UPDATE works SET aspects=?, updated_at=datetime('now','localtime')"
+                            " WHERE user_id=? AND work_key=?", (aspects, user_id, work_key))
+                con.commit()
+                return {"ok": True, "work_key": work_key, "manual": True}
             col, val = ("verdict", verdict) if verdict is not None else ("note_impression", note)
             source_col = "verdict_source" if verdict is not None else "note_source"
             con.execute(f"UPDATE works SET {col}=?, {source_col}='user',"
@@ -5411,7 +5418,8 @@ def save_work_field(user_id: str, work_key: str, *, verdict=None, note=None) -> 
             "note_impression": note if note is not None else (sv.get("note_impression") or ""),
             "note_motive": sv.get("note_motive") or "",
             "verdict_source": "user" if verdict is not None else (sv.get("verdict_source") or "legacy_unknown"),
-            "note_source": "user" if note is not None else (sv.get("note_source") or "legacy_unknown")}, user_id=user_id)
+            "note_source": "user" if note is not None else (sv.get("note_source") or "legacy_unknown"),
+            **({"aspects": aspects} if aspects is not None else {})}, user_id=user_id)
         return {"ok": True, "work_key": work_key, "manual": False}
     finally:
         con.close()
@@ -6524,6 +6532,7 @@ def _rekey(user_id: str, con, work_key: str, uids: set) -> dict:
                 R.save_work(con, new, {
                     "verdict": sv.get("verdict"), "chosen": sv.get("chosen"),
                     "note_impression": sv.get("note_impression") or "",
+                    "aspects": sv.get("aspects") or "",
                     "note_motive": sv.get("note_motive") or "",
                     "verdict_source": sv.get("verdict_source") or "legacy_unknown",
                     "note_source": sv.get("note_source") or "legacy_unknown"}, user_id=user_id)
@@ -6878,7 +6887,9 @@ def _rec_row(user_id: str, w: dict, *, poster: str = "", rate_always: bool = Fal
     # 崩さない作りなので、押した先がこの行である
     return (f'<article class="rec-row{" check" if w.get("suspect") else ""}'
             f'{" skipped" if unseen else ""}"'
-            f' id="w-{E(CH._anchor(w["work_key"]))}{E(id_suffix)}">'
+            f' id="w-{E(CH._anchor(w["work_key"]))}{E(id_suffix)}"'
+            # 評価の「詳細」（気になった所・良かった所。app.js の aspectsPanel が読む）
+            f' data-aspects="{E(w.get("aspects") or "")}">'
             f'<span class="marg">{dt}{"" if unseen else _stamp(w, v)}</span>'
             f'<div class="page">'
             f'<div class="ttl">{E(w["title"])}</div>'

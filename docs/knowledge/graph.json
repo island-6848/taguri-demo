@@ -538,6 +538,23 @@
    "verifies": []
   },
   {
+   "id": "dec-aspects-screen",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "評価の「詳細」の画面 ── 評価を付けた記録に 8 項目×良かった／ふつう／気になった。出し方は あっさり（既定）／詳しく",
+   "sources": [
+    "web/app.js",
+    "web/theme.css",
+    "tools/taguri/serve.py",
+    "tools/taguri/app.py",
+    "cloudflare/src/screens/rate.js",
+    "cloudflare/src/screens/row.js",
+    "cloudflare/test/screens/scenarios.json"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-auto-link-past",
    "type": "decision",
    "status": "adopted",
@@ -2427,6 +2444,15 @@
    ]
   },
   {
+   "id": "q-domain-taguri-com",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-14",
+   "title": "本番の URL を taguri.com にするか（独自ドメインは年額がかかり、無料だけの約束と食い違う）",
+   "sources": [],
+   "verifies": []
+  },
+  {
    "id": "q-domain",
    "type": "question",
    "status": "open",
@@ -2669,7 +2695,7 @@
   {
    "id": "q-pr13-aspects-screen",
    "type": "question",
-   "status": "open",
+   "status": "answered",
    "date": "2026-10-14",
    "title": "推薦側の PR #13（person-graded-v2・評価の段階・評価の「詳細」8 項目）を入れるか。入れるなら「詳細」の画面をこちらで作るか",
    "sources": [
@@ -3396,6 +3422,15 @@
    ]
   },
   {
+   "id": "workers-branch-control-master",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-14",
+   "title": "起案者が Workers Builds を master だけ組み立てるようにした",
+   "sources": [],
+   "verifies": []
+  },
+  {
    "id": "workers-builds-applies-migrations",
    "type": "finding",
    "status": "confirmed",
@@ -3481,6 +3516,19 @@
     "S10",
     "S20"
    ]
+  },
+  {
+   "id": "workers-dev-subdomain-rename",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-14",
+   "title": "workers.dev の URL は無料のまま名前を変えられる（アカウントの subdomain と Worker の名前）。独自ドメインは年額がかかる",
+   "sources": [
+    "https://developers.cloudflare.com/workers/configuration/routing/workers-dev/",
+    "https://alchemy.run/providers/cloudflare/workers/subdomain",
+    "https://domainoffer.net/tld/com/cloudflare"
+   ],
+   "verifies": []
   },
   {
    "id": "workers-free-cpu-10ms",
@@ -3798,6 +3846,11 @@
    "from": "dec-account-deletion",
    "rel": "raises",
    "to": "q-firebase-user-deletion"
+  },
+  {
+   "from": "dec-aspects-screen",
+   "rel": "answers",
+   "to": "q-pr13-aspects-screen"
   },
   {
    "from": "dec-auto-link-past",
@@ -5335,6 +5388,21 @@
    "to": "q-vm-host-choice"
   },
   {
+   "from": "q-domain-taguri-com",
+   "rel": "depends_on",
+   "to": "workers-dev-subdomain-rename"
+  },
+  {
+   "from": "q-domain-taguri-com",
+   "rel": "affects",
+   "to": "dec-free-tier-only"
+  },
+  {
+   "from": "q-domain-taguri-com",
+   "rel": "affects",
+   "to": "q-domain"
+  },
+  {
    "from": "q-domain",
    "rel": "depends_on",
    "to": "q-direction"
@@ -5970,6 +6038,11 @@
    "to": "q-direction"
   },
   {
+   "from": "workers-branch-control-master",
+   "rel": "affects",
+   "to": "workers-preview-build-log"
+  },
+  {
    "from": "workers-builds-applies-migrations",
    "rel": "affects",
    "to": "comp-d1"
@@ -6018,6 +6091,16 @@
    "from": "workers-d1-preview-state",
    "rel": "affects",
    "to": "comp-recommender"
+  },
+  {
+   "from": "workers-dev-subdomain-rename",
+   "rel": "affects",
+   "to": "q-domain"
+  },
+  {
+   "from": "workers-dev-subdomain-rename",
+   "rel": "supports",
+   "to": "dec-free-tier-only"
   },
   {
    "from": "workers-free-cpu-10ms",

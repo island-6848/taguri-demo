@@ -1587,6 +1587,15 @@ class Server(http.server.ThreadingHTTPServer):
 
     def on_rate(self, b: dict, user_id: str) -> dict:
         work_key, verdict = str(b.get("work_key") or ""), str(b.get("verdict") or "")
+        # 評価の「詳細」だけを書く（verdict を送らないとき。起案者の指示 2026-10-14「詳細の画面を作って」）。
+        # 形は rate_performances.clean_aspects（知らない項目・両方に付けた項目は断る）
+        if not verdict and "aspects" in b:
+            import rate_performances as R
+            aspects = R.clean_aspects(b.get("aspects"))
+            with self.lock:
+                APP.save_work_field(user_id, work_key, aspects=aspects)
+                self.n["rate"] += 1
+            return {"ok": True, "work_key": work_key, "aspects": aspects}
         if verdict not in VERDICTS:
             raise ValueError(f"verdict が候補にない: {verdict!r}")
         with self.lock:

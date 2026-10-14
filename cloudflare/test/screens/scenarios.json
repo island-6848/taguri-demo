@@ -1106,5 +1106,81 @@
     "get": "/api/screen/unrated"
    }
   ]
+ },
+ {
+  "name": "rating aspects (詳細)",
+  "steps": [
+   {
+    "post": "/api/add_work",
+    "body": {
+     "title": "詳細の舞台",
+     "date": "2026-08-01"
+    }
+   },
+   {
+    "post": "/api/rate",
+    "body": {
+     "work_key": "詳細の舞台#2026-08-01",
+     "verdict": "△"
+    }
+   },
+   {
+    "post": "/api/rate",
+    "body": {
+     "work_key": "詳細の舞台#2026-08-01",
+     "aspects": [
+      "venue",
+      "+acting",
+      "price"
+     ]
+    }
+   },
+   {
+    "get": "/api/screen/rate"
+   },
+   {
+    "post": "/api/rate",
+    "body": {
+     "work_key": "詳細の舞台#2026-08-01",
+     "aspects": "price,+price"
+    }
+   },
+   {
+    "post": "/api/rate",
+    "body": {
+     "work_key": "詳細の舞台#2026-08-01",
+     "aspects": [
+      "nope"
+     ]
+    }
+   },
+   {
+    "post": "/api/rate",
+    "body": {
+     "work_key": "無い作品#2026-01-01",
+     "aspects": []
+    }
+   },
+   {
+    "post": "/api/rate",
+    "body": {
+     "work_key": "詳細の舞台#2026-08-01",
+     "verdict": "○"
+    }
+   },
+   {
+    "get": "/api/screen/rate"
+   },
+   {
+    "post": "/api/rate",
+    "body": {
+     "work_key": "詳細の舞台#2026-08-01",
+     "aspects": []
+    }
+   },
+   {
+    "get": "/api/screen/rate"
+   }
+  ]
  }
 ]

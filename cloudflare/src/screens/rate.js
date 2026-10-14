@@ -323,9 +323,30 @@ async function saveWorkField(ctx, workKey, col, value) {
     .bind(value, localNow(ctx.now), ctx.uid, workKey).run();
 }
 
+/** rate_performances.ASPECT_CODES / clean_aspects (same errors as Python) */
+const ASPECT_CODES = ['story', 'direction', 'acting', 'music', 'dance', 'design', 'price', 'venue'];
+function cleanAspectsPy(value) {
+  const list = Array.isArray(value) ? value : String(value ?? '').split(',');
+  const given = new Set(list.map(g => String(g).trim()).filter(Boolean));
+  const unknown = [...given].filter(g => !ASPECT_CODES.includes(g.replace(/^\+/, ''))).sort();
+  if (unknown.length) throw new ValueError(`詳細の項目が候補にない: ${strRepr(unknown[0])}`);
+  const both = ASPECT_CODES.filter(c => given.has(c) && given.has('+' + c));
+  if (both.length) throw new ValueError(`良かった所と気になった所の両方になっている: ${strRepr(both[0])}`);
+  return [...ASPECT_CODES.filter(c => given.has(c)), ...ASPECT_CODES.filter(c => given.has('+' + c)).map(c => '+' + c)].join(',');
+}
+
 /** serve.on_rate (POST /api/rate) */
 async function rateAction(b, ctx) {
   const workKey = field(b, 'work_key'), verdict = field(b, 'verdict');
+  // 評価の「詳細」だけを書く（verdict を送らないとき）。serve.on_rate と同じ規則（rate_performances.clean_aspects）
+  if (!verdict && b && Object.hasOwn(b, 'aspects')) {
+    const aspects = cleanAspectsPy(b.aspects);
+    const have = await ctx.db.prepare('SELECT 1 FROM works WHERE user_id=? AND work_key=?').bind(ctx.uid, workKey).first();
+    if (!have) throw new ValueError('その作品は記録に無い');
+    await ctx.db.prepare('UPDATE works SET aspects=?, updated_at=? WHERE user_id=? AND work_key=?')
+      .bind(aspects, localNow(ctx.now), ctx.uid, workKey).run();
+    return {body: {ok: true, work_key: workKey, aspects}};
+  }
   if (!VERDICTS.includes(verdict)) throw new ValueError(`verdict が候補にない: ${strRepr(verdict)}`);
   await saveWorkField(ctx, workKey, 'verdict', verdict);
   return {body: {ok: true, work_key: workKey, verdict, recommendation: {status: 'on_next_read'}}};
