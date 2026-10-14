@@ -80,8 +80,11 @@ export async function action(name, input, ctx) {
  * cap is 413), an empty body is {}, anything but a JSON object is 400 "json".
  * Returns {input} or {status, body} (already wrapped like Handler._json).
  */
-export async function readInput(request) {
-  const cap = 8192;
+// Request bodies are small; only the account's icon (a data: URL of up to 60,000 characters,
+// screens/account.js) needs more.
+const BODY_CAP = {account: 65536};
+export async function readInput(request, name = '') {
+  const cap = BODY_CAP[name] || 8192;
   const declared = Number(request.headers.get('content-length') || 0);
   const tooLong = {status: 413, body: envelope({error: '本文の長さが不正です'})};
   if (!Number.isInteger(declared) || declared < 0) return {status: 400, body: tooLong.body};

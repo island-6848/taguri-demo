@@ -663,6 +663,13 @@ a.htag-in:hover{text-decoration:underline}
 .acct-me{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;align-items:center}
 .acav{width:56px;height:56px;border-radius:50%;background:var(--plane);color:var(--curtain);
  display:flex;align-items:center;justify-content:center}
+.acav{overflow:hidden}
+.acav img{width:100%;height:100%;object-fit:cover;display:block}
+.acpic{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:6px}
+.acpic .btn,.acpic button{min-height:36px;padding:0 12px;border:1px solid var(--base);border-radius:8px;background:var(--surf);
+ color:var(--ink);font:inherit;font-size:13px;cursor:pointer;display:inline-flex;align-items:center}
+.acpic small{flex-basis:100%;color:var(--mute);font-size:12px}
+.acpic .said{margin:0}
 .acname{margin:0;font-family:var(--mincho);font-size:20px;font-weight:700;overflow-wrap:anywhere}
 .acsince{margin:2px 0 0;color:var(--mute);font-size:13px}
 .acform{grid-column:1/-1;margin-top:8px}
@@ -692,3 +699,28 @@ a.htag-in:hover{text-decoration:underline}
 @media(max-width:560px){
  .acstats{grid-template-columns:repeat(3,minmax(0,1fr))}
  .acranks{grid-template-columns:1fr}}
+
+/* ---- 開幕リマインド：題名で畳んだ 1 公演を 1 枚の枠にする（dgfold） ----------------------
+   起案者の指摘 2026-10-14「どこまでが 1 公演の区切りなのかわかりにくい」。行の下線だけで区切ると、
+   題名と三択ボタンのあいだにも線が見え、ボタンが次の公演のものに読めた。**1 公演を角丸の枠で
+   囲み、題名・開閉・ボタンを同じ枠に入れる。** 枠どうしは隙間で離し、枠の中には線を引かない。 */
+.dglist:has(.dgfold){gap:12px}
+.dgli.dgfold{display:block;padding:12px 14px;border:1px solid var(--ring);border-radius:12px;
+ background:var(--surf)}
+.dglist li.dgfold:last-child{border-bottom:1px solid var(--ring)}
+.dgli.dgfold.trk,.dgli.dgfold.fav{border-left-width:3px;border-radius:0 12px 12px 0;margin:0}
+.dgli.dgfold.trk{border-left-color:var(--curtain)}
+.dgli.dgfold.fav{border-left-color:var(--wax)}
+.dgli.dgfold .dgopen{margin:0;border:0;padding:0}
+.dgli.dgfold .dgopen>summary{list-style:none;cursor:pointer;display:flex;align-items:flex-start;gap:8px;
+ border:0;margin:0;padding:0;font-size:inherit;font-weight:inherit;background:none}
+/* 日付の見出し（.dgday summary）の書式が題名の行にも掛かり、題名の下に線が出ていた */
+.dgli.dgfold .dgopen>summary::-webkit-details-marker{display:none}
+.dgli.dgfold .dgopen>summary::before{content:"▸";color:var(--mute);font-size:13px;line-height:1.9;flex:none}
+.dgli.dgfold .dgopen[open]>summary::before{content:"▾"}
+.dgli.dgfold .dgbody{border:0;padding:0}
+.dgli.dgfold .dgdetail{display:flex;gap:12px;align-items:flex-start;margin:10px 0 0 21px;
+ padding-top:10px;border-top:1px dashed var(--grid)}
+.dgli.dgfold .dginfo{flex:1 1 auto;min-width:0;font-size:13px}
+.dgli.dgfold .btns{display:grid;margin:10px 0 0 21px;padding:0;border:0}
+@media(max-width:560px){.dgli.dgfold .btns,.dgli.dgfold .dgdetail{margin-left:0}}

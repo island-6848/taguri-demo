@@ -385,19 +385,15 @@ export const safeNext = value => {
   return url.pathname + url.search + url.hash;
 };
 const redirect = location => new Response(null, {status: 302, headers: {Location: location, 'Cache-Control': 'no-store'}});
-// The original screens get an entry to the account page in their menu (until
-// the switch-over; the Worker's own screens carry it), and the code of
-// 「公演情報の登録」① (calendar and mail import), loaded only on that screen.
+// The code of 「公演情報の登録」① (calendar and mail import), loaded only on that screen.
 // Done here (not in web/, shared with the GitHub Pages demo) with HTMLRewriter.
-function withWorkerParts(response, {menu}) {
+// (The menu's 「アカウント・記録」 link to the older /migration-data/ page is gone: the
+// menu has its own アカウント page, 起案者 2026-10-14「不要なら削除」.)
+function withWorkerParts(response) {
   if (!(response.headers.get('content-type') || '').includes('text/html') || typeof HTMLRewriter === 'undefined') return response;
-  const page = new HTMLRewriter().on('body', {element(el) {
+  return new HTMLRewriter().on('body', {element(el) {
     el.append('<script type="module" src="/vendor/import-loader.js"></script>', {html: true});
-  }});
-  if (menu) page.on('nav.side', {element(el) {
-    el.append('<a href="/migration-data/" class="acct-link">アカウント・記録</a>', {html: true});
-  }});
-  return page.transform(response);
+  }}).transform(response);
 }
 // Screens and writes of the original UI already ported to the Worker
 // (src/screens/). Signed-in only: gate() has already sent everyone else away.
@@ -442,7 +438,7 @@ async function nativeRoute(request, env, url) {
     if (isScreen) return json(await nativeScreenBody(m[1], url.searchParams, ctx));
     if (request.headers.get('origin') !== url.origin) fail(403,'同じサイトから操作してください。');
     if (!(request.headers.get('content-type') || '').startsWith('application/json')) fail(415,'JSONで送ってください。');
-    const read = await nativeInput(request);
+    const read = await nativeInput(request, m[2]);
     if (!read.input) return json(read.body, read.status);
     if (!SHRINKING_ACTIONS.has(m[2]) && !(await d1RoomLeft(env.DB, env))) fail(503, STORAGE_FULL);
     const out = await nativeActionBody(m[2], read.input, ctx);
@@ -504,7 +500,7 @@ export default {
     if(migrationAPI)url.pathname=url.pathname.replace('/migration-api/','/api/');
     // After the switch the menu has its own アカウント page (screens/account.js); the
     // older 「アカウント・記録」 page (/migration-data/) keeps only the passkey settings.
-    if (!url.pathname.startsWith('/api/')) return withWorkerParts(await env.ASSETS.fetch(request), {menu: !allNative(env)});
+    if (!url.pathname.startsWith('/api/')) return withWorkerParts(await env.ASSETS.fetch(request));
     try {
       const path = url.pathname; const method = request.method;
       if (method !== 'GET' && method !== 'POST') fail(405,'対応していない操作です。');

@@ -1518,6 +1518,24 @@
    "verifies": []
   },
   {
+   "id": "dec-ui-1014-account-reminder",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "おすすめの初期画面にワンポイントを出す・「アカウント・記録」のリンクを外す・アカウントにアイコン画像・開幕リマインドを 1 公演 1 枠に・出演欄の括弧の注記で名前が割れるのを直す",
+   "sources": [
+    "cloudflare/src/screens/recommend.js",
+    "cloudflare/src/worker.js",
+    "cloudflare/src/screens/account.js",
+    "cloudflare/src/screens/index.js",
+    "web/app.js",
+    "web/theme.css",
+    "cloudflare/test/account-avatar.test.js",
+    "cloudflare/test/recommend-screen.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-url-app-taguri",
    "type": "decision",
    "status": "adopted",
@@ -5357,6 +5375,16 @@
    "from": "dec-trace-worker",
    "rel": "affects",
    "to": "comp-native-screens"
+  },
+  {
+   "from": "dec-ui-1014-account-reminder",
+   "rel": "depends_on",
+   "to": "new-user-reco-threshold"
+  },
+  {
+   "from": "dec-ui-1014-account-reminder",
+   "rel": "depends_on",
+   "to": "dec-account-cap-counted"
   },
   {
    "from": "dec-url-app-taguri",

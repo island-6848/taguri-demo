@@ -2405,6 +2405,13 @@ function editInPlace(btn, el, ta, row, path, bodyOf, okMsg) {
 // 名前は券に出ている出演（出演順に 8 人まで）・作り手（演出・脚本など 4 人まで）・団体。押すと欄の文に
 // 「、」で足し、もう一度押すと外す。押すたびに保存する（文に出た名前はお気に入りの候補になる・reasons.py）
 const TAG_ROLES = ["作・演出", "作・演出・振付", "演出", "脚本", "作", "脚本・演出", "原作", "振付", "音楽", "作曲"];
+// 出演欄の名前を切り出す。**括弧の中の注記は、区切る前に外す**（起案者の指摘 2026-10-14 ──
+// ミス・サイゴンの「…桐山照史（以上、交互出演）」が「桐山照史（以上」と「交互出演）」に割れていた）。
+// 閉じていない括弧の残り（「（以上」）は捨て、開きの無い「…）」だけの切れ端は名前にしない
+function splitCast(text) {
+  return text.replace(/[（(][^（()）]*[）)]/g, "").split("、")
+    .map(n => n.replace(/[（(].*$/, "").trim()).filter(n => n && !/[）)]/.test(n));
+}
 function noteNames(tk) {
   const out = [], add = (name, kind) => {
     name = name.replace(/\s*ほか\s*\d+\s*名\s*$/, "").trim();
@@ -2414,14 +2421,14 @@ function noteNames(tk) {
   if (lv) {
     const c = lv.cloneNode(true);
     c.querySelectorAll(".n").forEach(n => n.remove());
-    c.textContent.split("、").slice(0, 8).forEach(n => add(n, "出演"));
+    splitCast(c.textContent).slice(0, 8).forEach(n => add(n, "出演"));
   }
   let makers = 0;
   tk.querySelectorAll(".cast .cr").forEach(r => {
     const role = (r.querySelector(".cl")?.textContent || "").trim(), v = r.querySelector(".cv");
     if (!v || (role === "出演" && lv)) return;
     if (role !== "出演" && !TAG_ROLES.includes(role)) return;
-    v.textContent.split("、").forEach(n => { if (role === "出演" || makers++ < 4) add(n, role); });
+    splitCast(v.textContent).forEach(n => { if (role === "出演" || makers++ < 4) add(n, role); });
   });
   const grp = tk.querySelector(".meta .mg")?.textContent.trim();
   if (grp) add(grp, "団体");
@@ -3493,6 +3500,49 @@ document.addEventListener("submit", async ev => {
     if (n) n.textContent = d.display_name || "たぐりの利用者";
   }
 }, true);
+// アイコン画像（起案者の指示 2026-10-14）。**ブラウザで小さくしてから送る**: まん中を正方形に
+// 切り抜いて 160×160 にし、WebP（書けない端末では JPEG）にする。元の写真は送らない（数 MB の写真を
+// そのまま保存すると D1 の無料枠を食う。上限はサーバーが 60,000 文字で確かめる）
+function avatarDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => {
+      const side = Math.min(img.naturalWidth, img.naturalHeight), S = 160;
+      const c = document.createElement("canvas");
+      c.width = S; c.height = S;
+      c.getContext("2d").drawImage(img, (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, S, S);
+      URL.revokeObjectURL(url);
+      let out = c.toDataURL("image/webp", 0.82);
+      if (!out.startsWith("data:image/webp")) out = c.toDataURL("image/jpeg", 0.85);
+      resolve(out);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("画像を読めませんでした")); };
+    img.src = url;
+  });
+}
+function showAvatar(src) {
+  const av = document.querySelector(".acav"), clear = document.querySelector("[data-account-avatar-clear]");
+  if (av) av.innerHTML = src ? '<img src="' + E(src) + '" alt="">' : ico("user", 30);
+  if (clear) clear.hidden = !src;
+}
+document.addEventListener("change", async ev => {
+  const input = ev.target.closest("input[data-account-avatar]");
+  if (!input || !input.files || !input.files[0]) return;
+  const said = document.querySelector("[data-account-avatar-said]"), box = input.closest(".acpic");
+  if (said) said.textContent = "小さくしています…";
+  let url;
+  try { url = await avatarDataUrl(input.files[0]); }
+  catch (e) { if (said) said.textContent = "この画像は読めませんでした。別の画像を選んでください"; return; }
+  finally { input.value = ""; }
+  const d = await post("/api/account", {avatar: url}, box, "アイコンを保存しました");
+  if (d) showAvatar(d.avatar);
+}, true);
+document.addEventListener("click", async ev => {
+  const b = ev.target.closest("[data-account-avatar-clear]");
+  if (!b) return;
+  const d = await post("/api/account", {avatar: ""}, b.closest(".acpic"), "アイコンを外しました");
+  if (d) showAvatar("");
+});
 document.addEventListener("click", async ev => {
   const b = ev.target.closest("[data-account-logout]");
   if (!b) return;

@@ -31,6 +31,9 @@ test('a new account gets no recommendations and is told what to do', async () =>
     assert.equal(got.body.moving, undefined);
     assert.match(got.body.body_html, /<h1>今週のおすすめはありません<\/h1>/);
     assert.doesNotMatch(got.body.body_html, /<article/);
+    // 推薦を出すためのワンポイント (起案者 2026-10-14): what to do, in plain words.
+    assert.match(got.body.body_html, /<h2>おすすめを出すためのワンポイント<\/h2>/);
+    assert.match(got.body.body_html, /観た公演を 2 本以上、評価してください/);
   } finally { sqlite.close(); }
 });
 
@@ -43,6 +46,7 @@ test('a ◎ on a stage recommends the coming stage of the same people, with the 
     const html = (await step(env, a, {get: '/api/screen/recommend'})).body.body_html;
     assert.match(html, /<h1>今週のおすすめ 1 件<\/h1>/);
     assert.match(html, /<article class="ticket recommend" data-stage="101"/);
+    assert.doesNotMatch(html, /おすすめを出すためのワンポイント/);
     assert.match(html, /<span class="sn">No\.01<\/span>/);
     assert.match(html, /<li class="rs b"><span class="net">人物<\/span>出演 <b>俳優甲<\/b><span class="n">（『終わった舞台』）<\/span>/);
     assert.doesNotMatch(html, /<!--(rank|why|poster)-->/);
