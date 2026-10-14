@@ -328,6 +328,7 @@ def load_rated(*, include_unrated: bool = False,
         sv = saved.get(r["key"]) or {}
         r["verdict_source"] = sv.get("verdict_source") or "legacy_unknown"
         r["updated_at"] = sv.get("updated_at") or ""
+        r["aspects"] = sv.get("aspects") or ""          # 気になった所 (user_recommender.ASPECTS)
     con.close()
     return rated
 

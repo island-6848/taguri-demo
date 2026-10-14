@@ -57,8 +57,16 @@ def _public_entry(entry: dict) -> dict:
     return out
 
 
-def build_index(pool: dict[str, dict], fields_by_stage: dict[str, dict], role_group) -> dict:
-    """User-independent material. `pool` is `UR.candidate_pool(...)`."""
+def build_index(pool: dict[str, dict], fields_by_stage: dict[str, dict], role_group,
+                titles: dict[str, str] | None = None) -> dict:
+    """User-independent material. `pool` is `UR.candidate_pool(...)`.
+
+    Kind-of-show tags (UR.stage_tags: form, source, venue) are stored with the
+    credits, as ("#axis", value) pairs with role group "theme", so the Worker
+    reads them through the same tables. `titles` gives titles of past stages
+    (for the form tags); candidates carry their own.
+    """
+    titles = dict(titles or {})
     stages, postings = {}, []
     for sid, entry in pool.items():
         title = entry.get("title") or ""
@@ -66,59 +74,131 @@ def build_index(pool: dict[str, dict], fields_by_stage: dict[str, dict], role_gr
             continue
         period = entry.get("period") or ""
         credits = sorted(set(M.parse_credits(entry.get("fields") or {})))
+        titles.setdefault(sid, title)
+        tags = UR.stage_tags(title, [(entry.get("fields") or {}).get("劇場", "")], credits,
+                             UR.price_texts(entry))
         stages[sid] = {"title": title, "tkey": M.R.title_key(title), "grp": entry.get("group") or "",
+                       "tour": UR.tour_key(title, entry.get("group") or "", credits),
+                       "gkey": RC.nz(entry.get("group") or ""),
                        "start": RC.period_start(period), "end": _period_end(period),
                        "credits": [list(c) for c in credits],
                        "entry": _public_entry(entry)}
         for role, person in credits:
             postings.append((role, person, sid, RC.ROLE_W.get(role, RC.BACKSTAGE_W),
                              role_group(role)))
-    people = {sid: [list(c) for c in sorted(set(M.parse_credits(f)))]
-              for sid, f in fields_by_stage.items() if f}
+        for axis, tag in tags:
+            postings.append((axis, tag, sid, UR.GENRE_W, "theme"))
+    people = {}
+    for sid, f in fields_by_stage.items():
+        if not f:
+            continue
+        credits = sorted(set(M.parse_credits(f)))
+        tags = UR.stage_tags(titles.get(sid, ""), [f.get("劇場", "")], credits,
+                             UR.price_texts(pool.get(sid) or {"fields": f}))
+        people[sid] = [list(c) for c in sorted(set(credits) | set(tags))]
     people = {sid: p for sid, p in people.items() if p}
     return {"stages": stages, "postings": postings, "people": people}
 
 
 # ---------------------------------------------------------------- request time (reference)
 
+SEED_ROLES = ("出演", "演出", "脚本", "作", "原作", "翻訳", "潤色", "構成", "振付", "作曲", "音楽")
+SEED_KINDS = ("人", "原作者")
+MAX_SEED_FAVS = 20
+MAX_SEED_STAGES = 60
+
+
+SEED_GROUP_KINDS = ("団体", "主催")
+SEED_WORK_KINDS = ("作品",)
+
+
+def seeds_from_favourites(postings_for, people_of, favourites: list[dict],
+                          stages_matching=None) -> tuple[list[dict], set]:
+    """Seed productions for the user's favourites (q-favourites-seed).
+
+    People and original authors: the candidate stages crediting them in one of
+    SEED_ROLES. Troupes and producers: stages whose producing company contains
+    the name; works: stages whose title contains it (the matching rules of
+    recommend2.declared_hits, on normalised text: RC.nz / title_key).
+    `stages_matching(groups, works)` returns those stage ids. At most
+    MAX_SEED_FAVS names of each kind; the first MAX_SEED_STAGES stage ids in
+    order; people from rec_people. Returns (seeds, person names to skip).
+    """
+    names = sorted({f["name"] for f in favourites if f.get("kind") in SEED_KINDS})[:MAX_SEED_FAVS]
+    keys = sorted((role, name) for name in names for role in SEED_ROLES)
+    sids = {row[2] for row in postings_for(keys)}
+    groups = sorted({g for f in favourites if f.get("kind") in SEED_GROUP_KINDS
+                     for g in [RC.nz(f["name"])] if len(g) >= 2})[:MAX_SEED_FAVS]
+    works = sorted({w for f in favourites if f.get("kind") in SEED_WORK_KINDS
+                    for w in [M.R.title_key(f["name"])] if len(w) >= 2})[:MAX_SEED_FAVS]
+    if (groups or works) and stages_matching:
+        sids |= set(stages_matching(groups, works))
+    seeds = []
+    for sid in sorted(sids)[:MAX_SEED_STAGES]:
+        people = people_of(sid)
+        if people:
+            seeds.append({"stage_id": sid, "people": people})
+    return seeds, set(names)
+
+
 def score_from_index(postings_for, stage_of, rated: list[dict], *, multipliers: dict,
-                     today: datetime.date) -> list[dict]:
+                     today: datetime.date, seeds: list[dict] = (), skip: set = frozenset()) -> list[dict]:
     """What the Worker computes per request, using only the index.
 
     `rated`: the user's records with `verdict`, `stage_id`/`key`, `people`
     (from rec_people), `updated_at`, `date`. `postings_for(keys)` returns
     rec_credit rows for (role, person) keys; `stage_of(sid)` returns rec_stage.
     Returns ranked stages with b > 0, ordered as `UR.finish` orders them
-    before tour grouping.
+    before tour grouping. `seeds`/`skip` from `seeds_from_favourites`: the
+    seed stages themselves are left out (they are the favourites' own shows,
+    listed apart).
     """
     rated = UR.independent_ratings(rated)
-    base = sum(r["verdict"] == "◎" for r in rated) / max(len(rated), 1)
-    roster = M.build_roster(rated, lambda v: float(v == "◎"))
-    # n > 0 and o > 0 are required for a positive part, so only ◎ people are read.
-    keys = sorted(k for k, (n, o) in roster.items() if n and o)
+    values, _scale = UR.person_values(rated, seeds, skip)
+    seeded = {r["stage_id"] for r in seeds}
+    # person-graded-v2: everyone the user has a non-zero value for can raise or
+    # lower a show, so their postings are read.
+    keys = sorted(k for k, (n, v) in values.items() if v)
     by_stage: dict[str, list] = {}
     for role, person, sid, role_w, group in postings_for(keys):
-        n, o = roster[(role, person)]
-        contrib = (o + M.SMOOTH_A) / (n + M.SMOOTH_B) - base
-        contrib *= n / (n + M.CONF_K) * role_w * multipliers.get(group, 1.0)
-        if contrib > 0:
-            by_stage.setdefault(sid, []).append([round(contrib, 6), role, person, n, group])
+        n, value = values[(role, person)]
+        contrib = round(value * (role_w * multipliers.get(group, 1.0)), 6)
+        if contrib:
+            by_stage.setdefault(sid, []).append([contrib, role, person, n, group])
+    # person-ordinal-v3: kind-of-show tags ("#axis") add their mean; people
+    # add the strongest 3 up and 3 down (UR.b_score).
     out, iso = [], today.isoformat()
-    for sid, parts in by_stage.items():
+    for sid, all_parts in by_stage.items():
         st = stage_of(sid)
-        if st is None or (st["end"] and st["end"] < iso):
+        if sid in seeded or st is None or (st["end"] and st["end"] < iso):
             continue
         if st["start"] and st["start"] <= iso:
             continue                     # already running: "started", not "ranked"
-        parts.sort(key=lambda p: (-p[0], p[1], p[2]))
-        b = round(sum(p[0] for p in parts[:M.TOP_N]), 6)
+        people = [p for p in all_parts if not p[1].startswith("#")]
+        kinds = sorted((p for p in all_parts if p[1].startswith("#")), key=lambda p: (p[1], p[2]))
+        parts = sorted((p for p in people if p[0] > 0), key=lambda p: (-p[0], p[1], p[2]))
+        negative = sorted((p for p in people if p[0] < 0), key=lambda p: (p[0], p[1], p[2]))
+        b = UR.b_score(parts, negative, kinds)
         if b <= 0:
             continue
-        strong = sum(multipliers.get(p[4], 1.0) for p in parts if p[1] == "出演" or p[3] >= 2)
-        out.append({"stage_id": sid, "b": b, "strong": strong,
+        out.append({"stage_id": sid, "b": b, "strong": b, "tour": st.get("tour") or "",
                     "parts": [p[:4] for p in parts]})
     out.sort(key=lambda c: (-c["strong"], -c["b"], c["stage_id"]))
     return out
+
+
+def collapse_ranked(ranked: list[dict], top: int) -> list[dict]:
+    """The Worker's tour grouping of score_from_index's output (UR.collapse_tours
+    on the index): the first `top` productions, each with the stage ids of its
+    other tour venues in rank order."""
+    groups: dict = {}
+    for c in ranked:
+        key = c.get("tour") or "stage:" + c["stage_id"]
+        if key in groups:
+            groups[key]["tours"].append(c["stage_id"])
+        else:
+            groups[key] = {"stage_id": c["stage_id"], "tours": []}
+    return list(groups.values())[:top]
 
 
 def memory_access(index: dict):
@@ -128,6 +208,18 @@ def memory_access(index: dict):
         by_key.setdefault((row[0], row[1]), []).append(row)
     return (lambda keys: [r for k in keys for r in by_key.get(k, [])],
             lambda sid: index["stages"].get(sid))
+
+
+def memory_matching(index: dict):
+    """stages_matching(groups, works) over the in-memory index."""
+    return lambda groups, works: sorted(
+        sid for sid, st in index["stages"].items()
+        if any(g in st["gkey"] for g in groups) or any(w in st["tkey"] for w in works))
+
+
+def memory_people(index: dict):
+    """people_of(sid) over the in-memory index (rec_people)."""
+    return lambda sid: index["people"].get(sid)
 
 
 # ---------------------------------------------------------------- title search (reference)
@@ -205,10 +297,10 @@ def sql_access(con, ver: str, counter: dict | None = None):
         return out
 
     def stage_of(sid):
-        row = con.execute("SELECT start,end FROM rec_stage WHERE ver=? AND stage_id=?",
+        row = con.execute("SELECT start,end,tour FROM rec_stage WHERE ver=? AND stage_id=?",
                           (ver, sid)).fetchone()
         counter["rows"] += row is not None
-        return {"start": row[0], "end": row[1]} if row else None
+        return {"start": row[0], "end": row[1], "tour": row[2]} if row else None
 
     return postings_for, stage_of
 
@@ -254,18 +346,58 @@ def _inserts(table: str, cols: str, rows: list[tuple]) -> list[str]:
     return out
 
 
-def to_sql(index: dict, ver: str) -> list[str]:
+ONBOARDING_SIZE = 40
+
+
+def onboarding_list(index: dict, today: datetime.date, size: int = ONBOARDING_SIZE) -> list[str]:
+    """Stages already on (or over) to ask a new user about first (q-first-rating-onboarding).
+
+    Greedy cover of the coming catalogue: each pick adds the most weight of
+    people and kind tags not yet covered, a key weighing as many coming stages
+    as credit it. Rating these first gives the recommender values for the
+    people it will have to rank (eval-onboarding-selection; Rashid et al.
+    2002). Uses public catalogue fields only; ties go to the smaller stage id.
+    """
+    iso = today.isoformat()
+    coming = {sid for sid, st in index["stages"].items() if st["start"] and st["start"] > iso}
+    weight: dict = {}
+    for role, person, sid, *_ in index["postings"]:
+        if sid in coming:
+            weight[(role, person)] = weight.get((role, person), 0) + 1
+    keys_of: dict = {}
+    for role, person, sid, *_ in index["postings"]:
+        if sid not in coming and index["stages"][sid]["start"]:
+            keys_of.setdefault(sid, set()).add((role, person))
+    covered: set = set()
+    out = []
+    for _ in range(min(size, len(keys_of))):
+        best, gain = None, 0
+        for sid in sorted(keys_of):
+            g = sum(weight.get(k, 0) for k in keys_of[sid] - covered)
+            if g > gain:
+                best, gain = sid, g
+        if best is None:
+            break
+        out.append(best)
+        covered |= keys_of.pop(best)
+    return out
+
+
+def to_sql(index: dict, ver: str, onboarding: list[str] | None = None) -> list[str]:
     """Insert `ver`, switch to it, then drop other versions (in that order)."""
     dumps = lambda v: json.dumps(v, ensure_ascii=False, sort_keys=True)
     stmts = [f"DELETE FROM {t} WHERE ver={_q(ver)};" for t in TABLES]
-    stmts += _inserts("rec_stage", "ver,stage_id,title,tkey,grp,start,end,credits,entry", [
-        (ver, sid, s["title"], s["tkey"], s["grp"], s["start"], s["end"], dumps(s["credits"]),
+    stmts += _inserts("rec_stage", "ver,stage_id,title,tkey,grp,tour,gkey,start,end,credits,entry", [
+        (ver, sid, s["title"], s["tkey"], s["grp"], s["tour"], s["gkey"], s["start"], s["end"], dumps(s["credits"]),
          dumps(s["entry"])) for sid, s in sorted(index["stages"].items())])
     stmts += _inserts("rec_credit", "ver,role,person,stage_id,role_w,role_group",
                       [(ver, *r) for r in sorted(set(index["postings"]))])
     stmts += _inserts("rec_people", "ver,stage_id,people",
                       [(ver, sid, dumps(p)) for sid, p in sorted(index["people"].items())])
     stmts += _inserts("rec_gram", "ver,gram,part,entries", gram_rows(index, ver))
+    if onboarding is not None:
+        stmts.append("INSERT INTO rec_meta(k,v) VALUES('onboarding',"
+                     f"{_q(dumps({'ver': ver, 'ids': onboarding}))}) ON CONFLICT(k) DO UPDATE SET v=excluded.v;")
     stmts.append(f"INSERT INTO rec_meta(k,v) VALUES('current',{_q(ver)}) "
                  "ON CONFLICT(k) DO UPDATE SET v=excluded.v;")
     stmts += [f"DELETE FROM {t} WHERE ver<>{_q(ver)};" for t in TABLES]
@@ -305,6 +437,9 @@ def main() -> int:
     p = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     p.add_argument("--output", required=True, type=Path, help="SQL for wrangler d1 execute --file")
     p.add_argument("--stats", type=Path, help="write size statistics as JSON")
+    p.add_argument("--today", type=datetime.date.fromisoformat,
+                   default=(datetime.datetime.utcnow() + datetime.timedelta(hours=9)).date(),
+                   help="date (JST) splitting stages to ask about from the coming ones")
     a = p.parse_args()
     import app as APP
     import digest as DG
@@ -316,8 +451,17 @@ def main() -> int:
     pool = UR.candidate_pool(raw, DG.all_candidates())
     if not pool:
         p.error("no candidates under data/; fetch the catalogue first")
-    index = build_index(pool, M._fields_by_stage(), APP.group_of)
-    stmts = to_sql(index, version_of(index))
+    # Titles of past stages for the form tags (public page titles only).
+    titles = {}
+    linked = ROOT / "data" / "credits" / "linked.jsonl"
+    if linked.exists():
+        for line in linked.read_text(encoding="utf-8").split("\n"):
+            if line.strip():
+                r = json.loads(line)
+                if r.get("matched") and r.get("stage_id") and r.get("page_title"):
+                    titles.setdefault(str(r["stage_id"]), r["page_title"])
+    index = build_index(pool, M._fields_by_stage(), APP.group_of, titles)
+    stmts = to_sql(index, version_of(index), onboarding_list(index, a.today))
     body = "\n".join(stmts) + "\n"
     with os.fdopen(os.open(a.output, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), "w") as out:
         out.write(body)

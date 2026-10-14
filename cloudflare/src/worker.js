@@ -1,8 +1,9 @@
 import {isOriginalRoute, originalUI} from './original-ui.js';
 import {verifyIdToken, isAuthError} from './firebase-auth.js';
 import {passkeyRoutes} from './passkey.js';
-import {scoreFromIndex, d1Access} from './recommend.js';
+import {scoreFromIndex, d1Access, gradeOf, seedsFromFavourites, collapseRanked, cleanAspects, SEED_KINDS, SEED_ROLES, MAX_SEED_FAVS, cmp} from './recommend.js';
 import {searchIndex, d1Search} from './stage-search.js';
+import {chooseVariant} from './reco-gate.js';
 import {R2_READS_CAP, r2ReadAllowed} from './free-tier.js';
 import {SCREEN_TABLES, nativeScreen, nativeAction, screen as nativeScreenBody, action as nativeActionBody, readInput as nativeInput} from './screens/index.js';
 const MAX_BODY = 262144;
@@ -20,12 +21,19 @@ function string(value, max, required = false) {
 }
 function record(value) {
   if (!value || typeof value !== 'object') fail(400, '記録を確認してください。');
-  const r = {id: string(value.id ?? crypto.randomUUID(), 100, true), title: string(value.title, 500, true), date: string(value.date, 10, true), time: string(value.time ?? '', 5), venue: string(value.venue ?? '', 300), rating: string(value.rating ?? '', 2), note: string(value.note ?? '', 4000), stage_id: string(value.stage_id ?? '', 100)};
+  const r = {id: string(value.id ?? crypto.randomUUID(), 100, true), title: string(value.title, 500, true), date: string(value.date, 10, true), time: string(value.time ?? '', 5), venue: string(value.venue ?? '', 300), rating: string(value.rating ?? '', 5), note: string(value.note ?? '', 4000), stage_id: string(value.stage_id ?? '', 100)};
   if (r.stage_id && !/^[A-Za-z0-9_-]+$/.test(r.stage_id)) fail(400,'公演の結び付けを確認してください。');
   const parsed = new Date(`${r.date}T00:00:00Z`);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(r.date) || Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0,10) !== r.date) fail(400,'日付を確認してください。');
   if (r.time && !/^([01]\d|2[0-3]):[0-5]\d$/.test(r.time)) fail(400,'時刻を確認してください。');
-  if (!['','◎','○','△','×'].includes(r.rating)) fail(400,'評価を確認してください。');
+  // ◎○△× or "value/levels" on a scale the user chose (2–11 levels, e.g. "4/5").
+  if (r.rating && !gradeOf(r.rating)) fail(400,'評価を確認してください。');
+  // 詳細: "code" = a trouble, "+code" = good; known codes only, stored as
+  // comma-separated text in a fixed order. An array, or the text /api/state returns.
+  const raw = value.aspects ?? [];
+  if (!(Array.isArray(raw) ? raw.length <= 16 && raw.every(a => typeof a === 'string') : typeof raw === 'string' && raw.length <= 200)) fail(400,'詳細を確認してください。');
+  r.aspects = cleanAspects(raw);
+  if (r.aspects === null) fail(400,'詳細を確認してください。');
   return r;
 }
 function favourite(value) {
@@ -139,6 +147,7 @@ async function deleteAccount(request, env, uid, input) {
 // to (interest / no / owned) are left out, as the Python app moves them to
 // other lists. Tour grouping and impression preferences are not ported yet.
 const RECOMMEND_TOP = 15;
+const RECOMMENDER = 'person-ordinal-v3+fav2+asp1+tour1';   // +fav2: favourites (people, troupes, works) as fading pseudo ratings; +asp1: 詳細; +tour1: one slot per tour
 const jstToday = () => new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
 // Served from rec_cache unless the index version, the date, or the user's
 // records/reactions changed since it was computed (a few rows read per view).
@@ -146,7 +155,8 @@ export async function recommendFor(db, uid, today = jstToday()) {
   const ver = (await db.prepare("SELECT v FROM rec_meta WHERE k='current'").first())?.v;
   if (!ver) return {ready: false, items: []};
   const st = await db.prepare('SELECT (SELECT count(*) FROM records WHERE user_id=?1) AS rn, (SELECT max(updated_at) FROM records WHERE user_id=?1) AS rm, (SELECT count(*) FROM reactions WHERE user_id=?1) AS an, (SELECT max(updated_at) FROM reactions WHERE user_id=?1) AS am').bind(uid).first();
-  const stamp = [ver, today, st.rn, st.rm, st.an, st.am].join('|');
+  // RECOMMENDER names the scoring rules: changing them must not serve old results.
+  const stamp = [RECOMMENDER, ver, today, st.rn, st.rm, st.an, st.am].join('|');
   const cached = await db.prepare('SELECT body FROM rec_cache WHERE user_id=? AND stamp=?').bind(uid, stamp).first();
   if (cached) return {...JSON.parse(cached.body), cached: true};
   const body = await computeRecommendations(db, uid, ver, today);
@@ -155,28 +165,46 @@ export async function recommendFor(db, uid, today = jstToday()) {
   return {...body, cached: false};
 }
 async function computeRecommendations(db, uid, ver, today) {
-  const records = (await db.prepare("SELECT id,rating,COALESCE(stage_id,'') AS stage_id,date,updated_at FROM records WHERE user_id=? AND rating<>''").bind(uid).all()).results;
+  const records = (await db.prepare("SELECT id,rating,COALESCE(stage_id,'') AS stage_id,date,updated_at,aspects FROM records WHERE user_id=? AND rating<>''").bind(uid).all()).results;
   const access = d1Access(db, ver);
   const linked = [...new Set(records.map(r => r.stage_id).filter(Boolean))];
   const people = await access.peopleFor(linked);
   // updated_at is epoch seconds here; as text it orders like the Python timestamps.
-  const rated = records.map(r => ({key: r.id, stage_id: r.stage_id, verdict: r.rating, date: r.date,
+  const rated = records.map(r => ({key: r.id, stage_id: r.stage_id, verdict: r.rating, date: r.date, aspects: r.aspects,
     updated_at: new Date(r.updated_at * 1000).toISOString(), people: people.get(r.stage_id) || []}));
-  const ranked = await scoreFromIndex({...access, rated, multipliers: {}, today});
+  // 裏の答え合わせ: use a variant of the rules only if it clearly predicted
+  // this user's own later ratings better (src/reco-gate.js). Kept out of the
+  // answer shown on screen.
+  const gate = chooseVariant(rated);
+  // Favourite people's productions count as pseudo ratings that fade as real
+  // ratings come in (q-favourites-seed); their own shows are left out here.
+  const favourites = (await db.prepare('SELECT name,kind FROM favourites WHERE user_id=? ORDER BY kind,name LIMIT 200').bind(uid).all()).results;
+  const {seeds, skip} = await seedsFromFavourites(access, favourites);
+  const ranked = await scoreFromIndex({...access, rated: gate.aspects ? rated : rated.map(r => ({...r, aspects: []})),
+    multipliers: gate.multipliers, today, seeds, skip});
   const reacted = new Set((await db.prepare('SELECT stage_id FROM reactions WHERE user_id=?').bind(uid).all()).results.map(r => r.stage_id));
-  const top = ranked.filter(c => !reacted.has(c.stage_id)).slice(0, RECOMMEND_TOP);
+  // One slot per production: a tour's other venues ride along with its
+  // best-ranked one (user_recommender.collapse_tours), after reacted stages
+  // are left out, as the Python screen does.
+  const byId = new Map(ranked.map(c => [c.stage_id, c]));
+  const top = collapseRanked(ranked.filter(c => !reacted.has(c.stage_id)), RECOMMEND_TOP);
   const entries = new Map();
-  if (top.length) {
-    const ids = top.map(c => c.stage_id);
-    const rows = (await db.prepare(`SELECT stage_id,title,grp,start,end,entry FROM rec_stage WHERE ver=? AND stage_id IN (${ids.map(() => '?').join(',')})`).bind(ver, ...ids).all()).results;
+  const ids = top.flatMap(g => [g.stage_id, ...g.tours]);
+  for (let i = 0; i < ids.length; i += 98) {
+    const chunk = ids.slice(i, i + 98);
+    const rows = (await db.prepare(`SELECT stage_id,title,grp,start,end,entry FROM rec_stage WHERE ver=? AND stage_id IN (${chunk.map(() => '?').join(',')})`).bind(ver, ...chunk).all()).results;
     for (const r of rows) entries.set(r.stage_id, r);
   }
+  const venue = id => {
+    const e = entries.get(id) || {}, entry = JSON.parse(e.entry || '{}');
+    return {stage_id: id, start: e.start || '', end: e.end || '', theater: entry.theater || '', pref: entry.pref || '', url: entry.url || ''};
+  };
   return {ready: true, n_rated: records.length, n_linked: records.filter(r => people.get(r.stage_id)?.length).length,
-    rows_read: access.counter.rows, items: top.map(c => {
-      const e = entries.get(c.stage_id) || {}, entry = JSON.parse(e.entry || '{}');
-      return {stage_id: c.stage_id, title: e.title || '', group: e.grp || '', start: e.start || '', end: e.end || '',
-        theater: entry.theater || '', pref: entry.pref || '', url: entry.url || '', score: c.b,
-        reasons: c.parts.slice(0, 3).map(([, role, person, n]) => ({role, person, n}))};
+    rows_read: access.counter.rows, variant: gate.variant, n_seeds: seeds.length, items: top.map(g => {
+      const c = byId.get(g.stage_id), e = entries.get(g.stage_id) || {};
+      return {...venue(g.stage_id), title: e.title || '', group: e.grp || '', score: c.b,
+        reasons: c.parts.slice(0, 3).map(([, role, person, n]) => ({role, person, n})),
+        tours: g.tours.map(venue)};
     })};
 }
 // How old the delivered catalogue is: dates and counts only, written by
@@ -212,11 +240,37 @@ export async function stagesFor(db, params) {
   }
   return {ready: true, items: await access.stages(ids)};
 }
+// Past stages to ask a new user about first (q-first-rating-onboarding): the
+// favourites' stages that have already opened, then the batch's list of
+// stages covering the coming catalogue (build_recommend_index.onboarding_list),
+// leaving out stages the user has already recorded. Which screen asks, and
+// only on the first rating, is up to the screens.
+const ONBOARDING_TOP = 20;
+export async function onboardingFor(db, uid, today = jstToday()) {
+  const ver = (await db.prepare("SELECT v FROM rec_meta WHERE k='current'").first())?.v;
+  if (!ver) return {ready: false, items: []};
+  let listed = [];
+  try {
+    const meta = JSON.parse((await db.prepare("SELECT v FROM rec_meta WHERE k='onboarding'").first())?.v || '{}');
+    if (meta.ver === ver && Array.isArray(meta.ids)) listed = meta.ids.filter(id => typeof id === 'string');
+  } catch { listed = []; }
+  const access = d1Access(db, ver);
+  const favourites = (await db.prepare('SELECT name,kind FROM favourites WHERE user_id=? ORDER BY kind,name LIMIT 200').bind(uid).all()).results;
+  const names = [...new Set(favourites.filter(f => SEED_KINDS.includes(f.kind)).map(f => f.name))].sort(cmp).slice(0, MAX_SEED_FAVS);
+  const favSids = names.length ? [...new Set((await access.postingsFor(names.flatMap(n => SEED_ROLES.map(role => [role, n])))).map(r => r[2]))].sort(cmp) : [];
+  const runs = await access.stagesFor(favSids);
+  const opened = favSids.filter(sid => runs.get(sid)?.start && runs.get(sid).start <= today);
+  const recorded = new Set((await db.prepare('SELECT stage_id FROM records WHERE user_id=? AND stage_id IS NOT NULL').bind(uid).all()).results.map(r => r.stage_id));
+  const fav = new Set(opened);
+  const ids = [...new Set([...opened, ...listed])].filter(sid => !recorded.has(sid)).slice(0, ONBOARDING_TOP);
+  const items = await d1Search(db, ver).stages(ids);
+  return {ready: true, items: items.map(i => ({...i, because: fav.has(i.stage_id) ? 'favourite' : 'catalogue'}))};
+}
 function upsert(db, uid, r) {
-  return db.prepare('INSERT INTO records(user_id,id,title,date,time,venue,rating,note,stage_id,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(user_id,id) DO UPDATE SET title=excluded.title,date=excluded.date,time=excluded.time,venue=excluded.venue,rating=excluded.rating,note=excluded.note,stage_id=excluded.stage_id,updated_at=excluded.updated_at').bind(uid,r.id,r.title,r.date,r.time,r.venue,r.rating,r.note,r.stage_id||null,now());
+  return db.prepare('INSERT INTO records(user_id,id,title,date,time,venue,rating,note,stage_id,aspects,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(user_id,id) DO UPDATE SET title=excluded.title,date=excluded.date,time=excluded.time,venue=excluded.venue,rating=excluded.rating,note=excluded.note,stage_id=excluded.stage_id,aspects=excluded.aspects,updated_at=excluded.updated_at').bind(uid,r.id,r.title,r.date,r.time,r.venue,r.rating,r.note,r.stage_id||null,r.aspects,now());
 }
 async function state(db, uid) {
-  const result = await db.batch([db.prepare("SELECT id,title,date,time,venue,rating,note,COALESCE(stage_id,'') AS stage_id FROM records WHERE user_id=? ORDER BY date DESC,id LIMIT 500").bind(uid),db.prepare('SELECT name,kind FROM favourites WHERE user_id=? ORDER BY kind,name LIMIT 200').bind(uid),db.prepare('SELECT stage_id,status FROM reactions WHERE user_id=? ORDER BY stage_id LIMIT 500').bind(uid)]);
+  const result = await db.batch([db.prepare("SELECT id,title,date,time,venue,rating,note,COALESCE(stage_id,'') AS stage_id,aspects FROM records WHERE user_id=? ORDER BY date DESC,id LIMIT 500").bind(uid),db.prepare('SELECT name,kind FROM favourites WHERE user_id=? ORDER BY kind,name LIMIT 200').bind(uid),db.prepare('SELECT stage_id,status FROM reactions WHERE user_id=? ORDER BY stage_id LIMIT 500').bind(uid)]);
   return {version:2,records:result[0].results,favourites:result[1].results,reactions:result[2].results};
 }
 const passkey = passkeyRoutes({fail, json, token, hash, now, body, cookie, sessionCookie, currentUser, startSession});
@@ -377,11 +431,12 @@ export default {
       if (method === 'GET' && ['/api/state','/api/export'].includes(path)) return json(await state(env.DB,uid));
       if (method === 'GET' && path === '/api/recommend') return json(await recommendFor(env.DB, uid));
       if (method === 'GET' && path === '/api/stages') return json(await stagesFor(env.DB, url.searchParams));
+      if (method === 'GET' && path === '/api/onboarding') return json(await onboardingFor(env.DB, uid));
       if (method !== 'POST') fail(404,'見つかりませんでした。');
       const input = await body(request);
       // Writes that change what is recommended drop the cached result (the stamp
       // alone misses two edits within the same second).
-      if (['/api/record','/api/record/delete','/api/reaction','/api/import'].includes(path))
+      if (['/api/record','/api/record/delete','/api/reaction','/api/favourite','/api/import'].includes(path))
         await env.DB.prepare('DELETE FROM rec_cache WHERE user_id=?').bind(uid).run();
       if (path === '/api/record') {
         const r = record(input);
