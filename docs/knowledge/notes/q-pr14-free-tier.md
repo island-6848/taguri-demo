@@ -21,3 +21,8 @@ links:
 - Worker の rate limiting の binding が無料プランで使えるか（公式で確かめる）
 - 消した人の記録が暗号化した控えに最大 30 日残る（Time Travel は 7 日）── アカウントの削除の説明の文言を直す（q-restore-redelete）
 - CPU が 10 ms を越える画面は、有料にせず Render のままにする（dec-free-tier-only）
+
+追記（同じセッション、2026-10-14 05:15 UTC の知らせ。情報として扱う）: PR #14 の fc3d41b で、取得の段 5（ステイジーズカレンダー）が毎回 `--credits` を付け、公式サイトの出演・スタッフを取るようになった（トップに名前が無ければ同じサイトのキャスト・スタッフのページを 2 枚まで。x.com などは辿らない。polite_http のまま）。
+- data/credits/official_pages（state ブランチ）が辿る分だけ増える → q-crawler-state-size に効く
+- 取得の時間は初回だけ延びる（以前の実測: 控えの無い 305 件で 63 秒）。2 回目からは新しい公演の分だけ。CATALOG_MINUTES（毎日 15 分）には収まる見込みだが、取り込んだ最初の実行で job の分数を確かめる
+- 取得の機械（taguri-crawler）の catalog.yml は PR #14 が入って写すまで変わらないので、今夜の実行には載らない。写した後の実行で、ログの「クレジットが取れたのは n/m 件」も記録する
