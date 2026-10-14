@@ -28,11 +28,13 @@ export const h2 = (name, text, extra = '') => `<h2>${{ico(name, 18)}}<span>${{te
 
 sys.path.insert(0, str(ROOT / "tools" / "review"))
 import stage_calendar as SC                                          # noqa: E402
+import chronicle as CR                                               # noqa: E402
 
 # The <script> the Python calendar puts after its grid (inert once inserted with innerHTML,
 # kept so the screen's HTML stays the same as the Python one).
-CAL_JS = ("// stage_calendar.JS, written by scripts/write_icons.py (do not edit).\n"
-          f"export const CALENDAR_JS = {json.dumps(SC.JS, ensure_ascii=False)};\n")
+CAL_JS = ("// stage_calendar.JS and chronicle.JS, written by scripts/write_icons.py (do not edit).\n"
+          f"export const CALENDAR_JS = {json.dumps(SC.JS, ensure_ascii=False)};\n"
+          f"export const CHRONICLE_JS = {json.dumps(CR.JS, ensure_ascii=False)};\n")
 
 if __name__ == "__main__":
     (ROOT / "cloudflare" / "src" / "screens" / "icons.js").write_text(SRC, encoding="utf-8")

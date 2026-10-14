@@ -6,6 +6,7 @@ import {autoLink, pastStages} from './autolink.js';
 import {loadDeclared} from './lists.js';
 import {strip} from './py.js';
 import {body as traceBody} from './trace.js';
+import {panel as chroniclePanel} from './chronicle.js';
 
 const GRADES = ['◎', '○', '△', '×'];
 const norm = s => strip(String(s || '').normalize('NFKC'));
@@ -61,4 +62,12 @@ ${main}`;
   return {title: 'たどる', body_html: body};
 }
 
-export const recordScreens = {screens: {trace: traceScreen}, actions: {}};
+export async function chronicleScreen(_params, ctx) {
+  const d = await recordsBase(ctx);
+  const main = chroniclePanel(d.seen, d.rated) || '<section class="card"><p class="empty">まだ年表を描けるだけの記録がありません。上演日の分かる記録が増えると出るようになります。</p></section>';
+  return {title: '観劇史年表', body_html: `<h1>観劇史年表 ── 何が始まった年か</h1>
+${recordsLede(d)}
+${main}`};
+}
+
+export const recordScreens = {screens: {trace: traceScreen, chronicle: chronicleScreen}, actions: {}};

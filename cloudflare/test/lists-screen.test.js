@@ -227,3 +227,20 @@ test('たどる: a name seen in two stages becomes a thread', async () => {
     assert.match(thr, /<div class="thr"><svg /);
   } finally { sqlite.close(); }
 });
+
+test('観劇史年表: the years of the works seen', async () => {
+  const {env, sqlite} = withIndex();
+  const a = await signIn(env);
+  try {
+    assert.match((await screen(env, a, 'chronicle')).body_html, /まだ年表を描けるだけの記録がありません/);
+    for (const [t, d, v] of [['一の舞台', '2025-03-01', '◎'], ['二の舞台', '2026-02-01', '○'], ['三の舞台', '2026-05-01', '◎']]) {
+      const key = (await step(env, a, {post: '/api/add_work', body: {title: t, date: d}})).body.work_key;
+      await step(env, a, {post: '/api/rate', body: {work_key: key, verdict: v}});
+    }
+    const html = (await screen(env, a, 'chronicle')).body_html;
+    assert.match(html, /<h1>観劇史年表 ── 何が始まった年か<\/h1>/);
+    assert.match(html, /観劇の年表<\/span><span class="badge part">3 作品<\/span>/);
+    assert.match(html, /<div class="chfig"><svg /);
+    assert.match(html, /<b>2026<\/b><i>2 作品・のべ 2 回<\/i>/);
+  } finally { sqlite.close(); }
+});
