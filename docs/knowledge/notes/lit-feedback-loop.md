@@ -8,6 +8,7 @@ sources:
   - https://www.arxiv.org/abs/1710.11214
 links:
   - affects: q-favourites-seed
+  - supports: q-interest-seed
   - supports: lit-mnar
 ---
 How Algorithmic Confounding in Recommendation Systems Increases Homogeneity and Decreases Utility（RecSys 2018）。シミュレーションで、推薦に影響された行動のデータで学ぶと、利用者の行動が均一になり、役に立つ度合いは上がらなかった。そのデータで評価すると、元の推薦に似た方法が有利に見える。初期の推薦の偏りが、その後の記録と推薦に残りうる根拠。要旨で確かめた。

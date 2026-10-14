@@ -1436,10 +1436,11 @@ def ticket(c: dict, *, rank=None, mode: str = "recommend", note: str = "",
     # **「興味あり」の一覧では、三択を答え直す口として畳む。** ここに並ぶ 1 枚はどれも
     # すでに「興味あり」を押した後なので、三択がフルサイズで出続ける理由が無い ──
     # 「評価一覧」の「評価を押し直す」と同じ形にそろえる（起案者の指摘・2026-08-26）
-    if mode in ("favourite", "owned"):
+    if mode == "favourite":
         act_btns = ""
-    elif mode == "interest":
-        act_btns = ('<button class="wnb" data-btns-open="1">回答を変える</button>'
+    elif mode in ("interest", "owned"):
+        # 答えた公演は「回答を直す」1 つ（起案者の指示 2026-10-14）。持っているも答えのうち
+        act_btns = ('<button class="wnb" data-btns-open="1">回答を直す</button>'
                     + buttons(c["stage_id"], hidden=True))
     elif mode == "ended":
         # **上演が終わった公演には、三択ではなく登録の口を出す。**「興味あり」等は
