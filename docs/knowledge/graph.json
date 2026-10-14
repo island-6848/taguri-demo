@@ -735,6 +735,20 @@
    ]
   },
   {
+   "id": "dec-deck-algo-worker",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "成果報告の資料の推薦の章を、本番の Worker の計算（person-ordinal-v3+fav3+asp1+tour1+why1）に合わせて書き直した",
+   "sources": [
+    "docs/000003-final-presentation-taguri.html",
+    "cloudflare/src/recommend.js",
+    "cloudflare/src/reco-gate.js",
+    "cloudflare/src/screens/recommend.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-defer-workers",
    "type": "decision",
    "status": "superseded",
@@ -4572,6 +4586,26 @@
    "from": "dec-d1-catalogue-delivery",
    "rel": "raises",
    "to": "q-catalogue-python-snapshot-vs-d1"
+  },
+  {
+   "from": "dec-deck-algo-worker",
+   "rel": "depends_on",
+   "to": "impl-person-ordinal-v3"
+  },
+  {
+   "from": "dec-deck-algo-worker",
+   "rel": "depends_on",
+   "to": "impl-favourite-seed"
+  },
+  {
+   "from": "dec-deck-algo-worker",
+   "rel": "depends_on",
+   "to": "impl-hidden-gate"
+  },
+  {
+   "from": "dec-deck-algo-worker",
+   "rel": "depends_on",
+   "to": "dec-account-cap-counted"
   },
   {
    "from": "dec-defer-workers",
