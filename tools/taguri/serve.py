@@ -574,7 +574,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     # after a rating/link/delete invalidated it.
                     body = APP._recommend_body(user_id, prefs)
                     srv.mark_viewed(user_id, "recommend_pref" if prefs else "recommend")
-                    result = {"ok": True, "title": "今週のおすすめ", "body_html": body}
+                    result = {"ok": True, "title": "今週のおすすめ", "body_html": body,
+                              # 未評価を促すポップアップのため（日付だけ。app.js の unratedNudge）
+                              "unrated_ends": APP.unrated_ends(user_id)}
                     self._json(200, result)
                     return
                 if path == "/api/screen/reminder":

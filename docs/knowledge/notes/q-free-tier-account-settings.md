@@ -1,7 +1,7 @@
 ---
 id: q-free-tier-account-settings
 type: question
-status: open
+status: answered
 date: 2026-10-13
 title: 起案者のアカウントの設定で、無料枠を越えても請求されないようになっているか
 links:

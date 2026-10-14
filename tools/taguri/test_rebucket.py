@@ -99,9 +99,9 @@ check("何も押していないお気に入りは favourites に入る",
 check("何も押していないお気に入りは tracking には入らない",
       "母さん、ラブソングです。" not in _titles(out3["tracking"]), None)
 
-# ------------------------------------------------- 「持っている」だけは両立する
-# 起案者の指示（2026-08-26）──「おすすめに出ないようにして（お気に入りには
-# 出ていてよい）」。この例外は残す
+# ------------------------------------------------- 「持っている」は購入済み公演にだけ出す
+# 起案者の指示（2026-10-14）──「『既に持っている』を押したら、持ってる公演のところだけに
+# 表示されて」。以前（2026-08-26）のお気に入りにも残す例外は取りやめた
 CAND_OWNED = {"stage_id": "999001", "title": "持っているお気に入り公演",
               "a": ['人「テスト」'], "period": "2099/01/01 (木) 〜 2099/01/02 (金)"}
 D_OWNED = {"favourites": [CAND_OWNED], "ranked": [], "others": [], "owned": [],
@@ -109,8 +109,10 @@ D_OWNED = {"favourites": [CAND_OWNED], "ranked": [], "others": [], "owned": [],
 out4 = _rebucket_with({"999001": {"owned": 1}}, D_OWNED)
 check("持っている公演は owned に入る",
       "持っているお気に入り公演" in _titles(out4["owned"]), None)
-check("持っている公演は、お気に入りにも同時に出る（外さない例外）",
-      "持っているお気に入り公演" in _titles(out4["favourites"]), None)
+check("持っている公演は、お気に入りにも出さない",
+      "持っているお気に入り公演" not in _titles(out4["favourites"]), None)
+check("持っている公演は、おすすめ・その他にも出さない",
+      all("持っているお気に入り公演" not in _titles(out4[k]) for k in ("ranked", "others", "tracking")), None)
 
 print(f"{ok} 件通過・{fail} 件失敗")
 sys.exit(1 if fail else 0)

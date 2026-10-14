@@ -409,6 +409,8 @@ function renderScreen(el, activePath, d, exposureSource) {
   if (d.public) applyDemoRestrictions(el);
   renderCrumbBar(activePath, d.title || "");
   infoFromLede(el);
+  if (activePath === "/recommend" && Array.isArray(d.unrated_ends)) unratedNudge(d.unrated_ends);
+  priceFilter(el);
   updateNavActive(activePath);
   fixupSynClamp(el);
   fixupMonthScroll(el);
@@ -600,6 +602,52 @@ function firstSentence(t) {
   if (s.length > 90) s = s.slice(0, 88) + "…";
   return s.length < t.length && !s.endsWith("…") ? s + "…" : s;
 }
+// ---- 料金 ── 表示と絞り込み（起案者の指示 2026-10-14「金額での絞り込みもできるように」）
+// 金額は券ごとの data-yen="最安-最高"（円）。絞り込みは「いちばん安い券がこの金額以下」の公演を残す
+// （学生券など安い券がある公演を消さない）。料金の分からない公演は消さずに残す。選んだ上限はこの端末に覚える
+const YEN_KEY = "taguri.yenMax";
+const YEN_STEPS = [0, 2000, 3000, 4000, 5000, 6000, 8000, 10000];
+function yenOf(t) {
+  const m = /^(\d+)-(\d+)$/.exec(t.dataset.yen || "");
+  return m ? [Number(m[1]), Number(m[2])] : null;
+}
+function yenLabel([lo, hi]) {
+  const f = n => n.toLocaleString("ja-JP");
+  if (hi === 0) return "無料";
+  return lo === hi ? f(lo) + "円" : (lo === 0 ? "無料" : f(lo)) + "〜" + f(hi) + "円";
+}
+function priceFilter(el) {
+  const tickets = [...el.querySelectorAll("article.ticket")];
+  if (!tickets.some(t => t.dataset.yen)) return;
+  const h1 = el.querySelector("h1");
+  if (!h1 || el.querySelector(".yenbar")) return;
+  let cur = 0;
+  try { cur = Number(localStorage.getItem(YEN_KEY) || 0) || 0; } catch (e) { cur = 0; }
+  if (!YEN_STEPS.includes(cur)) cur = 0;
+  const bar = document.createElement("div");
+  bar.className = "yenbar";
+  bar.innerHTML = '<label for="yenmax">料金</label><select id="yenmax">'
+    + YEN_STEPS.map(v => '<option value="' + v + '"' + (v === cur ? " selected" : "") + ">"
+      + (v ? v.toLocaleString("ja-JP") + "円まで" : "すべて") + "</option>").join("")
+    + '</select><span class="yenn" role="status"></span>';
+  const anchor = h1.nextElementSibling && h1.nextElementSibling.matches(".lede, .lead, p") ? h1.nextElementSibling : h1;
+  anchor.after(bar);
+  const apply = () => {
+    const max = Number(bar.querySelector("select").value) || 0;
+    let hidden = 0;
+    el.querySelectorAll("article.ticket").forEach(t => {
+      const y = yenOf(t);
+      const hide = Boolean(max && y && y[0] > max);
+      t.classList.toggle("yenout", hide);
+      if (hide) hidden++;
+    });
+    bar.querySelector(".yenn").textContent = hidden ? hidden + " 件を隠しています（料金の分からない公演は出しています）" : "";
+    try { localStorage.setItem(YEN_KEY, String(max)); } catch (e) { /* 覚えられなくても絞り込みは効く */ }
+  };
+  bar.querySelector("select").addEventListener("change", apply);
+  apply();
+}
+
 function compactTickets(root) {
   root.querySelectorAll("article.ticket.recommend, article.ticket.interest, article.ticket.owned").forEach(t => {
     if (t.classList.contains("cmp")) return;
@@ -669,6 +717,15 @@ function compactTickets(root) {
           + (stops > 1 ? '<span class="mt">ほか ' + (stops - 1) + " 会場</span>" : "") + "</span>" : "");
     }
     const sale = main.querySelector(".sale");
+    // 料金（1 枚あたり）を発売の札の隣に出す（起案者の指示 2026-10-14「チケット代金も…おすすめ画面において」）。
+    // 金額はサーバーが料金の欄から読んだもの（render_recommend.price_range）。読めなかった公演には出さない
+    const yen = yenOf(t);
+    if (yen && sale) {
+      const pr = document.createElement("span");
+      pr.className = "yen";
+      pr.textContent = yenLabel(yen);
+      sale.appendChild(pr);
+    }
     (sale || main.querySelector(".meta")).after(lead);
     // おすすめ理由: 全部出す。WHY_SHOWN 本を超えたら残りを畳む
     const ul = main.querySelector("ul.why:not(.top)");
@@ -798,6 +855,52 @@ document.addEventListener("input", ev => {
   if (said) said.textContent = "まだ確定していません";
 });
 
+// **前におすすめを開いた日から今日までに終わった公演があり、未評価が残っていたら知らせる**
+// （起案者の指示 2026-10-14「以前開いたときから今日開くまでに終わった公演があって未評価があるときは、
+// おすすめを開いた際にポップアップで『未評価が◯件あります』などで促すように」）。
+// 前に開いた日はこの端末に覚える（覚えられない環境では出さないだけ）。同じ日に 2 度は出さない
+const SEEN_KEY = "taguri.recommendSeen";
+function unratedNudge(ends) {
+  const today = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
+  let last = null;
+  try { last = localStorage.getItem(SEEN_KEY); localStorage.setItem(SEEN_KEY, today); } catch (e) { return; }
+  if (!last || last >= today || !ends.length) return;
+  if (!ends.some(d => d > last && d <= today)) return;
+  const old = document.querySelector(".nudge");
+  if (old) old.remove();
+  const box = document.createElement("div");
+  box.className = "nudge";
+  box.setAttribute("role", "dialog");
+  box.setAttribute("aria-labelledby", "nudge-t");
+  box.innerHTML = '<p id="nudge-t"><b>未評価が ' + ends.length + ' 件あります</b></p>'
+    + '<p class="nudge-s">前に開いてから終わった公演があります。観た印象を忘れないうちに評価しませんか。</p>'
+    + '<div class="nudge-b"><button type="button" class="go">評価する</button>'
+    + '<button type="button" class="later">あとで</button></div>';
+  const close = () => { box.remove(); document.removeEventListener("keydown", onKey); };
+  const onKey = ev => { if (ev.key === "Escape") close(); };
+  box.querySelector(".later").addEventListener("click", close);
+  box.querySelector(".go").addEventListener("click", () => { close(); navigate("/rate/unrated", ""); });
+  document.addEventListener("keydown", onKey);
+  document.body.append(box);
+  box.querySelector(".go").focus();
+}
+
+function movedToOwned(tk) {
+  const title = ((tk.querySelector("h3") || {}).textContent || "").trim();
+  tk.classList.add("tomove");
+  setTimeout(() => {
+    const p = document.createElement("p");
+    p.className = "movedto";
+    p.setAttribute("role", "status");
+    p.append("「" + title + "」を購入済み公演に移しました ");
+    const a = document.createElement("a");
+    a.setAttribute("href", "/tickets");
+    a.textContent = "購入済み公演を見る";
+    p.append(a);
+    tk.replaceWith(p);
+  }, matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 450);
+}
+
 document.addEventListener("click", ev => {
   if (!live) return;
   const b = ev.target.closest("button");
@@ -888,9 +991,15 @@ document.addEventListener("click", ev => {
             all[all.length - 1].after(fresh);
             if (window.TaguriExposure) TaguriExposure.refresh(contentEl(), "fill");
             bindNotes(fresh);          // 足した 1 枚の入力欄にも動きを付ける
+            const ys = document.querySelector(".yenbar select");   // 料金の絞り込みを足した 1 枚にも効かせる
+            if (ys) ys.dispatchEvent(new Event("change"));
           }
         }
       }
+      // **「すでに持っている」を押した 1 枚は、この一覧から外して「購入済み公演」へ送る**
+      // （起案者の指示 2026-10-14「押したら、持ってる公演のところだけに表示されて」）。
+      // 外したあとに 1 行だけ残し、行き先へ飛べるようにする（どこへ行ったか分からなくしない）
+      if (b.dataset.v === "owned" && tk && !tk.classList.contains("owned")) movedToOwned(tk);
       // **見送った理由は出すだけで、開かない。** 書く頻度が低い入力なので、
       // 焦点まで移すと「書かないと進めない」ように見える
       if (b.dataset.v === "nointerest") {

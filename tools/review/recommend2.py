@@ -296,6 +296,8 @@ def main() -> int:
     # 詳しい理由は `measure_nets.interest_credits`／`add_interest_roster` を参照
     interest_people = M.interest_credits(react, missed)
     roster = M.add_interest_roster(roster, interest_people, INTEREST_W)
+    # 理由の行に出す具体的な作品名（起案者の指示 2026-10-14。`measure_nets.person_titles`）
+    titles_of = M.person_titles(rated, react)
     # **網 C を入れた。** あらすじの要素は LLM が抽出して確定させたものを読むだけで、
     # ここで LLM を呼ばない（同じ DB から同じ順位が出る性質を壊さない）。
     themes = C.load_themes()
@@ -404,6 +406,8 @@ def main() -> int:
         # 重なりを足す方向は実測で裏づけられている。
         c["b"] = round(sum(p[0] for p in parts[:M.TOP_N]), 4)
         c["why_b"] = parts[:6]
+        # 役職と名前で引く（並べ替え・重みの掛け直しで why_b の順が変わっても崩れない）
+        c["why_b_works"] = {f"{p[1]}\t{p[2]}": titles_of[(p[1], p[2])] for p in parts[:6] if (p[1], p[2]) in titles_of}
         c["n_match"] = len(parts)
         # **効く一致の数。** 起案者の指摘「知っている人がたくさん出ているものから順に」を
         # 素の人数で数えると、**判別力の無い裏方が多いだけの公演が上位に来る**

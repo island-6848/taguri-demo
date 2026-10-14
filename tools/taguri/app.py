@@ -2458,6 +2458,17 @@ def waiting_rows(user_id: str, today: str = "") -> list[dict]:
             and w["last_date"] and w["last_date"] <= today]
 
 
+def unrated_ends(user_id: str, today: str = "") -> list[str]:
+    """未評価の行の、上演が終わった日（観た日）の並び。**日付だけを返す**（題名は返さない）。
+
+    起案者の指示（2026-10-14）「以前開いたときから今日開くまでに終わった公演があって未評価が
+    あるときは、おすすめを開いた際にポップアップで『未評価が◯件あります』などで促すように」。
+    前に開いた日は画面の側（その端末）が覚えていて、この日付の並びと比べて出すかを決める（app.js の
+    unratedNudge）。「すでに持っている」公演は、終わった日に `_promote_owned_tickets` が行にする
+    """
+    return sorted(w["last_date"] for w in waiting_rows(user_id, today))
+
+
 def _react_groups(react: dict) -> dict[str, list[str]]:
     """作品単位（`recommend2.work_key`）→ その作品の反応が乗っている stage_id の一覧。
 
@@ -2750,12 +2761,11 @@ def _rebucket(user_id: str, d: dict) -> dict:
             if done and done <= today:
                 continue
             out["owned"].append(c)
-            # **お気に入りに当たった分は、持っていても外さない**（起案者の指示・
-            # 2026-08-26 ──「おすすめに出ないようにして（お気に入りには出ていて
-            # よい）」）。お気に入りは「読むだけのお知らせ」なので、券を持ったことと
-            # 知らせを読むことは両立する ── **「持っている」だけがこの例外を持つ。**
-            if c.get("a"):
-                out["favourites"].append(c)
+            # **持っている公演は「購入済み公演」にだけ出す**（起案者の指示・2026-10-14 ──
+            # 「『既に持っている』を押したら、持ってる公演のところだけに表示されて、公演が
+            # 終わったら初めて未評価に出るようにして」）。以前（2026-08-26）はお気に入りに
+            # 当たった分をお気に入りにも残していたが、この指示で取りやめた。終わったら
+            # `_promote_owned_tickets` が works の行にし、未評価（`waiting_rows`）に出る
         elif r.get("interest") == 1:
             # **興味ありを押した公演は、お気に入りには重ねない**（起案者の指摘・
             # 2026-08-26 ──「公演カレンダーで同じ公演が興味ありとお気に入りの

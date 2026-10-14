@@ -649,6 +649,18 @@ def cast_block(c: dict) -> str:
             f'<span class="src">［出典: {E(ROLE_SRC)}］</span></div>')
 
 
+WORKS_SHOWN = 3
+
+
+def works_text(works: list, n: int) -> str:
+    """人物の理由に添える「（『作品A』◎・『作品B』興味あり ほか 2 本）」。HTML を返す。"""
+    if not works:
+        return f"（履歴 {int(n)} 本）"
+    shown = [f"『{E(t)}』{E(m)}" for t, m in works[:WORKS_SHOWN]]
+    rest = len(works) - WORKS_SHOWN
+    return "（" + "・".join(shown) + (f" ほか {rest} 本" if rest > 0 else "") + "）"
+
+
 def reason_rows(c: dict) -> str:
     """理由を、網ごとに 1 行ずつ。**出典を必ず添える**（事実であることを読み手が確かめられる）。
 
@@ -690,17 +702,17 @@ def reason_rows(c: dict) -> str:
                  f' title="この登録をやめる">✕</button>' if m else "")
         out.append(f'<li class="rs a"><span class="net">申告</span>{E(w)}'
                    f'<span class="src">［出典: {E(ROLE_SRC)}］</span>{rmbtn}</li>')
+    works_of = c.get("why_b_works") or {}
     for contrib, role, person, n in c.get("why_b", [])[:4]:
-        # **本数を書く。** 「履歴 1 本」と「履歴 8 本」を同じ顔で並べると、偶然を好みとして読ませる
-        #
-        # **◎ を付けた作品だけとは言い切らなくなった**（起案者の指示・2026-08-26 ──
-        # 「観れば良かった」で挙がった人名は興味ありと同じ扱いで名簿に混ぜるようにした
-        # ため。この本数には、観て良かった（◎）作品だけでなく、気になった（興味あり・
-        # 観ればよかった）作品も混ざっている ── どちらの割合かはここでは分からないので、
-        # 「◎ を付けた作品」と言い切る文言のままにしておくと、実際より強い実績に読める
+        # **本数ではなく作品名を書く**（起案者の指示・2026-10-14 ──「『（◎ を付けた・気になった
+        # 作品での実績・履歴 1 本）』じゃなくて、具体的に（『作品A』『作品B』など）って書いてほしい」）。
+        # 作品名に付けた印（◎・○・△・×・興味あり）も添える ── 本数だけだと 1 本の偶然と 8 本の
+        # 好みを同じ顔で読ませる、という以前の注意（本数を書いた理由）は、並ぶ作品の数と印で満たす。
+        # 作品名が引けない人（観ればよかった・古い出力）は本数で書く
+        works = (works_of.get(f"{role}\t{person}") or []) if isinstance(works_of, dict) else []
         out.append(f'<li class="rs b"><span class="net">人物</span>'
                    f'{E(role)} <b>{E(person)}</b>'
-                   f'<span class="n">（◎ を付けた・気になった作品での実績・履歴 {n} 本）</span>'
+                   f'<span class="n">{works_text(works, n)}</span>'
                    f'<span class="src">［出典: {E(ROLE_SRC)}］</span>'
                    f'<button class="rsx" data-word="{E(person)}"'
                    f' title="この人物を理由に出さない">✕</button></li>')
@@ -1018,6 +1030,39 @@ def _not_seen(w: dict) -> str:
             + f'<button class="danger" data-drop="{E(w["work_key"])}">'
               f'舞台ではないものが取り込まれています</button>'
             f'<span class="said"></span></div></details>')
+
+
+_YEN = re.compile(r"(?:[¥￥]\s*([0-9][0-9,]*)|([0-9][0-9,]*)\s*円)")
+_FREE = re.compile(r"無料|入場料なし|投げ銭|カンパ")
+
+
+def price_range(text: str) -> tuple[int, int] | None:
+    """料金の欄（CoRich の「料金（1枚あたり）」）から、いちばん安い券と高い券の金額（円）。
+
+    起案者の指示（2026-10-14）「取得できそうならチケット代金も入手しておすすめ画面において。
+    金額での絞り込みもできるように」。欄は「一般 5,000円 学生 3,000円【発売日】2026/09/01」の
+    ような自由な文なので、「N 円」「¥N」を全部拾って最小と最大を取る。発売日などの日付は拾わない。
+    金額が無く「無料」などとあれば (0, 0)。読めなければ None（画面では料金を出さず、絞り込みでも隠さない）。
+    1 枚 10 万円を超える数は、席数や電話番号などの読み違いとして捨てる。
+    """
+    t = unicodedata.normalize("NFKC", text or "")
+    t = re.sub(r"【発売日】.*?(?=【|$)", " ", t)
+    vals = []
+    for a, b in _YEN.findall(t):
+        try:
+            v = int((a or b).replace(",", ""))
+        except ValueError:
+            continue
+        if 0 <= v <= 100_000:
+            vals.append(v)
+    if vals:
+        return min(vals), max(vals)
+    return (0, 0) if _FREE.search(t) else None
+
+
+def _price_attr(c: dict) -> str:
+    r = price_range(c.get("price") or "")
+    return f' data-yen="{r[0]}-{r[1]}"' if r else ""
 
 
 def _stub(rank, c: dict, mark: str = "") -> str:
@@ -1351,7 +1396,7 @@ def ticket(c: dict, *, rank=None, mode: str = "recommend", note: str = "",
             '<span class="said"></span></span>')
         rows = "".join(_mt_row(t) for t in (my_tickets or []))
         mytix_html = f'<div class="mytix"><b>行く日</b>{rows}{add_form}</div>'
-    return f"""<article class="ticket {E(mode)}" data-stage="{E(c["stage_id"])}">
+    return f"""<article class="ticket {E(mode)}" data-stage="{E(c["stage_id"])}"{_price_attr(c)}>
 {_stub(rank, c, mark)}
 <div class="perf" aria-hidden="true"></div>
 <div class="body">{pcol}

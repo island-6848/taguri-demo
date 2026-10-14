@@ -69,6 +69,7 @@ def prepare(raw: dict, candidates: list[dict], rated: list[dict], *,
     positive = lambda v: float(v == "◎")
     base = sum(positive(r["verdict"]) for r in rated) / max(len(rated), 1)
     roster = M.build_roster(rated, positive)
+    titles_of = M.person_titles(rated)       # 理由の行に出す作品名（起案者の指示 2026-10-14）
     pool = candidate_pool(raw, candidates)
 
     out = {"label": raw.get("label") or today.isoformat(), "today": today.isoformat()}
@@ -99,6 +100,7 @@ def prepare(raw: dict, candidates: list[dict], rated: list[dict], *,
         b = round(sum(p[0] for p in parts[:M.TOP_N]), 6)
         start = RC.period_start(period)
         c.update(stage_id=sid, b=b, c=0.0, total=b, why_b=parts[:6],
+                 why_b_works={f"{p[1]}\t{p[2]}": titles_of[(p[1], p[2])] for p in parts[:6] if (p[1], p[2]) in titles_of},
                  person_parts=parts, why_c=[], why_v="", vr=0.0,
                  n_match=len(parts), strong=sum(multipliers.get(role_group(p[1]), 1.0)
                     for p in parts if p[1] == "出演" or p[3] >= 2),

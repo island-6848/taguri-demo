@@ -470,3 +470,42 @@ body{font-family:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",YuGothic,syst
 .infopop p{margin:0;max-width:none}
 .infopop p+p{margin-top:8px}
 .infopop .note{font-size:12.5px;color:var(--mute)}
+
+/* ---- 回答の帯（興味あり・興味なし・持っている）は半券の中で中央に置く（起案者の指示 2026-10-14）。
+   「記録しました…」の行も帯の下で中央にそろえる */
+.ticket .btns{grid-template-columns:repeat(3,auto);justify-content:center}
+.ticket .btns .said{text-align:center}
+.ticket .act{justify-content:center}
+.ticket.cmp .act .btns{margin-left:auto;margin-right:auto}
+
+/* ---- 「すでに持っている」を押した 1 枚は、たたんで「購入済み公演」へ送る（app.js の movedToOwned） */
+.ticket.tomove{transition:opacity .4s ease,transform .4s ease;opacity:0;transform:translateX(24px)}
+.movedto{margin:0 0 14px;padding:10px 14px;border:1px dashed var(--grid);border-radius:8px;
+ font-size:13px;color:var(--ink2);background:var(--plane)}
+.movedto a{margin-left:4px;color:var(--acc);font-weight:700}
+@media (prefers-reduced-motion:reduce){.ticket.tomove{transition:none}}
+
+/* ---- 未評価を促すポップアップ（app.js の unratedNudge）。画面の下の中央に 1 枚だけ出す */
+.nudge{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:1000;box-sizing:border-box;
+ width:min(420px,calc(100% - 32px));padding:16px 18px 14px;border:1px solid var(--ink);border-radius:10px;
+ background:var(--surf);color:var(--ink);box-shadow:0 8px 28px rgba(29,29,31,.18);animation:nudgein .25s ease}
+.nudge p{margin:0}
+.nudge #nudge-t{font-size:15px}
+.nudge .nudge-s{margin-top:4px;font-size:12.5px;line-height:1.6;color:var(--ink2)}
+.nudge .nudge-b{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
+.nudge button{min-height:40px;padding:0 16px;border-radius:8px;border:1px solid var(--ink);background:var(--surf);
+ color:var(--ink);font:inherit;font-size:13px;cursor:pointer}
+.nudge button.go{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:700}
+.nudge button:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+@keyframes nudgein{from{opacity:0;transform:translate(-50%,12px)}to{opacity:1;transform:translate(-50%,0)}}
+@media (prefers-reduced-motion:reduce){.nudge{animation:none}}
+
+/* ---- 料金（render_recommend.price_range → data-yen、app.js の yenLabel・priceFilter） */
+.ticket.cmp .sale .yen{margin-left:8px;font-size:12.5px;color:var(--ink);font-variant-numeric:tabular-nums}
+.yenbar{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:0 0 14px;font-size:13px}
+.yenbar label{font-weight:700}
+.yenbar select{min-height:40px;padding:0 10px;border:1px solid var(--ink);border-radius:8px;background:var(--surf);
+ color:var(--ink);font:inherit;font-size:13px}
+.yenbar select:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.yenbar .yenn{color:var(--mute);font-size:12px}
+.ticket.yenout{display:none}

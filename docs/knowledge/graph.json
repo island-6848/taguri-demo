@@ -755,6 +755,22 @@
    ]
   },
   {
+   "id": "dec-owned-only-owned-list",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "「すでに持っている」を押した公演は購入済み公演にだけ出し、終わったら未評価に出す。前に開いてから終わった未評価があれば、おすすめを開いたときに知らせる",
+   "sources": [
+    "tools/taguri/app.py",
+    "tools/taguri/serve.py",
+    "web/app.js",
+    "web/theme.css",
+    "tools/taguri/test_rebucket.py",
+    "tools/taguri/test_unrated_nudge.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-passkeys",
    "type": "decision",
    "status": "adopted",
@@ -802,6 +818,21 @@
     "tools/taguri/posters.py",
     "tools/taguri/crawler_state.py",
     "tools/taguri/deploy/github-actions/catalog.yml"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-reason-work-titles",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "おすすめの人物の理由には、本数ではなく具体的な作品名（と付けた印）を書く",
+   "sources": [
+    "tools/review/measure_nets.py",
+    "tools/review/recommend2.py",
+    "tools/review/user_recommender.py",
+    "tools/review/render_recommend.py",
+    "tools/review/test_reason_works.py"
    ],
    "verifies": []
   },
@@ -937,6 +968,21 @@
    "verifies": []
   },
   {
+   "id": "dec-ticket-price-filter",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "料金の欄から最安〜最高の金額を読み、おすすめの券に出して、上限の金額で絞り込めるようにする",
+   "sources": [
+    "tools/review/fetch_candidates.py",
+    "tools/review/render_recommend.py",
+    "web/app.js",
+    "web/theme.css",
+    "tools/review/test_reason_works.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-verdict-diverging",
    "type": "decision",
    "status": "adopted",
@@ -1030,6 +1076,15 @@
    "sources": [
     "https://firebase.google.com/docs/projects/api-keys"
    ],
+   "verifies": []
+  },
+  {
+   "id": "free-tier-account-settings-done",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-14",
+   "title": "起案者が Cloudflare の Budget alerts を作り、Workers の Free を確かめた。GitHub には支払い方法を登録していない",
+   "sources": [],
    "verifies": []
   },
   {
@@ -1672,7 +1727,7 @@
   {
    "id": "q-free-tier-account-settings",
    "type": "question",
-   "status": "open",
+   "status": "answered",
    "date": "2026-10-13",
    "title": "起案者のアカウントの設定で、無料枠を越えても請求されないようになっているか",
    "sources": [],
@@ -3256,6 +3311,16 @@
    "from": "firebase-apikey-public",
    "rel": "raises",
    "to": "q-firebase-key-restriction"
+  },
+  {
+   "from": "free-tier-account-settings-done",
+   "rel": "answers",
+   "to": "q-free-tier-account-settings"
+  },
+  {
+   "from": "free-tier-account-settings-done",
+   "rel": "supports",
+   "to": "dec-free-tier-only"
   },
   {
    "from": "gemini-budget-cap",
