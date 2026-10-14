@@ -211,7 +211,7 @@ test('login page has its own narrow policy; config is public and auth is never b
   assert.equal((await get('/api/auth/config')).status, 503);
   env.FIREBASE_API_KEY = 'public-web-key';
   const config = await (await get('/api/auth/config')).json();
-  assert.deepEqual(config, {apiKey: 'public-web-key', projectId: PROJECT, authDomain: `${PROJECT}.firebaseapp.com`});
+  assert.deepEqual(config, {apiKey: 'public-web-key', projectId: PROJECT, authDomain: `${PROJECT}.firebaseapp.com`, calendarClientId: ''});
   const page = await get('/login');
   assert.equal(page.status, 200);
   const csp = page.headers.get('content-security-policy');

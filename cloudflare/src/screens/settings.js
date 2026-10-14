@@ -229,11 +229,16 @@ export async function registerScreen(_params, ctx) {
 <b>読み取りはこの端末の中だけで行い、カレンダーやメールの中身はたぐりに送りません。</b>
 読み取った題名・日付を公演と照合し、選んだものだけを記録に足します。</p>
 <details class="imx-src" open><summary>Google カレンダーから</summary>
+<p class="note">押すと Google の画面で「カレンダーの閲覧」を許可するか聞かれます。許可すると、過去 5 年の予定をこの端末で読み、公演と照合します。
+<b>予定も許可の鍵も、たぐりのサーバーには送らず、保存もしません。</b></p>
+<div class="imx-row"><button type="button" class="primary" data-imx-google="1">Google カレンダーから取り込む</button></div>
+<details class="imx-alt"><summary>アドレスやファイルから読み込む</summary>
 <p class="note">パソコンの Google カレンダーで、設定 → 取り込むカレンダー → 「カレンダーの統合」にある
 <b>「iCal 形式の非公開アドレス」</b>をコピーして貼ってください。アドレスは保存しません（読むのはこの 1 回だけです）。</p>
 <div class="imx-row"><input id="imx-url" type="url" inputmode="url" autocomplete="off" placeholder="https://calendar.google.com/calendar/ical/…/basic.ics" size="40">
 <button type="button" data-imx-cal="1">読み込む</button></div>
 <p class="note">書き出した .ics ファイルを選んでも読めます：<input id="imx-ics" type="file" accept=".ics,text/calendar"></p>
+</details>
 </details>
 <details class="imx-src"><summary>購入確認メールから</summary>
 <p class="note">ぴあ・ローチケ・おけぴ・東宝ナビザーブ・劇団のチケットサービスの書式を読めます（ほかのサイトもできるだけ読みます）。

@@ -622,6 +622,22 @@
    "verifies": []
   },
   {
+   "id": "dec-calendar-oauth",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "Google カレンダーはボタン 1 つで取り込む：calendar.readonly を許可してもらい、ブラウザの中で Calendar API を読む（トークンはサーバーに送らない）",
+   "sources": [
+    "cloudflare/src/client/calendar-google.js",
+    "cloudflare/src/client/calendar-callback.js",
+    "cloudflare/src/client/import.js",
+    "cloudflare/public/oauth-calendar.html",
+    "cloudflare/src/worker.js",
+    "cloudflare/test/import.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-calendar-worker",
    "type": "decision",
    "status": "adopted",
@@ -4394,6 +4410,16 @@
    "from": "dec-calendar-credits-daily",
    "rel": "affects",
    "to": "q-crawler-state-size"
+  },
+  {
+   "from": "dec-calendar-oauth",
+   "rel": "depends_on",
+   "to": "dec-import-calendar-mail"
+  },
+  {
+   "from": "dec-calendar-oauth",
+   "rel": "supports",
+   "to": "dec-free-tier-only"
   },
   {
    "from": "dec-calendar-worker",
