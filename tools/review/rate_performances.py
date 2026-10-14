@@ -692,7 +692,7 @@ ASPECT_CODES = ("story", "direction", "acting", "music", "dance", "design", "pri
 
 
 def _add_aspects(con: sqlite3.Connection) -> None:
-    """`works` に「気になった所」を持たせる（D1 の migrations/0012.sql と同じ列）。"""
+    """`works` に「気になった所」を持たせる（D1 の migrations/0015.sql と同じ列）。"""
     have = {r["name"] for r in con.execute("PRAGMA table_info(works)")}
     if "aspects" not in have:
         with con:
