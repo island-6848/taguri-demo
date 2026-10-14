@@ -2448,7 +2448,11 @@ function favButton(tk) {
     const old = tk.querySelector(".favpop");
     if (old) { old.remove(); b.setAttribute("aria-expanded", "false"); return; }
     const title = h3.textContent.trim();
-    const items = [{kind: "作品", name: title}].concat(noteNames(tk).map(x => ({kind: x.kind === "団体" ? "団体" : "人", name: x.name, role: x.kind})));
+    // あらすじの題材の札（#家族 など）も「題材」として選べる（推薦側 9bd0922: お気に入りの題材が推薦に効く）
+    const themes = [...tk.querySelectorAll(".syn .tags .tag:not(.mine)")].map(t => t.textContent.replace(/^#/, "").trim())
+      .filter((t, i, a) => Array.from(t).length >= 2 && a.indexOf(t) === i).slice(0, 8);
+    const items = [{kind: "作品", name: title}].concat(noteNames(tk).map(x => ({kind: x.kind === "団体" ? "団体" : "人", name: x.name, role: x.kind})))
+      .concat(themes.map(t => ({kind: "題材", name: t})));
     const pop = document.createElement("div");
     pop.className = "favpop";
     pop.setAttribute("role", "dialog");
