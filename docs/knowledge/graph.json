@@ -2189,6 +2189,15 @@
    "verifies": []
   },
   {
+   "id": "q-branch-builds-fail",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-14",
+   "title": "Workers Builds の master 以外のブランチの組み立てが毎回失敗するのはなぜか。止めてよいか",
+   "sources": [],
+   "verifies": []
+  },
+  {
    "id": "q-catalog-source",
    "type": "question",
    "status": "open",
@@ -3385,6 +3394,19 @@
    "verifies": []
   },
   {
+   "id": "workers-builds-branch-fail",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-14",
+   "title": "コミットの ✗（Workers Builds）は、master 以外のブランチの組み立てが失敗しているもの。master の組み立ては毎回成功している見込み",
+   "sources": [
+    "https://api.github.com/repos/island-6848/taguri-demo/commits/f212dc3/check-runs?filter=all",
+    "https://api.github.com/repos/island-6848/taguri-demo/commits/c06ae0b/check-runs?filter=all",
+    "https://api.github.com/repos/island-6848/taguri-demo/commits/736bcea/check-runs?filter=all"
+   ],
+   "verifies": []
+  },
+  {
    "id": "workers-builds-free-3000",
    "type": "finding",
    "status": "confirmed",
@@ -3398,7 +3420,7 @@
   {
    "id": "workers-builds-master-fail",
    "type": "finding",
-   "status": "confirmed",
+   "status": "outdated",
    "date": "2026-10-13",
    "title": "コミットの ✗ は Workers Builds が cloudflare/ の無い master を組もうとして失敗していたため",
    "sources": [
@@ -5164,6 +5186,11 @@
    "to": "q-past-stage-catalogue"
   },
   {
+   "from": "q-branch-builds-fail",
+   "rel": "affects",
+   "to": "workers-builds-branch-fail"
+  },
+  {
    "from": "q-catalog-source",
    "rel": "depends_on",
    "to": "q-crawler-host"
@@ -5922,6 +5949,16 @@
    "from": "workers-builds-applies-migrations",
    "rel": "affects",
    "to": "comp-d1"
+  },
+  {
+   "from": "workers-builds-branch-fail",
+   "rel": "affects",
+   "to": "workers-builds-master-fail"
+  },
+  {
+   "from": "workers-builds-branch-fail",
+   "rel": "raises",
+   "to": "q-branch-builds-fail"
   },
   {
    "from": "workers-builds-free-3000",
