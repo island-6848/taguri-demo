@@ -26,6 +26,10 @@ try {
    await page.route('**/*',async route=>{
     const url=new URL(route.request().url());
     if(url.pathname.startsWith('/api/screen/')){const screen=url.pathname.split('/').at(-1);return route.fulfill({status:200,contentType:'application/json',headers:{'Access-Control-Allow-Origin':base,'Access-Control-Allow-Credentials':'true'},body:JSON.stringify(fixtures[screen]??fixtures.register)});}
+    // Production's config.js says "service" since the 2026-10-14 switch (dec-native-cutover-now): its words
+    // ("公演一覧から探す") and the アカウント entry differ from the demo on purpose. Compare the shared shell,
+    // CSS and controls under the same edition; the service-only parts are covered by test/cutover.test.js.
+    if(!original&&url.pathname==='/config.js')return route.fulfill({status:200,contentType:'text/javascript',body:'window.TAGURI={edition:"demo",api:location.origin,base:"",demoBase:""};'});
     if(url.origin===base)return route.continue();
     return route.abort();
    });
