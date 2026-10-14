@@ -275,6 +275,9 @@ def prepare(raw: dict, candidates: list[dict], rated: list[dict], *,
     rated = independent_ratings(rated)
     values, scale = person_values(rated)
     titles_of = M.person_titles(rated)       # 理由の行に出す作品名（起案者の指示 2026-10-14）
+    # 種類（#形式・#会場など）の理由にも、同じ形で自分の作品名を添える
+    kind_titles = {k: v for k, v in M.person_titles([dict(r, people=rated_keys(r)) for r in rated]).items()
+                   if k[0].startswith("#")}
     pool = candidate_pool(raw, candidates)
 
     out = {"label": raw.get("label") or today.isoformat(), "today": today.isoformat()}
@@ -318,6 +321,7 @@ def prepare(raw: dict, candidates: list[dict], rated: list[dict], *,
         # v1 and were not what the comparison validated.
         c.update(stage_id=sid, b=b, c=0.0, total=b, why_b=parts[:6], why_b_neg=negative[:M.TOP_N],
                  why_kind=kinds,
+                 why_kind_works={f"{k[1]}\t{k[2]}": kind_titles[(k[1], k[2])] for k in kinds if (k[1], k[2]) in kind_titles},
                  why_b_works={f"{p[1]}\t{p[2]}": titles_of[(p[1], p[2])] for p in parts[:6] if (p[1], p[2]) in titles_of},
                  person_parts=parts, why_c=[], why_v="", vr=0.0,
                  n_match=len(parts), strong=b,

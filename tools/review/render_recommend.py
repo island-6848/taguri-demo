@@ -676,6 +676,9 @@ def cast_block(c: dict) -> str:
 
 
 WORKS_SHOWN = 3
+# 種類の理由の見出しと出典（user_recommender.stage_tags が付ける軸）
+KIND_LABEL = {"#形式": "形式", "#原作": "原作", "#翻訳": "", "#会場": "劇場", "#値段": "料金帯", "#題材": "題材"}
+KIND_SRC = {"#形式": "公演名とクレジット", "#会場": "公演ページの劇場", "#値段": "公演ページの料金"}
 
 
 def works_text(works: list, n: int) -> str:
@@ -746,6 +749,17 @@ def reason_rows(c: dict) -> str:
                    f'<span class="src">［出典: {E(ROLE_SRC)}］</span>'
                    f'<button class="rsx" data-word="{E(person)}"'
                    f' title="この人物を理由に出さない">✕</button></li>')
+    # **公演の種類（#形式・#原作・#翻訳・#会場・#値段）の理由も出す**（2026-10-14）。v3 の点は人物に
+    # 種類の点を足したものなので、種類だけで上がった公演は人物の行が空になり、「理由を出せていません」
+    # が並んでいた（起案者の指摘「理由を出せていませんが増えすぎた」）。点を上げた種類だけを、強い順に 2 つ
+    kind_works = c.get("why_kind_works") or {}
+    for contrib, axis, tag, n in sorted((k for k in c.get("why_kind") or [] if k[0] > 0),
+                                        key=lambda k: (-k[0], k[1], k[2]))[:2]:
+        works = (kind_works.get(f"{axis}\t{tag}") or []) if isinstance(kind_works, dict) else []
+        out.append(f'<li class="rs c k"><span class="net">種類</span>'
+                   f'{(E(label) + " ") if (label := KIND_LABEL.get(axis, axis.lstrip("#"))) else ""}<b>{E(tag)}</b>'
+                   f'<span class="n">{works_text(works, n)}</span>'
+                   f'<span class="src">［出典: {E(KIND_SRC.get(axis, ROLE_SRC))}］</span></li>')
     # **本人の感想の引用（「あなたの言葉」）は出さない**（起案者の指示・2026-10-13 ──
     # 「あなたの言葉は個人情報すぎるので表示しないで。サービス版もデモ版も」）。感想の文が
     # そのまま推薦の画面に並ぶと、画面を人に見せたとき・写したときに個人の文が漏れる。

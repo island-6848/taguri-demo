@@ -290,50 +290,51 @@ flowchart LR
   n267("R2 は 10GB まで無料で、取り出しの通信料がかからない")
   n268("観劇の評価は内容だけでなく、値段に見合うか・構成・演出などが混ざって 1 つの記号になる")
   n269("興味あり・なしの記録が遅かったのは、1 回押すごとに本人の推薦を 2 回まるごと計算し直していたため")
-  n270("今の推薦（person-feedback-v1）の精度は、公開版の利用者では測っていない")
-  n271("今の計算は「その人の◎の割合」を差し引くので、◎が珍しい人の◎ほど強く効き、◎ばかりの人の◎はほとんど効かない")
-  n272("おすすめは開くたびに全候補を計算している")
-  n273("推薦の良し悪しを測る仕組みが足りない（利用者ごとの時系列評価・正解データ・提示と結果の結び付け）")
-  n274("Worker の推薦は Python（person-feedback-v1）と同じ結果を出す")
-  n275("過去の改善の実験結果（持ち主 1 人の評価での AUC）は、判断の根拠に使わない")
-  n276("推薦の計算を改善する計画書はあるが、master に入っておらず内容が一部古い")
-  n277("推薦の計算 person-graded-v2 は、D1 の索引の作り（表と行）を変えない")
-  n278("Render の無料プランは永続ディスクを付けられない")
-  n279("Render の無料プランは 15 分でスリープし、起動に約 1 分かかる")
-  n280("Render の有料プランならスリープせずディスクも付く（単価は二次情報）")
-  n281("Render の利用者（tg_session）とログインしたアカウント（D1）は別人として扱われている")
-  n282("元の画面は Python が HTML を組んで JSON で返している（約 2.5 万行）")
-  n283("Python の robotparser は小数の Crawl-delay を読めない")
-  n284("1000 人で使うと、Workers の無料枠は推薦の計算（CPU）と D1 の読み行数で足りなくなりそう（見積もり）")
-  n285("サービス版の保存先の検査が Render を前提にしている")
-  n286("シンプルなデザインは「削る」ことではなく、要るものを一つに絞って際立たせ、押せる手がかりは残すこと")
-  n287("サイトマップ版の初回の Catalog（6,000 枚）は成功し、これからの公演 1,353 件・終わった公演 3,460 件を得た")
-  n288("舞台の仕事の分担：演出家が作品全体の芸術面の責任者で、舞台監督は現場の進行、制作・プロデューサーは予算と運営（値段を決める側）")
-  n289("バックアップの検査が Python 3.13 では 1 件失敗する")
-  n290("サーバーは標準ライブラリの http.server と sqlite3 で書いてある")
-  n291("あらすじの読み取りは Gemini API。以前の claude CLI 呼び出しは起案者の判断でやめている")
-  n292("舞台の公演に業界共通の公式のジャンル分けは見つからない。近いものは日本劇作家協会「戯曲デジタルアーカイブ」のジャンル（戯曲向け）")
-  n293("持ち主の過去の検証では、あらすじのテーマ語は作品間で重なりにくく、一般的な語（家族・恋愛・コメディ・友情）に偏っていた")
-  n294("試行回数の制限は接続元のアドレスで数えている")
-  n295("題字の書体の候補（明朝と本文ゴシックの間）── どれも SIL OFL")
-  n296("題名の正規化（title_key）は JS でも Python と同じにできる")
-  n297("画面の△の説明「あまり合わなかった」は、起案者の考える△（まあ良いが気になる所がある）と食い違う")
-  n298("note・Notion のような白基調の記録サイトの見た目（白い紙面・真っ黒でない文字・差し色 1 つ・広い余白）")
-  n299("本番の Worker の /api/health は、Render への橋渡しに取られて 404 になっていた（直した）")
-  n300("Worker での推薦計算は 1 回 10〜12 ミリ秒、重い想定で 39 ミリ秒（見積もり）")
-  n301("起案者が Workers Builds を master だけ組み立てるようにした")
-  n302("push するたびに Workers Builds が D1 の migration を当ててから deploy する")
-  n303("コミットの ✗（Workers Builds）は、master 以外のブランチの組み立てが失敗しているもの。master の組み立ては毎回成功している見込み")
-  n304("Workers Builds（GitHub からの自動配信）は無料プランで月 3,000 分・同時 1 本・1 回 20 分まで")
-  n305("コミットの ✗ は Workers Builds が cloudflare/ の無い master を組もうとして失敗していたため")
-  n306("Workers の Cache API は *.workers.dev では何もしない（独自ドメインでだけ効く）")
-  n307("Workers の定期実行は、無料プランだと 1 回あたり CPU 10 ミリ秒・外部への要求 50 回まで")
-  n308("別の作業で、Workers＋D1 の版が workers.dev で動き始めている")
-  n309("workers.dev の URL は無料のまま名前を変えられる（アカウントの subdomain と Worker の名前）。独自ドメインは年額がかかる")
-  n310("Workers の無料プランは 1 要求あたり CPU 10 ミリ秒・1 日 10 万要求まで")
-  n311("Workers の有料プランは月 5 ドルで、要求 1000 万回・CPU 3000 万ミリ秒・D1 の読み 250 億行が含まれる")
-  n312("master 以外のブランチの組み立ては `npx wrangler preview` を走らせ、設定に previews の欄が無いので失敗している")
-  n313("Workers の静的ファイルへの要求は無料・無制限で、要求数の上限に数えない")
+  n270("デモ版のおすすめに「理由を出せていません」が増えたのは、v3 の点に足した公演の種類（#形式・#原作・#翻訳・#会場・#値段）が理由の行に出ていなかったため。種類の行を足した")
+  n271("今の推薦（person-feedback-v1）の精度は、公開版の利用者では測っていない")
+  n272("今の計算は「その人の◎の割合」を差し引くので、◎が珍しい人の◎ほど強く効き、◎ばかりの人の◎はほとんど効かない")
+  n273("おすすめは開くたびに全候補を計算している")
+  n274("推薦の良し悪しを測る仕組みが足りない（利用者ごとの時系列評価・正解データ・提示と結果の結び付け）")
+  n275("Worker の推薦は Python（person-feedback-v1）と同じ結果を出す")
+  n276("過去の改善の実験結果（持ち主 1 人の評価での AUC）は、判断の根拠に使わない")
+  n277("推薦の計算を改善する計画書はあるが、master に入っておらず内容が一部古い")
+  n278("推薦の計算 person-graded-v2 は、D1 の索引の作り（表と行）を変えない")
+  n279("Render の無料プランは永続ディスクを付けられない")
+  n280("Render の無料プランは 15 分でスリープし、起動に約 1 分かかる")
+  n281("Render の有料プランならスリープせずディスクも付く（単価は二次情報）")
+  n282("Render の利用者（tg_session）とログインしたアカウント（D1）は別人として扱われている")
+  n283("元の画面は Python が HTML を組んで JSON で返している（約 2.5 万行）")
+  n284("Python の robotparser は小数の Crawl-delay を読めない")
+  n285("1000 人で使うと、Workers の無料枠は推薦の計算（CPU）と D1 の読み行数で足りなくなりそう（見積もり）")
+  n286("サービス版の保存先の検査が Render を前提にしている")
+  n287("シンプルなデザインは「削る」ことではなく、要るものを一つに絞って際立たせ、押せる手がかりは残すこと")
+  n288("サイトマップ版の初回の Catalog（6,000 枚）は成功し、これからの公演 1,353 件・終わった公演 3,460 件を得た")
+  n289("舞台の仕事の分担：演出家が作品全体の芸術面の責任者で、舞台監督は現場の進行、制作・プロデューサーは予算と運営（値段を決める側）")
+  n290("バックアップの検査が Python 3.13 では 1 件失敗する")
+  n291("サーバーは標準ライブラリの http.server と sqlite3 で書いてある")
+  n292("あらすじの読み取りは Gemini API。以前の claude CLI 呼び出しは起案者の判断でやめている")
+  n293("舞台の公演に業界共通の公式のジャンル分けは見つからない。近いものは日本劇作家協会「戯曲デジタルアーカイブ」のジャンル（戯曲向け）")
+  n294("持ち主の過去の検証では、あらすじのテーマ語は作品間で重なりにくく、一般的な語（家族・恋愛・コメディ・友情）に偏っていた")
+  n295("試行回数の制限は接続元のアドレスで数えている")
+  n296("題字の書体の候補（明朝と本文ゴシックの間）── どれも SIL OFL")
+  n297("題名の正規化（title_key）は JS でも Python と同じにできる")
+  n298("画面の△の説明「あまり合わなかった」は、起案者の考える△（まあ良いが気になる所がある）と食い違う")
+  n299("note・Notion のような白基調の記録サイトの見た目（白い紙面・真っ黒でない文字・差し色 1 つ・広い余白）")
+  n300("本番の Worker の /api/health は、Render への橋渡しに取られて 404 になっていた（直した）")
+  n301("Worker での推薦計算は 1 回 10〜12 ミリ秒、重い想定で 39 ミリ秒（見積もり）")
+  n302("起案者が Workers Builds を master だけ組み立てるようにした")
+  n303("push するたびに Workers Builds が D1 の migration を当ててから deploy する")
+  n304("コミットの ✗（Workers Builds）は、master 以外のブランチの組み立てが失敗しているもの。master の組み立ては毎回成功している見込み")
+  n305("Workers Builds（GitHub からの自動配信）は無料プランで月 3,000 分・同時 1 本・1 回 20 分まで")
+  n306("コミットの ✗ は Workers Builds が cloudflare/ の無い master を組もうとして失敗していたため")
+  n307("Workers の Cache API は *.workers.dev では何もしない（独自ドメインでだけ効く）")
+  n308("Workers の定期実行は、無料プランだと 1 回あたり CPU 10 ミリ秒・外部への要求 50 回まで")
+  n309("別の作業で、Workers＋D1 の版が workers.dev で動き始めている")
+  n310("workers.dev の URL は無料のまま名前を変えられる（アカウントの subdomain と Worker の名前）。独自ドメインは年額がかかる")
+  n311("Workers の無料プランは 1 要求あたり CPU 10 ミリ秒・1 日 10 万要求まで")
+  n312("Workers の有料プランは月 5 ドルで、要求 1000 万回・CPU 3000 万ミリ秒・D1 の読み 250 億行が含まれる")
+  n313("master 以外のブランチの組み立ては `npx wrangler preview` を走らせ、設定に previews の欄が無いので失敗している")
+  n314("Workers の静的ファイルへの要求は無料・無制限で、要求数の上限に数えない")
   n0 -- 新たな問いを生む --> n188
   n0 -- 影響する --> n232
   n1 -- 影響する --> n212
@@ -341,7 +342,7 @@ flowchart LR
   n3 -- 影響する --> n190
   n3 -- 影響する --> n224
   n4 -- 影響する --> n49
-  n4 -- 影響する --> n287
+  n4 -- 影響する --> n288
   n5 -- 新たな問いを生む --> n253
   n5 -- 影響する --> n15
   n6 -- 影響する --> n194
@@ -380,7 +381,7 @@ flowchart LR
   n37 -- 根拠になる --> n65
   n37 -- 新たな問いを生む --> n252
   n37 -- 影響する --> n21
-  n38 -- 影響する --> n284
+  n38 -- 影響する --> n285
   n39 -- 影響する --> n205
   n39 -- 影響する --> n209
   n40 -- 答える --> n205
@@ -388,7 +389,7 @@ flowchart LR
   n40 -- 根拠になる --> n39
   n41 -- 影響する --> n25
   n42 -- 影響する --> n227
-  n42 -- 影響する --> n308
+  n42 -- 影響する --> n309
   n43 -- 影響する --> n18
   n43 -- 新たな問いを生む --> n216
   n44 -- 答える --> n235
@@ -422,7 +423,7 @@ flowchart LR
   n53 -- 影響する --> n91
   n54 -- 答える --> n208
   n54 -- 前提にする --> n91
-  n54 -- 前提にする --> n286
+  n54 -- 前提にする --> n287
   n55 -- 影響する --> n24
   n55 -- 影響する --> n21
   n56 -- 影響する --> n20
@@ -432,7 +433,7 @@ flowchart LR
   n57 -- 前提にする --> n266
   n57 -- 前提にする --> n124
   n57 -- 前提にする --> n39
-  n57 -- 前提にする --> n310
+  n57 -- 前提にする --> n311
   n57 -- 影響する --> n45
   n57 -- 影響する --> n71
   n57 -- 影響する --> n226
@@ -446,17 +447,17 @@ flowchart LR
   n61 -- 答える --> n223
   n61 -- 前提にする --> n83
   n61 -- 影響する --> n170
-  n62 -- 影響する --> n275
+  n62 -- 影響する --> n276
   n62 -- 影響する --> n246
   n62 -- 影響する --> n26
   n63 -- 根拠になる --> n87
-  n63 -- 前提にする --> n278
+  n63 -- 前提にする --> n279
   n65 -- 影響する --> n21
   n65 -- 前提にする --> n211
   n67 -- 影響する --> n23
   n67 -- 新たな問いを生む --> n231
   n68 -- 影響する --> n53
-  n68 -- 前提にする --> n295
+  n68 -- 前提にする --> n296
   n69 -- 影響する --> n17
   n70 -- 前提にする --> n35
   n70 -- 答える --> n241
@@ -475,9 +476,9 @@ flowchart LR
   n75 -- 影響する --> n26
   n75 -- 影響する --> n243
   n76 -- 前提にする --> n246
-  n76 -- 根拠になる --> n276
-  n77 -- 置き換える --> n272
-  n77 -- 前提にする --> n274
+  n76 -- 根拠になる --> n277
+  n77 -- 置き換える --> n273
+  n77 -- 前提にする --> n275
   n77 -- 影響する --> n26
   n78 -- 影響する --> n246
   n78 -- 影響する --> n76
@@ -496,7 +497,7 @@ flowchart LR
   n82 -- 前提にする --> n79
   n83 -- 食い違う --> n50
   n83 -- 食い違う --> n96
-  n83 -- 前提にする --> n282
+  n83 -- 前提にする --> n283
   n83 -- 影響する --> n22
   n83 -- 影響する --> n24
   n83 -- 影響する --> n209
@@ -510,14 +511,14 @@ flowchart LR
   n88 -- 前提にする --> n3
   n89 -- 影響する --> n16
   n90 -- 答える --> n254
-  n90 -- 前提にする --> n291
+  n90 -- 前提にする --> n292
   n90 -- 前提にする --> n47
   n90 -- 影響する --> n191
   n90 -- 新たな問いを生む --> n255
   n91 -- 影響する --> n208
   n91 -- 新たな問いを生む --> n234
   n93 -- 答える --> n210
-  n93 -- 前提にする --> n309
+  n93 -- 前提にする --> n310
   n93 -- 根拠になる --> n57
   n94 -- 答える --> n258
   n94 -- 影響する --> n26
@@ -533,7 +534,7 @@ flowchart LR
   n97 -- 置き換える --> n50
   n97 -- 置き換える --> n96
   n97 -- 食い違う --> n50
-  n97 -- 前提にする --> n310
+  n97 -- 前提にする --> n311
   n97 -- 影響する --> n16
   n97 -- 影響する --> n209
   n98 -- 影響する --> n26
@@ -614,7 +615,7 @@ flowchart LR
   n136 -- 答える --> n257
   n137 -- 答える --> n243
   n137 -- 前提にする --> n73
-  n137 -- 前提にする --> n288
+  n137 -- 前提にする --> n289
   n137 -- 前提にする --> n268
   n137 -- 前提にする --> n133
   n137 -- 影響する --> n26
@@ -629,7 +630,7 @@ flowchart LR
   n144 -- 根拠になる --> n247
   n145 -- 影響する --> n26
   n146 -- 根拠になる --> n244
-  n146 -- 食い違う --> n271
+  n146 -- 食い違う --> n272
   n147 -- 影響する --> n258
   n148 -- 影響する --> n213
   n148 -- 根拠になる --> n152
@@ -694,11 +695,11 @@ flowchart LR
   n185 -- 新たな問いを生む --> n205
   n186 -- 前提にする --> n243
   n186 -- 前提にする --> n78
-  n187 -- 前提にする --> n277
+  n187 -- 前提にする --> n278
   n187 -- 影響する --> n171
   n188 -- 前提にする --> n0
   n188 -- 影響する --> n232
-  n189 -- 影響する --> n303
+  n189 -- 影響する --> n304
   n190 -- 前提にする --> n201
   n191 -- 前提にする --> n245
   n191 -- 前提にする --> n174
@@ -714,7 +715,7 @@ flowchart LR
   n200 -- 前提にする --> n46
   n201 -- 前提にする --> n212
   n202 -- 前提にする --> n47
-  n203 -- 前提にする --> n287
+  n203 -- 前提にする --> n288
   n204 -- 影響する --> n18
   n204 -- 前提にする --> n227
   n206 -- 前提にする --> n83
@@ -723,7 +724,7 @@ flowchart LR
   n208 -- 影響する --> n83
   n209 -- 前提にする --> n245
   n209 -- 前提にする --> n259
-  n210 -- 前提にする --> n309
+  n210 -- 前提にする --> n310
   n210 -- 影響する --> n57
   n210 -- 影響する --> n211
   n211 -- 前提にする --> n209
@@ -760,7 +761,7 @@ flowchart LR
   n242 -- 影響する --> n16
   n243 -- 前提にする --> n244
   n243 -- 影響する --> n247
-  n244 -- 前提にする --> n297
+  n244 -- 前提にする --> n298
   n244 -- 影響する --> n247
   n245 -- 前提にする --> n212
   n246 -- 前提にする --> n78
@@ -776,7 +777,7 @@ flowchart LR
   n251 -- 前提にする --> n48
   n251 -- 影響する --> n43
   n252 -- 前提にする --> n65
-  n254 -- 前提にする --> n291
+  n254 -- 前提にする --> n292
   n254 -- 前提にする --> n47
   n255 -- 前提にする --> n90
   n256 -- 前提にする --> n110
@@ -791,7 +792,7 @@ flowchart LR
   n262 -- 前提にする --> n79
   n263 -- 前提にする --> n264
   n263 -- 前提にする --> n245
-  n264 -- 前提にする --> n310
+  n264 -- 前提にする --> n311
   n264 -- 影響する --> n22
   n266 -- 検証項目 --> n267
   n266 -- 根拠になる --> n57
@@ -802,79 +803,80 @@ flowchart LR
   n268 -- 新たな問いを生む --> n243
   n268 -- 影響する --> n26
   n269 -- 根拠になる --> n81
-  n270 -- 影響する --> n26
-  n270 -- 新たな問いを生む --> n246
-  n271 -- 影響する --> n244
+  n270 -- 前提にする --> n112
   n271 -- 影響する --> n26
-  n272 -- 根拠になる --> n50
+  n271 -- 新たな問いを生む --> n246
+  n272 -- 影響する --> n244
   n272 -- 影響する --> n26
-  n272 -- 答える --> n265
-  n273 -- 新たな問いを生む --> n246
-  n274 -- 影響する --> n26
+  n273 -- 根拠になる --> n50
+  n273 -- 影響する --> n26
+  n273 -- 答える --> n265
+  n274 -- 新たな問いを生む --> n246
   n275 -- 影響する --> n26
   n276 -- 影響する --> n26
-  n276 -- 新たな問いを生む --> n246
-  n277 -- 影響する --> n49
-  n278 -- 根拠になる --> n96
-  n278 -- 答える --> n249
-  n278 -- 影響する --> n27
+  n277 -- 影響する --> n26
+  n277 -- 新たな問いを生む --> n246
+  n278 -- 影響する --> n49
   n279 -- 根拠になる --> n96
-  n279 -- 根拠になる --> n51
-  n280 -- 根拠になる --> n84
-  n281 -- 新たな問いを生む --> n209
-  n281 -- 根拠になる --> n83
-  n282 -- 影響する --> n24
-  n283 -- 影響する --> n17
-  n284 -- 根拠になる --> n85
-  n284 -- 影響する --> n209
-  n284 -- 前提にする --> n245
-  n285 -- 影響する --> n24
-  n285 -- 影響する --> n28
-  n286 -- 影響する --> n91
-  n287 -- 検証項目 --> n46
-  n287 -- 影響する --> n192
-  n287 -- 新たな問いを生む --> n203
-  n288 -- 影響する --> n243
-  n289 -- 新たな問いを生む --> n239
-  n289 -- 影響する --> n27
-  n290 -- 根拠になる --> n50
-  n290 -- 根拠になる --> n96
-  n290 -- 答える --> n265
-  n291 -- 影響する --> n254
-  n292 -- 影響する --> n257
+  n279 -- 答える --> n249
+  n279 -- 影響する --> n27
+  n280 -- 根拠になる --> n96
+  n280 -- 根拠になる --> n51
+  n281 -- 根拠になる --> n84
+  n282 -- 新たな問いを生む --> n209
+  n282 -- 根拠になる --> n83
+  n283 -- 影響する --> n24
+  n284 -- 影響する --> n17
+  n285 -- 根拠になる --> n85
+  n285 -- 影響する --> n209
+  n285 -- 前提にする --> n245
+  n286 -- 影響する --> n24
+  n286 -- 影響する --> n28
+  n287 -- 影響する --> n91
+  n288 -- 検証項目 --> n46
+  n288 -- 影響する --> n192
+  n288 -- 新たな問いを生む --> n203
+  n289 -- 影響する --> n243
+  n290 -- 新たな問いを生む --> n239
+  n290 -- 影響する --> n27
+  n291 -- 根拠になる --> n50
+  n291 -- 根拠になる --> n96
+  n291 -- 答える --> n265
+  n292 -- 影響する --> n254
   n293 -- 影響する --> n257
-  n294 -- 影響する --> n14
-  n294 -- 新たな問いを生む --> n195
-  n295 -- 根拠になる --> n176
-  n295 -- 影響する --> n53
-  n297 -- 新たな問いを生む --> n244
-  n297 -- 影響する --> n26
-  n298 -- 影響する --> n54
-  n299 -- 影響する --> n3
-  n299 -- 根拠になる --> n57
-  n300 -- 食い違う --> n50
-  n300 -- 新たな問いを生む --> n245
-  n300 -- 影響する --> n209
-  n301 -- 影響する --> n312
-  n302 -- 影響する --> n18
-  n303 -- 影響する --> n305
-  n303 -- 新たな問いを生む --> n189
-  n304 -- 根拠になる --> n57
-  n305 -- 影響する --> n16
-  n306 -- 影響する --> n57
-  n307 -- 影響する --> n201
-  n308 -- 食い違う --> n50
-  n308 -- 影響する --> n209
-  n308 -- 影響する --> n26
-  n309 -- 影響する --> n211
-  n309 -- 根拠になる --> n57
-  n310 -- 根拠になる --> n50
-  n310 -- 答える --> n265
-  n311 -- 根拠になる --> n85
-  n311 -- 影響する --> n209
-  n312 -- 答える --> n189
-  n312 -- 根拠になる --> n303
-  n313 -- 影響する --> n284
+  n294 -- 影響する --> n257
+  n295 -- 影響する --> n14
+  n295 -- 新たな問いを生む --> n195
+  n296 -- 根拠になる --> n176
+  n296 -- 影響する --> n53
+  n298 -- 新たな問いを生む --> n244
+  n298 -- 影響する --> n26
+  n299 -- 影響する --> n54
+  n300 -- 影響する --> n3
+  n300 -- 根拠になる --> n57
+  n301 -- 食い違う --> n50
+  n301 -- 新たな問いを生む --> n245
+  n301 -- 影響する --> n209
+  n302 -- 影響する --> n313
+  n303 -- 影響する --> n18
+  n304 -- 影響する --> n306
+  n304 -- 新たな問いを生む --> n189
+  n305 -- 根拠になる --> n57
+  n306 -- 影響する --> n16
+  n307 -- 影響する --> n57
+  n308 -- 影響する --> n201
+  n309 -- 食い違う --> n50
+  n309 -- 影響する --> n209
+  n309 -- 影響する --> n26
+  n310 -- 影響する --> n211
+  n310 -- 根拠になる --> n57
+  n311 -- 根拠になる --> n50
+  n311 -- 答える --> n265
+  n312 -- 根拠になる --> n85
+  n312 -- 影響する --> n209
+  n313 -- 答える --> n189
+  n313 -- 根拠になる --> n304
+  n314 -- 影響する --> n285
   class n0 finding_confirmed
   class n1 finding_confirmed
   class n2 finding_confirmed
@@ -1150,38 +1152,38 @@ flowchart LR
   class n272 finding_confirmed
   class n273 finding_confirmed
   class n274 finding_confirmed
-  class n275 finding_unverified
-  class n276 finding_confirmed
+  class n275 finding_confirmed
+  class n276 finding_unverified
   class n277 finding_confirmed
   class n278 finding_confirmed
   class n279 finding_confirmed
-  class n280 finding_unverified
-  class n281 finding_confirmed
+  class n280 finding_confirmed
+  class n281 finding_unverified
   class n282 finding_confirmed
   class n283 finding_confirmed
-  class n284 finding_unverified
-  class n285 finding_confirmed
-  class n286 finding_unverified
-  class n287 finding_confirmed
-  class n288 finding_unverified
+  class n284 finding_confirmed
+  class n285 finding_unverified
+  class n286 finding_confirmed
+  class n287 finding_unverified
+  class n288 finding_confirmed
   class n289 finding_unverified
-  class n290 finding_confirmed
+  class n290 finding_unverified
   class n291 finding_confirmed
-  class n292 finding_unverified
+  class n292 finding_confirmed
   class n293 finding_unverified
-  class n294 finding_confirmed
+  class n294 finding_unverified
   class n295 finding_confirmed
   class n296 finding_confirmed
   class n297 finding_confirmed
-  class n298 finding_unverified
-  class n299 finding_confirmed
-  class n300 finding_unverified
+  class n298 finding_confirmed
+  class n299 finding_unverified
+  class n300 finding_confirmed
   class n301 finding_unverified
-  class n302 finding_confirmed
+  class n302 finding_unverified
   class n303 finding_confirmed
   class n304 finding_confirmed
-  class n305 finding_outdated
-  class n306 finding_confirmed
+  class n305 finding_confirmed
+  class n306 finding_outdated
   class n307 finding_confirmed
   class n308 finding_confirmed
   class n309 finding_confirmed
@@ -1189,6 +1191,7 @@ flowchart LR
   class n311 finding_confirmed
   class n312 finding_confirmed
   class n313 finding_confirmed
+  class n314 finding_confirmed
   classDef finding_confirmed fill:#e6f4ea,stroke:#2e7d32
   classDef finding_unverified fill:#fff8e1,stroke:#b26a00,stroke-dasharray:4 3
   classDef finding_outdated fill:#eeeeee,stroke:#9e9e9e
@@ -1310,7 +1313,7 @@ flowchart LR
 | [1000 人規模を見込むなら Workers＋D1 に寄せ、上限に近づいたら月 5 ドルの有料プランに上げる](notes/dec-scale-workers.md) | 置き換え済み | 2026-10-13 | S12 | 影響する → [サービス版の基盤を「VM＋Cloudflare の前段」と「Workers＋D1」のどちらに寄せるか](notes/q-direction.md)<br>前提にする → [実カタログで、推薦の索引の行数と Worker の CPU 時間がどうなるか](notes/q-real-catalog-stats.md)<br>前提にする → [公演情報の取得処理をどこで動かすか](notes/q-crawler-host.md)<br>[たぐりは無料枠の中だけで動かす。上限は無料枠より低く取り、越えそうなら使う前に止めて知らせる](notes/dec-free-tier-only.md) が置き換える<br>[1000 人で使うと、Workers の無料枠は推薦の計算（CPU）と D1 の読み行数で足りなくなりそう（見積もり）](notes/scale-1000-estimate.md) が根拠になる<br>[Workers の有料プランは月 5 ドルで、要求 1000 万回・CPU 3000 万ミリ秒・D1 の読み 250 億行が含まれる](notes/workers-paid-plan.md) が根拠になる |
 | [サービス版は常時稼働の VM で動かし、前段に Cloudflare を置く](notes/dec-vm-cloudflare.md) | 置き換え済み | 2026-10-13 | S02, S13, S22 | 置き換える → [サービス版を Render の有料サービスで立てる](notes/dec-render-service-beta.md)<br>前提にする → [独自ドメインを取り、画面と API を同じドメインの下に置く](notes/dec-own-domain.md)<br>影響する → [公開版のサーバー（serve_cloud.py・serve.py）](notes/comp-public-server.md)<br>影響する → [登録・復旧の試行回数の制限（auth.py）](notes/comp-auth-throttle.md)<br>影響する → [サービス版の VM（cloudflared・systemd）](notes/comp-vm-host.md)<br>[Cloudflare Tunnel は無料で使え、ドメインを Cloudflare の DNS に置く必要がある](notes/cf-tunnel-free.md) が根拠になる<br>[Render をやめ、元の画面を Worker に移す（見た目はそのまま・最後に一度だけ切り替え）](notes/dec-render-full-migration.md) が食い違う<br>[無料で起動を速くするため、Cloudflare Workers＋D1 で動かす](notes/dec-workers-d1.md) が置き換える<br>[Oracle Always Free の ARM は 2 OCPU・12GB まで。使用が少ないと回収されうる](notes/oracle-always-free.md) が根拠になる<br>[検証中に自分だけを通す方法（Cloudflare Access の無料枠）](notes/q-cf-access.md) が前提にする<br>[R2 は 10GB まで無料で、取り出しの通信料がかからない](notes/r2-free-tier.md) が根拠になる<br>[Render の無料プランは永続ディスクを付けられない](notes/render-free-no-disk.md) が根拠になる<br>[Render の無料プランは 15 分でスリープし、起動に約 1 分かかる](notes/render-free-spin-down.md) が根拠になる<br>[サーバーは標準ライブラリの http.server と sqlite3 で書いてある](notes/stdlib-server-sqlite.md) が根拠になる |
 
-## 調べたこと（162 件）
+## 調べたこと（163 件）
 
 | 項目 | 状態 | 日付 | 検証項目 | つながり |
 | --- | --- | --- | --- | --- |
@@ -1344,7 +1347,7 @@ flowchart LR
 | [役職（出演・監督）の重みを人ごとに学んでも、この条件では良くならなかった](notes/eval-douban-role-learning-no-gain.md) | 確認済み | 2026-10-13 | ─ | 影響する → [「使うほど精度が上がる」推薦をどう作るか（何を好きとし、何を精度の向上とするか）](notes/q-reco-learning-design.md) |
 | [評価の段階を粗くしても当たりは少し下がるだけで、途中で段階を変えた人は「同じ段階どうしで比べる」のがよい](notes/eval-douban-scales.md) | 確認済み | 2026-10-13 | ─ | 根拠になる → [評価の段階は利用者が選べる。初期設定は 5 段階、最小 2 段階・最大 11 段階](notes/dec-user-scale-range.md)<br>影響する → [本人向けのおすすめ計算（user_recommender.py）](notes/comp-recommender.md) |
 | [お気に入りを仮の評価にすると、評価0件のときだけ当たりが上がる（+0.014〜0.015）。すぐ薄めれば後で下がらない](notes/eval-favourite-seed.md) | 確認済み | 2026-10-13 | ─ | 前提にする → [内容ベースの推薦で、本人の初期の好みを評価が増えるたびに修正する方法がある（Billsus & Pazzani）](notes/lit-syskill-webert-prior.md)<br>前提にする → [持ち主 1 人（n=1）の実験結果は、推薦の改善の根拠にしない](notes/dec-no-n1-evidence.md)<br>影響する → [本人向けのおすすめ計算（user_recommender.py）](notes/comp-recommender.md)<br>[劇団・主催（監督の作品群で代用）と題材（ジャンルで代用）のお気に入りも、評価が無いうちの当たりを上げる](notes/eval-favourite-kinds.md) が根拠になる<br>[評価が無いうちの推薦をお気に入りから作るようにした（person-ordinal-v3+fav1、Worker）](notes/impl-favourite-seed.md) が前提にする |
-| [本人のジャンルの好みを足すと、人物だけより当たりが上がり、使うほどの伸びも大きくなる（映画の公開データ）](notes/eval-genre-preference.md) | 確認済み | 2026-10-13 | ─ | 影響する → [本人向けのおすすめ計算（user_recommender.py）](notes/comp-recommender.md)<br>新たな問いを生む → [観劇でジャンルにあたる手がかり（テーマ語・劇団・会場など）をどう取り、本人の好みとして足すか](notes/q-theme-preference.md)<br>[推薦の計算の細部（数字への直し方・平均か合計か・割り引き・足す人数）はほぼ差が無く、効くのはジャンルの好みと監督の重みを上げること](notes/eval-design-choices.md) が根拠になる |
+| [本人のジャンルの好みを足すと、人物だけより当たりが上がり、使うほどの伸びも大きくなる（映画の公開データ）](notes/eval-genre-preference.md) | 確認済み | 2026-10-13 | ─ | 影響する → [本人向けのおすすめ計算（user_recommender.py）](notes/comp-recommender.md)<br>新たな問いを生む → [観劇でジャンルにあたる手がかり（テーマ語・劇団・会場など）をどう取り、本人の好みとして足すか](notes/q-theme-preference.md)<br>[推薦の計算の細部（数字への直し方・平均か合計か・割り引き・足す人数）はほぼ差が無く、効くのはジャンルの好みと監督の重みを上げること](notes/eval-design-choices.md) が根拠になる<br>[デモ版のおすすめに「理由を出せていません」が増えたのは、v3 の点に足した公演の種類（#形式・#原作・#翻訳・#会場・#値段）が理由の行に出ていなかったため。種類の行を足した](notes/reason-kind-missing.md) が前提にする |
 | [組み合わせの重みを公開データの別の人で学んで固定すると少し上がる（+0.006）。人ごとに学び直すのと小さな MLP は効かない](notes/eval-meta-learned-weights.md) | 確認済み | 2026-10-13 | ─ | 根拠になる → [利用者ごとの好みを、全体の事前分布から少しずつ個人に寄せる学習は確立した方法（Zhang & Koren 2007）](notes/lit-hierarchical-user-model.md)<br>影響する → [本人向けのおすすめ計算（user_recommender.py）](notes/comp-recommender.md) |
 | [最初に評価してもらう過去作を、これから並べる候補に多い人物・ジャンルから選ぶと、同じ件数で当たりが上がる（楽観的な条件）](notes/eval-onboarding-selection.md) | 確認済み | 2026-10-13 | ─ | 影響する → [本人向けのおすすめ計算（user_recommender.py）](notes/comp-recommender.md)<br>[最初の評価で聞く過去作の一覧を出す API を作った（お気に入りの公演 → 今後の候補を一番多く覆う公演）](notes/impl-onboarding-list.md) が前提にする<br>[登録して最初の 1 回目の評価だけ、これから並ぶ公演に関係する過去作から聞く形にするか（起案者の案）](notes/q-first-rating-onboarding.md) が前提にする |
 | [水準を大きく上げたのは「作り手・ジャンルの世間の評判」だけで、それは使っても上がらない](notes/eval-reputation-signals.md) | 確認済み | 2026-10-13 | ─ | 影響する → [公開の評判（取得元の公開の評価・クチコミ）を推薦に使えるか](notes/q-public-reputation-signal.md) |
@@ -1430,6 +1433,7 @@ flowchart LR
 | [試験用の小さな索引（84 公演）でも、Worker のおすすめの計算は CPU 中央値 2〜9 ms・最も遅い回 50 ms。無料の 10 ms に近いので、本物の索引で測る](notes/measure-worker-fixture-1014.md) | 確認済み | 2026-10-14 | ─ | 影響する → [移した画面は Workers 無料枠の CPU 10 ミリ秒に収まるか](notes/q-workers-cpu-real.md)<br>影響する → [実カタログで、推薦の索引の行数と Worker の CPU 時間がどうなるか](notes/q-real-catalog-stats.md)<br>前提にする → [たぐりは無料枠の中だけで動かす。上限は無料枠より低く取り、越えそうなら使う前に止めて知らせる](notes/dec-free-tier-only.md) |
 | [デモ版で読み込み直すと昔の見た目が出たのは、深い URL に返る 404.html が古い写しで theme.css を読んでいなかったため（直した）](notes/pages-404-stale.md) | 確認済み | 2026-10-14 | ─ | ─ |
 | [興味あり・なしの記録が遅かったのは、1 回押すごとに本人の推薦を 2 回まるごと計算し直していたため](notes/react-slow-cause.md) | 確認済み | 2026-10-14 | ─ | 根拠になる → [おすすめの見直し（2026-10-14 の 2 回目）── 料金はつまみ・絞り込み 3 つを横 1 列・ページの地図・ツアー日程を常に・感想のハッシュタグ・券の案内へ #tickets・記録を速く・券からお気に入りに](notes/dec-recommend-ui-1014b.md)<br>[おすすめの見直し（2026-10-14 の 2 回目）── 料金はつまみ・絞り込み 3 つを横 1 列・ページの地図・ツアー日程を常に・感想のハッシュタグ・券の案内へ #tickets・記録を速く・券からお気に入りに](notes/dec-recommend-ui-1014b.md) が前提にする |
+| [デモ版のおすすめに「理由を出せていません」が増えたのは、v3 の点に足した公演の種類（#形式・#原作・#翻訳・#会場・#値段）が理由の行に出ていなかったため。種類の行を足した](notes/reason-kind-missing.md) | 確認済み | 2026-10-14 | ─ | 前提にする → [本人のジャンルの好みを足すと、人物だけより当たりが上がり、使うほどの伸びも大きくなる（映画の公開データ）](notes/eval-genre-preference.md) |
 | [コミットの ✗（Workers Builds）は、master 以外のブランチの組み立てが失敗しているもの。master の組み立ては毎回成功している見込み](notes/workers-builds-branch-fail.md) | 確認済み | 2026-10-14 | ─ | 影響する → [コミットの ✗ は Workers Builds が cloudflare/ の無い master を組もうとして失敗していたため](notes/workers-builds-master-fail.md)<br>新たな問いを生む → [Workers Builds の master 以外のブランチの組み立てが毎回失敗するのはなぜか。止めてよいか](notes/q-branch-builds-fail.md)<br>[Workers Builds の master 以外のブランチの組み立てが毎回失敗するのはなぜか。止めてよいか](notes/q-branch-builds-fail.md) が影響する<br>[master 以外のブランチの組み立ては `npx wrangler preview` を走らせ、設定に previews の欄が無いので失敗している](notes/workers-preview-build-log.md) が根拠になる |
 | [workers.dev の URL は無料のまま名前を変えられる（アカウントの subdomain と Worker の名前）。独自ドメインは年額がかかる](notes/workers-dev-subdomain-rename.md) | 確認済み | 2026-10-14 | ─ | 影響する → [どのドメインをどこで取るか](notes/q-domain.md)<br>根拠になる → [たぐりは無料枠の中だけで動かす。上限は無料枠より低く取り、越えそうなら使う前に止めて知らせる](notes/dec-free-tier-only.md)<br>[サービス版の URL は無料のまま app.taguri.workers.dev にする（独自ドメインは取らない）](notes/dec-url-app-taguri.md) が前提にする<br>[本番の URL を taguri.com にするか（独自ドメインは年額がかかり、無料だけの約束と食い違う）](notes/q-domain-taguri-com.md) が前提にする |
 | [master 以外のブランチの組み立ては `npx wrangler preview` を走らせ、設定に previews の欄が無いので失敗している](notes/workers-preview-build-log.md) | 確認済み | 2026-10-14 | ─ | 答える → [Workers Builds の master 以外のブランチの組み立てが毎回失敗するのはなぜか。止めてよいか](notes/q-branch-builds-fail.md)<br>根拠になる → [コミットの ✗（Workers Builds）は、master 以外のブランチの組み立てが失敗しているもの。master の組み立ては毎回成功している見込み](notes/workers-builds-branch-fail.md)<br>[起案者が Workers Builds を master だけ組み立てるようにした](notes/workers-branch-control-master.md) が影響する |

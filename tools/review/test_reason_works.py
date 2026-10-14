@@ -39,6 +39,37 @@ class ReasonWorksTest(unittest.TestCase):
         self.assertIn("（履歴 2 本）", html)        # 作品名が引けない人は本数で書く
 
 
+class KindReasonTest(unittest.TestCase):
+    """種類だけで上がった公演に「理由を出せていません」を出さない（2026-10-14 の指摘）。"""
+
+    def test_kind_only_show_names_its_kind_and_works(self):
+        c = {"stage_id": "1", "why_b": [],
+             "why_kind": [[0.2, "#形式", "ミュージカル", 4], [-0.1, "#会場", "本多劇場", 2], [0.05, "#翻訳", "翻訳劇", 1]],
+             "why_kind_works": {"#形式\tミュージカル": [["夜", "◎"], ["朝", "○"]]}}
+        with patch.object(RR, "synopsis_source", return_value=("公演情報", False)):
+            html = RR.reason_rows(c)
+        self.assertNotIn("理由を出せていません", html)
+        self.assertIn("形式 <b>ミュージカル</b>", html)
+        self.assertIn("（『夜』・『朝』）", html)
+        self.assertIn("<b>翻訳劇</b><span class=\"n\">（履歴 1 本）", html)
+        self.assertNotIn("本多劇場", html)          # 点を下げた種類は理由にしない
+
+    def test_prepare_attaches_titles_to_kinds(self):
+        import user_recommender as UR
+        rated = [{"key": f"r{i}", "title": f"作品{i}", "date": f"2025-01-0{i}", "verdict": v,
+                  "people": [["出演", f"人{i}"]], "stage_id": str(i)} for i, v in ((1, "◎"), (2, "◎"), (3, "×"), (4, "×"))]
+        for r in rated[:2]:
+            r["title"] = r["title"] + "ミュージカル"
+        cand = {"stage_id": "9", "title": "新作ミュージカル", "period": "2099/01/01 ～ 2099/01/05",
+                "fields": {"出演": "知らない人"}}
+        got = UR.prepare({}, [cand], rated, multipliers={}, role_group=lambda r: "cast")
+        c = next(x for x in got["ranked"] if x["stage_id"] == "9") if got.get("ranked") else None
+        self.assertIsNotNone(c)
+        self.assertEqual(c["why_b"], [])
+        self.assertTrue(any(k[1] == "#形式" and k[0] > 0 for k in c["why_kind"]))
+        self.assertEqual([t for t, _ in c["why_kind_works"]["#形式\tミュージカル"]], ["作品2ミュージカル", "作品1ミュージカル"])
+
+
 class PriceTest(unittest.TestCase):
     def test_price_range(self):
         self.assertEqual(RR.price_range("一般 5,000円 学生 3,000円【発売日】2026/09/01"), (3000, 5000))
