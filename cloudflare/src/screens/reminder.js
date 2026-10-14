@@ -6,7 +6,8 @@
 // from digest.all_candidates). Not ported: the prefecture map (prefmap.panel).
 import {E} from './py.js';
 import {ico, h2} from './icons.js';
-import {buttons, posterHtml} from './cards.js';
+import {buttons, posterHtml, cardTemplates} from './cards.js';
+import {stageInfo, detailHtml, detailFromCard} from './fallback.js';
 import {indexTabs} from './rate.js';
 import {nz, buckets} from './lists.js';
 import {prefsFor, prefForm, regionCounts} from './prefs.js';
@@ -59,7 +60,7 @@ const venue = c => ({stage_id: String(c.stage_id || ''), theater: c.theater || '
 export const venues = c => [venue(c), ...(c.tours || []).map(venue)];
 
 /** render_recommend.schedule_html */
-export function scheduleHtml(c, today) {
+export function scheduleHtml(c, today, hereLabel = 'このおすすめの日程') {
   let vs = venues(c);
   if (vs.length < 2) return '';
   const here = vs[0].stage_id;
@@ -72,7 +73,7 @@ export function scheduleHtml(c, today) {
     const theater = v.theater && v.pref ? `<span class="tf-th">／${E(v.theater)}</span>` : '';
     return `<div class="tf-row${done ? ' done' : ''}${isHere ? ' here' : ''}"><span class="tf-loc">${E(loc)}公演${theater}</span>`
       + `<span class="tf-when">${E(shortPeriod(v.period, today))}</span>`
-      + (isHere ? '<span class="tf-here">このおすすめの日程</span>' : '') + '</div>';
+      + (isHere ? `<span class="tf-here">${hereLabel}</span>` : '') + '</div>';
   });
   return `<div class="tourfull">${rows.join('')}</div>`;
 }
@@ -180,20 +181,24 @@ function until(start, today) {
   const n = dayDiff(start, today);
   return n === 0 ? ['本日開幕', true] : n === 1 ? ['明日開幕', true] : [`あと${n}日`, false];
 }
-function row(r, today, poster) {
+function row(r, today, poster, detail, hereLabel) {
   const [u, urgent] = until(r.start, today);
   const btns = r.kind_key === 'unanswered' && r.stage_id ? buttons(r.stage_id) : '';
-  const tour = r.tours ? scheduleHtml(r, today) : '';
-  return `<li class="dgli ${r.cls}${urgent ? ' dgurgent' : ''}" data-stage="${E(r.stage_id)}">`
-    + `${r.stage_id ? poster(r.stage_id) : ''}<div class="dgbody">`
-    + `<span class="dgk ${r.cls}">${ico(r.icon, 13)}${E(r.kind)}</span>`
+  const tour = r.tours ? scheduleHtml(r, today, hereLabel) : '';
+  const head = `<span class="dgk ${r.cls}">${ico(r.icon, 13)}${E(r.kind)}</span>`
     + `<b class="dgt">${E(r.title)}</b>`
-    + `<span class="dgw">${E(u)}${r.venue ? '・' + E(r.venue) : ''}${r.pref ? '・' + E(r.pref) : ''}</span>`
-    + `${tour}</div>${btns}</li>`;
+    + `<span class="dgw">${E(u)}${r.venue ? '・' + E(r.venue) : ''}${r.pref ? '・' + E(r.pref) : ''}</span>`;
+  const more = detail && r.stage_id ? detail(r.stage_id) : '';
+  // Folded by title; opening it shows the run, credits and synopsis like the recommendation cards.
+  if (more) return `<li class="dgli dgfold ${r.cls}${urgent ? ' dgurgent' : ''}" data-stage="${E(r.stage_id)}">`
+    + `<details class="dgopen"><summary><div class="dgbody">${head}</div></summary>`
+    + `<div class="dgdetail">${r.stage_id ? poster(r.stage_id) : ''}<div class="dginfo">${more}${tour}</div></div></details>${btns}</li>`;
+  return `<li class="dgli ${r.cls}${urgent ? ' dgurgent' : ''}" data-stage="${E(r.stage_id)}">`
+    + `${r.stage_id ? poster(r.stage_id) : ''}<div class="dgbody">${head}${tour}</div>${btns}</li>`;
 }
 
 /** digest.panel */
-export function panel({cands, status, owned, tickets, today, prefs = [], week = 'this', poster = () => ''}) {
+export function panel({cands, status, owned, tickets, today, prefs = [], week = 'this', poster = () => '', detail = null, hereLabel = 'このおすすめの日程'}) {
   week = WEEKS.some(([k]) => k === week) ? week : 'this';
   const wks = Object.fromEntries(WEEKS.map(([k], i) => [k, weekAll(cands, status, today, prefs, i)]));
   const wk = wks[week];
@@ -205,7 +210,7 @@ export function panel({cands, status, owned, tickets, today, prefs = [], week = 
   if (wk.days.length) {
     const days = wk.days.map(([day, rows]) => `<details class="dgday"${dayDiff(day, today) <= 1 ? ' open' : ''}>`
       + `<summary>${jd(day)} ── ${rows.length} 件</summary>`
-      + `<ul class="dglist">${rows.map(r => row(r, today, poster)).join('')}</ul></details>`).join('');
+      + `<ul class="dglist">${rows.map(r => row(r, today, poster, detail, hereLabel)).join('')}</ul></details>`).join('');
     const lead = prefs.length ? `<b>${E(where)}</b>で観られる、${E(span)} に開幕する公演が <b>${wk.n} 件</b>あります。`
       : `<b>${E(span)} に開幕する公演が ${wk.n} 件</b>あります。`;
     open = `<p class="dglead">${lead}好みに関係なく全部出しています。</p>${days}`;
@@ -280,6 +285,16 @@ async function postersOf(ctx, sids) {
   return out;
 }
 
+// The folded rows' few rules come with the screen (public/style.css is the demo's copy).
+const FOLD_STYLE = `<style>
+.dgli.dgfold{display:block}
+.dgfold details.dgopen>summary{cursor:pointer}
+.dgdetail{display:flex;gap:12px;align-items:flex-start;margin:10px 0 4px}
+.dgdetail .dginfo{flex:1 1 auto;min-width:0;display:grid;gap:8px;font-size:13.5px}
+.dgdetail .syn .txt{margin:0}
+.dgfold .btns{margin-top:8px}
+</style>`;
+
 export async function reminderScreen(params, ctx) {
   const prefs = await prefsFor(params, ctx);
   const w = params.get('w') || 'this';
@@ -300,11 +315,19 @@ export async function reminderScreen(params, ctx) {
   const venueOf = new Map(cands.map(c => [c.stage_id, c.venue || '']));
   const owned = b.owned.flatMap(r => (r.sids || [r.stage_id]).map(sid => ({stage_id: sid, title: r.title, venue: venueOf.get(sid) || ''})));
   const pics = await postersOf(ctx, cands.map(c => c.stage_id));
+  // What each row of this week shows when opened: the prebuilt card's parts, or (a stage
+  // only in the catalogue) its credits and synopsis from there (fallback.js).
+  const shown = weekAll(cands, status, ctx.today, prefs, offset).days.flatMap(([, rows]) => rows.map(r => r.stage_id)).filter(Boolean);
+  const {html: cardHtml} = await cardTemplates(ctx.db, shown);
+  const details = new Map([...cardHtml].map(([sid, h]) => [sid, detailFromCard(h)]));
+  const bare = shown.filter(sid => !details.has(sid));
+  if (bare.length) for (const [sid, s] of await stageInfo(ctx.db, bare)) details.set(sid, detailHtml(s));
   const html = panel({cands, status, owned, tickets: b.tickets, today: ctx.today, prefs, week,
-    poster: sid => (pics.has(sid) ? posterHtml(pics.get(sid)) : '')});
+    poster: sid => (pics.has(sid) ? posterHtml(pics.get(sid)) : ''), detail: sid => details.get(sid) || '', hereLabel: 'この行の会場'});
   const body = `<h1>開幕リマインド ── 見逃していませんか</h1>
 <p class="lede"><b>初日が近い公演を、答えたかどうかに関わらず全部出します。</b>「興味あり」も「興味なし」も押さないうちに開幕してしまうのが、いちばんの見逃しだからです。未回答の行は、その場で答えられます。</p>
 ${prefForm(counts, prefs, '/recommend/reminder', note, {w: week}, regionCounts(wr.map(r => ({key: r.stage_id || r.title, prefs: [r.pref]}))))}
+${FOLD_STYLE}
 ${html}`;
   return {title: '開幕リマインド', body_html: body};
 }

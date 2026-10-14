@@ -1219,6 +1219,23 @@
    "verifies": []
   },
   {
+   "id": "dec-reminder-fold-and-fixes",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "開幕リマインドを題名で折りたたみ、開くと会期・出演・あらすじを出す。カードの無い公演の答えを失わない。設定では全都道府県を選べる。「記録しました」は帯の下",
+   "sources": [
+    "cloudflare/src/screens/reminder.js",
+    "cloudflare/src/screens/fallback.js",
+    "cloudflare/src/screens/lists.js",
+    "cloudflare/src/screens/settings.js",
+    "cloudflare/src/screens/prefs.js",
+    "web/theme.css",
+    "cloudflare/test/lists-screen.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-reminder-worker",
    "type": "decision",
    "status": "adopted",
