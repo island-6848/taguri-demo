@@ -83,7 +83,7 @@ test('NATIVE_UI=all: nothing of a user goes to Render; unported screens and writ
   const cookie = await signIn(env);
   const r = stubRender();
   try {
-    for (const name of ['calendar', 'records', 'trace', 'chronicle', 'search', 'settings', 'start', 'register']) {
+    for (const name of ['records', 'trace', 'chronicle', 'search', 'settings', 'start', 'register']) {
       const got = await step(env, cookie, {get: `/api/screen/${name}`});
       assert.equal(got.status, 200, name);
       assert.equal(got.body.moving, true, name);
@@ -115,7 +115,7 @@ test('NATIVE_UI=all: nothing of a user goes to Render; unported screens and writ
 test('signed out, a moving screen still asks to sign in', async () => {
   const {env, sqlite} = setup();
   try {
-    assert.equal((await step(env, 'x=y', {get: '/api/screen/calendar'})).status, 401);
+    assert.equal((await step(env, 'x=y', {get: '/api/screen/records'})).status, 401);
   } finally { sqlite.close(); }
 });
 

@@ -1,4 +1,5 @@
-"""Write src/screens/icons.js from tools/taguri/icons.py (the Worker's screens use the
+"""Write src/screens/icons.js from tools/taguri/icons.py and src/screens/calendar_js.js
+from stage_calendar.JS (the Worker's screens use the
 same icons as the Python ones). test/icons.test.js fails when the two drift apart.
 
     python3 cloudflare/scripts/write_icons.py
@@ -25,5 +26,14 @@ export function ico(name, size = 16, cls = '') {{
 export const h2 = (name, text, extra = '') => `<h2>${{ico(name, 18)}}<span>${{text}}</span>${{extra}}</h2>`;
 '''
 
+sys.path.insert(0, str(ROOT / "tools" / "review"))
+import stage_calendar as SC                                          # noqa: E402
+
+# The <script> the Python calendar puts after its grid (inert once inserted with innerHTML,
+# kept so the screen's HTML stays the same as the Python one).
+CAL_JS = ("// stage_calendar.JS, written by scripts/write_icons.py (do not edit).\n"
+          f"export const CALENDAR_JS = {json.dumps(SC.JS, ensure_ascii=False)};\n")
+
 if __name__ == "__main__":
     (ROOT / "cloudflare" / "src" / "screens" / "icons.js").write_text(SRC, encoding="utf-8")
+    (ROOT / "cloudflare" / "src" / "screens" / "calendar_js.js").write_text(CAL_JS, encoding="utf-8")

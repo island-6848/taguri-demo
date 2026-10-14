@@ -12,6 +12,7 @@ import {accountScreens} from './account.js';
 import {recommendScreens} from './recommend.js';
 import {listScreens} from './lists.js';
 import {reminderScreens} from './reminder.js';
+import {calendarScreens} from './calendar.js';
 import {ValueError} from './py.js';
 
 export const SCREEN_TABLES = ['works', 'excluded', 'merges', 'hand_credits', 'visit_note', 'reaction', 'viewed',
@@ -20,7 +21,7 @@ export const SCREEN_TABLES = ['works', 'excluded', 'merges', 'hand_credits', 'vi
 // public service never checks it; screens only carry it in links.
 export const TOKEN = 'cfw0000000000000000000000000000000';
 
-const SCREENS = {...rateScreens.screens, ...diaryScreens.screens, ...accountScreens.screens, ...recommendScreens.screens, ...listScreens.screens, ...reminderScreens.screens};
+const SCREENS = {...rateScreens.screens, ...diaryScreens.screens, ...accountScreens.screens, ...recommendScreens.screens, ...listScreens.screens, ...reminderScreens.screens, ...calendarScreens.screens};
 const ACTIONS = {...rateScreens.actions, ...diaryScreens.actions, ...accountScreens.actions, ...recommendScreens.actions, ...listScreens.actions};
 
 const enabled = (env, kind, name) => {
