@@ -549,6 +549,20 @@
    "verifies": []
   },
   {
+   "id": "dec-account-page",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "本人だけが見るアカウントの画面（/account）を Worker に作る",
+   "sources": [
+    "cloudflare/src/screens/account.js",
+    "web/app.js",
+    "web/theme.css",
+    "cloudflare/test/cutover.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-aspects-screen",
    "type": "decision",
    "status": "adopted",
@@ -787,6 +801,21 @@
    "date": "2026-10-13",
    "title": "画面の移行（段 1〜5）は Push セッションが引き継ぎ、途中のコードも受け取る",
    "sources": [],
+   "verifies": []
+  },
+  {
+   "id": "dec-native-cutover-now",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "本番を全画面そろう前に Worker の画面へ切り替え、Render のデモへの中継をやめる（未移植の画面は「移しています」と出す）",
+   "sources": [
+    "cloudflare/src/worker.js",
+    "cloudflare/src/screens/index.js",
+    "cloudflare/src/screens/suggest.js",
+    "cloudflare/wrangler.jsonc",
+    "cloudflare/test/cutover.test.js"
+   ],
    "verifies": []
   },
   {
@@ -2137,7 +2166,7 @@
   {
    "id": "native-cutover-map",
    "type": "finding",
-   "status": "confirmed",
+   "status": "outdated",
    "date": "2026-10-13",
    "title": "日記帳などを Worker の画面に切り替えるための今の状態（NATIVE_UI）",
    "sources": [
@@ -2313,6 +2342,17 @@
    "title": "別の作業で、元の画面の Python を Python Workers で動かす移行版も作られている",
    "sources": [
     "https://github.com/island-6848/taguri-demo/blob/cloudflare-complete-migration/docs/verification/2026-10-13-cloudflare-migration-final-review.md"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "q-account-limit-100",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-14",
+   "title": "D1 の users 表に「全体で 100 人まで」の歯止め（試験版の名残り）があるが、本番でもこのままにするか",
+   "sources": [
+    "cloudflare/migrations/0001.sql"
    ],
    "verifies": []
   },
@@ -4026,6 +4066,21 @@
    "to": "q-firebase-user-deletion"
   },
   {
+   "from": "dec-account-page",
+   "rel": "depends_on",
+   "to": "dec-native-cutover-now"
+  },
+  {
+   "from": "dec-account-page",
+   "rel": "affects",
+   "to": "comp-native-screens"
+  },
+  {
+   "from": "dec-account-page",
+   "rel": "affects",
+   "to": "comp-frontend"
+  },
+  {
    "from": "dec-aspects-screen",
    "rel": "answers",
    "to": "q-pr13-aspects-screen"
@@ -4309,6 +4364,21 @@
    "from": "dec-migration-owner-push",
    "rel": "affects",
    "to": "migration-handover-stage0"
+  },
+  {
+   "from": "dec-native-cutover-now",
+   "rel": "answers",
+   "to": "q-native-cutover"
+  },
+  {
+   "from": "dec-native-cutover-now",
+   "rel": "affects",
+   "to": "comp-native-screens"
+  },
+  {
+   "from": "dec-native-cutover-now",
+   "rel": "affects",
+   "to": "dec-render-full-migration"
   },
   {
    "from": "dec-no-n1-evidence",
@@ -5549,6 +5619,16 @@
    "from": "python-workers-migration-state",
    "rel": "raises",
    "to": "q-d1-python-workers"
+  },
+  {
+   "from": "q-account-limit-100",
+   "rel": "affects",
+   "to": "dec-native-cutover-now"
+  },
+  {
+   "from": "q-account-limit-100",
+   "rel": "affects",
+   "to": "dec-free-tier-only"
   },
   {
    "from": "q-aspect-attribution-check",

@@ -1,7 +1,7 @@
 ---
 id: native-cutover-map
 type: finding
-status: confirmed
+status: outdated
 date: 2026-10-13
 title: 日記帳などを Worker の画面に切り替えるための今の状態（NATIVE_UI）
 sources:
@@ -21,3 +21,4 @@ links:
 - ポスターは Worker に無い（q-worker-posters）。CPU 時間（無料枠 10ms）と D1 の行数は本物の量で測っていない
 - デモ版（GitHub Pages → Render）は NATIVE_UI では切り替わらない（q-demo-trial-design）
 この日に足した試験（cloudflare/test/cutover.test.js）: 一部だけの一覧では書いた名前だけが Worker で答え、残りは Render へ行く／未設定なら全部 Render へ行く（今の本番）／2 人の利用者が Worker の画面で互いの記録を見られず、名指しでも書き換えられない。
+（2026-10-14 に古くなった: 本番は NATIVE_UI=all に切り替えた。今の状態は dec-native-cutover-now）

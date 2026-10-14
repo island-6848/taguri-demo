@@ -36,12 +36,15 @@ const SCREENS = {
   "/records": "records", "/records/trace": "trace",
   "/records/chronicle": "chronicle", "/records/works": "works",
   "/search": "search", "/settings": "settings",
+  // アカウント（本人だけが見る。起案者の指示 2026-10-14）。Worker だけが答える画面なので、
+  // デモ版（Render）には入り口を出さない（下の NAV・renderPNav）
+  "/account": "account",
 };
 // 全17画面を実装済み(#000009)。「準備中」プレースホルダは段階移行の
 // 名残りとして残してある(未知のIMPLEMENTED外の画面名が来た場合の保険)。
 const IMPLEMENTED = new Set(["recommend", "interest", "reminder", "favourites", "calendar",
   "rate", "unrated", "notes", "tickets", "records", "trace", "chronicle", "works",
-  "start", "register", "settings", "search"]);
+  "start", "register", "settings", "search", "account"]);
 
 // --- NAV(app.py の NAV表と同じデータ) -------------------------------------
 // ページの地図（起案者の指摘 2026-10-14「リマインドはおすすめの下？違和感ある」で見直した）:
@@ -49,6 +52,7 @@ const IMPLEMENTED = new Set(["recommend", "interest", "reminder", "favourites", 
 // （公演カレンダー・開幕リマインド・購入済み公演）。開幕リマインドは「初日が近い公演の知らせ」で、選ぶ画面
 // ではなく日程を見る画面なので、予定に移した。URL（/recommend/reminder）は変えない（覚えた道を壊さない）
 const NAV = [[null, "おすすめ", "ticket", [["/recommend", "今週のおすすめ", "ticket"], ["/recommend/interest", "興味あり", "flag"], ["/recommend/favourites", "お気に入り", "star"]]], [null, "予定", "calendar", [["/calendar", "公演カレンダー", "calendar"], ["/recommend/reminder", "開幕リマインド", "inbox"], ["/tickets", "購入済み公演", "ticket"]]], [null, "観た公演の評価", "check", [["/rate", "評価一覧", "check"], ["/rate/unrated", "未評価", "clock"], ["/rate/notes", "感想", "pencil"]]], ["/register", "公演情報の登録", "inbox", []], [null, "記録を見返す", "chart", [["/records", "眺める", "chart"], ["/records/trace", "たどる", "user"], ["/records/chronicle", "観劇史年表", "calendar"], ["/records/works", "日記帳", "book"]]], ["/search", "探す", "search", []], ["/settings", "設定", "gear", []]];
+if (!IS_DEMO) NAV.push(["/account", "アカウント", "user", []]);
 
 // --- 絵記号(icons.py の P/ALIAS をそのまま) --------------------------------
 const ICON_P = {"ticket": "M3 9a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2 2 2 0 0 0 0 6 2 2 0 0 1-2 2H5a2 2 0 0 1-2-2 2 2 0 0 0 0-6zM11 7v10", "star": "M12 3.8l2.5 5.1 5.6.8-4 3.9 1 5.6-5.1-2.7-5.1 2.7 1-5.6-4-3.9 5.6-.8z", "inbox": "M3 12h5l1.5 2.5h5L16 12h5M3 12l3-7h12l3 7v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z", "chart": "M3 20h18M6.5 20v-5M11.5 20V6M16.5 20v-9", "search": "M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM16.2 16.2 21 21", "download": "M12 3v12m0 0 4-4m-4 4-4-4M4 20h16", "mail": "M3 6h18v12H3zM3 6.5l9 6.5 9-6.5", "plus": "M12 5v14M5 12h14", "clock": "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7.5V12l3.5 2", "pencil": "M4 20h4L18 10l-4-4L4 16zM13.5 6.5l4 4", "tag": "M4 12.5 12.5 4H20v7.5L11.5 20zM16.4 7.6h.01", "image": "M3 5h18v14H3zM3 15.5l5-4 4 3 3-2.5 6 4.5M8 9.5h.01", "user": "M12 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM4 20c0-3.3 3.6-5 8-5s8 1.7 8 5", "building": "M4 20V6l6-2.5V20M10 20h10V10.5L10 7M13.5 12h.01M13.5 16h.01M17 12h.01M17 16h.01", "book": "M4 5h7v15H4zM13 5h7v15h-7M11 5v15", "light": "M12 3v3.5M12 17.5V21M3 12h3.5M17.5 12H21M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18", "eye": "M2.5 12S6 6 12 6s9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6zM12 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z", "check": "M4.5 12.5 9.5 18 20 6", "flag": "M5 21V4h13l-2.5 4.5L18 13H5", "calendar": "M4 6.5h16V20H4zM4 10.5h16M8.5 3.5v4M15.5 3.5v4", "chevron": "M9.5 5.5 16 12l-6.5 6.5", "network": "M6 18a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM18 18a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM6.9 15.3 10.6 9M17.1 15.3 13.4 9M8 17.3h8", "gear": "M10.6 3.1 13.4 3.1 15.2 6.5 19.0 6.3 20.4 8.8 18.4 12.0 20.4 15.2 19.0 17.7 15.2 17.5 13.4 20.9 10.6 20.9 8.8 17.5 5.0 17.7 3.6 15.2 5.6 12.0 3.6 8.8 5.0 6.3 8.8 6.5ZM12 9.8a2.2 2.2 0 1 0 0 4.4 2.2 2.2 0 0 0 0-4.4z", "link": "M14 4h6v6M20 4 10 14M18 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h5"};
@@ -115,6 +119,7 @@ function renderPNav() {
   // 公演情報の登録は「記録」の子から外し、歯車の左の「＋」から入る（起案者の指示 2026-10-13「スマホ版のみ」）
   return '<a class="padd" href="/register" data-path="/register" aria-label="公演情報の登録" title="公演情報の登録"'
     + ' aria-haspopup="menu" aria-expanded="false">' + ico("plus", 22) + "</a>" + regPopHtml()
+    + (IS_DEMO ? "" : '<a class="pacct" href="/account" data-path="/account" aria-label="アカウント" title="アカウント">' + ico("user", 20) + "</a>")
     + '<a class="pset" href="/settings" data-path="/settings" aria-label="設定">' + ico("gear", 20) + "</a>"
     + '<div class="pnav">' + PNAV.map(([id, label, icon]) =>
       '<button type="button" class="pm" data-pm="' + id + '" aria-expanded="false">' + ico(icon, 22)
@@ -3427,4 +3432,26 @@ document.addEventListener("click", ev => {
     box.querySelector(".said").textContent =
       r ? (r.line || "作りました") + "　画面を読み込み直すと出ます" : "";
   });
+});
+
+// --- アカウント（Worker の screens/account.js。本人だけが見るページ） ---------------
+// 表示名の保存と、ログアウト。ログアウトは Worker の /api/logout（この端末）・/api/logout/all（すべて）
+document.addEventListener("submit", async ev => {
+  const f = ev.target.closest("form[data-account-name]");
+  if (!f) return;
+  ev.preventDefault();
+  const d = await post("/api/account", {display_name: f.elements.display_name.value}, f, "保存しました");
+  if (d) {
+    const n = document.querySelector(".acname");
+    if (n) n.textContent = d.display_name || "たぐりの利用者";
+  }
+}, true);
+document.addEventListener("click", async ev => {
+  const b = ev.target.closest("[data-account-logout]");
+  if (!b) return;
+  const all = b.dataset.accountLogout === "all";
+  if (all && !confirm("ほかの端末も含めて、すべてログアウトします。よろしいですか？")) return;
+  const card = b.closest(".acct-card");
+  const d = await post(all ? "/api/logout/all" : "/api/logout", {}, card, "ログアウトしました");
+  if (d) location.href = "/login";
 });

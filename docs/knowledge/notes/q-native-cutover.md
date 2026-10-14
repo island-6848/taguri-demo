@@ -16,3 +16,4 @@ links:
 5. ~~無料枠の CPU 10ms を超えたら有料（Workers Paid）にするか~~ → 有料にはしない（dec-free-tier-only）。超えるなら、その画面は移さず Render のままにする
 6. Render をいつ止めるか、デモ版をどうするか（q-demo-trial-design）
 どちらの場合も先に要ること（進める）: 本番の D1 に一覧が入ったことを /api/health と rec_meta で確かめる → suggest（結び付ける公演の候補）を Worker に移す → 本物の量で CPU 時間・D1 の行数を測る → 別の Worker（wrangler の env）で NATIVE_UI=all を通しで試す。切り替えは wrangler.jsonc の vars に NATIVE_UI を書いて master に入れる（戻すときはその変更を戻す。D1 に書かれた分は残る）。
+2026-10-14: 1 は起案者が「今すぐ切り替え」に決めた（dec-native-cutover-now）。未移植の画面は「移しています」と出し、おすすめから順に移す。2〜6 は残る。

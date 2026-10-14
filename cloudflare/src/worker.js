@@ -1,12 +1,13 @@
-import {isOriginalRoute, originalUI} from './original-ui.js';
+import {isOriginalRoute, originalUI, ORIGINAL_SCREENS, ORIGINAL_WRITES} from './original-ui.js';
 import {verifyIdToken, isAuthError} from './firebase-auth.js';
 import {passkeyRoutes} from './passkey.js';
 import {scoreFromIndex, d1Access, gradeOf, seedsFromFavourites, collapseRanked, cleanAspects, SEED_KINDS, SEED_ROLES, MAX_SEED_FAVS, cmp} from './recommend.js';
 import {searchIndex, d1Search} from './stage-search.js';
+import {suggest} from './screens/suggest.js';
 import {chooseVariant} from './reco-gate.js';
 import {R2_READS_CAP, r2ReadAllowed} from './free-tier.js';
 import {rateLimit, checkNewAccount} from './rate-limit.js';
-import {SCREEN_TABLES, nativeScreen, nativeAction, screen as nativeScreenBody, action as nativeActionBody, readInput as nativeInput} from './screens/index.js';
+import {SCREEN_TABLES, nativeScreen, nativeAction, allNative, movingScreen, movingAction, screen as nativeScreenBody, action as nativeActionBody, readInput as nativeInput} from './screens/index.js';
 const MAX_BODY = 262144;
 const COOKIE = 'taguri_session';
 const TTL = 60 * 60 * 24 * 30;
@@ -325,11 +326,30 @@ function withAccountLink(response) {
 // Screens and writes of the original UI already ported to the Worker
 // (src/screens/). Signed-in only: gate() has already sent everyone else away.
 async function nativeRoute(request, env, url) {
+  if (allNative(env) && request.method === 'GET' && ['/api/suggest', '/api/suggest_web'].includes(url.pathname)) {
+    try {
+      const uid = await user(request, env.DB);
+      return json(await suggest(url.searchParams, {db: env.DB, uid, today: env.CLOCK?.today ?? jstToday(), now: env.CLOCK?.now ?? Date.now()}));
+    } catch (error) {
+      return json({ok:false,error:error.status ? error.message : '探せませんでした。'}, error.status ?? 500);
+    }
+  }
   const m = url.pathname.match(/^\/api\/(?:screen\/([a-z]+)|([a-z_]+(?:\/[a-z_]+)?))$/);
   if (!m) return null;
   const isScreen = Boolean(m[1]) && request.method === 'GET';
   const isAction = Boolean(m[2]) && request.method === 'POST';
-  if (!(isScreen ? nativeScreen(env, m[1]) : isAction && nativeAction(env, m[2]))) return null;
+  if (!(isScreen ? nativeScreen(env, m[1]) : isAction && nativeAction(env, m[2]))) {
+    // After the switch (NATIVE_UI=all) nothing of the original UI goes to Render any
+    // more: a screen not ported yet says so, a write not ported yet is refused. The
+    // Worker's own APIs with the same path (/api/recover) are left to the code below.
+    if (!allNative(env)) return null;
+    const moving = isScreen ? ORIGINAL_SCREENS.has(m[1]) : isAction && ORIGINAL_WRITES.has(url.pathname) && url.pathname !== '/api/recover';
+    if (!moving) return null;
+    try { await user(request, env.DB); } catch (error) { return json({ok:false,error:error.message}, error.status ?? 401); }
+    if (isScreen) return json(movingScreen(m[1]));
+    const out = movingAction();
+    return json(out.body, out.status);
+  }
   try {
     const uid = await user(request, env.DB);
     // env.CLOCK exists only in tests (an object cannot come from wrangler vars).
@@ -345,6 +365,8 @@ async function nativeRoute(request, env, url) {
     return json({ok:false,error:error.status ? error.message : '画面の読み込みに失敗しました。'}, error.status ?? 500);
   }
 }
+// After the switch only posters not yet in R2 still come from Render (no one's records).
+const stillBridged = path => path.startsWith('/img/');
 async function gate(request, env, url) {
   const path = url.pathname;
   if (path.startsWith('/api/auth/') || path.startsWith('/migration-api/') || PUBLIC_PAGES.has(path) || PUBLIC_APIS.has(path)) return null;
@@ -389,9 +411,11 @@ export default {
     const migrationAPI=url.pathname.startsWith('/migration-api/');
     const native = await nativeRoute(request, env, url);
     if (native) return native;
-    if(env.ORIGINAL_UI_BRIDGE==='true' && !migrationAPI && isOriginalRoute(url.pathname))return originalUI(request);
+    if(env.ORIGINAL_UI_BRIDGE==='true' && !migrationAPI && isOriginalRoute(url.pathname) && (!allNative(env) || stillBridged(url.pathname)))return originalUI(request);
     if(migrationAPI)url.pathname=url.pathname.replace('/migration-api/','/api/');
-    if (!url.pathname.startsWith('/api/')) return withAccountLink(await env.ASSETS.fetch(request));
+    // After the switch the menu has its own アカウント page (screens/account.js); the
+    // older 「アカウント・記録」 page (/migration-data/) keeps only the passkey settings.
+    if (!url.pathname.startsWith('/api/')) return allNative(env) ? env.ASSETS.fetch(request) : withAccountLink(await env.ASSETS.fetch(request));
     try {
       const path = url.pathname; const method = request.method;
       if (method !== 'GET' && method !== 'POST') fail(405,'対応していない操作です。');
