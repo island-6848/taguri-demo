@@ -814,6 +814,22 @@
    "verifies": []
   },
   {
+   "id": "dec-import-calendar-mail",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "過去の公演は、Google カレンダー（iCal の非公開アドレス）と購入確認メール（貼る・.eml）から、ブラウザの中で読み取って取り込む",
+   "sources": [
+    "cloudflare/src/client/import-parse.js",
+    "cloudflare/src/client/import.js",
+    "cloudflare/src/screens/import.js",
+    "cloudflare/src/screens/settings.js",
+    "cloudflare/src/worker.js",
+    "cloudflare/test/import.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-lists-worker",
    "type": "decision",
    "status": "adopted",
@@ -4606,6 +4622,16 @@
    "from": "dec-hide-own-words",
    "rel": "affects",
    "to": "dec-recommend-compact-poster"
+  },
+  {
+   "from": "dec-import-calendar-mail",
+   "rel": "depends_on",
+   "to": "gmail-restricted-scope"
+  },
+  {
+   "from": "dec-import-calendar-mail",
+   "rel": "supports",
+   "to": "dec-free-tier-only"
   },
   {
    "from": "dec-lists-worker",

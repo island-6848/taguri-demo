@@ -8,6 +8,7 @@ import {exportPayload} from './screens/settings.js';
 import {chooseVariant} from './reco-gate.js';
 import {R2_READS_CAP, r2ReadAllowed} from './free-tier.js';
 import {rateLimit, checkNewAccount} from './rate-limit.js';
+import {fetchCalendar} from './screens/import.js';
 import {SCREEN_TABLES, nativeScreen, nativeAction, allNative, movingScreen, movingAction, screen as nativeScreenBody, action as nativeActionBody, readInput as nativeInput} from './screens/index.js';
 const MAX_BODY = 262144;
 const COOKIE = 'taguri_session';
@@ -361,13 +362,19 @@ export const safeNext = value => {
   return url.pathname + url.search + url.hash;
 };
 const redirect = location => new Response(null, {status: 302, headers: {Location: location, 'Cache-Control': 'no-store'}});
-// The original screens get an entry to the account page in their menu. Done
-// here (not in web/, shared with the GitHub Pages demo) with HTMLRewriter.
-function withAccountLink(response) {
+// The original screens get an entry to the account page in their menu (until
+// the switch-over; the Worker's own screens carry it), and the code of
+// 「公演情報の登録」① (calendar and mail import), loaded only on that screen.
+// Done here (not in web/, shared with the GitHub Pages demo) with HTMLRewriter.
+function withWorkerParts(response, {menu}) {
   if (!(response.headers.get('content-type') || '').includes('text/html') || typeof HTMLRewriter === 'undefined') return response;
-  return new HTMLRewriter().on('nav.side', {element(el) {
+  const page = new HTMLRewriter().on('body', {element(el) {
+    el.append('<script type="module" src="/vendor/import-loader.js"></script>', {html: true});
+  }});
+  if (menu) page.on('nav.side', {element(el) {
     el.append('<a href="/migration-data/" class="acct-link">アカウント・記録</a>', {html: true});
-  }}).transform(response);
+  }});
+  return page.transform(response);
 }
 // Screens and writes of the original UI already ported to the Worker
 // (src/screens/). Signed-in only: gate() has already sent everyone else away.
@@ -472,7 +479,7 @@ export default {
     if(migrationAPI)url.pathname=url.pathname.replace('/migration-api/','/api/');
     // After the switch the menu has its own アカウント page (screens/account.js); the
     // older 「アカウント・記録」 page (/migration-data/) keeps only the passkey settings.
-    if (!url.pathname.startsWith('/api/')) return allNative(env) ? env.ASSETS.fetch(request) : withAccountLink(await env.ASSETS.fetch(request));
+    if (!url.pathname.startsWith('/api/')) return withWorkerParts(await env.ASSETS.fetch(request), {menu: !allNative(env)});
     try {
       const path = url.pathname; const method = request.method;
       if (method !== 'GET' && method !== 'POST') fail(405,'対応していない操作です。');
@@ -562,6 +569,12 @@ export default {
         const commands = [...rs.map(r=>upsert(env.DB,uid,r)),...fs.map(f=>env.DB.prepare('INSERT OR IGNORE INTO favourites(user_id,name,kind) VALUES(?,?,?)').bind(uid,f.name,f.kind)),...reactions.map(r=>reactionUpsert(env.DB,uid,r))];
         if(commands.length) await env.DB.batch(commands);
         return json({ok:true,imported:rs.length});
+      }
+      if (path === '/api/calendar_ics') {
+        // 「公演情報の登録」①: the browser reads the calendar itself (src/client/import.js).
+        const got = await fetchCalendar(input.url);
+        if (got.status !== 200) fail(got.status, got.error);
+        return new Response(got.body, {headers: {'Content-Type': 'text/calendar; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff'}});
       }
       if (path === '/api/account/delete') return await deleteAccount(request, env, uid, input);
       if (path === '/api/logout/all') {

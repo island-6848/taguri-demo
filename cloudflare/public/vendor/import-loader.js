@@ -1,0 +1,1 @@
+const e=new MutationObserver(()=>t());function t(){document.querySelector("[data-import]")&&(e.disconnect(),import("/vendor/import.js").catch(()=>e.observe(document.body,{childList:!0,subtree:!0})))}e.observe(document.body,{childList:!0,subtree:!0}),t();

@@ -16,6 +16,7 @@ import {calendarScreens} from './calendar.js';
 import {settingsScreens} from './settings.js';
 import {searchScreens} from './search.js';
 import {recordScreens} from './records.js';
+import {importScreens} from './import.js';
 import {ValueError} from './py.js';
 
 export const SCREEN_TABLES = ['works', 'excluded', 'merges', 'hand_credits', 'visit_note', 'reaction', 'viewed',
@@ -25,7 +26,7 @@ export const SCREEN_TABLES = ['works', 'excluded', 'merges', 'hand_credits', 'vi
 export const TOKEN = 'cfw0000000000000000000000000000000';
 
 const SCREENS = {...rateScreens.screens, ...diaryScreens.screens, ...accountScreens.screens, ...recommendScreens.screens, ...listScreens.screens, ...reminderScreens.screens, ...calendarScreens.screens, ...settingsScreens.screens, ...searchScreens.screens, ...recordScreens.screens};
-const ACTIONS = {...rateScreens.actions, ...diaryScreens.actions, ...accountScreens.actions, ...recommendScreens.actions, ...listScreens.actions, ...settingsScreens.actions, ...searchScreens.actions};
+const ACTIONS = {...rateScreens.actions, ...diaryScreens.actions, ...accountScreens.actions, ...recommendScreens.actions, ...listScreens.actions, ...settingsScreens.actions, ...searchScreens.actions, ...importScreens.actions};
 
 const enabled = (env, kind, name) => {
   const list = String(env.NATIVE_UI || '').split(',').map(s => s.trim());

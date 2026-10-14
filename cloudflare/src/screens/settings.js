@@ -220,11 +220,30 @@ export async function registerScreen(_params, ctx) {
   const wait = works.filter(w => !w.verdict && !w.unseen && w.last_date && w.last_date <= ctx.today);
   const missed = await missedRows(ctx);
   const body = `<h1>公演情報の登録</h1>
-<p class="lede">公演を記録に足す場所です。<b>入口は3つあります。</b>購入確認メールからの自動取り込み、メールに残らない分（招待・当日券・人に取ってもらった分）の手入力、そして<b>観ればよかった公演（観ていないもの）の追加</b>です。評価は「観た公演の評価」で付けます。評価がなくても、記録は残せます。</p>
+<p class="lede">公演を記録に足す場所です。<b>入口は3つあります。</b>Google カレンダー・購入確認メールからの取り込み、メールに残らない分（招待・当日券・人に取ってもらった分）の手入力、そして<b>観ればよかった公演（観ていないもの）の追加</b>です。評価は「観た公演の評価」で付けます。評価がなくても、記録は残せます。</p>
 
-<div class="card">${h2('mail', '① 購入確認メールから取り込む')}
-<p class="lead">購入確認メールの取り込みは、手元のパソコンで動かしたときだけ使えます。
-<b>ここでは、②の「手で 1 件足す」から記録を足してください。</b></p></div>
+<div class="card imx" data-import>${h2('mail', '① Google カレンダー・購入確認メールから取り込む')}
+<p class="lead">観た公演を、カレンダーの予定や購入確認メールから見つけて足します。
+<b>読み取りはこの端末の中だけで行い、カレンダーやメールの中身はたぐりに送りません。</b>
+読み取った題名・日付を公演と照合し、選んだものだけを記録に足します。</p>
+<details class="imx-src" open><summary>Google カレンダーから</summary>
+<p class="note">パソコンの Google カレンダーで、設定 → 取り込むカレンダー → 「カレンダーの統合」にある
+<b>「iCal 形式の非公開アドレス」</b>をコピーして貼ってください。アドレスは保存しません（読むのはこの 1 回だけです）。</p>
+<div class="imx-row"><input id="imx-url" type="url" inputmode="url" autocomplete="off" placeholder="https://calendar.google.com/calendar/ical/…/basic.ics" size="40">
+<button type="button" data-imx-cal="1">読み込む</button></div>
+<p class="note">書き出した .ics ファイルを選んでも読めます：<input id="imx-ics" type="file" accept=".ics,text/calendar"></p>
+</details>
+<details class="imx-src"><summary>購入確認メールから</summary>
+<p class="note">ぴあ・ローチケ・おけぴ・東宝ナビザーブ・劇団のチケットサービスの書式を読めます（ほかのサイトもできるだけ読みます）。
+メールの本文をコピーして貼るか、メールを .eml ファイルで保存してまとめて選んでください（Gmail はメールの「︙」→「メッセージをダウンロード」）。</p>
+<textarea id="imx-text" rows="6" placeholder="購入確認メールの本文を貼る（何通分でも、続けて貼れます）"></textarea>
+<div class="imx-row"><button type="button" data-imx-mail="1">読み取る</button>
+<span class="note">または <input id="imx-eml" type="file" accept=".eml,message/rfc822" multiple></span></div>
+</details>
+<p class="said" role="status" aria-live="polite"></p>
+<div class="imx-found" hidden><p class="imx-head"></p><ul class="imx-list"></ul>
+<div class="imx-row"><button type="button" class="primary" data-imx-add="1">選んだものを記録に足す</button></div></div>
+</div>
 
 <div class="card">${h2('plus', '② 手で 1 件足す ── メールに残らない分')}
 <p class="lead">招待・当日窓口・人に取ってもらった分は購入確認メールに残らないので、
