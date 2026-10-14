@@ -83,7 +83,7 @@ test('NATIVE_UI=all: nothing of a user goes to Render; unported screens and writ
   const cookie = await signIn(env);
   const r = stubRender();
   try {
-    for (const name of ['records', 'trace', 'chronicle']) {
+    for (const name of ['records']) {
       const got = await step(env, cookie, {get: `/api/screen/${name}`});
       assert.equal(got.status, 200, name);
       assert.equal(got.body.moving, true, name);

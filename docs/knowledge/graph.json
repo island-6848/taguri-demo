@@ -636,6 +636,20 @@
    "verifies": []
   },
   {
+   "id": "dec-chronicle-worker",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "観劇史年表を Worker に移す（公開版の形＝記録から数えた事実と図。LLM の読みは出さない）",
+   "sources": [
+    "cloudflare/src/screens/chronicle.js",
+    "cloudflare/src/screens/records.js",
+    "cloudflare/test/chronicle.test.js",
+    "cloudflare/test/screens/chronicle_fixture.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-corich-sitemap",
    "type": "decision",
    "status": "adopted",
@@ -1321,6 +1335,21 @@
     "web/app.js",
     "web/theme.css",
     "tools/review/test_reason_works.py"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-trace-worker",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "たどるを Worker に移す（trace.py を JS に移し、同じ記録で Python と同じ HTML・図になることを確かめる）",
+   "sources": [
+    "cloudflare/src/screens/trace.js",
+    "cloudflare/src/screens/records.js",
+    "cloudflare/src/screens/md5.js",
+    "cloudflare/test/trace.test.js",
+    "cloudflare/test/screens/trace_fixture.py"
    ],
    "verifies": []
   },
@@ -4251,6 +4280,16 @@
    "to": "comp-native-screens"
   },
   {
+   "from": "dec-chronicle-worker",
+   "rel": "depends_on",
+   "to": "dec-trace-worker"
+  },
+  {
+   "from": "dec-chronicle-worker",
+   "rel": "affects",
+   "to": "comp-native-screens"
+  },
+  {
    "from": "dec-corich-sitemap",
    "rel": "depends_on",
    "to": "corich-search-waf-403"
@@ -4929,6 +4968,16 @@
    "from": "dec-theme-user-choice",
    "rel": "raises",
    "to": "q-poster-palette"
+  },
+  {
+   "from": "dec-trace-worker",
+   "rel": "depends_on",
+   "to": "dec-native-cutover-now"
+  },
+  {
+   "from": "dec-trace-worker",
+   "rel": "affects",
+   "to": "comp-native-screens"
   },
   {
    "from": "dec-url-app-taguri",

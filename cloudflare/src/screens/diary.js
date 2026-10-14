@@ -324,7 +324,7 @@ export async function peopleByKey(ctx, ws) {
 }
 
 /** app._records_lede */
-function recordsLede(d) {
+export function recordsLede(d) {
   const skip = !d.nSkip ? '' : `<br>「行かなかった」と答えた ${d.nSkip} 件は、件数と図から外しています。`
     + '「日記帳」には出さず、「設定」の「行かなかった公演」にまとめてあり、「やはり観た」で戻せます。';
   return `<p class="lede">観た記録は <b>${d.seen.length} 作品</b>です`
@@ -334,7 +334,7 @@ function recordsLede(d) {
 }
 
 /** app._records_empty_note */
-const RECORDS_EMPTY = '<p class="pnow">観た公演の記録がまだ無いので、図は出せません。'
+export const RECORDS_EMPTY = '<p class="pnow">観た公演の記録がまだ無いので、図は出せません。'
   + '<a href="/register?t=__TAGURI_TOKEN__">公演情報の登録</a>で'
   + '購入確認メールを取り込むか、観た公演を手で足すと、'
   + '<b>本数・評価の分かれ方・行った場所・時期</b>がここに出ます。</p>';

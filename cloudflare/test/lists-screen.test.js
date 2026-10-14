@@ -208,3 +208,39 @@ test('探す: coming stages and works seen, by words and by month', async () => 
     assert.equal((await step(env, a, {post: '/api/search_request', body: {q: 'x'}})).status, 400);
   } finally { sqlite.close(); }
 });
+
+test('たどる: a name seen in two stages becomes a thread', async () => {
+  const {env, sqlite} = withIndex();
+  const a = await signIn(env);
+  try {
+    assert.match((await screen(env, a, 'trace')).body_html, /2 つ以上の公演で観た名前が、まだありません/);
+    for (const [t, d, sid] of [['終わった舞台', '2026-08-05', '103'], ['舞台ひとつめ', '2026-11-02', '101']]) {
+      const key = (await step(env, a, {post: '/api/add_work', body: {title: t, date: d}})).body.work_key;
+      await step(env, a, {post: '/api/link_stage', body: {work_key: key, stage_id: sid}});
+      await step(env, a, {post: '/api/rate', body: {work_key: key, verdict: '◎'}});
+    }
+    const pick = (await screen(env, a, 'trace')).body_html;
+    assert.match(pick, /<h1>たどる ── 1 つの名前をたどる<\/h1>/);
+    assert.match(pick, /<span class="pk-n">俳優甲<\/span><span class="pk-r">出演<\/span><span class="pk-c">2 作品<\/span>/);
+    const thr = (await screen(env, a, 'trace', '?name=' + encodeURIComponent('俳優甲'))).body_html;
+    assert.match(thr, /俳優甲 ── 2 作品/);
+    assert.match(thr, /<div class="thr"><svg /);
+  } finally { sqlite.close(); }
+});
+
+test('観劇史年表: the years of the works seen', async () => {
+  const {env, sqlite} = withIndex();
+  const a = await signIn(env);
+  try {
+    assert.match((await screen(env, a, 'chronicle')).body_html, /まだ年表を描けるだけの記録がありません/);
+    for (const [t, d, v] of [['一の舞台', '2025-03-01', '◎'], ['二の舞台', '2026-02-01', '○'], ['三の舞台', '2026-05-01', '◎']]) {
+      const key = (await step(env, a, {post: '/api/add_work', body: {title: t, date: d}})).body.work_key;
+      await step(env, a, {post: '/api/rate', body: {work_key: key, verdict: v}});
+    }
+    const html = (await screen(env, a, 'chronicle')).body_html;
+    assert.match(html, /<h1>観劇史年表 ── 何が始まった年か<\/h1>/);
+    assert.match(html, /観劇の年表<\/span><span class="badge part">3 作品<\/span>/);
+    assert.match(html, /<div class="chfig"><svg /);
+    assert.match(html, /<b>2026<\/b><i>2 作品・のべ 2 回<\/i>/);
+  } finally { sqlite.close(); }
+});
