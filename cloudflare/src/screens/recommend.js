@@ -6,11 +6,12 @@
 // computed from the user's works / favourites / reactions in D1. The cards are
 // rendered once a day by the Python screen itself (scripts/build_cards.py,
 // render_recommend.ticket) and stored in rec_card; here only the rank, the
-// reasons (reason_rows) and the poster are filled in. Left out for now: the map
-// above the prefecture chips, the 効かせ方 sliders (weight_form, its write is
-// not ported), 出さない語 and the impression re-ranking.
+// reasons (reason_rows) and the poster are filled in. The 効かせ方 sliders are
+// weights.js. Left out for now: the map above the prefecture chips (no outlines in
+// D1), the count of shows a setting hid (w_dropped) and the impression re-ranking.
 import {scoreFromIndex, d1Access, seedsFromFavourites, gradeOf} from '../recommend.js';
-import {chooseVariant} from '../reco-gate.js';
+import {chooseVariant, groupOf} from '../reco-gate.js';
+import {readWeights, multipliersOf, weightForm, weightAction} from './weights.js';
 import {E, ValueError} from './py.js';
 import {loadWorks} from './works.js';
 import {compose, cardTemplates, posterHtml} from './cards.js';
@@ -21,7 +22,7 @@ import {loadDeclared, loadDeclined, nameHits, KINDS} from './lists.js';
 export const TOP = 15;
 // Groups kept per user between requests: enough to fill 15 cards in any one prefecture.
 const KEEP = 400;
-const VERSION = 'screen-v1';
+const VERSION = 'screen-v2';   // v2: the user's 効かせ方 (rank_weight) and the per-group counts
 export {PREFS} from './prefs.js';
 const ROLE_SRC = '公演ページのクレジット';
 const KIND_LABEL = {'#形式': '形式', '#原作': '原作', '#翻訳': '', '#会場': '劇場', '#値段': '料金帯', '#題材': '題材'};
@@ -106,8 +107,9 @@ export async function rankedGroups(ctx) {
     (SELECT count(*) FROM favourites WHERE user_id=?1) AS fn, (SELECT count(*) FROM merges WHERE user_id=?1) AS mn,
     (SELECT count(*) FROM excluded WHERE user_id=?1) AS xn,
     (SELECT max(updated_at) FROM app_setting WHERE user_id=?1 AND key IN ('declared','declined')) AS dm,
+    (SELECT max(updated_at) FROM rank_weight WHERE user_id=?1) AS km,
     (SELECT v FROM rec_meta WHERE k='rec_card') AS cv`).bind(ctx.uid).first();
-  const stamp = [VERSION, ver, ctx.today, st.wn, st.wm, st.an, st.am, st.fn, st.mn, st.xn, st.dm, st.cv].join('|');
+  const stamp = [VERSION, ver, ctx.today, st.wn, st.wm, st.an, st.am, st.fn, st.mn, st.xn, st.dm, st.cv, st.km].join('|');
   const access = d1Access(db, ver);
   const cached = await db.prepare('SELECT body FROM rec_cache WHERE user_id=? AND stamp=?').bind(ctx.uid, stamp).first();
   if (cached) {
@@ -116,6 +118,11 @@ export async function rankedGroups(ctx) {
   }
   const rated = await ratedWorks(ctx, access);
   const gate = chooseVariant(rated);
+  // 効かせ方（本人が決めた段）は、裏の答え合わせが選んだ倍率に掛け合わせる。
+  // 「効かせない」（0）にした項目は、順位からも理由からも消える（scoreFromIndex は 0 の寄与を捨てる）
+  const weights = await readWeights(ctx), own = multipliersOf(weights);
+  const multipliers = {...gate.multipliers};
+  for (const [g, m] of Object.entries(own)) multipliers[g] = (Object.hasOwn(multipliers, g) ? multipliers[g] : 1.0) * m;
   const declared = await loadDeclared(ctx);
   const favourites = KINDS.flatMap(kind => (declared[kind] || []).map(name => ({name, kind}))).slice(0, 200);
   const {seeds, skip} = await seedsFromFavourites(access, favourites);
@@ -123,7 +130,13 @@ export async function rankedGroups(ctx) {
   // (app._rebucket): neither is ranked here.
   const {hits, declined} = await nameHits(ctx, declared, await loadDeclined(ctx));
   const ranked = await scoreFromIndex({...access, rated: gate.aspects ? rated : rated.map(r => ({...r, aspects: []})),
-    multipliers: gate.multipliers, today: ctx.today, seeds, skip});
+    multipliers, today: ctx.today, seeds, skip});
+  // app._weight_counts: per group, the candidates it matches (the people and kinds that raised them).
+  const wCounts = {};
+  for (const c of ranked) {
+    const seen = new Set([...c.parts, ...c.kinds].map(p => groupOf(p[1])));
+    for (const g of seen) wCounts[g] = (wCounts[g] || 0) + 1;
+  }
   const done = await answered(ctx);
   // One slot per production (collapse_tours), after answered stages are left out.
   const byTour = new Map();
@@ -158,7 +171,7 @@ export async function rankedGroups(ctx) {
     g.venues = g.venues.filter(v => v.stage_id === g.stage_id || !done.has(v.stage_id));
   }
   const titles = personTitles(rated);
-  const body = {ready: true, ver, n_rated: rated.length, n_scored: groups.length, groups: kept,
+  const body = {ready: true, ver, n_rated: rated.length, n_scored: groups.length, groups: kept, weights, w_counts: wCounts,
     titles: [...titles].filter(([k]) => kept.some(g => g.parts.slice(0, 4).some(p => p[1] + '\t' + p[2] === k) || g.kinds.slice(0, 2).some(p => p[1] + '\t' + p[2] === k)))};
   await db.prepare('INSERT INTO rec_cache(user_id,stamp,body,created_at) VALUES(?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET stamp=excluded.stamp,body=excluded.body,created_at=excluded.created_at')
     .bind(ctx.uid, stamp, JSON.stringify(body), Math.floor(ctx.now / 1000)).run();
@@ -239,7 +252,7 @@ export async function recommendScreen(params, ctx) {
   const body = `<h1>${E(head)}</h1>
 ${lede}
 ${notes}
-<div class="fil2">${prefForm(prefCounts(data.groups), prefs, '/recommend', '', {}, regionCounts(data.groups.map(g => ({key: g.stage_id, prefs: g.venues.map(v => v.pref)}))))}</div>
+<div class="fil2">${prefForm(prefCounts(data.groups), prefs, '/recommend', '', {}, regionCounts(data.groups.map(g => ({key: g.stage_id, prefs: g.venues.map(v => v.pref)}))))}${weightForm(data.weights || {}, data.w_counts || {})}</div>
 ${cards.join('')}
 <p class="lede">気になった公演で「興味あり」を押すと、
 <a href="/recommend/interest?t=__TAGURI_TOKEN__">「興味あり」（いま ${nInterest} 件）</a>に移ります。</p>
@@ -299,7 +312,14 @@ export async function reactAction(b, ctx) {
   return {body: out};
 }
 
+// serve._exposure_event with no exposure store (the public service keeps no telemetry:
+// it would spend D1 writes on every card shown). web/recommendation-exposure.js reads
+// ok:false as "not recording" and stops posting for that card.
+const exposureOff = async () => ({body: {ok: false, disabled: true}});
+// serve.on_hand_theme on the public service: stage material is shared, so not editable here.
+const handThemeAction = async () => { throw new ValueError('公開版では公演情報の編集はできません'); };
+
 export const recommendScreens = {
   screens: {recommend: recommendScreen},
-  actions: {react: reactAction},
+  actions: {react: reactAction, weight: weightAction, 'recommendation/visit': exposureOff, 'recommendation/contact': exposureOff, hand_theme: handThemeAction},
 };

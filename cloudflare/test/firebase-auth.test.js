@@ -54,7 +54,7 @@ test('a Google sign-in creates one account and signs back into it; only the UID 
   assert.deepEqual(first.body, {linked: false, created: true});
   assert.match(first.cookie, /^taguri_session=[a-f0-9]{64}$/);
   const set = first.response.headers.get('set-cookie');
-  for (const flag of ['HttpOnly', 'Secure', 'SameSite=Strict']) assert.ok(set.includes(flag), flag);
+  for (const flag of ['HttpOnly', 'Secure', 'SameSite=Lax']) assert.ok(set.includes(flag), flag);
   await call('record', {id: 'r1', title: '舞台', date: '2026-10-01', rating: '◎'}, first.cookie);
   const again = await signIn(call, await idToken());
   assert.deepEqual(again.body, {linked: false, created: false});

@@ -92,7 +92,7 @@ test('NATIVE_UI=all: nothing of a user goes to Render; every screen is native, u
       assert.equal(got.body.edition, 'service', name);
       assert.doesNotMatch(got.body.body_html, /いま新しい仕組みに移しています/, name);
     }
-    for (const path of ['/api/weight', '/api/recommendation/visit', '/api/hand_theme']) {
+    for (const path of ['/api/people_read', '/api/hand_poster', '/api/close']) {
       const got = await step(env, cookie, {post: path, body: {}});
       assert.equal(got.status, 503, path);
       assert.match(got.body.error, /移している/, path);

@@ -76,7 +76,7 @@ test('sign up with a passkey alone, then sign back in on a fresh browser', async
   assert.equal(up.status, 200, JSON.stringify(up.body));
   assert.equal(up.body.created, true);
   assert.match(up.body.recovery_code, /^[a-f0-9]{64}$/);           // backup for a lost device, shown once
-  for (const flag of ['HttpOnly', 'Secure', 'SameSite=Strict']) assert.ok(up.r.headers.get('set-cookie').includes(flag));
+  for (const flag of ['HttpOnly', 'Secure', 'SameSite=Lax']) assert.ok(up.r.headers.get('set-cookie').includes(flag));
   await call('record', {id: 'r1', title: '舞台', date: '2026-10-01', rating: '◎'}, up.cookie);
   const back = await signIn(call, auth, up.id);
   assert.equal(back.status, 200, JSON.stringify(back.body));
