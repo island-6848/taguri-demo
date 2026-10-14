@@ -132,18 +132,30 @@ TEXT_W = ["", "abc", "Anna O'Neil", "カタカナ", "ｶﾀｶﾅ", "漢字", "�
           "가나", "😀x", "　", "〜～"]
 
 
-def wf_ranges():
-    """east_asian_width が W か F の範囲（JS の表と同じであることを確かめる）。"""
-    import unicodedata
+def _ranges(test) -> list:
     out, start = [], None
     for cp in range(0x110000 + 1):
-        on = cp < 0x110000 and unicodedata.east_asian_width(chr(cp)) in "WF"
+        on = cp < 0x110000 and test(chr(cp))
         if on and start is None:
             start = cp
         elif not on and start is not None:
             out.append([start, cp - 1])
             start = None
     return out
+
+
+def wf_ranges():
+    """east_asian_width が W か F の範囲（JS の表と同じであることを確かめる）。"""
+    import unicodedata
+    return _ranges(lambda c: unicodedata.east_asian_width(c) in "WF")
+
+
+def unassigned_ranges():
+    """この Python の Unicode でまだ割り当てのない文字（Cn）。**表の比べから外す** ──
+    JS の表は Unicode 15.1.0（Python 3.13）から作ってあり、CI の Python 3.12（15.0.0）では
+    後から足された文字（例: U+31EF）の幅が既定のまま（N）になる。"""
+    import unicodedata
+    return _ranges(lambda c: unicodedata.category(c) == "Cn")
 
 
 def trig(limit=512):
@@ -168,7 +180,7 @@ def build():
                         ("undated", undated_case()), ("too_small", too_small_case()), ("empty", [])):
         cases.append({"name": name, "rated": rated, "html": PE.panel(rated, owner=False)})
     return {"cases": cases, "text_w": [[s, PE._text_w(s)] for s in TEXT_W],
-            "unidata": unicodedata.unidata_version, "wf": wf_ranges(), "trig": trig()}
+            "unidata": unicodedata.unidata_version, "wf": wf_ranges(), "unassigned": unassigned_ranges(), "trig": trig()}
 
 
 def main():
