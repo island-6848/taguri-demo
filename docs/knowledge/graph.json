@@ -1889,6 +1889,17 @@
    "verifies": []
   },
   {
+   "id": "q-pr13-aspects-screen",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-14",
+   "title": "推薦側の PR #13（person-graded-v2・評価の段階・評価の「詳細」8 項目）を入れるか。入れるなら「詳細」の画面をこちらで作るか",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/pull/13"
+   ],
+   "verifies": []
+  },
+  {
    "id": "q-privacy-law",
    "type": "question",
    "status": "open",
@@ -3781,6 +3792,11 @@
    "from": "q-poster-palette",
    "rel": "depends_on",
    "to": "dec-theme-user-choice"
+  },
+  {
+   "from": "q-pr13-aspects-screen",
+   "rel": "affects",
+   "to": "dec-reason-work-titles"
   },
   {
    "from": "q-r2-boto3",
