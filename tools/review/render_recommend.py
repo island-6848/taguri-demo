@@ -753,8 +753,10 @@ def reason_rows(c: dict) -> str:
     # 種類の点を足したものなので、種類だけで上がった公演は人物の行が空になり、「理由を出せていません」
     # が並んでいた（起案者の指摘「理由を出せていませんが増えすぎた」）。点を上げた種類だけを、強い順に 2 つ
     kind_works = c.get("why_kind_works") or {}
+    # 公演そのものの種類（形式・原作など）を先に、劇場・料金帯は後に
+    content = ("#形式", "#原作", "#翻訳", "#題材")
     for contrib, axis, tag, n in sorted((k for k in c.get("why_kind") or [] if k[0] > 0),
-                                        key=lambda k: (-k[0], k[1], k[2]))[:2]:
+                                        key=lambda k: (k[1] not in content, -k[0], k[1], k[2]))[:2]:
         works = (kind_works.get(f"{axis}\t{tag}") or []) if isinstance(kind_works, dict) else []
         out.append(f'<li class="rs c k"><span class="net">種類</span>'
                    f'{(E(label) + " ") if (label := KIND_LABEL.get(axis, axis.lstrip("#"))) else ""}<b>{E(tag)}</b>'

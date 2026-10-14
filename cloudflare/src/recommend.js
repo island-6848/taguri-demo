@@ -65,6 +65,8 @@ export function gradeOf(verdict) {
   const value = Number(m[1]), levels = Number(m[2]);
   return levels >= MIN_LEVELS && levels <= MAX_LEVELS && value >= 1 && value <= levels ? [value, levels] : null;
 }
+// user_recommender.CONTENT_AXES
+export const CONTENT_AXES = ['#形式', '#原作', '#翻訳', '#題材'];
 const KEYS_PER_QUERY = 49;     // D1 binds at most 100 parameters: ver + 2 per key
 const IDS_PER_QUERY = 98;
 
@@ -188,8 +190,14 @@ export async function scoreFromIndex({postingsFor, stagesFor, rated, multipliers
     for (const p of negative.slice(0, TOP_N)) neg += p[0];
     for (const p of kinds) ks += p[0];
     const b = round6(pos + neg + (kinds.length ? ks / kinds.length : 0));
-    if (b <= 0) continue;
-    out.push({stage_id: sid, b, strong: b, tour: st.tour || '', parts: parts.map(p => p.slice(0, 4))});
+    // A show needs a reason: a person who raised it, or a kind of the show itself
+    // (form, source, translation, subject). Venue and price band only re-order:
+    // a show with no credits has only those (user_recommender.has_reason).
+    if (b <= 0 || !(parts.length || kinds.some(k => k[0] > 0 && CONTENT_AXES.includes(k[1])))) continue;
+    // Kinds shown as reasons: the raising ones, kinds of the show itself first.
+    const shown = kinds.filter(k => k[0] > 0).sort((p, q) => (CONTENT_AXES.includes(q[1]) - CONTENT_AXES.includes(p[1]))
+      || (q[0] - p[0]) || cmp(p[1], q[1]) || cmp(p[2], q[2]));
+    out.push({stage_id: sid, b, strong: b, tour: st.tour || '', parts: parts.map(p => p.slice(0, 4)), kinds: shown.map(p => p.slice(0, 4))});
   }
   out.sort((x, y) => (y.strong - x.strong) || (y.b - x.b) || cmp(x.stage_id, y.stage_id));
   return out;

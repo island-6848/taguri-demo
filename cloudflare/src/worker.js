@@ -149,7 +149,7 @@ async function deleteAccount(request, env, uid, input) {
 // to (interest / no / owned) are left out, as the Python app moves them to
 // other lists. Tour grouping and impression preferences are not ported yet.
 const RECOMMEND_TOP = 15;
-const RECOMMENDER = 'person-ordinal-v3+fav3+asp1+tour1';   // +fav3: favourites (people, troupes, works, subjects) as fading pseudo ratings; +asp1: 詳細; +tour1: one slot per tour
+const RECOMMENDER = 'person-ordinal-v3+fav3+asp1+tour1+why1';   // +why1: a show needs a person who raised it; +fav3: favourites (people, troupes, works, subjects) as fading pseudo ratings; +asp1: 詳細; +tour1: one slot per tour
 const jstToday = () => new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
 // Served from rec_cache unless the index version, the date, or the user's
 // records/reactions changed since it was computed (a few rows read per view).
@@ -205,7 +205,8 @@ async function computeRecommendations(db, uid, ver, today) {
     rows_read: access.counter.rows, variant: gate.variant, n_seeds: seeds.length, items: top.map(g => {
       const c = byId.get(g.stage_id), e = entries.get(g.stage_id) || {};
       return {...venue(g.stage_id), title: e.title || '', group: e.grp || '', score: c.b,
-        reasons: c.parts.slice(0, 3).map(([, role, person, n]) => ({role, person, n})),
+        // People first; kinds of show ("#形式" etc. as role) fill the rest of the 3 slots.
+        reasons: [...c.parts.slice(0, 3), ...c.kinds].slice(0, 3).map(([, role, person, n]) => ({role, person, n})),
         tours: g.tours.map(venue)};
     })};
 }

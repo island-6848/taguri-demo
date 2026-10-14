@@ -70,6 +70,26 @@ class KindReasonTest(unittest.TestCase):
         self.assertEqual([t for t, _ in c["why_kind_works"]["#形式\tミュージカル"]], ["作品2ミュージカル", "作品1ミュージカル"])
 
 
+class NoPersonNoRecommendationTest(unittest.TestCase):
+    """記録が 100 件近くあっても、クレジットの無い公演が劇場だけで上位に来ていた（2026-10-14 の指摘）。"""
+
+    def test_venue_only_show_is_not_recommended(self):
+        import user_recommender as UR
+        rated = [{"key": f"r{i}", "title": f"作品{i}", "date": f"2025-01-{i:02d}", "verdict": v,
+                  "people": [["出演", "好きな人" if v == "◎" else f"人{i}"]], "venues": ["本多劇場" if v != "×" else "別の劇場"], "stage_id": str(i)}
+                 for i, v in ((1, "◎"), (2, "◎"), (3, "○"), (4, "×"), (5, "×"))]
+        cands = [{"stage_id": "8", "title": "Wゲーム", "period": "2099/12/10 ～ 2099/12/20",
+                  "fields": {"劇場": "本多劇場"}},
+                 {"stage_id": "9", "title": "新作", "period": "2099/12/10 ～ 2099/12/20",
+                  "fields": {"劇場": "本多劇場", "出演": "好きな人"}}]
+        d = UR.prepare({}, cands, rated, multipliers={}, role_group=lambda r: "cast")
+        venue_only = next(c for c in d["ranked"] if c["stage_id"] == "8")
+        self.assertGreater(venue_only["b"], 0)            # 劇場の点だけで 0 を越えている
+        got = UR.finish(d, top=15, weights={})
+        self.assertEqual([c["stage_id"] for c in got["recommend"]], ["9"])
+        self.assertIn("8", [c["stage_id"] for c in got["unscored"]])
+
+
 class PriceTest(unittest.TestCase):
     def test_price_range(self):
         self.assertEqual(RR.price_range("一般 5,000円 学生 3,000円【発売日】2026/09/01"), (3000, 5000))

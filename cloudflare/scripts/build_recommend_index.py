@@ -206,10 +206,13 @@ def score_from_index(postings_for, stage_of, rated: list[dict], *, multipliers: 
         parts = sorted((p for p in people if p[0] > 0), key=lambda p: (-p[0], p[1], p[2]))
         negative = sorted((p for p in people if p[0] < 0), key=lambda p: (p[0], p[1], p[2]))
         b = UR.b_score(parts, negative, kinds)
-        if b <= 0:
+        # 点を上げた人物か公演の種類が無い公演は出さない（user_recommender.finish と同じ）
+        if b <= 0 or not UR.has_reason(parts, kinds):
             continue
+        # 理由に出す種類: 点を上げたものだけ、公演そのものの種類を先に（render_recommend の並び）
+        shown = sorted((k for k in kinds if k[0] > 0), key=lambda k: (k[1] not in UR.CONTENT_AXES, -k[0], k[1], k[2]))
         out.append({"stage_id": sid, "b": b, "strong": b, "tour": st.get("tour") or "",
-                    "parts": [p[:4] for p in parts]})
+                    "parts": [p[:4] for p in parts], "kinds": [k[:4] for k in shown]})
     out.sort(key=lambda c: (-c["strong"], -c["b"], c["stage_id"]))
     return out
 

@@ -124,7 +124,8 @@ def with_people(rows, people):
 
 def expected(raw, cands, rated, multipliers):
     d = UR.prepare(raw, cands, rated, multipliers=multipliers, role_group=APP.group_of, today=TODAY)
-    keep = [c for c in d['ranked'] if c.get('b', 0) > 0]
+    # The rule of UR.finish: score above 0 and a reason (a raising person or kind of show).
+    keep = [c for c in d['ranked'] if c.get('b', 0) > 0 and UR.has_reason(c['person_parts'], c['why_kind'])]
     keep.sort(key=lambda c: (-c['strong'], -c['s'], c['stage_id']))
     return [(c['stage_id'], c['b'], c['strong'], c['person_parts']) for c in keep]
 
@@ -176,7 +177,7 @@ class ParityTest(unittest.TestCase):
             for hseed in range(2):
                 rated = with_people(history(seed * 100 + hseed, fbs), index['people'])
                 d = UR.prepare(raw, cands, rated, multipliers={}, role_group=APP.group_of, today=TODAY)
-                keep = [dict(c, tours=[]) for c in d['ranked'] if c.get('b', 0) > 0]
+                keep = [dict(c, tours=[]) for c in d['ranked'] if c.get('b', 0) > 0 and UR.has_reason(c['person_parts'], c['why_kind'])]
                 keep.sort(key=lambda c: (-c['strong'], -c['s'], c['stage_id']))
                 want = [(c['stage_id'], [t['stage_id'] for t in c['tours']]) for c in UR.collapse_tours(keep)]
                 mem = BI.score_from_index(*BI.memory_access(index), rated, multipliers={}, today=TODAY)
