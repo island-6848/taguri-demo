@@ -183,7 +183,7 @@ export async function scoreFromIndex({postingsFor, stagesFor, rated, multipliers
     for (const p of kinds) ks += p[0];
     const b = round6(pos + neg + (kinds.length ? ks / kinds.length : 0));
     if (b <= 0) continue;
-    out.push({stage_id: sid, b, strong: b, parts: parts.map(p => p.slice(0, 4))});
+    out.push({stage_id: sid, b, strong: b, tour: st.tour || '', parts: parts.map(p => p.slice(0, 4))});
   }
   out.sort((x, y) => (y.strong - x.strong) || (y.b - x.b) || cmp(x.stage_id, y.stage_id));
   return out;
@@ -200,6 +200,21 @@ export async function seedsFromFavourites({postingsFor, peopleFor}, favourites) 
   const sids = [...new Set((await postingsFor(keys)).map(r => r[2]))].sort(cmp).slice(0, MAX_SEED_STAGES);
   const people = await peopleFor(sids);
   return {seeds: sids.filter(sid => people.get(sid)?.length).map(sid => ({stage_id: sid, people: people.get(sid)})), skip: new Set(names)};
+}
+
+/**
+ * build_recommend_index.collapse_ranked: one slot per production (a tour's
+ * venues share rec_stage.tour, user_recommender.tour_key), the best-ranked
+ * venue first with the others' stage ids in rank order; the first `top`.
+ */
+export function collapseRanked(ranked, top) {
+  const groups = new Map();
+  for (const c of ranked) {
+    const key = c.tour || 'stage:' + c.stage_id;
+    if (groups.has(key)) groups.get(key).tours.push(c.stage_id);
+    else groups.set(key, {stage_id: c.stage_id, tours: []});
+  }
+  return [...groups.values()].slice(0, top);
 }
 
 /** The same contract over D1 (or SQLite in tests): the queries the Worker issues. */
@@ -222,10 +237,10 @@ export function d1Access(db, ver, counter = {rows: 0, queries: 0}) {
       const map = new Map();
       for (let i = 0; i < ids.length; i += IDS_PER_QUERY) {
         const chunk = ids.slice(i, i + IDS_PER_QUERY);
-        const {results} = await db.prepare('SELECT stage_id,start,end FROM rec_stage WHERE ver=? AND stage_id IN ('
+        const {results} = await db.prepare('SELECT stage_id,start,end,tour FROM rec_stage WHERE ver=? AND stage_id IN ('
           + chunk.map(() => '?').join(',') + ')').bind(ver, ...chunk).all();
         counter.rows += results.length; counter.queries += 1;
-        for (const r of results) map.set(r.stage_id, {start: r.start, end: r.end});
+        for (const r of results) map.set(r.stage_id, {start: r.start, end: r.end, tour: r.tour});
       }
       return map;
     },

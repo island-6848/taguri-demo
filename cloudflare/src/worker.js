@@ -1,7 +1,7 @@
 import {isOriginalRoute, originalUI} from './original-ui.js';
 import {verifyIdToken, isAuthError} from './firebase-auth.js';
 import {passkeyRoutes} from './passkey.js';
-import {scoreFromIndex, d1Access, gradeOf, seedsFromFavourites, cleanAspects, SEED_KINDS, SEED_ROLES, MAX_SEED_FAVS, cmp} from './recommend.js';
+import {scoreFromIndex, d1Access, gradeOf, seedsFromFavourites, collapseRanked, cleanAspects, SEED_KINDS, SEED_ROLES, MAX_SEED_FAVS, cmp} from './recommend.js';
 import {searchIndex, d1Search} from './stage-search.js';
 import {chooseVariant} from './reco-gate.js';
 import {R2_READS_CAP, r2ReadAllowed} from './free-tier.js';
@@ -147,7 +147,7 @@ async function deleteAccount(request, env, uid, input) {
 // to (interest / no / owned) are left out, as the Python app moves them to
 // other lists. Tour grouping and impression preferences are not ported yet.
 const RECOMMEND_TOP = 15;
-const RECOMMENDER = 'person-ordinal-v3+fav1+asp1';   // +fav1: favourites as fading pseudo ratings; +asp1: 気になった所
+const RECOMMENDER = 'person-ordinal-v3+fav1+asp1+tour1';   // +fav1: favourites as fading pseudo ratings; +asp1: 詳細; +tour1: one slot per tour
 const jstToday = () => new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
 // Served from rec_cache unless the index version, the date, or the user's
 // records/reactions changed since it was computed (a few rows read per view).
@@ -183,19 +183,28 @@ async function computeRecommendations(db, uid, ver, today) {
   const ranked = await scoreFromIndex({...access, rated: gate.aspects ? rated : rated.map(r => ({...r, aspects: []})),
     multipliers: gate.multipliers, today, seeds, skip});
   const reacted = new Set((await db.prepare('SELECT stage_id FROM reactions WHERE user_id=?').bind(uid).all()).results.map(r => r.stage_id));
-  const top = ranked.filter(c => !reacted.has(c.stage_id)).slice(0, RECOMMEND_TOP);
+  // One slot per production: a tour's other venues ride along with its
+  // best-ranked one (user_recommender.collapse_tours), after reacted stages
+  // are left out, as the Python screen does.
+  const byId = new Map(ranked.map(c => [c.stage_id, c]));
+  const top = collapseRanked(ranked.filter(c => !reacted.has(c.stage_id)), RECOMMEND_TOP);
   const entries = new Map();
-  if (top.length) {
-    const ids = top.map(c => c.stage_id);
-    const rows = (await db.prepare(`SELECT stage_id,title,grp,start,end,entry FROM rec_stage WHERE ver=? AND stage_id IN (${ids.map(() => '?').join(',')})`).bind(ver, ...ids).all()).results;
+  const ids = top.flatMap(g => [g.stage_id, ...g.tours]);
+  for (let i = 0; i < ids.length; i += 98) {
+    const chunk = ids.slice(i, i + 98);
+    const rows = (await db.prepare(`SELECT stage_id,title,grp,start,end,entry FROM rec_stage WHERE ver=? AND stage_id IN (${chunk.map(() => '?').join(',')})`).bind(ver, ...chunk).all()).results;
     for (const r of rows) entries.set(r.stage_id, r);
   }
+  const venue = id => {
+    const e = entries.get(id) || {}, entry = JSON.parse(e.entry || '{}');
+    return {stage_id: id, start: e.start || '', end: e.end || '', theater: entry.theater || '', pref: entry.pref || '', url: entry.url || ''};
+  };
   return {ready: true, n_rated: records.length, n_linked: records.filter(r => people.get(r.stage_id)?.length).length,
-    rows_read: access.counter.rows, variant: gate.variant, n_seeds: seeds.length, items: top.map(c => {
-      const e = entries.get(c.stage_id) || {}, entry = JSON.parse(e.entry || '{}');
-      return {stage_id: c.stage_id, title: e.title || '', group: e.grp || '', start: e.start || '', end: e.end || '',
-        theater: entry.theater || '', pref: entry.pref || '', url: entry.url || '', score: c.b,
-        reasons: c.parts.slice(0, 3).map(([, role, person, n]) => ({role, person, n}))};
+    rows_read: access.counter.rows, variant: gate.variant, n_seeds: seeds.length, items: top.map(g => {
+      const c = byId.get(g.stage_id), e = entries.get(g.stage_id) || {};
+      return {...venue(g.stage_id), title: e.title || '', group: e.grp || '', score: c.b,
+        reasons: c.parts.slice(0, 3).map(([, role, person, n]) => ({role, person, n})),
+        tours: g.tours.map(venue)};
     })};
 }
 // How old the delivered catalogue is: dates and counts only, written by

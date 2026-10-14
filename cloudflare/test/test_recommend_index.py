@@ -67,6 +67,12 @@ def catalogue(seed):
                       'theater': '劇場', 'pref': '東京都', 'period': _period(rng),
                       'url': rng.choice(['https://example.com/x', 'javascript:alert(1)', '']),
                       'fields': _fields(rng), 'why_b': ['owner reason'], '_notes': {'x': 'private'}})
+    # Tours: the same production at other venues (same title, producer and
+    # credits, listed in another order), with their own run dates.
+    for i in range(0, 80, 7):
+        src = cands[i]
+        f = dict(reversed(list(src['fields'].items())))
+        cands.append(dict(src, stage_id=str(1100 + i), theater='大阪の劇場', period=_period(rng), fields=f))
     # Saved bundles add a tour stage that is not in the source files.
     raw = {'ranked': [dict(cands[0], tours=[{'stage_id': '9001', 'theater': '大阪の劇場',
                                              'period': cands[0]['period']}])]}
@@ -120,7 +126,7 @@ def got(rows):
 
 def load_sql(index):
     con = sqlite3.connect(':memory:')
-    for name in ('0003.sql', '0009.sql'):
+    for name in ('0003.sql', '0009.sql', '0016.sql'):
         con.executescript((HERE / 'migrations' / name).read_text())
     ver = BI.version_of(index)
     for stmt in BI.to_sql(index, ver):
@@ -151,6 +157,24 @@ class ParityTest(unittest.TestCase):
                     nonempty += bool(want)
         # The comparison must not pass vacuously.
         self.assertGreater(nonempty, compared // 2)
+
+    def test_tours_group_as_the_python_screen_does(self):
+        """collapse_ranked on the index == UR.collapse_tours on prepare's ranking."""
+        grouped = 0
+        for seed in range(12):
+            raw, cands, fbs = catalogue(seed)
+            index = BI.build_index(UR.candidate_pool(raw, cands), fbs, APP.group_of)
+            for hseed in range(2):
+                rated = with_people(history(seed * 100 + hseed, fbs), index['people'])
+                d = UR.prepare(raw, cands, rated, multipliers={}, role_group=APP.group_of, today=TODAY)
+                keep = [dict(c, tours=[]) for c in d['ranked'] if c.get('b', 0) > 0]
+                keep.sort(key=lambda c: (-c['strong'], -c['s'], c['stage_id']))
+                want = [(c['stage_id'], [t['stage_id'] for t in c['tours']]) for c in UR.collapse_tours(keep)]
+                mem = BI.score_from_index(*BI.memory_access(index), rated, multipliers={}, today=TODAY)
+                got_ = [(g['stage_id'], g['tours']) for g in BI.collapse_ranked(mem, 10 ** 6)]
+                self.assertEqual(got_, want, (seed, hseed))
+                grouped += sum(bool(t) for _, t in got_)
+        self.assertGreater(grouped, 10, 'the catalogue must contain tours that rank')
 
     def test_index_holds_public_fields_only(self):
         raw, cands, fbs = catalogue(1)
@@ -188,7 +212,7 @@ class ParityTest(unittest.TestCase):
         self.assertTrue(all(len(s.encode()) < 100_000 for s in stmts))
         con = sqlite3.connect(':memory:')
         self.addCleanup(con.close)
-        for name in ('0003.sql', '0009.sql'):
+        for name in ('0003.sql', '0009.sql', '0016.sql'):
             con.executescript((HERE / 'migrations' / name).read_text())
         for s in stmts:
             con.execute(s)

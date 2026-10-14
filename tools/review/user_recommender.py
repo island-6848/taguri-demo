@@ -8,6 +8,8 @@ from __future__ import annotations
 import collections
 import copy
 import datetime
+import hashlib
+import json
 import math
 import re
 
@@ -378,16 +380,25 @@ def finish(d: dict, *, top: int, weights: dict) -> dict:
     return d
 
 
+def tour_key(title: str, group: str, credits) -> str:
+    """Productions of one tour share it: same title and producer (normalised)
+    and the same set of credits. Stored per stage in the Worker's index
+    (rec_stage.tour) so the Worker groups exactly as collapse_tours does."""
+    blob = json.dumps([RC.nz(title or ""), RC.nz(group or ""), sorted({tuple(c) for c in credits})],
+                      ensure_ascii=False)
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest()[:16]
+
+
 def collapse_tours(rows: list[dict]) -> list[dict]:
     """One slot per production, preserving all distinct tour venues.
 
     Reusable after personal impression scoring promotes previously unscored rows.
-    Title alone is insufficient: producer and complete credits must also match.
+    Title alone is insufficient: producer and complete credits must also match
+    (tour_key; credits as a set, so the order they are listed in does not matter).
     """
     groups = {}
     for c in rows:
-        key = (RC.nz(c.get("title") or ""), RC.nz(c.get("group") or ""),
-               tuple(M.parse_credits(c.get("fields") or {})))
+        key = tour_key(c.get("title") or "", c.get("group") or "", M.parse_credits(c.get("fields") or {}))
         if key not in groups:
             groups[key] = copy.deepcopy(c)
             groups[key]["tours"] = list(groups[key].get("tours") or [])

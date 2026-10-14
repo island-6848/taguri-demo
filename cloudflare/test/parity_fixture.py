@@ -25,7 +25,10 @@ for seed in range(12):
         rated = T.with_people(T.history(seed * 100 + hseed, fbs), index['people'])
         for mult in WEIGHTS:
             expected = BI.score_from_index(*BI.memory_access(index), rated, multipliers=mult, today=T.TODAY)
-            cases.append({'rated': rated, 'multipliers': mult, 'expected': expected})
+            # What the Worker lists after the user reacts to the top stage: one
+            # slot per tour (collapse_ranked), the first RECOMMEND_TOP.
+            cases.append({'rated': rated, 'multipliers': mult, 'expected': expected,
+                          'listed_after_first': BI.collapse_ranked(expected[1:], 15)})
     # Favourites as seeds (q-favourites-seed): with no ratings and with a history.
     cast = sorted({(p[0], p[1]) for p in index['postings'] if not p[0].startswith('#')})
     picks = [cast[(seed * 7 + i * 13) % len(cast)][1] for i in range(3)]
@@ -36,7 +39,7 @@ for seed in range(12):
         expected = BI.score_from_index(*BI.memory_access(index), rated, multipliers={}, today=T.TODAY,
                                        seeds=seeds, skip=skip)
         cases.append({'rated': rated, 'multipliers': {}, 'favourites': favs, 'seeds': [s['stage_id'] for s in seeds],
-                      'expected': expected})
+                      'expected': expected, 'listed': BI.collapse_ranked(expected, 15)})
     searches = [{'q': q, 'date': d, 'expected': BI.search_index(BI.memory_search(index), q, d)}
                 for q in T.SEARCHES for d in T.search_dates(index)]
     onboarding = BI.onboarding_list(index, T.TODAY)

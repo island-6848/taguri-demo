@@ -61,7 +61,7 @@ function envFor(sqlite) {
 const call = (env, path, value, cookie = '') => worker.fetch(new Request(`${ORIGIN}/migration-api/${path}`, value === undefined ? {headers: {cookie}} : {method: 'POST', headers: {cookie, origin: ORIGIN, 'content-type': 'application/json'}, body: JSON.stringify(value)}), env);
 
 test('records saved through the API give the same recommendations as Python, minus reacted stages', async () => {
-  let checked = 0;
+  let checked = 0, toursSeen = 0;
   for (const cat of fixture.catalogues.slice(0, 6)) {
     for (const c of cat.cases.filter(x => !x.favourites && Object.keys(x.multipliers).length === 0 && x.expected.length >= 3)) {
       const sqlite = load(cat), env = envFor(sqlite);
@@ -77,14 +77,18 @@ test('records saved through the API give the same recommendations as Python, min
       const reacted = c.expected[0].stage_id;
       await call(env, 'reaction', {stage_id: reacted, status: 'no'}, cookie);
       const got = await recommendFor(env.DB, uid, fixture.today);
-      const want = c.expected.filter(x => x.stage_id !== reacted).slice(0, 15);
+      // One slot per tour, as Python's collapse_tours (collapse_ranked).
+      const byId = new Map(c.expected.map(x => [x.stage_id, x]));
+      const want = c.listed_after_first;
       assert.equal(got.ready, true);
       assert.equal(got.variant, 'base', 'few ratings: the hidden check keeps the default rules');
-      assert.deepEqual(got.items.map(i => [i.stage_id, i.score]), want.map(x => [x.stage_id, x.b]));
-      assert.deepEqual(got.items[0].reasons, want[0].parts.slice(0, 3).map(([, role, person, n]) => ({role, person, n})));
+      assert.deepEqual(got.items.map(i => [i.stage_id, i.score, i.tours.map(t => t.stage_id)]), want.map(g => [g.stage_id, byId.get(g.stage_id).b, g.tours]));
+      assert.deepEqual(got.items[0].reasons, byId.get(want[0].stage_id).parts.slice(0, 3).map(([, role, person, n]) => ({role, person, n})));
+      toursSeen += got.items.some(i => i.tours.length);
+      assert.ok(got.items.every(i => i.tours.every(t => t.theater)), 'tour venues carry their display fields');
       assert.ok(got.items.every(i => i.title), 'display fields come from rec_stage');
       // The cache is keyed by the scoring rules too (a rule change recomputes).
-      assert.ok(sqlite.prepare('SELECT stamp FROM rec_cache WHERE user_id=?').get(uid).stamp.startsWith('person-ordinal-v3+fav1+asp1|'));
+      assert.ok(sqlite.prepare('SELECT stamp FROM rec_cache WHERE user_id=?').get(uid).stamp.startsWith('person-ordinal-v3+fav1+asp1+tour1|'));
       // Second view: served from the cache, same answer.
       const again = await recommendFor(env.DB, uid, fixture.today);
       assert.equal(again.cached, true);
@@ -107,6 +111,7 @@ test('records saved through the API give the same recommendations as Python, min
     }
   }
   assert.ok(checked >= 5, `checked ${checked}`);
+  assert.ok(toursSeen >= 2, `listings with a tour: ${toursSeen}`);
 });
 
 test('favourites give recommendations before any rating, as Python, and fade as ratings come in', async () => {
@@ -122,7 +127,8 @@ test('favourites give recommendations before any rating, as Python, and fade as 
     const got = await recommendFor(env.DB, uid, fixture.today);
     assert.equal(got.cached, false, 'adding a favourite drops the cached result');
     assert.equal(got.n_seeds, c.seeds.length);
-    assert.deepEqual(got.items.map(i => [i.stage_id, i.score]), c.expected.slice(0, 15).map(x => [x.stage_id, x.b]));
+    const byId = new Map(c.expected.map(x => [x.stage_id, x]));
+    assert.deepEqual(got.items.map(i => [i.stage_id, i.score, i.tours.map(t => t.stage_id)]), c.listed.map(g => [g.stage_id, byId.get(g.stage_id).b, g.tours]));
     // The favourites' own shows are listed elsewhere, not recommended here.
     assert.ok(!got.items.some(i => c.seeds.includes(i.stage_id)));
     checked++;

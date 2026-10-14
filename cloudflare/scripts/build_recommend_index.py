@@ -78,6 +78,7 @@ def build_index(pool: dict[str, dict], fields_by_stage: dict[str, dict], role_gr
         tags = UR.stage_tags(title, [(entry.get("fields") or {}).get("劇場", "")], credits,
                              UR.price_texts(entry))
         stages[sid] = {"title": title, "tkey": M.R.title_key(title), "grp": entry.get("group") or "",
+                       "tour": UR.tour_key(title, entry.get("group") or "", credits),
                        "start": RC.period_start(period), "end": _period_end(period),
                        "credits": [list(c) for c in credits],
                        "entry": _public_entry(entry)}
@@ -164,10 +165,24 @@ def score_from_index(postings_for, stage_of, rated: list[dict], *, multipliers: 
         b = UR.b_score(parts, negative, kinds)
         if b <= 0:
             continue
-        out.append({"stage_id": sid, "b": b, "strong": b,
+        out.append({"stage_id": sid, "b": b, "strong": b, "tour": st.get("tour") or "",
                     "parts": [p[:4] for p in parts]})
     out.sort(key=lambda c: (-c["strong"], -c["b"], c["stage_id"]))
     return out
+
+
+def collapse_ranked(ranked: list[dict], top: int) -> list[dict]:
+    """The Worker's tour grouping of score_from_index's output (UR.collapse_tours
+    on the index): the first `top` productions, each with the stage ids of its
+    other tour venues in rank order."""
+    groups: dict = {}
+    for c in ranked:
+        key = c.get("tour") or "stage:" + c["stage_id"]
+        if key in groups:
+            groups[key]["tours"].append(c["stage_id"])
+        else:
+            groups[key] = {"stage_id": c["stage_id"], "tours": []}
+    return list(groups.values())[:top]
 
 
 def memory_access(index: dict):
@@ -259,10 +274,10 @@ def sql_access(con, ver: str, counter: dict | None = None):
         return out
 
     def stage_of(sid):
-        row = con.execute("SELECT start,end FROM rec_stage WHERE ver=? AND stage_id=?",
+        row = con.execute("SELECT start,end,tour FROM rec_stage WHERE ver=? AND stage_id=?",
                           (ver, sid)).fetchone()
         counter["rows"] += row is not None
-        return {"start": row[0], "end": row[1]} if row else None
+        return {"start": row[0], "end": row[1], "tour": row[2]} if row else None
 
     return postings_for, stage_of
 
@@ -349,8 +364,8 @@ def to_sql(index: dict, ver: str, onboarding: list[str] | None = None) -> list[s
     """Insert `ver`, switch to it, then drop other versions (in that order)."""
     dumps = lambda v: json.dumps(v, ensure_ascii=False, sort_keys=True)
     stmts = [f"DELETE FROM {t} WHERE ver={_q(ver)};" for t in TABLES]
-    stmts += _inserts("rec_stage", "ver,stage_id,title,tkey,grp,start,end,credits,entry", [
-        (ver, sid, s["title"], s["tkey"], s["grp"], s["start"], s["end"], dumps(s["credits"]),
+    stmts += _inserts("rec_stage", "ver,stage_id,title,tkey,grp,tour,start,end,credits,entry", [
+        (ver, sid, s["title"], s["tkey"], s["grp"], s["tour"], s["start"], s["end"], dumps(s["credits"]),
          dumps(s["entry"])) for sid, s in sorted(index["stages"].items())])
     stmts += _inserts("rec_credit", "ver,role,person,stage_id,role_w,role_group",
                       [(ver, *r) for r in sorted(set(index["postings"]))])
