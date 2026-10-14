@@ -300,7 +300,7 @@ async function visitNoteAction(b, ctx) {
  * built from measure_nets._fields_by_stage by build_recommend_index.py) plus
  * the hand-entered ones.
  */
-async function peopleByKey(ctx, ws) {
+export async function peopleByKey(ctx, ws) {
   const sids = [...new Set(ws.map(w => w.stage_id).filter(Boolean))];
   const stage = {};
   for (let i = 0; i < sids.length; i += 90) {

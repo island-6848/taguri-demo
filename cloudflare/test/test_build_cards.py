@@ -48,6 +48,9 @@ class CardTest(unittest.TestCase):
                              RR.ticket(c, mode="owned", my_tickets=TICKETS))
             self.assertEqual(BC.compose(t, sid, "owned", mytix=BC.mytix_html(c, [])),
                              RR.ticket(c, mode="owned", my_tickets=[]))
+            top = '<li class="rs found"><span class="net">出演</span>俳優甲</li>'
+            for mode in ("recommend", "interest"):
+                self.assertEqual(BC.compose(t, sid, mode, top=top), RR.ticket(c, mode=mode, why_html=top))
 
     def test_a_tour_lists_every_venue(self):
         pool = dict(self.pool)

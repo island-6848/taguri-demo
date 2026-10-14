@@ -178,3 +178,33 @@ test('設定・はじめる・登録, the default prefectures, 観ればよか�
     assert.ok(out.missed.every(r => r.user_id === out.missed[0].user_id));
   } finally { sqlite.close(); }
 });
+
+test('探す: coming stages and works seen, by words and by month', async () => {
+  const {env, sqlite} = withIndex();
+  const a = await signIn(env);
+  try {
+    const empty = (await screen(env, a, 'search')).body_html;
+    assert.match(empty, /<h1>探す<\/h1>/);
+    assert.match(empty, /これから観られる公演 3 件と観た記録の両方から探します/);
+    // A coming stage found by a cast name: the card with 「ヒットした箇所」 on top.
+    const byName = (await screen(env, a, 'search', '?q=' + encodeURIComponent('俳優甲'))).body_html;
+    assert.match(byName, /<h2>これから観られる公演 1 件<\/h2>/);
+    assert.match(byName, /<div class="whyh top">[\s\S]*ヒットした箇所：<\/div><ul class="why top"><li class="rs found"><span class="net">出演<\/span>俳優甲<\/li><\/ul>/);
+    assert.doesNotMatch(byName, /おすすめ理由/);
+    assert.match(byName, /この名前を追いますか？[\s\S]*data-name="俳優甲"/);
+    // A work seen, found by its title, with the rating buttons.
+    const key = (await step(env, a, {post: '/api/add_work', body: {title: '終わった舞台', date: '2026-08-05'}})).body.work_key;
+    await step(env, a, {post: '/api/link_stage', body: {work_key: key, stage_id: '103'}});
+    const seen = (await screen(env, a, 'search', '?q=' + encodeURIComponent('終わった'))).body_html;
+    assert.match(seen, /<h2>観た記録 1 件<\/h2>/);
+    assert.match(seen, /<div class="hitwhy"><span class="hl">ヒットした箇所：<\/span><span class="hw">題名<\/span><\/div>/);
+    // By month: the works seen in August 2026.
+    assert.match((await screen(env, a, 'search', '?ym=2026-08')).body_html, /2026 年 8 月に観た記録 1 件/);
+    // Nothing found: ask the next daily run.
+    const none = (await screen(env, a, 'search', '?q=' + encodeURIComponent('存在しない公演'))).body_html;
+    assert.match(none, /data-search-request="存在しない公演"/);
+    assert.equal((await step(env, a, {post: '/api/search_request', body: {q: '存在しない公演', source: 'search'}})).status, 200);
+    assert.match((await screen(env, a, 'search', '?q=' + encodeURIComponent('存在しない公演'))).body_html, /探すよう頼んであります/);
+    assert.equal((await step(env, a, {post: '/api/search_request', body: {q: 'x'}})).status, 400);
+  } finally { sqlite.close(); }
+});

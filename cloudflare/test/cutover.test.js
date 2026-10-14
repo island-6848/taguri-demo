@@ -83,14 +83,14 @@ test('NATIVE_UI=all: nothing of a user goes to Render; unported screens and writ
   const cookie = await signIn(env);
   const r = stubRender();
   try {
-    for (const name of ['records', 'trace', 'chronicle', 'search']) {
+    for (const name of ['records', 'trace', 'chronicle']) {
       const got = await step(env, cookie, {get: `/api/screen/${name}`});
       assert.equal(got.status, 200, name);
       assert.equal(got.body.moving, true, name);
       assert.equal(got.body.edition, 'service', name);
       assert.match(got.body.body_html, /いま新しい仕組みに移しています/, name);
     }
-    for (const path of ['/api/weight', '/api/recommendation/visit']) {
+    for (const path of ['/api/weight', '/api/recommendation/visit', '/api/hand_theme']) {
       const got = await step(env, cookie, {post: path, body: {}});
       assert.equal(got.status, 503, path);
       assert.match(got.body.error, /移している/, path);

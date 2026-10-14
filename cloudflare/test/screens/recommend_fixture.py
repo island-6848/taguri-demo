@@ -54,7 +54,8 @@ def golden() -> list[dict]:
         for mode, kw in (("recommend", {"rank": 7, "why": "<li>x $& y</li>", "poster": "<img>"}),
                          ("interest", {"note": "俳優甲 & <乙> $1"}), ("interest", {}),
                          ("favourite", {"why": "<li>登録</li>"}),
-                         ("owned", {"tickets": tickets}), ("owned", {"tickets": []})):
+                         ("owned", {"tickets": tickets}), ("owned", {"tickets": []}),
+                         ("recommend", {"top": "<li>出演 $&</li>"}), ("interest", {"top": "<li>題名</li>"})):
             args = dict(kw)
             if mode == "owned":
                 args = {"mytix": BC.mytix_html(c, kw["tickets"])}

@@ -144,10 +144,11 @@ def mytix_html(c: dict, tickets: list[dict]) -> str:
 
 
 def compose(template: str, sid: str, mode: str, *, rank: int | None = None, why: str = "",
-            poster: str = "", note: str = "", mytix: str = "") -> str:
-    """What the Worker does (src/screens/cards.js), in Python: the reference for the test."""
+            poster: str = "", note: str = "", mytix: str = "", top: str = "") -> str:
+    """What the Worker does (src/screens/cards.js), in Python: the reference for the test.
+    `top` is ticket's why_html (探す: 「ヒットした箇所」 above the card instead of the reasons)."""
     import icons as IC
-    mark = {"recommend": f'<span class="sn">No.{rank or 0:02d}</span>',
+    mark = {"recommend": f'<span class="sn">No.{rank:02d}</span>' if rank else "",
             "interest": f'<span class="sn done">{IC.ico("check", 15)}</span>',
             "favourite": '<span class="wax" aria-hidden="true"></span>'}.get(mode, "")
     btns = {"recommend": RR.buttons(sid),
@@ -162,6 +163,11 @@ def compose(template: str, sid: str, mode: str, *, rank: int | None = None, why:
             .replace(MYTIX, mytix if mode == "owned" else "")
             .replace(WHY_NOTE, RR.why_note(sid, note, ask=(mode == "interest")) if answer else "")
             .replace(NO_NOTE, RR.no_note(sid, hidden=True) if answer else ""))
+    if top:
+        html = (html.replace('</h3>\n \n <div class="meta">',
+                             f'</h3>\n <div class="whyh top">{IC.ico("eye", 14)}ヒットした箇所：</div>'
+                             f'<ul class="why top">{top}</ul>\n <div class="meta">', 1)
+                .replace(f'<div class="whyh">{IC.ico("eye", 14)}おすすめ理由</div><ul class="why">{why or _NO_REASON}</ul>', "", 1))
     return html.replace('<div class="act"></div>', "").replace('<div class="pcol"></div>', "")
 
 

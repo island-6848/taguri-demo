@@ -131,7 +131,7 @@ function castHtml(people) {
  * `extra` (the search screen) and the per-visit note (only for rows opened
  * from mails, which a public user does not have) are not passed yet.
  */
-export function recRow(w, {poster = '', rateAlways = false, editable = false, rateReopen = false, label = '', idSuffix = ''} = {}) {
+export function recRow(w, {poster = '', rateAlways = false, editable = false, rateReopen = false, label = '', idSuffix = '', extra = ''} = {}) {
   const v = w.verdict || '';
   const unseen = Boolean(w.unseen);
   let rate;
@@ -174,6 +174,7 @@ export function recRow(w, {poster = '', rateAlways = false, editable = false, ra
     + (where ? `<div class="where">${where}</div>` : '')
     + synopsisHtml(w.synopsis)
     + castHtml(w.people)
+    + extra                         // 探す画面の「ヒットした箇所」（題名のすぐ下）
     + ((rate || impHead) ? `<div class="tools">${rate}${impHead}</div>` : '')
     + impBox
     + (editable ? editHtml(w, label) : '')

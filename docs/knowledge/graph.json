@@ -1200,6 +1200,20 @@
    "verifies": []
   },
   {
+   "id": "dec-search-worker",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "探すを Worker に移す（これからの公演は D1 のカードを SQL で絞ってから当て、観た記録は評価一覧と同じ行で出す）",
+   "sources": [
+    "cloudflare/src/screens/search.js",
+    "cloudflare/src/screens/cards.js",
+    "cloudflare/scripts/build_cards.py",
+    "cloudflare/test/lists-screen.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-service-starts-empty",
    "type": "decision",
    "status": "adopted",
@@ -3137,6 +3151,15 @@
    ]
   },
   {
+   "id": "q-search-request-crawl",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-14",
+   "title": "本番の「次の更新で探してもらう」依頼（D1 の search_request）を、取得が読んで CoRich で探す段をどう作るか",
+   "sources": [],
+   "verifies": []
+  },
+  {
    "id": "q-source-terms",
    "type": "question",
    "status": "open",
@@ -4809,6 +4832,16 @@
    "to": "q-past-stage-catalogue"
   },
   {
+   "from": "dec-search-worker",
+   "rel": "depends_on",
+   "to": "dec-lists-worker"
+  },
+  {
+   "from": "dec-search-worker",
+   "rel": "affects",
+   "to": "comp-native-screens"
+  },
+  {
    "from": "dec-service-starts-empty",
    "rel": "depends_on",
    "to": "dec-edition-split"
@@ -6207,6 +6240,16 @@
    "from": "q-safari-cookies",
    "rel": "depends_on",
    "to": "dec-own-domain"
+  },
+  {
+   "from": "q-search-request-crawl",
+   "rel": "raises",
+   "to": "dec-search-worker"
+  },
+  {
+   "from": "q-search-request-crawl",
+   "rel": "affects",
+   "to": "dec-free-tier-only"
   },
   {
    "from": "q-synopsis-reader",
