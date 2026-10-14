@@ -280,11 +280,12 @@ const REACT = {owned: {owned: 1}, interest: {interest: 1}, nointerest: {interest
 
 async function reactRow(ctx, stageId, cols, source) {
   const label = ctx.today;
-  const v = {interest: null, owned: null, note: null, note_no: null, ...cols};
-  await ctx.db.prepare(`INSERT INTO reaction(user_id,label,stage_id,interest,owned,note,note_no,source,updated_at) VALUES(?,?,?,?,?,?,?,?,?)
+  const v = {interest: null, owned: null, note: null, note_no: null, note_pre: null, ...cols};
+  await ctx.db.prepare(`INSERT INTO reaction(user_id,label,stage_id,interest,owned,note,note_no,note_pre,source,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)
     ON CONFLICT(user_id,label,stage_id) DO UPDATE SET interest=COALESCE(excluded.interest,reaction.interest), owned=COALESCE(excluded.owned,reaction.owned),
-    note=COALESCE(excluded.note,reaction.note), note_no=COALESCE(excluded.note_no,reaction.note_no), source=excluded.source, updated_at=excluded.updated_at`)
-    .bind(ctx.uid, label, stageId, v.interest, v.owned, v.note, v.note_no, source, new Date(ctx.now).toISOString()).run();
+    note=COALESCE(excluded.note,reaction.note), note_no=COALESCE(excluded.note_no,reaction.note_no), note_pre=COALESCE(excluded.note_pre,reaction.note_pre),
+    source=excluded.source, updated_at=excluded.updated_at`)
+    .bind(ctx.uid, label, stageId, v.interest, v.owned, v.note, v.note_no, v.note_pre, source, new Date(ctx.now).toISOString()).run();
 }
 
 /** serve.fill_slot: the next card in place of the one answered, honouring the saved prefectures. */
@@ -309,7 +310,7 @@ export async function reactAction(b, ctx) {
     return {body: {ok: true, stage_id: stageId, fill: await fillSlot(ctx, shown, stageId)}};
   }
   const given = {};
-  for (const k of ['note', 'note_no']) if (b[k] !== undefined && b[k] !== null) given[k] = String(b[k]).slice(0, 2000);
+  for (const k of ['note', 'note_no', 'note_pre']) if (b[k] !== undefined && b[k] !== null) given[k] = String(b[k]).slice(0, 2000);
   if (!stageId || !/^[A-Za-z0-9_-]{1,40}$/.test(stageId) || (!Object.hasOwn(REACT, value) && !Object.keys(given).length))
     throw new ValueError('stage_id と、value（owned / interest / nointerest）か理由が要る');
   await reactRow(ctx, stageId, {...(REACT[value] || {}), ...given}, 'screen');

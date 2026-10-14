@@ -191,3 +191,48 @@ test('recording: ticked rows become records once; a stage id the catalogue lacks
   const other = await act('import_match', {items: [{guesses: ['ハード・プロブレム'], date: '2024-05-12'}]}, {...ctx, uid: 'u2'});
   assert.equal(other.body.items[0].recorded, false);
 });
+
+// ------------------------------------------------------------------ Google カレンダー (one button)
+import {authUrl, eventsOf, startOf, CAL_SCOPE} from '../src/client/calendar-google.js';
+
+test('Google Calendar: consent address asks only to read, and comes back to this site', () => {
+  const u = new URL(authUrl('123.apps.googleusercontent.com', 'https://app.taguri.workers.dev', 'abc'));
+  assert.equal(u.origin + u.pathname, 'https://accounts.google.com/o/oauth2/v2/auth');
+  assert.equal(u.searchParams.get('scope'), CAL_SCOPE);
+  assert.equal(CAL_SCOPE, 'https://www.googleapis.com/auth/calendar.readonly');
+  assert.equal(u.searchParams.get('redirect_uri'), 'https://app.taguri.workers.dev/oauth/calendar');
+  assert.equal(u.searchParams.get('response_type'), 'token');
+  assert.equal(u.searchParams.get('state'), 'abc');
+});
+
+test('Google Calendar: events in Japan time, without repeating, cancelled or untitled ones', () => {
+  assert.deepEqual(startOf({dateTime: '2024-05-12T05:00:00Z'}), {date: '2024-05-12', time: '14:00'});
+  assert.deepEqual(startOf({dateTime: '2024-05-12T14:00:00+09:00'}), {date: '2024-05-12', time: '14:00'});
+  assert.deepEqual(startOf({date: '2024-01-01'}), {date: '2024-01-01', time: ''});
+  const got = eventsOf([
+    {summary: '観劇 『ハード・プロブレム』', start: {dateTime: '2024-05-12T14:00:00+09:00'}, location: '世田谷パブリックシアター'},
+    {summary: '定例', start: {dateTime: '2024-05-13T10:00:00+09:00'}, recurringEventId: 'x'},
+    {summary: '中止', start: {date: '2024-05-14'}, status: 'cancelled'},
+    {start: {date: '2024-05-15'}},
+  ]);
+  assert.deepEqual(got, [{summary: '観劇 『ハード・プロブレム』', date: '2024-05-12', time: '14:00', location: '世田谷パブリックシアター', recurring: false}]);
+});
+
+test('the page Google returns to may talk only to the Calendar API, and the client id is public config', async () => {
+  const {default: worker} = await import('../src/worker.js');
+  const {sqlite, ctx} = setup();
+  const env = {DB: ctx.db, FIREBASE_PROJECT_ID: 'p', FIREBASE_API_KEY: 'k', GOOGLE_CALENDAR_CLIENT_ID: '123.apps.googleusercontent.com',
+    ASSETS: {fetch: () => new Response('<html>', {headers: {'content-type': 'text/html'}})}};
+  const cfg = await (await worker.fetch(new Request('https://app.example/api/auth/config'), env)).json();
+  assert.equal(cfg.calendarClientId, '123.apps.googleusercontent.com');
+  // Signed out: sent to sign in first.
+  assert.equal((await worker.fetch(new Request('https://app.example/oauth/calendar'), env)).status, 302);
+  sqlite.prepare("INSERT INTO sessions(hash,user_id,expires_at,created_at) VALUES(?,?,?,?)").run(
+    [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode('a'.repeat(64))))].map(b => b.toString(16).padStart(2, '0')).join(''), 'u1', 9e9, 0);
+  const page = await worker.fetch(new Request('https://app.example/oauth/calendar', {headers: {cookie: 'taguri_session=' + 'a'.repeat(64)}}), env);
+  assert.equal(page.status, 200);
+  const csp = page.headers.get('content-security-policy');
+  assert.match(csp, /connect-src https:\/\/www\.googleapis\.com;/);
+  assert.match(csp, /script-src 'self';/);
+  assert.equal(page.headers.get('referrer-policy'), 'no-referrer');
+});

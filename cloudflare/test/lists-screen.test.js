@@ -89,11 +89,17 @@ test('購入済み shows owned stages with their tickets; an ended one moves to 
     assert.match(html, /<span class="mt-row">11月3日 14:00 <button data-mt-del="101" data-date="2026-11-03" data-time="14:00">取り消す<\/button><\/span>/);
     assert.match(html, /min="2026-11-01" max="2026-11-10"/);
     assert.doesNotMatch((await screen(env, a, 'interest')).body_html, /data-stage="101"/);
+    // A memo before seeing it, only on owned stages; it goes with the work once seen.
+    assert.match(html, /<details class="nn pre" data-stage="101"><summary>観る前のメモを書く/);
+    await step(env, a, {post: '/api/react', body: {stage_id: '101', note_pre: '原作を読んで楽しみ'}});
+    assert.match((await screen(env, a, 'tickets')).body_html, /観る前のメモ<span class="nnv">原作を読んで楽しみ<\/span>/);
+    assert.doesNotMatch((await screen(env, a, 'recommend')).body_html, /data-prenote/);
     // After the ticket's date the stage leaves 購入済み and waits for a rating.
     env.CLOCK = {today: '2026-11-04', now: Date.parse('2026-11-04T03:00:00Z')};
     assert.match((await screen(env, a, 'tickets')).body_html, /購入済み公演 ── 0 件/);
     assert.match((await screen(env, a, 'unrated')).body_html, /舞台ひとつめ/);
     assert.equal(sqlite.prepare("SELECT count(*) AS n FROM works WHERE stage_id='101'").get().n, 1);
+    assert.equal(sqlite.prepare("SELECT note_motive FROM works WHERE stage_id='101'").get().note_motive, '原作を読んで楽しみ');
     await screen(env, a, 'tickets');
     assert.equal(sqlite.prepare("SELECT count(*) AS n FROM works WHERE stage_id='101'").get().n, 1);
   } finally { sqlite.close(); }
@@ -208,7 +214,7 @@ test('設定・はじめる・登録, the default prefectures, 観ればよか�
     assert.equal((await step(env, a, {post: '/api/missed', body: {title: '舞台ひとつめ'}})).status, 200);
     assert.equal((await step(env, a, {post: '/api/missed', body: {title: '聞いたことのない舞台'}})).status, 200);
     const reg = (await screen(env, a, 'register')).body_html;
-    assert.match(reg, /<h1>公演情報の登録<\/h1>/);
+    assert.match(reg, /<h1>観劇記録を追加<\/h1>/);
     assert.match(reg, /<span class="badge part">2 件<\/span>/);
     assert.match(reg, /一覧にはあったが、表示する枠に入らなかった<\/span><span class="w">舞台ひとつめ<\/span>[\s\S]*<span class="cl">出演<\/span><span class="cv">俳優甲、俳優乙<\/span>/);
     assert.match(reg, /取り込んだ公演の中に無かった<\/span><span class="w">聞いたことのない舞台/);
@@ -231,6 +237,11 @@ test('探す: coming stages and works seen, by words and by month', async () => 
     const empty = (await screen(env, a, 'search')).body_html;
     assert.match(empty, /<h1>探す<\/h1>/);
     assert.match(empty, /これから観られる公演 3 件と観た記録の両方から探します/);
+    // A new account (no records yet) still gets the month calendar, opened on the coming stages
+    // (2026-10-14 起案者「『探す』にあったカレンダーが消えてる」).
+    assert.match(empty, /<div class="cal" id="cal">/);
+    assert.match(empty, /aria-current="page"[^>]*>これから観られる公演|これから観られる公演[^<]*<span class="mn">3<\/span>/);
+    assert.match(empty, /class="cal-c l\d/);
     // A coming stage found by a cast name: the card with 「ヒットした箇所」 on top.
     const byName = (await screen(env, a, 'search', '?q=' + encodeURIComponent('俳優甲'))).body_html;
     assert.match(byName, /<h2>これから観られる公演 1 件<\/h2>/);
@@ -290,17 +301,37 @@ test('観劇史年表: the years of the works seen', async () => {
   } finally { sqlite.close(); }
 });
 
+<<<<<<< HEAD
 // 2026-10-14 起案者「購入済みに作品が入っているのに、公演カレンダーになにも表示されない」: a stage the user
 // owns that the (stale) index lacks is taken from the catalogue, as 購入済み公演 does.
 test('公演カレンダー shows an owned stage that only the catalogue has', async () => {
+=======
+// 2026-10-14 起案者「たぐりが集めている公演から出してよ勿論」: a name added to お気に入り is
+// looked up in the whole delivered catalogue too, not only in the stages with a card.
+test('お気に入り finds a registered name in the catalogue at once, also without a card', async () => {
+>>>>>>> origin/master
   const {env, sqlite} = withIndex();
   const a = await signIn(env);
   try {
     env.CLOCK = {today: '2026-10-20', now: Date.parse('2026-10-20T03:00:00Z')};
+<<<<<<< HEAD
     sqlite.prepare("INSERT INTO catalogue(id,title,date,venue,url,metadata) VALUES('778','一覧だけの舞台','2026-10-25','劇場Y','',?)")
       .run(JSON.stringify({end_date: '2026-11-03'}));
     assert.equal((await step(env, a, {post: '/api/react', body: {stage_id: '778', value: 'owned', nofill: true}})).status, 200);
     assert.match((await screen(env, a, 'tickets')).body_html, /一覧だけの舞台/);
     assert.match((await screen(env, a, 'calendar')).body_html, /一覧だけの舞台/);
+=======
+    sqlite.prepare("INSERT INTO catalogue(id,title,date,venue,url,metadata) VALUES('888','カードの無い新作','2026-11-05','劇場Y','',?)")
+      .run(JSON.stringify({end_date: '2026-11-12', group: '劇団 Y', fields: {出演: '山田 花子、佐藤一郎'}, synopsis: '港町の話。'}));
+    sqlite.prepare("INSERT INTO catalogue(id,title,date,venue,url,metadata) VALUES('889','終わった公演','2026-05-01','劇場Y','',?)")
+      .run(JSON.stringify({end_date: '2026-05-03', fields: {出演: '山田花子'}}));
+    await step(env, a, {post: '/api/favourite', body: {action: 'add', kind: '人', name: '山田花子'}});
+    await step(env, a, {post: '/api/favourite', body: {action: 'add', kind: '団体', name: '劇団Y'}});
+    const html = (await screen(env, a, 'favourites')).body_html;
+    assert.match(html, /<article class="ticket favourite" data-stage="888"[\s\S]*?カードの無い新作/);
+    assert.match(html, /登録した人「山田花子」の公演です/);
+    assert.match(html, /登録した団体「劇団Y」の公演です/);
+    assert.doesNotMatch(html, /終わった公演/);
+>>>>>>> origin/master
   } finally { sqlite.close(); }
 });

@@ -7,6 +7,7 @@
 // then the rows the user ticked (to record them).
 import PostalMime from 'postal-mime';
 import {parseIcs, titleGuesses, readMail, splitPasted} from './import-parse.js';
+import {authUrl, CAL_STATE_KEY, CAL_EVENTS_KEY} from './calendar-google.js';
 
 const CHUNK = 20;                 // items per request (the request body is capped at 8 KB)
 const PACE_MS = 120;              // between requests, well inside the rate limit
@@ -90,9 +91,12 @@ async function match(items, {keepUnmatched}) {
 }
 
 // ------------------------------------------------------------------ calendar
-async function fromCalendar(text, from) {
+const fromCalendar = (text, from) => fromEvents(parseIcs(text), from);
+async function fromEvents(all, from) {
   const today = jstToday();
-  const events = parseIcs(text).filter(e => !e.recurring && e.date && e.date <= today);
+  // One per title and day (the same visit is often in two calendars).
+  const seen = new Set();
+  const events = all.filter(e => !e.recurring && e.date && e.date <= today && !seen.has(e.summary + '@' + e.date) && seen.add(e.summary + '@' + e.date));
   if (!events.length) { say('過去の予定が見つかりませんでした。', true); return; }
   const items = events.map(e => ({title: e.summary, guesses: titleGuesses(e.summary), date: e.date, time: e.time, venue: e.location.split(/[,、]/)[0].slice(0, 80), from}));
   found = await match(items, {keepUnmatched: false});
@@ -107,6 +111,25 @@ async function calendarUrl() {
   say('カレンダーを読み込んでいます…');
   const res = await post('/api/calendar_ics', {url});
   await fromCalendar(await res.text(), 'Google カレンダー');
+}
+
+// One button: go to Google, allow reading the calendar, and come back. The page Google
+// returns to (/oauth/calendar, calendar-callback.js) reads the events in the browser
+// and leaves them in sessionStorage; they are picked up below when this card is shown.
+async function googleCalendar() {
+  const res = await fetch('/api/auth/config', {credentials: 'omit'});
+  const config = res.ok ? await res.json() : {};
+  if (!config.calendarClientId) { say('Google カレンダーからの取り込みは、まだ準備中です。下のアドレスかファイルから読み込んでください。', true); return; }
+  const state = [...crypto.getRandomValues(new Uint8Array(16))].map(b => b.toString(16).padStart(2, '0')).join('');
+  try { sessionStorage.setItem(CAL_STATE_KEY, state); } catch { say('このブラウザでは使えません（保存が止められています）。', true); return; }
+  location.assign(authUrl(config.calendarClientId, location.origin, state));
+}
+function pickUpGoogle() {
+  let events = null;
+  try { events = JSON.parse(sessionStorage.getItem(CAL_EVENTS_KEY) || 'null'); sessionStorage.removeItem(CAL_EVENTS_KEY); } catch { events = null; }
+  if (!Array.isArray(events) || !card()) return;
+  card().querySelector('.imx-src')?.setAttribute('open', '');
+  run(() => fromEvents(events, 'Google カレンダー'));
 }
 
 // ------------------------------------------------------------------ mails
@@ -164,6 +187,7 @@ document.addEventListener('click', ev => {
   const b = ev.target.closest && ev.target.closest('[data-import] button');
   if (!b) return;
   if (b.dataset.imxCal) run(calendarUrl);
+  else if (b.dataset.imxGoogle) run(googleCalendar);
   else if (b.dataset.imxMail) run(() => {
     const parts = splitPasted($(card(), '#imx-text').value);
     if (!parts.length) { say('メールの本文を貼ってください。', true); return null; }
@@ -177,3 +201,6 @@ document.addEventListener('change', ev => {
   if (input.id === 'imx-ics') run(async () => { await fromCalendar(await input.files[0].text(), 'カレンダーのファイル'); input.value = ''; });
   if (input.id === 'imx-eml') run(async () => { await emlFiles([...input.files].slice(0, 200)); input.value = ''; });
 });
+
+// Coming back from Google (calendar-callback.js) with the events read there.
+pickUpGoogle();

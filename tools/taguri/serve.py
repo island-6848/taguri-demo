@@ -601,7 +601,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     # 変わるたびに違う見た目になるはずの画面なので、キャッシュすると
                     # 進捗が固まって見える
                     html = APP._register_body(user_id, srv.imp, srv.imported)
-                    self._json(200, {"ok": True, "title": "公演情報の登録", "body_html": html})
+                    self._json(200, {"ok": True, "title": "観劇記録を追加", "body_html": html})
                     return
                 # 以降は、都道府県の絞り込みのような起動中の状態を持たない画面。
                 # パス+検索条件だけで結果が決まる

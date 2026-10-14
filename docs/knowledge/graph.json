@@ -649,6 +649,22 @@
    "verifies": []
   },
   {
+   "id": "dec-calendar-oauth",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "Google カレンダーはボタン 1 つで取り込む：calendar.readonly を許可してもらい、ブラウザの中で Calendar API を読む（トークンはサーバーに送らない）",
+   "sources": [
+    "cloudflare/src/client/calendar-google.js",
+    "cloudflare/src/client/calendar-callback.js",
+    "cloudflare/src/client/import.js",
+    "cloudflare/public/oauth-calendar.html",
+    "cloudflare/src/worker.js",
+    "cloudflare/test/import.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-calendar-worker",
    "type": "decision",
    "status": "adopted",
@@ -735,6 +751,19 @@
    ]
   },
   {
+   "id": "dec-deck-algo-paper",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "成果報告の資料の推薦の章を、論文の形（記法・番号付きの式・図・検証と限界・参考文献）に書き直した",
+   "sources": [
+    "docs/000003-final-presentation-taguri.html",
+    "cloudflare/src/recommend.js",
+    "cloudflare/src/reco-gate.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-deck-algo-worker",
    "type": "decision",
    "status": "adopted",
@@ -816,6 +845,19 @@
     "S01",
     "S09"
    ]
+  },
+  {
+   "id": "dec-favourite-catalogue-match",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "お気に入りの名前は、作り置きのカードだけでなく、集めた公演一覧（catalogue）全体からその場で探す",
+   "sources": [
+    "cloudflare/src/screens/lists.js",
+    "cloudflare/src/screens/fallback.js",
+    "cloudflare/test/lists-screen.test.js"
+   ],
+   "verifies": []
   },
   {
    "id": "dec-firebase-auth",
@@ -4562,6 +4604,16 @@
    "to": "q-crawler-state-size"
   },
   {
+   "from": "dec-calendar-oauth",
+   "rel": "depends_on",
+   "to": "dec-import-calendar-mail"
+  },
+  {
+   "from": "dec-calendar-oauth",
+   "rel": "supports",
+   "to": "dec-free-tier-only"
+  },
+  {
    "from": "dec-calendar-worker",
    "rel": "depends_on",
    "to": "dec-reminder-worker"
@@ -4667,6 +4719,46 @@
    "to": "q-catalogue-python-snapshot-vs-d1"
   },
   {
+   "from": "dec-deck-algo-paper",
+   "rel": "depends_on",
+   "to": "dec-deck-algo-worker"
+  },
+  {
+   "from": "dec-deck-algo-paper",
+   "rel": "depends_on",
+   "to": "impl-person-ordinal-v3"
+  },
+  {
+   "from": "dec-deck-algo-paper",
+   "rel": "depends_on",
+   "to": "impl-hidden-gate"
+  },
+  {
+   "from": "dec-deck-algo-paper",
+   "rel": "depends_on",
+   "to": "eval-hidden-gate-sim"
+  },
+  {
+   "from": "dec-deck-algo-paper",
+   "rel": "depends_on",
+   "to": "eval-favourite-kinds"
+  },
+  {
+   "from": "dec-deck-algo-paper",
+   "rel": "depends_on",
+   "to": "dec-no-n1-evidence"
+  },
+  {
+   "from": "dec-deck-algo-paper",
+   "rel": "depends_on",
+   "to": "dec-recommend-weights-worker"
+  },
+  {
+   "from": "dec-deck-algo-paper",
+   "rel": "depends_on",
+   "to": "new-user-reco-threshold"
+  },
+  {
    "from": "dec-deck-algo-worker",
    "rel": "depends_on",
    "to": "impl-person-ordinal-v3"
@@ -4755,6 +4847,16 @@
    "from": "dec-edition-split",
    "rel": "affects",
    "to": "comp-frontend"
+  },
+  {
+   "from": "dec-favourite-catalogue-match",
+   "rel": "answers",
+   "to": "q-name-search-without-corich-search"
+  },
+  {
+   "from": "dec-favourite-catalogue-match",
+   "rel": "depends_on",
+   "to": "corich-search-waf-403"
   },
   {
    "from": "dec-firebase-auth",

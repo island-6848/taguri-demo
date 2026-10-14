@@ -335,7 +335,7 @@ export function recordsLede(d) {
 
 /** app._records_empty_note */
 export const RECORDS_EMPTY = '<p class="pnow">観た公演の記録がまだ無いので、図は出せません。'
-  + '<a href="/register?t=__TAGURI_TOKEN__">公演情報の登録</a>で'
+  + '<a href="/register?t=__TAGURI_TOKEN__">観劇記録を追加</a>で'
   + '購入確認メールを取り込むか、観た公演を手で足すと、'
   + '<b>本数・評価の分かれ方・行った場所・時期</b>がここに出ます。</p>';
 
