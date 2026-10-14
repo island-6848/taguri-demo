@@ -33,7 +33,7 @@ class CardTest(unittest.TestCase):
     def test_every_list_gets_the_python_card(self):
         for sid in self.cards:
             c = self.stages[sid]
-            t = self.cards[sid]
+            t = self.cards[sid]["html"]
             self.assertEqual(BC.compose(t, sid, "recommend", rank=3), RR.card(3, c))
             self.assertEqual(BC.compose(t, sid, "recommend", rank=12, why=WHY),
                              RR.card(12, dict(c, why_b=[[1, "出演", "俳優甲", 1]])).replace(
@@ -54,9 +54,10 @@ class CardTest(unittest.TestCase):
         pool["301"] = dict(pool["101"], stage_id="301", theater="劇場Z", pref="大阪府",
                            period="2026/12/01~2026/12/03")
         cards = BC.build(pool, {}, TODAY)
-        self.assertIn('data-tours="301"', cards["101"])
-        self.assertIn('data-tours="101"', cards["301"])
-        self.assertIn("大阪公演", cards["101"])
+        self.assertIn('data-tours="301"', cards["101"]["html"])
+        self.assertIn('data-tours="101"', cards["301"]["html"])
+        self.assertIn("大阪公演", cards["101"]["html"])
+        self.assertEqual(cards["101"]["tour"], cards["301"]["tour"])
 
     def test_versioned_upload(self):
         sql = BC.to_sql(self.cards)

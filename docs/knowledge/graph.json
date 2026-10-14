@@ -786,6 +786,23 @@
    "verifies": []
   },
   {
+   "id": "dec-lists-worker",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "興味あり・お気に入り・購入済み公演を Worker に移す（同じ作り置きのカードを 4 通りに組む。名前の照合は SQL で）",
+   "sources": [
+    "cloudflare/src/screens/lists.js",
+    "cloudflare/src/screens/cards.js",
+    "cloudflare/scripts/build_cards.py",
+    "cloudflare/migrations/0018.sql",
+    "cloudflare/test/lists-screen.test.js",
+    "cloudflare/test/cards.test.js",
+    "cloudflare/test/test_build_cards.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-loading-yarn",
    "type": "decision",
    "status": "adopted",
@@ -1103,6 +1120,22 @@
     "web/theme.css",
     "web/app.js",
     "tools/taguri/app.py"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-reminder-worker",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "開幕リマインドを Worker に移す（digest.panel を JS に移し、同じ入力で Python と同じ HTML になることを確かめる）",
+   "sources": [
+    "cloudflare/src/screens/reminder.js",
+    "cloudflare/src/screens/icons.js",
+    "cloudflare/scripts/write_icons.py",
+    "cloudflare/migrations/0019.sql",
+    "cloudflare/test/reminder.test.js",
+    "cloudflare/test/screens/reminder_fixture.py"
    ],
    "verifies": []
   },
@@ -4362,6 +4395,16 @@
    "to": "dec-recommend-compact-poster"
   },
   {
+   "from": "dec-lists-worker",
+   "rel": "depends_on",
+   "to": "dec-recommend-worker-cards"
+  },
+  {
+   "from": "dec-lists-worker",
+   "rel": "affects",
+   "to": "comp-native-screens"
+  },
+  {
    "from": "dec-loading-yarn",
    "rel": "affects",
    "to": "dec-design-adopted"
@@ -4665,6 +4708,16 @@
    "from": "dec-record-row-card",
    "rel": "depends_on",
    "to": "dec-recommend-compact-poster"
+  },
+  {
+   "from": "dec-reminder-worker",
+   "rel": "depends_on",
+   "to": "dec-lists-worker"
+  },
+  {
+   "from": "dec-reminder-worker",
+   "rel": "affects",
+   "to": "comp-native-screens"
   },
   {
    "from": "dec-render-full-migration",

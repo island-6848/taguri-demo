@@ -14,6 +14,7 @@ import {chooseVariant} from '../reco-gate.js';
 import {E, ValueError} from './py.js';
 import {loadWorks} from './works.js';
 import {compose, cardTemplates, posterHtml} from './cards.js';
+import {loadDeclared, loadDeclined, nameHits, KINDS} from './lists.js';
 
 export const TOP = 15;
 // Groups kept per user between requests: enough to fill 15 cards in any one prefecture.
@@ -113,8 +114,10 @@ export async function rankedGroups(ctx) {
   const st = await db.prepare(`SELECT (SELECT count(*) FROM works WHERE user_id=?1) AS wn, (SELECT max(updated_at) FROM works WHERE user_id=?1) AS wm,
     (SELECT count(*) FROM reaction WHERE user_id=?1) AS an, (SELECT max(updated_at) FROM reaction WHERE user_id=?1) AS am,
     (SELECT count(*) FROM favourites WHERE user_id=?1) AS fn, (SELECT count(*) FROM merges WHERE user_id=?1) AS mn,
-    (SELECT count(*) FROM excluded WHERE user_id=?1) AS xn`).bind(ctx.uid).first();
-  const stamp = [VERSION, ver, ctx.today, st.wn, st.wm, st.an, st.am, st.fn, st.mn, st.xn].join('|');
+    (SELECT count(*) FROM excluded WHERE user_id=?1) AS xn,
+    (SELECT max(updated_at) FROM app_setting WHERE user_id=?1 AND key IN ('declared','declined')) AS dm,
+    (SELECT v FROM rec_meta WHERE k='rec_card') AS cv`).bind(ctx.uid).first();
+  const stamp = [VERSION, ver, ctx.today, st.wn, st.wm, st.an, st.am, st.fn, st.mn, st.xn, st.dm, st.cv].join('|');
   const access = d1Access(db, ver);
   const cached = await db.prepare('SELECT body FROM rec_cache WHERE user_id=? AND stamp=?').bind(ctx.uid, stamp).first();
   if (cached) {
@@ -123,15 +126,19 @@ export async function rankedGroups(ctx) {
   }
   const rated = await ratedWorks(ctx, access);
   const gate = chooseVariant(rated);
-  const favourites = (await db.prepare('SELECT name,kind FROM favourites WHERE user_id=? ORDER BY kind,name LIMIT 200').bind(ctx.uid).all()).results;
+  const declared = await loadDeclared(ctx);
+  const favourites = KINDS.flatMap(kind => (declared[kind] || []).map(name => ({name, kind}))).slice(0, 200);
   const {seeds, skip} = await seedsFromFavourites(access, favourites);
+  // Stages of a registered name are お気に入り, stages of a word not to show are left out
+  // (app._rebucket): neither is ranked here.
+  const {hits, declined} = await nameHits(ctx, declared, await loadDeclined(ctx));
   const ranked = await scoreFromIndex({...access, rated: gate.aspects ? rated : rated.map(r => ({...r, aspects: []})),
     multipliers: gate.multipliers, today: ctx.today, seeds, skip});
   const done = await answered(ctx);
   // One slot per production (collapse_tours), after answered stages are left out.
   const byTour = new Map();
   for (const c of ranked) {
-    if (done.has(c.stage_id)) continue;
+    if (done.has(c.stage_id) || hits.has(c.stage_id) || declined.has(c.stage_id)) continue;
     const key = c.tour || 'stage:' + c.stage_id;
     if (!byTour.has(key)) byTour.set(key, {stage_id: c.stage_id, tour: c.tour || '', parts: c.parts, kinds: c.kinds, b: c.b});
   }
@@ -190,28 +197,30 @@ export function prefCounts(groups) {
 
 const PREF_NOTE = `都道府県は<b>いくつでも同時に選べます</b>。選んだ県で観られる公演を、好みに合いそうな順に <b>${TOP} 件</b>まで表示します。数字は、その県で観られる件数です。<b>選ばなければ全国です。</b>ツアーで来る公演も入ります。本拠地が他県でも、選んだ県の会場に来る公演は、その会場の日程で表示します。`;
 /** render_recommend.pref_form (without the map: prefmap.panel is not ported yet). */
-export function prefForm(counts, prefs, action = '/recommend') {
+export function prefForm(counts, prefs, action = '/recommend', note = '', hidden = {}) {
   const keep = new Set(prefs);
   const chips = PREFS.filter(p => counts[p]).map(p => `<label class="pchip${keep.has(p) ? ' on' : ''}">`
     + `<input type="checkbox" name="pref" value="${E(p)}"${keep.has(p) ? ' checked' : ''}>`
     + `<span class="pl">${E(p)}</span><span class="pn">${counts[p]}</span></label>`).join('');
   const now = !keep.size ? '全国' : PREFS.filter(p => keep.has(p)).join('・') + `（${keep.size} 県）`;
+  const hiddenIn = Object.entries(hidden).map(([k, v]) => `<input type="hidden" name="${E(k)}" value="${E(v)}">`).join('');
+  const hiddenQs = Object.entries(hidden).map(([k, v]) => `&amp;${E(k)}=${E(v)}`).join('');
   return `<form class="pfil" method="get" action="${E(action)}">
 <input type="hidden" name="t" value="__TAGURI_TOKEN__">
 <input type="hidden" name="f" value="1">
-
+${hiddenIn}
 <details class="pbox">
 <summary>${ico('search', 15)}観に行ける場所で絞り込む ── いまは<b>${E(now)}</b></summary>
-<p class="lead">${PREF_NOTE}</p>
+<p class="lead">${note || PREF_NOTE}</p>
 
 <div class="pchips">${chips}</div>
 <div class="pfoot"><button type="submit">${ico('search')}この都道府県で絞り込む</button>
-<a class="pall" href="${E(action)}?t=__TAGURI_TOKEN__&amp;f=1">全国に戻す</a></div>
+<a class="pall" href="${E(action)}?t=__TAGURI_TOKEN__&amp;f=1${hiddenQs}">全国に戻す</a></div>
 </details></form>`;
 }
 
 /** The chosen prefectures: a submitted form (?f=1) saves them, otherwise the saved ones. */
-async function prefsFor(params, ctx) {
+export async function prefsFor(params, ctx) {
   if (params.has('f')) {
     const prefs = PREFS.filter(p => params.getAll('pref').includes(p)).slice(0, 47);
     if (prefs.length) {

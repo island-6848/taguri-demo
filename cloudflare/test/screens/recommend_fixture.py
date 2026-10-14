@@ -47,7 +47,8 @@ def golden() -> list[dict]:
     tickets = [{"date": "2026-11-02", "time": "18:30", "confirmed": 1},
                {"date": "2026-11-05", "time": "", "confirmed": 0, "sid": "101"}]
     out = []
-    for sid, t in sorted(cards.items()):
+    for sid, r in sorted(cards.items()):
+        t = r["html"]
         c = stages[sid]
         lo, hi = RR._period_start(c.get("period") or ""), RR._period_end(c.get("period") or "")
         for mode, kw in (("recommend", {"rank": 7, "why": "<li>x $& y</li>", "poster": "<img>"}),

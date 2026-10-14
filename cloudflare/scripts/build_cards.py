@@ -86,7 +86,7 @@ def stage_dicts(pool: dict[str, dict], themes: dict, today: datetime.date) -> di
         for sid in sids:
             out[sid]["tours"] = [{k: out[o].get(k) or "" for k in TOUR_KEYS} for o in sids if o != sid]
     for c in out.values():
-        del c["_tour"]
+        c["tour_key"] = c.pop("_tour")
     return out
 
 
@@ -165,15 +165,30 @@ def compose(template: str, sid: str, mode: str, *, rank: int | None = None, why:
     return html.replace('<div class="act"></div>', "").replace('<div class="pcol"></div>', "")
 
 
-def build(pool: dict[str, dict], themes: dict, today: datetime.date) -> dict[str, str]:
-    return {sid: card_template(c) for sid, c in sorted(stage_dicts(pool, themes, today).items())}
+def row(c: dict) -> dict:
+    """The card and the columns stored with it (migration 0018)."""
+    nz = RC.nz
+    blob = c["title"] + " " + c.get("group", "") + " " + json.dumps(c.get("fields") or {}, ensure_ascii=False)
+    return {"html": card_template(c), "title": c.get("title") or "", "tour": c["tour_key"],
+            "start": RC.period_start(c.get("period") or ""), "end": BI._period_end(c.get("period") or ""),
+            "pref": c.get("pref") or "", "gnz": nz(c.get("group", "")), "blob": nz(blob),
+            "ws": "\n".join(sorted({nz(w) for w in c.get("themes") or [] if w})),
+            "synz": nz(c.get("synopsis") or "")}
 
 
-def to_sql(cards: dict[str, str]) -> list[str]:
+def build(pool: dict[str, dict], themes: dict, today: datetime.date) -> dict[str, dict]:
+    return {sid: row(c) for sid, c in sorted(stage_dicts(pool, themes, today).items())}
+
+
+COLS = ("html", "title", "tour", "start", "end", "pref", "gnz", "blob", "ws", "synz")
+
+
+def to_sql(cards: dict[str, dict]) -> list[str]:
     """Insert a version, switch rec_meta 'rec_card' to it, drop the others."""
     ver = hashlib.sha256(json.dumps(cards, ensure_ascii=False, sort_keys=True).encode()).hexdigest()[:16]
     stmts = [f"DELETE FROM rec_card WHERE ver={BI._q(ver)};"]
-    stmts += BI._inserts("rec_card", "ver,stage_id,html", [(ver, sid, h) for sid, h in sorted(cards.items())])
+    stmts += BI._inserts("rec_card", "ver,stage_id," + ",".join(COLS),
+                         [(ver, sid, *(r[k] for k in COLS)) for sid, r in sorted(cards.items())])
     stmts.append(f"INSERT INTO rec_meta(k,v) VALUES('rec_card',{BI._q(ver)}) "
                  "ON CONFLICT(k) DO UPDATE SET v=excluded.v;")
     stmts.append(f"DELETE FROM rec_card WHERE ver<>{BI._q(ver)};")
@@ -199,7 +214,7 @@ def main() -> int:
     body = "\n".join(to_sql(cards)) + "\n"
     with os.fdopen(os.open(a.output, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), "w") as out:
         out.write(body)
-    sizes = sorted(len(h.encode("utf-8")) for h in cards.values()) or [0]
+    sizes = sorted(len(r["html"].encode("utf-8")) for r in cards.values()) or [0]
     print(json.dumps({"stages": len(cards), "sql_bytes": len(body.encode()),
                       "card_bytes": {"median": sizes[len(sizes) // 2], "max": sizes[-1]}}))
     return 0
