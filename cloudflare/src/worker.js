@@ -353,6 +353,18 @@ async function loginPage(request, env) {
     return new HTMLRewriter().on('#about', {element(el) { el.remove(); }}).transform(page);
   return page;
 }
+// 「Google カレンダーから取り込む」 comes back here with an access token in the
+// address (#access_token=...). Only this page may call the Calendar API, from the
+// browser; the token never reaches the Worker (the part after # is not sent).
+async function calendarCallbackPage(request, env) {
+  const asset = await env.ASSETS.fetch(new Request(new URL('/oauth-calendar', request.url), request));
+  const headers = new Headers(asset.headers);
+  headers.set('Content-Security-Policy', ["default-src 'self'", "script-src 'self'", "style-src 'self'", "img-src 'self'",
+    "connect-src https://www.googleapis.com", "base-uri 'none'", "form-action 'none'", "frame-ancestors 'none'", "object-src 'none'"].join('; '));
+  headers.set('Referrer-Policy', 'no-referrer');
+  headers.set('Cache-Control', 'no-store');
+  return new Response(asset.body, {status: asset.status, headers});
+}
 // ---------------------------------------------------------------- sign-in gate
 // Signed-out visitors may see only /login (which now also explains what たぐり
 // is; /about moved there) and the static files it needs. Every other page
@@ -475,6 +487,7 @@ export default {
     // たぐりとは and ログイン are one page now; old links to /about still land there.
     if (url.pathname === '/about') return redirect('/login');
     if (url.pathname === '/login' && request.method === 'GET') return loginPage(request, env);
+    if (url.pathname === '/oauth/calendar' && request.method === 'GET') return calendarCallbackPage(request, env);
     const poster = await posterFromR2(request, env, url);
     if (poster) return poster;
     // The Worker's own health (catalogue date, free-tier counters) even while the
@@ -525,7 +538,8 @@ export default {
       if (method === 'GET' && path === '/api/auth/config') {
         const config = firebaseConfig(env);
         if (!config) fail(503,'ログインの準備ができていません。');
-        return json(config,200,{'Cache-Control':'public, max-age=300'});
+        // The OAuth client for 「Google カレンダーから取り込む」 (public, like the API key).
+        return json({...config, calendarClientId: env.GOOGLE_CALENDAR_CLIENT_ID || ''},200,{'Cache-Control':'public, max-age=300'});
       }
       const uid = await user(request,env.DB);
       if (method === 'GET' && path === '/api/auth/passkeys') return await passkey.list(request, env, uid);

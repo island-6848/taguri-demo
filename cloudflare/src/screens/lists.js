@@ -10,7 +10,7 @@
 // demotions), the matching of a subject word inside a longer registered subject.
 import {stageInfo, fallbackTemplate} from './fallback.js';
 import {E, ValueError} from './py.js';
-import {compose, cardTemplates, posterHtml, mytixHtml} from './cards.js';
+import {compose, cardTemplates, posterHtml, mytixHtml, preNote} from './cards.js';
 import {titleKey} from './works.js';
 import {indexTabs} from './rate.js';
 import {PREFS} from './prefs.js';
@@ -52,7 +52,7 @@ export async function loadDeclined(ctx) {
 
 /** reaction rows merged per stage, newest last (feedback.reactions). */
 export async function reactionsOf(ctx) {
-  const {results} = await ctx.db.prepare('SELECT stage_id,interest,owned,note,note_no FROM reaction WHERE user_id=? ORDER BY updated_at').bind(ctx.uid).all();
+  const {results} = await ctx.db.prepare('SELECT stage_id,interest,owned,note,note_no,note_pre FROM reaction WHERE user_id=? ORDER BY updated_at').bind(ctx.uid).all();
   const out = new Map();
   for (const r of results) {
     const d = out.get(r.stage_id) || {};
@@ -60,6 +60,7 @@ export async function reactionsOf(ctx) {
     if (r.owned !== null) d.owned = Number(r.owned);
     if (r.note !== null) d.note = r.note;
     if (r.note_no !== null) d.note_no = r.note_no;
+    if (r.note_pre !== null && r.note_pre !== undefined) d.note_pre = r.note_pre;
     out.set(r.stage_id, d);
   }
   return out;
@@ -109,6 +110,43 @@ async function cardsMatching(ctx, needles) {
   return out;
 }
 
+/**
+ * Stages only in the delivered catalogue (no prebuilt card: the cards and the index are
+ * replaced only on days they fit the write budget) whose texts contain one of the
+ * registered names, as card columns. 起案者の指示（2026-10-14）「たぐりが集めている公演から
+ * 出してよ勿論」: a name added to お気に入り is looked up in everything collected, at once.
+ * The SQL only narrows; declaredLabels decides on the normalised texts.
+ */
+async function catalogueMatching(ctx, declared, skip) {
+  // Narrowed by the name's first two characters: the catalogue may write 「山田 花子」 for
+  // 「山田花子」, and the range of dates is read in full anyway (declaredLabels decides).
+  const names = [...new Set(KINDS.flatMap(k => declared[k] || []).map(w => Array.from(nz(w)).slice(0, 2).join('')).filter(w => Array.from(w).length >= 2))];
+  const out = new Map();
+  if (!names.length) return out;
+  const since = new Date(Date.parse(ctx.today + 'T00:00:00Z') - 120 * 86400000).toISOString().slice(0, 10);
+  for (const part of chunks(names, 45)) {
+    let results;
+    try {
+      ({results} = await ctx.db.prepare(`SELECT id,title,date,venue,metadata FROM catalogue WHERE date>=? AND (${part.map(() => '(instr(lower(title),?)>0 OR instr(lower(metadata),?)>0)').join(' OR ')})`)
+        .bind(since, ...part.flatMap(w => [w, w])).all());
+    } catch { return out; }
+    for (const r of results) {
+      const sid = String(r.id);
+      if (skip.has(sid) || out.has(sid)) continue;
+      let m = {};
+      try { m = JSON.parse(r.metadata || '{}') || {}; } catch { /* no metadata */ }
+      const end = /^\d{4}-\d{2}-\d{2}$/.test(m.end_date || '') ? m.end_date : r.date;
+      if (end < ctx.today) continue;
+      const fields = m.fields && typeof m.fields === 'object' ? m.fields : {};
+      const words = Array.isArray(m.words) ? m.words.map(String) : [];
+      out.set(sid, {stage_id: sid, title: r.title, tour: '', start: r.date, end, pref: '', gnz: nz(m.group || ''),
+        blob: nz([r.title, m.group || '', r.venue || '', ...Object.values(fields).map(String)].join('\n')),
+        ws: words.map(nz).join('\n'), synz: nz(m.synopsis || '')});
+    }
+  }
+  return out;
+}
+
 /** Card columns of these stages. */
 export async function cardMeta(ctx, sids) {
   const out = new Map();
@@ -120,12 +158,14 @@ export async function cardMeta(ctx, sids) {
 }
 
 /** Productions of the stages matching the user's registered names / words not to show. */
-export async function nameHits(ctx, declared, words) {
+export async function nameHits(ctx, declared, words, {catalogue = false} = {}) {
   const needles = [];
   for (const k of ['団体', '主催']) for (const w of declared[k] || []) needles.push(['gnz', nz(w)]);
   for (const k of ['人', '作品', '原作者']) for (const w of declared[k] || []) needles.push(['blob', nz(w)]);
   for (const w of [...(declared['題材'] || []), ...(declared['原作者'] || [])]) needles.push(['theme', nz(w)]);
   const fav = await cardsMatching(ctx, needles);
+  // The catalogue scan reads every coming stage, so only お気に入り itself asks for it.
+  if (catalogue) for (const [sid, m] of await catalogueMatching(ctx, declared, new Set(fav.keys()))) fav.set(sid, m);
   const hits = new Map();
   for (const [sid, m] of fav) {
     const a = declaredLabels(m, declared);
@@ -177,16 +217,17 @@ export async function promoteOwned(ctx) {
     const done = doneDate([sid], m?.end || '', tickets);
     if (!m?.title || !done || done > ctx.today) continue;
     const key = `${titleKey(m.title)}#${done}`;
+    // The memo written before seeing it (購入済み公演「観る前のメモ」) goes with the work.
     await ctx.db.prepare(`INSERT INTO works(user_id,work_key,title,first_date,last_date,times,verdict,chosen,note_impression,note_motive,stage_id,updated_at)
-      VALUES(?,?,?,?,?,1,NULL,NULL,'','',?,?) ON CONFLICT(user_id,work_key) DO NOTHING`).bind(ctx.uid, key, m.title, done, done, sid, nowIso(ctx)).run();
+      VALUES(?,?,?,?,?,1,NULL,NULL,'',?,?,?) ON CONFLICT(user_id,work_key) DO NOTHING`).bind(ctx.uid, key, m.title, done, done, react.get(sid)?.note_pre || '', sid, nowIso(ctx)).run();
   }
 }
 
 /** app._rebucket for the three lists: {tracking, favourites, owned, others, declined, react, tickets}. */
-export async function buckets(ctx) {
+export async function buckets(ctx, {catalogue = false} = {}) {
   await promoteOwned(ctx);
   const [react, tickets, declared, words] = await Promise.all([reactionsOf(ctx), ticketsOf(ctx), loadDeclared(ctx), loadDeclined(ctx)]);
-  const {hits, declined} = await nameHits(ctx, declared, words);
+  const {hits, declined} = await nameHits(ctx, declared, words, {catalogue});
   const meta = await cardMeta(ctx, [...react.keys()]);
   // Answered stages without a prebuilt card (only in the catalogue, see fallback.js) still count.
   const bare = [...react.keys()].filter(sid => !meta.has(sid));
@@ -216,7 +257,8 @@ export async function buckets(ctx) {
     const r = {owned: rs.some(x => x.owned === 1) ? 1 : undefined,
       interest: rs.find(x => x.interest !== undefined)?.interest};
     const pick = sids.find(s => react.has(s)) || m.stage_id;
-    const row = {...(group.find(v => v.stage_id === pick) || m), sids, note: react.get(pick)?.note || ''};
+    const pre = sids.map(s => react.get(s)?.note_pre).find(Boolean) || '';
+    const row = {...(group.find(v => v.stage_id === pick) || m), sids, note: react.get(pick)?.note || '', note_pre: pre};
     if (r.owned === 1) {
       seen.add(key);
       const done = doneDate(sids, row.end, tickets);
@@ -264,7 +306,8 @@ export function monthPick(rows, sel, page, action) {
 async function cards(ctx, rows, mode, extra = () => ({})) {
   const {html, posters} = await cardTemplates(ctx.db, rows.map(r => r.stage_id));
   const bare = rows.map(r => r.stage_id).filter(sid => !html.has(sid));
-  if (bare.length) for (const [sid, s] of await stageInfo(ctx.db, bare)) html.set(sid, fallbackTemplate(s));
+  // お気に入り says why each stage is there (the registered name), as its prebuilt cards do.
+  if (bare.length) for (const [sid, s] of await stageInfo(ctx.db, bare)) html.set(sid, fallbackTemplate(s, {why: mode === 'favourite'}));
   return rows.filter(r => html.has(r.stage_id)).map(r => {
     const pic = posters.get(r.stage_id) || r.sids?.map(s => posters.get(s)).find(Boolean);
     return compose(html.get(r.stage_id), r.stage_id, mode, {poster: pic ? posterHtml(pic) : '', ...extra(r)});
@@ -307,7 +350,8 @@ ${words.length ? tags : '<p class="empty">まだ 1 つも外していません�
 }
 
 export async function favouritesScreen(params, ctx) {
-  const b = await buckets(ctx);
+  const b = await buckets(ctx, {catalogue: true});
+  const nCat = Number((await ctx.db.prepare("SELECT v FROM rec_meta WHERE k='catalogue_upcoming'").first().catch(() => null))?.v || 0);
   const favs = b.favourites, dec = b.declared;
   const [show, mfil, mfoot] = monthPick(favs, params.get('m') || '', qInt(params, 'p'), '/recommend/favourites');
   const kinds = KINDS.map(k => `<option value="${E(k)}">${E(k)}</option>`).join('');
@@ -326,7 +370,7 @@ export async function favouritesScreen(params, ctx) {
   const list = favs.length
     ? '<p class="lead"><b>ここは読むだけです。押すボタンはありません。</b><b>上演日の近い順</b>に並んでいます。順位は付けていません。観ると決めたら、公式サイトから券を求めてください。</p>'
       + `<div class="tickets">${(await cards(ctx, show, 'favourite', why)).join('')}</div>`
-    : '<p class="empty">登録した名前に当たる新着はありません。</p>';
+    : `<p class="empty">登録した名前に当たる公演は、いまたぐりが集めている公演${nCat ? `（CoRich・ステイジーズカレンダーから毎日集めている、これからの公演 ${nCat} 件）` : ''}の中にはありません。<b>新しい公演が集まると、毎日の更新のあと、ここに出ます。</b>表記ゆれ（漢字とカタカナなど）があるときは、別の書き方も登録してみてください。</p>`;
   const body = `<h1>お気に入り ── 新着 ${favs.length} 件</h1>
 <p class="lede">登録した名前の公演を、件数の制限なしにすべて出します。順位は付けていません。件数が多いので、上演月ごとに分けています。</p>
 ${tools}
@@ -342,7 +386,7 @@ export async function ticketsScreen(_params, ctx) {
   const owned = [...b.owned].sort((x, y) => { const p = rank(x), q = rank(y); return (p[0] - q[0]) || cmp(p[1], q[1]) || cmp(p[2], q[2]); });
   const mine = r => r.sids.flatMap(s => (b.tickets.get(s) || []).map(t => ({...t, sid: s})))
     .sort((p, q) => cmp(p.date, q.date) || cmp(p.time || '', q.time || ''));
-  const html = (await cards(ctx, owned, 'owned', r => ({mytix: mytixHtml(r.stage_id, r.start, r.end, mine(r))}))).join('');
+  const html = (await cards(ctx, owned, 'owned', r => ({mytix: mytixHtml(r.stage_id, r.start, r.end, mine(r)) + preNote(r.stage_id, r.note_pre)}))).join('');
   const body = `<h1>購入済み公演 ── ${owned.length} 件</h1>
 <p class="lede">「すでに持っている」と答えた公演と、購入確認メールから見つかった公演です。<b>この一覧は、次のおすすめを変えません。</b>上演日を過ぎると一覧から外れ、<a href="/rate?t=__TAGURI_TOKEN__">評価一覧</a>の評価待ちに移ります。行く日は、各公演の「行く日」の欄から入れられます。</p>
 ${html || '<p class="empty">チケットを持っている公演はまだありません。推薦の画面で「すでに持っている」を押した公演が、ここに並びます。</p>'}

@@ -31,6 +31,16 @@ export function whyNote(sid, note = '', {open = false, ask = false} = {}) {
   return `<div class="wnw">${head}${box}</div>`;
 }
 
+/** 購入済み公演: a memo before seeing it (起案者の指示 2026-10-14「購入済みの公演のみ、観る前の感想をメモで書いておけるように」). */
+export function preNote(sid, note = '') {
+  const has = Boolean(String(note || '').trim());
+  const summary = has ? `観る前のメモ<span class="nnv">${E(note)}</span>` : '観る前のメモを書く<span class="opt">任意</span>';
+  return `<details class="nn pre" data-stage="${E(sid)}"><summary>${summary}</summary>`
+    + `<textarea data-prenote="${E(sid)}" rows="3" placeholder="例: 原作を読んで楽しみにしている／あの役者の新しい一面が見られそう">${E(note)}</textarea>`
+    + '<div class="wn-foot"><span class="hint">自分だけのメモです。観たあと、評価を付けるときの手がかりになります</span>'
+    + '<span class="said"></span></div></details>';
+}
+
 /** render_recommend.no_note */
 export function noNote(sid, note = '', hidden = false) {
   const has = Boolean(String(note || '').trim());

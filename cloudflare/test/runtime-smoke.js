@@ -17,7 +17,7 @@ try {
  }
  assert.ok(ready,`Local worker did not start: ${logs}`);
  const registered=await request('register',{});assert.equal(registered.status,200);
- const cookie=registered.headers.get('set-cookie').split(';')[0];assert.match(registered.headers.get('set-cookie'),/HttpOnly; Secure; SameSite=Strict/);
+ const cookie=registered.headers.get('set-cookie').split(';')[0];assert.match(registered.headers.get('set-cookie'),/HttpOnly; Secure; SameSite=Lax/);
  const {recovery_code}=await registered.json();
  const fixture=JSON.parse(readFileSync(new URL('../../tools/taguri/demo_purchase_works.json',import.meta.url)));
  for(let i=0;i<fixture.length;i+=10) {

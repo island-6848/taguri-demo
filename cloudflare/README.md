@@ -231,6 +231,9 @@ Workers無料枠のCPU時間（1回約10ms）には、重い想定では収ま�
 Gmail を直接読む方式は、公開サービスでは Google の有料の審査（制限付きスコープ）が要るので使わない（`docs/knowledge/notes/gmail-restricted-scope.md`）。代わりに、**読み取りは利用者のブラウザの中だけ**で行う。
 
 - **Google カレンダー**：「iCal 形式の非公開アドレス」を貼る。ブラウザからは直接読めない（CORS）ので、Worker の `POST /api/calendar_ics` がそのアドレスを 1 回だけ読んで、中身をそのまま返す。受け付けるのは `https://calendar.google.com/calendar/ical/…/(private-…|public)/basic.ics` だけ。リダイレクトは追わず、8MB を超えたら止める。アドレスも予定も保存しない。書き出した `.ics` ファイルも選べる。繰り返しの予定は外す。題名の候補（『』の中、「観劇」「@劇場」などを外したもの）を作って照合し、**公演と一致した予定だけ**を出す。
+- **Google カレンダー（ボタン 1 つ）**：「Google カレンダーから取り込む」を押すと Google の画面で `calendar.readonly`（閲覧だけ）を許可し、`/oauth/calendar` に戻る。戻った画面（`src/client/calendar-callback.js`）がブラウザの中で Calendar API から過去 5 年の予定を読み、sessionStorage で登録の画面へ渡す。**アクセストークンはアドレスの # の後ろに来るので Worker には届かず、保存もしない。** この画面だけ CSP で `www.googleapis.com` への通信を許す。スマホの Google カレンダーには「カレンダーの統合」が無いので、こちらが主な入口。
+  - 準備（Google Cloud コンソール、Firebase と同じプロジェクト）：① 「Google Calendar API」を有効にする ② OAuth 同意画面のスコープに `.../auth/calendar.readonly` を足す ③ 認証情報の OAuth クライアント（ウェブ）の「承認済みのリダイレクト URI」に `https://app.taguri.workers.dev/oauth/calendar` を足す ④ そのクライアント ID を `wrangler.jsonc` の `GOOGLE_CALENDAR_CLIENT_ID` に入れる（公開してよい値）。未設定の間はボタンを押すと「準備中」と出る。
+  - `calendar.readonly` は Google の「機密性の高いスコープ」。審査（無料）が済むまでは、許可の画面に「確認されていないアプリ」と出て、使える人数は 100 人まで。
 - **購入確認メール**：本文を貼るか、`.eml` をまとめて選ぶ（`postal-mime` 2.7.6 で読む）。発行元ごとの規則（ぴあ・おけぴ・ローチケ・東宝ナビザーブ・劇団のチケットサービス・そのほか）は `tools/tickets/extract_performances.py` を `src/client/import-parse.js` に移したもの。受け取り・発券の案内と、演劇でないもの、公演日を読めないものは理由を付けて外す。
 - **照合と記録**：`POST /api/import_match` が題名の鍵と日付で公演を探す（自動の結び付けと同じ規則：題名の鍵が同じで、その日が上演期間に入る公演が 1 つだけ）。何も保存しない。`POST /api/import_works` が、利用者が印を付けたものだけを記録（works）に足す。もう記録してあるものは足さない。公演の id はカタログにあるものだけを残す。1 回 20 件ずつ送る（本文の上限 8KB）。
 - 画面のコードは `public/vendor/import.js`（`npm run build:login` で組み立てる）。`import-loader.js` を Worker が HTMLRewriter で各画面に足し、①が出たときだけ読み込む（`web/` はデモと共通なので手を入れない）。
