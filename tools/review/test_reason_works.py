@@ -33,7 +33,8 @@ class ReasonWorksTest(unittest.TestCase):
              "why_b_works": {"出演\t山田太郎": [["<夜>", "◎"], ["春", "○"], ["冬", "◎"], ["秋", "興味あり"]]}}
         with patch.object(RR, "synopsis_source", return_value=("公演情報", False)):
             html = RR.reason_rows(c)
-        self.assertIn("『&lt;夜&gt;』◎・『春』○・『冬』◎ ほか 1 本", html)
+        self.assertIn("『&lt;夜&gt;』・『春』・『冬』 ほか 1 本", html)
+        self.assertNotIn("』◎", html)
         self.assertNotIn("での実績", html)
         self.assertIn("（履歴 2 本）", html)        # 作品名が引けない人は本数で書く
 
@@ -50,6 +51,29 @@ class PriceTest(unittest.TestCase):
     def test_ticket_carries_the_range(self):
         self.assertEqual(RR._price_attr({"price": "3,000円"}), ' data-yen="3000-3000"')
         self.assertEqual(RR._price_attr({"price": "料金未定"}), "")
+
+
+class TicketDetailsTest(unittest.TestCase):
+    def test_run_range_and_year(self):
+        from datetime import date
+        t = date(2026, 10, 14)
+        self.assertEqual(RR.run_range("2026/10/24 (金) ～ 2026/10/31 (金)", t), "10/24〜10/31")
+        self.assertEqual(RR.run_range("2026/12/28 ～ 2027/1/7", t), "2026/12/28〜2027/1/7")
+        self.assertEqual(RR.run_range("2027/1/5 ～ 2027/1/9", t), "2027/1/5〜1/9")
+        self.assertEqual(RR.run_range("2026/11/1", t), "11/1")
+        self.assertEqual(RR.run_range("未定", t), "")
+
+    def test_sale_goes_to_ticket_page(self):
+        self.assertEqual(RR.ticket_url({"price": "5,000円 詳細は https://stage.parco.jp/x 」", "url": "https://o.jp"}),
+                         "https://stage.parco.jp/x")
+        self.assertEqual(RR.ticket_url({"url": "https://o.jp"}), "https://o.jp")
+        self.assertEqual(RR.ticket_url({"stage_id": "512400"}), "https://stage.corich.jp/stage/512400")
+        self.assertIn('rel="noopener noreferrer"', RR.sale_pill({"url": "https://o.jp"}, "発売済み", "ok"))
+        self.assertEqual(RR.sale_pill({"url": "javascript:x"}, "発売済み", "ok"), '<span class="pill ok">発売済み</span>')
+
+    def test_limits_note_goes_to_info(self):
+        html = RR.limits_html({"recommend": [{"synopsis": ""}]})
+        self.assertIn('class="note toinfo"', html)
 
 
 if __name__ == "__main__":

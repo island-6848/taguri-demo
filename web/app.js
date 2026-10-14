@@ -49,7 +49,7 @@ const NAV = [[null, "おすすめ", "ticket", [["/recommend", "今週のおす�
 // --- 絵記号(icons.py の P/ALIAS をそのまま) --------------------------------
 const ICON_P = {"ticket": "M3 9a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2 2 2 0 0 0 0 6 2 2 0 0 1-2 2H5a2 2 0 0 1-2-2 2 2 0 0 0 0-6zM11 7v10", "star": "M12 3.8l2.5 5.1 5.6.8-4 3.9 1 5.6-5.1-2.7-5.1 2.7 1-5.6-4-3.9 5.6-.8z", "inbox": "M3 12h5l1.5 2.5h5L16 12h5M3 12l3-7h12l3 7v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z", "chart": "M3 20h18M6.5 20v-5M11.5 20V6M16.5 20v-9", "search": "M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM16.2 16.2 21 21", "download": "M12 3v12m0 0 4-4m-4 4-4-4M4 20h16", "mail": "M3 6h18v12H3zM3 6.5l9 6.5 9-6.5", "plus": "M12 5v14M5 12h14", "clock": "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7.5V12l3.5 2", "pencil": "M4 20h4L18 10l-4-4L4 16zM13.5 6.5l4 4", "tag": "M4 12.5 12.5 4H20v7.5L11.5 20zM16.4 7.6h.01", "image": "M3 5h18v14H3zM3 15.5l5-4 4 3 3-2.5 6 4.5M8 9.5h.01", "user": "M12 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM4 20c0-3.3 3.6-5 8-5s8 1.7 8 5", "building": "M4 20V6l6-2.5V20M10 20h10V10.5L10 7M13.5 12h.01M13.5 16h.01M17 12h.01M17 16h.01", "book": "M4 5h7v15H4zM13 5h7v15h-7M11 5v15", "light": "M12 3v3.5M12 17.5V21M3 12h3.5M17.5 12H21M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18", "eye": "M2.5 12S6 6 12 6s9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6zM12 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z", "check": "M4.5 12.5 9.5 18 20 6", "flag": "M5 21V4h13l-2.5 4.5L18 13H5", "calendar": "M4 6.5h16V20H4zM4 10.5h16M8.5 3.5v4M15.5 3.5v4", "chevron": "M9.5 5.5 16 12l-6.5 6.5", "network": "M6 18a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM18 18a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM6.9 15.3 10.6 9M17.1 15.3 13.4 9M8 17.3h8", "gear": "M10.6 3.1 13.4 3.1 15.2 6.5 19.0 6.3 20.4 8.8 18.4 12.0 20.4 15.2 19.0 17.7 15.2 17.5 13.4 20.9 10.6 20.9 8.8 17.5 5.0 17.7 3.6 15.2 5.6 12.0 3.6 8.8 5.0 6.3 8.8 6.5ZM12 9.8a2.2 2.2 0 1 0 0 4.4 2.2 2.2 0 0 0 0-4.4z", "link": "M14 4h6v6M20 4 10 14M18 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h5"};
 // スマホ幅の 4 つの大メニューの絵記号（dec-phone-nav-four）: 毛糸玉・判子・帳面
-Object.assign(ICON_P, {"info": "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 11v5.5M12 7.6h.01", "yarn": "M11 4a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15zM5.2 7.6c4.6.8 8.6 4.6 9.6 10.6M3.7 11.3c4.4.4 7.7 3.4 8.4 7.6M8.6 4.4c4.6 1.4 8.3 5.4 9.5 10M16.3 16.3c1.8 1.6 3.4 2.6 5.2 2.9", "stamp": "M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16zM12 7.8a4.2 4.2 0 1 0 0 8.4 4.2 4.2 0 0 0 0-8.4z", "notebook": "M5 4.5h11.5a2 2 0 0 1 2 2V20H7a2 2 0 0 1-2-2zM5 17.5a2 2 0 0 1 2-2h11.5M9 8.5h6"});
+Object.assign(ICON_P, {"building": "M4 20.5h16M6.5 20.5V4.5h8v16M14.5 9.5h3.5v11M9 8h2.5M9 11.5h2.5M9 15h2.5", "info": "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 11v5.5M12 7.6h.01", "yarn": "M11 4a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15zM5.2 7.6c4.6.8 8.6 4.6 9.6 10.6M3.7 11.3c4.4.4 7.7 3.4 8.4 7.6M8.6 4.4c4.6 1.4 8.3 5.4 9.5 10M16.3 16.3c1.8 1.6 3.4 2.6 5.2 2.9", "stamp": "M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16zM12 7.8a4.2 4.2 0 1 0 0 8.4 4.2 4.2 0 0 0 0-8.4z", "notebook": "M5 4.5h11.5a2 2 0 0 1 2 2V20H7a2 2 0 0 1-2-2zM5 17.5a2 2 0 0 1 2-2h11.5M9 8.5h6"});
 const ICON_ALIAS = {"おすすめ": "ticket", "お気に入り": "star", "登録": "inbox", "記録": "chart", "探す": "search", "書き出す": "download", "暦": "calendar"};
 function ico(name, size, cls) {
   size = size || 16; cls = cls || "";
@@ -712,9 +712,10 @@ function compactTickets(root) {
       v.querySelectorAll(".grp, .sep").forEach(n => n.remove());
       const venue = v.textContent.trim();
       const stops = t.querySelectorAll(".tourfull .tf-row").length;
-      meta.innerHTML = (grp ? '<span class="mg">' + E(grp) + "</span>" : "")
-        + (venue ? '<span class="mv">' + E(venue)
-          + (stops > 1 ? '<span class="mt">ほか ' + (stops - 1) + " 会場</span>" : "") + "</span>" : "");
+      // 団体の前に人の絵記号、会場の前に建物の絵記号（起案者の指示 2026-10-14）
+      meta.innerHTML = (grp ? '<span class="mg">' + ico("user", 13) + "<span>" + E(grp) + "</span></span>" : "")
+        + (venue ? '<span class="mv">' + ico("building", 13) + "<span>" + E(venue)
+          + (stops > 1 ? '<span class="mt">ほか ' + (stops - 1) + " 会場</span>" : "") + "</span></span>" : "");
     }
     const sale = main.querySelector(".sale");
     // 料金（1 枚あたり）を発売の札の隣に出す（起案者の指示 2026-10-14「チケット代金も…おすすめ画面において」）。
@@ -786,7 +787,15 @@ function compactTickets(root) {
       if (sd) {
         const cd = document.createElement("div");
         cd.className = "cdate";
-        cd.innerHTML = "<b>" + E(sd.querySelector("b")?.textContent || "") + "</b>" + E(sd.querySelector(".sk")?.textContent || "");
+        // 期間（「10/24〜10/31」）と、上演中・終了の別。ツアーなら、どの会場の日程かを添える
+        // （起案者の指示 2026-10-14。サーバーが data-range・data-state・data-tour を付ける。古い HTML は今までどおり）
+        if (sd.dataset.range) {
+          cd.innerHTML = "<b>" + E(sd.dataset.range) + "</b>"
+            + (sd.dataset.state ? '<span class="cst">' + E(sd.dataset.state) + "</span>" : "")
+            + (sd.dataset.tour ? '<span class="ctour">' + E(sd.dataset.tour) + "の日程</span>" : "");
+        } else {
+          cd.innerHTML = "<b>" + E(sd.querySelector("b")?.textContent || "") + "</b>" + E(sd.querySelector(".sk")?.textContent || "");
+        }
         main.prepend(cd);
       }
     }
@@ -807,17 +816,22 @@ function compactTickets(root) {
 
 async function post(path, body, group, done) {
   const said = group ? group.querySelector(".said") : null;
+  // 押した直後に「書き込み中…」を出す。返事が来るまで何も出ないと、反映されたか不安になる
+  // （起案者の指摘 2026-10-14「『記録しました。』までの文言が出る時間が長い…『書き込み中…』など表示するかにして」）
+  if (said && done !== null) { said.textContent = "書き込み中…"; said.classList.add("saving"); }
+  const settle = () => { if (said) said.classList.remove("saving"); };
   try {
     const r = await fetch(API_BASE + path, {method: "POST", credentials: "include",
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify(body)});
     const d = await r.json();
+    settle();
     if (!r.ok) { if (said) said.textContent = "できませんでした: " + (d.error || r.status); return null; }
     showWelcomeCode(d.welcome_code);
     if (d.ok !== false && path !== "/api/hand_theme_refresh" && !path.startsWith("/api/recommendation/")) fragmentCache.clear();
     if (said && done !== null) said.textContent = done || "記録しました";
     return d;
-  } catch (e) { if (said) said.textContent = "できませんでした: " + e; return null; }
+  } catch (e) { settle(); if (said) said.textContent = "できませんでした: " + e; return null; }
 }
 
 // 段の名前と札。**画面に出す言葉は 1 か所（WEIGHT_STEPS）から取る** ──
@@ -2065,6 +2079,9 @@ function infoFromLede(root) {
   if (!n && h1.parentElement && h1.parentElement !== root) n = h1.parentElement.nextElementSibling;
   const take = [];
   while (isLede(n)) { take.push(n); n = n.nextElementSibling; }
+  // 画面の下のほうにある説明でも、サーバーが .toinfo を付けたものはここに入れる
+  // （「この 15 件で、出せていない情報です。」・起案者の指示 2026-10-14）
+  root.querySelectorAll(".toinfo").forEach(p => { if (!take.includes(p)) take.push(p); });
   if (!take.length) return;
   const pop = document.createElement("div");
   pop.className = "infopop";
@@ -2168,12 +2185,71 @@ function editInPlace(btn, el, ta, row, path, bodyOf, okMsg) {
 // ボタンは `document` で受けているので足した 1 枚でも効くが、**入力欄は読み込みのときに
 // 1 度だけ結んでいた** ── 入れ替わりに差し込んだカードの欄は、書けるのに保存されない
 // 欄になる。**2 度結ばないように印を付ける**（同じ blur で 2 回送ることになる）。
+// 「なぜ気になったか」に、その公演の人の名前を札で並べ、押すだけで書き入れられるようにする
+// （起案者の指示 2026-10-14「出演者や作り手で選んでることが多いけど、いちいち名前入力するの面倒」）。
+// 名前は券に出ている出演（出演順に 8 人まで）・作り手（演出・脚本など 4 人まで）・団体。押すと欄の文に
+// 「、」で足し、もう一度押すと外す。押すたびに保存する（文に出た名前はお気に入りの候補になる・reasons.py）
+const TAG_ROLES = ["作・演出", "作・演出・振付", "演出", "脚本", "作", "脚本・演出", "原作", "振付", "音楽", "作曲"];
+function noteNames(tk) {
+  const out = [], add = (name, kind) => {
+    name = name.replace(/\s*ほか\s*\d+\s*名\s*$/, "").trim();
+    if (name && name.length <= 30 && !out.some(x => x.name === name)) out.push({name, kind});
+  };
+  const lv = tk.querySelector(".lcast .lv");
+  if (lv) {
+    const c = lv.cloneNode(true);
+    c.querySelectorAll(".n").forEach(n => n.remove());
+    c.textContent.split("、").slice(0, 8).forEach(n => add(n, "出演"));
+  }
+  let makers = 0;
+  tk.querySelectorAll(".cast .cr").forEach(r => {
+    const role = (r.querySelector(".cl")?.textContent || "").trim(), v = r.querySelector(".cv");
+    if (!v || (role === "出演" && lv)) return;
+    if (role !== "出演" && !TAG_ROLES.includes(role)) return;
+    v.textContent.split("、").forEach(n => { if (role === "出演" || makers++ < 4) add(n, role); });
+  });
+  const grp = tk.querySelector(".meta .mg")?.textContent.trim();
+  if (grp) add(grp, "団体");
+  return out;
+}
+function noteTags(t) {
+  const g = t.closest(".why-note"), tk = t.closest("article.ticket");
+  if (!g || !tk || g.querySelector(".wtags")) return;
+  const names = noteNames(tk);
+  if (!names.length) return;
+  const box = document.createElement("div");
+  box.className = "wtags";
+  box.innerHTML = '<span class="wtl">名前から選ぶ</span>' + names.map(x =>
+    '<button type="button" class="wtag" data-name="' + E(x.name) + '" title="' + E(x.kind) + '" aria-pressed="false">'
+    + E(x.name) + "</button>").join("");
+  const parts = () => t.value.split(/[、,，\n]/).map(x => x.trim()).filter(Boolean);
+  const sync = () => box.querySelectorAll(".wtag").forEach(b =>
+    b.setAttribute("aria-pressed", parts().includes(b.dataset.name) ? "true" : "false"));
+  box.addEventListener("click", ev => {
+    const b = ev.target.closest(".wtag");
+    if (!b) return;
+    const name = b.dataset.name, have = parts();
+    if (have.includes(name)) {
+      t.value = t.value.split(/(、|,|，|\n)/).filter(x => x.trim() !== name).join("")
+        .replace(/^(、|,|，)+|(、|,|，)+$/g, "").replace(/(、){2,}/g, "、");
+    } else {
+      t.value = (t.value.trim() ? t.value.trim().replace(/[、,，]$/, "") + "、" : "") + name;
+    }
+    sync();
+    t.dispatchEvent(new Event("blur"));       // 押すたびに保存する（下の blur の処理）
+  });
+  t.addEventListener("input", sync);
+  t.before(box);
+  sync();
+}
+
 function bindNotes(root) {
 // 「興味あり」に添えた理由。**離れたときに保存する**（書いている途中で送らない）
 root.querySelectorAll(".why-note textarea").forEach(t => {
   if (t.dataset.bound) return;
   t.dataset.bound = "1";
   t.dataset.was = t.value;
+  noteTags(t);
   t.addEventListener("blur", () => {
     const g = t.closest(".why-note");
     if (!live || t.value === t.dataset.was) return;
