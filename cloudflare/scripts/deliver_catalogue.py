@@ -151,6 +151,22 @@ def build_labels(out: Path) -> tuple[str, int, Path] | None:
     return m.group(1), 2 * json.loads(r.stdout.strip().splitlines()[-1])["stages"], sql
 
 
+def build_cards(out: Path, today: datetime.date) -> tuple[str, int, Path] | None:
+    """Run build_cards.py; (version, rows written, sql). None if it cannot run here."""
+    sql = out / "cards.sql"
+    sql.unlink(missing_ok=True)
+    r = subprocess.run([sys.executable, str(HERE / "build_cards.py"), "--output", str(sql),
+                        "--today", today.isoformat()], cwd=ROOT, capture_output=True, text=True)
+    print(r.stderr, end="", file=sys.stderr)
+    if r.returncode != 0 or not sql.exists():
+        return None
+    m = re.search(r"VALUES\('rec_card','([0-9a-f]+)'\)", sql.read_text(encoding="utf-8"))
+    if not m:
+        return None
+    # Inserting a version and deleting the previous one write each row twice.
+    return m.group(1), 2 * json.loads(r.stdout.strip().splitlines()[-1])["stages"], sql
+
+
 def build(data: Path, out: Path, today: datetime.date, with_index: bool, budget: int) -> dict:
     prev = json.loads((data / STATE).read_text(encoding="utf-8")) if (data / STATE).exists() else {}
     seen: dict[str, str] = dict(prev.get("rows") or {})
@@ -170,7 +186,8 @@ def build(data: Path, out: Path, today: datetime.date, with_index: bool, budget:
     writes += len(meta)
     report = {"stages": len(rows), "changed": len(changed), "writes": writes,
               "with_synopsis": sum(1 for r in rows.values() if json.loads(r[5]).get("synopsis"))}
-    state = {"rows": seen, "index": prev.get("index", ""), "labels": prev.get("labels", "")}
+    state = {"rows": seen, "index": prev.get("index", ""), "labels": prev.get("labels", ""),
+             "cards": prev.get("cards", "")}
     if out.exists():
         shutil.rmtree(out)
     out.mkdir(parents=True)
@@ -199,6 +216,21 @@ def build(data: Path, out: Path, today: datetime.date, with_index: bool, budget:
             shutil.move(got[2], out / "labels-upload.sql")
             state["labels"] = got[0]
             report["labels"] = f"version {got[0]} ({got[1]} writes)"
+            writes += got[1]
+            report["writes"] = writes
+        # The recommend screen's cards (build_cards.py). Their dates are as of today, so a
+        # new version comes most days: about twice the number of coming stages in writes.
+        got = build_cards(out, today)
+        if got is None:
+            report["cards"] = "not built (see the log above)"
+        elif got[0] == prev.get("cards"):
+            report["cards"] = "unchanged"
+        elif writes + got[1] > budget:
+            report["cards"] = f"skipped: {got[1]} writes would exceed the budget"
+        else:
+            shutil.move(got[2], out / "cards-upload.sql")
+            state["cards"] = got[0]
+            report["cards"] = f"version {got[0]} ({got[1]} writes)"
             writes += got[1]
             report["writes"] = writes
     (out / "catalogue.sql").write_text("\n".join(stmts) + "\n", encoding="utf-8")

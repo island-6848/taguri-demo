@@ -83,14 +83,14 @@ test('NATIVE_UI=all: nothing of a user goes to Render; unported screens and writ
   const cookie = await signIn(env);
   const r = stubRender();
   try {
-    for (const name of ['recommend', 'interest', 'favourites', 'calendar', 'tickets', 'reminder', 'records', 'trace', 'chronicle', 'search', 'settings', 'start', 'register']) {
+    for (const name of ['interest', 'favourites', 'calendar', 'tickets', 'reminder', 'records', 'trace', 'chronicle', 'search', 'settings', 'start', 'register']) {
       const got = await step(env, cookie, {get: `/api/screen/${name}`});
       assert.equal(got.status, 200, name);
       assert.equal(got.body.moving, true, name);
       assert.equal(got.body.edition, 'service', name);
       assert.match(got.body.body_html, /いま新しい仕組みに移しています/, name);
     }
-    for (const path of ['/api/react', '/api/favourite', '/api/ticket', '/api/weight', '/api/recommendation/visit']) {
+    for (const path of ['/api/favourite', '/api/ticket', '/api/weight', '/api/recommendation/visit']) {
       const got = await step(env, cookie, {post: path, body: {}});
       assert.equal(got.status, 503, path);
       assert.match(got.body.error, /移している/, path);
@@ -104,6 +104,8 @@ test('NATIVE_UI=all: nothing of a user goes to Render; unported screens and writ
       assert.equal((await step(env, cookie, {get: path})).status, 200, path);
     }
     assert.equal(sqlite.prepare('SELECT count(*) AS n FROM works').get().n, 0);
+    // おすすめ is answered by the Worker too (recommend-screen.test.js), empty for a new account.
+    assert.match((await step(env, cookie, {get: '/api/screen/recommend'})).body.body_html, /今週のおすすめはありません/);
     // Only posters missing from R2 may still be fetched from Render.
     await step(env, cookie, {get: '/img/101.jpg'});
     assert.deepEqual(r.sent, ['GET /img/101.jpg']);
@@ -113,7 +115,7 @@ test('NATIVE_UI=all: nothing of a user goes to Render; unported screens and writ
 test('signed out, a moving screen still asks to sign in', async () => {
   const {env, sqlite} = setup();
   try {
-    assert.equal((await step(env, 'x=y', {get: '/api/screen/recommend'})).status, 401);
+    assert.equal((await step(env, 'x=y', {get: '/api/screen/interest'})).status, 401);
   } finally { sqlite.close(); }
 });
 

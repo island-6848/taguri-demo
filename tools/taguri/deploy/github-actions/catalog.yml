@@ -103,7 +103,7 @@ jobs:
           fi
           python scripts/deliver_catalogue.py build --data ../data --out ../d1-out --index
           npx --yes wrangler@4 d1 execute taguri-demo --remote --yes --file ../d1-out/catalogue.sql
-          for f in index-upload.sql labels-upload.sql; do
+          for f in index-upload.sql labels-upload.sql cards-upload.sql; do
             if [ -f "../d1-out/$f" ]; then
               npx --yes wrangler@4 d1 execute taguri-demo --remote --yes --file "../d1-out/$f"
             fi

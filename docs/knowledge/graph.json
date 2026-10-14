@@ -1063,6 +1063,23 @@
    "verifies": []
   },
   {
+   "id": "dec-recommend-worker-cards",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "おすすめの画面を Worker に移す。カードは毎日の取得で Python の ticket() が作り置き（rec_card）、Worker は順位・理由・ポスターだけを差し込む",
+   "sources": [
+    "cloudflare/scripts/build_cards.py",
+    "cloudflare/migrations/0017.sql",
+    "cloudflare/src/screens/recommend.js",
+    "cloudflare/scripts/deliver_catalogue.py",
+    "cloudflare/test/recommend-screen.test.js",
+    "cloudflare/test/test_build_cards.py",
+    "https://github.com/island-6848/taguri-crawler/commit/214d3c6"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-record-row-card",
    "type": "decision",
    "status": "adopted",
@@ -4609,6 +4626,21 @@
    "from": "dec-recommend-ui-1014b",
    "rel": "affects",
    "to": "dec-phone-nav-four"
+  },
+  {
+   "from": "dec-recommend-worker-cards",
+   "rel": "depends_on",
+   "to": "dec-native-cutover-now"
+  },
+  {
+   "from": "dec-recommend-worker-cards",
+   "rel": "affects",
+   "to": "comp-native-screens"
+  },
+  {
+   "from": "dec-recommend-worker-cards",
+   "rel": "affects",
+   "to": "dec-free-tier-only"
   },
   {
    "from": "dec-record-row-card",

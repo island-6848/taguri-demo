@@ -25,3 +25,5 @@ links:
 - 古い「アカウント・記録」（/migration-data/）への入り口は出さない。代わりに新しいアカウントの画面〔dec-account-page〕
 無料枠: 候補は 1 文字打つごとに D1 を読む。rec_gram は文字の組ごとに数行、past_stage は索引で 20 行まで、works は本人の分だけで、1 回あたり数十行。1 日 500 万行の枠に対して小さい。Workers の要求は増えない（同じ要求の答え先が変わるだけ）。
 残り（q-native-cutover の 2〜6 はまだ）: おすすめから順に 13 画面を移す。/migration-data/ の records を works に移すか。Render をいつ止めるか。
+
+2026-10-14 追記: おすすめの画面と三択（react）を移した（dec-recommend-worker-cards）。「移しています」と出るのは残り 12 画面。
