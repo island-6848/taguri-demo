@@ -1,7 +1,7 @@
 import {isOriginalRoute, originalUI} from './original-ui.js';
 import {verifyIdToken, isAuthError} from './firebase-auth.js';
 import {passkeyRoutes} from './passkey.js';
-import {scoreFromIndex, d1Access, gradeOf, seedsFromFavourites, aspectCodes, SEED_KINDS, SEED_ROLES, MAX_SEED_FAVS, cmp} from './recommend.js';
+import {scoreFromIndex, d1Access, gradeOf, seedsFromFavourites, cleanAspects, SEED_KINDS, SEED_ROLES, MAX_SEED_FAVS, cmp} from './recommend.js';
 import {searchIndex, d1Search} from './stage-search.js';
 import {chooseVariant} from './reco-gate.js';
 import {SCREEN_TABLES, nativeScreen, nativeAction, screen as nativeScreenBody, action as nativeActionBody, readInput as nativeInput} from './screens/index.js';
@@ -27,13 +27,12 @@ function record(value) {
   if (r.time && !/^([01]\d|2[0-3]):[0-5]\d$/.test(r.time)) fail(400,'時刻を確認してください。');
   // ◎○△× or "value/levels" on a scale the user chose (2–11 levels, e.g. "4/5").
   if (r.rating && !gradeOf(r.rating)) fail(400,'評価を確認してください。');
-  // 気になった所: known codes only, stored comma-separated in a fixed order.
-  // An array, or the comma-separated text /api/state returns.
+  // 詳細: "code" = a trouble, "+code" = good; known codes only, stored as
+  // comma-separated text in a fixed order. An array, or the text /api/state returns.
   const raw = value.aspects ?? [];
-  const given = typeof raw === 'string' && raw.length <= 200 ? raw.split(',').filter(Boolean) : raw;
-  if (!Array.isArray(given) || given.length > 8 || given.some(a => typeof a !== 'string')) fail(400,'気になった所を確認してください。');
-  r.aspects = aspectCodes(given).join(',');
-  if (r.aspects.split(',').filter(Boolean).length !== new Set(given).size) fail(400,'気になった所を確認してください。');
+  if (!(Array.isArray(raw) ? raw.length <= 16 && raw.every(a => typeof a === 'string') : typeof raw === 'string' && raw.length <= 200)) fail(400,'詳細を確認してください。');
+  r.aspects = cleanAspects(raw);
+  if (r.aspects === null) fail(400,'詳細を確認してください。');
   return r;
 }
 function favourite(value) {
@@ -170,7 +169,7 @@ async function computeRecommendations(db, uid, ver, today) {
   const linked = [...new Set(records.map(r => r.stage_id).filter(Boolean))];
   const people = await access.peopleFor(linked);
   // updated_at is epoch seconds here; as text it orders like the Python timestamps.
-  const rated = records.map(r => ({key: r.id, stage_id: r.stage_id, verdict: r.rating, date: r.date, aspects: aspectCodes(r.aspects),
+  const rated = records.map(r => ({key: r.id, stage_id: r.stage_id, verdict: r.rating, date: r.date, aspects: r.aspects,
     updated_at: new Date(r.updated_at * 1000).toISOString(), people: people.get(r.stage_id) || []}));
   // 裏の答え合わせ: use a variant of the rules only if it clearly predicted
   // this user's own later ratings better (src/reco-gate.js). Kept out of the

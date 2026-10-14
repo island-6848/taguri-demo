@@ -678,6 +678,15 @@
    ]
   },
   {
+   "id": "dec-rating-detail-mode",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "評価の詳細は任意で隠しておき、項目ごとに「良かった／気になった」を付けられる。詳しく記録するか、あっさり付けるかは人が選ぶ",
+   "sources": [],
+   "verifies": []
+  },
+  {
    "id": "dec-reco-graded",
    "type": "decision",
    "status": "adopted",
@@ -1257,7 +1266,7 @@
    "type": "finding",
    "status": "confirmed",
    "date": "2026-10-13",
-   "title": "「気になった所」を記録に付けられるようにし、低い評価を観点に応じた役職に効かせるようにした（+asp1）",
+   "title": "評価の詳細（項目ごとの良かった／気になった）を記録に付けられるようにし、評価を項目に応じた役職に効かせるようにした（+asp1）",
    "sources": [
     "tools/review/user_recommender.py",
     "cloudflare/src/recommend.js",
@@ -3385,6 +3394,21 @@
    "to": "comp-crawler"
   },
   {
+   "from": "dec-rating-detail-mode",
+   "rel": "affects",
+   "to": "impl-rating-aspects"
+  },
+  {
+   "from": "dec-rating-detail-mode",
+   "rel": "depends_on",
+   "to": "lit-multi-criteria"
+  },
+  {
+   "from": "dec-rating-detail-mode",
+   "rel": "affects",
+   "to": "comp-recommender"
+  },
+  {
    "from": "dec-reco-graded",
    "rel": "depends_on",
    "to": "eval-douban-graded-better"
@@ -3948,6 +3972,11 @@
    "from": "impl-rating-aspects",
    "rel": "answers",
    "to": "q-rating-aspects"
+  },
+  {
+   "from": "impl-rating-aspects",
+   "rel": "depends_on",
+   "to": "dec-rating-detail-mode"
   },
   {
    "from": "impl-rating-aspects",

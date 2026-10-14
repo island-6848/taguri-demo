@@ -700,13 +700,19 @@ def _add_aspects(con: sqlite3.Connection) -> None:
 
 
 def clean_aspects(value) -> str:
-    """Known codes only, in ASPECT_CODES order, comma-separated; unknown ones are refused."""
+    """Known codes only ("code" = a trouble, "+code" = good), troubles then goods,
+    each in ASPECT_CODES order, comma-separated; unknown codes, or one aspect
+    marked both ways, are refused."""
     given = value.split(",") if isinstance(value, str) else list(value or ())
-    given = [str(g).strip() for g in given if str(g).strip()]
-    unknown = [g for g in given if g not in ASPECT_CODES]
+    given = {str(g).strip() for g in given if str(g).strip()}
+    unknown = [g for g in sorted(given) if g.lstrip("+") not in ASPECT_CODES]
     if unknown:
-        raise ValueError(f"気になった所が候補にない: {unknown[0]!r}")
-    return ",".join(c for c in ASPECT_CODES if c in given)
+        raise ValueError(f"詳細の項目が候補にない: {unknown[0]!r}")
+    both = [c for c in ASPECT_CODES if c in given and "+" + c in given]
+    if both:
+        raise ValueError(f"良かった所と気になった所の両方になっている: {both[0]!r}")
+    return ",".join([c for c in ASPECT_CODES if c in given]
+                    + ["+" + c for c in ASPECT_CODES if "+" + c in given])
 
 
 def _add_input_sources(con: sqlite3.Connection) -> None:

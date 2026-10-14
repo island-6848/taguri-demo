@@ -19,7 +19,7 @@ const SQRT12 = Math.sqrt(12);
 export const SEED_Z = 0.4 * SQRT12, SEED_K = 3;
 export const SEED_ROLES = ['出演', '演出', '脚本', '作', '原作', '翻訳', '潤色', '構成', '振付', '作曲', '音楽'];
 export const SEED_KINDS = ['人', '原作者'], MAX_SEED_FAVS = 20, MAX_SEED_STAGES = 60;
-// 気になった所: user_recommender.ASPECTS (checked against Python in the test).
+// 詳細 (good / trouble per aspect): user_recommender.ASPECTS (checked against Python in the test).
 export const ASPECTS = {
   story: ['話・脚本・構成', {'脚本': 1.0, '作': 1.0, '原作': 1.0, '原案': 1.0, '翻訳': 1.0, '潤色': 1.0, '構成': 1.0,
     '演出': 0.5, '演出・振付': 0.5, '#形式': 0.5, '#原作': 0.5, '#翻訳': 0.5}],
@@ -28,18 +28,27 @@ export const ASPECTS = {
   music: ['歌・音楽', {'作曲': 1.0, '音楽': 1.0, '編曲': 1.0, '音楽監督': 1.0, '歌唱指導': 1.0, '出演': 0.5, '#形式': 0.5}],
   dance: ['ダンス', {'振付': 1.0, '演出・振付': 1.0, '出演': 0.5}],
   design: ['美術・衣裳', {'美術': 1.0, '衣裳': 1.0, '衣装': 1.0, 'ヘアメイク': 1.0, 'メイク': 1.0, '小道具': 1.0, '演出': 0.5}],
-  price: ['値段に見合わない', {'#値段': 1.0}],
+  price: ['値段', {'#値段': 1.0}],
   venue: ['会場・座席', {'#会場': 1.0}],
 };
-/** Known aspect codes (array or comma-separated text), in ASPECTS order. */
-export function aspectCodes(value) {
+/** user_recommender.parse_aspects: [troubles, goods] ("+code" = good), each in ASPECTS order. */
+export function parseAspects(value) {
   const given = new Set(Array.isArray(value) ? value : String(value ?? '').split(','));
-  return Object.keys(ASPECTS).filter(c => given.has(c));
+  const codes = Object.keys(ASPECTS);
+  return [codes.filter(c => given.has(c)), codes.filter(c => given.has('+' + c))];
 }
-function aspectShare(codes, role) {
-  let m = -Infinity;
-  for (const c of codes) { const v = Object.hasOwn(ASPECTS[c][1], role) ? ASPECTS[c][1][role] : 0.0; if (v > m) m = v; }
-  return m;
+/** Canonical text of a record's aspects (troubles, then "+goods"), or null if invalid. */
+export function cleanAspects(value) {
+  const given = new Set((Array.isArray(value) ? value : String(value ?? '').split(',')).map(String).map(x => x.trim()).filter(Boolean));
+  if ([...given].some(g => !Object.hasOwn(ASPECTS, g.replace(/^\+/, '')))) return null;
+  const [troubles, goods] = parseAspects([...given]);
+  if (troubles.some(c => goods.includes(c))) return null;
+  return [...troubles, ...goods.map(c => '+' + c)].join(',');
+}
+function aspectShare(troubles, goods, role, positive) {
+  const [main, other] = positive ? [goods, troubles] : [troubles, goods];
+  const top = (codes, dflt) => { let m = -Infinity; for (const c of codes) { const v = Object.hasOwn(ASPECTS[c][1], role) ? ASPECTS[c][1][role] : 0.0; if (v > m) m = v; } return codes.length ? m : dflt; };
+  return top(main, 1.0) * (1.0 - top(other, 0.0));
 }
 
 /** user_recommender.grade_of: [value, levels] of a saved rating ("◎" or "4/5"), or null. */
@@ -107,11 +116,13 @@ export function personValues(rated, seeds = [], skip = new Set()) {
     for (const v of vals) { if (v < value) below += 1; else if (v === value) same += 1; }
     const z = ((below + 0.5 * same) / vals.length - 0.5) * SQRT12;
     const keys = [...new Set((r.people || []).map(([role, person]) => role + '\u0000' + person))].sort(cmp);
-    // 気になった所: a low rating lands mainly on those the aspects point at.
-    const codes = z < 0 ? aspectCodes(r.aspects) : [];
+    // 詳細: a rating lands mainly on what was good (above the middle) or a
+    // trouble (below it), less on what the other side points at.
+    const [troubles, goods] = z ? parseAspects(r.aspects) : [[], []];
+    const marked = troubles.length || goods.length;
     for (const k of keys) {
       const t = tally.get(k) || [0, 0, 0];
-      t[0] += 1; t[1] += codes.length ? z * aspectShare(codes, k.slice(0, k.indexOf('\u0000'))) : z; t[2] += 1.0;
+      t[0] += 1; t[1] += marked ? z * aspectShare(troubles, goods, k.slice(0, k.indexOf('\u0000')), z > 0) : z; t[2] += 1.0;
       tally.set(k, t);
     }
   }

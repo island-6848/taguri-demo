@@ -136,11 +136,13 @@ def stage_tags(title: str, venues, credits, prices=()) -> list[tuple[str, str]]:
     return sorted(tags)
 
 
-# 気になった所 (q-rating-aspects, stage-roles): what a rating marks as the
-# trouble decides who a low rating lands on. share: 1 = mainly, 0.5 = a
-# little, 0.2 = only slightly (acting → director, as the owner asked); roles
-# and tag axes not listed get 0. Several aspects: the largest share. Only a
-# rating below the user's middle (z < 0) is redistributed; with no aspect the
+# 詳細 (q-rating-aspects, stage-roles): each aspect of a production can be
+# marked as good ("+code") or a trouble ("code"). Which roles an aspect points
+# at: share 1 = mainly, 0.5 = a little, 0.2 = only slightly (acting → director,
+# as the owner asked); roles and tag axes not listed get 0.
+# A rating above the user's middle (z > 0) lands mainly on what was good, one
+# below it (z < 0) mainly on what was a trouble; the roles the other side
+# points at get that much less. Signs never flip. With nothing marked the
 # rating lands on everyone as before.
 ASPECTS = {
     "story": ("話・脚本・構成", {"脚本": 1.0, "作": 1.0, "原作": 1.0, "原案": 1.0, "翻訳": 1.0, "潤色": 1.0,
@@ -154,20 +156,30 @@ ASPECTS = {
     "dance": ("ダンス", {"振付": 1.0, "演出・振付": 1.0, "出演": 0.5}),
     "design": ("美術・衣裳", {"美術": 1.0, "衣裳": 1.0, "衣装": 1.0, "ヘアメイク": 1.0, "メイク": 1.0,
                          "小道具": 1.0, "演出": 0.5}),
-    "price": ("値段に見合わない", {"#値段": 1.0}),
+    "price": ("値段", {"#値段": 1.0}),
     "venue": ("会場・座席", {"#会場": 1.0}),
 }
 
 
-def aspect_codes(value) -> list[str]:
-    """Known aspect codes of a record (list or comma-separated text), in ASPECTS order."""
+def parse_aspects(value) -> tuple[list[str], list[str]]:
+    """(troubles, goods): known codes of a record's aspects (list or comma-separated
+    text; "+code" = good), each in ASPECTS order."""
     given = set(value.split(",") if isinstance(value, str) else value or ())
-    return [code for code in ASPECTS if code in given]
+    return ([c for c in ASPECTS if c in given], [c for c in ASPECTS if "+" + c in given])
 
 
-def aspect_share(codes, role: str) -> float:
-    """How much of a low rating lands on `role` (or tag axis) given the aspects."""
-    return max((ASPECTS[c][1].get(role, 0.0) for c in codes), default=1.0)
+def aspect_codes(value) -> list[str]:
+    """The troubles of a record (parse_aspects)."""
+    return parse_aspects(value)[0]
+
+
+def aspect_share(troubles, goods, role: str, positive: bool) -> float:
+    """How much of a rating lands on `role` (or tag axis): mainly the side the
+    rating leans to (goods when positive), less what the other side points at."""
+    main, other = (goods, troubles) if positive else (troubles, goods)
+    s = max((ASPECTS[c][1].get(role, 0.0) for c in main), default=1.0)
+    o = max((ASPECTS[c][1].get(role, 0.0) for c in other), default=0.0)
+    return s * (1.0 - o)
 
 
 def rated_keys(r: dict) -> list[tuple]:
@@ -208,10 +220,10 @@ def person_values(rated: list[dict], seeds: list[dict] = (), skip: set = frozens
         below = sum(1 for v in vals if v < value)
         same = sum(1 for v in vals if v == value)
         z = ((below + 0.5 * same) / len(vals) - 0.5) * SQRT12
-        codes = aspect_codes(r.get("aspects")) if z < 0 else []
+        troubles, goods = parse_aspects(r.get("aspects")) if z else ([], [])
         for key in rated_keys(r):
             tally[key][0] += 1
-            tally[key][1] += z * aspect_share(codes, key[0]) if codes else z
+            tally[key][1] += z * aspect_share(troubles, goods, key[0], z > 0) if troubles or goods else z
             tally[key][2] += 1.0
     w = SEED_K / (SEED_K + len(rated))
     for r in seeds:

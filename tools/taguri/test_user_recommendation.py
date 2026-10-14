@@ -356,12 +356,38 @@ class AspectTests(unittest.TestCase):
     def test_unknown_codes_are_ignored_and_text_is_accepted(self):
         self.assertEqual(UR.aspect_codes("venue,xx,price"), ["price", "venue"])
 
+    def rated_high(self, aspects):
+        people = [["出演", "役者"], ["演出", "演出家"], ["脚本", "作家"]]
+        high = {"key": "high", "verdict": "◎", "people": people, "aspects": aspects}
+        others = [{"key": f"o{i}", "verdict": "△", "people": [["出演", f"別人{i}"]]} for i in range(3)]
+        return UR.person_values([high] + others)[0]
+
+    def test_a_high_rating_lands_on_what_was_good(self):
+        v = self.rated_high(["+acting", "story"])
+        cast, director, writer = v[("出演", "役者")][1], v[("演出", "演出家")][1], v[("脚本", "作家")][1]
+        self.assertGreater(cast, 0)
+        self.assertEqual(writer, 0)                         # good acting, troubled story
+        self.assertAlmostEqual(director, cast * 0.2 * (1 - 0.5))
+
+    def test_a_low_rating_spares_what_was_good(self):
+        v = self.rated(["story", "+acting"])
+        writer = v[("脚本", "作家")][1]
+        self.assertLess(writer, 0)
+        self.assertEqual(v[("出演", "役者")][1], 0)
+        self.assertAlmostEqual(v[("演出", "演出家")][1], writer * 0.5 * (1 - 0.2))
+
+    def test_good_and_trouble_codes_are_read_apart(self):
+        self.assertEqual(UR.parse_aspects("price,+acting,+xx"), (["price"], ["acting"]))
+        self.assertEqual(UR.aspect_codes(["+price"]), [])
+
     def test_saved_codes_match_the_recommender(self):
         import rate_performances as R
         self.assertEqual(list(R.ASPECT_CODES), list(UR.ASPECTS))
         self.assertEqual(R.clean_aspects(["venue", "price"]), "price,venue")
-        with self.assertRaises(ValueError):
-            R.clean_aspects(["もやもや"])
+        self.assertEqual(R.clean_aspects("+acting,venue"), "venue,+acting")
+        for bad in (["もやもや"], ["+もやもや"], ["acting", "+acting"]):
+            with self.assertRaises(ValueError):
+                R.clean_aspects(bad)
 
     def test_saving_a_rating_keeps_aspects_unless_given(self):
         import sqlite3

@@ -126,3 +126,34 @@ test('aspects marked at random can be switched off by the check', () => {
   }
   assert.ok(wins > losses, `ignoring random aspects won ${wins} blocks, lost ${losses}`);
 });
+
+// 詳細 with good marks: cast and story vary separately and the rating is their
+// sum; the user marks the better side "+good" and the worse one a trouble.
+function castStoryUser(n, seed) {
+  let x = seed;
+  const rnd = () => (x = (x * 1103515245 + 12345) % 2147483648) / 2147483648;
+  const rows = [];
+  for (let i = 0; i < n; i++) {
+    const cast = [0, 1, 2].map(() => Math.floor(rnd() * 12)), writer = Math.floor(rnd() * 10);
+    const people = [...cast.map(c => ['出演', `俳優${c}`]), ['脚本', `作家${writer}`], ['演出', `演出家${Math.floor(rnd() * 6)}`]];
+    const c = cast.filter(k => k < 6).length / 3, w = writer < 5 ? 1 : 0;
+    const v = Math.max(1, Math.min(5, Math.round(1 + 2 * c + 2 * w + (rnd() - 0.5))));
+    let aspects = [];
+    if (rnd() < 0.6) {
+      if (c >= 0.66 && !w) aspects = ['+acting', 'story'];
+      else if (c <= 0.34 && w) aspects = ['acting', '+story'];
+    }
+    rows.push({key: `w${i}`, stage_id: `s${i}`, verdict: `${v}/5`, aspects, updated_at: new Date(Date.UTC(2026, 0, 1, 0, 0, i)).toISOString(), people});
+  }
+  return rows;
+}
+
+test('honest good / trouble marks predict the user better than ignoring them', () => {
+  let wins = 0, losses = 0;
+  for (let seed = 1; seed <= 60; seed++) {
+    const g = chooseVariant(castStoryUser(60, seed));
+    assert.equal(g.aspects, true, `seed ${seed}`);
+    wins += g.checked.aspects_off.wins; losses += g.checked.aspects_off.losses;
+  }
+  assert.ok(losses > wins * 1.2, `ignoring marks won ${wins} blocks, lost ${losses}`);
+});

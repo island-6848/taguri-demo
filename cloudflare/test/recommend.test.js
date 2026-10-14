@@ -162,20 +162,21 @@ test('the first stages to ask about: favourites already on, then the batch list,
   assert.ok(checked >= 2, `favourites' stages found for ${checked} catalogues`);
 });
 
-test('気になった所 are saved as known codes in a fixed order, and unknown ones are refused', async () => {
+test('詳細 are saved as known codes (troubles, then "+goods") in a fixed order, and anything else is refused', async () => {
   const cat = fixture.catalogues[0];
   const sqlite = load(cat), env = envFor(sqlite);
   const cookie = (await call(env, 'register', {})).headers.get('set-cookie').split(';')[0];
   const base = {id: 'a1', title: 't', date: '2026-09-01', rating: '2/5'};
-  assert.equal((await call(env, 'record', {...base, aspects: ['venue', 'price']}, cookie)).status, 200);
-  assert.equal(sqlite.prepare("SELECT aspects FROM records WHERE id='a1'").get().aspects, 'price,venue');
-  assert.equal((await call(env, 'record', {...base, aspects: ['もやもや']}, cookie)).status, 400);
+  const saved = () => sqlite.prepare("SELECT aspects FROM records WHERE id='a1'").get().aspects;
+  assert.equal((await call(env, 'record', {...base, aspects: ['+acting', 'venue', 'price']}, cookie)).status, 200);
+  assert.equal(saved(), 'price,venue,+acting');
   // The text form /api/state returns is accepted back.
-  assert.equal((await call(env, 'record', {...base, aspects: 'venue,price'}, cookie)).status, 200);
-  assert.equal(sqlite.prepare("SELECT aspects FROM records WHERE id='a1'").get().aspects, 'price,venue');
-  assert.equal((await call(env, 'record', {...base, aspects: 7}, cookie)).status, 400);
+  assert.equal((await call(env, 'record', {...base, aspects: '+acting,price'}, cookie)).status, 200);
+  assert.equal(saved(), 'price,+acting');
+  for (const bad of [['もやもや'], ['+もやもや'], ['acting', '+acting'], 7, [7]])
+    assert.equal((await call(env, 'record', {...base, aspects: bad}, cookie)).status, 400, JSON.stringify(bad));
   assert.equal((await call(env, 'record', base, cookie)).status, 200);
-  assert.equal(sqlite.prepare("SELECT aspects FROM records WHERE id='a1'").get().aspects, '');
+  assert.equal(saved(), '');
   sqlite.close();
 });
 

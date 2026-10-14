@@ -93,7 +93,8 @@ def history(seed, fields_by_stage):
     linked = sorted(fields_by_stage)
     for i in range(rng.randint(0, 40)):
         sid = rng.choice(linked) if rng.random() < .85 else ''
-        aspects = rng.sample(ASPECT_CODES, rng.randint(1, 2)) if rng.random() < .4 else []
+        # 詳細: a few aspects marked a trouble ("code") or good ("+code").
+        aspects = [rng.choice(['', '+']) + c for c in rng.sample(ASPECT_CODES, rng.randint(1, 3))] if rng.random() < .4 else []
         rows.append({'key': f'w{i}', 'stage_id': sid, 'aspects': aspects,
                      'verdict': verdict(rng, seed),
                      'date': f'2026-0{rng.randint(1, 9)}-1{rng.randint(0, 9)}',
