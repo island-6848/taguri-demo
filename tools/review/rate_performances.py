@@ -682,7 +682,37 @@ def connect() -> sqlite3.Connection:
     _add_time(con)
     _scope_by_user(con)
     _add_input_sources(con)
+    _add_aspects(con)
     return con
+
+
+# 気になった所 (q-rating-aspects): codes of user_recommender.ASPECTS, in its
+# order (test_user_recommendation checks they agree). Stored comma-separated.
+ASPECT_CODES = ("story", "direction", "acting", "music", "dance", "design", "price", "venue")
+
+
+def _add_aspects(con: sqlite3.Connection) -> None:
+    """`works` に「気になった所」を持たせる（D1 の migrations/0015.sql と同じ列）。"""
+    have = {r["name"] for r in con.execute("PRAGMA table_info(works)")}
+    if "aspects" not in have:
+        with con:
+            con.execute("ALTER TABLE works ADD COLUMN aspects TEXT NOT NULL DEFAULT ''")
+
+
+def clean_aspects(value) -> str:
+    """Known codes only ("code" = a trouble, "+code" = good), troubles then goods,
+    each in ASPECT_CODES order, comma-separated; unknown codes, or one aspect
+    marked both ways, are refused."""
+    given = value.split(",") if isinstance(value, str) else list(value or ())
+    given = {str(g).strip() for g in given if str(g).strip()}
+    unknown = [g for g in sorted(given) if g.lstrip("+") not in ASPECT_CODES]
+    if unknown:
+        raise ValueError(f"詳細の項目が候補にない: {unknown[0]!r}")
+    both = [c for c in ASPECT_CODES if c in given and "+" + c in given]
+    if both:
+        raise ValueError(f"良かった所と気になった所の両方になっている: {both[0]!r}")
+    return ",".join([c for c in ASPECT_CODES if c in given]
+                    + ["+" + c for c in ASPECT_CODES if "+" + c in given])
 
 
 def _add_input_sources(con: sqlite3.Connection) -> None:
@@ -965,17 +995,21 @@ def save_work(con: sqlite3.Connection, work: dict, payload: dict, *,
         "updated_at": now(),
         "verdict_source": payload.get("verdict_source") or "user",
         "note_source": payload.get("note_source") or "user",
+        # 気になった所: kept as it was unless the payload carries it.
+        "aspects": clean_aspects(payload["aspects"]) if "aspects" in payload else None,
     }
     with con:
         con.execute(
             "INSERT INTO works (user_id, work_key, title, first_date, last_date, times, verdict,"
-            " chosen, note_impression, note_motive, updated_at, verdict_source, note_source)"
+            " chosen, note_impression, note_motive, updated_at, verdict_source, note_source, aspects)"
             " VALUES (:user_id, :work_key, :title, :first_date, :last_date, :times, :verdict,"
-            " :chosen, :note_impression, :note_motive, :updated_at, :verdict_source, :note_source)"
+            " :chosen, :note_impression, :note_motive, :updated_at, :verdict_source, :note_source,"
+            " COALESCE(:aspects, ''))"
             " ON CONFLICT(user_id, work_key) DO UPDATE SET"
             " times=:times, verdict=:verdict, chosen=:chosen,"
             " note_impression=:note_impression, note_motive=:note_motive,"
-            " updated_at=:updated_at, verdict_source=:verdict_source, note_source=:note_source",
+            " updated_at=:updated_at, verdict_source=:verdict_source, note_source=:note_source,"
+            " aspects=COALESCE(:aspects, works.aspects)",
             {**row, "user_id": user_id})
     return row
 

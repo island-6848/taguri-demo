@@ -7,6 +7,7 @@ order, scores, reasons and strength as `user_recommender.prepare` + the b > 0
 filter and ordering of `user_recommender.finish`.
 """
 import datetime
+import json
 import importlib.util
 import random
 import sqlite3
@@ -39,6 +40,8 @@ def _fields(rng):
     lines = [f"{role}：{rng.choice(PEOPLE)}" for role in rng.sample(STAFF, rng.randint(0, 4))]
     if lines:
         f['スタッフ'] = '\n'.join(lines)
+    if rng.random() < .6:
+        f['料金（1枚あたり）'] = rng.choice(['3,500円', '一般 7,800円 / 学生 4,000円', 'S席 12,000円', '15000円', '無料'])
     return f
 
 
@@ -64,6 +67,12 @@ def catalogue(seed):
                       'theater': '劇場', 'pref': '東京都', 'period': _period(rng),
                       'url': rng.choice(['https://example.com/x', 'javascript:alert(1)', '']),
                       'fields': _fields(rng), 'why_b': ['owner reason'], '_notes': {'x': 'private'}})
+    # Tours: the same production at other venues (same title, producer and
+    # credits, listed in another order), with their own run dates.
+    for i in range(0, 80, 7):
+        src = cands[i]
+        f = dict(reversed(list(src['fields'].items())))
+        cands.append(dict(src, stage_id=str(1100 + i), theater='大阪の劇場', period=_period(rng), fields=f))
     # Saved bundles add a tour stage that is not in the source files.
     raw = {'ranked': [dict(cands[0], tours=[{'stage_id': '9001', 'theater': '大阪の劇場',
                                              'period': cands[0]['period']}])]}
@@ -72,14 +81,28 @@ def catalogue(seed):
     return raw, cands, fields_by_stage
 
 
+def verdict(rng, seed):
+    """◎○△× (a 4-level scale), and for odd seeds also ratings on scales the
+    user chose ("value/levels", 2–11 levels), as after a change of scale."""
+    if seed % 2 and rng.random() < .4:
+        levels = rng.choice([2, 5, 5, 11])
+        return f"{rng.randint(1, levels)}/{levels}"
+    return rng.choice(['◎', '◎', '○', '△', '×', ''])
+
+
+ASPECT_CODES = ['story', 'direction', 'acting', 'music', 'dance', 'design', 'price', 'venue']
+
+
 def history(seed, fields_by_stage):
     rng = random.Random(seed)
     rows = []
     linked = sorted(fields_by_stage)
     for i in range(rng.randint(0, 40)):
         sid = rng.choice(linked) if rng.random() < .85 else ''
-        rows.append({'key': f'w{i}', 'stage_id': sid,
-                     'verdict': rng.choice(['◎', '◎', '○', '△', '×', '']),
+        # 詳細: a few aspects marked a trouble ("code") or good ("+code").
+        aspects = [rng.choice(['', '+']) + c for c in rng.sample(ASPECT_CODES, rng.randint(1, 3))] if rng.random() < .4 else []
+        rows.append({'key': f'w{i}', 'stage_id': sid, 'aspects': aspects,
+                     'verdict': verdict(rng, seed),
                      'date': f'2026-0{rng.randint(1, 9)}-1{rng.randint(0, 9)}',
                      'updated_at': f'2026-09-{rng.randint(10, 28)} 10:00:00'})
     return rows
@@ -103,7 +126,7 @@ def got(rows):
 
 def load_sql(index):
     con = sqlite3.connect(':memory:')
-    for name in ('0003.sql', '0009.sql'):
+    for name in ('0003.sql', '0009.sql', '0016.sql'):
         con.executescript((HERE / 'migrations' / name).read_text())
     ver = BI.version_of(index)
     for stmt in BI.to_sql(index, ver):
@@ -134,6 +157,24 @@ class ParityTest(unittest.TestCase):
                     nonempty += bool(want)
         # The comparison must not pass vacuously.
         self.assertGreater(nonempty, compared // 2)
+
+    def test_tours_group_as_the_python_screen_does(self):
+        """collapse_ranked on the index == UR.collapse_tours on prepare's ranking."""
+        grouped = 0
+        for seed in range(12):
+            raw, cands, fbs = catalogue(seed)
+            index = BI.build_index(UR.candidate_pool(raw, cands), fbs, APP.group_of)
+            for hseed in range(2):
+                rated = with_people(history(seed * 100 + hseed, fbs), index['people'])
+                d = UR.prepare(raw, cands, rated, multipliers={}, role_group=APP.group_of, today=TODAY)
+                keep = [dict(c, tours=[]) for c in d['ranked'] if c.get('b', 0) > 0]
+                keep.sort(key=lambda c: (-c['strong'], -c['s'], c['stage_id']))
+                want = [(c['stage_id'], [t['stage_id'] for t in c['tours']]) for c in UR.collapse_tours(keep)]
+                mem = BI.score_from_index(*BI.memory_access(index), rated, multipliers={}, today=TODAY)
+                got_ = [(g['stage_id'], g['tours']) for g in BI.collapse_ranked(mem, 10 ** 6)]
+                self.assertEqual(got_, want, (seed, hseed))
+                grouped += sum(bool(t) for _, t in got_)
+        self.assertGreater(grouped, 10, 'the catalogue must contain tours that rank')
 
     def test_index_holds_public_fields_only(self):
         raw, cands, fbs = catalogue(1)
@@ -171,7 +212,7 @@ class ParityTest(unittest.TestCase):
         self.assertTrue(all(len(s.encode()) < 100_000 for s in stmts))
         con = sqlite3.connect(':memory:')
         self.addCleanup(con.close)
-        for name in ('0003.sql', '0009.sql'):
+        for name in ('0003.sql', '0009.sql', '0016.sql'):
             con.executescript((HERE / 'migrations' / name).read_text())
         for s in stmts:
             con.execute(s)
@@ -238,6 +279,69 @@ class SearchTest(unittest.TestCase):
                                  BI.search_index(BI.memory_search(index), q), q)
         finally:
             BI.GRAM_PART = old
+
+
+class FavouriteSeedKindsTest(unittest.TestCase):
+    """Troupes / producers and works as favourites (q-favourites-seed)."""
+
+    def setUp(self):
+        raw, cands, fbs = catalogue(4)
+        self.index = BI.build_index(UR.candidate_pool(raw, cands), fbs, APP.group_of)
+
+    def seeds(self, favs):
+        seeds, _ = BI.seeds_from_favourites(BI.memory_access(self.index)[0], BI.memory_people(self.index),
+                                            favs, BI.memory_matching(self.index))
+        return {s['stage_id'] for s in seeds}
+
+    def test_troupe_matches_the_producing_company_written_any_way(self):
+        got = self.seeds([{'name': '劇団　甲', 'kind': '団体'}])
+        self.assertTrue(got)
+        self.assertTrue(all(self.index['stages'][sid]['grp'] == '劇団甲' for sid in got))
+        self.assertEqual(got, self.seeds([{'name': '劇団甲', 'kind': '主催'}]))
+
+    def test_work_matches_the_title(self):
+        got = self.seeds([{'name': '『夜の声』', 'kind': '作品'}])
+        self.assertTrue(got)
+        self.assertTrue(all('夜の声' in self.index['stages'][sid]['title'] for sid in got))
+
+    def test_too_short_or_unknown_names_add_nothing(self):
+        self.assertEqual(self.seeds([{'name': '劇', 'kind': '団体'}, {'name': '題材', 'kind': '題材'}]), set())
+
+
+class OnboardingTest(unittest.TestCase):
+    """onboarding_list: stages already on, covering the coming catalogue."""
+
+    def index(self):
+        st = lambda start: {"start": start}
+        return {"stages": {"p1": st("2026-09-01"), "p2": st("2026-09-02"), "p3": st("2026-09-03"),
+                           "c1": st("2026-11-01"), "c2": st("2026-11-02"), "c3": st("2026-12-01")},
+                "postings": [("出演", "甲", "c1", 1.0, "cast"), ("出演", "甲", "c2", 1.0, "cast"),
+                             ("出演", "乙", "c3", 1.0, "cast"), ("#形式", "朗読", "c3", 1.0, "theme"),
+                             ("出演", "甲", "p1", 1.0, "cast"), ("出演", "甲", "p2", 1.0, "cast"),
+                             ("出演", "乙", "p2", 1.0, "cast"), ("出演", "丙", "p3", 1.0, "cast")]}
+
+    def test_greedy_cover_of_coming_stages(self):
+        # p2 covers 甲 (2 coming) and 乙 (1); p1 then adds nothing new; p3 nothing.
+        self.assertEqual(BI.onboarding_list(self.index(), TODAY), ["p2"])
+
+    def test_only_stages_already_on_are_asked(self):
+        out = BI.onboarding_list(self.index(), datetime.date(2026, 11, 1))
+        self.assertNotIn("c2", out)
+        self.assertNotIn("c3", out)
+
+    def test_written_with_its_version(self):
+        raw, cands, fbs = catalogue(0)
+        index = BI.build_index(UR.candidate_pool(raw, cands), fbs, APP.group_of)
+        ver = BI.version_of(index)
+        ids = BI.onboarding_list(index, TODAY)
+        self.assertTrue(ids)
+        con = sqlite3.connect(":memory:")
+        for f in sorted((HERE / "migrations").glob("*.sql")):
+            con.executescript(f.read_text())
+        for stmt in BI.to_sql(index, ver, ids):
+            con.execute(stmt)
+        v = json.loads(con.execute("SELECT v FROM rec_meta WHERE k='onboarding'").fetchone()[0])
+        self.assertEqual(v, {"ver": ver, "ids": ids})
 
 
 if __name__ == '__main__':

@@ -19,8 +19,8 @@
 
 ## 計算の範囲
 
-`tools/review/user_recommender.py`の`person-feedback-v1`で人物得点を計算する。
-人物・役職ごとに、本人の◎率と全体の◎率との差を平滑化・縮約して使う。
+`tools/review/user_recommender.py`の`person-ordinal-v3`で人物得点を計算する（2026-10-13 に person-feedback-v1 → person-graded-v2 → v3 と変更。`docs/research/person-reco-eval.md`）。
+評価はその人の中での順位として読み、人物・役職ごとに平均し縮約して使う（上げる人の上位3人と下げる人の上位3人の和）。公演の種類（形式・原作・翻訳・会場）ごとの好みの平均も足す。
 役職の既定重みは比較基準として現行値を使い、本人の設定倍率を計算前に適用する。
 これらの係数が公開利用者に最適だと検証したわけではない。
 
