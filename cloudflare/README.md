@@ -158,9 +158,9 @@ npx wrangler d1 execute taguri-demo --remote --file /tmp/rec.sql
 
 ## ログインしていない人に見せるもの
 
-ログインしていない人が開けるのは、**`/login`（ログイン）と `/about`（たぐりとは）だけ**。どちらもアプリのメニューを出さない、ロゴと中央のカードだけの画面（`public/auth.css`）。
+ログインしていない人が開けるのは **`/login` だけ**。上に「たぐりとは」（使い方の流れの図・安心して使える理由・GitHub の使い方ガイドへのリンク）、その下にログインを置いた 1 ページで、アプリのメニューを出さない（`public/login.html`・`public/auth.css`。起案者の指示 2026-10-14「たぐりとはとログインのページをわけないで」）。古い `/about` は `/login` へ転送する。アカウント削除のための入り直し（`/login?purpose=delete`）では、「たぐりとは」の部分を外して出す。
 
-- トップ（`/`）は `/about` へ、それ以外の画面は `/login?next=<元のパス>` へ転送する（`src/worker.js` の `gate`）。ログインすると `next` に戻る。`next` は同じサイトのパスだけを受け付ける（`//host`・`/\host`・外部URLは `/` に置き換える）。
+- トップ（`/`）は `/login` へ、それ以外の画面は `/login?next=<元のパス>` へ転送する（`src/worker.js` の `gate`）。ログインすると `next` に戻る。`next` は同じサイトのパスだけを受け付ける（`//host`・`/\host`・外部URLは `/` に置き換える）。
 - 元の画面の材料（Renderへの橋渡し：`/api/screen/*`・`/api/react` など）とポスター（`/img/*`）は、ログインしていなければ401。
 - ログイン前でも使えるのは、ログインそのもの（`/api/auth/*`）、セッションを始めるAPI（`/api/register`・`/api/recover`、`/migration-api/*` は各APIが自分でログインを確かめる）、公開の公演一覧（`/api/catalogue`）、静的ファイル。
 - 判定のため、`wrangler.jsonc` の `run_worker_first` を `/*` にし、CSS・JS・`/vendor/*`・`/assets/*` だけを外した（Workerの呼び出し回数を増やしすぎないため）。
