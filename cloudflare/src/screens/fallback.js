@@ -59,7 +59,7 @@ export function detailHtml(s) {
 }
 
 /** A card template like rec_card's (the same markers, for cards.compose), drawn from stageInfo. */
-export function fallbackTemplate(s) {
+export function fallbackTemplate(s, {why = false} = {}) {
   const url = safeUrl(s.url);
   const site = url ? `<a class="sitebtn" href="${E(url)}" target="_blank" rel="noopener noreferrer">${ico('link', 14)}公式サイト</a>` : '';
   const meta = [s.group ? `<span class="grp">${E(s.group)}</span>` : '', E(s.venue || '')].filter(Boolean).join('<span class="sep">／</span>')
@@ -75,6 +75,7 @@ export function fallbackTemplate(s) {
  <div class="when">${E(range(s))}</div>
  ${castBlock(s.fields || {})}
  ${s.synopsis ? `<div class="syn"><p class="txt">${E(s.synopsis)}</p><span class="src">［出典: 公演の紹介文］</span></div>` : '<div class="syn no">あらすじを取れませんでした</div>'}
+ ${why ? `<div class="whyh">${ico('eye', 14)}<!--whyh--></div><ul class="why"><!--why--></ul>` : ''}
  <div class="act"><!--btns--></div>
  <!--why_note-->
  <!--no_note-->

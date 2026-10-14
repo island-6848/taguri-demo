@@ -793,6 +793,19 @@
    ]
   },
   {
+   "id": "dec-favourite-catalogue-match",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "お気に入りの名前は、作り置きのカードだけでなく、集めた公演一覧（catalogue）全体からその場で探す",
+   "sources": [
+    "cloudflare/src/screens/lists.js",
+    "cloudflare/src/screens/fallback.js",
+    "cloudflare/test/lists-screen.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-firebase-auth",
    "type": "decision",
    "status": "adopted",
@@ -4595,6 +4608,16 @@
    "from": "dec-edition-split",
    "rel": "affects",
    "to": "comp-frontend"
+  },
+  {
+   "from": "dec-favourite-catalogue-match",
+   "rel": "answers",
+   "to": "q-name-search-without-corich-search"
+  },
+  {
+   "from": "dec-favourite-catalogue-match",
+   "rel": "depends_on",
+   "to": "corich-search-waf-403"
   },
   {
    "from": "dec-firebase-auth",

@@ -300,3 +300,24 @@ test('観劇史年表: the years of the works seen', async () => {
     assert.match(html, /<b>2026<\/b><i>2 作品・のべ 2 回<\/i>/);
   } finally { sqlite.close(); }
 });
+
+// 2026-10-14 起案者「たぐりが集めている公演から出してよ勿論」: a name added to お気に入り is
+// looked up in the whole delivered catalogue too, not only in the stages with a card.
+test('お気に入り finds a registered name in the catalogue at once, also without a card', async () => {
+  const {env, sqlite} = withIndex();
+  const a = await signIn(env);
+  try {
+    env.CLOCK = {today: '2026-10-20', now: Date.parse('2026-10-20T03:00:00Z')};
+    sqlite.prepare("INSERT INTO catalogue(id,title,date,venue,url,metadata) VALUES('888','カードの無い新作','2026-11-05','劇場Y','',?)")
+      .run(JSON.stringify({end_date: '2026-11-12', group: '劇団 Y', fields: {出演: '山田 花子、佐藤一郎'}, synopsis: '港町の話。'}));
+    sqlite.prepare("INSERT INTO catalogue(id,title,date,venue,url,metadata) VALUES('889','終わった公演','2026-05-01','劇場Y','',?)")
+      .run(JSON.stringify({end_date: '2026-05-03', fields: {出演: '山田花子'}}));
+    await step(env, a, {post: '/api/favourite', body: {action: 'add', kind: '人', name: '山田花子'}});
+    await step(env, a, {post: '/api/favourite', body: {action: 'add', kind: '団体', name: '劇団Y'}});
+    const html = (await screen(env, a, 'favourites')).body_html;
+    assert.match(html, /<article class="ticket favourite" data-stage="888"[\s\S]*?カードの無い新作/);
+    assert.match(html, /登録した人「山田花子」の公演です/);
+    assert.match(html, /登録した団体「劇団Y」の公演です/);
+    assert.doesNotMatch(html, /終わった公演/);
+  } finally { sqlite.close(); }
+});
