@@ -98,3 +98,24 @@ test('購入済み shows owned stages with their tickets; an ended one moves to 
     assert.equal(sqlite.prepare("SELECT count(*) AS n FROM works WHERE stage_id='101'").get().n, 1);
   } finally { sqlite.close(); }
 });
+
+test('開幕リマインド: every stage opening this week, with the shared prefecture filter', async () => {
+  const {env, sqlite} = withIndex();
+  const a = await signIn(env);
+  try {
+    env.CLOCK = {today: '2026-10-20', now: Date.parse('2026-10-20T03:00:00Z')};
+    const html = (await screen(env, a, 'reminder')).body_html;
+    assert.match(html, /<h1>開幕リマインド ── 見逃していませんか<\/h1>/);
+    assert.match(html, /<nav class="idx" aria-label="週で切り替える">/);
+    assert.match(html, /今週<span class="mn">0<\/span>/);
+    assert.match(html, /来週<span class="mn">1<\/span>/);
+    const next = (await screen(env, a, 'reminder', '?w=next')).body_html;
+    assert.match(next, /<li class="dgli und" data-stage="101">/);
+    assert.match(next, /<input type="hidden" name="w" value="next">/);
+    await step(env, a, {post: '/api/react', body: {stage_id: '101', value: 'interest', nofill: true}});
+    assert.match((await screen(env, a, 'reminder', '?w=next')).body_html, /<li class="dgli trk" data-stage="101">/);
+    // The filter chosen here applies to おすすめ too.
+    await screen(env, a, 'reminder', '?w=next&f=1&pref=' + encodeURIComponent('大阪府'));
+    assert.match((await screen(env, a, 'recommend')).body_html, /いまは<b>大阪府（1 県）<\/b>/);
+  } finally { sqlite.close(); }
+});

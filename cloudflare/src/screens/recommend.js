@@ -197,28 +197,30 @@ export function prefCounts(groups) {
 
 const PREF_NOTE = `都道府県は<b>いくつでも同時に選べます</b>。選んだ県で観られる公演を、好みに合いそうな順に <b>${TOP} 件</b>まで表示します。数字は、その県で観られる件数です。<b>選ばなければ全国です。</b>ツアーで来る公演も入ります。本拠地が他県でも、選んだ県の会場に来る公演は、その会場の日程で表示します。`;
 /** render_recommend.pref_form (without the map: prefmap.panel is not ported yet). */
-export function prefForm(counts, prefs, action = '/recommend') {
+export function prefForm(counts, prefs, action = '/recommend', note = '', hidden = {}) {
   const keep = new Set(prefs);
   const chips = PREFS.filter(p => counts[p]).map(p => `<label class="pchip${keep.has(p) ? ' on' : ''}">`
     + `<input type="checkbox" name="pref" value="${E(p)}"${keep.has(p) ? ' checked' : ''}>`
     + `<span class="pl">${E(p)}</span><span class="pn">${counts[p]}</span></label>`).join('');
   const now = !keep.size ? '全国' : PREFS.filter(p => keep.has(p)).join('・') + `（${keep.size} 県）`;
+  const hiddenIn = Object.entries(hidden).map(([k, v]) => `<input type="hidden" name="${E(k)}" value="${E(v)}">`).join('');
+  const hiddenQs = Object.entries(hidden).map(([k, v]) => `&amp;${E(k)}=${E(v)}`).join('');
   return `<form class="pfil" method="get" action="${E(action)}">
 <input type="hidden" name="t" value="__TAGURI_TOKEN__">
 <input type="hidden" name="f" value="1">
-
+${hiddenIn}
 <details class="pbox">
 <summary>${ico('search', 15)}観に行ける場所で絞り込む ── いまは<b>${E(now)}</b></summary>
-<p class="lead">${PREF_NOTE}</p>
+<p class="lead">${note || PREF_NOTE}</p>
 
 <div class="pchips">${chips}</div>
 <div class="pfoot"><button type="submit">${ico('search')}この都道府県で絞り込む</button>
-<a class="pall" href="${E(action)}?t=__TAGURI_TOKEN__&amp;f=1">全国に戻す</a></div>
+<a class="pall" href="${E(action)}?t=__TAGURI_TOKEN__&amp;f=1${hiddenQs}">全国に戻す</a></div>
 </details></form>`;
 }
 
 /** The chosen prefectures: a submitted form (?f=1) saves them, otherwise the saved ones. */
-async function prefsFor(params, ctx) {
+export async function prefsFor(params, ctx) {
   if (params.has('f')) {
     const prefs = PREFS.filter(p => params.getAll('pref').includes(p)).slice(0, 47);
     if (prefs.length) {
