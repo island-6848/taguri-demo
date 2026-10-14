@@ -1,0 +1,38 @@
+name: Restore drill
+
+# 控えから戻す予行（S31・S26）。非公開の taguri-crawler に置く（ログに表の行数が出るため、公開の
+# リポジトリでは動かさない）。いちばん新しい控え（R2 の backup/d1/）を取り出し、合言葉で開き、
+# 新しい D1（taguri-restore-drill）に入れて、表ごとの行数を控えと比べる。終わったらその D1 を消す。
+# 本番の D1 には書かない。かかった時間がログに出るので、docs/backup-restore.md に書き写す。
+# 毎月 1 回と、手動で動かす。合わなければ失敗して持ち主に通知が届く。
+on:
+  schedule:
+    - cron: '41 3 3 * *'   # 毎月 3 日 日本時間 12:41
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  drill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: island-6848/taguri-demo
+          ref: master
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Restore the newest backup into a scratch D1 and compare
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          mkdir -p drill
+          python cloudflare/scripts/backup_d1.py drill --data drill

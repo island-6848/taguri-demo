@@ -1,7 +1,7 @@
 ---
 id: q-rate-limiting
 type: question
-status: open
+status: answered
 date: 2026-10-13
 title: ログイン・登録・検索の回数制限を Worker でどう掛けるか
 links:

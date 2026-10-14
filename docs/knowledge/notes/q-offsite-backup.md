@@ -1,7 +1,7 @@
 ---
 id: q-offsite-backup
 type: question
-status: open
+status: answered
 date: 2026-10-13
 title: D1 のバックアップを、Time Travel の期間より長くどこに残すか
 links:

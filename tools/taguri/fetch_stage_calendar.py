@@ -108,6 +108,7 @@ import sys
 import threading
 import time
 import unicodedata
+import urllib.parse
 import urllib.request
 from pathlib import Path
 
@@ -228,6 +229,49 @@ def to_candidate(r: dict) -> dict:
         "venue": r["劇場名"]}
 
 
+# **作り手の名前が要る役職。** これが 1 つも無ければ、推薦は人物で照合できない
+PEOPLE_ROLES = ("出演", "演出", "脚本", "作")
+# **読めない先は辿らない。** 投稿サイトは中身を JavaScript で描くので、取りに行っても
+# 名前は取れない（2026-08 の実測で x.com が 470 件中 74 件、取れたのは 0 件）
+SOCIAL_HOSTS = ("x.com", "twitter.com", "instagram.com", "facebook.com", "tiktok.com",
+                "youtube.com", "lit.link", "linktr.ee")
+
+
+def _social(url: str) -> bool:
+    host = urllib.parse.urlparse(url).netloc.lower().split(":")[0]
+    return any(host == h or host.endswith("." + h) for h in SOCIAL_HOSTS)
+
+
+def credits_from(OF, url: str) -> dict:
+    """公式サイトから役職と名前を取る。**トップに名前が無ければ、同じサイトの
+    「キャスト」「スタッフ」「公演情報」などのページを 2 枚まで辿る。**
+
+    起案者の指摘（2026-10-14）── カレンダーから入った公演（加藤健一事務所『Wゲーム』など）に
+    出演・スタッフが 1 つも無く、おすすめの理由が出せなかった。公式サイトのトップは
+    公演の一覧や告知だけで、名前は別のページにあることが多い（検証 002 で、劇団のリンク先は
+    トップページや年間の一覧だった）。測る側（`fetch_official_credits.run`）は前から 1 段
+    辿っていたが、この取り込みはトップしか読んでいなかった。
+    **別のサイトへは辿らない**（礼儀と、別の公演の名前を拾わないため）。トップで取れた分は残し、
+    辿った先の名前で欠けている役職だけを埋める。"""
+    html, _ = OF.get(url)
+    if not html:
+        return {}
+    got = {k: v for k, v in OF.roles_in(OF.to_text(html)).items() if v}
+    if any(got.get(k) for k in PEOPLE_ROLES):
+        return got
+    host = urllib.parse.urlparse(url).netloc.lower()
+    for u2 in OF.links(html, url):
+        if urllib.parse.urlparse(u2).netloc.lower() != host:
+            continue
+        h2, _ = OF.get(u2)
+        if not h2:
+            continue
+        g2 = {k: v for k, v in OF.roles_in(OF.to_text(h2)).items() if v}
+        if any(g2.get(k) for k in PEOPLE_ROLES):
+            return {**g2, **got}
+    return got
+
+
 def add_credits(rows: list[dict], jobs: int, limit: int) -> None:
     """リンク先の公式サイトからクレジットを取る。**相手のサイトごとに 1.1 秒に 1 回。**
 
@@ -256,7 +300,8 @@ def add_credits(rows: list[dict], jobs: int, limit: int) -> None:
     """
     import fetch_official_credits as OF
     from concurrent.futures import ThreadPoolExecutor
-    todo = [r for r in rows if r["fields"].get("公式／劇場サイト", "").startswith("http")]
+    todo = [r for r in rows if r["fields"].get("公式／劇場サイト", "").startswith("http")
+            and not _social(r["fields"]["公式／劇場サイト"])]
     todo = todo[:limit] if limit else todo
     if not todo:
         print("  辿る先がありません")
@@ -267,8 +312,7 @@ def add_credits(rows: list[dict], jobs: int, limit: int) -> None:
     def one(r: dict) -> None:
         nonlocal n_ok, n_done
         try:
-            html, _ = OF.get(r["fields"]["公式／劇場サイト"])
-            got = OF.roles_in(OF.to_text(html))
+            got = credits_from(OF, r["fields"]["公式／劇場サイト"])
         except Exception:                                            # noqa: BLE001
             got = {}
         with lock:

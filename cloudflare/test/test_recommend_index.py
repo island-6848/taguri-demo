@@ -90,6 +90,15 @@ def verdict(rng, seed):
     return rng.choice(['◎', '◎', '○', '△', '×', ''])
 
 
+THEME_POOL = ['家族', '戦争', '恋愛', '記憶', '東京の下町', '旅', '海', '父と娘']
+
+
+def themes_for(seed, cands):
+    """Subject words (#題材) for some candidate stages, as build_index takes them."""
+    rng = random.Random(f'themes:{seed}')
+    return {c['stage_id']: rng.sample(THEME_POOL, rng.randint(1, 3)) for c in cands if rng.random() < .5}
+
+
 ASPECT_CODES = ['story', 'direction', 'acting', 'music', 'dance', 'design', 'price', 'venue']
 
 
@@ -115,7 +124,8 @@ def with_people(rows, people):
 
 def expected(raw, cands, rated, multipliers):
     d = UR.prepare(raw, cands, rated, multipliers=multipliers, role_group=APP.group_of, today=TODAY)
-    keep = [c for c in d['ranked'] if c.get('b', 0) > 0]
+    # The rule of UR.finish: score above 0 and a reason (a raising person or kind of show).
+    keep = [c for c in d['ranked'] if c.get('b', 0) > 0 and UR.has_reason(c['person_parts'], c['why_kind'])]
     keep.sort(key=lambda c: (-c['strong'], -c['s'], c['stage_id']))
     return [(c['stage_id'], c['b'], c['strong'], c['person_parts']) for c in keep]
 
@@ -167,7 +177,7 @@ class ParityTest(unittest.TestCase):
             for hseed in range(2):
                 rated = with_people(history(seed * 100 + hseed, fbs), index['people'])
                 d = UR.prepare(raw, cands, rated, multipliers={}, role_group=APP.group_of, today=TODAY)
-                keep = [dict(c, tours=[]) for c in d['ranked'] if c.get('b', 0) > 0]
+                keep = [dict(c, tours=[]) for c in d['ranked'] if c.get('b', 0) > 0 and UR.has_reason(c['person_parts'], c['why_kind'])]
                 keep.sort(key=lambda c: (-c['strong'], -c['s'], c['stage_id']))
                 want = [(c['stage_id'], [t['stage_id'] for t in c['tours']]) for c in UR.collapse_tours(keep)]
                 mem = BI.score_from_index(*BI.memory_access(index), rated, multipliers={}, today=TODAY)
@@ -286,7 +296,8 @@ class FavouriteSeedKindsTest(unittest.TestCase):
 
     def setUp(self):
         raw, cands, fbs = catalogue(4)
-        self.index = BI.build_index(UR.candidate_pool(raw, cands), fbs, APP.group_of)
+        self.themes = themes_for(4, cands)
+        self.index = BI.build_index(UR.candidate_pool(raw, cands), fbs, APP.group_of, themes=self.themes)
 
     def seeds(self, favs):
         seeds, _ = BI.seeds_from_favourites(BI.memory_access(self.index)[0], BI.memory_people(self.index),
@@ -304,8 +315,29 @@ class FavouriteSeedKindsTest(unittest.TestCase):
         self.assertTrue(got)
         self.assertTrue(all('夜の声' in self.index['stages'][sid]['title'] for sid in got))
 
+    def test_subject_matches_words_both_ways(self):
+        inside = self.seeds([{'name': '下町', 'kind': '題材'}])           # in "東京の下町"
+        self.assertTrue(inside)
+        self.assertTrue(all('東京の下町' in self.themes[sid] for sid in inside))
+        around = self.seeds([{'name': '家族の記憶', 'kind': '題材'}])     # contains "家族", "記憶"
+        self.assertTrue(around)
+        self.assertTrue(all({'家族', '記憶'} & set(self.themes[sid]) for sid in around))
+
+    def test_subject_words_are_kind_tags(self):
+        sid = next(iter(sorted(self.themes)))
+        tags = {(r[0], r[1]) for r in self.index['postings'] if r[2] == sid and r[0] == '#題材'}
+        self.assertEqual(tags, {('#題材', w) for w in self.themes[sid]})
+        self.assertTrue(all(r[4] == 'theme' for r in self.index['postings'] if r[0] == '#題材'))
+
+    def test_theme_words_from_synopsis_elements(self):
+        row = {'elements': [{'word': 'Ｗａｒ'}, {'word': '海'}, {'word': '家族'}, {'word': '家族'}]
+               + [{'word': f'語{i}{i}'} for i in range(9)]}
+        words = BI.theme_words(row)
+        self.assertEqual(words[:2], ['war', '家族'])                     # normalised, 1 letter dropped, no repeats
+        self.assertEqual(len(words), BI.MAX_THEME_WORDS)
+
     def test_too_short_or_unknown_names_add_nothing(self):
-        self.assertEqual(self.seeds([{'name': '劇', 'kind': '団体'}, {'name': '題材', 'kind': '題材'}]), set())
+        self.assertEqual(self.seeds([{'name': '劇', 'kind': '団体'}, {'name': '海', 'kind': '題材'}]), set())
 
 
 class OnboardingTest(unittest.TestCase):

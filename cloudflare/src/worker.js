@@ -6,6 +6,7 @@ import {searchIndex, d1Search} from './stage-search.js';
 import {suggest} from './screens/suggest.js';
 import {chooseVariant} from './reco-gate.js';
 import {R2_READS_CAP, r2ReadAllowed} from './free-tier.js';
+import {rateLimit, checkNewAccount} from './rate-limit.js';
 import {SCREEN_TABLES, nativeScreen, nativeAction, allNative, movingScreen, movingAction, screen as nativeScreenBody, action as nativeActionBody, readInput as nativeInput} from './screens/index.js';
 const MAX_BODY = 262144;
 const COOKIE = 'taguri_session';
@@ -115,6 +116,7 @@ async function firebaseSignIn(request, env) {
   }
   if (!uid) {
     if (env.ALLOW_REGISTRATION !== 'true') fail(503,'新規登録を一時停止しています。');
+    await checkNewAccount(db, env, fail);
     uid = crypto.randomUUID(); created = true;
     commands.push(db.prepare('INSERT INTO users(id,recovery_hash,created_at,firebase_uid) VALUES(?,?,?,?)').bind(uid,'firebase:'+token(),now(),identity.uid));
   }
@@ -148,7 +150,7 @@ async function deleteAccount(request, env, uid, input) {
 // to (interest / no / owned) are left out, as the Python app moves them to
 // other lists. Tour grouping and impression preferences are not ported yet.
 const RECOMMEND_TOP = 15;
-const RECOMMENDER = 'person-ordinal-v3+fav2+asp1+tour1';   // +fav2: favourites (people, troupes, works) as fading pseudo ratings; +asp1: 詳細; +tour1: one slot per tour
+const RECOMMENDER = 'person-ordinal-v3+fav3+asp1+tour1+why1';   // +why1: a show needs a person who raised it; +fav3: favourites (people, troupes, works, subjects) as fading pseudo ratings; +asp1: 詳細; +tour1: one slot per tour
 const jstToday = () => new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
 // Served from rec_cache unless the index version, the date, or the user's
 // records/reactions changed since it was computed (a few rows read per view).
@@ -204,7 +206,8 @@ async function computeRecommendations(db, uid, ver, today) {
     rows_read: access.counter.rows, variant: gate.variant, n_seeds: seeds.length, items: top.map(g => {
       const c = byId.get(g.stage_id), e = entries.get(g.stage_id) || {};
       return {...venue(g.stage_id), title: e.title || '', group: e.grp || '', score: c.b,
-        reasons: c.parts.slice(0, 3).map(([, role, person, n]) => ({role, person, n})),
+        // People first; kinds of show ("#形式" etc. as role) fill the rest of the 3 slots.
+        reasons: [...c.parts.slice(0, 3), ...c.kinds].slice(0, 3).map(([, role, person, n]) => ({role, person, n})),
         tours: g.tours.map(venue)};
     })};
 }
@@ -274,7 +277,7 @@ async function state(db, uid) {
   const result = await db.batch([db.prepare("SELECT id,title,date,time,venue,rating,note,COALESCE(stage_id,'') AS stage_id,aspects FROM records WHERE user_id=? ORDER BY date DESC,id LIMIT 500").bind(uid),db.prepare('SELECT name,kind FROM favourites WHERE user_id=? ORDER BY kind,name LIMIT 200').bind(uid),db.prepare('SELECT stage_id,status FROM reactions WHERE user_id=? ORDER BY stage_id LIMIT 500').bind(uid)]);
   return {version:2,records:result[0].results,favourites:result[1].results,reactions:result[2].results};
 }
-const passkey = passkeyRoutes({fail, json, token, hash, now, body, cookie, sessionCookie, currentUser, startSession});
+const passkey = passkeyRoutes({fail, json, token, hash, now, body, cookie, sessionCookie, currentUser, startSession, checkNewAccount});
 // Public Firebase web config. apiKey identifies the project to Google; it is
 // not a secret (access is governed by authorized domains and the sign-in
 // methods enabled in the console). Nothing here is read from user input.
@@ -395,6 +398,8 @@ async function posterFromR2(request, env, url) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    const limited = await rateLimit(request, env, url);
+    if (limited) return limited;
     const blocked = await gate(request, env, url);
     if (blocked) return blocked;
     if (url.pathname === '/login' && request.method === 'GET') return loginPage(request, env);
@@ -427,6 +432,7 @@ export default {
         let uid; let recovery;
         if (path === '/api/register') {
           if (env.ALLOW_REGISTRATION !== 'true') fail(503,'新規登録を一時停止しています。');
+          await checkNewAccount(env.DB, env, fail);
           recovery = token(); uid = crypto.randomUUID();
         } else {
           const code = string(input.code, 80, true).replaceAll('-', '').toLowerCase();

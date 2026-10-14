@@ -1,0 +1,35 @@
+name: Service watch
+
+# サービス版（Cloudflare Worker）が動いているかを 1 時間ごとに外から確かめる（tools/taguri/check_service.py、S22）。
+# /api/health（D1 を読む）・/about・/login が 200 で、遅すぎず、無料枠の数えが 8 割を越えていないか。
+# 失敗するとリポジトリの持ち主に GitHub から通知（メール）が届く。公開のリポジトリなので Actions の分は無料。
+# 見る先はカタログの見張り（catalog-age.yml）と同じリポジトリの変数 TAGURI_HEALTH_URL。入れるまでは動かない。
+# わざと鳴らすときは、手動の実行で url に存在しない URL を入れる。
+on:
+  schedule:
+    - cron: '23 * * * *'
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'health の URL（空なら変数 TAGURI_HEALTH_URL）'
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    if: github.event_name == 'workflow_dispatch' || vars.TAGURI_HEALTH_URL != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check the service from outside
+        env:
+          HEALTH_URL: ${{ github.event.inputs.url || vars.TAGURI_HEALTH_URL }}
+        run: |
+          if [ -z "$HEALTH_URL" ]; then echo "URL を入れて動かす（入力の url か、変数 TAGURI_HEALTH_URL）"; exit 1; fi
+          python tools/taguri/check_service.py --url "$HEALTH_URL"

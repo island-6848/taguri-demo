@@ -275,6 +275,9 @@ def prepare(raw: dict, candidates: list[dict], rated: list[dict], *,
     rated = independent_ratings(rated)
     values, scale = person_values(rated)
     titles_of = M.person_titles(rated)       # 理由の行に出す作品名（起案者の指示 2026-10-14）
+    # 種類（#形式・#会場など）の理由にも、同じ形で自分の作品名を添える
+    kind_titles = {k: v for k, v in M.person_titles([dict(r, people=rated_keys(r)) for r in rated]).items()
+                   if k[0].startswith("#")}
     pool = candidate_pool(raw, candidates)
 
     out = {"label": raw.get("label") or today.isoformat(), "today": today.isoformat()}
@@ -318,6 +321,7 @@ def prepare(raw: dict, candidates: list[dict], rated: list[dict], *,
         # v1 and were not what the comparison validated.
         c.update(stage_id=sid, b=b, c=0.0, total=b, why_b=parts[:6], why_b_neg=negative[:M.TOP_N],
                  why_kind=kinds,
+                 why_kind_works={f"{k[1]}\t{k[2]}": kind_titles[(k[1], k[2])] for k in kinds if (k[1], k[2]) in kind_titles},
                  why_b_works={f"{p[1]}\t{p[2]}": titles_of[(p[1], p[2])] for p in parts[:6] if (p[1], p[2]) in titles_of},
                  person_parts=parts, why_c=[], why_v="", vr=0.0,
                  n_match=len(parts), strong=b,
@@ -354,6 +358,15 @@ def plain_sum(values) -> float:
     return total
 
 
+# 公演そのものを表す種類。劇場（#会場）と料金帯（#値段）は並びを直すだけで、おすすめの理由にはしない
+CONTENT_AXES = ("#形式", "#原作", "#翻訳", "#題材")
+
+
+def has_reason(parts, kinds) -> bool:
+    """おすすめにしてよいか: 点を上げた人物か、点を上げた公演の種類（CONTENT_AXES）がある。"""
+    return any(p[0] > 0 for p in parts) or any(k[0] > 0 and k[1] in CONTENT_AXES for k in kinds)
+
+
 def b_score(parts, negative, kinds) -> float:
     """A show's score: strongest 3 people up, strongest 3 down, plus the mean
     of its kind-of-show tags (kinds in (axis, tag) order)."""
@@ -369,8 +382,13 @@ def finish(d: dict, *, top: int, weights: dict) -> dict:
     It must not be described as matching the user's taste.
     """
     rows = d.get("ranked") or []
-    keep = [c for c in rows if c.get("b", 0) > 0]
-    d["unscored"] = [c for c in rows if c.get("b", 0) <= 0]
+    # **点を上げた人物か、公演そのものの種類（形式・原作・翻訳・題材）が無い公演はおすすめにしない**
+    # （2026-10-14、起案者の指摘「記録が 100 件近くあるのに『理由を出せていません』が並ぶ」）。
+    # 劇場と料金帯は条件であって公演の中身ではないので、それだけでは出さない。クレジットの無い
+    # 公演は劇場と料金帯しか種類を持たないので、劇場が同じというだけで上位に来ていた
+    explained = lambda c: c.get("b", 0) > 0 and has_reason(c.get("why_b") or [], c.get("why_kind") or [])
+    keep = [c for c in rows if explained(c)]
+    d["unscored"] = [c for c in rows if not explained(c)]
     ordered = sorted(keep, key=lambda c: (-c["strong"], -c["s"], c["stage_id"]))
     d["ranked"] = collapse_tours(ordered)
     d["recommend"] = d["ranked"][:top]

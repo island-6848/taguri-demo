@@ -83,12 +83,12 @@ test('records saved through the API give the same recommendations as Python, min
       assert.equal(got.ready, true);
       assert.equal(got.variant, 'base', 'few ratings: the hidden check keeps the default rules');
       assert.deepEqual(got.items.map(i => [i.stage_id, i.score, i.tours.map(t => t.stage_id)]), want.map(g => [g.stage_id, byId.get(g.stage_id).b, g.tours]));
-      assert.deepEqual(got.items[0].reasons, byId.get(want[0].stage_id).parts.slice(0, 3).map(([, role, person, n]) => ({role, person, n})));
+      assert.deepEqual(got.items[0].reasons, [...byId.get(want[0].stage_id).parts.slice(0, 3), ...byId.get(want[0].stage_id).kinds].slice(0, 3).map(([, role, person, n]) => ({role, person, n})));
       toursSeen += got.items.some(i => i.tours.length);
       assert.ok(got.items.every(i => i.tours.every(t => t.theater)), 'tour venues carry their display fields');
       assert.ok(got.items.every(i => i.title), 'display fields come from rec_stage');
       // The cache is keyed by the scoring rules too (a rule change recomputes).
-      assert.ok(sqlite.prepare('SELECT stamp FROM rec_cache WHERE user_id=?').get(uid).stamp.startsWith('person-ordinal-v3+fav2+asp1+tour1|'));
+      assert.ok(sqlite.prepare('SELECT stamp FROM rec_cache WHERE user_id=?').get(uid).stamp.startsWith('person-ordinal-v3+fav3+asp1+tour1+why1|'));
       // Second view: served from the cache, same answer.
       const again = await recommendFor(env.DB, uid, fixture.today);
       assert.equal(again.cached, true);

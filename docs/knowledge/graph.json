@@ -595,6 +595,19 @@
    "verifies": []
   },
   {
+   "id": "dec-calendar-credits-daily",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "ステイジーズカレンダーから入った公演も、公式サイトから出演・スタッフを毎回取る。トップに名前が無ければ同じサイトのキャスト・スタッフのページを 2 枚まで辿る。投稿サイトは辿らない",
+   "sources": [
+    "tools/taguri/fetch_stage_calendar.py",
+    "tools/taguri/run.py",
+    "tools/taguri/test_calendar_credits.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-corich-sitemap",
    "type": "decision",
    "status": "adopted",
@@ -620,6 +633,21 @@
     "S23",
     "S24"
    ]
+  },
+  {
+   "id": "dec-d1-backup",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "D1 の控えは Time Travel（7 日）に加え、利用者の記録の表を毎日書き出し、gpg で暗号化して R2 に 30 日置く。月に 1 回、新しい D1 に戻す予行を自動で流す",
+   "sources": [
+    "cloudflare/scripts/backup_d1.py",
+    "cloudflare/test/test_backup_d1.py",
+    "tools/taguri/deploy/github-actions/catalog.yml",
+    "tools/taguri/deploy/github-actions/restore-drill.yml",
+    "docs/backup-restore.md"
+   ],
+   "verifies": []
   },
   {
    "id": "dec-d1-catalogue-delivery",
@@ -913,6 +941,19 @@
    "verifies": []
   },
   {
+   "id": "dec-rate-limit",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "回数制限は Cloudflare の Rate Limiting binding（訪問者ごとのブレーキ）と、新規登録の 1 日の上限（D1 で正確に数える）の二段にする",
+   "sources": [
+    "cloudflare/src/rate-limit.js",
+    "cloudflare/wrangler.jsonc",
+    "cloudflare/test/rate-limit.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-rating-detail-mode",
    "type": "decision",
    "status": "adopted",
@@ -1092,6 +1133,20 @@
    "verifies": [
     "S01"
    ]
+  },
+  {
+   "id": "dec-service-watch",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "サービス版の見張りは公開リポジトリの GitHub Actions で 1 時間ごと（動いているか）と毎日（カタログの日付）。失敗の通知は GitHub のメール",
+   "sources": [
+    "tools/taguri/check_service.py",
+    "tools/taguri/test_check_service.py",
+    ".github/workflows/service-watch.yml",
+    ".github/workflows/catalog-age.yml"
+   ],
+   "verifies": []
   },
   {
    "id": "dec-signed-out-gate",
@@ -1680,6 +1735,19 @@
    "verifies": []
   },
   {
+   "id": "impl-theme-favourite",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-14",
+   "title": "題材のお気に入りも推薦の種にした。あらすじの要素の語を #題材 のタグとして索引に入れ、双方向の部分一致で引く（+fav3）",
+   "sources": [
+    "cloudflare/scripts/build_recommend_index.py",
+    "cloudflare/src/recommend.js",
+    "cloudflare/test/test_recommend_index.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "impl-tour-slots",
    "type": "finding",
    "status": "confirmed",
@@ -2042,6 +2110,18 @@
    "title": "観点ごとの評価がある公開データ（Yahoo! Movies：物語・演技・演出・映像＋総合）が研究で使われている",
    "sources": [
     "https://arxiv.org/pdf/2502.19271"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "measure-worker-fixture-1014",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-14",
+   "title": "試験用の小さな索引（84 公演）でも、Worker のおすすめの計算は CPU 中央値 2〜9 ms・最も遅い回 50 ms。無料の 10 ms に近いので、本物の索引で測る",
+   "sources": [
+    "cloudflare/scripts/measure_worker.mjs",
+    "tools/taguri/deploy/github-actions/catalog.yml"
    ],
    "verifies": []
   },
@@ -2471,7 +2551,7 @@
   {
    "id": "q-d1-backup",
    "type": "question",
-   "status": "open",
+   "status": "answered",
    "date": "2026-10-13",
    "title": "D1 のバックアップと復元をどうするか",
    "sources": [],
@@ -2667,7 +2747,7 @@
   {
    "id": "q-monitoring",
    "type": "question",
-   "status": "open",
+   "status": "answered",
    "date": "2026-10-13",
    "title": "無料で使える外形監視と通知",
    "sources": [],
@@ -2697,7 +2777,7 @@
   {
    "id": "q-offsite-backup",
    "type": "question",
-   "status": "open",
+   "status": "answered",
    "date": "2026-10-13",
    "title": "D1 のバックアップを、Time Travel の期間より長くどこに残すか",
    "sources": [],
@@ -2861,7 +2941,7 @@
   {
    "id": "q-rate-limiting",
    "type": "question",
-   "status": "open",
+   "status": "answered",
    "date": "2026-10-13",
    "title": "ログイン・登録・検索の回数制限を Worker でどう掛けるか",
    "sources": [],
@@ -2943,6 +3023,15 @@
    "verifies": []
   },
   {
+   "id": "q-restore-redelete",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-14",
+   "title": "控えから戻したとき、控えのあとに完全削除した人の記録をどう消し直すか",
+   "sources": [],
+   "verifies": []
+  },
+  {
    "id": "q-safari-cookies",
    "type": "question",
    "status": "open",
@@ -2987,7 +3076,7 @@
   {
    "id": "q-theme-favourite",
    "type": "question",
-   "status": "open",
+   "status": "answered",
    "date": "2026-10-14",
    "title": "題材のお気に入りを推薦の種に使うには、あらすじの題材を Worker の索引に入れる必要がある",
    "sources": [],
@@ -3128,6 +3217,19 @@
    "sources": [
     "tools/taguri/serve.py",
     "tools/taguri/app.py"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "reason-kind-missing",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-14",
+   "title": "デモ版のおすすめに「理由を出せていません」が増えたのは、v3 で公演の種類（#形式・#原作・#翻訳・#会場・#値段）の点だけで上位に入れるようにしたのに、理由の行に種類を出していなかったため。クレジットの無い公演が劇場だけで上位に来ていた。点を上げた人物か公演そのものの種類が無い公演は出さないようにし、種類を理由に出す",
+   "sources": [
+    "tools/review/user_recommender.py",
+    "tools/review/render_recommend.py",
+    "tools/review/test_reason_works.py"
    ],
    "verifies": []
   },
@@ -3994,6 +4096,16 @@
    "to": "auto-link-current-state"
   },
   {
+   "from": "dec-calendar-credits-daily",
+   "rel": "depends_on",
+   "to": "reason-kind-missing"
+  },
+  {
+   "from": "dec-calendar-credits-daily",
+   "rel": "affects",
+   "to": "q-crawler-state-size"
+  },
+  {
    "from": "dec-corich-sitemap",
    "rel": "depends_on",
    "to": "corich-search-waf-403"
@@ -4027,6 +4139,26 @@
    "from": "dec-crawler-gha-private",
    "rel": "depends_on",
    "to": "crawler-state-between-runs"
+  },
+  {
+   "from": "dec-d1-backup",
+   "rel": "answers",
+   "to": "q-d1-backup"
+  },
+  {
+   "from": "dec-d1-backup",
+   "rel": "answers",
+   "to": "q-offsite-backup"
+  },
+  {
+   "from": "dec-d1-backup",
+   "rel": "depends_on",
+   "to": "d1-time-travel"
+  },
+  {
+   "from": "dec-d1-backup",
+   "rel": "supports",
+   "to": "dec-free-tier-only"
   },
   {
    "from": "dec-d1-catalogue-delivery",
@@ -4339,6 +4471,21 @@
    "to": "q-worker-posters"
   },
   {
+   "from": "dec-rate-limit",
+   "rel": "answers",
+   "to": "q-rate-limiting"
+  },
+  {
+   "from": "dec-rate-limit",
+   "rel": "supports",
+   "to": "dec-free-tier-only"
+  },
+  {
+   "from": "dec-rate-limit",
+   "rel": "depends_on",
+   "to": "comp-auth-throttle"
+  },
+  {
    "from": "dec-rating-detail-mode",
    "rel": "affects",
    "to": "impl-rating-aspects"
@@ -4527,6 +4674,21 @@
    "from": "dec-service-starts-empty",
    "rel": "depends_on",
    "to": "dec-edition-split"
+  },
+  {
+   "from": "dec-service-watch",
+   "rel": "answers",
+   "to": "q-monitoring"
+  },
+  {
+   "from": "dec-service-watch",
+   "rel": "supports",
+   "to": "dec-free-tier-only"
+  },
+  {
+   "from": "dec-service-watch",
+   "rel": "depends_on",
+   "to": "catalog-age-check"
   },
   {
    "from": "dec-signed-out-gate",
@@ -5079,6 +5241,26 @@
    "to": "comp-recommender"
   },
   {
+   "from": "impl-theme-favourite",
+   "rel": "answers",
+   "to": "q-theme-favourite"
+  },
+  {
+   "from": "impl-theme-favourite",
+   "rel": "depends_on",
+   "to": "eval-favourite-kinds"
+  },
+  {
+   "from": "impl-theme-favourite",
+   "rel": "depends_on",
+   "to": "impl-favourite-seed"
+  },
+  {
+   "from": "impl-theme-favourite",
+   "rel": "affects",
+   "to": "comp-recommender"
+  },
+  {
    "from": "impl-tour-slots",
    "rel": "affects",
    "to": "comp-recommender"
@@ -5247,6 +5429,21 @@
    "from": "lit-yahoo-multicriteria",
    "rel": "affects",
    "to": "q-aspect-attribution-check"
+  },
+  {
+   "from": "measure-worker-fixture-1014",
+   "rel": "affects",
+   "to": "q-workers-cpu-real"
+  },
+  {
+   "from": "measure-worker-fixture-1014",
+   "rel": "affects",
+   "to": "q-real-catalog-stats"
+  },
+  {
+   "from": "measure-worker-fixture-1014",
+   "rel": "depends_on",
+   "to": "dec-free-tier-only"
   },
   {
    "from": "migration-handover-stage0",
@@ -5849,6 +6046,16 @@
    "to": "q-demo-trial-design"
   },
   {
+   "from": "q-restore-redelete",
+   "rel": "depends_on",
+   "to": "dec-d1-backup"
+  },
+  {
+   "from": "q-restore-redelete",
+   "rel": "affects",
+   "to": "dec-account-deletion"
+  },
+  {
    "from": "q-safari-cookies",
    "rel": "depends_on",
    "to": "dec-own-domain"
@@ -5982,6 +6189,11 @@
    "from": "react-slow-cause",
    "rel": "supports",
    "to": "dec-recommend-ui-1014b"
+  },
+  {
+   "from": "reason-kind-missing",
+   "rel": "depends_on",
+   "to": "eval-genre-preference"
   },
   {
    "from": "reco-accuracy-unverified",

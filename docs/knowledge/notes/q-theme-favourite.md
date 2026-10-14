@@ -1,7 +1,7 @@
 ---
 id: q-theme-favourite
 type: question
-status: open
+status: answered
 date: 2026-10-14
 title: 題材のお気に入りを推薦の種に使うには、あらすじの題材を Worker の索引に入れる必要がある
 links:
