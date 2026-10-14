@@ -88,3 +88,41 @@ test('answering a card takes it out of the recommendations, for this user only',
     assert.equal(rows.length, 2);
   } finally { sqlite.close(); }
 });
+
+// 2026-10-14「おすすめの画面を移して」: the 効かせ方 sliders (app.weight_form, /api/weight).
+test('効かせ方: the sliders show the saved steps and the counts; "効かせない" takes a group out of the ranking and the reasons; bad input is refused', async () => {
+  const {env, sqlite} = await withIndex();
+  const a = await signIn(env), b = await signIn(env);
+  try {
+    await rateSeen(env, a, '終わった舞台', '2026-08-05', '103', '◎');
+    await rateSeen(env, a, '一日だけの舞台', '2026-09-05', '104', '×');
+    let html = (await step(env, a, {get: '/api/screen/recommend'})).body.body_html;
+    assert.match(html, /<details class="pbox wbox" id="weights">/);
+    assert.match(html, /いまは<b>すべて「ふつう」（これまでと同じ効き方）<\/b>/);
+    assert.match(html, /<div class="wrow" data-grp="cast"><span class="wl">出演者<\/span><span class="wn">おすすめの候補 1 件で一致<\/span>/);
+    assert.match(html, /<h1>今週のおすすめ 1 件<\/h1>/);
+    const saved = await step(env, a, {post: '/api/weight', body: {weights: {cast: 'off', theme: 'max'}}});
+    assert.equal(saved.status, 200);
+    assert.deepEqual(saved.body.weights, {cast: 'off', theme: 'max'});
+    html = (await step(env, a, {get: '/api/screen/recommend'})).body.body_html;
+    assert.match(html, /いまは<b>出演者を効かせない／作品の内容をとても強く<\/b>/);
+    assert.match(html, /<div class="wrow off" data-grp="cast">/);
+    assert.doesNotMatch(html, /<span class="net">人物<\/span>出演 /);   // the cast leaves the reasons too
+    const all = Object.fromEntries(['cast', 'author', 'craft', 'stage', 'produce', 'other', 'theme'].map(k => [k, 'off']));
+    assert.equal((await step(env, a, {post: '/api/weight', body: {weights: all}})).status, 200);
+    assert.match((await step(env, a, {get: '/api/screen/recommend'})).body.body_html, /<h1>今週のおすすめはありません<\/h1>/);
+    // Only the listed groups and steps; nothing is written when one is wrong.
+    assert.equal((await step(env, a, {post: '/api/weight', body: {weights: {cast: 'mid', bogus: 'max'}}})).status, 400);
+    assert.equal((await step(env, a, {post: '/api/weight', body: {weights: {cast: '9'}}})).status, 400);
+    assert.equal(sqlite.prepare("SELECT step FROM rank_weight WHERE grp='cast'").get().step, 'off');
+    // Back to ふつう brings it back; another user is never affected.
+    await step(env, a, {post: '/api/weight', body: {weights: Object.fromEntries(Object.keys(all).map(k => [k, 'mid']))}});
+    assert.match((await step(env, a, {get: '/api/screen/recommend'})).body.body_html, /<h1>今週のおすすめ 1 件<\/h1>/);
+    assert.match((await step(env, b, {get: '/api/screen/recommend'})).body.body_html, /すべて「ふつう」/);
+    // The rest of the screen's writes answer as the public Python service does.
+    const visit = await step(env, a, {post: '/api/recommendation/visit', body: {stage_id: '101'}});
+    assert.equal(visit.status, 200); assert.equal(visit.body.disabled, true);
+    const theme = await step(env, a, {post: '/api/hand_theme', body: {stage_id: '101', words: 'x'}});
+    assert.equal(theme.status, 400); assert.match(theme.body.error, /公開版では公演情報の編集はできません/);
+  } finally { sqlite.close(); }
+});

@@ -1198,6 +1198,21 @@
    "verifies": []
   },
   {
+   "id": "dec-recommend-weights-worker",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "おすすめの画面の残り（効かせ方のつまみと /api/weight、見た推薦の記録、題材の手入力）を Worker に移した",
+   "sources": [
+    "cloudflare/src/screens/weights.js",
+    "cloudflare/src/screens/recommend.js",
+    "cloudflare/test/weights.test.js",
+    "cloudflare/test/screens/weights_fixture.py",
+    "cloudflare/test/recommend-screen.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-recommend-worker-cards",
    "type": "decision",
    "status": "adopted",
@@ -5046,6 +5061,16 @@
    "from": "dec-recommend-ui-1014b",
    "rel": "affects",
    "to": "dec-phone-nav-four"
+  },
+  {
+   "from": "dec-recommend-weights-worker",
+   "rel": "depends_on",
+   "to": "dec-recommend-worker-cards"
+  },
+  {
+   "from": "dec-recommend-weights-worker",
+   "rel": "depends_on",
+   "to": "impl-hidden-gate"
   },
   {
    "from": "dec-recommend-worker-cards",
