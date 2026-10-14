@@ -622,6 +622,20 @@
    "verifies": []
   },
   {
+   "id": "dec-calendar-worker",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "公演カレンダーを Worker に移す（stage_calendar.panel・観劇日を追加するを JS に移し、Python と同じ HTML になることを確かめる）",
+   "sources": [
+    "cloudflare/src/screens/calendar.js",
+    "cloudflare/src/screens/calendar_js.js",
+    "cloudflare/test/calendar.test.js",
+    "cloudflare/test/screens/calendar_fixture.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-corich-sitemap",
    "type": "decision",
    "status": "adopted",
@@ -4168,6 +4182,16 @@
    "from": "dec-calendar-credits-daily",
    "rel": "affects",
    "to": "q-crawler-state-size"
+  },
+  {
+   "from": "dec-calendar-worker",
+   "rel": "depends_on",
+   "to": "dec-reminder-worker"
+  },
+  {
+   "from": "dec-calendar-worker",
+   "rel": "affects",
+   "to": "comp-native-screens"
   },
   {
    "from": "dec-corich-sitemap",

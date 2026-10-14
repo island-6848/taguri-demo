@@ -119,3 +119,22 @@ test('開幕リマインド: every stage opening this week, with the shared pref
     assert.match((await screen(env, a, 'recommend')).body_html, /いまは<b>大阪府（1 県）<\/b>/);
   } finally { sqlite.close(); }
 });
+
+test('公演カレンダー shows the stages owned, followed and of a registered name', async () => {
+  const {env, sqlite} = withIndex();
+  const a = await signIn(env);
+  try {
+    assert.match((await screen(env, a, 'calendar')).body_html, /カレンダーに表示できる公演がありません/);
+    await step(env, a, {post: '/api/react', body: {stage_id: '101', value: 'owned', nofill: true}});
+    await step(env, a, {post: '/api/ticket', body: {stage_id: '101', date: '2026-11-03', time: '14:00'}});
+    await step(env, a, {post: '/api/favourite', body: {action: 'add', kind: '団体', name: '劇団乙'}});
+    const html = (await screen(env, a, 'calendar')).body_html;
+    assert.match(html, /<h1>公演カレンダー<\/h1>/);
+    assert.match(html, /<button type="button" class="addtk" data-open-dialog="tkdlg">/);
+    assert.match(html, /<span class="bar own"[^>]*data-stage="101"/);
+    assert.match(html, /<span class="bar fav[^"]*" data-stage="102"/);
+    assert.match(html, /11\/3 14:00 に行きます/);
+    const owned = (await screen(env, a, 'calendar', '?kind=owned')).body_html;
+    assert.doesNotMatch(owned, /data-stage="102"/);
+  } finally { sqlite.close(); }
+});
