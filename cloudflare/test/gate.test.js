@@ -1,4 +1,5 @@
-// Signed-out visitors see only /login and /about; everything else asks them
+// Signed-out visitors see only /login (たぐりとは and the sign-in on one page; /about
+// redirects there); everything else asks them
 // to sign in. Signed-in users get the app as before.
 import {DatabaseSync} from 'node:sqlite';
 import {readFileSync, readdirSync} from 'node:fs';
@@ -20,11 +21,11 @@ function setup() {
   return {get, post, served, env};
 }
 
-test('signed out: the top goes to /about, other pages to /login with a way back', async () => {
+test('signed out: the top goes to /login, other pages to /login with a way back', async () => {
   const {get, served} = setup();
   const top = await get('/');
   assert.equal(top.status, 302);
-  assert.equal(top.headers.get('location'), '/about');
+  assert.equal(top.headers.get('location'), '/login');
   for (const path of ['/recommend', '/settings?tab=1', '/migration-data/', '/records/works', '/anything']) {
     const r = await get(path);
     assert.equal(r.status, 302, path);
@@ -33,13 +34,16 @@ test('signed out: the top goes to /about, other pages to /login with a way back'
   assert.deepEqual(served, [], 'no app page was served');
 });
 
-test('signed out: /login, /about and static files load; app data and posters do not', async () => {
+test('signed out: /login and static files load, /about goes to /login; app data and posters do not', async () => {
   const {get, post, served} = setup();
-  for (const path of ['/login', '/about', '/style.css', '/auth.css', '/vendor/firebase-login.js', '/assets/taguri-howto.mp4']) {
+  for (const path of ['/login', '/style.css', '/auth.css', '/vendor/firebase-login.js', '/assets/taguri-howto.mp4']) {
     const r = await get(path);
     assert.equal(r.status, 200, path);
   }
-  assert.deepEqual(served, ['/login', '/about', '/style.css', '/auth.css', '/vendor/firebase-login.js', '/assets/taguri-howto.mp4']);
+  assert.deepEqual(served, ['/login', '/style.css', '/auth.css', '/vendor/firebase-login.js', '/assets/taguri-howto.mp4']);
+  const about = await get('/about');
+  assert.equal(about.status, 302);
+  assert.equal(about.headers.get('location'), '/login');
   for (const path of ['/api/screen/recommend', '/img/poster.jpg', '/migration-api/state']) assert.equal((await get(path)).status, 401, path);
   assert.equal((await post('/api/react', {stage_id: 's', value: 1})).status, 401);
   // Sign-in itself stays reachable.
@@ -62,4 +66,17 @@ test('signed in: pages are served (with the account link) and expired sessions a
 test('the return path after sign-in stays on this site', () => {
   assert.equal(safeNext('/recommend?pref=東京'), '/recommend?pref=東京');
   for (const bad of ['//evil.example', '/\\evil.example', 'https://evil.example', 'javascript:alert(1)', '/login?next=/x', '', null, undefined, 42]) assert.equal(safeNext(bad), '/', String(bad));
+});
+
+test('the one page: たぐりとは with its diagram and the guide link above the sign-in', () => {
+  const html = readFileSync(new URL('../public/login.html', import.meta.url), 'utf8');
+  const about = html.indexOf('id="about"'), login = html.indexOf('id="login"');
+  assert.ok(about > 0 && login > about, 'the explanation comes before the sign-in');
+  assert.match(html, /<svg viewBox="0 0 340 300" role="img"/);
+  assert.match(html, /href="https:\/\/island-6848\.github\.io\/taguri-demo\/docs\/000010-user-guide-taguri\.html"/);
+  assert.doesNotMatch(html, /href="\/about"/);
+  // The sign-in page's CSP allows no inline styles: the diagram is styled from auth.css only.
+  assert.doesNotMatch(html, /style="/);
+  for (const id of ['google', 'passkey-login', 'email-form', 'passkey-signup', 'recovery-login', 'delete-intro', 'delete-confirm', 'passkey-recovery'])
+    assert.match(html, new RegExp(`id="${id}"`), id);
 });
