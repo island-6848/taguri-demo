@@ -441,6 +441,44 @@ def interest_credits(react: dict, missed: list[dict]) -> list[tuple[str, str]]:
     return out
 
 
+def person_titles(rated: list[dict], react: dict | None = None) -> dict[tuple[str, str], list[tuple[str, str]]]:
+    """(役職, 人物) → [(作品名, 印)]。理由の行に **具体的な作品名** を出すため。
+
+    起案者の指示（2026-10-14）「『（◎ を付けた・気になった作品での実績・履歴 1 本）』じゃなくて、
+    具体的に（『作品A』『作品B』など）って書いてほしい」。名簿（`build_roster`）の本数と同じ材料
+    ── 評価を付けた記録（印は ◎・○・△・×）と、興味ありを押した公演（印は「興味あり」）── から作る。
+    観ればよかった（`missed_fields`）は題名を持たないので入らない（本数には入っている）。
+    並びは ◎ → ○ → △ → × → 興味あり、同じ印の中は新しい観劇日から。
+    """
+    order = {"◎": 0, "○": 1, "△": 2, "×": 3}
+    acc: dict[tuple[str, str], list[tuple[int, str, str, str]]] = collections.defaultdict(list)
+    for r in rated:
+        mark = r.get("verdict") or ""
+        if mark not in order or not r.get("title"):
+            continue
+        for key in r.get("people") or []:
+            acc[tuple(key)].append((order[mark], r.get("date") or "", r["title"], mark))
+    if react:
+        fields_by_stage = _fields_by_stage()
+        for sid, v in react.items():
+            if v.get("interest") != 1 or not v.get("title"):
+                continue
+            for key in set(parse_credits(fields_by_stage.get(str(sid)) or {})):
+                acc[key].append((9, "", v["title"], "興味あり"))
+    out = {}
+    for key, rows in acc.items():
+        rows.sort(key=lambda t: t[1], reverse=True)    # 新しい観劇日から
+        rows.sort(key=lambda t: t[0])                   # 印の順（安定な並べ替えなので日付の順は残る）
+        seen, items = set(), []
+        for _o, _d, title, mark in rows:
+            if title in seen:
+                continue
+            seen.add(title)
+            items.append((title, mark))
+        out[key] = items
+    return out
+
+
 def add_interest_roster(roster: dict[tuple[str, str], tuple[int, float]],
                          credits_list: list[tuple[str, str]], weight: float
                          ) -> dict[tuple[str, str], tuple[int, float]]:

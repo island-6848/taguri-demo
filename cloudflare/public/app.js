@@ -48,6 +48,8 @@ const NAV = [[null, "おすすめ", "ticket", [["/recommend", "今週のおす�
 
 // --- 絵記号(icons.py の P/ALIAS をそのまま) --------------------------------
 const ICON_P = {"ticket": "M3 9a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2 2 2 0 0 0 0 6 2 2 0 0 1-2 2H5a2 2 0 0 1-2-2 2 2 0 0 0 0-6zM11 7v10", "star": "M12 3.8l2.5 5.1 5.6.8-4 3.9 1 5.6-5.1-2.7-5.1 2.7 1-5.6-4-3.9 5.6-.8z", "inbox": "M3 12h5l1.5 2.5h5L16 12h5M3 12l3-7h12l3 7v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z", "chart": "M3 20h18M6.5 20v-5M11.5 20V6M16.5 20v-9", "search": "M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM16.2 16.2 21 21", "download": "M12 3v12m0 0 4-4m-4 4-4-4M4 20h16", "mail": "M3 6h18v12H3zM3 6.5l9 6.5 9-6.5", "plus": "M12 5v14M5 12h14", "clock": "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7.5V12l3.5 2", "pencil": "M4 20h4L18 10l-4-4L4 16zM13.5 6.5l4 4", "tag": "M4 12.5 12.5 4H20v7.5L11.5 20zM16.4 7.6h.01", "image": "M3 5h18v14H3zM3 15.5l5-4 4 3 3-2.5 6 4.5M8 9.5h.01", "user": "M12 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM4 20c0-3.3 3.6-5 8-5s8 1.7 8 5", "building": "M4 20V6l6-2.5V20M10 20h10V10.5L10 7M13.5 12h.01M13.5 16h.01M17 12h.01M17 16h.01", "book": "M4 5h7v15H4zM13 5h7v15h-7M11 5v15", "light": "M12 3v3.5M12 17.5V21M3 12h3.5M17.5 12H21M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18", "eye": "M2.5 12S6 6 12 6s9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6zM12 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z", "check": "M4.5 12.5 9.5 18 20 6", "flag": "M5 21V4h13l-2.5 4.5L18 13H5", "calendar": "M4 6.5h16V20H4zM4 10.5h16M8.5 3.5v4M15.5 3.5v4", "chevron": "M9.5 5.5 16 12l-6.5 6.5", "network": "M6 18a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM18 18a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM6.9 15.3 10.6 9M17.1 15.3 13.4 9M8 17.3h8", "gear": "M10.6 3.1 13.4 3.1 15.2 6.5 19.0 6.3 20.4 8.8 18.4 12.0 20.4 15.2 19.0 17.7 15.2 17.5 13.4 20.9 10.6 20.9 8.8 17.5 5.0 17.7 3.6 15.2 5.6 12.0 3.6 8.8 5.0 6.3 8.8 6.5ZM12 9.8a2.2 2.2 0 1 0 0 4.4 2.2 2.2 0 0 0 0-4.4z", "link": "M14 4h6v6M20 4 10 14M18 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h5"};
+// スマホ幅の 4 つの大メニューの絵記号（dec-phone-nav-four）: 毛糸玉・判子・帳面
+Object.assign(ICON_P, {"building": "M4 20.5h16M6.5 20.5V4.5h8v16M14.5 9.5h3.5v11M9 8h2.5M9 11.5h2.5M9 15h2.5", "info": "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 11v5.5M12 7.6h.01", "yarn": "M11 4a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15zM5.2 7.6c4.6.8 8.6 4.6 9.6 10.6M3.7 11.3c4.4.4 7.7 3.4 8.4 7.6M8.6 4.4c4.6 1.4 8.3 5.4 9.5 10M16.3 16.3c1.8 1.6 3.4 2.6 5.2 2.9", "stamp": "M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16zM12 7.8a4.2 4.2 0 1 0 0 8.4 4.2 4.2 0 0 0 0-8.4z", "notebook": "M5 4.5h11.5a2 2 0 0 1 2 2V20H7a2 2 0 0 1-2-2zM5 17.5a2 2 0 0 1 2-2h11.5M9 8.5h6"});
 const ICON_ALIAS = {"おすすめ": "ticket", "お気に入り": "star", "登録": "inbox", "記録": "chart", "探す": "search", "書き出す": "download", "暦": "calendar"};
 function ico(name, size, cls) {
   size = size || 16; cls = cls || "";
@@ -94,6 +96,38 @@ function renderNav() {
   ).join("") + "</div>";
 }
 
+// **スマホ幅の行き先 ── 4 つの大メニューを均等に並べて常に出し、子はその下にすだれで下ろす。**
+// （起案者の指示 2026-10-13「スマホ版はメインの４つの大きいメニューは固定で表示して、それより子の
+// メニューは各メニューの下にすだれで出てくるように」「大きい４つのメニューは均等割り付け」
+// 「４つの大きいメニューにアイコンをつけて」）。パソコン幅では今までどおり左の帯（NAV）を使う。
+// 探すは帯の検索窓、設定は右上の歯車、公演情報の登録はその左の「＋」から入る。
+const PNAV = [
+  ["rec", "おすすめ", "yarn", [["/recommend", "今週のおすすめ"], ["/recommend/reminder", "開幕リマインド"], ["/recommend/interest", "興味あり"], ["/recommend/favourites", "お気に入り"]]],
+  ["plan", "予定", "calendar", [["/calendar", "公演カレンダー"], ["/tickets", "購入済み公演"]]],
+  ["rate", "評価", "stamp", [["/rate", "評価一覧"], ["/rate/unrated", "未評価"], ["/rate/notes", "感想"]]],
+  ["rec2", "記録", "notebook", [["/records/works", "日記帳"], ["/records", "眺める"], ["/records/trace", "たどる"], ["/records/chronicle", "観劇史年表"]]],
+];
+function renderPNav() {
+  // 公演情報の登録は「記録」の子から外し、歯車の左の「＋」から入る（起案者の指示 2026-10-13「スマホ版のみ」）
+  return '<a class="padd" href="/register" data-path="/register" aria-label="公演情報の登録" title="公演情報の登録"'
+    + ' aria-haspopup="menu" aria-expanded="false">' + ico("plus", 22) + "</a>" + regPopHtml()
+    + '<a class="pset" href="/settings" data-path="/settings" aria-label="設定">' + ico("gear", 20) + "</a>"
+    + '<div class="pnav">' + PNAV.map(([id, label, icon]) =>
+      '<button type="button" class="pm" data-pm="' + id + '" aria-expanded="false">' + ico(icon, 22)
+      + '<span class="pl">' + E(label) + ico("chevron", 9, "cv") + "</span></button>").join("") + "</div>"
+    + PNAV.map(([id, , , kids]) => '<div class="psud" data-psud="' + id + '" hidden>'
+      + kids.map(([p, t]) => '<a href="' + p + '" data-path="' + p + '"><i aria-hidden="true"></i>' + E(t) + "</a>").join("")
+      + "</div>").join("");
+}
+function openPSud(id) {
+  document.querySelectorAll(".side .pm").forEach(b => b.setAttribute("aria-expanded", b.dataset.pm === id ? "true" : "false"));
+  document.querySelectorAll(".side .psud").forEach(d => { d.hidden = d.dataset.psud !== id; });
+}
+document.addEventListener("click", ev => {
+  const b = ev.target.closest(".side .pm");
+  if (b) openPSud(b.getAttribute("aria-expanded") === "true" ? null : b.dataset.pm);
+});
+
 // **開閉状態はlocalStorageに覚える**(元のNAV_FOLD_JSと同じ挙動)。
 // **ただしスマホ幅では「開いた」を覚えから戻さない**(起案者の指摘・2026-10-07
 // 「スマホから見たらメニューが幅取ってる」)。帯が本文の上に載る幅では、開いた束が
@@ -119,6 +153,10 @@ function crumbsFor(path, title) {
   return [["たぐり", "/"], [title, null]];
 }
 function updateNavActive(path) {
+  // スマホ幅の大メニュー: いまいる組を塗り、開いていたすだれは画面を移ったら閉じる
+  const here = PNAV.find(m => m[3].some(k => k[0] === path));
+  document.querySelectorAll(".side .pm").forEach(b => b.classList.toggle("on", !!here && b.dataset.pm === here[0]));
+  openPSud(null);
   document.querySelectorAll(".side a[data-path]").forEach(a => {
     const on = a.dataset.path === path;
     a.classList.toggle("on", on);
@@ -152,184 +190,81 @@ function renderCrumbBar(path, title) {
 // --- フラグメント読み込み ---------------------------------------------------
 const contentEl = () => document.getElementById("content");
 
-// **舞台の幕と、開幕準備で動き回る人型のピクトグラム。** 文章で「何をして
-// いるか」を語るのではなく、ピクトグラム自身が舞台の上を歩いて回り、
-// 立ち止まった先で小道具を手に取る形で見せる(起案者の指示)。枠は持たず、
-// 幕もピクトグラムも背景に直接置く。色はサイト基調のえんじ
-// (var(--curtain))一色 ── 案内標識のピクトグラムと同じ、顔の無い幾何学的な
-// 単色シルエットにした。小道具の細部は背景色を「切り抜く」技法で表す。
-function curtainValanceD(w, h, dip, scallops) {
-  const seg = w / scallops;
-  let d = "M0 " + h;
-  for (let i = 0; i < scallops; i++) {
-    d += " Q" + (i * seg + seg / 2) + " " + (h + dip) + " " + ((i + 1) * seg) + " " + h;
-  }
-  return d + " L" + w + " 0 L0 0 Z";
-}
-const CURTAIN_W = 220, CURTAIN_H = 10;
-const CURTAIN_SVG = '<svg class="tg-curtain" viewBox="0 0 ' + CURTAIN_W + ' 74" aria-hidden="true">'
-  + '<path class="tg-curtain-leg" d="M6 6C-6 26 0 54 14 70C22 50 14 24 6 6Z"/>'
-  + '<path class="tg-curtain-leg" d="M' + (CURTAIN_W - 6) + ' 6C' + (CURTAIN_W + 6) + ' 26 '
-  + CURTAIN_W + ' 54 ' + (CURTAIN_W - 14) + ' 70C' + (CURTAIN_W - 22) + ' 50 '
-  + (CURTAIN_W - 14) + ' 24 ' + (CURTAIN_W - 6) + ' 6Z"/>'
-  + '<path class="tg-curtain-valance" d="' + curtainValanceD(CURTAIN_W, CURTAIN_H, 16, 9) + '"/>'
-  + '</svg>';
-
-// **案内標識と同じ、幾何学的な人型ピクトグラム。** 顔・毛など飾りは持たない
-// (円+角丸の四角だけの構成)。腕は前へ寄せた角度で固定し、その先(手の
-// あたり)に`.tg-prop`が乗るので、小道具は常に手に持っている形になる。
-// **腕・脚はそれぞれ別グループにして、歩いている間だけ振る(起案者の指示
-// ──「手足も動かしてよりリアルに」)。手(circle)は腕グループの子にして
-// あるので、腕が振れても手だけ置いていかれることはない。静止時(小道具を
-// 持って支度をしている間)は今までどおりの構え(肩から前へ寄せた角度)。 */
-const PICTO_SVG = '<svg viewBox="0 0 64 64" aria-hidden="true">'
-  + '<g class="tg-picto">'
-  + '<rect class="tg-leg tg-leg-r" x="33" y="37" width="6" height="16" rx="3"/>'
-  + '<rect class="tg-leg tg-leg-l" x="25" y="37" width="6" height="16" rx="3"/>'
-  + '<rect x="26" y="21" width="12" height="17" rx="5"/>'
-  + '<g class="tg-arm tg-arm-r"><rect x="37" y="23" width="6" height="19" rx="3"/>'
-  + '<circle cx="40" cy="42" r="2.2"/></g>'
-  + '<g class="tg-arm tg-arm-l"><rect x="21" y="23" width="6" height="19" rx="3"/>'
-  + '<circle cx="24" cy="42" r="2.2"/></g>'
-  + '<circle cx="32" cy="14" r="6"/>'
-  + '<g class="tg-prop"></g>'
-  + '</g></svg>';
-
-// **立ち止まった先でする支度。** 持ち替えるだけでなく、段ごとに合った
-// 動き(小道具自身のアニメーション)を付ける ── ページをめくる・面を顔に
-// 当てる・金槌を振る・針を運針させる・照明を振る。`name`はCSS側で
-// `.tg-picto-wrap[data-phase]`のセレクタに使う(style.cssのtg-act-*)。
-// 塗りはえんじ色のまま(`tg-cutout`/`tg-stroke`/`tg-beam`で濃淡だけ作る)。
-const PHASES = [
-  { name: "book", prop:
-    '<rect x="29" y="30" width="15" height="11" rx="1.3"/>'                  // 台本
-    + '<g class="tg-cutout-line"><line x1="36.5" y1="31.5" x2="36.5" y2="39.5"/>'
-    + '<line x1="31" y1="34" x2="35" y2="34"/><line x1="31" y1="37" x2="35" y2="37"/>'
-    + '<line x1="38" y1="34" x2="42" y2="34"/><line x1="38" y1="37" x2="42" y2="37"/></g>' },
-  { name: "mask", prop:
-    '<ellipse cx="37" cy="35" rx="8" ry="9"/>'                                // 面(稽古)
-    + '<g class="tg-cutout"><circle cx="34" cy="33" r="1.4"/><circle cx="40" cy="33" r="1.4"/></g>'
-    + '<path class="tg-cutout-line" d="M33 39q4 3 8 0"/>' },
-  { name: "hammer", prop:
-    '<rect x="32" y="27" width="12" height="5" rx="1.4"/>'                    // 金槌(大道具)
-    + '<rect x="36.5" y="32" width="3" height="13" rx="1.4"/>' },
-  { name: "sewing", prop:
-    '<path class="tg-stroke" d="M29 45 43 28"/>'                              // 針と糸(衣装)
-    + '<circle class="tg-cutout" cx="43.5" cy="27" r="1.8"/>'
-    + '<path class="tg-stroke" d="M29 45q-4 2 -3 7q4-1 5-5"/>' },
-  { name: "light", prop:
-    '<path d="M31 27h10l4 13H27z"/>'                                        // 照明
-    + '<g class="tg-beam"><line x1="29" y1="41" x2="24" y2="49"/>'
-    + '<line x1="36" y1="43" x2="36" y2="51"/><line x1="43" y1="41" x2="48" y2="49"/></g>' },
-];
-
+// **読み込み中は、毛糸玉が転がって糸をたぐる。**（起案者の指示 2026-10-13
+// 「読み込み画面もデザインに合わせてスタイリッシュに。でもかわいく」）
+// 前の「幕と、舞台を歩き回る人型のピクトグラム」は、えんじで塗った幕や道具が多く、
+// 今の見た目（うすい灰の地・白い紙・差し色はえんじだけ）の中では重かった。
+// ロゴの下の毛糸の線と同じ波の線を、うすい灰の「これから引く糸」として先に敷き、
+// 毛糸玉がその上を転がって、通ったあとをえんじの糸にしていく ── 引いた糸の長さが
+// そのまま進み具合になる（棒の進捗の代わり）。かわいさは毛糸玉の弾みとつぶれ、
+// 転がるぶんだけの回転、ほどけた糸の端の揺れで出す。顔は描かない。
+const YARN_W = 240, YARN_H = 40;
+// ロゴの毛糸の線（M1 4 C 16 1, 26 6, 41 3 S 66 1, 81 4）と同じ波を、横に 3 回つなぐ
+const YARN_PATH = "M8 30 C 24 26, 34 33, 50 29 S 76 25, 88 30 S 112 34, 128 29 S 154 25, 166 30 S 190 34, 206 29 S 226 26, 232 30";
+const YARN_BALL = '<svg class="tg-ball" viewBox="-14 -14 28 28" aria-hidden="true">'
+  + '<g class="tg-ball-spin">'
+  + '<circle r="11" class="tg-ball-body"/>'
+  + '<g class="tg-ball-wrap">'
+  + '<path d="M-9.5 -4.5c6 1 13 5.5 15.5 13"/>'
+  + '<path d="M-10.8 1c5 .4 9.6 3.4 11 8.8"/>'
+  + '<path d="M-5.8 -9.4c6 2 11 7.8 12.6 14"/>'
+  + '<path d="M2 -10.8c4 2.2 7.2 6 8.4 10.6"/>'
+  + '</g></g></svg>';
 const COLD_START_NOTE = "サーバーを起動しています。無料枠のため、少し時間がかかることがあります…";
 
-// **周りの舞台美術。** ピクトグラム1体だけだと寂しいので(起案者の指示 ──
-// 「周りのオブジェクトなどをつくりこんで」)、道具箱(左)・脚立(右)・
-// 作業灯(中央奥)を舞台に置いた。歩く先の左右の立ち位置にちょうど道具箱・
-// 脚立が来るので、「そこへ向かって支度している」ように見える。ピクトグラムと
-// 同じくえんじ一色、`.tg-picto-wrap`より先に置いて背景に回す(DOM順=重なり順)。
-const SCENE_PROPS_SVG = '<svg class="tg-scenery" viewBox="0 0 ' + CURTAIN_W + ' 84" aria-hidden="true">'
-  + '<g class="tg-obj-crates">'
-  + '<rect x="10" y="58" width="24" height="20" rx="1.5"/>'
-  + '<rect x="15" y="42" width="15" height="17" rx="1.5"/>'
-  + '<g class="tg-cutout-line">'
-  + '<line x1="22" y1="58" x2="22" y2="78"/><line x1="10" y1="68" x2="34" y2="68"/>'
-  + '<line x1="22.5" y1="42" x2="22.5" y2="59"/><line x1="15" y1="50.5" x2="30" y2="50.5"/>'
-  + '</g></g>'
-  + '<g class="tg-obj-ladder tg-stroke">'
-  + '<line x1="194" y1="78" x2="202" y2="30"/>'
-  + '<line x1="182" y1="78" x2="190" y2="30"/>'
-  + '<line x1="184" y1="66" x2="196" y2="66"/>'
-  + '<line x1="185.6" y1="56.4" x2="197.6" y2="56.4"/>'
-  + '<line x1="187.2" y1="46.8" x2="199.2" y2="46.8"/>'
-  + '<line x1="188.8" y1="37.2" x2="200.8" y2="37.2"/>'
-  + '</g>'
-  + '<g class="tg-obj-lamp">'
-  + '<line x1="112" y1="4" x2="112" y2="20" class="tg-stroke"/>'
-  + '<circle cx="112" cy="24" r="3.6"/>'
-  + '</g>'
-  + '</svg>';
-
 function loadingHtml() {
-  const picto = PICTO_SVG.replace('<g class="tg-prop"></g>',
-    '<g class="tg-prop">' + PHASES[0].prop + '</g>');
-  return '<div class="tg-loading">'
-    + CURTAIN_SVG
-    + '<div class="tg-scene" aria-label="舞台の準備をしているピクトグラムのアニメーション">'
-    + SCENE_PROPS_SVG
-    + '<div class="tg-picto-wrap" data-phase="' + PHASES[0].name + '">' + picto + '</div></div>'
-    + '<div class="tg-load-bar"><div class="tg-load-fill"></div></div>'
-    + '<p class="tg-load-pct">0%</p>'
+  return '<div class="tg-loading" role="status" aria-label="読み込み中">'
+    + '<div class="tg-yarn">'
+    + '<svg class="tg-thread" viewBox="0 0 ' + YARN_W + ' ' + YARN_H + '" aria-hidden="true">'
+    + '<path class="tg-thread-ahead" d="' + YARN_PATH + '" pathLength="100"/>'
+    + '<path class="tg-thread-done" d="' + YARN_PATH + '" pathLength="100" stroke-dasharray="100" stroke-dashoffset="100"/>'
+    + '</svg>'
+    + '<div class="tg-ball-pos"><div class="tg-ball-hop">' + YARN_BALL + '</div></div>'
+    + '</div>'
+    + '<p class="tg-load-say">公演の糸をたぐっています<span class="tg-dots" aria-hidden="true"><i>.</i><i>.</i><i>.</i></span>'
+    + '<span class="tg-load-pct">0%</span></p>'
     + '<p class="tg-load-note" hidden>' + COLD_START_NOTE + '</p>'
     + '</div>';
 }
 
-// **ピクトグラムを舞台の上で歩かせ、立ち止まった先ごとに段(PHASES)を
-// 切り替える。** 歩いているあいだは`.walking`で足取りの弾みを速め、
-// 止まったら`data-phase`を差し替える ── そのCSSセレクタで小道具ごとの
-// 動作アニメーションが決まる(style.cssのtg-act-*)。
-// `prefers-reduced-motion`のときは動かさず、中央で静止させる。
-function startPictoWalk(scene, wrap, propEl) {
-  const reduced = typeof matchMedia === "function"
-    && matchMedia("(prefers-reduced-motion: reduce)").matches;
-  if (reduced) return () => {};
-  const waypoints = [0.06, 0.5, 0.94];
-  // **ph は1から。** 最初の段(PHASES[0])はloadingHtml()で最初から
-  // 出してあるので、最初の到着でまた同じものにすると変わり映えしない。
-  let wp = 0, ph = 1, x = 0, stopped = false;
-  const timers = [];
-  const t = (fn, ms) => { const id = setTimeout(fn, ms); timers.push(id); return id; };
-
-  function step() {
-    if (stopped) return;
-    const travel = Math.max(0, scene.clientWidth - wrap.offsetWidth);
-    const nx = Math.round(waypoints[wp] * travel);
-    wrap.style.setProperty("--facing", nx >= x ? 1 : -1);
-    wrap.style.setProperty("--x", nx + "px");
-    x = nx;
-    wrap.classList.add("walking");
-    if (propEl) propEl.classList.add("swap");
-    t(() => {
-      if (stopped) return;
-      wrap.classList.remove("walking");
-      if (propEl) {
-        const phase = PHASES[ph % PHASES.length];
-        propEl.innerHTML = phase.prop;
-        propEl.classList.remove("swap");
-        wrap.dataset.phase = phase.name;
-        ph++;
-      }
-      t(() => { wp = (wp + 1) % waypoints.length; step(); }, 2200);
-    }, 700);
-  }
-  step();
-  return () => { stopped = true; timers.forEach(clearTimeout); };
+// **毛糸玉を、糸の上の p% の位置に置く。** 位置は糸の形そのもの（getPointAtLength）
+// から取るので、波の山と谷を玉がなぞる。回した角度は進んだ道のり ÷ 半径で出す
+// （滑らずに転がっているように見える）。
+function placeYarn(el, p) {
+  const done = el.querySelector(".tg-thread-done");
+  const pos = el.querySelector(".tg-ball-pos");
+  const spin = el.querySelector(".tg-ball-spin");
+  const svg = el.querySelector(".tg-thread");
+  if (!done || !pos || !svg) return;
+  done.setAttribute("stroke-dashoffset", String(100 - p));
+  let x = 8 + (232 - 8) * p / 100, y = 30;
+  try {
+    const len = done.getTotalLength();
+    const pt = done.getPointAtLength(len * p / 100);
+    x = pt.x; y = pt.y;
+  } catch (e) {}
+  const k = svg.clientWidth ? svg.clientWidth / YARN_W : 1;
+  pos.style.transform = "translate(" + (x * k).toFixed(1) + "px," + (y * k).toFixed(1) + "px)";
+  if (spin) spin.style.transform = "rotate(" + Math.round((x - 8) * k / 11 * 57.3) + "deg)";
 }
 
-// **表示 → ピクトグラムを歩かせる・進捗%を進める → 呼び出し側が止める、
-// までを1つにまとめる。** 本当の進み具合(コールドスタートでサーバが
-// 起きるまでの時間)は分からないので、経過時間から95%まで滑らかに近づける
-// 「気持ちの上では正しい」進捗にする。5秒以上かかっていたら、コールド
-// スタートの案内をそっと添える(待たされる理由が分からないと不安になるため)。
+// **表示 → 糸をたぐる・進捗%を進める → 呼び出し側が止める、までを1つにまとめる。**
+// 本当の進み具合(コールドスタートでサーバが起きるまでの時間)は分からないので、
+// 経過時間から95%まで滑らかに近づける「気持ちの上では正しい」進捗にする。
+// 5秒以上かかっていたら、コールドスタートの案内をそっと添える(待たされる理由が
+// 分からないと不安になるため)。
 function startLoading(el) {
   el.innerHTML = loadingHtml();
   const t0 = performance.now();
-  const fill = el.querySelector(".tg-load-fill");
+  const box = el.querySelector(".tg-loading");
   const pct = el.querySelector(".tg-load-pct");
   const note = el.querySelector(".tg-load-note");
-  const scene = el.querySelector(".tg-scene");
-  const wrap = el.querySelector(".tg-picto-wrap");
-  const propEl = el.querySelector(".tg-prop");
-
-  const stopWalk = (scene && wrap) ? startPictoWalk(scene, wrap, propEl) : () => {};
 
   const tick = () => {
-    if (!fill || !fill.isConnected) return;
+    if (!box || !box.isConnected) return;
     const elapsed = performance.now() - t0;
     const p = Math.min(95, Math.round(95 * (1 - Math.exp(-elapsed / 6000))));
-    fill.style.width = p + "%";
+    placeYarn(box, p);
     if (pct) pct.textContent = p + "%";
   };
   tick();
@@ -339,9 +274,9 @@ function startLoading(el) {
   return () => {
     clearInterval(progressTimer);
     clearTimeout(noteTimer);
-    stopWalk();
-    if (fill && fill.isConnected) {
-      fill.style.width = "100%";
+    if (box && box.isConnected) {
+      placeYarn(box, 100);
+      box.classList.add("done");
       if (pct) pct.textContent = "100%";
     }
   };
@@ -453,6 +388,16 @@ function applyDemoRestrictions(root) {
 
 function renderScreen(el, activePath, d, exposureSource) {
   el.innerHTML = d.body_html;
+  // 推薦の理由に引いていた本人の感想（「あなたの言葉」）は出さない。個人の文がそのまま画面に出るため
+  // （起案者の指示 2026-10-13「あなたの言葉は個人情報すぎるので表示しないで。サービス版もデモ版も」）。
+  // サーバー（render_recommend.reason_rows）も出さないようにしたが、古いサーバーの HTML にも効かせる
+  el.querySelectorAll("li.rs.q").forEach(n => n.remove());
+  compactTickets(el);
+  penNotes(el);
+  shortAddButtons(el);
+  divergeVerdicts(el);
+  stampRerate(el);
+  gotoRegisterCard(el);
   if (window.TaguriExposure) TaguriExposure.start(el, exposureSource || "network", async (path, body) => {
     const r = await fetch(API_BASE + path, {method: "POST", credentials: "include", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
     const result = await r.json(); return r.ok && result.ok === true;
@@ -463,6 +408,9 @@ function renderScreen(el, activePath, d, exposureSource) {
   }
   if (d.public) applyDemoRestrictions(el);
   renderCrumbBar(activePath, d.title || "");
+  infoFromLede(el);
+  if (activePath === "/recommend" && Array.isArray(d.unrated_ends)) unratedNudge(d.unrated_ends);
+  priceFilter(el);
   updateNavActive(activePath);
   fixupSynClamp(el);
   fixupMonthScroll(el);
@@ -605,7 +553,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   new MutationObserver(() => applyDemoRestrictions(contentEl()))
     .observe(contentEl(), {childList: true, subtree: true});
-  document.querySelector(".side").insertAdjacentHTML("beforeend", renderNav());
+  document.querySelector(".side").insertAdjacentHTML("beforeend", renderNav() + renderPNav());
   restoreNavFold();
   const path = (location.pathname.slice(REPO_BASE.length) || "/");
   loadScreen(path, location.search.replace(/^\?/, ""));
@@ -639,19 +587,251 @@ function fixupSynClamp(root) {
 }
 fixupSynClamp(document);
 
+// **おすすめの 1 枚を詰める**（起案者の指示 2026-10-13「縦スクロールになりすぎないように」
+// 「折りたたむとき、出演者順に５人とあらすじ（最初の１文くらい）が表示されるように」
+// 「おすすめ理由は全部表示（ただし多すぎるときは折りたためるように）」・dec-recommend-compact-poster）。
+// 閉じた 1 枚に出すのは ポスター・初日・公演名・団体と劇場・発売・出演 5 人・あらすじの最初の 1 文・
+// おすすめ理由の全部（4 本目からは畳む）・回答の帯。会期と料金・日程・出演と作り手の全員・
+// あらすじの全文と入れ口・公式サイトは「くわしく」の中へ移す。**画面の HTML は Render の
+// Python が組むので、ここで組み替える**（Render を起こし直さずにデモとサービスの両方へ届く）。
+const WHY_SHOWN = 3, CAST_LEAD = 5;
+function firstSentence(t) {
+  t = (t || "").replace(/\s+/g, " ").trim();
+  const m = t.match(/^.*?[。！？!?][」』）)]*/);
+  let s = m ? m[0] : t;
+  if (s.length > 90) s = s.slice(0, 88) + "…";
+  return s.length < t.length && !s.endsWith("…") ? s + "…" : s;
+}
+// ---- 料金 ── 表示と絞り込み（起案者の指示 2026-10-14「金額での絞り込みもできるように」）
+// 金額は券ごとの data-yen="最安-最高"（円）。絞り込みは「いちばん安い券がこの金額以下」の公演を残す
+// （学生券など安い券がある公演を消さない）。料金の分からない公演は消さずに残す。選んだ上限はこの端末に覚える
+const YEN_KEY = "taguri.yenMax";
+const YEN_STEPS = [0, 2000, 3000, 4000, 5000, 6000, 8000, 10000];
+function yenOf(t) {
+  const m = /^(\d+)-(\d+)$/.exec(t.dataset.yen || "");
+  return m ? [Number(m[1]), Number(m[2])] : null;
+}
+function yenLabel([lo, hi]) {
+  const f = n => n.toLocaleString("ja-JP");
+  if (hi === 0) return "無料";
+  return lo === hi ? f(lo) + "円" : (lo === 0 ? "無料" : f(lo)) + "〜" + f(hi) + "円";
+}
+function priceFilter(el) {
+  const tickets = [...el.querySelectorAll("article.ticket")];
+  if (!tickets.some(t => t.dataset.yen)) return;
+  const h1 = el.querySelector("h1");
+  if (!h1 || el.querySelector(".yenbar")) return;
+  let cur = 0;
+  try { cur = Number(localStorage.getItem(YEN_KEY) || 0) || 0; } catch (e) { cur = 0; }
+  if (!YEN_STEPS.includes(cur)) cur = 0;
+  const bar = document.createElement("div");
+  bar.className = "yenbar";
+  bar.innerHTML = '<label for="yenmax">料金</label><select id="yenmax">'
+    + YEN_STEPS.map(v => '<option value="' + v + '"' + (v === cur ? " selected" : "") + ">"
+      + (v ? v.toLocaleString("ja-JP") + "円まで" : "すべて") + "</option>").join("")
+    + '</select><span class="yenn" role="status"></span>';
+  const anchor = h1.nextElementSibling && h1.nextElementSibling.matches(".lede, .lead, p") ? h1.nextElementSibling : h1;
+  anchor.after(bar);
+  const apply = () => {
+    const max = Number(bar.querySelector("select").value) || 0;
+    let hidden = 0;
+    el.querySelectorAll("article.ticket").forEach(t => {
+      const y = yenOf(t);
+      const hide = Boolean(max && y && y[0] > max);
+      t.classList.toggle("yenout", hide);
+      if (hide) hidden++;
+    });
+    bar.querySelector(".yenn").textContent = hidden ? hidden + " 件を隠しています（料金の分からない公演は出しています）" : "";
+    try { localStorage.setItem(YEN_KEY, String(max)); } catch (e) { /* 覚えられなくても絞り込みは効く */ }
+  };
+  bar.querySelector("select").addEventListener("change", apply);
+  apply();
+}
+
+function compactTickets(root) {
+  root.querySelectorAll("article.ticket.recommend, article.ticket.interest, article.ticket.owned").forEach(t => {
+    if (t.classList.contains("cmp")) return;
+    const main = t.querySelector(".main");
+    if (!main) return;
+    t.classList.add("cmp");
+    const more = document.createElement("details");
+    more.className = "more";
+    more.innerHTML = "<summary><b>くわしく</b><span>会期・料金・出演の全員・あらすじの全文</span></summary>";
+    const box = document.createElement("div");
+    box.className = "morebody";
+    more.appendChild(box);
+    more.addEventListener("toggle", () => t.classList.toggle("moreopen", more.open));
+    const lead = document.createElement("div");
+    lead.className = "leadbox";
+    // 出演: 出演順に 5 人まで
+    const cv = t.querySelector(".cast .cr .cv");
+    if (cv && cv.closest(".cr").querySelector(".cl")?.textContent === "出演") {
+      const c = cv.cloneNode(true);
+      c.querySelectorAll("button").forEach(b => b.remove());
+      const names = c.textContent.split("、").map(x => x.trim()).filter(Boolean);
+      const p = document.createElement("p");
+      p.className = "lcast";
+      // 6 人目からは隠しておき、「くわしく」を開いたらこの行のまま続きを出す（起案者の指示 2026-10-13
+      // 「くわしく、を押したとき『ほか6名』が展開されて…名前たちが出るように」）
+      p.innerHTML = '<span class="cl">出演</span><span class="lv">' + E(names.slice(0, CAST_LEAD).join("、"))
+        + (names.length > CAST_LEAD ? '<span class="lrest">、' + E(names.slice(CAST_LEAD).join("、")) + "</span>"
+          + '<span class="n">　ほか ' + (names.length - CAST_LEAD) + " 名</span>" : "") + "</span>";
+      lead.appendChild(p);
+      // 「くわしく」の中では出演の行を重ねて出さない（作り手の行と出典は残す）
+      const row = cv.closest(".cr"), cast = row.closest(".cast");
+      row.remove();
+      if (cast && !cast.querySelector(".cr")) cast.remove();
+    }
+    // あらすじ: 最初の 1 文
+    // 閉じていても、あらすじの最初の 1 文は必ず出す。本文の枠（.txt）が無い古い形の HTML でも、
+    // 出典・タグ・押し口・入れ口を除いた残りから拾う。あらすじが無い公演（.no・.part）は出さない
+    const syn = t.querySelector(".syn");
+    if (syn && !syn.classList.contains("no") && !syn.classList.contains("part")) {
+      let text = syn.querySelector(".txt")?.textContent || "";
+      if (!text.trim()) {
+        const c = syn.cloneNode(true);
+        c.querySelectorAll(".tags, .src, button, form, details, label, textarea, input, .hand").forEach(n => n.remove());
+        text = c.textContent;
+      }
+      if (text.trim()) {
+        const p = document.createElement("p");
+        p.className = "lsyn";
+        // 「出演」と同じく見出しを付ける ── 無いと出演の続きと区別が付かない（起案者の指摘 2026-10-13
+        // 「どこからがあらすじの1文目なのかわかりにくい」）
+        p.innerHTML = '<span class="cl">あらすじ</span><span class="lv">' + E(firstSentence(text)) + "</span>";
+        lead.appendChild(p);
+      }
+    }
+    // 主催（団体）と会場は別の行に分ける。ツアーで会場が複数あるときは「ほか n 会場」を添える
+    // （一覧は「くわしく」の中）（起案者の指摘 2026-10-13「タイトル、主催団体、会場の文字サイズが同じで
+    // わかりにくい…主催団体と会場は改行して表示（ツアー公演で複数会場ある場合も考えて）」）
+    const meta = main.querySelector(":scope > .meta");
+    if (meta && !meta.querySelector(".mg, .mv")) {
+      const grp = meta.querySelector(".grp")?.textContent.trim() || "";
+      const v = meta.cloneNode(true);
+      v.querySelectorAll(".grp, .sep").forEach(n => n.remove());
+      const venue = v.textContent.trim();
+      const stops = t.querySelectorAll(".tourfull .tf-row").length;
+      // 団体の前に人の絵記号、会場の前に建物の絵記号（起案者の指示 2026-10-14）
+      meta.innerHTML = (grp ? '<span class="mg">' + ico("user", 13) + "<span>" + E(grp) + "</span></span>" : "")
+        + (venue ? '<span class="mv">' + ico("building", 13) + "<span>" + E(venue)
+          + (stops > 1 ? '<span class="mt">ほか ' + (stops - 1) + " 会場</span>" : "") + "</span></span>" : "");
+    }
+    const sale = main.querySelector(".sale");
+    // 料金（1 枚あたり）を発売の札の隣に出す（起案者の指示 2026-10-14「チケット代金も…おすすめ画面において」）。
+    // 金額はサーバーが料金の欄から読んだもの（render_recommend.price_range）。読めなかった公演には出さない
+    const yen = yenOf(t);
+    if (yen && sale) {
+      const pr = document.createElement("span");
+      pr.className = "yen";
+      pr.textContent = yenLabel(yen);
+      sale.appendChild(pr);
+    }
+    (sale || main.querySelector(".meta")).after(lead);
+    // おすすめ理由: 全部出す。WHY_SHOWN 本を超えたら残りを畳む
+    const ul = main.querySelector("ul.why:not(.top)");
+    const lis = ul ? ul.querySelectorAll(":scope > li") : [];
+    if (ul && lis.length > WHY_SHOWN) {
+      ul.classList.add("fold");
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "whyfold";
+      const label = () => ul.classList.contains("fold") ? "ほか " + (lis.length - WHY_SHOWN) + " 本の理由を見る" : "理由をたたむ";
+      b.textContent = label();
+      b.setAttribute("aria-expanded", "false");
+      b.addEventListener("click", () => {
+        ul.classList.toggle("fold");
+        b.textContent = label();
+        b.setAttribute("aria-expanded", ul.classList.contains("fold") ? "false" : "true");
+      });
+      ul.after(b);
+    }
+    // くわしく: 会期と料金・日程・出演と作り手・あらすじ（全文と入れ口）・公式サイト
+    [".when", ".tourfull", ".cast", ".syn", ".nolink"].forEach(sel => {
+      const n = main.querySelector(":scope > " + sel) || main.querySelector(sel);
+      if (n && !n.closest(".leadbox")) box.appendChild(n);
+    });
+    // 「くわしく」の中は全部を読む場所なので、あらすじと出演者は最初から開いておく
+    box.querySelectorAll(".syn, .cast").forEach(n => n.classList.add("open"));
+    const site = t.querySelector(".pcol .sitebtn");
+    if (site) {
+      box.appendChild(site);
+      // 公式サイトへの道はポスターの真下に出す（起案者の指示 2026-10-13「やっぱ公式サイトのボタンはポスターの下に」。
+      // スマホもパソコンも同じ）
+      const a = document.createElement("a");
+      a.className = "sitelink";
+      a.href = site.getAttribute("href");
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      a.innerHTML = ico("link", 13) + "公式サイト";
+      const pc = t.querySelector(".body > .pcol");
+      if (pc) pc.appendChild(a); else if (sale) sale.appendChild(a); else main.querySelector(".meta")?.after(a);
+    }
+    const act = main.querySelector(".act");
+    if (act) act.after(more); else main.appendChild(more);
+    // 耳（日付の札）の代わりに、ポスターを切り取り線の左に立てる。順位はポスターの左上、
+    // 日付は公演名の上に移す。ポスターの無い公演は、灰の地に公演名を置く
+    const stub = t.querySelector(".stub"), perf = t.querySelector(".perf");
+    let pcol = t.querySelector(".body > .pcol");
+    if (!pcol) { pcol = document.createElement("div"); pcol.className = "pcol"; }
+    if (!pcol.querySelector(".pwrap")) {
+      const np = document.createElement("div");
+      np.className = "noposter";
+      np.innerHTML = "<b>" + E(main.querySelector("h3")?.textContent || "") + "</b><span>ポスターなし</span>";
+      pcol.prepend(np);
+    }
+    if (stub) {
+      const mark = stub.querySelector(".sn, .wax");
+      if (mark) { const rk = mark.cloneNode(true); rk.classList.add("rk"); pcol.prepend(rk); }
+      const sd = stub.querySelector(".sd");
+      if (sd) {
+        const cd = document.createElement("div");
+        cd.className = "cdate";
+        // 期間（「10/24〜10/31」）と、上演中・終了の別。ツアーなら、どの会場の日程かを添える
+        // （起案者の指示 2026-10-14。サーバーが data-range・data-state・data-tour を付ける。古い HTML は今までどおり）
+        if (sd.dataset.range) {
+          cd.innerHTML = "<b>" + E(sd.dataset.range) + "</b>"
+            + (sd.dataset.state ? '<span class="cst">' + E(sd.dataset.state) + "</span>" : "")
+            + (sd.dataset.tour ? '<span class="ctour">' + E(sd.dataset.tour) + "の日程</span>" : "");
+        } else {
+          cd.innerHTML = "<b>" + E(sd.querySelector("b")?.textContent || "") + "</b>" + E(sd.querySelector(".sk")?.textContent || "");
+        }
+        main.prepend(cd);
+      }
+    }
+    if (perf) perf.before(pcol); else t.prepend(pcol);
+    // 出演・あらすじ・理由・回答の帯・くわしくは、ポスターの下に全幅で並べる（電話の幅でも 1 行に収める）
+    const foot = document.createElement("div");
+    foot.className = "cfoot";
+    foot.appendChild(lead);
+    // 購入済み公演の「行く日」は、出演・あらすじの下に全幅で置く（おすすめと同じ並び）
+    const mytix = main.querySelector(":scope > .mytix");
+    if (mytix) foot.appendChild(mytix);
+    let n = main.querySelector(":scope > .whyh:not(.top)") || main.querySelector(":scope > .act") || more;
+    while (n) { const nx = n.nextSibling; foot.appendChild(n); n = nx; }
+    t.appendChild(foot);
+    fixupSynClamp(box);
+  });
+}
+
 async function post(path, body, group, done) {
   const said = group ? group.querySelector(".said") : null;
+  // 押した直後に「書き込み中…」を出す。返事が来るまで何も出ないと、反映されたか不安になる
+  // （起案者の指摘 2026-10-14「『記録しました。』までの文言が出る時間が長い…『書き込み中…』など表示するかにして」）
+  if (said && done !== null) { said.textContent = "書き込み中…"; said.classList.add("saving"); }
+  const settle = () => { if (said) said.classList.remove("saving"); };
   try {
     const r = await fetch(API_BASE + path, {method: "POST", credentials: "include",
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify(body)});
     const d = await r.json();
+    settle();
     if (!r.ok) { if (said) said.textContent = "できませんでした: " + (d.error || r.status); return null; }
     showWelcomeCode(d.welcome_code);
     if (d.ok !== false && path !== "/api/hand_theme_refresh" && !path.startsWith("/api/recommendation/")) fragmentCache.clear();
     if (said && done !== null) said.textContent = done || "記録しました";
     return d;
-  } catch (e) { if (said) said.textContent = "できませんでした: " + e; return null; }
+  } catch (e) { settle(); if (said) said.textContent = "できませんでした: " + e; return null; }
 }
 
 // 段の名前と札。**画面に出す言葉は 1 か所（WEIGHT_STEPS）から取る** ──
@@ -689,6 +869,52 @@ document.addEventListener("input", ev => {
   if (said) said.textContent = "まだ確定していません";
 });
 
+// **前におすすめを開いた日から今日までに終わった公演があり、未評価が残っていたら知らせる**
+// （起案者の指示 2026-10-14「以前開いたときから今日開くまでに終わった公演があって未評価があるときは、
+// おすすめを開いた際にポップアップで『未評価が◯件あります』などで促すように」）。
+// 前に開いた日はこの端末に覚える（覚えられない環境では出さないだけ）。同じ日に 2 度は出さない
+const SEEN_KEY = "taguri.recommendSeen";
+function unratedNudge(ends) {
+  const today = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
+  let last = null;
+  try { last = localStorage.getItem(SEEN_KEY); localStorage.setItem(SEEN_KEY, today); } catch (e) { return; }
+  if (!last || last >= today || !ends.length) return;
+  if (!ends.some(d => d > last && d <= today)) return;
+  const old = document.querySelector(".nudge");
+  if (old) old.remove();
+  const box = document.createElement("div");
+  box.className = "nudge";
+  box.setAttribute("role", "dialog");
+  box.setAttribute("aria-labelledby", "nudge-t");
+  box.innerHTML = '<p id="nudge-t"><b>未評価が ' + ends.length + ' 件あります</b></p>'
+    + '<p class="nudge-s">前に開いてから終わった公演があります。観た印象を忘れないうちに評価しませんか。</p>'
+    + '<div class="nudge-b"><button type="button" class="go">評価する</button>'
+    + '<button type="button" class="later">あとで</button></div>';
+  const close = () => { box.remove(); document.removeEventListener("keydown", onKey); };
+  const onKey = ev => { if (ev.key === "Escape") close(); };
+  box.querySelector(".later").addEventListener("click", close);
+  box.querySelector(".go").addEventListener("click", () => { close(); navigate("/rate/unrated", ""); });
+  document.addEventListener("keydown", onKey);
+  document.body.append(box);
+  box.querySelector(".go").focus();
+}
+
+function movedToOwned(tk) {
+  const title = ((tk.querySelector("h3") || {}).textContent || "").trim();
+  tk.classList.add("tomove");
+  setTimeout(() => {
+    const p = document.createElement("p");
+    p.className = "movedto";
+    p.setAttribute("role", "status");
+    p.append("「" + title + "」を購入済み公演に移しました ");
+    const a = document.createElement("a");
+    a.setAttribute("href", "/tickets");
+    a.textContent = "購入済み公演を見る";
+    p.append(a);
+    tk.replaceWith(p);
+  }, matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 450);
+}
+
 document.addEventListener("click", ev => {
   if (!live) return;
   const b = ev.target.closest("button");
@@ -717,8 +943,11 @@ document.addEventListener("click", ev => {
     const tear = (tk && b.dataset.v === "interest")
               || (wt && "◎○△×".indexOf(b.dataset.v) >= 0);
     if (tear) row.classList.add("torn");
+    // 押した 1 つだけに印を付ける（色が変わって弾む・theme.css の .picked）。記録できなかったら外す
+    // （起案者の指摘 2026-10-13「興味ありだけ黒いのなぜ？押したら色変わるとかなにかしらのアニメーション」）
+    g.querySelectorAll("button[data-v]").forEach(x => x.classList.toggle("picked", x === b));
     post(path, body, g).then(d => {
-      if (!d) { if (tear) row.classList.remove("torn"); return; }
+      if (!d) { if (tear) row.classList.remove("torn"); b.classList.remove("picked"); return; }
       g.classList.add("done");
       // **押した評価を、その場で余白に押す**（起案者の指示 ──「一個操作したら適宜
       // リロードしてほしい」の趣旨。ここは読み込み直さずに済む）。**判子が出ないと、
@@ -768,15 +997,23 @@ document.addEventListener("click", ev => {
           const all = document.querySelectorAll(".ticket.recommend");
           const box = document.createElement("div");
           box.innerHTML = d.fill.html;
+          box.querySelectorAll("li.rs.q").forEach(n => n.remove());
+          compactTickets(box);
           const fresh = box.firstElementChild;
           if (fresh && all.length) {
             fresh.classList.add("filled");
             all[all.length - 1].after(fresh);
             if (window.TaguriExposure) TaguriExposure.refresh(contentEl(), "fill");
             bindNotes(fresh);          // 足した 1 枚の入力欄にも動きを付ける
+            const ys = document.querySelector(".yenbar select");   // 料金の絞り込みを足した 1 枚にも効かせる
+            if (ys) ys.dispatchEvent(new Event("change"));
           }
         }
       }
+      // **「すでに持っている」を押した 1 枚は、この一覧から外して「購入済み公演」へ送る**
+      // （起案者の指示 2026-10-14「押したら、持ってる公演のところだけに表示されて」）。
+      // 外したあとに 1 行だけ残し、行き先へ飛べるようにする（どこへ行ったか分からなくしない）
+      if (b.dataset.v === "owned" && tk && !tk.classList.contains("owned")) movedToOwned(tk);
       // **見送った理由は出すだけで、開かない。** 書く頻度が低い入力なので、
       // 焦点まで移すと「書かないと進めない」ように見える
       if (b.dataset.v === "nointerest") {
@@ -1131,6 +1368,13 @@ document.addEventListener("click", ev => {
     // 押し口の列（`.tools`）に並ぶので、行そのものから欄を探す
     const w = b.closest(".inw") || b.closest(".rec-row") || b.closest(".wait");
     const box = w.querySelector(".inote"), r = w.querySelector(".inr");
+    // **書いてある感想は、その文をそのまま書き直す**（起案者の指示 2026-10-13「書き直す押したら下に
+    // テキストボックス出すのではなく、そのうえに書いてある斜体の文章直接編集できるようにして」）
+    if (r && r.querySelector(".int")) {
+      editInPlace(b, r.querySelector(".int"), box.querySelector("textarea"), r, "/api/note",
+                  t => ({work_key: t.dataset.note, note_impression: t.value}), "感想を保存しました");
+      return;
+    }
     if (r) r.hidden = true; else b.hidden = true;
     box.hidden = false;
     box.querySelector("textarea").focus();
@@ -1139,6 +1383,11 @@ document.addEventListener("click", ev => {
     // と同じ判断）
     const w = b.closest(".vnw") || b.closest(".rec-row");
     const box = w.querySelector(".vnote"), r = w.querySelector(".vnr");
+    if (r && r.querySelector(".vnt")) {
+      editInPlace(b, r.querySelector(".vnt"), box.querySelector("textarea"), r, "/api/visit_note",
+                  t => ({uid: t.dataset.vnote, note: t.value}), "メモを保存しました");
+      return;
+    }
     if (r) r.hidden = true; else b.hidden = true;
     box.hidden = false;
     box.querySelector("textarea").focus();
@@ -1664,15 +1913,343 @@ fixupImportBar(document);
 
 // **入力欄の動きは、後から足した 1 枚にも付ける。**
 //
+// **「行く日を追加」は、時刻の欄の右に「追加」だけを置き、日付・時刻・押し口を 1 行に収める**
+// （起案者の指示 2026-10-13「時刻入力フォームの右に『追加』だけ表示して。同じ行に表示して改行されないように」）
+function shortAddButtons(root) {
+  root.querySelectorAll(".mt-add button[data-mt-add]").forEach(b => {
+    b.innerHTML = ico("plus", 13) + "追加";
+    b.setAttribute("aria-label", "行く日を追加");
+  });
+}
+
+// **評価の分布を、0 を中心に左右へ分ける帯（発散型の積み上げ棒）に描き直す。**
+// 起案者の指示 2026-10-13「評価の分布、もうちょっといい可視化方法を可視化分野の論文読んで実装」。
+// - Heiberger & Robbins (2014, J. Stat. Softw. 57(5))：評定尺度は、肯定側と否定側を 0 の基線から
+//   左右に伸ばす発散型の積み上げ棒を主に使う。両側の合計を同じ基線から比べられる
+// - Cleveland & McGill (1984, JASA 79(387))：位置の判断（共通の目盛りの上の位置）が最も正確で、
+//   長さ・角度・面積の順に落ちる ── 「合っていた／合わなかった」の大きさを 0 からの位置で読ませる
+// 前の帯は ◎○△× を左から 1 本に積んでいたので、△× 側の合計は帯の途中から読むしかなかった。
+// 「まだ判断できない」などの中立の分は帯に入れず、横に件数だけを添える（中立を真ん中で割ると
+// 左右の合計が読みにくくなるという批判を避ける）。数字は今までどおり「数字で見る」の表にある
+function divergeVerdicts(root) {
+  root.querySelectorAll(".card .dbar").forEach(bar => {
+    const card = bar.closest(".card");
+    if (!card || card.dataset.diverged) return;
+    const cnt = {};
+    card.querySelectorAll("table tr").forEach(tr => {
+      const td = tr.querySelectorAll("td");
+      if (td.length >= 2) cnt[td[0].textContent.trim()] = parseInt(td[1].textContent, 10) || 0;
+    });
+    const pos = [["○", cnt["○"] || 0], ["◎", cnt["◎"] || 0]];       // 中心から外へ: ○ → ◎
+    const neg = [["△", cnt["△"] || 0], ["×", cnt["×"] || 0]];       // 中心から外へ: △ → ×
+    const P = pos[0][1] + pos[1][1], N = neg[0][1] + neg[1][1];
+    if (!P && !N) return;
+    card.dataset.diverged = "1";
+    const others = Object.entries(cnt).filter(([g]) => !"◎○△×".includes(g) && cnt[g]);
+    const side = Math.max(P, N);                                     // 左右とも同じ目盛り（0〜side）
+    const pct = v => (v / side * 100).toFixed(2) + "%";     // 左右それぞれの半分の幅に対する割合
+    const all = P + N;
+    const seg = (g, v) => v ? '<span class="vdv-s vdv-' + ({"◎": "a", "○": "b", "△": "c", "×": "d"}[g])
+      + '" style="width:' + pct(v) + '" title="' + g + " " + v + ' 件"><i>' + g + " " + v + "</i></span>" : "";
+    const html = '<div class="vdv" role="img" aria-label="'
+      + E("合っていた（◎○）" + P + " 件、合わなかった（△×）" + N + " 件") + '">'
+      + '<div class="vdv-tot"><span class="vdv-n">合わなかった <b>' + N + "</b> 件<small>（" + Math.round(N / all * 100) + "%）</small></span>"
+      + '<span class="vdv-p">合っていた <b>' + P + "</b> 件<small>（" + Math.round(P / all * 100) + "%）</small></span></div>"
+      + '<div class="vdv-row"><div class="vdv-l">' + seg(neg[1][0], neg[1][1]) + seg(neg[0][0], neg[0][1]) + "</div>"
+      + '<div class="vdv-0" aria-hidden="true"></div>'
+      + '<div class="vdv-r">' + seg(pos[0][0], pos[0][1]) + seg(pos[1][0], pos[1][1]) + "</div></div>"
+      + '<div class="vdv-ax" aria-hidden="true"><span>' + side + "</span><span>0</span><span>" + side + "</span></div>"
+      + (others.length ? '<p class="vdv-o">帯に入れていないもの: ' + others.map(([g, v]) => E(g) + " " + v + " 件").join("、") + "</p>" : "")
+      + "</div>";
+    bar.insertAdjacentHTML("afterend", html);
+    bar.remove();
+    const lead = card.querySelector("p.lead");
+    if (lead) lead.insertAdjacentHTML("beforeend", "真ん中の線から右が「合っていた」、左が「合わなかった」です。");
+  });
+}
+
+// **評価を押し直すのは、判子の丸から。**（起案者の指示 2026-10-13「『評価を押し直す』ってボタンは消して、
+// 各ハンコの丸を押したらポップアップで選びなおしできるのがでて、押し直せるようにして」）。
+// 判子を押すと、その横に ◎○△× の小さな札が開く。押すと今までどおり記録し（同じ押し口 data-v）、判子が
+// 押し直され、札は閉じる。札の外を押すか Esc で閉じる
+function stampRerate(root) {
+  root.querySelectorAll(".rec-row").forEach(row => {
+    const open = row.querySelector("button[data-rate-open]"), rb = row.querySelector(".rb:not(.notseen)");
+    const st = row.querySelector("[data-stamp]");
+    if (!open || !rb || !st || st.dataset.rerate) return;
+    st.dataset.rerate = "1";
+    open.remove();
+    st.setAttribute("role", "button");
+    st.setAttribute("tabindex", "0");
+    st.setAttribute("aria-label", "評価を選び直す（いまは " + (st.textContent.trim() || "未評価") + "）");
+    st.setAttribute("aria-haspopup", "true");
+    st.setAttribute("aria-expanded", "false");
+    rb.classList.add("rbpop");
+    rb.setAttribute("role", "group");
+    rb.setAttribute("aria-label", "評価を選び直す");
+    const place = () => {
+      const r = row.getBoundingClientRect(), s = st.getBoundingClientRect();
+      rb.style.left = Math.max(8, s.left - r.left) + "px";
+      rb.style.top = (s.bottom - r.top + 6) + "px";
+    };
+    const close = () => { rb.hidden = true; st.setAttribute("aria-expanded", "false"); };
+    const toggle = () => {
+      if (!rb.hidden) { close(); return; }
+      rb.classList.remove("done");
+      rb.hidden = false;
+      place();
+      st.setAttribute("aria-expanded", "true");
+      rb.querySelector("button[data-v]")?.focus();
+    };
+    st.addEventListener("click", ev => { ev.stopPropagation(); toggle(); });
+    st.addEventListener("keydown", ev => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); toggle(); } });
+    rb.addEventListener("keydown", ev => { if (ev.key === "Escape") { close(); st.focus(); } });
+    // 押して記録できたら（押し口の列に done が付いたら）閉じる
+    new MutationObserver(() => { if (rb.classList.contains("done")) setTimeout(close, 450); })
+      .observe(rb, {attributes: true, attributeFilter: ["class"]});
+    document.addEventListener("click", ev => { if (!rb.hidden && !rb.contains(ev.target) && ev.target !== st) close(); });
+  });
+}
+
+// **右上の「＋」は、登録の 3 つの入口を選ぶ小さな札を開く**（起案者の指示 2026-10-13「右上のプラスを押した際は
+// ページに飛ぶんじゃなくてポップアップで追加方法の3種類選べるようにして」）。選ぶと公演情報の登録の画面の
+// その札（① メール ② 手で 1 件 ③ 観ればよかった）へ移り、最初の入力欄に焦点を置く
+const REG_WAYS = [
+  ["1", "mail", "購入確認メールから取り込む", "手元のパソコンで動かしているときだけ"],
+  ["2", "plus", "手で 1 件足す", "招待・当日券など、メールに残らない分"],
+  ["3", "flag", "「観ればよかった」を足す", "出てこなかったせいで見逃した公演（観ていない公演）"],
+];
+let regGoto = "";
+function regPopHtml() {
+  return '<div class="padd-pop" role="menu" aria-label="公演情報の登録" hidden>'
+    + REG_WAYS.map(([n, icon, t, sub]) => '<button type="button" role="menuitem" data-reg="' + n + '">'
+      + ico(icon, 18) + '<span><b>' + E(t) + "</b><small>" + E(sub) + "</small></span></button>").join("")
+    + "</div>";
+}
+function gotoRegisterCard(root) {
+  if (!regGoto) return;
+  const n = regGoto;
+  regGoto = "";
+  const mark = ["①", "②", "③"][Number(n) - 1];
+  const card = [...root.querySelectorAll(".card")].find(c => (c.querySelector("h2")?.textContent || "").includes(mark));
+  if (!card) return;
+  card.scrollIntoView({behavior: "smooth", block: "start"});
+  card.classList.add("reg-hi");
+  setTimeout(() => card.classList.remove("reg-hi"), 1600);
+  card.querySelector("input:not([type=hidden]), button")?.focus({preventScroll: true});
+}
+document.addEventListener("click", ev => {
+  const add = ev.target.closest(".side .padd");
+  const pop = document.querySelector(".side .padd-pop");
+  if (add && pop) {
+    ev.preventDefault();
+    ev.stopPropagation();
+    pop.hidden = !pop.hidden;
+    add.setAttribute("aria-expanded", pop.hidden ? "false" : "true");
+    if (!pop.hidden) pop.querySelector("button")?.focus();
+    return;
+  }
+  const way = ev.target.closest(".padd-pop [data-reg]");
+  if (way) {
+    pop.hidden = true;
+    regGoto = way.dataset.reg;
+    if ((location.pathname.slice(REPO_BASE.length) || "/") === "/register") gotoRegisterCard(contentEl());
+    else navigate("/register", "");
+    return;
+  }
+  if (pop && !pop.hidden && !ev.target.closest(".padd-pop")) pop.hidden = true;
+}, true);
+document.addEventListener("keydown", ev => {
+  const pop = document.querySelector(".side .padd-pop");
+  if (ev.key === "Escape" && pop && !pop.hidden) { pop.hidden = true; document.querySelector(".side .padd")?.focus(); }
+});
+
+// **画面の説明文は、パンくずの右端の「ⓘ」から開く。**（起案者の指示 2026-10-13「こういう文章はパンくずリストの
+// 一番右にあるやつの右に、インフォーメーションマークつけて、押したらポップアップで説明出るように（パソコンも）。
+// それでこの文は消して。全ページに適用」）。題字（最初の h1）のすぐ後に続く説明の段落（p.lede・p.lead・p.note）を
+// 本文から外し、説明の札に移す。リンクや強調はそのまま動く（押すと移動する）。説明が無い画面には ⓘ を出さない
+function infoFromLede(root) {
+  const bar = document.getElementById("crumbbar"), nav = document.getElementById("crumbnav");
+  if (!bar || !nav) return;
+  bar.querySelectorAll(".infopop").forEach(n => n.remove());
+  const h1 = root.querySelector("h1");
+  if (!h1) return;
+  const isLede = n => n && n.nodeType === 1 && n.matches("p.lede, p.lead, p.note");
+  let n = h1.nextElementSibling;
+  if (!n && h1.parentElement && h1.parentElement !== root) n = h1.parentElement.nextElementSibling;
+  const take = [];
+  while (isLede(n)) { take.push(n); n = n.nextElementSibling; }
+  // 画面の下のほうにある説明でも、サーバーが .toinfo を付けたものはここに入れる
+  // （「この 15 件で、出せていない情報です。」・起案者の指示 2026-10-14）
+  root.querySelectorAll(".toinfo").forEach(p => { if (!take.includes(p)) take.push(p); });
+  if (!take.length) return;
+  const pop = document.createElement("div");
+  pop.className = "infopop";
+  pop.id = "infopop";
+  pop.setAttribute("role", "dialog");
+  pop.setAttribute("aria-label", "この画面の説明");
+  pop.hidden = true;
+  take.forEach(p => pop.appendChild(p));
+  bar.appendChild(pop);
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "crumbinfo";
+  btn.setAttribute("aria-label", "この画面の説明");
+  btn.setAttribute("aria-expanded", "false");
+  btn.setAttribute("aria-controls", "infopop");
+  btn.title = "この画面の説明";
+  btn.innerHTML = ico("info", 18);
+  nav.appendChild(btn);
+  const close = () => { pop.hidden = true; btn.setAttribute("aria-expanded", "false"); };
+  btn.addEventListener("click", ev => {
+    ev.stopPropagation();
+    if (!pop.hidden) { close(); return; }
+    const b = bar.getBoundingClientRect(), r = btn.getBoundingClientRect();
+    pop.style.top = (r.bottom - b.top + 8) + "px";
+    pop.hidden = false;
+    btn.setAttribute("aria-expanded", "true");
+  });
+  pop.addEventListener("keydown", ev => { if (ev.key === "Escape") { close(); btn.focus(); } });
+  btn.addEventListener("keydown", ev => { if (ev.key === "Escape") close(); });
+  document.addEventListener("click", ev => {
+    if (!pop.hidden && !pop.contains(ev.target) && ev.target !== btn) close();
+  });
+}
+
+// **書いてある感想・回のメモの「書き直す」を、文の末尾の鉛筆にする。**（起案者の指摘 2026-10-13
+// 「『書き直す』のボタンがあるせいで文字の折り返しが多くて感想が縦に伸びてる…鉛筆のアイコンボタンを
+// 感想の末尾につけるとかだけでも伝わる」）。文と鉛筆を 1 つの箱に入れ、鉛筆は文の最後の行に続けて置く
+function penNotes(root) {
+  root.querySelectorAll(".inr, .vnr").forEach(r => {
+    const t = r.querySelector(":scope > .int, :scope > .vnt"), b = r.querySelector(":scope > .wnb");
+    if (!t || !b) return;
+    const box = document.createElement("span");
+    box.className = "inb";
+    t.before(box);
+    box.append(t, b);
+    b.classList.add("pen");
+    setPen(b, false);
+  });
+}
+function setPen(b, editing) {
+  if (!b.classList.contains("pen")) { b.textContent = editing ? "書き終える" : "書き直す"; return; }
+  b.innerHTML = ico(editing ? "check" : "pencil", 15);
+  b.setAttribute("aria-label", editing ? "書き終える" : "書き直す");
+  b.title = editing ? "書き終える" : "書き直す";
+}
+
+// **書いてある文を、その場で書き直せる欄にする。** 下に入力欄を開くのではなく、読んでいた文の上で
+// そのまま書く。離れたら（または「書き終える」を押したら）保存し、Esc で元に戻す。保存は今までと
+// 同じ口（感想は /api/note、回のメモは /api/visit_note）。隠れている textarea も同じ値にそろえておく
+function editInPlace(btn, el, ta, row, path, bodyOf, okMsg) {
+  if (el.isContentEditable) { el.blur(); return; }
+  // 「書き終える」を押すと、先に文から離れた（blur）ことで保存が済む。そのあとに届く押下で
+  // また書き始めないようにする
+  if (btn._finishedAt && Date.now() - btn._finishedAt < 600) return;
+  const before = el.textContent;
+  try { el.contentEditable = "plaintext-only"; } catch (e) {}
+  if (!el.isContentEditable) el.contentEditable = "true";
+  el.setAttribute("role", "textbox");
+  el.setAttribute("aria-multiline", "true");
+  setPen(btn, true);
+  let said = row.querySelector(":scope > .said");
+  if (!said) { said = document.createElement("span"); said.className = "said"; row.appendChild(said); }
+  said.textContent = "";
+  el.focus();
+  const sel = window.getSelection(), range = document.createRange();
+  range.selectNodeContents(el); range.collapse(false); sel.removeAllRanges(); sel.addRange(range);
+  const finish = save => {
+    el.removeEventListener("blur", onBlur);
+    el.removeEventListener("keydown", onKey);
+    el.removeAttribute("contenteditable");
+    el.removeAttribute("role");
+    el.removeAttribute("aria-multiline");
+    setPen(btn, false);
+    const text = el.textContent.trim();
+    if (!save || text === before.trim()) { el.textContent = before; return; }
+    el.textContent = text;
+    if (ta) { ta.value = text; ta.dataset.was = text; }
+    if (!live) return;
+    post(path, bodyOf(ta || {dataset: {}, value: text}), row, okMsg).then(d => {
+      if (!d) { el.textContent = before; if (ta) { ta.value = before; ta.dataset.was = before; } }
+    });
+  };
+  const onBlur = () => { btn._finishedAt = Date.now(); finish(true); };
+  const onKey = ev => {
+    if (ev.key === "Escape") { ev.preventDefault(); el.removeEventListener("blur", onBlur); finish(false); el.blur(); }
+  };
+  el.addEventListener("blur", onBlur);
+  el.addEventListener("keydown", onKey);
+}
+
 // ボタンは `document` で受けているので足した 1 枚でも効くが、**入力欄は読み込みのときに
 // 1 度だけ結んでいた** ── 入れ替わりに差し込んだカードの欄は、書けるのに保存されない
 // 欄になる。**2 度結ばないように印を付ける**（同じ blur で 2 回送ることになる）。
+// 「なぜ気になったか」に、その公演の人の名前を札で並べ、押すだけで書き入れられるようにする
+// （起案者の指示 2026-10-14「出演者や作り手で選んでることが多いけど、いちいち名前入力するの面倒」）。
+// 名前は券に出ている出演（出演順に 8 人まで）・作り手（演出・脚本など 4 人まで）・団体。押すと欄の文に
+// 「、」で足し、もう一度押すと外す。押すたびに保存する（文に出た名前はお気に入りの候補になる・reasons.py）
+const TAG_ROLES = ["作・演出", "作・演出・振付", "演出", "脚本", "作", "脚本・演出", "原作", "振付", "音楽", "作曲"];
+function noteNames(tk) {
+  const out = [], add = (name, kind) => {
+    name = name.replace(/\s*ほか\s*\d+\s*名\s*$/, "").trim();
+    if (name && name.length <= 30 && !out.some(x => x.name === name)) out.push({name, kind});
+  };
+  const lv = tk.querySelector(".lcast .lv");
+  if (lv) {
+    const c = lv.cloneNode(true);
+    c.querySelectorAll(".n").forEach(n => n.remove());
+    c.textContent.split("、").slice(0, 8).forEach(n => add(n, "出演"));
+  }
+  let makers = 0;
+  tk.querySelectorAll(".cast .cr").forEach(r => {
+    const role = (r.querySelector(".cl")?.textContent || "").trim(), v = r.querySelector(".cv");
+    if (!v || (role === "出演" && lv)) return;
+    if (role !== "出演" && !TAG_ROLES.includes(role)) return;
+    v.textContent.split("、").forEach(n => { if (role === "出演" || makers++ < 4) add(n, role); });
+  });
+  const grp = tk.querySelector(".meta .mg")?.textContent.trim();
+  if (grp) add(grp, "団体");
+  return out;
+}
+function noteTags(t) {
+  const g = t.closest(".why-note"), tk = t.closest("article.ticket");
+  if (!g || !tk || g.querySelector(".wtags")) return;
+  const names = noteNames(tk);
+  if (!names.length) return;
+  const box = document.createElement("div");
+  box.className = "wtags";
+  box.innerHTML = '<span class="wtl">名前から選ぶ</span>' + names.map(x =>
+    '<button type="button" class="wtag" data-name="' + E(x.name) + '" title="' + E(x.kind) + '" aria-pressed="false">'
+    + E(x.name) + "</button>").join("");
+  const parts = () => t.value.split(/[、,，\n]/).map(x => x.trim()).filter(Boolean);
+  const sync = () => box.querySelectorAll(".wtag").forEach(b =>
+    b.setAttribute("aria-pressed", parts().includes(b.dataset.name) ? "true" : "false"));
+  box.addEventListener("click", ev => {
+    const b = ev.target.closest(".wtag");
+    if (!b) return;
+    const name = b.dataset.name, have = parts();
+    if (have.includes(name)) {
+      t.value = t.value.split(/(、|,|，|\n)/).filter(x => x.trim() !== name).join("")
+        .replace(/^(、|,|，)+|(、|,|，)+$/g, "").replace(/(、){2,}/g, "、");
+    } else {
+      t.value = (t.value.trim() ? t.value.trim().replace(/[、,，]$/, "") + "、" : "") + name;
+    }
+    sync();
+    t.dispatchEvent(new Event("blur"));       // 押すたびに保存する（下の blur の処理）
+  });
+  t.addEventListener("input", sync);
+  t.before(box);
+  sync();
+}
+
 function bindNotes(root) {
 // 「興味あり」に添えた理由。**離れたときに保存する**（書いている途中で送らない）
 root.querySelectorAll(".why-note textarea").forEach(t => {
   if (t.dataset.bound) return;
   t.dataset.bound = "1";
   t.dataset.was = t.value;
+  noteTags(t);
   t.addEventListener("blur", () => {
     const g = t.closest(".why-note");
     if (!live || t.value === t.dataset.was) return;

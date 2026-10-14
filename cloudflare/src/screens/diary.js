@@ -5,11 +5,12 @@
 // user: every record is a manual one (no purchases, so no `shows`, no
 // corrections table), and serve._enrich (fetching a stage's material) is
 // skipped on the public service.
+import {autoLink, pastStages} from './autolink.js';
 import {E, strip, slice, field, pyRepr, localNow, dumps, ValueError, WS, quote, qsFirst, sortBy, cmp, isdigit} from './py.js';
 import {loadWorks, similarWorks, titleKey, norm} from './works.js';
 import {handCreditCount, parseCredits} from './credits.js';
 import {recRow, anchor, stageLabels} from './row.js';
-import {indexTabs, paginate, page as pageOf, SHEET_TOP, posterHtml} from './rate.js';
+import {indexTabs, paginate, page as pageOf, SHEET_TOP, posterHtml, posterFiles} from './rate.js';
 
 /** Python truthiness of a value parsed from a JSON body. */
 export const truthy = v => !(v === undefined || v === null || v === false || v === 0 || v === ''
@@ -90,6 +91,7 @@ async function fixManual(ctx, workKey, title, shows) {
   await ctx.db.prepare('UPDATE works SET work_key=?, title=?, first_date=?, last_date=?, venue=?, time=?, updated_at=?'
     + ' WHERE user_id=? AND work_key=?')
     .bind(key, newTitle, date, date || sv.last_date, venue, time, now(ctx), ctx.uid, workKey).run();
+  await autoLink(ctx, [key]);
   return {ok: true, work_key: key, title: norm(newTitle), moved: key !== workKey, gone: false, n: 1, manual: true};
 }
 
@@ -231,7 +233,9 @@ async function handCreditsAction(b, ctx) {
 /** The stage's title in the public catalogue (stage_label.title), '' if it is not there. */
 async function stageTitle(ctx, sid) {
   const r = await ctx.db.prepare("SELECT title FROM stage_label WHERE ver=(SELECT v FROM rec_meta WHERE k='stage_label') AND stage_id=?").bind(sid).first();
-  return r?.title || '';
+  if (r?.title) return r.title;
+  // A past stage (past_stage, 2019 onwards) can be linked by hand too.
+  return (await pastStages(ctx.db, [sid]))[sid]?.title || '';
 }
 
 /** serve.on_link_stage + app.link_stage (POST /api/link_stage) */
@@ -253,7 +257,28 @@ async function linkStageAction(b, ctx) {
     + " VALUES (?,?,?,?,?,?,NULL,NULL,'','',?,?)"
     + ' ON CONFLICT(user_id, work_key) DO UPDATE SET stage_id=excluded.stage_id, updated_at=excluded.updated_at')
     .bind(ctx.uid, workKey, w.title, w.first_date || '', w.last_date || '', w.times || 1, stageId || null, now(ctx)).run();
+  // Linked by hand: no longer an automatic link. Unlinked: never link this record automatically again.
+  await ctx.db.prepare('UPDATE works SET stage_auto=0, stage_off=? WHERE user_id=? AND work_key=?')
+    .bind(stageId ? 0 : 1, ctx.uid, workKey).run();
   return {body: {ok: true, work_key: workKey, stage_id: stageId, title}};
+}
+
+// ---------------------------------------------------------------- unseen
+/**
+ * serve.on_unseen + app.set_unseen (POST /api/unseen): 「行かなかった」. It is
+ * written per visit of a purchase; a public-service user's records are all
+ * added by hand (no visits), so set_unseen always names the other way out.
+ */
+async function unseenAction(b, ctx) {
+  const workKey = field(b, 'work_key');
+  if (!workKey) throw new ValueError('work_key が要る');
+  if (typeof b.unseen !== 'boolean') throw new ValueError('unseen は真偽で渡す');
+  const w = (await loadWorks(ctx)).find(x => x.work_key === workKey);
+  if (!w) throw new ValueError('その記録は見つからない');
+  if (!(w.shows || []).length) {
+    throw new ValueError('この記録は購入から来ていないので、「この記録を取り消す」から外してほしい');
+  }
+  throw new ValueError('購入から来た記録は、この版にはない');
 }
 
 // ---------------------------------------------------------------- visit_note
@@ -286,6 +311,9 @@ async function peopleByKey(ctx, ws) {
     // the stage, not its people: load_rated's parse_credits never returns them.
     for (const r of results) stage[r.stage_id] = JSON.parse(r.people).filter(([role]) => !String(role).startsWith('#'));
   }
+  // Stages linked from past_stage (older than the current index) bring their own credits.
+  const past = await pastStages(ctx.db, sids.filter(s => !stage[s]));
+  for (const [sid, p] of Object.entries(past)) stage[sid] = p.people.filter(([role]) => !String(role).startsWith('#'));
   const out = {};
   for (const w of ws) {
     const people = [...(stage[w.stage_id] || []), ...parseCredits((w.hand || {}).fields || {})];
@@ -324,6 +352,7 @@ const checkLine = n => !n
  * owner's batch output keyed by the owner's records, so none are shown.
  */
 async function worksScreen(params, ctx) {
+  await autoLink(ctx);
   const ws = await loadWorks(ctx);
   const seen = ws.filter(w => !w.unseen);
   const d = {seen, nSkip: ws.length - seen.length, nRated: seen.filter(w => w.verdict).length,
@@ -379,8 +408,9 @@ async function worksScreen(params, ctx) {
       + '評価・感想はどの行にも同じ値が付きます（回ごとには記録していません）。'
       + '<b>「この回のメモ」だけは行ごとに別々に持てます</b>（推薦には使いません）。';
   const labels = await stageLabels(ctx, show.map(w => w.stage_id));
+  const files = await posterFiles(ctx, show);
   const rows = show.map(w => recRow({...w, people: people[w.work_key] || [], synopsis: ''},
-    {poster: posterHtml(w), editable: true, label: labels[w.stage_id] || ''})).join('');
+    {poster: posterHtml(w, files), editable: true, label: labels[w.stage_id] || ''})).join('');
   return {title, body_html: `<h1>日記帳</h1>
 ${recordsLede(d)}
 <p class="lede">1 件ごとに、日付・評価・感想が出ます。<b>感想は各行の「感想を書く」から
@@ -400,5 +430,5 @@ export const diaryScreens = {
   screens: {works: worksScreen},
   actions: {fix_work: fixWorkAction, merge_work: mergeWorkAction, drop_work: dropWorkAction,
     restore_work: restoreWorkAction, purge_work: purgeWorkAction, hand_credits: handCreditsAction,
-    link_stage: linkStageAction, visit_note: visitNoteAction},
+    link_stage: linkStageAction, visit_note: visitNoteAction, unseen: unseenAction},
 };

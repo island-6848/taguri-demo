@@ -4,6 +4,7 @@ import {passkeyRoutes} from './passkey.js';
 import {scoreFromIndex, d1Access, gradeOf, seedsFromFavourites, cleanAspects, SEED_KINDS, SEED_ROLES, MAX_SEED_FAVS, cmp} from './recommend.js';
 import {searchIndex, d1Search} from './stage-search.js';
 import {chooseVariant} from './reco-gate.js';
+import {R2_READS_CAP, r2ReadAllowed} from './free-tier.js';
 import {SCREEN_TABLES, nativeScreen, nativeAction, screen as nativeScreenBody, action as nativeActionBody, readInput as nativeInput} from './screens/index.js';
 const MAX_BODY = 262144;
 const COOKIE = 'taguri_session';
@@ -206,7 +207,12 @@ export async function health(db) {
   if (m.catalogue_delivered) catalog.uploaded_at = m.catalogue_delivered;
   if (m.catalogue_scan) catalog.scan_date = m.catalogue_scan;
   catalog.upcoming = {candidates: Number(m.catalogue_upcoming || 0)};
-  return {ok: true, catalog};
+  // Free-tier counters (docs/free-tier-budget.md): counts only, nothing about users.
+  let r2Reads = null;
+  try {
+    r2Reads = (await db.prepare('SELECT n FROM usage WHERE k=?').bind(`r2_get:${new Date().toISOString().slice(0, 7)}`).first())?.n || 0;
+  } catch { /* migration 0014 not applied yet */ }
+  return {ok: true, catalog, free_tier: {r2_reads_month: r2Reads, r2_reads_cap: R2_READS_CAP}};
 }
 // Stages for linking a record: ?q=title[&date=YYYY-MM-DD] searches by title,
 // ?ids=a,b,... returns the linked stages' names. Public catalogue fields only.
@@ -337,12 +343,35 @@ async function gate(request, env, url) {
   if (path === '/') return redirect('/about');
   return redirect('/login?next=' + encodeURIComponent(path + url.search));
 }
+/**
+ * GET /img/<file>: a poster from R2 (the POSTERS bucket, filled by the crawler's
+ * scripts/deliver_posters.py). Only signed-in users get here (gate). A file not
+ * in R2, or no bucket bound, falls through to the Render bridge as before.
+ */
+async function posterFromR2(request, env, url) {
+  const m = /^\/img\/([A-Za-z0-9_.-]{1,80})$/.exec(url.pathname);
+  if (!m || request.method !== 'GET' || !env.POSTERS) return null;
+  if (!(await r2ReadAllowed(env))) return null;
+  const obj = await env.POSTERS.get(m[1]);
+  if (!obj) return null;
+  // A poster file never changes once it is in R2 (deliver_posters.py uploads each stage once).
+  const headers = new Headers({'Cache-Control': 'private, max-age=604800, immutable', 'X-Content-Type-Options': 'nosniff'});
+  headers.set('Content-Type', obj.httpMetadata?.contentType || (/\.png$/i.test(m[1]) ? 'image/png' : 'image/jpeg'));
+  if (obj.httpEtag) headers.set('ETag', obj.httpEtag);
+  return new Response(obj.body, {headers});
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     const blocked = await gate(request, env, url);
     if (blocked) return blocked;
     if (url.pathname === '/login' && request.method === 'GET') return loginPage(request, env);
+    const poster = await posterFromR2(request, env, url);
+    if (poster) return poster;
+    // The Worker's own health (catalogue date, free-tier counters) even while the
+    // Render bridge serves the other /api/ paths: catalog-age.yml and the crawler watch it.
+    if (url.pathname === '/api/health' && request.method === 'GET') return json(await health(env.DB),200,{'Cache-Control':'public, max-age=300'});
     const migrationAPI=url.pathname.startsWith('/migration-api/');
     const native = await nativeRoute(request, env, url);
     if (native) return native;

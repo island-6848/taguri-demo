@@ -60,6 +60,13 @@ class DeliverTest(unittest.TestCase):
         m = dict(self.db.execute("SELECT k,v FROM rec_meta").fetchall())
         self.assertEqual((m['catalogue_scan'], m['catalogue_upcoming']), ('2026-10-13', '1'))
 
+    def test_line_separator_inside_a_title(self):
+        # 2026-10-13 の毎日の実行は、題名の中の U+2028 を splitlines が行の区切りとみなして落ちた
+        self.write([stage('1', 'これから\u2028二部', '2026/11/01 ～ 2026/11/09')])
+        report = self.deliver()
+        self.assertEqual(report['stages'], 1)
+        self.assertEqual(self.db.execute('SELECT title FROM catalogue').fetchone()[0], 'これから\u2028二部')
+
     def test_second_delivery_writes_only_changes_and_never_deletes(self):
         self.deliver()
         self.assertEqual(self.deliver()['changed'], 0)

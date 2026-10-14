@@ -39,6 +39,7 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
 sys.path.insert(0, str(HERE))
 from convert_catalogue import public_candidate                     # noqa: E402
+import free_tier as FT                                             # noqa: E402
 
 JST = datetime.timezone(datetime.timedelta(hours=9))
 WRITE_BUDGET = 60_000          # of the 100,000 rows/day free tier; the rest is for users
@@ -49,7 +50,7 @@ STATE = Path("d1") / "delivered.json"
 def _jsonl(path: Path) -> list[dict]:
     if not path.exists():
         return []
-    return [json.loads(l) for l in path.read_text(encoding="utf-8").splitlines() if l.strip()]
+    return [json.loads(l) for l in path.read_text(encoding="utf-8").split("\n") if l.strip()]
 
 
 def themes_by_stage(data: Path) -> dict[str, dict]:
@@ -223,7 +224,11 @@ def main() -> int:
         commit(a.data, a.out)
         print("delivered state saved")
         return 0
-    report = build(a.data, a.out, datetime.date.fromisoformat(a.today), a.index, a.budget)
+    # 今日（UTC）の D1 の書き込みの残り（free_tier.py の控え）を越えない。書く前に控えに足す
+    budget = min(a.budget, FT.d1_left(a.data))
+    report = build(a.data, a.out, datetime.date.fromisoformat(a.today), a.index, budget)
+    FT.d1_spend(a.data, report["writes"])
+    report["d1_left_today"] = FT.d1_left(a.data)
     print(json.dumps(report, ensure_ascii=False))
     return 0
 

@@ -786,6 +786,33 @@
    },
    {
     "get": "/api/screen/rate"
+   },
+   {
+    "post": "/api/unseen",
+    "body": {
+     "unseen": true
+    }
+   },
+   {
+    "post": "/api/unseen",
+    "body": {
+     "work_key": "別の舞台#2026-07-01",
+     "unseen": "yes"
+    }
+   },
+   {
+    "post": "/api/unseen",
+    "body": {
+     "work_key": "無い記録#2026-01-01",
+     "unseen": true
+    }
+   },
+   {
+    "post": "/api/unseen",
+    "body": {
+     "work_key": "別の舞台#2026-07-01",
+     "unseen": true
+    }
    }
   ]
  },

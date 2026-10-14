@@ -134,14 +134,33 @@ def period_label(period: str, days: int) -> str:
     return f"{fs}〜{int(ms[-1][1])}/{int(ms[-1][2])}{tail}"
 
 
-def short_period(period: str) -> str:
-    """他会場の行に出す短い日程（「10/2〜10/3」）。年は同じ年しか出ないので落とす。"""
+def run_range(period: str, today: date | None = None) -> str:
+    """上演の期間を「10/24〜10/31」の形で。1 日だけなら「10/24」。読めなければ空文字。
+
+    起案者の指示（2026-10-14）「『10/24初日』じゃなくて、『10/24〜10/31』みたいな表記が分かりやすい。
+    年またぐ場合にも注意」。**年をまたぐときは両方に年を付ける**（「2026/12/28〜2027/1/7」）。
+    またがなくても今年でなければ初日に年を付ける（「2027/1/5〜1/9」）── 来年の 1 月を今年の 1 月と
+    読み違えないため。
+    """
     ms = re.findall(r"(20\d\d)/(\d{1,2})/(\d{1,2})", period or "")
     if not ms:
-        return period
-    a = f"{int(ms[0][1])}/{int(ms[0][2])}"
-    b = f"{int(ms[-1][1])}/{int(ms[-1][2])}"
-    return a if a == b else f"{a}〜{b}"
+        return ""
+    try:
+        a, b = date(*map(int, ms[0])), date(*map(int, ms[-1]))
+    except ValueError:
+        return ""
+    if b < a:
+        a, b = b, a
+    this_year = (today or date.today()).year
+    if a.year != b.year:
+        return f"{a.year}/{a.month}/{a.day}〜{b.year}/{b.month}/{b.day}"
+    head = f"{a.year}/{a.month}/{a.day}" if a.year != this_year else f"{a.month}/{a.day}"
+    return head if a == b else f"{head}〜{b.month}/{b.day}"
+
+
+def short_period(period: str) -> str:
+    """他会場の行に出す短い日程（「10/2〜10/3」）。年をまたぐ・今年でないときは年も出す（run_range）。"""
+    return run_range(period) or period
 
 
 def _period_end(period: str) -> date | None:
@@ -213,9 +232,10 @@ def schedule_html(c: dict) -> str:
         return ""                       # 1 会場しか無い公演には出さない（二重に書くだけ）
     today = date.today()
     rows = []
-    for v in vs:
+    for i, v in enumerate(vs):
         end = _period_end(v["period"])
         done = bool(end) and end < today
+        here = i == 0          # venues() の先頭がこのおすすめの会場（代表）
         loc = region_label(v["pref"], v["theater"] or "会場未定")
         # **都道府県の呼び名（「東京公演」）だけでは、どの劇場かが分からない。**
         # 会場名が取れていれば添える ── 同じ都道府県に複数の劇場があるツアーでは、
@@ -224,9 +244,10 @@ def schedule_html(c: dict) -> str:
         theater = (f'<span class="tf-th">／{E(v["theater"])}</span>'
                   if v["theater"] and v["pref"] else "")
         rows.append(
-            f'<div class="tf-row{" done" if done else ""}">'
+            f'<div class="tf-row{" done" if done else ""}{" here" if here else ""}">'
             f'<span class="tf-loc">{E(loc)}公演{theater}</span>'
-            f'<span class="tf-when">{E(short_period(v["period"]))}</span></div>')
+            f'<span class="tf-when">{E(short_period(v["period"]))}</span>'
+            + ('<span class="tf-here">このおすすめの日程</span>' if here else "") + '</div>')
     return f'<div class="tourfull">{"".join(rows)}</div>'
 
 
@@ -649,6 +670,22 @@ def cast_block(c: dict) -> str:
             f'<span class="src">［出典: {E(ROLE_SRC)}］</span></div>')
 
 
+WORKS_SHOWN = 3
+
+
+def works_text(works: list, n: int) -> str:
+    """人物の理由に添える「（『作品A』・『作品B』 ほか 2 本）」。HTML を返す。
+
+    **作品名だけを書き、◎ などの印は付けない**（起案者の指示 2026-10-14「理由に作品名を書くとき、
+    ◯とかの評価は不要。作品名だけでよい」）。並びは person_titles の順（◎ を付けた作品が先）のまま。
+    """
+    if not works:
+        return f"（履歴 {int(n)} 本）"
+    shown = [f"『{E(t)}』" for t, _m in works[:WORKS_SHOWN]]
+    rest = len(works) - WORKS_SHOWN
+    return "（" + "・".join(shown) + (f" ほか {rest} 本" if rest > 0 else "") + "）"
+
+
 def reason_rows(c: dict) -> str:
     """理由を、網ごとに 1 行ずつ。**出典を必ず添える**（事実であることを読み手が確かめられる）。
 
@@ -690,25 +727,25 @@ def reason_rows(c: dict) -> str:
                  f' title="この登録をやめる">✕</button>' if m else "")
         out.append(f'<li class="rs a"><span class="net">申告</span>{E(w)}'
                    f'<span class="src">［出典: {E(ROLE_SRC)}］</span>{rmbtn}</li>')
+    works_of = c.get("why_b_works") or {}
     for contrib, role, person, n in c.get("why_b", [])[:4]:
-        # **本数を書く。** 「履歴 1 本」と「履歴 8 本」を同じ顔で並べると、偶然を好みとして読ませる
-        #
-        # **◎ を付けた作品だけとは言い切らなくなった**（起案者の指示・2026-08-26 ──
-        # 「観れば良かった」で挙がった人名は興味ありと同じ扱いで名簿に混ぜるようにした
-        # ため。この本数には、観て良かった（◎）作品だけでなく、気になった（興味あり・
-        # 観ればよかった）作品も混ざっている ── どちらの割合かはここでは分からないので、
-        # 「◎ を付けた作品」と言い切る文言のままにしておくと、実際より強い実績に読める
+        # **本数ではなく作品名を書く**（起案者の指示・2026-10-14 ──「『（◎ を付けた・気になった
+        # 作品での実績・履歴 1 本）』じゃなくて、具体的に（『作品A』『作品B』など）って書いてほしい」）。
+        # 作品名だけを書く（印は付けない・同日の指示）。本数だけだと 1 本の偶然と 8 本の好みを同じ顔で
+        # 読ませる、という以前の注意（本数を書いた理由）は、並ぶ作品の数と「ほか N 本」で満たす。
+        # 作品名が引けない人（観ればよかった・古い出力）は本数で書く
+        works = (works_of.get(f"{role}\t{person}") or []) if isinstance(works_of, dict) else []
         out.append(f'<li class="rs b"><span class="net">人物</span>'
                    f'{E(role)} <b>{E(person)}</b>'
-                   f'<span class="n">（◎ を付けた・気になった作品での実績・履歴 {n} 本）</span>'
+                   f'<span class="n">{works_text(works, n)}</span>'
                    f'<span class="src">［出典: {E(ROLE_SRC)}］</span>'
                    f'<button class="rsx" data-word="{E(person)}"'
                    f' title="この人物を理由に出さない">✕</button></li>')
-    # **人物の行の直後に置く。** 引用は上の名前に紐づく事実なので、離すと何の話か分からない
-    # **引用は見ている人の感想から引く**（E3）。公開デモの訪問者のカードには
-    # `app._load` がその人の分を `_notes` に入れてある。無ければ持ち主の分（起動時に作る）
-    out.append(IM.quote_row([p[2] for p in c.get("why_b", [])[:4]],
-                            c.get("_notes", NOTES_BY_PERSON)))
+    # **本人の感想の引用（「あなたの言葉」）は出さない**（起案者の指示・2026-10-13 ──
+    # 「あなたの言葉は個人情報すぎるので表示しないで。サービス版もデモ版も」）。感想の文が
+    # そのまま推薦の画面に並ぶと、画面を人に見せたとき・写したときに個人の文が漏れる。
+    # 感想は今までどおり名簿と内容の好みの材料にはなる（`impressions` の他の関数）── 出すのを
+    # やめるのは画面への引用だけ。`IM.quote_row` 自体は残してある（試験と、戻すときのため）
     _src, _doubt = synopsis_source(str(c["stage_id"]), c.get("synopsis") or "")
     for it in c.get("why_c", [])[:3]:
         word = it[1] if isinstance(it, (list, tuple)) and len(it) > 1 else it
@@ -1020,6 +1057,67 @@ def _not_seen(w: dict) -> str:
             f'<span class="said"></span></div></details>')
 
 
+_YEN = re.compile(r"(?:[¥￥]\s*([0-9][0-9,]*)|([0-9][0-9,]*)\s*円)")
+_FREE = re.compile(r"無料|入場料なし|投げ銭|カンパ")
+
+
+def price_range(text: str) -> tuple[int, int] | None:
+    """料金の欄（CoRich の「料金（1枚あたり）」）から、いちばん安い券と高い券の金額（円）。
+
+    起案者の指示（2026-10-14）「取得できそうならチケット代金も入手しておすすめ画面において。
+    金額での絞り込みもできるように」。欄は「一般 5,000円 学生 3,000円【発売日】2026/09/01」の
+    ような自由な文なので、「N 円」「¥N」を全部拾って最小と最大を取る。発売日などの日付は拾わない。
+    金額が無く「無料」などとあれば (0, 0)。読めなければ None（画面では料金を出さず、絞り込みでも隠さない）。
+    1 枚 10 万円を超える数は、席数や電話番号などの読み違いとして捨てる。
+    """
+    t = unicodedata.normalize("NFKC", text or "")
+    t = re.sub(r"【発売日】.*?(?=【|$)", " ", t)
+    vals = []
+    for a, b in _YEN.findall(t):
+        try:
+            v = int((a or b).replace(",", ""))
+        except ValueError:
+            continue
+        if 0 <= v <= 100_000:
+            vals.append(v)
+    if vals:
+        return min(vals), max(vals)
+    return (0, 0) if _FREE.search(t) else None
+
+
+_URL = re.compile(r'https?://[^\s"<>）)」』、。]+')
+
+
+def ticket_url(c: dict) -> str:
+    """発売の札から飛ぶ先。**券を買える案内が載っていそうな順に選ぶ**（起案者の指示 2026-10-14
+    「発売済み、などのボタンを押したら、各サイトの公式のプレガが載ってるページに遷移するようにして」）。
+
+    CoRich の公演ページの表には、プレイガイドの欄が無い（2026-10-14 に 1,353 件で確かめた ──
+    ぴあ・イープラスなどの名前は料金の欄の文に 1 割ほど出るだけで、URL はほぼ無い）。そこで
+    1) 料金の欄に URL があればそれ、2) 公式サイト（券の案内は多くここにある）、3) CoRich の公演ページ。
+    """
+    m = _URL.search(c.get("price") or "")
+    if m:
+        return m.group(0)
+    if c.get("url"):
+        return str(c["url"])
+    sid = str(c.get("stage_id") or "")
+    return f"https://stage.corich.jp/stage/{sid}" if sid.isdigit() else ""
+
+
+def sale_pill(c: dict, onsale: str, cls: str) -> str:
+    url = ticket_url(c)
+    if not url.startswith(("https://", "http://")):
+        return f'<span class="pill {cls}">{E(onsale)}</span>'
+    return (f'<a class="pill {cls} buy" href="{E(url)}" target="_blank" rel="noopener noreferrer"'
+            f' title="券の案内のページを開く">{E(onsale)}<span class="go" aria-hidden="true">↗</span></a>')
+
+
+def _price_attr(c: dict) -> str:
+    r = price_range(c.get("price") or "")
+    return f' data-yen="{r[0]}-{r[1]}"' if r else ""
+
+
 def _stub(rank, c: dict, mark: str = "") -> str:
     """チケットの耳（もぎる側）。**「入場券」とは書かない。**
 
@@ -1055,8 +1153,25 @@ def _stub(rank, c: dict, mark: str = "") -> str:
     # **順位は推薦の枠にしか無い。** 興味あり・お気に入りは順位を付けない束なので
     # （企画書 1 章）、番号を振ると付けていない順位を付けたように見える
     n = f'<span class="sn">No.{rank:02d}</span>' if rank else mark
+    # 詰めた券（app.js の compactTickets）は耳の代わりに公演名の上へ日付を出す。そこでは「初日」の
+    # 1 日ではなく期間（「10/24〜10/31」・run_range）と、上演中・終了の別を出す（起案者の指示 2026-10-14）。
+    # ツアーなら、どの会場の日程かも添える（同日の指示「どの日程の分でおすすめに出ているのか分かりやすく」）
+    rng = run_range(c.get("period") or "")
+    state = ""
+    if ms:
+        if first > today:
+            state = ""
+        elif last >= today:
+            state = "上演中"
+        else:
+            state = "終了"
+    tour = ""
+    if c.get("tours"):
+        tour = region_label(c.get("pref") or "", c.get("theater") or "")
+        tour = f"{tour}公演" + (f"／{c['theater']}" if c.get("theater") and c.get("pref") else "")
+    data = (f' data-range="{E(rng)}" data-state="{E(state)}"' if rng else "") + (f' data-tour="{E(tour)}"' if tour else "")
     return (f'<div class="stub" aria-hidden="true">{n}'
-            f'<span class="sd"><b>{E(md)}</b><span class="sk">{E(lab)}</span></span></div>')
+            f'<span class="sd"{data}><b>{E(md)}</b><span class="sk">{E(lab)}</span></span></div>')
 
 
 def declared_rows(c: dict) -> str:
@@ -1351,7 +1466,7 @@ def ticket(c: dict, *, rank=None, mode: str = "recommend", note: str = "",
             '<span class="said"></span></span>')
         rows = "".join(_mt_row(t) for t in (my_tickets or []))
         mytix_html = f'<div class="mytix"><b>行く日</b>{rows}{add_form}</div>'
-    return f"""<article class="ticket {E(mode)}" data-stage="{E(c["stage_id"])}">
+    return f"""<article class="ticket {E(mode)}" data-stage="{E(c["stage_id"])}"{_price_attr(c)}>
 {_stub(rank, c, mark)}
 <div class="perf" aria-hidden="true"></div>
 <div class="body">{pcol}
@@ -1363,7 +1478,7 @@ def ticket(c: dict, *, rank=None, mode: str = "recommend", note: str = "",
  <div class="when">{period_label(c.get("period", ""), c.get("days", 0))}
   <span class="price">{E(c.get("price") or "料金を取れませんでした")}</span></div>
  {t_html}
- <div class="sale"><span class="pill {cls}">{E(onsale)}</span></div>
+ <div class="sale">{sale_pill(c, onsale, cls)}</div>
  {cast_block(c)}
  {syn_html}
  {'' if top_why else f'<div class="whyh">{IC.ico("eye", 14)}{whyh}</div><ul class="why">{why}</ul>'}
@@ -2070,7 +2185,9 @@ def limits_html(d: dict, rows: list | None = None) -> str:
     if not rec:
         return ""
     n_syn = sum(1 for c in rec if (c.get("synopsis") or "").strip())
-    return f"""<p class="note"><b>この {len(rec)} 件で、出せていない情報です。</b><br>
+    # 画面では見出しの横のインフォメーションの中に入れる（app.js の infoFromLede が .toinfo を拾う。
+    # 起案者の指示 2026-10-14「この 15 件で、出せていない情報です。、はインフォーメーションマークのとこに書くのでよい」）
+    return f"""<p class="note toinfo"><b>この {len(rec)} 件で、出せていない情報です。</b><br>
 ・<b>チケットの販売期限と、販売終了・完売</b>：手元に情報がないので表示できません。
 残っているかどうかは公式サイトで確認してください<br>
 ・<b>あらすじ</b>：{n_syn}/{len(rec)} 件で表示できました。残りは公演のページに載っていませんでした<br>

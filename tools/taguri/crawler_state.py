@@ -43,7 +43,25 @@ def keep(rel: str) -> bool:
         return False
     if name.endswith(".part") or name.startswith(".publish_catalog.lock"):
         return False
+    # **R2 に入れ終えたポスターは残さない**（docs/knowledge の dec-posters-r2・q-crawler-state-size）。
+    # 入れ終えたかは data/r2/posters.json（deliver_posters.py が書く）で見る。まだのものは残す
+    if parts[:2] == ["review", "img"] and Path(name).stem in _uploaded():
+        return False
     return True
+
+
+_UPLOADED: dict | None = None
+
+
+def _uploaded() -> dict:
+    global _UPLOADED
+    if _UPLOADED is None:
+        p = DATA / "r2" / "posters.json"
+        try:
+            _UPLOADED = __import__("json").loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+        except ValueError:
+            _UPLOADED = {}
+    return _UPLOADED
 
 
 def _files(base: Path):

@@ -67,7 +67,7 @@
 | 道 | 画面 | 役割 |
 |---|---|---|
 | `/start` | **はじめる** | 何も入っていないときの入口。名前の登録から順に 3 段を出す |
-| `/recommend` | **おすすめ ▸ 今週のおすすめ** | 答え。順位を付けた 15 件と、もう追いかけない束 |
+| `/recommend` | **おすすめ ▸ 今週のおすすめ** | 答え。順位を付けた 15 件（もう追いかけない束は 2026-10-14 に出すのをやめた） |
 | `/recommend/reminder` | **おすすめ ▸ 開幕リマインド** | 答えていない候補・興味あり・お気に入りのうち初日が近いもの。券がある公演の直近予定 |
 | `/recommend/interest` | **おすすめ ▸ 興味あり** | 追いかける。もぎった公演と、書いた理由 |
 | `/recommend/favourites` | **おすすめ ▸ お気に入り** | お知らせ。登録した名前の新着と、登録・解除 |
@@ -2458,6 +2458,17 @@ def waiting_rows(user_id: str, today: str = "") -> list[dict]:
             and w["last_date"] and w["last_date"] <= today]
 
 
+def unrated_ends(user_id: str, today: str = "") -> list[str]:
+    """未評価の行の、上演が終わった日（観た日）の並び。**日付だけを返す**（題名は返さない）。
+
+    起案者の指示（2026-10-14）「以前開いたときから今日開くまでに終わった公演があって未評価が
+    あるときは、おすすめを開いた際にポップアップで『未評価が◯件あります』などで促すように」。
+    前に開いた日は画面の側（その端末）が覚えていて、この日付の並びと比べて出すかを決める（app.js の
+    unratedNudge）。「すでに持っている」公演は、終わった日に `_promote_owned_tickets` が行にする
+    """
+    return sorted(w["last_date"] for w in waiting_rows(user_id, today))
+
+
 def _react_groups(react: dict) -> dict[str, list[str]]:
     """作品単位（`recommend2.work_key`）→ その作品の反応が乗っている stage_id の一覧。
 
@@ -2750,12 +2761,11 @@ def _rebucket(user_id: str, d: dict) -> dict:
             if done and done <= today:
                 continue
             out["owned"].append(c)
-            # **お気に入りに当たった分は、持っていても外さない**（起案者の指示・
-            # 2026-08-26 ──「おすすめに出ないようにして（お気に入りには出ていて
-            # よい）」）。お気に入りは「読むだけのお知らせ」なので、券を持ったことと
-            # 知らせを読むことは両立する ── **「持っている」だけがこの例外を持つ。**
-            if c.get("a"):
-                out["favourites"].append(c)
+            # **持っている公演は「購入済み公演」にだけ出す**（起案者の指示・2026-10-14 ──
+            # 「『既に持っている』を押したら、持ってる公演のところだけに表示されて、公演が
+            # 終わったら初めて未評価に出るようにして」）。以前（2026-08-26）はお気に入りに
+            # 当たった分をお気に入りにも残していたが、この指示で取りやめた。終わったら
+            # `_promote_owned_tickets` が works の行にし、未評価（`waiting_rows`）に出る
         elif r.get("interest") == 1:
             # **興味ありを押した公演は、お気に入りには重ねない**（起案者の指摘・
             # 2026-08-26 ──「公演カレンダーで同じ公演が興味ありとお気に入りの
@@ -4074,10 +4084,10 @@ def _recommend_body(user_id: str, prefs=()) -> str:
 {_exposure_cards(user_id, rows, prefs, RR.cards_html(d, rows))}
 <p class="lede">気になった公演で「興味あり」を押すと、
 <a href="/recommend/interest?t=__TAGURI_TOKEN__">「興味あり」（いま {n_tr} 件）</a>に移ります。</p>
-{IC.h2("flag", "もう追いかけない公演 ── 畳んでいますが、消していません")}
-<p class="lede">すでに答えた公演です。上の都道府県の絞り込みは、ここには効きません。</p>
-{RR.bundles_html(d, _notes_no(user_id))}
 {RR.limits_html(d, rows)}"""
+    # **「もう追いかけない公演」（興味なしと答えた分・出さない語に当たった分）の束は出さない**
+    # （起案者の指示 2026-10-14「もう追いかけない公演の情報はいらない」）。答えは消していないので、
+    # 出さない語は「お気に入り」の画面で外せ、興味なしは押し直せば戻る
     return body
 
 

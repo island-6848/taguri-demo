@@ -80,10 +80,23 @@ def have() -> dict[str, str]:
     return {f.stem: f.name for f in IMG.iterdir() if f.is_file()}
 
 
+def uploaded() -> dict[str, str]:
+    """R2 に入れ終えたポスター（stage_id → ファイル名）。`cloudflare/scripts/deliver_posters.py` が書く。
+
+    **R2 にあるものは取り直さない。** 入れ終えた分は作業データ（state ブランチ）に残さない
+    （crawler_state.py）ので、手元のファイルだけを見ると毎回すべて取り直すことになる
+    （docs/knowledge の dec-posters-r2）。"""
+    p = ROOT / "data" / "r2" / "posters.json"
+    try:
+        return json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+    except ValueError:
+        return {}
+
+
 def fetch(stage_ids, *, sleep: float = 0.0, limit: int = 0) -> dict[str, int]:
     """まだ無いものだけ取り込む。**間隔（同じホストに 1.1 秒に 1 回）は polite_http が守る。**"""
     IMG.mkdir(parents=True, exist_ok=True)
-    got = have()
+    got = {**uploaded(), **have()}
     n = {"済み": len(got), "取得": 0, "画像なし": 0, "失敗": 0}
     todo = [s for s in dict.fromkeys(str(x) for x in stage_ids) if s and s not in got]
     if limit:

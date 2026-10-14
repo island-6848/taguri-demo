@@ -238,6 +238,18 @@ export function d1Access(db, ver, counter = {rows: 0, queries: 0}) {
         counter.rows += results.length; counter.queries += 1;
         for (const r of results) map.set(r.stage_id, JSON.parse(r.people));
       }
+      // Records linked to a past stage (past_stage, older than the index) bring its credits.
+      const rest = ids.filter(s => !map.has(s));
+      for (let i = 0; i < rest.length; i += IDS_PER_QUERY) {
+        const chunk = rest.slice(i, i + IDS_PER_QUERY);
+        let results = [];
+        try {
+          ({results} = await db.prepare('SELECT stage_id,people FROM past_stage WHERE stage_id IN ('
+            + chunk.map(() => '?').join(',') + ')').bind(...chunk).all());
+        } catch { break; }
+        counter.rows += results.length; counter.queries += 1;
+        for (const r of results) map.set(r.stage_id, JSON.parse(r.people));
+      }
       return map;
     },
   };

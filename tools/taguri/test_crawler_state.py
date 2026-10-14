@@ -16,6 +16,7 @@ import crawler_state as CS                                           # noqa: E40
 
 class CrawlerState(unittest.TestCase):
     def setUp(self):
+        CS._UPLOADED = None
         self.tmp = tempfile.TemporaryDirectory()
         base = Path(self.tmp.name)
         self.data = base / "data"
@@ -51,6 +52,16 @@ class CrawlerState(unittest.TestCase):
         with patch.object(CS, "DATA", fresh):
             self.assertEqual(CS.restore(self.state), 2)
             self.assertEqual(self.files(fresh), ["review/candidates.jsonl", "review/requests_cache.json"])
+
+    def test_posters_already_in_r2_are_left_out(self):
+        img = self.data / "review" / "img"
+        img.mkdir(parents=True)
+        for n in ("1.jpg", "2.jpg"):
+            (img / n).write_bytes(b"x")
+        (self.data / "r2").mkdir()
+        (self.data / "r2" / "posters.json").write_text('{"1": "1.jpg"}')
+        CS.save(self.state)
+        self.assertEqual(self.files(self.state), ["r2/posters.json", "review/img/2.jpg"])
 
     def test_links_are_not_followed(self):
         (self.state / "review").mkdir(parents=True)

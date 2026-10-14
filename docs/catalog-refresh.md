@@ -4,6 +4,10 @@
 
 > **2026-10-13: EC2 は無い**〔no-ec2〕。この文書の「EC2」で動かす手順は、いまどこでも動いていない。置き場所は非公開リポジトリの GitHub Actions を勧めている〔dec-crawler-gha-private〕。カタログの古さは公開の `/api/health` の `catalog` と、毎日の `Catalog age` ワークフローで確かめられる〔catalog-age-check〕。
 
+> **無料枠の中だけで動かす**（起案者の指示 2026-10-13「必ず無料の範囲内にして。絶対超えないで」）。今の取得は非公開リポジトリ
+> taguri-crawler の GitHub Actions（月 2,000 分まで無料）で動き、ジョブの最初の段が分数を数えて上限 1,500 分の中でだけ動く。
+> 1 日に読む過去の公演の枚数も、その残りで決まる。詳しくは `docs/free-tier-budget.md`・`tools/taguri/deploy/github-actions/README.md`。
+
 ## 流れ
 
 | いつ | 何をする | 取得の量 |

@@ -22,7 +22,9 @@ Renderを止める前に検証する独立した移行版です。現行のPytho
 
 ## 無料運用の方針
 
-- Cloudflare Workers **Free** とD1から始め、`workers.dev` のURLを使用します。有料プラン・独自ドメイン・R2・Supabase・外部LLMは不要です。このコードから有料プランへ変更する処理はありません。
+- **有料のものは使いません。無料枠を越えそうなら使う前に止めます**（起案者の指示 2026-10-13「必ず無料の範囲内にして。絶対超えないで」）。上限の一覧は [../docs/free-tier-budget.md](../docs/free-tier-budget.md)。
+- Cloudflare Workers **Free** とD1、ポスター用の R2（無料枠の中だけ）を使い、`workers.dev` のURLを使用します。有料プラン・独自ドメイン・Supabase・外部LLMは使いません。このコードから有料プランへ変更する処理はありません。
+- **R2 は無料枠（保存 10 GB・書き込み月 100 万回・読み出し月 1,000 万回）を越えると請求されます。** 取得の側は保存 8 GB・書き込み月 30 万回の手前で入れるのをやめ（`scripts/deliver_posters.py`・`scripts/free_tier.py`）、Worker は読み出しを D1 の `usage` 表（migration 0014）に数えて月 300 万回で R2 を読むのをやめます（`src/free-tier.js`）。数えられないときも読みません。`/api/health` の `free_tier` に今月の数が出ます。
 - 無料枠の最新の制限/課金条件はCloudflareダッシュボードで確認してください。無料枠超過時の停止を許容する構成です。通常運用が無期限に無料になることを保証するものではありません。
 - プレビューは100アカウント、1人500記録/200お気に入り/500公演反応まで。これらは**保存量の上限**であり、攻撃やアクセス集中時のリクエスト数を抑えるものではありません。公開前にCloudflareで利用量とアクセス制御を確認します。新規登録は `ALLOW_REGISTRATION=false` で停止できます。
 - private APIは `no-store`。復旧コード/セッションはSHA-256ハッシュのみD1に保存し、256bitのランダム値を使用します。セッションは30日、CookieはHttpOnly/Secure/SameSite=Strict。コードを保存しないと復旧できません。
@@ -205,7 +207,7 @@ npx wrangler d1 execute taguri-demo --remote --file /tmp/rec.sql
 | 公演1,200・評価100（実データに近い想定） | 約5,400 | 約10〜12ms |
 | 公演3,000・評価200・よく出る人に偏る（重い想定） | 約30,000 | 約39ms |
 
-Workers無料枠のCPU時間（1回約10ms）には、重い想定では収まらない。計算し直すのは記録や索引が変わったときだけなので回数は少ないが、**実カタログで `build_recommend_index.py --stats` の数字を見て判断する**必要がある。収まらなければ、(1) 公演の開始日を `rec_credit` に持たせ、始まった公演をSQLの段階で除く、(2) Workers Paid（月5ドル、CPU時間30秒）に移る、のどちらか。
+Workers無料枠のCPU時間（1回約10ms）には、重い想定では収まらない。計算し直すのは記録や索引が変わったときだけなので回数は少ないが、**実カタログで `build_recommend_index.py --stats` の数字を見て判断する**必要がある。収まらなければ、(1) 公演の開始日を `rec_credit` に持たせ、始まった公演をSQLの段階で除く、(2) ~~Workers Paid（月5ドル、CPU時間30秒）に移る~~ ── 有料には移らない（〔dec-free-tier-only〕）。収まらない画面は移さず Render のままにする、のどちらか。
 
 ## 記録を公演に結び付ける
 

@@ -53,13 +53,12 @@ export async function loadWorks(ctx) {
       into.get(dst).push({work_key: k, title: sv.title || ''});
       continue;
     }
-    // data/credits/linked.jsonl (auto links) is the owner's batch output; a
-    // public user's rows are never auto-linked, so auto_linked stays false.
+    // Links made by screens/autolink.js carry stage_auto=1 (shown as 自動で結び付けました).
     out.push({work_key: k, title: sv.title || '', bucket: 'manual',
       first_date: sv.first_date || '', last_date: sv.last_date || '',
       times: sv.times || 1, verdict: sv.verdict || '', note_impression: sv.note_impression || '',
       venue: sv.venue || '', time: sv.time || '', stage_id: sv.stage_id || '',
-      auto_linked: false, has_credits: false, unseen: false, skipped: 0,
+      auto_linked: !!sv.stage_auto && !!sv.stage_id, has_credits: false, unseen: false, skipped: 0,
       suspect: false, merged: [], hand: hand[k] || {}, shows: []});
   }
   for (const w of out) if (into.has(w.work_key)) w.merged = [...w.merged, ...into.get(w.work_key)];

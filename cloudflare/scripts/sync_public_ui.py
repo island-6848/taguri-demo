@@ -16,11 +16,15 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 WEB, PUBLIC = ROOT / "web", ROOT / "cloudflare" / "public"
-COPIED = ("tour.js", "style.css", "tour.css", "theme.css", "recommendation-exposure.js")
+COPIED = ("tour.js", "style.css", "tour.css", "theme.css", "recommendation-exposure.js",
+          "assets/fonts/OFL-ZenKakuGothicAntique.txt")
+# Self-hosted title font (SIL OFL, subset to the page titles). Copied byte for byte.
+BINARY = ("assets/fonts/zkga-title.woff2",)
 
 
-def expected() -> dict[str, str]:
-    out = {name: (WEB / name).read_text(encoding="utf-8") for name in COPIED}
+def expected() -> dict[str, str | bytes]:
+    out: dict[str, str | bytes] = {name: (WEB / name).read_text(encoding="utf-8") for name in COPIED}
+    out.update({name: (WEB / name).read_bytes() for name in BINARY})
     app = (WEB / "app.js").read_text(encoding="utf-8")
     out["app.js"] = app.replace('"/taguri-demo/vendor/d3.v7.min.js"', '"/vendor/d3.v7.min.js"')
     html = (WEB / "index.html").read_text(encoding="utf-8")
@@ -34,10 +38,13 @@ def main() -> int:
     stale = []
     for name, text in expected().items():
         dest = PUBLIC / name
-        if not dest.exists() or dest.read_text(encoding="utf-8") != text:
+        binary = isinstance(text, bytes)
+        current = (dest.read_bytes() if binary else dest.read_text(encoding="utf-8")) if dest.exists() else None
+        if current != text:
             stale.append(name)
             if not check:
-                dest.write_text(text, encoding="utf-8")
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                dest.write_bytes(text) if binary else dest.write_text(text, encoding="utf-8")
     if check and stale:
         print("cloudflare/public is out of date with web/: " + ", ".join(stale)
               + "\nrun: python3 cloudflare/scripts/sync_public_ui.py")
