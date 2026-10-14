@@ -75,3 +75,94 @@ test("two users on the native screens never see or change each other's records",
     assert.match((await step(env, a, {get: '/api/screen/works'})).body.body_html, /Aだけの舞台/);
   } finally { sqlite.close(); }
 });
+
+// 2026-10-14: production switched before every screen was ported (起案者の指示
+// 「本番用のサイトなはずなのに、デモ用の内容がでる。最初ログインしたらデータは空なはず」).
+test('NATIVE_UI=all: nothing of a user goes to Render; unported screens and writes say they are moving', async () => {
+  const {env, sqlite} = setup();
+  const cookie = await signIn(env);
+  const r = stubRender();
+  try {
+    for (const name of ['recommend', 'interest', 'favourites', 'calendar', 'tickets', 'reminder', 'records', 'trace', 'chronicle', 'search', 'settings', 'start', 'register']) {
+      const got = await step(env, cookie, {get: `/api/screen/${name}`});
+      assert.equal(got.status, 200, name);
+      assert.equal(got.body.moving, true, name);
+      assert.equal(got.body.edition, 'service', name);
+      assert.match(got.body.body_html, /いま新しい仕組みに移しています/, name);
+    }
+    for (const path of ['/api/react', '/api/favourite', '/api/ticket', '/api/weight', '/api/recommendation/visit']) {
+      const got = await step(env, cookie, {post: path, body: {}});
+      assert.equal(got.status, 503, path);
+      assert.match(got.body.error, /移している/, path);
+    }
+    // Stage suggestions are answered from D1, never with the demo's records.
+    const sug = await step(env, cookie, {get: '/api/suggest?q=' + encodeURIComponent('舞台')});
+    assert.equal(sug.status, 200);
+    assert.ok(Array.isArray(sug.body.rows));
+    // A new account starts empty.
+    for (const path of ['/api/screen/works', '/api/screen/rate', '/api/screen/unrated', '/api/screen/notes']) {
+      assert.equal((await step(env, cookie, {get: path})).status, 200, path);
+    }
+    assert.equal(sqlite.prepare('SELECT count(*) AS n FROM works').get().n, 0);
+    // Only posters missing from R2 may still be fetched from Render.
+    await step(env, cookie, {get: '/img/101.jpg'});
+    assert.deepEqual(r.sent, ['GET /img/101.jpg']);
+  } finally { r.restore(); sqlite.close(); }
+});
+
+test('signed out, a moving screen still asks to sign in', async () => {
+  const {env, sqlite} = setup();
+  try {
+    assert.equal((await step(env, 'x=y', {get: '/api/screen/recommend'})).status, 401);
+  } finally { sqlite.close(); }
+});
+
+test('the account page shows only the signed-in user, and saves a display name', async () => {
+  const {env, sqlite} = setup();
+  const a = await signIn(env), b = await signIn(env);
+  try {
+    const empty = await step(env, a, {get: '/api/screen/account'});
+    assert.equal(empty.status, 200);
+    assert.equal(empty.body.title, 'アカウント');
+    assert.match(empty.body.body_html, /あなただけが見られるページ/);
+    assert.match(empty.body.body_html, /<b>0<\/b><span>観た作品/);
+    const key = (await step(env, a, {post: '/api/add_work', body: {title: 'Aの舞台', date: '2026-08-01'}})).body.work_key;
+    await step(env, a, {post: '/api/rate', body: {work_key: key, verdict: '◎'}});
+    await step(env, a, {post: '/api/note', body: {work_key: key, note_impression: 'よかった'}});
+    const saved = await step(env, a, {post: '/api/account', body: {display_name: ' 観劇好き '}});
+    assert.equal(saved.status, 200);
+    assert.equal(saved.body.display_name, '観劇好き');
+    const page = (await step(env, a, {get: '/api/screen/account'})).body.body_html;
+    assert.match(page, /観劇好き/);
+    assert.match(page, /<b>1<\/b><span>観た作品/);
+    assert.match(page, /<b>1<\/b><span>評価した作品/);
+    assert.match(page, /<b>1<\/b><span>感想/);
+    assert.match(page, /復旧コード/);
+    // B sees none of A.
+    const other = (await step(env, b, {get: '/api/screen/account'})).body.body_html;
+    assert.doesNotMatch(other, /観劇好き/);
+    assert.match(other, /<b>0<\/b><span>観た作品/);
+    // Too long, or not text, is refused; an empty name clears it.
+    assert.equal((await step(env, a, {post: '/api/account', body: {display_name: 'あ'.repeat(31)}})).status, 400);
+    assert.equal((await step(env, a, {post: '/api/account', body: {display_name: 3}})).status, 400);
+    assert.equal((await step(env, a, {post: '/api/account', body: {display_name: '<b>x</b>'}})).status, 200);
+    assert.match((await step(env, a, {get: '/api/screen/account'})).body.body_html, /&lt;b&gt;x&lt;\/b&gt;/);
+    assert.equal((await step(env, a, {post: '/api/account', body: {display_name: ''}})).status, 200);
+    assert.equal(sqlite.prepare("SELECT count(*) AS n FROM app_setting WHERE key='display_name'").get().n, 0);
+  } finally { sqlite.close(); }
+});
+
+test('stage suggestions come from the user\'s own records and the past stages in D1', async () => {
+  const {env, sqlite} = setup();
+  const a = await signIn(env), b = await signIn(env);
+  try {
+    sqlite.prepare("INSERT INTO past_stage(stage_id,title,tkey,start,end,venue,grp,pref,people) VALUES('9001','夜の果てまで','夜の果てまで','2024-05-01','2024-05-06','劇場Z','劇団Q','東京都','[]')").run();
+    await step(env, a, {post: '/api/add_work', body: {title: '夜の果て', date: '2026-08-01'}});
+    const got = (await step(env, a, {get: '/api/suggest?q=' + encodeURIComponent('夜の果て')})).body.rows;
+    assert.deepEqual(got.map(r => [r.kind, r.title]), [['record', '夜の果て'], ['stage', '夜の果てまで']]);
+    assert.equal(got[1].note, '劇団Q／2024/5/1〜2024/5/6（東京都）');
+    // Another user never gets A's record.
+    const other = (await step(env, b, {get: '/api/suggest?q=' + encodeURIComponent('夜の果て')})).body.rows;
+    assert.deepEqual(other.map(r => r.kind), ['stage']);
+  } finally { sqlite.close(); }
+});
