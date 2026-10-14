@@ -700,7 +700,10 @@ function filterRow(el) {
   if (!fil || fil.querySelector(".ftabs")) return;
   const boxes = [...fil.querySelectorAll("details.pbox")];
   if (boxes.length < 2) return;
-  const name = d => d.classList.contains("wbox") ? ["効かせ方", "light"] : d.classList.contains("ybox") ? ["料金", "ticket"] : ["場所", "search"];
+  // 札の名前は箱ごとに決める。お気に入りの画面の 2 つ（登録した名前・出さない語）まで「場所」と
+  // 出ていた（起案者の指摘 2026-10-14「『お気に入り』画面の『場所』ってなに？」）
+  const name = d => d.classList.contains("wbox") ? ["効かせ方", "light"] : d.classList.contains("ybox") ? ["料金", "ticket"]
+    : d.id === "names" ? ["登録した名前", "star"] : d.id === "declined" ? ["出さない語", "flag"] : ["場所", "search"];
   const tabs = document.createElement("div");
   tabs.className = "ftabs";
   tabs.setAttribute("role", "group");
@@ -2330,8 +2333,9 @@ function infoFromLede(root) {
 // 「『書き直す』のボタンがあるせいで文字の折り返しが多くて感想が縦に伸びてる…鉛筆のアイコンボタンを
 // 感想の末尾につけるとかだけでも伝わる」）。文と鉛筆を 1 つの箱に入れ、鉛筆は文の最後の行に続けて置く
 function penNotes(root) {
-  root.querySelectorAll(".inr, .vnr").forEach(r => {
-    const t = r.querySelector(":scope > .int, :scope > .vnt"), b = r.querySelector(":scope > .wnb");
+  // 「なぜ気になったか」（.wnr）も同じ鉛筆にする（起案者の指示 2026-10-14「『書き直す』はすべて鉛筆アイコンにして」）
+  root.querySelectorAll(".inr, .vnr, .wnr").forEach(r => {
+    const t = r.querySelector(":scope > .int, :scope > .vnt, :scope > .wnt"), b = r.querySelector(":scope > .wnb");
     if (!t || !b) return;
     const box = document.createElement("span");
     box.className = "inb";
