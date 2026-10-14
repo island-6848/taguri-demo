@@ -2,6 +2,7 @@
 // Ports of tools/taguri/app.py (_rate_body, _unrated_body, _notes_body, ...),
 // the serve.py handlers (on_rate, on_note, on_add_work) and the helpers they
 // call in charts.py, render_recommend.py and impressions.py.
+import {STARS, isStar, isTop, gradeText, markOf, scaleOf} from './grade.js';
 import {autoLink} from './autolink.js';
 import {E, quote, sortBy, cmp, fmtF, strip, slice, field, qsFirst, qsAll, digitsInt, isdigit, strRepr, localNow, ValueError} from './py.js';
 import {loadWorks, similarWorks, titleKey} from './works.js';
@@ -11,6 +12,10 @@ import {promoteOwned} from './lists.js';
 
 /** serve.VERDICTS / charts.VERDICT_ORDER */
 const VERDICTS = ['◎', '○', '△', '×', 'まだ判断できない'];
+/** Every saved grade, best first within its scale (stars are the default since 2026-10-14, grade.js). */
+const ORDER = [...VERDICTS.slice(0, 4), ...STARS, ...VERDICTS.slice(4)];
+/** The top grade's name in these works (★5 for a star user). */
+const topName = works => (works.some(w => isStar(w.verdict)) ? '★5' : '◎');
 /** app.VERDICT_LABEL */
 const VERDICT_LABEL = {'◎': 'とても合っていた', '○': '合っていた', '△': 'あまり合わなかった', '×': '合わなかった'};
 /** app.SHEET_TOP */
@@ -30,7 +35,7 @@ async function rateBase(ctx) {
   const unrated = all.filter(w => !w.verdict && w.bucket !== 'upcoming' && !w.unseen);
   const nSkip = all.filter(w => w.unseen && !w.verdict && w.bucket !== 'upcoming').length;
   const rated = all.filter(w => w.verdict && !w.unseen);
-  const noNote = rated.filter(w => w.verdict === '◎' && !strip(w.note_impression || ''));
+  const noNote = rated.filter(w => isTop(w.verdict) && !strip(w.note_impression || ''));
   return {all, unrated, rated, noNote, nSkip};
 }
 
@@ -51,29 +56,30 @@ function table(head, rows) {
 function verdictPanel(works) {
   const cnt = {};
   for (const w of works) { const g = w.verdict || '未評価'; cnt[g] = (cnt[g] || 0) + 1; }
-  const order = [...VERDICTS.filter(g => cnt[g]), ...(cnt['未評価'] ? ['未評価'] : [])];
+  const order = [...ORDER.filter(g => cnt[g]), ...(cnt['未評価'] ? ['未評価'] : [])];
   const tot = order.reduce((s, g) => s + cnt[g], 0);
+  const stars = order.some(isStar);
   if (!tot) return '';
   const segs = [], labs = [];
   let x = 0.0;
   for (const g of order) {
     const wpc = cnt[g] / tot * 100.0;
-    const fill = VERDICT_FILL[g] || 'var(--unk)';
-    const op = VERDICT_OP[g] || '1.0';
-    segs.push(`<g class="seg"><title>${E(g)} ── ${cnt[g]} 件（${pct(cnt[g] / tot)}）</title>`
+    const fill = VERDICT_FILL[markOf(g)] || 'var(--unk)';
+    const op = VERDICT_OP[markOf(g)] || '1.0';
+    segs.push(`<g class="seg"><title>${E(gradeText(g))} ── ${cnt[g]} 件（${pct(cnt[g] / tot)}）</title>`
       + `<rect x="${fmtF(x, 3)}%" y="0" width="${fmtF(Math.max(wpc - 0.25, 0.2), 3)}%" height="26"`
       + ` fill="${fill}" fill-opacity="${op}" rx="3"/></g>`);
-    if (wpc >= 7) labs.push(`<span class="dl" style="left:${fmtF(x + wpc / 2, 2)}%">${E(g)} <b>${cnt[g]}</b></span>`);
+    if (wpc >= 7) labs.push(`<span class="dl" style="left:${fmtF(x + wpc / 2, 2)}%">${E(gradeText(g))} <b>${cnt[g]}</b></span>`);
     x += wpc;
   }
   return `<section class="card">
 ${h2('star', '付けた評価の分布', `<span class="badge part">分母 ${tot} 作品</span>`)}
 <p class="lead"><b>基準は「自分に合っていたか」で、作品の出来ではありません。</b>
-◎ 側と × 側を左右に分けて置いています。おすすめの材料に数えるのは <b>◎ だけ</b>です。</p>
+${stars ? '星の多い側と少ない側を左右に分けて置いています。高い評価も低い評価も、おすすめの材料になります。' : '◎ 側と × 側を左右に分けて置いています。おすすめの材料に数えるのは <b>◎ だけ</b>です。'}</p>
 <div class="dbar"><svg viewBox="0 0 100 26" width="100%" height="26" preserveAspectRatio="none"
  role="img" aria-label="評価の分布">${segs.join('')}</svg>
 <div class="dlabs">${labs.join('')}</div></div>
-${table(['評価', '件数', '割合'], order.map(g => [g, cnt[g], pct(cnt[g] / tot)]))}</section>`;
+${table(['評価', '件数', '割合'], order.map(g => [gradeText(g), cnt[g], pct(cnt[g] / tot)]))}</section>`;
 }
 
 // ---------------------------------------------------------------- render_recommend
@@ -132,7 +138,7 @@ function jdate(s) {
 }
 /** impressions.pending(limit=None) */
 const pending = works => sortBy(
-  works.filter(w => w.verdict === '◎' && !strip(w.note_impression || '') && !w.unseen),
+  works.filter(w => isTop(w.verdict) && !strip(w.note_impression || '') && !w.unseen),
   w => [-(w.times || 1), negDate(w.first_date || '')]);
 /** impressions.wait_note_html(open_=True) */
 const waitNote = (key, note) => `<div class="wnote">`
@@ -140,14 +146,14 @@ const waitNote = (key, note) => `<div class="wnote">`
   + ` placeholder="どう感じましたか（任意）">${e2(note)}</textarea>`
   + `<span class="said"></span></div>`;
 /** impressions.pending_html */
-function pendingHtml(rows, nAll) {
+function pendingHtml(rows, nAll, top = '◎') {
   const more = nAll > rows.length ? `残りは次の ${nAll - rows.length} 件です。` : '';
   const items = rows.map(w => waitShell(w, `<span class="wt">${e2(w.title)}</span>`
     + `<span class="wm">${e2(jdate(w.first_date))}`
     + ((w.times || 1) > 1 ? `・${w.times} 回観た` : '')
     + '</span>'
     + waitNote(w.work_key, w.note_impression || ''))).join('');
-  return `<p class="lead">◎ を付けたのに感想が無い作品が ${nAll} 件あります。`
+  return `<p class="lead">${top} を付けたのに感想が無い作品が ${nAll} 件あります。`
     + `<b>思い出せるものだけで結構です。</b>${e2(more)}<br>`
     + `一文書いておくと、次に同じ作り手の公演が出てきたときに、`
     + `その言葉をおすすめの理由に添えて出します。</p>`
@@ -156,7 +162,7 @@ function pendingHtml(rows, nAll) {
 /** app._pending_notes_html(collapsed=False) */
 function pendingNotesHtml(all) {
   const rows = pending(all);
-  return rows.length ? pendingHtml(rows.slice(0, ROUND), rows.length) : '';
+  return rows.length ? pendingHtml(rows.slice(0, ROUND), rows.length, topName(all)) : '';
 }
 
 // ---------------------------------------------------------------- app._venue_form
@@ -231,17 +237,18 @@ async function rateScreen(params, ctx) {
   const rated = b.rated;
   const verdictFig = verdictPanel(b.all.filter(w => !w.unseen));
   const byFirstDesc = rows => sortBy(rows, w => w.first_date || '', true);
-  const byV = Object.fromEntries(VERDICTS.map(g => [g, byFirstDesc(rated.filter(w => w.verdict === g))]));
-  const live = VERDICTS.filter(g => byV[g].length);
+  const byV = Object.fromEntries(ORDER.map(g => [g, byFirstDesc(rated.filter(w => w.verdict === g))]));
+  const live = ORDER.filter(g => byV[g].length);
+  const stars = live.some(isStar);
   const title = '評価一覧';
   if (!live.length) {
     return {title, body_html: `<h1>評価一覧</h1>${verdictFig}<p class="empty">まだ評価が付いた記録はありません。</p>`, note_tags: noteTags(b.all)};
   }
-  const sel = (live.includes(verdict) || verdict === 'all') ? verdict : (live.includes('◎') ? '◎' : live[0]);
+  const sel = (live.includes(verdict) || verdict === 'all') ? verdict : (live.includes('◎') ? '◎' : live.includes('5/5') ? '5/5' : live[0]);
   const allSorted = byFirstDesc(rated);
   const chips = indexTabs(
     [['all', 'すべて', rated.length],
-      ...live.map(g => [g, `${g}${VERDICT_LABEL[g] ? ` ${VERDICT_LABEL[g]}` : ''}`, byV[g].length])],
+      ...live.map(g => [g, `${gradeText(g)}${VERDICT_LABEL[g] ? ` ${VERDICT_LABEL[g]}` : ''}`, byV[g].length])],
     sel, g => `/rate?t=__TAGURI_TOKEN__&amp;v=${quote(g)}`, '評価', true);
   const ws = sel === 'all' ? allSorted : byV[sel];
 
@@ -266,14 +273,15 @@ async function rateScreen(params, ctx) {
 
   const vform = venueForm(wsY, vkeep, '/rate', [['v', sel], ['y', ysel]]);
   const wsV = !vkeep.size ? wsY : wsY.filter(w => vkeep.has(venueKey(w)));
-  const lab = sel === 'all' ? 'すべての評価' : `${sel}${VERDICT_LABEL[sel] ? `（${VERDICT_LABEL[sel]}）` : ''}`;
+  const lab = sel === 'all' ? 'すべての評価' : `${gradeText(sel)}${VERDICT_LABEL[sel] ? `（${VERDICT_LABEL[sel]}）` : ''}`;
   const [show, now, foot] = paginate(wsV, page(params), SHEET_TOP,
     pg => `/rate?t=__TAGURI_TOKEN__&amp;v=${quote(sel)}` + (ysel ? `&amp;y=${quote(ysel)}` : '') + venueQs
       + (pg > 1 ? `&amp;p=${pg}` : ''), '作品');
   const files = await posterFiles(ctx, show);
-  const rows = show.map(w => recRow(w, {poster: posterHtml(w, files), rateReopen: true})).join('');
+  const scale = await scaleOf(ctx);
+  const rows = show.map(w => recRow(w, {poster: posterHtml(w, files), rateReopen: true, scale})).join('');
   return {title, body_html: `<h1>評価一覧 ── 付けた ${rated.length} 件</h1>
-<p class="lede">付けた評価を◎○△×ごとに分けています。<b>基準は「自分に合っていたか」で、作品の出来ではありません。</b>評価は作品ごとに1つです。おすすめは◎を付けた公演の作り手から作るので、<b>ここで答えると次のおすすめが変わります。</b>題名・日付・会場そのものを直したいときは、<a href="/records/works?t=__TAGURI_TOKEN__">日記帳</a>で直せます。</p>
+${stars ? '<p class="lede">付けた評価を星の数ごとに分けています。<b>星の付け方は自分の尺度で構いません。</b>おすすめは、自分の付けた評価の中での高い・低いで読みます。評価は作品ごとに1つです。' : '<p class="lede">付けた評価を◎○△×ごとに分けています。<b>基準は「自分に合っていたか」で、作品の出来ではありません。</b>評価は作品ごとに1つです。おすすめは◎を付けた公演の作り手から作るので、'}<b>ここで答えると次のおすすめが変わります。</b>題名・日付・会場そのものを直したいときは、<a href="/records/works?t=__TAGURI_TOKEN__">日記帳</a>で直せます。</p>
 ${verdictFig}
 ${chips}
 ${ytabs}
@@ -296,7 +304,8 @@ async function unratedScreen(_params, ctx) {
     + `付け間違えたときはその行の「やはり観た」で戻してください。`;
   const labels = await stageLabels(ctx, unrated.map(w => w.stage_id));
   const files = await posterFiles(ctx, unrated);
-  const rows = unrated.map(w => recRow(w, {poster: posterHtml(w, files), rateAlways: true, editable: true, label: labels[w.stage_id] || ''})).join('');
+  const scale = await scaleOf(ctx);
+  const rows = unrated.map(w => recRow(w, {poster: posterHtml(w, files), rateAlways: true, editable: true, label: labels[w.stage_id] || '', scale})).join('');
   return {title: '未評価', body_html: `<h1>未評価 ── ${unrated.length} 件</h1>
 <p class="lede">評価がまだ付いていない記録です。<b>上演日が分からない記録も含みます。</b>日付がないと上演が終わったか判定できないので、「まだ答えていない」には出てきません。${skipped}<br>
 <b>実際には観ていない公演が混じっていたら、各行の「公演詳細を直す」から外せます。</b>券を買って行かなかった公演と、舞台ではない記録は、そこで書き分けられます。どちらも、あとで戻せます。</p>
@@ -307,7 +316,7 @@ ${rows || '<p class="empty">評価が付いていない記録はありません�
 async function notesScreen(params, ctx) {
   const b = await rateBase(ctx);
   const tag = Array.from(qsFirst(params, 'tag')).slice(0, 40).join('');
-  return {title: '感想', body_html: `<h1>感想 ── ◎ を付けた ${b.noNote.length} 件</h1>
+  return {title: '感想', body_html: `<h1>感想 ── ${topName(b.rated)} を付けた ${b.noNote.length} 件</h1>
 ${hashtagsHtml(b.all, tag)}
 ${pendingNotesHtml(b.all)}`, note_tags: noteTags(b.all)};
 }
@@ -349,7 +358,7 @@ async function rateAction(b, ctx) {
       .bind(aspects, localNow(ctx.now), ctx.uid, workKey).run();
     return {body: {ok: true, work_key: workKey, aspects}};
   }
-  if (!VERDICTS.includes(verdict)) throw new ValueError(`verdict が候補にない: ${strRepr(verdict)}`);
+  if (!VERDICTS.includes(verdict) && !isStar(verdict)) throw new ValueError(`verdict が候補にない: ${strRepr(verdict)}`);
   await saveWorkField(ctx, workKey, 'verdict', verdict);
   return {body: {ok: true, work_key: workKey, verdict, recommendation: {status: 'on_next_read'}}};
 }

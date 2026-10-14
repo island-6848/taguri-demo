@@ -3,6 +3,7 @@
 // 順に移して」). chronicle.test.js checks it against chronicle.panel on the same records.
 // The subject and tone words of the works seen (themes.jsonl, rated side) are the owner's
 // batch output, so `themes` is empty here (as in Python without that file).
+import {isTop, isStar, gradeText} from './grade.js';
 import {E, fmtF} from './py.js';
 import {h2} from './icons.js';
 import {anchor} from './row.js';
@@ -47,7 +48,7 @@ export function facts(works, rated) {
         if (!pplYears.has(k)) pplYears.set(k, new Set());
         pplYears.get(k).add(y);
         pplN.add(k);
-        if (w.verdict === '◎') loved.add(name);
+        if (isTop(w.verdict)) loved.add(name);
       }
     }
     const newV = [...ven.keys()].filter(v => !seenV.has(v));
@@ -68,7 +69,7 @@ export function facts(works, rated) {
       people: ranked.slice(0, 5).map(([nm, c]) => [nm, desc(c), sumOf(c)]),
       new_people: newP.map(([nm, c]) => [nm, desc(c), sumOf(c)]).slice(0, 4),
       themes: [], tone: [],
-      loved: g.filter(w => w.verdict === '◎').map(w => w.title).slice(0, 6),
+      loved: g.filter(w => isTop(w.verdict)).map(w => w.title).slice(0, 6),
       repeats: g.filter(w => timesOf(w) > 1).map(w => [w.title, timesOf(w)]).sort((a, b) => b[1] - a[1]).slice(0, 5),
     });
   }
@@ -130,9 +131,9 @@ function figure(f) {
     const v = laneOf(m);
     if (!row.has(v)) continue;
     const cy = TOP + row.get(v) * LH + LH / 2, px = x(ym(m.d));
-    const say = `${m.t} ── ${m.d}` + (m.times > 1 ? `・${m.times} 回` : '') + (m.verdict ? `・${m.verdict}` : '');
+    const say = `${m.t} ── ${m.d}` + (m.times > 1 ? `・${m.times} 回` : '') + (m.verdict ? `・${gradeText(m.verdict)}` : '');
     const a = m.k ? anchor(m.k) : '';
-    const dot = `<circle class="dot${m.verdict === '◎' ? ' on' : ''}" cx="${f1(px)}" cy="${f1(cy)}" r="4.5"><title>${E(say)}</title></circle>`;
+    const dot = `<circle class="dot${isTop(m.verdict) ? ' on' : ''}" cx="${f1(px)}" cy="${f1(cy)}" r="4.5"><title>${E(say)}</title></circle>`;
     dots.push(a ? `<a href="${ROW_HREF}&amp;w=${E(a)}#w-${E(a)}">${dot}</a>` : dot);
   }
   const nLane = big.reduce((s, v) => s + cnt.get(v), 0);
@@ -145,7 +146,7 @@ function figure(f) {
   });
   return `<div class="chfig"><svg viewBox="0 0 ${FW} ${h}" width="100%" role="img" aria-label="観劇の年表。横が時間、1 本の行が 1 つの劇場、1 点が 1 作品">`
     + `${grid.join('')}${rowsSvg.join('')}${dots.join('')}</svg></div>`
-    + '<div class="legend chleg"><span class="lg"><svg width="13" height="13" viewBox="0 0 13 13" aria-hidden="true"><circle class="dot on" cx="6.5" cy="6.5" r="4.5"/></svg>◎ を付けた作品</span>'
+    + '<div class="legend chleg"><span class="lg"><svg width="13" height="13" viewBox="0 0 13 13" aria-hidden="true"><circle class="dot on" cx="6.5" cy="6.5" r="4.5"/></svg>' + topOf(marks) + ' を付けた作品</span>'
     + '<span class="lg"><svg width="13" height="13" viewBox="0 0 13 13" aria-hidden="true"><circle class="dot" cx="6.5" cy="6.5" r="4.5"/></svg>そのほかの作品</span>'
     + '<span class="lgn">行は劇場です。<b>初めて行った順</b>に上から並べていますので、<b>行の始まりと終わりが、通い始めた時期と途切れた時期です。</b>'
     + `${LANE_MIN} 回以上行った ${big.length} 館（${nLane} 作品）を 1 行ずつにし、1 回だけの劇場は下に 1 行でまとめています。</span></div>`
@@ -159,12 +160,14 @@ function workLink(title, links) {
   const a = anchor(k);
   return `<a href="${ROW_HREF}&amp;w=${E(a)}#w-${E(a)}" title="${E(title)}">${E(cut(title))}</a>`;
 }
-function chips(y, links) {
+/** The top grade's name in these records (★5 for a star user). */
+const topOf = ms => (ms.some(m => isStar(m.verdict)) ? '★5' : '◎');
+function chips(y, links, top = '◎') {
   const out = [];
   if (y.new_venues.length) out.push(`<li><b>初めて行った劇場</b>${E(y.new_venues.slice(0, 3).join('／'))}</li>`);
   if (y.new_people.length) out.push('<li><b>この年に出会った作り手</b>' + E(y.new_people.slice(0, 3).map(([nm, rs]) => `${nm}（${roles(rs)}）`).join('／')) + '</li>');
   if (y.repeats.length) out.push('<li><b>くり返し観た作品</b>' + y.repeats.slice(0, 3).map(([t, n]) => `${workLink(t, links)}（${n} 回）`).join('／') + '</li>');
-  if (y.loved.length) out.push('<li><b>◎ を付けた作品</b>' + y.loved.slice(0, 3).map(t => workLink(t, links)).join('／') + (y.loved.length > 3 ? `　ほか ${y.loved.length - 3} 本` : '') + '</li>');
+  if (y.loved.length) out.push(`<li><b>${top} を付けた作品</b>` + y.loved.slice(0, 3).map(t => workLink(t, links)).join('／') + (y.loved.length > 3 ? `　ほか ${y.loved.length - 3} 本` : '') + '</li>');
   return out.length ? `<ul class="chfacts">${out.join('')}</ul>` : '';
 }
 
@@ -175,7 +178,7 @@ export function panel(works, rated) {
   const rows = f.years.map(y => {
     const top = y.venues.length && y.venues[0][1] >= 2 ? y.venues[0][0] : '';
     return `<div class="chyear"><div class="chy"><b>${E(y.year)}</b><i>${y.works} 作品・のべ ${y.times} 回</i></div>`
-      + `<div class="chbody">${top ? `<p class='chtop'>いちばん通った劇場は${E(top)}です。</p>` : ''}${chips(y, f.links)}</div></div>`;
+      + `<div class="chbody">${top ? `<p class='chtop'>いちばん通った劇場は${E(top)}です。</p>` : ''}${chips(y, f.links, topOf(f.marks))}</div></div>`;
   }).join('');
   const kept = f.kept_venues.slice(0, 3).map(([v, a, b, n]) => `${v}（${a}〜${b} 年に ${n} 年）`).join('／');
   const longP = f.long_people.slice(0, 3).map(([role, nm, a, b, n]) => `${nm}（${role}・${a}〜${b} 年に ${n} 本）`).join('／');

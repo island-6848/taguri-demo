@@ -4,6 +4,7 @@
 //
 // map_panel（行った劇場の地図）は移していない: 劇場の座標（venue_geo.json）と
 // 地図の輪郭が D1 に無い。Python も座標が無ければ空を返すので、同じく出さない。
+import {STARS, isStar, gradeText, markOf} from './grade.js';
 import {E, fmtF, sortBy} from './py.js';
 import {h2} from './icons.js';
 import {anchor} from './anchor.js';
@@ -112,25 +113,27 @@ export function spiralPanel(works) {
     const rr = r0 + dr * years.indexOf(w.first_date.slice(0, 4));
     const [x, y] = polar(yday(w.first_date), rr, cx, cy);
     const v = w.verdict || '';
-    tally.add(v in VERDICT_FILL ? v : '未評価');
-    const fill = VERDICT_FILL[v] || 'var(--unk)';
-    const solid = v === '◎' || v === '○';
+    const m = markOf(v);       // a star is coloured as the mark on its side (★3: neither)
+    tally.add(isStar(v) ? gradeText(v) : v in VERDICT_FILL ? v : '未評価');
+    const fill = VERDICT_FILL[m] || 'var(--unk)';
+    const solid = m === '◎' || m === '○';
     const times = (w.times || 1) > 1 ? `・${w.times} 回` : '';
     const a = E(anchor(w.work_key));
     pts.push(`<a href="${ROW_HREF}&amp;w=${a}#w-${a}"><g class="pt">`
-      + `<title>${E(w.title)} ── ${E(w.first_date)}${E(times)}${v ? '・' + E(v) : '・評価なし'}</title>`
+      + `<title>${E(w.title)} ── ${E(w.first_date)}${E(times)}${v ? '・' + E(gradeText(v)) : '・評価なし'}</title>`
       + `<circle cx="${f1(x)}" cy="${f1(y)}" r="5"`
       + ` fill="${solid ? fill : 'var(--surf)'}"`
-      + ` fill-opacity="${solid ? opStr(VERDICT_OP[v] ?? 1.0) : 1}"`
+      + ` fill-opacity="${solid ? opStr(VERDICT_OP[m] ?? 1.0) : 1}"`
       + ` stroke="${fill}" stroke-width="${solid ? 1.6 : 2}"/></g></a>`);
   }
-  const leg = [...VERDICT_ORDER.slice(0, 4), '未評価'].filter(g => tally.get(g)).map(g => {
+  const leg = [...VERDICT_ORDER.slice(0, 4), ...STARS.map(gradeText), '未評価'].filter(g => tally.get(g)).map(label => {
+    const g = label.startsWith('★') ? markOf(label.slice(1) + '/5') : label;
     const solid = g === '◎' || g === '○';
     return `<span class="lg"><svg width="13" height="13" viewBox="0 0 13 13" aria-hidden="true">`
       + `<circle cx="6.5" cy="6.5" r="5" fill="${solid ? (VERDICT_FILL[g] || 'var(--unk)') : 'var(--surf)'}"`
       + ` fill-opacity="${solid ? opStr(VERDICT_OP[g] ?? 1.0) : 1}"`
       + ` stroke="${VERDICT_FILL[g] || 'var(--base)'}" stroke-width="2"/></svg>`
-      + `${E(g)} <b>${tally.get(g)}</b></span>`;
+      + `${E(label)} <b>${tally.get(label)}</b></span>`;
   }).join('');
 
   const grid = new Counter();

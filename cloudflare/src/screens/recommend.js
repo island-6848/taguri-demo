@@ -39,7 +39,8 @@ const ROLE_SRC = '公演ページのクレジット';
 const KIND_LABEL = {'#形式': '形式', '#原作': '原作', '#翻訳': '', '#会場': '劇場', '#値段': '料金帯', '#題材': '題材'};
 const KIND_SRC = {'#形式': '公演名とクレジット', '#会場': '公演ページの劇場', '#値段': '公演ページの料金'};
 const WORKS_SHOWN = 3;
-const MARK_ORDER = {'◎': 0, '○': 1, '△': 2, '×': 3};
+// Stars sort with the marks: ★5 with ◎ first, ★1 with × last (grade.js).
+const MARK_ORDER = {'◎': 0, '○': 1, '△': 2, '×': 3, '5/5': 0, '4/5': 0.75, '3/5': 1.5, '2/5': 2.25, '1/5': 3};
 
 const pad2 = n => String(n).padStart(2, '0');
 const chunks = (xs, n) => Array.from({length: Math.ceil(xs.length / n)}, (_, i) => xs.slice(i * n, i * n + n));

@@ -1,5 +1,6 @@
 // 感想のハッシュタグ。tools/taguri/hashtags.py と app._hashtags_html / app.note_tags の移植
 // （起案者の指示 2026-10-14「感想を書くとき、ハッシュタグをユーザーが独自で作って検索できるようにして」）。
+import {gradeText} from './grade.js';
 import {E, quote} from './py.js';
 
 const TAG = /[#＃]([^\s#＃、。，,．.!！?？「」『』（）()\[\]【】<>＜＞]{1,30})/gu;
@@ -45,7 +46,7 @@ export function hashtagsHtml(all, tag = '') {
       .map((w, i) => [w, i]).sort((a, b) => (key(a[0]) < key(b[0]) ? 1 : key(a[0]) > key(b[0]) ? -1 : a[1] - b[1])).map(x => x[0]);
     const rows = hit.map(w =>
       `<li><span class="hd">${E(w.last_date || w.first_date || '')}</span>`
-      + `<b>${E(w.title || '')}</b>${w.verdict ? ' ' + E(w.verdict) : ''}`
+      + `<b>${E(w.title || '')}</b>${w.verdict ? ' ' + E(gradeText(w.verdict)) : ''}`
       + `<p class="int">${E(w.note_impression || '')}</p></li>`).join('');
     out.push(`<h2>#${E(tag)} の感想 ── ${hit.length} 件</h2>`
       + `<p><a href="/rate/notes?t=__TAGURI_TOKEN__">タグの選択をやめる</a></p>`
