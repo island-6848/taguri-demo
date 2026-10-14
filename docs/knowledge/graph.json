@@ -1306,6 +1306,21 @@
    "verifies": []
   },
   {
+   "id": "dec-trace-worker",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "たどるを Worker に移す（trace.py を JS に移し、同じ記録で Python と同じ HTML・図になることを確かめる）",
+   "sources": [
+    "cloudflare/src/screens/trace.js",
+    "cloudflare/src/screens/records.js",
+    "cloudflare/src/screens/md5.js",
+    "cloudflare/test/trace.test.js",
+    "cloudflare/test/screens/trace_fixture.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-url-app-taguri",
    "type": "decision",
    "status": "adopted",
@@ -4910,6 +4925,16 @@
    "from": "dec-theme-user-choice",
    "rel": "raises",
    "to": "q-poster-palette"
+  },
+  {
+   "from": "dec-trace-worker",
+   "rel": "depends_on",
+   "to": "dec-native-cutover-now"
+  },
+  {
+   "from": "dec-trace-worker",
+   "rel": "affects",
+   "to": "comp-native-screens"
   },
   {
    "from": "dec-url-app-taguri",
