@@ -89,11 +89,17 @@ test('購入済み shows owned stages with their tickets; an ended one moves to 
     assert.match(html, /<span class="mt-row">11月3日 14:00 <button data-mt-del="101" data-date="2026-11-03" data-time="14:00">取り消す<\/button><\/span>/);
     assert.match(html, /min="2026-11-01" max="2026-11-10"/);
     assert.doesNotMatch((await screen(env, a, 'interest')).body_html, /data-stage="101"/);
+    // A memo before seeing it, only on owned stages; it goes with the work once seen.
+    assert.match(html, /<details class="nn pre" data-stage="101"><summary>観る前のメモを書く/);
+    await step(env, a, {post: '/api/react', body: {stage_id: '101', note_pre: '原作を読んで楽しみ'}});
+    assert.match((await screen(env, a, 'tickets')).body_html, /観る前のメモ<span class="nnv">原作を読んで楽しみ<\/span>/);
+    assert.doesNotMatch((await screen(env, a, 'recommend')).body_html, /data-prenote/);
     // After the ticket's date the stage leaves 購入済み and waits for a rating.
     env.CLOCK = {today: '2026-11-04', now: Date.parse('2026-11-04T03:00:00Z')};
     assert.match((await screen(env, a, 'tickets')).body_html, /購入済み公演 ── 0 件/);
     assert.match((await screen(env, a, 'unrated')).body_html, /舞台ひとつめ/);
     assert.equal(sqlite.prepare("SELECT count(*) AS n FROM works WHERE stage_id='101'").get().n, 1);
+    assert.equal(sqlite.prepare("SELECT note_motive FROM works WHERE stage_id='101'").get().note_motive, '原作を読んで楽しみ');
     await screen(env, a, 'tickets');
     assert.equal(sqlite.prepare("SELECT count(*) AS n FROM works WHERE stage_id='101'").get().n, 1);
   } finally { sqlite.close(); }
@@ -231,6 +237,11 @@ test('探す: coming stages and works seen, by words and by month', async () => 
     const empty = (await screen(env, a, 'search')).body_html;
     assert.match(empty, /<h1>探す<\/h1>/);
     assert.match(empty, /これから観られる公演 3 件と観た記録の両方から探します/);
+    // A new account (no records yet) still gets the month calendar, opened on the coming stages
+    // (2026-10-14 起案者「『探す』にあったカレンダーが消えてる」).
+    assert.match(empty, /<div class="cal" id="cal">/);
+    assert.match(empty, /aria-current="page"[^>]*>これから観られる公演|これから観られる公演[^<]*<span class="mn">3<\/span>/);
+    assert.match(empty, /class="cal-c l\d/);
     // A coming stage found by a cast name: the card with 「ヒットした箇所」 on top.
     const byName = (await screen(env, a, 'search', '?q=' + encodeURIComponent('俳優甲'))).body_html;
     assert.match(byName, /<h2>これから観られる公演 1 件<\/h2>/);

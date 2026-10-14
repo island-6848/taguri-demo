@@ -2565,6 +2565,28 @@ root.querySelectorAll(".why-note textarea").forEach(t => {
   });
 });
 
+// 購入済み公演の「観る前のメモ」。見送った理由と同じく、離れたときに保存し、畳んだ見出しに文を出す
+root.querySelectorAll("textarea[data-prenote]").forEach(t => {
+  if (t.dataset.bound) return;
+  t.dataset.bound = "1";
+  t.dataset.was = t.value;
+  t.addEventListener("blur", () => {
+    const g = t.closest(".nn");
+    if (!live || t.value === t.dataset.was) return;
+    t.dataset.was = t.value;
+    post("/api/react", {stage_id: g.dataset.stage, note_pre: t.value}, g, "メモを保存しました").then(d => {
+      if (!d) return;
+      const s = g.querySelector("summary");
+      if (!t.value.trim()) { s.innerHTML = '観る前のメモを書く<span class="opt">任意</span>'; return; }
+      s.textContent = "観る前のメモ";
+      const v = document.createElement("span");
+      v.className = "nnv";
+      v.textContent = t.value;
+      s.append(v);
+    });
+  });
+});
+
 // 「興味なし」に添えた見送った理由。**離れたときに保存する**
 root.querySelectorAll("textarea[data-nono]").forEach(t => {
   if (t.dataset.bound) return;

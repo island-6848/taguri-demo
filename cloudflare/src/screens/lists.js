@@ -10,7 +10,7 @@
 // demotions), the matching of a subject word inside a longer registered subject.
 import {stageInfo, fallbackTemplate} from './fallback.js';
 import {E, ValueError} from './py.js';
-import {compose, cardTemplates, posterHtml, mytixHtml} from './cards.js';
+import {compose, cardTemplates, posterHtml, mytixHtml, preNote} from './cards.js';
 import {titleKey} from './works.js';
 import {indexTabs} from './rate.js';
 import {PREFS} from './prefs.js';
@@ -52,7 +52,7 @@ export async function loadDeclined(ctx) {
 
 /** reaction rows merged per stage, newest last (feedback.reactions). */
 export async function reactionsOf(ctx) {
-  const {results} = await ctx.db.prepare('SELECT stage_id,interest,owned,note,note_no FROM reaction WHERE user_id=? ORDER BY updated_at').bind(ctx.uid).all();
+  const {results} = await ctx.db.prepare('SELECT stage_id,interest,owned,note,note_no,note_pre FROM reaction WHERE user_id=? ORDER BY updated_at').bind(ctx.uid).all();
   const out = new Map();
   for (const r of results) {
     const d = out.get(r.stage_id) || {};
@@ -60,6 +60,7 @@ export async function reactionsOf(ctx) {
     if (r.owned !== null) d.owned = Number(r.owned);
     if (r.note !== null) d.note = r.note;
     if (r.note_no !== null) d.note_no = r.note_no;
+    if (r.note_pre !== null && r.note_pre !== undefined) d.note_pre = r.note_pre;
     out.set(r.stage_id, d);
   }
   return out;
@@ -177,8 +178,9 @@ export async function promoteOwned(ctx) {
     const done = doneDate([sid], m?.end || '', tickets);
     if (!m?.title || !done || done > ctx.today) continue;
     const key = `${titleKey(m.title)}#${done}`;
+    // The memo written before seeing it (購入済み公演「観る前のメモ」) goes with the work.
     await ctx.db.prepare(`INSERT INTO works(user_id,work_key,title,first_date,last_date,times,verdict,chosen,note_impression,note_motive,stage_id,updated_at)
-      VALUES(?,?,?,?,?,1,NULL,NULL,'','',?,?) ON CONFLICT(user_id,work_key) DO NOTHING`).bind(ctx.uid, key, m.title, done, done, sid, nowIso(ctx)).run();
+      VALUES(?,?,?,?,?,1,NULL,NULL,'',?,?,?) ON CONFLICT(user_id,work_key) DO NOTHING`).bind(ctx.uid, key, m.title, done, done, react.get(sid)?.note_pre || '', sid, nowIso(ctx)).run();
   }
 }
 
@@ -216,7 +218,8 @@ export async function buckets(ctx) {
     const r = {owned: rs.some(x => x.owned === 1) ? 1 : undefined,
       interest: rs.find(x => x.interest !== undefined)?.interest};
     const pick = sids.find(s => react.has(s)) || m.stage_id;
-    const row = {...(group.find(v => v.stage_id === pick) || m), sids, note: react.get(pick)?.note || ''};
+    const pre = sids.map(s => react.get(s)?.note_pre).find(Boolean) || '';
+    const row = {...(group.find(v => v.stage_id === pick) || m), sids, note: react.get(pick)?.note || '', note_pre: pre};
     if (r.owned === 1) {
       seen.add(key);
       const done = doneDate(sids, row.end, tickets);
@@ -342,7 +345,7 @@ export async function ticketsScreen(_params, ctx) {
   const owned = [...b.owned].sort((x, y) => { const p = rank(x), q = rank(y); return (p[0] - q[0]) || cmp(p[1], q[1]) || cmp(p[2], q[2]); });
   const mine = r => r.sids.flatMap(s => (b.tickets.get(s) || []).map(t => ({...t, sid: s})))
     .sort((p, q) => cmp(p.date, q.date) || cmp(p.time || '', q.time || ''));
-  const html = (await cards(ctx, owned, 'owned', r => ({mytix: mytixHtml(r.stage_id, r.start, r.end, mine(r))}))).join('');
+  const html = (await cards(ctx, owned, 'owned', r => ({mytix: mytixHtml(r.stage_id, r.start, r.end, mine(r)) + preNote(r.stage_id, r.note_pre)}))).join('');
   const body = `<h1>購入済み公演 ── ${owned.length} 件</h1>
 <p class="lede">「すでに持っている」と答えた公演と、購入確認メールから見つかった公演です。<b>この一覧は、次のおすすめを変えません。</b>上演日を過ぎると一覧から外れ、<a href="/rate?t=__TAGURI_TOKEN__">評価一覧</a>の評価待ちに移ります。行く日は、各公演の「行く日」の欄から入れられます。</p>
 ${html || '<p class="empty">チケットを持っている公演はまだありません。推薦の画面で「すでに持っている」を押した公演が、ここに並びます。</p>'}
