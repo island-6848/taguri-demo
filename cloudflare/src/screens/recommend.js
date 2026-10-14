@@ -14,31 +14,21 @@ import {chooseVariant} from '../reco-gate.js';
 import {E, ValueError} from './py.js';
 import {loadWorks} from './works.js';
 import {compose, cardTemplates, posterHtml} from './cards.js';
+import {PREFS, prefForm, prefsFor, regionCounts} from './prefs.js';
+export {prefForm, prefsFor};
 import {loadDeclared, loadDeclined, nameHits, KINDS} from './lists.js';
 
 export const TOP = 15;
 // Groups kept per user between requests: enough to fill 15 cards in any one prefecture.
 const KEEP = 400;
 const VERSION = 'screen-v1';
-export const PREFS = ['北海道', '青森県', '岩手県', '宮城県', '秋田県', '山形県', '福島県',
-  '茨城県', '栃木県', '群馬県', '埼玉県', '千葉県', '東京都', '神奈川県',
-  '新潟県', '富山県', '石川県', '福井県', '山梨県', '長野県',
-  '岐阜県', '静岡県', '愛知県', '三重県',
-  '滋賀県', '京都府', '大阪府', '兵庫県', '奈良県', '和歌山県',
-  '鳥取県', '島根県', '岡山県', '広島県', '山口県',
-  '徳島県', '香川県', '愛媛県', '高知県',
-  '福岡県', '佐賀県', '長崎県', '熊本県', '大分県', '宮崎県', '鹿児島県', '沖縄県'];
-const PREFS_KEY = 'recommend_prefs';
+export {PREFS} from './prefs.js';
 const ROLE_SRC = '公演ページのクレジット';
 const KIND_LABEL = {'#形式': '形式', '#原作': '原作', '#翻訳': '', '#会場': '劇場', '#値段': '料金帯', '#題材': '題材'};
 const KIND_SRC = {'#形式': '公演名とクレジット', '#会場': '公演ページの劇場', '#値段': '公演ページの料金'};
 const WORKS_SHOWN = 3;
 const MARK_ORDER = {'◎': 0, '○': 1, '△': 2, '×': 3};
 
-const ICO = {search: 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM16.2 16.2 21 21'};
-const ico = (name, size = 16) => `<svg class="ico " viewBox="0 0 24 24" width="${size}" height="${size}"`
-  + ` fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"`
-  + ` aria-hidden="true"><path d="${ICO[name]}"/></svg>`;
 const pad2 = n => String(n).padStart(2, '0');
 const chunks = (xs, n) => Array.from({length: Math.ceil(xs.length / n)}, (_, i) => xs.slice(i * n, i * n + n));
 
@@ -195,46 +185,6 @@ export function prefCounts(groups) {
   return n;
 }
 
-const PREF_NOTE = `都道府県は<b>いくつでも同時に選べます</b>。選んだ県で観られる公演を、好みに合いそうな順に <b>${TOP} 件</b>まで表示します。数字は、その県で観られる件数です。<b>選ばなければ全国です。</b>ツアーで来る公演も入ります。本拠地が他県でも、選んだ県の会場に来る公演は、その会場の日程で表示します。`;
-/** render_recommend.pref_form (without the map: prefmap.panel is not ported yet). */
-export function prefForm(counts, prefs, action = '/recommend', note = '', hidden = {}) {
-  const keep = new Set(prefs);
-  const chips = PREFS.filter(p => counts[p]).map(p => `<label class="pchip${keep.has(p) ? ' on' : ''}">`
-    + `<input type="checkbox" name="pref" value="${E(p)}"${keep.has(p) ? ' checked' : ''}>`
-    + `<span class="pl">${E(p)}</span><span class="pn">${counts[p]}</span></label>`).join('');
-  const now = !keep.size ? '全国' : PREFS.filter(p => keep.has(p)).join('・') + `（${keep.size} 県）`;
-  const hiddenIn = Object.entries(hidden).map(([k, v]) => `<input type="hidden" name="${E(k)}" value="${E(v)}">`).join('');
-  const hiddenQs = Object.entries(hidden).map(([k, v]) => `&amp;${E(k)}=${E(v)}`).join('');
-  return `<form class="pfil" method="get" action="${E(action)}">
-<input type="hidden" name="t" value="__TAGURI_TOKEN__">
-<input type="hidden" name="f" value="1">
-${hiddenIn}
-<details class="pbox">
-<summary>${ico('search', 15)}観に行ける場所で絞り込む ── いまは<b>${E(now)}</b></summary>
-<p class="lead">${note || PREF_NOTE}</p>
-
-<div class="pchips">${chips}</div>
-<div class="pfoot"><button type="submit">${ico('search')}この都道府県で絞り込む</button>
-<a class="pall" href="${E(action)}?t=__TAGURI_TOKEN__&amp;f=1${hiddenQs}">全国に戻す</a></div>
-</details></form>`;
-}
-
-/** The chosen prefectures: a submitted form (?f=1) saves them, otherwise the saved ones. */
-export async function prefsFor(params, ctx) {
-  if (params.has('f')) {
-    const prefs = PREFS.filter(p => params.getAll('pref').includes(p)).slice(0, 47);
-    if (prefs.length) {
-      await ctx.db.prepare('INSERT INTO app_setting(user_id,key,value,updated_at) VALUES(?,?,?,?) ON CONFLICT(user_id,key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at')
-        .bind(ctx.uid, PREFS_KEY, JSON.stringify(prefs), new Date(ctx.now).toISOString()).run();
-    } else {
-      await ctx.db.prepare('DELETE FROM app_setting WHERE user_id=? AND key=?').bind(ctx.uid, PREFS_KEY).run();
-    }
-    return prefs;
-  }
-  const row = await ctx.db.prepare('SELECT value FROM app_setting WHERE user_id=? AND key=?').bind(ctx.uid, PREFS_KEY).first();
-  try { return PREFS.filter(p => JSON.parse(row?.value || '[]').includes(p)); } catch { return []; }
-}
-
 /** The cards of these rows, rank from `first`; rows without a card yet are left out. */
 export async function cardsHtml(ctx, rows, titles, first = 1) {
   const {html, posters} = await cardTemplates(ctx.db, rows.flatMap(r => [r.shown, r.stage_id]));
@@ -289,7 +239,7 @@ export async function recommendScreen(params, ctx) {
   const body = `<h1>${E(head)}</h1>
 ${lede}
 ${notes}
-<div class="fil2">${prefForm(prefCounts(data.groups), prefs)}</div>
+<div class="fil2">${prefForm(prefCounts(data.groups), prefs, '/recommend', '', {}, regionCounts(data.groups.map(g => ({key: g.stage_id, prefs: g.venues.map(v => v.pref)}))))}</div>
 ${cards.join('')}
 <p class="lede">気になった公演で「興味あり」を押すと、
 <a href="/recommend/interest?t=__TAGURI_TOKEN__">「興味あり」（いま ${nInterest} 件）</a>に移ります。</p>

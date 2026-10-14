@@ -138,3 +138,43 @@ test('公演カレンダー shows the stages owned, followed and of a registered
     assert.doesNotMatch(owned, /data-stage="102"/);
   } finally { sqlite.close(); }
 });
+
+test('設定・はじめる・登録, the default prefectures, 観ればよかった and the export', async () => {
+  const {env, sqlite} = withIndex();
+  const a = await signIn(env), b = await signIn(env);
+  try {
+    const set = (await screen(env, a, 'settings')).body_html;
+    assert.match(set, /<h1>設定<\/h1>/);
+    assert.match(set, /いまは全国/);
+    assert.match(set, /<a href="\/account">アカウント<\/a>/);
+    assert.match(set, /取り消した記録はありません/);
+    // The default set here applies to おすすめ (until a filter is chosen there).
+    assert.equal((await step(env, a, {post: '/api/pref_setting', body: {prefs: ['大阪府', '火星']}})).body.prefs.join(), '大阪府');
+    assert.match((await screen(env, a, 'settings')).body_html, /いまは大阪府（1 県）/);
+    assert.match((await screen(env, a, 'recommend')).body_html, /いまは<b>大阪府（1 県）<\/b>/);
+    assert.equal((await step(env, a, {post: '/api/pref_setting', body: {prefs: 'x'}})).status, 400);
+    // はじめる counts the registered names and the works.
+    assert.match((await screen(env, a, 'start')).body_html, /見逃したくない名前を登録する（いま 0 件）/);
+    await step(env, a, {post: '/api/favourite', body: {action: 'add', kind: '人', name: '俳優甲'}});
+    const start = (await screen(env, a, 'start')).body_html;
+    assert.match(start, /（いま 1 件）[\s\S]*済んでいます/);
+    assert.match(start, /人「俳優甲」/);
+    // 観ればよかった: looked up among the stages in D1.
+    assert.equal((await step(env, a, {post: '/api/missed', body: {title: '舞台ひとつめ'}})).status, 200);
+    assert.equal((await step(env, a, {post: '/api/missed', body: {title: '聞いたことのない舞台'}})).status, 200);
+    const reg = (await screen(env, a, 'register')).body_html;
+    assert.match(reg, /<h1>公演情報の登録<\/h1>/);
+    assert.match(reg, /<span class="badge part">2 件<\/span>/);
+    assert.match(reg, /一覧にはあったが、表示する枠に入らなかった<\/span><span class="w">舞台ひとつめ<\/span>[\s\S]*<span class="cl">出演<\/span><span class="cv">俳優甲、俳優乙<\/span>/);
+    assert.match(reg, /取り込んだ公演の中に無かった<\/span><span class="w">聞いたことのない舞台/);
+    assert.doesNotMatch((await screen(env, b, 'register')).body_html, /舞台ひとつめ/);
+    // The export holds this user's rows only.
+    const res = await (await import('../src/worker.js')).default.fetch(new Request('https://taguri.example/export.json', {headers: {cookie: a}}), env);
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get('content-disposition'), /taguri-export\.json/);
+    const out = JSON.parse(await res.text());
+    assert.equal(out.missed.length, 2);
+    assert.deepEqual(out.declared['人'], ['俳優甲']);
+    assert.ok(out.missed.every(r => r.user_id === out.missed[0].user_id));
+  } finally { sqlite.close(); }
+});

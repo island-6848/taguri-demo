@@ -5,7 +5,7 @@ import {E} from './py.js';
 import {ico} from './icons.js';
 import {CALENDAR_JS} from './calendar_js.js';
 import {periodStart, periodEnd, regionLabel, runRange, workKey} from './reminder.js';
-import {PREFS} from './recommend.js';
+import {PREFS} from './prefs.js';
 import {buckets} from './lists.js';
 
 export const KINDS = [['owned', 'すでに持っている', 'ticket', 'own'], ['tracking', '興味あり', 'flag', 'trk'], ['favourites', 'お気に入り', 'star', 'fav']];

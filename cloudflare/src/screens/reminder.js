@@ -9,7 +9,7 @@ import {ico, h2} from './icons.js';
 import {buttons, posterHtml} from './cards.js';
 import {indexTabs} from './rate.js';
 import {nz, buckets} from './lists.js';
-import {prefsFor, prefForm} from './recommend.js';
+import {prefsFor, prefForm, regionCounts} from './prefs.js';
 
 export const WINDOW = 7, TICKET_MAX = 6;
 export const WEEKS = [['this', '今週'], ['next', '来週']];
@@ -285,7 +285,7 @@ export async function reminderScreen(params, ctx) {
     poster: sid => (pics.has(sid) ? posterHtml(pics.get(sid)) : '')});
   const body = `<h1>開幕リマインド ── 見逃していませんか</h1>
 <p class="lede"><b>初日が近い公演を、答えたかどうかに関わらず全部出します。</b>「興味あり」も「興味なし」も押さないうちに開幕してしまうのが、いちばんの見逃しだからです。未回答の行は、その場で答えられます。</p>
-${prefForm(counts, prefs, '/recommend/reminder', note, {w: week})}
+${prefForm(counts, prefs, '/recommend/reminder', note, {w: week}, regionCounts(wr.map(r => ({key: r.stage_id || r.title, prefs: [r.pref]}))))}
 ${html}`;
   return {title: '開幕リマインド', body_html: body};
 }

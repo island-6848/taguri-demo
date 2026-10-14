@@ -4,6 +4,7 @@ import {passkeyRoutes} from './passkey.js';
 import {scoreFromIndex, d1Access, gradeOf, seedsFromFavourites, collapseRanked, cleanAspects, SEED_KINDS, SEED_ROLES, MAX_SEED_FAVS, cmp} from './recommend.js';
 import {searchIndex, d1Search} from './stage-search.js';
 import {suggest} from './screens/suggest.js';
+import {exportPayload} from './screens/settings.js';
 import {chooseVariant} from './reco-gate.js';
 import {R2_READS_CAP, r2ReadAllowed} from './free-tier.js';
 import {rateLimit, checkNewAccount} from './rate-limit.js';
@@ -326,6 +327,15 @@ function withAccountLink(response) {
 // Screens and writes of the original UI already ported to the Worker
 // (src/screens/). Signed-in only: gate() has already sent everyone else away.
 async function nativeRoute(request, env, url) {
+  if (allNative(env) && request.method === 'GET' && url.pathname === '/export.json') {
+    try {
+      const uid = await user(request, env.DB);
+      const body = JSON.stringify(await exportPayload({db: env.DB, uid}), null, 1);
+      return new Response(body, {headers: {'Content-Type': 'application/json; charset=utf-8', 'Content-Disposition': 'attachment; filename="taguri-export.json"', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff'}});
+    } catch (error) {
+      return json({ok:false,error:error.status ? error.message : '書き出せませんでした。'}, error.status ?? 500);
+    }
+  }
   if (allNative(env) && request.method === 'GET' && ['/api/suggest', '/api/suggest_web'].includes(url.pathname)) {
     try {
       const uid = await user(request, env.DB);

@@ -1,0 +1,293 @@
+// 設定・はじめる・公演情報の登録, and their writes (pref_setting, missed), answered by the
+// Worker from D1 (起案者の指示 2026-10-14「残りの画面も順に移して」).
+//
+// Same layout and words as app._settings_body / _start_body / _register_body, except where
+// the Python text speaks of the Render server: the アカウント card (recovery codes on Render)
+// points to the account page, the mail import is the owner's only, and 「観ればよかった」 is
+// looked up in the stages already in D1 instead of fetching the web.
+import {E, ValueError} from './py.js';
+import {ico, h2} from './icons.js';
+import {PREFS, readPrefSetting, regionsHtml, regionCounts, prefSettingAction} from './prefs.js';
+import {rankedGroups, prefCounts} from './recommend.js';
+import {KINDS, loadDeclared} from './lists.js';
+import {loadWorks, titleKey} from './works.js';
+import {dateParts} from './row.js';
+import {splitNames} from './cast.js';
+
+const cardH2 = (name, text, extra = '') => `<summary>${h2(name, text, extra)}</summary>`;
+
+// ---------------------------------------------------------------- 設定
+async function droppedRows(ctx) {
+  const {results} = await ctx.db.prepare('SELECT uid, program FROM excluded WHERE user_id = ? ORDER BY uid, program').bind(ctx.uid).all();
+  const ex = results.map(r => [r.uid, r.program]);
+  const marks = new Map(ex.filter(([u]) => u.startsWith('work:')).map(([u, p]) => [u.slice(5), p]));
+  const purged = new Set(ex.filter(([u]) => u.startsWith('purged:')).map(([u]) => u.slice(7)));
+  const purgedLegacy = new Set(ex.filter(([u]) => u.startsWith('purged-legacy:')).map(([, p]) => p));
+  const rows = [...marks].filter(([k]) => !purged.has(k)).map(([k, t]) => ({key: k, title: t, n: 1, legacy: false}));
+  const legacy = new Map();
+  for (const [uid, program] of ex) {
+    if (uid.startsWith('work:') || uid.startsWith('purged:') || uid.startsWith('purged-legacy:') || purgedLegacy.has(program)) continue;
+    legacy.set(program, (legacy.get(program) || 0) + 1);
+  }
+  rows.push(...[...legacy].map(([p, n]) => ({key: p, title: p, n, legacy: true})));
+  return rows.sort((a, b) => (a.title < b.title ? -1 : a.title > b.title ? 1 : 0));
+}
+
+function droppedHtml(rows) {
+  if (!rows.length) return `<details class="card">${cardH2('check', '取り消した記録')}
+<p class="lead">取り消した記録はありません。<b>まちがって取り込まれたものは、
+各行の「公演詳細を直す」を開いて「この記録を取り消す」から外せます。</b>
+外した記録はここに並び、いつでも戻せます。</p></details>`;
+  const body = rows.map(r => {
+    const how = r.legacy ? `以前に外した分・${r.n} 通ぶん` : `メール ${r.n} 通ぶん`;
+    return `<div class="drop-row"><span class="dt">${E(r.title)}</span><span class="dm">${E(how)}</span>`
+      + `<div class="drop-btns"><button data-restore="${E(r.key)}">戻す</button>`
+      + `<button class="danger" data-purge="${E(r.key)}">完全に取り消す</button></div><span class="said"></span></div>`;
+  }).join('');
+  return `<details class="card">${cardH2('check', '取り消した記録', `<span class="badge part">${rows.length} 件</span>`)}
+<p class="lead">一覧・評価待ち・おすすめの材料から外してあるだけなので、
+「戻す」を押せばもとに戻ります。メールそのものは消していません。<b>「完全に取り消す」
+はこの一覧からも消します。</b>外れたままになり、もう戻せなくなります。</p>
+${body}</details>`;
+}
+
+function skippedHtml(rows) {
+  if (!rows.length) return `<details class="card">${cardH2('check', '行かなかった公演')}
+<p class="lead">「行かなかった」と答えた公演はありません。<b>評価待ちや日記帳の
+各行で「行かなかった」を押すと、ここに並びます。</b></p></details>`;
+  const body = rows.map(w => {
+    const [y, md] = dateParts(w.first_date || '');
+    const when = md ? `${y}年${md.split('.')[0]}月${Number(md.split('.')[1])}日` : '上演日が分かりません';
+    return `<div class="drop-row"><span class="dt">${E(w.title)}</span><span class="dm">${E(when)}</span>`
+      + `<div class="drop-btns"><button data-seen="${E(w.work_key)}">やはり観た</button><span class="said"></span></div></div>`;
+  }).join('');
+  return `<details class="card">${cardH2('check', '行かなかった公演', `<span class="badge part">${rows.length} 件</span>`)}
+<p class="lead">券を買ったが「行かなかった」と答えた公演です。件数と図には数えていません。
+<b>「やはり観た」を押すと、観た記録に戻ります。</b></p>
+${body}</details>`;
+}
+
+const EXPORT_LABEL = {works: '観た公演の記録（作品ごと）', ratings: '観た回ごとの評価と感想', attendance: '観に行ったかどうかの答え',
+  reaction: 'おすすめへの答え（持っている・興味あり・興味なし）', ticket: '券の日にち', presented: 'これまでに表示したおすすめの一覧',
+  splits: '1 通のメールを複数の公演に分けた指定', excluded: '取り込みから外した公演', missed: '「観ればよかった」の登録', declared: 'お気に入りに登録した名前と題材'};
+const EXPORT_TABLES = ['works', 'reaction', 'ticket', 'excluded', 'missed'];
+
+/** app.export_payload for one user: the same keys (tables the service never fills are empty). */
+export async function exportPayload(ctx) {
+  const out = {};
+  for (const t of ['works', 'ratings', 'attendance', 'reaction', 'ticket', 'presented', 'splits', 'excluded', 'missed']) {
+    out[t] = EXPORT_TABLES.includes(t) ? (await ctx.db.prepare(`SELECT * FROM ${t} WHERE user_id=?`).bind(ctx.uid).all()).results : [];
+  }
+  const v = await ctx.db.prepare("SELECT value FROM app_setting WHERE user_id=? AND key='declared'").bind(ctx.uid).first();
+  let dec = {};
+  try { dec = JSON.parse(v?.value || '{}') || {}; } catch { dec = {}; }
+  out.declared = Object.fromEntries(KINDS.map(k => [k, (Array.isArray(dec[k]) ? dec[k] : []).filter(x => typeof x === 'string')]));
+  return out;
+}
+
+async function exportCardHtml(ctx) {
+  const d = await exportPayload(ctx);
+  const li = Object.entries(d).map(([k, v]) => `<li>${E(EXPORT_LABEL[k] || k)} <b>`
+    + `${Array.isArray(v) ? v.length : Object.values(v).reduce((s, x) => s + x.length, 0)} 件</b><span class="xk">${E(k)}</span></li>`).join('');
+  return `<details class="card">${cardH2('download', '書き出す')}
+<p class="lead">記録・評価・感想・お気に入りを、1 つのファイルにまとめて保存できます。
+中身は下のとおりで、ほかの道具で読める形（JSON）です。</p>
+<ul class="lead">${li}</ul>
+<a class="dl" href="/export.json?t=__TAGURI_TOKEN__" download="taguri-export.json">
+ taguri-export.json を保存する</a>
+<p class="note"><b>ポスターと、半券の写真は入りません。</b>
+ポスターは外部サイトの画像を保存したものなので、書き出しには含めていません。</p></details>`;
+}
+
+export async function settingsScreen(_params, ctx) {
+  const prefs = await readPrefSetting(ctx);
+  const data = await rankedGroups(ctx);
+  const counts = prefCounts(data.groups);
+  const rcounts = regionCounts(data.groups.map(g => ({key: g.stage_id, prefs: g.venues.map(v => v.pref)})));
+  const keep = new Set(prefs);
+  const chips = PREFS.filter(p => counts[p]).map(p => `<label class="pchip${keep.has(p) ? ' on' : ''}">`
+    + `<input type="checkbox" name="pref" value="${E(p)}"${keep.has(p) ? ' checked' : ''}>`
+    + `<span class="pl">${E(p)}</span><span class="pn">${counts[p] || 0}</span></label>`).join('');
+  const now = !prefs.length ? '全国' : prefs.join('・') + `（${prefs.length} 県）`;
+  const works = await loadWorks(ctx);
+  const body = `<h1>設定</h1>
+<p class="lede">ここで決めたことは、おすすめ全体に効きます。<b>内容をまとめて確かめてから保存します。</b></p>
+<details class="card">${cardH2('gear', '観に行ける場所を決めておく', `<span class="badge part">いまは${E(now)}</span>`)}
+<p class="lead">都道府県を選んで保存すると、<b>「今週のおすすめ」と「公演カレンダー」を
+開くたびに、その都道府県で絞り込んだ状態になります。</b>選ばなければ全国です。
+<b>いくつでも同時に選べます。</b><br>
+<b>すでに「興味あり」を押した公演・お気に入り・買った券には効きません。</b>
+一度決めたことを、この設定で見えなくすることはありません。</p>
+<form class="pfil" id="pref-setting" onsubmit="return false">
+${regionsHtml(counts, rcounts)}
+<div class="pchips">${chips}</div>
+<div class="pfoot"><button type="button" data-set-pref="1">${ico('gear')}この都道府県を既定にする</button>
+<button type="button" class="pall-btn" data-set-pref-all="1">全国に戻す</button>
+<span class="said"></span></div>
+</form></details>
+<details class="card">${cardH2('gear', 'アカウント')}
+<p class="lead">表示名・ログインの方法・パスキー・ログアウト・アカウントの削除は、<a href="/account">アカウント</a>の画面にまとめてあります。</p></details>
+${await exportCardHtml(ctx)}
+${droppedHtml(await droppedRows(ctx))}
+${skippedHtml(works.filter(w => w.unseen))}`;
+  return {title: '設定', body_html: body};
+}
+
+// ---------------------------------------------------------------- はじめる
+const stepCard = (n, title, done, lead, inner = '') => `<div class="card start-step${done ? ' done' : ''}">`
+  + `${h2(done ? 'check' : 'plus', `${n} ${title}`, done ? '<span class="badge part">済んでいます</span>' : '<span class="badge">これからです</span>')}`
+  + `<p class="lead">${lead}</p>${inner}</div>`;
+
+export async function startScreen(_params, ctx) {
+  const dec = await loadDeclared(ctx);
+  const nDec = KINDS.reduce((s, k) => s + (dec[k] || []).length, 0);
+  const nCand = Number((await ctx.db.prepare("SELECT v FROM rec_meta WHERE k='catalogue_upcoming'").first())?.v || 0);
+  const nWorks = (await loadWorks(ctx)).length;
+  const kinds = KINDS.map(k => `<option value="${E(k)}">${E(k)}</option>`).join('');
+  const tags = KINDS.flatMap(k => (dec[k] || []).map(n => `<span class="tag" data-kind="${E(k)}" data-name="${E(n)}">${E(k)}「${E(n)}」<button data-fav="remove">✕</button></span>`)).join('');
+  const form = `<div class="fav-add"><select id="fav-kind">${kinds}</select> <input id="fav-name" type="text" placeholder="劇団名・俳優名・作品名・題材" size="26">`
+    + ` <button data-fav="add">${ico('star')}登録する</button><span class="said"></span></div>` + (tags ? `<div class="tags">${tags}</div>` : '');
+  const step1 = stepCard(1, `見逃したくない名前を登録する（いま ${nDec} 件）`, nDec > 0,
+    '劇団・俳優・演出家・作品・原作者・題材のどれでも登録できます。<b>登録した名前の公演は、内容を問わず、件数の制限も付けずに出します。</b>1 件登録するだけで動き始めます。<br>あとから「おすすめ ▸ お気に入り」で足せますし、外せます。', form);
+  const step2 = stepCard(2, '公演の情報を取り寄せる', nCand > 0, nCand > 0
+    ? `手元にこれから観られる公演を ${nCand} 件持っています。毎日取り直しています。`
+    : 'まだ公演の情報が届いていません。毎日の取得のあとに、ここに件数が出ます。');
+  const step3 = stepCard(3, `観た公演を入れる（いま ${nWorks} 件・任意です）`, nWorks > 0,
+    '<b>観た記録が 1 件もないうちは、好みに合わせたおすすめは出ません。</b>おすすめは、◎ を付けた公演の作り手をもとに作るためです。<b>1 段目で登録した名前の公演は、記録が無くても出ます。</b>'
+    + '<br><a href="/register?t=__TAGURI_TOKEN__">公演情報の登録</a> から、手での追加ができます。観た公演には <a href="/rate?t=__TAGURI_TOKEN__">観た公演の評価</a> で ◎○△× を付けてください。');
+  const body = `<h1>はじめに ── 見逃したくない名前を 1 つ登録してください</h1>
+<p class="lede">たぐりは、<b>これから観られる公演の中から、見逃したくない舞台を毎週届けるアプリ</b>です。まだ登録も記録もないので、届けられるものがありません。<b>下の3つのうち、1つ目だけで始められます。</b></p>
+${step1}
+${step2}
+${step3}
+<p class="lede">ナビゲーションから、各画面を先に見ることもできます。<b>どの画面もまだ0件です。</b></p>`;
+  return {title: 'はじめる', body_html: body};
+}
+
+// ---------------------------------------------------------------- 公演情報の登録
+const MISSED_WHERE = {
+  pool: ['一覧にはあったが、表示する枠に入らなかった', '取り込んだ公演の中にはありましたが、順位が足りず 15 件の枠に入りませんでした。「設定」の「おすすめの効かせ方」で重視する情報を変えると、入ることがあります。'],
+  none: ['取り込んだ公演の中に無かった', '取り込んだ公演の一覧に、そもそも入っていませんでした。順位をどう変えても出てきません。出すには、公演情報の取得元を増やす必要があります。'],
+};
+
+async function missedRows(ctx) {
+  const {results} = await ctx.db.prepare('SELECT title, created_at, note, stage_id, fields_json, synopsis, lookup_note, looked_up_at FROM missed WHERE user_id=? ORDER BY created_at DESC').bind(ctx.uid).all();
+  return results.map(r => {
+    let fields = {};
+    try { fields = r.fields_json ? JSON.parse(r.fields_json) : {}; } catch { fields = {}; }
+    return {title: r.title, at: String(r.created_at || '').slice(0, 10), stage_id: r.stage_id || '', fields, synopsis: r.synopsis || '',
+      lookup_note: r.lookup_note || '', looked_up: r.looked_up_at !== null && r.looked_up_at !== undefined,
+      where: r.stage_id ? 'pool' : 'none'};
+  });
+}
+
+function missedHtml(rows) {
+  if (!rows.length) return '<p class="empty">まだ登録はありません。<b>登録すると、その公演がどこで漏れたのか（取り込んだ一覧に無かった／順位が足りなかった／出したのに押されなかった）と、演者・あらすじをここに出します。</b></p>';
+  const out = rows.map(r => {
+    const [head, why] = MISSED_WHERE[r.where];
+    let look;
+    if (!r.looked_up) look = '<p class="empty">演者とあらすじを調べています…</p>';
+    else if (!r.stage_id) look = `<p class="empty">${E(r.lookup_note || 'この題名の公演ページが見つかりませんでした')}</p>`;
+    else {
+      look = castBlock(r.fields) + (r.synopsis ? `<div class="syn"><p class="txt">${E(r.synopsis)}</p><span class="src">［出典: CoRich の公演ページ］</span></div>`
+        : '<p class="empty">あらすじを取れませんでした（公演ページに内容の記載がありません）。</p>') + (r.lookup_note ? `<p class="empty">${E(r.lookup_note)}</p>` : '');
+    }
+    return `<div class="prom"><span class="k">${E(head)}</span><span class="w">${E(r.title)}</span><span class="src">${E(r.at)} に登録</span><span class="q">${why}</span>${look}</div>`;
+  }).join('');
+  return `<p class="lead">登録した ${rows.length} 件と、<b>どこで漏れたのか</b>・<b>演者とあらすじ</b>です。出演者・作り手は、調べ終わり次第、次の推薦に自動で反映されます（観ていない公演なので、◎ より弱い扱いです）。</p>${out}`;
+}
+
+/** render_recommend.cast_block */
+const MAKER_ROLES = ['演出', '脚本', '作', '原作', '翻訳', '音楽', '作曲', '振付', '演出・振付'];
+const CAST_SHOWN = 12;
+export function castBlock(f) {
+  const cast = splitNames(f['出演'] || '');
+  const makers = MAKER_ROLES.filter(r => f[r]).map(r => [r, splitNames(f[r])]).filter(([, ns]) => ns.length);
+  if (!cast.length && !makers.length) return '<div class="cast none">出演者のクレジットを取れませんでした（公演ページに欄がありません）</div>';
+  const rows = [];
+  if (cast.length) {
+    const head = cast.slice(0, CAST_SHOWN).map(E).join('、');
+    const rest = cast.slice(CAST_SHOWN);
+    const more = rest.length ? `<span class="rest">、${rest.map(E).join('、')}</span><button class="mrb" data-more="1">ほか ${rest.length} 名を見る</button>` : '';
+    rows.push(`<div class="cr"><span class="cl">出演</span><span class="cv">${head}${more}</span></div>`);
+  }
+  for (const [role, ns] of makers) rows.push(`<div class="cr"><span class="cl">${E(role)}</span><span class="cv">${ns.slice(0, 6).map(E).join('、')}${ns.length > 6 ? `ほか ${ns.length - 6} 名` : ''}</span></div>`);
+  return `<div class="cast">${rows.join('')}<span class="src">［出典: 公演ページのクレジット］</span></div>`;
+}
+
+export async function registerScreen(_params, ctx) {
+  const works = await loadWorks(ctx);
+  const wait = works.filter(w => !w.verdict && !w.unseen && w.last_date && w.last_date <= ctx.today);
+  const missed = await missedRows(ctx);
+  const body = `<h1>公演情報の登録</h1>
+<p class="lede">公演を記録に足す場所です。<b>入口は3つあります。</b>購入確認メールからの自動取り込み、メールに残らない分（招待・当日券・人に取ってもらった分）の手入力、そして<b>観ればよかった公演（観ていないもの）の追加</b>です。評価は「観た公演の評価」で付けます。評価がなくても、記録は残せます。</p>
+
+<div class="card">${h2('mail', '① 購入確認メールから取り込む')}
+<p class="lead">購入確認メールの取り込みは、手元のパソコンで動かしたときだけ使えます。
+<b>ここでは、②の「手で 1 件足す」から記録を足してください。</b></p></div>
+
+<div class="card">${h2('plus', '② 手で 1 件足す ── メールに残らない分')}
+<p class="lead">招待・当日窓口・人に取ってもらった分は購入確認メールに残らないので、
+ここから足してください。</p>
+<div class="add-work"><input id="w-title" type="text" placeholder="公演の題名" size="26"
+  autocomplete="off"><input id="w-stage" type="hidden" value="">
+ <input id="w-date" type="date"> <input id="w-time" type="time" aria-label="開演時刻（任意）">
+ <input id="w-venue" type="text" placeholder="劇場（任意）" size="14">
+ <button data-add-work="1">${ico('plus')}登録する</button>
+ <button data-sug-web="1">${ico('search')}CoRichで検索</button><span class="said"></span></div>
+<div id="sug" class="sug"></div>
+<p class="ed-lead"><b>題名を 2 文字入れると、手元の情報から候補が出ます。</b>
+選ぶと劇場・日程・出演者・作り手が一緒に入り、次のおすすめの材料になります。
+すでに記録にあるものは「記録あり」と出るので、二重に足さずに済みます。<br>
+<b>候補に出てこないときは「検索」を押してください。</b>その場で公演情報を探します
+（8 秒ほどかかります）。同じ題名の公演が複数出ることがあります。
+別の劇場での上演や再演なので、劇場と日程を見て、観た公演を選んでください。<br>
+ポスターが出るのは、手元に画像がある公演だけです。</p></div>
+
+<div class="card">${h2('flag', '③ 「観ればよかった」を足す ── 観ていない公演', missed.length ? `<span class="badge part">${missed.length} 件</span>` : '')}
+<p class="lead">出てこなかったせいで見逃した公演を登録してください。
+どこで漏れたのか（一覧に無かった／順位が低かった／出したのに押されなかった）と、
+演者・あらすじを調べて下に出します（数十秒かかることがあります）。<br>
+<b>①② と違って、これは観ていない公演です。</b>観た本数にも、図にも、評価待ちにも入らず、
+評価（◎）の材料にもなりません。再演や別会場での上演を次は見逃したくないときは、
+下の一覧から「お気に入りに入れる」を押してください。</p>
+<div class="miss-add"><input id="miss-title" type="text" placeholder="公演の題名" size="30">
+ <button data-miss="1">${ico('flag')}登録する</button><span class="said"></span></div>
+${missedHtml(missed)}</div>
+
+<p class="lede">①② で登録した公演は、上演が終わると
+<a href="/rate?t=__TAGURI_TOKEN__">「観た公演の評価」（いま ${wait.length} 件）</a>に並びます。
+評価はそちらで付けてください。</p>`;
+  return {title: '公演情報の登録', body_html: body};
+}
+
+/** serve.on_missed, looked up in D1 at once: the current stage, else a past one, whose title key matches. */
+async function missedAction(b, ctx) {
+  const title = String(b.title ?? '').trim().slice(0, 200);
+  if (!title) throw new ValueError('title が要る');
+  const k = titleKey(title);
+  let sid = '', fields = {}, note = '';
+  if (k) {
+    const cur = await ctx.db.prepare("SELECT stage_id, entry FROM rec_stage WHERE ver=(SELECT v FROM rec_meta WHERE k='current') AND tkey=? ORDER BY start DESC LIMIT 1").bind(k).first();
+    if (cur) { sid = cur.stage_id; try { fields = JSON.parse(cur.entry || '{}').fields || {}; } catch { fields = {}; } }
+    else {
+      const past = await ctx.db.prepare('SELECT stage_id, people FROM past_stage WHERE tkey=? ORDER BY start DESC LIMIT 1').bind(k).first();
+      if (past) {
+        sid = past.stage_id;
+        try { for (const [role, person] of JSON.parse(past.people || '[]')) fields[role] = fields[role] ? `${fields[role]}、${person}` : person; } catch { fields = {}; }
+        note = '過去の公演の一覧から、出演者と作り手だけを拾いました。';
+      }
+    }
+  }
+  if (!sid) note = 'この題名の公演は、手元の公演一覧に見当たりませんでした。';
+  const at = new Date(ctx.now + 9 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' ');
+  await ctx.db.prepare(`INSERT INTO missed(user_id,title,created_at,note,stage_id,fields_json,synopsis,lookup_note,looked_up_at) VALUES(?,?,?,?,?,?,?,?,?)
+    ON CONFLICT(user_id,title) DO UPDATE SET created_at=excluded.created_at, stage_id=excluded.stage_id, fields_json=excluded.fields_json, lookup_note=excluded.lookup_note, looked_up_at=excluded.looked_up_at`)
+    .bind(ctx.uid, title, at, String(b.note ?? '').slice(0, 1000), sid || null, JSON.stringify(fields), '', note, at).run();
+  return {body: {ok: true, title}};
+}
+
+export const settingsScreens = {
+  screens: {settings: settingsScreen, start: startScreen, register: registerScreen},
+  actions: {pref_setting: prefSettingAction, missed: missedAction},
+};

@@ -1213,6 +1213,21 @@
    "verifies": []
   },
   {
+   "id": "dec-settings-worker",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "設定・はじめる・公演情報の登録を Worker に移す（Render に依っていた所は本番の形に置き換える）",
+   "sources": [
+    "cloudflare/src/screens/settings.js",
+    "cloudflare/src/screens/prefs.js",
+    "cloudflare/src/screens/cast.js",
+    "cloudflare/test/lists-screen.test.js",
+    "cloudflare/test/cast.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-signed-out-gate",
    "type": "decision",
    "status": "adopted",
@@ -4798,6 +4813,16 @@
    "from": "dec-service-watch",
    "rel": "depends_on",
    "to": "catalog-age-check"
+  },
+  {
+   "from": "dec-settings-worker",
+   "rel": "depends_on",
+   "to": "dec-native-cutover-now"
+  },
+  {
+   "from": "dec-settings-worker",
+   "rel": "affects",
+   "to": "comp-native-screens"
   },
   {
    "from": "dec-signed-out-gate",
