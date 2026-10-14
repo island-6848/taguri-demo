@@ -23,8 +23,8 @@ export function ico(name, size = 16, cls = '') {
 /** icons.h2 */
 export const h2 = (name, text, extra = '') => `<h2>${ico(name, 18)}<span>${text}</span>${extra}</h2>`;
 
-/** charts._anchor */
-export const anchor = workKey => workKey.replace(/[^0-9A-Za-z぀-ヿ一-鿿-]/gu, '_').slice(0, 80);
+import {anchor} from './anchor.js';
+export {anchor};
 
 // ---------------------------------------------------------------- dates, venue, stamp
 const WEEK = '月火水木金土日';

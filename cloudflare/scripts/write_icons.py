@@ -36,6 +36,13 @@ CAL_JS = ("// stage_calendar.JS and chronicle.JS, written by scripts/write_icons
           f"export const CALENDAR_JS = {json.dumps(SC.JS, ensure_ascii=False)};\n"
           f"export const CHRONICLE_JS = {json.dumps(CR.JS, ensure_ascii=False)};\n")
 
+import storyline as SL                                               # noqa: E402
+
+# The <script> storyline.panel appends (src/screens/storyline.js; test/storyline.test.js).
+SL_JS = ("// storyline.SCRIPT, written by scripts/write_icons.py (do not edit).\n"
+         f"export const STORYLINE_JS = {json.dumps(SL.SCRIPT, ensure_ascii=False)};\n")
+
 if __name__ == "__main__":
     (ROOT / "cloudflare" / "src" / "screens" / "icons.js").write_text(SRC, encoding="utf-8")
     (ROOT / "cloudflare" / "src" / "screens" / "calendar_js.js").write_text(CAL_JS, encoding="utf-8")
+    (ROOT / "cloudflare" / "src" / "screens" / "storyline_js.js").write_text(SL_JS, encoding="utf-8")

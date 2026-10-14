@@ -254,7 +254,7 @@ def timeline(rated: list[dict], g: dict, idx: dict) -> dict:
     unchanged = {"no_credit": 0, "repeat": 0, "not_yet": 0}
     for i, r in enumerate(dated, 1):
         gi = build(dated[:i])
-        added_nodes = sorted(set(gi["core"]) - set(prev["core"]), key=lambda p: -gi["cnt"][p])
+        added_nodes = sorted(set(gi["core"]) - set(prev["core"]), key=lambda p: (-gi["cnt"][p], p))  # 同じ数は名前の順（集合の順は実行ごとに変わる）
         added_edges = [e for e in gi["edges"] if e not in prev["edges"]]
         cuts_now, cuts_prev = set(gi["cuts"]), set(prev["cuts"])
         cut_added = sorted(cuts_now - cuts_prev)
@@ -293,7 +293,7 @@ def timeline(rated: list[dict], g: dict, idx: dict) -> dict:
         })
         prev, prev_comps = gi, comps_now
     # **「いま」── 上演日を持たない記録の分まで、まとめて最後の段に足す。**
-    rest_nodes = sorted(set(g["core"]) - set(prev["core"]), key=lambda p: -g["cnt"][p])
+    rest_nodes = sorted(set(g["core"]) - set(prev["core"]), key=lambda p: (-g["cnt"][p], p))
     rest_edges = [e for e in g["edges"] if e not in prev["edges"]]
     stages.append({
         "n": [idx[p] for p in rest_nodes if p in idx],

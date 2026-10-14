@@ -7,6 +7,10 @@ import {loadDeclared} from './lists.js';
 import {strip} from './py.js';
 import {body as traceBody} from './trace.js';
 import {panel as chroniclePanel} from './chronicle.js';
+import {spiralPanel, venuePanel} from './charts.js';
+import {craftRows, panel as comparePanel, popNote, population} from './compare.js';
+import {RECORDS_EMPTY} from './diary.js';
+import {localNow} from './py.js';
 
 const GRADES = ['◎', '○', '△', '×'];
 const norm = s => strip(String(s || '').normalize('NFKC'));
@@ -70,4 +74,46 @@ ${recordsLede(d)}
 ${main}`};
 }
 
-export const recordScreens = {screens: {trace: traceScreen, chronicle: chronicleScreen}, actions: {}};
+const COMPARE_EMPTY = '<p class="pnow">まだ比べられません。'
+  + 'ここはこれから観られる公演の一覧と観た記録を並べて差を出す画面なので、'
+  + '記録が入ると出るようになります。</p>';
+// JSON inside <script>: no "</script>" or "<!--" can end it early.
+const scriptJson = x => JSON.stringify(x).replace(/</g, '\\u003c').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
+
+/**
+ * app._records_body for a visitor (owner=False): 年輪・劇場・人の流れ・相関図 and
+ * 比べる. The map is left out (no venue coordinates in D1, Python draws none
+ * without them either), and so is 題材の偏り (compare.js says why).
+ *
+ * 人の流れ and 相関図 are too heavy for the Worker's 10 ms of CPU: the rated rows go
+ * to the page in #figs-src and figs.js draws them in the browser into [data-fig]
+ * (web/app.js fixupFigs). d3 is loaded by the page itself when #sl-data appears.
+ */
+export async function recordsScreen(_params, ctx) {
+  const d = await recordsBase(ctx);
+  let cmpPanels = '';
+  if (d.seen.length) {
+    // **落ちても画面は出す**（app._pop_note・_compare_panel と同じ）
+    let pop = null;
+    try { pop = await population(ctx.db, localNow().slice(0, 10)); } catch { /* 比べる相手を数えられなかった */ }
+    if (pop) cmpPanels = popNote(d.rated, pop) + (d.rated.length ? comparePanel({craft: craftRows(d.rated, pop)}) : '');
+  }
+  const body = `<h1>眺める ── 図で見る</h1>
+${recordsLede(d)}
+${d.seen.length ? '' : RECORDS_EMPTY}
+<div class="figs">
+${spiralPanel(d.seen)}
+
+${venuePanel(d.rated)}
+<div data-fig="storyline"></div>
+<div data-fig="people"></div>
+</div>
+<script id="figs-src" type="application/json">${scriptJson({rated: d.rated})}</script>
+<h2>比べる ── これから上演される公演との差</h2>
+<p class="lede">観た記録を、これから観られる公演の一覧と並べて、差の大きいところを出しています。</p>
+${d.seen.length ? '' : COMPARE_EMPTY}
+<div class="figs">${cmpPanels}</div>`;
+  return {title: '眺める', body_html: body};
+}
+
+export const recordScreens = {screens: {records: recordsScreen, trace: traceScreen, chronicle: chronicleScreen}, actions: {}};
