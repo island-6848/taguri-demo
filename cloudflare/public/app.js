@@ -375,6 +375,25 @@ function fixupStoryline(root) {
   ensureD3().then(() => runInlineScript(SL_SCRIPT));
 }
 
+// **重い図はブラウザで組み立てる**(Cloudflare 版の「眺める」)。Worker は 1 回に CPU を
+// 10 ミリ秒しか使えないので、人の流れ・相関図は記録(`#figs-src`)と置き場所
+// (`[data-fig]`)だけを返し、同じ組み立て(/figs/figs.js、Python と同じ HTML)をここで
+// 動かす。組み上がってから、上の2つの図の動き(storyline・相関図)を付け直す。
+function fixupFigs(root) {
+  const src = root.querySelector("#figs-src");
+  if (!src) return;
+  import("/figs/figs.js").then(m => {
+    if (!src.isConnected) return;   // 組み上がる前に別の画面へ移った
+    m.fill(root);
+    fixupStoryline(root);
+    fixupPeopleNet(root);
+  }).catch(() => {
+    root.querySelectorAll("[data-fig]").forEach(box => {
+      box.outerHTML = '<p class="empty">この図は読み込めませんでした。ページを開き直すと出ることがあります。</p>';
+    });
+  });
+}
+
 // **公開版(デモ・サービスとも)の制限。** 公演情報と画像は全員で共有するので編集させず、
 // 外部サイトもその場では検索しない(探す先は手元の公演一覧)。文言だけ版で変える
 const WEB_BUTTON = IS_DEMO ? "デモの公演から探す" : "公演一覧から探す";
@@ -428,6 +447,7 @@ function renderScreen(el, activePath, d, exposureSource) {
   fixupSynClamp(el);
   fixupMonthScroll(el);
   fixupStoryline(el);
+  fixupFigs(el);
   fixupImportBar(el);
   fixupPeopleNet(el);
   fixupPrefMap(el);

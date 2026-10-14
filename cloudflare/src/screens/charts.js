@@ -6,7 +6,7 @@
 // 地図の輪郭が D1 に無い。Python も座標が無ければ空を返すので、同じく出さない。
 import {E, fmtF, sortBy} from './py.js';
 import {h2} from './icons.js';
-import {anchor} from './row.js';
+import {anchor} from './anchor.js';
 
 export const ROW_HREF = '/records/works?t=__TAGURI_TOKEN__';
 const VERDICT_FILL = {'◎': 'var(--pos)', '○': 'var(--pos)', '△': 'var(--neg)', '×': 'var(--neg)'};

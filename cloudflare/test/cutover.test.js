@@ -5,6 +5,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import worker from '../src/worker.js';
+import {ORIGINAL_SCREENS} from '../src/original-ui.js';
 import {setup, step, signIn} from './screens/harness.js';
 
 const ORIGIN = 'https://taguri.example';
@@ -78,17 +79,18 @@ test("two users on the native screens never see or change each other's records",
 
 // 2026-10-14: production switched before every screen was ported (起案者の指示
 // 「本番用のサイトなはずなのに、デモ用の内容がでる。最初ログインしたらデータは空なはず」).
-test('NATIVE_UI=all: nothing of a user goes to Render; unported screens and writes say they are moving', async () => {
+test('NATIVE_UI=all: nothing of a user goes to Render; every screen is native, unported writes say they are moving', async () => {
   const {env, sqlite} = setup();
   const cookie = await signIn(env);
   const r = stubRender();
   try {
-    for (const name of ['records']) {
+    // 2026-10-14: 眺める was the last screen; every screen of the original UI is the Worker's now.
+    for (const name of ORIGINAL_SCREENS) {
       const got = await step(env, cookie, {get: `/api/screen/${name}`});
       assert.equal(got.status, 200, name);
-      assert.equal(got.body.moving, true, name);
+      assert.equal(got.body.moving, undefined, name);
       assert.equal(got.body.edition, 'service', name);
-      assert.match(got.body.body_html, /いま新しい仕組みに移しています/, name);
+      assert.doesNotMatch(got.body.body_html, /いま新しい仕組みに移しています/, name);
     }
     for (const path of ['/api/weight', '/api/recommendation/visit', '/api/hand_theme']) {
       const got = await step(env, cookie, {post: path, body: {}});

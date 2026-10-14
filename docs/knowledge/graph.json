@@ -1152,6 +1152,24 @@
    "verifies": []
   },
   {
+   "id": "dec-records-worker",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "眺めるを Worker に移す。重い 2 枚（人の流れ・相関図）はブラウザで組み立て、地図と題材の偏りは出さない",
+   "sources": [
+    "cloudflare/src/screens/records.js",
+    "cloudflare/src/screens/charts.js",
+    "cloudflare/src/screens/compare.js",
+    "cloudflare/src/screens/storyline.js",
+    "cloudflare/src/screens/people.js",
+    "cloudflare/src/screens/figs.js",
+    "cloudflare/scripts/sync_figs.py",
+    "web/app.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-reminder-worker",
    "type": "decision",
    "status": "adopted",
@@ -2411,6 +2429,55 @@
    ]
   },
   {
+   "id": "peer-0020-account-limit",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-14",
+   "title": "ログイン修正のセッション（PR #17）が、0020 で利用者 100 人の上限トリガーを外し、1 日あたりの新規の上限で抑える形に変える",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/blob/claude/demo-records-setup-yqo65u/cloudflare/migrations/0020.sql",
+    "https://github.com/island-6848/taguri-demo/blob/claude/demo-records-setup-yqo65u/docs/knowledge/notes/dec-login-hardening.md"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "people-cpu-over-10ms",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-14",
+   "title": "相関図（people.panel）は重い記録で温まっても 19〜29 ミリ秒、最初の 1 回は 69〜89 ミリ秒かかり、Worker の CPU 10 ミリ秒に収まらない",
+   "sources": [
+    "cloudflare/src/screens/people.js",
+    "cloudflare/test/people.test.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "people-sincos-glibc",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-14",
+   "title": "相関図の初期配置の sin・cos は、V8 と CPython（glibc 2.39）で 3.4% の角度が 1 ulp ずれ、460 回の力学配置のあとで 30px 動く。JS は正しく丸めた値に glibc の丸めを表で合わせて一致させた",
+   "sources": [
+    "cloudflare/src/screens/people.js",
+    "cloudflare/test/people.test.js",
+    "cloudflare/test/screens/people_fixture.py"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "people-tie-order-hash",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-14",
+   "title": "people.timeline は同じ回数の人を集合の順で並べており、Python の実行ごと（PYTHONHASHSEED）に相関図の時間のつまみの順が変わっていた",
+   "sources": [
+    "tools/taguri/people.py",
+    "cloudflare/test/screens/people_fixture.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "pr-branch-is-production",
    "type": "finding",
    "status": "outdated",
@@ -3636,6 +3703,18 @@
    "verifies": []
   },
   {
+   "id": "storyline-cpu-over-10ms",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-14",
+   "title": "眺めるの「人の流れ」（StoryFlow の配置）は、重い記録だと Worker の CPU 10 ミリ秒に収まらない（温まって約 12 ミリ秒・最初の 1 回は約 80 ミリ秒）",
+   "sources": [
+    "cloudflare/src/screens/storyline.js",
+    "cloudflare/test/storyline.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "synopsis-llm-history",
    "type": "finding",
    "status": "confirmed",
@@ -4811,6 +4890,26 @@
    "to": "dec-recommend-compact-poster"
   },
   {
+   "from": "dec-records-worker",
+   "rel": "depends_on",
+   "to": "dec-chronicle-worker"
+  },
+  {
+   "from": "dec-records-worker",
+   "rel": "depends_on",
+   "to": "workers-free-cpu-10ms"
+  },
+  {
+   "from": "dec-records-worker",
+   "rel": "depends_on",
+   "to": "dec-free-tier-only"
+  },
+  {
+   "from": "dec-records-worker",
+   "rel": "affects",
+   "to": "comp-native-screens"
+  },
+  {
    "from": "dec-reminder-worker",
    "rel": "depends_on",
    "to": "dec-lists-worker"
@@ -5801,6 +5900,31 @@
    "to": "dec-own-domain"
   },
   {
+   "from": "peer-0020-account-limit",
+   "rel": "affects",
+   "to": "q-account-limit-100"
+  },
+  {
+   "from": "people-cpu-over-10ms",
+   "rel": "supports",
+   "to": "dec-records-worker"
+  },
+  {
+   "from": "people-cpu-over-10ms",
+   "rel": "depends_on",
+   "to": "workers-free-cpu-10ms"
+  },
+  {
+   "from": "people-sincos-glibc",
+   "rel": "affects",
+   "to": "dec-records-worker"
+  },
+  {
+   "from": "people-tie-order-hash",
+   "rel": "affects",
+   "to": "dec-records-worker"
+  },
+  {
    "from": "pr-branch-is-production",
    "rel": "raises",
    "to": "q-production-branch"
@@ -6624,6 +6748,16 @@
    "from": "stdlib-server-sqlite",
    "rel": "answers",
    "to": "q-workers-free-viable"
+  },
+  {
+   "from": "storyline-cpu-over-10ms",
+   "rel": "supports",
+   "to": "dec-records-worker"
+  },
+  {
+   "from": "storyline-cpu-over-10ms",
+   "rel": "depends_on",
+   "to": "workers-free-cpu-10ms"
   },
   {
    "from": "synopsis-llm-history",
