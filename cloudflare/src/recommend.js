@@ -21,7 +21,8 @@ const SQRT12 = Math.sqrt(12);
 export const SEED_Z = 0.4 * SQRT12, SEED_K = 3;
 export const SEED_ROLES = ['出演', '演出', '脚本', '作', '原作', '翻訳', '潤色', '構成', '振付', '作曲', '音楽'];
 export const SEED_KINDS = ['人', '原作者'], MAX_SEED_FAVS = 20, MAX_SEED_STAGES = 60;
-export const SEED_GROUP_KINDS = ['団体', '主催'], SEED_WORK_KINDS = ['作品'];
+export const SEED_GROUP_KINDS = ['団体', '主催'], SEED_WORK_KINDS = ['作品'], SEED_THEME_KINDS = ['題材'];
+export const THEME_AXIS = '#題材';
 /** recommend2.nz: NFKC, no spaces (ASCII or full-width), lower case. */
 export const nz = s => String(s ?? '').normalize('NFKC').replaceAll(' ', '').replaceAll('\u3000', '').toLowerCase();
 // 詳細 (good / trouble per aspect): user_recommender.ASPECTS (checked against Python in the test).
@@ -208,8 +209,9 @@ export async function seedsFromFavourites({postingsFor, peopleFor, stagesMatchin
   // Troupes / producers by the producing company, works by the title
   // (recommend2.declared_hits' rules on normalised text).
   const pick = (kinds, norm) => [...new Set(favourites.filter(f => kinds.includes(f.kind)).map(f => norm(f.name)).filter(x => x.length >= 2))].sort(cmp).slice(0, MAX_SEED_FAVS);
-  const groups = pick(SEED_GROUP_KINDS, nz), works = pick(SEED_WORK_KINDS, titleKey);
-  if ((groups.length || works.length) && stagesMatching) for (const sid of await stagesMatching(groups, works)) sids.add(sid);
+  const groups = pick(SEED_GROUP_KINDS, nz), works = pick(SEED_WORK_KINDS, titleKey), subjects = pick(SEED_THEME_KINDS, nz);
+  if ((groups.length || works.length || subjects.length) && stagesMatching)
+    for (const sid of await stagesMatching(groups, works, subjects)) sids.add(sid);
   const chosen = [...sids].sort(cmp).slice(0, MAX_SEED_STAGES);
   if (!chosen.length) return {seeds: [], skip: new Set(names)};
   const people = await peopleFor(chosen);
@@ -258,13 +260,24 @@ export function d1Access(db, ver, counter = {rows: 0, queries: 0}) {
       }
       return map;
     },
-    async stagesMatching(groups, works) {
-      // One pass over this version's stages (rec_stage has no index on these).
+    async stagesMatching(groups, works, subjects = []) {
+      const out = new Set();
+      // Troupes / works: one pass over this version's stages (no index on these).
       const conds = [...groups.map(() => 'instr(gkey,?)>0'), ...works.map(() => 'instr(tkey,?)>0')];
-      if (!conds.length) return [];
-      const {results} = await db.prepare(`SELECT stage_id FROM rec_stage WHERE ver=? AND (${conds.join(' OR ')})`).bind(ver, ...groups, ...works).all();
-      counter.rows += results.length; counter.queries += 1;
-      return results.map(r => r.stage_id);
+      if (conds.length) {
+        const {results} = await db.prepare(`SELECT stage_id FROM rec_stage WHERE ver=? AND (${conds.join(' OR ')})`).bind(ver, ...groups, ...works).all();
+        counter.rows += results.length; counter.queries += 1;
+        for (const r of results) out.add(r.stage_id);
+      }
+      // Subjects: #題材 words that contain the name or are contained in it (net_c.declared_hits).
+      if (subjects.length) {
+        const cond = subjects.map(() => '(instr(person,?)>0 OR (length(person)>=2 AND instr(?,person)>0))').join(' OR ');
+        const {results} = await db.prepare(`SELECT DISTINCT stage_id FROM rec_credit WHERE ver=? AND role=? AND (${cond})`)
+          .bind(ver, THEME_AXIS, ...subjects.flatMap(t => [t, t])).all();
+        counter.rows += results.length; counter.queries += 1;
+        for (const r of results) out.add(r.stage_id);
+      }
+      return [...out];
     },
     async peopleFor(ids) {
       const map = new Map();

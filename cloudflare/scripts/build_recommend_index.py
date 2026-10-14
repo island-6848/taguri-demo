@@ -57,16 +57,34 @@ def _public_entry(entry: dict) -> dict:
     return out
 
 
+THEME_AXIS = "#題材"
+MAX_THEME_WORDS = 6
+
+
+def theme_words(row: dict | None) -> list[str]:
+    """Subject words of one stage (#題材 tags): the synopsis elements
+    (themes.jsonl, net_c.load_themes) normalised like net_c.words, at least two
+    characters, in the order the synopsis gave them, at most MAX_THEME_WORDS."""
+    out = []
+    for e in (row or {}).get("elements") or []:
+        w = RC.nz(e.get("word") or "") if isinstance(e, dict) else ""
+        if len(w) >= 2 and w not in out:
+            out.append(w)
+    return out[:MAX_THEME_WORDS]
+
+
 def build_index(pool: dict[str, dict], fields_by_stage: dict[str, dict], role_group,
-                titles: dict[str, str] | None = None) -> dict:
+                titles: dict[str, str] | None = None, themes: dict[str, list[str]] | None = None) -> dict:
     """User-independent material. `pool` is `UR.candidate_pool(...)`.
 
     Kind-of-show tags (UR.stage_tags: form, source, venue) are stored with the
     credits, as ("#axis", value) pairs with role group "theme", so the Worker
     reads them through the same tables. `titles` gives titles of past stages
-    (for the form tags); candidates carry their own.
+    (for the form tags); candidates carry their own. `themes`: stage id ->
+    subject words (theme_words), stored as ("#題材", word) tags like the others.
     """
     titles = dict(titles or {})
+    themes = themes or {}
     stages, postings = {}, []
     for sid, entry in pool.items():
         title = entry.get("title") or ""
@@ -76,7 +94,7 @@ def build_index(pool: dict[str, dict], fields_by_stage: dict[str, dict], role_gr
         credits = sorted(set(M.parse_credits(entry.get("fields") or {})))
         titles.setdefault(sid, title)
         tags = UR.stage_tags(title, [(entry.get("fields") or {}).get("劇場", "")], credits,
-                             UR.price_texts(entry))
+                             UR.price_texts(entry)) + [(THEME_AXIS, w) for w in themes.get(sid, [])]
         stages[sid] = {"title": title, "tkey": M.R.title_key(title), "grp": entry.get("group") or "",
                        "tour": UR.tour_key(title, entry.get("group") or "", credits),
                        "gkey": RC.nz(entry.get("group") or ""),
@@ -95,7 +113,11 @@ def build_index(pool: dict[str, dict], fields_by_stage: dict[str, dict], role_gr
         credits = sorted(set(M.parse_credits(f)))
         tags = UR.stage_tags(titles.get(sid, ""), [f.get("劇場", "")], credits,
                              UR.price_texts(pool.get(sid) or {"fields": f}))
+        tags += [(THEME_AXIS, w) for w in themes.get(sid, [])]
         people[sid] = [list(c) for c in sorted(set(credits) | set(tags))]
+    for sid, ws in themes.items():
+        if sid not in people and ws:
+            people[sid] = [[THEME_AXIS, w] for w in sorted(set(ws))]
     people = {sid: p for sid, p in people.items() if p}
     return {"stages": stages, "postings": postings, "people": people}
 
@@ -110,6 +132,7 @@ MAX_SEED_STAGES = 60
 
 SEED_GROUP_KINDS = ("団体", "主催")
 SEED_WORK_KINDS = ("作品",)
+SEED_THEME_KINDS = ("題材",)
 
 
 def seeds_from_favourites(postings_for, people_of, favourites: list[dict],
@@ -118,9 +141,11 @@ def seeds_from_favourites(postings_for, people_of, favourites: list[dict],
 
     People and original authors: the candidate stages crediting them in one of
     SEED_ROLES. Troupes and producers: stages whose producing company contains
-    the name; works: stages whose title contains it (the matching rules of
-    recommend2.declared_hits, on normalised text: RC.nz / title_key).
-    `stages_matching(groups, works)` returns those stage ids. At most
+    the name; works: stages whose title contains it; subjects: stages with a
+    #題材 word that contains the name or is contained in it (the matching rules
+    of recommend2.declared_hits / net_c.declared_hits, on normalised text:
+    RC.nz / title_key). `stages_matching(groups, works, subjects)` returns those
+    stage ids. At most
     MAX_SEED_FAVS names of each kind; the first MAX_SEED_STAGES stage ids in
     order; people from rec_people. Returns (seeds, person names to skip).
     """
@@ -131,8 +156,10 @@ def seeds_from_favourites(postings_for, people_of, favourites: list[dict],
                      for g in [RC.nz(f["name"])] if len(g) >= 2})[:MAX_SEED_FAVS]
     works = sorted({w for f in favourites if f.get("kind") in SEED_WORK_KINDS
                     for w in [M.R.title_key(f["name"])] if len(w) >= 2})[:MAX_SEED_FAVS]
-    if (groups or works) and stages_matching:
-        sids |= set(stages_matching(groups, works))
+    subjects = sorted({t for f in favourites if f.get("kind") in SEED_THEME_KINDS
+                       for t in [RC.nz(f["name"])] if len(t) >= 2})[:MAX_SEED_FAVS]
+    if (groups or works or subjects) and stages_matching:
+        sids |= set(stages_matching(groups, works, subjects))
     seeds = []
     for sid in sorted(sids)[:MAX_SEED_STAGES]:
         people = people_of(sid)
@@ -211,10 +238,14 @@ def memory_access(index: dict):
 
 
 def memory_matching(index: dict):
-    """stages_matching(groups, works) over the in-memory index."""
-    return lambda groups, works: sorted(
-        sid for sid, st in index["stages"].items()
-        if any(g in st["gkey"] for g in groups) or any(w in st["tkey"] for w in works))
+    """stages_matching(groups, works, subjects) over the in-memory index."""
+    def match(groups, works, subjects=()):
+        sids = {sid for sid, st in index["stages"].items()
+                if any(g in st["gkey"] for g in groups) or any(w in st["tkey"] for w in works)}
+        sids |= {sid for role, word, sid, *_ in index["postings"] if role == THEME_AXIS
+                 and any(t in word or (len(word) >= 2 and word in t) for t in subjects)}
+        return sorted(sids)
+    return match
 
 
 def memory_people(index: dict):
@@ -460,7 +491,11 @@ def main() -> int:
                 r = json.loads(line)
                 if r.get("matched") and r.get("stage_id") and r.get("page_title"):
                     titles.setdefault(str(r["stage_id"]), r["page_title"])
-    index = build_index(pool, M._fields_by_stage(), APP.group_of, titles)
+    # Subject words of candidate stages (synopsis elements, hand-entered ones overlaid).
+    import net_c as C
+    themes = {sid: ws for (side, sid), row in C.load_themes().items()
+              if side == "candidate" for ws in [theme_words(row)] if ws}
+    index = build_index(pool, M._fields_by_stage(), APP.group_of, titles, themes)
     stmts = to_sql(index, version_of(index), onboarding_list(index, a.today))
     body = "\n".join(stmts) + "\n"
     with os.fdopen(os.open(a.output, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), "w") as out:

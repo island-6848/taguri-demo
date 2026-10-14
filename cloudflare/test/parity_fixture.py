@@ -18,7 +18,7 @@ WEIGHTS = [{}, {'cast': 2.0, 'craft': 0.0}, {'author': 4.0, 'cast': 0.5, 'produc
 out = {'today': T.TODAY.isoformat(), 'catalogues': []}
 for seed in range(12):
     raw, cands, fbs = T.catalogue(seed)
-    index = BI.build_index(UR.candidate_pool(raw, cands), fbs, APP.group_of)
+    index = BI.build_index(UR.candidate_pool(raw, cands), fbs, APP.group_of, themes=T.themes_for(seed, cands))
     ver = BI.version_of(index)
     cases = []
     for hseed in range(4):
@@ -39,6 +39,9 @@ for seed in range(12):
         favs += [{'name': '劇団　甲', 'kind': '団体'}]
     if seed % 3 == 2:
         favs += [{'name': '『夜の声』', 'kind': '作品'}, {'name': '劇団乙', 'kind': '主催'}]
+    # Subjects: a name contained in a word ("下町" in "東京の下町") and one containing a word.
+    if seed % 2 == 0:
+        favs += [{'name': '下町', 'kind': '題材'}, {'name': '家族の記憶', 'kind': '題材'}]
     seeds, skip = BI.seeds_from_favourites(BI.memory_access(index)[0], BI.memory_people(index), favs,
                                            BI.memory_matching(index))
     for rated in ([], T.with_people(T.history(seed * 100 + 9, fbs), index['people'])):
