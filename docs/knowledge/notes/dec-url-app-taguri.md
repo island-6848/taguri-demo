@@ -17,3 +17,8 @@ links:
 4. 起案者: Firebase の Authentication → Settings → Authorized domains に app.taguri.workers.dev を足す（Google のログインのため）
 5. 起案者: GitHub のリポジトリの変数 TAGURI_SERVICE_API を https://app.taguri.workers.dev に、TAGURI_HEALTH_URL を https://app.taguri.workers.dev/api/health にする（デモ版から入るサービス版の行き先と、毎日のカタログの見張り）
 変わること: URL が変わるので、ログインしている人は一度ログインし直しになる（Cookie はドメインごと）。古い URL で作ったパスキーは使えなくなる（パスキーはドメインに結び付く〔passkey-rpid-domain〕）。古い URL は使えなくなる。
+
+進み具合（2026-10-14）:
+- 1・2 は済み。起案者の知らせで本番の URL は https://app.taguri.workers.dev/ になった（アカウントの名前 taguri、Worker の名前 app）。古い URL は https://taguri-demo.on6848-tech.workers.dev（Worker の ID d16a314e3873447d8d23ae7a23ab9c61 は変わらない）
+- 3 は済み（wrangler.jsonc の name を app に。D1 の名前 taguri-demo はそのまま）。この作業の箱からは workers.dev に繋げないので、開けるかは起案者が確かめる
+- 5: 起案者は変数を変えたが、TAGURI_SERVICE_API の置き場所が見つからなかった。リポジトリ taguri-demo の Settings → Secrets and variables → Actions の「Variables」の札（Secrets の札ではない）にあり、無ければ New repository variable で作る。pages.yml がこれを config.js に埋める（未設定なら「準備中」）
