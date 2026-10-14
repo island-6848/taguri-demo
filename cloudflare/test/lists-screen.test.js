@@ -301,26 +301,28 @@ test('観劇史年表: the years of the works seen', async () => {
   } finally { sqlite.close(); }
 });
 
-<<<<<<< HEAD
 // 2026-10-14 起案者「購入済みに作品が入っているのに、公演カレンダーになにも表示されない」: a stage the user
 // owns that the (stale) index lacks is taken from the catalogue, as 購入済み公演 does.
 test('公演カレンダー shows an owned stage that only the catalogue has', async () => {
-=======
-// 2026-10-14 起案者「たぐりが集めている公演から出してよ勿論」: a name added to お気に入り is
-// looked up in the whole delivered catalogue too, not only in the stages with a card.
-test('お気に入り finds a registered name in the catalogue at once, also without a card', async () => {
->>>>>>> origin/master
   const {env, sqlite} = withIndex();
   const a = await signIn(env);
   try {
     env.CLOCK = {today: '2026-10-20', now: Date.parse('2026-10-20T03:00:00Z')};
-<<<<<<< HEAD
     sqlite.prepare("INSERT INTO catalogue(id,title,date,venue,url,metadata) VALUES('778','一覧だけの舞台','2026-10-25','劇場Y','',?)")
       .run(JSON.stringify({end_date: '2026-11-03'}));
     assert.equal((await step(env, a, {post: '/api/react', body: {stage_id: '778', value: 'owned', nofill: true}})).status, 200);
     assert.match((await screen(env, a, 'tickets')).body_html, /一覧だけの舞台/);
     assert.match((await screen(env, a, 'calendar')).body_html, /一覧だけの舞台/);
-=======
+  } finally { sqlite.close(); }
+});
+
+// 2026-10-14 起案者「たぐりが集めている公演から出してよ勿論」: a name added to お気に入り is
+// looked up in the whole delivered catalogue too, not only in the stages with a card.
+test('お気に入り finds a registered name in the catalogue at once, also without a card', async () => {
+  const {env, sqlite} = withIndex();
+  const a = await signIn(env);
+  try {
+    env.CLOCK = {today: '2026-10-20', now: Date.parse('2026-10-20T03:00:00Z')};
     sqlite.prepare("INSERT INTO catalogue(id,title,date,venue,url,metadata) VALUES('888','カードの無い新作','2026-11-05','劇場Y','',?)")
       .run(JSON.stringify({end_date: '2026-11-12', group: '劇団 Y', fields: {出演: '山田 花子、佐藤一郎'}, synopsis: '港町の話。'}));
     sqlite.prepare("INSERT INTO catalogue(id,title,date,venue,url,metadata) VALUES('889','終わった公演','2026-05-01','劇場Y','',?)")
@@ -332,6 +334,5 @@ test('お気に入り finds a registered name in the catalogue at once, also wit
     assert.match(html, /登録した人「山田花子」の公演です/);
     assert.match(html, /登録した団体「劇団Y」の公演です/);
     assert.doesNotMatch(html, /終わった公演/);
->>>>>>> origin/master
   } finally { sqlite.close(); }
 });
