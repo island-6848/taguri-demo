@@ -2076,33 +2076,51 @@ function aspectsSummary(state) {
   return [good.length ? "良かった: " + good.join("・") : "", bad.length ? "気になった: " + bad.join("・") : ""].filter(Boolean).join("／") || "まだ選んでいません";
 }
 function aspectsPanel(root) {
+  // 項目ごとのつまみ: 左＝気になった、まん中＝ふつう、右＝良かった（起案者の指示 2026-10-14「よかったはボタンじゃなくて
+  // スライダーで」）。離したときに保存する（動かしている途中では送らない）
+  const STEP = {"-": -1, "": 0, "+": 1}, MARK = {"-1": "-", "0": "", "1": "+"};
+  const WORD = {"-": "気になった", "": "ふつう", "+": "良かった"};
   root.querySelectorAll(".rec-row[data-aspects]").forEach(row => {
     if (row.querySelector(".asp")) return;
     const rb = row.querySelector(".rb[data-work]"), st = row.querySelector("[data-stamp]");
     if (!rb) return;
-    const rated = () => "◎○△×".includes((st && st.textContent.trim()) || "x") && (st && st.textContent.trim()) !== "";
+    const rated = () => { const t = (st && st.textContent.trim()) || ""; return t !== "" && "◎○△×".includes(t); };
     const state = {};
     (row.dataset.aspects || "").split(",").filter(Boolean).forEach(x => { state[x.replace(/^\+/, "")] = x.startsWith("+") ? "+" : "-"; });
     const box = document.createElement("details");
     box.className = "asp";
     if (aspectsMode() === "full") box.open = true;
-    const sum = document.createElement("summary");
-    const items = ASPECTS.map(([c, label]) => '<div class="aspr" role="radiogroup" aria-label="' + E(label) + '"><span class="aspl">' + E(label) + "</span>"
-      + [["+", "良かった"], ["", "ふつう"], ["-", "気になった"]].map(([v, t]) =>
-        '<button type="button" class="aspb" role="radio" data-a="' + c + '" data-av="' + v + '" aria-checked="'
-        + ((state[c] || "") === v ? "true" : "false") + '">' + t + "</button>").join("") + "</div>").join("");
+    const items = ASPECTS.map(([c, label]) => '<div class="aspr"><label class="aspl" for="asp-' + c + "-" + E(rb.dataset.work) + '">' + E(label) + "</label>"
+      + '<input class="aspsl" type="range" min="-1" max="1" step="1" id="asp-' + c + "-" + E(rb.dataset.work) + '" data-a="' + c + '" value="'
+      + STEP[state[c] || ""] + '"><span class="aspv"></span></div>').join("");
     box.innerHTML = '<summary><span class="aspt">詳細</span><span class="asps"></span></summary>'
-      + '<p class="asph">項目ごとに選べます（任意）。選んだ印は、次のおすすめで「どの人のおかげ・せいだったか」を分けるのに使います。</p>'
+      + '<p class="asph">項目ごとに、つまみを 左（気になった）・まん中（ふつう）・右（良かった）に動かします（任意）。'
+      + '選んだ印は、次のおすすめで「どの人のおかげ・せいだったか」を分けるのに使います。</p>'
+      + '<div class="aspscale" aria-hidden="true"><span></span><span class="asc"><span>← 気になった</span><span>ふつう</span><span>良かった →</span></span><span></span></div>'
       + '<div class="aspg">' + items + '</div><p class="said" role="status"></p>';
     const paint = () => {
       box.querySelector(".asps").textContent = aspectsSummary(state);
-      box.querySelectorAll(".aspb").forEach(b => b.setAttribute("aria-checked", (state[b.dataset.a] || "") === b.dataset.av ? "true" : "false"));
+      box.querySelectorAll(".aspsl").forEach(sl => {
+        const m = state[sl.dataset.a] || "";
+        sl.value = STEP[m];
+        sl.dataset.m = m === "+" ? "good" : m === "-" ? "bad" : "mid";
+        sl.setAttribute("aria-valuetext", WORD[m]);
+        sl.nextElementSibling.textContent = WORD[m];
+      });
     };
-    box.addEventListener("click", async ev => {
-      const b = ev.target.closest(".aspb");
-      if (!b) return;
+    box.addEventListener("input", ev => {
+      const sl = ev.target.closest(".aspsl");
+      if (!sl) return;
+      const m = MARK[sl.value];
+      sl.nextElementSibling.textContent = WORD[m];
+      sl.dataset.m = m === "+" ? "good" : m === "-" ? "bad" : "mid";
+    });
+    box.addEventListener("change", async ev => {
+      const sl = ev.target.closest(".aspsl");
+      if (!sl) return;
       const before = {...state};
-      if (b.dataset.av) state[b.dataset.a] = b.dataset.av; else delete state[b.dataset.a];
+      const m = MARK[sl.value];
+      if (m) state[sl.dataset.a] = m; else delete state[sl.dataset.a];
       paint();
       const aspects = ASPECTS.filter(([c]) => state[c] === "-").map(([c]) => c)
         .concat(ASPECTS.filter(([c]) => state[c] === "+").map(([c]) => "+" + c));

@@ -20,3 +20,4 @@ links:
 - 押すたびに保存: POST /api/rate {work_key, aspects}（verdict を送らないときは詳細だけを書く）。形は rate_performances.clean_aspects（気になった＝コード、良かった＝+コード、ふつうは書かない、知らない項目・両方は断る）。Render（serve.on_rate・app.save_work_field）と Worker（screens/rate.js の rateAction）で同じ答え・同じ断り文句（試験の scenario「rating aspects」）。評価を押し直しても詳細は残る
 - 行には data-aspects（今の詳細）を載せ、画面（app.js の aspectsPanel）が組み立てる
 - 出し方の設定: 設定の画面に「評価の詳細の出し方」── あっさり（既定。閉じておく）／詳しく（開いて出す）。表示だけの設定なので、その端末に覚える（localStorage）。アカウントに持たせるかは、使ってみてから
+2026-10-14 追記: 起案者の指示「よかったはボタンじゃなくてスライダーで」で、項目ごとの 3 つのボタンをつまみ（左＝気になった・まん中＝ふつう・右＝良かった）に替えた。離したときに保存する。
