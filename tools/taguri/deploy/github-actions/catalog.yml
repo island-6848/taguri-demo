@@ -153,6 +153,17 @@ jobs:
             npx --yes wrangler@4 d1 execute taguri-demo --remote --yes --file ../d1-past/past-upload.sql
           fi
           python scripts/deliver_past.py commit --data ../data --out ../d1-past
+      - name: Back up the user records (encrypted, 30 days in R2)
+        # 利用者の記録の表だけを書き出し、行数を D1 と比べてから gpg（AES-256）で暗号化して R2 の
+        # backup/d1/ に置く。30 日より古いものは消す（cloudflare/scripts/backup_d1.py、S31）。
+        # 合言葉 BACKUP_PASSPHRASE が無ければ何もしない。失敗しても取得の結果の保存は続ける
+        if: always() && steps.plan.outputs.run == 'true'
+        continue-on-error: true
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: python cloudflare/scripts/backup_d1.py backup --data data
       - name: Free-tier check
         # 使った量（Actions の分・D1 の書き込み・R2 の保存と回数・Worker の R2 の読み出し）を表にする。
         # 上限の 8 割を越えたか、読めなかったら失敗する（GitHub から持ち主に通知が届く）

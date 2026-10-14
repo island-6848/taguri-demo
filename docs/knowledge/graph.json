@@ -608,6 +608,21 @@
    ]
   },
   {
+   "id": "dec-d1-backup",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "D1 の控えは Time Travel（7 日）に加え、利用者の記録の表を毎日書き出し、gpg で暗号化して R2 に 30 日置く。月に 1 回、新しい D1 に戻す予行を自動で流す",
+   "sources": [
+    "cloudflare/scripts/backup_d1.py",
+    "cloudflare/test/test_backup_d1.py",
+    "tools/taguri/deploy/github-actions/catalog.yml",
+    "tools/taguri/deploy/github-actions/restore-drill.yml",
+    "docs/backup-restore.md"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-d1-catalogue-delivery",
    "type": "decision",
    "status": "adopted",
@@ -2460,7 +2475,7 @@
   {
    "id": "q-d1-backup",
    "type": "question",
-   "status": "open",
+   "status": "answered",
    "date": "2026-10-13",
    "title": "D1 のバックアップと復元をどうするか",
    "sources": [],
@@ -2686,7 +2701,7 @@
   {
    "id": "q-offsite-backup",
    "type": "question",
-   "status": "open",
+   "status": "answered",
    "date": "2026-10-13",
    "title": "D1 のバックアップを、Time Travel の期間より長くどこに残すか",
    "sources": [],
@@ -2917,6 +2932,15 @@
    "status": "open",
    "date": "2026-10-13",
    "title": "Render のデモ版は、起動し直すと動かなくなるのではないか",
+   "sources": [],
+   "verifies": []
+  },
+  {
+   "id": "q-restore-redelete",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-14",
+   "title": "控えから戻したとき、控えのあとに完全削除した人の記録をどう消し直すか",
    "sources": [],
    "verifies": []
   },
@@ -3990,6 +4014,26 @@
    "from": "dec-crawler-gha-private",
    "rel": "depends_on",
    "to": "crawler-state-between-runs"
+  },
+  {
+   "from": "dec-d1-backup",
+   "rel": "answers",
+   "to": "q-d1-backup"
+  },
+  {
+   "from": "dec-d1-backup",
+   "rel": "answers",
+   "to": "q-offsite-backup"
+  },
+  {
+   "from": "dec-d1-backup",
+   "rel": "depends_on",
+   "to": "d1-time-travel"
+  },
+  {
+   "from": "dec-d1-backup",
+   "rel": "supports",
+   "to": "dec-free-tier-only"
   },
   {
    "from": "dec-d1-catalogue-delivery",
@@ -5815,6 +5859,16 @@
    "from": "q-render-s3-dependency",
    "rel": "affects",
    "to": "q-demo-trial-design"
+  },
+  {
+   "from": "q-restore-redelete",
+   "rel": "depends_on",
+   "to": "dec-d1-backup"
+  },
+  {
+   "from": "q-restore-redelete",
+   "rel": "affects",
+   "to": "dec-account-deletion"
   },
   {
    "from": "q-safari-cookies",

@@ -1,7 +1,7 @@
 ---
 id: q-d1-backup
 type: question
-status: open
+status: answered
 date: 2026-10-13
 title: D1 のバックアップと復元をどうするか
 links:
