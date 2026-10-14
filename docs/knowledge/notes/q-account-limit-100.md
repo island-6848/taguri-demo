@@ -1,7 +1,7 @@
 ---
 id: q-account-limit-100
 type: question
-status: open
+status: answered
 date: 2026-10-14
 title: D1 の users 表に「全体で 100 人まで」の歯止め（試験版の名残り）があるが、本番でもこのままにするか
 sources:

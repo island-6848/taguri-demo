@@ -16,7 +16,8 @@
 // Numbers: AUTH (sign-in, sign-up, recovery) 10 per minute per address is far
 // above what a person does; ANY 120 per 10 seconds per address covers a screen
 // with its posters (about 20 requests) several times over.
-export const NEW_ACCOUNTS_PER_DAY = 200;
+import {NEW_ACCOUNTS_PER_DAY, MAX_ACCOUNTS, d1RoomLeft} from './free-tier.js';
+export {NEW_ACCOUNTS_PER_DAY};
 
 const AUTH_PATHS = /^\/(api|migration-api)\/(register|recover|auth\/firebase|auth\/passkey\/(register|login)\/(options|verify))$/;
 
@@ -42,8 +43,15 @@ export async function rateLimit(request, env, url) {
   return new Response(message, {status: 429, headers: {...headers, 'Content-Type': 'text/plain; charset=utf-8'}});
 }
 
-/** Throws 503 when today's (JST) new accounts reached the cap. */
+/**
+ * Throws 503 when today's (JST) new accounts reached the cap, when there are
+ * MAX_ACCOUNTS accounts, or when D1 is at its storage cap (free-tier.js).
+ */
 export async function checkNewAccount(db, env, fail, nowSec = Math.floor(Date.now() / 1000)) {
+  const most = Number(env.MAX_ACCOUNTS) || MAX_ACCOUNTS;
+  const all = (await db.prepare('SELECT count(*) AS n FROM users').first())?.n || 0;
+  if (all >= most) fail(503, 'いまは新規登録を受け付けていません（無料の範囲で動かすため、利用者の数に上限があります）。');
+  if (!(await d1RoomLeft(db, env))) fail(503, 'いまは新規登録を受け付けていません（保存できる量の上限に近づいています）。');
   const cap = Number(env.NEW_ACCOUNTS_PER_DAY) || NEW_ACCOUNTS_PER_DAY;
   const jst = 9 * 3600, dayStart = Math.floor((nowSec + jst) / 86400) * 86400 - jst;
   const n = (await db.prepare('SELECT count(*) AS n FROM users WHERE created_at>=?').bind(dayStart).first())?.n || 0;

@@ -513,6 +513,18 @@
    "verifies": []
   },
   {
+   "id": "d1-meta-size-after",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-14",
+   "title": "D1 は問い合わせの結果の meta に size_after（コミット後の DB の大きさ・バイト）、rows_read・rows_written（索引の行を含む）を返す",
+   "sources": [
+    "https://developers.cloudflare.com/d1/worker-api/return-object/",
+    "https://developers.cloudflare.com/api/operations/cloudflare-d1-raw-database-query"
+   ],
+   "verifies": []
+  },
+  {
    "id": "d1-query-limits",
    "type": "finding",
    "status": "unverified",
@@ -548,6 +560,21 @@
     "cloudflare/public/auth.css",
     "cloudflare/src/worker.js",
     "cloudflare/test/gate.test.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-account-cap-counted",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "利用者の上限は数えて決めた：300 人まで・新規は 1 日 30 人まで。D1 の大きさを Worker が見て 4 GB で書き込みと登録を止め、上限の無かった 5 つの表に 1 人あたりの件数の上限を付ける",
+   "sources": [
+    "cloudflare/src/free-tier.js",
+    "cloudflare/src/rate-limit.js",
+    "cloudflare/src/worker.js",
+    "cloudflare/migrations/0021.sql",
+    "cloudflare/test/free-tier-d1.test.js"
    ],
    "verifies": []
   },
@@ -722,6 +749,20 @@
     "S21",
     "S23"
    ]
+  },
+  {
+   "id": "dec-deck-algo-worker",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "成果報告の資料の推薦の章を、本番の Worker の計算（person-ordinal-v3+fav3+asp1+tour1+why1）に合わせて書き直した",
+   "sources": [
+    "docs/000003-final-presentation-taguri.html",
+    "cloudflare/src/recommend.js",
+    "cloudflare/src/reco-gate.js",
+    "cloudflare/src/screens/recommend.js"
+   ],
+   "verifies": []
   },
   {
    "id": "dec-defer-workers",
@@ -2646,7 +2687,7 @@
   {
    "id": "q-account-limit-100",
    "type": "question",
-   "status": "open",
+   "status": "answered",
    "date": "2026-10-14",
    "title": "D1 の users 表に「全体で 100 人まで」の歯止め（試験版の名残り）があるが、本番でもこのままにするか",
    "sources": [
@@ -2861,6 +2902,15 @@
    "status": "open",
    "date": "2026-10-13",
    "title": "Python Workers の CPU の制限と成熟度",
+   "sources": [],
+   "verifies": []
+  },
+  {
+   "id": "q-d1-reads-real",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-14",
+   "title": "本番で 1 人・1 日あたり D1 を何行読んでいるか（利用者 300 人の上限の前提）",
    "sources": [],
    "verifies": []
   },
@@ -3899,6 +3949,18 @@
    "verifies": []
   },
   {
+   "id": "user-storage-measured",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-14",
+   "title": "1 人が D1 に置く量は、ふつうに使って約 0.7 MB、いまの行数の歯止めの中でいちばん長い文字で埋めると約 218 MB（しかも上限の無い表があった）",
+   "sources": [
+    "cloudflare/migrations/0021.sql",
+    "cloudflare/src/free-tier.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "white-record-sites",
    "type": "finding",
    "status": "unverified",
@@ -4360,6 +4422,11 @@
    "to": "d1-free-limits"
   },
   {
+   "from": "d1-meta-size-after",
+   "rel": "supports",
+   "to": "dec-account-cap-counted"
+  },
+  {
    "from": "d1-query-limits",
    "rel": "affects",
    "to": "comp-rec-index"
@@ -4373,6 +4440,26 @@
    "from": "d1-time-travel",
    "rel": "affects",
    "to": "workers-d1-preview-state"
+  },
+  {
+   "from": "dec-account-cap-counted",
+   "rel": "answers",
+   "to": "q-account-limit-100"
+  },
+  {
+   "from": "dec-account-cap-counted",
+   "rel": "depends_on",
+   "to": "d1-free-limits"
+  },
+  {
+   "from": "dec-account-cap-counted",
+   "rel": "depends_on",
+   "to": "dec-free-tier-only"
+  },
+  {
+   "from": "dec-account-cap-counted",
+   "rel": "affects",
+   "to": "dec-login-hardening"
   },
   {
    "from": "dec-account-deletion",
@@ -4538,6 +4625,26 @@
    "from": "dec-d1-catalogue-delivery",
    "rel": "raises",
    "to": "q-catalogue-python-snapshot-vs-d1"
+  },
+  {
+   "from": "dec-deck-algo-worker",
+   "rel": "depends_on",
+   "to": "impl-person-ordinal-v3"
+  },
+  {
+   "from": "dec-deck-algo-worker",
+   "rel": "depends_on",
+   "to": "impl-favourite-seed"
+  },
+  {
+   "from": "dec-deck-algo-worker",
+   "rel": "depends_on",
+   "to": "impl-hidden-gate"
+  },
+  {
+   "from": "dec-deck-algo-worker",
+   "rel": "depends_on",
+   "to": "dec-account-cap-counted"
   },
   {
    "from": "dec-defer-workers",
@@ -6250,6 +6357,11 @@
    "to": "q-offsite-backup"
   },
   {
+   "from": "q-d1-reads-real",
+   "rel": "affects",
+   "to": "dec-account-cap-counted"
+  },
+  {
    "from": "q-demo-after-render",
    "rel": "depends_on",
    "to": "dec-render-full-migration"
@@ -6943,6 +7055,11 @@
    "from": "triangle-label-mismatch",
    "rel": "affects",
    "to": "comp-recommender"
+  },
+  {
+   "from": "user-storage-measured",
+   "rel": "supports",
+   "to": "dec-account-cap-counted"
   },
   {
    "from": "white-record-sites",

@@ -6,8 +6,11 @@ import {searchIndex, d1Search} from './stage-search.js';
 import {suggest} from './screens/suggest.js';
 import {exportPayload} from './screens/settings.js';
 import {chooseVariant} from './reco-gate.js';
-import {R2_READS_CAP, r2ReadAllowed} from './free-tier.js';
+import {R2_READS_CAP, r2ReadAllowed, d1RoomLeft, d1Bytes, D1_BYTES_CAP, MAX_ACCOUNTS} from './free-tier.js';
 import {rateLimit, checkNewAccount} from './rate-limit.js';
+// Writes that only remove a user's rows: allowed even when D1 is at its storage cap.
+const SHRINKING_ACTIONS = new Set(['drop_work', 'purge_work', 'unseen']);
+const STORAGE_FULL = 'いまは保存を止めています（無料の範囲で動かすため、保存できる量の上限に近づいています）。見ることと消すことはできます。';
 import {fetchCalendar} from './screens/import.js';
 import {SCREEN_TABLES, nativeScreen, nativeAction, allNative, movingScreen, movingAction, screen as nativeScreenBody, action as nativeActionBody, readInput as nativeInput} from './screens/index.js';
 const MAX_BODY = 262144;
@@ -256,7 +259,10 @@ export async function health(db) {
   try {
     r2Reads = (await db.prepare('SELECT n FROM usage WHERE k=?').bind(`r2_get:${new Date().toISOString().slice(0, 7)}`).first())?.n || 0;
   } catch { /* migration 0014 not applied yet */ }
-  return {ok: true, catalog, free_tier: {r2_reads_month: r2Reads, r2_reads_cap: R2_READS_CAP}};
+  let accounts = null;
+  try { accounts = (await db.prepare('SELECT count(*) AS n FROM users').first())?.n ?? null; } catch { /* no table */ }
+  return {ok: true, catalog, free_tier: {r2_reads_month: r2Reads, r2_reads_cap: R2_READS_CAP,
+    d1_bytes: await d1Bytes(db), d1_bytes_cap: D1_BYTES_CAP, accounts, accounts_cap: MAX_ACCOUNTS}};
 }
 // Stages for linking a record: ?q=title[&date=YYYY-MM-DD] searches by title,
 // ?ids=a,b,... returns the linked stages' names. Public catalogue fields only.
@@ -433,6 +439,7 @@ async function nativeRoute(request, env, url) {
     if (!(request.headers.get('content-type') || '').startsWith('application/json')) fail(415,'JSONで送ってください。');
     const read = await nativeInput(request);
     if (!read.input) return json(read.body, read.status);
+    if (!SHRINKING_ACTIONS.has(m[2]) && !(await d1RoomLeft(env.DB, env))) fail(503, STORAGE_FULL);
     const out = await nativeActionBody(m[2], read.input, ctx);
     return json(out.body, out.status);
   } catch (error) {
@@ -544,6 +551,7 @@ export default {
       const input = await body(request);
       // Writes that change what is recommended drop the cached result (the stamp
       // alone misses two edits within the same second).
+      if (path !== '/api/record/delete' && !(await d1RoomLeft(env.DB, env))) fail(503, STORAGE_FULL);
       if (['/api/record','/api/record/delete','/api/reaction','/api/favourite','/api/import'].includes(path))
         await env.DB.prepare('DELETE FROM rec_cache WHERE user_id=?').bind(uid).run();
       if (path === '/api/record') {
