@@ -2177,6 +2177,17 @@
    "verifies": []
   },
   {
+   "id": "pr14-reason-kinds",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-14",
+   "title": "PR #14 で、おすすめは「点を上げた人物」か「公演の種類（#形式・#原作・#翻訳・#題材）」がある公演だけになり、/api/recommend の reasons に種類が入る",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/pull/14"
+   ],
+   "verifies": []
+  },
+  {
    "id": "production-branch-master",
    "type": "finding",
    "status": "confirmed",
@@ -5296,6 +5307,16 @@
    "from": "pr-branch-is-production",
    "rel": "raises",
    "to": "q-production-branch"
+  },
+  {
+   "from": "pr14-reason-kinds",
+   "rel": "affects",
+   "to": "dec-reason-work-titles"
+  },
+  {
+   "from": "pr14-reason-kinds",
+   "rel": "affects",
+   "to": "q-pr14-free-tier"
   },
   {
    "from": "production-branch-master",
