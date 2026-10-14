@@ -20,6 +20,17 @@ export {prefForm, prefsFor};
 import {loadDeclared, loadDeclined, nameHits, KINDS} from './lists.js';
 
 export const TOP = 15;
+const TIPS = `<section class="card tips">
+<h2>おすすめを出すためのワンポイント</h2>
+<ol>
+<li><b>観た公演を 2 本以上、評価してください。</b>「◎」だけでなく「○」「△」「×」も混ぜて付けるのがコツです。よかった公演といまひとつだった公演の両方があると、どこが好みなのかが分かります。全部「◎」だと、違いが分からず、おすすめが出ません。</li>
+<li><b>観た公演は、題名と観た日を正しく入れてください。</b>公演の情報（出演者や作り手）が分かると、その人たちの次の公演をおすすめできます。日記帳で「まだどの公演とも結び付いていません」と出る記録は、その欄から観た公演を選んでください。</li>
+<li><b>好きな俳優・劇団・作品を「お気に入り」に登録してください。</b>登録した名前の公演は、評価が無くてもすぐ「お気に入り」に出ます。一緒に出ている人の公演も、おすすめに出やすくなります。</li>
+<li><b>評価が増えるほど、おすすめは増えて、当たりやすくなります。</b>まずは 10 本ほどを目安にどうぞ。</li>
+</ol>
+<p class="lead"><a href="/rate?t=__TAGURI_TOKEN__">観た公演の評価</a>・<a href="/recommend/favourites?t=__TAGURI_TOKEN__">お気に入り</a>・<a href="/records/works?t=__TAGURI_TOKEN__">日記帳</a>から始められます。</p>
+</section>
+`;
 // Groups kept per user between requests: enough to fill 15 cards in any one prefecture.
 const KEEP = 400;
 const VERSION = 'screen-v2';   // v2: the user's 効かせ方 (rank_weight) and the per-group counts
@@ -240,6 +251,10 @@ export async function recommendScreen(params, ctx) {
     head = `${where}のおすすめ ${cards.length} 件`;
     lede = `<p class="pnow"><b>${E(where)}</b>で観られる公演のうち、好みに合いそうだと判断できたのは ${hit} 件でした。${tail}</p>`;
   }
+  // 推薦を出すためのワンポイント（起案者の指示 2026-10-14「なにがしたら出るか、使うユーザーが
+  // わかりやすい文章で（技術的なことは書かないで）おすすめの初期画面に追加して」）。
+  // 条件は new-user-reco-threshold: 公演とつながった記録が 2 件以上で、評価が 2 種類以上。
+  const tips = !cards.length && !prefs.length ? TIPS : '';
   const nInterest = (await ctx.db.prepare('SELECT count(DISTINCT stage_id) AS n FROM reaction WHERE user_id=? AND interest=1 AND COALESCE(owned,0)=0').bind(ctx.uid).first())?.n || 0;
   const notes = `<p class="note">現在のあなたの評価 ${data.n_rated || 0} 作品から計算しています。評価の変更・取り消しは、次におすすめを開くと反映されます。</p>`;
   const nSyn = cards.filter(h => /<div class="syn( doubt)?"/.test(h)).length;
@@ -252,7 +267,7 @@ export async function recommendScreen(params, ctx) {
   const body = `<h1>${E(head)}</h1>
 ${lede}
 ${notes}
-<div class="fil2">${prefForm(prefCounts(data.groups), prefs, '/recommend', '', {}, regionCounts(data.groups.map(g => ({key: g.stage_id, prefs: g.venues.map(v => v.pref)}))))}${weightForm(data.weights || {}, data.w_counts || {})}</div>
+${tips}<div class="fil2">${prefForm(prefCounts(data.groups), prefs, '/recommend', '', {}, regionCounts(data.groups.map(g => ({key: g.stage_id, prefs: g.venues.map(v => v.pref)}))))}${weightForm(data.weights || {}, data.w_counts || {})}</div>
 ${cards.join('')}
 <p class="lede">気になった公演で「興味あり」を押すと、
 <a href="/recommend/interest?t=__TAGURI_TOKEN__">「興味あり」（いま ${nInterest} 件）</a>に移ります。</p>
