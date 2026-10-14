@@ -13,6 +13,7 @@ import {scoreFromIndex, d1Access, seedsFromFavourites, gradeOf} from '../recomme
 import {chooseVariant} from '../reco-gate.js';
 import {E, ValueError} from './py.js';
 import {loadWorks} from './works.js';
+import {compose, cardTemplates, posterHtml} from './cards.js';
 
 export const TOP = 15;
 // Groups kept per user between requests: enough to fill 15 cards in any one prefecture.
@@ -225,33 +226,16 @@ async function prefsFor(params, ctx) {
   try { return PREFS.filter(p => JSON.parse(row?.value || '[]').includes(p)); } catch { return []; }
 }
 
-const POSTER_HTML = file => `<span class="pwrap"><img class="poster" src="/img/${E(file)}?t=__TAGURI_TOKEN__"`
-  + ` alt="" loading="lazy" onload="this.parentElement.classList.add('ld')"`
-  + ` onerror="this.parentElement.classList.add('pe');this.nextElementSibling.textContent='読み込めませんでした'">`
-  + `<span class="pmsg">読み込み中…</span></span>`;
-
 /** The cards of these rows, rank from `first`; rows without a card yet are left out. */
 export async function cardsHtml(ctx, rows, titles, first = 1) {
-  const sids = rows.map(r => r.shown);
-  const html = new Map(), posters = new Map();
-  for (const part of chunks(sids, 90)) {
-    const qs = part.map(() => '?').join(',');
-    const [cards, pics] = await Promise.all([
-      ctx.db.prepare(`SELECT stage_id,html FROM rec_card WHERE ver=(SELECT v FROM rec_meta WHERE k='rec_card') AND stage_id IN (${qs})`).bind(...part).all(),
-      ctx.db.prepare(`SELECT stage_id,file FROM poster WHERE stage_id IN (${qs})`).bind(...part).all()]);
-    for (const r of cards.results) html.set(r.stage_id, r.html);
-    for (const r of pics.results) posters.set(r.stage_id, r.file);
-  }
+  const {html, posters} = await cardTemplates(ctx.db, rows.flatMap(r => [r.shown, r.stage_id]));
   const out = [];
   let rank = first;
   for (const r of rows) {
     const card = html.get(r.shown);
     if (!card) continue;
     const pic = posters.get(r.shown) || posters.get(r.stage_id);
-    out.push(card.replace('<!--rank-->', pad2(rank++))
-      .replace('<!--why-->', reasonRows(r, titles))
-      .replace('<!--poster-->', pic ? POSTER_HTML(pic) : '')
-      .replace('<div class="pcol"></div>', ''));
+    out.push(compose(card, r.shown, 'recommend', {rank: rank++, why: reasonRows(r, titles), poster: pic ? posterHtml(pic) : ''}));
   }
   return out;
 }

@@ -11,7 +11,7 @@ const FIXTURE = JSON.parse(execFileSync('python3', [here('./screens/recommend_fi
 
 async function withIndex() {
   const {env, sqlite} = setup();
-  for (const s of FIXTURE) sqlite.exec(s);
+  for (const s of FIXTURE.sql) sqlite.exec(s);
   return {env, sqlite};
 }
 async function rateSeen(env, cookie, title, date, sid, verdict) {

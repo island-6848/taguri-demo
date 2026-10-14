@@ -36,5 +36,32 @@ def sql() -> list[str]:
     return BI.to_sql(index, BI.version_of(index)) + BC.to_sql(BC.build(pool, {}, today))
 
 
+def golden() -> list[dict]:
+    """Cards filled by build_cards.compose (the reference for src/screens/cards.js)."""
+    BC = _load("build_cards")
+    import render_recommend as RR
+    import user_recommender as UR
+    today = datetime.date.fromisoformat(CAT.TODAY)
+    pool = UR.candidate_pool({}, CAT.CANDIDATES)
+    stages, cards = BC.stage_dicts(pool, {}, today), BC.build(pool, {}, today)
+    tickets = [{"date": "2026-11-02", "time": "18:30", "confirmed": 1},
+               {"date": "2026-11-05", "time": "", "confirmed": 0, "sid": "101"}]
+    out = []
+    for sid, t in sorted(cards.items()):
+        c = stages[sid]
+        lo, hi = RR._period_start(c.get("period") or ""), RR._period_end(c.get("period") or "")
+        for mode, kw in (("recommend", {"rank": 7, "why": "<li>x $& y</li>", "poster": "<img>"}),
+                         ("interest", {"note": "俳優甲 & <乙> $1"}), ("interest", {}),
+                         ("favourite", {"why": "<li>登録</li>"}),
+                         ("owned", {"tickets": tickets}), ("owned", {"tickets": []})):
+            args = dict(kw)
+            if mode == "owned":
+                args = {"mytix": BC.mytix_html(c, kw["tickets"])}
+            out.append({"template": t, "sid": sid, "mode": mode, "kw": kw,
+                        "start": lo.isoformat() if lo else "", "end": hi.isoformat() if hi else "",
+                        "html": BC.compose(t, sid, mode, **args)})
+    return out
+
+
 if __name__ == "__main__":
-    print(json.dumps(sql(), ensure_ascii=False))
+    print(json.dumps({"sql": sql(), "golden": golden()}, ensure_ascii=False))

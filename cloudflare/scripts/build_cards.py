@@ -6,12 +6,12 @@ card, rendered once a day by the Python screen itself.
 The recommend screen moved to the Worker (起案者の指示 2026-10-14「おすすめの画面を移して」).
 Everything on a card but the rank, the reasons and the poster depends only on
 the stage, so it is rendered here with `render_recommend.ticket` (the function
-the Python screen uses) and the Worker fills three markers per request:
-
-- RANK_MARK   in the stub's number ("No.<!--rank-->")
-- WHY_MARK    inside <ul class="why"> (the user's reasons)
-- POSTER_MARK inside <div class="pcol"> (the poster, if one is in R2 yet:
-  posters are uploaded after this step, so the card cannot know)
+the Python screen uses). What depends on the user or the list is left as markers
+(MARK … NO_NOTE below) that the Worker fills per request (src/screens/cards.js;
+`compose` here is the same in Python): the stub's number or mark, the reasons,
+the poster (uploaded after this step, so the card cannot know), the three-choice
+buttons, the 行く日 of an owned stage, and the note boxes. One template serves
+the four lists that show cards: おすすめ・興味あり・お気に入り・購入済み.
 
 Only public catalogue fields are used: no user's hand-entered credits, notes or
 reactions. Dates on a card (初日／最終日 in the stub, finished tour dates, 発売)
@@ -43,11 +43,13 @@ import recommend2 as RC                                             # noqa: E402
 import render_recommend as RR                                       # noqa: E402
 import user_recommender as UR                                       # noqa: E402
 
-RANK_MARK = "<!--rank-->"
-WHY_MARK = "<!--why-->"
-POSTER_MARK = "<!--poster-->"
+# Markers the Worker fills per user (and per list: recommend / interest / favourite / owned).
+MARK, WHYH, WHY, POSTER, BTNS, MYTIX, WHY_NOTE, NO_NOTE = (
+    "<!--mark-->", "<!--whyh-->", "<!--why-->", "<!--poster-->", "<!--btns-->", "<!--mytix-->",
+    "<!--why_note-->", "<!--no_note-->")
+POSTER_MARK = POSTER
 _RANK_PROBE = 99
-_NO_REASON = '<ul class="why"><li class="rs none">理由を出せていません</li></ul>'
+_NO_REASON = '<li class="rs none">理由を出せていません</li>'
 TOUR_KEYS = ("stage_id", "theater", "pref", "period", "days", "price", "url", "onsale")
 
 
@@ -88,19 +90,79 @@ def stage_dicts(pool: dict[str, dict], themes: dict, today: datetime.date) -> di
     return out
 
 
+def _swap(html: str, old: str, new: str, sid) -> str:
+    if html.count(old) != 1:
+        raise ValueError(f"card layout changed: {old[:40]!r} not found once for stage {sid}")
+    return html.replace(old, new)
+
+
 def card_template(c: dict) -> str:
-    """`render_recommend.card` for this stage, with the three markers in place."""
+    """`render_recommend.ticket` for this stage with the user's parts replaced by markers.
+    `compose` puts them back; the result equals `ticket` in every mode (test_build_cards)."""
     saved = RR.POSTER
-    RR.POSTER = lambda _sid: POSTER_MARK
+    RR.POSTER = lambda _sid: POSTER
     try:
         html = RR.ticket(c, rank=_RANK_PROBE, mode="recommend")
     finally:
         RR.POSTER = saved
-    probe = f'<span class="sn">No.{_RANK_PROBE:02d}</span>'
-    if html.count(probe) != 1 or html.count(_NO_REASON) != 1:
-        raise ValueError(f"card layout changed: markers not found for stage {c.get('stage_id')}")
-    return (html.replace(probe, f'<span class="sn">No.{RANK_MARK}</span>')
-                .replace(_NO_REASON, f'<ul class="why">{WHY_MARK}</ul>'))
+    sid = c.get("stage_id")
+    for old, new in ((f'<span class="sn">No.{_RANK_PROBE:02d}</span>', MARK),
+                     ('おすすめ理由</div><ul class="why">', f'{WHYH}</div><ul class="why">'),
+                     (f'<ul class="why">{_NO_REASON}</ul>', f'<ul class="why">{WHY}</ul>'),
+                     (RR.buttons(sid), BTNS),
+                     (RR.why_note(sid), WHY_NOTE),
+                     (RR.no_note(sid, hidden=True), NO_NOTE),
+                     ('</div>\n \n <div class="when">', f'</div>\n {MYTIX}\n <div class="when">')):
+        html = _swap(html, old, new, sid)
+    return html
+
+
+def mytix_html(c: dict, tickets: list[dict]) -> str:
+    """The 行く日 box of an owned stage (render_recommend.ticket, mode "owned")."""
+    import icons as IC
+    E = RR.E
+    rows = []
+    for t in tickets:
+        tm = f' {E(t["time"])}' if t.get("time") else ""
+        sid, dd, tt = (E(str(t.get("sid") or c.get("stage_id") or "")), E(t["date"]), E(t.get("time") or ""))
+        if t.get("confirmed"):
+            note, btns = "", f'<button data-mt-del="{sid}" data-date="{dd}" data-time="{tt}">取り消す</button>'
+        else:
+            note = "（未確定）"
+            btns = (f'<button data-mt-ok="{sid}" data-date="{dd}" data-time="{tt}">確定する</button>'
+                    f'<button data-mt-del="{sid}" data-date="{dd}" data-time="{tt}">違う</button>')
+        rows.append(f'<span class="mt-row{"" if t.get("confirmed") else " un"}">{int(t["date"][5:7])}月'
+                    f'{int(t["date"][8:10])}日{tm}{note} {btns}</span>')
+    lo, hi = RR._period_start(c.get("period") or ""), RR._period_end(c.get("period") or "")
+    add_form = ('<span class="mt-add">'
+                '<input type="date" class="mt-d" aria-label="行く日"'
+                + (f' min="{lo.isoformat()}"' if lo else "") + (f' max="{hi.isoformat()}"' if hi else "") + '>'
+                '<input type="time" class="mt-t" aria-label="時刻（任意）">'
+                f'<button data-mt-add="{E(str(c["stage_id"]))}">{IC.ico("plus", 13)}行く日を追加</button>'
+                '<span class="said"></span></span>')
+    return f'<div class="mytix"><b>行く日</b>{"".join(rows)}{add_form}</div>'
+
+
+def compose(template: str, sid: str, mode: str, *, rank: int | None = None, why: str = "",
+            poster: str = "", note: str = "", mytix: str = "") -> str:
+    """What the Worker does (src/screens/cards.js), in Python: the reference for the test."""
+    import icons as IC
+    mark = {"recommend": f'<span class="sn">No.{rank or 0:02d}</span>',
+            "interest": f'<span class="sn done">{IC.ico("check", 15)}</span>',
+            "favourite": '<span class="wax" aria-hidden="true"></span>'}.get(mode, "")
+    btns = {"recommend": RR.buttons(sid),
+            "interest": '<button class="wnb" data-btns-open="1">回答を変える</button>' + RR.buttons(sid, hidden=True)}.get(mode, "")
+    answer = mode in ("recommend", "interest")
+    html = (template.replace('<article class="ticket recommend"', f'<article class="ticket {mode}"', 1)
+            .replace(MARK, mark)
+            .replace(WHYH, "なぜお知らせしているか" if mode == "favourite" else "おすすめ理由")
+            .replace(WHY, why or _NO_REASON)
+            .replace(POSTER, poster)
+            .replace(BTNS, btns)
+            .replace(MYTIX, mytix if mode == "owned" else "")
+            .replace(WHY_NOTE, RR.why_note(sid, note, ask=(mode == "interest")) if answer else "")
+            .replace(NO_NOTE, RR.no_note(sid, hidden=True) if answer else ""))
+    return html.replace('<div class="act"></div>', "").replace('<div class="pcol"></div>', "")
 
 
 def build(pool: dict[str, dict], themes: dict, today: datetime.date) -> dict[str, str]:
