@@ -1321,6 +1321,19 @@
    "verifies": []
   },
   {
+   "id": "eval-yahoo-aspects",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-14",
+   "title": "項目別の映画評価では 4 件に 1 件で項目が総合から 1 段以上ずれる。項目の重みを人ごとに学んでも総合は当たらない",
+   "sources": [
+    "docs/research/person-reco-eval.md",
+    "tools/review/eval_yahoo_aspects.py",
+    "https://github.com/KunalShm/Multi-Criteria-Recommendation-System"
+   ],
+   "verifies": []
+  },
+  {
    "id": "firebase-apikey-public",
    "type": "finding",
    "status": "unverified",
@@ -4498,6 +4511,21 @@
    "from": "eval-reputation-signals",
    "rel": "affects",
    "to": "q-public-reputation-signal"
+  },
+  {
+   "from": "eval-yahoo-aspects",
+   "rel": "affects",
+   "to": "impl-rating-aspects"
+  },
+  {
+   "from": "eval-yahoo-aspects",
+   "rel": "depends_on",
+   "to": "lit-yahoo-multicriteria"
+  },
+  {
+   "from": "eval-yahoo-aspects",
+   "rel": "depends_on",
+   "to": "q-aspect-attribution-check"
   },
   {
    "from": "firebase-apikey-public",
