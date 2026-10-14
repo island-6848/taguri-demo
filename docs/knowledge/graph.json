@@ -751,6 +751,19 @@
    ]
   },
   {
+   "id": "dec-deck-algo-paper",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "成果報告の資料の推薦の章を、論文の形（記法・番号付きの式・図・検証と限界・参考文献）に書き直した",
+   "sources": [
+    "docs/000003-final-presentation-taguri.html",
+    "cloudflare/src/recommend.js",
+    "cloudflare/src/reco-gate.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-deck-algo-worker",
    "type": "decision",
    "status": "adopted",
@@ -4685,6 +4698,46 @@
    "from": "dec-d1-catalogue-delivery",
    "rel": "raises",
    "to": "q-catalogue-python-snapshot-vs-d1"
+  },
+  {
+   "from": "dec-deck-algo-paper",
+   "rel": "depends_on",
+   "to": "dec-deck-algo-worker"
+  },
+  {
+   "from": "dec-deck-algo-paper",
+   "rel": "depends_on",
+   "to": "impl-person-ordinal-v3"
+  },
+  {
+   "from": "dec-deck-algo-paper",
+   "rel": "depends_on",
+   "to": "impl-hidden-gate"
+  },
+  {
+   "from": "dec-deck-algo-paper",
+   "rel": "depends_on",
+   "to": "eval-hidden-gate-sim"
+  },
+  {
+   "from": "dec-deck-algo-paper",
+   "rel": "depends_on",
+   "to": "eval-favourite-kinds"
+  },
+  {
+   "from": "dec-deck-algo-paper",
+   "rel": "depends_on",
+   "to": "dec-no-n1-evidence"
+  },
+  {
+   "from": "dec-deck-algo-paper",
+   "rel": "depends_on",
+   "to": "dec-recommend-weights-worker"
+  },
+  {
+   "from": "dec-deck-algo-paper",
+   "rel": "depends_on",
+   "to": "new-user-reco-threshold"
   },
   {
    "from": "dec-deck-algo-worker",
