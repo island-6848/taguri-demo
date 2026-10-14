@@ -1507,6 +1507,25 @@
    "verifies": []
   },
   {
+   "id": "dec-ui-1014-drop-calendar-editor",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "取り消した記録は 30 日で自動で消す・公演カレンダーに一覧だけにある購入済み公演も出す・画面の控えを他のタブと戻る操作でも捨てる・「記録を直す」欄を言い換えてメールのボタンを外す",
+   "sources": [
+    "cloudflare/src/screens/works.js",
+    "cloudflare/src/screens/diary.js",
+    "cloudflare/src/screens/settings.js",
+    "cloudflare/src/screens/calendar.js",
+    "cloudflare/src/screens/row.js",
+    "web/app.js",
+    "cloudflare/test/drop-expiry.test.js",
+    "cloudflare/test/lists-screen.test.js",
+    "cloudflare/test/screens.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-url-app-taguri",
    "type": "decision",
    "status": "adopted",
@@ -5336,6 +5355,11 @@
    "from": "dec-ui-1014-account-reminder",
    "rel": "depends_on",
    "to": "dec-account-cap-counted"
+  },
+  {
+   "from": "dec-ui-1014-drop-calendar-editor",
+   "rel": "depends_on",
+   "to": "dec-reminder-catalogue-fill"
   },
   {
    "from": "dec-url-app-taguri",

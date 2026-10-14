@@ -7,7 +7,7 @@
 // skipped on the public service.
 import {autoLink, pastStages} from './autolink.js';
 import {E, strip, slice, field, pyRepr, localNow, dumps, ValueError, WS, quote, qsFirst, sortBy, cmp, isdigit} from './py.js';
-import {loadWorks, similarWorks, titleKey, norm} from './works.js';
+import {loadWorks, similarWorks, titleKey, norm, deleteWork} from './works.js';
 import {handCreditCount, parseCredits} from './credits.js';
 import {recRow, anchor, stageLabels} from './row.js';
 import {indexTabs, paginate, page as pageOf, SHEET_TOP, posterHtml, posterFiles} from './rate.js';
@@ -198,9 +198,9 @@ async function purgeWorkAction(b, ctx) {
   const {ex, marks, purged, purgedLegacy} = await droppedState(ctx);
   let title;
   if (marks.has(key) && !purged.has(key)) {
+    // 完全に取り消す: the record itself goes now, not after DROP_KEEP_DAYS (works.expireDropped).
     title = marks.get(key);
-    await saveExcluded(ctx, [[`work:${key}`, title]], false);
-    await saveExcluded(ctx, [[`purged:${key}`, title]], true);
+    await deleteWork(ctx, key);
   } else if (!purgedLegacy.has(key) && ex.some(([u, p]) => p === key && !u.startsWith('work:') && !u.startsWith('purged:') && !u.startsWith('purged-legacy:'))) {
     title = key;
     await saveExcluded(ctx, [[`purged-legacy:${key}`, key]], true);

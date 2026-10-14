@@ -195,27 +195,19 @@ function handHtml(w, key) {
   const hand = w.hand || {};
   const hf = hand.fields || {};
   const n = handCreditCount(hf);
-  const hp = hand.poster || '';
   const boxes = HAND_FIELDS.map(([field, label, hint]) =>
     `<label class="hand-f">${E(label)}`
     + (hint ? `<span class="hand-h">${E(hint)}</span>` : '')
     + `<textarea data-hand="${E(field)}" rows="${field === 'スタッフ' ? 3 : 2}"`
     + ` placeholder="">${E(hf[field] || '')}</textarea></label>`).join('');
-  const pv = hp ? `<img src="/img/${E(hp)}?t=__TAGURI_TOKEN__" alt="">` : '<span class="ed-pn"></span>';
-  const off = hp ? `<button data-hand-off="${key}">手で入れた絵を外す</button>` : '';
+  // サービス版では、ポスターは手で入れられない（公演の画像は全員で共有する。/api/hand_poster は
+  // 移していない）ので、出演者・作り手だけを入れる欄にした（2026-10-14）
   return `<details class="hand" data-work="${key}">
-<summary>ポスター・クレジットを手入力する${n ? `（出演者 ${n} 名を入れてあります）` : ''}${hp ? '・ポスターを入れてあります' : ''}</summary>
-<p class="ed-lead"><b>公演ページが見つからない公演は、ここに直接書き込めます。</b>
-書いた出演者と作り手は、<b>次のおすすめの材料になります</b>（◎ を付けた公演の作り手として
-数えます）。<b>公演ページから取れている分は消えません。</b>ここに書いた分が追加されます。</p>
-<div class="hand-p"><span class="ed-pv">${pv}</span>
- <label class="hand-file">ポスターの画像を選ぶ
-  <input type="file" accept="image/*" data-hand-img="${key}"></label>
- ${off}<span class="said"></span>
- <span class="hand-h">端末の中に写すだけで、どこにも送りません。JPEG・PNG・WebP・GIF、
-  12MB までです。</span></div>
+<summary>出演者・作り手を手で入れる${n ? `（${n} 名を入れてあります）` : ''}</summary>
+<p class="ed-lead"><b>観た公演が見つからないときは、ここに出演者や作り手を書けます。</b>
+書いた名前は、おすすめを作るときに使います。観た公演の情報から取れている分は消えず、ここに書いた分が足されます。</p>
 ${boxes}
-<div class="pfoot"><button data-hand-save="${key}">この内容で名簿に入れる</button>
+<div class="pfoot"><button data-hand-save="${key}">この内容で保存する</button>
  <span class="said"></span></div>
 </details>`;
 }
@@ -227,20 +219,20 @@ ${boxes}
  * record never has a poster here (as in Python with no image files).
  */
 export function editHtml(w, label) {
+  // サービス版（Worker）だけの編集欄（起案者の指摘 2026-10-14「公演詳細を編集するところがわかりにくい。
+  // おすすめに出る公演と結びつけるとか概念がよくわかんない。『メール本文を見る』ってメール文書を手元に
+  // 保存してる？」）。Python の持ち主版にあるメールの機能（抽出結果に戻す・メールの中身を見る）は、
+  // サービス版ではメールを保存しないので出さない。言葉は「観た公演の情報とつながる」に寄せた。
+  // test/screens.test.js はこの欄を Python との一字一句の比べから外し、ここの形を別に確かめる。
   const key = E(w.work_key);
-  const fixT = '';                                   // only shows carry fixed titles
-  const rows = `<div class="ed-show"><input type="date" data-ed-date="" `
+  const rows = `<div class="ed-show"><span class="ed-lk">観た日・劇場</span><input type="date" data-ed-date="" `
     + `value="${E(w.first_date || '')}">`
     + `<input type="time" data-ed-time="" value="${E(w.time || '')}"`
     + ` aria-label="開演時刻">`
     + `<input type="text" data-ed-venue="" value="${E(w.venue || '')}"`
-    + ` placeholder="劇場" size="18">`
-    + `<span class="ed-m">この記録はメールから来ていないので、`
-    + `手で入れた内容だけが入ります。</span></div>`;
-  const src = '';
+    + ` placeholder="劇場" size="18"></div>`;
   const mg = w.merged || [];
   const merged = mg.length ? `<button data-unmerge="${key}">まとめた ${mg.length} 件を戻す</button>` : '';
-  const skipBtn = '';                                // manual records cannot be marked 行かなかった
   const skipLead = w.unseen
     ? '<b>この記録には「行かなかった」が付いています。</b>観た本数と図、評価待ちからは外れています。この行の上にある「やはり観た」で戻せます。<br>'
     : '';
@@ -250,59 +242,51 @@ export function editHtml(w, label) {
   const sid = w.stage_id || '';
   let linkNote;
   if (sid && w.auto_linked) {
-    linkNote = '<b>題名から探して、自動で結び付けました。</b>合っているか確かめてください。<b>違う公演だと、観ていない公演の作り手がおすすめの材料に入ってしまいます。</b>違っていたら「結び付けを外す」を押してください。';
+    linkNote = '<b>題名と観た日から、観た公演を見つけてつなげました。</b>出演者やあらすじは、この公演のものを使っています。ちがう公演だったら「つながりを外す」を押して、探し直してください。';
   } else if (sid) {
-    linkNote = 'この公演の出演者・作り手・あらすじを、おすすめの材料にしています。';
-  } else if (w.has_credits) {
-    linkNote = 'メールから公演ページが分かっているので、<b>この記録はすでにおすすめの材料になっています。</b>結び付けは必要ありません。別の公演の情報が出ていたら、ここで正しい公演を選び直してください。';
+    linkNote = '観た公演の出演者・作り手・あらすじを使っています。おすすめにも、この情報が生きます。';
   } else if (handCreditCount((w.hand || {}).fields || {})) {
-    linkNote = '<b>この記録は、どの公演とも結び付いていません。</b>そのかわりに、下の欄に手で入れた出演者と作り手がおすすめの材料に入っています。公演ページが見つかったときは、上の欄で選ぶとあらすじも一緒に入ります。';
+    linkNote = '観た公演はまだ見つかっていませんが、下に手で入れた出演者・作り手を使っています。公演が見つかったら、上の欄で選ぶとあらすじも入ります。';
   } else {
-    linkNote = '<b>この記録は、まだどの公演とも結び付いていません。</b>結び付けると、その公演の出演者・作り手・あらすじがおすすめの材料に入ります。<b>結び付いていない記録は、評価を付けてもおすすめには効きません。</b>公演ページが見つからないときは、下の欄に手で入れられます。';
+    linkNote = '<b>まだ観た公演の情報が見つかっていません。</b>上の欄で題名を探して選ぶと、出演者やあらすじが入り、おすすめにも使えるようになります。見つからないときは、下の「出演者・作り手を手で入れる」から入れられます。';
   }
   const link = `<div class="ed-link" data-work="${key}">`
-    + `<span class="ed-lk">おすすめに使う公演</span>`
+    + `<span class="ed-lk">観た公演</span>`
     + (sid ? `<span class="ed-lv${w.auto_linked ? ' auto' : ''}">`
       + `${E(label)}</span>`
-      + `<button data-unlink="${key}">結び付けを外す</button>` : '')
+      + `<button data-unlink="${key}">つながりを外す</button>` : '')
     + `<input type="text" data-lk-q="${key}" size="24" autocomplete="off"`
-    + ` value="${E(fixT || w.title)}"`
-    + ` placeholder="${sid ? '別の公演に付け替える' : '公演の題名で探す'}">`
-    + `<button data-lk-web="${key}">${ico('search')}CoRichの公演情報から探す</button>`
+    + ` value="${E(w.title)}"`
+    + ` placeholder="${sid ? 'ほかの公演を探す' : '公演の題名で探す'}">`
+    + `<button data-lk-web="${key}">${ico('search')}公演一覧から探す</button>`
     + `<span class="said"></span><div class="lk-sug"></div>`
     + '</div>';
-  // poster_of(w) -> ("", sid, "link") or ("", "", "none"): no image files here.
-  const pimg = '<span class="ed-pn"></span>';
   const pnote = sid
-    ? '結び付けた公演のポスターは、まだ手元にありません（月 1 回、公演情報を取得するときに一緒に保存します）。'
-    : 'この記録にポスターはまだありません。上の欄で公演を選ぶと、その公演のポスターが出ます。';
+    ? '観た公演のポスターは、まだ手元にありません（公演の情報を取得するときに、一緒に保存します）。'
+    : 'ポスターはまだありません。上の欄で観た公演を選ぶと、その公演のポスターが出ます。';
   const posterRow = `<div class="ed-pos"><span class="ed-lk">ポスター</span>`
-    + `<span class="ed-pv">${pimg}</span>`
+    + `<span class="ed-pv"><span class="ed-pn"></span></span>`
     + `<span class="ed-m">${pnote}</span></div>`;
   const handBox = handHtml(w, key);
   return `<details class="editor" data-work="${key}">
-<summary>公演詳細を直す${fixT ? '（直してあります）' : ''}${mg.length ? `・まとめた ${mg.length} 件` : ''}</summary>
+<summary>記録を直す${mg.length ? `・まとめた ${mg.length} 件` : ''}</summary>
 ${mgNote}
-<p class="ed-lead">題名は<b>作品ごと</b>に、上演日と劇場は<b>観た回ごと</b>に直せます。
-直した内容は、次の取り込みにも反映されます。同じ発行元から同じ題名のメールが届いたら、
-自動で直したほうの内容になります。</p>
+<p class="ed-lead">題名・観た日・劇場をまちがえて入れたときは、ここで直せます。
+<b>観た公演の情報（出演者やあらすじ）とつながっていると、おすすめに使えます。</b></p>
 <label class="ed-t">題名
- <input type="text" data-ed-title="${key}" value="${E(fixT || w.title)}" size="44"></label>
-${link}
-${posterRow}
-<p class="ed-lead">${linkNote}</p>
-${handBox}
+ <input type="text" data-ed-title="${key}" value="${E(w.title)}" size="44"></label>
 ${rows}
+${link}
+<p class="ed-lead">${linkNote}</p>
+${posterRow}
+${handBox}
 <div class="ed-btns"><button data-fix="${key}">この内容で保存する</button>
- <button data-unfix="${key}">抽出結果に戻す</button>
- <button data-mail="${key}">メールの中身を見る</button>
- ${merged}${skipBtn}<button class="danger" data-drop="${key}">この記録を取り消す</button>
+ ${merged}<button class="danger" data-drop="${key}">この記録を取り消す</button>
  <span class="said"></span></div>
 <p class="ed-lead">${skipLead}
-<b>「この記録を取り消す」は、舞台ではないものが取り込まれてしまったときです。</b>
-この記録は一覧から外れますが、<b>消してはいません。</b>
-「設定」の「取り消した記録」から、いつでも戻せます。</p>
-<div class="ed-mail" hidden>${src}</div></details>`;
+<b>「この記録を取り消す」は、まちがえて入れた記録を外すときに使います。</b>
+取り消した記録は、「設定」の「取り消した記録」から <b>30 日のあいだ</b>戻せます。30 日たつと自動で消えます。</p>
+<!--/editor--></details>`;
 }
 
 /**

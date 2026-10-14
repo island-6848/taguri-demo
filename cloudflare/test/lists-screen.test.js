@@ -289,3 +289,18 @@ test('観劇史年表: the years of the works seen', async () => {
     assert.match(html, /<b>2026<\/b><i>2 作品・のべ 2 回<\/i>/);
   } finally { sqlite.close(); }
 });
+
+// 2026-10-14 起案者「購入済みに作品が入っているのに、公演カレンダーになにも表示されない」: a stage the user
+// owns that the (stale) index lacks is taken from the catalogue, as 購入済み公演 does.
+test('公演カレンダー shows an owned stage that only the catalogue has', async () => {
+  const {env, sqlite} = withIndex();
+  const a = await signIn(env);
+  try {
+    env.CLOCK = {today: '2026-10-20', now: Date.parse('2026-10-20T03:00:00Z')};
+    sqlite.prepare("INSERT INTO catalogue(id,title,date,venue,url,metadata) VALUES('778','一覧だけの舞台','2026-10-25','劇場Y','',?)")
+      .run(JSON.stringify({end_date: '2026-11-03'}));
+    assert.equal((await step(env, a, {post: '/api/react', body: {stage_id: '778', value: 'owned', nofill: true}})).status, 200);
+    assert.match((await screen(env, a, 'tickets')).body_html, /一覧だけの舞台/);
+    assert.match((await screen(env, a, 'calendar')).body_html, /一覧だけの舞台/);
+  } finally { sqlite.close(); }
+});

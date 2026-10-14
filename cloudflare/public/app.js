@@ -577,6 +577,25 @@ window.addEventListener("popstate", () => {
   loadScreen(path, location.search.replace(/^\?/, ""));
 });
 
+// **戻ってきたページを、そのまま信じない**（起案者の指摘 2026-10-14「取り消したのに、リロードせずに
+// 再度未評価ページを開いたら復活していた」）。記録を取り消すとページごと読み込み直すが、そのあと
+// 「戻る」で前の画面へ行くと、ブラウザは**読み込み直す前のページを保存したまま（bfcache）**見せる
+// ことがある ── 取り消す前の一覧である。保存から戻ったとき（persisted）は、控えを捨てて取り直す。
+window.addEventListener("pageshow", ev => {
+  if (!ev.persisted || !API_BASE) return;
+  fragmentCache.clear();
+  const path = (location.pathname.slice(REPO_BASE.length) || "/");
+  loadScreen(path, location.search.replace(/^\?/, ""));
+});
+// **別のタブで書いたら、このタブの控えも捨てる。** タブごとに 45 秒の控えを持つので、
+// 片方で取り消した記録が、もう片方では控えのまま出ていた
+const MUTATED_KEY = "taguri-mutated";
+window.addEventListener("storage", ev => { if (ev.key === MUTATED_KEY) fragmentCache.clear(); });
+function markMutated() {
+  fragmentCache.clear();
+  try { localStorage.setItem(MUTATED_KEY, String(Date.now())); } catch (e) { /* 使えない端末では、このタブだけ */ }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   if (!API_BASE) {
     contentEl().innerHTML = "<h1>サービス版は準備中です</h1>"
@@ -919,7 +938,7 @@ async function post(path, body, group, done) {
     settle();
     if (!r.ok) { if (said) said.textContent = "できませんでした: " + (d.error || r.status); return null; }
     showWelcomeCode(d.welcome_code);
-    if (d.ok !== false && path !== "/api/hand_theme_refresh" && !path.startsWith("/api/recommendation/")) fragmentCache.clear();
+    if (d.ok !== false && path !== "/api/hand_theme_refresh" && !path.startsWith("/api/recommendation/")) markMutated();
     if (said && done !== null) said.textContent = done || "記録しました";
     return d;
   } catch (e) { settle(); if (said) said.textContent = "できませんでした: " + e; return null; }
@@ -1418,7 +1437,7 @@ document.addEventListener("click", ev => {
     const g = b.parentElement;
     if (b.dataset.armed !== "1") {
       b.dataset.armed = "1";
-      b.textContent = "本当に完全に取り消す（一覧から消えます）";
+      b.textContent = "本当に消す（もう戻せません）";
       return;
     }
     post("/api/purge_work", {key: b.dataset.purge}, g,

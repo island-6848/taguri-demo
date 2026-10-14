@@ -10,7 +10,7 @@ import {ico, h2} from './icons.js';
 import {PREFS, readPrefSetting, regionsHtml, regionCounts, prefSettingAction} from './prefs.js';
 import {rankedGroups, prefCounts} from './recommend.js';
 import {KINDS, loadDeclared} from './lists.js';
-import {loadWorks, titleKey} from './works.js';
+import {loadWorks, titleKey, DROP_KEEP_DAYS} from './works.js';
 import {dateParts} from './row.js';
 import {splitNames} from './cast.js';
 
@@ -35,19 +35,19 @@ async function droppedRows(ctx) {
 
 function droppedHtml(rows) {
   if (!rows.length) return `<details class="card">${cardH2('check', '取り消した記録')}
-<p class="lead">取り消した記録はありません。<b>まちがって取り込まれたものは、
-各行の「公演詳細を直す」を開いて「この記録を取り消す」から外せます。</b>
-外した記録はここに並び、いつでも戻せます。</p></details>`;
+<p class="lead">取り消した記録はありません。<b>まちがって入った記録は、
+各行の「記録を直す」を開いて「この記録を取り消す」から外せます。</b>
+外した記録はここに並び、${DROP_KEEP_DAYS} 日のあいだは戻せます。</p></details>`;
   const body = rows.map(r => {
-    const how = r.legacy ? `以前に外した分・${r.n} 通ぶん` : `メール ${r.n} 通ぶん`;
+    const how = r.legacy ? `以前に外した分・${r.n} 件` : '記録 1 件';
     return `<div class="drop-row"><span class="dt">${E(r.title)}</span><span class="dm">${E(how)}</span>`
       + `<div class="drop-btns"><button data-restore="${E(r.key)}">戻す</button>`
-      + `<button class="danger" data-purge="${E(r.key)}">完全に取り消す</button></div><span class="said"></span></div>`;
+      + `<button class="danger" data-purge="${E(r.key)}">いますぐ消す</button></div><span class="said"></span></div>`;
   }).join('');
   return `<details class="card">${cardH2('check', '取り消した記録', `<span class="badge part">${rows.length} 件</span>`)}
-<p class="lead">一覧・評価待ち・おすすめの材料から外してあるだけなので、
-「戻す」を押せばもとに戻ります。メールそのものは消していません。<b>「完全に取り消す」
-はこの一覧からも消します。</b>外れたままになり、もう戻せなくなります。</p>
+<p class="lead">一覧・評価待ち・おすすめの材料から外してあります。「戻す」を押せばもとに戻ります。
+<b>取り消してから ${DROP_KEEP_DAYS} 日たっても戻さなかった記録は、自動で消します。</b>
+「いますぐ消す」を押すと、待たずにその場で消します。消した記録は戻せません。</p>
 ${body}</details>`;
 }
 

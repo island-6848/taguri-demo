@@ -3,7 +3,7 @@
 // a manual one (rate_performances.load_purchases returns [] for them): the
 // purchase / attendance / splits / credits.jsonl paths of app._works are empty
 // and are not ported.
-import {WS, strip, seqRatio, pyRound, sortBy} from './py.js';
+import {WS, strip, seqRatio, pyRound, sortBy, localNow} from './py.js';
 
 // rate_performances.title_key: drop a leading crown (〈…〉【…】) and symbols/spaces.
 const CROWN = new RegExp(`^[〈<（(【\\[][^\\n]{0,12}?[〉>）)】\\]][${WS}]*`, 'u');
@@ -34,7 +34,34 @@ async function readHand(ctx) {
 }
 
 /** app._works for a public-service user (manual rows only). */
+// 取り消した記録は 30 日で本当に消す（起案者の指示 2026-10-14「取り消した記録は30日以内に復元されなかったら
+// 自動的に削除して」）。それまでは excluded の印（work:<key>）で隠しているだけで、記録は works に残っている。
+// 前の版で「完全に取り消す」（purged:<key>）を押したものも、ここで消す。記録を読むたびに、この人の印だけを見る（数行）。
+export const DROP_KEEP_DAYS = 30;
+export async function deleteWork(ctx, key) {
+  await ctx.db.batch([
+    ctx.db.prepare('DELETE FROM works WHERE user_id=? AND work_key=?').bind(ctx.uid, key),
+    ctx.db.prepare('DELETE FROM hand_credits WHERE user_id=? AND work_key=?').bind(ctx.uid, key),
+    ctx.db.prepare('DELETE FROM merges WHERE user_id=? AND (work_key=? OR into_key=?)').bind(ctx.uid, key, key),
+    ctx.db.prepare("DELETE FROM excluded WHERE user_id=? AND uid IN (?, ?)").bind(ctx.uid, `work:${key}`, `purged:${key}`),
+  ]);
+}
+export async function expireDropped(ctx) {
+  if (ctx.dropExpired) return;
+  ctx.dropExpired = true;
+  const cutoff = localNow((ctx.now ?? Date.now()) - DROP_KEEP_DAYS * 864e5);
+  const {results} = await ctx.db.prepare("SELECT uid, updated_at FROM excluded WHERE user_id=? AND (uid LIKE 'work:%' OR uid LIKE 'purged:%')")
+    .bind(ctx.uid).all();
+  const keys = new Set();
+  for (const r of results) {
+    if (r.uid.startsWith('purged:')) keys.add(r.uid.slice(7));
+    else if (String(r.updated_at) < cutoff) keys.add(r.uid.slice(5));
+  }
+  for (const k of keys) await deleteWork(ctx, k);
+}
+
 export async function loadWorks(ctx) {
+  await expireDropped(ctx);
   const [saved, excluded, merges, hand] = await Promise.all([
     readWorks(ctx),
     ctx.db.prepare('SELECT uid FROM excluded WHERE user_id=?').bind(ctx.uid).all(),

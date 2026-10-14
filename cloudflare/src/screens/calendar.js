@@ -1,6 +1,7 @@
 // 公演カレンダー: stage_calendar.panel / add_ticket_button_html ported to the Worker
 // (起案者の指示 2026-10-14「残りの画面も順に移して」). calendar.test.js checks both
 // against the Python functions on the same rows and tickets.
+import {stageInfo} from './fallback.js';
 import {E} from './py.js';
 import {ico} from './icons.js';
 import {CALENDAR_JS} from './calendar_js.js';
@@ -226,13 +227,17 @@ ${ico('plus', 16)}観劇日を追加する</button>
 }
 
 // ---------------------------------------------------------------- the screen (app._calendar_body)
+// The stages' run and place: the recommendation index, else the delivered catalogue
+// (fallback.stageInfo). The index is replaced only on days it fits the write budget, so a
+// stage the user owns can be missing from it; 購入済み公演 already shows those from the
+// catalogue, and the calendar left them out (起案者 2026-10-14「購入済みに作品が入っているのに、
+// 公演カレンダーになにも表示されない」).
 async function entries(ctx, sids) {
   const out = new Map();
-  const want = [...new Set(sids)];
-  for (let i = 0; i < want.length; i += 90) {
-    const part = want.slice(i, i + 90), qs = part.map(() => '?').join(',');
-    const {results} = await ctx.db.prepare(`SELECT stage_id,title,entry FROM rec_stage WHERE ver=(SELECT v FROM rec_meta WHERE k='current') AND stage_id IN (${qs})`).bind(...part).all();
-    for (const r of results) out.set(r.stage_id, {...JSON.parse(r.entry || '{}'), title: r.title, stage_id: r.stage_id});
+  for (const [sid, s] of await stageInfo(ctx.db, sids)) {
+    if (!s.period) continue;
+    out.set(sid, {stage_id: sid, title: s.title, period: s.period, venue: s.venue, theater: s.venue, pref: s.pref,
+      group: s.group, fields: s.fields, ...(s.url ? {url: s.url} : {})});
   }
   return out;
 }

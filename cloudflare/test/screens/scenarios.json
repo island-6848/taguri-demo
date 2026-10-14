@@ -717,24 +717,6 @@
     "get": "/api/screen/rate"
    },
    {
-    "post": "/api/purge_work",
-    "body": {
-     "key": "同じ舞台#2026-08-01"
-    }
-   },
-   {
-    "post": "/api/restore_work",
-    "body": {
-     "key": "同じ舞台#2026-08-01"
-    }
-   },
-   {
-    "post": "/api/purge_work",
-    "body": {
-     "key": "同じ舞台#2026-08-01"
-    }
-   },
-   {
     "post": "/api/restore_work",
     "body": {
      "key": ""
