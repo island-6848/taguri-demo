@@ -18,11 +18,28 @@ const EMAIL_KEY = 'taguri_login_email';
 // /login?purpose=delete: sign in again, then delete the account (R7).
 const PARAMS = new URLSearchParams(location.search);
 const DELETE_MODE = PARAMS.get('purpose') === 'delete';
-// Where to go after signing in: only a same-site path (no //host, no \\host).
-const safeNext = v => (typeof v === 'string' && /^\/(?![\/\\])/.test(v) && !v.startsWith('/login')) ? v : '/';
+// /login?link=1 (from the account page): link Google or an email to the
+// account signed in now. Only this flag asks the server to link.
+const LINK_MODE = !DELETE_MODE && PARAMS.get('link') === '1';
+// Where to go after signing in: only a path on this site. Same rule as the
+// Worker's safeNext: browsers drop tabs/newlines and read "\" as "/", so the
+// value is parsed and must stay on this origin.
+function safeNext(v) {
+  if (typeof v !== 'string' || !v.startsWith('/') || /[\u0000-\u001f\u007f\\]/.test(v)) return '/';
+  let url;
+  try { url = new URL(v, location.origin); } catch { return '/'; }
+  if (url.origin !== location.origin || url.pathname.startsWith('/login')) return '/';
+  return url.pathname + url.search + url.hash;
+}
 const NEXT = safeNext(PARAMS.get('next'));
-// Keep purpose/next across the email link round trip.
-const loginUrl = () => '/login' + (DELETE_MODE ? '?purpose=delete' : (NEXT !== '/' ? '?next=' + encodeURIComponent(NEXT) : ''));
+// Keep purpose/link/next across the email link round trip.
+const loginUrl = () => {
+  const q = new URLSearchParams();
+  if (DELETE_MODE) q.set('purpose', 'delete');
+  else { if (LINK_MODE) q.set('link', '1'); if (NEXT !== '/') q.set('next', NEXT); }
+  const s = q.toString();
+  return '/login' + (s ? '?' + s : '');
+};
 let firebaseUser = null;   // kept only in delete mode, to delete the Google-side user too
 const $ = s => document.querySelector(s);
 const say = (text, bad = false) => { const s = $('#status'); s.textContent = text; s.classList.toggle('bad', bad); };
@@ -36,16 +53,23 @@ const store = {
 async function exchange(auth, credential) {
   const idToken = await credential.user.getIdToken();
   const res = await fetch('/api/auth/firebase', {method: 'POST', credentials: 'same-origin',
-    headers: {'content-type': 'application/json'}, body: JSON.stringify({id_token: idToken})});
+    headers: {'content-type': 'application/json'}, body: JSON.stringify({id_token: idToken, link: LINK_MODE})});
   if (DELETE_MODE) firebaseUser = credential.user;
   else await signOut(auth).catch(() => {});
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || 'ログインできませんでした。');
-  signedIn(data.linked ? 'ログインしました。これまでの記録を引き継ぎました。' : 'ログインしました。');
+  if (LINK_MODE) { say(data.linked ? '結び付けました。次からは Google かメールでログインできます。' : 'すでに結び付いています。'); location.replace(NEXT === '/' ? '/account' : NEXT); return; }
+  signedIn('ログインしました。');
 }
 
 // After any sign-in: go to the records, or (delete mode) ask for confirmation.
 function signedIn(message) {
+  if (LINK_MODE) {
+    busy(false);
+    $('#recovery-login').hidden = true;
+    say('本人確認ができました。続けて10分以内に、Google かメールでログインすると結び付きます。');
+    return;
+  }
   if (!DELETE_MODE) { say(message); location.replace(NEXT); return; }
   busy(false);
   for (const id of ['#login', '#passkey', '#recovery-login']) $(id).hidden = true;
@@ -79,7 +103,10 @@ async function main() {
     history.replaceState(null, '', loginUrl());   // drop the one-time code
     let email = store.get();
     // Opened on another device/browser: ask again instead of trusting the URL.
-    if (!email) email = (prompt('確認のため、リンクを送ったメールアドレスを入力してください。') || '').trim();
+    // Linking only happens in the browser that asked for the link, so a link
+    // someone else sent cannot attach their email to this account.
+    if (!email && LINK_MODE) say('結び付けは、メールを送ったのと同じブラウザでリンクを開いてください。', true);
+    else if (!email) email = (prompt('確認のため、リンクを送ったメールアドレスを入力してください。') || '').trim();
     if (email) {
       busy(true); say('ログインしています…');
       try { await exchange(auth, await signInWithEmailLink(auth, email, link)); }
@@ -189,6 +216,23 @@ function setupDelete() {
   });
 }
 
+// Link mode: say what happens, and offer the recovery code / passkey sign-in
+// that makes the session fresh enough to link (the server checks it).
+function setupLink() {
+  if (!LINK_MODE) return;
+  document.title = 'Google・メールを結び付ける ― たぐり';
+  $('#login-lead').textContent = 'いまのアカウントに Google かメールを結び付けます。10分以上前にログインした場合は、先に下の復旧コードかパスキーで本人確認をしてください。';
+  for (const id of ['#about', '#passkey', '#carry-over']) { const el = $(id); if (el) el.hidden = true; }
+  $('#recovery-login').hidden = false;
+  $('#recovery-login').addEventListener('submit', async ev => {
+    ev.preventDefault();
+    busy(true);
+    try { await postJSON('/migration-api/recover', {code: $('#recovery-input').value}); signedIn(); }
+    catch (e) { busy(false); say(e.server ? e.message : 'ログインできませんでした。', true); }
+  });
+}
+
 setupDelete();
+setupLink();
 setupPasskeys();
 main().catch(e => say(explain(e), true));

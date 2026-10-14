@@ -3,7 +3,9 @@
 //
 // - Sign up with a passkey alone (no email, no Google). A recovery code is
 //   issued once as the backup for a lost device, as in the original design.
-// - A signed-in account (Google, email link or recovery code) can add passkeys.
+// - A signed-in account (Google, email link or recovery code) can add passkeys,
+//   only within a few minutes of signing in (h.freshSession): a stolen cookie
+//   alone must not be able to add a lasting way in.
 // - User verification (biometrics / device PIN) is required.
 // - Challenges are one-time (deleted when used) and expire after 5 minutes.
 // - The signature counter is checked by the library to detect cloned keys.
@@ -14,6 +16,7 @@ import {isoBase64URL} from '@simplewebauthn/server/helpers';
 const CHALLENGE_TTL = 300;
 const MAX_CHALLENGES = 1000;     // pending challenges overall; bounds unauthenticated writes
 const MAX_RESPONSE = 16384;      // bytes of a WebAuthn response we accept
+const REAUTH = '本人確認のため、ログインし直してから10分以内にパスキーを追加してください。';
 
 export function passkeyRoutes(h) {
   const {fail, json, token, hash, now} = h;
@@ -49,6 +52,7 @@ export function passkeyRoutes(h) {
     async registerOptions(request, env) {
       const {rpID} = rp(request, env);
       const uid = await h.currentUser(request, env.DB);
+      if (uid && !await h.freshSession(env.DB, request, uid)) fail(401, REAUTH);
       if (!uid && env.ALLOW_REGISTRATION !== 'true') fail(503, '新規登録を一時停止しています。');
       const existing = uid ? (await env.DB.prepare('SELECT id,user_handle,transports FROM passkeys WHERE user_id=?').bind(uid).all()).results : [];
       if (existing.length >= 10) fail(409, 'パスキーは10個まで登録できます。');
@@ -73,6 +77,7 @@ export function passkeyRoutes(h) {
       const uid = await h.currentUser(request, env.DB);
       // Adding to an account: the same account must still be signed in.
       if (ch.user_id && ch.user_id !== uid) fail(401, 'ログインし直してから、もう一度追加してください。');
+      if (ch.user_id && !await h.freshSession(env.DB, request, uid)) fail(401, REAUTH);
       if (!ch.user_id && env.ALLOW_REGISTRATION !== 'true') fail(503, '新規登録を一時停止しています。');
       if (!ch.user_id) await h.checkNewAccount(env.DB, env, fail);
       let result;

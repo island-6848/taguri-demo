@@ -64,8 +64,11 @@ test('signed in: pages are served (with the account link) and expired sessions a
 });
 
 test('the return path after sign-in stays on this site', () => {
-  assert.equal(safeNext('/recommend?pref=東京'), '/recommend?pref=東京');
-  for (const bad of ['//evil.example', '/\\evil.example', 'https://evil.example', 'javascript:alert(1)', '/login?next=/x', '', null, undefined, 42]) assert.equal(safeNext(bad), '/', String(bad));
+  assert.equal(safeNext('/recommend?pref=東京'), '/recommend?pref=%E6%9D%B1%E4%BA%AC');
+  assert.equal(safeNext('/account#passkeys'), '/account#passkeys');
+  // Browsers drop tabs and newlines in URLs: "/\t/evil.example" is "//evil.example".
+  for (const bad of ['/\t/evil.example', '/\n/evil.example', '/\r\n/evil.example', '/.\\evil.example',
+    '//evil.example', '/\\evil.example', 'https://evil.example', 'javascript:alert(1)', '/login?next=/x', '', null, undefined, 42]) assert.equal(safeNext(bad), '/', String(bad));
 });
 
 test('the one page: たぐりとは with its diagram and the guide link above the sign-in', () => {

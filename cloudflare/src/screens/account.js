@@ -94,7 +94,7 @@ ${groups.length || venues.length ? `<div class="acranks">${ranked('よく観て�
 <dl class="acdl"><dt>ログインの方法</dt><dd>${E(ways)}</dd>
 <dt>ログイン中の端末</dt><dd>${sessions.n} 台</dd></dl>
 <p class="acbtns"><a class="btn" href="/migration-data/#passkeys">パスキーを追加・削除する</a>
-<button type="button" data-account-logout>この端末でログアウト</button>
+${google ? '' : '<a class="btn" href="/login?link=1&amp;next=%2Faccount">Google・メールを結び付ける</a>\n'}<button type="button" data-account-logout>この端末でログアウト</button>
 <button type="button" data-account-logout="all">すべての端末でログアウト</button></p>
 <p class="said" data-account-said role="status" aria-live="polite"></p>
 </section>

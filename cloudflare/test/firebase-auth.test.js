@@ -40,8 +40,8 @@ function setup() {
   return {call, sqlite, env};
 }
 const cookieOf = response => response.headers.get('set-cookie').split(';')[0];
-async function signIn(call, token, cookie = '') {
-  const response = await call('auth/firebase', {id_token: token}, cookie);
+async function signIn(call, token, cookie = '', extra = {}) {
+  const response = await call('auth/firebase', {id_token: token, ...extra}, cookie);
   return {response, status: response.status, cookie: response.status === 200 ? cookieOf(response) : '', body: await response.json()};
 }
 
@@ -68,12 +68,17 @@ test('a Google sign-in creates one account and signs back into it; only the UID 
   assert.match(sqlite.prepare('SELECT recovery_hash FROM users').get().recovery_hash, /^firebase:/);
 });
 
-test('a recovery-code account is linked on first sign-in and keeps its records', async () => {
+test('a recovery-code account is linked only when asked from the account page, and keeps its records', async () => {
   const {call, sqlite} = setup();
   const reg = await call('register', {});
   const anon = cookieOf(reg), {recovery_code} = await reg.json();
   await call('record', {id: 'old', title: '前からの記録', date: '2026-09-01'}, anon);
-  const linked = await signIn(call, await idToken(), anon);
+  // A plain sign-in on a device where someone's unlinked account is open
+  // neither links it nor silently starts another account.
+  const plain = await signIn(call, await idToken(), anon);
+  assert.equal(plain.status, 409);
+  assert.equal(sqlite.prepare('SELECT count(*) AS n FROM users WHERE firebase_uid IS NOT NULL').get().n, 0);
+  const linked = await signIn(call, await idToken(), anon, {link: true});
   assert.deepEqual(linked.body, {linked: true, created: false});
   // The pre-login session is revoked (session rotation).
   assert.equal((await call('state', undefined, anon)).status, 401);
@@ -83,6 +88,23 @@ test('a recovery-code account is linked on first sign-in and keeps its records',
   // The recovery code still works for the linked account.
   assert.equal((await call('recover', {code: recovery_code})).status, 200);
   assert.equal(sqlite.prepare('SELECT count(*) AS n FROM users').get().n, 1);
+});
+
+test('linking needs a sign-in within 10 minutes and a Google account not used elsewhere', async () => {
+  const {call, sqlite} = setup();
+  assert.equal((await signIn(call, await idToken(), '', {link: true})).status, 401);       // nobody signed in
+  const anon = cookieOf(await call('register', {}));
+  sqlite.prepare('UPDATE sessions SET created_at=created_at-601').run();
+  const stale = await signIn(call, await idToken(), anon, {link: true});
+  assert.equal(stale.status, 401);
+  assert.match(stale.body.error, /10分以内/);
+  assert.equal(sqlite.prepare('SELECT count(*) AS n FROM users WHERE firebase_uid IS NOT NULL').get().n, 0);
+  // Google already belongs to another account: refused, not switched to it.
+  await signIn(call, await idToken({sub: 'firebase-user-2'}));
+  const fresh = cookieOf(await call('register', {}));
+  const taken = await signIn(call, await idToken({sub: 'firebase-user-2'}), fresh, {link: true});
+  assert.equal(taken.status, 409);
+  assert.equal((await call('state', undefined, fresh)).status, 200);                    // still signed in as before
 });
 
 test('two existing accounts are never merged', async () => {
