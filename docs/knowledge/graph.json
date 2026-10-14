@@ -2469,6 +2469,19 @@
    "verifies": []
   },
   {
+   "id": "new-user-reco-threshold",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-14",
+   "title": "新規登録した人に推薦が出るのは「公演に結び付いた記録が 2 件以上で、評価が 2 種類以上」から。同じ評価だけ・1 件だけ・結び付いていない記録では出ない。お気に入りは名前の公演を別枠で必ず出す",
+   "sources": [
+    "cloudflare/src/recommend.js",
+    "cloudflare/src/screens/recommend.js",
+    "cloudflare/src/screens/autolink.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "no-aws",
    "type": "finding",
    "status": "confirmed",
@@ -6050,6 +6063,16 @@
    "from": "native-cutover-map",
    "rel": "raises",
    "to": "q-native-cutover"
+  },
+  {
+   "from": "new-user-reco-threshold",
+   "rel": "affects",
+   "to": "impl-person-ordinal-v3"
+  },
+  {
+   "from": "new-user-reco-threshold",
+   "rel": "affects",
+   "to": "impl-favourite-seed"
   },
   {
    "from": "no-aws",
