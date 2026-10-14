@@ -303,13 +303,18 @@ async function loginPage(request, env) {
   headers.set('X-Content-Type-Options', 'nosniff');
   headers.set('X-Frame-Options', 'DENY');
   headers.set('Cache-Control', 'no-store');
-  return new Response(asset.body, {status: asset.status, headers});
+  const page = new Response(asset.body, {status: asset.status, headers});
+  // The top of /login explains what たぐり is (it was /about). Re-signing in to
+  // delete the account is not the place for it: that page drops the section.
+  if (new URL(request.url).searchParams.get('purpose') === 'delete' && typeof HTMLRewriter !== 'undefined')
+    return new HTMLRewriter().on('#about', {element(el) { el.remove(); }}).transform(page);
+  return page;
 }
 // ---------------------------------------------------------------- sign-in gate
-// Signed-out visitors may see only /login and /about (and the static files
-// those pages need). Every other page sends them to sign in; the original
-// screens' data (bridged to Render) answers 401.
-const PUBLIC_PAGES = new Set(['/login', '/about']);
+// Signed-out visitors may see only /login (which now also explains what たぐり
+// is; /about moved there) and the static files it needs. Every other page
+// sends them to sign in; the original screens' data answers 401.
+const PUBLIC_PAGES = new Set(['/login', '/about']);   // /about only redirects to /login
 // APIs that start a session (or hold no user data) must work before sign-in.
 const PUBLIC_APIS = new Set(['/api/register', '/api/recover', '/api/catalogue', '/api/health']);
 const STATIC_FILE = /\.(css|js|mjs|map|png|jpe?g|gif|webp|svg|ico|mp4|webmanifest|txt)$/;
@@ -384,7 +389,7 @@ async function gate(request, env, url) {
   if (await currentUser(request, env.DB)) return null;
   const page = request.method === 'GET' && !path.startsWith('/api/') && !path.startsWith('/img/');
   if (!page) return json({error:'ログインしてください。'}, 401);
-  if (path === '/') return redirect('/about');
+  if (path === '/') return redirect('/login');
   return redirect('/login?next=' + encodeURIComponent(path + url.search));
 }
 /**
@@ -412,6 +417,8 @@ export default {
     if (limited) return limited;
     const blocked = await gate(request, env, url);
     if (blocked) return blocked;
+    // たぐりとは and ログイン are one page now; old links to /about still land there.
+    if (url.pathname === '/about') return redirect('/login');
     if (url.pathname === '/login' && request.method === 'GET') return loginPage(request, env);
     const poster = await posterFromR2(request, env, url);
     if (poster) return poster;

@@ -538,6 +538,20 @@
    ]
   },
   {
+   "id": "dec-about-on-login",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "「たぐりとは」とログインを 1 ページ（/login）にまとめ、説明は使い方の流れの図にする。GitHub の使い方ガイドへのリンクを置く",
+   "sources": [
+    "cloudflare/public/login.html",
+    "cloudflare/public/auth.css",
+    "cloudflare/src/worker.js",
+    "cloudflare/test/gate.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-account-deletion",
    "type": "decision",
    "status": "adopted",

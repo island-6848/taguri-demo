@@ -2,15 +2,45 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="referrer" content="no-referrer"><title>ログイン ― たぐり</title>
+<meta name="referrer" content="no-referrer"><title>たぐり ― 観劇の記録から、次の一本を</title>
 <meta name="description" content="観た演劇の記録から、次に観たい公演を届けるアプリ。">
 <link rel="stylesheet" href="/style.css">
 <link rel="stylesheet" href="/account.css">
 <link rel="stylesheet" href="/auth.css">
 </head>
 <body class="auth">
-<header class="auth-top"><a class="brand" href="/about"><svg class="tgm " viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-linecap="round" aria-hidden="true"><path d="M11.0 4.5V19.5" stroke-width="1.6"/><path d="M14.5 4.5V19.5" stroke-width="1.6"/><path d="M18.0 4.5V19.5" stroke-width="1.6"/><path d="M21.5 4.5V19.5" stroke-width="1.6"/><path d="M11 4.5C10.4 12 8.6 16 4.4 17.6" stroke-width="2.45"/><circle cx="4.4" cy="17.6" r="2.15" fill="currentColor" stroke="none"/></svg><span>たぐり</span></a><nav><a href="/about">たぐりとは</a><a href="/login" aria-current="page">ログイン</a></nav></header>
+<header class="auth-top"><a class="brand" href="/login"><svg class="tgm " viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-linecap="round" aria-hidden="true"><path d="M11.0 4.5V19.5" stroke-width="1.6"/><path d="M14.5 4.5V19.5" stroke-width="1.6"/><path d="M18.0 4.5V19.5" stroke-width="1.6"/><path d="M21.5 4.5V19.5" stroke-width="1.6"/><path d="M11 4.5C10.4 12 8.6 16 4.4 17.6" stroke-width="2.45"/><circle cx="4.4" cy="17.6" r="2.15" fill="currentColor" stroke="none"/></svg><span>たぐり</span></a><nav><a class="nav-about" href="#about">たぐりとは</a><a href="#login">ログイン</a><a href="https://island-6848.github.io/taguri-demo/docs/000010-user-guide-taguri.html" rel="noopener">使い方ガイド</a></nav></header>
 <main class="auth-main acct">
+<section id="about" class="auth-card about">
+<h1>観たかった舞台を、見逃さない。</h1>
+<p class="about-lead">たぐりは、観た演劇の記録と評価から、これから観られる公演の中であなたに合いそうな舞台を毎週届けるアプリです。</p>
+<figure class="cycle">
+<svg viewBox="0 0 340 300" role="img" aria-labelledby="cycle-t cycle-d">
+<title id="cycle-t">たぐりの使い方の流れ</title>
+<desc id="cycle-d">記録する、おすすめが届く、興味ありで選ぶ、観にいく、をくり返すほど、おすすめがあなたの好みに近づく。</desc>
+<defs><marker id="cyc-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" class="cyc-head"/></marker></defs>
+<path class="cyc-line" d="M120 40 Q170 6 220 40" marker-end="url(#cyc-arrow)"/>
+<path class="cyc-line" d="M300 116 Q318 150 300 184" marker-end="url(#cyc-arrow)"/>
+<path class="cyc-line" d="M220 260 Q170 294 120 260" marker-end="url(#cyc-arrow)"/>
+<path class="cyc-line" d="M40 184 Q22 150 40 116" marker-end="url(#cyc-arrow)"/>
+<circle class="cyc-core" cx="170" cy="150" r="52"/>
+<text class="cyc-core-t" x="170" y="145" text-anchor="middle">使うほど</text>
+<text class="cyc-core-t" x="170" y="165" text-anchor="middle">好みに近づく</text>
+<g class="cyc-node"><rect x="2" y="40" width="132" height="70" rx="12"/><text class="cyc-n" x="68" y="60" text-anchor="middle">1</text><text class="cyc-t" x="68" y="82" text-anchor="middle">記録する</text><text class="cyc-s" x="68" y="100" text-anchor="middle">◎○△×と感想</text></g>
+<g class="cyc-node"><rect x="206" y="40" width="132" height="70" rx="12"/><text class="cyc-n" x="272" y="60" text-anchor="middle">2</text><text class="cyc-t" x="272" y="82" text-anchor="middle">おすすめが届く</text><text class="cyc-s" x="272" y="100" text-anchor="middle">理由つき・毎週</text></g>
+<g class="cyc-node"><rect x="206" y="190" width="132" height="70" rx="12"/><text class="cyc-n" x="272" y="210" text-anchor="middle">3</text><text class="cyc-t" x="272" y="232" text-anchor="middle">興味ありで選ぶ</text><text class="cyc-s" x="272" y="250" text-anchor="middle">日程がそろう</text></g>
+<g class="cyc-node"><rect x="2" y="190" width="132" height="70" rx="12"/><text class="cyc-n" x="68" y="210" text-anchor="middle">4</text><text class="cyc-t" x="68" y="232" text-anchor="middle">観にいく</text><text class="cyc-s" x="68" y="250" text-anchor="middle">見逃さない</text></g>
+</svg>
+<figcaption>観た公演を記録すると、次のおすすめに効きます。おすすめには「なぜおすすめなのか」の理由が付きます。</figcaption>
+</figure>
+<ul class="trust">
+<li><b>パスワードはありません。</b>Google・メールのリンク・パスキーでログインします。保存するのはログインの識別番号だけで、メールアドレスは保存しません。</li>
+<li><b>おすすめの理由が見えます。</b>順位はAIではなく、あなたの記録から数えた統計で決めています。</li>
+<li><b>いつでも全部消せます。</b>アカウントと記録は、本人確認のうえで完全に削除できます。</li>
+</ul>
+<p class="guide"><a href="https://island-6848.github.io/taguri-demo/docs/000010-user-guide-taguri.html" rel="noopener">使い方ガイドを読む（GitHub）</a></p>
+<p class="cta"><a href="#login">ログインして始める</a></p>
+</section>
 <section id="delete-intro" class="auth-card danger-zone" hidden>
 <h1>アカウントの削除</h1>
 <p>たぐりに保存しているあなたのデータを、すべて削除します。<b>元に戻せません。</b>必要なら、先に「アカウント・記録」の「記録をJSONで保存」で書き出してください。</p>
@@ -35,14 +65,14 @@
 </section>
 <form id="recovery-login" class="auth-card" hidden><h1>復旧コードでログイン</h1><label>復旧コード<input id="recovery-input" required autocomplete="off" maxlength="80"></label><button class="wide">ログインする</button></form>
 <form id="delete-confirm" class="auth-card danger-zone" hidden><h1>削除の確認</h1><p>確認のため「削除」と入力してください。</p><label>確認<input id="delete-word" required autocomplete="off" maxlength="10"></label><button class="wide">すべて削除する</button></form>
-<section id="delete-done" class="auth-card" hidden><h1>削除しました</h1><p class="lead-c">ご利用ありがとうございました。</p><p class="auth-foot"><a href="/about">たぐりとは</a></p></section>
+<section id="delete-done" class="auth-card" hidden><h1>削除しました</h1><p class="lead-c">ご利用ありがとうございました。</p><p class="auth-foot"><a href="/login">トップへ</a></p></section>
 <section id="passkey-recovery" class="auth-card" hidden>
 <h1>復旧コードを控えてください</h1>
 <p>パスキーを入れた端末をなくしたとき、このコードで記録に戻れます。<b>いまだけ表示します。</b>二度と表示できません。</p>
 <code id="recovery-code"></code>
 <div class="block"><button id="copy-recovery" type="button" class="wide">コピーする</button><button id="recovery-done" type="button" class="wide primary">控えました</button></div>
 </section>
-<p class="auth-foot"><a href="/about">たぐりとは</a></p>
+<p class="auth-foot"><a href="https://island-6848.github.io/taguri-demo/docs/000010-user-guide-taguri.html" rel="noopener">使い方ガイド</a></p>
 </main>
 <script type="module" src="/vendor/firebase-login.js"></script>
 </body>
