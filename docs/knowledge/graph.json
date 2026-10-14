@@ -887,6 +887,25 @@
    "verifies": []
   },
   {
+   "id": "dec-recommend-ui-1014b",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "おすすめの見直し（2026-10-14 の 2 回目）── 料金はつまみ・絞り込み 3 つを横 1 列・ページの地図・ツアー日程を常に・感想のハッシュタグ・券の案内へ #tickets・記録を速く・券からお気に入りに",
+   "sources": [
+    "web/app.js",
+    "web/theme.css",
+    "tools/taguri/app.py",
+    "tools/taguri/serve.py",
+    "tools/taguri/hashtags.py",
+    "tools/review/render_recommend.py",
+    "cloudflare/src/screens/hashtags.js",
+    "cloudflare/src/screens/rate.js",
+    "cloudflare/test/screens/scenarios.json"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-record-row-card",
    "type": "decision",
    "status": "adopted",
@@ -2154,6 +2173,18 @@
    "verifies": []
   },
   {
+   "id": "react-slow-cause",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-14",
+   "title": "興味あり・なしの記録が遅かったのは、1 回押すごとに本人の推薦を 2 回まるごと計算し直していたため",
+   "sources": [
+    "tools/taguri/serve.py",
+    "tools/taguri/app.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "reco-computed-per-request",
    "type": "finding",
    "status": "confirmed",
@@ -3160,6 +3191,26 @@
    "to": "dec-recommend-compact-poster"
   },
   {
+   "from": "dec-recommend-ui-1014b",
+   "rel": "depends_on",
+   "to": "react-slow-cause"
+  },
+  {
+   "from": "dec-recommend-ui-1014b",
+   "rel": "affects",
+   "to": "dec-recommend-ui-1014"
+  },
+  {
+   "from": "dec-recommend-ui-1014b",
+   "rel": "affects",
+   "to": "dec-ticket-price-filter"
+  },
+  {
+   "from": "dec-recommend-ui-1014b",
+   "rel": "affects",
+   "to": "dec-phone-nav-four"
+  },
+  {
    "from": "dec-record-row-card",
    "rel": "affects",
    "to": "dec-design-adopted"
@@ -3978,6 +4029,11 @@
    "from": "r2-free-tier",
    "rel": "affects",
    "to": "comp-catalog-pipeline"
+  },
+  {
+   "from": "react-slow-cause",
+   "rel": "supports",
+   "to": "dec-recommend-ui-1014b"
   },
   {
    "from": "reco-computed-per-request",

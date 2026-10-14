@@ -6,6 +6,7 @@ import {autoLink} from './autolink.js';
 import {E, quote, sortBy, cmp, fmtF, strip, slice, field, qsFirst, qsAll, digitsInt, isdigit, strRepr, localNow, ValueError} from './py.js';
 import {loadWorks, similarWorks, titleKey} from './works.js';
 import {recRow, venueOf, venueKey, ico, h2, stageLabels} from './row.js';
+import {hashtagsHtml, noteTags} from './hashtags.js';
 
 /** serve.VERDICTS / charts.VERDICT_ORDER */
 const VERDICTS = ['◎', '○', '△', '×', 'まだ判断できない'];
@@ -232,7 +233,7 @@ async function rateScreen(params, ctx) {
   const live = VERDICTS.filter(g => byV[g].length);
   const title = '評価一覧';
   if (!live.length) {
-    return {title, body_html: `<h1>評価一覧</h1>${verdictFig}<p class="empty">まだ評価が付いた記録はありません。</p>`};
+    return {title, body_html: `<h1>評価一覧</h1>${verdictFig}<p class="empty">まだ評価が付いた記録はありません。</p>`, note_tags: noteTags(b.all)};
   }
   const sel = (live.includes(verdict) || verdict === 'all') ? verdict : (live.includes('◎') ? '◎' : live[0]);
   const allSorted = byFirstDesc(rated);
@@ -280,7 +281,7 @@ ${vform}
 ほかの評価は、上のインデックスで切り替えられます。
 評価をまたいで続けて読むときは<a href="/records/works?t=__TAGURI_TOKEN__">日記帳</a>です。</p>
 ${rows}</div>
-${foot}`};
+${foot}`, note_tags: noteTags(b.all)};
 }
 
 /** app._unrated_body (GET /api/screen/unrated) */
@@ -297,14 +298,16 @@ async function unratedScreen(_params, ctx) {
   return {title: '未評価', body_html: `<h1>未評価 ── ${unrated.length} 件</h1>
 <p class="lede">評価がまだ付いていない記録です。<b>上演日が分からない記録も含みます。</b>日付がないと上演が終わったか判定できないので、「まだ答えていない」には出てきません。${skipped}<br>
 <b>実際には観ていない公演が混じっていたら、各行の「公演詳細を直す」から外せます。</b>券を買って行かなかった公演と、舞台ではない記録は、そこで書き分けられます。どちらも、あとで戻せます。</p>
-${rows || '<p class="empty">評価が付いていない記録はありません。</p>'}`};
+${rows || '<p class="empty">評価が付いていない記録はありません。</p>'}`, note_tags: noteTags(b.all)};
 }
 
 /** app._notes_body (GET /api/screen/notes) */
-async function notesScreen(_params, ctx) {
+async function notesScreen(params, ctx) {
   const b = await rateBase(ctx);
+  const tag = Array.from(qsFirst(params, 'tag')).slice(0, 40).join('');
   return {title: '感想', body_html: `<h1>感想 ── ◎ を付けた ${b.noNote.length} 件</h1>
-${pendingNotesHtml(b.all)}`};
+${hashtagsHtml(b.all, tag)}
+${pendingNotesHtml(b.all)}`, note_tags: noteTags(b.all)};
 }
 
 // ---------------------------------------------------------------- writes
