@@ -239,7 +239,7 @@ export async function recommendScreen(params, ctx) {
   let head, lede;
   if (!prefs.length && !cards.length) {
     head = '今週のおすすめはありません';
-    lede = `<p class="pnow">これから観られる公演 ${nCand} 件のうち、好みに合いそうだと判断できたものはありませんでした。おすすめは、観た公演に付けた ◎ から作り手の名簿を作って出しています。<a href="/rate?t=__TAGURI_TOKEN__">観た公演の評価</a>で ◎ を付けるか、<a href="/recommend/favourites?t=__TAGURI_TOKEN__">お気に入り</a>に見逃したくない名前を登録してください。登録した名前の公演は、観た記録が無くても出ます。</p>`;
+    lede = '';
   } else if (!prefs.length) {
     head = `今週のおすすめ ${cards.length} 件`;
     lede = `<p class="lede">これから観られる公演 ${nCand} 件のうち、好みに合いそうだと判断できたのは ${data.n_scored} 件でした。上位 ${cards.length} 件を表示しています。答え済みの公演は、この一覧から外して下にまとめてあります。</p>`;

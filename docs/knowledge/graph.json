@@ -2132,6 +2132,21 @@
    "verifies": []
   },
   {
+   "id": "interest-not-in-v3",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-14",
+   "title": "いまの推薦（person-ordinal-v3、Worker）は「興味あり」を材料に使っていない。前の版（recommend2）は 2026-08-26 の指示で重み 0.5 の正例として名簿に入れていたが、v3 に移したときに持ち越していない",
+   "sources": [
+    "cloudflare/src/recommend.js",
+    "cloudflare/src/screens/recommend.js",
+    "tools/review/measure_nets.py",
+    "tools/review/recommend2.py",
+    "tools/review/user_recommender.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "jp-domain-price",
    "type": "finding",
    "status": "unverified",
@@ -3139,6 +3154,15 @@
    "status": "open",
    "date": "2026-10-13",
    "title": "新しい要素を安全に入れる「裏の答え合わせ」をどう作るか（起案者が良いと判断）",
+   "sources": [],
+   "verifies": []
+  },
+  {
+   "id": "q-interest-seed",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-14",
+   "title": "「興味あり」を、お気に入りと同じ仮の ◎（seeds）として推薦の材料に入れるか。重みと、一覧にしかない公演の人物をどう引くか",
    "sources": [],
    "verifies": []
   },
@@ -5999,6 +6023,21 @@
    "to": "comp-recommender"
   },
   {
+   "from": "interest-not-in-v3",
+   "rel": "affects",
+   "to": "impl-person-ordinal-v3"
+  },
+  {
+   "from": "interest-not-in-v3",
+   "rel": "depends_on",
+   "to": "lit-implicit-confidence"
+  },
+  {
+   "from": "interest-not-in-v3",
+   "rel": "depends_on",
+   "to": "impl-favourite-seed"
+  },
+  {
    "from": "jp-domain-price",
    "rel": "affects",
    "to": "q-domain"
@@ -6627,6 +6666,16 @@
    "from": "q-hidden-gate",
    "rel": "affects",
    "to": "comp-recommender"
+  },
+  {
+   "from": "q-interest-seed",
+   "rel": "depends_on",
+   "to": "interest-not-in-v3"
+  },
+  {
+   "from": "q-interest-seed",
+   "rel": "affects",
+   "to": "impl-person-ordinal-v3"
   },
   {
    "from": "q-lockfile-reproducible",
