@@ -67,6 +67,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Install Pillow (posters are shrunk before they go into R2)
+        # ポスターを縮めてから R2 に入れる（起案者の指示 2026-10-14「ポスターはちょっと画質落としてから入れて」）。
+        # 無いと縮めずに入れてしまい、R2 の無料枠を早く使う（2026-10-14 まで 1 枚 約 440 KB で入っていた）
+        run: python -m pip install --quiet pillow
       - name: Restore the previous working data
         run: |
           if [ "${{ steps.state.outcome }}" != "success" ]; then

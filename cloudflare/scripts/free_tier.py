@@ -105,6 +105,11 @@ def r2_class_a(u: dict, now: dt.datetime | None = None) -> int:
     return int(u["r2"]["class_a"].get(month(now), 0))
 
 
+def r2_class_b(u: dict, now: dt.datetime | None = None) -> int:
+    """取得の側が R2 から読んだ回数（ポスターの縮め直し）。Worker の読み出しとは別に数え、点検で足す。"""
+    return int(u["r2"].get("class_b", {}).get(month(now), 0))
+
+
 # ── GitHub Actions の分数 ──
 def _get(url: str, token: str) -> dict:
     req = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}",
@@ -199,8 +204,8 @@ def check(data: Path, by_day: list[int] | None, worker_usage: dict | None,
         ("D1 の書き込み（今日・取得の分）", int(u["d1_writes"].get(today(now), 0)), CAPS["d1_writes_day"], FREE["d1_writes_day"]),
         ("R2 の保存（バイト）", r2_bytes(u), CAPS["r2_bytes"], FREE["r2_bytes"]),
         ("R2 の Class A（今月）", r2_class_a(u, now), CAPS["r2_class_a_month"], FREE["r2_class_a_month"]),
-        ("R2 の Class B（今月・Worker）",
-         -1 if worker_usage is None else int(worker_usage.get(f"r2_get:{month(now)}", 0)),
+        ("R2 の Class B（今月・Worker と取得の合計）",
+         -1 if worker_usage is None else int(worker_usage.get(f"r2_get:{month(now)}", 0)) + r2_class_b(u, now),
          CAPS["r2_class_b_month"], FREE["r2_class_b_month"]),
     ]
     if by_day is not None:

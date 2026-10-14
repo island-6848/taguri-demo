@@ -853,6 +853,20 @@
    ]
   },
   {
+   "id": "dec-poster-quality",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "ポスターは WebP に縮めてから R2 に入れる（これからの公演は幅 360 px、終わった公演は幅 240 px の粗め）。入れてある分も縮め直す",
+   "sources": [
+    "cloudflare/scripts/deliver_posters.py",
+    "cloudflare/scripts/free_tier.py",
+    "cloudflare/test/test_free_tier.py",
+    "tools/taguri/deploy/github-actions/catalog.yml"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-posters-r2",
    "type": "decision",
    "status": "adopted",
@@ -4201,6 +4215,26 @@
    "from": "dec-polite-crawling",
    "rel": "affects",
    "to": "comp-crawler"
+  },
+  {
+   "from": "dec-poster-quality",
+   "rel": "depends_on",
+   "to": "crawler-run-1014"
+  },
+  {
+   "from": "dec-poster-quality",
+   "rel": "answers",
+   "to": "q-r2-poster-growth"
+  },
+  {
+   "from": "dec-poster-quality",
+   "rel": "supports",
+   "to": "dec-free-tier-only"
+  },
+  {
+   "from": "dec-poster-quality",
+   "rel": "affects",
+   "to": "dec-posters-r2"
   },
   {
    "from": "dec-posters-r2",

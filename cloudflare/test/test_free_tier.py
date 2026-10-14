@@ -106,12 +106,48 @@ class LedgerTest(unittest.TestCase):
         self.assertEqual(got['uploaded'], 2)
         self.assertEqual(FT.d1_left(self.data), 0)
 
+    @unittest.skipUnless(__import__('importlib').util.find_spec('PIL'), 'Pillow が無い環境では縮めない（元のまま入れる）')
+    def test_posters_are_shrunk_to_webp_and_old_ones_reshrunk(self):
+        from PIL import Image
+        import io
+        img = self.data / 'review' / 'img'
+        for f in img.iterdir():
+            f.unlink()
+        def jpeg(w, h):
+            b = io.BytesIO(); Image.new('RGB', (w, h), (120, 30, 40)).save(b, 'JPEG', quality=95); return b.getvalue()
+        (img / '10.jpg').write_bytes(jpeg(1200, 1700))          # これからの公演
+        (img / '20.jpg').write_bytes(jpeg(1200, 1700))          # 終わった公演（粗め）
+        (self.data / 'review' / 'candidates.jsonl').write_text(
+            '{"stage_id": "10", "period": "2099/01/01 ～ 2099/01/05"}\n{"stage_id": "20", "period": "2020/01/01 ～ 2020/01/05"}\n',
+            encoding='utf-8')
+        store = {}
+        got = DP.build(self.data, self.out, bucket='b', limit=10, put=lambda a, t, b, k, body, ct: store.__setitem__(k, (body, ct)))
+        self.assertEqual(sorted(store), ['10.webp', '20.webp'])
+        self.assertEqual(store['10.webp'][1], 'image/webp')
+        w10 = Image.open(io.BytesIO(store['10.webp'][0])).width
+        w20 = Image.open(io.BytesIO(store['20.webp'][0])).width
+        self.assertEqual((w10, w20), (DP.UPCOMING['width'], DP.ENDED['width']))
+        self.assertIn("('10','10.webp')", (self.out / 'posters-upload.sql').read_text(encoding='utf-8'))
+        # すでに R2 に大きいまま入っている分は、取り出して縮め直し、古いものを消す
+        DP.commit(self.data, self.out)
+        (self.data / 'r2' / 'posters.json').write_text('{"30": "30.jpg"}', encoding='utf-8')
+        u = FT.load(self.data); u['r2']['sizes']['30.jpg'] = 500_000; FT.save(self.data, u)
+        deleted = []
+        again = DP.build(self.data, self.out, bucket='b', limit=10, reshrink=5,
+                         put=lambda a, t, b, k, body, ct: store.__setitem__(k, (body, ct)),
+                         get=lambda a, t, b, k: jpeg(1200, 1700), delete=lambda a, t, b, k: deleted.append(k))
+        self.assertEqual((again['reshrunk'], deleted), (1, ['30.jpg']))
+        u = FT.load(self.data)
+        self.assertNotIn('30.jpg', u['r2']['sizes'])
+        self.assertEqual(FT.r2_class_b(u), 1)
+        self.assertIn('"30": "30.webp"', (self.out / 'pending.json').read_text(encoding='utf-8'))
+
     def test_check_flags_over_eighty_percent_and_unread_minutes(self):
         FT.d1_spend(self.data, int(FT.CAPS['d1_writes_day'] * 0.9), NOW)
         rows = {r['what']: r for r in FT.check(self.data, None, {'r2_get:2026-10': 10}, NOW)}
         self.assertFalse(rows['D1 の書き込み（今日・取得の分）']['ok'])
         self.assertFalse(rows['GitHub Actions（直近 31 日・分）']['ok'])
-        self.assertTrue(rows['R2 の Class B（今月・Worker）']['ok'])
+        self.assertTrue(rows['R2 の Class B（今月・Worker と取得の合計）']['ok'])
         self.assertEqual(json.loads((self.data / FT.LEDGER).read_text())['d1_writes'], {'2026-10-14': 72000})
 
 
