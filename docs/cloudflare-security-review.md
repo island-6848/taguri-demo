@@ -22,8 +22,8 @@
 
 | 守り | 実装 | 確かめているテスト |
 |---|---|---|
-| セッション | 256bitの乱数。DBにはSHA-256だけを置く。Cookieは `HttpOnly; Secure; SameSite=Strict`。30日で失効、1アカウント10端末まで。ログインのたびに作り直し、前のセッションを消す | `firebase-auth.test.js`・`passkey.test.js`・`worker.test.js` |
-| CSRF | 書き込みはすべてPOST。`Origin` が同じサイトでなければ403。本文は `application/json` に限る。SameSite=Strict | 各テストの「別のオリジン」 |
+| セッション | 256bitの乱数。DBにはSHA-256だけを置く。Cookieは `HttpOnly; Secure; SameSite=Lax`（2026-10-14 に Strict から変更。ほかのアプリのリンクから開くたびにログインを求めていた〔dec-session-lax〕）。30日で失効、1アカウント10端末まで。ログインのたびに作り直し、前のセッションを消す | `firebase-auth.test.js`・`passkey.test.js`・`worker.test.js` |
+| CSRF | 書き込みはすべてPOST。`Origin` が同じサイトでなければ403。本文は `application/json` に限る。SameSite=Lax（別サイトからの POST には Cookie が付かない） | 各テストの「別のオリジン」 |
 | 復旧コード | 256bitの乱数。生の値は保存しない（SHA-256）。総当たりは現実的に不可能 | `worker.test.js` |
 | Firebase | RS256の署名・鍵ID・aud・iss・sub・期限・発行時刻を確かめる。ログインは5分以内のものに限る。ログイン方法はGoogleか確認済みのメールだけ。UID以外は返さず、保存もしない。知らない鍵IDでの鍵の取り直しは1分に1回まで | `firebase-auth.test.js`（偽造16通り・鍵の差し替え） |
 | パスキー | 検証は `@simplewebauthn/server`。本人確認は必須。チャレンジは1回限りで5分。署名カウンタで複製を検知する。ユーザーハンドルの一致も確かめる。保存するのは公開鍵だけ | `passkey.test.js`（偽造・再利用・期限切れ・複製・横取り） |
@@ -86,7 +86,7 @@
 | ID | 内容 | 合格の基準 |
 |---|---|---|
 | P1 | ヘッダ | `/login`・`/migration-data/`・`/api/state` の応答に、想定のCSP・`X-Frame-Options`・`nosniff`・`no-store` が付いている |
-| P2 | Cookie | ブラウザの開発者ツールで、`taguri_session` が `HttpOnly`・`Secure`・`SameSite=Strict` |
+| P2 | Cookie | ブラウザの開発者ツールで、`taguri_session` が `HttpOnly`・`Secure`・`SameSite=Lax` |
 | P3 | 本物のパスキー | iPhone（iCloudキーチェーン）とAndroidかWindowsで、新規作成→ログアウト→ログインができる。別の端末に同期されたパスキーでもログインできる |
 | P4 | Google・メールリンク | 両方でログインできる。メールリンクを別のブラウザで開くと、メールアドレスを聞き直す |
 | P5 | Firebaseの設定（S6） | 承認済みドメインがWorkerのドメインと必要なものだけ。メール列挙保護がオン。パスワードでのログインがオフ。APIキーに制限がある |

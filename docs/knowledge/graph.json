@@ -1395,6 +1395,20 @@
    "verifies": []
   },
   {
+   "id": "dec-session-lax",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "ログインの Cookie を SameSite=Strict から Lax に変えた（ほかのアプリのリンクから開くたびにログインを求めていた）",
+   "sources": [
+    "cloudflare/src/worker.js",
+    "cloudflare/test/firebase-auth.test.js",
+    "cloudflare/test/passkey.test.js",
+    "docs/cloudflare-security-review.md"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-settings-worker",
    "type": "decision",
    "status": "adopted",
@@ -5216,6 +5230,11 @@
    "from": "dec-service-watch",
    "rel": "depends_on",
    "to": "catalog-age-check"
+  },
+  {
+   "from": "dec-session-lax",
+   "rel": "affects",
+   "to": "dec-login-hardening"
   },
   {
    "from": "dec-settings-worker",

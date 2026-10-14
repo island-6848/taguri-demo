@@ -21,7 +21,12 @@ const fail = (status, message) => { throw Object.assign(new Error(message), {sta
 const token = () => Array.from(crypto.getRandomValues(new Uint8Array(32)), b => b.toString(16).padStart(2,'0')).join('');
 const hash = async s => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s))), b => b.toString(16).padStart(2,'0')).join('');
 const now = () => Math.floor(Date.now() / 1000);
-const cookie = value => `${COOKIE}=${value}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${TTL}`;
+// SameSite=Lax, not Strict (起案者 2026-10-14「開き直すたびにログイン求められるのなぜ？」):
+// with Strict the browser leaves the cookie off a page opened from another site or app
+// (a link in LINE, mail, a chat), so the gate sent a signed-in person to /login every
+// time. Lax sends it on such top-level GETs only; a POST from another site still
+// carries no cookie, and every write here also checks Origin (CSRF, dec-session-lax).
+const cookie = value => `${COOKIE}=${value}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${TTL}`;
 function string(value, max, required = false) {
   if (typeof value !== 'string' || value.length > max || (required && !value.trim())) fail(400, '入力を確認してください。');
   return value.trim();
@@ -163,7 +168,7 @@ async function deleteAccount(request, env, uid, input) {
   await env.DB.batch(['records','favourites','reactions','passkeys','webauthn_challenges','rec_cache',...SCREEN_TABLES,'sessions']
     .map(t => env.DB.prepare(`DELETE FROM ${t} WHERE user_id=?`).bind(uid))
     .concat(env.DB.prepare('DELETE FROM users WHERE id=?').bind(uid)));
-  return json({deleted:true,firebase_linked:!!linked},200,{'Set-Cookie':`${COOKIE}=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0`});
+  return json({deleted:true,firebase_linked:!!linked},200,{'Set-Cookie':`${COOKIE}=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0`});
 }
 // ---------------------------------------------------------------- recommendations
 // Person scores from the batch-built index (migrations/0003, scripts/
@@ -588,12 +593,12 @@ export default {
       if (path === '/api/logout/all') {
         // Sign out every device, e.g. after losing a phone.
         await env.DB.prepare('DELETE FROM sessions WHERE user_id=?').bind(uid).run();
-        return json({ok:true},200,{'Set-Cookie':`${COOKIE}=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0`});
+        return json({ok:true},200,{'Set-Cookie':`${COOKIE}=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0`});
       }
       if (path === '/api/logout') {
         const raw = request.headers.get('cookie')?.match(/taguri_session=([a-f0-9]{64})/)?.[1];
         await env.DB.prepare('DELETE FROM sessions WHERE hash=? AND user_id=?').bind(await hash(raw),uid).run();
-        return json({ok:true},200,{'Set-Cookie':`${COOKIE}=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0`});
+        return json({ok:true},200,{'Set-Cookie':`${COOKIE}=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0`});
       }
       fail(404,'見つかりませんでした。');
     } catch (error) {
