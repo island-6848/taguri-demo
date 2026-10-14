@@ -1,7 +1,7 @@
 ---
 id: q-branch-builds-fail
 type: question
-status: open
+status: answered
 date: 2026-10-14
 title: Workers Builds の master 以外のブランチの組み立てが毎回失敗するのはなぜか。止めてよいか
 links:
