@@ -2738,6 +2738,17 @@
    "verifies": []
   },
   {
+   "id": "q-pr14-free-tier",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-14",
+   "title": "推薦側の PR #14（回数制限・見張り・D1 の控え・CPU の測定）が無料枠に収まるか。取得のジョブにどう載せるか",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/pull/14"
+   ],
+   "verifies": []
+  },
+  {
    "id": "q-privacy-law",
    "type": "question",
    "status": "open",
@@ -5610,6 +5621,16 @@
    "from": "q-pr13-aspects-screen",
    "rel": "affects",
    "to": "dec-reason-work-titles"
+  },
+  {
+   "from": "q-pr14-free-tier",
+   "rel": "affects",
+   "to": "dec-free-tier-only"
+  },
+  {
+   "from": "q-pr14-free-tier",
+   "rel": "affects",
+   "to": "crawler-actions-minutes"
   },
   {
    "from": "q-public-reputation-signal",
