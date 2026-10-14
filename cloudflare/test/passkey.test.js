@@ -113,6 +113,22 @@ test('a signed-in account (e.g. recovery code) can add a passkey and keeps its r
   assert.ok(listed.passkeys.every(p => !('public_key' in p)));
 });
 
+test('adding a passkey to an account needs a sign-in within 10 minutes', async () => {
+  const {call, sqlite} = setup();
+  const cookie = cookieOf(await call('register', {}));
+  sqlite.prepare('UPDATE sessions SET created_at=created_at-601').run();
+  const r = await call('auth/passkey/register/options', {}, cookie);
+  assert.equal(r.status, 401);
+  assert.match((await r.json()).error, /10分以内/);
+  // A challenge taken while fresh cannot be finished once the sign-in is old.
+  sqlite.prepare('UPDATE sessions SET created_at=?').run(Math.floor(Date.now() / 1000));
+  const {challenge_id, options} = await (await call('auth/passkey/register/options', {}, cookie)).json();
+  sqlite.prepare('UPDATE sessions SET created_at=created_at-601').run();
+  const v = await call('auth/passkey/register/verify', {challenge_id, response: await new SoftAuthenticator().create(options)}, cookie);
+  assert.equal(v.status, 401);
+  assert.equal(sqlite.prepare('SELECT count(*) AS n FROM passkeys').get().n, 0);
+});
+
 test('forged, replayed, cloned or foreign responses are rejected', async () => {
   const {call, sqlite} = setup();
   const auth = new SoftAuthenticator();

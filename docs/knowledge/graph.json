@@ -843,6 +843,25 @@
    "verifies": []
   },
   {
+   "id": "dec-login-hardening",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "ログインの守りを固める：戻り先の検査を URL として行う・パスキー追加と Google・メールの結び付けは10分以内のログインが要る・結び付けはアカウントのページから明示したときだけ・利用者100人の上限を外す",
+   "sources": [
+    "cloudflare/src/worker.js",
+    "cloudflare/src/passkey.js",
+    "cloudflare/src/client/login.js",
+    "cloudflare/src/screens/account.js",
+    "cloudflare/public/login.html",
+    "cloudflare/migrations/0020.sql",
+    "cloudflare/test/gate.test.js",
+    "cloudflare/test/firebase-auth.test.js",
+    "cloudflare/test/passkey.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-migration-branch-wip",
    "type": "decision",
    "status": "adopted",
@@ -2433,7 +2452,7 @@
    "type": "finding",
    "status": "confirmed",
    "date": "2026-10-14",
-   "title": "ログイン修正のセッション（PR #17）が、0020 で利用者 100 人の上限トリガーを外し、1 日あたりの新規の上限で抑える形に変える",
+   "title": "ログイン修正のセッション（PR #17、master に入った）が、0020 で利用者 100 人の上限トリガーを外し、1 日あたりの新規の上限で抑える形に変えた",
    "sources": [
     "https://github.com/island-6848/taguri-demo/blob/claude/demo-records-setup-yqo65u/cloudflare/migrations/0020.sql",
     "https://github.com/island-6848/taguri-demo/blob/claude/demo-records-setup-yqo65u/docs/knowledge/notes/dec-login-hardening.md"
@@ -5903,6 +5922,11 @@
    "from": "peer-0020-account-limit",
    "rel": "affects",
    "to": "q-account-limit-100"
+  },
+  {
+   "from": "peer-0020-account-limit",
+   "rel": "supports",
+   "to": "dec-login-hardening"
   },
   {
    "from": "people-cpu-over-10ms",

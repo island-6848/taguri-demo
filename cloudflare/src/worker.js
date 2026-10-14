@@ -89,10 +89,24 @@ async function startSession(db, uid, commands, oldRaw) {
   await db.batch(commands);
   return session;
 }
+// A sign-in made within REAUTH_SEC on this device. Irreversible or lasting
+// changes (deleting the account, adding a passkey, linking Google or an email)
+// need one, so a stolen long-lived cookie alone cannot make them.
+const REAUTH_SEC = 600;
+async function freshSession(db, request, uid) {
+  const raw = sessionCookie(request);
+  if (!raw) return false;
+  const session = await db.prepare('SELECT created_at FROM sessions WHERE hash=? AND user_id=?').bind(await hash(raw),uid).first();
+  return Boolean(session?.created_at) && session.created_at >= now() - REAUTH_SEC;
+}
 // Sign in with a Firebase ID token. Only the Firebase UID is kept.
 // - known UID: sign in to that account
-// - unknown UID while signed in with a recovery-code account that has no
-//   Firebase link yet: link it, so existing records carry over
+// - unknown UID with {link:true} (the account page's "結び付ける", sent only
+//   from the browser that asked for it) while freshly signed in to an account
+//   with no Firebase link yet: link it, so existing records carry over
+// - unknown UID while signed in to an unlinked account without {link:true}:
+//   refused, so signing in on a shared device never links someone else's
+//   account and never silently starts a new one
 // - otherwise: create a new account (if registration is open)
 // Two existing accounts are never merged automatically.
 async function firebaseSignIn(request, env) {
@@ -108,12 +122,18 @@ async function firebaseSignIn(request, env) {
   let uid = (await db.prepare('SELECT id FROM users WHERE firebase_uid=?').bind(identity.uid).first())?.id;
   let linked = false, created = false;
   const commands = [];
-  if (!uid && oldRaw) {
-    const current = await db.prepare('SELECT u.id FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.hash=? AND s.expires_at>? AND u.firebase_uid IS NULL').bind(await hash(oldRaw),now()).first();
-    if (current) {
+  const current = oldRaw ? await db.prepare('SELECT u.id,u.firebase_uid,s.created_at FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.hash=? AND s.expires_at>?').bind(await hash(oldRaw),now()).first() : null;
+  if (input.link === true) {
+    if (!current) fail(401,'結び付けるアカウントでログインしていません。ログインしてから、もう一度アカウントのページから進んでください。');
+    if (uid && uid !== current.id) fail(409,'この Google・メールは、すでに別のアカウントで使われています。結び付けられませんでした。');
+    if (!uid) {
+      if (current.firebase_uid) fail(409,'このアカウントには、すでに別の Google・メールが結び付いています。');
+      if (!current.created_at || current.created_at < now() - REAUTH_SEC) fail(401,'本人確認のため、復旧コードかパスキーでログインし直してから、10分以内に結び付けてください。');
       uid = current.id; linked = true;
       commands.push(db.prepare('UPDATE users SET firebase_uid=? WHERE id=? AND firebase_uid IS NULL').bind(identity.uid,uid));
     }
+  } else if (!uid && current && !current.firebase_uid) {
+    fail(409,'いまログインしているアカウントの記録を引き継ぐには、アカウントのページの「Google・メールを結び付ける」から進んでください。別のアカウントとして始めるなら、ログアウトしてからログインしてください。');
   }
   if (!uid) {
     if (env.ALLOW_REGISTRATION !== 'true') fail(503,'新規登録を一時停止しています。');
@@ -124,16 +144,13 @@ async function firebaseSignIn(request, env) {
   const session = await startSession(db, uid, commands, oldRaw);
   return json({linked,created},200,{'Set-Cookie':cookie(session)});
 }
-// Account deletion (security rules R7). Irreversible, so it needs a sign-in
-// made within REAUTH_SEC on this device: a stolen long-lived cookie alone
-// cannot delete the account. Every table is cleared explicitly rather than
+// Account deletion (security rules R7). Irreversible, so it needs a fresh
+// sign-in (freshSession). Every table is cleared explicitly rather than
 // relying on foreign-key cascades. The Firebase user (Google side) is deleted
 // by the browser right after, while it still holds a fresh Firebase sign-in.
-const REAUTH_SEC = 600;
 async function deleteAccount(request, env, uid, input) {
   if (input.confirm !== '削除') fail(400,'確認のため「削除」と入力してください。');
-  const session = await env.DB.prepare('SELECT created_at FROM sessions WHERE hash=? AND user_id=?').bind(await hash(sessionCookie(request)),uid).first();
-  if (!session?.created_at || session.created_at < now() - REAUTH_SEC) fail(401,'本人確認のため、ログインし直してから削除してください。');
+  if (!await freshSession(env.DB, request, uid)) fail(401,'本人確認のため、ログインし直してから削除してください。');
   const linked = (await env.DB.prepare('SELECT firebase_uid FROM users WHERE id=?').bind(uid).first())?.firebase_uid;
   // The browser can delete the Google-side user only while it holds a fresh
   // Firebase sign-in, so a linked account must be deleted after signing in
@@ -278,7 +295,7 @@ async function state(db, uid) {
   const result = await db.batch([db.prepare("SELECT id,title,date,time,venue,rating,note,COALESCE(stage_id,'') AS stage_id,aspects FROM records WHERE user_id=? ORDER BY date DESC,id LIMIT 500").bind(uid),db.prepare('SELECT name,kind FROM favourites WHERE user_id=? ORDER BY kind,name LIMIT 200').bind(uid),db.prepare('SELECT stage_id,status FROM reactions WHERE user_id=? ORDER BY stage_id LIMIT 500').bind(uid)]);
   return {version:2,records:result[0].results,favourites:result[1].results,reactions:result[2].results};
 }
-const passkey = passkeyRoutes({fail, json, token, hash, now, body, cookie, sessionCookie, currentUser, startSession, checkNewAccount});
+const passkey = passkeyRoutes({fail, json, token, hash, now, body, cookie, sessionCookie, currentUser, startSession, checkNewAccount, freshSession});
 // Public Firebase web config. apiKey identifies the project to Google; it is
 // not a secret (access is governed by authorized domains and the sign-in
 // methods enabled in the console). Nothing here is read from user input.
@@ -305,8 +322,10 @@ async function loginPage(request, env) {
   headers.set('Cache-Control', 'no-store');
   const page = new Response(asset.body, {status: asset.status, headers});
   // The top of /login explains what たぐり is (it was /about). Re-signing in to
-  // delete the account is not the place for it: that page drops the section.
-  if (new URL(request.url).searchParams.get('purpose') === 'delete' && typeof HTMLRewriter !== 'undefined')
+  // delete the account or to link Google/email is not the place for it: those
+  // pages drop the section.
+  const q = new URL(request.url).searchParams;
+  if ((q.get('purpose') === 'delete' || q.get('link') === '1') && typeof HTMLRewriter !== 'undefined')
     return new HTMLRewriter().on('#about', {element(el) { el.remove(); }}).transform(page);
   return page;
 }
@@ -319,7 +338,16 @@ const PUBLIC_PAGES = new Set(['/login', '/about']);   // /about only redirects t
 const PUBLIC_APIS = new Set(['/api/register', '/api/recover', '/api/catalogue', '/api/health']);
 const STATIC_FILE = /\.(css|js|mjs|map|png|jpe?g|gif|webp|svg|ico|mp4|webmanifest|txt)$/;
 // Only same-site paths are accepted as a place to return to after sign-in.
-export const safeNext = value => (typeof value === 'string' && /^\/(?![\/\\])/.test(value) && !value.startsWith('/login')) ? value : '/';
+// Browsers drop tabs/newlines and read "\" as "/" in URLs, so "/\t/evil" or
+// "/\evil" would leave the site: the value is parsed as a URL and must stay
+// on this origin; control characters and backslashes are refused outright.
+export const safeNext = value => {
+  if (typeof value !== 'string' || !value.startsWith('/') || /[\u0000-\u001f\u007f\\]/.test(value)) return '/';
+  let url;
+  try { url = new URL(value, 'https://taguri.invalid'); } catch { return '/'; }
+  if (url.origin !== 'https://taguri.invalid' || url.pathname.startsWith('/login')) return '/';
+  return url.pathname + url.search + url.hash;
+};
 const redirect = location => new Response(null, {status: 302, headers: {Location: location, 'Cache-Control': 'no-store'}});
 // The original screens get an entry to the account page in their menu. Done
 // here (not in web/, shared with the GitHub Pages demo) with HTMLRewriter.
