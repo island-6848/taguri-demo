@@ -262,9 +262,13 @@ def main() -> int:
     # **CoRich とほとんど重なっていない。** カレンダーの楽日が今日以降 738 件のうち
     # 470 件は CoRich から集めた候補に無い（企画書 5 章の役割分担 ── 網羅はカレンダー、
     # クレジットは CoRich）。**ダウンロードは 1 回だけなので毎回走らせる。**
-    # クレジットは重いので `--fetch` のときだけ辿る
-    sh(["tools/taguri/fetch_stage_calendar.py", "--today", a.today]
-       + (["--credits"] if a.fetch else []), required=False, tag="calendar")
+    # **クレジット（公式サイトの出演・スタッフ）も毎回辿る**（起案者の指示 2026-10-14
+    # 「1 で進めて」）。もとは重いので `--fetch`（週 1）のときだけだったが、それだと新しく
+    # 載った公演は最大 1 週間、人物が空のままおすすめの理由を出せない。読んだページと
+    # 届かなかった先は控えるので、2 回目からは新しい公演のぶんしか通信しない（実測で
+    # 控えが揃っていれば 3.5 秒）
+    sh(["tools/taguri/fetch_stage_calendar.py", "--today", a.today, "--credits"],
+       required=False, tag="calendar")
 
     step(6, "推薦の計算と、出した一覧の保存")
     sh(["tools/review/recommend2.py", "--today", a.today, "--top", str(a.top)],

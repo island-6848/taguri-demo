@@ -581,6 +581,19 @@
    "verifies": []
   },
   {
+   "id": "dec-calendar-credits-daily",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "ステイジーズカレンダーから入った公演も、公式サイトから出演・スタッフを毎回取る。トップに名前が無ければ同じサイトのキャスト・スタッフのページを 2 枚まで辿る。投稿サイトは辿らない",
+   "sources": [
+    "tools/taguri/fetch_stage_calendar.py",
+    "tools/taguri/run.py",
+    "tools/taguri/test_calendar_credits.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-corich-sitemap",
    "type": "decision",
    "status": "adopted",
@@ -4004,6 +4017,16 @@
    "from": "dec-auto-link-past",
    "rel": "depends_on",
    "to": "auto-link-current-state"
+  },
+  {
+   "from": "dec-calendar-credits-daily",
+   "rel": "depends_on",
+   "to": "reason-kind-missing"
+  },
+  {
+   "from": "dec-calendar-credits-daily",
+   "rel": "affects",
+   "to": "q-crawler-state-size"
   },
   {
    "from": "dec-corich-sitemap",
