@@ -2749,6 +2749,17 @@
    "verifies": []
   },
   {
+   "id": "peer-star5-branch",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-14",
+   "title": "別のセッションが、評価の初期設定を星 5 段階（保存は \"n/5\"）にする変更をブランチ claude/demo-records-setup-yqo65u に置いた（PR 前・起案者の返事待ち）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/tree/claude/demo-records-setup-yqo65u"
+   ],
+   "verifies": []
+  },
+  {
    "id": "people-cpu-over-10ms",
    "type": "finding",
    "status": "confirmed",
@@ -6461,6 +6472,11 @@
    "from": "peer-0020-account-limit",
    "rel": "supports",
    "to": "dec-login-hardening"
+  },
+  {
+   "from": "peer-star5-branch",
+   "rel": "affects",
+   "to": "impl-person-ordinal-v3"
   },
   {
    "from": "people-cpu-over-10ms",
