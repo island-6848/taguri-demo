@@ -165,7 +165,9 @@ export function recRow(w, {poster = '', rateAlways = false, editable = false, ra
     : '<span class="pin"><span class="noposter" aria-hidden="true"></span></span>';
   return `<article class="rec-row${w.suspect ? ' check' : ''}`
     + `${unseen ? ' skipped' : ''}"`
-    + ` id="w-${E(anchor(w.work_key))}${E(idSuffix)}">`
+    + ` id="w-${E(anchor(w.work_key))}${E(idSuffix)}"`
+    // 評価の「詳細」（気になった所・良かった所。app.js の aspectsPanel が読む）
+    + ` data-aspects="${E(w.aspects || '')}">`
     + `<span class="marg">${dt}${unseen ? '' : stamp(w, v)}</span>`
     + `<div class="page">`
     + `<div class="ttl">${E(w.title)}</div>`

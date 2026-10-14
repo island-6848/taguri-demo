@@ -629,13 +629,18 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     y = q.get("y", [""])[0]
                     venues = q.get("venue", [])
                     html = APP._rate_body(user_id, v, y, venues, _page(query))
-                    result = {"ok": True, "title": "評価一覧", "body_html": html}
+                    result = {"ok": True, "title": "評価一覧", "body_html": html,
+                              "note_tags": APP.note_tags(user_id)}   # 感想を書く欄に出すタグの札
                 elif path == "/api/screen/unrated":
                     html = APP._unrated_body(user_id)
-                    result = {"ok": True, "title": "未評価", "body_html": html}
+                    result = {"ok": True, "title": "未評価", "body_html": html,
+                              "note_tags": APP.note_tags(user_id)}
                 elif path == "/api/screen/notes":
-                    html = APP._notes_body(user_id)
-                    result = {"ok": True, "title": "感想", "body_html": html}
+                    # ?tag= で、そのハッシュタグの感想を集める（起案者の指示 2026-10-14）
+                    tag = (urllib.parse.parse_qs(query).get("tag") or [""])[0][:40]
+                    html = APP._notes_body(user_id, tag)
+                    result = {"ok": True, "title": "感想", "body_html": html,
+                              "note_tags": APP.note_tags(user_id)}
                 elif path == "/api/screen/tickets":
                     html = APP._tickets_body(user_id)
                     result = {"ok": True, "title": "購入済み公演", "body_html": html}
@@ -1327,6 +1332,15 @@ class Server(http.server.ThreadingHTTPServer):
         書いた名前が登録候補として出てくる。**
         """
         stage_id, value = str(b.get("stage_id") or ""), str(b.get("value") or "")
+        # **入れ替わりの 1 枚だけを求める要求**（書き込みはしない）。答えの記録と、次の候補を
+        # 選ぶ計算（本人の推薦をまるごと計算し直すので重い）を別の要求に分けた ── 同じ要求で
+        # していたので「記録しました」まで数秒かかっていた（起案者の指摘 2026-10-14「興味ありなしの
+        # 書き込みがこんなに遅いのはなぜ？」）。画面は記録の返事を受けてから、これを送る
+        if b.get("fill_only"):
+            if not stage_id:
+                raise ValueError("stage_id が要る")
+            return {"ok": True, "stage_id": stage_id, "fill": self.fill_slot(
+                user_id, [str(x)[:20] for x in (b.get("shown") or [])][:120], stage_id)}
         notes = {k: (str(b[k])[:2000] if b.get(k) is not None else None)
                  for k in ("note", "note_no")}
         given = {k: v for k, v in notes.items() if v is not None}
@@ -1352,7 +1366,15 @@ class Server(http.server.ThreadingHTTPServer):
             # （`feedback.report` の「回答」「興味あり」は `screen_tour` を数えない）。
             if value:
                 react_kw = dict(REACT.get(value) or {})
-                for sid in self._siblings(user_id, stage_id):
+                # 画面が券に載せた同じ作品の他会場（data-tours）を使う。無ければ今までどおり
+                # 推薦を計算し直して探す（`_siblings`、重い）。他人の公演に書く道にはならない
+                # （書くのは押した本人の反応だけ）。数字の id だけを受ける
+                given_sibs = b.get("siblings")
+                if isinstance(given_sibs, list):
+                    sibs = [str(x) for x in given_sibs[:40] if str(x).isdigit() and str(x) != stage_id]
+                else:
+                    sibs = self._siblings(user_id, stage_id)
+                for sid in sibs:
                     FB.react(self.con, self.label, sid, source="screen_tour", user_id=user_id,
                              **react_kw)
             self.n["react"] += 1
@@ -1368,8 +1390,9 @@ class Server(http.server.ThreadingHTTPServer):
         out = {"ok": True, "stage_id": stage_id, "value": value,
                "note": "note" in given, "note_no": "note_no" in given}
         # **三択に答えた枠を、次の候補で埋める**（起案者の指示・2026-08-24）。
-        # 理由だけの更新では埋めない ── 枠が空いていないので足す先が無い
-        if value:
+        # 理由だけの更新では埋めない ── 枠が空いていないので足す先が無い。
+        # 画面が `nofill` を付けたときは埋めない（あとで `fill_only` を別に送ってくる）
+        if value and not b.get("nofill"):
             out["fill"] = self.fill_slot(
                 user_id, [str(x)[:20] for x in (b.get("shown") or [])][:120], stage_id)
         return out
@@ -1564,6 +1587,15 @@ class Server(http.server.ThreadingHTTPServer):
 
     def on_rate(self, b: dict, user_id: str) -> dict:
         work_key, verdict = str(b.get("work_key") or ""), str(b.get("verdict") or "")
+        # 評価の「詳細」だけを書く（verdict を送らないとき。起案者の指示 2026-10-14「詳細の画面を作って」）。
+        # 形は rate_performances.clean_aspects（知らない項目・両方に付けた項目は断る）
+        if not verdict and "aspects" in b:
+            import rate_performances as R
+            aspects = R.clean_aspects(b.get("aspects"))
+            with self.lock:
+                APP.save_work_field(user_id, work_key, aspects=aspects)
+                self.n["rate"] += 1
+            return {"ok": True, "work_key": work_key, "aspects": aspects}
         if verdict not in VERDICTS:
             raise ValueError(f"verdict が候補にない: {verdict!r}")
         with self.lock:

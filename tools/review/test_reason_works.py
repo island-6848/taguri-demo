@@ -66,7 +66,9 @@ class TicketDetailsTest(unittest.TestCase):
     def test_sale_goes_to_ticket_page(self):
         self.assertEqual(RR.ticket_url({"price": "5,000円 詳細は https://stage.parco.jp/x 」", "url": "https://o.jp"}),
                          "https://stage.parco.jp/x")
-        self.assertEqual(RR.ticket_url({"url": "https://o.jp"}), "https://o.jp")
+        self.assertEqual(RR.ticket_url({"url": "https://o.jp/show"}),
+                         "https://o.jp/show#tickets:~:text=%E3%83%81%E3%82%B1%E3%83%83%E3%83%88")
+        self.assertEqual(RR.ticket_url({"url": "https://o.jp/show#ticket"}), "https://o.jp/show#ticket")
         self.assertEqual(RR.ticket_url({"stage_id": "512400"}), "https://stage.corich.jp/stage/512400")
         self.assertIn('rel="noopener noreferrer"', RR.sale_pill({"url": "https://o.jp"}, "発売済み", "ok"))
         self.assertEqual(RR.sale_pill({"url": "javascript:x"}, "発売済み", "ok"), '<span class="pill ok">発売済み</span>')

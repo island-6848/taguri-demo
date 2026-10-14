@@ -154,6 +154,19 @@ class FeedbackLoopTests(DemoStabilityTests):
         self.assertEqual(d["recommend"], [])
         self.assertEqual(d["tracking"][0]["stage_id"], "101")
 
+    def test_react_saves_first_and_fills_separately(self):
+        # 記録と入れ替わりの 1 枚を別の要求に分けた（起案者の指摘 2026-10-14「書き込みがこんなに遅いのはなぜ？」）
+        self.history()
+        status, result = self.request("/api/react", body={"stage_id": "101", "value": "interest",
+                                                          "nofill": True, "siblings": []})
+        self.assertEqual(status, 200, result)
+        self.assertNotIn("fill", result)
+        self.assertEqual(self.load()["tracking"][0]["stage_id"], "101")
+        status, result = self.request("/api/react", body={"stage_id": "101", "fill_only": True, "shown": ["101"]})
+        self.assertEqual(status, 200, result)
+        self.assertIn("fill", result)
+        self.assertEqual(self.load()["tracking"][0]["stage_id"], "101")    # fill_only は何も書かない
+
     def test_provenance_is_per_field_and_survives_reopening(self):
         uid = self.users[0][0]
         APP.seed_demo_works(uid)

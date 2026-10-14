@@ -39,6 +39,7 @@ import json
 import re
 import sys
 import unicodedata
+import urllib.parse
 from datetime import date
 from pathlib import Path
 
@@ -231,11 +232,15 @@ def schedule_html(c: dict) -> str:
     if len(vs) < 2:
         return ""                       # 1 会場しか無い公演には出さない（二重に書くだけ）
     today = date.today()
+    here_id = vs[0]["stage_id"]         # venues() の先頭がこのおすすめの会場（絞り込み中は選んだ県の会場）
+    # 日程の順に並べる（起案者の指示 2026-10-14「おすすめ欄にはつねにツアー日程を全部書いて
+    # （土地で絞り込んでたとしても）」── 絞り込みは主たる会場を選ぶだけで、ほかの会場も全部ここに残る）
+    vs = sorted(vs, key=lambda v: _start(v["period"]) or "9999")
     rows = []
-    for i, v in enumerate(vs):
+    for v in vs:
         end = _period_end(v["period"])
         done = bool(end) and end < today
-        here = i == 0          # venues() の先頭がこのおすすめの会場（代表）
+        here = v["stage_id"] == here_id
         loc = region_label(v["pref"], v["theater"] or "会場未定")
         # **都道府県の呼び名（「東京公演」）だけでは、どの劇場かが分からない。**
         # 会場名が取れていれば添える ── 同じ都道府県に複数の劇場があるツアーでは、
@@ -1100,9 +1105,25 @@ def ticket_url(c: dict) -> str:
     if m:
         return m.group(0)
     if c.get("url"):
-        return str(c["url"])
+        return official_ticket_url(str(c["url"]))
     sid = str(c.get("stage_id") or "")
     return f"https://stage.corich.jp/stage/{sid}" if sid.isdigit() else ""
+
+
+def official_ticket_url(url: str) -> str:
+    """公式サイトの URL を、券の案内のところへ飛ぶ形にする。
+
+    起案者の知見（2026-10-14）「発売済みのチケットは大体チケットってページか、#tickets をつけた
+    アンカーリンクのとこにある」。ページの中身は読みに行かない（相手のサイトへの負担と取得の量を増やさない）ので、
+    1) `#tickets` を付ける ── その名前の場所があればそこへ飛ぶ。無くてもページの先頭が開くだけで壊れない
+    2) 文字の位置の指定（`:~:text=チケット`）を添える ── 対応するブラウザ（Chrome・Edge・Safari）は、
+       ページの中で最初に出てくる「チケット」へ飛んで光らせる。たいていはチケットのページへのメニューか、
+       チケットの節の見出しである。対応しないブラウザはこの部分を無視する
+    すでに `#` の付いた URL（ページの中の特定の場所を指している）には何も足さない。
+    """
+    if "#" in url:
+        return url
+    return url + "#tickets:~:text=" + urllib.parse.quote("チケット")
 
 
 def sale_pill(c: dict, onsale: str, cls: str) -> str:
@@ -1466,7 +1487,10 @@ def ticket(c: dict, *, rank=None, mode: str = "recommend", note: str = "",
             '<span class="said"></span></span>')
         rows = "".join(_mt_row(t) for t in (my_tickets or []))
         mytix_html = f'<div class="mytix"><b>行く日</b>{rows}{add_form}</div>'
-    return f"""<article class="ticket {E(mode)}" data-stage="{E(c["stage_id"])}"{_price_attr(c)}>
+    tour_ids = ",".join(str(t.get("stage_id")) for t in (c.get("tours") or []) if str(t.get("stage_id") or "").isdigit())
+    # 他会場が無い券にも空で付ける（画面は「他会場は無い」と分かり、記録のときに推薦を計算し直さずに済む）
+    tours_attr = f' data-tours="{E(tour_ids)}"'
+    return f"""<article class="ticket {E(mode)}" data-stage="{E(c["stage_id"])}"{tours_attr}{_price_attr(c)}>
 {_stub(rank, c, mark)}
 <div class="perf" aria-hidden="true"></div>
 <div class="body">{pcol}

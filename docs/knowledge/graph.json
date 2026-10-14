@@ -437,6 +437,17 @@
    "verifies": []
   },
   {
+   "id": "crawler-run-1014",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-14",
+   "title": "無料枠の守りを入れた最初の Catalog（手動・daily）── D1・R2 は入り、過去の公演 7,016 件は読んだが D1 への取り込みが SQLITE_TOOBIG で落ちた（直した）",
+   "sources": [
+    "https://github.com/island-6848/taguri-crawler/actions/runs/38486187595"
+   ],
+   "verifies": []
+  },
+  {
    "id": "crawler-state-between-runs",
    "type": "finding",
    "status": "confirmed",
@@ -534,6 +545,23 @@
    "title": "アカウント削除は「削除」の入力と直近 10 分以内のログインを求める",
    "sources": [
     "https://github.com/island-6848/taguri-demo/blob/cloudflare-d1-preview/cloudflare/test/account-delete.test.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-aspects-screen",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "評価の「詳細」の画面 ── 評価を付けた記録に 8 項目×良かった／ふつう／気になった。出し方は あっさり（既定）／詳しく",
+   "sources": [
+    "web/app.js",
+    "web/theme.css",
+    "tools/taguri/serve.py",
+    "tools/taguri/app.py",
+    "cloudflare/src/screens/rate.js",
+    "cloudflare/src/screens/row.js",
+    "cloudflare/test/screens/scenarios.json"
    ],
    "verifies": []
   },
@@ -825,6 +853,20 @@
    ]
   },
   {
+   "id": "dec-poster-quality",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "ポスターは WebP に縮めてから R2 に入れる（これからの公演は幅 360 px、終わった公演は幅 240 px の粗め）。入れてある分も縮め直す",
+   "sources": [
+    "cloudflare/scripts/deliver_posters.py",
+    "cloudflare/scripts/free_tier.py",
+    "cloudflare/test/test_free_tier.py",
+    "tools/taguri/deploy/github-actions/catalog.yml"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-posters-r2",
    "type": "decision",
    "status": "adopted",
@@ -928,6 +970,25 @@
     "tools/review/render_recommend.py",
     "tools/taguri/app.py",
     "tools/review/test_reason_works.py"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-recommend-ui-1014b",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "おすすめの見直し（2026-10-14 の 2 回目）── 料金はつまみ・絞り込み 3 つを横 1 列・ページの地図・ツアー日程を常に・感想のハッシュタグ・券の案内へ #tickets・記録を速く・券からお気に入りに",
+   "sources": [
+    "web/app.js",
+    "web/theme.css",
+    "tools/taguri/app.py",
+    "tools/taguri/serve.py",
+    "tools/taguri/hashtags.py",
+    "tools/review/render_recommend.py",
+    "cloudflare/src/screens/hashtags.js",
+    "cloudflare/src/screens/rate.js",
+    "cloudflare/test/screens/scenarios.json"
    ],
    "verifies": []
   },
@@ -1051,6 +1112,15 @@
     "web/theme.css",
     "tools/review/test_reason_works.py"
    ],
+   "verifies": []
+  },
+  {
+   "id": "dec-url-app-taguri",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "サービス版の URL は無料のまま app.taguri.workers.dev にする（独自ドメインは取らない）",
+   "sources": [],
    "verifies": []
   },
   {
@@ -2083,6 +2153,19 @@
    ]
   },
   {
+   "id": "pages-404-stale",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-14",
+   "title": "デモ版で読み込み直すと昔の見た目が出たのは、深い URL に返る 404.html が古い写しで theme.css を読んでいなかったため（直した）",
+   "sources": [
+    "web/404.html",
+    ".github/workflows/pages.yml",
+    "cloudflare/scripts/sync_public_ui.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "passkey-rpid-domain",
    "type": "finding",
    "status": "confirmed",
@@ -2179,6 +2262,15 @@
    "status": "answered",
    "date": "2026-10-13",
    "title": "古い記録を自動で結び付けるための「過去の公演の一覧」を、CoRich のページを読んで作ってよいか",
+   "sources": [],
+   "verifies": []
+  },
+  {
+   "id": "q-branch-builds-fail",
+   "type": "question",
+   "status": "answered",
+   "date": "2026-10-14",
+   "title": "Workers Builds の master 以外のブランチの組み立てが毎回失敗するのはなぜか。止めてよいか",
    "sources": [],
    "verifies": []
   },
@@ -2397,6 +2489,15 @@
    "verifies": [
     "S12"
    ]
+  },
+  {
+   "id": "q-domain-taguri-com",
+   "type": "question",
+   "status": "answered",
+   "date": "2026-10-14",
+   "title": "本番の URL を taguri.com にするか（独自ドメインは年額がかかり、無料だけの約束と食い違う）",
+   "sources": [],
+   "verifies": []
   },
   {
    "id": "q-domain",
@@ -2641,7 +2742,7 @@
   {
    "id": "q-pr13-aspects-screen",
    "type": "question",
-   "status": "open",
+   "status": "answered",
    "date": "2026-10-14",
    "title": "推薦側の PR #13（person-graded-v2・評価の段階・評価の「詳細」8 項目）を入れるか。入れるなら「詳細」の画面をこちらで作るか",
    "sources": [
@@ -2966,6 +3067,18 @@
    "title": "観劇の評価は内容だけでなく、値段に見合うか・構成・演出などが混ざって 1 つの記号になる",
    "sources": [
     "https://github.com/island-6848/taguri-demo/blob/master/tools/review/user_recommender.py"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "react-slow-cause",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-14",
+   "title": "興味あり・なしの記録が遅かったのは、1 回押すごとに本人の推薦を 2 回まるごと計算し直していたため",
+   "sources": [
+    "tools/taguri/serve.py",
+    "tools/taguri/app.py"
    ],
    "verifies": []
   },
@@ -3356,6 +3469,15 @@
    ]
   },
   {
+   "id": "workers-branch-control-master",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-14",
+   "title": "起案者が Workers Builds を master だけ組み立てるようにした",
+   "sources": [],
+   "verifies": []
+  },
+  {
    "id": "workers-builds-applies-migrations",
    "type": "finding",
    "status": "confirmed",
@@ -3363,6 +3485,19 @@
    "title": "push するたびに Workers Builds が D1 の migration を当ててから deploy する",
    "sources": [
     "https://github.com/island-6848/taguri-demo/blob/cloudflare-d1-preview/cloudflare/README.md"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "workers-builds-branch-fail",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-14",
+   "title": "コミットの ✗（Workers Builds）は、master 以外のブランチの組み立てが失敗しているもの。master の組み立ては毎回成功している見込み",
+   "sources": [
+    "https://api.github.com/repos/island-6848/taguri-demo/commits/f212dc3/check-runs?filter=all",
+    "https://api.github.com/repos/island-6848/taguri-demo/commits/c06ae0b/check-runs?filter=all",
+    "https://api.github.com/repos/island-6848/taguri-demo/commits/736bcea/check-runs?filter=all"
    ],
    "verifies": []
   },
@@ -3380,7 +3515,7 @@
   {
    "id": "workers-builds-master-fail",
    "type": "finding",
-   "status": "confirmed",
+   "status": "outdated",
    "date": "2026-10-13",
    "title": "コミットの ✗ は Workers Builds が cloudflare/ の無い master を組もうとして失敗していたため",
    "sources": [
@@ -3430,6 +3565,19 @@
    ]
   },
   {
+   "id": "workers-dev-subdomain-rename",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-14",
+   "title": "workers.dev の URL は無料のまま名前を変えられる（アカウントの subdomain と Worker の名前）。独自ドメインは年額がかかる",
+   "sources": [
+    "https://developers.cloudflare.com/workers/configuration/routing/workers-dev/",
+    "https://alchemy.run/providers/cloudflare/workers/subdomain",
+    "https://domainoffer.net/tld/com/cloudflare"
+   ],
+   "verifies": []
+  },
+  {
    "id": "workers-free-cpu-10ms",
    "type": "finding",
    "status": "confirmed",
@@ -3453,6 +3601,17 @@
    "verifies": [
     "S12"
    ]
+  },
+  {
+   "id": "workers-preview-build-log",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-14",
+   "title": "master 以外のブランチの組み立ては `npx wrangler preview` を走らせ、設定に previews の欄が無いので失敗している",
+   "sources": [
+    "https://dash.cloudflare.com/e03256e9248f40014442896755e0c98b/workers/services/view/taguri-demo/production/builds/21f650d1-2236-4b5b-b804-ff05b463c2af"
+   ],
+   "verifies": []
   },
   {
    "id": "workers-static-assets-free",
@@ -3661,6 +3820,26 @@
    "to": "gha-private-free-minutes"
   },
   {
+   "from": "crawler-run-1014",
+   "rel": "verifies",
+   "to": "dec-free-tier-only"
+  },
+  {
+   "from": "crawler-run-1014",
+   "rel": "affects",
+   "to": "crawler-actions-minutes"
+  },
+  {
+   "from": "crawler-run-1014",
+   "rel": "affects",
+   "to": "dec-posters-r2"
+  },
+  {
+   "from": "crawler-run-1014",
+   "rel": "affects",
+   "to": "q-r2-poster-growth"
+  },
+  {
    "from": "crawler-state-between-runs",
    "rel": "affects",
    "to": "q-crawler-host"
@@ -3734,6 +3913,11 @@
    "from": "dec-account-deletion",
    "rel": "raises",
    "to": "q-firebase-user-deletion"
+  },
+  {
+   "from": "dec-aspects-screen",
+   "rel": "answers",
+   "to": "q-pr13-aspects-screen"
   },
   {
    "from": "dec-auto-link-past",
@@ -4046,6 +4230,26 @@
    "to": "comp-crawler"
   },
   {
+   "from": "dec-poster-quality",
+   "rel": "depends_on",
+   "to": "crawler-run-1014"
+  },
+  {
+   "from": "dec-poster-quality",
+   "rel": "answers",
+   "to": "q-r2-poster-growth"
+  },
+  {
+   "from": "dec-poster-quality",
+   "rel": "supports",
+   "to": "dec-free-tier-only"
+  },
+  {
+   "from": "dec-poster-quality",
+   "rel": "affects",
+   "to": "dec-posters-r2"
+  },
+  {
    "from": "dec-posters-r2",
    "rel": "answers",
    "to": "q-crawler-state-size"
@@ -4161,6 +4365,26 @@
    "to": "dec-recommend-compact-poster"
   },
   {
+   "from": "dec-recommend-ui-1014b",
+   "rel": "depends_on",
+   "to": "react-slow-cause"
+  },
+  {
+   "from": "dec-recommend-ui-1014b",
+   "rel": "affects",
+   "to": "dec-recommend-ui-1014"
+  },
+  {
+   "from": "dec-recommend-ui-1014b",
+   "rel": "affects",
+   "to": "dec-ticket-price-filter"
+  },
+  {
+   "from": "dec-recommend-ui-1014b",
+   "rel": "affects",
+   "to": "dec-phone-nav-four"
+  },
+  {
    "from": "dec-record-row-card",
    "rel": "affects",
    "to": "dec-design-adopted"
@@ -4264,6 +4488,21 @@
    "from": "dec-theme-user-choice",
    "rel": "raises",
    "to": "q-poster-palette"
+  },
+  {
+   "from": "dec-url-app-taguri",
+   "rel": "answers",
+   "to": "q-domain-taguri-com"
+  },
+  {
+   "from": "dec-url-app-taguri",
+   "rel": "depends_on",
+   "to": "workers-dev-subdomain-rename"
+  },
+  {
+   "from": "dec-url-app-taguri",
+   "rel": "supports",
+   "to": "dec-free-tier-only"
   },
   {
    "from": "dec-user-scale-range",
@@ -5146,6 +5385,11 @@
    "to": "q-past-stage-catalogue"
   },
   {
+   "from": "q-branch-builds-fail",
+   "rel": "affects",
+   "to": "workers-builds-branch-fail"
+  },
+  {
    "from": "q-catalog-source",
    "rel": "depends_on",
    "to": "q-crawler-host"
@@ -5264,6 +5508,21 @@
    "from": "q-direction",
    "rel": "depends_on",
    "to": "q-vm-host-choice"
+  },
+  {
+   "from": "q-domain-taguri-com",
+   "rel": "depends_on",
+   "to": "workers-dev-subdomain-rename"
+  },
+  {
+   "from": "q-domain-taguri-com",
+   "rel": "affects",
+   "to": "dec-free-tier-only"
+  },
+  {
+   "from": "q-domain-taguri-com",
+   "rel": "affects",
+   "to": "q-domain"
   },
   {
    "from": "q-domain",
@@ -5631,6 +5890,11 @@
    "to": "comp-recommender"
   },
   {
+   "from": "react-slow-cause",
+   "rel": "supports",
+   "to": "dec-recommend-ui-1014b"
+  },
+  {
    "from": "reco-accuracy-unverified",
    "rel": "affects",
    "to": "comp-recommender"
@@ -5896,9 +6160,24 @@
    "to": "q-direction"
   },
   {
+   "from": "workers-branch-control-master",
+   "rel": "affects",
+   "to": "workers-preview-build-log"
+  },
+  {
    "from": "workers-builds-applies-migrations",
    "rel": "affects",
    "to": "comp-d1"
+  },
+  {
+   "from": "workers-builds-branch-fail",
+   "rel": "affects",
+   "to": "workers-builds-master-fail"
+  },
+  {
+   "from": "workers-builds-branch-fail",
+   "rel": "raises",
+   "to": "q-branch-builds-fail"
   },
   {
    "from": "workers-builds-free-3000",
@@ -5936,6 +6215,16 @@
    "to": "comp-recommender"
   },
   {
+   "from": "workers-dev-subdomain-rename",
+   "rel": "affects",
+   "to": "q-domain"
+  },
+  {
+   "from": "workers-dev-subdomain-rename",
+   "rel": "supports",
+   "to": "dec-free-tier-only"
+  },
+  {
    "from": "workers-free-cpu-10ms",
    "rel": "supports",
    "to": "dec-defer-workers"
@@ -5954,6 +6243,16 @@
    "from": "workers-paid-plan",
    "rel": "affects",
    "to": "q-direction"
+  },
+  {
+   "from": "workers-preview-build-log",
+   "rel": "answers",
+   "to": "q-branch-builds-fail"
+  },
+  {
+   "from": "workers-preview-build-log",
+   "rel": "supports",
+   "to": "workers-builds-branch-fail"
   },
   {
    "from": "workers-static-assets-free",

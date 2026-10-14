@@ -46,6 +46,10 @@ jobs:
           esac
           sed -i "s#__TAGURI_SERVICE_API__#${TAGURI_SERVICE_API}#" _site/config.js
           cp _site/index.html _site/app/index.html
+          # 深い URL（/taguri-demo/recommend など）を読み込み直すと、GitHub Pages は 404.html を返す。
+          # これが古い写しだと、読み込み直したときだけ昔の見た目が出る（起案者の指摘 2026-10-14）ので、
+          # 毎回 index.html から作り直す
+          cp _site/index.html _site/404.html
           cp docs/000003-final-presentation-taguri.html _site/docs/
           cp docs/000010-user-guide-taguri.html _site/docs/
       - uses: actions/upload-pages-artifact@v3

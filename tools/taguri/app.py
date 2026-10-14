@@ -68,7 +68,7 @@
 |---|---|---|
 | `/start` | **はじめる** | 何も入っていないときの入口。名前の登録から順に 3 段を出す |
 | `/recommend` | **おすすめ ▸ 今週のおすすめ** | 答え。順位を付けた 15 件（もう追いかけない束は 2026-10-14 に出すのをやめた） |
-| `/recommend/reminder` | **おすすめ ▸ 開幕リマインド** | 答えていない候補・興味あり・お気に入りのうち初日が近いもの。券がある公演の直近予定 |
+| `/recommend/reminder` | **予定 ▸ 開幕リマインド**（2026-10-14 におすすめから移した） | 答えていない候補・興味あり・お気に入りのうち初日が近いもの。券がある公演の直近予定 |
 | `/recommend/interest` | **おすすめ ▸ 興味あり** | 追いかける。もぎった公演と、書いた理由 |
 | `/recommend/favourites` | **おすすめ ▸ お気に入り** | お知らせ。登録した名前の新着と、登録・解除 |
 | `/rate` | **観た公演の評価 ▸ 評価一覧** | 輪を閉じる。付けた評価を ◎○△× ごとに見る |
@@ -167,13 +167,17 @@ def R_NORM(s: str) -> str:
 # 読んでいるのかが名前として出ていない。** 1 段目を「評価一覧」という子に降ろした。
 NAV = ((None, "おすすめ", "ticket",
         (("/recommend", "今週のおすすめ", "ticket"),
-         ("/recommend/reminder", "開幕リマインド", "inbox"),
          ("/recommend/interest", "興味あり", "flag"),
          ("/recommend/favourites", "お気に入り", "star"))),
        # **暦は「おすすめ」の子にしない。** 3 つの束（券がある・興味あり・お気に入り）を
        # まとめて見る画面なので、どれか 1 つの段の下に置くと嘘になる（起案者の指示・
        # 2026-08-24 で独立した行き先として立てた）。
-       ("/calendar", "公演カレンダー", "calendar", ()),
+       # **予定の組**（起案者の指摘 2026-10-14「リマインドはおすすめの下？違和感ある」）。開幕リマインドは
+       # 初日が近い公演の知らせで、選ぶ画面ではなく日程を見る画面なので、カレンダー・購入済み公演と並べた
+       (None, "予定", "calendar",
+        (("/calendar", "公演カレンダー", "calendar"),
+         ("/recommend/reminder", "開幕リマインド", "inbox"),
+         ("/tickets", "購入済み公演", "ticket"))),
        # **「購入済み公演」も独立した行き先にした**（起案者の指摘・2026-08-25 ──
        # 「もうチケットを買っていてこれから観に行く公演についてまとめられているページが
        # ない」）。**「すでに持っている」の束は、それまで 2 か所に分かれていた** ──
@@ -192,7 +196,7 @@ NAV = ((None, "おすすめ", "ticket",
        # 1 つの意味に固定していない（例＝`check` は「観た公演の評価」の親とボタンの
        # どちらにも使う）。ここでは**券そのものの形が、実際に手元にある券をいちばん
        # 正しく表す**ので、重なりよりも意味の正しさを取った。
-       ("/tickets", "購入済み公演", "ticket", ()),
+
        # **「観た公演の評価」に子を 3 つ置く**（起案者の指示・2026-08-24 ──「『評価』って
        # ナビゲーションバーのボタンを押したら過去の自分の評価一覧が出てきて、サブページと
        # して未評価でページを分けてもいいのでは？」）。**それまでは 1 枚に 3 つの束が
@@ -4415,6 +4419,7 @@ def _works(user_id: str) -> list[dict]:
                     "unseen": _unseen, "skipped": len(_gone),
                     "verdict": sv.get("verdict") or "",
                     "note_impression": sv.get("note_impression") or "",
+                    "aspects": sv.get("aspects") or "",
                     "stage_id": sv.get("stage_id") or "",
                     "auto_linked": bool(sv.get("stage_id")
                                         and auto.get(w["work_key"]) == sv.get("stage_id")),
@@ -4442,6 +4447,7 @@ def _works(user_id: str) -> list[dict]:
                     "first_date": sv.get("first_date") or "", "last_date": sv.get("last_date") or "",
                     "times": sv.get("times") or 1, "verdict": sv.get("verdict") or "",
                     "note_impression": sv.get("note_impression") or "",
+                    "aspects": sv.get("aspects") or "",
                     # **手で足すときに入力した会場。** 以前は感想の欄に入れられていて
                     # どこからも読まれていなかった（`rate_performances._add_venue`）。
                     # **本人が入力した事実は、読まれる場所に出す**
@@ -5377,7 +5383,7 @@ def set_unseen(user_id: str, work_key: str, unseen: bool) -> dict:
             "unseen": bool(unseen), "n": len(shows)}
 
 
-def save_work_field(user_id: str, work_key: str, *, verdict=None, note=None) -> dict:
+def save_work_field(user_id: str, work_key: str, *, verdict=None, note=None, aspects=None) -> dict:
     """評価または感想を 1 つ書く。**受け付ける項目は列挙したものだけ**（守り 4）。
 
     **`UPDATE` だけでは足りない。** 取り込んだばかりの作品はまだ `works` に行が無く、
@@ -5393,6 +5399,11 @@ def save_work_field(user_id: str, work_key: str, *, verdict=None, note=None) -> 
         if w is None:
             if not sv:
                 raise ValueError("その作品は記録に無い")
+            if aspects is not None:          # 評価の「詳細」（入力の出どころの列は持たない）
+                con.execute("UPDATE works SET aspects=?, updated_at=datetime('now','localtime')"
+                            " WHERE user_id=? AND work_key=?", (aspects, user_id, work_key))
+                con.commit()
+                return {"ok": True, "work_key": work_key, "manual": True}
             col, val = ("verdict", verdict) if verdict is not None else ("note_impression", note)
             source_col = "verdict_source" if verdict is not None else "note_source"
             con.execute(f"UPDATE works SET {col}=?, {source_col}='user',"
@@ -5407,7 +5418,8 @@ def save_work_field(user_id: str, work_key: str, *, verdict=None, note=None) -> 
             "note_impression": note if note is not None else (sv.get("note_impression") or ""),
             "note_motive": sv.get("note_motive") or "",
             "verdict_source": "user" if verdict is not None else (sv.get("verdict_source") or "legacy_unknown"),
-            "note_source": "user" if note is not None else (sv.get("note_source") or "legacy_unknown")}, user_id=user_id)
+            "note_source": "user" if note is not None else (sv.get("note_source") or "legacy_unknown"),
+            **({"aspects": aspects} if aspects is not None else {})}, user_id=user_id)
         return {"ok": True, "work_key": work_key, "manual": False}
     finally:
         con.close()
@@ -6265,10 +6277,50 @@ def page_notes(user_id: str) -> str:
     return layout("感想", "/rate", body, RR.STYLE, active_sub="/rate/notes")
 
 
-def _notes_body(user_id: str) -> str:
+def note_tags(user_id: str) -> list[str]:
+    """本人が感想に付けたハッシュタグ（多い順）。感想を書く欄に札として出す（app.js の noteTagChips）。"""
+    import hashtags as HT
+    try:
+        return [t for t, _n in HT.counts(w.get("note_impression") or "" for w in _works(user_id))][:40]
+    except Exception:                                               # noqa: BLE001
+        return []
+
+
+def _hashtags_html(all_w: list[dict], tag: str = "") -> str:
+    """感想のハッシュタグの一覧と、選んだタグの感想（起案者の指示 2026-10-14「ハッシュタグをユーザーが
+    独自で作って検索できるようにして」）。タグは感想の文に `#タグ` と書くと作られる（`hashtags.py`）。"""
+    import hashtags as HT
+    import unicodedata
+    from urllib.parse import quote as _q
+    tag = unicodedata.normalize("NFKC", (tag or "").lstrip("#＃").strip())[:30]
+    cnt = HT.counts(w.get("note_impression") or "" for w in all_w)
+    head = ('<p class="lede">感想の中に <b>#タグ</b> と書くと、ここに並び、押すとそのタグの感想を集めて見られます'
+            '（例: #泣いた #また観たい #会場がよかった）。</p>')
+    if not cnt:
+        return '<section class="htags">' + head + "</section>"
+    chips = "".join(
+        f'<a class="htag{" on" if t == tag else ""}" href="/rate/notes?tag={_q(t)}&amp;t=__TAGURI_TOKEN__">'
+        f'#{E(t)}<span class="hn">{n}</span></a>' for t, n in cnt)
+    out = [f'<section class="htags">{head}<div class="htl">{chips}</div>']
+    if tag:
+        hit = [w for w in all_w if tag in HT.tags_in(w.get("note_impression") or "")]
+        hit.sort(key=lambda w: w.get("last_date") or w.get("first_date") or "", reverse=True)
+        rows = "".join(
+            f'<li><span class="hd">{E(w.get("last_date") or w.get("first_date") or "")}</span>'
+            f'<b>{E(w.get("title") or "")}</b>{" " + E(w.get("verdict")) if w.get("verdict") else ""}'
+            f'<p class="int">{E(w.get("note_impression") or "")}</p></li>' for w in hit)
+        out.append(f'<h2>#{E(tag)} の感想 ── {len(hit)} 件</h2>'
+                   f'<p><a href="/rate/notes?t=__TAGURI_TOKEN__">タグの選択をやめる</a></p>'
+                   f'<ul class="htagged">{rows}</ul>')
+    out.append("</section>")
+    return "".join(out)
+
+
+def _notes_body(user_id: str, tag: str = "") -> str:
     """`page_notes()` の中身だけを組み立てる(#000009、`_recommend_body`と同じ形)。"""
     b = _rate_base(user_id)
     return f"""<h1>感想 ── ◎ を付けた {len(b["no_note"])} 件</h1>
+{_hashtags_html(b["all"], tag)}
 {_pending_notes_html(b["all"], collapsed=False)}"""
 
 
@@ -6480,6 +6532,7 @@ def _rekey(user_id: str, con, work_key: str, uids: set) -> dict:
                 R.save_work(con, new, {
                     "verdict": sv.get("verdict"), "chosen": sv.get("chosen"),
                     "note_impression": sv.get("note_impression") or "",
+                    "aspects": sv.get("aspects") or "",
                     "note_motive": sv.get("note_motive") or "",
                     "verdict_source": sv.get("verdict_source") or "legacy_unknown",
                     "note_source": sv.get("note_source") or "legacy_unknown"}, user_id=user_id)
@@ -6834,7 +6887,9 @@ def _rec_row(user_id: str, w: dict, *, poster: str = "", rate_always: bool = Fal
     # 崩さない作りなので、押した先がこの行である
     return (f'<article class="rec-row{" check" if w.get("suspect") else ""}'
             f'{" skipped" if unseen else ""}"'
-            f' id="w-{E(CH._anchor(w["work_key"]))}{E(id_suffix)}">'
+            f' id="w-{E(CH._anchor(w["work_key"]))}{E(id_suffix)}"'
+            # 評価の「詳細」（気になった所・良かった所。app.js の aspectsPanel が読む）
+            f' data-aspects="{E(w.get("aspects") or "")}">'
             f'<span class="marg">{dt}{"" if unseen else _stamp(w, v)}</span>'
             f'<div class="page">'
             f'<div class="ttl">{E(w["title"])}</div>'

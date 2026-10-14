@@ -504,12 +504,26 @@ body{font-family:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",YuGothic,syst
 
 /* ---- 料金（render_recommend.price_range → data-yen、app.js の yenLabel・priceFilter） */
 .ticket.cmp .sale .yen{margin:0;white-space:nowrap;font-size:12.5px;color:var(--ink);font-variant-numeric:tabular-nums}
-.yenbar{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:0 0 14px;font-size:13px}
-.yenbar label{font-weight:700}
-.yenbar select{min-height:40px;padding:0 10px;border:1px solid var(--ink);border-radius:8px;background:var(--surf);
- color:var(--ink);font:inherit;font-size:13px}
-.yenbar select:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
-.yenbar .yenn{color:var(--mute);font-size:12px}
+.yrow{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;margin:8px 0 4px}
+.yrow .ysl{width:100%;accent-color:var(--acc);min-height:32px}
+.yfil .yenn{margin:6px 0 0;color:var(--mute);font-size:12px}
+.yfil .yenn:empty{display:none}
+/* 絞り込みの 3 つの札を横 1 列に（app.js の filterRow）。押した 1 つだけを下に全幅で開く */
+.fil2.tabbed{display:block}
+.fil2.tabbed .ftabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:0 0 8px}
+.fil2.tabbed details.pbox>summary{display:none}
+.fil2.tabbed details.pbox:not([open]){display:none}
+.fil2.tabbed>.pfil,.fil2.tabbed>.wfil,.fil2.tabbed>.yfil{margin:0}
+.ftab{min-height:44px;min-width:0;display:flex;align-items:center;gap:6px;padding:4px 10px;border:1px solid var(--grid);
+ border-radius:8px;background:var(--surf);color:var(--ink);font:inherit;font-size:12.5px;text-align:left;cursor:pointer}
+.ftab svg.ico{flex:none;color:var(--mute)}
+.ftab .fl{flex:none;font-weight:700}
+.ftab .fv{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink2)}
+.ftab[aria-expanded=true]{border-color:var(--acc);background:#f0e6e8}
+.ftab[aria-expanded=true] svg.ico{color:var(--acc)}
+.ftab:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+@media(max-width:560px){.ftab{flex-direction:column;align-items:flex-start;gap:0;padding:6px 8px}
+ .ftab svg.ico{display:none}.ftab .fv{max-width:100%;font-size:11.5px}}
 .ticket.yenout{display:none}
 
 /* ---- 「書き込み中…」（app.js の post）。返事を待つあいだ、文字をゆっくり明滅させる */
@@ -540,3 +554,94 @@ a.pill.buy:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
 .wtag:hover{border-color:var(--ink)}
 .wtag[aria-pressed=true]{background:#f0e6e8;border-color:var(--acc);color:var(--acc);font-weight:700}
 .wtag:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+
+/* ---- ツアーの日程は券に全部出す（app.js の compactTickets・起案者の指示 2026-10-14） */
+.ticket.cmp .ltour{display:grid;grid-template-columns:4em minmax(0,1fr);column-gap:6px}
+.ticket.cmp .ltour .tourfull{margin:0;font-size:12.5px;line-height:1.75}
+.ticket.cmp .ltour .tf-row{flex-wrap:wrap;column-gap:8px;row-gap:0}
+
+/* ---- 子が 3 つの組のすだれは 1 行に並べる（起案者の指示 2026-10-14） */
+@media(max-width:820px){
+ .side .psud.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .side .psud.three a{padding:0 6px;gap:6px;font-size:13px;justify-content:center;text-align:center;white-space:nowrap}
+ .side .psud.three a i{display:none}
+ }
+
+/* ---- 券からお気に入りに足す（app.js の favButton）。公演名の右に ☆、押すと名前の一覧 */
+.ticket.cmp .main{position:relative}
+.ticket.cmp .main h3{padding-right:40px}
+.favbtn{position:absolute;right:0;top:0;width:40px;height:40px;display:flex;align-items:center;justify-content:center;
+ padding:0;border:0;border-radius:8px;background:transparent;color:var(--mute);cursor:pointer}
+.favbtn:hover,.favbtn[aria-expanded=true]{color:var(--acc);background:#f0e6e8}
+.favbtn:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.favpop{position:absolute;right:0;top:44px;z-index:30;box-sizing:border-box;width:min(340px,calc(100vw - 48px));
+ padding:12px;border:1px solid var(--ink);border-radius:10px;background:var(--surf);box-shadow:0 8px 24px rgba(29,29,31,.16)}
+.favpop .fpt{margin:0 0 8px;display:flex;flex-direction:column;gap:2px;font-size:13px}
+.favpop .fpt span{font-size:11.5px;color:var(--mute)}
+.favpop .fpl{display:flex;flex-wrap:wrap;gap:6px;max-height:240px;overflow:auto}
+.favpop .fpi{min-height:36px;display:inline-flex;align-items:center;gap:6px;padding:0 10px;border:1px solid var(--base);
+ border-radius:18px;background:var(--surf);color:var(--ink);font:inherit;font-size:12.5px;cursor:pointer}
+.favpop .fpi .fk{font-size:10.5px;color:var(--mute)}
+.favpop .fpi:hover{border-color:var(--ink)}
+.favpop .fpi.added{background:#f0e6e8;border-color:var(--acc);color:var(--acc)}
+.favpop .fpi.added::before{content:"★";margin-right:-2px}
+.favpop .fpi:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.favpop .said{margin:8px 0 0;font-size:12px}
+.favpop .said:empty{display:none}
+
+/* ---- 感想のハッシュタグ（app.js の linkTags・tagChips、app.py の _hashtags_html） */
+a.htag-in{color:var(--acc);text-decoration:none;font-style:normal}
+a.htag-in:hover{text-decoration:underline}
+.htchips{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:6px 0}
+.htchips .htl2{font-size:11.5px;color:var(--mute)}
+.htc{min-height:32px;padding:0 10px;border:1px solid var(--base);border-radius:16px;background:var(--surf);
+ color:var(--acc);font:inherit;font-size:12.5px;cursor:pointer}
+.htc:hover{border-color:var(--acc)}
+.htc:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.htags{margin:0 0 22px}
+.htags .htl{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 12px}
+.htag{min-height:36px;display:inline-flex;align-items:center;gap:6px;padding:0 12px;border:1px solid var(--base);
+ border-radius:18px;background:var(--surf);color:var(--acc);text-decoration:none;font-size:13px}
+.htag .hn{font-size:11px;color:var(--mute)}
+.htag.on{background:#f0e6e8;border-color:var(--acc);font-weight:700}
+.htagged{list-style:none;margin:0;padding:0}
+.htagged li{padding:10px 0;border-bottom:1px solid var(--grid)}
+.htagged .hd{margin-right:8px;font-size:12px;color:var(--mute);font-variant-numeric:tabular-nums}
+.htagged .int{margin:4px 0 0;font-size:13px;line-height:1.7}
+.favpop .fpi.added:disabled{opacity:1;color:var(--acc);cursor:default}
+
+/* ---- 評価の「詳細」（app.js の aspectsPanel・aspectsSetting） */
+.asp{margin:10px 0 0;border-top:1px solid var(--grid)}
+.asp>summary{min-height:40px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;list-style:none;cursor:pointer;font-size:13px}
+.asp>summary::-webkit-details-marker{display:none}
+.asp>summary::before{content:"";flex:none;width:6px;height:6px;border-right:1.5px solid currentColor;
+ border-bottom:1.5px solid currentColor;transform:translateY(-2px) rotate(45deg);transition:transform .15s}
+.asp[open]>summary::before{transform:translateY(1px) rotate(-135deg)}
+.asp .aspt{font-weight:700}
+.asp .asps{font-size:12px;color:var(--ink2)}
+.asp .asph{margin:0 0 8px;font-size:11.5px;color:var(--mute);line-height:1.6}
+.aspscale,.aspg{max-width:560px}
+.aspscale{display:grid;grid-template-columns:8em minmax(0,1fr) 5.5em;column-gap:10px;margin:0 0 2px;font-size:11px;color:var(--mute)}
+.aspscale .asc{display:flex;justify-content:space-between}
+.aspg{display:flex;flex-direction:column;gap:2px}
+.aspr{display:grid;grid-template-columns:8em minmax(0,1fr) 5.5em;align-items:center;column-gap:10px;min-height:40px}
+.aspr .aspl{font-size:12.5px}
+.aspr .aspv{font-size:12px;color:var(--ink2)}
+.aspsl{width:100%;min-height:32px;accent-color:var(--ink2)}
+.aspsl[data-m=good]{accent-color:var(--curtain)}
+.aspsl[data-m=good]+.aspv{color:var(--acc);font-weight:700}
+.aspsl[data-m=bad]{accent-color:var(--ink)}
+.aspsl[data-m=bad]+.aspv{color:var(--ink);font-weight:700}
+.aspsl:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+@media(max-width:620px){.aspscale{grid-template-columns:minmax(0,1fr) 5em}
+ .aspscale>span:first-child{display:none}
+ .aspr{grid-template-columns:minmax(0,1fr) 5em;row-gap:0}
+ .aspr .aspl{grid-column:1/-1;font-weight:700;padding-top:4px}}
+.asp .said{margin:6px 0 0;font-size:12px}
+.asp .said:empty{display:none}
+.aspset{margin:0 0 22px}
+.aspmode{display:flex;flex-wrap:wrap;gap:8px}
+.aspm{display:flex;align-items:flex-start;gap:8px;min-height:44px;padding:8px 12px;border:1px solid var(--grid);border-radius:8px;cursor:pointer}
+.aspm span{display:block;font-size:11.5px;color:var(--mute)}
+.aspm:has(input:checked){border-color:var(--acc);background:#f0e6e8}
+.aspset .said:empty{display:none}

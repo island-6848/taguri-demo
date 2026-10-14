@@ -50,6 +50,58 @@ WRITES_PER_ROW = 2             # the poster row and its primary-key index entry
 TYPES = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp"}
 
 
+# ---- 画質を落としてから入れる（起案者の指示 2026-10-14「ポスターはちょっと画質落としてから入れて。
+# 過去の公演はちょっと粗めでもよい」）。画面のポスターは幅 84〜104 px（高精細の画面で 2〜3 倍）なので、
+# これからの公演は幅 360 px、終わった公演は幅 240 px の WebP にする。Pillow が無ければ元のまま入れる
+UPCOMING = {"width": 360, "quality": 72}
+ENDED = {"width": 240, "quality": 55}
+
+
+def encode(body: bytes, *, coarse: bool) -> tuple[bytes, str, str] | None:
+    """(縮めた中身, 拡張子, Content-Type)。Pillow が無い・読めない画像は None（元のまま入れる）。"""
+    try:
+        from PIL import Image
+        import io
+    except ImportError:
+        return None
+    spec = ENDED if coarse else UPCOMING
+    try:
+        with Image.open(io.BytesIO(body)) as im:
+            im = im.convert("RGB")
+            if im.width > spec["width"]:
+                im = im.resize((spec["width"], round(im.height * spec["width"] / im.width)), Image.LANCZOS)
+            buf = io.BytesIO()
+            im.save(buf, "WEBP", quality=spec["quality"], method=6)
+        return buf.getvalue(), ".webp", "image/webp"
+    except Exception:                                                # noqa: BLE001
+        return None
+
+
+def ended_ids(data: Path, today: str) -> set[str]:
+    """会期が終わった公演の stage_id（手元の一覧 candidates.jsonl と過去の公演 past/stages.jsonl から）。"""
+    import re
+    out: set[str] = set()
+    for rel in (Path("review") / "candidates.jsonl", Path("past") / "stages.jsonl"):
+        f = data / rel
+        if not f.exists():
+            continue
+        for line in f.read_text(encoding="utf-8").split("\n"):
+            if not line.strip():
+                continue
+            try:
+                r = json.loads(line)
+            except ValueError:
+                continue
+            end = r.get("end") or ""
+            if not end:
+                ds = re.findall(r"(20\d\d)/(\d{1,2})/(\d{1,2})", r.get("period") or "")
+                end = f"{ds[-1][0]}-{int(ds[-1][1]):02d}-{int(ds[-1][2]):02d}" if ds else ""
+            if end and end < today:
+                out.add(str(r.get("stage_id") or ""))
+    out.discard("")
+    return out
+
+
 def load(data: Path) -> dict[str, str]:
     p = data / MANIFEST
     return json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
@@ -64,7 +116,26 @@ def put_object(account: str, token: str, bucket: str, key: str, body: bytes, cty
         r.read()
 
 
-def build(data: Path, out: Path, *, bucket: str, limit: int, put=put_object) -> dict:
+def _obj_url(account: str, bucket: str, key: str) -> str:
+    return (f"https://api.cloudflare.com/client/v4/accounts/{account}/r2/buckets/{bucket}/objects/"
+            + urllib.parse.quote(key))
+
+
+def get_object(account: str, token: str, bucket: str, key: str) -> bytes:
+    req = urllib.request.Request(_obj_url(account, bucket, key), headers={"Authorization": f"Bearer {token}"})
+    with urllib.request.urlopen(req, timeout=60) as r:
+        return r.read()
+
+
+def delete_object(account: str, token: str, bucket: str, key: str) -> None:
+    req = urllib.request.Request(_obj_url(account, bucket, key), method="DELETE",
+                                 headers={"Authorization": f"Bearer {token}"})
+    with urllib.request.urlopen(req, timeout=60) as r:
+        r.read()
+
+
+def build(data: Path, out: Path, *, bucket: str, limit: int, put=put_object,
+          get=get_object, delete=delete_object, reshrink: int = 0) -> dict:
     account, token = os.environ.get("CLOUDFLARE_ACCOUNT_ID", ""), os.environ.get("CLOUDFLARE_API_TOKEN", "")
     done = load(data)
     files = sorted(f for f in (data / IMG).iterdir() if f.is_file()) if (data / IMG).exists() else []
@@ -76,6 +147,8 @@ def build(data: Path, out: Path, *, bucket: str, limit: int, put=put_object) -> 
     stop = ""
     u = FT.load(data)
     d1_rows = FT.d1_left(data) // WRITES_PER_ROW
+    import datetime as _dt
+    ended = ended_ids(data, (_dt.datetime.now(_dt.timezone.utc) + _dt.timedelta(hours=9)).date().isoformat())
     try:
         for f in todo:
             size = f.stat().st_size
@@ -88,10 +161,18 @@ def build(data: Path, out: Path, *, bucket: str, limit: int, put=put_object) -> 
             if len(got) + 1 > d1_rows:
                 stop = "今日の D1 の書き込みの残りが無いので止めた（続きは明日）"
                 break
+            body, key, ctype = f.read_bytes(), f.name, TYPES[f.suffix.lower()]
+            small = encode(body, coarse=f.stem in ended)
+            if small and len(small[0]) < len(body):
+                body, key, ctype = small[0], f.stem + small[1], small[2]
+            size = len(body)
+            if FT.r2_bytes(u) + size > FT.CAPS["r2_bytes"]:
+                stop = f"R2 の保存が上限 {FT.CAPS['r2_bytes']:,} バイトに届くので止めた（無料枠 10 GB）"
+                break
             m = FT.month()
             u["r2"]["class_a"][m] = FT.r2_class_a(u) + 1       # 送る前に数える
             try:
-                put(account, token, bucket, f.name, f.read_bytes(), TYPES[f.suffix.lower()])
+                put(account, token, bucket, key, body, ctype)
             except urllib.error.HTTPError as e:
                 # 401/403: the token has no R2 access; 404: the bucket does not exist.
                 stop = f"R2 への書き込みを止めた（HTTP {e.code}）。鍵に R2 の権限があるか、バケット {bucket} があるかを確かめる"
@@ -99,8 +180,47 @@ def build(data: Path, out: Path, *, bucket: str, limit: int, put=put_object) -> 
             except Exception as e:                                   # noqa: BLE001
                 stop = f"R2 への書き込みを止めた（{type(e).__name__}）"
                 break
-            u["r2"]["sizes"][f.name] = size
-            got[f.stem] = f.name
+            u["r2"]["sizes"][key] = size
+            got[f.stem] = key
+        # **すでに R2 にある大きいままのポスターを縮め直す**（2026-10-14 までに入れた 2,000 枚は、取得の
+        # 機械に Pillow が無くて縮んでいなかった）。1 回に `reshrink` 枚まで: 取り出し（Class B）→ 縮める →
+        # 新しい名前で入れる（Class A）→ 古いものを消す（無料の操作）。上限の手前で止まるのは上と同じ
+        n_re = 0
+        if not stop:
+            for stem, old_key in sorted(done.items()):
+                if n_re >= reshrink:
+                    break
+                if old_key.endswith(".webp") or stem in got:
+                    continue
+                if FT.r2_class_a(u) + 1 > FT.CAPS["r2_class_a_month"] or len(got) + 1 > d1_rows:
+                    break
+                if FT.r2_class_b(u) + 1 > FT.CAPS["r2_class_b_month"] // 10:
+                    break
+                m = FT.month()
+                u["r2"].setdefault("class_b", {})[m] = FT.r2_class_b(u) + 1
+                try:
+                    body = get(account, token, bucket, old_key)
+                except Exception as e:                               # noqa: BLE001
+                    stop = f"R2 から読めなかったので縮め直しを止めた（{type(e).__name__}）"
+                    break
+                small = encode(body, coarse=stem in ended)
+                if not small or len(small[0]) >= len(body):
+                    continue
+                new_key = stem + small[1]
+                u["r2"]["class_a"][m] = FT.r2_class_a(u) + 1
+                try:
+                    put(account, token, bucket, new_key, small[0], small[2])
+                except Exception as e:                               # noqa: BLE001
+                    stop = f"縮め直したポスターを入れられなかった（{type(e).__name__}）"
+                    break
+                u["r2"]["sizes"][new_key] = len(small[0])
+                got[stem] = new_key
+                try:
+                    delete(account, token, bucket, old_key)
+                    u["r2"]["sizes"].pop(old_key, None)
+                except Exception:                                    # noqa: BLE001
+                    pass       # 消せなかった古いものは保存の数えに残す（少なく数えない）
+                n_re += 1
     finally:
         FT.save(data, u)
     FT.d1_spend(data, WRITES_PER_ROW * len(got))
@@ -109,7 +229,8 @@ def build(data: Path, out: Path, *, bucket: str, limit: int, put=put_object) -> 
         (out / "posters-upload.sql").write_text(
             "\n".join(s.replace("INSERT INTO", "INSERT OR REPLACE INTO", 1) for s in sql) + "\n", encoding="utf-8")
     (out / "pending.json").write_text(json.dumps({**done, **got}, ensure_ascii=False, sort_keys=True), encoding="utf-8")
-    return {"uploaded": len(got), "already": len(done), "left": len(files) - len(done) - len(got), "stopped": stop,
+    return {"uploaded": len(got) - n_re, "reshrunk": n_re, "already": len(done),
+            "left": len(files) - len(done) - (len(got) - n_re), "stopped": stop,
             "r2_bytes": FT.r2_bytes(u), "r2_class_a_month": FT.r2_class_a(u)}
 
 
@@ -125,12 +246,13 @@ def main() -> int:
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--bucket", default=os.environ.get("TAGURI_POSTER_BUCKET", "taguri-posters"))
     ap.add_argument("--limit", type=int, default=2000)
+    ap.add_argument("--reshrink", type=int, default=500, help="R2 にある大きいままのポスターを 1 回に縮め直す枚数")
     a = ap.parse_args()
     if a.action == "commit":
         commit(a.data, a.out)
         print("posters: delivered list saved")
         return 0
-    print(json.dumps(build(a.data, a.out, bucket=a.bucket, limit=a.limit), ensure_ascii=False))
+    print(json.dumps(build(a.data, a.out, bucket=a.bucket, limit=a.limit, reshrink=a.reshrink), ensure_ascii=False))
     return 0
 
 

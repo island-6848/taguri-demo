@@ -363,15 +363,19 @@ def _q(v) -> str:
 
 
 def _inserts(table: str, cols: str, rows: list[tuple]) -> list[str]:
+    # **大きさはバイトで数える。** 文字数で数えていたので、日本語（UTF-8 で 1 字 3 バイト）の多い
+    # 行では 1 文が上限の約 3 倍になり、D1 が SQLITE_TOOBIG で断った（2026-10-14 の past_stage）
     head = f"INSERT INTO {table}({cols}) VALUES"
-    out, cur, size = [], [], len(head)
+    nbytes = lambda t: len(t.encode("utf-8"))                      # noqa: E731
+    out, cur, size = [], [], nbytes(head)
     for row in rows:
         val = "(" + ",".join(_q(v) for v in row) + ")"
-        if cur and size + len(val) + 2 > MAX_STATEMENT_BYTES:
+        n = nbytes(val)
+        if cur and size + n + 2 > MAX_STATEMENT_BYTES:
             out.append(head + ",".join(cur) + ";")
-            cur, size = [], len(head)
+            cur, size = [], nbytes(head)
         cur.append(val)
-        size += len(val) + 1
+        size += n + 1
     if cur:
         out.append(head + ",".join(cur) + ";")
     return out

@@ -44,7 +44,11 @@ const IMPLEMENTED = new Set(["recommend", "interest", "reminder", "favourites", 
   "start", "register", "settings", "search"]);
 
 // --- NAV(app.py の NAV表と同じデータ) -------------------------------------
-const NAV = [[null, "おすすめ", "ticket", [["/recommend", "今週のおすすめ", "ticket"], ["/recommend/reminder", "開幕リマインド", "inbox"], ["/recommend/interest", "興味あり", "flag"], ["/recommend/favourites", "お気に入り", "star"]]], ["/calendar", "公演カレンダー", "calendar", []], ["/tickets", "購入済み公演", "ticket", []], [null, "観た公演の評価", "check", [["/rate", "評価一覧", "check"], ["/rate/unrated", "未評価", "clock"], ["/rate/notes", "感想", "pencil"]]], ["/register", "公演情報の登録", "inbox", []], [null, "記録を見返す", "chart", [["/records", "眺める", "chart"], ["/records/trace", "たどる", "user"], ["/records/chronicle", "観劇史年表", "calendar"], ["/records/works", "日記帳", "book"]]], ["/search", "探す", "search", []], ["/settings", "設定", "gear", []]];
+// ページの地図（起案者の指摘 2026-10-14「リマインドはおすすめの下？違和感ある」で見直した）:
+// おすすめ＝これから観るものを選ぶ（今週のおすすめ・興味あり・お気に入り）／予定＝観に行く日を確かめる
+// （公演カレンダー・開幕リマインド・購入済み公演）。開幕リマインドは「初日が近い公演の知らせ」で、選ぶ画面
+// ではなく日程を見る画面なので、予定に移した。URL（/recommend/reminder）は変えない（覚えた道を壊さない）
+const NAV = [[null, "おすすめ", "ticket", [["/recommend", "今週のおすすめ", "ticket"], ["/recommend/interest", "興味あり", "flag"], ["/recommend/favourites", "お気に入り", "star"]]], [null, "予定", "calendar", [["/calendar", "公演カレンダー", "calendar"], ["/recommend/reminder", "開幕リマインド", "inbox"], ["/tickets", "購入済み公演", "ticket"]]], [null, "観た公演の評価", "check", [["/rate", "評価一覧", "check"], ["/rate/unrated", "未評価", "clock"], ["/rate/notes", "感想", "pencil"]]], ["/register", "公演情報の登録", "inbox", []], [null, "記録を見返す", "chart", [["/records", "眺める", "chart"], ["/records/trace", "たどる", "user"], ["/records/chronicle", "観劇史年表", "calendar"], ["/records/works", "日記帳", "book"]]], ["/search", "探す", "search", []], ["/settings", "設定", "gear", []]];
 
 // --- 絵記号(icons.py の P/ALIAS をそのまま) --------------------------------
 const ICON_P = {"ticket": "M3 9a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2 2 2 0 0 0 0 6 2 2 0 0 1-2 2H5a2 2 0 0 1-2-2 2 2 0 0 0 0-6zM11 7v10", "star": "M12 3.8l2.5 5.1 5.6.8-4 3.9 1 5.6-5.1-2.7-5.1 2.7 1-5.6-4-3.9 5.6-.8z", "inbox": "M3 12h5l1.5 2.5h5L16 12h5M3 12l3-7h12l3 7v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z", "chart": "M3 20h18M6.5 20v-5M11.5 20V6M16.5 20v-9", "search": "M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM16.2 16.2 21 21", "download": "M12 3v12m0 0 4-4m-4 4-4-4M4 20h16", "mail": "M3 6h18v12H3zM3 6.5l9 6.5 9-6.5", "plus": "M12 5v14M5 12h14", "clock": "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7.5V12l3.5 2", "pencil": "M4 20h4L18 10l-4-4L4 16zM13.5 6.5l4 4", "tag": "M4 12.5 12.5 4H20v7.5L11.5 20zM16.4 7.6h.01", "image": "M3 5h18v14H3zM3 15.5l5-4 4 3 3-2.5 6 4.5M8 9.5h.01", "user": "M12 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM4 20c0-3.3 3.6-5 8-5s8 1.7 8 5", "building": "M4 20V6l6-2.5V20M10 20h10V10.5L10 7M13.5 12h.01M13.5 16h.01M17 12h.01M17 16h.01", "book": "M4 5h7v15H4zM13 5h7v15h-7M11 5v15", "light": "M12 3v3.5M12 17.5V21M3 12h3.5M17.5 12H21M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18", "eye": "M2.5 12S6 6 12 6s9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6zM12 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z", "check": "M4.5 12.5 9.5 18 20 6", "flag": "M5 21V4h13l-2.5 4.5L18 13H5", "calendar": "M4 6.5h16V20H4zM4 10.5h16M8.5 3.5v4M15.5 3.5v4", "chevron": "M9.5 5.5 16 12l-6.5 6.5", "network": "M6 18a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM18 18a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM6.9 15.3 10.6 9M17.1 15.3 13.4 9M8 17.3h8", "gear": "M10.6 3.1 13.4 3.1 15.2 6.5 19.0 6.3 20.4 8.8 18.4 12.0 20.4 15.2 19.0 17.7 15.2 17.5 13.4 20.9 10.6 20.9 8.8 17.5 5.0 17.7 3.6 15.2 5.6 12.0 3.6 8.8 5.0 6.3 8.8 6.5ZM12 9.8a2.2 2.2 0 1 0 0 4.4 2.2 2.2 0 0 0 0-4.4z", "link": "M14 4h6v6M20 4 10 14M18 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h5"};
@@ -102,8 +106,8 @@ function renderNav() {
 // 「４つの大きいメニューにアイコンをつけて」）。パソコン幅では今までどおり左の帯（NAV）を使う。
 // 探すは帯の検索窓、設定は右上の歯車、公演情報の登録はその左の「＋」から入る。
 const PNAV = [
-  ["rec", "おすすめ", "yarn", [["/recommend", "今週のおすすめ"], ["/recommend/reminder", "開幕リマインド"], ["/recommend/interest", "興味あり"], ["/recommend/favourites", "お気に入り"]]],
-  ["plan", "予定", "calendar", [["/calendar", "公演カレンダー"], ["/tickets", "購入済み公演"]]],
+  ["rec", "おすすめ", "yarn", [["/recommend", "今週のおすすめ"], ["/recommend/interest", "興味あり"], ["/recommend/favourites", "お気に入り"]]],
+  ["plan", "予定", "calendar", [["/calendar", "公演カレンダー"], ["/recommend/reminder", "開幕リマインド"], ["/tickets", "購入済み公演"]]],
   ["rate", "評価", "stamp", [["/rate", "評価一覧"], ["/rate/unrated", "未評価"], ["/rate/notes", "感想"]]],
   ["rec2", "記録", "notebook", [["/records/works", "日記帳"], ["/records", "眺める"], ["/records/trace", "たどる"], ["/records/chronicle", "観劇史年表"]]],
 ];
@@ -115,7 +119,7 @@ function renderPNav() {
     + '<div class="pnav">' + PNAV.map(([id, label, icon]) =>
       '<button type="button" class="pm" data-pm="' + id + '" aria-expanded="false">' + ico(icon, 22)
       + '<span class="pl">' + E(label) + ico("chevron", 9, "cv") + "</span></button>").join("") + "</div>"
-    + PNAV.map(([id, , , kids]) => '<div class="psud" data-psud="' + id + '" hidden>'
+    + PNAV.map(([id, , , kids]) => '<div class="psud' + (kids.length === 3 ? " three" : "") + '" data-psud="' + id + '" hidden>'
       + kids.map(([p, t]) => '<a href="' + p + '" data-path="' + p + '"><i aria-hidden="true"></i>' + E(t) + "</a>").join("")
       + "</div>").join("");
 }
@@ -397,6 +401,8 @@ function renderScreen(el, activePath, d, exposureSource) {
   shortAddButtons(el);
   divergeVerdicts(el);
   stampRerate(el);
+  aspectsPanel(el);
+  if (activePath === "/settings") aspectsSetting(el);
   gotoRegisterCard(el);
   if (window.TaguriExposure) TaguriExposure.start(el, exposureSource || "network", async (path, body) => {
     const r = await fetch(API_BASE + path, {method: "POST", credentials: "include", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
@@ -408,9 +414,11 @@ function renderScreen(el, activePath, d, exposureSource) {
   }
   if (d.public) applyDemoRestrictions(el);
   renderCrumbBar(activePath, d.title || "");
+  if (Array.isArray(d.note_tags)) NOTE_TAGS = d.note_tags;
   infoFromLede(el);
   if (activePath === "/recommend" && Array.isArray(d.unrated_ends)) unratedNudge(d.unrated_ends);
   priceFilter(el);
+  filterRow(el);
   updateNavActive(activePath);
   fixupSynClamp(el);
   fixupMonthScroll(el);
@@ -602,11 +610,13 @@ function firstSentence(t) {
   if (s.length > 90) s = s.slice(0, 88) + "…";
   return s.length < t.length && !s.endsWith("…") ? s + "…" : s;
 }
-// ---- 料金 ── 表示と絞り込み（起案者の指示 2026-10-14「金額での絞り込みもできるように」）
+// ---- 料金 ── 表示と絞り込み（起案者の指示 2026-10-14「金額での絞り込みもできるように」
+// 「選択肢で選ぶんじゃなくて、スライダーで調節できるように」）
 // 金額は券ごとの data-yen="最安-最高"（円）。絞り込みは「いちばん安い券がこの金額以下」の公演を残す
-// （学生券など安い券がある公演を消さない）。料金の分からない公演は消さずに残す。選んだ上限はこの端末に覚える
+// （学生券など安い券がある公演を消さない）。料金の分からない公演は消さずに残す。選んだ上限はこの端末に覚える。
+// つまみは動かしたその場で効く（画面の中の券を隠すだけで、サーバーには何も送らない）
 const YEN_KEY = "taguri.yenMax";
-const YEN_STEPS = [0, 2000, 3000, 4000, 5000, 6000, 8000, 10000];
+const YEN_STEPS = [1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 10000, 12000, 15000, 0];   // 0 は上限なし
 function yenOf(t) {
   const m = /^(\d+)-(\d+)$/.exec(t.dataset.yen || "");
   return m ? [Number(m[1]), Number(m[2])] : null;
@@ -616,24 +626,28 @@ function yenLabel([lo, hi]) {
   if (hi === 0) return "無料";
   return lo === hi ? f(lo) + "円" : (lo === 0 ? "無料" : f(lo)) + "〜" + f(hi) + "円";
 }
+const yenStepLabel = v => v ? v.toLocaleString("ja-JP") + "円まで" : "上限なし";
 function priceFilter(el) {
-  const tickets = [...el.querySelectorAll("article.ticket")];
-  if (!tickets.some(t => t.dataset.yen)) return;
-  const h1 = el.querySelector("h1");
-  if (!h1 || el.querySelector(".yenbar")) return;
+  if (!el.querySelector("article.ticket[data-yen]") || el.querySelector(".yfil")) return;
   let cur = 0;
   try { cur = Number(localStorage.getItem(YEN_KEY) || 0) || 0; } catch (e) { cur = 0; }
-  if (!YEN_STEPS.includes(cur)) cur = 0;
-  const bar = document.createElement("div");
-  bar.className = "yenbar";
-  bar.innerHTML = '<label for="yenmax">料金</label><select id="yenmax">'
-    + YEN_STEPS.map(v => '<option value="' + v + '"' + (v === cur ? " selected" : "") + ">"
-      + (v ? v.toLocaleString("ja-JP") + "円まで" : "すべて") + "</option>").join("")
-    + '</select><span class="yenn" role="status"></span>';
-  const anchor = h1.nextElementSibling && h1.nextElementSibling.matches(".lede, .lead, p") ? h1.nextElementSibling : h1;
-  anchor.after(bar);
+  let idx = YEN_STEPS.indexOf(cur);
+  if (idx < 0) idx = YEN_STEPS.length - 1;
+  const box = document.createElement("div");
+  box.className = "yfil";
+  box.innerHTML = '<details class="pbox ybox"><summary>' + ico("ticket", 15) + '料金で絞り込む ── いまは<b class="ynow"></b></summary>'
+    + '<p class="lead">いちばん安い券がこの金額までの公演を出します。料金の分からない公演は出したままにします。</p>'
+    + '<div class="yrow"><span class="wl">1 枚の料金</span>'
+    + '<input class="ysl" type="range" min="0" max="' + (YEN_STEPS.length - 1) + '" step="1" value="' + idx + '" aria-label="1 枚の料金の上限">'
+    + '<span class="wv yv"></span></div>'
+    + '<div class="wscale"><span>← ' + yenStepLabel(YEN_STEPS[0]) + '</span><span>' + yenStepLabel(0) + ' →</span></div>'
+    + '<p class="yenn" role="status"></p></details>';
+  const fil = el.querySelector(".fil2");
+  if (fil) fil.appendChild(box);
+  else { const h1 = el.querySelector("h1"); if (!h1) return; h1.after(box); }
+  const sl = box.querySelector(".ysl");
   const apply = () => {
-    const max = Number(bar.querySelector("select").value) || 0;
+    const max = YEN_STEPS[Number(sl.value)] || 0;
     let hidden = 0;
     el.querySelectorAll("article.ticket").forEach(t => {
       const y = yenOf(t);
@@ -641,11 +655,53 @@ function priceFilter(el) {
       t.classList.toggle("yenout", hide);
       if (hide) hidden++;
     });
-    bar.querySelector(".yenn").textContent = hidden ? hidden + " 件を隠しています（料金の分からない公演は出しています）" : "";
+    box.querySelector(".yv").textContent = yenStepLabel(max);
+    box.querySelector(".ynow").textContent = yenStepLabel(max);
+    sl.setAttribute("aria-valuetext", yenStepLabel(max));
+    box.querySelector(".yenn").textContent = hidden ? hidden + " 件を隠しています" : "";
+    const tab = el.querySelector('.ftab[data-for="ybox"] .fv');
+    if (tab) tab.textContent = yenStepLabel(max);
     try { localStorage.setItem(YEN_KEY, String(max)); } catch (e) { /* 覚えられなくても絞り込みは効く */ }
   };
-  bar.querySelector("select").addEventListener("change", apply);
+  sl.addEventListener("input", apply);
   apply();
+}
+
+// ---- 絞り込みを横 1 列に並べる（起案者の指示 2026-10-14「場所、効かせ方、料金などの絞り込み、横1列に3つ
+// 並べてほしい」）。3 つの見出しを札として 1 行に並べ、押した 1 つだけを下に全幅で開く（ほかは閉じる）。
+// 中身（都道府県の札・効かせ方のつまみ・料金のつまみ）はそれぞれの details のまま使う
+function filterRow(el) {
+  const fil = el.querySelector(".fil2");
+  if (!fil || fil.querySelector(".ftabs")) return;
+  const boxes = [...fil.querySelectorAll("details.pbox")];
+  if (boxes.length < 2) return;
+  const name = d => d.classList.contains("wbox") ? ["効かせ方", "light"] : d.classList.contains("ybox") ? ["料金", "ticket"] : ["場所", "search"];
+  const tabs = document.createElement("div");
+  tabs.className = "ftabs";
+  tabs.setAttribute("role", "group");
+  tabs.setAttribute("aria-label", "絞り込み");
+  boxes.forEach((d, i) => {
+    const key = d.classList.contains("wbox") ? "wbox" : d.classList.contains("ybox") ? "ybox" : "pbox" + i;
+    d.dataset.tab = key;
+    const [label, ic] = name(d);
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "ftab";
+    b.dataset.for = key;
+    b.setAttribute("aria-expanded", d.open ? "true" : "false");
+    b.innerHTML = ico(ic, 15) + '<span class="fl">' + label + '</span><span class="fv">'
+      + E(d.querySelector("summary b")?.textContent || "") + "</span>";
+    b.addEventListener("click", () => {
+      const open = !d.open;
+      boxes.forEach(x => { x.open = false; });
+      tabs.querySelectorAll(".ftab").forEach(x => x.setAttribute("aria-expanded", "false"));
+      d.open = open;
+      b.setAttribute("aria-expanded", open ? "true" : "false");
+    });
+    tabs.appendChild(b);
+  });
+  fil.prepend(tabs);
+  fil.classList.add("tabbed");
 }
 
 function compactTickets(root) {
@@ -746,8 +802,18 @@ function compactTickets(root) {
       });
       ul.after(b);
     }
-    // くわしく: 会期と料金・日程・出演と作り手・あらすじ（全文と入れ口）・公式サイト
-    [".when", ".tourfull", ".cast", ".syn", ".nolink"].forEach(sel => {
+    // ツアーの日程は、閉じていても全部出す（起案者の指示 2026-10-14「おすすめ欄にはつねにツアー日程を全部書いて
+    // （土地で絞り込んでたとしても）」）。出演・あらすじと同じ形で「日程」の見出しを付けて先頭に置く
+    const tf = main.querySelector(".tourfull");
+    if (tf) {
+      const row = document.createElement("div");
+      row.className = "ltour";
+      row.innerHTML = '<span class="cl">日程</span>';
+      row.appendChild(tf);
+      lead.prepend(row);
+    }
+    // くわしく: 会期と料金・出演と作り手・あらすじ（全文と入れ口）・公式サイト
+    [".when", ".cast", ".syn", ".nolink"].forEach(sel => {
       const n = main.querySelector(":scope > " + sel) || main.querySelector(sel);
       if (n && !n.closest(".leadbox")) box.appendChild(n);
     });
@@ -931,8 +997,14 @@ document.addEventListener("click", ev => {
     // **推薦の枠だけが対象である** ── 興味あり・お気に入りは順位で切った枠ではないので、
     // 埋める先が無い
     const slot = b.closest(".ticket.recommend");
-    if (slot) body.shown = [...document.querySelectorAll(".ticket.recommend")]
-                             .map(a => a.dataset.stage).filter(Boolean);
+    // 記録だけを先に送り、入れ替わりの 1 枚はあとで別に頼む（fill_only）。同じ要求でしていると、
+    // 次の候補を選ぶ重い計算が終わるまで「記録しました」が出なかった（起案者の指摘 2026-10-14）
+    const shown = slot ? [...document.querySelectorAll(".ticket.recommend")].map(a => a.dataset.stage).filter(Boolean) : null;
+    if (g.dataset.stage) {
+      body.nofill = true;
+      const tk0 = b.closest(".ticket");
+      if (tk0 && tk0.dataset.tours !== undefined) body.siblings = tk0.dataset.tours.split(",").filter(Boolean);
+    }
     // **もぎれる。** 押した結果が形で分かる（記録できなかったら元に戻す）。
     // **評価待ちの行は ◎○△× を押したときに外れる**（起案者の指示・2026-08-24）──
     // 半券がもぎられるのは劇場に入るときなので、観終わった 1 枚が外れる形にする。
@@ -946,9 +1018,16 @@ document.addEventListener("click", ev => {
     // 押した 1 つだけに印を付ける（色が変わって弾む・theme.css の .picked）。記録できなかったら外す
     // （起案者の指摘 2026-10-13「興味ありだけ黒いのなぜ？押したら色変わるとかなにかしらのアニメーション」）
     g.querySelectorAll("button[data-v]").forEach(x => x.classList.toggle("picked", x === b));
-    post(path, body, g).then(d => {
+    post(path, body, g).then(async d => {
       if (!d) { if (tear) row.classList.remove("torn"); b.classList.remove("picked"); return; }
       g.classList.add("done");
+      if (shown && g.dataset.stage) {
+        const f = await fetch(API_BASE + "/api/react", {method: "POST", credentials: "include",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({stage_id: g.dataset.stage, fill_only: true, shown})})
+          .then(r => r.ok ? r.json() : null).catch(() => null);
+        if (f && f.fill) d.fill = f.fill;
+      }
       // **押した評価を、その場で余白に押す**（起案者の指示 ──「一個操作したら適宜
       // リロードしてほしい」の趣旨。ここは読み込み直さずに済む）。**判子が出ないと、
       // 押したのに何も起きていないように見える** ── 以前は評価の字が出るのは次に
@@ -1005,8 +1084,8 @@ document.addEventListener("click", ev => {
             all[all.length - 1].after(fresh);
             if (window.TaguriExposure) TaguriExposure.refresh(contentEl(), "fill");
             bindNotes(fresh);          // 足した 1 枚の入力欄にも動きを付ける
-            const ys = document.querySelector(".yenbar select");   // 料金の絞り込みを足した 1 枚にも効かせる
-            if (ys) ys.dispatchEvent(new Event("change"));
+            const ys = document.querySelector(".yfil .ysl");   // 料金の絞り込みを足した 1 枚にも効かせる
+            if (ys) ys.dispatchEvent(new Event("input"));
           }
         }
       }
@@ -1371,8 +1450,19 @@ document.addEventListener("click", ev => {
     // **書いてある感想は、その文をそのまま書き直す**（起案者の指示 2026-10-13「書き直す押したら下に
     // テキストボックス出すのではなく、そのうえに書いてある斜体の文章直接編集できるようにして」）
     if (r && r.querySelector(".int")) {
-      editInPlace(b, r.querySelector(".int"), box.querySelector("textarea"), r, "/api/note",
+      const el = r.querySelector(".int");
+      editInPlace(b, el, box.querySelector("textarea"), r, "/api/note",
                   t => ({work_key: t.dataset.note, note_impression: t.value}), "感想を保存しました");
+      // 書き直しているあいだだけ、タグの札を文の下に出す。書き終えたら札を外し、タグをリンクに戻す
+      if (el.isContentEditable && !r.querySelector(".htchips")) {
+        const chips = tagChips(tag => {
+          el.textContent = addTag(el.textContent, tag);
+          const sel = getSelection(), rg = document.createRange();
+          rg.selectNodeContents(el); rg.collapse(false); sel.removeAllRanges(); sel.addRange(rg);
+        });
+        r.after(chips);
+        el.addEventListener("blur", () => setTimeout(() => { chips.remove(); linkTags(r); }, 50), {once: true});
+      }
       return;
     }
     if (r) r.hidden = true; else b.hidden = true;
@@ -1972,6 +2062,101 @@ function divergeVerdicts(root) {
 // 各ハンコの丸を押したらポップアップで選びなおしできるのがでて、押し直せるようにして」）。
 // 判子を押すと、その横に ◎○△× の小さな札が開く。押すと今までどおり記録し（同じ押し口 data-v）、判子が
 // 押し直され、札は閉じる。札の外を押すか Esc で閉じる
+// ---- 評価の「詳細」（起案者の指示 2026-10-14「詳細の画面を作って」・q-pr13-aspects-screen）。
+// 評価を付けた記録に「詳細」を出し、8 項目それぞれに 良かった／ふつう／気になった を選ぶ。保存の形は
+// works.aspects（気になった項目はコード、良かった項目は先頭に +、カンマ区切り。「ふつう」は書かない）で、
+// POST /api/rate {work_key, aspects}。推薦は付いた印だけを見る（user_recommender.ASPECTS）。
+// 出し方は人ごとに選べる: 「あっさり」（既定。詳細は閉じておく）と「詳しく」（開いた状態で出す）。画面だけの設定
+const ASPECTS = [["story", "話・脚本・構成"], ["direction", "演出・見せ方"], ["acting", "演技・出演"], ["music", "歌・音楽"],
+  ["dance", "ダンス"], ["design", "美術・衣裳"], ["price", "値段"], ["venue", "会場・座席"]];
+const ASPECT_MODE_KEY = "taguri.aspectsMode";       // "plain"（あっさり・既定）か "full"（詳しく）
+function aspectsMode() { try { return localStorage.getItem(ASPECT_MODE_KEY) === "full" ? "full" : "plain"; } catch (e) { return "plain"; } }
+function aspectsSummary(state) {
+  const good = ASPECTS.filter(([c]) => state[c] === "+").map(x => x[1]), bad = ASPECTS.filter(([c]) => state[c] === "-").map(x => x[1]);
+  return [good.length ? "良かった: " + good.join("・") : "", bad.length ? "気になった: " + bad.join("・") : ""].filter(Boolean).join("／") || "まだ選んでいません";
+}
+function aspectsPanel(root) {
+  // 項目ごとのつまみ: 左＝気になった、まん中＝ふつう、右＝良かった（起案者の指示 2026-10-14「よかったはボタンじゃなくて
+  // スライダーで」）。離したときに保存する（動かしている途中では送らない）
+  const STEP = {"-": -1, "": 0, "+": 1}, MARK = {"-1": "-", "0": "", "1": "+"};
+  const WORD = {"-": "気になった", "": "ふつう", "+": "良かった"};
+  root.querySelectorAll(".rec-row[data-aspects]").forEach(row => {
+    if (row.querySelector(".asp")) return;
+    const rb = row.querySelector(".rb[data-work]"), st = row.querySelector("[data-stamp]");
+    if (!rb) return;
+    const rated = () => { const t = (st && st.textContent.trim()) || ""; return t !== "" && "◎○△×".includes(t); };
+    const state = {};
+    (row.dataset.aspects || "").split(",").filter(Boolean).forEach(x => { state[x.replace(/^\+/, "")] = x.startsWith("+") ? "+" : "-"; });
+    const box = document.createElement("details");
+    box.className = "asp";
+    if (aspectsMode() === "full") box.open = true;
+    const items = ASPECTS.map(([c, label]) => '<div class="aspr"><label class="aspl" for="asp-' + c + "-" + E(rb.dataset.work) + '">' + E(label) + "</label>"
+      + '<input class="aspsl" type="range" min="-1" max="1" step="1" id="asp-' + c + "-" + E(rb.dataset.work) + '" data-a="' + c + '" value="'
+      + STEP[state[c] || ""] + '"><span class="aspv"></span></div>').join("");
+    box.innerHTML = '<summary><span class="aspt">詳細</span><span class="asps"></span></summary>'
+      + '<p class="asph">項目ごとに、つまみを 左（気になった）・まん中（ふつう）・右（良かった）に動かします（任意）。'
+      + '選んだ印は、次のおすすめで「どの人のおかげ・せいだったか」を分けるのに使います。</p>'
+      + '<div class="aspscale" aria-hidden="true"><span></span><span class="asc"><span>← 気になった</span><span>ふつう</span><span>良かった →</span></span><span></span></div>'
+      + '<div class="aspg">' + items + '</div><p class="said" role="status"></p>';
+    const paint = () => {
+      box.querySelector(".asps").textContent = aspectsSummary(state);
+      box.querySelectorAll(".aspsl").forEach(sl => {
+        const m = state[sl.dataset.a] || "";
+        sl.value = STEP[m];
+        sl.dataset.m = m === "+" ? "good" : m === "-" ? "bad" : "mid";
+        sl.setAttribute("aria-valuetext", WORD[m]);
+        sl.nextElementSibling.textContent = WORD[m];
+      });
+    };
+    box.addEventListener("input", ev => {
+      const sl = ev.target.closest(".aspsl");
+      if (!sl) return;
+      const m = MARK[sl.value];
+      sl.nextElementSibling.textContent = WORD[m];
+      sl.dataset.m = m === "+" ? "good" : m === "-" ? "bad" : "mid";
+    });
+    box.addEventListener("change", async ev => {
+      const sl = ev.target.closest(".aspsl");
+      if (!sl) return;
+      const before = {...state};
+      const m = MARK[sl.value];
+      if (m) state[sl.dataset.a] = m; else delete state[sl.dataset.a];
+      paint();
+      const aspects = ASPECTS.filter(([c]) => state[c] === "-").map(([c]) => c)
+        .concat(ASPECTS.filter(([c]) => state[c] === "+").map(([c]) => "+" + c));
+      const d = await post("/api/rate", {work_key: rb.dataset.work, aspects}, box, "詳細を保存しました");
+      if (!d) { Object.keys(state).forEach(k => delete state[k]); Object.assign(state, before); paint(); }
+      else row.dataset.aspects = d.aspects ?? aspects.join(",");
+    });
+    paint();
+    box.hidden = !rated();
+    // 評価を付けた（押し直した）あとに出す
+    rb.addEventListener("click", () => setTimeout(() => { box.hidden = !rated(); }, 600));
+    (row.querySelector(".page") || row).appendChild(box);
+  });
+}
+// 設定の画面に「評価の詳細の出し方」を足す（この端末に覚える。画面だけの設定）
+function aspectsSetting(el) {
+  if (el.querySelector(".aspset")) return;
+  const h1 = el.querySelector("h1");
+  if (!h1) return;
+  const cur = aspectsMode();
+  const sec = document.createElement("section");
+  sec.className = "aspset pbox";
+  sec.innerHTML = '<h2>評価の詳細の出し方</h2><p class="lead">評価を付けた記録の「詳細」（話・演出・演技などの 良かった／気になった）を、'
+    + 'ふだん閉じておくか、開いて出すかを選べます。表示だけの設定で、おすすめの計算は変わりません。</p>'
+    + '<div class="aspmode" role="radiogroup" aria-label="評価の詳細の出し方">'
+    + [["plain", "あっさり", "詳細は閉じておく（押すと開く）"], ["full", "詳しく", "詳細を開いた状態で出す"]].map(([v, t, d]) =>
+      '<label class="aspm"><input type="radio" name="aspmode" value="' + v + '"' + (v === cur ? " checked" : "") + '><b>' + t + "</b><span>" + d + "</span></label>").join("")
+    + '</div><p class="said" role="status"></p>';
+  sec.addEventListener("change", ev => {
+    try { localStorage.setItem(ASPECT_MODE_KEY, ev.target.value); } catch (e) { /* 覚えられなくても既定で動く */ }
+    sec.querySelector(".said").textContent = "保存しました（この端末で有効です）";
+  });
+  const last = [...el.querySelectorAll("section, .pbox, details")].filter(n => n.parentElement === el).pop();
+  (last || h1).after(sec);
+}
+
 function stampRerate(root) {
   root.querySelectorAll(".rec-row").forEach(row => {
     const open = row.querySelector("button[data-rate-open]"), rb = row.querySelector(".rb:not(.notseen)");
@@ -2243,7 +2428,98 @@ function noteTags(t) {
   sync();
 }
 
+// ---- おすすめの券からお気に入りに足す（起案者の指示 2026-10-14「おすすめのページからお気に入りに追加できる
+// ようにしてほしい」）。券の右上の ☆ を押すと、その券の 作品・団体・出演・作り手 の名前が並び、押した名前を
+// お気に入りに登録する（/api/favourite、設定の画面で足すのと同じ）。登録した名前の公演は件数の制限なしに新着に出る
+function favButton(tk) {
+  const h3 = tk.querySelector(".main h3");
+  if (!h3 || tk.querySelector(".favbtn")) return;
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "favbtn";
+  b.setAttribute("aria-haspopup", "true");
+  b.setAttribute("aria-expanded", "false");
+  b.title = "お気に入りに追加";
+  b.setAttribute("aria-label", "この公演の名前をお気に入りに追加");
+  b.innerHTML = ico("star", 18);
+  h3.after(b);
+  b.addEventListener("click", ev => {
+    ev.stopPropagation();
+    const old = tk.querySelector(".favpop");
+    if (old) { old.remove(); b.setAttribute("aria-expanded", "false"); return; }
+    const title = h3.textContent.trim();
+    // あらすじの題材の札（#家族 など）も「題材」として選べる（推薦側 9bd0922: お気に入りの題材が推薦に効く）
+    const themes = [...tk.querySelectorAll(".syn .tags .tag:not(.mine)")].map(t => t.textContent.replace(/^#/, "").trim())
+      .filter((t, i, a) => Array.from(t).length >= 2 && a.indexOf(t) === i).slice(0, 8);
+    const items = [{kind: "作品", name: title}].concat(noteNames(tk).map(x => ({kind: x.kind === "団体" ? "団体" : "人", name: x.name, role: x.kind})))
+      .concat(themes.map(t => ({kind: "題材", name: t})));
+    const pop = document.createElement("div");
+    pop.className = "favpop";
+    pop.setAttribute("role", "dialog");
+    pop.setAttribute("aria-label", "お気に入りに追加");
+    pop.innerHTML = '<p class="fpt"><b>お気に入りに追加</b><span>登録した名前の公演は、件数の制限なしに新着に出ます</span></p>'
+      + '<div class="fpl">' + items.map(x => '<button type="button" class="fpi" data-kind="' + E(x.kind) + '" data-name="' + E(x.name) + '">'
+        + '<span class="fk">' + E(x.role && x.role !== x.kind ? x.role : x.kind) + "</span>" + E(x.name) + "</button>").join("") + "</div>"
+      + '<p class="said" role="status"></p>';
+    b.after(pop);
+    b.setAttribute("aria-expanded", "true");
+    pop.addEventListener("click", async e => {
+      const it = e.target.closest(".fpi");
+      if (!it || it.disabled) return;
+      it.disabled = true;
+      const d = await post("/api/favourite", {action: "add", kind: it.dataset.kind, name: it.dataset.name}, pop,
+        "「" + it.dataset.name + "」を登録しました");
+      if (d) it.classList.add("added"); else it.disabled = false;
+    });
+    const close = e => {
+      if (e.type === "keydown" && e.key !== "Escape") return;
+      if (e.type === "click" && pop.contains(e.target)) return;
+      pop.remove(); b.setAttribute("aria-expanded", "false");
+      document.removeEventListener("click", close); document.removeEventListener("keydown", close);
+      if (e.type === "keydown") b.focus();
+    };
+    setTimeout(() => { document.addEventListener("click", close); document.addEventListener("keydown", close); }, 0);
+    pop.querySelector(".fpi")?.focus();
+  });
+}
+
+// ---- 感想のハッシュタグ（起案者の指示 2026-10-14「感想を書くとき、ハッシュタグをユーザーが独自で作って検索
+// できるようにして」）。#タグ と書けばタグになる（サーバーの hashtags.py と同じ区切り）。書いてある感想の中の
+// タグは「感想」の画面のそのタグへのリンクにし、感想を書く欄の上には、今まで使ったタグを札で並べる
+let NOTE_TAGS = [];
+const TAG_RE = /[#＃]([^\s#＃、。，,．.!！?？「」『』（）()\[\]【】<>＜＞]{1,30})/g;
+function linkTags(root) {
+  root.querySelectorAll(".int").forEach(el => {
+    if (el.isContentEditable || el.querySelector("a.htag-in") || !TAG_RE.test(el.textContent)) return;
+    TAG_RE.lastIndex = 0;
+    const text = el.textContent;
+    let html = "", at = 0;
+    for (const m of text.matchAll(TAG_RE)) {
+      const tag = m[1].normalize("NFKC");
+      html += E(text.slice(at, m.index)) + '<a class="htag-in" href="/rate/notes?tag=' + encodeURIComponent(tag) + '">' + E(m[0]) + "</a>";
+      at = m.index + m[0].length;
+    }
+    el.innerHTML = html + E(text.slice(at));
+  });
+}
+function tagChips(onPick) {
+  const box = document.createElement("div");
+  box.className = "htchips";
+  box.innerHTML = '<span class="htl2"># を付けるとタグになります' + (NOTE_TAGS.length ? "。使ったタグ:" : "") + "</span>"
+    + NOTE_TAGS.slice(0, 20).map(t => '<button type="button" class="htc" data-tag="' + E(t) + '">#' + E(t) + "</button>").join("");
+  box.addEventListener("mousedown", e => { if (e.target.closest(".htc")) e.preventDefault(); });   // 書いている欄から焦点を外さない
+  box.addEventListener("click", e => { const c = e.target.closest(".htc"); if (c) onPick("#" + c.dataset.tag); });
+  return box;
+}
+const addTag = (text, tag) => (text.includes(tag) ? text : (text.trim() ? text.replace(/\s*$/, " ") : "") + tag);
+
 function bindNotes(root) {
+root.querySelectorAll("article.ticket.cmp").forEach(favButton);
+linkTags(root);
+root.querySelectorAll("textarea[data-note]").forEach(t => {
+  if (t.previousElementSibling && t.previousElementSibling.classList.contains("htchips")) return;
+  t.before(tagChips(tag => { t.value = addTag(t.value, tag); t.focus(); }));
+});
 // 「興味あり」に添えた理由。**離れたときに保存する**（書いている途中で送らない）
 root.querySelectorAll(".why-note textarea").forEach(t => {
   if (t.dataset.bound) return;

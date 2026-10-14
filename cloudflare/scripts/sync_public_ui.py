@@ -45,6 +45,13 @@ def main() -> int:
             if not check:
                 dest.parent.mkdir(parents=True, exist_ok=True)
                 dest.write_bytes(text) if binary else dest.write_text(text, encoding="utf-8")
+    # デモ（GitHub Pages）は深い URL を読み込み直すと web/404.html を返す。index.html と違うと、
+    # 読み込み直したときだけ昔の見た目が出る（起案者の指摘 2026-10-14）。pages.yml も毎回写すが、ここでも揃える
+    idx, nf = WEB / "index.html", WEB / "404.html"
+    if nf.read_text(encoding="utf-8") != idx.read_text(encoding="utf-8"):
+        stale.append("web/404.html")
+        if not check:
+            nf.write_text(idx.read_text(encoding="utf-8"), encoding="utf-8")
     if check and stale:
         print("cloudflare/public is out of date with web/: " + ", ".join(stale)
               + "\nrun: python3 cloudflare/scripts/sync_public_ui.py")

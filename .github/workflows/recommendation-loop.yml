@@ -68,6 +68,8 @@ jobs:
         run: python tools/review/test_reason_works.py
       - name: Unrated nudge on the recommendation screen
         run: python tools/taguri/test_unrated_nudge.py
+      - name: Hashtags in impressions
+        run: python tools/taguri/test_hashtags.py
       - name: Catalog publishing and live refresh
         run: python tools/taguri/test_catalog_publish.py
       - name: Shared favourite names for all users
