@@ -829,6 +829,25 @@
    "verifies": []
   },
   {
+   "id": "dec-login-hardening",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "ログインの守りを固める：戻り先の検査を URL として行う・パスキー追加と Google・メールの結び付けは10分以内のログインが要る・結び付けはアカウントのページから明示したときだけ・利用者100人の上限を外す",
+   "sources": [
+    "cloudflare/src/worker.js",
+    "cloudflare/src/passkey.js",
+    "cloudflare/src/client/login.js",
+    "cloudflare/src/screens/account.js",
+    "cloudflare/public/login.html",
+    "cloudflare/migrations/0020.sql",
+    "cloudflare/test/gate.test.js",
+    "cloudflare/test/firebase-auth.test.js",
+    "cloudflare/test/passkey.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-migration-branch-wip",
    "type": "decision",
    "status": "adopted",
