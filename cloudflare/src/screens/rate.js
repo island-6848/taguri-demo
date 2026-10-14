@@ -7,6 +7,7 @@ import {E, quote, sortBy, cmp, fmtF, strip, slice, field, qsFirst, qsAll, digits
 import {loadWorks, similarWorks, titleKey} from './works.js';
 import {recRow, venueOf, venueKey, ico, h2, stageLabels} from './row.js';
 import {hashtagsHtml, noteTags} from './hashtags.js';
+import {promoteOwned} from './lists.js';
 
 /** serve.VERDICTS / charts.VERDICT_ORDER */
 const VERDICTS = ['◎', '○', '△', '×', 'まだ判断できない'];
@@ -23,6 +24,7 @@ export const SHEET_TOP = 15;
  * `react` action, which is not ported yet: port it with `react`.
  */
 async function rateBase(ctx) {
+  await promoteOwned(ctx);           // app._load -> _rebucket -> _promote_owned_tickets
   await autoLink(ctx);
   const all = await loadWorks(ctx);
   const unrated = all.filter(w => !w.verdict && w.bucket !== 'upcoming' && !w.unseen);

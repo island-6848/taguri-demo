@@ -772,6 +772,23 @@
    "verifies": []
   },
   {
+   "id": "dec-lists-worker",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "興味あり・お気に入り・購入済み公演を Worker に移す（同じ作り置きのカードを 4 通りに組む。名前の照合は SQL で）",
+   "sources": [
+    "cloudflare/src/screens/lists.js",
+    "cloudflare/src/screens/cards.js",
+    "cloudflare/scripts/build_cards.py",
+    "cloudflare/migrations/0018.sql",
+    "cloudflare/test/lists-screen.test.js",
+    "cloudflare/test/cards.test.js",
+    "cloudflare/test/test_build_cards.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-loading-yarn",
    "type": "decision",
    "status": "adopted",
@@ -4346,6 +4363,16 @@
    "from": "dec-hide-own-words",
    "rel": "affects",
    "to": "dec-recommend-compact-poster"
+  },
+  {
+   "from": "dec-lists-worker",
+   "rel": "depends_on",
+   "to": "dec-recommend-worker-cards"
+  },
+  {
+   "from": "dec-lists-worker",
+   "rel": "affects",
+   "to": "comp-native-screens"
   },
   {
    "from": "dec-loading-yarn",
