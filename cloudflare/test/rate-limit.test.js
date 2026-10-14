@@ -76,7 +76,7 @@ test('new accounts stop at the daily cap (JST day) and open again the next day',
 
 test('the JST day boundary: 23:59 JST counts toward that day, 00:00 JST starts a new one', async () => {
   const rows = [];
-  const db = {prepare: () => ({bind: v => ({first: async () => { rows.push(v); return {n: 0}; }})})};
+  const db = {prepare: () => ({bind: v => ({first: async () => { rows.push(v); return {n: 0}; }}), first: async () => ({n: 0}), all: async () => ({results: [], meta: {}})})};
   const fail = () => { throw new Error('over'); };
   const t = Date.UTC(2026, 9, 14, 15, 0, 0) / 1000;   // 2026-10-15 00:00 JST
   await checkNewAccount(db, {}, fail, t);

@@ -80,6 +80,6 @@ test('/api/health reports the R2 read counter (counts only)', async () => {
     const month = new Date().toISOString().slice(0, 7);
     sqlite.prepare('INSERT INTO usage(k, n) VALUES (?, 40)').run(`r2_get:${month}`);
     const h = await (await worker.fetch(new Request(`${ORIGIN}/api/health`), env)).json();
-    assert.deepEqual(h.free_tier, {r2_reads_month: 40, r2_reads_cap: 3_000_000});
+    assert.deepEqual(h.free_tier, {r2_reads_month: 40, r2_reads_cap: 3_000_000, d1_bytes: null, d1_bytes_cap: 4_000_000_000, accounts: 0, accounts_cap: 300});
   } finally { sqlite.close(); }
 });

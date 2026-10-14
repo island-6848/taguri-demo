@@ -32,3 +32,40 @@ export async function r2ReadAllowed(env, nowMs = Date.now(), random = Math.rando
     return false;
   }
 }
+
+// D1 storage (起案者の指示 2026-10-14「数えてから決めて」, dec-account-cap-counted). The free
+// plan has 5 GB; over it, writes fail. One user's rows are capped (triggers, 0001・0016・0021)
+// but long texts make the worst case about 220 MB a user (measured, docs/free-tier-budget.md),
+// so the Worker also watches the database's own size: D1 returns it with every query
+// (meta.size_after). At D1_BYTES_CAP (80 % of 5 GB) every write that can grow storage
+// and every sign-up is refused; reading and deleting keep working. The size is re-read at
+// most once a minute per isolate (one row read). Unlike R2, D1 Free never bills (it stops
+// at its limits), so a size that cannot be read lets the write through rather than take
+// the service down.
+export const D1_BYTES_CAP = 4_000_000_000;
+// Accounts: one user who opens screens every day reads about 35,000 rows (300 records:
+// ~500 rows a screen, 30 screens, plus the recommendation recomputed 2 times at ~10,000);
+// 80 % of the 5 million rows a day is about 110 such users. With about a third of the
+// accounts active on a day, 300 accounts stay within it (an estimate, not a measurement:
+// q-d1-reads-real). New accounts per day keep a burst from spending the day's writes.
+export const MAX_ACCOUNTS = 300;
+export const NEW_ACCOUNTS_PER_DAY = 30;
+export const d1Gate = {at: 0, bytes: null, full: false};
+export async function d1Bytes(db, nowMs = Date.now()) {
+  if (d1Gate.bytes !== null && nowMs - d1Gate.at < 60_000) return d1Gate.bytes;
+  try {
+    const r = await db.prepare('SELECT 1').all();
+    const bytes = Number(r?.meta?.size_after);
+    Object.assign(d1Gate, {at: nowMs, bytes: Number.isFinite(bytes) ? bytes : null});
+  } catch {
+    Object.assign(d1Gate, {at: nowMs, bytes: null});
+  }
+  return d1Gate.bytes;
+}
+/** False when the database is at D1_BYTES_CAP. Without a size (tests, local SQLite) it is allowed. */
+export async function d1RoomLeft(db, env, nowMs = Date.now()) {
+  const cap = Number(env?.D1_BYTES_CAP) || D1_BYTES_CAP;
+  const bytes = await d1Bytes(db, nowMs);
+  d1Gate.full = bytes !== null && bytes >= cap;
+  return !d1Gate.full;
+}
