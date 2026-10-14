@@ -1,7 +1,7 @@
 ---
 id: q-domain-taguri-com
 type: question
-status: open
+status: answered
 date: 2026-10-14
 title: 本番の URL を taguri.com にするか（独自ドメインは年額がかかり、無料だけの約束と食い違う）
 links:

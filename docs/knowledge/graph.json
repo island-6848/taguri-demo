@@ -1090,6 +1090,15 @@
    "verifies": []
   },
   {
+   "id": "dec-url-app-taguri",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "サービス版の URL は無料のまま app.taguri.workers.dev にする（独自ドメインは取らない）",
+   "sources": [],
+   "verifies": []
+  },
+  {
    "id": "dec-user-scale-range",
    "type": "decision",
    "status": "adopted",
@@ -2446,7 +2455,7 @@
   {
    "id": "q-domain-taguri-com",
    "type": "question",
-   "status": "open",
+   "status": "answered",
    "date": "2026-10-14",
    "title": "本番の URL を taguri.com にするか（独自ドメインは年額がかかり、無料だけの約束と食い違う）",
    "sources": [],
@@ -4401,6 +4410,21 @@
    "from": "dec-theme-user-choice",
    "rel": "raises",
    "to": "q-poster-palette"
+  },
+  {
+   "from": "dec-url-app-taguri",
+   "rel": "answers",
+   "to": "q-domain-taguri-com"
+  },
+  {
+   "from": "dec-url-app-taguri",
+   "rel": "depends_on",
+   "to": "workers-dev-subdomain-rename"
+  },
+  {
+   "from": "dec-url-app-taguri",
+   "rel": "supports",
+   "to": "dec-free-tier-only"
   },
   {
    "from": "dec-user-scale-range",
