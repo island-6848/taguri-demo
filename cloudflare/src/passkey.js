@@ -74,6 +74,7 @@ export function passkeyRoutes(h) {
       // Adding to an account: the same account must still be signed in.
       if (ch.user_id && ch.user_id !== uid) fail(401, 'ログインし直してから、もう一度追加してください。');
       if (!ch.user_id && env.ALLOW_REGISTRATION !== 'true') fail(503, '新規登録を一時停止しています。');
+      if (!ch.user_id) await h.checkNewAccount(env.DB, env, fail);
       let result;
       try {
         result = await verifyRegistrationResponse({response, expectedChallenge: ch.challenge, expectedOrigin: origin,

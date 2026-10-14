@@ -884,6 +884,19 @@
    "verifies": []
   },
   {
+   "id": "dec-rate-limit",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "回数制限は Cloudflare の Rate Limiting binding（訪問者ごとのブレーキ）と、新規登録の 1 日の上限（D1 で正確に数える）の二段にする",
+   "sources": [
+    "cloudflare/src/rate-limit.js",
+    "cloudflare/wrangler.jsonc",
+    "cloudflare/test/rate-limit.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-rating-detail-mode",
    "type": "decision",
    "status": "adopted",
@@ -2812,7 +2825,7 @@
   {
    "id": "q-rate-limiting",
    "type": "question",
-   "status": "open",
+   "status": "answered",
    "date": "2026-10-13",
    "title": "ログイン・登録・検索の回数制限を Worker でどう掛けるか",
    "sources": [],
@@ -4258,6 +4271,21 @@
    "from": "dec-posters-r2",
    "rel": "answers",
    "to": "q-worker-posters"
+  },
+  {
+   "from": "dec-rate-limit",
+   "rel": "answers",
+   "to": "q-rate-limiting"
+  },
+  {
+   "from": "dec-rate-limit",
+   "rel": "supports",
+   "to": "dec-free-tier-only"
+  },
+  {
+   "from": "dec-rate-limit",
+   "rel": "depends_on",
+   "to": "comp-auth-throttle"
   },
   {
    "from": "dec-rating-detail-mode",
