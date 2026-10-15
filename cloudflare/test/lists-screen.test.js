@@ -318,6 +318,10 @@ test('公演カレンダー shows an owned stage that only the catalogue has', a
     assert.match(owned, /一覧だけの舞台/);
     assert.match(owned, /data-btns-open="1">回答を直す<\/button><span class="btns" hidden data-stage="778">/);
     assert.match((await screen(env, a, 'calendar')).body_html, /一覧だけの舞台/);
+    // 2026-10-15 起案者「場所絞ったら公演カレンダー0件になる」: the catalogue has no prefecture, so a
+    // place filter cannot show it; the calendar says how many it left out instead of a silent 0.
+    const tokyo = (await screen(env, a, 'calendar', '?pref=' + encodeURIComponent('東京都'))).body_html;
+    assert.match(tokyo, /都道府県が分からない公演が 1 件あり、場所で絞ると出せません/);
   } finally { sqlite.close(); }
 });
 
