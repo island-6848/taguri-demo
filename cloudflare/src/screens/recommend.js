@@ -38,7 +38,7 @@ const TIPS = `<section class="card tips">
 `;
 // Groups kept per user between requests: enough to fill 15 cards in any one prefecture.
 const KEEP = 400;
-const VERSION = 'screen-v9';   // v2: the user's 効かせ方 (rank_weight) and the per-group counts; v3: 興味あり as seeds; v4: diag; v5: 興味あり split (impl-interest-split); v6: by part importance; v7: tiers + トメ; v8: two tiers only; v9: トメ joins the main roles
+const VERSION = 'screen-v10';   // v2: the user's 効かせ方 (rank_weight) and the per-group counts; v3: 興味あり as seeds; v4: diag; v5: 興味あり split (impl-interest-split); v6: by part importance; v7: tiers + トメ; v8: two tiers only; v9: トメ joins the main roles; v10: spread leads + one-step partners
 export {PREFS} from './prefs.js';
 const ROLE_SRC = '公演ページのクレジット';
 const KIND_LABEL = {'#形式': '形式', '#原作': '原作', '#翻訳': '', '#会場': '劇場', '#値段': '料金帯', '#題材': '題材'};
@@ -61,7 +61,7 @@ async function ratedWorks(ctx, access) {
   // 観た回に出ていなかった出演者（Wキャスト・休演、works.cast_off）は、この記録の材料から外す。
   return works.map(w => {
     const off = new Set(castOffOf(w));
-    return {key: w.work_key, title: w.title, stage_id: w.stage_id, verdict: w.verdict,
+    return {key: w.work_key, title: w.title, stage_id: w.stage_id, verdict: w.verdict, cast_off: [...off],
       date: w.last_date || w.first_date || '', aspects: w.aspects || '', updated_at: updated.get(w.work_key) || '',
       people: (people.get(w.stage_id) || []).filter(([role, person]) => !(role === '出演' && off.has(person)))};
   });
@@ -97,6 +97,9 @@ async function interestSeeds(ctx, access) {
   return {n: sids.length, seeds: sids.filter(s => people.get(s)?.length).map(one), disliked: noes.filter(s => people.get(s)?.length).map(one)};
 }
 
+/** 観た回に出ていなかったと本人が外した出演者（works.cast_off）。1 段広げるときにも戻さない。 */
+const castOffKeys = rated => new Set(rated.flatMap(r => (r.cast_off || []).map(n => '出演\u0000' + n)));
+
 /** measure_nets.person_titles: (role, person) -> titles, ◎ first, newest first within a mark. */
 function personTitles(rated, liked = []) {
   const acc = new Map();
@@ -127,9 +130,12 @@ const worksText = (titles, n) => {
 /** render_recommend.reason_rows for the Worker's reasons (people, then kinds of show). */
 export function reasonRows(group, titles) {
   const out = [];
+  // 1 段広げて来た人（scoreFromIndex の via）: 「○○とよく組む人」と書く
+  const via = new Map(group.via || []);
   for (const [, role, person, n] of group.parts.slice(0, 4)) {
+    const w = via.get(role + '\t' + person);
     out.push(`<li class="rs b"><span class="net">人物</span>${E(role)} <b>${E(person)}</b>`
-      + `<span class="n">${worksText(titles.get(role + '\t' + person), n)}</span>`
+      + `<span class="n">${w ? `（好きな${E(w)}と同じ公演に関わる人）` : worksText(titles.get(role + '\t' + person), n)}</span>`
       + `<span class="src">［出典: ${E(ROLE_SRC)}］</span>`
       + `<button class="rsx" data-word="${E(person)}" title="この人物を理由に出さない">✕</button></li>`);
   }
@@ -189,7 +195,7 @@ export async function rankedGroups(ctx) {
   // (app._rebucket): neither is ranked here.
   const {hits, declined} = await nameHits(ctx, declared, await loadDeclined(ctx));
   const ranked = await scoreFromIndex({...access, rated: gate.aspects ? rated : rated.map(r => ({...r, aspects: []})),
-    multipliers, today: ctx.today, seeds, skip, liked, disliked});
+    multipliers, today: ctx.today, seeds, skip, liked, disliked, expand: {peopleFor: access.peopleFor, exclude: castOffKeys(rated)}});
   // app._weight_counts: per group, the candidates it matches (the people and kinds that raised them).
   const wCounts = {};
   for (const c of ranked) {
@@ -202,9 +208,9 @@ export async function rankedGroups(ctx) {
   for (const c of ranked) {
     if (done.has(c.stage_id) || hits.has(c.stage_id) || declined.has(c.stage_id)) continue;
     const key = c.tour || 'stage:' + c.stage_id;
-    if (!byTour.has(key)) byTour.set(key, {stage_id: c.stage_id, tour: c.tour || '', parts: c.parts, kinds: c.kinds, b: c.b});
+    if (!byTour.has(key)) byTour.set(key, {stage_id: c.stage_id, tour: c.tour || '', parts: c.parts, kinds: c.kinds, b: c.b, ...(c.via ? {via: c.via} : {})});
   }
-  const groups = [...byTour.values()];
+  const groups = spreadLeads([...byTour.values()]);
   const kept = groups.slice(0, KEEP);
   // Every venue of the kept productions (the index groups a tour by rec_stage.tour).
   const venues = new Map();
@@ -239,6 +245,27 @@ export async function rankedGroups(ctx) {
   await db.prepare('INSERT INTO rec_cache(user_id,stamp,body,created_at) VALUES(?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET stamp=excluded.stamp,body=excluded.body,created_at=excluded.created_at')
     .bind(ctx.uid, stamp, JSON.stringify(body), Math.floor(ctx.now / 1000)).run();
   return {...body, titles: new Map(body.titles), cached: false};
+}
+
+/**
+ * 同じ人が理由の公演が並びすぎないよう並べ直す（起案者の指示 2026-10-15、lit-topic-diversification・
+ * lit-popularity-bias）。表示の 1 ページ（TOP 件）ごとに、いちばん強い理由の人が同じ公演は LEAD_CAP 件まで。
+ * 越えた分は次のページ以降へ回す（消さない）。理由の人がいない公演（種類だけ）は数えない。
+ */
+export const LEAD_CAP = 2;
+export function spreadLeads(groups, top = TOP, cap = LEAD_CAP) {
+  const lead = g => (g.parts[0] ? g.parts[0][1] + '\t' + g.parts[0][2] : '');
+  const rest = [...groups], out = [];
+  let count = new Map();
+  while (rest.length) {
+    if (out.length % top === 0) count = new Map();
+    let i = rest.findIndex(g => !lead(g) || (count.get(lead(g)) || 0) < cap);
+    if (i < 0) i = 0;                                   // every one left is capped: keep the order
+    const [g] = rest.splice(i, 1);
+    if (lead(g)) count.set(lead(g), (count.get(lead(g)) || 0) + 1);
+    out.push(g);
+  }
+  return out;
 }
 
 /** render_recommend.filtered: the shown venue of each production, and how many matched. */
