@@ -593,6 +593,7 @@ const MUTATED_KEY = "taguri-mutated";
 window.addEventListener("storage", ev => { if (ev.key === MUTATED_KEY) fragmentCache.clear(); });
 function markMutated() {
   fragmentCache.clear();
+  try { sessionStorage.removeItem("taguri-ticker"); } catch (e) { /* 控えが無ければ何もしない */ }
   try { localStorage.setItem(MUTATED_KEY, String(Date.now())); } catch (e) { /* 使えない端末では、このタブだけ */ }
 }
 
@@ -609,7 +610,60 @@ document.addEventListener("DOMContentLoaded", () => {
   restoreNavFold();
   const path = (location.pathname.slice(REPO_BASE.length) || "/");
   loadScreen(path, location.search.replace(/^\?/, ""));
+  if (!IS_DEMO) loadTicker();
 });
+
+// ---- 電光掲示板（起案者の指示 2026-10-15「今週開幕する公演を電車の電光掲示板みたいにメニューに流すのはどう？
+// あと今週のおすすめ上位3件とな」）。画面の上に 1 行で流す。中身は /api/screen/ticker（screens/ticker.js）。
+// - 10 分は sessionStorage の控えを使う（どの画面でも出すので、開くたびに取りに行かない）。記録を書いたら捨てる
+// - 指・マウスを乗せる／焦点が入ると止まる。「止める」ボタンでも止まる（WCAG 2.2.2）。
+//   端末で動きを減らす設定の人には流さず、横に並べて出す（CSS の prefers-reduced-motion）
+// - 開幕もおすすめも無ければ、帯そのものを出さない
+const TICKER_KEY = "taguri-ticker", TICKER_TTL_MS = 10 * 60 * 1000;
+async function loadTicker() {
+  let data = null;
+  try {
+    const c = JSON.parse(sessionStorage.getItem(TICKER_KEY) || "null");
+    if (c && Date.now() - c.at < TICKER_TTL_MS) data = c.data;
+  } catch (e) { /* 控えが読めなければ取りに行く */ }
+  if (!data) {
+    const r = await fetch(API_BASE + "/api/screen/ticker", {credentials: "include"}).catch(() => null);
+    const d = r && r.ok ? await r.json().catch(() => null) : null;
+    if (!d || !d.ticker) return;
+    data = d.ticker;
+    try { sessionStorage.setItem(TICKER_KEY, JSON.stringify({at: Date.now(), data})); } catch (e) { /* 控えなしで動く */ }
+  }
+  renderTicker(data);
+}
+function renderTicker(data) {
+  document.querySelectorAll(".ticker").forEach(x => x.remove());
+  const open = (data.open || []).map(o => '<a class="tki" href="/recommend/reminder" data-path="/recommend/reminder">'
+    + '<b class="tkk open">開幕</b>' + E(o.label) + " " + E(o.title) + (o.venue ? "（" + E(o.venue) + "）" : "") + "</a>");
+  const recs = (data.recs || []).map((o, i) => '<a class="tki" href="/recommend" data-path="/recommend">'
+    + '<b class="tkk rec">おすすめ ' + (i + 1) + "</b>" + E(o.title) + "</a>");
+  const items = open.concat(recs);
+  if (!items.length) return;
+  const line = items.join('<span class="tksep" aria-hidden="true">◆</span>');
+  const wrap = document.createElement("div");
+  wrap.className = "ticker";
+  wrap.setAttribute("role", "region");
+  wrap.setAttribute("aria-label", "今週開幕する公演と、今週のおすすめ");
+  // 同じ並びを 2 回続けて、半分流れたところで最初に戻すと切れ目なく回る（2 回目は読み上げない）
+  wrap.innerHTML = '<button type="button" class="tkstop" aria-pressed="false" aria-label="流れを止める">'
+    + '<span aria-hidden="true">❚❚</span></button>'
+    + '<div class="tkview"><div class="tktrack" style="--tkdur:' + Math.max(20, items.length * 7) + 's">'
+    + '<span class="tkrun">' + line + '<span class="tksep" aria-hidden="true">◆</span></span>'
+    + '<span class="tkrun" aria-hidden="true">' + line.replace(/<a /g, '<a tabindex="-1" ') + '<span class="tksep">◆</span></span>'
+    + "</div></div>";
+  wrap.querySelector(".tkstop").addEventListener("click", ev => {
+    const on = wrap.classList.toggle("paused");
+    ev.currentTarget.setAttribute("aria-pressed", on ? "true" : "false");
+    ev.currentTarget.setAttribute("aria-label", on ? "流れを再開する" : "流れを止める");
+    ev.currentTarget.querySelector("span").textContent = on ? "▶" : "❚❚";
+  });
+  const main = document.querySelector(".main");
+  if (main) main.insertBefore(wrap, main.querySelector(".crumbbar") || main.firstChild);
+}
 
 // =========================================================================
 // === ported: 元は tools/taguri/app.py の SCRIPT 文字列定数(操作のJS本体) ===
@@ -1092,7 +1146,9 @@ document.addEventListener("click", ev => {
     g.querySelectorAll("button[data-v]").forEach(x => x.classList.toggle("picked", x === b));
     // 星は押した所までを ★ にする（記録できなかったら元に戻す）
     const unfill = fillStars(g, b);
-    post(path, body, g).then(async d => {
+    // お気に入りの「購入済みにする」は、移った先を言う（起案者の指示 2026-10-15）
+    const said0 = tk && tk.classList.contains("favourite") && b.dataset.v === "owned" ? "購入済み公演に移しました" : undefined;
+    post(path, body, g, said0).then(async d => {
       if (!d) { if (tear) row.classList.remove("torn"); b.classList.remove("picked"); unfill(); return; }
       g.classList.add("done");
       if (shown && g.dataset.stage) {

@@ -368,7 +368,7 @@ export async function favouritesScreen(params, ctx) {
     + `<span class="said"></span></div><div class="tags">${tags}</div></details>${declinedBox(b.words)}</div>`;
   const why = r => ({why: r.a.map(w => `<li class="rs a"><span class="net">お気に入り</span>登録した${E(w)}の公演です<span class="src">［出典: ${E(ROLE_SRC)}］</span></li>`).join('')});
   const list = favs.length
-    ? '<p class="lead"><b>ここは読むだけです。押すボタンはありません。</b><b>上演日の近い順</b>に並んでいます。順位は付けていません。観ると決めたら、公式サイトから券を求めてください。</p>'
+    ? '<p class="lead"><b>上演日の近い順</b>に並んでいます。順位は付けていません。観ると決めたら、公式サイトから券を求めてください。<b>券を取ったら「購入済みにする」を押してください。</b><a href="/tickets?t=__TAGURI_TOKEN__">購入済み公演</a>に移り、行く日を入れられます。</p>'
       + `<div class="tickets">${(await cards(ctx, show, 'favourite', why)).join('')}</div>`
     : `<p class="empty">登録した名前に当たる公演は、いまたぐりが集めている公演${nCat ? `（CoRich・ステイジーズカレンダーから毎日集めている、これからの公演 ${nCat} 件）` : ''}の中にはありません。<b>新しい公演が集まると、毎日の更新のあと、ここに出ます。</b>表記ゆれ（漢字とカタカナなど）があるときは、別の書き方も登録してみてください。</p>`;
   const body = `<h1>お気に入り ── 新着 ${favs.length} 件</h1>

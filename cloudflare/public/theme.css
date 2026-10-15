@@ -756,3 +756,29 @@ a.htag-in:hover{text-decoration:underline}
 .ed-cast .ed-castl label{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
 .ed-cast>.ed-lk{display:block;margin-bottom:4px}
 .ed-cast .ed-castl .ed-btns{flex:0 0 100%;margin-top:4px}
+
+/* ---- 流れる帯（起案者の指示 2026-10-15「今週開幕する公演を…メニューに流す」「本物の電光掲示板に寄せなくていいよ。
+   文字流れてれば何でも」。app.js の renderTicker）。ほかの札と同じ地・字で、右から左へ流す。
+   指・焦点・「止める」で止まり、動きを減らす設定の人には流さない */
+.ticker{display:flex;align-items:center;gap:8px;background:var(--surf);color:var(--ink);border:1px solid var(--ring);
+ border-radius:10px;padding:3px 6px 3px 3px;margin:0 0 10px;font-size:13.5px;line-height:1.8;overflow:hidden}
+.ticker .tkstop{flex:none;width:28px;height:28px;min-width:28px;border:1px solid var(--ring);border-radius:7px;background:var(--plane);
+ color:var(--ink2);font-size:10px;padding:0;cursor:pointer;line-height:1}
+.ticker .tkstop:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
+.ticker .tkview{flex:1;min-width:0;overflow:hidden;
+ -webkit-mask-image:linear-gradient(90deg,transparent,#000 3%,#000 97%,transparent);mask-image:linear-gradient(90deg,transparent,#000 3%,#000 97%,transparent)}
+.ticker .tktrack{display:inline-flex;white-space:nowrap;will-change:transform;animation:tkscroll var(--tkdur,40s) linear infinite}
+.ticker:hover .tktrack,.ticker:focus-within .tktrack,.ticker.paused .tktrack{animation-play-state:paused}
+@keyframes tkscroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.ticker .tkrun{display:inline-flex;align-items:center}
+.ticker .tki{color:var(--ink);text-decoration:none;padding:0 2px;border-radius:4px}
+.ticker .tki:hover,.ticker .tki:focus-visible{color:var(--acc);text-decoration:underline;outline:none}
+.ticker .tkk{font-weight:700;font-size:11px;padding:0 6px;border-radius:4px;margin-right:6px}
+.ticker .tkk.open{background:var(--plane);color:var(--acc);border:1px solid var(--ring)}
+.ticker .tkk.rec{background:var(--curtain-w);color:var(--curtain);border:1px solid var(--ring)}
+.ticker .tksep{color:var(--mute);margin:0 14px;font-size:9px}
+@media (prefers-reduced-motion:reduce){
+ .ticker .tktrack{animation:none}
+ .ticker .tkview{overflow-x:auto;-webkit-mask-image:none;mask-image:none}
+ .ticker .tkrun[aria-hidden]{display:none}
+ .ticker .tkstop{display:none}}

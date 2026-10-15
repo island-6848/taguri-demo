@@ -916,6 +916,20 @@
    "verifies": []
   },
   {
+   "id": "dec-favourite-owned-button",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-15",
+   "title": "お気に入りの一覧の公演に「購入済みにする」ボタンを置く（読むだけの一覧をやめる）",
+   "sources": [
+    "cloudflare/src/screens/cards.js",
+    "cloudflare/src/screens/lists.js",
+    "tools/review/render_recommend.py",
+    "cloudflare/scripts/build_cards.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-firebase-auth",
    "type": "decision",
    "status": "adopted",
@@ -1630,6 +1644,19 @@
    "title": "見た目は 1 つに決めず、いくつかの型から利用者が選べるようにする（ポスターの色で染める型も含む）",
    "sources": [
     "https://claude.ai/artifact/4o7QY23vNLcZF7wcrqVQg9 （デザイン案のキャンバス、「見た目を利用者が選ぶ」の段）"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-ticker",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-15",
+   "title": "画面の上に電光掲示板の帯を流す（今週開幕する公演と、今週のおすすめ上位 3 件）",
+   "sources": [
+    "cloudflare/src/screens/ticker.js",
+    "web/app.js",
+    "web/theme.css"
    ],
    "verifies": []
   },
@@ -5355,6 +5382,16 @@
    "to": "corich-search-waf-403"
   },
   {
+   "from": "dec-favourite-owned-button",
+   "rel": "depends_on",
+   "to": "dec-owned-only-owned-list"
+  },
+  {
+   "from": "dec-favourite-owned-button",
+   "rel": "affects",
+   "to": "comp-frontend"
+  },
+  {
    "from": "dec-firebase-auth",
    "rel": "affects",
    "to": "comp-firebase-login"
@@ -6048,6 +6085,11 @@
    "from": "dec-theme-user-choice",
    "rel": "raises",
    "to": "q-poster-palette"
+  },
+  {
+   "from": "dec-ticker",
+   "rel": "affects",
+   "to": "comp-frontend"
   },
   {
    "from": "dec-trace-worker",

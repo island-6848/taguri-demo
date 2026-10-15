@@ -6,6 +6,7 @@
 // Enabled per name with env.NATIVE_UI ("all", or a comma list like
 // "screen:rate,api:rate"); everything else still goes to Render until the
 // switch-over (docs/render-migration-plan.md).
+import {tickerScreens} from './ticker.js';
 import {rateScreens} from './rate.js';
 import {diaryScreens} from './diary.js';
 import {accountScreens} from './account.js';
@@ -25,7 +26,7 @@ export const SCREEN_TABLES = ['works', 'excluded', 'merges', 'hand_credits', 'vi
 // public service never checks it; screens only carry it in links.
 export const TOKEN = 'cfw0000000000000000000000000000000';
 
-const SCREENS = {...rateScreens.screens, ...diaryScreens.screens, ...accountScreens.screens, ...recommendScreens.screens, ...listScreens.screens, ...reminderScreens.screens, ...calendarScreens.screens, ...settingsScreens.screens, ...searchScreens.screens, ...recordScreens.screens};
+const SCREENS = {...tickerScreens.screens, ...rateScreens.screens, ...diaryScreens.screens, ...accountScreens.screens, ...recommendScreens.screens, ...listScreens.screens, ...reminderScreens.screens, ...calendarScreens.screens, ...settingsScreens.screens, ...searchScreens.screens, ...recordScreens.screens};
 const ACTIONS = {...rateScreens.actions, ...diaryScreens.actions, ...accountScreens.actions, ...recommendScreens.actions, ...listScreens.actions, ...settingsScreens.actions, ...searchScreens.actions, ...importScreens.actions};
 
 const enabled = (env, kind, name) => {
