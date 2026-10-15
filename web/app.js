@@ -1069,8 +1069,12 @@ document.addEventListener("click", ev => {
     // 押した 1 つだけに印を付ける（色が変わって弾む・theme.css の .picked）。記録できなかったら外す
     // （起案者の指摘 2026-10-13「興味ありだけ黒いのなぜ？押したら色変わるとかなにかしらのアニメーション」）
     g.querySelectorAll("button[data-v]").forEach(x => x.classList.toggle("picked", x === b));
+    // 星は押した所までを ★ にする（記録できなかったら元に戻す）
+    const stars = b.classList.contains("star") ? [...g.querySelectorAll("button.star")] : [];
+    const starsWas = stars.map(x => x.classList.contains("on"));
+    stars.forEach((x, i) => x.classList.toggle("on", i <= stars.indexOf(b)));
     post(path, body, g).then(async d => {
-      if (!d) { if (tear) row.classList.remove("torn"); b.classList.remove("picked"); return; }
+      if (!d) { if (tear) row.classList.remove("torn"); b.classList.remove("picked"); stars.forEach((x, i) => x.classList.toggle("on", starsWas[i])); return; }
       g.classList.add("done");
       if (shown && g.dataset.stage) {
         const f = await fetch(API_BASE + "/api/react", {method: "POST", credentials: "include",
@@ -3432,10 +3436,18 @@ function fixupPrefMap(root) {
 
 // **元は読み込み時に1度だけ走る処理だったが、SPAではフラグメントを
 // 差し込むたびに呼び直す必要がある**(#000009)。呼び出しはrenderScreen()。
+// **行く日を入れた月は、その日が見える所まで送る**（起案者の指摘 2026-10-14「公演カレンダーのページから
+// 観劇日を追加してもカレンダーに反映されない」── スマホでは今日の位置に送るので、先の行く日が右に隠れていた）。
+// 題名の列は左に留めてある（style.css の .mgrid .nm）ので、その幅を除いた所に置く
 function fixupMonthScroll(root) {
-  (root || document).querySelectorAll(".mscroll .now").forEach(n => {
-    const s = n.closest(".mscroll");
-    s.scrollLeft = Math.max(0, n.offsetLeft - s.clientWidth * 0.35);
+  (root || document).querySelectorAll(".mscroll").forEach(s => {
+    const now = s.querySelector(".now"), pts = [...s.querySelectorAll(".mgrid .pt")];
+    const nmW = (s.querySelector(".mgrid .nm") || {offsetWidth: 0}).offsetWidth;
+    const from = now ? now.offsetLeft : 0;
+    const go = pts.find(p => p.offsetLeft >= from) || pts[0];
+    const at = go || now;
+    if (!at) return;
+    s.scrollLeft = Math.max(0, at.offsetLeft - nmW - (s.clientWidth - nmW) * 0.35);
   });
 }
 

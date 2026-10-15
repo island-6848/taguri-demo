@@ -8,7 +8,6 @@
 // まだ ◎○△× で 1 件も評価していない人は星、すでに ◎○△× で付けている人はそのまま
 // ◎○△×（1 人の記録に 2 つの段階を混ぜない）。保存は "n/5"（例 "4/5"）で、表示は ★n。
 // 色・並び・「最上位」の判定は、星を ◎○△× の側に読み替えて使う（★3 は真ん中で、どちらでもない）。
-import {E} from './py.js';
 
 export const MARKS = ['◎', '○', '△', '×'];
 export const STARS = ['5/5', '4/5', '3/5', '2/5', '1/5'];          // 高い順（並べるとき）
@@ -31,8 +30,14 @@ export async function scaleOf(ctx) {
   return ctx._scale;
 }
 
-/** The rating buttons: ◎○△×, or ★1〜★5 (low to high, as star ratings are read). */
-export function gradeButtons(scale) {
+/**
+ * The rating buttons: ◎○△×, or a row of five stars ☆☆☆☆☆ (起案者の指示 2026-10-14「☆☆☆☆☆みたいなの
+ * 表示されてて、自分が思ってる評価のとこ押したらそこまで星の色がつく、みたいなuiにして」).
+ * Each star is a button for "n/5"; the ones up to the current rating carry .on (filled ★, style in
+ * theme.css), and app.js fills up to the pressed one at once.
+ */
+export function gradeButtons(scale, current = '') {
   if (scale !== 'stars') return MARKS.map(g => `<button data-v="${g}">${g}</button>`).join('');
-  return [...STARS].reverse().map(g => `<button class="star" data-v="${g}" aria-label="星 ${g.slice(0, 1)}">${E(gradeText(g))}</button>`).join('');
+  const now = isStar(current) ? Number(String(current).slice(0, 1)) : 0;
+  return [1, 2, 3, 4, 5].map(n => `<button class="star${n <= now ? ' on' : ''}" data-v="${n}/5" aria-label="星 ${n}"></button>`).join('');
 }

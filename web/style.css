@@ -1719,25 +1719,33 @@ button .ico{vertical-align:-.2em;margin-right:5px}
    **丸い点はやめた**（起案者の指摘 ──「● だとデザインがダサい」）── 丸は帯とも
    暦とも関係の無い形で、どこに属しているのかが読めない。**その日のマスをそのまま
    半券の形に抜く**ので、日の列とも帯とも辻褄が合う。左右のミシン目は紙の色で入れる。 */
-.pt{height:21px;border-radius:3px;background:var(--ink);color:var(--surf);
- border-left:2px dotted var(--surf);border-right:2px dotted var(--surf);
+/* 2026-10-14 半券の形もやめた（起案者の指摘「持ってる日のマークキモいから別にして」）。
+   **その日のマスを幕の色で塗り、白い ✓ を置く** ── 「この日に印を付けた」と読める、暦に書き込む形にする。
+   同じ日に 2 回以上あれば ✓ の代わりに回数を出す */
+.pt{height:21px;border-radius:6px;background:var(--curtain);color:#fff;
+ box-shadow:0 0 0 2px var(--plane);
  display:flex;align-items:center;justify-content:center;z-index:3;position:relative}
-.pt b{font-size:9.5px;font-weight:700;line-height:1;font-style:normal}
+.pt::before{content:"✓";font-size:12px;font-weight:700;line-height:1}
+.pt.mul::before{content:none}
+.pt b{font-size:10.5px;font-weight:700;line-height:1;font-style:normal}
 /* 確定前（購入確認メールから読み取ったまま）は塗らない。**読み取りは間違いうる**ので、
    確定した回と同じ濃さで置くと、確かめていないものを確かめたように見せることになる */
-.pt.un{background:color-mix(in srgb,var(--ink) 17%,transparent);color:var(--ink);
- border:1px dashed color-mix(in srgb,var(--ink) 62%,transparent)}
+.pt.un{background:var(--surf);color:var(--curtain);
+ border:1.5px dashed var(--curtain)}
 /* 凡例では帯の見本の中に置く ── 単独の札だけ見せても、どこに出るのか分からない */
 .cal-legend .bar.sm{justify-content:center}
-.cal-legend .pt{height:15px;width:12px;flex:none}
-.mgrid .nm{grid-column:1;position:relative;z-index:1;padding:1px 12px 1px 0;min-width:0}
+.cal-legend .pt{height:15px;width:15px;flex:none}
+.cal-legend .pt::before{font-size:10px}
+/* 題名の列は左に留める（横に送っても、どの帯が何の公演で、いつ行くのかが読める） */
+.mgrid .nm{grid-column:1;position:sticky;left:0;z-index:4;background:var(--plane);padding:1px 12px 1px 0;min-width:0}
+.mgrid .hc{position:sticky;left:0;z-index:4;background:var(--plane)}
 /* 行く日は題名の下に書く。**札だけでは回（昼夜）が分からない。**
    頭の印は帯の中の札と同じ形にする ── 同じことを指すものは同じ形で出す */
 .mgrid .nm .go{display:block;font-style:normal;font-size:10.5px;font-weight:600;
  color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.mgrid .nm .go::before{content:"";display:inline-block;width:6px;height:11px;
- border-radius:2px;background:var(--ink);margin-right:6px;vertical-align:-1px;
- border-left:1px dotted var(--surf);border-right:1px dotted var(--surf)}
+.mgrid .nm .go::before{content:"✓";display:inline-flex;align-items:center;justify-content:center;
+ width:13px;height:13px;border-radius:4px;background:var(--curtain);color:#fff;font-size:9px;
+ margin-right:5px;vertical-align:-2px}
 .mgrid .nm b{display:block;font-size:13px;font-weight:600;line-height:1.35;
  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .mgrid .nm i{display:block;font-style:normal;font-size:10.5px;color:var(--mute);

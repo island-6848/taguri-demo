@@ -649,6 +649,18 @@
    "verifies": []
   },
   {
+   "id": "dec-calendar-go-visible",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "公演カレンダーで、入れた行く日がスマホで見えるようにし、行く日の印を ✓ の四角に替えた",
+   "sources": [
+    "web/app.js",
+    "web/style.css"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-calendar-oauth",
    "type": "decision",
    "status": "adopted",
@@ -4638,6 +4650,11 @@
    "from": "dec-calendar-credits-daily",
    "rel": "affects",
    "to": "q-crawler-state-size"
+  },
+  {
+   "from": "dec-calendar-go-visible",
+   "rel": "affects",
+   "to": "comp-frontend"
   },
   {
    "from": "dec-calendar-oauth",

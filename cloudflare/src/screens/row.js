@@ -145,7 +145,7 @@ export function recRow(w, {poster = '', rateAlways = false, editable = false, ra
     const btns = '<span class="rb" data-work="' + E(w.work_key) + '"'
       + ((!v || rateAlways) ? '' : ' hidden')
       + '>'
-      + gradeButtons(scale)
+      + gradeButtons(scale, v)
       + '<span class="said"></span></span>';
     rate = (!v || rateAlways) ? btns
       : rateReopen ? '<button class="wnb" data-rate-open="1">評価を押し直す</button>' + btns : '';

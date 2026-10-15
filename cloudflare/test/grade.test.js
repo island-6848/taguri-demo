@@ -23,7 +23,7 @@ test('a new user rates with stars; the saved n/5 shows as ★n and groups on the
   try {
     const k = (await step(env, a, {post: '/api/add_work', body: {title: '星で付ける舞台', date: '2026-08-01'}})).body.work_key;
     const unrated = (await step(env, a, {get: '/api/screen/unrated'})).body.body_html;
-    assert.match(unrated, /data-v="1\/5"[^>]*>★1<\/button>.*data-v="5\/5"[^>]*>★5<\/button>/s);
+    assert.match(unrated, /<button class="star" data-v="1\/5" aria-label="星 1"><\/button>.*<button class="star" data-v="5\/5" aria-label="星 5"><\/button>/s);
     assert.doesNotMatch(unrated, /data-v="◎"/);
     assert.equal((await step(env, a, {post: '/api/rate', body: {work_key: k, verdict: '4/5'}})).status, 200);
     assert.equal(sqlite.prepare('SELECT verdict FROM works WHERE work_key=?').get(k).verdict, '4/5');
@@ -31,6 +31,8 @@ test('a new user rates with stars; the saved n/5 shows as ★n and groups on the
     assert.match(rate, /星の数ごとに分けています/);
     assert.match(rate, /class="stamp" data-stamp="1"[^>]*>★4<\/span>/);
     assert.match(rate, /<td>★4<\/td>/);
+    // the stars up to the rating are filled (★★★★☆) when the rating is opened again
+    assert.match(rate, /(<button class="star on" data-v="[1-4]\/5"[^>]*><\/button>){4}<button class="star" data-v="5\/5"/);
     assert.equal((await step(env, a, {post: '/api/rate', body: {work_key: k, verdict: '6/5'}})).status, 400);
   } finally { sqlite.close(); }
 });
