@@ -407,3 +407,21 @@ test('人 matches the whole name: 上村聡 does not pick up 上村聡史 (起�
     assert.match((await screen(env, a, 'favourites')).body_html, /新着 2 件[\s\S]*data-stage="962"/);
   } finally { sqlite.close(); }
 });
+
+test('興味あり added from 開幕リマインド says so in place of おすすめ理由, and a note keeps it (起案者 2026-10-15)', async () => {
+  const {env, sqlite} = withIndex();
+  const a = await signIn(env);
+  try {
+    await step(env, a, {post: '/api/react', body: {stage_id: '101', value: 'interest', nofill: true, from: 'reminder'}});
+    await step(env, a, {post: '/api/react', body: {stage_id: '102', value: 'interest', nofill: true}});
+    // 理由を書いても、足した場所は変わらない
+    await step(env, a, {post: '/api/react', body: {stage_id: '101', note: 'ポスターがかわいい'}});
+    const html = (await screen(env, a, 'interest')).body_html;
+    const card = id => html.slice(html.indexOf(`data-stage="${id}"`), html.indexOf('</article>', html.indexOf(`data-stage="${id}"`)));
+    assert.match(card('101'), /<div class="whyh origin">[\s\S]*開幕リマインドからの追加<\/div>/);
+    assert.doesNotMatch(card('101'), /おすすめ理由|<ul class="why">/);
+    assert.match(card('101'), /<span class="wnt">ポスターがかわいい<\/span>/);
+    assert.match(card('102'), /おすすめ理由/);
+    assert.equal(sqlite.prepare("SELECT source FROM reaction WHERE stage_id='101' AND interest=1").get().source, 'reminder');
+  } finally { sqlite.close(); }
+});

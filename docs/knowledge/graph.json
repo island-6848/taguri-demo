@@ -999,6 +999,21 @@
    "verifies": []
   },
   {
+   "id": "dec-interest-card-1015",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-15",
+   "title": "興味ありのカード: 「くわしく」を理由の上に、開幕リマインドから足した公演は「開幕リマインドからの追加」とだけ書く、本人が書いた文は明朝",
+   "sources": [
+    "web/app.js",
+    "web/theme.css",
+    "cloudflare/src/screens/cards.js",
+    "cloudflare/src/screens/lists.js",
+    "cloudflare/src/screens/recommend.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-lists-worker",
    "type": "decision",
    "status": "adopted",
@@ -5494,6 +5509,11 @@
    "from": "dec-index-diff",
    "rel": "affects",
    "to": "comp-rec-index"
+  },
+  {
+   "from": "dec-interest-card-1015",
+   "rel": "affects",
+   "to": "comp-frontend"
   },
   {
    "from": "dec-lists-worker",
