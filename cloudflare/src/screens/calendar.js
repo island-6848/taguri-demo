@@ -61,11 +61,6 @@ function goLabel(tk) {
   }).join('・');
 }
 const prefRank = p => (PREFS.includes(p) ? PREFS.indexOf(p) : PREFS.length);
-function place(rows, y, m) {
-  const a = isoOf(y, m, 1), b = isoOf(y, m, mdays(y, m));
-  return rows.filter(r => r.start <= b && r.end >= a)
-    .sort((p, q) => (prefRank(p.pref) - prefRank(q.pref)) || cmp(p.end, q.end) || cmp(p.start, q.start) || cmp(p.title, q.title));
-}
 function points(tk, r, a, row) {
   return byDay(tk).map(([day, g]) => {
     const col = days(day, a) + 2;
@@ -78,23 +73,36 @@ function points(tk, r, a, row) {
       + `${g.length > 1 ? `<b>${g.length}</b>` : ''}<i class="sr">${E(r.title)}・${E(say)}</i></span>`;
   }).join('');
 }
-function monthBlock(rows, y, m, today) {
-  const n = mdays(y, m), a = isoOf(y, m, 1), b = isoOf(y, m, n);
-  const hit = place(rows, y, m);
+/**
+ * stage_calendar._timeline: 今月の 1 日から最後の月の末日までを、1 枚の続いた格子にする。
+ * 起案者の指摘（2026-10-15）「月ごとにわけて描画してるけど、月またいでやってる作品が見づらい」。月ごとに
+ * 分けると、またぐ公演が月の数だけ別の行に出て、帯も月の端で切れていた。1 枚にすると 1 公演は 1 行・1 本の帯になる。
+ * 月の名前は見出しの 1 段目に、月の境目は縦の線で出す。件数は種類の絵記号と数で 1 行にする（「（…）」が折り返していた）。
+ */
+function timeline(rows, ms, today) {
+  const [fy, fm] = ms[0], [ly, lm] = ms.at(-1);
+  const a = isoOf(fy, fm, 1), b = isoOf(ly, lm, mdays(ly, lm)), n = days(b, a) + 1;
+  const hit = rows.filter(r => r.start <= b && r.end >= a)
+    .sort((p, q) => (prefRank(p.pref) - prefRank(q.pref)) || cmp(p.end, q.end) || cmp(p.start, q.start) || cmp(p.title, q.title));
   if (!hit.length) return '';
-  const cnt = Object.fromEntries(KINDS.map(([, lb]) => [lb, hit.filter(r => r.kind === lb).length]));
-  const tally = KINDS.filter(([, lb]) => cnt[lb]).map(([, lb]) => `${lb} ${cnt[lb]}`).join('・');
-  const head = `<h3>${y} 年 ${m} 月 <span class="cnt">${hit.length} 件${tally ? `（${E(tally)}）` : ''}</span></h3>`;
-  const stripes = Array.from({length: n}, (_, i) => i).filter(i => weekday(isoOf(y, m, i + 1)) >= 5)
-    .map(i => `<span class="wk ${weekday(isoOf(y, m, i + 1)) === 6 ? 'sun' : 'sat'}" style="grid-column:${i + 2};grid-row:2/-1"></span>`).join('');
-  const now = a <= today && today <= b ? `<span class="now" style="grid-column:${Number(today.slice(8, 10)) + 1};grid-row:1/-1"></span>` : '';
-  const hd = ['<span class="hc" style="grid-row:1"></span>'];
+  const tally = KINDS.map(([, lb, icon]) => [lb, icon, hit.filter(r => r.kind === lb).length]).filter(([, , c]) => c)
+    .map(([lb, icon, c]) => `<span class="ck">${ico(icon, 12)}<i class="sr">${E(lb)}</i>${c}</span>`).join('');
+  const head = `<p class="calcnt"><b>${hit.length} 件</b>${tally}</p>`;
+  const iso = i => new Date(D(a).getTime() + i * 86400000).toISOString().slice(0, 10);
+  const marks = [], hd = ['<span class="hc" style="grid-row:1/3"></span>'];
   for (let i = 0; i < n; i++) {
-    const day = isoOf(y, m, i + 1), wd = weekday(day);
+    const day = iso(i), wd = weekday(day), dd = Number(day.slice(8, 10));
+    if (wd >= 5) marks.push(`<span class="wk ${wd === 6 ? 'sun' : 'sat'}" style="grid-column:${i + 2};grid-row:3/-1"></span>`);
+    if (dd === 1) {
+      const y = Number(day.slice(0, 4)), m = Number(day.slice(5, 7));
+      hd.push(`<span class="mh" style="grid-column:${i + 2}/${i + 2 + mdays(y, m)};grid-row:1"><b>${y} 年 ${m} 月</b></span>`);
+      if (i) marks.push(`<span class="ms" style="grid-column:${i + 2};grid-row:1/-1"></span>`);
+    }
     const w = '日月火水木金土'[(wd + 1) % 7];
     const cls = 'hd' + ['', '', '', '', '', ' sat', ' sun'][wd] + (day < today ? ' past' : '');
-    hd.push(`<span class="${cls}" style="grid-column:${i + 2};grid-row:1"><b>${i + 1}</b><i>${w}</i></span>`);
+    hd.push(`<span class="${cls}" style="grid-column:${i + 2};grid-row:2"><b>${dd}</b><i>${w}</i></span>`);
   }
+  const now = a <= today && today <= b ? `<span class="now" style="grid-column:${days(today, a) + 2};grid-row:1/-1"></span>` : '';
   const body = hit.map((r, k) => {
     const c0 = Math.max(1, days(r.start, a) + 1), c1 = Math.min(n, days(r.end, a) + 1);
     const cl = r.start < a ? ' cl' : '', cr = r.end > b ? ' cr' : '';
@@ -102,13 +110,13 @@ function monthBlock(rows, y, m, today) {
     const sid = r.sid ? ` data-stage="${E(r.sid)}"` : '';
     const here = (r.tickets || []).filter(t => a <= t.date && t.date <= b);
     const go = here.length ? `<em class="go">${E(goLabel(here))} に行きます</em>` : '';
-    return `<span class="nm"${sid} style="grid-row:${k + 2}"><b>${E(r.title)}</b>`
+    return `<span class="nm"${sid} style="grid-row:${k + 3}"><b>${E(r.title)}</b>`
       + `<i>${periodLabel(r.period, r.days)}${where ? '・' + E(where) : ''}</i>${go}</span>`
-      + `<span class="bar ${r.cls}${cl}${cr}"${sid} style="grid-column:${c0 + 1}/${c1 + 2};grid-row:${k + 2}">`
-      + `${ico(r.icon, 13)}<i class="sr">${E(r.kind)}</i></span>` + points(here, r, a, k + 2);
+      + `<span class="bar ${r.cls}${cl}${cr}"${sid} style="grid-column:${c0 + 1}/${c1 + 2};grid-row:${k + 3}">`
+      + `${ico(r.icon, 13)}<i class="sr">${E(r.kind)}</i></span>` + points(here, r, a, k + 3);
   }).join('');
-  return `<div class="mblock">${head}<div class="mscroll"><div class="mgrid" data-y="${y}" data-m="${m}" style="--n:${n};`
-    + `grid-template-rows:repeat(${1 + hit.length},auto)">${stripes}${now}${hd.join('')}${body}</div></div></div>`;
+  return `<div class="mblock">${head}<div class="mscroll"><div class="mgrid tl" data-from="${a}" style="--n:${n};`
+    + `grid-template-rows:repeat(${2 + hit.length},auto)">${marks.join('')}${now}${hd.join('')}${body}</div></div></div>`;
 }
 
 /** stage_calendar.filter_html; selKinds / selPrefs are null when not chosen. */
@@ -166,7 +174,7 @@ export function panel(d, today, tickets, selKinds = null, selPrefs = null) {
     ms.push([y, m]);
     [y, m] = m === 12 ? [y + 1, 1] : [y, m + 1];
   }
-  const blocks = ms.map(([yy, mm]) => monthBlock(view, yy, mm, today)).join('');
+  const blocks = timeline(view, ms, today);
   const [lastY, lastM] = ms.at(-1);
   const over = view.filter(r => { const [sy, sm] = [Number(r.start.slice(0, 4)), Number(r.start.slice(5, 7))]; return sy > lastY || (sy === lastY && sm > lastM); });
   const tail = over.length ? `<p class="lead"><b>${over.length} 件は ${MAX_MONTHS} か月より先なので、このカレンダーには表示していません。</b>「おすすめ ▸ 興味あり／お気に入り」の一覧には出ているので、そちらで確認してください。</p>` : '';

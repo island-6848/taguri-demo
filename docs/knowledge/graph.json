@@ -690,6 +690,20 @@
    "verifies": []
   },
   {
+   "id": "dec-calendar-timeline",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-15",
+   "title": "公演カレンダーを月ごとの格子から 1 枚の続いた格子にし、「持っている」は実線・「興味あり」「お気に入り」は点線にそろえる",
+   "sources": [
+    "cloudflare/src/screens/calendar.js",
+    "tools/taguri/stage_calendar.py",
+    "web/theme.css",
+    "web/app.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-calendar-worker",
    "type": "decision",
    "status": "adopted",
@@ -5149,6 +5163,11 @@
    "from": "dec-calendar-oauth",
    "rel": "supports",
    "to": "dec-free-tier-only"
+  },
+  {
+   "from": "dec-calendar-timeline",
+   "rel": "affects",
+   "to": "comp-frontend"
   },
   {
    "from": "dec-calendar-worker",
