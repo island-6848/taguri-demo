@@ -2104,6 +2104,18 @@
    "verifies": []
   },
   {
+   "id": "impl-interest-seed",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-15",
+   "title": "興味ありを押した公演を、お気に入りと同じ重みの仮の ◎ として推薦に入れた（新しい順に 60 件まで、一覧にしかない公演は出演欄から人物を読む）",
+   "sources": [
+    "cloudflare/src/screens/recommend.js",
+    "cloudflare/test/recommend-screen.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "impl-onboarding-list",
    "type": "finding",
    "status": "confirmed",
@@ -2275,6 +2287,18 @@
    "verifies": []
   },
   {
+   "id": "lit-content-overspecialization",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-15",
+   "title": "内容に基づく推薦は、好きだったものに似たものばかり勧め、思いがけない良い出会い（serendipity）が少ないのが弱み（Lops・de Gemmis・Semeraro 2011）",
+   "sources": [
+    "https://ricerca.uniba.it/handle/11586/112414",
+    "https://www.ise.bgu.ac.il/faculty/liorr/recsyshb/chContent.pdf"
+   ],
+   "verifies": []
+  },
+  {
    "id": "lit-decoupled-rating",
    "type": "finding",
    "status": "confirmed",
@@ -2299,6 +2323,18 @@
    "verifies": []
   },
   {
+   "id": "lit-explanations",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-15",
+   "title": "推薦の説明には、透明さ・正せること（scrutability）・信頼・説得・効率など 7 つの目的があり、互いにぶつかることもある（Tintarev・Masthoff 2007・2012）",
+   "sources": [
+    "https://link.springer.com/doi/10.1007/978-1-4899-7637-6_10",
+    "https://arxiv.org/pdf/1804.11192"
+   ],
+   "verifies": []
+  },
+  {
    "id": "lit-explicit-implicit-jawaheer",
    "type": "finding",
    "status": "unverified",
@@ -2318,6 +2354,17 @@
    "title": "推薦が利用者の行動を変え、その行動で次の推薦を学ぶ「輪」で、推薦は偏りやすくなる（Chaney・Stewart・Engelhardt 2018）",
    "sources": [
     "https://www.arxiv.org/abs/1710.11214"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "lit-future-events",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-15",
+   "title": "「これから開かれる催し」の推薦は、評価が集まる前に終わる品目を扱う分野として研究されている（Minkov ほか, CIKM 2010）",
+   "sources": [
+    "https://ir.webis.de/anthology/2010.cikm_conference-2010.86/"
    ],
    "verifies": []
   },
@@ -2437,6 +2484,18 @@
    "sources": [
     "https://www.arxiv.org/abs/1611.05788",
     "https://access.intix.org/Full-Article/creating-a-netflix-for-theatre-an-unlikely-experiment-with-a-box-office-and-a-recommendation-algorithm"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "lit-popularity-bias",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-15",
+   "title": "推薦は人気のあるものに偏りやすく、本人ごとに並べ直して少数派のものも混ぜる方法がある（Abdollahpouri・Burke・Mobasher, FLAIRS 2019）",
+   "sources": [
+    "https://ar5iv.arxiv.org/html/1901.07555",
+    "https://ceur-ws.org/Vol-2440/paper4.pdf"
    ],
    "verifies": []
   },
@@ -2563,6 +2622,29 @@
    "verifies": []
   },
   {
+   "id": "lit-temporal-dynamics",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-15",
+   "title": "好みは時間とともに変わるので、古い評価と新しい評価を同じに扱わず、時間の変化をモデルに入れると精度が上がった（Koren, KDD 2009 最優秀論文）",
+   "sources": [
+    "https://faculty.cc.gatech.edu/~zha/CSE8801/CF/kdd-fp074-koren.pdf"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "lit-topic-diversification",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-15",
+   "title": "推薦の一覧を話題が偏らないよう並べ直すと、平均の精度は下がるが利用者の満足は上がった（Ziegler・McNee・Konstan・Lausen, WWW 2005）",
+   "sources": [
+    "https://archives.iw3c2.org/www2005/proceedings/docs/p22.pdf",
+    "https://ir.webis.de/anthology/2005.wwwconf_conference-2005.4/"
+   ],
+   "verifies": []
+  },
+  {
    "id": "lit-user-bias",
    "type": "finding",
    "status": "unverified",
@@ -2584,6 +2666,18 @@
     "https://www.springerprofessional.de/towards-a-customization-of-rating-scales-in-adaptive-systems/3302784",
     "https://www.igi-global.com/article/a-study-on-user-preferential-choices-about-rating-scales/121636",
     "https://iris.unito.it/handle/2318/1634017"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "lit-user-inaction",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-15",
+   "title": "出した推薦の大半は何の反応もされず、その「反応しなかった」にも見ていない・迷っている・興味が無いなどの意味がある（Zhao ほか, RecSys 2018）",
+   "sources": [
+    "https://research.tue.nl/nl/publications/interpreting-user-inaction-in-recommender-systems/",
+    "https://konstan.umn.edu/selected-publications"
    ],
    "verifies": []
   },
@@ -3272,7 +3366,7 @@
   {
    "id": "q-interest-seed",
    "type": "question",
-   "status": "open",
+   "status": "answered",
    "date": "2026-10-14",
    "title": "「興味あり」を、お気に入りと同じ仮の ◎（seeds）として推薦の材料に入れるか。重みと、一覧にしかない公演の人物をどう引くか",
    "sources": [],
@@ -3604,6 +3698,15 @@
    "status": "open",
    "date": "2026-10-14",
    "title": "控えから戻したとき、控えのあとに完全削除した人の記録をどう消し直すか",
+   "sources": [],
+   "verifies": []
+  },
+  {
+   "id": "q-review-1015",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-15",
+   "title": "文献から見た推薦の気になる点（同じ人ばかり・人気の偏り・古い評価の重さ・答えない公演・裏の答え合わせと理由のずれ・映画での検証）をどれから直すか",
    "sources": [],
    "verifies": []
   },
@@ -6090,6 +6193,21 @@
    "to": "comp-recommender"
   },
   {
+   "from": "impl-interest-seed",
+   "rel": "answers",
+   "to": "q-interest-seed"
+  },
+  {
+   "from": "impl-interest-seed",
+   "rel": "depends_on",
+   "to": "interest-not-in-v3"
+  },
+  {
+   "from": "impl-interest-seed",
+   "rel": "depends_on",
+   "to": "impl-favourite-seed"
+  },
+  {
    "from": "impl-onboarding-list",
    "rel": "answers",
    "to": "q-first-rating-onboarding"
@@ -6230,6 +6348,11 @@
    "to": "comp-recommender"
   },
   {
+   "from": "lit-content-overspecialization",
+   "rel": "affects",
+   "to": "impl-person-ordinal-v3"
+  },
+  {
    "from": "lit-decoupled-rating",
    "rel": "supports",
    "to": "q-rating-scale"
@@ -6243,6 +6366,11 @@
    "from": "lit-default-effect",
    "rel": "affects",
    "to": "q-user-chosen-scale"
+  },
+  {
+   "from": "lit-explanations",
+   "rel": "affects",
+   "to": "impl-hidden-gate"
   },
   {
    "from": "lit-explicit-implicit-jawaheer",
@@ -6263,6 +6391,11 @@
    "from": "lit-feedback-loop",
    "rel": "supports",
    "to": "lit-mnar"
+  },
+  {
+   "from": "lit-future-events",
+   "rel": "supports",
+   "to": "lit-performing-arts"
   },
   {
    "from": "lit-genre-reco",
@@ -6335,6 +6468,11 @@
    "to": "q-reco-learning-design"
   },
   {
+   "from": "lit-popularity-bias",
+   "rel": "affects",
+   "to": "impl-person-ordinal-v3"
+  },
+  {
    "from": "lit-pre-post-consumption",
    "rel": "supports",
    "to": "q-interest-seed"
@@ -6385,6 +6523,16 @@
    "to": "q-reco-learning-design"
   },
   {
+   "from": "lit-temporal-dynamics",
+   "rel": "affects",
+   "to": "impl-person-ordinal-v3"
+  },
+  {
+   "from": "lit-topic-diversification",
+   "rel": "affects",
+   "to": "impl-person-ordinal-v3"
+  },
+  {
    "from": "lit-user-bias",
    "rel": "affects",
    "to": "q-rating-scale"
@@ -6393,6 +6541,11 @@
    "from": "lit-user-chosen-scale",
    "rel": "supports",
    "to": "q-user-chosen-scale"
+  },
+  {
+   "from": "lit-user-inaction",
+   "rel": "affects",
+   "to": "impl-person-ordinal-v3"
   },
   {
    "from": "lit-yahoo-multicriteria",
@@ -7098,6 +7251,46 @@
    "from": "q-restore-redelete",
    "rel": "affects",
    "to": "dec-account-deletion"
+  },
+  {
+   "from": "q-review-1015",
+   "rel": "depends_on",
+   "to": "lit-content-overspecialization"
+  },
+  {
+   "from": "q-review-1015",
+   "rel": "depends_on",
+   "to": "lit-popularity-bias"
+  },
+  {
+   "from": "q-review-1015",
+   "rel": "depends_on",
+   "to": "lit-topic-diversification"
+  },
+  {
+   "from": "q-review-1015",
+   "rel": "depends_on",
+   "to": "lit-temporal-dynamics"
+  },
+  {
+   "from": "q-review-1015",
+   "rel": "depends_on",
+   "to": "lit-user-inaction"
+  },
+  {
+   "from": "q-review-1015",
+   "rel": "depends_on",
+   "to": "lit-explanations"
+  },
+  {
+   "from": "q-review-1015",
+   "rel": "depends_on",
+   "to": "lit-feedback-loop"
+  },
+  {
+   "from": "q-review-1015",
+   "rel": "depends_on",
+   "to": "lit-beyond-accuracy"
   },
   {
    "from": "q-safari-cookies",
