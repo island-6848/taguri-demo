@@ -356,6 +356,7 @@ ${limits}`;
 
 // ---------------------------------------------------------------- react (serve.on_react)
 const REACT = {owned: {owned: 1}, interest: {interest: 1}, nointerest: {interest: 0}};
+const FROM = {reminder: 'reminder', search: 'search', favourites: 'favourites'};
 
 async function reactRow(ctx, stageId, cols, source) {
   const label = ctx.today;
@@ -363,7 +364,7 @@ async function reactRow(ctx, stageId, cols, source) {
   await ctx.db.prepare(`INSERT INTO reaction(user_id,label,stage_id,interest,owned,note,note_no,note_pre,source,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)
     ON CONFLICT(user_id,label,stage_id) DO UPDATE SET interest=COALESCE(excluded.interest,reaction.interest), owned=COALESCE(excluded.owned,reaction.owned),
     note=COALESCE(excluded.note,reaction.note), note_no=COALESCE(excluded.note_no,reaction.note_no), note_pre=COALESCE(excluded.note_pre,reaction.note_pre),
-    source=excluded.source, updated_at=excluded.updated_at`)
+    source=CASE WHEN excluded.interest IS NOT NULL OR excluded.owned IS NOT NULL THEN excluded.source ELSE reaction.source END, updated_at=excluded.updated_at`)
     .bind(ctx.uid, label, stageId, v.interest, v.owned, v.note, v.note_no, v.note_pre, source, new Date(ctx.now).toISOString()).run();
 }
 
@@ -392,11 +393,14 @@ export async function reactAction(b, ctx) {
   for (const k of ['note', 'note_no', 'note_pre']) if (b[k] !== undefined && b[k] !== null) given[k] = String(b[k]).slice(0, 2000);
   if (!stageId || !/^[A-Za-z0-9_-]{1,40}$/.test(stageId) || (!Object.hasOwn(REACT, value) && !Object.keys(given).length))
     throw new ValueError('stage_id と、value（owned / interest / nointerest）か理由が要る');
-  await reactRow(ctx, stageId, {...(REACT[value] || {}), ...given}, 'screen');
+  // どの画面で答えたか（起案者の指示 2026-10-15: 開幕リマインドから足した興味ありは、おすすめ理由の欄ではなく
+  // 「開幕リマインドからの追加」と出す）。画面（app.js）が from を送る。無ければこれまでどおり 'screen'。
+  const source = Object.hasOwn(FROM, String(b.from ?? '')) ? FROM[String(b.from)] : 'screen';
+  await reactRow(ctx, stageId, {...(REACT[value] || {}), ...given}, source);
   if (Object.hasOwn(REACT, value) && Array.isArray(b.siblings)) {
     // The same answer for the production's other venues (the card's data-tours); notes stay on the pressed one.
     for (const sid of b.siblings.slice(0, 40).map(String).filter(s => /^\d+$/.test(s) && s !== stageId))
-      await reactRow(ctx, sid, REACT[value], 'screen_tour');
+      await reactRow(ctx, sid, REACT[value], source + '_tour');
   }
   const out = {ok: true, stage_id: stageId, value, note: 'note' in given, note_no: 'note_no' in given};
   if (Object.hasOwn(REACT, value) && !b.nofill) {

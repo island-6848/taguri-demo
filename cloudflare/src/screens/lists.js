@@ -53,11 +53,12 @@ export async function loadDeclined(ctx) {
 
 /** reaction rows merged per stage, newest last (feedback.reactions). */
 export async function reactionsOf(ctx) {
-  const {results} = await ctx.db.prepare('SELECT stage_id,interest,owned,note,note_no,note_pre FROM reaction WHERE user_id=? ORDER BY updated_at').bind(ctx.uid).all();
+  const {results} = await ctx.db.prepare('SELECT stage_id,interest,owned,note,note_no,note_pre,source FROM reaction WHERE user_id=? ORDER BY updated_at').bind(ctx.uid).all();
   const out = new Map();
   for (const r of results) {
     const d = out.get(r.stage_id) || {};
-    if (r.interest !== null) d.interest = Number(r.interest);
+    // src: the screen the newest 興味あり／なし was pressed on ('reminder', 'search', 'screen' …)
+    if (r.interest !== null) { d.interest = Number(r.interest); d.src = String(r.source || '').replace(/_tour$/, ''); }
     if (r.owned !== null) d.owned = Number(r.owned);
     if (r.note !== null) d.note = r.note;
     if (r.note_no !== null) d.note_no = r.note_no;
@@ -282,7 +283,7 @@ export async function buckets(ctx, {catalogue = false} = {}) {
       interest: rs.find(x => x.interest !== undefined)?.interest};
     const pick = sids.find(s => react.has(s)) || m.stage_id;
     const pre = sids.map(s => react.get(s)?.note_pre).find(Boolean) || '';
-    const row = {...(group.find(v => v.stage_id === pick) || m), sids, note: react.get(pick)?.note || '', note_pre: pre};
+    const row = {...(group.find(v => v.stage_id === pick) || m), sids, note: react.get(pick)?.note || '', note_pre: pre, src: react.get(pick)?.src || ''};
     if (r.owned === 1) {
       seen.add(key);
       const done = doneDate(sids, row.end, tickets);
@@ -344,13 +345,16 @@ async function cards(ctx, rows, mode, extra = () => ({})) {
 }
 const qInt = (params, k) => Math.max(1, Number.parseInt(params.get(k) || '1', 10) || 1);
 
+// 興味ありを押した画面が、おすすめ以外のとき、おすすめ理由の欄の代わりに出す言葉（起案者の指示 2026-10-15
+// 「開幕リマインドから追加したものは、おすすめ理由という欄ではなく、「開幕リマインドからの追加」だけ書いて」）
+const ORIGIN = {reminder: '開幕リマインドからの追加', search: '探すからの追加'};
 export async function interestScreen(params, ctx) {
   const b = await buckets(ctx);
   const rows = b.tracking;
   const [show, mfil, mfoot] = monthPick(rows, params.get('m') || '', qInt(params, 'p'), '/recommend/interest');
   const list = rows.length
     ? '<p class="lead"><b>上演日の近い順</b>に並んでいます。順位は付けていません。</p><div class="tickets">'
-      + (await cards(ctx, show, 'interest', r => ({note: r.note}))).join('') + '</div>'
+      + (await cards(ctx, show, 'interest', r => ({note: r.note, origin: ORIGIN[r.src] || ''}))).join('') + '</div>'
     : '<p class="empty">追いかけている公演はありません。「おすすめ」の画面で「興味あり」を押すと、ここに並びます。</p>';
   const body = `<h1>追いかけている ${rows.length} 件</h1>
 <p class="lede">「興味あり」を押した公演を、上演日の近い順に並べています。順位は付けていません。チケットが取れたら「すでに持っている」を押してください。観る予定に移り、上演日を過ぎると評価待ちに並びます。<br>

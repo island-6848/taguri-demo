@@ -4,7 +4,8 @@
 // every list (recommend / interest / favourite / owned).
 import {E} from './py.js';
 
-const ICONS = {check: 'M4.5 12.5 9.5 18 20 6', plus: 'M12 5v14M5 12h14', eye: 'M2.5 12S6 6 12 6s9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6zM12 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z'};
+const ICONS = {check: 'M4.5 12.5 9.5 18 20 6', plus: 'M12 5v14M5 12h14', eye: 'M2.5 12S6 6 12 6s9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6zM12 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z',
+  inbox: 'M3 12h5l1.5 2.5h5L16 12h5M3 12l3-7h12l3 7v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z'};
 const ico = (name, size) => `<svg class="ico " viewBox="0 0 24 24" width="${size}" height="${size}" fill="none"`
   + ` stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">`
   + `<path d="${ICONS[name]}"/></svg>`;
@@ -82,7 +83,7 @@ export const posterHtml = file => `<span class="pwrap"><img class="poster" src="
   + `<span class="pmsg">読み込み中…</span></span>`;
 
 /** build_cards.compose */
-export function compose(template, sid, mode, {rank = null, why = '', poster = '', note = '', mytix = '', top = '', owned = false} = {}) {
+export function compose(template, sid, mode, {rank = null, why = '', poster = '', note = '', mytix = '', top = '', owned = false, origin = ''} = {}) {
   const mark = {recommend: rank ? `<span class="sn">No.${String(rank).padStart(2, '0')}</span>` : '',
     interest: `<span class="sn done">${ico('check', 15)}</span>`,
     favourite: '<span class="wax" aria-hidden="true"></span>'}[mode] || '';
@@ -102,7 +103,9 @@ export function compose(template, sid, mode, {rank = null, why = '', poster = ''
     .replace('<div class="act"></div>', '').replace('<div class="pcol"></div>', '')
     // 探す: what the words hit, above the card, in place of the reasons (ticket's why_html).
     .replace('</h3>\n \n <div class="meta">', () => (top ? `</h3>\n <div class="whyh top">${ico('eye', 14)}ヒットした箇所：</div><ul class="why top">${top}</ul>\n <div class="meta">` : '</h3>\n \n <div class="meta">'))
-    .replace(`<div class="whyh">${ico('eye', 14)}おすすめ理由</div><ul class="why">${why || NO_REASON}</ul>`, () => (top ? '' : `<div class="whyh">${ico('eye', 14)}おすすめ理由</div><ul class="why">${why || NO_REASON}</ul>`));
+    .replace(`<div class="whyh">${ico('eye', 14)}おすすめ理由</div><ul class="why">${why || NO_REASON}</ul>`, () => (top ? '' : `<div class="whyh">${ico('eye', 14)}おすすめ理由</div><ul class="why">${why || NO_REASON}</ul>`))
+    // おすすめ以外の画面で足した興味ありは、理由の欄の代わりに足した場所だけを書く
+    .replace(origin ? /<div class="whyh">[\s\S]*?<\/ul>/ : /(?!)/, () => `<div class="whyh origin">${ico('inbox', 14)}${E(origin)}</div>`);
 }
 
 /** Card templates and posters of these stages: Map(sid -> html), Map(sid -> file). */

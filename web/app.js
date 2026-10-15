@@ -934,8 +934,9 @@ function compactTickets(root) {
       const pc = t.querySelector(".body > .pcol");
       if (pc) pc.appendChild(a); else if (sale) sale.appendChild(a); else main.querySelector(".meta")?.after(a);
     }
-    const act = main.querySelector(".act");
-    if (act) act.after(more); else main.appendChild(more);
+    // 「くわしく」は「おすすめ理由」の上に置く（起案者の指示 2026-10-15「「くわしく」は「おすすめ理由」の上にして」）
+    const act = main.querySelector(".act"), why0 = main.querySelector(":scope > .whyh:not(.top)");
+    if (why0) why0.before(more); else if (act) act.after(more); else main.appendChild(more);
     // 耳（日付の札）の代わりに、ポスターを切り取り線の左に立てる。順位はポスターの左上、
     // 日付は公演名の上に移す。ポスターの無い公演は、灰の地に公演名を置く
     const stub = t.querySelector(".stub"), perf = t.querySelector(".perf");
@@ -974,7 +975,7 @@ function compactTickets(root) {
     // 購入済み公演の「行く日」は、出演・あらすじの下に全幅で置く（おすすめと同じ並び）
     const mytix = main.querySelector(":scope > .mytix");
     if (mytix) foot.appendChild(mytix);
-    let n = main.querySelector(":scope > .whyh:not(.top)") || main.querySelector(":scope > .act") || more;
+    let n = main.querySelector(":scope > details.more") || main.querySelector(":scope > .whyh:not(.top)") || main.querySelector(":scope > .act");
     while (n) { const nx = n.nextSibling; foot.appendChild(n); n = nx; }
     t.appendChild(foot);
     fixupSynClamp(box);
@@ -1128,6 +1129,10 @@ document.addEventListener("click", ev => {
     const shown = slot ? [...document.querySelectorAll(".ticket.recommend")].map(a => a.dataset.stage).filter(Boolean) : null;
     if (g.dataset.stage) {
       body.nofill = true;
+      // どの画面で答えたか（興味ありの一覧で「開幕リマインドからの追加」などと出すため。起案者の指示 2026-10-15）
+      const here = (location.pathname.slice(REPO_BASE.length) || "/");
+      const from = {"/recommend/reminder": "reminder", "/search": "search", "/recommend/favourites": "favourites"}[here];
+      if (from) body.from = from;
       const tk0 = b.closest(".ticket");
       if (tk0 && tk0.dataset.tours !== undefined) body.siblings = tk0.dataset.tours.split(",").filter(Boolean);
     }
