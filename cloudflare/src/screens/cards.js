@@ -18,6 +18,9 @@ export const buttons = (sid, hidden = false) => `<span class="btns"${hidden ? ' 
   + '<button data-v="interest">興味あり</button>'
   + '<button data-v="nointerest">興味なし</button>'
   + '<span class="said"></span></span>';
+/** お気に入り: 購入済みにするボタンだけ（起案者の指示 2026-10-15「お気に入りから、購入済みを登録できるようにして」）。 */
+export const ownedButton = sid => `<span class="btns" data-stage="${E(sid)}">`
+  + '<button data-v="owned">購入済みにする</button><span class="said"></span></span>';
 
 /** render_recommend.why_note */
 export function whyNote(sid, note = '', {open = false, ask = false} = {}) {
@@ -82,7 +85,7 @@ export function compose(template, sid, mode, {rank = null, why = '', poster = ''
     interest: `<span class="sn done">${ico('check', 15)}</span>`,
     favourite: '<span class="wax" aria-hidden="true"></span>'}[mode] || '';
   const btns = {recommend: buttons(sid),
-    interest: changeAnswer(sid), owned: changeAnswer(sid)}[mode] || '';
+    interest: changeAnswer(sid), owned: changeAnswer(sid), favourite: ownedButton(sid)}[mode] || '';
   const answer = mode === 'recommend' || mode === 'interest';
   // Functions as replacements: the inserted text is never read as a replacement pattern ($&).
   return template.replace('<article class="ticket recommend"', () => `<article class="ticket ${mode}"`)

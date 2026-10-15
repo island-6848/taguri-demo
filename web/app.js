@@ -1146,7 +1146,9 @@ document.addEventListener("click", ev => {
     g.querySelectorAll("button[data-v]").forEach(x => x.classList.toggle("picked", x === b));
     // 星は押した所までを ★ にする（記録できなかったら元に戻す）
     const unfill = fillStars(g, b);
-    post(path, body, g).then(async d => {
+    // お気に入りの「購入済みにする」は、移った先を言う（起案者の指示 2026-10-15）
+    const said0 = tk && tk.classList.contains("favourite") && b.dataset.v === "owned" ? "購入済み公演に移しました" : undefined;
+    post(path, body, g, said0).then(async d => {
       if (!d) { if (tear) row.classList.remove("torn"); b.classList.remove("picked"); unfill(); return; }
       g.classList.add("done");
       if (shown && g.dataset.stage) {

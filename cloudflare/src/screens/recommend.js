@@ -313,7 +313,7 @@ export async function recommendScreen(params, ctx) {
   const limits = cards.length ? `<p class="note toinfo"><b>この ${cards.length} 件で、出せていない情報です。</b><br>
 ・<b>チケットの販売期限と、販売終了・完売</b>：手元に情報がないので表示できません。
 残っているかどうかは公式サイトで確認してください<br>
-・<b>あらすじ</b>：${nSyn}/${cards.length} 件で表示できました。残りは公演のページに載っていませんでした<br>
+・<b>あらすじ</b>：${nSyn}/${cards.length} 件で表示できました。残りは、まだ読み取りが済んでいないか、公演のページに載っていませんでした<br>
 ・<b>まだ答えていない公演は、次回も候補に残ります。</b>
 評価・公演情報・設定が変わると、順位も変わることがあります</p>` : '';
   const body = `<h1>${E(head)}</h1>

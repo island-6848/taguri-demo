@@ -818,6 +818,13 @@ def register_button(c: dict) -> str:
             f'{IC.ico("plus")}観た記録として登録する</button><span class="said"></span></span>')
 
 
+def owned_button(stage_id) -> str:
+    """お気に入りの一覧の押し口。購入済みにするボタンだけ（起案者の指示 2026-10-15
+    「お気に入りから、購入済みを登録できるようにして」）。押すと購入済み公演に移る。"""
+    return (f'<span class="btns" data-stage="{E(stage_id)}">'
+            '<button data-v="owned">購入済みにする</button><span class="said"></span></span>')
+
+
 def buttons(stage_id, *, hidden: bool = False) -> str:
     """三択。**押した本人に返りがあるものだけを置く**（企画書 2 章・検証 021）。
 
@@ -1437,7 +1444,7 @@ def ticket(c: dict, *, rank=None, mode: str = "recommend", note: str = "",
     # すでに「興味あり」を押した後なので、三択がフルサイズで出続ける理由が無い ──
     # 「評価一覧」の「評価を押し直す」と同じ形にそろえる（起案者の指摘・2026-08-26）
     if mode == "favourite":
-        act_btns = ""
+        act_btns = owned_button(c["stage_id"])
     elif mode in ("interest", "owned"):
         # 答えた公演は「回答を直す」1 つ（起案者の指示 2026-10-14）。持っているも答えのうち
         act_btns = ('<button class="wnb" data-btns-open="1">回答を直す</button>'
@@ -2231,7 +2238,7 @@ def limits_html(d: dict, rows: list | None = None) -> str:
     return f"""<p class="note toinfo"><b>この {len(rec)} 件で、出せていない情報です。</b><br>
 ・<b>チケットの販売期限と、販売終了・完売</b>：手元に情報がないので表示できません。
 残っているかどうかは公式サイトで確認してください<br>
-・<b>あらすじ</b>：{n_syn}/{len(rec)} 件で表示できました。残りは公演のページに載っていませんでした<br>
+・<b>あらすじ</b>：{n_syn}/{len(rec)} 件で表示できました。残りは、まだ読み取りが済んでいないか、公演のページに載っていませんでした<br>
 ・<b>まだ答えていない公演は、次回も候補に残ります。</b>
 評価・公演情報・設定が変わると、順位も変わることがあります</p>"""
 

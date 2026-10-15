@@ -56,7 +56,8 @@ test('a registered name brings its stages to お気に入り and out of おす�
     assert.match(fav, /<article class="ticket favourite" data-stage="101"/);
     assert.match(fav, /登録した人「俳優甲」の公演です/);
     assert.match(fav, /<span class="tgn">人「俳優甲」<\/span>/);
-    assert.doesNotMatch(fav, /data-v="interest"/);                 // read only
+    assert.doesNotMatch(fav, /data-v="interest"/);                 // no 興味あり here, only 購入済み
+    assert.match(fav, /<span class="btns" data-stage="101"><button data-v="owned">購入済みにする<\/button>/);
     // Group names match the producing company only.
     await step(env, a, {post: '/api/favourite', body: {action: 'add', kind: '団体', name: '劇団乙'}});
     assert.match((await screen(env, a, 'favourites')).body_html, /新着 2 件[\s\S]*data-stage="102"/);
@@ -366,5 +367,19 @@ test('お気に入り finds a registered name in the catalogue at once, also wit
     assert.match(html, /登録した人「山田花子」の公演です/);
     assert.match(html, /登録した団体「劇団Y」の公演です/);
     assert.doesNotMatch(html, /終わった公演/);
+  } finally { sqlite.close(); }
+});
+
+test('購入済みにする on お気に入り moves the stage to 購入済み公演 (起案者 2026-10-15)', async () => {
+  const {env, sqlite} = withIndex();
+  const a = await signIn(env);
+  try {
+    await step(env, a, {post: '/api/favourite', body: {action: 'add', kind: '人', name: '俳優甲'}});
+    assert.match((await screen(env, a, 'favourites')).body_html, /新着 1 件/);
+    assert.equal((await step(env, a, {post: '/api/react', body: {stage_id: '101', value: 'owned', nofill: true}})).status, 200);
+    assert.match((await screen(env, a, 'favourites')).body_html, /新着 0 件/);
+    const t = (await screen(env, a, 'tickets')).body_html;
+    assert.match(t, /<h1>購入済み公演 ── 1 件<\/h1>/);
+    assert.match(t, /<article class="ticket owned" data-stage="101"/);
   } finally { sqlite.close(); }
 });

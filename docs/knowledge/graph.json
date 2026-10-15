@@ -916,6 +916,20 @@
    "verifies": []
   },
   {
+   "id": "dec-favourite-owned-button",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-15",
+   "title": "お気に入りの一覧の公演に「購入済みにする」ボタンを置く（読むだけの一覧をやめる）",
+   "sources": [
+    "cloudflare/src/screens/cards.js",
+    "cloudflare/src/screens/lists.js",
+    "tools/review/render_recommend.py",
+    "cloudflare/scripts/build_cards.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-firebase-auth",
    "type": "decision",
    "status": "adopted",
@@ -5353,6 +5367,16 @@
    "from": "dec-favourite-catalogue-match",
    "rel": "depends_on",
    "to": "corich-search-waf-403"
+  },
+  {
+   "from": "dec-favourite-owned-button",
+   "rel": "depends_on",
+   "to": "dec-owned-only-owned-list"
+  },
+  {
+   "from": "dec-favourite-owned-button",
+   "rel": "affects",
+   "to": "comp-frontend"
   },
   {
    "from": "dec-firebase-auth",

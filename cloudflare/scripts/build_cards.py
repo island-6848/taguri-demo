@@ -153,7 +153,8 @@ def compose(template: str, sid: str, mode: str, *, rank: int | None = None, why:
             "favourite": '<span class="wax" aria-hidden="true"></span>'}.get(mode, "")
     btns = {"recommend": RR.buttons(sid),
             "interest": '<button class="wnb" data-btns-open="1">回答を直す</button>' + RR.buttons(sid, hidden=True),
-            "owned": '<button class="wnb" data-btns-open="1">回答を直す</button>' + RR.buttons(sid, hidden=True)}.get(mode, "")
+            "owned": '<button class="wnb" data-btns-open="1">回答を直す</button>' + RR.buttons(sid, hidden=True),
+            "favourite": RR.owned_button(sid)}.get(mode, "")
     answer = mode in ("recommend", "interest")
     html = (template.replace('<article class="ticket recommend"', f'<article class="ticket {mode}"', 1)
             .replace(MARK, mark)
