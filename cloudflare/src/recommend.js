@@ -250,7 +250,13 @@ export function personValues(rated, seeds = [], skip = new Set(), liked = [], di
  * postingsFor(keys [[role, person]...]) -> [[role, person, stage_id, role_w, group]...]
  * stagesFor(stageIds) -> Map(stage_id -> {start, end})
  */
-export async function scoreFromIndex({postingsFor, stagesFor, rated, multipliers = {}, today, seeds = [], skip = new Set(), liked = [], disliked = []}) {
+// 好きな人とよく組む人へ 1 段だけ広げる（起案者の指示 2026-10-15「同じ人ばかり出るのを和らげる案も進めて」、
+// lit-content-overspecialization・lit-live-show-propagation）。値が正の人（上位 EXPAND_PEOPLE 人）が出る
+// これからの公演（EXPAND_STAGES まで）で一緒に名前のある人に、その人の値 × EXPAND_WEIGHT を仮に与え、
+// その人の別の公演も候補にする。すでに値のある人・お気に入りの名前は除く。理由には「○○と組む」と出す。
+// Python の参照実装には無いので、一致試験の経路（expand なし）では動かない。値は舞台では未検証。
+export const EXPAND_PEOPLE = 20, EXPAND_STAGES = 60, EXPAND_WEIGHT = 0.3, EXPAND_MIN_SHARED = 1;
+export async function scoreFromIndex({postingsFor, stagesFor, rated, multipliers = {}, today, seeds = [], skip = new Set(), liked = [], disliked = [], expand = null}) {
   rated = independentRatings(rated);
   const values = personValues(rated, seeds, skip, liked, disliked);
   const seeded = new Set(seeds.map(r => r.stage_id));
@@ -265,6 +271,46 @@ export async function scoreFromIndex({postingsFor, stagesFor, rated, multipliers
     if (contrib) {
       if (!byStage.has(sid)) byStage.set(sid, []);
       byStage.get(sid).push([contrib, role, person, n, group]);
+    }
+  }
+  // 1 段だけ広げる: 好きな人（値が正）が出る公演の共演者・作り手
+  const via = new Map();                       // key -> name of the liked person they work with
+  if (expand?.peopleFor) {
+    const top = [...values.entries()].filter(([k, [, v]]) => v > 0 && !k.startsWith('#')).sort((a, b) => (b[1][1] - a[1][1]) || cmp(a[0], b[0])).slice(0, EXPAND_PEOPLE);
+    const likedTop = new Map(top.map(([k, [, v]]) => [k, v]));
+    const stageLiked = new Map();               // sid -> [[key, v]...] of liked people in it
+    for (const [sid, all] of byStage) for (const p of all) {
+      const k = p[1] + '\u0000' + p[2];
+      if (!likedTop.has(k)) continue;
+      if (!stageLiked.has(sid)) stageLiked.set(sid, []);
+      stageLiked.get(sid).push([k, likedTop.get(k)]);
+    }
+    const sids = [...stageLiked].sort((a, b) => (b[1].reduce((s, x) => s + x[1], 0) - a[1].reduce((s, x) => s + x[1], 0)) || cmp(a[0], b[0]))
+      .slice(0, EXPAND_STAGES).map(([sid]) => sid);
+    const people = sids.length ? await expand.peopleFor(sids) : new Map();
+    const partner = new Map();                  // key -> [value, via name, shared stages]
+    for (const sid of sids) {
+      const [bestKey, bestV] = stageLiked.get(sid).reduce((a, b) => (b[1] > a[1] ? b : a));
+      for (const [role, person] of people.get(sid) || []) {
+        const k = role + '\u0000' + person;
+        if (role.startsWith('#') || values.has(k) || skip.has(person) || expand.exclude?.has(k)) continue;
+        const cur = partner.get(k) || [0, '', 0];
+        const v = EXPAND_WEIGHT * bestV;
+        partner.set(k, [Math.max(cur[0], v), v >= cur[0] ? bestKey.slice(bestKey.indexOf('\u0000') + 1) : cur[1], cur[2] + 1]);
+      }
+    }
+    const pkeys = [...partner].filter(([, [, , n]]) => n >= EXPAND_MIN_SHARED).map(([k]) => k.split('\u0000')).sort((a, b) => cmpTuple(a, b));
+    if (pkeys.length) {
+      for (const [role, person, sid, roleW, group] of await postingsFor(pkeys)) {
+        // 好きな人がすでに出ている公演には足さない（二重に数えない）。広げるのは新しい公演だけ
+        if (stageLiked.has(sid)) continue;
+        const [value, name] = partner.get(role + '\u0000' + person);
+        const contrib = round6(value * (roleW * mult(group)));
+        if (!contrib) continue;
+        if (!byStage.has(sid)) byStage.set(sid, []);
+        byStage.get(sid).push([contrib, role, person, 0, group]);
+        via.set(role + '\u0000' + person, name);
+      }
     }
   }
   const stages = await stagesFor([...byStage.keys()]);
@@ -292,7 +338,12 @@ export async function scoreFromIndex({postingsFor, stagesFor, rated, multipliers
     // Kinds shown as reasons: the raising ones, kinds of the show itself first.
     const shown = kinds.filter(k => k[0] > 0).sort((p, q) => (CONTENT_AXES.includes(q[1]) - CONTENT_AXES.includes(p[1]))
       || (q[0] - p[0]) || cmp(p[1], q[1]) || cmp(p[2], q[2]));
-    out.push({stage_id: sid, b, strong: b, tour: st.tour || '', parts: parts.map(p => p.slice(0, 4)), kinds: shown.map(p => p.slice(0, 4))});
+    const item = {stage_id: sid, b, strong: b, tour: st.tour || '', parts: parts.map(p => p.slice(0, 4)), kinds: shown.map(p => p.slice(0, 4))};
+    if (via.size) {
+      const w = parts.slice(0, 4).map(p => [p[1] + '\t' + p[2], via.get(p[1] + '\u0000' + p[2])]).filter(([, n]) => n);
+      if (w.length) item.via = w;
+    }
+    out.push(item);
   }
   out.sort((x, y) => (y.strong - x.strong) || (y.b - x.b) || cmp(x.stage_id, y.stage_id));
   return out;

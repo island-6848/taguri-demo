@@ -1600,6 +1600,19 @@
    "verifies": []
   },
   {
+   "id": "dec-spread-and-partners",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-15",
+   "title": "同じ人ばかり出るのを和らげる: 1 ページ（15 件）に同じ人が筆頭の理由の公演は 2 件まで（並べ直し）、好きな人と同じ公演に関わる人へ 1 段だけ広げて新しい公演を弱く足す",
+   "sources": [
+    "cloudflare/src/recommend.js",
+    "cloudflare/src/screens/recommend.js",
+    "cloudflare/test/recommend-spread.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-star-default",
    "type": "decision",
    "status": "adopted",
@@ -5982,6 +5995,36 @@
    "from": "dec-signed-out-gate",
    "rel": "affects",
    "to": "comp-cf-worker"
+  },
+  {
+   "from": "dec-spread-and-partners",
+   "rel": "depends_on",
+   "to": "lit-topic-diversification"
+  },
+  {
+   "from": "dec-spread-and-partners",
+   "rel": "depends_on",
+   "to": "lit-popularity-bias"
+  },
+  {
+   "from": "dec-spread-and-partners",
+   "rel": "depends_on",
+   "to": "lit-content-overspecialization"
+  },
+  {
+   "from": "dec-spread-and-partners",
+   "rel": "depends_on",
+   "to": "lit-live-show-propagation"
+  },
+  {
+   "from": "dec-spread-and-partners",
+   "rel": "depends_on",
+   "to": "lit-feedback-loop"
+  },
+  {
+   "from": "dec-spread-and-partners",
+   "rel": "affects",
+   "to": "q-review-1015"
   },
   {
    "from": "dec-star-default",
