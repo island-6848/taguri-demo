@@ -184,9 +184,10 @@ const jstToday = () => new Date(Date.now() + 9 * 3600 * 1000).toISOString().slic
 export async function recommendFor(db, uid, today = jstToday()) {
   const ver = (await db.prepare("SELECT v FROM rec_meta WHERE k='current'").first())?.v;
   if (!ver) return {ready: false, items: []};
-  const st = await db.prepare('SELECT (SELECT count(*) FROM records WHERE user_id=?1) AS rn, (SELECT max(updated_at) FROM records WHERE user_id=?1) AS rm, (SELECT count(*) FROM reactions WHERE user_id=?1) AS an, (SELECT max(updated_at) FROM reactions WHERE user_id=?1) AS am').bind(uid).first();
-  // RECOMMENDER names the scoring rules: changing them must not serve old results.
-  const stamp = [RECOMMENDER, ver, today, st.rn, st.rm, st.an, st.am].join('|');
+  const st = await db.prepare('SELECT (SELECT count(*) FROM records WHERE user_id=?1) AS rn, (SELECT max(updated_at) FROM records WHERE user_id=?1) AS rm, (SELECT count(*) FROM reactions WHERE user_id=?1) AS an, (SELECT max(updated_at) FROM reactions WHERE user_id=?1) AS am, (SELECT v FROM rec_meta WHERE k=\'index_rev\') AS ir').bind(uid).first();
+  // RECOMMENDER names the scoring rules: changing them must not serve old results. The index is
+  // delivered as a diff under a fixed ver, so index_rev tells when its content changed.
+  const stamp = [RECOMMENDER, ver, st.ir || '', today, st.rn, st.rm, st.an, st.am].join('|');
   const cached = await db.prepare('SELECT body FROM rec_cache WHERE user_id=? AND stamp=?').bind(uid, stamp).first();
   if (cached) return {...JSON.parse(cached.body), cached: true};
   const body = await computeRecommendations(db, uid, ver, today);

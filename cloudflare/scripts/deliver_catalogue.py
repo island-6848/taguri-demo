@@ -142,22 +142,30 @@ def scan_date(data: Path) -> str:
         return ""
 
 
-def build_index(out: Path) -> tuple[str, int, Path] | None:
-    """Run build_recommend_index.py; (version, rows written, sql). None if it cannot run here."""
-    sql, st = out / "index.sql", out / "index-stats.json"
-    for f in (sql, st):
+INDEX_HASHES = Path("d1") / "index-hashes.json"
+
+
+def build_index(out: Path, data: Path) -> tuple[str, int, Path, int] | None:
+    """Run build_recommend_index.py in diff mode; (revision, writes, sql, rows changed). None if it cannot run here.
+
+    Only rows that changed since the last delivery are upserted and rows that are gone are deleted
+    (q-index-incremental); the hashes of what was sent wait in out/ until commit()."""
+    sql, st, hashes = out / "index.sql", out / "index-stats.json", out / "index-hashes.json"
+    for f in (sql, st, hashes):
         f.unlink(missing_ok=True)
-    r = subprocess.run([sys.executable, str(HERE / "build_recommend_index.py"),
-                        "--output", str(sql), "--stats", str(st)], cwd=ROOT)
+    args = [sys.executable, str(HERE / "build_recommend_index.py"), "--output", str(sql), "--stats", str(st),
+            "--hashes-out", str(hashes)]
+    if (data / INDEX_HASHES).exists():
+        args += ["--prev-hashes", str(data / INDEX_HASHES)]
+    r = subprocess.run(args, cwd=ROOT)
     if r.returncode != 0 or not sql.exists():
         return None
-    m = re.search(r"VALUES\('current','([0-9a-f]+)'\)", sql.read_text(encoding="utf-8"))
-    if not m:
+    d = json.loads(st.read_text(encoding="utf-8")).get("diff") or {}
+    if not d.get("rev"):
         return None
-    # Each row is written with its key index; deleting the previous version (if any) writes them again.
-    # rec_stage also has rec_stage_start (migrations/0019): one more write per stage.
-    s = json.loads(st.read_text(encoding="utf-8"))
-    return m.group(1), INDEX_WRITES_PER_ROW * s["rows_written"] + s["stages"], sql
+    n = int(d.get("upserted", 0)) + int(d.get("deleted", 0))
+    # Each row changed or deleted costs the row and its key index; a rec_stage row also its start index.
+    return d["rev"], INDEX_WRITES_PER_ROW * n + int(d.get("stages_upserted", 0)), sql, n
 
 
 def build_labels(out: Path) -> tuple[str, int, Path] | None:
@@ -222,18 +230,19 @@ def build(data: Path, out: Path, today: datetime.date, with_index: bool, budget:
         shutil.rmtree(out)
     out.mkdir(parents=True)
     if with_index:
-        got = build_index(out)
-        got = got and (got[0], got[1] * (2 if prev.get("index") else 1), got[2])   # + deleting the previous version
+        got = build_index(out, data)
         if got is None:
             report["index"] = "not built (see the log above)"
-        elif got[0] == prev.get("index"):
+        elif got[0] == prev.get("index") or got[3] == 0:
             report["index"] = "unchanged"
+            (out / "index-hashes.json").unlink(missing_ok=True)
         elif writes + got[1] > budget:
             report["index"] = f"skipped: {got[1]} writes would exceed the budget"
+            (out / "index-hashes.json").unlink(missing_ok=True)       # not sent: keep the old hashes
         else:
             shutil.move(got[2], out / "index-upload.sql")
             state["index"] = got[0]
-            report["index"] = f"version {got[0]} ({got[1]} writes)"
+            report["index"] = f"revision {got[0]} ({got[3]} rows changed, {got[1]} writes)"
             writes += got[1]
             report["writes"] = writes
         got = build_labels(out)
@@ -274,6 +283,9 @@ def build(data: Path, out: Path, today: datetime.date, with_index: bool, budget:
 def commit(data: Path, out: Path) -> None:
     (data / STATE).parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(out / "pending.json", data / STATE)
+    # The index rows just sent: the next delivery sends only what differs from these.
+    if (out / "index-hashes.json").exists():
+        shutil.copyfile(out / "index-hashes.json", data / INDEX_HASHES)
 
 
 def main() -> int:

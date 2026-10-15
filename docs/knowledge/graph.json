@@ -969,6 +969,22 @@
    "verifies": []
   },
   {
+   "id": "dec-index-diff",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-15",
+   "title": "推薦の索引を、版ごとの全入れ替えから「変わった行だけ書き、無くなった行だけ消す」差分に変えた（行は版 'live' のまま、中身の変化は rec_meta 'index_rev'）",
+   "sources": [
+    "cloudflare/scripts/build_recommend_index.py",
+    "cloudflare/scripts/deliver_catalogue.py",
+    "cloudflare/src/screens/recommend.js",
+    "cloudflare/src/worker.js",
+    "cloudflare/test/test_recommend_index.py",
+    "cloudflare/test/test_deliver_catalogue.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-lists-worker",
    "type": "decision",
    "status": "adopted",
@@ -3508,7 +3524,7 @@
   {
    "id": "q-index-incremental",
    "type": "question",
-   "status": "open",
+   "status": "answered",
    "date": "2026-10-15",
    "title": "推薦の索引を毎日まるごと入れ替える作りは、D1 の書き込みの無料枠（1 日 10 万行）に収まるか。公演ごとの差分だけ書く作りに変えるか",
    "sources": [],
@@ -5404,6 +5420,21 @@
    "from": "dec-import-calendar-mail",
    "rel": "supports",
    "to": "dec-free-tier-only"
+  },
+  {
+   "from": "dec-index-diff",
+   "rel": "answers",
+   "to": "q-index-incremental"
+  },
+  {
+   "from": "dec-index-diff",
+   "rel": "depends_on",
+   "to": "d1-writes-undercounted"
+  },
+  {
+   "from": "dec-index-diff",
+   "rel": "affects",
+   "to": "comp-rec-index"
   },
   {
    "from": "dec-lists-worker",

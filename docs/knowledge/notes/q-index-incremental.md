@@ -1,7 +1,7 @@
 ---
 id: q-index-incremental
 type: question
-status: open
+status: answered
 date: 2026-10-15
 title: 推薦の索引を毎日まるごと入れ替える作りは、D1 の書き込みの無料枠（1 日 10 万行）に収まるか。公演ごとの差分だけ書く作りに変えるか
 links:
