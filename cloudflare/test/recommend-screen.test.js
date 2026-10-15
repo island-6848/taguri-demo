@@ -143,6 +143,10 @@ test('興味あり alone, on a stage only the catalogue has, recommends the same
     const html = (await step(env, a, {get: '/api/screen/recommend'})).body.body_html;
     assert.match(html, /<article class="ticket recommend" data-stage="101"/);
     assert.match(html, /出演 <b>俳優甲<\/b><span class="n">（『気になる新作』）<\/span>/);
+    // diag: what fed the recommendations (the JSON only, for checking production).
+    const diag = (await step(env, a, {get: '/api/screen/recommend'})).body.diag;
+    assert.deepEqual({i: diag.interest, p: diag.interest_with_people, r: diag.rated}, {i: 1, p: 1, r: 0});
+    assert.ok(diag.ranked >= 1);
     assert.doesNotMatch(html, /履歴 0 本/);
     assert.doesNotMatch((await step(env, b, {get: '/api/screen/recommend'})).body.body_html, /<article/);
     // The newest answer per stage counts (reaction keeps one row per day).

@@ -3392,6 +3392,17 @@
    "verifies": []
   },
   {
+   "id": "q-interest-no-reco-prod",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-15",
+   "title": "本番で「興味ありが何件もあるのに、おすすめが出ない」のはなぜか",
+   "sources": [
+    "https://api.github.com/repos/island-6848/taguri-demo/commits/655221b/check-runs?filter=all"
+   ],
+   "verifies": []
+  },
+  {
    "id": "q-interest-seed",
    "type": "question",
    "status": "answered",
@@ -7068,6 +7079,11 @@
    "from": "q-hidden-gate",
    "rel": "affects",
    "to": "comp-recommender"
+  },
+  {
+   "from": "q-interest-no-reco-prod",
+   "rel": "affects",
+   "to": "impl-interest-seed"
   },
   {
    "from": "q-interest-seed",
