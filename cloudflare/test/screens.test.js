@@ -22,6 +22,12 @@ const EDITOR_JS = /<details class="editor"[\s\S]*?<!--\/editor--><\/details>/g;
 // Python は ◎○△× のままなので、星のボタンは ◎○△× のボタンに読み替えて比べ、星の形は grade.test.js で確かめる。
 const STAR_BTNS = /(?:<button class="star(?: on)?" data-v="[1-5]\/5" aria-label="星 [1-5]"><\/button>){5}/g;
 const MARK_BTNS = ['◎', '○', '△', '×'].map(g => `<button data-v="${g}">${g}</button>`).join('');
+// 星の行は余白の判子を出さず、星の列を常に出す（2026-10-15 起案者の指示「下に星で表示されるんなら、〇の枠いらなくない？」、
+// screens/row.js の starRow）。Python の行は判子と「評価を押し直す」のままなので、星の段階の人の画面では Python の側を星の行の形に直して比べる。
+const STAMP = /<span class="stamp[^"]*" data-stamp="1"[^>]*>[^<]*<\/span>/g;
+const asStarRows = r => (r && typeof r.body?.body_html === 'string'
+  ? {...r, body: {...r.body, body_html: r.body.body_html.replace(STAMP, '')
+    .replace(/<button class="wnb" data-rate-open="1">評価を押し直す<\/button>(<span class="rb" data-work="[^"]*") hidden>/g, '$1>')}} : r);
 const noEditor = (r, re) => (r && typeof r.body === 'object' && typeof r.body?.body_html === 'string'
   ? {...r, body: {...r.body, body_html: r.body.body_html.replace(re, '<EDITOR/>').replace(STAR_BTNS, MARK_BTNS).replaceAll('この場で★を押せます', 'この場で ◎○△× を押せます')}} : r);
 
@@ -30,8 +36,11 @@ for (const [i, sc] of scenarios.entries()) {
     const {sqlite, env} = setup();
     const cookie = await signIn(env);
     for (const [j, s] of sc.steps.entries()) {
-      const got = noEditor(await step(env, cookie, s), EDITOR_JS);
-      const want = noEditor(python[i].steps[j], EDITOR_PY);
+      const raw = await step(env, cookie, s);
+      const got = noEditor(raw, EDITOR_JS);
+      // 判子が 1 つも無い画面は星の段階の人の画面（◎○△× の人は判子のまま）
+      const starPage = typeof raw?.body?.body_html === 'string' && !raw.body.body_html.includes('data-stamp="1"');
+      const want = noEditor(starPage ? asStarRows(python[i].steps[j]) : python[i].steps[j], EDITOR_PY);
       if (typeof want.body === 'object' && typeof got.body === 'object' && got.body.body_html !== want.body.body_html && got.body.body_html && want.body.body_html) {
         // Show where the HTML first differs (the whole page is long).
         const a = got.body.body_html, b = want.body.body_html;

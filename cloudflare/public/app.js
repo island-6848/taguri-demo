@@ -2259,7 +2259,11 @@ function aspectsPanel(root) {
     if (row.querySelector(".asp")) return;
     const rb = row.querySelector(".rb[data-work]"), st = row.querySelector("[data-stamp]");
     if (!rb) return;
-    const rated = () => { const t = (st && st.textContent.trim()) || ""; return t !== "" && ("◎○△×".includes(t) || /^★\d(\.5)?$/.test(t)); };
+    // 星の行には判子が無い（星の列が評価を見せる）ので、塗った星で見る
+    const rated = () => {
+      if (!st) return Boolean(rb.querySelector(".star.on, .star0.on, .hs.on, .hs.h"));
+      const t = st.textContent.trim(); return t !== "" && ("◎○△×".includes(t) || /^★\d(\.5)?$/.test(t));
+    };
     const state = {};
     (row.dataset.aspects || "").split(",").filter(Boolean).forEach(x => { state[x.replace(/^\+/, "")] = x.startsWith("+") ? "+" : "-"; });
     const box = document.createElement("details");
