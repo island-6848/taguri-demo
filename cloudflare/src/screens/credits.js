@@ -85,6 +85,8 @@ export function names(text) {
   for (const part of text.replace(SPLIT, '\n').replace(MIDDOT_KANJI, '\n').split('\n')) {
     let n = norm(part);
     n = n.replace(LEAD_TAG, '');
+    // 「役名：名前」「アンサンブル：名前」は、コロンの後ろだけが名前（measure_nets._names と同じ、q-credit-part-names）
+    if (n.includes(':')) n = n.slice(n.lastIndexOf(':') + 1);
     n = stripChars(n.replace(ROLE_PREFIX, ''), '　 :：・');
     n = n.replace(new RegExp(`[${WS}　]`, 'gu'), '');
     if (!n || /[【】［］《》]/u.test(n) || ROLE_VOCAB.has(n)) continue;

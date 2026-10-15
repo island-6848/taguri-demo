@@ -131,6 +131,11 @@ def _names(text: str) -> list[str]:
     for part in _MIDDOT_KANJI.sub("\n", _SPLIT.sub("\n", text)).split("\n"):
         n = norm(part)
         n = _LEAD_TAG.sub("", n)
+        # **「役名：名前」「アンサンブル：名前」は、コロンの後ろだけが名前。** 前は役名ごと 1 人の名前に
+        # なり（「ジャン・バルジャン:福井晶一」）、その人の別の公演と合わなかった（q-credit-part-names、2026-10-15）。
+        # norm が NFKC なので全角のコロンも ":" になっている
+        if ":" in n:
+            n = n.rsplit(":", 1)[1]
         n = _ROLE_PREFIX.sub("", n).strip("　 :：・")
         # **姓名のあいだの空白を落とす。** 実データで「加藤 温」（8 本）と「加藤温」（2 本）が
         # 別人として数えられ、信頼度が 0.73 と 0.40 に割れていた（V15）。

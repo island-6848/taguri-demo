@@ -750,6 +750,19 @@
    ]
   },
   {
+   "id": "dec-credit-part-names",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-15",
+   "title": "出演欄の「役名：名前」「アンサンブル：名前」は、コロンの後ろだけを名前として読む（Python の measure_nets._names と Worker の credits.names を同時に）",
+   "sources": [
+    "tools/review/measure_nets.py",
+    "cloudflare/src/screens/credits.js",
+    "cloudflare/test/credits.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-d1-backup",
    "type": "decision",
    "status": "adopted",
@@ -5049,6 +5062,11 @@
    "from": "dec-crawler-gha-private",
    "rel": "depends_on",
    "to": "crawler-state-between-runs"
+  },
+  {
+   "from": "dec-credit-part-names",
+   "rel": "answers",
+   "to": "q-credit-part-names"
   },
   {
    "from": "dec-d1-backup",

@@ -15,6 +15,8 @@ const CASES = [
   {'出演': 'ア', '脚本': '脚本', 'スタッフ': ''},
   {'出演': '  全角　空白　の人 ', '演出': '演出家丙\n演出家丙'},
   {'出演': 'ＡＢＣ　ＤＥＦ、ｶﾀｶﾅ', 'スタッフ': '映像オペレーション：映像N\n【】空の括弧\n協力:協力者O/協力者P'},
+  // 役名：名前・アンサンブル：名前（q-credit-part-names、2026-10-15）
+  {'出演': 'ジャン・バルジャン：福井晶一／吉原光夫\nジャベール:川口竜也\nアンサンブル：田中、高橋次郎\n【出演】 甲野'},
   {},
 ];
 
@@ -32,4 +34,9 @@ test('parse_credits matches Python on assorted credit fields', () => {
     assert.deepStrictEqual(parseCredits(c), want[i].pairs, `case ${i}`);
     assert.equal(handCreditCount(c), want[i].people, `count ${i}`);
   });
+});
+
+test('a part name or the ensemble heading before a colon is not part of the person', () => {
+  assert.deepEqual(parseCredits({'出演': 'ジャン・バルジャン：福井晶一／吉原光夫\nジャベール:川口竜也\nアンサンブル：田中、高橋次郎'}).map(p => p[1]),
+    ['吉原光夫', '川口竜也', '田中', '福井晶一', '高橋次郎']);
 });
