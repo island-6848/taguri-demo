@@ -649,6 +649,18 @@
    "verifies": []
   },
   {
+   "id": "dec-calendar-go-visible",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "公演カレンダーで、入れた行く日がスマホで見えるようにし、行く日の印を ✓ の四角に替えた",
+   "sources": [
+    "web/app.js",
+    "web/style.css"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-calendar-oauth",
    "type": "decision",
    "status": "adopted",
@@ -1492,6 +1504,18 @@
    "sources": [
     "https://github.com/island-6848/taguri-demo/blob/cloudflare-d1-preview/cloudflare/src/worker.js",
     "https://github.com/island-6848/taguri-demo/blob/cloudflare-d1-preview/cloudflare/test/gate.test.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-star-default",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "評価の初期設定を星 5 段階にする。段階に言葉は添えない（各自の尺度でよい）",
+   "sources": [
+    "cloudflare/src/screens/grade.js",
+    "cloudflare/test/grade.test.js"
    ],
    "verifies": []
   },
@@ -4704,6 +4728,11 @@
    "to": "q-crawler-state-size"
   },
   {
+   "from": "dec-calendar-go-visible",
+   "rel": "affects",
+   "to": "comp-frontend"
+  },
+  {
    "from": "dec-calendar-oauth",
    "rel": "depends_on",
    "to": "dec-import-calendar-mail"
@@ -5507,6 +5536,31 @@
    "from": "dec-signed-out-gate",
    "rel": "affects",
    "to": "comp-cf-worker"
+  },
+  {
+   "from": "dec-star-default",
+   "rel": "depends_on",
+   "to": "dec-user-scale-range"
+  },
+  {
+   "from": "dec-star-default",
+   "rel": "depends_on",
+   "to": "impl-person-ordinal-v3"
+  },
+  {
+   "from": "dec-star-default",
+   "rel": "depends_on",
+   "to": "eval-douban-scales"
+  },
+  {
+   "from": "dec-star-default",
+   "rel": "answers",
+   "to": "q-rating-scale"
+  },
+  {
+   "from": "dec-star-default",
+   "rel": "affects",
+   "to": "comp-recommender"
   },
   {
    "from": "dec-synopsis-reader-claude",

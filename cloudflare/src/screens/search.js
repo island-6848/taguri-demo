@@ -8,6 +8,7 @@
 // Not available: the subject words of the works seen (themes.jsonl of the rated side is
 // the owner's batch output) and the live CoRich search (the public service asks the next
 // daily run instead, as the Python service does).
+import {scaleOf} from './grade.js';
 import {E, ValueError} from './py.js';
 import {ico, h2} from './icons.js';
 import {compose, cardTemplates, posterHtml as cardPoster} from './cards.js';
@@ -201,8 +202,9 @@ ${none}</div></div>`;
 async function foundRows(ctx, ws, people, whyOf = () => '') {
   const labels = await stageLabels(ctx, ws.map(w => w.stage_id));
   const files = await posterFiles(ctx, ws);
+  const scale = await scaleOf(ctx);
   return ws.map(w => recRow({...w, people: people[w.work_key] || [], synopsis: ''},
-    {poster: posterHtml(w, files), rateAlways: true, editable: true, label: labels[w.stage_id] || '', extra: whyOf(w)})).join('');
+    {poster: posterHtml(w, files), rateAlways: true, editable: true, label: labels[w.stage_id] || '', extra: whyOf(w), scale})).join('');
 }
 
 export async function searchScreen(params, ctx) {
@@ -259,7 +261,7 @@ export async function searchScreen(params, ctx) {
     body = searchFollow(dec, names) + upHtml + '<h2>観た記録</h2><p class="empty">観た記録の中には見つかりませんでした。</p>' + web + cal;
   } else {
     const nUn = hits.filter(([w]) => !w.verdict).length;
-    const lead = `<h2>観た記録 ${hits.length} 件</h2>` + (nUn ? `<p class="lead">このうち ${nUn} 件はまだ評価が付いていません。<b>この場で ◎○△× を押せます。</b></p>`
+    const lead = `<h2>観た記録 ${hits.length} 件</h2>` + (nUn ? `<p class="lead">このうち ${nUn} 件はまだ評価が付いていません。<b>この場で${await scaleOf(ctx) === 'stars' ? '★' : ' ◎○△× '}を押せます。</b></p>`
       : '<p class="lead">評価を付け直すことも、感想を足すこともできます。</p>');
     const why = new Map(hits.map(([w, h]) => [w.work_key, h]));
     body = searchFollow(dec, names) + upHtml + lead + await foundRows(ctx, hits.map(([w]) => w), people, w => why.get(w.work_key)) + web + cal;

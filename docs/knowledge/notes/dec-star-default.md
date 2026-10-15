@@ -1,0 +1,31 @@
+---
+id: dec-star-default
+type: decision
+status: adopted
+date: 2026-10-14
+title: 評価の初期設定を星 5 段階にする。段階に言葉は添えない（各自の尺度でよい）
+sources:
+  - cloudflare/src/screens/grade.js
+  - cloudflare/test/grade.test.js
+links:
+  - depends_on: dec-user-scale-range
+  - depends_on: impl-person-ordinal-v3
+  - depends_on: eval-douban-scales
+  - answers: q-rating-scale
+  - affects: comp-recommender
+---
+起案者の決定（2026-10-14）は「星5段階を初期設定にして。言葉の案は逆に決めないほうがいいんじゃない？勝手に個人が思ってる尺度でつけていっても、位置zに直すんだよね」。
+
+理由は次のとおり。
+- 推薦は、評価を本人の中での位置 z に直してから使う。そのため、星の意味が人ごとに違っても、計算は成り立つ。
+- 段階に言葉を添えると、かえって「その言葉の意味」に縛られる。△ の意味が人によってずれた（triangle-label-mismatch）のも、この例にあたる。
+- 映画の公開データでは、4 段階と 5 段階で当たりやすさはほぼ同じだった（eval-douban-scales）。そのため、選ぶ決め手は付けやすさにした。
+- 残る弱点：同じ人の中で基準が途中でずれること（はじめは甘く、あとで辛くなる、など）は、z では消えない。
+
+作りは次のとおり（サービス版の Worker だけ）。
+- 保存は "n/5"（worker.js・recommend.gradeOf が前から受け付けていた形）。表示は ★n。
+- まだ ◎○△× で 1 件も評価していない人は星にする。すでに ◎○△× で付けている人は、そのまま ◎○△× にする（1 人の記録に段階を混ぜない）。切り替える画面はまだ無い。
+- 色・並び・「最上位」の判定では、星を ◎○△× の側に読み替える。★5・★4 は「合っていた」側、★2・★1 は「合わなかった」側に入れ、★3 は真ん中でどちらにも入れない。
+- 変えたファイルは、screens/grade.js・row.js・rate.js・charts.js・chronicle.js・records.js・recommend.js・search.js・diary.js・hashtags.js・suggest.js と web/app.js（判子・半券・分布の帯・詳細）。
+- 星の押し方（2026-10-14 の追加の指示「☆☆☆☆☆みたいなの表示されてて、自分が思ってる評価のとこ押したらそこまで星の色がつく、みたいなuiにして」）: ☆ を 5 つ並べ、押した所までを ★ で塗る。指を乗せた所までも先に塗って見せる。付けたあとに開き直すと、付けた数まで塗った形で出る（gradeButtons の .on）。
+- Python のデモ版は ◎○△× のまま。そのため一致テスト（screens.test.js）では、星のボタンを ◎○△× に読み替えて比べる。

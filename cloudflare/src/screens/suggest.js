@@ -8,6 +8,7 @@
 // times,stage_id,wk,mine,poster}]}), but not a byte-for-byte port: the stages
 // come from D1 (current stages through rec_gram, past stages by title-key
 // prefix on its index) instead of the files on the Python server.
+import {gradeText} from './grade.js';
 import {titleKey, d1Search, searchIndex} from '../stage-search.js';
 import {loadWorks} from './works.js';
 
@@ -41,7 +42,7 @@ export async function suggest(params, ctx) {
     const s = rank(titleKey(w.title));
     if (s < 0) continue;
     rows.push({_s: [s, 0], kind: 'record', key: w.work_key, title: w.title, date: w.first_date || '', venue: '',
-      note: w.verdict ? '評価 ' + w.verdict : '評価はまだです', times: w.times || 1, stage_id: w.stage_id || '',
+      note: w.verdict ? '評価 ' + gradeText(w.verdict) : '評価はまだです', times: w.times || 1, stage_id: w.stage_id || '',
       wk: groupKey(titleKey(w.title), '', w.stage_id || w.work_key)});
   }
   const ver = (await db.prepare("SELECT v FROM rec_meta WHERE k='current'").first())?.v;

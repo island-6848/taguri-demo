@@ -5,6 +5,7 @@
 // user: every record is a manual one (no purchases, so no `shows`, no
 // corrections table), and serve._enrich (fetching a stage's material) is
 // skipped on the public service.
+import {scaleOf} from './grade.js';
 import {autoLink, pastStages} from './autolink.js';
 import {E, strip, slice, field, pyRepr, localNow, dumps, ValueError, WS, quote, qsFirst, sortBy, cmp, isdigit} from './py.js';
 import {loadWorks, similarWorks, titleKey, norm, deleteWork} from './works.js';
@@ -409,8 +410,9 @@ async function worksScreen(params, ctx) {
       + '<b>「この回のメモ」だけは行ごとに別々に持てます</b>（推薦には使いません）。';
   const labels = await stageLabels(ctx, show.map(w => w.stage_id));
   const files = await posterFiles(ctx, show);
+  const scale = await scaleOf(ctx);
   const rows = show.map(w => recRow({...w, people: people[w.work_key] || [], synopsis: ''},
-    {poster: posterHtml(w, files), editable: true, label: labels[w.stage_id] || ''})).join('');
+    {poster: posterHtml(w, files), editable: true, label: labels[w.stage_id] || '', scale})).join('');
   return {title, body_html: `<h1>日記帳</h1>
 ${recordsLede(d)}
 <p class="lede">1 件ごとに、日付・評価・感想が出ます。<b>感想は各行の「感想を書く」から

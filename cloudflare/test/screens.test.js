@@ -18,8 +18,12 @@ const python = JSON.parse(execFileSync('python3', [here('./screens/python_screen
 // 「いますぐ消す」（purge_work）もサービス版はその場で記録を消す（Python は印を付けるだけ）ので、比べずに drop-expiry.test.js で確かめる。
 const EDITOR_PY = /<details class="editor"[\s\S]*?<div class="ed-mail" hidden>[\s\S]*?<\/div><\/details>/g;
 const EDITOR_JS = /<details class="editor"[\s\S]*?<!--\/editor--><\/details>/g;
+// 評価の段階は 2026-10-14 からサービス版だけ星 5 段階が初期設定（screens/grade.js、起案者の指示「星5段階を初期設定にして」）。
+// Python は ◎○△× のままなので、星のボタンは ◎○△× のボタンに読み替えて比べ、星の形は grade.test.js で確かめる。
+const STAR_BTNS = /(?:<button class="star(?: on)?" data-v="[1-5]\/5" aria-label="星 [1-5]"><\/button>){5}/g;
+const MARK_BTNS = ['◎', '○', '△', '×'].map(g => `<button data-v="${g}">${g}</button>`).join('');
 const noEditor = (r, re) => (r && typeof r.body === 'object' && typeof r.body?.body_html === 'string'
-  ? {...r, body: {...r.body, body_html: r.body.body_html.replace(re, '<EDITOR/>')}} : r);
+  ? {...r, body: {...r.body, body_html: r.body.body_html.replace(re, '<EDITOR/>').replace(STAR_BTNS, MARK_BTNS).replaceAll('この場で★を押せます', 'この場で ◎○△× を押せます')}} : r);
 
 for (const [i, sc] of scenarios.entries()) {
   test(`screen scenario: ${sc.name}`, async () => {

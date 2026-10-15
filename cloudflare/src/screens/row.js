@@ -2,6 +2,7 @@
 // Ports of tools/taguri/app.py (_rec_row, _impression_parts, _stamp,
 // _date_parts, _venue_of, _edit_html, _hand_html, stage_label), charts._anchor
 // and icons.ico/h2. Each returns exactly the Python HTML.
+import {gradeButtons, gradeText} from './grade.js';
 import {pastStages} from './autolink.js';
 import {E, WS, strip, cmp} from './py.js';
 import {handCreditCount} from './credits.js';
@@ -67,7 +68,7 @@ export function stamp(w, v) {
     return `<span class="stamp none" data-stamp="1" style="--rot:${rot}deg"`
       + ` aria-label="評価はまだ付いていません"></span>`;
   }
-  const hold = Array.from(v).length > 1;
+  const hold = Array.from(v).length > 1 && !v.startsWith('★');   // ★4 is a rating, not a held one
   return `<span class="stamp${hold ? ' hold' : ''}" data-stamp="1"`
     + ` style="--rot:${rot}deg">${E(v)}</span>`;
 }
@@ -131,7 +132,7 @@ function castHtml(people) {
  * `extra` (the search screen) and the per-visit note (only for rows opened
  * from mails, which a public user does not have) are not passed yet.
  */
-export function recRow(w, {poster = '', rateAlways = false, editable = false, rateReopen = false, label = '', idSuffix = '', extra = ''} = {}) {
+export function recRow(w, {poster = '', rateAlways = false, editable = false, rateReopen = false, label = '', idSuffix = '', extra = '', scale = 'marks'} = {}) {
   const v = w.verdict || '';
   const unseen = Boolean(w.unseen);
   let rate;
@@ -144,7 +145,7 @@ export function recRow(w, {poster = '', rateAlways = false, editable = false, ra
     const btns = '<span class="rb" data-work="' + E(w.work_key) + '"'
       + ((!v || rateAlways) ? '' : ' hidden')
       + '>'
-      + ['◎', '○', '△', '×'].map(g => `<button data-v="${g}">${g}</button>`).join('')
+      + gradeButtons(scale, v)
       + '<span class="said"></span></span>';
     rate = (!v || rateAlways) ? btns
       : rateReopen ? '<button class="wnb" data-rate-open="1">評価を押し直す</button>' + btns : '';
@@ -168,7 +169,7 @@ export function recRow(w, {poster = '', rateAlways = false, editable = false, ra
     + ` id="w-${E(anchor(w.work_key))}${E(idSuffix)}"`
     // 評価の「詳細」（気になった所・良かった所。app.js の aspectsPanel が読む）
     + ` data-aspects="${E(w.aspects || '')}">`
-    + `<span class="marg">${dt}${unseen ? '' : stamp(w, v)}</span>`
+    + `<span class="marg">${dt}${unseen ? '' : stamp(w, gradeText(v))}</span>`
     + `<div class="page">`
     + `<div class="ttl">${E(w.title)}</div>`
     + (where ? `<div class="where">${where}</div>` : '')

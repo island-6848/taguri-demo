@@ -1028,6 +1028,10 @@ function movedToOwned(tk) {
   }, matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 450);
 }
 
+// 評価の段階: ◎○△× か、星 5 段階（"n/5"、サービス版の初期設定。screens/grade.js）。星は ★n と見せる
+const isGrade = v => "◎○△×".indexOf(v) >= 0 && v.length === 1 || /^[1-5]\/5$/.test(v);
+const gradeText = v => /^[1-5]\/5$/.test(v) ? "★" + v.slice(0, 1) : v;
+const isTopGrade = v => v === "◎" || v === "5/5";
 document.addEventListener("click", ev => {
   if (!live) return;
   const b = ev.target.closest("button");
@@ -1060,13 +1064,17 @@ document.addEventListener("click", ev => {
     const wt = b.closest(".wait");
     const row = tk || wt;
     const tear = (tk && b.dataset.v === "interest")
-              || (wt && "◎○△×".indexOf(b.dataset.v) >= 0);
+              || (wt && isGrade(b.dataset.v));
     if (tear) row.classList.add("torn");
     // 押した 1 つだけに印を付ける（色が変わって弾む・theme.css の .picked）。記録できなかったら外す
     // （起案者の指摘 2026-10-13「興味ありだけ黒いのなぜ？押したら色変わるとかなにかしらのアニメーション」）
     g.querySelectorAll("button[data-v]").forEach(x => x.classList.toggle("picked", x === b));
+    // 星は押した所までを ★ にする（記録できなかったら元に戻す）
+    const stars = b.classList.contains("star") ? [...g.querySelectorAll("button.star")] : [];
+    const starsWas = stars.map(x => x.classList.contains("on"));
+    stars.forEach((x, i) => x.classList.toggle("on", i <= stars.indexOf(b)));
     post(path, body, g).then(async d => {
-      if (!d) { if (tear) row.classList.remove("torn"); b.classList.remove("picked"); return; }
+      if (!d) { if (tear) row.classList.remove("torn"); b.classList.remove("picked"); stars.forEach((x, i) => x.classList.toggle("on", starsWas[i])); return; }
       g.classList.add("done");
       if (shown && g.dataset.stage) {
         const f = await fetch(API_BASE + "/api/react", {method: "POST", credentials: "include",
@@ -1083,13 +1091,13 @@ document.addEventListener("click", ev => {
       const rr = b.closest(".rec-row");
       if (rr && rr.querySelector("[data-stamp]")) {
         const st = rr.querySelector("[data-stamp]");
-        st.className = "stamp" + (b.dataset.v.length > 1 ? " hold" : "");
-        st.textContent = b.dataset.v;
+        st.className = "stamp" + (isGrade(b.dataset.v) ? "" : " hold");
+        st.textContent = gradeText(b.dataset.v);
         st.removeAttribute("aria-label");
         const box = rr.querySelector(".inote");
         if (box && !rr.querySelector(".inr")) {
           box.hidden = false;
-          if (b.dataset.v === "◎") box.querySelector("textarea").focus();
+          if (isTopGrade(b.dataset.v)) box.querySelector("textarea").focus();
         }
       }
       if (tk && b.dataset.v === "interest") {
@@ -1102,7 +1110,7 @@ document.addEventListener("click", ev => {
       const wn2 = g.parentElement && g.parentElement.querySelector(".wnote");
       if (wn2) {
         wn2.hidden = false;
-        if (b.dataset.v === "◎") wn2.querySelector("textarea").focus();
+        if (isTopGrade(b.dataset.v)) wn2.querySelector("textarea").focus();
       }
       // **答えた枠を、次の候補で埋める**（起案者の指示・2026-08-24）。
       //
@@ -2077,19 +2085,22 @@ function divergeVerdicts(root) {
       const td = tr.querySelectorAll("td");
       if (td.length >= 2) cnt[td[0].textContent.trim()] = parseInt(td[1].textContent, 10) || 0;
     });
-    const pos = [["○", cnt["○"] || 0], ["◎", cnt["◎"] || 0]];       // 中心から外へ: ○ → ◎
-    const neg = [["△", cnt["△"] || 0], ["×", cnt["×"] || 0]];       // 中心から外へ: △ → ×
+    // 星の人は ★4・★5 が「合っていた」側、★2・★1 が「合わなかった」側、★3 は帯の外（中立）
+    const star = Object.keys(cnt).some(g => /^★[1-5]$/.test(g));
+    const [p1, p2, n1, n2] = star ? ["★4", "★5", "★2", "★1"] : ["○", "◎", "△", "×"];
+    const pos = [[p1, cnt[p1] || 0], [p2, cnt[p2] || 0]];       // 中心から外へ: ○ → ◎
+    const neg = [[n1, cnt[n1] || 0], [n2, cnt[n2] || 0]];       // 中心から外へ: △ → ×
     const P = pos[0][1] + pos[1][1], N = neg[0][1] + neg[1][1];
     if (!P && !N) return;
     card.dataset.diverged = "1";
-    const others = Object.entries(cnt).filter(([g]) => !"◎○△×".includes(g) && cnt[g]);
+    const others = Object.entries(cnt).filter(([g]) => ![p1, p2, n1, n2].includes(g) && cnt[g]);
     const side = Math.max(P, N);                                     // 左右とも同じ目盛り（0〜side）
     const pct = v => (v / side * 100).toFixed(2) + "%";     // 左右それぞれの半分の幅に対する割合
     const all = P + N;
-    const seg = (g, v) => v ? '<span class="vdv-s vdv-' + ({"◎": "a", "○": "b", "△": "c", "×": "d"}[g])
+    const seg = (g, v) => v ? '<span class="vdv-s vdv-' + ({[p2]: "a", [p1]: "b", [n1]: "c", [n2]: "d"}[g])
       + '" style="width:' + pct(v) + '" title="' + g + " " + v + ' 件"><i>' + g + " " + v + "</i></span>" : "";
     const html = '<div class="vdv" role="img" aria-label="'
-      + E("合っていた（◎○）" + P + " 件、合わなかった（△×）" + N + " 件") + '">'
+      + E("合っていた（" + p2 + p1 + "）" + P + " 件、合わなかった（" + n1 + n2 + "）" + N + " 件") + '">'
       + '<div class="vdv-tot"><span class="vdv-n">合わなかった <b>' + N + "</b> 件<small>（" + Math.round(N / all * 100) + "%）</small></span>"
       + '<span class="vdv-p">合っていた <b>' + P + "</b> 件<small>（" + Math.round(P / all * 100) + "%）</small></span></div>"
       + '<div class="vdv-row"><div class="vdv-l">' + seg(neg[1][0], neg[1][1]) + seg(neg[0][0], neg[0][1]) + "</div>"
@@ -2131,7 +2142,7 @@ function aspectsPanel(root) {
     if (row.querySelector(".asp")) return;
     const rb = row.querySelector(".rb[data-work]"), st = row.querySelector("[data-stamp]");
     if (!rb) return;
-    const rated = () => { const t = (st && st.textContent.trim()) || ""; return t !== "" && "◎○△×".includes(t); };
+    const rated = () => { const t = (st && st.textContent.trim()) || ""; return t !== "" && ("◎○△×".includes(t) || /^★[1-5]$/.test(t)); };
     const state = {};
     (row.dataset.aspects || "").split(",").filter(Boolean).forEach(x => { state[x.replace(/^\+/, "")] = x.startsWith("+") ? "+" : "-"; });
     const box = document.createElement("details");
@@ -3425,10 +3436,18 @@ function fixupPrefMap(root) {
 
 // **元は読み込み時に1度だけ走る処理だったが、SPAではフラグメントを
 // 差し込むたびに呼び直す必要がある**(#000009)。呼び出しはrenderScreen()。
+// **行く日を入れた月は、その日が見える所まで送る**（起案者の指摘 2026-10-14「公演カレンダーのページから
+// 観劇日を追加してもカレンダーに反映されない」── スマホでは今日の位置に送るので、先の行く日が右に隠れていた）。
+// 題名の列は左に留めてある（style.css の .mgrid .nm）ので、その幅を除いた所に置く
 function fixupMonthScroll(root) {
-  (root || document).querySelectorAll(".mscroll .now").forEach(n => {
-    const s = n.closest(".mscroll");
-    s.scrollLeft = Math.max(0, n.offsetLeft - s.clientWidth * 0.35);
+  (root || document).querySelectorAll(".mscroll").forEach(s => {
+    const now = s.querySelector(".now"), pts = [...s.querySelectorAll(".mgrid .pt")];
+    const nmW = (s.querySelector(".mgrid .nm") || {offsetWidth: 0}).offsetWidth;
+    const from = now ? now.offsetLeft : 0;
+    const go = pts.find(p => p.offsetLeft >= from) || pts[0];
+    const at = go || now;
+    if (!at) return;
+    s.scrollLeft = Math.max(0, at.offsetLeft - nmW - (s.clientWidth - nmW) * 0.35);
   });
 }
 
