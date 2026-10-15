@@ -3577,6 +3577,15 @@
    "verifies": []
   },
   {
+   "id": "q-part-importance-overlap",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-15",
+   "title": "役柄の重さで「書かれた順」と「役名つき 1.5 倍」と「アンサンブル 0.3 倍」を掛け合わせているのは二重に数えていないか。1 つの「役の格」にまとめるか",
+   "sources": [],
+   "verifies": []
+  },
+  {
    "id": "q-passkey-real-devices",
    "type": "question",
    "status": "open",
@@ -7269,6 +7278,11 @@
    "from": "q-original-ui-csp",
    "rel": "affects",
    "to": "comp-native-screens"
+  },
+  {
+   "from": "q-part-importance-overlap",
+   "rel": "affects",
+   "to": "impl-interest-split"
   },
   {
    "from": "q-past-stage-catalogue",
