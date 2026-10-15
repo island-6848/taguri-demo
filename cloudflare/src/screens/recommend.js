@@ -21,7 +21,7 @@ import {castOffOf} from './diary.js';
 import {compose, cardTemplates, posterHtml} from './cards.js';
 import {PREFS, prefForm, prefsFor, regionCounts} from './prefs.js';
 export {prefForm, prefsFor};
-import {loadDeclared, loadDeclined, nameHits, KINDS} from './lists.js';
+import {loadDeclared, loadDeclined, nameHits, KINDS, reactionsOf} from './lists.js';
 
 export const TOP = 15;
 const TIPS = `<section class="card tips">
@@ -38,7 +38,7 @@ const TIPS = `<section class="card tips">
 `;
 // Groups kept per user between requests: enough to fill 15 cards in any one prefecture.
 const KEEP = 400;
-const VERSION = 'screen-v4';   // v2: the user's 効かせ方 (rank_weight) and the per-group counts; v3: 興味あり as seeds; v4: diag
+const VERSION = 'screen-v5';   // v2: the user's 効かせ方 (rank_weight) and the per-group counts; v3: 興味あり as seeds; v4: diag; v5: 興味あり split (impl-interest-split)
 export {PREFS} from './prefs.js';
 const ROLE_SRC = '公演ページのクレジット';
 const KIND_LABEL = {'#形式': '形式', '#原作': '原作', '#翻訳': '', '#会場': '劇場', '#値段': '料金帯', '#題材': '題材'};
@@ -79,15 +79,20 @@ async function interestSeeds(ctx, access) {
     .bind(ctx.uid).all();
   const last = new Map();
   for (const r of results) { last.delete(r.stage_id); last.set(r.stage_id, Number(r.interest)); }
-  const sids = [...last].filter(([, v]) => v === 1).map(([s]) => String(s)).reverse().slice(0, MAX_SEED_STAGES);
-  if (!sids.length) return {seeds: [], n: 0};
-  const [people, info] = await Promise.all([access.peopleFor(sids), stageInfo(ctx.db, sids)]);
-  for (const s of sids) {
+  const newest = v => [...last].filter(([, x]) => x === v).map(([s]) => String(s)).reverse().slice(0, MAX_SEED_STAGES);
+  const sids = newest(1), noes = newest(0);
+  if (!sids.length) return {seeds: [], disliked: [], n: 0};
+  const all = [...sids, ...noes];
+  const [people, info] = await Promise.all([access.peopleFor(all), stageInfo(ctx.db, all)]);
+  for (const s of all) {
     if (people.get(s)?.length) continue;
     const p = parseCredits(info.get(s)?.fields || {});
     if (p.length) people.set(s, p);
   }
-  return {n: sids.length, seeds: sids.filter(s => people.get(s)?.length).map(s => ({stage_id: s, title: info.get(s)?.title || '', people: people.get(s)}))};
+  // 「なぜ気になったか」（reaction.note、任意）。書いてあれば、そこに名前のある人に多めに配る。
+  const notes = await reactionsOf(ctx);
+  const one = s => ({stage_id: s, title: info.get(s)?.title || '', note: notes.get(s)?.note || '', people: people.get(s)});
+  return {n: sids.length, seeds: sids.filter(s => people.get(s)?.length).map(one), disliked: noes.filter(s => people.get(s)?.length).map(one)};
 }
 
 /** measure_nets.person_titles: (role, person) -> titles, ◎ first, newest first within a mark. */
@@ -174,14 +179,13 @@ export async function rankedGroups(ctx) {
   const declared = await loadDeclared(ctx);
   const favourites = KINDS.flatMap(kind => (declared[kind] || []).map(name => ({name, kind}))).slice(0, 200);
   const fav = await seedsFromFavourites(access, favourites), skip = fav.skip;
-  const {seeds: liked, n: nLiked} = await interestSeeds(ctx, access);
-  const have = new Set(fav.seeds.map(s => s.stage_id));
-  const seeds = [...fav.seeds, ...liked.filter(s => !have.has(s.stage_id))];
+  const {seeds: liked, disliked, n: nLiked} = await interestSeeds(ctx, access);
+  const seeds = fav.seeds;
   // Stages of a registered name are お気に入り, stages of a word not to show are left out
   // (app._rebucket): neither is ranked here.
   const {hits, declined} = await nameHits(ctx, declared, await loadDeclined(ctx));
   const ranked = await scoreFromIndex({...access, rated: gate.aspects ? rated : rated.map(r => ({...r, aspects: []})),
-    multipliers, today: ctx.today, seeds, skip});
+    multipliers, today: ctx.today, seeds, skip, liked, disliked});
   // app._weight_counts: per group, the candidates it matches (the people and kinds that raised them).
   const wCounts = {};
   for (const c of ranked) {
