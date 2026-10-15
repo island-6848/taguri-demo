@@ -1170,6 +1170,18 @@
    "verifies": []
   },
   {
+   "id": "dec-rating-scales",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "評価の付け方を設定で選べるようにした（図形：○×・○△×・◎○△×／星：5 段階・0.5 きざみ）",
+   "sources": [
+    "cloudflare/src/screens/grade.js",
+    "cloudflare/test/grade.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-reason-work-titles",
    "type": "decision",
    "status": "adopted",
@@ -5249,6 +5261,26 @@
   },
   {
    "from": "dec-rating-detail-mode",
+   "rel": "affects",
+   "to": "comp-recommender"
+  },
+  {
+   "from": "dec-rating-scales",
+   "rel": "depends_on",
+   "to": "dec-star-default"
+  },
+  {
+   "from": "dec-rating-scales",
+   "rel": "depends_on",
+   "to": "dec-user-scale-range"
+  },
+  {
+   "from": "dec-rating-scales",
+   "rel": "depends_on",
+   "to": "eval-douban-scales"
+  },
+  {
+   "from": "dec-rating-scales",
    "rel": "affects",
    "to": "comp-recommender"
   },

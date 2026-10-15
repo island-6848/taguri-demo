@@ -1028,10 +1028,31 @@ function movedToOwned(tk) {
   }, matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 450);
 }
 
-// 評価の段階: ◎○△× か、星 5 段階（"n/5"、サービス版の初期設定。screens/grade.js）。星は ★n と見せる
-const isGrade = v => "◎○△×".indexOf(v) >= 0 && v.length === 1 || /^[1-5]\/5$/.test(v);
-const gradeText = v => /^[1-5]\/5$/.test(v) ? "★" + v.slice(0, 1) : v;
-const isTopGrade = v => v === "◎" || v === "5/5";
+// 評価の段階（screens/grade.js と同じ読み方）: ◎○△× と "n/L"（L = 2 ○×・3 ○△×・5 ★・11 ★ 0.5 きざみ）。
+// 表示は ○ / ★4 / ★3.5。サービス版の初期設定は星 5 段階で、設定の「評価の付け方」で選べる
+const gradeParts = v => { const m = /^(\d{1,2})\/(2|3|5|11)$/.exec(v || ""); return m && +m[1] >= 1 && +m[1] <= +m[2] ? [+m[1], +m[2]] : null; };
+const isGrade = v => "◎○△×".indexOf(v) >= 0 && v.length === 1 || Boolean(gradeParts(v));
+const gradeText = v => {
+  const p = gradeParts(v);
+  if (!p) return v;
+  const [n, L] = p;
+  return L === 2 ? {2: "○", 1: "×"}[n] : L === 3 ? {3: "○", 2: "△", 1: "×"}[n] : "★" + (L === 11 ? (n - 1) / 2 : n);
+};
+const isTopGrade = v => v === "◎" || (gradeParts(v) || [0, -1])[0] === (gradeParts(v) || [0, -1])[1];
+// 星を押した所まで塗る（5 段階は 1 つずつ、0.5 きざみは半分ずつ）。戻すための前の状態を返す
+function fillStars(g, b) {
+  const items = [...g.querySelectorAll("button.star, button.star0, .hs")];
+  const was = items.map(x => x.className);
+  const p = gradeParts(b.dataset.v);
+  if (p && p[1] === 5) g.querySelectorAll("button.star").forEach((x, i) => x.classList.toggle("on", i < p[0]));
+  if (p && p[1] === 11) {
+    const v = (p[0] - 1) / 2;
+    const z = g.querySelector("button.star0");
+    if (z) z.classList.toggle("on", v === 0);
+    g.querySelectorAll(".hs").forEach((x, i) => { x.classList.toggle("on", v >= i + 1); x.classList.toggle("h", v === i + 0.5); });
+  }
+  return () => items.forEach((x, i) => { x.className = was[i]; });
+}
 document.addEventListener("click", ev => {
   if (!live) return;
   const b = ev.target.closest("button");
@@ -1070,11 +1091,9 @@ document.addEventListener("click", ev => {
     // （起案者の指摘 2026-10-13「興味ありだけ黒いのなぜ？押したら色変わるとかなにかしらのアニメーション」）
     g.querySelectorAll("button[data-v]").forEach(x => x.classList.toggle("picked", x === b));
     // 星は押した所までを ★ にする（記録できなかったら元に戻す）
-    const stars = b.classList.contains("star") ? [...g.querySelectorAll("button.star")] : [];
-    const starsWas = stars.map(x => x.classList.contains("on"));
-    stars.forEach((x, i) => x.classList.toggle("on", i <= stars.indexOf(b)));
+    const unfill = fillStars(g, b);
     post(path, body, g).then(async d => {
-      if (!d) { if (tear) row.classList.remove("torn"); b.classList.remove("picked"); stars.forEach((x, i) => x.classList.toggle("on", starsWas[i])); return; }
+      if (!d) { if (tear) row.classList.remove("torn"); b.classList.remove("picked"); unfill(); return; }
       g.classList.add("done");
       if (shown && g.dataset.stage) {
         const f = await fetch(API_BASE + "/api/react", {method: "POST", credentials: "include",
@@ -1091,7 +1110,7 @@ document.addEventListener("click", ev => {
       const rr = b.closest(".rec-row");
       if (rr && rr.querySelector("[data-stamp]")) {
         const st = rr.querySelector("[data-stamp]");
-        st.className = "stamp" + (isGrade(b.dataset.v) ? "" : " hold");
+        st.className = "stamp" + (!isGrade(b.dataset.v) ? " hold" : gradeText(b.dataset.v).length > 2 ? " sm" : "");
         st.textContent = gradeText(b.dataset.v);
         st.removeAttribute("aria-label");
         const box = rr.querySelector(".inote");
@@ -1316,6 +1335,13 @@ document.addEventListener("click", ev => {
       if (!d) return;
       location.hash = "weights";
       setTimeout(() => location.reload(), 400);
+    });
+  } else if (b.dataset.setScale) {
+    // 評価の付け方（設定）。選んだ形を 1 回だけ書き、次に開いた画面から効く
+    const card = b.closest("#scale-setting"), on = card.querySelector('input[name="rscale"]:checked');
+    if (!on) return;
+    post("/api/rating_scale", {scale: on.value}, card, "保存しました。次に評価するときから、この形で出ます").then(d => {
+      if (d) setTimeout(() => location.reload(), 700);
     });
   } else if (b.dataset.setPref || b.dataset.setPrefAll) {
     // **設定は「押したときに 1 回だけ書く」**（効かせ方と同じ規約）。チェックの
@@ -2080,32 +2106,38 @@ function divergeVerdicts(root) {
   root.querySelectorAll(".card .dbar").forEach(bar => {
     const card = bar.closest(".card");
     if (!card || card.dataset.diverged) return;
-    const cnt = {};
+    // 4 つの束: a 強く合っていた・b 合っていた・c 合わなかった・d 強く合わなかった。◎○△× は記号で、
+    // "n/L"（星・○×・○△×）は行の data-v から段階の中の位置 f で分ける（真ん中はどちらにも入れない）
+    const B = {a: [], b: [], c: [], d: []}, others = [];
     card.querySelectorAll("table tr").forEach(tr => {
       const td = tr.querySelectorAll("td");
-      if (td.length >= 2) cnt[td[0].textContent.trim()] = parseInt(td[1].textContent, 10) || 0;
+      if (td.length < 2) return;
+      const g = td[0].textContent.trim(), v = parseInt(td[1].textContent, 10) || 0;
+      if (!v) return;
+      const pr = gradeParts(tr.dataset.v || "");
+      let k = {"◎": "a", "○": "b", "△": "c", "×": "d"}[g];
+      if (pr) { const d = (pr[0] - 1) / (pr[1] - 1) - 0.5; k = d > 0.3 ? "a" : d > 0 ? "b" : d < -0.3 ? "d" : d < 0 ? "c" : undefined; }
+      if (k) B[k].push([g, v]); else others.push([g, v]);
     });
-    // 星の人は ★4・★5 が「合っていた」側、★2・★1 が「合わなかった」側、★3 は帯の外（中立）
-    const star = Object.keys(cnt).some(g => /^★[1-5]$/.test(g));
-    const [p1, p2, n1, n2] = star ? ["★4", "★5", "★2", "★1"] : ["○", "◎", "△", "×"];
-    const pos = [[p1, cnt[p1] || 0], [p2, cnt[p2] || 0]];       // 中心から外へ: ○ → ◎
-    const neg = [[n1, cnt[n1] || 0], [n2, cnt[n2] || 0]];       // 中心から外へ: △ → ×
+    const lab = k => B[k].map(x => x[0]).join("・"), num = k => B[k].reduce((t, x) => t + x[1], 0);
+    const [p1, p2, n1, n2] = [lab("b"), lab("a"), lab("c"), lab("d")];
+    const pos = [[p1, num("b"), "b"], [p2, num("a"), "a"]];       // 中心から外へ: ○ → ◎
+    const neg = [[n1, num("c"), "c"], [n2, num("d"), "d"]];       // 中心から外へ: △ → ×
     const P = pos[0][1] + pos[1][1], N = neg[0][1] + neg[1][1];
     if (!P && !N) return;
     card.dataset.diverged = "1";
-    const others = Object.entries(cnt).filter(([g]) => ![p1, p2, n1, n2].includes(g) && cnt[g]);
     const side = Math.max(P, N);                                     // 左右とも同じ目盛り（0〜side）
     const pct = v => (v / side * 100).toFixed(2) + "%";     // 左右それぞれの半分の幅に対する割合
     const all = P + N;
-    const seg = (g, v) => v ? '<span class="vdv-s vdv-' + ({[p2]: "a", [p1]: "b", [n1]: "c", [n2]: "d"}[g])
-      + '" style="width:' + pct(v) + '" title="' + g + " " + v + ' 件"><i>' + g + " " + v + "</i></span>" : "";
+    const seg = ([g, v, k]) => v ? '<span class="vdv-s vdv-' + k
+      + '" style="width:' + pct(v) + '" title="' + E(g) + " " + v + ' 件"><i>' + E(g) + " " + v + "</i></span>" : "";
     const html = '<div class="vdv" role="img" aria-label="'
       + E("合っていた（" + p2 + p1 + "）" + P + " 件、合わなかった（" + n1 + n2 + "）" + N + " 件") + '">'
       + '<div class="vdv-tot"><span class="vdv-n">合わなかった <b>' + N + "</b> 件<small>（" + Math.round(N / all * 100) + "%）</small></span>"
       + '<span class="vdv-p">合っていた <b>' + P + "</b> 件<small>（" + Math.round(P / all * 100) + "%）</small></span></div>"
-      + '<div class="vdv-row"><div class="vdv-l">' + seg(neg[1][0], neg[1][1]) + seg(neg[0][0], neg[0][1]) + "</div>"
+      + '<div class="vdv-row"><div class="vdv-l">' + seg(neg[1]) + seg(neg[0]) + "</div>"
       + '<div class="vdv-0" aria-hidden="true"></div>'
-      + '<div class="vdv-r">' + seg(pos[0][0], pos[0][1]) + seg(pos[1][0], pos[1][1]) + "</div></div>"
+      + '<div class="vdv-r">' + seg(pos[0]) + seg(pos[1]) + "</div></div>"
       + '<div class="vdv-ax" aria-hidden="true"><span>' + side + "</span><span>0</span><span>" + side + "</span></div>"
       + (others.length ? '<p class="vdv-o">帯に入れていないもの: ' + others.map(([g, v]) => E(g) + " " + v + " 件").join("、") + "</p>" : "")
       + "</div>";
@@ -2142,7 +2174,7 @@ function aspectsPanel(root) {
     if (row.querySelector(".asp")) return;
     const rb = row.querySelector(".rb[data-work]"), st = row.querySelector("[data-stamp]");
     if (!rb) return;
-    const rated = () => { const t = (st && st.textContent.trim()) || ""; return t !== "" && ("◎○△×".includes(t) || /^★[1-5]$/.test(t)); };
+    const rated = () => { const t = (st && st.textContent.trim()) || ""; return t !== "" && ("◎○△×".includes(t) || /^★\d(\.5)?$/.test(t)); };
     const state = {};
     (row.dataset.aspects || "").split(",").filter(Boolean).forEach(x => { state[x.replace(/^\+/, "")] = x.startsWith("+") ? "+" : "-"; });
     const box = document.createElement("details");

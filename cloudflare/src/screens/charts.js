@@ -4,7 +4,7 @@
 //
 // map_panel（行った劇場の地図）は移していない: 劇場の座標（venue_geo.json）と
 // 地図の輪郭が D1 に無い。Python も座標が無ければ空を返すので、同じく出さない。
-import {STARS, isStar, gradeText, markOf} from './grade.js';
+import {ALL_GRADES, isScaled, gradeText, markOf} from './grade.js';
 import {E, fmtF, sortBy} from './py.js';
 import {h2} from './icons.js';
 import {anchor} from './anchor.js';
@@ -113,8 +113,8 @@ export function spiralPanel(works) {
     const rr = r0 + dr * years.indexOf(w.first_date.slice(0, 4));
     const [x, y] = polar(yday(w.first_date), rr, cx, cy);
     const v = w.verdict || '';
-    const m = markOf(v);       // a star is coloured as the mark on its side (★3: neither)
-    tally.add(isStar(v) ? gradeText(v) : v in VERDICT_FILL ? v : '未評価');
+    const m = markOf(v);       // n/L is coloured as the mark on its side (the middle: neither)
+    tally.add(isScaled(v) || v in VERDICT_FILL ? v : '未評価');
     const fill = VERDICT_FILL[m] || 'var(--unk)';
     const solid = m === '◎' || m === '○';
     const times = (w.times || 1) > 1 ? `・${w.times} 回` : '';
@@ -126,14 +126,14 @@ export function spiralPanel(works) {
       + ` fill-opacity="${solid ? opStr(VERDICT_OP[m] ?? 1.0) : 1}"`
       + ` stroke="${fill}" stroke-width="${solid ? 1.6 : 2}"/></g></a>`);
   }
-  const leg = [...VERDICT_ORDER.slice(0, 4), ...STARS.map(gradeText), '未評価'].filter(g => tally.get(g)).map(label => {
-    const g = label.startsWith('★') ? markOf(label.slice(1) + '/5') : label;
+  const leg = [...ALL_GRADES, '未評価'].filter(v => tally.get(v)).map(v => {
+    const g = v === '未評価' ? v : markOf(v), label = gradeText(v);
     const solid = g === '◎' || g === '○';
     return `<span class="lg"><svg width="13" height="13" viewBox="0 0 13 13" aria-hidden="true">`
       + `<circle cx="6.5" cy="6.5" r="5" fill="${solid ? (VERDICT_FILL[g] || 'var(--unk)') : 'var(--surf)'}"`
       + ` fill-opacity="${solid ? opStr(VERDICT_OP[g] ?? 1.0) : 1}"`
       + ` stroke="${VERDICT_FILL[g] || 'var(--base)'}" stroke-width="2"/></svg>`
-      + `${E(label)} <b>${tally.get(label)}</b></span>`;
+      + `${E(label)} <b>${tally.get(v)}</b></span>`;
   }).join('');
 
   const grid = new Counter();

@@ -1,6 +1,6 @@
 // 記録を見返す: the material the three screens share (app._records_base) and the screens
 // themselves (起案者の指示 2026-10-14「残りの画面も順に移して」).
-import {isStar} from './grade.js';
+import {isScaled} from './grade.js';
 import {loadWorks} from './works.js';
 import {peopleByKey, recordsLede} from './diary.js';
 import {autoLink, pastStages} from './autolink.js';
@@ -35,7 +35,7 @@ async function venuesOf(ctx, sids) {
  * the credits of their linked stage plus the hand-entered ones.
  */
 export async function ratedRows(ctx, ws) {
-  const rated = ws.filter(w => GRADES.includes(w.verdict) || isStar(w.verdict));
+  const rated = ws.filter(w => GRADES.includes(w.verdict) || isScaled(w.verdict));
   const people = await peopleByKey(ctx, rated);
   const venues = await venuesOf(ctx, rated.map(w => w.stage_id));
   return rated.map(w => ({key: w.work_key, title: w.title, date: w.first_date || '', verdict: w.verdict, stage_id: w.stage_id || '',

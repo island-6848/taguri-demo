@@ -69,7 +69,8 @@ export function stamp(w, v) {
       + ` aria-label="評価はまだ付いていません"></span>`;
   }
   const hold = Array.from(v).length > 1 && !v.startsWith('★');   // ★4 is a rating, not a held one
-  return `<span class="stamp${hold ? ' hold' : ''}" data-stamp="1"`
+  const long = v.startsWith('★') && Array.from(v).length > 2;     // ★3.5 is set smaller to fit the circle
+  return `<span class="stamp${hold ? ' hold' : long ? ' sm' : ''}" data-stamp="1"`
     + ` style="--rot:${rot}deg">${E(v)}</span>`;
 }
 
