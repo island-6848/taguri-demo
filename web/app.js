@@ -1146,11 +1146,12 @@ document.addEventListener("click", ev => {
     g.querySelectorAll("button[data-v]").forEach(x => x.classList.toggle("picked", x === b));
     // 星は押した所までを ★ にする（記録できなかったら元に戻す）
     const unfill = fillStars(g, b);
-    // お気に入りの「購入済みにする」は、移った先を言う（起案者の指示 2026-10-15）
-    const said0 = tk && tk.classList.contains("favourite") && b.dataset.v === "owned" ? "購入済み公演に移しました" : undefined;
+    // お気に入りの「購入済みにする」は、入った先を言う（起案者の指示 2026-10-15。お気に入りには残る）
+    const said0 = tk && tk.classList.contains("favourite") && b.dataset.v === "owned" ? "購入済みにしました（購入済み公演にも入りました）" : undefined;
     post(path, body, g, said0).then(async d => {
       if (!d) { if (tear) row.classList.remove("torn"); b.classList.remove("picked"); unfill(); return; }
       g.classList.add("done");
+      if (said0) { b.textContent = "購入済み"; b.disabled = true; }
       if (shown && g.dataset.stage) {
         const f = await fetch(API_BASE + "/api/react", {method: "POST", credentials: "include",
           headers: {"Content-Type": "application/json"},

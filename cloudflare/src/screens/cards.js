@@ -21,6 +21,8 @@ export const buttons = (sid, hidden = false) => `<span class="btns"${hidden ? ' 
 /** お気に入り: 購入済みにするボタンだけ（起案者の指示 2026-10-15「お気に入りから、購入済みを登録できるようにして」）。 */
 export const ownedButton = sid => `<span class="btns" data-stage="${E(sid)}">`
   + '<button data-v="owned">購入済みにする</button><span class="said"></span></span>';
+/** お気に入り: 購入済みにした公演は一覧に残し、ボタンの代わりに印を出す（起案者の指示 2026-10-15「購入済み押してもお気に入りから消さないで」）。 */
+export const ownedMark = '<span class="owned-mark">購入済み ── <a href="/tickets?t=__TAGURI_TOKEN__">購入済み公演で行く日を入れる</a></span>';
 
 /** render_recommend.why_note */
 export function whyNote(sid, note = '', {open = false, ask = false} = {}) {
@@ -80,12 +82,12 @@ export const posterHtml = file => `<span class="pwrap"><img class="poster" src="
   + `<span class="pmsg">読み込み中…</span></span>`;
 
 /** build_cards.compose */
-export function compose(template, sid, mode, {rank = null, why = '', poster = '', note = '', mytix = '', top = ''} = {}) {
+export function compose(template, sid, mode, {rank = null, why = '', poster = '', note = '', mytix = '', top = '', owned = false} = {}) {
   const mark = {recommend: rank ? `<span class="sn">No.${String(rank).padStart(2, '0')}</span>` : '',
     interest: `<span class="sn done">${ico('check', 15)}</span>`,
     favourite: '<span class="wax" aria-hidden="true"></span>'}[mode] || '';
   const btns = {recommend: buttons(sid),
-    interest: changeAnswer(sid), owned: changeAnswer(sid), favourite: ownedButton(sid)}[mode] || '';
+    interest: changeAnswer(sid), owned: changeAnswer(sid), favourite: owned ? ownedMark : ownedButton(sid)}[mode] || '';
   const answer = mode === 'recommend' || mode === 'interest';
   // Functions as replacements: the inserted text is never read as a replacement pattern ($&).
   return template.replace('<article class="ticket recommend"', () => `<article class="ticket ${mode}"`)

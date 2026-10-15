@@ -370,14 +370,18 @@ test('お気に入り finds a registered name in the catalogue at once, also wit
   } finally { sqlite.close(); }
 });
 
-test('購入済みにする on お気に入り moves the stage to 購入済み公演 (起案者 2026-10-15)', async () => {
+test('購入済みにする on お気に入り adds the stage to 購入済み公演 and keeps it on お気に入り (起案者 2026-10-15)', async () => {
   const {env, sqlite} = withIndex();
   const a = await signIn(env);
   try {
     await step(env, a, {post: '/api/favourite', body: {action: 'add', kind: '人', name: '俳優甲'}});
     assert.match((await screen(env, a, 'favourites')).body_html, /新着 1 件/);
     assert.equal((await step(env, a, {post: '/api/react', body: {stage_id: '101', value: 'owned', nofill: true}})).status, 200);
-    assert.match((await screen(env, a, 'favourites')).body_html, /新着 0 件/);
+    // お気に入りには残し、ボタンの代わりに「購入済み」の印を出す（起案者 2026-10-15「購入済み押してもお気に入りから消さないで」）
+    const fav = (await screen(env, a, 'favourites')).body_html;
+    assert.match(fav, /新着 1 件/);
+    assert.match(fav, /<article class="ticket favourite" data-stage="101"[\s\S]*<span class="owned-mark">購入済み/);
+    assert.doesNotMatch(fav, /data-v="owned"/);
     const t = (await screen(env, a, 'tickets')).body_html;
     assert.match(t, /<h1>購入済み公演 ── 1 件<\/h1>/);
     assert.match(t, /<article class="ticket owned" data-stage="101"/);
