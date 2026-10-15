@@ -422,6 +422,8 @@ test('興味あり added from 開幕リマインド says so in place of おす�
     assert.match(card('101'), /<div class="whyh origin">[\s\S]*開幕リマインドからの追加<\/div>/);
     assert.doesNotMatch(card('101'), /おすすめ理由|<ul class="why">/);
     assert.match(card('101'), /<span class="wnt">ポスターがかわいい<\/span>/);
+    // 書いた理由は、ふだんは畳む（「回答を直す」で開く。起案者 2026-10-15）
+    assert.match(card('101'), /<div class="wnw" hidden>/);
     assert.match(card('102'), /おすすめ理由/);
     assert.equal(sqlite.prepare("SELECT source FROM reaction WHERE stage_id='101' AND interest=1").get().source, 'reminder');
   } finally { sqlite.close(); }

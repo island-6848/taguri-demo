@@ -36,7 +36,9 @@ export function whyNote(sid, note = '', {open = false, ask = false} = {}) {
   const head = note
     ? `<div class="wnr"><span class="wnl">なぜ気になったか</span><span class="wnt">${E(note)}</span><button class="wnb" data-why="1">書き直す</button></div>`
     : '<button class="wnb" data-why="1">なぜ気になったかを書く<span class="opt">任意</span></button>';
-  return `<div class="wnw">${head}${box}</div>`;
+  // ふだんは畳み、「回答を直す」で三択と一緒に出す（起案者の指示 2026-10-15「なぜ気になったか？の理由ユーザーに
+  // 向けて出す必要ある？…回答を直すのボタンを押したら出るように」。render_recommend.why_note と同じ）
+  return `<div class="wnw" hidden>${head}${box}</div>`;
 }
 
 /** 購入済み公演: a memo before seeing it (起案者の指示 2026-10-14「購入済みの公演のみ、観る前の感想をメモで書いておけるように」). */
