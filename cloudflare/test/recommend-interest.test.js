@@ -63,6 +63,16 @@ test('favourites are skipped, and seeds fade with ratings as before', () => {
 // 役柄の重さ（起案者の指示 2026-10-15「単純に人数で割るのよくない。役柄の重要さで割るべき」）。
 import {castImportance, LESSER_IMPORTANCE} from '../src/recommend.js';
 
+test('トメ: the last name on its own line is a main role even after the ensemble; the last of the ensemble line is not', () => {
+  const m = castImportance('主役一、脇役二\nアンサンブル：群甲、群乙、群丙\n重鎮四', ['主役一', '脇役二', '群甲', '群乙', '群丙', '重鎮四']);
+  close(m.get('重鎮四'), 1);
+  close(m.get('群丙'), LESSER_IMPORTANCE);
+  const n = castImportance('主役一、脇役二\nアンサンブル：群甲、群乙、群丙', ['主役一', '脇役二', '群甲', '群乙', '群丙']);
+  close(n.get('群丙'), LESSER_IMPORTANCE);
+  // Two names only: no トメ.
+  close(castImportance('アンサンブル：群甲\n重鎮', ['群甲', '重鎮']).get('重鎮'), LESSER_IMPORTANCE);
+});
+
 // 案 B（起案者 2026-10-15）: 役の格は 2 段だけ。書かれた順・トメは使わない。
 test('cast: named parts are the main roles, all equal; the ensemble weighs less', () => {
   const text = 'ジャン・バルジャン：主役一\nジャベール：主演二\nファンテーヌ：助演三\n司教：重鎮四\nアンサンブル：群衆五、群衆六';

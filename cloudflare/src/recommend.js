@@ -118,11 +118,12 @@ export function independentRatings(rows) {
 export const INTEREST_PEOPLE_SHARE = 0.5, INTEREST_PRIOR_BOOST = 3, INTEREST_NOTE_BOOST = 5;
 // 人の中の配り方（役の格、起案者の指示 2026-10-15）。興味の理由は主演とは限らない（「別に主演が気になるから
 // 興味あるわけじゃない」）ので、役の格は弱い歯止めとしてだけ使う（案 B、q-interest-why-unknown）: 主な役と中心の
-// 作り手は同じ 1、アンサンブルとそれ以外のスタッフは LESSER_IMPORTANCE 倍。書かれた順・トメは使わない。
+// 作り手は同じ 1、アンサンブルとそれ以外のスタッフは LESSER_IMPORTANCE 倍。書かれた順で差は付けない。
+// トメ（最後に別の行で書かれた人）は、アンサンブルの見出しより後でも主な役に入れる（段の境目の判定にだけ使う）。
 // 「なぜ」は、何件にも共通するもの・本人の好み・興味なしとの比べ・理由の名前が推し量る。いつまで使うかは要検証。
 // 主な役＝役名つきで書かれた人（役名が 1 人も無ければ「アンサンブル」の見出しより前の人、見出しも無ければ全員）。
 export const CORE_CREATORS = new Set(['演出', '脚本', '原作', '作曲', '構成', '音楽', '振付', '翻訳', '潤色', '作詞']);
-export const LESSER_IMPORTANCE = 0.3;
+export const LESSER_IMPORTANCE = 0.3, TOME_MIN = 3;
 const nfkc = s => String(s ?? '').normalize('NFKC');
 const HEADING = /^(出演|キャスト|cast|アンサンブル|ensemble|[【［][^】］]*[】］])[:：]$/i;
 /** 出演者の名前 -> 1（主な役）か LESSER_IMPORTANCE（アンサンブル）。text は公演ページの出演欄そのまま。 */
@@ -137,6 +138,16 @@ export function castImportance(text, names) {
   };
   const anyNamed = found.some(named);
   for (const f of found) out.set(f[0], (anyNamed ? named(f) : ens < 0 || f[1] < ens) ? 1 : LESSER_IMPORTANCE);
+  // トメ（起案者 2026-10-15「トメ使ってもいいとは思う」）: 出演欄のいちばん最後に、ほかの名前と別の行で書かれた人は
+  // 大物・ベテランを置く位置なので、アンサンブルの見出しより後でも主な役にする（3 人以上いるときだけ）。
+  if (found.length >= TOME_MIN) {
+    const [tome, at] = found.reduce((a, b) => (b[1] > a[1] ? b : a));
+    const lineStart = raw.lastIndexOf('\n', at) + 1, lineEnd = raw.indexOf('\n', at) < 0 ? raw.length : raw.indexOf('\n', at);
+    // 別の行で、ほかの名前も「アンサンブル」の見出しも同じ行に無いこと
+    const alone = lineStart > 0 && !(ens >= lineStart && ens < lineEnd)
+      && !found.some(([n, i]) => n !== tome && i >= lineStart && i < lineEnd);
+    if (alone) out.set(tome, 1);
+  }
   // 出演欄に見つからない人は、見つかった人のいちばん軽い重さ（だれも見つからなければ 1）
   const least = found.length ? Math.min(...out.values()) : 1;
   for (const n of names) if (!out.has(n)) out.set(n, least);
