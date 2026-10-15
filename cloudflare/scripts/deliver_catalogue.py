@@ -43,7 +43,13 @@ import free_tier as FT                                             # noqa: E402
 
 JST = datetime.timezone(datetime.timedelta(hours=9))
 WRITE_BUDGET = 60_000          # of the 100,000 rows/day free tier; the rest is for users
-ROWS_PER_UPSERT = 2            # the row and the catalogue_date index entry
+# D1 counts index writes in rows_written (d1-meta-size-after). Every table here has a TEXT or composite
+# primary key, so SQLite keeps it in its own index: one row costs the row, the key index and any other
+# index (measured 2026-10-15: past_stage 30,000 rows_written for 10,001 rows; d1-writes-undercounted).
+ROWS_PER_UPSERT = 3            # the row, its primary-key index and the catalogue_date index
+VENUE_WRITES = 2               # venue_pref: the row and its primary-key index
+META_WRITES = 2                # rec_meta: the row and its primary-key index
+INDEX_WRITES_PER_ROW = 2       # rec_* / stage_label / rec_card rows: the row and its primary-key index
 STATE = Path("d1") / "delivered.json"
 
 
@@ -148,8 +154,10 @@ def build_index(out: Path) -> tuple[str, int, Path] | None:
     m = re.search(r"VALUES\('current','([0-9a-f]+)'\)", sql.read_text(encoding="utf-8"))
     if not m:
         return None
-    # The upload writes every row once and deleting the old version writes them again.
-    return m.group(1), 2 * json.loads(st.read_text(encoding="utf-8"))["rows_written"], sql
+    # Each row is written with its key index; deleting the previous version (if any) writes them again.
+    # rec_stage also has rec_stage_start (migrations/0019): one more write per stage.
+    s = json.loads(st.read_text(encoding="utf-8"))
+    return m.group(1), INDEX_WRITES_PER_ROW * s["rows_written"] + s["stages"], sql
 
 
 def build_labels(out: Path) -> tuple[str, int, Path] | None:
@@ -164,8 +172,8 @@ def build_labels(out: Path) -> tuple[str, int, Path] | None:
     m = re.search(r"VALUES\('stage_label','([0-9a-f]+)'\)", sql.read_text(encoding="utf-8"))
     if not m:
         return None
-    # Inserting a version and deleting the previous one write each row twice.
-    return m.group(1), 2 * json.loads(r.stdout.strip().splitlines()[-1])["stages"], sql
+    # Each row is written with its key index; deleting the previous version writes them again (ops in build).
+    return m.group(1), INDEX_WRITES_PER_ROW * json.loads(r.stdout.strip().splitlines()[-1])["stages"], sql
 
 
 def build_cards(out: Path, today: datetime.date) -> tuple[str, int, Path] | None:
@@ -180,8 +188,8 @@ def build_cards(out: Path, today: datetime.date) -> tuple[str, int, Path] | None
     m = re.search(r"VALUES\('rec_card','([0-9a-f]+)'\)", sql.read_text(encoding="utf-8"))
     if not m:
         return None
-    # Inserting a version and deleting the previous one write each row twice.
-    return m.group(1), 2 * json.loads(r.stdout.strip().splitlines()[-1])["stages"], sql
+    # Each row is written with its key index; deleting the previous version writes them again (ops in build).
+    return m.group(1), INDEX_WRITES_PER_ROW * json.loads(r.stdout.strip().splitlines()[-1])["stages"], sql
 
 
 def build(data: Path, out: Path, today: datetime.date, with_index: bool, budget: int) -> dict:
@@ -197,7 +205,7 @@ def build(data: Path, out: Path, today: datetime.date, with_index: bool, budget:
     prev_venues: dict[str, str] = dict(prev.get("venues") or {})
     venue_changed = {v: p for v, p in venues.items() if prev_venues.get(v) != p}
     stmts += [venue_sql(v, p) for v, p in venue_changed.items()]
-    writes = ROWS_PER_UPSERT * len(changed) + len(venue_changed)
+    writes = ROWS_PER_UPSERT * len(changed) + VENUE_WRITES * len(venue_changed)
     if writes > budget:
         raise SystemExit(f"{len(stmts)} catalogue rows exceed today's write budget ({writes} > {budget}); "
                          "raise --budget only after checking the D1 usage")
@@ -205,7 +213,7 @@ def build(data: Path, out: Path, today: datetime.date, with_index: bool, budget:
             "catalogue_delivered": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
             "catalogue_upcoming": str(len(rows))}
     stmts += [meta_sql(k, v) for k, v in meta.items() if v]
-    writes += len(meta)
+    writes += META_WRITES * len(meta)
     report = {"stages": len(rows), "changed": len(changed), "venues_changed": len(venue_changed), "writes": writes,
               "with_synopsis": sum(1 for r in rows.values() if json.loads(r[5]).get("synopsis"))}
     state = {"rows": seen, "venues": {**prev_venues, **venues}, "index": prev.get("index", ""), "labels": prev.get("labels", ""),
@@ -215,6 +223,7 @@ def build(data: Path, out: Path, today: datetime.date, with_index: bool, budget:
     out.mkdir(parents=True)
     if with_index:
         got = build_index(out)
+        got = got and (got[0], got[1] * (2 if prev.get("index") else 1), got[2])   # + deleting the previous version
         if got is None:
             report["index"] = "not built (see the log above)"
         elif got[0] == prev.get("index"):
@@ -228,6 +237,7 @@ def build(data: Path, out: Path, today: datetime.date, with_index: bool, budget:
             writes += got[1]
             report["writes"] = writes
         got = build_labels(out)
+        got = got and (got[0], got[1] * (2 if prev.get("labels") else 1), got[2])   # + deleting the previous version
         if got is None:
             report["labels"] = "not built (see the log above)"
         elif got[0] == prev.get("labels"):
@@ -243,6 +253,7 @@ def build(data: Path, out: Path, today: datetime.date, with_index: bool, budget:
         # The recommend screen's cards (build_cards.py). Their dates are as of today, so a
         # new version comes most days: about twice the number of coming stages in writes.
         got = build_cards(out, today)
+        got = got and (got[0], got[1] * (2 if prev.get("cards") else 1), got[2])   # + deleting the previous version
         if got is None:
             report["cards"] = "not built (see the log above)"
         elif got[0] == prev.get("cards"):

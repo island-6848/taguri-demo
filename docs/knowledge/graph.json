@@ -550,6 +550,19 @@
    ]
   },
   {
+   "id": "d1-writes-undercounted",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-15",
+   "title": "取得の D1 の書き込みの見積もりが、主キーの索引への書き込みを数えておらず、実際（D1 の rows_written）より 1.5〜2 倍少なかった。見積もりを直した。毎日の索引の全入れ替えは、索引が大きいと無料枠を越える",
+   "sources": [
+    "https://github.com/island-6848/taguri-crawler/actions/runs/38646724578/job/116135281670",
+    "cloudflare/scripts/deliver_catalogue.py",
+    "cloudflare/scripts/deliver_past.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-about-on-login",
    "type": "decision",
    "status": "adopted",
@@ -3506,6 +3519,15 @@
    "verifies": []
   },
   {
+   "id": "q-index-incremental",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-15",
+   "title": "推薦の索引を毎日まるごと入れ替える作りは、D1 の書き込みの無料枠（1 日 10 万行）に収まるか。公演ごとの差分だけ書く作りに変えるか",
+   "sources": [],
+   "verifies": []
+  },
+  {
    "id": "q-interest-no-reco-prod",
    "type": "question",
    "status": "answered",
@@ -4960,6 +4982,21 @@
    "from": "d1-time-travel",
    "rel": "affects",
    "to": "workers-d1-preview-state"
+  },
+  {
+   "from": "d1-writes-undercounted",
+   "rel": "depends_on",
+   "to": "d1-meta-size-after"
+  },
+  {
+   "from": "d1-writes-undercounted",
+   "rel": "affects",
+   "to": "dec-free-tier-only"
+  },
+  {
+   "from": "d1-writes-undercounted",
+   "rel": "raises",
+   "to": "q-index-incremental"
   },
   {
    "from": "dec-account-cap-counted",
@@ -7330,6 +7367,11 @@
    "from": "q-hidden-gate",
    "rel": "affects",
    "to": "comp-recommender"
+  },
+  {
+   "from": "q-index-incremental",
+   "rel": "depends_on",
+   "to": "d1-writes-undercounted"
   },
   {
    "from": "q-interest-no-reco-prod",

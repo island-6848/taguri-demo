@@ -7,7 +7,7 @@
 
 Only the lines of data/past/stages.jsonl added since the last upload are sent
 (the count is kept in data/d1/past_delivered.json and saved only by `commit`,
-after wrangler succeeded). Each row costs two writes (the row and its tkey
+after wrangler succeeded). Each row costs three writes (the row, its primary-key index and its tkey
 index entry); `--budget` caps a day's upload so the catalogue job and users
 keep the rest of the free tier. Rows left over go the next day.
 
@@ -34,7 +34,7 @@ import free_tier as FT                                             # noqa: E402
 
 STATE = Path("d1") / "past_delivered.json"
 ROWS = Path("past") / "stages.jsonl"
-WRITES_PER_ROW = 2
+WRITES_PER_ROW = 3             # the row, its primary-key index and past_stage_tkey (measured: 30,000 rows_written for 10,001 rows)
 BUDGET = 20_000
 
 
