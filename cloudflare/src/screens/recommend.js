@@ -16,6 +16,7 @@ import {chooseVariant, groupOf} from '../reco-gate.js';
 import {readWeights, multipliersOf, weightForm, weightAction} from './weights.js';
 import {E, ValueError} from './py.js';
 import {loadWorks} from './works.js';
+import {castOffOf} from './diary.js';
 import {compose, cardTemplates, posterHtml} from './cards.js';
 import {PREFS, prefForm, prefsFor, regionCounts} from './prefs.js';
 export {prefForm, prefsFor};
@@ -54,9 +55,13 @@ async function ratedWorks(ctx, access) {
   const {results} = await ctx.db.prepare("SELECT work_key, updated_at FROM works WHERE user_id=? AND verdict IS NOT NULL AND verdict<>''").bind(ctx.uid).all();
   const updated = new Map(results.map(r => [r.work_key, r.updated_at]));
   const people = await access.peopleFor([...new Set(works.map(w => w.stage_id))]);
-  return works.map(w => ({key: w.work_key, title: w.title, stage_id: w.stage_id, verdict: w.verdict,
-    date: w.last_date || w.first_date || '', aspects: w.aspects || '', updated_at: updated.get(w.work_key) || '',
-    people: people.get(w.stage_id) || []}));
+  // 観た回に出ていなかった出演者（Wキャスト・休演、works.cast_off）は、この記録の材料から外す。
+  return works.map(w => {
+    const off = new Set(castOffOf(w));
+    return {key: w.work_key, title: w.title, stage_id: w.stage_id, verdict: w.verdict,
+      date: w.last_date || w.first_date || '', aspects: w.aspects || '', updated_at: updated.get(w.work_key) || '',
+      people: (people.get(w.stage_id) || []).filter(([role, person]) => !(role === '出演' && off.has(person)))};
+  });
 }
 
 /**

@@ -269,6 +269,13 @@ export function editHtml(w, label) {
     + `<span class="ed-pv"><span class="ed-pn"></span></span>`
     + `<span class="ed-m">${pnote}</span></div>`;
   const handBox = handHtml(w, key);
+  // 観た回の出演者（起案者の指示 2026-10-15）: Wキャスト・休演で出ていなかった人を外す。押したときに出演者を読む。
+  let nOff = 0;
+  try { const v = JSON.parse(w.cast_off || '[]'); nOff = Array.isArray(v) ? v.length : 0; } catch { nOff = 0; }
+  const castRow = !sid ? '' : `<div class="ed-cast" data-work="${key}"><span class="ed-lk">観た回の出演者</span>`
+    + `<button data-cast-open="${key}">Wキャスト・休演で出ていなかった人を選ぶ</button>`
+    + `<span class="ed-m">${nOff ? `いま ${nOff} 人を「観た回に出ていなかった」にしています。` : 'Wキャストの公演は、観た回に出ていなかった人のチェックを外すと、おすすめがその人の好みとして数えなくなります。'}</span>`
+    + '<span class="said"></span><div class="ed-castl"></div></div>';
   return `<details class="editor" data-work="${key}">
 <summary>記録を直す${mg.length ? `・まとめた ${mg.length} 件` : ''}</summary>
 ${mgNote}
@@ -280,6 +287,7 @@ ${rows}
 ${link}
 <p class="ed-lead">${linkNote}</p>
 ${posterRow}
+${castRow}
 ${handBox}
 <div class="ed-btns"><button data-fix="${key}">この内容で保存する</button>
  ${merged}<button class="danger" data-drop="${key}">この記録を取り消す</button>

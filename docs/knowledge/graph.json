@@ -2065,6 +2065,22 @@
    "verifies": []
   },
   {
+   "id": "impl-cast-seen",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-15",
+   "title": "記録ごとに「観た回の出演者」を選べるようにした（Wキャスト・休演で出ていなかった人を外すと、推薦はその人をその記録の材料にしない）",
+   "sources": [
+    "cloudflare/migrations/0023.sql",
+    "cloudflare/src/screens/diary.js",
+    "cloudflare/src/screens/row.js",
+    "cloudflare/src/screens/recommend.js",
+    "web/app.js",
+    "cloudflare/test/cast-seen.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "impl-favourite-seed",
    "type": "finding",
    "status": "confirmed",
@@ -6142,6 +6158,16 @@
    "from": "github-actions-public-free",
    "rel": "raises",
    "to": "q-crawler-host"
+  },
+  {
+   "from": "impl-cast-seen",
+   "rel": "affects",
+   "to": "q-theatre-differences"
+  },
+  {
+   "from": "impl-cast-seen",
+   "rel": "affects",
+   "to": "impl-person-ordinal-v3"
   },
   {
    "from": "impl-favourite-seed",
