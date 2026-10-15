@@ -163,8 +163,10 @@ export async function rankedGroups(ctx) {
     (SELECT count(*) FROM excluded WHERE user_id=?1) AS xn,
     (SELECT max(updated_at) FROM app_setting WHERE user_id=?1 AND key IN ('declared','declined')) AS dm,
     (SELECT max(updated_at) FROM rank_weight WHERE user_id=?1) AS km,
-    (SELECT v FROM rec_meta WHERE k='rec_card') AS cv`).bind(ctx.uid).first();
-  const stamp = [VERSION, ver, ctx.today, st.wn, st.wm, st.an, st.am, st.fn, st.mn, st.xn, st.dm, st.cv, st.km].join('|');
+    (SELECT v FROM rec_meta WHERE k='rec_card') AS cv,
+    (SELECT v FROM rec_meta WHERE k='index_rev') AS ir`).bind(ctx.uid).first();
+  // 索引は差分で入れ、版（ver）は 'live' のまま変わらないので、中身が変わった合図は index_rev（q-index-incremental）。
+  const stamp = [VERSION, ver, st.ir || '', ctx.today, st.wn, st.wm, st.an, st.am, st.fn, st.mn, st.xn, st.dm, st.cv, st.km].join('|');
   const access = d1Access(db, ver);
   const cached = await db.prepare('SELECT body FROM rec_cache WHERE user_id=? AND stamp=?').bind(ctx.uid, stamp).first();
   if (cached) {

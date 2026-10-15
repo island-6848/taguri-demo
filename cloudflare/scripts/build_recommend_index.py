@@ -365,7 +365,7 @@ def _q(v) -> str:
     return "'" + str(v).replace("'", "''") + "'"
 
 
-def _inserts(table: str, cols: str, rows: list[tuple]) -> list[str]:
+def _inserts(table: str, cols: str, rows: list[tuple], tail: str = "") -> list[str]:
     # **大きさはバイトで数える。** 文字数で数えていたので、日本語（UTF-8 で 1 字 3 バイト）の多い
     # 行では 1 文が上限の約 3 倍になり、D1 が SQLITE_TOOBIG で断った（2026-10-14 の past_stage）
     head = f"INSERT INTO {table}({cols}) VALUES"
@@ -375,12 +375,12 @@ def _inserts(table: str, cols: str, rows: list[tuple]) -> list[str]:
         val = "(" + ",".join(_q(v) for v in row) + ")"
         n = nbytes(val)
         if cur and size + n + 2 > MAX_STATEMENT_BYTES:
-            out.append(head + ",".join(cur) + ";")
+            out.append(head + ",".join(cur) + tail + ";")
             cur, size = [], nbytes(head)
         cur.append(val)
         size += n + 1
     if cur:
-        out.append(head + ",".join(cur) + ";")
+        out.append(head + ",".join(cur) + tail + ";")
     return out
 
 
@@ -444,6 +444,85 @@ def to_sql(index: dict, ver: str, onboarding: list[str] | None = None) -> list[s
 
 TABLES = ("rec_stage", "rec_credit", "rec_people", "rec_gram")
 
+# ---------------------------------------------------------------- 差分で入れる（q-index-incremental）
+# 起案者の指示（2026-10-15）。版ごとに全部入れて前の版を消すと、1 日の書き込みが行数の約 4 倍になり、
+# 索引が 2 万行を越えると D1 の無料枠（1 日 10 万行）に収まらない（d1-writes-undercounted）。
+# 行はいつも同じ版 LIVE に置き、前回入れた行のハッシュ（--prev-hashes）と比べて、変わった行だけを
+# upsert し、無くなった行だけを消す。Worker は rec_meta 'current'（= LIVE）で読むので変えない。
+# 推薦の控えを捨てる合図は rec_meta 'index_rev'（中身のハッシュ）に移す。
+LIVE = "live"
+TABLE_COLS = {
+    "rec_stage": (("stage_id",), ("title", "tkey", "grp", "tour", "gkey", "start", "end", "credits", "entry")),
+    "rec_credit": (("role", "person", "stage_id"), ("role_w", "role_group")),
+    "rec_people": (("stage_id",), ("people",)),
+    "rec_gram": (("gram", "part"), ("entries",)),
+}
+
+
+def live_rows(index: dict) -> dict[str, list[tuple]]:
+    """table -> rows without the ver column, in the column order of TABLE_COLS (keys first)."""
+    dumps = lambda v: json.dumps(v, ensure_ascii=False, sort_keys=True)             # noqa: E731
+    return {
+        "rec_stage": [(sid, s["title"], s["tkey"], s["grp"], s["tour"], s["gkey"], s["start"], s["end"],
+                       dumps(s["credits"]), dumps(s["entry"])) for sid, s in sorted(index["stages"].items())],
+        "rec_credit": [tuple(r) for r in sorted(set(index["postings"]))],
+        "rec_people": [(sid, dumps(p)) for sid, p in sorted(index["people"].items())],
+        "rec_gram": [tuple(r[1:]) for r in gram_rows(index, LIVE)],
+    }
+
+
+def _row_hash(row: tuple) -> str:
+    return hashlib.sha1(json.dumps(row, ensure_ascii=False).encode("utf-8")).hexdigest()[:12]
+
+
+def diff_sql(index: dict, prev: dict, onboarding: list[str] | None = None) -> tuple[list[str], dict, dict]:
+    """(statements, hashes to keep for next time, counts). prev: table -> {key: hash} from last delivery."""
+    dumps = lambda v: json.dumps(v, ensure_ascii=False, sort_keys=True)             # noqa: E731
+    stmts: list[str] = [f"DELETE FROM {t} WHERE ver<>{_q(LIVE)};" for t in TABLES]   # rows of the old versioned scheme
+    hashes: dict = {}
+    counts = {"upserted": 0, "deleted": 0, "stages_upserted": 0}
+    for table, rows in live_rows(index).items():
+        keys, cols = TABLE_COLS[table]
+        nk = len(keys)
+        old = prev.get(table) or {}
+        now = {"\x1f".join(str(v) for v in r[:nk]): (_row_hash(r), r) for r in rows}
+        hashes[table] = {k: h for k, (h, _r) in now.items()}
+        changed = [r for k, (h, r) in sorted(now.items()) if old.get(k) != h]
+        gone = sorted(k for k in old if k not in now)
+        if gone:
+            # 消す行は鍵の値で選ぶ（row value IN）。鍵は "\x1f" でつないで控えている
+            vals = [tuple(k.split("\x1f")) for k in gone]
+            if table == "rec_gram":                       # part is an INTEGER column
+                vals = [(g, int(n)) for g, n in vals]
+            kcols = "(" + ",".join(keys) + ")" if nk > 1 else keys[0]
+            head = f"DELETE FROM {table} WHERE ver={_q(LIVE)} AND {kcols} IN ("
+            cur: list[str] = []
+            size = len(head.encode("utf-8"))
+            for v in vals:
+                lit = ("(" + ",".join(_q(x) for x in v) + ")") if nk > 1 else _q(v[0])
+                if cur and size + len(lit.encode("utf-8")) + 3 > MAX_STATEMENT_BYTES:
+                    stmts.append(head + ",".join(cur) + ");")
+                    cur, size = [], len(head.encode("utf-8"))
+                cur.append(lit)
+                size += len(lit.encode("utf-8")) + 1
+            stmts.append(head + ",".join(cur) + ");")
+        if changed:
+            tail = (f" ON CONFLICT(ver,{','.join(keys)}) DO UPDATE SET "
+                    + ",".join(f"{c}=excluded.{c}" for c in cols))
+            stmts += _inserts(table, "ver," + ",".join(keys + cols), [(LIVE, *r) for r in changed], tail)
+        counts["upserted"] += len(changed)
+        counts["deleted"] += len(gone)
+        if table == "rec_stage":
+            counts["stages_upserted"] = len(changed) + len(gone)
+    rev = version_of(index)
+    if onboarding is not None:
+        stmts.append("INSERT INTO rec_meta(k,v) VALUES('onboarding',"
+                     f"{_q(dumps({'ver': LIVE, 'ids': onboarding}))}) ON CONFLICT(k) DO UPDATE SET v=excluded.v;")
+    stmts.append(f"INSERT INTO rec_meta(k,v) VALUES('index_rev',{_q(rev)}) ON CONFLICT(k) DO UPDATE SET v=excluded.v;")
+    stmts.append(f"INSERT INTO rec_meta(k,v) VALUES('current',{_q(LIVE)}) ON CONFLICT(k) DO UPDATE SET v=excluded.v;")
+    counts["rev"] = rev
+    return stmts, hashes, counts
+
 
 def gram_rows(index: dict, ver: str) -> list[tuple]:
     dumps = lambda v: json.dumps(v, ensure_ascii=False, separators=(",", ":"))
@@ -475,6 +554,9 @@ def main() -> int:
     p = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     p.add_argument("--output", required=True, type=Path, help="SQL for wrangler d1 execute --file")
     p.add_argument("--stats", type=Path, help="write size statistics as JSON")
+    p.add_argument("--hashes-out", type=Path,
+                   help="差分で入れる: 変わった行だけの SQL を出し、次回のための行のハッシュをここに書く")
+    p.add_argument("--prev-hashes", type=Path, help="前回入れた行のハッシュ（無ければ全部を入れる）")
     p.add_argument("--today", type=datetime.date.fromisoformat,
                    default=(datetime.datetime.utcnow() + datetime.timedelta(hours=9)).date(),
                    help="date (JST) splitting stages to ask about from the coming ones")
@@ -503,11 +585,19 @@ def main() -> int:
     themes = {sid: ws for (side, sid), row in C.load_themes().items()
               if side == "candidate" for ws in [theme_words(row)] if ws}
     index = build_index(pool, M._fields_by_stage(), APP.group_of, titles, themes)
-    stmts = to_sql(index, version_of(index), onboarding_list(index, a.today))
+    counts = None
+    if a.hashes_out:
+        prev = json.loads(a.prev_hashes.read_text(encoding="utf-8")) if a.prev_hashes and a.prev_hashes.exists() else {}
+        stmts, hashes, counts = diff_sql(index, prev, onboarding_list(index, a.today))
+        a.hashes_out.write_text(json.dumps(hashes, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    else:
+        stmts = to_sql(index, version_of(index), onboarding_list(index, a.today))
     body = "\n".join(stmts) + "\n"
     with os.fdopen(os.open(a.output, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), "w") as out:
         out.write(body)
     st = stats(index, len(body.encode("utf-8")))
+    if counts is not None:
+        st["diff"] = counts
     if a.stats:
         a.stats.write_text(json.dumps(st, ensure_ascii=False, indent=1) + "\n")
     print(json.dumps(st, ensure_ascii=False))

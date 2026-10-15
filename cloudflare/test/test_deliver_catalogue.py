@@ -123,3 +123,35 @@ class PathsTest(unittest.TestCase):
             D.build, D.FT.d1_spend, sys.argv = build, spend, argv
         self.assertTrue(seen['out'].is_absolute(), seen)
         self.assertTrue(seen['data'].is_absolute(), seen)
+
+
+class IndexDiffStateTest(DeliverTest):
+    # 差分の索引（q-index-incremental）: 送った分のハッシュだけを、commit で次回の比べる元にする。
+    def fake_index(self, rev, writes, rows):
+        def run(out, data):
+            (out / 'index.sql').write_text('SELECT 1;\n')
+            (out / 'index-hashes.json').write_text(json.dumps({'rec_stage': {'1': rev}}))
+            return rev, writes, out / 'index.sql', rows
+        return run
+
+    def deliver_index(self, rev, writes, rows, budget):
+        build_index, build_labels, build_cards = D.build_index, D.build_labels, D.build_cards
+        D.build_index, D.build_labels, D.build_cards = self.fake_index(rev, writes, rows), lambda out: None, lambda out, today: None
+        try:
+            report = D.build(self.data, self.out, TODAY, True, budget)
+        finally:
+            D.build_index, D.build_labels, D.build_cards = build_index, build_labels, build_cards
+        D.commit(self.data, self.out)
+        return report
+
+    def test_sent_hashes_are_kept_and_skipped_ones_are_not(self):
+        hashes = self.data / D.INDEX_HASHES
+        r = self.deliver_index('rev1', 100, 50, D.WRITE_BUDGET)
+        self.assertIn('rev1', r['index'])
+        self.assertEqual(json.loads(hashes.read_text())['rec_stage']['1'], 'rev1')
+        r = self.deliver_index('rev2', 10 ** 9, 50, D.WRITE_BUDGET)
+        self.assertTrue(r['index'].startswith('skipped'))
+        self.assertEqual(json.loads(hashes.read_text())['rec_stage']['1'], 'rev1')
+        r = self.deliver_index('rev3', 0, 0, D.WRITE_BUDGET)
+        self.assertEqual(r['index'], 'unchanged')
+        self.assertEqual(json.loads(hashes.read_text())['rec_stage']['1'], 'rev1')

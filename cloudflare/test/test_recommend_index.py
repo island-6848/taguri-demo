@@ -240,6 +240,54 @@ def search_dates(index):
     return [''] + starts[::max(len(starts) // 3, 1)]
 
 
+class DiffDeliveryTest(unittest.TestCase):
+    """差分で入れる（q-index-incremental）: 差分を順に当てた表は、毎回まるごと入れた表と同じ中身になる。"""
+
+    def tables(self, con, ver):
+        return {t: sorted(con.execute(f"SELECT * FROM {t} WHERE ver=?", (ver,)).fetchall()) for t in BI.TABLES}
+
+    def full(self, index):
+        con, ver = load_sql(index)
+        self.addCleanup(con.close)
+        return {t: sorted(tuple(BI.LIVE if i == 0 else v for i, v in enumerate(r)) for r in rows)
+                for t, rows in self.tables(con, ver).items()}
+
+    def test_diffs_reach_the_same_tables_and_write_only_what_changed(self):
+        raw, cands, fbs = catalogue(3)
+        a = BI.build_index(UR.candidate_pool(raw, cands), fbs, APP.group_of)
+        b = BI.build_index(UR.candidate_pool(raw, cands[:40]), fbs, APP.group_of)      # stages gone
+        con = sqlite3.connect(':memory:')
+        self.addCleanup(con.close)
+        for name in ('0003.sql', '0009.sql', '0016.sql'):
+            con.executescript((HERE / 'migrations' / name).read_text())
+        # An older versioned delivery is cleaned up by the first diff.
+        for stmt in BI.to_sql(a, 'old'):
+            con.execute(stmt)
+        stmts, h1, c1 = BI.diff_sql(a, {})
+        for stmt in stmts:
+            con.execute(stmt)
+        self.assertEqual(self.tables(con, BI.LIVE), self.full(a))
+        self.assertEqual(con.execute("SELECT count(*) FROM rec_stage WHERE ver<>?", (BI.LIVE,)).fetchone()[0], 0)
+        self.assertEqual(con.execute("SELECT v FROM rec_meta WHERE k='current'").fetchone()[0], BI.LIVE)
+        self.assertEqual(con.execute("SELECT v FROM rec_meta WHERE k='index_rev'").fetchone()[0], BI.version_of(a))
+        # Nothing changed: nothing but the meta rows is written.
+        same, _h, c0 = BI.diff_sql(a, h1)
+        self.assertEqual((c0['upserted'], c0['deleted']), (0, 0))
+        self.assertFalse(any(s.startswith(('INSERT INTO rec_stage', 'INSERT INTO rec_credit', 'INSERT INTO rec_people', 'INSERT INTO rec_gram')) for s in same))
+        # Fewer stages: only deletions and the rows that changed, and the tables match a full load of b.
+        stmts, h2, c2 = BI.diff_sql(b, h1)
+        for stmt in stmts:
+            con.execute(stmt)
+        self.assertEqual(self.tables(con, BI.LIVE), self.full(b))
+        self.assertGreater(c2['deleted'], 0)
+        self.assertLess(c2['upserted'], c1['upserted'] / 2)
+        # Back again: the deleted rows come back.
+        stmts, _h3, _c3 = BI.diff_sql(a, h2)
+        for stmt in stmts:
+            con.execute(stmt)
+        self.assertEqual(self.tables(con, BI.LIVE), self.full(a))
+
+
 class SearchTest(unittest.TestCase):
     def test_sql_search_equals_reference(self):
         found = 0
