@@ -116,28 +116,33 @@ export function independentRatings(rows) {
 // 「なぜ気になったか」に名前が書いてあれば、その人に INTEREST_NOTE_BOOST 倍で配る。
 // z はお気に入りと同じ SEED_Z、重みも SEED_K / (SEED_K + 評価の数) で評価が増えるほど薄まる。値は舞台では未検証。
 export const INTEREST_PEOPLE_SHARE = 0.5, INTEREST_PRIOR_BOOST = 3, INTEREST_NOTE_BOOST = 5;
-// 人の中は人数で等分せず、役柄の重さで割る（起案者の指示 2026-10-15「単純に人数で割るのよくない。役柄の重要さで割るべき」）。
-// 出演: 出演欄の書かれた順（主役が先）で 1 / (1 + 順位 / 2)。役名つき（「役名：名前」）は 1.5 倍、
-// 「アンサンブル」の見出しより後は 0.3 倍。作り手: 役職ごとの重さ。値は舞台では未検証。
+// 人の中は人数で等分せず、役柄の重さ（役の格）で割る（起案者の指示 2026-10-15「単純に人数で割るのよくない。
+// 役柄の重要さで割るべき」「名前ついてる役が重要なのは確かにそう。並び順に偉いのもそう（でも一番最後に結構出てくる人の
+// 名前書くパターンもある）」）。出演は 2 段に分ける: 主な役（役名つきで書かれた人。役名が 1 人も無ければ「アンサンブル」の
+// 見出しより前の人）と、それ以外（ENSEMBLE_IMPORTANCE 倍）。段の中は書かれた順で 1 / (1 + 順位 / 2) だが、主な役の
+// 最後（トメ）は 2 番目と同じ重さにする。役名と見出しは段の境目を決めるのにだけ使い、重さに掛け合わせない（二重に数えない、
+// q-part-importance-overlap）。作り手は役職ごとの重さ。値は舞台では未検証。
 export const STAFF_IMPORTANCE = {'演出': 1.0, '脚本': 1.0, '原作': 0.8, '作曲': 0.7, '構成': 0.6, '音楽': 0.6, '振付': 0.6,
   '翻訳': 0.5, '潤色': 0.5, '作詞': 0.5};
-export const OTHER_STAFF_IMPORTANCE = 0.3, ENSEMBLE_IMPORTANCE = 0.3, NAMED_PART_IMPORTANCE = 1.5;
+export const OTHER_STAFF_IMPORTANCE = 0.3, ENSEMBLE_IMPORTANCE = 0.3, TOME_RANK = 1, TOME_MIN = 3;
 const nfkc = s => String(s ?? '').normalize('NFKC');
+const HEADING = /^(出演|キャスト|cast|アンサンブル|ensemble|[【［][^】］]*[】］])[:：]$/i;
+const byOrder = rank => 1 / (1 + rank / 2);
 /** 出演者の名前 -> 役柄の重さ。text は公演ページの出演欄そのまま（書かれた順が残っているもの）。 */
 export function castImportance(text, names) {
   const raw = nfkc(text), out = new Map();
   const ens = raw.search(/アンサンブル|ensemble/i);
   const found = names.map(n => [n, raw.indexOf(nfkc(n))]).filter(([, i]) => i >= 0).sort((a, b) => a[1] - b[1] || cmp(a[0], b[0]));
-  found.forEach(([n, i], rank) => {
-    let w = 1 / (1 + rank / 2);
-    // 「役名：名前」: 同じ行で、名前の直前（空白を除く）がコロン
-    const before = raw.slice(raw.lastIndexOf('\n', i) + 1, i).replace(/[\s　]+$/u, '');
-    // 「出演：」「アンサンブル：」のような見出しは役名ではない（区切りの後ろの語だけを見る）
-    const part = before.split(/[、,，／/]/u).pop().trim();
-    if (/[:：]$/.test(part) && !/^(出演|キャスト|cast|アンサンブル|ensemble|[【［][^】］]*[】］])[:：]$/i.test(part)) w *= NAMED_PART_IMPORTANCE;
-    if (ens >= 0 && i > ens) w *= ENSEMBLE_IMPORTANCE;
-    out.set(n, w);
-  });
+  // 「役名：名前」: 同じ行で、区切りの後ろの語がコロンで終わり、見出し（出演：・アンサンブル：）ではない
+  const named = ([, i]) => {
+    const part = raw.slice(raw.lastIndexOf('\n', i) + 1, i).replace(/[\s　]+$/u, '').split(/[、,，／/]/u).pop().trim();
+    return /[:：]$/.test(part) && !HEADING.test(part);
+  };
+  const anyNamed = found.some(named);
+  const principal = f => (anyNamed ? named(f) : ens < 0 || f[1] < ens);
+  const lead = found.filter(principal), rest = found.filter(f => !principal(f));
+  lead.forEach(([n], r) => out.set(n, r === lead.length - 1 && lead.length >= TOME_MIN ? byOrder(TOME_RANK) : byOrder(r)));
+  rest.forEach(([n], r) => out.set(n, ENSEMBLE_IMPORTANCE * byOrder(r)));
   // 出演欄に見つからない人は、見つかった人のいちばん軽い重さ（だれも見つからなければ 1）
   const least = found.length ? Math.min(...out.values()) : 1;
   for (const n of names) if (!out.has(n)) out.set(n, least);

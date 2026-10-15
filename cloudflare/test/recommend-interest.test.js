@@ -61,23 +61,31 @@ test('favourites are skipped, and seeds fade with ratings as before', () => {
 });
 
 // 役柄の重さ（起案者の指示 2026-10-15「単純に人数で割るのよくない。役柄の重要さで割るべき」）。
-import {castImportance, STAFF_IMPORTANCE, ENSEMBLE_IMPORTANCE, NAMED_PART_IMPORTANCE, OTHER_STAFF_IMPORTANCE} from '../src/recommend.js';
+import {castImportance, STAFF_IMPORTANCE, ENSEMBLE_IMPORTANCE, OTHER_STAFF_IMPORTANCE} from '../src/recommend.js';
 
-test('cast: earlier in the billing weighs more, ensemble less, a named part more', () => {
-  const text = 'ジャン・バルジャン：主役一\n主演二、助演三\nアンサンブル：群衆四、群衆五';
-  const m = castImportance(text, ['群衆五', '助演三', '主役一', '主演二', '群衆四', '載っていない']);
-  close(m.get('主役一'), 1 * NAMED_PART_IMPORTANCE);
+test('cast: named parts are the leads, ordered by billing; the last of them (トメ) weighs like the second; no double count', () => {
+  const text = 'ジャン・バルジャン：主役一\nジャベール：主演二\nファンテーヌ：助演三\n司教：重鎮四\nアンサンブル：群衆五、群衆六';
+  const m = castImportance(text, ['群衆六', '助演三', '主役一', '主演二', '群衆五', '重鎮四', '載っていない']);
+  close(m.get('主役一'), 1);
   close(m.get('主演二'), 1 / 1.5);
   close(m.get('助演三'), 1 / 2);
-  close(m.get('群衆四'), ENSEMBLE_IMPORTANCE / 2.5);
-  assert.ok(m.get('群衆五') < m.get('群衆四'));
-  close(m.get('載っていない'), Math.min(m.get('群衆五'), m.get('群衆四')));
-  // "出演：" as a heading is not a part name.
-  close(castImportance('出演：甲野\n乙野', ['甲野', '乙野']).get('甲野'), 1);
+  close(m.get('重鎮四'), 1 / 1.5);                      // トメ
+  close(m.get('群衆五'), ENSEMBLE_IMPORTANCE);
+  close(m.get('群衆六'), ENSEMBLE_IMPORTANCE / 1.5);
+  close(m.get('載っていない'), ENSEMBLE_IMPORTANCE / 1.5);
 });
 
+test('cast without part names: the ensemble heading is the border; without one, billing order only', () => {
+  const m = castImportance('甲野、乙野、丙野\nアンサンブル：丁野', ['甲野', '乙野', '丙野', '丁野']);
+  close(m.get('甲野'), 1);
+  close(m.get('丙野'), 1 / 1.5);                         // トメ of three
+  close(m.get('丁野'), ENSEMBLE_IMPORTANCE);
+  const o = castImportance('出演：甲野\n乙野', ['甲野', '乙野']);
+  close(o.get('甲野'), 1);
+  close(o.get('乙野'), 1 / 1.5);                         // two only: no トメ
+});
 test('a 興味あり stage goes mostly to its leads and core creators, not evenly', () => {
-  const s = {cast_text: '主役一、主役二\n' + Array.from({length: 30}, (_, i) => `群${i}`).join('、'),
+  const s = {cast_text: '主役一、主役二\nアンサンブル：' + Array.from({length: 30}, (_, i) => `群${i}`).join('、'),
     people: [['出演', '主役一'], ['出演', '主役二'], ...Array.from({length: 30}, (_, i) => ['出演', `群${i}`]),
       ['演出', '演出家'], ['照明', '照明家']]};
   const m = interestShares(s, new Map());
