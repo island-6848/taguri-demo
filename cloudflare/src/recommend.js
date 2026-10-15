@@ -107,7 +107,48 @@ export function independentRatings(rows) {
  * Σ z / (n + CONF_K) and z = (grade − the user's mean) / the user's spread
  * (◎○△× = 4/3/2/1). Same float operations in the same order as Python.
  */
-export function personValues(rated, seeds = [], skip = new Set()) {
+// 興味あり（起案者の指示 2026-10-15「1+2+3まとめて入れて」、impl-interest-split）。押すのは 1 回で理由は
+// 聞かないので、1 公演ぶんの重さ（評価 1 件と同じ 1）を、その公演の人・種類に割って配る:
+// (1) 人数で割る（何件にも共通する人・種類だけが積み上がって効く）。人に INTEREST_PEOPLE_SHARE、種類に残り
+// (2) 評価・お気に入りで好きと分かっている人には 1 + INTEREST_PRIOR_BOOST × その値 の割合で多めに配る
+// (3) 興味なしの公演にもいる人・種類は、興味ありの件数 /（興味あり＋興味なし）に弱める
+// 「なぜ気になったか」に名前が書いてあれば、その人に INTEREST_NOTE_BOOST 倍で配る。
+// z はお気に入りと同じ SEED_Z、重みも SEED_K / (SEED_K + 評価の数) で評価が増えるほど薄まる。値は舞台では未検証。
+export const INTEREST_PEOPLE_SHARE = 0.5, INTEREST_PRIOR_BOOST = 3, INTEREST_NOTE_BOOST = 5;
+const keyOf = (role, person) => role + '\u0000' + person;
+/** One interest stage's share per key ("role\0person"), summing to 1. */
+export function interestShares(stage, prior, contrast = new Map(), skip = new Set()) {
+  const keys = [...new Set((stage.people || []).filter(([, person]) => !skip.has(person)).map(([role, person]) => keyOf(role, person)))].sort(cmp);
+  const note = String(stage.note || '');
+  const factor = k => {
+    const role = k.slice(0, k.indexOf('\u0000')), person = k.slice(k.indexOf('\u0000') + 1);
+    let f = 1 + INTEREST_PRIOR_BOOST * Math.max(prior.get(k)?.[1] || 0, 0);
+    if (!role.startsWith('#') && Array.from(person).length >= 2 && note.includes(person)) f *= INTEREST_NOTE_BOOST;
+    const [yes, no] = contrast.get(k) || [1, 0];
+    return f * (yes / (yes + no));
+  };
+  const people = keys.filter(k => !k.startsWith('#')), kinds = keys.filter(k => k.startsWith('#'));
+  const out = new Map();
+  const spread = (ks, total) => {
+    const fs = ks.map(factor), sum = fs.reduce((a, b) => a + b, 0);
+    if (sum > 0) ks.forEach((k, i) => out.set(k, total * fs[i] / sum));
+  };
+  if (people.length && kinds.length) { spread(people, INTEREST_PEOPLE_SHARE); spread(kinds, 1 - INTEREST_PEOPLE_SHARE); }
+  else spread(people.length ? people : kinds, 1);
+  return out;
+}
+/** key -> [stages answered 興味あり that have it, stages answered 興味なし that have it]. */
+export function interestContrast(liked, disliked, skip = new Set()) {
+  const out = new Map();
+  for (const [list, i] of [[liked, 0], [disliked, 1]]) for (const s of list) {
+    for (const k of new Set((s.people || []).filter(([, p]) => !skip.has(p)).map(([r, p]) => keyOf(r, p)))) {
+      const c = out.get(k) || [0, 0]; c[i] += 1; out.set(k, c);
+    }
+  }
+  return out;
+}
+
+export function personValues(rated, seeds = [], skip = new Set(), liked = [], disliked = []) {
   // person-ordinal-v3: a rating's place among the user's own ratings on the
   // same scale, ((lower) + ½ (equal)) / n − ½, times √12.
   const byScale = new Map();
@@ -146,7 +187,19 @@ export function personValues(rated, seeds = [], skip = new Set()) {
   }
   const values = new Map();
   for (const [k, [cnt, sum, wt]] of tally) values.set(k, [cnt, sum / (wt + CONF_K)]);
-  return values;
+  if (!liked.length) return values;
+  // 興味あり: 評価とお気に入りから分かった値（values）を (2) の手がかりにして、1 公演ぶんを割って足す。
+  const contrast = interestContrast(liked, disliked, skip);
+  for (const s of liked) {
+    for (const [k, share] of interestShares(s, values, contrast, skip)) {
+      const t = tally.get(k) || [0, 0, 0];
+      t[1] += w * SEED_Z * share; t[2] += w * share;
+      tally.set(k, t);
+    }
+  }
+  const out = new Map();
+  for (const [k, [cnt, sum, wt]] of tally) out.set(k, [cnt, sum / (wt + CONF_K)]);
+  return out;
 }
 
 /**
@@ -155,9 +208,9 @@ export function personValues(rated, seeds = [], skip = new Set()) {
  * postingsFor(keys [[role, person]...]) -> [[role, person, stage_id, role_w, group]...]
  * stagesFor(stageIds) -> Map(stage_id -> {start, end})
  */
-export async function scoreFromIndex({postingsFor, stagesFor, rated, multipliers = {}, today, seeds = [], skip = new Set()}) {
+export async function scoreFromIndex({postingsFor, stagesFor, rated, multipliers = {}, today, seeds = [], skip = new Set(), liked = [], disliked = []}) {
   rated = independentRatings(rated);
-  const values = personValues(rated, seeds, skip);
+  const values = personValues(rated, seeds, skip, liked, disliked);
   const seeded = new Set(seeds.map(r => r.stage_id));
   // Everyone with a non-zero value can raise or lower a show.
   const keys = [...values.entries()].filter(([, [, v]]) => v).map(([k]) => k.split('\u0000')).sort((a, b) => cmpTuple(a, b));

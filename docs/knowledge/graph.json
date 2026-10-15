@@ -2110,12 +2110,25 @@
   {
    "id": "impl-interest-seed",
    "type": "decision",
-   "status": "adopted",
+   "status": "superseded",
    "date": "2026-10-15",
    "title": "興味ありを押した公演を、お気に入りと同じ重みの仮の ◎ として推薦に入れた（新しい順に 60 件まで、一覧にしかない公演は出演欄から人物を読む）",
    "sources": [
     "cloudflare/src/screens/recommend.js",
     "cloudflare/test/recommend-screen.test.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "impl-interest-split",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-15",
+   "title": "興味ありは、1 公演ぶん（評価 1 件と同じ重さ）をその公演の人・種類に割って配る。(1) 人数で割る (2) 好きと分かっている人に多め (3) 興味なしにもいるものは弱める。「なぜ気になったか」に名前があればその人に多め",
+   "sources": [
+    "cloudflare/src/recommend.js",
+    "cloudflare/src/screens/recommend.js",
+    "cloudflare/test/recommend-interest.test.js"
    ],
    "verifies": []
   },
@@ -6257,6 +6270,31 @@
    "from": "impl-interest-seed",
    "rel": "depends_on",
    "to": "impl-favourite-seed"
+  },
+  {
+   "from": "impl-interest-split",
+   "rel": "supersedes",
+   "to": "impl-interest-seed"
+  },
+  {
+   "from": "impl-interest-split",
+   "rel": "depends_on",
+   "to": "lit-implicit-confidence"
+  },
+  {
+   "from": "impl-interest-split",
+   "rel": "depends_on",
+   "to": "lit-feedback-loop"
+  },
+  {
+   "from": "impl-interest-split",
+   "rel": "depends_on",
+   "to": "lit-bpr-pairwise"
+  },
+  {
+   "from": "impl-interest-split",
+   "rel": "depends_on",
+   "to": "lit-content-overspecialization"
   },
   {
    "from": "impl-onboarding-list",

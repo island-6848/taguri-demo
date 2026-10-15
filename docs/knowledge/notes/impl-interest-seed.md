@@ -1,7 +1,7 @@
 ---
 id: impl-interest-seed
 type: decision
-status: adopted
+status: superseded
 date: 2026-10-15
 title: 興味ありを押した公演を、お気に入りと同じ重みの仮の ◎ として推薦に入れた（新しい順に 60 件まで、一覧にしかない公演は出演欄から人物を読む）
 sources:
