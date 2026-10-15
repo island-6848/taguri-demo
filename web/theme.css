@@ -811,3 +811,19 @@ a.htag-in:hover{text-decoration:underline}
 .wnt,.int{font-size:1.04em}
 /* 興味ありの一覧: おすすめ以外の画面で足した公演は、理由の欄の代わりに足した場所だけを書く */
 .whyh.origin{color:var(--ink2);font-weight:700}
+
+/* ---- 公演カレンダー（起案者の指示 2026-10-15） -------------------------------------
+   - 線の使い分け:「すでに持っている」は実線、「お気に入り」「興味あり」はどちらも点線（まだ券が無い側）。
+   - 件数は 1 行（種類は絵記号と数）。
+   - 格子は月ごとに分けず 1 枚に続ける（stage_calendar._timeline）。月の名前は見出しの 1 段目、境目は縦の線。 */
+.bar.trk{border-style:dashed}
+.calcnt{display:flex;align-items:center;gap:12px;white-space:nowrap;font-size:13px;color:var(--ink2);margin:0 0 6px}
+.calcnt .ck{display:inline-flex;align-items:center;gap:3px;font-variant-numeric:tabular-nums}
+.mgrid.tl{--nmw:230px}
+/* 左上の空き（題名の列の見出し）は、月と日の 2 段を覆う。高さを持たせないと、送った日の数字が透けて見える */
+.mgrid.tl .hc{align-self:stretch;z-index:5}
+.mgrid.tl .mh{grid-row:1;align-self:stretch;z-index:3;border-bottom:1px solid var(--grid);min-width:0}
+.mgrid.tl .mh b{position:sticky;left:var(--nmw);display:inline-block;padding:3px 8px 2px;white-space:nowrap;
+ font-family:var(--mincho);font-size:14px;font-weight:700;color:var(--ink)}
+.mgrid.tl .ms{border-left:1.5px solid color-mix(in srgb,var(--ink) 45%,transparent);align-self:stretch;z-index:2;pointer-events:none}
+@media(max-width:700px){.mgrid.tl{--nmw:150px}}

@@ -3566,13 +3566,15 @@ function fixupPrefMap(root) {
 // **行く日を入れた月は、その日が見える所まで送る**（起案者の指摘 2026-10-14「公演カレンダーのページから
 // 観劇日を追加してもカレンダーに反映されない」── スマホでは今日の位置に送るので、先の行く日が右に隠れていた）。
 // 題名の列は左に留めてある（style.css の .mgrid .nm）ので、その幅を除いた所に置く
+// 2026-10-15 から格子は月ごとでなく 1 枚に続く（stage_calendar._timeline）。行く日が今日から
+// 画面 1 枚ぶん（題名の列を除いた幅の 6 割）より先なら今日の位置に、近ければ行く日が入る位置に送る
 function fixupMonthScroll(root) {
   (root || document).querySelectorAll(".mscroll").forEach(s => {
     const now = s.querySelector(".now"), pts = [...s.querySelectorAll(".mgrid .pt")];
     const nmW = (s.querySelector(".mgrid .nm") || {offsetWidth: 0}).offsetWidth;
     const from = now ? now.offsetLeft : 0;
-    const go = pts.find(p => p.offsetLeft >= from) || pts[0];
-    const at = go || now;
+    const go = pts.find(p => p.offsetLeft >= from && p.offsetLeft - from < (s.clientWidth - nmW) * 0.6);
+    const at = go || now || pts[0];
     if (!at) return;
     s.scrollLeft = Math.max(0, at.offsetLeft - nmW - (s.clientWidth - nmW) * 0.35);
   });

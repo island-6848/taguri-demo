@@ -197,88 +197,74 @@ def _go_label(tk: list[dict]) -> str:
 _PREF_RANK = {p: i for i, p in enumerate(RR.PREFS)}
 
 
-def _place(rows: list[dict], y: int, m: int) -> list[dict]:
-    """その月にかかる行だけを、**都道府県ごとにまとめて**返す。
+def _timeline(rows: list[dict], ms: list[tuple[int, int]], today: dt.date) -> str:
+    """今月の 1 日から最後の月の末日までを、**1 枚の続いた格子**にする。
 
-    起案者の指摘（2026-08-25）──「いまカレンダーの縦の並びも都道府県ごっちゃなので、
-    都道府県順に並び変えて」。**縦に読むと同じ都道府県の公演が飛び飛びに散っていた**
-    ── 「今月、大阪で観られるものは」を知りたいときに、上から下まで全部読む必要が
-    あった。
+    起案者の指摘（2026-10-15）──「月ごとにわけて描画してるけど、月またいでやってる作品が
+    見づらい」。月ごとに分けると、またぐ公演が月の数だけ別の行に出て、帯も月の端で切れていた。
+    1 枚にすると 1 公演は 1 行・1 本の帯になる。月の名前は見出しの 1 段目に、月の境目は縦の線で
+    出す。件数は種類の絵記号と数で 1 行にする（「（…）」が折り返していた）。
 
-    **県の中は締切の近い順のままにする。** 前はここが並びの決め手（「買うならこの順」）
-    だったが、**捨てたのではなく一段下げた** ── 同じ県の中でどれから買うかは、
-    依然として締切が答える。
+    **すべての要素に行を明示して置く**（自動配置に任せると、週末の影の列が埋まった扱いになり、
+    帯が下の行へ押し出される）。
     """
-    a, b = dt.date(y, m, 1), dt.date(y, m, _mdays(y, m))
-    hit = [r for r in rows if r["start"] <= b and r["end"] >= a]
-    return sorted(hit, key=lambda r: (_PREF_RANK.get(r["pref"], len(RR.PREFS)),
-                                       r["end"], r["start"], r["title"]))
-
-
-def _month_block(rows: list[dict], y: int, m: int, today: dt.date) -> str:
-    """1 か月ぶんの格子。**すべての要素に行を明示して置く。**
-
-    自動配置には任せられない ── **週末の影を縦に伸ばすと、その列は「埋まっている」ことに
-    なり、影を跨ぐ帯が置けずに下の行へ押し出される**（実測。日の見出しも影の列を避けて
-    折り返していた）。行を全部書けば、重ねて置くのは格子が許す。
-    """
-    n = _mdays(y, m)
-    a, b = dt.date(y, m, 1), dt.date(y, m, n)
-    hit = _place(rows, y, m)
+    (fy, fm), (ly, lm) = ms[0], ms[-1]
+    a, b = dt.date(fy, fm, 1), dt.date(ly, lm, _mdays(ly, lm))
+    n = (b - a).days + 1
+    # 並びは都道府県ごと（起案者の指摘 2026-08-25「都道府県順に並び変えて」）、県の中は締切の近い順
+    hit = sorted((r for r in rows if r["start"] <= b and r["end"] >= a),
+                 key=lambda r: (_PREF_RANK.get(r["pref"], len(RR.PREFS)), r["end"], r["start"], r["title"]))
     if not hit:
         return ""
-    # 見出しに束ごとの件数を出す。**何を見に来たのかで読む所が変わる**ので、
-    # 「18 件」だけでは足りない
-    cnt = {label: sum(1 for r in hit if r["kind"] == label) for _, label, _, _ in KINDS}
-    tally = "・".join(f"{lb} {cnt[lb]}" for _, lb, _, _ in KINDS if cnt[lb])
-    head = (f'<h3>{y} 年 {m} 月 <span class="cnt">{len(hit)} 件'
-            f'{f"（{E(tally)}）" if tally else ""}</span></h3>')
+    tally = "".join(
+        f'<span class="ck">{IC.ico(icon, 12)}<i class="sr">{E(lb)}</i>{c}</span>'
+        for _, lb, icon, _ in KINDS
+        for c in [sum(1 for r in hit if r["kind"] == lb)] if c)
+    head = f'<p class="calcnt"><b>{len(hit)} 件</b>{tally}</p>'
 
-    n_rows = 1 + len(hit)                        # 見出し 1 行 ＋ 公演の行
-    # 週末の影と今日の線。**影は本文の行だけに敷く**（見出しの行は日の数字が入る）
-    stripes = "".join(
-        f'<span class="wk {"sun" if dt.date(y, m, i + 1).weekday() == 6 else "sat"}"'
-        f' style="grid-column:{i + 2};grid-row:2/-1"></span>'
-        for i in range(n) if dt.date(y, m, i + 1).weekday() >= 5)
-    now = (f'<span class="now" style="grid-column:{today.day + 1};grid-row:1/-1"></span>'
-           if a <= today <= b else "")
-
-    # 日の見出し。**土日はここにも影を付ける**（帯の側の影と縦に繋がって見える）。
-    # **土は青、日は赤**（暦の慣習どおり）── 影と同じ色味を数字にも入れる
-    hd = ['<span class="hc" style="grid-row:1"></span>']
+    marks: list[str] = []
+    hd = ['<span class="hc" style="grid-row:1/3"></span>']
     for i in range(n):
-        day = dt.date(y, m, i + 1)
+        day = a + dt.timedelta(days=i)
+        if day.weekday() >= 5:
+            marks.append(f'<span class="wk {"sun" if day.weekday() == 6 else "sat"}"'
+                         f' style="grid-column:{i + 2};grid-row:3/-1"></span>')
+        if day.day == 1:
+            hd.append(f'<span class="mh" style="grid-column:{i + 2}/{i + 2 + _mdays(day.year, day.month)};'
+                      f'grid-row:1"><b>{day.year} 年 {day.month} 月</b></span>')
+            if i:
+                marks.append(f'<span class="ms" style="grid-column:{i + 2};grid-row:1/-1"></span>')
         w = "日月火水木金土"[(day.weekday() + 1) % 7]
         wk = ("", "", "", "", "", " sat", " sun")[day.weekday()]
         cls = "hd" + wk + (" past" if day < today else "")
-        hd.append(f'<span class="{cls}" style="grid-column:{i + 2};grid-row:1">'
-                  f'<b>{i + 1}</b><i>{w}</i></span>')
+        hd.append(f'<span class="{cls}" style="grid-column:{i + 2};grid-row:2">'
+                  f'<b>{day.day}</b><i>{w}</i></span>')
+    now = (f'<span class="now" style="grid-column:{(today - a).days + 2};grid-row:1/-1"></span>'
+           if a <= today <= b else "")
 
     body = []
     for k, r in enumerate(hit):
         c0 = max(1, (r["start"] - a).days + 1)
         c1 = min(n, (r["end"] - a).days + 1)
-        cl = " cl" if r["start"] < a else ""          # 前の月から続いている
-        cr = " cr" if r["end"] > b else ""           # 次の月へ続く
+        cl = " cl" if r["start"] < a else ""
+        cr = " cr" if r["end"] > b else ""
         place = f"{r['venue']}" + (f"（{r['pref']}）" if r["pref"] and r["pref"] != "東京都" else "")
         sid = f' data-stage="{E(r["sid"])}"' if r.get("sid") else ""
-        # **この月に入る券だけを、左の列にも書く。** 札はその月の格子にしか置けないので、
-        # 全部の日を書くと、画面に出ていない札の説明が残る
         here = [t for t in (r.get("tickets") or []) if a <= dt.date.fromisoformat(t["date"]) <= b]
         go = (f'<em class="go">{E(_go_label(here))} に行きます</em>' if here else "")
         body.append(
-            f'<span class="nm"{sid} style="grid-row:{k + 2}"><b>{E(r["title"])}</b>'
+            f'<span class="nm"{sid} style="grid-row:{k + 3}"><b>{E(r["title"])}</b>'
             f'<i>{RR.period_label(r["period"], r["days"])}'
             f'{"・" + E(place) if place else ""}</i>{go}</span>'
             f'<span class="bar {r["cls"]}{cl}{cr}"{sid}'
-            f' style="grid-column:{c0 + 1}/{c1 + 2};grid-row:{k + 2}">'
+            f' style="grid-column:{c0 + 1}/{c1 + 2};grid-row:{k + 3}">'
             f'{IC.ico(r["icon"], 13)}<i class="sr">{E(r["kind"])}</i></span>'
-            + _points(here, r, a, k + 2))
+            + _points(here, r, a, k + 3))
 
     return (f'<div class="mblock">{head}<div class="mscroll">'
-            f'<div class="mgrid" data-y="{y}" data-m="{m}" style="--n:{n};'
-            f'grid-template-rows:repeat({n_rows},auto)">'
-            f'{stripes}{now}{"".join(hd)}{"".join(body)}</div></div></div>')
+            f'<div class="mgrid tl" data-from="{a.isoformat()}" style="--n:{n};'
+            f'grid-template-rows:repeat({2 + len(hit)},auto)">'
+            f'{"".join(marks)}{now}{"".join(hd)}{"".join(body)}</div></div></div>')
 
 
 def _points(tk: list[dict], r: dict, a: dt.date, row: int) -> str:
@@ -397,7 +383,7 @@ def panel(d: dict, today: dt.date | None = None, tickets: dict | None = None,
     while (y, m) <= (last.year, last.month) and len(ms) < MAX_MONTHS:
         ms.append((y, m))
         y, m = (y + 1, 1) if m == 12 else (y, m + 1)
-    blocks = "".join(_month_block(view, yy, mm, today) for yy, mm in ms)
+    blocks = _timeline(view, ms, today)
 
     over = [r for r in view if (r["start"].year, r["start"].month) > ms[-1]]
     tail = (f'<p class="lead"><b>{len(over)} 件は {MAX_MONTHS} か月より先なので、'
