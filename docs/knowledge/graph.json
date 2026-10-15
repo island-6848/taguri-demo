@@ -1592,6 +1592,19 @@
    "verifies": []
   },
   {
+   "id": "dec-ticker",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-15",
+   "title": "画面の上に電光掲示板の帯を流す（今週開幕する公演と、今週のおすすめ上位 3 件）",
+   "sources": [
+    "cloudflare/src/screens/ticker.js",
+    "web/app.js",
+    "web/theme.css"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-ticket-price-filter",
    "type": "decision",
    "status": "adopted",
@@ -5937,6 +5950,11 @@
    "from": "dec-theme-user-choice",
    "rel": "raises",
    "to": "q-poster-palette"
+  },
+  {
+   "from": "dec-ticker",
+   "rel": "affects",
+   "to": "comp-frontend"
   },
   {
    "from": "dec-trace-worker",

@@ -756,3 +756,30 @@ a.htag-in:hover{text-decoration:underline}
 .ed-cast .ed-castl label{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
 .ed-cast>.ed-lk{display:block;margin-bottom:4px}
 .ed-cast .ed-castl .ed-btns{flex:0 0 100%;margin-top:4px}
+
+/* ---- 電光掲示板（起案者の指示 2026-10-15。app.js の renderTicker）。濃い地に橙の字で、駅の発車標のように
+   右から左へ流す。指・焦点・「止める」で止まり、動きを減らす設定の人には流さない */
+.ticker{display:flex;align-items:center;gap:8px;background:#141414;color:#ffb347;border-radius:8px;
+ padding:4px 6px 4px 4px;margin:0 0 10px;font-family:ui-monospace,"Cascadia Mono","Osaka-Mono","MS Gothic",monospace;
+ font-size:14px;line-height:1.7;overflow:hidden;box-shadow:inset 0 0 0 1px #000,inset 0 1px 6px rgba(0,0,0,.6)}
+.ticker .tkstop{flex:none;width:30px;height:30px;min-width:30px;border:1px solid #3a3a3a;border-radius:6px;background:#202020;
+ color:#ffb347;font-size:11px;padding:0;cursor:pointer;line-height:1}
+.ticker .tkstop:focus-visible{outline:2px solid #ffb347;outline-offset:1px}
+.ticker .tkview{flex:1;min-width:0;overflow:hidden;
+ background-image:radial-gradient(rgba(255,255,255,.05) 1px,transparent 1.2px);background-size:3px 3px;
+ -webkit-mask-image:linear-gradient(90deg,transparent,#000 3%,#000 97%,transparent);mask-image:linear-gradient(90deg,transparent,#000 3%,#000 97%,transparent)}
+.ticker .tktrack{display:inline-flex;white-space:nowrap;will-change:transform;animation:tkscroll var(--tkdur,40s) linear infinite}
+.ticker:hover .tktrack,.ticker:focus-within .tktrack,.ticker.paused .tktrack{animation-play-state:paused}
+@keyframes tkscroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.ticker .tkrun{display:inline-flex;align-items:center}
+.ticker .tki{color:#ffb347;text-decoration:none;text-shadow:0 0 4px rgba(255,160,40,.55);padding:0 2px;border-radius:3px}
+.ticker .tki:hover,.ticker .tki:focus-visible{color:#ffd28a;text-decoration:underline;outline:none}
+.ticker .tkk{font-weight:700;font-size:11px;padding:1px 6px;border-radius:3px;margin-right:6px;text-shadow:none;letter-spacing:.05em}
+.ticker .tkk.open{background:#2f7d3a;color:#eaffea}
+.ticker .tkk.rec{background:#a3242f;color:#ffecec}
+.ticker .tksep{color:#5a5040;margin:0 16px;font-size:9px}
+@media (prefers-reduced-motion:reduce){
+ .ticker .tktrack{animation:none}
+ .ticker .tkview{overflow-x:auto;-webkit-mask-image:none;mask-image:none}
+ .ticker .tkrun[aria-hidden]{display:none}
+ .ticker .tkstop{display:none}}
