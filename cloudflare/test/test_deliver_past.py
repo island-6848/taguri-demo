@@ -34,11 +34,11 @@ class DeliverPastTest(unittest.TestCase):
             con = sqlite3.connect(d / 'd1.db')
             con.executescript('CREATE TABLE works(user_id TEXT, work_key TEXT, title TEXT, first_date TEXT, stage_id TEXT);')
             con.executescript(MIGRATION.read_text(encoding='utf-8'))
-            first = run('build', '--data', t, '--out', str(d / 'out'), '--budget', '2')
+            first = run('build', '--data', t, '--out', str(d / 'out'), '--budget', '3')   # one row: the row, its key index and the tkey index
             self.assertEqual((first['rows'], first['left']), (1, 1))
             con.executescript((d / 'out' / 'past-upload.sql').read_text(encoding='utf-8'))
             # Not committed yet: the same row is built again (a failed upload is retried).
-            self.assertEqual(run('build', '--data', t, '--out', str(d / 'out'), '--budget', '2')['delivered_before'], 0)
+            self.assertEqual(run('build', '--data', t, '--out', str(d / 'out'), '--budget', '3')['delivered_before'], 0)
             run('commit', '--data', t, '--out', str(d / 'out'))
             second = run('build', '--data', t, '--out', str(d / 'out'))
             self.assertEqual((second['rows'], second['left'], second['delivered_before']), (1, 0, 1))
