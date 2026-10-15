@@ -38,7 +38,7 @@ const TIPS = `<section class="card tips">
 `;
 // Groups kept per user between requests: enough to fill 15 cards in any one prefecture.
 const KEEP = 400;
-const VERSION = 'screen-v5';   // v2: the user's 効かせ方 (rank_weight) and the per-group counts; v3: 興味あり as seeds; v4: diag; v5: 興味あり split (impl-interest-split)
+const VERSION = 'screen-v6';   // v2: the user's 効かせ方 (rank_weight) and the per-group counts; v3: 興味あり as seeds; v4: diag; v5: 興味あり split (impl-interest-split); v6: by part importance
 export {PREFS} from './prefs.js';
 const ROLE_SRC = '公演ページのクレジット';
 const KIND_LABEL = {'#形式': '形式', '#原作': '原作', '#翻訳': '', '#会場': '劇場', '#値段': '料金帯', '#題材': '題材'};
@@ -91,7 +91,9 @@ async function interestSeeds(ctx, access) {
   }
   // 「なぜ気になったか」（reaction.note、任意）。書いてあれば、そこに名前のある人に多めに配る。
   const notes = await reactionsOf(ctx);
-  const one = s => ({stage_id: s, title: info.get(s)?.title || '', note: notes.get(s)?.note || '', people: people.get(s)});
+  // 出演欄の文（書かれた順・役名・アンサンブルの見出しが残っている）。役柄の重さに使う（recommend.castImportance）。
+  const one = s => ({stage_id: s, title: info.get(s)?.title || '', note: notes.get(s)?.note || '',
+    cast_text: String(info.get(s)?.fields?.['出演'] || ''), people: people.get(s)});
   return {n: sids.length, seeds: sids.filter(s => people.get(s)?.length).map(one), disliked: noes.filter(s => people.get(s)?.length).map(one)};
 }
 

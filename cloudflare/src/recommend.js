@@ -109,20 +109,52 @@ export function independentRatings(rows) {
  */
 // 興味あり（起案者の指示 2026-10-15「1+2+3まとめて入れて」、impl-interest-split）。押すのは 1 回で理由は
 // 聞かないので、1 公演ぶんの重さ（評価 1 件と同じ 1）を、その公演の人・種類に割って配る:
-// (1) 人数で割る（何件にも共通する人・種類だけが積み上がって効く）。人に INTEREST_PEOPLE_SHARE、種類に残り
+// (1) 人・種類に割る（何件にも共通する人・種類だけが積み上がって効く）。人に INTEREST_PEOPLE_SHARE、種類に残り。
+//     人の中は役柄の重さ（castImportance・STAFF_IMPORTANCE）の割合で割る
 // (2) 評価・お気に入りで好きと分かっている人には 1 + INTEREST_PRIOR_BOOST × その値 の割合で多めに配る
 // (3) 興味なしの公演にもいる人・種類は、興味ありの件数 /（興味あり＋興味なし）に弱める
 // 「なぜ気になったか」に名前が書いてあれば、その人に INTEREST_NOTE_BOOST 倍で配る。
 // z はお気に入りと同じ SEED_Z、重みも SEED_K / (SEED_K + 評価の数) で評価が増えるほど薄まる。値は舞台では未検証。
 export const INTEREST_PEOPLE_SHARE = 0.5, INTEREST_PRIOR_BOOST = 3, INTEREST_NOTE_BOOST = 5;
+// 人の中は人数で等分せず、役柄の重さで割る（起案者の指示 2026-10-15「単純に人数で割るのよくない。役柄の重要さで割るべき」）。
+// 出演: 出演欄の書かれた順（主役が先）で 1 / (1 + 順位 / 2)。役名つき（「役名：名前」）は 1.5 倍、
+// 「アンサンブル」の見出しより後は 0.3 倍。作り手: 役職ごとの重さ。値は舞台では未検証。
+export const STAFF_IMPORTANCE = {'演出': 1.0, '脚本': 1.0, '原作': 0.8, '作曲': 0.7, '構成': 0.6, '音楽': 0.6, '振付': 0.6,
+  '翻訳': 0.5, '潤色': 0.5, '作詞': 0.5};
+export const OTHER_STAFF_IMPORTANCE = 0.3, ENSEMBLE_IMPORTANCE = 0.3, NAMED_PART_IMPORTANCE = 1.5;
+const nfkc = s => String(s ?? '').normalize('NFKC');
+/** 出演者の名前 -> 役柄の重さ。text は公演ページの出演欄そのまま（書かれた順が残っているもの）。 */
+export function castImportance(text, names) {
+  const raw = nfkc(text), out = new Map();
+  const ens = raw.search(/アンサンブル|ensemble/i);
+  const found = names.map(n => [n, raw.indexOf(nfkc(n))]).filter(([, i]) => i >= 0).sort((a, b) => a[1] - b[1] || cmp(a[0], b[0]));
+  found.forEach(([n, i], rank) => {
+    let w = 1 / (1 + rank / 2);
+    // 「役名：名前」: 同じ行で、名前の直前（空白を除く）がコロン
+    const before = raw.slice(raw.lastIndexOf('\n', i) + 1, i).replace(/[\s　]+$/u, '');
+    // 「出演：」「アンサンブル：」のような見出しは役名ではない（区切りの後ろの語だけを見る）
+    const part = before.split(/[、,，／/]/u).pop().trim();
+    if (/[:：]$/.test(part) && !/^(出演|キャスト|cast|アンサンブル|ensemble|[【［][^】］]*[】］])[:：]$/i.test(part)) w *= NAMED_PART_IMPORTANCE;
+    if (ens >= 0 && i > ens) w *= ENSEMBLE_IMPORTANCE;
+    out.set(n, w);
+  });
+  // 出演欄に見つからない人は、見つかった人のいちばん軽い重さ（だれも見つからなければ 1）
+  const least = found.length ? Math.min(...out.values()) : 1;
+  for (const n of names) if (!out.has(n)) out.set(n, least);
+  return out;
+}
+const importanceOf = (role, person, cast) => (role === '出演' ? (cast?.get(person) ?? 1)
+  : Object.hasOwn(STAFF_IMPORTANCE, role) ? STAFF_IMPORTANCE[role] : OTHER_STAFF_IMPORTANCE);
 const keyOf = (role, person) => role + '\u0000' + person;
 /** One interest stage's share per key ("role\0person"), summing to 1. */
 export function interestShares(stage, prior, contrast = new Map(), skip = new Set()) {
   const keys = [...new Set((stage.people || []).filter(([, person]) => !skip.has(person)).map(([role, person]) => keyOf(role, person)))].sort(cmp);
   const note = String(stage.note || '');
+  const castNames = [...new Set((stage.people || []).filter(([role]) => role === '出演').map(([, p]) => p))];
+  const cast = stage.cast_text ? castImportance(stage.cast_text, castNames) : null;
   const factor = k => {
     const role = k.slice(0, k.indexOf('\u0000')), person = k.slice(k.indexOf('\u0000') + 1);
-    let f = 1 + INTEREST_PRIOR_BOOST * Math.max(prior.get(k)?.[1] || 0, 0);
+    let f = (role.startsWith('#') ? 1 : importanceOf(role, person, cast)) * (1 + INTEREST_PRIOR_BOOST * Math.max(prior.get(k)?.[1] || 0, 0));
     if (!role.startsWith('#') && Array.from(person).length >= 2 && note.includes(person)) f *= INTEREST_NOTE_BOOST;
     const [yes, no] = contrast.get(k) || [1, 0];
     return f * (yes / (yes + no));

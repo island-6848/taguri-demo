@@ -3267,6 +3267,18 @@
    "verifies": []
   },
   {
+   "id": "q-credit-part-names",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-15",
+   "title": "出演欄の「役名：名前」「アンサンブル：名前」を、役名ごと 1 人の名前として読んでしまう（credits の parseCredits・measure_nets._names）。直すか",
+   "sources": [
+    "cloudflare/src/screens/credits.js",
+    "tools/review/measure_nets.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "q-d1-backup",
    "type": "question",
    "status": "answered",
@@ -7062,6 +7074,16 @@
    "from": "q-crawler-state-size",
    "rel": "depends_on",
    "to": "sitemap-first-run"
+  },
+  {
+   "from": "q-credit-part-names",
+   "rel": "affects",
+   "to": "impl-interest-split"
+  },
+  {
+   "from": "q-credit-part-names",
+   "rel": "affects",
+   "to": "impl-person-ordinal-v3"
   },
   {
    "from": "q-d1-backup",
