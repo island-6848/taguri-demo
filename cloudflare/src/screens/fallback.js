@@ -22,7 +22,8 @@ export async function stageInfo(db, sids) {
     const part = want.slice(i, i + PER_QUERY), qs = part.map(() => '?').join(',');
     const [idx, cat] = await db.batch([
       db.prepare(`SELECT stage_id,title,start,end,entry FROM rec_stage WHERE ver=(SELECT v FROM rec_meta WHERE k='current') AND stage_id IN (${qs})`).bind(...part),
-      db.prepare(`SELECT id,title,date,venue,url,metadata FROM catalogue WHERE id IN (${qs})`).bind(...part),
+      // The catalogue has no prefecture; venue_pref (migration 0024) gives it by venue name.
+      db.prepare(`SELECT c.id,c.title,c.date,c.venue,c.url,c.metadata,vp.pref AS vpref FROM catalogue c LEFT JOIN venue_pref vp ON vp.venue=c.venue WHERE c.id IN (${qs})`).bind(...part),
     ]);
     for (const r of idx.results) {
       let e = {};
@@ -37,7 +38,7 @@ export async function stageInfo(db, sids) {
       const end = /^\d{4}-\d{2}-\d{2}$/.test(m.end_date || '') ? m.end_date : r.date;
       const have = out.get(String(r.id)) || {};
       out.set(String(r.id), {stage_id: String(r.id), title: have.title || r.title, start: have.start || r.date, end: have.end || end,
-        venue: have.venue || r.venue || '', pref: have.pref || '', group: have.group || m.group || '',
+        venue: have.venue || r.venue || '', pref: have.pref || r.vpref || '', group: have.group || m.group || '',
         period: have.period || `${slash(r.date)} ～ ${slash(end)}`, fields: Object.keys(have.fields || {}).length ? have.fields : (m.fields || {}),
         synopsis: m.synopsis || '', url: have.url || r.url || ''});
     }

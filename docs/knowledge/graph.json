@@ -1640,6 +1640,20 @@
    "verifies": []
   },
   {
+   "id": "dec-venue-pref",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-15",
+   "title": "一覧（catalogue）の公演の都道府県を、劇場名 → 都道府県の表（venue_pref）で付ける",
+   "sources": [
+    "cloudflare/migrations/0024.sql",
+    "cloudflare/scripts/deliver_catalogue.py",
+    "cloudflare/src/screens/fallback.js",
+    "cloudflare/src/screens/reminder.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-verdict-diverging",
    "type": "decision",
    "status": "adopted",
@@ -5893,6 +5907,16 @@
    "from": "dec-user-scale-range",
    "rel": "affects",
    "to": "q-rating-scale"
+  },
+  {
+   "from": "dec-venue-pref",
+   "rel": "depends_on",
+   "to": "index-never-delivered"
+  },
+  {
+   "from": "dec-venue-pref",
+   "rel": "affects",
+   "to": "comp-d1"
   },
   {
    "from": "dec-verdict-diverging",

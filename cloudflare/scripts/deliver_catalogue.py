@@ -88,6 +88,23 @@ def catalogue_rows(data: Path, today: datetime.date) -> dict[str, list[str]]:
     return rows
 
 
+def venue_prefs(data: Path) -> dict[str, str]:
+    """{venue: prefecture} from the crawled candidates, for venues whose prefecture is one and the same
+    in every candidate that names it (the catalogue rows carry no prefecture; migration 0024)."""
+    seen: dict[str, set[str]] = {}
+    for c in _jsonl(data / "review" / "candidates.jsonl"):
+        venue = str(c.get("venue") or c.get("theater") or "").strip()
+        pref = str(c.get("pref") or "").strip()
+        if venue and pref:
+            seen.setdefault(venue, set()).add(pref)
+    return {v: next(iter(ps)) for v, ps in sorted(seen.items()) if len(ps) == 1}
+
+
+def venue_sql(venue: str, pref: str) -> str:
+    return (f"INSERT INTO venue_pref(venue,pref) VALUES({_q(venue)},{_q(pref)}) "
+            "ON CONFLICT(venue) DO UPDATE SET pref=excluded.pref;")
+
+
 def _official_url(fields: dict) -> str:
     m = re.search(r"https://[^\s\"'<>]+", str(fields.get("公式／劇場サイト") or ""))
     return m.group(0) if m else ""
@@ -175,7 +192,12 @@ def build(data: Path, out: Path, today: datetime.date, with_index: bool, budget:
     stmts = [upsert_sql(row) for _, row in sorted(changed.items())]
     for sid, row in changed.items():
         seen[sid] = _hash(row)
-    writes = ROWS_PER_UPSERT * len(stmts)
+    # 劇場の都道府県: 変わった行だけ（1 行 1 書き込み）。一覧の行を書き直さずに都道府県を付ける
+    venues = venue_prefs(data)
+    prev_venues: dict[str, str] = dict(prev.get("venues") or {})
+    venue_changed = {v: p for v, p in venues.items() if prev_venues.get(v) != p}
+    stmts += [venue_sql(v, p) for v, p in venue_changed.items()]
+    writes = ROWS_PER_UPSERT * len(changed) + len(venue_changed)
     if writes > budget:
         raise SystemExit(f"{len(stmts)} catalogue rows exceed today's write budget ({writes} > {budget}); "
                          "raise --budget only after checking the D1 usage")
@@ -184,9 +206,9 @@ def build(data: Path, out: Path, today: datetime.date, with_index: bool, budget:
             "catalogue_upcoming": str(len(rows))}
     stmts += [meta_sql(k, v) for k, v in meta.items() if v]
     writes += len(meta)
-    report = {"stages": len(rows), "changed": len(changed), "writes": writes,
+    report = {"stages": len(rows), "changed": len(changed), "venues_changed": len(venue_changed), "writes": writes,
               "with_synopsis": sum(1 for r in rows.values() if json.loads(r[5]).get("synopsis"))}
-    state = {"rows": seen, "index": prev.get("index", ""), "labels": prev.get("labels", ""),
+    state = {"rows": seen, "venues": {**prev_venues, **venues}, "index": prev.get("index", ""), "labels": prev.get("labels", ""),
              "cards": prev.get("cards", "")}
     if out.exists():
         shutil.rmtree(out)

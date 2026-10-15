@@ -328,6 +328,26 @@ test('公演カレンダー shows an owned stage that only the catalogue has', a
   } finally { sqlite.close(); }
 });
 
+// 2026-10-15 起案者「都道府県がわからない作品しかない」: the catalogue has no prefecture, venue_pref
+// (migration 0024, delivered by deliver_catalogue.py) gives it by venue, so the place filters keep the stage.
+test('a catalogue stage takes its prefecture from venue_pref', async () => {
+  const {env, sqlite} = withIndex();
+  const a = await signIn(env);
+  try {
+    env.CLOCK = {today: '2026-10-20', now: Date.parse('2026-10-20T03:00:00Z')};
+    sqlite.prepare("INSERT INTO catalogue(id,title,date,venue,url,metadata) VALUES('779','劇場の分かる舞台','2026-10-25','劇場Z','',?)")
+      .run(JSON.stringify({end_date: '2026-11-03'}));
+    sqlite.prepare("INSERT INTO venue_pref(venue,pref) VALUES('劇場Z','大阪府')").run();
+    await step(env, a, {post: '/api/react', body: {stage_id: '779', value: 'owned', nofill: true}});
+    const cal = (await screen(env, a, 'calendar', '?pref=' + encodeURIComponent('大阪府'))).body_html;
+    assert.match(cal, /劇場の分かる舞台/);
+    assert.doesNotMatch(cal, /都道府県が分からない公演/);
+    const rem = (await screen(env, a, 'reminder', '?f=1&pref=' + encodeURIComponent('大阪府'))).body_html;
+    assert.match(rem, /<b>大阪府<\/b>で観られる、[^<]*に開幕する公演が <b>1 件<\/b>/);
+    assert.doesNotMatch(rem, /都道府県が分からない公演/);
+  } finally { sqlite.close(); }
+});
+
 // 2026-10-14 起案者「たぐりが集めている公演から出してよ勿論」: a name added to お気に入り is
 // looked up in the whole delivered catalogue too, not only in the stages with a card.
 test('お気に入り finds a registered name in the catalogue at once, also without a card', async () => {
