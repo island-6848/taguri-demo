@@ -3076,6 +3076,15 @@
    "verifies": []
   },
   {
+   "id": "peer-synopsis-routine",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-15",
+   "title": "別のセッションが、あらすじを読む定期実行（毎日 06:07 UTC・40 件、trig_01Y7a7jwMQpEgcCiTdkwwVaK）を作った。Catalog の state の書き戻しは毎回 force push なので、両方の時刻が重ならないことが前提",
+   "sources": [],
+   "verifies": []
+  },
+  {
    "id": "people-cpu-over-10ms",
    "type": "finding",
    "status": "confirmed",
@@ -7150,6 +7159,11 @@
    "from": "peer-star5-branch",
    "rel": "affects",
    "to": "impl-person-ordinal-v3"
+  },
+  {
+   "from": "peer-synopsis-routine",
+   "rel": "affects",
+   "to": "q-synopsis-routine-quota"
   },
   {
    "from": "people-cpu-over-10ms",
