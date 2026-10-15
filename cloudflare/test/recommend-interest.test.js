@@ -59,3 +59,30 @@ test('favourites are skipped, and seeds fade with ratings as before', () => {
   const many = personValues(rated, [], new Set(), [s]).get(K('出演', '他'))[1];
   assert.ok(few > 3 * many);
 });
+
+// 役柄の重さ（起案者の指示 2026-10-15「単純に人数で割るのよくない。役柄の重要さで割るべき」）。
+import {castImportance, STAFF_IMPORTANCE, ENSEMBLE_IMPORTANCE, NAMED_PART_IMPORTANCE, OTHER_STAFF_IMPORTANCE} from '../src/recommend.js';
+
+test('cast: earlier in the billing weighs more, ensemble less, a named part more', () => {
+  const text = 'ジャン・バルジャン：主役一\n主演二、助演三\nアンサンブル：群衆四、群衆五';
+  const m = castImportance(text, ['群衆五', '助演三', '主役一', '主演二', '群衆四', '載っていない']);
+  close(m.get('主役一'), 1 * NAMED_PART_IMPORTANCE);
+  close(m.get('主演二'), 1 / 1.5);
+  close(m.get('助演三'), 1 / 2);
+  close(m.get('群衆四'), ENSEMBLE_IMPORTANCE / 2.5);
+  assert.ok(m.get('群衆五') < m.get('群衆四'));
+  close(m.get('載っていない'), Math.min(m.get('群衆五'), m.get('群衆四')));
+  // "出演：" as a heading is not a part name.
+  close(castImportance('出演：甲野\n乙野', ['甲野', '乙野']).get('甲野'), 1);
+});
+
+test('a 興味あり stage goes mostly to its leads and core creators, not evenly', () => {
+  const s = {cast_text: '主役一、主役二\n' + Array.from({length: 30}, (_, i) => `群${i}`).join('、'),
+    people: [['出演', '主役一'], ['出演', '主役二'], ...Array.from({length: 30}, (_, i) => ['出演', `群${i}`]),
+      ['演出', '演出家'], ['照明', '照明家']]};
+  const m = interestShares(s, new Map());
+  close(sum(m), 1);
+  assert.ok(m.get(K('出演', '主役一')) > 10 * m.get(K('出演', '群29')));
+  close(m.get(K('演出', '演出家')) / m.get(K('出演', '主役一')), STAFF_IMPORTANCE['演出']);
+  close(m.get(K('照明', '照明家')) / m.get(K('演出', '演出家')), OTHER_STAFF_IMPORTANCE);
+});
