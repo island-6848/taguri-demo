@@ -88,3 +88,23 @@ class DeliverTest(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class PathsTest(unittest.TestCase):
+    # The workflow passes --out ../d1-out from cloudflare/, while the index / labels / cards builders run
+    # with cwd=ROOT: a relative path made them fail (FileNotFoundError) and no index ever reached D1.
+    def test_relative_paths_are_made_absolute_before_building(self):
+        seen = {}
+        build, spend = D.build, D.FT.d1_spend
+        D.build = lambda data, out, today, index, budget: seen.update(data=data, out=out) or {'writes': 0}
+        D.FT.d1_spend = lambda data, n: None
+        argv = sys.argv
+        sys.argv = ['deliver_catalogue.py', 'build', '--data', 'some-data', '--out', '../d1-out', '--index']
+        try:
+            D.main()
+        except SystemExit:
+            pass
+        finally:
+            D.build, D.FT.d1_spend, sys.argv = build, spend, argv
+        self.assertTrue(seen['out'].is_absolute(), seen)
+        self.assertTrue(seen['data'].is_absolute(), seen)

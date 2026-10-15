@@ -252,6 +252,10 @@ def main() -> int:
     ap.add_argument("--budget", type=int, default=WRITE_BUDGET)
     ap.add_argument("--today", default=datetime.datetime.now(JST).date().isoformat())
     a = ap.parse_args()
+    # The index / labels / cards builders run with cwd=ROOT, so a relative --out (the workflow passes
+    # ../d1-out from cloudflare/) pointed elsewhere and they failed with FileNotFoundError: the index
+    # was never delivered and the service had no recommendations (q-interest-no-reco-prod).
+    a.data, a.out = a.data.resolve(), a.out.resolve()
     if a.action == "commit":
         commit(a.data, a.out)
         print("delivered state saved")

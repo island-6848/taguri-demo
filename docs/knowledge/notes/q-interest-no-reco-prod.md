@@ -1,7 +1,7 @@
 ---
 id: q-interest-no-reco-prod
 type: question
-status: open
+status: answered
 date: 2026-10-15
 title: 本番で「興味ありが何件もあるのに、おすすめが出ない」のはなぜか
 sources:
