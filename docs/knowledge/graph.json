@@ -2323,6 +2323,18 @@
    "verifies": []
   },
   {
+   "id": "lit-event-coldstart",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-15",
+   "title": "催しは開かれる前に「消費」できないので、催しの推薦は本質的に新しい品目の問題（cold start）で、場所・時間などの文脈を使う（Macedo・Marinho・Santos, RecSys 2015）",
+   "sources": [
+    "https://bibsonomy.org/bibtex/890272983b2d86fe8a5f9177906b6a15",
+    "https://bdtd.ufcg.edu.br/jspui/bitstream/riufcg/605/3/AUGUSTO%20QUEIROZ%20DE%20MACEDO%20-%20DISSERTA%c3%87%c3%83O%20PPGCC%202015.pdf"
+   ],
+   "verifies": []
+  },
+  {
    "id": "lit-explanations",
    "type": "finding",
    "status": "unverified",
@@ -2400,6 +2412,18 @@
    "title": "観る前の反応（興味あり・購入）は「好みの信号」だが確からしさが違うので、重みを変えて扱う（Hu・Koren・Volinsky 2008）",
    "sources": [
     "https://andrewclark.super.site/all-media/collaborative-filtering-for-implicit-feedback-datasets"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "lit-live-show-propagation",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-15",
+   "title": "コンサート・演劇・サーカスの新しい公演は購入履歴が無いので、内容の似かよいを購入者のつながりに広げて推薦する（Creusefond・Latapy 2018）",
+   "sources": [
+    "https://ar5iv.arxiv.org/html/1804.09073",
+    "https://www.alphaxiv.org/abs/1804.09073"
    ],
    "verifies": []
   },
@@ -3758,6 +3782,15 @@
    "status": "open",
    "date": "2026-10-13",
    "title": "あらすじを Claude の定期実行で読むと、1 日にどれだけ読め、起案者の使用枠をどれだけ使うか",
+   "sources": [],
+   "verifies": []
+  },
+  {
+   "id": "q-theatre-differences",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-15",
+   "title": "演劇の推薦は映画・本の推薦と何が違い、たぐりの作りにどう効くか（品目がすぐ消える・同じ作品でも別物・人で選ぶ・場所と日時と値段・観る数が少ない・公開データが無い・前もって確かめにくい・連れと行く）",
    "sources": [],
    "verifies": []
   },
@@ -6368,6 +6401,11 @@
    "to": "q-user-chosen-scale"
   },
   {
+   "from": "lit-event-coldstart",
+   "rel": "supports",
+   "to": "q-theatre-differences"
+  },
+  {
    "from": "lit-explanations",
    "rel": "affects",
    "to": "impl-hidden-gate"
@@ -6423,6 +6461,16 @@
    "to": "q-reco-learning-design"
   },
   {
+   "from": "lit-live-show-propagation",
+   "rel": "supports",
+   "to": "lit-performing-arts"
+  },
+  {
+   "from": "lit-live-show-propagation",
+   "rel": "supports",
+   "to": "q-theatre-differences"
+  },
+  {
    "from": "lit-mnar",
    "rel": "contradicts",
    "to": "q-reco-learning-design"
@@ -6461,6 +6509,11 @@
    "from": "lit-ordinal-damping",
    "rel": "supports",
    "to": "eval-design-choices"
+  },
+  {
+   "from": "lit-performing-arts",
+   "rel": "affects",
+   "to": "q-theatre-differences"
   },
   {
    "from": "lit-performing-arts",
@@ -7321,6 +7374,31 @@
    "from": "q-synopsis-routine-quota",
    "rel": "depends_on",
    "to": "dec-synopsis-reader-claude"
+  },
+  {
+   "from": "q-theatre-differences",
+   "rel": "depends_on",
+   "to": "lit-performing-arts"
+  },
+  {
+   "from": "q-theatre-differences",
+   "rel": "depends_on",
+   "to": "lit-live-show-propagation"
+  },
+  {
+   "from": "q-theatre-differences",
+   "rel": "depends_on",
+   "to": "lit-event-coldstart"
+  },
+  {
+   "from": "q-theatre-differences",
+   "rel": "depends_on",
+   "to": "lit-future-events"
+  },
+  {
+   "from": "q-theatre-differences",
+   "rel": "depends_on",
+   "to": "lit-price-value"
   },
   {
    "from": "q-theme-favourite",
