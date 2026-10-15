@@ -61,36 +61,33 @@ test('favourites are skipped, and seeds fade with ratings as before', () => {
 });
 
 // 役柄の重さ（起案者の指示 2026-10-15「単純に人数で割るのよくない。役柄の重要さで割るべき」）。
-import {castImportance, STAFF_IMPORTANCE, ENSEMBLE_IMPORTANCE, OTHER_STAFF_IMPORTANCE} from '../src/recommend.js';
+import {castImportance, LESSER_IMPORTANCE} from '../src/recommend.js';
 
-test('cast: named parts are the leads, ordered by billing; the last of them (トメ) weighs like the second; no double count', () => {
+// 案 B（起案者 2026-10-15）: 役の格は 2 段だけ。書かれた順・トメは使わない。
+test('cast: named parts are the main roles, all equal; the ensemble weighs less', () => {
   const text = 'ジャン・バルジャン：主役一\nジャベール：主演二\nファンテーヌ：助演三\n司教：重鎮四\nアンサンブル：群衆五、群衆六';
   const m = castImportance(text, ['群衆六', '助演三', '主役一', '主演二', '群衆五', '重鎮四', '載っていない']);
-  close(m.get('主役一'), 1);
-  close(m.get('主演二'), 1 / 1.5);
-  close(m.get('助演三'), 1 / 2);
-  close(m.get('重鎮四'), 1 / 1.5);                      // トメ
-  close(m.get('群衆五'), ENSEMBLE_IMPORTANCE);
-  close(m.get('群衆六'), ENSEMBLE_IMPORTANCE / 1.5);
-  close(m.get('載っていない'), ENSEMBLE_IMPORTANCE / 1.5);
+  for (const n of ['主役一', '主演二', '助演三', '重鎮四']) close(m.get(n), 1);
+  for (const n of ['群衆五', '群衆六', '載っていない']) close(m.get(n), LESSER_IMPORTANCE);
 });
 
-test('cast without part names: the ensemble heading is the border; without one, billing order only', () => {
+test('cast without part names: the ensemble heading is the border; without one, everyone is equal', () => {
   const m = castImportance('甲野、乙野、丙野\nアンサンブル：丁野', ['甲野', '乙野', '丙野', '丁野']);
-  close(m.get('甲野'), 1);
-  close(m.get('丙野'), 1 / 1.5);                         // トメ of three
-  close(m.get('丁野'), ENSEMBLE_IMPORTANCE);
+  for (const n of ['甲野', '乙野', '丙野']) close(m.get(n), 1);
+  close(m.get('丁野'), LESSER_IMPORTANCE);
   const o = castImportance('出演：甲野\n乙野', ['甲野', '乙野']);
   close(o.get('甲野'), 1);
-  close(o.get('乙野'), 1 / 1.5);                         // two only: no トメ
+  close(o.get('乙野'), 1);
 });
-test('a 興味あり stage goes mostly to its leads and core creators, not evenly', () => {
-  const s = {cast_text: '主役一、主役二\nアンサンブル：' + Array.from({length: 30}, (_, i) => `群${i}`).join('、'),
-    people: [['出演', '主役一'], ['出演', '主役二'], ...Array.from({length: 30}, (_, i) => ['出演', `群${i}`]),
+
+test('a 興味あり stage gives the main roles and core creators equal shares, the ensemble and other staff less', () => {
+  const s = {cast_text: '主役一、脇役二\nアンサンブル：' + Array.from({length: 30}, (_, i) => `群${i}`).join('、'),
+    people: [['出演', '主役一'], ['出演', '脇役二'], ...Array.from({length: 30}, (_, i) => ['出演', `群${i}`]),
       ['演出', '演出家'], ['照明', '照明家']]};
   const m = interestShares(s, new Map());
   close(sum(m), 1);
-  assert.ok(m.get(K('出演', '主役一')) > 10 * m.get(K('出演', '群29')));
-  close(m.get(K('演出', '演出家')) / m.get(K('出演', '主役一')), STAFF_IMPORTANCE['演出']);
-  close(m.get(K('照明', '照明家')) / m.get(K('演出', '演出家')), OTHER_STAFF_IMPORTANCE);
+  close(m.get(K('出演', '脇役二')), m.get(K('出演', '主役一')));
+  close(m.get(K('出演', '群29')) / m.get(K('出演', '主役一')), LESSER_IMPORTANCE);
+  close(m.get(K('演出', '演出家')), m.get(K('出演', '主役一')));
+  close(m.get(K('照明', '照明家')) / m.get(K('演出', '演出家')), LESSER_IMPORTANCE);
 });

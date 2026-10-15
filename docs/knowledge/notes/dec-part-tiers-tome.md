@@ -1,7 +1,7 @@
 ---
 id: dec-part-tiers-tome
 type: decision
-status: adopted
+status: superseded
 date: 2026-10-15
 title: 役柄の重さを「役の格」の 2 段にまとめ、書き出し（最初）とトメ（主な役の最後）を重く見る。役名と見出しは段の境目にだけ使い、掛け合わせない
 sources:

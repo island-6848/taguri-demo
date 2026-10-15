@@ -1098,9 +1098,21 @@
   {
    "id": "dec-part-tiers-tome",
    "type": "decision",
-   "status": "adopted",
+   "status": "superseded",
    "date": "2026-10-15",
    "title": "役柄の重さを「役の格」の 2 段にまとめ、書き出し（最初）とトメ（主な役の最後）を重く見る。役名と見出しは段の境目にだけ使い、掛け合わせない",
+   "sources": [
+    "cloudflare/src/recommend.js",
+    "cloudflare/test/recommend-interest.test.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-part-two-tiers",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-15",
+   "title": "興味ありの配り方の役の格は 2 段だけ（主な役・中心の作り手は 1、アンサンブル・そのほかのスタッフは 0.3）。書かれた順・トメは使わない",
    "sources": [
     "cloudflare/src/recommend.js",
     "cloudflare/test/recommend-interest.test.js"
@@ -3634,6 +3646,15 @@
    "verifies": []
   },
   {
+   "id": "q-part-tier-until-when",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-15",
+   "title": "興味ありの配り方の役の格（2 段）を、いつまで使うか。押した数が増えたら外すか",
+   "sources": [],
+   "verifies": []
+  },
+  {
    "id": "q-passkey-real-devices",
    "type": "question",
    "status": "open",
@@ -5451,6 +5472,21 @@
    "from": "dec-part-tiers-tome",
    "rel": "affects",
    "to": "impl-interest-split"
+  },
+  {
+   "from": "dec-part-two-tiers",
+   "rel": "supersedes",
+   "to": "dec-part-tiers-tome"
+  },
+  {
+   "from": "dec-part-two-tiers",
+   "rel": "answers",
+   "to": "q-interest-why-unknown"
+  },
+  {
+   "from": "dec-part-two-tiers",
+   "rel": "raises",
+   "to": "q-part-tier-until-when"
   },
   {
    "from": "dec-passkeys",
@@ -7366,6 +7402,11 @@
    "from": "q-part-importance-overlap",
    "rel": "affects",
    "to": "impl-interest-split"
+  },
+  {
+   "from": "q-part-tier-until-when",
+   "rel": "affects",
+   "to": "dec-part-two-tiers"
   },
   {
    "from": "q-past-stage-catalogue",

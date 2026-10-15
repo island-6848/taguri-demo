@@ -110,46 +110,40 @@ export function independentRatings(rows) {
 // 興味あり（起案者の指示 2026-10-15「1+2+3まとめて入れて」、impl-interest-split）。押すのは 1 回で理由は
 // 聞かないので、1 公演ぶんの重さ（評価 1 件と同じ 1）を、その公演の人・種類に割って配る:
 // (1) 人・種類に割る（何件にも共通する人・種類だけが積み上がって効く）。人に INTEREST_PEOPLE_SHARE、種類に残り。
-//     人の中は役柄の重さ（castImportance・STAFF_IMPORTANCE）の割合で割る
+//     人の中は役の格（castImportance・CORE_CREATORS、2 段だけ）の割合で割る
 // (2) 評価・お気に入りで好きと分かっている人には 1 + INTEREST_PRIOR_BOOST × その値 の割合で多めに配る
 // (3) 興味なしの公演にもいる人・種類は、興味ありの件数 /（興味あり＋興味なし）に弱める
 // 「なぜ気になったか」に名前が書いてあれば、その人に INTEREST_NOTE_BOOST 倍で配る。
 // z はお気に入りと同じ SEED_Z、重みも SEED_K / (SEED_K + 評価の数) で評価が増えるほど薄まる。値は舞台では未検証。
 export const INTEREST_PEOPLE_SHARE = 0.5, INTEREST_PRIOR_BOOST = 3, INTEREST_NOTE_BOOST = 5;
-// 人の中は人数で等分せず、役柄の重さ（役の格）で割る（起案者の指示 2026-10-15「単純に人数で割るのよくない。
-// 役柄の重要さで割るべき」「名前ついてる役が重要なのは確かにそう。並び順に偉いのもそう（でも一番最後に結構出てくる人の
-// 名前書くパターンもある）」）。出演は 2 段に分ける: 主な役（役名つきで書かれた人。役名が 1 人も無ければ「アンサンブル」の
-// 見出しより前の人）と、それ以外（ENSEMBLE_IMPORTANCE 倍）。段の中は書かれた順で 1 / (1 + 順位 / 2) だが、主な役の
-// 最後（トメ）は 2 番目と同じ重さにする。役名と見出しは段の境目を決めるのにだけ使い、重さに掛け合わせない（二重に数えない、
-// q-part-importance-overlap）。作り手は役職ごとの重さ。値は舞台では未検証。
-export const STAFF_IMPORTANCE = {'演出': 1.0, '脚本': 1.0, '原作': 0.8, '作曲': 0.7, '構成': 0.6, '音楽': 0.6, '振付': 0.6,
-  '翻訳': 0.5, '潤色': 0.5, '作詞': 0.5};
-export const OTHER_STAFF_IMPORTANCE = 0.3, ENSEMBLE_IMPORTANCE = 0.3, TOME_RANK = 1, TOME_MIN = 3;
+// 人の中の配り方（役の格、起案者の指示 2026-10-15）。興味の理由は主演とは限らない（「別に主演が気になるから
+// 興味あるわけじゃない」）ので、役の格は弱い歯止めとしてだけ使う（案 B、q-interest-why-unknown）: 主な役と中心の
+// 作り手は同じ 1、アンサンブルとそれ以外のスタッフは LESSER_IMPORTANCE 倍。書かれた順・トメは使わない。
+// 「なぜ」は、何件にも共通するもの・本人の好み・興味なしとの比べ・理由の名前が推し量る。いつまで使うかは要検証。
+// 主な役＝役名つきで書かれた人（役名が 1 人も無ければ「アンサンブル」の見出しより前の人、見出しも無ければ全員）。
+export const CORE_CREATORS = new Set(['演出', '脚本', '原作', '作曲', '構成', '音楽', '振付', '翻訳', '潤色', '作詞']);
+export const LESSER_IMPORTANCE = 0.3;
 const nfkc = s => String(s ?? '').normalize('NFKC');
 const HEADING = /^(出演|キャスト|cast|アンサンブル|ensemble|[【［][^】］]*[】］])[:：]$/i;
-const byOrder = rank => 1 / (1 + rank / 2);
-/** 出演者の名前 -> 役柄の重さ。text は公演ページの出演欄そのまま（書かれた順が残っているもの）。 */
+/** 出演者の名前 -> 1（主な役）か LESSER_IMPORTANCE（アンサンブル）。text は公演ページの出演欄そのまま。 */
 export function castImportance(text, names) {
   const raw = nfkc(text), out = new Map();
   const ens = raw.search(/アンサンブル|ensemble/i);
-  const found = names.map(n => [n, raw.indexOf(nfkc(n))]).filter(([, i]) => i >= 0).sort((a, b) => a[1] - b[1] || cmp(a[0], b[0]));
+  const found = names.map(n => [n, raw.indexOf(nfkc(n))]).filter(([, i]) => i >= 0);
   // 「役名：名前」: 同じ行で、区切りの後ろの語がコロンで終わり、見出し（出演：・アンサンブル：）ではない
   const named = ([, i]) => {
     const part = raw.slice(raw.lastIndexOf('\n', i) + 1, i).replace(/[\s　]+$/u, '').split(/[、,，／/]/u).pop().trim();
     return /[:：]$/.test(part) && !HEADING.test(part);
   };
   const anyNamed = found.some(named);
-  const principal = f => (anyNamed ? named(f) : ens < 0 || f[1] < ens);
-  const lead = found.filter(principal), rest = found.filter(f => !principal(f));
-  lead.forEach(([n], r) => out.set(n, r === lead.length - 1 && lead.length >= TOME_MIN ? byOrder(TOME_RANK) : byOrder(r)));
-  rest.forEach(([n], r) => out.set(n, ENSEMBLE_IMPORTANCE * byOrder(r)));
+  for (const f of found) out.set(f[0], (anyNamed ? named(f) : ens < 0 || f[1] < ens) ? 1 : LESSER_IMPORTANCE);
   // 出演欄に見つからない人は、見つかった人のいちばん軽い重さ（だれも見つからなければ 1）
   const least = found.length ? Math.min(...out.values()) : 1;
   for (const n of names) if (!out.has(n)) out.set(n, least);
   return out;
 }
 const importanceOf = (role, person, cast) => (role === '出演' ? (cast?.get(person) ?? 1)
-  : Object.hasOwn(STAFF_IMPORTANCE, role) ? STAFF_IMPORTANCE[role] : OTHER_STAFF_IMPORTANCE);
+  : CORE_CREATORS.has(role) ? 1 : LESSER_IMPORTANCE);
 const keyOf = (role, person) => role + '\u0000' + person;
 /** One interest stage's share per key ("role\0person"), summing to 1. */
 export function interestShares(stage, prior, contrast = new Map(), skip = new Set()) {
