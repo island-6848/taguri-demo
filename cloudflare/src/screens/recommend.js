@@ -9,7 +9,9 @@
 // reasons (reason_rows) and the poster are filled in. The 効かせ方 sliders are
 // weights.js. Left out for now: the map above the prefecture chips (no outlines in
 // D1), the count of shows a setting hid (w_dropped) and the impression re-ranking.
-import {scoreFromIndex, d1Access, seedsFromFavourites, gradeOf} from '../recommend.js';
+import {scoreFromIndex, d1Access, seedsFromFavourites, gradeOf, MAX_SEED_STAGES} from '../recommend.js';
+import {stageInfo} from './fallback.js';
+import {parseCredits} from './credits.js';
 import {chooseVariant, groupOf} from '../reco-gate.js';
 import {readWeights, multipliersOf, weightForm, weightAction} from './weights.js';
 import {E, ValueError} from './py.js';
@@ -26,6 +28,7 @@ const TIPS = `<section class="card tips">
 <li><b>観た公演を 2 本以上、評価してください。</b>「◎」だけでなく「○」「△」「×」も混ぜて付けるのがコツです。よかった公演といまひとつだった公演の両方があると、どこが好みなのかが分かります。全部「◎」だと、違いが分からず、おすすめが出ません。</li>
 <li><b>観た公演は、題名と観た日を正しく入れてください。</b>公演の情報（出演者や作り手）が分かると、その人たちの次の公演をおすすめできます。日記帳で「まだどの公演とも結び付いていません」と出る記録は、その欄から観た公演を選んでください。</li>
 <li><b>好きな俳優・劇団・作品を「お気に入り」に登録してください。</b>登録した名前の公演は、評価が無くてもすぐ「お気に入り」に出ます。一緒に出ている人の公演も、おすすめに出やすくなります。</li>
+<li><b>気になる公演に「興味あり」を押してください。</b>観た記録が無くても、押した公演に出ている人や作り手の、ほかの公演がおすすめに出ます。<a href="/recommend/reminder?t=__TAGURI_TOKEN__">開幕リマインド</a>から選ぶのが手軽です。</li>
 <li><b>評価が増えるほど、おすすめは増えて、当たりやすくなります。</b>まずは 10 本ほどを目安にどうぞ。</li>
 </ol>
 <p class="lead"><a href="/rate?t=__TAGURI_TOKEN__">観た公演の評価</a>・<a href="/recommend/favourites?t=__TAGURI_TOKEN__">お気に入り</a>・<a href="/records/works?t=__TAGURI_TOKEN__">日記帳</a>から始められます。</p>
@@ -33,13 +36,13 @@ const TIPS = `<section class="card tips">
 `;
 // Groups kept per user between requests: enough to fill 15 cards in any one prefecture.
 const KEEP = 400;
-const VERSION = 'screen-v2';   // v2: the user's 効かせ方 (rank_weight) and the per-group counts
+const VERSION = 'screen-v3';   // v2: the user's 効かせ方 (rank_weight) and the per-group counts; v3: 興味あり as seeds
 export {PREFS} from './prefs.js';
 const ROLE_SRC = '公演ページのクレジット';
 const KIND_LABEL = {'#形式': '形式', '#原作': '原作', '#翻訳': '', '#会場': '劇場', '#値段': '料金帯', '#題材': '題材'};
 const KIND_SRC = {'#形式': '公演名とクレジット', '#会場': '公演ページの劇場', '#値段': '公演ページの料金'};
 const WORKS_SHOWN = 3;
-const MARK_ORDER = {'◎': 0, '○': 1, '△': 2, '×': 3};
+const MARK_ORDER = {'◎': 0, '○': 1, '△': 2, '×': 3, '興味あり': 4};
 
 const pad2 = n => String(n).padStart(2, '0');
 const chunks = (xs, n) => Array.from({length: Math.ceil(xs.length / n)}, (_, i) => xs.slice(i * n, i * n + n));
@@ -55,10 +58,34 @@ async function ratedWorks(ctx, access) {
     people: people.get(w.stage_id) || []}));
 }
 
+/**
+ * 興味ありを押した公演（新しい順に MAX_SEED_STAGES まで）を、お気に入りと同じ仮の ◎（seeds）にする。
+ * 起案者の指示（2026-10-15）「一回その案にしてみて」（q-interest-seed）。重みはお気に入りと同じで、
+ * 評価が増えるほど薄まる（recommend.personValues の SEED_K / (SEED_K + 評価の数)）。
+ * 索引に人物の無い公演（一覧 catalogue にだけある開幕リマインドの公演など）は、出演欄から人物を読む。
+ */
+async function interestSeeds(ctx, access) {
+  // reaction は日ごとの行（label = その日）なので、公演ごとに新しい答えで上書きしてから選ぶ（lists.reactionsOf と同じ）。
+  const {results} = await ctx.db.prepare('SELECT stage_id,interest,updated_at FROM reaction WHERE user_id=? AND interest IS NOT NULL ORDER BY updated_at')
+    .bind(ctx.uid).all();
+  const last = new Map();
+  for (const r of results) { last.delete(r.stage_id); last.set(r.stage_id, Number(r.interest)); }
+  const sids = [...last].filter(([, v]) => v === 1).map(([s]) => String(s)).reverse().slice(0, MAX_SEED_STAGES);
+  if (!sids.length) return [];
+  const [people, info] = await Promise.all([access.peopleFor(sids), stageInfo(ctx.db, sids)]);
+  for (const s of sids) {
+    if (people.get(s)?.length) continue;
+    const p = parseCredits(info.get(s)?.fields || {});
+    if (p.length) people.set(s, p);
+  }
+  return sids.filter(s => people.get(s)?.length).map(s => ({stage_id: s, title: info.get(s)?.title || '', people: people.get(s)}));
+}
+
 /** measure_nets.person_titles: (role, person) -> titles, ◎ first, newest first within a mark. */
-function personTitles(rated) {
+function personTitles(rated, liked = []) {
   const acc = new Map();
-  for (const r of rated) {
+  // 興味ありを押した公演も、理由の作品名に「興味あり」の印の後ろで並べる（measure_nets.person_titles と同じ）。
+  for (const r of [...rated, ...liked.map(s => ({verdict: '興味あり', date: '', title: s.title, people: s.people}))]) {
     if (!(r.verdict in MARK_ORDER) || !r.title) continue;
     for (const [role, person] of r.people) {
       const k = role + '\t' + person;
@@ -75,7 +102,8 @@ function personTitles(rated) {
 }
 
 const worksText = (titles, n) => {
-  if (!titles?.length) return `（履歴 ${Math.trunc(n)} 本）`;
+  // 評価の無い人（お気に入り・興味ありの仮の ◎ だけで上がった人）は n が 0。「履歴 0 本」と出さない。
+  if (!titles?.length) return Math.trunc(n) ? `（履歴 ${Math.trunc(n)} 本）` : '（お気に入り・興味ありの公演から）';
   const rest = titles.length - WORKS_SHOWN;
   return '（' + titles.slice(0, WORKS_SHOWN).map(t => `『${E(t)}』`).join('・') + (rest > 0 ? ` ほか ${rest} 本` : '') + '）';
 };
@@ -136,7 +164,10 @@ export async function rankedGroups(ctx) {
   for (const [g, m] of Object.entries(own)) multipliers[g] = (Object.hasOwn(multipliers, g) ? multipliers[g] : 1.0) * m;
   const declared = await loadDeclared(ctx);
   const favourites = KINDS.flatMap(kind => (declared[kind] || []).map(name => ({name, kind}))).slice(0, 200);
-  const {seeds, skip} = await seedsFromFavourites(access, favourites);
+  const fav = await seedsFromFavourites(access, favourites), skip = fav.skip;
+  const liked = await interestSeeds(ctx, access);
+  const have = new Set(fav.seeds.map(s => s.stage_id));
+  const seeds = [...fav.seeds, ...liked.filter(s => !have.has(s.stage_id))];
   // Stages of a registered name are お気に入り, stages of a word not to show are left out
   // (app._rebucket): neither is ranked here.
   const {hits, declined} = await nameHits(ctx, declared, await loadDeclined(ctx));
@@ -181,7 +212,7 @@ export async function rankedGroups(ctx) {
     // Answered venues of the production stay out too (the answer is copied to the tour).
     g.venues = g.venues.filter(v => v.stage_id === g.stage_id || !done.has(v.stage_id));
   }
-  const titles = personTitles(rated);
+  const titles = personTitles(rated, liked);
   const body = {ready: true, ver, n_rated: rated.length, n_scored: groups.length, groups: kept, weights, w_counts: wCounts,
     titles: [...titles].filter(([k]) => kept.some(g => g.parts.slice(0, 4).some(p => p[1] + '\t' + p[2] === k) || g.kinds.slice(0, 2).some(p => p[1] + '\t' + p[2] === k)))};
   await db.prepare('INSERT INTO rec_cache(user_id,stamp,body,created_at) VALUES(?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET stamp=excluded.stamp,body=excluded.body,created_at=excluded.created_at')

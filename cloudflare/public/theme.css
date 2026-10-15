@@ -360,6 +360,9 @@ body{font-family:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",YuGothic,syst
 /* 日付の 3 つ（月日・曜日・年）は中身の幅で 1 行に並べる（別画面の .wd{width:150px} が効かないように） */
 .rec-row .dt>*{width:auto;min-width:0;flex:none;text-align:left}
 .rec-row .rb{margin-left:0}
+/* 未評価などの行の ◎○△×（星も同じ .rb の中）は、行の右端にそろえる（起案者の指示 2026-10-15「右寄せ」）。
+   評価一覧の押し直しの札（.rbpop）は浮かせて出すので対象外 */
+.rec-row .tools>.rb:not(.rbpop){flex:1 0 100%;justify-content:flex-end}
 
 /* ---- 日記帳・評価一覧などの切り替え（.idx の耳）── えんじの縁取りと塗りの「索引の耳」をやめ、
    行き先の帯と同じ形にする: 白い札に細い灰の線、いま開いているものだけ薄いえんじで塗る（下線は使わない）。

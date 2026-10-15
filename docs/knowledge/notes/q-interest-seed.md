@@ -1,7 +1,7 @@
 ---
 id: q-interest-seed
 type: question
-status: open
+status: answered
 date: 2026-10-14
 title: 「興味あり」を、お気に入りと同じ仮の ◎（seeds）として推薦の材料に入れるか。重みと、一覧にしかない公演の人物をどう引くか
 links:

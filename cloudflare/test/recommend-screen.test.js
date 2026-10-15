@@ -130,3 +130,31 @@ test('効かせ方: the sliders show the saved steps and the counts; "効かせ�
     assert.equal(theme.status, 400); assert.match(theme.body.error, /公開版では公演情報の編集はできません/);
   } finally { sqlite.close(); }
 });
+
+// 2026-10-15 起案者「一回その案にしてみて」（q-interest-seed）: 興味ありを押した公演は、お気に入りと同じ
+// 仮の ◎ になる。観た記録が無くても、一覧（catalogue）にだけある公演の出演欄からでも推薦が出る。
+test('興味あり alone, on a stage only the catalogue has, recommends the same people; 興味なし later takes it back', async () => {
+  const {env, sqlite} = await withIndex();
+  const a = await signIn(env), b = await signIn(env);
+  try {
+    sqlite.prepare("INSERT INTO catalogue(id,title,date,venue,url,metadata) VALUES('779','気になる新作','2026-12-01','劇場Z','',?)")
+      .run(JSON.stringify({end_date: '2026-12-05', fields: {出演: '俳優甲'}}));
+    assert.equal((await step(env, a, {post: '/api/react', body: {stage_id: '779', value: 'interest', nofill: true}})).status, 200);
+    const html = (await step(env, a, {get: '/api/screen/recommend'})).body.body_html;
+    assert.match(html, /<article class="ticket recommend" data-stage="101"/);
+    assert.match(html, /出演 <b>俳優甲<\/b><span class="n">（『気になる新作』）<\/span>/);
+    assert.doesNotMatch(html, /履歴 0 本/);
+    assert.doesNotMatch((await step(env, b, {get: '/api/screen/recommend'})).body.body_html, /<article/);
+    // The newest answer per stage counts (reaction keeps one row per day).
+    env.CLOCK = {today: env.CLOCK.today, now: env.CLOCK.now + 864e5 + 1000};
+    sqlite.exec("UPDATE reaction SET label='2000-01-01'");
+    assert.equal((await step(env, a, {post: '/api/react', body: {stage_id: '779', value: 'nointerest', nofill: true}})).status, 200);
+    assert.doesNotMatch((await step(env, a, {get: '/api/screen/recommend'})).body.body_html, /<article/);
+  } finally { sqlite.close(); }
+});
+
+test('a person raised only by pseudo ratings is not shown as 履歴 0 本', async () => {
+  const {reasonRows} = await import('../src/screens/recommend.js');
+  const html = reasonRows({parts: [[0.5, '脚本', '家丁', 0]], kinds: []}, new Map());
+  assert.match(html, /脚本 <b>家丁<\/b><span class="n">（お気に入り・興味ありの公演から）<\/span>/);
+});
