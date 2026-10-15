@@ -244,7 +244,7 @@ export async function buckets(ctx, {catalogue = false} = {}) {
     const {results} = await ctx.db.prepare(`SELECT ${META} FROM rec_card WHERE ver=(SELECT v FROM rec_meta WHERE k='rec_card') AND tour IN (${part.map(() => '?').join(',')})`).bind(...part).all();
     for (const r of results) { if (!venues.has(r.tour)) venues.set(r.tour, []); venues.get(r.tour).push(r); }
   }
-  const out = {tracking: [], favourites: [], owned: [], others: [], react, tickets, declared, words, declined, hits};
+  const out = {tracking: [], favourites: [], favOwned: [], owned: [], others: [], react, tickets, declared, words, declined, hits};
   const seen = new Set();
   const order = [...meta.values()].sort((a, b) => cmp(a.start || '9999', b.start || '9999') || cmp(a.stage_id, b.stage_id));
   for (const m of order) {
@@ -264,6 +264,11 @@ export async function buckets(ctx, {catalogue = false} = {}) {
       const done = doneDate(sids, row.end, tickets);
       if (done && done <= ctx.today) continue;
       out.owned.push(row);
+      // お気に入りの名前に当たる公演は、購入済みにしてもお気に入りの画面に残す（印を付けて。favOwned）。
+      // 起案者の指示（2026-10-15）「購入済み押してもお気に入りから消さないで」。カレンダー・開幕リマインドは
+      // 購入済みとして 1 回だけ出すので、favourites には入れない。
+      const fav = sids.find(s => hits.has(s));
+      if (fav) out.favOwned.push({...row, stage_id: fav, a: hits.get(fav).a, owned: true});
     } else if (r.interest === 1) { seen.add(key); out.tracking.push(row); }
     else if (r.interest === 0) { seen.add(key); out.others.push(row); }
     else if (hits.has(m.stage_id)) { seen.add(key); out.favourites.push({...row, stage_id: m.stage_id, a: hits.get(m.stage_id).a}); }
@@ -352,7 +357,7 @@ ${words.length ? tags : '<p class="empty">まだ 1 つも外していません�
 export async function favouritesScreen(params, ctx) {
   const b = await buckets(ctx, {catalogue: true});
   const nCat = Number((await ctx.db.prepare("SELECT v FROM rec_meta WHERE k='catalogue_upcoming'").first().catch(() => null))?.v || 0);
-  const favs = b.favourites, dec = b.declared;
+  const favs = [...b.favourites, ...b.favOwned].sort((x, y) => cmp(x.start || '9999', y.start || '9999') || cmp(x.stage_id, y.stage_id)), dec = b.declared;
   const [show, mfil, mfoot] = monthPick(favs, params.get('m') || '', qInt(params, 'p'), '/recommend/favourites');
   const kinds = KINDS.map(k => `<option value="${E(k)}">${E(k)}</option>`).join('');
   const tags = KINDS.flatMap(k => (dec[k] || []).map(n => `<span class="tag" data-kind="${E(k)}" data-name="${E(n)}">`
@@ -366,9 +371,9 @@ export async function favouritesScreen(params, ctx) {
     + '<b>表記ゆれ（漢字とカタカナ、送り仮名の違いなど）は自動では気づけません。</b>ありそうなときは、両方の書き方をそれぞれ登録してください。</p>'
     + `<div class="fav-add"><select id="fav-kind">${kinds}</select> <input id="fav-name" type="text" placeholder="団体名・人名・作品名・題材" size="26"> <button data-fav="add">登録する</button>`
     + `<span class="said"></span></div><div class="tags">${tags}</div></details>${declinedBox(b.words)}</div>`;
-  const why = r => ({why: r.a.map(w => `<li class="rs a"><span class="net">お気に入り</span>登録した${E(w)}の公演です<span class="src">［出典: ${E(ROLE_SRC)}］</span></li>`).join('')});
+  const why = r => ({owned: Boolean(r.owned), why: r.a.map(w => `<li class="rs a"><span class="net">お気に入り</span>登録した${E(w)}の公演です<span class="src">［出典: ${E(ROLE_SRC)}］</span></li>`).join('')});
   const list = favs.length
-    ? '<p class="lead"><b>上演日の近い順</b>に並んでいます。順位は付けていません。観ると決めたら、公式サイトから券を求めてください。<b>券を取ったら「購入済みにする」を押してください。</b><a href="/tickets?t=__TAGURI_TOKEN__">購入済み公演</a>に移り、行く日を入れられます。</p>'
+    ? '<p class="lead"><b>上演日の近い順</b>に並んでいます。順位は付けていません。観ると決めたら、公式サイトから券を求めてください。<b>券を取ったら「購入済みにする」を押してください。</b>この一覧には「購入済み」の印を付けて残し、<a href="/tickets?t=__TAGURI_TOKEN__">購入済み公演</a>にも入ります（行く日はそちらで入れられます）。</p>'
       + `<div class="tickets">${(await cards(ctx, show, 'favourite', why)).join('')}</div>`
     : `<p class="empty">登録した名前に当たる公演は、いまたぐりが集めている公演${nCat ? `（CoRich・ステイジーズカレンダーから毎日集めている、これからの公演 ${nCat} 件）` : ''}の中にはありません。<b>新しい公演が集まると、毎日の更新のあと、ここに出ます。</b>表記ゆれ（漢字とカタカナなど）があるときは、別の書き方も登録してみてください。</p>`;
   const body = `<h1>お気に入り ── 新着 ${favs.length} 件</h1>

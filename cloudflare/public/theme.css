@@ -750,6 +750,18 @@ a.htag-in:hover{text-decoration:underline}
 .dgli.dgfold .dginfo{flex:1 1 auto;min-width:0;font-size:13px}
 .dgli.dgfold .btns{display:grid;margin:10px 0 0 21px;padding:0;border:0}
 @media(max-width:560px){.dgli.dgfold .btns,.dgli.dgfold .dgdetail{margin-left:0}}
+/* スマホで枠が画面の右へはみ出し、ページ全体が横に広がって縮んで見えていた（起案者の指摘 2026-10-15
+   「開幕リマインドのスマホからの見え方どうにかして」）。原因は 2 つ: 一覧（grid）の列が中身の最小幅まで
+   広がっていたこと、開幕日・劇場の行（.dgw）が折り返さなかったこと。列を画面の幅に収め、劇場名は折り返す。 */
+.dglist{grid-template-columns:minmax(0,1fr)}
+.dglist>li{min-width:0}
+@media(max-width:560px){
+ .dgcard{padding:14px 12px 12px}
+ .dgw{white-space:normal;overflow-wrap:anywhere;flex-basis:100%}
+ .dgli.dgfold{padding:10px 12px}
+ .dgli.dgfold .btns{grid-template-columns:repeat(3,minmax(0,1fr));width:100%}
+ .dgli.dgfold .btns button{min-width:0;padding-left:4px;padding-right:4px}
+ .dgli.dgfold .dgdetail{flex-wrap:wrap}}
 
 /* 観た回の出演者（Wキャスト・休演）を選ぶ欄。チェックは折り返して並べる（起案者の指示 2026-10-15） */
 .ed-cast .ed-castl{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:6px;width:100%}
@@ -786,3 +798,8 @@ a.htag-in:hover{text-decoration:underline}
  .ticker .tkview{overflow-x:auto;-webkit-mask-image:none;mask-image:none}
  .ticker .tkrun[aria-hidden]{display:none}
  .ticker .tkstop{display:none}}
+
+/* お気に入りの、購入済みにした公演の印（起案者の指示 2026-10-15「購入済み押してもお気に入りから消さないで」） */
+.ticket.favourite .owned-mark{display:inline-block;font-size:13px;font-weight:700;color:var(--ink2);
+ padding:4px 10px;border:1px solid var(--ring);border-radius:99px;background:var(--plane)}
+.ticket.favourite .owned-mark a{font-weight:400}
