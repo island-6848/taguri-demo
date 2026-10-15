@@ -29,11 +29,16 @@ test('a new user rates with stars; the saved n/5 shows as ★n and groups on the
     assert.equal(sqlite.prepare('SELECT verdict FROM works WHERE work_key=?').get(k).verdict, '4/5');
     const rate = (await step(env, a, {get: '/api/screen/rate'})).body.body_html;
     assert.match(rate, /星の数ごとに分けています/);
-    assert.match(rate, /class="stamp" data-stamp="1"[^>]*>★4<\/span>/);
+    // 星の行には余白の丸い判子を出さず、星の列を常に出す（起案者 2026-10-15「下に星で表示されるんなら、〇の枠いらなくない？」）
+    assert.doesNotMatch(rate, /data-stamp="1"/);
+    assert.doesNotMatch(rate, /data-rate-open/);
     assert.match(rate, /<td>★4<\/td>/);
     // the stars up to the rating are filled (★★★★☆) when the rating is opened again
     assert.match(rate, /(<button class="star on" data-v="[1-4]\/5"[^>]*><\/button>){4}<button class="star" data-v="5\/5"/);
     assert.equal((await step(env, a, {post: '/api/rate', body: {work_key: k, verdict: '6/5'}})).status, 400);
+    // 図形の段階では判子のまま
+    await step(env, a, {post: '/api/rating_scale', body: {scale: 'marks4'}});
+    assert.match((await step(env, a, {get: '/api/screen/rate'})).body.body_html, /class="stamp" data-stamp="1"[^>]*>★4<\/span>/);
   } finally { sqlite.close(); }
 });
 
@@ -77,7 +82,7 @@ test('the scale is chosen on 設定; old ratings keep their own scale', async ()
     assert.equal((await step(env, a, {post: '/api/rate', body: {work_key: k2, verdict: '2/3'}})).status, 200);
     assert.equal((await step(env, a, {post: '/api/rate', body: {work_key: k2, verdict: '4/3'}})).status, 400);
     const rate = (await step(env, a, {get: '/api/screen/rate?v=all'})).body.body_html;
-    assert.match(rate, /data-stamp="1"[^>]*>★5<\/span>/);       // the old star rating stays a star
+    assert.match(rate, /data-stamp="1"[^>]*>★5<\/span>/);       // the old star rating stays a star (a stamp: the buttons are ○△× now)
     assert.match(rate, /data-stamp="1"[^>]*>△<\/span>/);
     assert.match(rate, /<tr data-v="2\/3"><td>△<\/td>/);
     await step(env, a, {post: '/api/rating_scale', body: {scale: 'stars11'}});

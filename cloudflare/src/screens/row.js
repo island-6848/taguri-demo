@@ -2,7 +2,7 @@
 // Ports of tools/taguri/app.py (_rec_row, _impression_parts, _stamp,
 // _date_parts, _venue_of, _edit_html, _hand_html, stage_label), charts._anchor
 // and icons.ico/h2. Each returns exactly the Python HTML.
-import {gradeButtons, gradeText} from './grade.js';
+import {gradeButtons, gradeText, parts} from './grade.js';
 import {pastStages} from './autolink.js';
 import {E, WS, strip, cmp} from './py.js';
 import {handCreditCount} from './credits.js';
@@ -136,6 +136,12 @@ function castHtml(people) {
 export function recRow(w, {poster = '', rateAlways = false, editable = false, rateReopen = false, label = '', idSuffix = '', extra = '', scale = 'marks'} = {}) {
   const v = w.verdict || '';
   const unseen = Boolean(w.unseen);
+  // 星の段階で付ける（付けた）行は、星の列そのものが評価を見せるので、余白の丸い判子を出さず、星を常に出す
+  // （起案者の指示 2026-10-15「下に星で表示されるんなら、〇の枠いらなくない？図形のときはあってもいいかも」）。
+  // 付けた星と今の段階が違う（★4 のあと ○△× に変えた等）ときは、星の列に出ないので判子で見せる。
+  const L = parts(v)?.[1];
+  const starRow = !unseen && (v ? (L === 5 && scale === 'stars5') || (L === 11 && scale === 'stars11') : scale === 'stars5' || scale === 'stars11');
+  if (starRow) rateAlways = true;
   let rate;
   if (unseen) {
     rate = `<span class="rb notseen" data-work="${E(w.work_key)}">`
@@ -170,7 +176,7 @@ export function recRow(w, {poster = '', rateAlways = false, editable = false, ra
     + ` id="w-${E(anchor(w.work_key))}${E(idSuffix)}"`
     // 評価の「詳細」（気になった所・良かった所。app.js の aspectsPanel が読む）
     + ` data-aspects="${E(w.aspects || '')}">`
-    + `<span class="marg">${dt}${unseen ? '' : stamp(w, gradeText(v))}</span>`
+    + `<span class="marg">${dt}${unseen || starRow ? '' : stamp(w, gradeText(v))}</span>`
     + `<div class="page">`
     + `<div class="ttl">${E(w.title)}</div>`
     + (where ? `<div class="where">${where}</div>` : '')
