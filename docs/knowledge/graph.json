@@ -3501,6 +3501,15 @@
    "verifies": []
   },
   {
+   "id": "q-interest-why-unknown",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-15",
+   "title": "興味ありの理由は主演とは限らない。役の格で配る（dec-part-tiers-tome）のを弱めるか外して、何件にも共通するもの・興味なしとの比べ・本人の好みで「なぜ」を推し量る方に任せるか",
+   "sources": [],
+   "verifies": []
+  },
+  {
    "id": "q-lockfile-reproducible",
    "type": "question",
    "status": "open",
@@ -7297,6 +7306,16 @@
    "from": "q-interest-seed",
    "rel": "affects",
    "to": "impl-person-ordinal-v3"
+  },
+  {
+   "from": "q-interest-why-unknown",
+   "rel": "affects",
+   "to": "dec-part-tiers-tome"
+  },
+  {
+   "from": "q-interest-why-unknown",
+   "rel": "affects",
+   "to": "impl-interest-split"
   },
   {
    "from": "q-lockfile-reproducible",
