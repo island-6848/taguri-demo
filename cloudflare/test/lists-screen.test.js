@@ -387,3 +387,23 @@ test('購入済みにする on お気に入り adds the stage to 購入済み公
     assert.match(t, /<article class="ticket owned" data-stage="101"/);
   } finally { sqlite.close(); }
 });
+
+test('人 matches the whole name: 上村聡 does not pick up 上村聡史 (起案者 2026-10-15)', async () => {
+  const {env, sqlite} = withIndex();
+  const a = await signIn(env);
+  try {
+    const add = (id, title, cast) => sqlite.prepare("INSERT INTO catalogue(id,title,date,venue,url,metadata) VALUES(?,?,'2026-10-20','劇場Q','',?)")
+      .run(id, title, JSON.stringify({end_date: '2026-10-25', fields: {'出演': cast, '演出': '演出家丙'}}));
+    add('961', '聡の舞台', '上村 聡、俳優乙');
+    add('962', '聡史の舞台', '俳優乙');
+    sqlite.prepare("UPDATE catalogue SET metadata=? WHERE id='962'").run(JSON.stringify({end_date: '2026-10-25', fields: {'出演': '俳優乙', '演出': '上村聡史'}}));
+    await step(env, a, {post: '/api/favourite', body: {action: 'add', kind: '人', name: '上村聡'}});
+    const fav = (await screen(env, a, 'favourites')).body_html;
+    assert.match(fav, /data-stage="961"/);
+    assert.doesNotMatch(fav, /data-stage="962"/);
+    assert.match(fav, /新着 1 件/);
+    // 名前全体なら当たる
+    await step(env, a, {post: '/api/favourite', body: {action: 'add', kind: '人', name: '上村聡史'}});
+    assert.match((await screen(env, a, 'favourites')).body_html, /新着 2 件[\s\S]*data-stage="962"/);
+  } finally { sqlite.close(); }
+});

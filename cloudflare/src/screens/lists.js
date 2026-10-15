@@ -9,6 +9,7 @@
 // Left out for now: the name candidates picked from notes (reasons.promotions /
 // demotions), the matching of a subject word inside a longer registered subject.
 import {stageInfo, fallbackTemplate} from './fallback.js';
+import {parseCredits} from './credits.js';
 import {E, ValueError} from './py.js';
 import {compose, cardTemplates, posterHtml, mytixHtml, preNote} from './cards.js';
 import {titleKey} from './works.js';
@@ -157,6 +158,28 @@ export async function cardMeta(ctx, sids) {
   return out;
 }
 
+/**
+ * 人で登録した名前は、名前の一部ではなく名前全体で当てる（起案者の指摘 2026-10-15「お気に入りで「上村聡」を
+ * 登録したら、「上村聡史」まで拾っちゃってる」）。本文の文字列（blob）は空白を詰めてあるので、文字列の中で
+ * 名前の切れ目は分からない。そこで、当たった公演の出演・スタッフ欄を名前ごとに切り分け（credits.parseCredits）、
+ * 登録した名前と同じ名前があるときだけ残す。欄を読めない公演（出演欄が無い等）は、これまでどおり文字列で当てる。
+ */
+async function wholePersonNames(ctx, hits, declared) {
+  const persons = declared['人'] || [];
+  if (!persons.length) return;
+  const sids = [...hits].filter(([, h]) => h.a.some(x => x.startsWith('人「'))).map(([sid]) => sid);
+  if (!sids.length) return;
+  const info = await stageInfo(ctx.db, sids);
+  for (const sid of sids) {
+    const people = parseCredits(info.get(sid)?.fields || {});
+    if (!people.length) continue;
+    const names = new Set(people.map(([, n]) => nz(n)));
+    const h = hits.get(sid);
+    h.a = h.a.filter(x => !x.startsWith('人「') || names.has(nz(x.slice(2, -1))));
+    if (!h.a.length) hits.delete(sid);
+  }
+}
+
 /** Productions of the stages matching the user's registered names / words not to show. */
 export async function nameHits(ctx, declared, words, {catalogue = false} = {}) {
   const needles = [];
@@ -171,6 +194,7 @@ export async function nameHits(ctx, declared, words, {catalogue = false} = {}) {
     const a = declaredLabels(m, declared);
     if (a.length) hits.set(sid, {meta: m, a});
   }
+  await wholePersonNames(ctx, hits, declared);
   const dec = new Map();
   if (words.length) {
     const rows = await cardsMatching(ctx, words.flatMap(w => [['blob', nz(w)], ['ws', nz(w)]]));
