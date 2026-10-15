@@ -1,43 +1,122 @@
-// 評価の段階: ◎○△× (4 段階) か、星 5 段階 ("n/5")。
+// 評価の段階。本人が設定で選ぶ（図形か星か）。
 //
-// 起案者の指示（2026-10-14）「星5段階を初期設定にして。言葉の案は逆に決めないほうがいい
-// んじゃない？勝手に個人が思ってる尺度でつけていっても、位置zに直すんだよね」
-// (docs/knowledge: dec-star-default)。推薦は評価を本人の中での位置に直すので
-// (recommend.gradeOf / personValues)、星の意味は人ごとに違ってよく、段階に言葉は添えない。
+// 起案者の指示（2026-10-14）は次の 3 つ。
+// - 「星5段階を初期設定にして。言葉の案は逆に決めないほうがいいんじゃない？勝手に個人が思ってる尺度で
+//   つけていっても、位置zに直すんだよね」(docs/knowledge: dec-star-default)
+// - 「オーソドックスなのだけ実用化してほしい。2段階（単純に○×）、3段階（○×△）、と11段階（星0.5きざみ）。
+//   星にするか図形にするかは自分で選べるようにして」(dec-rating-scales)
+// 推薦は評価を本人の中での位置に直して使う（recommend.gradeOf / personValues、段階ごとに別々）。そのため段階が
+// 人ごとに違っても、途中で変えても成り立ち、段階に言葉は添えない。
 //
-// まだ ◎○△× で 1 件も評価していない人は星、すでに ◎○△× で付けている人はそのまま
-// ◎○△×（1 人の記録に 2 つの段階を混ぜない）。保存は "n/5"（例 "4/5"）で、表示は ★n。
-// 色・並び・「最上位」の判定は、星を ◎○△× の側に読み替えて使う（★3 は真ん中で、どちらでもない）。
+// 選べる段階（保存の形）は次の 5 つ。
+//   図形: marks2 ○×（"2/2" "1/2"）、marks3 ○△×（"3/3" "2/3" "1/3"）、marks4 ◎○△×（"◎" など。前からの形）
+//   星:   stars5 ★1〜★5（"n/5"）、stars11 ★0〜★5 の 0.5 きざみ（"n/11"、★ = (n−1)/2）
+// 付けた評価は付けたときの段階のまま残り、表示もその段階で出す（段階を変えても書き換えない）。
+// 設定が無ければ、◎○△× で付けたことのある人は marks4、ほかは stars5。
+// 色・並び・「最上位」の判定は、段階の中での位置 f（最低 0〜最高 1）で決める。
+
+import {ValueError} from './py.js';
 
 export const MARKS = ['◎', '○', '△', '×'];
-export const STARS = ['5/5', '4/5', '3/5', '2/5', '1/5'];          // 高い順（並べるとき）
-const STAR = /^([1-5])\/5$/;
-const STAR_AS_MARK = {5: '◎', 4: '○', 3: '', 2: '△', 1: '×'};
+export const SCALES = ['marks2', 'marks3', 'marks4', 'stars5', 'stars11'];
+export const SCALE_LABEL = {marks2: '○×（2 段階）', marks3: '○△×（3 段階）', marks4: '◎○△×（4 段階）',
+  stars5: '★（5 段階）', stars11: '★ 0.5 きざみ（11 段階）'};
+const MARK_F = {'◎': 1, '○': 2 / 3, '△': 1 / 3, '×': 0};
+const SHAPE = {2: {2: '○', 1: '×'}, 3: {3: '○', 2: '△', 1: '×'}};
+const SCALED = /^(\d{1,2})\/(2|3|5|11)$/;
 
-export const isStar = v => STAR.test(String(v ?? ''));
-/** What a saved rating shows as: ◎ as is, "4/5" as ★4. */
-export const gradeText = v => (isStar(v) ? '★' + String(v).slice(0, 1) : String(v ?? ''));
-/** A star read as the mark on the same side (for colours and "liked"); ★3 is ''. */
-export const markOf = v => (isStar(v) ? STAR_AS_MARK[String(v).slice(0, 1)] : String(v ?? ''));
-/** The top of its scale (◎ or ★5). */
-export const isTop = v => v === '◎' || v === '5/5';
+/** [n, L] of a saved "n/L" on a scale this screen offers (2, 3, 5, 11), else null. */
+export function parts(v) {
+  const m = SCALED.exec(String(v ?? ''));
+  if (!m) return null;
+  const n = Number(m[1]), L = Number(m[2]);
+  return n >= 1 && n <= L ? [n, L] : null;
+}
+/** A saved "n/L" rating (not ◎○△×). */
+export const isScaled = v => parts(v) !== null;
+/** A star rating ("n/5" or "n/11"). */
+export const isStar = v => { const p = parts(v); return Boolean(p) && (p[1] === 5 || p[1] === 11); };
+/** Place within its scale: 0 (lowest) .. 1 (highest), or null for no rating. */
+export function frac(v) {
+  if (Object.hasOwn(MARK_F, v)) return MARK_F[v];
+  const p = parts(v);
+  return p ? (p[0] - 1) / (p[1] - 1) : null;
+}
+const starsOf = (n, L) => (L === 11 ? (n - 1) / 2 : n);
+/** What a saved rating shows as: ◎ / ○ / ★4 / ★3.5. */
+export function gradeText(v) {
+  const p = parts(v);
+  if (!p) return String(v ?? '');
+  const [n, L] = p;
+  return SHAPE[L] ? SHAPE[L][n] : '★' + starsOf(n, L);
+}
+/** The side of a rating as a mark (for colours): top ◎, above the middle ○, below △, bottom ×, middle ''. */
+export function markOf(v) {
+  if (Object.hasOwn(MARK_F, v)) return v;
+  const f = frac(v);
+  if (f === null) return String(v ?? '');
+  return f === 1 ? '◎' : f === 0 ? '×' : f > 0.5 ? '○' : f < 0.5 ? '△' : '';
+}
+/** The top of its scale (◎, ○ of ○×/○△×, ★5). */
+export const isTop = v => frac(v) === 1;
 
-/** 'marks' if the user has rated with ◎○△×, else 'stars' (the default). Cached on ctx. */
+/** Every grade, best first within each scale (the order the rate screen lists them in). */
+export const ALL_GRADES = [...MARKS,
+  ...[5, 4, 3, 2, 1].map(n => `${n}/5`), ...Array.from({length: 11}, (_, i) => `${11 - i}/11`),
+  '3/3', '2/3', '1/3', '2/2', '1/2'];
+
+/** The user's scale: the saved setting, else marks4 if they have rated with ◎○△×, else stars5. Cached on ctx. */
 export async function scaleOf(ctx) {
   if (ctx._scale) return ctx._scale;
+  const set = await ctx.db.prepare("SELECT value FROM app_setting WHERE user_id=? AND key='rating_scale'").bind(ctx.uid).first();
+  if (set && SCALES.includes(set.value)) return (ctx._scale = set.value);
   const row = await ctx.db.prepare(`SELECT 1 AS x FROM works WHERE user_id=? AND verdict IN ('◎','○','△','×') LIMIT 1`).bind(ctx.uid).first();
-  ctx._scale = row ? 'marks' : 'stars';
-  return ctx._scale;
+  return (ctx._scale = row ? 'marks4' : 'stars5');
 }
 
 /**
- * The rating buttons: ◎○△×, or a row of five stars ☆☆☆☆☆ (起案者の指示 2026-10-14「☆☆☆☆☆みたいなの
- * 表示されてて、自分が思ってる評価のとこ押したらそこまで星の色がつく、みたいなuiにして」).
- * Each star is a button for "n/5"; the ones up to the current rating carry .on (filled ★, style in
- * theme.css), and app.js fills up to the pressed one at once.
+ * The rating buttons for a scale. Shapes are round buttons (as ◎○△× always were). Stars are a row of ☆
+ * filled up to the rating (起案者 2026-10-14「☆☆☆☆☆みたいなの表示されてて、自分が思ってる評価のとこ押したら
+ * そこまで星の色がつく」): stars5 has one button per star; stars11 a 0 button and two halves per star
+ * (left = .5, right = whole), the star filled half or whole (.h / .on). app.js fills at once on a press.
  */
 export function gradeButtons(scale, current = '') {
-  if (scale !== 'stars') return MARKS.map(g => `<button data-v="${g}">${g}</button>`).join('');
-  const now = isStar(current) ? Number(String(current).slice(0, 1)) : 0;
-  return [1, 2, 3, 4, 5].map(n => `<button class="star${n <= now ? ' on' : ''}" data-v="${n}/5" aria-label="星 ${n}"></button>`).join('');
+  const btn = (v, text) => `<button data-v="${v}">${text}</button>`;
+  if (scale === 'marks2') return btn('2/2', '○') + btn('1/2', '×');
+  if (scale === 'marks3') return btn('3/3', '○') + btn('2/3', '△') + btn('1/3', '×');
+  if (scale === 'stars5') {
+    const now = parts(current)?.[1] === 5 ? parts(current)[0] : 0;
+    return [1, 2, 3, 4, 5].map(n => `<button class="star${n <= now ? ' on' : ''}" data-v="${n}/5" aria-label="星 ${n}"></button>`).join('');
+  }
+  if (scale === 'stars11') {
+    const now = parts(current)?.[1] === 11 ? (parts(current)[0] - 1) / 2 : -1;
+    return `<button class="star0${now === 0 ? ' on' : ''}" data-v="1/11" aria-label="星 0">0</button>`
+      + [1, 2, 3, 4, 5].map(k => `<span class="hs${now >= k ? ' on' : now === k - 0.5 ? ' h' : ''}">`
+        + `<button class="half l" data-v="${2 * k}/11" aria-label="星 ${k - 0.5}"></button>`
+        + `<button class="half r" data-v="${2 * k + 1}/11" aria-label="星 ${k}"></button></span>`).join('');
+  }
+  return MARKS.map(g => btn(g, g)).join('');
+}
+
+/** The 評価の付け方 card on 設定: shapes or stars, and how many steps. */
+export function scaleCardHtml(scale, head = `<summary><h2>評価の付け方</h2></summary>`) {
+  const opt = s => `<label class="pchip${s === scale ? ' on' : ''}"><input type="radio" name="rscale" value="${s}"${s === scale ? ' checked' : ''}>`
+    + `<span class="pl">${SCALE_LABEL[s]}</span></label>`;
+  return `<details class="card">${head}
+<p class="lead">観た公演に付ける評価の形を選べます。<b>段階の意味は自分の尺度で構いません。</b>おすすめは、自分の付けた評価の中での高い・低いで読むので、どの形でも同じように効きます。<br>
+<b>変えても、これまでに付けた評価はそのまま残ります</b>（付けたときの形で表示します）。</p>
+<form class="pfil" id="scale-setting" onsubmit="return false">
+<p class="pgrp"><b>図形</b></p><div class="pchips">${['marks2', 'marks3', 'marks4'].map(opt).join('')}</div>
+<p class="pgrp"><b>星</b></p><div class="pchips">${['stars5', 'stars11'].map(opt).join('')}</div>
+<div class="pfoot"><button type="button" data-set-scale="1">この形にする</button><span class="said"></span></div>
+</form></details>`;
+}
+
+/** POST /api/rating_scale {scale} */
+export async function scaleAction(b, ctx) {
+  const scale = String(b?.scale ?? '');
+  if (!SCALES.includes(scale)) throw new ValueError('その形は選べません');
+  await ctx.db.prepare("INSERT INTO app_setting(user_id,key,value,updated_at) VALUES(?, 'rating_scale', ?, datetime('now')) ON CONFLICT(user_id,key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at")
+    .bind(ctx.uid, scale).run();
+  return {body: {ok: true, scale}};
 }

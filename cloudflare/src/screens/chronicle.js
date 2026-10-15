@@ -3,7 +3,7 @@
 // 順に移して」). chronicle.test.js checks it against chronicle.panel on the same records.
 // The subject and tone words of the works seen (themes.jsonl, rated side) are the owner's
 // batch output, so `themes` is empty here (as in Python without that file).
-import {isTop, isStar, gradeText} from './grade.js';
+import {isTop, isScaled, gradeText} from './grade.js';
 import {E, fmtF} from './py.js';
 import {h2} from './icons.js';
 import {anchor} from './row.js';
@@ -161,7 +161,7 @@ function workLink(title, links) {
   return `<a href="${ROW_HREF}&amp;w=${E(a)}#w-${E(a)}" title="${E(title)}">${E(cut(title))}</a>`;
 }
 /** The top grade's name in these records (★5 for a star user). */
-const topOf = ms => (ms.some(m => isStar(m.verdict)) ? '★5' : '◎');
+const topOf = ms => { const t = ms.find(m => isScaled(m.verdict) && isTop(m.verdict)); return t ? gradeText(t.verdict) : '◎'; };
 function chips(y, links, top = '◎') {
   const out = [];
   if (y.new_venues.length) out.push(`<li><b>初めて行った劇場</b>${E(y.new_venues.slice(0, 3).join('／'))}</li>`);

@@ -136,6 +136,21 @@ body{font-family:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",YuGothic,syst
 .rb button.star.on::before,.rb button.star:hover::before,.rb button.star:has(~ .star:hover)::before{content:"★"}
 .rb button.star:hover{background:none;color:var(--curtain)}
 .rb.done button.star{opacity:1}
+/* 星 0.5 きざみ（11 段階）: 0 の札と、半分ずつ押せる星 5 つ。押した所までを ★ で塗り、半分は左半分だけ塗る */
+.rb:has(> .hs){gap:0;align-items:center}
+.rb button.star0{width:30px;min-width:30px;height:40px;border:0;border-radius:6px;background:none;padding:0;
+ color:var(--mute);font-size:13px;font-weight:700}
+.rb button.star0.on{color:var(--curtain);text-decoration:underline}
+.rb .hs{position:relative;display:inline-block;width:36px;height:40px;color:var(--curtain);font-size:28px;
+ line-height:40px;text-align:center;font-family:system-ui,sans-serif}
+.rb .hs::before{content:"☆"}
+.rb .hs::after{content:"★";position:absolute;left:0;top:0;width:100%;text-align:center;clip-path:inset(0 100% 0 0)}
+.rb .hs.h::after{clip-path:inset(0 50% 0 0)}
+.rb .hs.on::after{clip-path:none}
+.rb .hs .half{position:absolute;top:0;width:50%;min-width:0;height:100%;border:0;border-radius:0;background:none;padding:0;z-index:1}
+.rb .hs .half.l{left:0}
+.rb .hs .half.r{right:0}
+.rb.done button.star0{opacity:1}
 .rb.notseen button{width:auto;height:auto;min-height:40px;border-radius:8px;padding:0 12px;
  font-family:inherit;font-size:12.5px}
 

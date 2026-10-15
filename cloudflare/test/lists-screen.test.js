@@ -318,6 +318,33 @@ test('公演カレンダー shows an owned stage that only the catalogue has', a
     assert.match(owned, /一覧だけの舞台/);
     assert.match(owned, /data-btns-open="1">回答を直す<\/button><span class="btns" hidden data-stage="778">/);
     assert.match((await screen(env, a, 'calendar')).body_html, /一覧だけの舞台/);
+    // 2026-10-15 起案者「場所絞ったら公演カレンダー0件になる」: the catalogue has no prefecture, so a
+    // place filter cannot show it; the calendar says how many it left out instead of a silent 0.
+    const tokyo = (await screen(env, a, 'calendar', '?pref=' + encodeURIComponent('東京都'))).body_html;
+    assert.match(tokyo, /都道府県が分からない公演が 1 件あり、場所で絞ると出せません/);
+    // 開幕リマインド keeps them, below the chosen prefecture's list (it is there so nothing opens unnoticed).
+    const rem = (await screen(env, a, 'reminder', '?f=1&pref=' + encodeURIComponent('東京都'))).body_html;
+    assert.match(rem, /<summary>都道府県が分からない公演 ── 1 件<\/summary>[\s\S]*一覧だけの舞台[\s\S]*<\/section>\n<section class="dgcard">/);
+  } finally { sqlite.close(); }
+});
+
+// 2026-10-15 起案者「都道府県がわからない作品しかない」: the catalogue has no prefecture, venue_pref
+// (migration 0024, delivered by deliver_catalogue.py) gives it by venue, so the place filters keep the stage.
+test('a catalogue stage takes its prefecture from venue_pref', async () => {
+  const {env, sqlite} = withIndex();
+  const a = await signIn(env);
+  try {
+    env.CLOCK = {today: '2026-10-20', now: Date.parse('2026-10-20T03:00:00Z')};
+    sqlite.prepare("INSERT INTO catalogue(id,title,date,venue,url,metadata) VALUES('779','劇場の分かる舞台','2026-10-25','劇場Z','',?)")
+      .run(JSON.stringify({end_date: '2026-11-03'}));
+    sqlite.prepare("INSERT INTO venue_pref(venue,pref) VALUES('劇場Z','大阪府')").run();
+    await step(env, a, {post: '/api/react', body: {stage_id: '779', value: 'owned', nofill: true}});
+    const cal = (await screen(env, a, 'calendar', '?pref=' + encodeURIComponent('大阪府'))).body_html;
+    assert.match(cal, /劇場の分かる舞台/);
+    assert.doesNotMatch(cal, /都道府県が分からない公演/);
+    const rem = (await screen(env, a, 'reminder', '?f=1&pref=' + encodeURIComponent('大阪府'))).body_html;
+    assert.match(rem, /<b>大阪府<\/b>で観られる、[^<]*に開幕する公演が <b>1 件<\/b>/);
+    assert.doesNotMatch(rem, /都道府県が分からない公演/);
   } finally { sqlite.close(); }
 });
 

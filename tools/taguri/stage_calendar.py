@@ -372,8 +372,13 @@ def panel(d: dict, today: dt.date | None = None, tickets: dict | None = None,
     # 外した選択肢が「0 件」に見えて選び直せなくなる（`filter_html` と同じ判断）。
     view = [r for r in rows if r["key"] in keep_k
             and (sel_prefs is None or r["pref"] in sel_prefs)]
+    # 都道府県が分からない公演は、場所で絞ると出せない。黙って消すと「絞ったら 0 件」に見えるので、
+    # 件数を言う（起案者の指摘 2026-10-15「場所絞ったら公演カレンダー0件になる」。Worker の calendar.js と同じ）
+    n_unknown = 0 if sel_prefs is None else sum(1 for r in rows if r["key"] in keep_k and not r["pref"])
+    unknown = (f'<p class="lead"><b>都道府県が分からない公演が {n_unknown} 件あり、場所で絞ると出せません。</b>'
+               f'<a href="/calendar?t=__TAGURI_TOKEN__">絞り込みを外す</a>と表示されます。</p>' if n_unknown else "")
     if not view:
-        return (f'{filt}<p class="empty">選んだ条件に一致する公演がありません。'
+        return (f'{filt}{unknown}<p class="empty">選んだ条件に一致する公演がありません。'
                 f'<a href="/calendar?t=__TAGURI_TOKEN__">絞り込みを外してください</a>。</p>')
 
     legend = "".join(
@@ -399,7 +404,7 @@ def panel(d: dict, today: dt.date | None = None, tickets: dict | None = None,
             f'このカレンダーには表示していません。</b>「おすすめ ▸ 興味あり／お気に入り」の一覧には'
             f'出ているので、そちらで確認してください。</p>' if over else "")
 
-    return (f'{filt}<p class="lead">帯の<b>右端が楽日</b>、つまり締切です。'
+    return (f'{filt}{unknown}<p class="lead">帯の<b>右端が楽日</b>、つまり締切です。'
             f'縦に目を落とすと、その日に何本かかっているかが数えられます。'
             f'<b>土曜は青、日曜は赤</b>で示してあります。</p>'
             f'<div class="cal-legend">{legend}</div>'

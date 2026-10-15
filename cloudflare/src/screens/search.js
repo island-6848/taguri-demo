@@ -261,7 +261,7 @@ export async function searchScreen(params, ctx) {
     body = searchFollow(dec, names) + upHtml + '<h2>観た記録</h2><p class="empty">観た記録の中には見つかりませんでした。</p>' + web + cal;
   } else {
     const nUn = hits.filter(([w]) => !w.verdict).length;
-    const lead = `<h2>観た記録 ${hits.length} 件</h2>` + (nUn ? `<p class="lead">このうち ${nUn} 件はまだ評価が付いていません。<b>この場で${await scaleOf(ctx) === 'stars' ? '★' : ' ◎○△× '}を押せます。</b></p>`
+    const lead = `<h2>観た記録 ${hits.length} 件</h2>` + (nUn ? `<p class="lead">このうち ${nUn} 件はまだ評価が付いていません。<b>この場で${{marks4: ' ◎○△× ', stars5: '★', stars11: '★'}[await scaleOf(ctx)] || '評価'}を押せます。</b></p>`
       : '<p class="lead">評価を付け直すことも、感想を足すこともできます。</p>');
     const why = new Map(hits.map(([w, h]) => [w.work_key, h]));
     body = searchFollow(dec, names) + upHtml + lead + await foundRows(ctx, hits.map(([w]) => w), people, w => why.get(w.work_key)) + web + cal;

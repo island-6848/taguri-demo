@@ -248,7 +248,7 @@ const chunk90 = xs => Array.from({length: Math.ceil(xs.length / 90)}, (_, i) => 
  * index does not have. The index is replaced only on days its rows fit the write
  * budget (deliver_catalogue.py skips it otherwise), so on its own it can go stale and
  * leave this screen empty; the catalogue is upserted every day (changed rows only).
- * Catalogue rows carry no prefecture, so they are left out when prefectures are chosen.
+ * Catalogue rows carry no prefecture of their own; it comes from venue_pref (by venue name) when known.
  */
 export async function openingCandidates(ctx) {
   const hi = addDays(ctx.today, WINDOW * WEEKS.length - 1);
@@ -256,14 +256,15 @@ export async function openingCandidates(ctx) {
     .bind(ctx.today, hi).all();
   const out = results.map(r => ({...JSON.parse(r.entry || '{}'), title: r.title, stage_id: r.stage_id}));
   const have = new Set(out.map(c => String(c.stage_id)));
-  const cat = await ctx.db.prepare('SELECT id,title,date,venue,url,metadata FROM catalogue WHERE date>=? AND date<=? ORDER BY id').bind(ctx.today, hi).all();
+  // The catalogue has no prefecture; venue_pref (migration 0024) gives it by venue name.
+  const cat = await ctx.db.prepare('SELECT c.id,c.title,c.date,c.venue,c.url,c.metadata,vp.pref AS vpref FROM catalogue c LEFT JOIN venue_pref vp ON vp.venue=c.venue WHERE c.date>=? AND c.date<=? ORDER BY c.id').bind(ctx.today, hi).all();
   const slash = d => d.replaceAll('-', '/');
   for (const r of cat.results) {
     if (have.has(String(r.id))) continue;
     let m = {};
     try { m = JSON.parse(r.metadata || '{}') || {}; } catch { /* no metadata */ }
     const end = /^\d{4}-\d{2}-\d{2}$/.test(m.end_date || '') ? m.end_date : r.date;
-    out.push({stage_id: String(r.id), title: r.title, period: `${slash(r.date)} ～ ${slash(end)}`, theater: r.venue || '', venue: r.venue || '',
+    out.push({stage_id: String(r.id), title: r.title, period: `${slash(r.date)} ～ ${slash(end)}`, theater: r.venue || '', venue: r.venue || '', pref: r.vpref || '',
       group: m.group || '', ...(m.fields ? {fields: m.fields} : {}), ...(r.url ? {url: r.url} : {})});
   }
   return out;
@@ -318,18 +319,25 @@ export async function reminderScreen(params, ctx) {
   const pics = await postersOf(ctx, cands.map(c => c.stage_id));
   // What each row of this week shows when opened: the prebuilt card's parts, or (a stage
   // only in the catalogue) its credits and synopsis from there (fallback.js).
-  const shown = weekAll(cands, status, ctx.today, prefs, offset).days.flatMap(([, rows]) => rows.map(r => r.stage_id)).filter(Boolean);
+  // 都道府県が分からない公演（一覧 catalogue にだけあり、索引に無い公演）は、場所で絞ると落ちる。開幕リマインドは
+  // 見逃しを防ぐ画面なので隠さず、絞った一覧の下に別にまとめて出す（起案者の指摘 2026-10-15「場所絞ったら開幕リマインド0件になる」）
+  const unknown = prefs.length ? weekAll(cands, status, ctx.today, [], offset).days.flatMap(([, rows]) => rows).filter(r => !r.pref) : [];
+  const shown = [...weekAll(cands, status, ctx.today, prefs, offset).days.flatMap(([, rows]) => rows.map(r => r.stage_id)),
+    ...unknown.map(r => r.stage_id)].filter(Boolean);
   const {html: cardHtml} = await cardTemplates(ctx.db, shown);
   const details = new Map([...cardHtml].map(([sid, h]) => [sid, detailFromCard(h)]));
   const bare = shown.filter(sid => !details.has(sid));
   if (bare.length) for (const [sid, s] of await stageInfo(ctx.db, bare)) details.set(sid, detailHtml(s));
-  const html = panel({cands, status, owned, tickets: b.tickets, today: ctx.today, prefs, week,
-    poster: sid => (pics.has(sid) ? posterHtml(pics.get(sid)) : ''), detail: sid => details.get(sid) || '', hereLabel: 'この行の会場'});
+  const poster = sid => (pics.has(sid) ? posterHtml(pics.get(sid)) : ''), detail = sid => details.get(sid) || '';
+  const html = panel({cands, status, owned, tickets: b.tickets, today: ctx.today, prefs, week, poster, detail, hereLabel: 'この行の会場'});
+  const unknownHtml = !unknown.length ? '' : `<details class="dgday" open><summary>都道府県が分からない公演 ── ${unknown.length} 件</summary>`
+    + '<p class="dglead">会場の都道府県がまだ分からないため、場所の絞り込みに入れられない公演です。見逃さないように、ここに分けて出しています。</p>'
+    + `<ul class="dglist">${unknown.map(r => row(r, ctx.today, poster, detail, 'この行の会場')).join('')}</ul></details>`;
   const body = `<h1>開幕リマインド ── 見逃していませんか</h1>
 <p class="lede"><b>初日が近い公演を、答えたかどうかに関わらず全部出します。</b>「興味あり」も「興味なし」も押さないうちに開幕してしまうのが、いちばんの見逃しだからです。未回答の行は、その場で答えられます。</p>
 ${prefForm(counts, prefs, '/recommend/reminder', note, {w: week}, regionCounts(wr.map(r => ({key: r.stage_id || r.title, prefs: [r.pref]}))))}
 ${FOLD_STYLE}
-${html}`;
+${unknownHtml ? html.replace('</section>\n<section class="dgcard">', `${unknownHtml}</section>\n<section class="dgcard">`) : html}`;
   return {title: '開幕リマインド', body_html: body};
 }
 

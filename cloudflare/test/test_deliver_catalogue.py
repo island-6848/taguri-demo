@@ -81,6 +81,21 @@ class DeliverTest(unittest.TestCase):
         D.build(self.data, self.out, TODAY, False, D.WRITE_BUDGET)      # wrangler failed: no commit
         self.assertEqual(D.build(self.data, self.out, TODAY, False, D.WRITE_BUDGET)['changed'], 1)
 
+    def test_venue_prefectures_are_delivered_once_and_only_when_one(self):
+        # 2026-10-15 起案者「都道府県がわからない作品しかない」: the catalogue rows carry no prefecture;
+        # a venue -> prefecture table (migration 0024) gives it without rewriting the catalogue.
+        self.write([stage('1', 'これから', '2026/11/01 ～ 2026/11/09', theater='劇場A', pref='東京都'),
+                    stage('5', '同じ劇場', '2026/12/01 ～ 2026/12/03', theater='劇場A', pref='東京都'),
+                    stage('6', '名前が同じ別の劇場', '2026/12/01 ～ 2026/12/03', theater='市民会館', pref='大阪府'),
+                    stage('7', '名前が同じ別の劇場', '2026/12/04 ～ 2026/12/05', theater='市民会館', pref='愛知県'),
+                    stage('8', '都道府県なし', '2026/12/01 ～ 2026/12/03', theater='劇場C')])
+        self.assertEqual(self.deliver()['venues_changed'], 1)
+        self.assertEqual(self.db.execute('SELECT venue,pref FROM venue_pref').fetchall(), [('劇場A', '東京都')])
+        self.assertEqual(self.deliver()['venues_changed'], 0)       # nothing new: no writes
+        self.write([stage('1', 'これから', '2026/11/01 ～ 2026/11/09', theater='劇場A', pref='神奈川県')])
+        self.assertEqual(self.deliver()['venues_changed'], 1)
+        self.assertEqual(self.db.execute('SELECT pref FROM venue_pref').fetchone()[0], '神奈川県')
+
     def test_write_budget_stops_before_upload(self):
         with self.assertRaises(SystemExit):
             D.build(self.data, self.out, TODAY, False, 1)

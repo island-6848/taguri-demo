@@ -488,6 +488,8 @@ button:disabled{opacity:.45;cursor:default}
   radial-gradient(circle at 33% 81%,var(--surf) 0 1.3px,transparent 1.4px)}
 /* **「まだ判断できない」は金にして字を落とす。** えんじで押すと、評価が付いた記録と
    見分けが付かない（7 文字なので円にも入らない） */
+/* ★3.5 のように長い星は、字を小さくして円に収める */
+.rec-row .stamp.sm{font-size:15px;letter-spacing:-.5px}
 .rec-row .stamp.hold{border-color:var(--warn);color:var(--warn);
  font-family:inherit;font-size:10px;font-weight:700;line-height:1.25;text-align:center;
  letter-spacing:0;padding:0 3px;background:none}

@@ -1182,6 +1182,18 @@
    "verifies": []
   },
   {
+   "id": "dec-rating-scales",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "評価の付け方を設定で選べるようにした（図形：○×・○△×・◎○△×／星：5 段階・0.5 きざみ）",
+   "sources": [
+    "cloudflare/src/screens/grade.js",
+    "cloudflare/test/grade.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-reason-work-titles",
    "type": "decision",
    "status": "adopted",
@@ -1637,6 +1649,20 @@
    "date": "2026-10-13",
    "title": "評価の段階は利用者が選べる。初期設定は 5 段階、最小 2 段階・最大 11 段階",
    "sources": [],
+   "verifies": []
+  },
+  {
+   "id": "dec-venue-pref",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-15",
+   "title": "一覧（catalogue）の公演の都道府県を、劇場名 → 都道府県の表（venue_pref）で付ける",
+   "sources": [
+    "cloudflare/migrations/0024.sql",
+    "cloudflare/scripts/deliver_catalogue.py",
+    "cloudflare/src/screens/fallback.js",
+    "cloudflare/src/screens/reminder.js"
+   ],
    "verifies": []
   },
   {
@@ -5485,6 +5511,26 @@
    "to": "comp-recommender"
   },
   {
+   "from": "dec-rating-scales",
+   "rel": "depends_on",
+   "to": "dec-star-default"
+  },
+  {
+   "from": "dec-rating-scales",
+   "rel": "depends_on",
+   "to": "dec-user-scale-range"
+  },
+  {
+   "from": "dec-rating-scales",
+   "rel": "depends_on",
+   "to": "eval-douban-scales"
+  },
+  {
+   "from": "dec-rating-scales",
+   "rel": "affects",
+   "to": "comp-recommender"
+  },
+  {
    "from": "dec-reco-graded",
    "rel": "depends_on",
    "to": "eval-douban-graded-better"
@@ -5883,6 +5929,16 @@
    "from": "dec-user-scale-range",
    "rel": "affects",
    "to": "q-rating-scale"
+  },
+  {
+   "from": "dec-venue-pref",
+   "rel": "depends_on",
+   "to": "index-never-delivered"
+  },
+  {
+   "from": "dec-venue-pref",
+   "rel": "affects",
+   "to": "comp-d1"
   },
   {
    "from": "dec-verdict-diverging",

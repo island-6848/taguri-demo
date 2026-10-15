@@ -5,6 +5,7 @@
 // the Python text speaks of the Render server: the アカウント card (recovery codes on Render)
 // points to the account page, the mail import is the owner's only, and 「観ればよかった」 is
 // looked up in the stages already in D1 instead of fetching the web.
+import {scaleOf, scaleCardHtml, SCALE_LABEL} from './grade.js';
 import {E, ValueError} from './py.js';
 import {ico, h2} from './icons.js';
 import {PREFS, readPrefSetting, regionsHtml, regionCounts, prefSettingAction} from './prefs.js';
@@ -127,6 +128,7 @@ ${regionsHtml(counts, rcounts, true)}
 <button type="button" class="pall-btn" data-set-pref-all="1">全国に戻す</button>
 <span class="said"></span></div>
 </form></details>
+${await (async () => { const sc = await scaleOf(ctx); return scaleCardHtml(sc, cardH2('star', '評価の付け方', `<span class="badge part">いまは${E(SCALE_LABEL[sc])}</span>`)); })()}
 <details class="card">${cardH2('gear', 'アカウント')}
 <p class="lead">表示名・ログインの方法・パスキー・ログアウト・アカウントの削除は、<a href="/account">アカウント</a>の画面にまとめてあります。</p></details>
 ${await exportCardHtml(ctx)}

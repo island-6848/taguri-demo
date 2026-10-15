@@ -149,7 +149,12 @@ export function panel(d, today, tickets, selKinds = null, selPrefs = null) {
   const filt = filterHtml(rows, selKinds, selPrefs);
   const keepK = selKinds ?? new Set(KIND_KEYS);
   const view = rows.filter(r => keepK.has(r.key) && (selPrefs === null || selPrefs.has(r.pref)));
-  if (!view.length) return `${filt}<p class="empty">選んだ条件に一致する公演がありません。<a href="/calendar?t=__TAGURI_TOKEN__">絞り込みを外してください</a>。</p>`;
+  // 都道府県が分からない公演（一覧 catalogue にだけあり、索引に無い公演）は、場所で絞ると出せない。
+  // 黙って消すと「絞ったら 0 件」に見えるので、件数を言う（起案者の指摘 2026-10-15「場所絞ったら公演カレンダー0件になる」）
+  const nUnknown = selPrefs === null ? 0 : rows.filter(r => keepK.has(r.key) && !r.pref).length;
+  const unknown = nUnknown ? `<p class="lead"><b>都道府県が分からない公演が ${nUnknown} 件あり、場所で絞ると出せません。</b>`
+    + `<a href="/calendar?t=__TAGURI_TOKEN__">絞り込みを外す</a>と表示されます。</p>` : '';
+  if (!view.length) return `${filt}${unknown}<p class="empty">選んだ条件に一致する公演がありません。<a href="/calendar?t=__TAGURI_TOKEN__">絞り込みを外してください</a>。</p>`;
   let legend = KINDS.map(([, label, icon, cls]) => `<span class="lg"><span class="bar ${cls} sm">${ico(icon, 13)}</span>${E(label)}</span>`).join('');
   legend += '<span class="lg"><span class="bar own sm"><span class="pt"></span></span>行く日</span>'
     + '<span class="lg"><span class="bar own sm"><span class="pt un"></span></span>メールから読み取った回（確定前）</span>';
@@ -165,7 +170,7 @@ export function panel(d, today, tickets, selKinds = null, selPrefs = null) {
   const [lastY, lastM] = ms.at(-1);
   const over = view.filter(r => { const [sy, sm] = [Number(r.start.slice(0, 4)), Number(r.start.slice(5, 7))]; return sy > lastY || (sy === lastY && sm > lastM); });
   const tail = over.length ? `<p class="lead"><b>${over.length} 件は ${MAX_MONTHS} か月より先なので、このカレンダーには表示していません。</b>「おすすめ ▸ 興味あり／お気に入り」の一覧には出ているので、そちらで確認してください。</p>` : '';
-  return `${filt}<p class="lead">帯の<b>右端が楽日</b>、つまり締切です。縦に目を落とすと、その日に何本かかっているかが数えられます。<b>土曜は青、日曜は赤</b>で示してあります。</p>`
+  return `${filt}${unknown}<p class="lead">帯の<b>右端が楽日</b>、つまり締切です。縦に目を落とすと、その日に何本かかっているかが数えられます。<b>土曜は青、日曜は赤</b>で示してあります。</p>`
     + `<div class="cal-legend">${legend}</div>`
     + '<p class="calnote"><b>券を持っている公演は、行く日を入れるとその日が半券の形で帯から抜けて見えます。</b>入れていないものは帯だけで出しますので、<b>「この期間のどこかに行く」という意味</b>になります。印の付いていない日が空いているという意味ではありません。</p>'
     + `${blocks}${tail}${CALENDAR_JS}`;
