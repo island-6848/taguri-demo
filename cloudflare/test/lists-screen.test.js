@@ -2,6 +2,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
+import {readFileSync} from 'node:fs';
 import {setup, step, signIn} from './screens/harness.js';
 
 const here = p => new URL(p, import.meta.url).pathname;
@@ -423,5 +424,24 @@ test('興味あり added from 開幕リマインド says so in place of おす�
     assert.match(card('101'), /<span class="wnt">ポスターがかわいい<\/span>/);
     assert.match(card('102'), /おすすめ理由/);
     assert.equal(sqlite.prepare("SELECT source FROM reaction WHERE stage_id='101' AND interest=1").get().source, 'reminder');
+  } finally { sqlite.close(); }
+});
+
+test('migration 0025 relabels the older 興味あり as added from 開幕リマインド (起案者 2026-10-15)', async () => {
+  const {env, sqlite} = withIndex();
+  const a = await signIn(env);
+  try {
+    const uid = sqlite.prepare('SELECT id FROM users').get().id;
+    const put = (sid, interest, source, at) => sqlite.prepare('INSERT INTO reaction(user_id,label,stage_id,interest,source,updated_at) VALUES(?,?,?,?,?,?)')
+      .run(uid, '2026-10-14', sid, interest, source, at);
+    put('101', 1, 'screen', '2026-10-14T10:00:00.000Z');
+    put('102', 1, 'screen_tour', '2026-10-14T10:00:00.000Z');
+    put('103', 0, 'screen', '2026-10-14T10:00:00.000Z');          // 興味なしは触らない
+    put('104', 1, 'screen', '2026-10-15T23:50:00.000Z');          // PR #28 より後の 'screen' はおすすめから押したもの。触らない
+    put('105', 1, 'screen', '2026-10-15T23:00:00.000Z');          // 理由を書いて時刻が新しくなった古い行
+    sqlite.exec(readFileSync(new URL('../migrations/0025.sql', import.meta.url), 'utf8'));
+    const src = Object.fromEntries(sqlite.prepare('SELECT stage_id,source FROM reaction').all().map(r => [r.stage_id, r.source]));
+    assert.deepEqual(src, {101: 'reminder', 102: 'reminder_tour', 103: 'screen', 104: 'screen', 105: 'reminder'});
+    assert.match((await screen(env, a, 'interest')).body_html, /data-stage="101"[\s\S]*?開幕リマインドからの追加/);
   } finally { sqlite.close(); }
 });
