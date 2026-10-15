@@ -17,6 +17,7 @@ import {chooseVariant, groupOf} from '../reco-gate.js';
 import {readWeights, multipliersOf, weightForm, weightAction} from './weights.js';
 import {E, ValueError} from './py.js';
 import {loadWorks} from './works.js';
+import {castOffOf} from './diary.js';
 import {compose, cardTemplates, posterHtml} from './cards.js';
 import {PREFS, prefForm, prefsFor, regionCounts} from './prefs.js';
 export {prefForm, prefsFor};
@@ -37,7 +38,7 @@ const TIPS = `<section class="card tips">
 `;
 // Groups kept per user between requests: enough to fill 15 cards in any one prefecture.
 const KEEP = 400;
-const VERSION = 'screen-v3';   // v2: the user's 効かせ方 (rank_weight) and the per-group counts; v3: 興味あり as seeds
+const VERSION = 'screen-v4';   // v2: the user's 効かせ方 (rank_weight) and the per-group counts; v3: 興味あり as seeds; v4: diag
 export {PREFS} from './prefs.js';
 const ROLE_SRC = '公演ページのクレジット';
 const KIND_LABEL = {'#形式': '形式', '#原作': '原作', '#翻訳': '', '#会場': '劇場', '#値段': '料金帯', '#題材': '題材'};
@@ -57,9 +58,13 @@ async function ratedWorks(ctx, access) {
   const {results} = await ctx.db.prepare("SELECT work_key, updated_at FROM works WHERE user_id=? AND verdict IS NOT NULL AND verdict<>''").bind(ctx.uid).all();
   const updated = new Map(results.map(r => [r.work_key, r.updated_at]));
   const people = await access.peopleFor([...new Set(works.map(w => w.stage_id))]);
-  return works.map(w => ({key: w.work_key, title: w.title, stage_id: w.stage_id, verdict: w.verdict,
-    date: w.last_date || w.first_date || '', aspects: w.aspects || '', updated_at: updated.get(w.work_key) || '',
-    people: people.get(w.stage_id) || []}));
+  // 観た回に出ていなかった出演者（Wキャスト・休演、works.cast_off）は、この記録の材料から外す。
+  return works.map(w => {
+    const off = new Set(castOffOf(w));
+    return {key: w.work_key, title: w.title, stage_id: w.stage_id, verdict: w.verdict,
+      date: w.last_date || w.first_date || '', aspects: w.aspects || '', updated_at: updated.get(w.work_key) || '',
+      people: (people.get(w.stage_id) || []).filter(([role, person]) => !(role === '出演' && off.has(person)))};
+  });
 }
 
 /**
@@ -75,14 +80,14 @@ async function interestSeeds(ctx, access) {
   const last = new Map();
   for (const r of results) { last.delete(r.stage_id); last.set(r.stage_id, Number(r.interest)); }
   const sids = [...last].filter(([, v]) => v === 1).map(([s]) => String(s)).reverse().slice(0, MAX_SEED_STAGES);
-  if (!sids.length) return [];
+  if (!sids.length) return {seeds: [], n: 0};
   const [people, info] = await Promise.all([access.peopleFor(sids), stageInfo(ctx.db, sids)]);
   for (const s of sids) {
     if (people.get(s)?.length) continue;
     const p = parseCredits(info.get(s)?.fields || {});
     if (p.length) people.set(s, p);
   }
-  return sids.filter(s => people.get(s)?.length).map(s => ({stage_id: s, title: info.get(s)?.title || '', people: people.get(s)}));
+  return {n: sids.length, seeds: sids.filter(s => people.get(s)?.length).map(s => ({stage_id: s, title: info.get(s)?.title || '', people: people.get(s)}))};
 }
 
 /** measure_nets.person_titles: (role, person) -> titles, ◎ first, newest first within a mark. */
@@ -169,7 +174,7 @@ export async function rankedGroups(ctx) {
   const declared = await loadDeclared(ctx);
   const favourites = KINDS.flatMap(kind => (declared[kind] || []).map(name => ({name, kind}))).slice(0, 200);
   const fav = await seedsFromFavourites(access, favourites), skip = fav.skip;
-  const liked = await interestSeeds(ctx, access);
+  const {seeds: liked, n: nLiked} = await interestSeeds(ctx, access);
   const have = new Set(fav.seeds.map(s => s.stage_id));
   const seeds = [...fav.seeds, ...liked.filter(s => !have.has(s.stage_id))];
   // Stages of a registered name are お気に入り, stages of a word not to show are left out
@@ -217,7 +222,11 @@ export async function rankedGroups(ctx) {
     g.venues = g.venues.filter(v => v.stage_id === g.stage_id || !done.has(v.stage_id));
   }
   const titles = personTitles(rated, liked);
-  const body = {ready: true, ver, n_rated: rated.length, n_scored: groups.length, groups: kept, weights, w_counts: wCounts,
+  // 推薦が出ないときに本番で何が足りないかを見るための数（画面には出さない。/api/screen/recommend の JSON の diag）。
+  const diag = {rated: rated.length, rated_linked: rated.filter(r => r.people.length).length,
+    interest: nLiked, interest_with_people: liked.length, favourite_seeds: fav.seeds.length,
+    ranked: ranked.length, after_answered: groups.length};
+  const body = {ready: true, ver, n_rated: rated.length, n_scored: groups.length, groups: kept, weights, w_counts: wCounts, diag,
     titles: [...titles].filter(([k]) => kept.some(g => g.parts.slice(0, 4).some(p => p[1] + '\t' + p[2] === k) || g.kinds.slice(0, 2).some(p => p[1] + '\t' + p[2] === k)))};
   await db.prepare('INSERT INTO rec_cache(user_id,stamp,body,created_at) VALUES(?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET stamp=excluded.stamp,body=excluded.body,created_at=excluded.created_at')
     .bind(ctx.uid, stamp, JSON.stringify(body), Math.floor(ctx.now / 1000)).run();
@@ -307,7 +316,7 @@ ${cards.join('')}
 <p class="lede">気になった公演で「興味あり」を押すと、
 <a href="/recommend/interest?t=__TAGURI_TOKEN__">「興味あり」（いま ${nInterest} 件）</a>に移ります。</p>
 ${limits}`;
-  return {title: '今週のおすすめ', body_html: body, unrated_ends: await unratedEnds(ctx)};
+  return {title: '今週のおすすめ', body_html: body, unrated_ends: await unratedEnds(ctx), diag: data.diag || null};
 }
 
 // ---------------------------------------------------------------- react (serve.on_react)

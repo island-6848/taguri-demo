@@ -211,6 +211,41 @@ async function purgeWorkAction(b, ctx) {
   return {body: {ok: true, key, title}};
 }
 
+// ---------------------------------------------------------------- cast_seen
+// 観た回の出演者（起案者の指示 2026-10-15「Wキャストの出演者を選べるようにして」）。
+// {work_key} だけなら、つながった公演の出演者と、いま外している人を返す。
+// {work_key, off: [名前]} なら、観た回に出ていなかった人として保存する（推薦はこの記録の材料から外す）。
+export const CAST_OFF_MAX = 200;
+export const castOffOf = w => {
+  try { const v = JSON.parse(w?.cast_off || '[]'); return Array.isArray(v) ? v.filter(x => typeof x === 'string') : []; } catch { return []; }
+};
+async function castSeenAction(b, ctx) {
+  const key = req(b, 'work_key', 'work_key が要る');
+  const w = await ctx.db.prepare('SELECT stage_id, cast_off FROM works WHERE user_id=? AND work_key=?').bind(ctx.uid, key).first();
+  if (!w) throw new ValueError('その記録は見つからない');
+  if (!w.stage_id) throw new ValueError('観た公演がまだつながっていません');
+  const cast = await castOfStage(ctx, w.stage_id);
+  if (b.off === undefined) return {body: {ok: true, work_key: key, cast, off: castOffOf(w).filter(n => cast.includes(n))}};
+  if (!Array.isArray(b.off) || b.off.length > CAST_OFF_MAX || b.off.some(n => typeof n !== 'string' || !cast.includes(n)))
+    throw new ValueError('出演者の名前が公演のものと合いません');
+  if (b.off.length && b.off.length >= cast.length) throw new ValueError('観た回の出演者を 1 人以上残してください');
+  const off = cast.filter(n => b.off.includes(n));
+  await ctx.db.batch([
+    ctx.db.prepare('UPDATE works SET cast_off=? WHERE user_id=? AND work_key=?').bind(off.length ? JSON.stringify(off) : '', ctx.uid, key),
+    // 推薦の控えを捨てる（updated_at は評価の時刻として裏の答え合わせが使うので動かさない）。
+    ctx.db.prepare('DELETE FROM rec_cache WHERE user_id=?').bind(ctx.uid)]);
+  return {body: {ok: true, work_key: key, off}};
+}
+/** 公演の出演者（索引 rec_people、無ければ過去の公演 past_stage）の名前、出てくる順。 */
+async function castOfStage(ctx, sid) {
+  const ver = (await ctx.db.prepare("SELECT v FROM rec_meta WHERE k='current'").first())?.v;
+  let row = ver ? await ctx.db.prepare('SELECT people FROM rec_people WHERE ver=? AND stage_id=?').bind(ver, sid).first() : null;
+  if (!row) { try { row = await ctx.db.prepare('SELECT people FROM past_stage WHERE stage_id=?').bind(sid).first(); } catch { row = null; } }
+  let people = [];
+  try { people = JSON.parse(row?.people || '[]'); } catch { people = []; }
+  return [...new Set(people.filter(p => Array.isArray(p) && p[0] === '出演' && typeof p[1] === 'string').map(p => p[1]))];
+}
+
 // ---------------------------------------------------------------- hand_credits
 /** app.HAND_FIELDS keys */
 const HAND_KEYS = ['出演', '演出', '脚本', 'スタッフ'];
@@ -259,7 +294,7 @@ async function linkStageAction(b, ctx) {
     + ' ON CONFLICT(user_id, work_key) DO UPDATE SET stage_id=excluded.stage_id, updated_at=excluded.updated_at')
     .bind(ctx.uid, workKey, w.title, w.first_date || '', w.last_date || '', w.times || 1, stageId || null, now(ctx)).run();
   // Linked by hand: no longer an automatic link. Unlinked: never link this record automatically again.
-  await ctx.db.prepare('UPDATE works SET stage_auto=0, stage_off=? WHERE user_id=? AND work_key=?')
+  await ctx.db.prepare("UPDATE works SET stage_auto=0, stage_off=?, cast_off='' WHERE user_id=? AND work_key=?")
     .bind(stageId ? 0 : 1, ctx.uid, workKey).run();
   return {body: {ok: true, work_key: workKey, stage_id: stageId, title}};
 }
@@ -432,5 +467,5 @@ export const diaryScreens = {
   screens: {works: worksScreen},
   actions: {fix_work: fixWorkAction, merge_work: mergeWorkAction, drop_work: dropWorkAction,
     restore_work: restoreWorkAction, purge_work: purgeWorkAction, hand_credits: handCreditsAction,
-    link_stage: linkStageAction, visit_note: visitNoteAction, unseen: unseenAction},
+    link_stage: linkStageAction, visit_note: visitNoteAction, unseen: unseenAction, cast_seen: castSeenAction},
 };

@@ -2077,6 +2077,22 @@
    "verifies": []
   },
   {
+   "id": "impl-cast-seen",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-15",
+   "title": "記録ごとに「観た回の出演者」を選べるようにした（Wキャスト・休演で出ていなかった人を外すと、推薦はその人をその記録の材料にしない）",
+   "sources": [
+    "cloudflare/migrations/0023.sql",
+    "cloudflare/src/screens/diary.js",
+    "cloudflare/src/screens/row.js",
+    "cloudflare/src/screens/recommend.js",
+    "web/app.js",
+    "cloudflare/test/cast-seen.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "impl-favourite-seed",
    "type": "finding",
    "status": "confirmed",
@@ -2194,6 +2210,19 @@
     "cloudflare/src/recommend.js",
     "cloudflare/src/worker.js",
     "cloudflare/migrations/0016.sql"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "index-never-delivered",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-15",
+   "title": "本番の D1 には推薦の索引が一度も入っていなかった。取得の Catalog が deliver_catalogue.py に相対パス（../d1-out）を渡し、索引・題名・カードを作る段が別の場所（cwd=ROOT）から開いて FileNotFoundError で落ちていた",
+   "sources": [
+    "https://github.com/island-6848/taguri-crawler/actions/runs/38486187595/job/115600305243",
+    "cloudflare/scripts/deliver_catalogue.py",
+    "cloudflare/test/test_deliver_catalogue.py"
    ],
    "verifies": []
   },
@@ -3385,6 +3414,17 @@
    "date": "2026-10-13",
    "title": "新しい要素を安全に入れる「裏の答え合わせ」をどう作るか（起案者が良いと判断）",
    "sources": [],
+   "verifies": []
+  },
+  {
+   "id": "q-interest-no-reco-prod",
+   "type": "question",
+   "status": "answered",
+   "date": "2026-10-15",
+   "title": "本番で「興味ありが何件もあるのに、おすすめが出ない」のはなぜか",
+   "sources": [
+    "https://api.github.com/repos/island-6848/taguri-demo/commits/655221b/check-runs?filter=all"
+   ],
    "verifies": []
   },
   {
@@ -6176,6 +6216,16 @@
    "to": "q-crawler-host"
   },
   {
+   "from": "impl-cast-seen",
+   "rel": "affects",
+   "to": "q-theatre-differences"
+  },
+  {
+   "from": "impl-cast-seen",
+   "rel": "affects",
+   "to": "impl-person-ordinal-v3"
+  },
+  {
    "from": "impl-favourite-seed",
    "rel": "answers",
    "to": "q-favourites-seed"
@@ -6339,6 +6389,16 @@
    "from": "impl-tour-slots",
    "rel": "affects",
    "to": "comp-recommender"
+  },
+  {
+   "from": "index-never-delivered",
+   "rel": "answers",
+   "to": "q-interest-no-reco-prod"
+  },
+  {
+   "from": "index-never-delivered",
+   "rel": "affects",
+   "to": "impl-interest-seed"
   },
   {
    "from": "interest-not-in-v3",
@@ -7074,6 +7134,11 @@
    "from": "q-hidden-gate",
    "rel": "affects",
    "to": "comp-recommender"
+  },
+  {
+   "from": "q-interest-no-reco-prod",
+   "rel": "affects",
+   "to": "impl-interest-seed"
   },
   {
    "from": "q-interest-seed",

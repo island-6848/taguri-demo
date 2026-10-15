@@ -1460,6 +1460,35 @@ document.addEventListener("click", ev => {
     post("/api/link_stage", {work_key: g.dataset.work, stage_id: b.dataset.link}, g,
       "結び付けました。公演の情報を取得しています")
       .then(d => { if (d) waitJob(g, true); });
+  } else if (b.dataset.castOpen) {
+    // **観た回の出演者**（起案者の指示 2026-10-15「Wキャストの出演者を選べるようにして」）。押したときに
+    // 公演の出演者を読み、観た回に出ていた人にチェックを付けて並べる。外した人はおすすめの材料にしない
+    const g = b.closest(".ed-cast"), list = g.querySelector(".ed-castl");
+    post("/api/cast_seen", {work_key: b.dataset.castOpen}, g, null).then(d => {
+      if (!d) return;
+      list.textContent = "";
+      if (!d.cast.length) { list.textContent = "この公演の出演者は、まだ手元にありません。"; return; }
+      const off = new Set(d.off);
+      for (const name of d.cast) {
+        const lab = document.createElement("label"), cb = document.createElement("input");
+        cb.type = "checkbox"; cb.checked = !off.has(name); cb.dataset.castName = name;
+        lab.append(cb, " " + name);
+        list.append(lab);
+      }
+      const save = document.createElement("button");
+      save.dataset.castSave = b.dataset.castOpen;
+      save.textContent = "観た回の出演者を保存する";
+      const row = document.createElement("div");
+      row.className = "ed-btns";
+      row.append(save);
+      list.append(row);
+      b.hidden = true;
+    });
+  } else if (b.dataset.castSave) {
+    const g = b.closest(".ed-cast");
+    const off = [...g.querySelectorAll("input[data-cast-name]")].filter(c => !c.checked).map(c => c.dataset.castName);
+    post("/api/cast_seen", {work_key: b.dataset.castSave, off}, g, off.length
+      ? `${off.length} 人を「観た回に出ていなかった」にしました` : "全員を観たことにしました");
   } else if (b.dataset.unlink) {
     const g = b.closest(".ed-link");
     post("/api/link_stage", {work_key: b.dataset.unlink, stage_id: ""}, g,
