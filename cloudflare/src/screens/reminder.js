@@ -318,18 +318,25 @@ export async function reminderScreen(params, ctx) {
   const pics = await postersOf(ctx, cands.map(c => c.stage_id));
   // What each row of this week shows when opened: the prebuilt card's parts, or (a stage
   // only in the catalogue) its credits and synopsis from there (fallback.js).
-  const shown = weekAll(cands, status, ctx.today, prefs, offset).days.flatMap(([, rows]) => rows.map(r => r.stage_id)).filter(Boolean);
+  // 都道府県が分からない公演（一覧 catalogue にだけあり、索引に無い公演）は、場所で絞ると落ちる。開幕リマインドは
+  // 見逃しを防ぐ画面なので隠さず、絞った一覧の下に別にまとめて出す（起案者の指摘 2026-10-15「場所絞ったら開幕リマインド0件になる」）
+  const unknown = prefs.length ? weekAll(cands, status, ctx.today, [], offset).days.flatMap(([, rows]) => rows).filter(r => !r.pref) : [];
+  const shown = [...weekAll(cands, status, ctx.today, prefs, offset).days.flatMap(([, rows]) => rows.map(r => r.stage_id)),
+    ...unknown.map(r => r.stage_id)].filter(Boolean);
   const {html: cardHtml} = await cardTemplates(ctx.db, shown);
   const details = new Map([...cardHtml].map(([sid, h]) => [sid, detailFromCard(h)]));
   const bare = shown.filter(sid => !details.has(sid));
   if (bare.length) for (const [sid, s] of await stageInfo(ctx.db, bare)) details.set(sid, detailHtml(s));
-  const html = panel({cands, status, owned, tickets: b.tickets, today: ctx.today, prefs, week,
-    poster: sid => (pics.has(sid) ? posterHtml(pics.get(sid)) : ''), detail: sid => details.get(sid) || '', hereLabel: 'この行の会場'});
+  const poster = sid => (pics.has(sid) ? posterHtml(pics.get(sid)) : ''), detail = sid => details.get(sid) || '';
+  const html = panel({cands, status, owned, tickets: b.tickets, today: ctx.today, prefs, week, poster, detail, hereLabel: 'この行の会場'});
+  const unknownHtml = !unknown.length ? '' : `<details class="dgday" open><summary>都道府県が分からない公演 ── ${unknown.length} 件</summary>`
+    + '<p class="dglead">会場の都道府県がまだ分からないため、場所の絞り込みに入れられない公演です。見逃さないように、ここに分けて出しています。</p>'
+    + `<ul class="dglist">${unknown.map(r => row(r, ctx.today, poster, detail, 'この行の会場')).join('')}</ul></details>`;
   const body = `<h1>開幕リマインド ── 見逃していませんか</h1>
 <p class="lede"><b>初日が近い公演を、答えたかどうかに関わらず全部出します。</b>「興味あり」も「興味なし」も押さないうちに開幕してしまうのが、いちばんの見逃しだからです。未回答の行は、その場で答えられます。</p>
 ${prefForm(counts, prefs, '/recommend/reminder', note, {w: week}, regionCounts(wr.map(r => ({key: r.stage_id || r.title, prefs: [r.pref]}))))}
 ${FOLD_STYLE}
-${html}`;
+${unknownHtml ? html.replace('</section>\n<section class="dgcard">', `${unknownHtml}</section>\n<section class="dgcard">`) : html}`;
   return {title: '開幕リマインド', body_html: body};
 }
 
