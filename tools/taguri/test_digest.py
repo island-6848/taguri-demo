@@ -153,19 +153,19 @@ check("反応の種類を正しく振り分ける",
 h = DG.panel(D, TODAY, {})
 check("見出しが 2 つ出る", "今週開幕する公演（全部）" in h and "直近の観劇予定" in h)
 check("日付の見出しが並ぶ", h.count("<h3>") == 5, h.count("<h3>"))
-# **三択が付くのは「未回答」だけ。**（起案者の指摘・2026-08-26 ──「すでに興味ありとか
+# **三択がそのまま付くのは「未回答」だけ。** 答えた公演は「回答を直す」を押すまで三択を隠す（起案者の指示 2026-10-14）。（起案者の指摘・2026-08-26 ──「すでに興味ありとか
 # 評価してる公演には『興味あり』などのボタンを表示しないでください」で「興味あり」を外した）
 check("未回答 には三択が付く",
       h.count('data-stage="1"') and 'data-stage="1"' in h and
       h[h.index('data-stage="1"'):].split("</li>")[0].count('class="btns"') == 1)
-check("興味あり には三択を置かない ── 今回の訂正の本体",
-      h[h.index('data-stage="3"'):].split("</li>")[0].count('class="btns"') == 0)
+check("興味あり は三択を隠し「回答を直す」だけ出す（2026-10-14）",
+      'class="btns" hidden' in h[h.index('data-stage="3"'):].split("</li>")[0] and "回答を直す" in h[h.index('data-stage="3"'):].split("</li>")[0])
 check("お気に入り には三択を置かない（既存の約束）",
       h[h.index('data-stage="4"'):].split("</li>")[0].count('class="btns"') == 0)
-check("興味なし には三択を置かない（決着済み）",
-      h[h.index('data-stage="6"'):].split("</li>")[0].count('class="btns"') == 0)
-check("持っている には三択を置かない（決着済み）",
-      h[h.index('data-stage="7"'):].split("</li>")[0].count('class="btns"') == 0)
+check("興味なし は三択を隠し「回答を直す」だけ出す（2026-10-14）",
+      'class="btns" hidden' in h[h.index('data-stage="6"'):].split("</li>")[0] and "回答を直す" in h[h.index('data-stage="6"'):].split("</li>")[0])
+check("持っている は三択を隠し「回答を直す」だけ出す（2026-10-14）",
+      'class="btns" hidden' in h[h.index('data-stage="7"'):].split("</li>")[0] and "回答を直す" in h[h.index('data-stage="7"'):].split("</li>")[0])
 def _li_of(h, stage_id):
     """`data-stage="{id}"` を含む `<li ...>` の開始タグ全体を取り出す。"""
     m = re.search(r'<li class="[^"]*" data-stage="' + stage_id + r'">', h)

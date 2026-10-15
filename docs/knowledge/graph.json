@@ -691,6 +691,24 @@
    "verifies": []
   },
   {
+   "id": "dec-change-answer-unified",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "答えた公演（興味あり・興味なし・持っている）は、どの画面でも「回答を直す」1 つにし、押すと三択が開く",
+   "sources": [
+    "cloudflare/src/screens/cards.js",
+    "cloudflare/src/screens/reminder.js",
+    "cloudflare/scripts/build_cards.py",
+    "tools/review/render_recommend.py",
+    "tools/taguri/digest.py",
+    "web/app.js",
+    "cloudflare/test/lists-screen.test.js",
+    "tools/taguri/test_digest.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-chronicle-worker",
    "type": "decision",
    "status": "adopted",
@@ -2269,6 +2287,18 @@
    "verifies": []
   },
   {
+   "id": "lit-explicit-implicit-jawaheer",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-14",
+   "title": "明示の反応（Last.fm の「お気に入りの曲」）と暗黙の反応（再生回数）は好みの別の面を映し、どちらも正の信号として組み合わせられる（Jawaheer・Szomszor・Kostkova 2010）",
+   "sources": [
+    "https://discovery-pp.ucl.ac.uk/id/eprint/10088957",
+    "https://discovery.ucl.ac.uk/id/eprint/10088997/"
+   ],
+   "verifies": []
+  },
+  {
    "id": "lit-feedback-loop",
    "type": "finding",
    "status": "confirmed",
@@ -2350,6 +2380,30 @@
    "verifies": []
   },
   {
+   "id": "lit-new-user-rashid",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-14",
+   "title": "新しい利用者の好みを早く知る方法の選び方で、手間と予想の当たり方が大きく変わる（Rashid ほか, IUI 2002「Getting to Know You」）",
+   "sources": [
+    "https://files.grouplens.org/papers/voi-final.pdf",
+    "https://cse.umn.edu/cs/news/grouplens-paper-new-users-selected-acm-iui-2020-most-impactful-paper"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "lit-nielsen-heuristics",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-14",
+   "title": "使い勝手の原則「一貫性と標準」「利用者が操作を取り消し・やり直せること」（Nielsen, CHI 1994）",
+   "sources": [
+    "https://static.aminer.org/pdf/PDF/000/089/679/enhancing_the_explanatory_power_of_usability_heuristics.pdf",
+    "https://jakobnielsenphd.substack.com/p/usability-heuristics-history"
+   ],
+   "verifies": []
+  },
+  {
    "id": "lit-ordinal-damping",
    "type": "finding",
    "status": "unverified",
@@ -2371,6 +2425,17 @@
    "sources": [
     "https://www.arxiv.org/abs/1611.05788",
     "https://access.intix.org/Full-Article/creating-a-netflix-for-theatre-an-unlikely-experiment-with-a-box-office-and-a-recommendation-algorithm"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "lit-pre-post-consumption",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-14",
+   "title": "推薦は「観る前（予想で選ぶ）」と「観た後（評価を返す）」の輪で、観た後の評価も推薦に引きずられる（Adomavicius ほか, AI Magazine 2022 ほか）",
+   "sources": [
+    "https://ojs.aaai.org/index.php/aimagazine/article/view/18144"
    ],
    "verifies": []
   },
@@ -2704,6 +2769,17 @@
    "sources": [
     "https://github.com/island-6848/taguri-demo/blob/claude/demo-records-setup-yqo65u/cloudflare/migrations/0020.sql",
     "https://github.com/island-6848/taguri-demo/blob/claude/demo-records-setup-yqo65u/docs/knowledge/notes/dec-login-hardening.md"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "peer-star5-branch",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-14",
+   "title": "別のセッションが、評価の初期設定を星 5 段階（保存は \"n/5\"）にする変更をブランチ claude/demo-records-setup-yqo65u に置いた（PR 前・起案者の返事待ち）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/tree/claude/demo-records-setup-yqo65u"
    ],
    "verifies": []
   },
@@ -4677,6 +4753,11 @@
    "to": "comp-native-screens"
   },
   {
+   "from": "dec-change-answer-unified",
+   "rel": "depends_on",
+   "to": "lit-nielsen-heuristics"
+  },
+  {
    "from": "dec-chronicle-worker",
    "rel": "depends_on",
    "to": "dec-trace-worker"
@@ -6132,9 +6213,19 @@
    "to": "q-user-chosen-scale"
   },
   {
+   "from": "lit-explicit-implicit-jawaheer",
+   "rel": "supports",
+   "to": "q-interest-seed"
+  },
+  {
    "from": "lit-feedback-loop",
    "rel": "affects",
    "to": "q-favourites-seed"
+  },
+  {
+   "from": "lit-feedback-loop",
+   "rel": "supports",
+   "to": "q-interest-seed"
   },
   {
    "from": "lit-feedback-loop",
@@ -6182,6 +6273,21 @@
    "to": "q-rating-scale"
   },
   {
+   "from": "lit-new-user-rashid",
+   "rel": "supports",
+   "to": "q-interest-seed"
+  },
+  {
+   "from": "lit-new-user-rashid",
+   "rel": "affects",
+   "to": "new-user-reco-threshold"
+  },
+  {
+   "from": "lit-nielsen-heuristics",
+   "rel": "supports",
+   "to": "dec-change-answer-unified"
+  },
+  {
    "from": "lit-ordinal-damping",
    "rel": "affects",
    "to": "q-rating-scale"
@@ -6195,6 +6301,11 @@
    "from": "lit-performing-arts",
    "rel": "affects",
    "to": "q-reco-learning-design"
+  },
+  {
+   "from": "lit-pre-post-consumption",
+   "rel": "supports",
+   "to": "q-interest-seed"
   },
   {
    "from": "lit-prequential",
@@ -6415,6 +6526,11 @@
    "from": "peer-0020-account-limit",
    "rel": "supports",
    "to": "dec-login-hardening"
+  },
+  {
+   "from": "peer-star5-branch",
+   "rel": "affects",
+   "to": "impl-person-ordinal-v3"
   },
   {
    "from": "people-cpu-over-10ms",
@@ -6720,6 +6836,21 @@
    "from": "q-hidden-gate",
    "rel": "affects",
    "to": "comp-recommender"
+  },
+  {
+   "from": "q-interest-seed",
+   "rel": "depends_on",
+   "to": "lit-feedback-loop"
+  },
+  {
+   "from": "q-interest-seed",
+   "rel": "depends_on",
+   "to": "lit-new-user-rashid"
+  },
+  {
+   "from": "q-interest-seed",
+   "rel": "depends_on",
+   "to": "lit-explicit-implicit-jawaheer"
   },
   {
    "from": "q-interest-seed",

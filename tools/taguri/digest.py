@@ -121,6 +121,9 @@ KIND = {
 # 「お気に入り」は既存の約束（`/recommend/favourites` は読むだけの知らせ）で三択を
 # 置かない。「興味なし」「持っている」もすでに決着している。
 NEEDS_BUTTONS = {"unanswered"}
+# **答えた公演は「回答を直す」1 つにし、押すと三択が開く**（起案者の指示 2026-10-14「一度興味ありなしなどの
+# 回答を押したものに関しては『回答を直す』に統一すればいいのでは」）。お気に入りは読むだけのまま。
+ANSWERED = {"tracking", "declined", "owned"}
 
 # **同じ作品を会場ごとに 1 行へまとめるとき、決着の強いほうを残す並び。**
 # `_status_map` が重ねる順（持っている＞興味あり＞お気に入り＞興味なし＞未回答）と同じ
@@ -414,7 +417,9 @@ def _kind_badge(cls: str, icon: str, label: str) -> str:
 def _row(r: dict, today: datetime.date) -> str:
     until, urgent = _until(r["start"], today)
     poster = POSTER(r["stage_id"]) if POSTER and r["stage_id"] else ""
-    btns = RR.buttons(r["stage_id"]) if r["kind_key"] in NEEDS_BUTTONS and r["stage_id"] else ""
+    btns = ("" if not r["stage_id"] else RR.buttons(r["stage_id"]) if r["kind_key"] in NEEDS_BUTTONS
+            else ('<button class="wnb" data-btns-open="1">回答を直す</button>' + RR.buttons(r["stage_id"], hidden=True))
+            if r["kind_key"] in ANSWERED else "")
     # **同じ地方にまとめた他会場は、`/recommend` と同じ「ツアーの全日程」表示で出す**
     # （`_merge_siblings` が `tours` を持たせている行だけ、`RR.schedule_html` が反応する）。
     tour_html = RR.schedule_html(r) if r.get("tours") else ""

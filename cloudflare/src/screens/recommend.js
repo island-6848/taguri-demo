@@ -243,7 +243,7 @@ export async function recommendScreen(params, ctx) {
     lede = '';
   } else if (!prefs.length) {
     head = `今週のおすすめ ${cards.length} 件`;
-    lede = `<p class="lede">これから観られる公演 ${nCand} 件のうち、好みに合いそうだと判断できたのは ${data.n_scored} 件でした。上位 ${cards.length} 件を表示しています。答え済みの公演は、この一覧から外して下にまとめてあります。</p>`;
+    lede = `<p class="lede">これから観られる公演 ${nCand} 件のうち、好みに合いそうだと判断できたのは ${data.n_scored} 件でした。上位 ${cards.length} 件を表示しています。答えた公演は、この一覧から外して「興味あり」「購入済み公演」などに移します。</p>`;
   } else if (!cards.length) {
     head = `${where}のおすすめはありません`;
     lede = `<p class="pnow">これから観られる公演 ${nCand} 件のうち、<b>${E(where)}</b>で観られるものはありませんでした。ほかの都道府県を選ぶか、全国に戻してください。</p>`;

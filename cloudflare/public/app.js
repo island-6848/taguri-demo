@@ -1541,8 +1541,8 @@ document.addEventListener("click", ev => {
     const row = b.closest(".rec-row"), g = row.querySelector(".rb");
     if (g) { g.hidden = false; b.hidden = true; }
   } else if (b.dataset.btnsOpen) {
-    // **「興味あり」の三択も、押してから開く**（「評価を押し直す」と同じ形）
-    const row = b.closest(".ticket"), g = row.querySelector(".btns");
+    // **答えた公演の三択は「回答を直す」を押してから開く**（「評価を押し直す」と同じ形。カードも開幕リマインドの行も）
+    const row = b.closest(".ticket, .dgli"), g = row && row.querySelector(".btns");
     if (g) { g.hidden = false; b.hidden = true; }
   } else if (b.dataset.mtAdd) {
     // **カードの中で行く日を追加する**（起案者の指示・2026-08-26 ──「『観劇日を

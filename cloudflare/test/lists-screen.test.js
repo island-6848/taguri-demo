@@ -35,7 +35,7 @@ test('興味あり lists what was answered "interest", with the note; other user
     assert.match(html, /<h1>追いかけている 1 件<\/h1>/);
     assert.match(html, /<article class="ticket interest" data-stage="101"/);
     assert.match(html, /<span class="wnt">俳優甲 &amp; 乙<\/span>/);
-    assert.match(html, /回答を変える/);
+    assert.match(html, /回答を直す/);
     assert.match(html, /<nav class="idx" aria-label="月で切り替える">/);
     assert.match((await screen(env, b, 'interest')).body_html, /追いかけている 0 件/);
     // Not interested: out of 興味あり.
@@ -119,7 +119,10 @@ test('開幕リマインド: every stage opening this week, with the shared pref
     assert.match(next, /<li class="dgli dgfold und" data-stage="101"><details class="dgopen"><summary>/);
     assert.match(next, /<input type="hidden" name="w" value="next">/);
     await step(env, a, {post: '/api/react', body: {stage_id: '101', value: 'interest', nofill: true}});
-    assert.match((await screen(env, a, 'reminder', '?w=next')).body_html, /<li class="dgli dgfold trk" data-stage="101">/);
+    const answered = (await screen(env, a, 'reminder', '?w=next')).body_html;
+    assert.match(answered, /<li class="dgli dgfold trk" data-stage="101">/);
+    // 答えた公演は「回答を直す」1 つ（押すと三択が開く）。
+    assert.match(answered, /<button class="wnb" data-btns-open="1">回答を直す<\/button><span class="btns" hidden data-stage="101">/);
     // The filter chosen here applies to おすすめ too.
     await screen(env, a, 'reminder', '?w=next&f=1&pref=' + encodeURIComponent('大阪府'));
     assert.match((await screen(env, a, 'recommend')).body_html, /いまは<b>大阪府（1 県）<\/b>/);
@@ -311,7 +314,9 @@ test('公演カレンダー shows an owned stage that only the catalogue has', a
     sqlite.prepare("INSERT INTO catalogue(id,title,date,venue,url,metadata) VALUES('778','一覧だけの舞台','2026-10-25','劇場Y','',?)")
       .run(JSON.stringify({end_date: '2026-11-03'}));
     assert.equal((await step(env, a, {post: '/api/react', body: {stage_id: '778', value: 'owned', nofill: true}})).status, 200);
-    assert.match((await screen(env, a, 'tickets')).body_html, /一覧だけの舞台/);
+    const owned = (await screen(env, a, 'tickets')).body_html;
+    assert.match(owned, /一覧だけの舞台/);
+    assert.match(owned, /data-btns-open="1">回答を直す<\/button><span class="btns" hidden data-stage="778">/);
     assert.match((await screen(env, a, 'calendar')).body_html, /一覧だけの舞台/);
   } finally { sqlite.close(); }
 });

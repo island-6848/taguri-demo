@@ -11,6 +11,8 @@ const ico = (name, size) => `<svg class="ico " viewBox="0 0 24 24" width="${size
 export const NO_REASON = '<li class="rs none">理由を出せていません</li>';
 
 /** render_recommend.buttons */
+/** 答えた公演は、どの画面でも「回答を直す」1 つにし、押すと三択が開く（起案者の指示 2026-10-14）。 */
+export const changeAnswer = sid => '<button class="wnb" data-btns-open="1">回答を直す</button>' + buttons(sid, true);
 export const buttons = (sid, hidden = false) => `<span class="btns"${hidden ? ' hidden' : ''} data-stage="${E(sid)}">`
   + '<button data-v="owned">すでに持っている</button>'
   + '<button data-v="interest">興味あり</button>'
@@ -80,7 +82,7 @@ export function compose(template, sid, mode, {rank = null, why = '', poster = ''
     interest: `<span class="sn done">${ico('check', 15)}</span>`,
     favourite: '<span class="wax" aria-hidden="true"></span>'}[mode] || '';
   const btns = {recommend: buttons(sid),
-    interest: '<button class="wnb" data-btns-open="1">回答を変える</button>' + buttons(sid, true)}[mode] || '';
+    interest: changeAnswer(sid), owned: changeAnswer(sid)}[mode] || '';
   const answer = mode === 'recommend' || mode === 'interest';
   // Functions as replacements: the inserted text is never read as a replacement pattern ($&).
   return template.replace('<article class="ticket recommend"', () => `<article class="ticket ${mode}"`)

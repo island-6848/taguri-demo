@@ -6,7 +6,7 @@
 // from digest.all_candidates). Not ported: the prefecture map (prefmap.panel).
 import {E} from './py.js';
 import {ico, h2} from './icons.js';
-import {buttons, posterHtml, cardTemplates} from './cards.js';
+import {buttons, changeAnswer, posterHtml, cardTemplates} from './cards.js';
 import {stageInfo, detailHtml, detailFromCard} from './fallback.js';
 import {indexTabs} from './rate.js';
 import {nz, buckets} from './lists.js';
@@ -183,7 +183,8 @@ function until(start, today) {
 }
 function row(r, today, poster, detail, hereLabel) {
   const [u, urgent] = until(r.start, today);
-  const btns = r.kind_key === 'unanswered' && r.stage_id ? buttons(r.stage_id) : '';
+  const answered = ['tracking', 'declined', 'owned'].includes(r.kind_key);
+  const btns = !r.stage_id ? '' : r.kind_key === 'unanswered' ? buttons(r.stage_id) : answered ? changeAnswer(r.stage_id) : '';
   const tour = r.tours ? scheduleHtml(r, today, hereLabel) : '';
   const head = `<span class="dgk ${r.cls}">${ico(r.icon, 13)}${E(r.kind)}</span>`
     + `<b class="dgt">${E(r.title)}</b>`
