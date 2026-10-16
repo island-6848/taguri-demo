@@ -2,6 +2,7 @@
 """Offline snapshot acceptance tests; temporary databases, no host/network access."""
 from __future__ import annotations
 import contextlib
+from contextlib import closing
 import io
 import json
 import os
@@ -44,12 +45,12 @@ class SnapshotTests(unittest.TestCase):
         self.code = A.generate_recovery_code()
         self.uid, _ = A.access_or_register(self.code)
         self.token = A.create_session(self.uid)
-        with R.connect() as con:
+        with closing(R.connect()) as con, con:
             con.execute("INSERT INTO works(user_id,work_key,title,updated_at,verdict,note_impression) VALUES(?,?,?,'now','◎','PRIVATE-STORY')", (self.uid, 'work', 'PRIVATE-TITLE'))
             # Latest releases can introduce tables; snapshots must retain them.
             con.execute('CREATE TABLE future_schema(value TEXT)')
             con.execute("INSERT INTO future_schema VALUES('schema survives')")
-        with sqlite3.connect(S.exposure_path()) as exposure:
+        with closing(sqlite3.connect(S.exposure_path())) as exposure, exposure:
             EX.Store(exposure)
             exposure.execute("INSERT INTO recommendation_presentations VALUES('presentation','snapshot-user','now','[]','v1','recommend','current')")
         self.addCleanup(self.stack.close)
@@ -85,7 +86,7 @@ class SnapshotTests(unittest.TestCase):
         con.execute("INSERT INTO recommendation_presentations VALUES('wal-presentation','wal-user','now','[]','v1','recommend','current')")
         con.commit()
         self.backup()
-        with sqlite3.connect(self.snapshot / 'recommendation_exposure.db') as copied:
+        with closing(sqlite3.connect(self.snapshot / 'recommendation_exposure.db')) as copied, copied:
             self.assertEqual(copied.execute("SELECT user_id FROM recommendation_presentations WHERE presentation_id='wal-presentation'").fetchone()[0], 'wal-user')
             self.assertEqual(copied.execute('PRAGMA journal_mode').fetchone()[0], 'delete')
 
@@ -99,7 +100,7 @@ class SnapshotTests(unittest.TestCase):
         with self.assertRaises((sqlite3.Error, B.BackupError)):
             self.backup()
         path.write_bytes(before)
-        with sqlite3.connect(path) as con:
+        with closing(sqlite3.connect(path)) as con, con:
             con.execute('DROP TABLE recommendation_contacts')
         with self.assertRaises(B.BackupError):
             self.backup()
@@ -163,7 +164,7 @@ class SnapshotTests(unittest.TestCase):
         con.execute("INSERT INTO future_schema VALUES('wal survives')")
         con.commit()
         self.backup()
-        with sqlite3.connect(self.snapshot / 'review/ratings.db') as copied:
+        with closing(sqlite3.connect(self.snapshot / 'review/ratings.db')) as copied, copied:
             self.assertEqual(copied.execute('SELECT count(*) FROM future_schema').fetchone()[0],2)
             self.assertEqual(copied.execute('PRAGMA journal_mode').fetchone()[0],'delete')
         self.assertFalse((self.snapshot / 'review/ratings.db-wal').exists())
@@ -185,13 +186,13 @@ class SnapshotTests(unittest.TestCase):
         self.assertFalse(self.snapshot.exists())
 
     def test_wrong_source_schema_rejected(self):
-        with sqlite3.connect(S.auth_path()) as con:
+        with closing(sqlite3.connect(S.auth_path())) as con, con:
             con.execute('DROP TABLE sessions')
         with self.assertRaises(B.BackupError):
             self.backup()
 
     def test_foreign_key_violation_rejected(self):
-        with sqlite3.connect(S.ratings_path()) as con:
+        with closing(sqlite3.connect(S.ratings_path())) as con, con:
             con.executescript('CREATE TABLE parent(id INTEGER PRIMARY KEY);CREATE TABLE orphan(id INTEGER REFERENCES parent(id));INSERT INTO orphan VALUES(123);')
         with self.assertRaises(B.BackupError):
             self.backup()

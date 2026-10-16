@@ -38,7 +38,8 @@ const BRACKET = new RegExp(`[【［《]${S}*([^】］》]{1,12})${S}*[】］》]
 const ROLE_LINE = new RegExp(`^([^${WS}　]{1,14})[${WS}　]+(.+)$`, 'u');
 const NOT_NAME = new RegExp(`(\\p{Nd}{4}年|\\p{Nd}+月|\\p{Nd}+日|[都道府県]${S}|劇場|ホール|シアター|`
   + `^[▶●○・\\-—=]|^[A-Z ]{3,}$|上演|公演$|チケット|料金)`, 'u');
-const ROLE_PREFIX = new RegExp(`^(脚色|翻訳|上演台本|原案|原作|作|演出|振付|訳)[${WS}　]*`, 'u');
+// measure_nets._ROLE_PREFIX: 役職の語の後ろに区切りがあるときだけ外す（「作間龍斗」を「間龍斗」にしない）
+const ROLE_PREFIX = new RegExp(`^(脚色|翻訳|上演台本|原案|原作|作|演出|振付|訳)[${WS}　:：・=|]+`, 'u');
 // `.*$` in Python also stops before a final newline.
 const NOTE = /[※*＊][^\n]*(?=\n?$)/u;
 const LEAD_TAG = new RegExp(`^[【［《][^】］》]{1,20}[】］》][${WS}　]*`, 'u');

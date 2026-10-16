@@ -127,6 +127,8 @@ sys.path.insert(0, str(ROOT / "tools" / "review"))
 import rate_performances as _R                                      # noqa: E402
 _R.DB = _tmp / "ratings.db"
 _c = sqlite3.connect(_tmp / "ratings.db")
+# **実データが無い手元でも確かめられるよう、移す前の行を 1 つ足す**（記録の DB は公開リポジトリに無い。2026-10-16）
+_c.execute("INSERT OR IGNORE INTO works(user_id,work_key,title,updated_at) VALUES('local','検査用','検査用の作品','2026-01-01')")
 _c.execute("UPDATE works SET note_impression='劇場: 検査用ホール', venue=''"
            " WHERE work_key=(SELECT work_key FROM works LIMIT 1)")
 _c.commit()
@@ -153,11 +155,18 @@ check("引用に「劇場: 〜」が混じらない",
 
 # ---------------------------------------------------------------- 実データ
 st = IM.stats()
-check("実データを読める", st["評価が付いた作品"] > 0, st)
+# 記録の DB は本人の手元にだけある（公開リポジトリ・クラウドの作業場には無い）。無いときは、
+# 「読めない」と失敗させず、確かめなかったことをはっきり出す（あるときは今までどおり確かめる）
+_real = st["評価が付いた作品"] > 0
+if not _real:
+    print("  --  実データ（評価の記録）が無いので「実データを読める」「引用を出せる作り手がいる」は確かめない")
+else:
+    check("実データを読める", st["評価が付いた作品"] > 0, st)
 check("◎ の件数が全体を超えない", st["◎ の作品"] <= st["評価が付いた作品"], st)
 check("感想がある ◎ は ◎ を超えない", st["◎ のうち感想がある"] <= st["◎ の作品"], st)
 bp = IM.by_person()
-check("引用を出せる作り手がいる", len(bp) > 0, len(bp))
+if _real:
+    check("引用を出せる作り手がいる", len(bp) > 0, len(bp))
 check("引用の元は ◎ の作品だけ",
       all(w["note"].strip() for ws in bp.values() for w in ws))
 

@@ -66,6 +66,27 @@ jobs:
         run: python tools/review/test_past_stages.py
       - name: Person reasons name the works
         run: python tools/review/test_reason_works.py
+      # 2026-10-16: CI に入っていなかったので、落ちていても気づかなかった試験（記録の DB が要る test_rate_performances は除く）
+      - name: Credit names (role words, colons)
+        run: python tools/review/test_measure_nets.py
+      - name: Interest roster
+        run: python tools/review/test_interest_roster.py
+      - name: Origin country of a work
+        run: python tools/review/test_origin_country.py
+      - name: Favourite seed evaluation
+        run: python tools/review/test_eval_favourite_seed.py
+      - name: Person recommendation evaluation
+        run: python tools/review/test_eval_person_reco.py
+      - name: Opening digest
+        run: python tools/taguri/test_digest.py
+      - name: Impressions
+        run: python tools/taguri/test_impressions.py
+      - name: Impression preferences
+        run: python tools/taguri/test_impression_preferences.py
+      - name: Chronicle
+        run: python tools/taguri/test_chronicle.py
+      - name: Recommendation exposure log
+        run: python tools/taguri/test_recommendation_exposure.py
       - name: Unrated nudge on the recommendation screen
         run: python tools/taguri/test_unrated_nudge.py
       - name: Hashtags in impressions
