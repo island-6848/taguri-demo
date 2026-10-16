@@ -10,7 +10,7 @@
 // weights.js. Left out for now: the map above the prefecture chips (no outlines in
 // D1), the count of shows a setting hid (w_dropped) and the impression re-ranking.
 import {frac} from './grade.js';
-import {scoreFromIndex, d1Access, seedsFromFavourites, gradeOf, MAX_SEED_STAGES, droppedKind} from '../recommend.js';
+import {scoreFromIndex, d1Access, seedsFromFavourites, gradeOf, MAX_SEED_STAGES, droppedKind, GENRE_AXIS} from '../recommend.js';
 import {stageInfo} from './fallback.js';
 import {parseCredits} from './credits.js';
 import {chooseVariant, groupOf} from '../reco-gate.js';
@@ -38,11 +38,11 @@ const TIPS = `<section class="card tips">
 `;
 // Groups kept per user between requests: enough to fill 15 cards in any one prefecture.
 const KEEP = 400;
-const VERSION = 'screen-v13';   // v13: no 原作「原作もの」 (DROPPED_KEYS); v12: no #値段 (DROPPED_AXES); v11: reasons of answered stages (answered_why); v2: the user's 効かせ方 (rank_weight) and the per-group counts; v3: 興味あり as seeds; v4: diag; v5: 興味あり split (impl-interest-split); v6: by part importance; v7: tiers + トメ; v8: two tiers only; v9: トメ joins the main roles; v10: spread leads + one-step partners
+const VERSION = 'screen-v14';   // v14: #ジャンル (a genre turned off hides its stages); v13: no 原作「原作もの」 (DROPPED_KEYS); v12: no #値段 (DROPPED_AXES); v11: reasons of answered stages (answered_why); v2: the user's 効かせ方 (rank_weight) and the per-group counts; v3: 興味あり as seeds; v4: diag; v5: 興味あり split (impl-interest-split); v6: by part importance; v7: tiers + トメ; v8: two tiers only; v9: トメ joins the main roles; v10: spread leads + one-step partners
 export {PREFS} from './prefs.js';
 const ROLE_SRC = '公演ページのクレジット';
-const KIND_LABEL = {'#形式': '形式', '#原作': '原作', '#翻訳': '', '#原作の国': '原作の国', '#会場': '劇場', '#題材': '題材'};
-const KIND_SRC = {'#形式': '公演名とクレジット', '#原作': '原作・原案のクレジット', '#原作の国': 'クレジットの作り手の名前', '#会場': '公演ページの劇場'};
+const KIND_LABEL = {'#形式': '形式', '#原作': '原作', '#翻訳': '', '#原作の国': '原作の国', '#会場': '劇場', '#題材': '題材', '#ジャンル': 'ジャンル'};
+const KIND_SRC = {'#形式': '公演名とクレジット', '#原作': '原作・原案のクレジット', '#原作の国': 'クレジットの作り手の名前', '#会場': '公演ページの劇場', '#ジャンル': '原作のクレジットと主催'};
 const WORKS_SHOWN = 3;
 // Every scale sorts with the marks by its place: the top (◎, ★5, ○ of ○×) first, the bottom last
 // (grade.js). 興味あり comes after every rating.
@@ -216,10 +216,14 @@ export async function rankedGroups(ctx) {
     for (const g of seen) wCounts[g] = (wCounts[g] || 0) + 1;
   }
   const done = await answered(ctx);
+  // 理由の ✕ で外したジャンル（2.5次元・宝塚）は、その公演ごと出さない（起案者の指示 2026-10-16
+  // 「おすすめ理由に2.5次元として出してほしい。いらない人はそれ✕押せばいい」）。索引の 1 回の読み出しで引く
+  const offGenres = [...off].map(k => k.split('\t')).filter(([axis]) => axis === GENRE_AXIS);
+  const genreOff = new Set(offGenres.length ? (await access.postingsFor(offGenres)).map(p => String(p[2])) : []);
   // One slot per production (collapse_tours), after answered stages are left out.
   const byTour = new Map();
   for (const c of ranked) {
-    if (done.has(c.stage_id) || hits.has(c.stage_id) || declined.has(c.stage_id)) continue;
+    if (done.has(c.stage_id) || hits.has(c.stage_id) || declined.has(c.stage_id) || genreOff.has(String(c.stage_id))) continue;
     const key = c.tour || 'stage:' + c.stage_id;
     if (!byTour.has(key)) byTour.set(key, {stage_id: c.stage_id, tour: c.tour || '', parts: c.parts, kinds: c.kinds, b: c.b, ...(c.via ? {via: c.via} : {})});
   }

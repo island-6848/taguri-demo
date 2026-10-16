@@ -272,6 +272,22 @@ class KindOfShowTests(unittest.TestCase):
     credits and venue; a user who rates musicals higher than usual gets
     upcoming musicals raised, even with no shared people."""
 
+    def test_genres(self):
+        """起案者の指示 2026-10-16「おすすめ理由に2.5次元として出してほしい」「宝塚は宝塚ってジャンルかな」"""
+        G = UR.genres
+        self.assertEqual(G("勝者と敗者", "劇団「ハイキュー!!」製作委員会", "古舘春一 「ハイキュー!!」（集英社ジャンプコミックス刊）"), ["2.5次元"])
+        self.assertEqual(G("舞台『刀剣乱舞』陽伝", "舞台『刀剣乱舞』製作委員会"), ["2.5次元"])
+        self.assertEqual(G("あんさんぶるスターズ!!THE STAGE", "あんステ製作委員会"), ["2.5次元"])
+        self.assertEqual(G("舞台「呪術廻戦」-渋谷事変", "舞台「呪術廻戦」製作委員会"), ["2.5次元"])
+        # 漫画が原作でも宝塚は宝塚。スタッフ欄に宝塚歌劇団とあるだけの公演は宝塚にしない（主催だけを見る）
+        self.assertEqual(G("ポーの一族", "宝塚歌劇団", "萩尾望都「ポーの一族」（小学館フラワーコミックス）"), ["宝塚"])
+        # 製作委員会でも、戯曲名だけの題名・ふつうの題名は 2.5次元にしない
+        self.assertEqual(G("「飛龍伝」「幕末純情伝」", "つかこうへい革命ミュージカル製作委員会"), [])
+        self.assertEqual(G("HUNGER", "HUNGER製作委員会"), [])
+        self.assertEqual(G("サボテンの微笑み", "キューブ"), [])
+        self.assertIn(("#ジャンル", "宝塚"), UR.stage_tags("エリザベート", [], [("演出", "甲")], group="宝塚歌劇団"))
+        self.assertIn("#ジャンル", UR.CONTENT_AXES)
+
     def test_tags_from_title_credits_and_venue(self):
         T = UR.stage_tags
         self.assertEqual(T("ミュージカル『夏』", ["劇場A"], [("出演", "甲")]),
@@ -281,7 +297,7 @@ class KindOfShowTests(unittest.TestCase):
         # 原作の種類は欄の書き添えから読む。読めないときは種類を付けない（「原作もの」とは言わない。起案者 2026-10-16）
         self.assertEqual(T("朗読劇『夜』", [], [("原作", "丁")]), [("#形式", "朗読")])
         self.assertEqual(T("朗読劇『夜』", [], [("原作", "丁")], source="丁『夜』（集英社ジャンプコミックス刊）"),
-                         [("#原作", "漫画原作"), ("#形式", "朗読")])
+                         [("#ジャンル", "2.5次元"), ("#原作", "漫画原作"), ("#形式", "朗読")])
         self.assertEqual(UR.source_kinds("映画『髪結いの亭主』（監督＝パトリス・ルコント）"), ["映画原作"])
         self.assertEqual(UR.source_kinds("池井戸 潤「民王」（文春文庫／角川文庫）"), ["小説原作"])
         self.assertEqual(UR.source_text({"スタッフ": "振付原案：甲\n原作：乙「夜」（講談社文庫）"}), "乙「夜」（講談社文庫）")
