@@ -2637,6 +2637,17 @@
    "verifies": []
   },
   {
+   "id": "lit-casual-infovis-pousman2007",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-16",
+   "title": "Pousman, Stasko, Mateas 2007「Casual Information Visualization」（InfoVis）── 日常の人が、自分に意味のある情報を、気軽に・たまに眺める図。得るものは分析の答えではなく振り返り",
+   "sources": [
+    "https://faculty.cc.gatech.edu/~john.stasko/papers/infovis07-casual.pdf"
+   ],
+   "verifies": []
+  },
+  {
    "id": "lit-cold-start-dl",
    "type": "finding",
    "status": "unverified",
@@ -2662,6 +2673,17 @@
    "verifies": []
   },
   {
+   "id": "lit-data-portraits-donath2010",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-16",
+   "title": "Donath ほか 2010「Data Portraits」（SIGGRAPH）── その人のデータで描いた「肖像」。本人の見せ方と見る人の興味を取り持ち、私的さ・見た目・人からどう見えるかが問題になる",
+   "sources": [
+    "https://smg.media.mit.edu/papers/Donath/DataPortraits.Siggraph.final.graphics.pdf"
+   ],
+   "verifies": []
+  },
+  {
    "id": "lit-decoupled-rating",
    "type": "finding",
    "status": "confirmed",
@@ -2682,6 +2704,18 @@
    "sources": [
     "https://www.london.edu/faculty-and-research/academic-research/d/do-defaults-save-lives",
     "https://dlab.sauder.ubc.ca/sjdm/presentations/2020-Poster-CHANDRASHEKAR-SUBRAMANYA-Defaulteffects-Framingeffects-Replication.pdf"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "lit-endowed-progress-nunes2006",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-16",
+   "title": "Nunes & Drèze 2006（endowed progress effect）と Kivetz ほか 2006（goal-gradient）── 進み具合が見え、ゴールが近いほど人は続ける。最初から少し進んでいると、やり遂げる人が増えた",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Goal_pursuit",
+    "https://encyclopedia.pub/entry/38231"
    ],
    "verifies": []
   },
@@ -2779,6 +2813,17 @@
    "verifies": []
   },
   {
+   "id": "lit-lasthistory-baur2010",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-16",
+   "title": "Baur ほか 2010「The Streams of Our Lives」（InfoVis、LastHistory）── 聴いた音楽の履歴を写真や予定と並べると、分析と「思い出にふける」の 2 つに使われた",
+   "sources": [
+    "https://www.cg.tuwien.ac.at/courses/InfoVis/papers/InfoVis2010%20The%20Streams%20of%20Our%20Lives%20%5BDominikus%20Baur%5D.pdf"
+   ],
+   "verifies": []
+  },
+  {
    "id": "lit-live-show-propagation",
    "type": "finding",
    "status": "unverified",
@@ -2871,6 +2916,17 @@
    "sources": [
     "https://www.arxiv.org/abs/1611.05788",
     "https://access.intix.org/Full-Article/creating-a-netflix-for-theatre-an-unlikely-experiment-with-a-box-office-and-a-recommendation-algorithm"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "lit-personal-vis-huang2015",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-16",
+   "title": "Huang ほか 2015「Personal Visualization and Personal Visual Analytics」（IEEE TVCG 21(3)）── 分析の専門家でない人が自分のデータを見る図は、分析用とは設計の軸が違う",
+   "sources": [
+    "https://www.tableau.com/ja-jp/research/publications/personal-visualization-and-personal-visual-analytics"
    ],
    "verifies": []
   },
@@ -3065,6 +3121,18 @@
    "sources": [
     "https://research.tue.nl/nl/publications/interpreting-user-inaction-in-recommender-systems/",
     "https://konstan.umn.edu/selected-publications"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "lit-visual-mementos-thudt2016",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-16",
+   "title": "Thudt, Baur, Huron, Carpendale 2016「Visual Mementos」（IEEE TVCG 22(1)）── 思い出にふけり・人と分かち合うための個人の図。なじみのある見た目に写す、主観を表す、人に見せるときは私的な所を隠す",
+   "sources": [
+    "https://innovis.cpsc.ucalgary.ca/Research/VisualMementos",
+    "https://researchportal.ip-paris.fr/en/publications/visual-mementos-reflecting-memories-with-personal-data/"
    ],
    "verifies": []
   },
@@ -4296,6 +4364,15 @@
    "status": "open",
    "date": "2026-10-13",
    "title": "あらすじを Claude の定期実行で読むと、1 日にどれだけ読め、起案者の使用枠をどれだけ使うか",
+   "sources": [],
+   "verifies": []
+  },
+  {
+   "id": "q-theater-master",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-16",
+   "title": "劇場の制覇で使う「全国の全劇場の名前が載ったデータベース」はどれか。件数・都道府県・利用の条件は",
    "sources": [],
    "verifies": []
   },
@@ -7155,6 +7232,11 @@
    "to": "q-reco-learning-design"
   },
   {
+   "from": "lit-casual-infovis-pousman2007",
+   "rel": "affects",
+   "to": "q-records-viz"
+  },
+  {
    "from": "lit-cold-start-dl",
    "rel": "affects",
    "to": "comp-recommender"
@@ -7163,6 +7245,11 @@
    "from": "lit-content-overspecialization",
    "rel": "affects",
    "to": "impl-person-ordinal-v3"
+  },
+  {
+   "from": "lit-data-portraits-donath2010",
+   "rel": "affects",
+   "to": "q-records-viz"
   },
   {
    "from": "lit-decoupled-rating",
@@ -7178,6 +7265,11 @@
    "from": "lit-default-effect",
    "rel": "affects",
    "to": "q-user-chosen-scale"
+  },
+  {
+   "from": "lit-endowed-progress-nunes2006",
+   "rel": "affects",
+   "to": "q-records-viz"
   },
   {
    "from": "lit-event-coldstart",
@@ -7240,6 +7332,11 @@
    "to": "q-reco-learning-design"
   },
   {
+   "from": "lit-lasthistory-baur2010",
+   "rel": "affects",
+   "to": "q-records-viz"
+  },
+  {
    "from": "lit-live-show-propagation",
    "rel": "supports",
    "to": "lit-performing-arts"
@@ -7298,6 +7395,11 @@
    "from": "lit-performing-arts",
    "rel": "affects",
    "to": "q-reco-learning-design"
+  },
+  {
+   "from": "lit-personal-vis-huang2015",
+   "rel": "affects",
+   "to": "q-records-viz"
   },
   {
    "from": "lit-popularity-bias",
@@ -7378,6 +7480,11 @@
    "from": "lit-user-inaction",
    "rel": "affects",
    "to": "impl-person-ordinal-v3"
+  },
+  {
+   "from": "lit-visual-mementos-thudt2016",
+   "rel": "affects",
+   "to": "q-records-viz"
   },
   {
    "from": "lit-yahoo-multicriteria",
@@ -8223,6 +8330,11 @@
    "from": "q-synopsis-routine-quota",
    "rel": "depends_on",
    "to": "dec-synopsis-reader-claude"
+  },
+  {
+   "from": "q-theater-master",
+   "rel": "depends_on",
+   "to": "q-records-viz"
   },
   {
    "from": "q-theatre-differences",
