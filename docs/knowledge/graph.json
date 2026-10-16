@@ -2170,6 +2170,22 @@
    "verifies": []
   },
   {
+   "id": "fix-failing-tool-tests",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-16",
+   "title": "落ちていた道具の試験 6 本のうち、1 本は本物の不具合（名前の頭の「作」を役職として削っていた）、3 本は試験か環境の側、2 本は本人の記録が要るものだった。CI に 10 本足した",
+   "sources": [
+    "tools/review/measure_nets.py",
+    "cloudflare/src/screens/credits.js",
+    "tools/taguri/test_digest.py",
+    "tools/taguri/test_impressions.py",
+    "tools/taguri/test_state_backup.py",
+    ".github/workflows/recommendation-loop.yml"
+   ],
+   "verifies": []
+  },
+  {
    "id": "four-level-unsupported",
    "type": "finding",
    "status": "confirmed",
