@@ -3124,6 +3124,21 @@
    ]
   },
   {
+   "id": "origin-korea-in-catalogue",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-16",
+   "title": "これからの公演 1,001 題のうち、韓国原作と分かる手がかりがあるのは 6〜8 題（1% 未満）。説明文に「韓国」とは書かれず、手がかりはクレジットの韓国人名とハングル",
+   "sources": [
+    "https://github.com/island-6848/taguri-crawler/tree/state",
+    "https://www.koreatimes.co.kr/www/nation/2021/04/690_307135.html",
+    "https://lp.p.pia.jp/article/news/500029/index.html",
+    "https://v.daum.net/v/20160131170804398",
+    "https://prtimes.jp/main/html/rd/p/000000007.000181387.html"
+   ],
+   "verifies": []
+  },
+  {
    "id": "pages-404-fallback",
    "type": "finding",
    "status": "confirmed",
@@ -3859,9 +3874,18 @@
    ]
   },
   {
-   "id": "q-origin-country-tag",
+   "id": "q-origin-country-how",
    "type": "question",
    "status": "open",
+   "date": "2026-10-16",
+   "title": "「#原作の国 韓国」を付けるなら、クレジットの名前で自動に拾うか、あらすじの読み取りで国を読ませるか、利用者が公演に付けるか",
+   "sources": [],
+   "verifies": []
+  },
+  {
+   "id": "q-origin-country-tag",
+   "type": "question",
+   "status": "answered",
    "date": "2026-10-16",
    "title": "「韓国原作」のように、原作の国・元の上演地を種類の理由に使えるか",
    "sources": [
@@ -7353,6 +7377,11 @@
    "to": "dec-vm-cloudflare"
   },
   {
+   "from": "origin-korea-in-catalogue",
+   "rel": "answers",
+   "to": "q-origin-country-tag"
+  },
+  {
    "from": "pages-404-fallback",
    "rel": "affects",
    "to": "comp-frontend"
@@ -7796,6 +7825,11 @@
    "from": "q-offsite-backup",
    "rel": "depends_on",
    "to": "q-r2-boto3"
+  },
+  {
+   "from": "q-origin-country-how",
+   "rel": "depends_on",
+   "to": "origin-korea-in-catalogue"
   },
   {
    "from": "q-origin-country-tag",
