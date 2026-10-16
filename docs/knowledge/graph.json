@@ -578,6 +578,19 @@
    "verifies": []
   },
   {
+   "id": "data-inventory-1016",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-16",
+   "title": "たぐりのデータを、利用者の記録・公演の側・取得の作業データに分け、定量・順序・定性（名義・自由記述）で整理した（docs/data-inventory.md）",
+   "sources": [
+    "docs/data-inventory.md",
+    "cloudflare/migrations",
+    "https://github.com/island-6848/taguri-crawler/tree/state"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-about-on-login",
    "type": "decision",
    "status": "adopted",
@@ -1516,6 +1529,15 @@
     "web/app.js",
     "tools/taguri/app.py"
    ],
+   "verifies": []
+  },
+  {
+   "id": "dec-records-viz-picks",
+   "type": "decision",
+   "status": "proposed",
+   "date": "2026-10-16",
+   "title": "眺めるには「劇場の制覇マップ」と「観劇の時間割」を足す。ポスターの壁は眺めるでなく日記帳の作品のまとめの見せ方にする。年報カードは保留",
+   "sources": [],
    "verifies": []
   },
   {
@@ -2535,6 +2557,20 @@
    "verifies": []
   },
   {
+   "id": "impl-timetable",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-16",
+   "title": "眺めるに「観劇の時間割」（曜日 × マチネ／ソワレ／時刻なし、観た回の数）を足した",
+   "sources": [
+    "cloudflare/src/screens/timetable.js",
+    "cloudflare/src/screens/records.js",
+    "web/style.css",
+    "cloudflare/test/timetable.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "impl-tour-slots",
    "type": "finding",
    "status": "confirmed",
@@ -2652,6 +2688,28 @@
    "verifies": []
   },
   {
+   "id": "lit-calendar-vanwijk1999",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-16",
+   "title": "van Wijk & van Selow 1999「Cluster and Calendar based Visualization of Time Series Data」（InfoVis）── 1 日ごとの型をまとめてカレンダーに色で置く。日・週の周期があるデータに向く",
+   "sources": [
+    "https://www.cs.ubc.ca/~tmm/courses/533-09/slides/design.pdf"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "lit-casual-infovis-pousman2007",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-16",
+   "title": "Pousman, Stasko, Mateas 2007「Casual Information Visualization」（InfoVis）── 日常の人が、自分に意味のある情報を、気軽に・たまに眺める図。得るものは分析の答えではなく振り返り",
+   "sources": [
+    "https://faculty.cc.gatech.edu/~john.stasko/papers/infovis07-casual.pdf"
+   ],
+   "verifies": []
+  },
+  {
    "id": "lit-cold-start-dl",
    "type": "finding",
    "status": "unverified",
@@ -2677,6 +2735,17 @@
    "verifies": []
   },
   {
+   "id": "lit-data-portraits-donath2010",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-16",
+   "title": "Donath ほか 2010「Data Portraits」（SIGGRAPH）── その人のデータで描いた「肖像」。本人の見せ方と見る人の興味を取り持ち、私的さ・見た目・人からどう見えるかが問題になる",
+   "sources": [
+    "https://smg.media.mit.edu/papers/Donath/DataPortraits.Siggraph.final.graphics.pdf"
+   ],
+   "verifies": []
+  },
+  {
    "id": "lit-decoupled-rating",
    "type": "finding",
    "status": "confirmed",
@@ -2697,6 +2766,18 @@
    "sources": [
     "https://www.london.edu/faculty-and-research/academic-research/d/do-defaults-save-lives",
     "https://dlab.sauder.ubc.ca/sjdm/presentations/2020-Poster-CHANDRASHEKAR-SUBRAMANYA-Defaulteffects-Framingeffects-Replication.pdf"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "lit-endowed-progress-nunes2006",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-16",
+   "title": "Nunes & Drèze 2006（endowed progress effect）と Kivetz ほか 2006（goal-gradient）── 進み具合が見え、ゴールが近いほど人は続ける。最初から少し進んでいると、やり遂げる人が増えた",
+   "sources": [
+    "https://en.wikipedia.org/wiki/Goal_pursuit",
+    "https://encyclopedia.pub/entry/38231"
    ],
    "verifies": []
   },
@@ -2794,6 +2875,17 @@
    "verifies": []
   },
   {
+   "id": "lit-lasthistory-baur2010",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-16",
+   "title": "Baur ほか 2010「The Streams of Our Lives」（InfoVis、LastHistory）── 聴いた音楽の履歴を写真や予定と並べると、分析と「思い出にふける」の 2 つに使われた",
+   "sources": [
+    "https://www.cg.tuwien.ac.at/courses/InfoVis/papers/InfoVis2010%20The%20Streams%20of%20Our%20Lives%20%5BDominikus%20Baur%5D.pdf"
+   ],
+   "verifies": []
+  },
+  {
    "id": "lit-live-show-propagation",
    "type": "finding",
    "status": "unverified",
@@ -2865,6 +2957,17 @@
    "verifies": []
   },
   {
+   "id": "lit-od-maps-wood2010",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-16",
+   "title": "Wood, Dykes, Slingsby 2010「Visualisation of Origins, Destinations and Flows with OD Maps」（The Cartographic Journal）── 出発地と行き先の流れを、線の重なりで潰れないよう格子に入れ子で並べる",
+   "sources": [
+    "https://openaccess.city.ac.uk/id/eprint/537/"
+   ],
+   "verifies": []
+  },
+  {
    "id": "lit-ordinal-damping",
    "type": "finding",
    "status": "unverified",
@@ -2886,6 +2989,17 @@
    "sources": [
     "https://www.arxiv.org/abs/1611.05788",
     "https://access.intix.org/Full-Article/creating-a-netflix-for-theatre-an-unlikely-experiment-with-a-box-office-and-a-recommendation-algorithm"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "lit-personal-vis-huang2015",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-16",
+   "title": "Huang ほか 2015「Personal Visualization and Personal Visual Analytics」（IEEE TVCG 21(3)）── 分析の専門家でない人が自分のデータを見る図は、分析用とは設計の軸が違う",
+   "sources": [
+    "https://www.tableau.com/ja-jp/research/publications/personal-visualization-and-personal-visual-analytics"
    ],
    "verifies": []
   },
@@ -3012,6 +3126,28 @@
    "verifies": []
   },
   {
+   "id": "lit-space-time-cube-bach2014",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-16",
+   "title": "Bach ほか 2014「A Review of Temporal Data Visualizations Based on Space-Time Cube Operations」（EuroVis STAR）── 時間と空間の図は、時空の立方体を切る・つぶす・並べる操作として説明できる",
+   "sources": [
+    "https://diglib.eg.org/handle/10.2312/eurovisstar.20141171.023-041"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "lit-spiral-weber2001",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-16",
+   "title": "Weber, Alexa, Müller 2001「Visualizing Time-Series on Spirals」（InfoVis）── 渦巻きは周期（季節）のある時系列で、棒や線より周期が見つけやすい。名義のデータも数のデータも載る",
+   "sources": [
+    "https://vis.pku.edu.cn/course/datavis_f23/material/Visualizing_Time-Series_on_Spirals.pdf"
+   ],
+   "verifies": []
+  },
+  {
    "id": "lit-syskill-webert-prior",
    "type": "finding",
    "status": "confirmed",
@@ -3031,6 +3167,39 @@
    "title": "好みは時間とともに変わるので、古い評価と新しい評価を同じに扱わず、時間の変化をモデルに入れると精度が上がった（Koren, KDD 2009 最優秀論文）",
    "sources": [
     "https://faculty.cc.gatech.edu/~zha/CSE8801/CF/kdd-fp074-koren.pdf"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "lit-tilemap-mcneill2017",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-16",
+   "title": "McNeill & Hale 2017「Generating Tile Maps」（Computer Graphics Forum）── 地域を同じ大きさのマスに並べた地図を作る方法。良い並べ方は地域と目的で変わる",
+   "sources": [
+    "https://www.turing.ac.uk/news/publications/generating-tile-maps"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "lit-time-oriented-aigner2011",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-16",
+   "title": "Aigner, Miksch, Schumann, Tominski 2011「Visualization of Time-Oriented Data」（Springer、第 2 版は無料公開）── 時間のデータは、時点か期間か・周期があるか、と何をしたいかで図を選ぶ",
+   "sources": [
+    "https://www.cvast.tuwien.ac.at/node/71"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "lit-timelines-brehmer2017",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-16",
+   "title": "Brehmer, Lee, Bach, Riche, Munzner 2017「Timelines Revisited」（IEEE TVCG）── 年表は 表し方（直線・円・格子・渦・自由）× 目盛り（暦どおり・ある出来事からの相対・順番だけ）× 並べ方（1 本・分けて並べる・区切る）で設計できる",
+   "sources": [
+    "https://aviz.fr/~bbach/timelines/Brehmer2016timelines.pdf"
    ],
    "verifies": []
   },
@@ -3080,6 +3249,18 @@
    "sources": [
     "https://research.tue.nl/nl/publications/interpreting-user-inaction-in-recommender-systems/",
     "https://konstan.umn.edu/selected-publications"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "lit-visual-mementos-thudt2016",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-16",
+   "title": "Thudt, Baur, Huron, Carpendale 2016「Visual Mementos」（IEEE TVCG 22(1)）── 思い出にふけり・人と分かち合うための個人の図。なじみのある見た目に写す、主観を表す、人に見せるときは私的な所を隠す",
+   "sources": [
+    "https://innovis.cpsc.ucalgary.ca/Research/VisualMementos",
+    "https://researchportal.ip-paris.fr/en/publications/visual-mementos-reflecting-memories-with-personal-data/"
    ],
    "verifies": []
   },
@@ -4215,6 +4396,19 @@
    "verifies": []
   },
   {
+   "id": "q-records-viz",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-16",
+   "title": "「眺める」に、今あるデータでどんな図を足すか（起案者が選ぶ）",
+   "sources": [
+    "cloudflare/src/screens/records.js",
+    "cloudflare/src/screens/charts.js",
+    "cloudflare/migrations"
+   ],
+   "verifies": []
+  },
+  {
    "id": "q-render-free-viable",
    "type": "question",
    "status": "answered",
@@ -4298,6 +4492,15 @@
    "status": "open",
    "date": "2026-10-13",
    "title": "あらすじを Claude の定期実行で読むと、1 日にどれだけ読め、起案者の使用枠をどれだけ使うか",
+   "sources": [],
+   "verifies": []
+  },
+  {
+   "id": "q-theater-master",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-16",
+   "title": "劇場の制覇で使う「全国の全劇場の名前が載ったデータベース」はどれか。件数・都道府県・利用の条件は",
    "sources": [],
    "verifies": []
   },
@@ -5347,6 +5550,11 @@
    "to": "q-index-incremental"
   },
   {
+   "from": "data-inventory-1016",
+   "rel": "affects",
+   "to": "q-records-viz"
+  },
+  {
    "from": "dec-account-cap-counted",
    "rel": "answers",
    "to": "q-account-limit-100"
@@ -6220,6 +6428,21 @@
    "from": "dec-record-row-card",
    "rel": "depends_on",
    "to": "dec-recommend-compact-poster"
+  },
+  {
+   "from": "dec-records-viz-picks",
+   "rel": "answers",
+   "to": "q-records-viz"
+  },
+  {
+   "from": "dec-records-viz-picks",
+   "rel": "depends_on",
+   "to": "q-theater-master"
+  },
+  {
+   "from": "dec-records-viz-picks",
+   "rel": "depends_on",
+   "to": "data-inventory-1016"
   },
   {
    "from": "dec-records-worker",
@@ -7107,6 +7330,16 @@
    "to": "comp-recommender"
   },
   {
+   "from": "impl-timetable",
+   "rel": "depends_on",
+   "to": "dec-records-viz-picks"
+  },
+  {
+   "from": "impl-timetable",
+   "rel": "depends_on",
+   "to": "data-inventory-1016"
+  },
+  {
    "from": "impl-tour-slots",
    "rel": "affects",
    "to": "comp-recommender"
@@ -7167,6 +7400,16 @@
    "to": "q-reco-learning-design"
   },
   {
+   "from": "lit-calendar-vanwijk1999",
+   "rel": "affects",
+   "to": "q-records-viz"
+  },
+  {
+   "from": "lit-casual-infovis-pousman2007",
+   "rel": "affects",
+   "to": "q-records-viz"
+  },
+  {
    "from": "lit-cold-start-dl",
    "rel": "affects",
    "to": "comp-recommender"
@@ -7175,6 +7418,11 @@
    "from": "lit-content-overspecialization",
    "rel": "affects",
    "to": "impl-person-ordinal-v3"
+  },
+  {
+   "from": "lit-data-portraits-donath2010",
+   "rel": "affects",
+   "to": "q-records-viz"
   },
   {
    "from": "lit-decoupled-rating",
@@ -7190,6 +7438,11 @@
    "from": "lit-default-effect",
    "rel": "affects",
    "to": "q-user-chosen-scale"
+  },
+  {
+   "from": "lit-endowed-progress-nunes2006",
+   "rel": "affects",
+   "to": "q-records-viz"
   },
   {
    "from": "lit-event-coldstart",
@@ -7252,6 +7505,11 @@
    "to": "q-reco-learning-design"
   },
   {
+   "from": "lit-lasthistory-baur2010",
+   "rel": "affects",
+   "to": "q-records-viz"
+  },
+  {
    "from": "lit-live-show-propagation",
    "rel": "supports",
    "to": "lit-performing-arts"
@@ -7292,6 +7550,11 @@
    "to": "dec-change-answer-unified"
   },
   {
+   "from": "lit-od-maps-wood2010",
+   "rel": "affects",
+   "to": "q-records-viz"
+  },
+  {
    "from": "lit-ordinal-damping",
    "rel": "affects",
    "to": "q-rating-scale"
@@ -7310,6 +7573,11 @@
    "from": "lit-performing-arts",
    "rel": "affects",
    "to": "q-reco-learning-design"
+  },
+  {
+   "from": "lit-personal-vis-huang2015",
+   "rel": "affects",
+   "to": "q-records-viz"
   },
   {
    "from": "lit-popularity-bias",
@@ -7362,6 +7630,16 @@
    "to": "q-rating-scale"
   },
   {
+   "from": "lit-space-time-cube-bach2014",
+   "rel": "affects",
+   "to": "q-records-viz"
+  },
+  {
+   "from": "lit-spiral-weber2001",
+   "rel": "affects",
+   "to": "q-records-viz"
+  },
+  {
    "from": "lit-syskill-webert-prior",
    "rel": "supports",
    "to": "q-reco-learning-design"
@@ -7370,6 +7648,21 @@
    "from": "lit-temporal-dynamics",
    "rel": "affects",
    "to": "impl-person-ordinal-v3"
+  },
+  {
+   "from": "lit-tilemap-mcneill2017",
+   "rel": "affects",
+   "to": "q-records-viz"
+  },
+  {
+   "from": "lit-time-oriented-aigner2011",
+   "rel": "affects",
+   "to": "q-records-viz"
+  },
+  {
+   "from": "lit-timelines-brehmer2017",
+   "rel": "affects",
+   "to": "q-records-viz"
   },
   {
    "from": "lit-topic-diversification",
@@ -7390,6 +7683,11 @@
    "from": "lit-user-inaction",
    "rel": "affects",
    "to": "impl-person-ordinal-v3"
+  },
+  {
+   "from": "lit-visual-mementos-thudt2016",
+   "rel": "affects",
+   "to": "q-records-viz"
   },
   {
    "from": "lit-yahoo-multicriteria",
@@ -8235,6 +8533,11 @@
    "from": "q-synopsis-routine-quota",
    "rel": "depends_on",
    "to": "dec-synopsis-reader-claude"
+  },
+  {
+   "from": "q-theater-master",
+   "rel": "depends_on",
+   "to": "q-records-viz"
   },
   {
    "from": "q-theatre-differences",
