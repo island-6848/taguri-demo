@@ -3119,6 +3119,15 @@
    "verifies": []
   },
   {
+   "id": "peer-past-name-index",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-16",
+   "title": "別のセッションが、過去の公演の「名前 → 公演」の索引を R2（taguri-posters の pastidx/v1/<xx>.json、256 個に分割）に置く段を取得に足す PR を出した（起案者の許可待ち）",
+   "sources": [],
+   "verifies": []
+  },
+  {
    "id": "peer-star5-branch",
    "type": "finding",
    "status": "unverified",
@@ -7238,6 +7247,11 @@
    "from": "peer-0020-account-limit",
    "rel": "supports",
    "to": "dec-login-hardening"
+  },
+  {
+   "from": "peer-past-name-index",
+   "rel": "affects",
+   "to": "dec-free-tier-only"
   },
   {
    "from": "peer-star5-branch",
