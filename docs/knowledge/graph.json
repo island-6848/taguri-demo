@@ -2673,6 +2673,17 @@
    "verifies": []
   },
   {
+   "id": "lit-calendar-vanwijk1999",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-16",
+   "title": "van Wijk & van Selow 1999「Cluster and Calendar based Visualization of Time Series Data」（InfoVis）── 1 日ごとの型をまとめてカレンダーに色で置く。日・週の周期があるデータに向く",
+   "sources": [
+    "https://www.cs.ubc.ca/~tmm/courses/533-09/slides/design.pdf"
+   ],
+   "verifies": []
+  },
+  {
    "id": "lit-casual-infovis-pousman2007",
    "type": "finding",
    "status": "unverified",
@@ -2931,6 +2942,17 @@
    "verifies": []
   },
   {
+   "id": "lit-od-maps-wood2010",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-16",
+   "title": "Wood, Dykes, Slingsby 2010「Visualisation of Origins, Destinations and Flows with OD Maps」（The Cartographic Journal）── 出発地と行き先の流れを、線の重なりで潰れないよう格子に入れ子で並べる",
+   "sources": [
+    "https://openaccess.city.ac.uk/id/eprint/537/"
+   ],
+   "verifies": []
+  },
+  {
    "id": "lit-ordinal-damping",
    "type": "finding",
    "status": "unverified",
@@ -3089,6 +3111,28 @@
    "verifies": []
   },
   {
+   "id": "lit-space-time-cube-bach2014",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-16",
+   "title": "Bach ほか 2014「A Review of Temporal Data Visualizations Based on Space-Time Cube Operations」（EuroVis STAR）── 時間と空間の図は、時空の立方体を切る・つぶす・並べる操作として説明できる",
+   "sources": [
+    "https://diglib.eg.org/handle/10.2312/eurovisstar.20141171.023-041"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "lit-spiral-weber2001",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-16",
+   "title": "Weber, Alexa, Müller 2001「Visualizing Time-Series on Spirals」（InfoVis）── 渦巻きは周期（季節）のある時系列で、棒や線より周期が見つけやすい。名義のデータも数のデータも載る",
+   "sources": [
+    "https://vis.pku.edu.cn/course/datavis_f23/material/Visualizing_Time-Series_on_Spirals.pdf"
+   ],
+   "verifies": []
+  },
+  {
    "id": "lit-syskill-webert-prior",
    "type": "finding",
    "status": "confirmed",
@@ -3108,6 +3152,39 @@
    "title": "好みは時間とともに変わるので、古い評価と新しい評価を同じに扱わず、時間の変化をモデルに入れると精度が上がった（Koren, KDD 2009 最優秀論文）",
    "sources": [
     "https://faculty.cc.gatech.edu/~zha/CSE8801/CF/kdd-fp074-koren.pdf"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "lit-tilemap-mcneill2017",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-16",
+   "title": "McNeill & Hale 2017「Generating Tile Maps」（Computer Graphics Forum）── 地域を同じ大きさのマスに並べた地図を作る方法。良い並べ方は地域と目的で変わる",
+   "sources": [
+    "https://www.turing.ac.uk/news/publications/generating-tile-maps"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "lit-time-oriented-aigner2011",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-16",
+   "title": "Aigner, Miksch, Schumann, Tominski 2011「Visualization of Time-Oriented Data」（Springer、第 2 版は無料公開）── 時間のデータは、時点か期間か・周期があるか、と何をしたいかで図を選ぶ",
+   "sources": [
+    "https://www.cvast.tuwien.ac.at/node/71"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "lit-timelines-brehmer2017",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-16",
+   "title": "Brehmer, Lee, Bach, Riche, Munzner 2017「Timelines Revisited」（IEEE TVCG）── 年表は 表し方（直線・円・格子・渦・自由）× 目盛り（暦どおり・ある出来事からの相対・順番だけ）× 並べ方（1 本・分けて並べる・区切る）で設計できる",
+   "sources": [
+    "https://aviz.fr/~bbach/timelines/Brehmer2016timelines.pdf"
    ],
    "verifies": []
   },
@@ -7298,6 +7375,11 @@
    "to": "q-reco-learning-design"
   },
   {
+   "from": "lit-calendar-vanwijk1999",
+   "rel": "affects",
+   "to": "q-records-viz"
+  },
+  {
    "from": "lit-casual-infovis-pousman2007",
    "rel": "affects",
    "to": "q-records-viz"
@@ -7443,6 +7525,11 @@
    "to": "dec-change-answer-unified"
   },
   {
+   "from": "lit-od-maps-wood2010",
+   "rel": "affects",
+   "to": "q-records-viz"
+  },
+  {
    "from": "lit-ordinal-damping",
    "rel": "affects",
    "to": "q-rating-scale"
@@ -7518,6 +7605,16 @@
    "to": "q-rating-scale"
   },
   {
+   "from": "lit-space-time-cube-bach2014",
+   "rel": "affects",
+   "to": "q-records-viz"
+  },
+  {
+   "from": "lit-spiral-weber2001",
+   "rel": "affects",
+   "to": "q-records-viz"
+  },
+  {
    "from": "lit-syskill-webert-prior",
    "rel": "supports",
    "to": "q-reco-learning-design"
@@ -7526,6 +7623,21 @@
    "from": "lit-temporal-dynamics",
    "rel": "affects",
    "to": "impl-person-ordinal-v3"
+  },
+  {
+   "from": "lit-tilemap-mcneill2017",
+   "rel": "affects",
+   "to": "q-records-viz"
+  },
+  {
+   "from": "lit-time-oriented-aigner2011",
+   "rel": "affects",
+   "to": "q-records-viz"
+  },
+  {
+   "from": "lit-timelines-brehmer2017",
+   "rel": "affects",
+   "to": "q-records-viz"
   },
   {
    "from": "lit-topic-diversification",
