@@ -28,6 +28,9 @@ export const THEME_AXIS = '#題材';
  * 本番の D1 の索引は差分で何日もかけて入れ替わるので、それまで残っている行もここで読まない。
  */
 export const DROPPED_AXES = new Set(['#値段']);
+// 使わなくなった種類の値（「原作もの」→ 漫画原作・小説原作 …、dec-source-kind-no-price）。索引に残っている間も読まない
+export const DROPPED_KEYS = new Set(['#原作\u0000原作もの']);
+export const droppedKind = (axis, tag) => DROPPED_AXES.has(axis) || DROPPED_KEYS.has(axis + '\u0000' + tag);
 /** recommend2.nz: NFKC, no spaces (ASCII or full-width), lower case. */
 export const nz = s => String(s ?? '').normalize('NFKC').replaceAll(' ', '').replaceAll('\u3000', '').toLowerCase();
 // 詳細 (good / trouble per aspect): user_recommender.ASPECTS (checked against Python in the test).
@@ -267,7 +270,7 @@ export async function scoreFromIndex({postingsFor, stagesFor, rated, multipliers
   const seeded = new Set(seeds.map(r => r.stage_id));
   // Everyone with a non-zero value can raise or lower a show.
   // 使わなくなった種類（料金帯 #値段、dec-source-kind-no-price）は、本番の索引に残っている間も点数と理由に使わない
-  const keys = [...values.entries()].filter(([k, [, v]]) => v && !DROPPED_AXES.has(k.split('\u0000')[0])).map(([k]) => k.split('\u0000')).sort((a, b) => cmpTuple(a, b));
+  const keys = [...values.entries()].filter(([k, [, v]]) => v && !droppedKind(...k.split('\u0000'))).map(([k]) => k.split('\u0000')).sort((a, b) => cmpTuple(a, b));
   const byStage = new Map();
   const mult = g => (Object.prototype.hasOwnProperty.call(multipliers, g) ? multipliers[g] : 1.0);
   for (const [role, person, sid, roleW, group] of await postingsFor(keys)) {

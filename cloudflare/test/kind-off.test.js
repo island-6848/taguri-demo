@@ -73,3 +73,12 @@ test('原作 shows the kind of source without repeating the heading; no price ba
   assert.match(html, /<span class="net">種類<\/span>原作 <b>オリジナル<\/b>/);
   assert.match(html, /［出典: 原作・原案のクレジット］/);
 });
+
+test('原作「原作もの」 left in the production index is neither a reason nor a score', async () => {
+  const {droppedKind} = await import('../src/recommend.js');
+  assert.ok(droppedKind('#原作', '原作もの') && droppedKind('#値段', '5千円未満'));
+  assert.ok(!droppedKind('#原作', '漫画原作') && !droppedKind('#原作', 'オリジナル'));
+  const html = reasonRows({parts: [], kinds: [[0.3, '#原作', '原作もの', 2], [0.2, '#形式', 'ミュージカル', 1]]}, new Map());
+  assert.doesNotMatch(html, /原作もの/);
+  assert.match(html, /<b>ミュージカル<\/b>/);
+});
