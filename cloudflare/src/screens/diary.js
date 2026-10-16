@@ -450,7 +450,7 @@ async function worksScreen(params, ctx) {
     {poster: posterHtml(w, files), editable: true, label: labels[w.stage_id] || '', scale})).join('');
   return {title, body_html: `<h1>日記帳</h1>
 ${recordsLede(d)}
-<p class="lede">1 件ごとに、日付・評価・感想が出ます。<b>感想は各行の「感想を書く」から
+<p class="lede">1 件ごとに、日付・評価・感想が出ます。<b>感想は各行の「感想」の鉛筆から
 書けます</b>（欄から離れたときに保存されます）。<b>題名・上演日・劇場は、各行の
 「公演詳細を直す」から直せます。</b>ポスターを出せたのは 0 件、
 あらすじが出せたのは 0 件、出演者が出せたのは ${nCast} 件です。${gnote}
