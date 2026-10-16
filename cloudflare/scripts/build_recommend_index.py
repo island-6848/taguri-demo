@@ -475,50 +475,96 @@ def _row_hash(row: tuple) -> str:
     return hashlib.sha1(json.dumps(row, ensure_ascii=False).encode("utf-8")).hexdigest()[:12]
 
 
-def diff_sql(index: dict, prev: dict, onboarding: list[str] | None = None) -> tuple[list[str], dict, dict]:
-    """(statements, hashes to keep for next time, counts). prev: table -> {key: hash} from last delivery."""
+def _delete_sql(table: str, gone: list[str]) -> list[str]:
+    """消す行は鍵の値で選ぶ（row value IN）。鍵は "\x1f" でつないで控えている。"""
+    keys = TABLE_COLS[table][0]
+    nk = len(keys)
+    vals = [tuple(k.split("\x1f")) for k in gone]
+    if table == "rec_gram":                       # part is an INTEGER column
+        vals = [(g, int(n)) for g, n in vals]
+    kcols = "(" + ",".join(keys) + ")" if nk > 1 else keys[0]
+    head = f"DELETE FROM {table} WHERE ver={_q(LIVE)} AND {kcols} IN ("
+    out, cur = [], []
+    size = len(head.encode("utf-8"))
+    for v in vals:
+        lit = ("(" + ",".join(_q(x) for x in v) + ")") if nk > 1 else _q(v[0])
+        if cur and size + len(lit.encode("utf-8")) + 3 > MAX_STATEMENT_BYTES:
+            out.append(head + ",".join(cur) + ");")
+            cur, size = [], len(head.encode("utf-8"))
+        cur.append(lit)
+        size += len(lit.encode("utf-8")) + 1
+    if cur:
+        out.append(head + ",".join(cur) + ");")
+    return out
+
+
+def _stage_of(table: str, key: str) -> str:
+    """The stage a row belongs to (rec_gram rows belong to none)."""
+    parts = key.split("\x1f")
+    return {"rec_stage": parts[0], "rec_people": parts[0], "rec_credit": parts[-1]}.get(table, "")
+
+
+def diff_sql(index: dict, prev: dict, onboarding: list[str] | None = None,
+             limit: int | None = None) -> tuple[list[str], dict, dict]:
+    """(statements, hashes to keep for next time, counts). prev: table -> {key: hash} from last delivery.
+
+    limit: at most this many rows changed or deleted in one delivery (the day's D1 write budget). When the
+    diff is larger (the first delivery is the whole index, about 5 万行), whole stages go first, soonest
+    first, then title pieces; what is left keeps its old hash and is sent the next day (q-index-first-load).
+    """
     dumps = lambda v: json.dumps(v, ensure_ascii=False, sort_keys=True)             # noqa: E731
     stmts: list[str] = [f"DELETE FROM {t} WHERE ver<>{_q(LIVE)};" for t in TABLES]   # rows of the old versioned scheme
-    hashes: dict = {}
-    counts = {"upserted": 0, "deleted": 0, "stages_upserted": 0}
+    hashes: dict = {t: dict(prev.get(t) or {}) for t in TABLES}
+    counts = {"upserted": 0, "deleted": 0, "stages_upserted": 0, "left": 0}
+    # Every change: (table, key, hash or None for a deletion, row)
+    changes: list[tuple] = []
     for table, rows in live_rows(index).items():
-        keys, cols = TABLE_COLS[table]
-        nk = len(keys)
+        nk = len(TABLE_COLS[table][0])
         old = prev.get(table) or {}
         now = {"\x1f".join(str(v) for v in r[:nk]): (_row_hash(r), r) for r in rows}
-        hashes[table] = {k: h for k, (h, _r) in now.items()}
-        changed = [r for k, (h, r) in sorted(now.items()) if old.get(k) != h]
-        gone = sorted(k for k in old if k not in now)
+        changes += [(table, k, h, r) for k, (h, r) in sorted(now.items()) if old.get(k) != h]
+        changes += [(table, k, None, None) for k in sorted(old) if k not in now]
+    if limit is not None and len(changes) > limit:
+        starts = {sid: s.get("start") or "9999" for sid, s in index["stages"].items()}
+        by_stage: dict[str, list] = {}
+        for c in changes:
+            by_stage.setdefault(_stage_of(c[0], c[1]), []).append(c)
+        deletions = [c for c in changes if c[2] is None]
+        chosen = deletions[:limit]
+        room = limit - len(chosen)
+        order = sorted((sid for sid in by_stage if sid), key=lambda sid: (starts.get(sid, "9999"), sid))
+        for sid in order + [""]:                  # "" = title pieces, after every stage
+            group = [c for c in by_stage[sid] if c[2] is not None] if sid in by_stage else []
+            if group and len(group) <= room:
+                chosen += group
+                room -= len(group)
+        counts["left"] = len(changes) - len(chosen)
+        changes = chosen
+    for table in TABLES:
+        keys, cols = TABLE_COLS[table]
+        gone = [k for t, k, h, _r in changes if t == table and h is None]
+        upsert = [(k, h, r) for t, k, h, r in changes if t == table and h is not None]
         if gone:
-            # 消す行は鍵の値で選ぶ（row value IN）。鍵は "\x1f" でつないで控えている
-            vals = [tuple(k.split("\x1f")) for k in gone]
-            if table == "rec_gram":                       # part is an INTEGER column
-                vals = [(g, int(n)) for g, n in vals]
-            kcols = "(" + ",".join(keys) + ")" if nk > 1 else keys[0]
-            head = f"DELETE FROM {table} WHERE ver={_q(LIVE)} AND {kcols} IN ("
-            cur: list[str] = []
-            size = len(head.encode("utf-8"))
-            for v in vals:
-                lit = ("(" + ",".join(_q(x) for x in v) + ")") if nk > 1 else _q(v[0])
-                if cur and size + len(lit.encode("utf-8")) + 3 > MAX_STATEMENT_BYTES:
-                    stmts.append(head + ",".join(cur) + ");")
-                    cur, size = [], len(head.encode("utf-8"))
-                cur.append(lit)
-                size += len(lit.encode("utf-8")) + 1
-            stmts.append(head + ",".join(cur) + ");")
-        if changed:
+            stmts += _delete_sql(table, gone)
+            for k in gone:
+                hashes[table].pop(k, None)
+        if upsert:
             tail = (f" ON CONFLICT(ver,{','.join(keys)}) DO UPDATE SET "
                     + ",".join(f"{c}=excluded.{c}" for c in cols))
-            stmts += _inserts(table, "ver," + ",".join(keys + cols), [(LIVE, *r) for r in changed], tail)
-        counts["upserted"] += len(changed)
+            stmts += _inserts(table, "ver," + ",".join(keys + cols), [(LIVE, *r) for _k, _h, r in upsert], tail)
+            for k, h, _r in upsert:
+                hashes[table][k] = h
+        counts["upserted"] += len(upsert)
         counts["deleted"] += len(gone)
         if table == "rec_stage":
-            counts["stages_upserted"] = len(changed) + len(gone)
+            counts["stages_upserted"] = len(upsert) + len(gone)
     rev = version_of(index)
+    # 途中まで入れた日は、控えを捨てる合図を「版-残り件数」にする（全部入ってから版そのものにする）
+    shown = rev if not counts["left"] else f"{rev}-left{counts['left']}"
     if onboarding is not None:
         stmts.append("INSERT INTO rec_meta(k,v) VALUES('onboarding',"
                      f"{_q(dumps({'ver': LIVE, 'ids': onboarding}))}) ON CONFLICT(k) DO UPDATE SET v=excluded.v;")
-    stmts.append(f"INSERT INTO rec_meta(k,v) VALUES('index_rev',{_q(rev)}) ON CONFLICT(k) DO UPDATE SET v=excluded.v;")
+    stmts.append(f"INSERT INTO rec_meta(k,v) VALUES('index_rev',{_q(shown)}) ON CONFLICT(k) DO UPDATE SET v=excluded.v;")
     stmts.append(f"INSERT INTO rec_meta(k,v) VALUES('current',{_q(LIVE)}) ON CONFLICT(k) DO UPDATE SET v=excluded.v;")
     counts["rev"] = rev
     return stmts, hashes, counts
@@ -557,6 +603,7 @@ def main() -> int:
     p.add_argument("--hashes-out", type=Path,
                    help="差分で入れる: 変わった行だけの SQL を出し、次回のための行のハッシュをここに書く")
     p.add_argument("--prev-hashes", type=Path, help="前回入れた行のハッシュ（無ければ全部を入れる）")
+    p.add_argument("--max-rows", type=int, help="1 回に変える行の上限（D1 の書き込みの残りから。残りは次回）")
     p.add_argument("--today", type=datetime.date.fromisoformat,
                    default=(datetime.datetime.utcnow() + datetime.timedelta(hours=9)).date(),
                    help="date (JST) splitting stages to ask about from the coming ones")
@@ -588,7 +635,7 @@ def main() -> int:
     counts = None
     if a.hashes_out:
         prev = json.loads(a.prev_hashes.read_text(encoding="utf-8")) if a.prev_hashes and a.prev_hashes.exists() else {}
-        stmts, hashes, counts = diff_sql(index, prev, onboarding_list(index, a.today))
+        stmts, hashes, counts = diff_sql(index, prev, onboarding_list(index, a.today), a.max_rows)
         a.hashes_out.write_text(json.dumps(hashes, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     else:
         stmts = to_sql(index, version_of(index), onboarding_list(index, a.today))

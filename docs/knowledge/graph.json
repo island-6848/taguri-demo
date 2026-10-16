@@ -1013,6 +1013,20 @@
    "verifies": []
   },
   {
+   "id": "dec-index-first-load",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-16",
+   "title": "推薦の索引の初回（約 5.3 万行）は 1 日の書き込みの予算に収まらないので、何日かに分けて入れる。公演ごとにまとめ、開幕の近い公演から",
+   "sources": [
+    "cloudflare/scripts/build_recommend_index.py",
+    "cloudflare/scripts/deliver_catalogue.py",
+    "cloudflare/test/test_recommend_index.py",
+    "cloudflare/test/test_deliver_catalogue.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-interest-card-1015",
    "type": "decision",
    "status": "adopted",
@@ -5562,6 +5576,16 @@
    "from": "dec-index-diff",
    "rel": "affects",
    "to": "comp-rec-index"
+  },
+  {
+   "from": "dec-index-first-load",
+   "rel": "depends_on",
+   "to": "dec-index-diff"
+  },
+  {
+   "from": "dec-index-first-load",
+   "rel": "depends_on",
+   "to": "d1-writes-undercounted"
   },
   {
    "from": "dec-interest-card-1015",

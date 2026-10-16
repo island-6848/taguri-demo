@@ -128,10 +128,10 @@ class PathsTest(unittest.TestCase):
 class IndexDiffStateTest(DeliverTest):
     # 差分の索引（q-index-incremental）: 送った分のハッシュだけを、commit で次回の比べる元にする。
     def fake_index(self, rev, writes, rows):
-        def run(out, data):
+        def run(out, data, max_rows=None):
             (out / 'index.sql').write_text('SELECT 1;\n')
             (out / 'index-hashes.json').write_text(json.dumps({'rec_stage': {'1': rev}}))
-            return rev, writes, out / 'index.sql', rows
+            return rev, writes, out / 'index.sql', rows, self.left
         return run
 
     def deliver_index(self, rev, writes, rows, budget):
@@ -143,6 +143,19 @@ class IndexDiffStateTest(DeliverTest):
             D.build_index, D.build_labels, D.build_cards = build_index, build_labels, build_cards
         D.commit(self.data, self.out)
         return report
+
+    left = 0
+
+    def test_a_partial_first_load_keeps_the_hashes_but_not_the_revision(self):
+        self.left = 30
+        r = self.deliver_index('rev1', 100, 50, D.WRITE_BUDGET)
+        self.assertIn('30 rows left', r['index'])
+        self.assertEqual(json.loads((self.data / D.INDEX_HASHES).read_text())['rec_stage']['1'], 'rev1')
+        self.assertEqual(json.loads((self.data / D.STATE).read_text()).get('index', ''), '')
+        self.left = 0
+        r = self.deliver_index('rev1', 100, 20, D.WRITE_BUDGET)        # same revision, the rest
+        self.assertNotEqual(r['index'], 'unchanged')
+        self.assertEqual(json.loads((self.data / D.STATE).read_text())['index'], 'rev1')
 
     def test_sent_hashes_are_kept_and_skipped_ones_are_not(self):
         hashes = self.data / D.INDEX_HASHES

@@ -145,7 +145,12 @@ def scan_date(data: Path) -> str:
 INDEX_HASHES = Path("d1") / "index-hashes.json"
 
 
-def build_index(out: Path, data: Path) -> tuple[str, int, Path, int] | None:
+# 索引を入れるときも、題名（stage_label）とカード（rec_card）の毎日の入れ替えの分は残す
+# （Catalog #6 で約 9,600 と 3,100）。索引の初回は全部で約 5 万行なので、何日かに分けて入れる（q-index-first-load）。
+LABELS_CARDS_RESERVE = 15_000
+
+
+def build_index(out: Path, data: Path, max_rows: int | None = None) -> tuple[str, int, Path, int, int] | None:
     """Run build_recommend_index.py in diff mode; (revision, writes, sql, rows changed). None if it cannot run here.
 
     Only rows that changed since the last delivery are upserted and rows that are gone are deleted
@@ -157,6 +162,8 @@ def build_index(out: Path, data: Path) -> tuple[str, int, Path, int] | None:
             "--hashes-out", str(hashes)]
     if (data / INDEX_HASHES).exists():
         args += ["--prev-hashes", str(data / INDEX_HASHES)]
+    if max_rows is not None:
+        args += ["--max-rows", str(max(0, max_rows))]
     r = subprocess.run(args, cwd=ROOT)
     if r.returncode != 0 or not sql.exists():
         return None
@@ -165,7 +172,7 @@ def build_index(out: Path, data: Path) -> tuple[str, int, Path, int] | None:
         return None
     n = int(d.get("upserted", 0)) + int(d.get("deleted", 0))
     # Each row changed or deleted costs the row and its key index; a rec_stage row also its start index.
-    return d["rev"], INDEX_WRITES_PER_ROW * n + int(d.get("stages_upserted", 0)), sql, n
+    return d["rev"], INDEX_WRITES_PER_ROW * n + int(d.get("stages_upserted", 0)), sql, n, int(d.get("left", 0))
 
 
 def build_labels(out: Path) -> tuple[str, int, Path] | None:
@@ -230,9 +237,13 @@ def build(data: Path, out: Path, today: datetime.date, with_index: bool, budget:
         shutil.rmtree(out)
     out.mkdir(parents=True)
     if with_index:
-        got = build_index(out, data)
+        # 1 行は行＋主キーの索引で 2、rec_stage はさらに 1。多めに 3 で割って、今日入れられる行数にする
+        got = build_index(out, data, (budget - writes - LABELS_CARDS_RESERVE) // (INDEX_WRITES_PER_ROW + 1))
         if got is None:
             report["index"] = "not built (see the log above)"
+        elif got[3] == 0 and got[4]:
+            report["index"] = f"skipped: no room in today's budget ({got[4]} rows left)"
+            (out / "index-hashes.json").unlink(missing_ok=True)
         elif got[0] == prev.get("index") or got[3] == 0:
             report["index"] = "unchanged"
             (out / "index-hashes.json").unlink(missing_ok=True)
@@ -241,8 +252,11 @@ def build(data: Path, out: Path, today: datetime.date, with_index: bool, budget:
             (out / "index-hashes.json").unlink(missing_ok=True)       # not sent: keep the old hashes
         else:
             shutil.move(got[2], out / "index-upload.sql")
-            state["index"] = got[0]
-            report["index"] = f"revision {got[0]} ({got[3]} rows changed, {got[1]} writes)"
+            # 全部入れ終えたときだけ版を控える（途中なら、次回も同じ版の残りを送る）
+            if not got[4]:
+                state["index"] = got[0]
+            report["index"] = (f"revision {got[0]} ({got[3]} rows changed, {got[1]} writes"
+                               + (f", {got[4]} rows left for the next delivery)" if got[4] else ")"))
             writes += got[1]
             report["writes"] = writes
         got = build_labels(out)

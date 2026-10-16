@@ -288,6 +288,57 @@ class DiffDeliveryTest(unittest.TestCase):
         self.assertEqual(self.tables(con, BI.LIVE), self.full(a))
 
 
+class FirstLoadInPartsTest(DiffDeliveryTest):
+    """索引の初回を何日かに分けて入れる（q-index-first-load）: 上限ずつ当てていくと、まるごと入れた表に着く。"""
+
+    def test_parts_reach_the_full_tables_whole_stages_soonest_first(self):
+        raw, cands, fbs = catalogue(4)
+        a = BI.build_index(UR.candidate_pool(raw, cands), fbs, APP.group_of)
+        con = sqlite3.connect(':memory:')
+        self.addCleanup(con.close)
+        for name in ('0003.sql', '0009.sql', '0016.sql'):
+            con.executescript((HERE / 'migrations' / name).read_text())
+        total = BI.diff_sql(a, {})[2]['upserted']
+        limit = total // 4
+        hashes, days, first = {}, 0, None
+        while True:
+            stmts, hashes, c = BI.diff_sql(a, hashes, None, limit)
+            for stmt in stmts:
+                con.execute(stmt)
+            days += 1
+            self.assertLessEqual(c['upserted'] + c['deleted'], limit)
+            if first is None:
+                first = c
+                # Whole stages: every stage that has its rec_stage row also has its rec_people row.
+                got = {r[0] for r in con.execute("SELECT stage_id FROM rec_stage")}
+                self.assertTrue(got)
+                for sid in got:
+                    want = sorted(tuple(p[:2]) for p in set(a['postings']) if p[2] == sid)
+                    have = sorted(con.execute("SELECT role, person FROM rec_credit WHERE stage_id=?", (sid,)).fetchall())
+                    self.assertEqual(have, want, sid)
+                rev = con.execute("SELECT v FROM rec_meta WHERE k='index_rev'").fetchone()[0]
+                self.assertIn('-left', rev)
+            if not c['left']:
+                break
+            self.assertLess(days, 10)
+        self.assertGreater(days, 1)
+        self.assertEqual(self.tables(con, BI.LIVE), self.full(a))
+        self.assertEqual(con.execute("SELECT v FROM rec_meta WHERE k='index_rev'").fetchone()[0], BI.version_of(a))
+        # Soonest stages went first.
+        starts = {sid: s.get('start') or '9999' for sid, s in a['stages'].items()}
+        stmts1, _h, _c = BI.diff_sql(a, {}, None, limit)
+        con2 = sqlite3.connect(':memory:')
+        self.addCleanup(con2.close)
+        for name in ('0003.sql', '0009.sql', '0016.sql'):
+            con2.executescript((HERE / 'migrations' / name).read_text())
+        for stmt in stmts1:
+            con2.execute(stmt)
+        sent = {r[0] for r in con2.execute("SELECT stage_id FROM rec_stage")}
+        unsent = set(a['stages']) - sent
+        if unsent:
+            self.assertLessEqual(max(starts[s] for s in sent), max(starts[s] for s in unsent))
+
+
 class SearchTest(unittest.TestCase):
     def test_sql_search_equals_reference(self):
         found = 0
