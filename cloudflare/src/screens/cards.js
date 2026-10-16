@@ -111,7 +111,7 @@ export function compose(template, sid, mode, {rank = null, why = '', poster = ''
     // お気に入り: 「なぜお知らせしているか」の欄の代わりに、当たった名前をハッシュタグで並べる
     // （起案者の指示 2026-10-15「「なぜお知らせしているか」の欄消して…お気に入りって丸で囲んであるところの色で、
     // 理由の人名とか団体とかだけハッシュタグで羅列して」）
-    .replace(tags ? /<div class="whyh">[\s\S]*?<\/ul>/ : /(?!)/, () => `<div class="favtags">${(tags || []).map(t => `<span class="ftag">#${E(t)}</span>`).join('')}</div>`);
+    .replace(tags ? /<div class="whyh">[\s\S]*?<\/ul>/ : /(?!)/, () => `<div class="favtags">${(tags || []).map(t => `<a class="ftag" href="/recommend/favourites?t=__TAGURI_TOKEN__&amp;n=${encodeURIComponent(t)}">#${E(t)}</a>`).join('')}</div>`);
 }
 
 /** Card templates and posters of these stages: Map(sid -> html), Map(sid -> file). */

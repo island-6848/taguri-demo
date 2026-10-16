@@ -56,7 +56,7 @@ test('a registered name brings its stages to お気に入り and out of おす�
     assert.match(fav, /<h1>お気に入り ── 新着 1 件<\/h1>/);
     assert.match(fav, /<article class="ticket favourite" data-stage="101"/);
     // 理由の欄は出さず、当たった名前をハッシュタグで並べる（起案者 2026-10-15）
-    assert.match(fav, /<div class="favtags"><span class="ftag">#俳優甲<\/span><\/div>/);
+    assert.match(fav, /<div class="favtags"><a class="ftag" href="\/recommend\/favourites\?t=__TAGURI_TOKEN__&amp;n=%E4%BF%B3%E5%84%AA%E7%94%B2">#俳優甲<\/a><\/div>/);
     assert.doesNotMatch(fav, /なぜお知らせしているか/);
     assert.match(fav, /<span class="tgn">人「俳優甲」<\/span>/);
     assert.doesNotMatch(fav, /data-v="interest"/);                 // no 興味あり here, only 購入済み
@@ -367,8 +367,8 @@ test('お気に入り finds a registered name in the catalogue at once, also wit
     await step(env, a, {post: '/api/favourite', body: {action: 'add', kind: '団体', name: '劇団Y'}});
     const html = (await screen(env, a, 'favourites')).body_html;
     assert.match(html, /<article class="ticket favourite" data-stage="888"[\s\S]*?カードの無い新作/);
-    assert.match(html, /<span class="ftag">#山田花子<\/span>/);
-    assert.match(html, /<span class="ftag">#劇団Y<\/span>/);
+    assert.match(html, /class="ftag"[^>]*>#山田花子<\/a>/);
+    assert.match(html, /class="ftag"[^>]*>#劇団Y<\/a>/);
     assert.doesNotMatch(html, /終わった公演/);
   } finally { sqlite.close(); }
 });
@@ -479,5 +479,31 @@ test('並べ替え: 興味あり・お気に入り・購入済み公演 can be s
     const t = (await screen(env, a, 'tickets', '?s=end')).body_html;
     assert.match(t, /<option value="end" selected>楽日の近い順/);
     assert.ok(t.indexOf('data-stage="972"') < t.indexOf('data-stage="971"'));
+  } finally { sqlite.close(); }
+});
+
+test('お気に入りのハッシュタグ: the name coming stages, works seen and (on request) past stages (起案者 2026-10-15)', async () => {
+  const {env, sqlite} = withIndex();
+  const a = await signIn(env);
+  try {
+    await step(env, a, {post: '/api/favourite', body: {action: 'add', kind: '人', name: '俳優甲'}});
+    // 観た公演（103 は索引で 俳優甲 が出ている。終わった舞台）
+    const key = (await step(env, a, {post: '/api/add_work', body: {title: '終わった舞台', date: '2026-08-05'}})).body.work_key;
+    await step(env, a, {post: '/api/link_stage', body: {work_key: key, stage_id: '103'}});
+    await step(env, a, {post: '/api/rate', body: {work_key: key, verdict: '5/5'}});
+    // 過去の公演の一覧: 当たるもの・名前の一部だけ当たるもの
+    const put = (id, title, people) => sqlite.prepare("INSERT INTO past_stage(stage_id,title,tkey,start,end,venue,grp,pref,people) VALUES(?,?,?,?,?,'劇場P','劇団P','東京都',?)")
+      .run(id, title, title, '2023-05-01', '2023-05-10', JSON.stringify(people));
+    put('p1', '昔の舞台', [['出演', '俳優甲']]);
+    put('p2', '別人の舞台', [['出演', '俳優甲乙']]);
+    const v = (await screen(env, a, 'favourites', '?n=' + encodeURIComponent('俳優甲'))).body_html;
+    assert.match(v, /<h1><span class="ftag big">#俳優甲<\/span> の公演<\/h1>/);
+    assert.match(v, /これから観られる公演 <span class="cnt">1 件<\/span>[\s\S]*data-stage="101"/);
+    assert.match(v, /観た公演 <span class="cnt">1 件<\/span>[\s\S]*終わった舞台[\s\S]*★5/);
+    assert.match(v, /2019 年以降の過去の公演からも探す/);
+    assert.doesNotMatch(v, /昔の舞台/);                                    // 押すまでは探さない
+    const pv = (await screen(env, a, 'favourites', '?n=' + encodeURIComponent('俳優甲') + '&past=1')).body_html;
+    assert.match(pv, /2023\/05\/01<\/span><span class="t">昔の舞台/);
+    assert.doesNotMatch(pv, /別人の舞台/);                                 // 名前全体で当てる
   } finally { sqlite.close(); }
 });

@@ -837,3 +837,15 @@ a.htag-in:hover{text-decoration:underline}
 .favtags{display:flex;flex-wrap:wrap;gap:6px 8px;margin:8px 0 4px}
 .ftag{display:inline-block;font-size:12px;font-weight:600;padding:2px 10px;border-radius:99px;
  color:var(--s2);border:1px solid color-mix(in srgb,var(--s2) 42%,transparent)}
+a.ftag{text-decoration:none}
+a.ftag:hover,a.ftag:focus-visible{background:color-mix(in srgb,var(--s2) 12%,transparent)}
+.ftag.big{font-size:inherit;padding:2px 14px}
+/* ハッシュタグを押した画面（?n=）の観た公演・過去の公演の一覧 */
+.nmlist{list-style:none;margin:6px 0 18px;padding:0;display:grid;gap:2px}
+.nmlist li{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;padding:8px 2px;border-bottom:1px solid var(--grid)}
+.nmlist .d{font-variant-numeric:tabular-nums;color:var(--mute);font-size:12.5px;min-width:6.5em}
+.nmlist .t{font-weight:700;flex:1 1 12em;min-width:0}
+.nmlist .v{color:var(--curtain);font-weight:700}
+.nmlist .w{color:var(--mute);font-size:12px;flex-basis:100%;padding-left:calc(6.5em + 12px)}
+h2 .cnt{font-size:13px;font-weight:400;color:var(--mute);margin-left:6px}
+.pastbtn{display:inline-block;padding:8px 14px;border:1px solid var(--ring);border-radius:10px;text-decoration:none}
