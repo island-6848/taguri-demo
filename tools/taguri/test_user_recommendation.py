@@ -278,8 +278,13 @@ class KindOfShowTests(unittest.TestCase):
                          [("#会場", "劇場A"), ("#原作", "オリジナル"), ("#形式", "ミュージカル")])
         self.assertEqual(T("夏の夜", [], [("翻訳", "乙"), ("音楽", "丙")]),
                          [("#原作", "オリジナル"), ("#形式", "音楽劇"), ("#翻訳", "翻訳劇")])
-        self.assertEqual(T("朗読劇『夜』", [], [("原作", "丁")]),
-                         [("#原作", "原作もの"), ("#形式", "朗読")])
+        # 原作の種類は欄の書き添えから読む。読めないときは種類を付けない（「原作もの」とは言わない。起案者 2026-10-16）
+        self.assertEqual(T("朗読劇『夜』", [], [("原作", "丁")]), [("#形式", "朗読")])
+        self.assertEqual(T("朗読劇『夜』", [], [("原作", "丁")], source="丁『夜』（集英社ジャンプコミックス刊）"),
+                         [("#原作", "漫画原作"), ("#形式", "朗読")])
+        self.assertEqual(UR.source_kinds("映画『髪結いの亭主』（監督＝パトリス・ルコント）"), ["映画原作"])
+        self.assertEqual(UR.source_kinds("池井戸 潤「民王」（文春文庫／角川文庫）"), ["小説原作"])
+        self.assertEqual(UR.source_text({"スタッフ": "振付原案：甲\n原作：乙「夜」（講談社文庫）"}), "乙「夜」（講談社文庫）")
         self.assertEqual(T("", [], []), [])          # nothing known, nothing guessed
 
     def test_kind_preference_reaches_shows_without_shared_people(self):
@@ -423,7 +428,8 @@ class AspectTests(unittest.TestCase):
         self.assertEqual(UR.price_band(["一般 7,800円 / 学生 4,000円"]), "5千〜9千円")
         self.assertEqual(UR.price_band(["S席 13,000円"]), "1万3千円以上")
         self.assertEqual(UR.price_band(["無料", ""]), "")
-        self.assertIn(("#値段", "5千円未満"), UR.stage_tags("舞台", [], [], ["3,500円"]))
+        # 料金帯は理由にも点数にも使わない（起案者の指示 2026-10-16）
+        self.assertFalse([t for t in UR.stage_tags("舞台", [], [], ["3,500円"]) if t[0] == "#値段"])
 
 
 if __name__ == "__main__":

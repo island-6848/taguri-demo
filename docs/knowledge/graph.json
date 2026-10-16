@@ -1684,6 +1684,22 @@
    "verifies": []
   },
   {
+   "id": "dec-source-kind-no-price",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-16",
+   "title": "「原作もの」をやめ、原作・原案の欄の書き添えから「漫画原作・小説原作・映画原作・アニメ原作・ゲーム原作」を付ける。料金帯（#値段）は理由にも点数にも使わない",
+   "sources": [
+    "tools/review/user_recommender.py",
+    "cloudflare/scripts/build_recommend_index.py",
+    "cloudflare/src/screens/recommend.js",
+    "tools/taguri/test_user_recommendation.py",
+    "cloudflare/test/kind-off.test.js",
+    "https://github.com/island-6848/taguri-crawler/tree/state"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-spread-and-partners",
    "type": "decision",
    "status": "adopted",

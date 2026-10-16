@@ -66,3 +66,10 @@ test('原作の国 is a kind reason with its own label and source, and can be tu
   assert.match(html, /［出典: クレジットの作り手の名前］/);
   assert.match(html, /data-kindoff="#原作の国\t韓国"/);
 });
+
+test('原作 shows the kind of source without repeating the heading; no price band reason', () => {
+  const html = reasonRows({parts: [], kinds: [[0.3, '#原作', '漫画原作', 2], [0.2, '#原作', 'オリジナル', 1]]}, new Map());
+  assert.match(html, /<span class="net">種類<\/span><b>漫画原作<\/b>/);
+  assert.match(html, /<span class="net">種類<\/span>原作 <b>オリジナル<\/b>/);
+  assert.match(html, /［出典: 原作・原案のクレジット］/);
+});

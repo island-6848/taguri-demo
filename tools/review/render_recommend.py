@@ -677,8 +677,8 @@ def cast_block(c: dict) -> str:
 
 WORKS_SHOWN = 3
 # 種類の理由の見出しと出典（user_recommender.stage_tags が付ける軸）
-KIND_LABEL = {"#形式": "形式", "#原作": "原作", "#翻訳": "", "#原作の国": "原作の国", "#会場": "劇場", "#値段": "料金帯", "#題材": "題材"}
-KIND_SRC = {"#形式": "公演名とクレジット", "#原作の国": "クレジットの作り手の名前", "#会場": "公演ページの劇場", "#値段": "公演ページの料金"}
+KIND_LABEL = {"#形式": "形式", "#原作": "原作", "#翻訳": "", "#原作の国": "原作の国", "#会場": "劇場", "#題材": "題材"}
+KIND_SRC = {"#形式": "公演名とクレジット", "#原作": "原作・原案のクレジット", "#原作の国": "クレジットの作り手の名前", "#会場": "公演ページの劇場"}
 
 
 def works_text(works: list, n: int) -> str:
@@ -759,7 +759,7 @@ def reason_rows(c: dict) -> str:
                                         key=lambda k: (k[1] not in content, -k[0], k[1], k[2]))[:2]:
         works = (kind_works.get(f"{axis}\t{tag}") or []) if isinstance(kind_works, dict) else []
         out.append(f'<li class="rs c k"><span class="net">種類</span>'
-                   f'{(E(label) + " ") if (label := KIND_LABEL.get(axis, axis.lstrip("#"))) else ""}<b>{E(tag)}</b>'
+                   f'{(E(label) + " ") if (label := KIND_LABEL.get(axis, axis.lstrip("#"))) and not tag.endswith(label) else ""}<b>{E(tag)}</b>'
                    f'<span class="n">{works_text(works, n)}</span>'
                    f'<span class="src">［出典: {E(KIND_SRC.get(axis, ROLE_SRC))}］</span></li>')
     # **本人の感想の引用（「あなたの言葉」）は出さない**（起案者の指示・2026-10-13 ──

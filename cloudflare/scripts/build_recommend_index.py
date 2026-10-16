@@ -94,7 +94,7 @@ def build_index(pool: dict[str, dict], fields_by_stage: dict[str, dict], role_gr
         credits = sorted(set(M.parse_credits(entry.get("fields") or {})))
         titles.setdefault(sid, title)
         tags = UR.stage_tags(title, [(entry.get("fields") or {}).get("劇場", "")], credits,
-                             UR.price_texts(entry)) + [(THEME_AXIS, w) for w in themes.get(sid, [])]
+                             source=UR.source_text(entry.get("fields") or {})) + [(THEME_AXIS, w) for w in themes.get(sid, [])]
         stages[sid] = {"title": title, "tkey": M.R.title_key(title), "grp": entry.get("group") or "",
                        "tour": UR.tour_key(title, entry.get("group") or "", credits),
                        "gkey": RC.nz(entry.get("group") or ""),
@@ -112,7 +112,7 @@ def build_index(pool: dict[str, dict], fields_by_stage: dict[str, dict], role_gr
             continue
         credits = sorted(set(M.parse_credits(f)))
         tags = UR.stage_tags(titles.get(sid, ""), [f.get("劇場", "")], credits,
-                             UR.price_texts(pool.get(sid) or {"fields": f}))
+                             source=UR.source_text(f))
         tags += [(THEME_AXIS, w) for w in themes.get(sid, [])]
         people[sid] = [list(c) for c in sorted(set(credits) | set(tags))]
     for sid, ws in themes.items():

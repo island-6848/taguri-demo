@@ -406,13 +406,14 @@ ${mfoot}`;
   return {title: '興味あり', body_html: body};
 }
 
-const KIND_OFF_LABEL = {'#形式': '形式', '#原作': '原作', '#翻訳': '翻訳', '#原作の国': '原作の国', '#会場': '劇場', '#値段': '料金帯', '#題材': '題材'};
+const KIND_OFF_LABEL = {'#形式': '形式', '#原作': '原作', '#翻訳': '翻訳', '#原作の国': '原作の国', '#会場': '劇場', '#題材': '題材'};
 /** 「使わない」にした種類の理由の一覧（q-kind-reason-off）。1 つも無いときは出さない */
 export function kindOffBox(keys) {
   if (!keys.length) return '';
   const tags = keys.map(k => {
     const [axis, tag] = k.split('\t');
-    return `<span class="tag" data-kindkey="${E(k)}">${E(KIND_OFF_LABEL[axis] || axis.replace(/^#+/, ''))}「${E(tag)}」<button data-kindoff-remove="1">✕</button></span>`;
+    const label = KIND_OFF_LABEL[axis] || axis.replace(/^#+/, '');
+    return `<span class="tag" data-kindkey="${E(k)}">${tag.endsWith(label) ? '' : E(label)}「${E(tag)}」<button data-kindoff-remove="1">✕</button></span>`;
   }).join('');
   return `<details class="pbox" id="kind-off">
 <summary>${ico('flag')}使わない理由 <b>${keys.length} 件</b></summary>
