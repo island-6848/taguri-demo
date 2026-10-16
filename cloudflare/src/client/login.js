@@ -159,7 +159,9 @@ function showRecovery(code) {
 }
 
 function setupPasskeys() {
-  if (!browserSupportsWebAuthn()) { $('#passkey').hidden = true; $('#passkey-login').hidden = true; return; }
+  // パスキーを使えない画面（LINE・X などのアプリの中のブラウザに多い）では、ボタンを消すだけでなく、
+  // ブラウザで開き直せば使えると書く（起案者の質問 2026-10-16「ログイン画面のパスキーのやつ消したの？」）
+  if (!browserSupportsWebAuthn()) { $('#passkey').hidden = true; $('#passkey-login').hidden = true; $('#passkey-none').hidden = false; return; }
   $('#passkey-login').addEventListener('click', async () => {
     busy(true); say('端末の画面でパスキーを選んでください…');
     try {

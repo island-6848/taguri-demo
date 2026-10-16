@@ -45,7 +45,7 @@ body.auth{margin:0;padding:0;min-height:100vh;display:flex;flex-direction:column
 #login{scroll-margin-top:16px}
 /* /about（もとの説明ページの体裁） */
 .about{width:100%;max-width:720px}
-.about h1{font-size:28px;margin:0 0 10px}
+.about h1{font-size:min(28px,calc((100vw - 84px) / 15.5));white-space:nowrap;margin:0 0 10px}
 .about .about-lead{color:var(--ink2);font-size:15px;font-weight:400;margin:0 0 24px;max-width:none}
 .about ol,.about ul{padding-left:1.4em}
 .about .cta{text-align:center;margin:26px 0 8px}
