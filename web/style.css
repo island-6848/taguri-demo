@@ -2248,16 +2248,16 @@ code.cmd{display:inline-block;margin:10px 0 4px;padding:8px 14px;border-radius:8
 /* 観劇の時間割（screens/timetable.js）: 濃さは 1 色の段（--curtain を面の色に混ぜる。暗い表示でも同じ式）。
    数はどのマスにも書くので、色だけで読ませない */
 .tt{border-collapse:separate;border-spacing:2px;margin:6px 0 2px;font-size:13px}
-.tt th{font-weight:600;color:var(--mute);padding:2px 8px;text-align:center}
+.tt th{font-weight:600;color:var(--mute);padding:2px 4px;text-align:center;white-space:nowrap;font-size:12px}
 .tt th[scope=row]{text-align:right;color:var(--ink2)}
 .tt .tt-we th[scope=row]{color:var(--ink)}
-.tt td{min-width:64px;height:30px;text-align:center;border-radius:4px;color:var(--ink);font-variant-numeric:tabular-nums}
+.tt td{min-width:48px;height:30px;text-align:center;border-radius:4px;color:var(--ink);font-variant-numeric:tabular-nums}
 .tt .tt-0{background:var(--plane);color:var(--mute)}
 .tt .tt-1{background:color-mix(in srgb,var(--curtain) 12%,var(--surf))}
 .tt .tt-2{background:color-mix(in srgb,var(--curtain) 22%,var(--surf))}
 .tt .tt-3{background:color-mix(in srgb,var(--curtain) 34%,var(--surf))}
 .tt .tt-4{background:color-mix(in srgb,var(--curtain) 48%,var(--surf));font-weight:700}
-.tt .tt-t{background:transparent;color:var(--ink2);min-width:36px}
+.tt .tt-t{background:transparent;color:var(--ink2);min-width:28px}
 .tt .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 .tt td{position:relative}
 /* 「時刻なし」は好みではなく分からない回なので、色（--curtain）を使わず灰の段で */
@@ -2273,15 +2273,14 @@ code.cmd{display:inline-block;margin:10px 0 4px;padding:8px 14px;border-radius:8
 .cq-legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--ink2);margin:8px 0 0}
 .cq-legend i{display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;margin-right:4px}
 .cq-legend i.cq-none{background:var(--plane);border:1px solid var(--grid,var(--ring))}
-.cq-list{margin:10px 0 0;display:grid;gap:4px}
-.cq-list details{background:var(--plane);border-radius:8px;padding:6px 12px}
-.cq-list summary{cursor:pointer}
-.cq-list ul{margin:4px 0 2px;padding-left:1.2em}
 .cq .fine{font-size:12px;color:var(--mute);margin:10px 0 0}
-/* 時点で育つ地図（web/app.js fixupConquest）: 目盛りと、その年にはじめて行った県の縁取り */
-.cq-grow{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;margin:0 0 8px;font-size:13px;color:var(--ink2)}
-.cq-grow label{display:flex;align-items:center;gap:8px}
-.cq-grow input[type=range]{width:min(260px,52vw);accent-color:var(--curtain)}
-.cq-grow output{color:var(--ink);font-variant-numeric:tabular-nums}
-.cq-grow .cq-new{font-size:12px;color:var(--mute)}
-.cq-tile.new rect{stroke:var(--ink);stroke-width:2.5}
+/* マスを押したときの県の一覧（web/app.js fixupConquest） */
+.cq-tile{cursor:pointer}
+.cq-tile.sel rect{stroke:var(--ink);stroke-width:2.5}
+.cq-tile:focus-visible{outline:2px solid var(--curtain);outline-offset:2px}
+.cq-detail{margin:12px 0 0;padding:10px 12px;border-radius:8px;background:var(--plane);min-height:44px}
+.cq-detail .cq-hint{margin:0;color:var(--ink2)}
+.cq-detail ul{margin:4px 0 0;padding-left:1.2em}
+.cq-unknown{margin:8px 0 0;background:var(--plane);border-radius:8px;padding:6px 12px}
+.cq-unknown summary{cursor:pointer}
+.cq-unknown ul{margin:4px 0 2px;padding-left:1.2em}

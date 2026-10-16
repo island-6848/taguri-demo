@@ -37,7 +37,11 @@ test('the panel: counts on the tiles, shades by venues, a list per prefecture', 
   assert.match(html, /行った劇場 <b>1<\/b>（全国 3 のうち）・行った都道府県 <b>1 \/ 47<\/b>/);
   assert.match(html, /<title>東京都：1 \/ 3 か所<\/title>/);
   assert.match(html, />1\/3</);
-  assert.match(html, /<summary><b>東京都<\/b>　1\/3 か所<\/summary><ul><li>劇場A<\/li>/);
+  // Tapping a tile shows its theatres (web/app.js fixupConquest shows one of these).
+  assert.match(html, /<g class="cq-tile" data-p="東京都" tabindex="0" role="button"/);
+  assert.match(html, /<div class="cq-pick" data-p="東京都" hidden><b>東京都<\/b>　1 \/ 3 か所<ul><li>劇場A<\/li><\/ul><\/div>/);
+  assert.match(html, /<div class="cq-pick" data-p="大阪府" hidden><b>大阪府<\/b>　まだ行っていません（この県の劇場 0 か所）<\/div>/);
+  assert.doesNotMatch(html, /type="range"/);
   assert.match(html, /都道府県が分からない劇場　1 か所/);
   assert.equal(fill(0), 'var(--plane)');
   assert.match(fill(12), /56%/);
@@ -64,16 +68,3 @@ test('眺める shows the map from the diary, with the census as the denominator
   } finally { sqlite.close(); }
 });
 
-test('the map grows by year: each venue keeps the first year it was visited', () => {
-  const vis = [{key: 'a', name: '劇場A', pref: '東京都', year: 2021}, {key: 'b', name: '劇場B', pref: '大阪府', year: 2024},
-    {key: 'c', name: '劇場C', pref: '東京都', year: null}];
-  const html = conquestPanel(tally(vis, {'東京都': 3, '大阪府': 2}, new Set(['a', 'b', 'c'])));
-  const m = /data-cq="([^"]*)"/.exec(html);
-  assert.ok(m, 'two or more years: the slider data is there');
-  const g = JSON.parse(m[1].replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&#x27;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>'));
-  assert.deepEqual(g.years, [2021, 2024]);
-  assert.deepEqual(g.v.filter(([p]) => p === '東京都').map(x => x[1]).sort(), [2021, null]);
-  assert.match(html, /<input type="range" min="0" max="2" value="2"/);
-  // One year only: nothing to move through.
-  assert.doesNotMatch(conquestPanel(tally(vis.slice(0, 1), null, new Set())), /data-cq|type="range"/);
-});

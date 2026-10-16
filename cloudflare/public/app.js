@@ -3560,47 +3560,21 @@ document.addEventListener("click", ev => {
   });
 });
 
-// === 劇場制覇マップの「時点で育つ地図」(cloudflare/src/screens/conquest.js) ===
-// 地図はサーバーが「今まで」の形で描いてある。目盛りを動かすと、その年までに行った劇場だけで
-// マスの色・数・ツールチップを塗り直し、その年にはじめて行った県を縁取る。分母(その県の劇場)は今のまま。
+// === 劇場制覇マップ(cloudflare/src/screens/conquest.js) ===
+// マスを押すと、その県で行った劇場を地図の下に出す(起案者の指示 2026-10-16「地方のマス押したら行った劇場の
+// 名前が出るようにデモと同じようにして」)。一覧はサーバーが県ごとに隠して描いてあり、ここでは出し分けるだけ
 function fixupConquest(root) {
-  (root || document).querySelectorAll("section.cq[data-cq]").forEach(sec => {
-    let g;
-    try { g = JSON.parse(sec.dataset.cq); } catch (e) { return; }
-    const box = sec.querySelector(".cq-grow"), range = box && box.querySelector("input[type=range]");
-    if (!range) return;
-    box.hidden = false;
-    const out = box.querySelector("output");
-    const fill = k => {
-      if (!k) return "var(--plane)";
-      let pct = g.steps[0][1];
-      for (const [min, p] of g.steps) if (k >= min) pct = p;
-      return "color-mix(in srgb, var(--curtain) " + pct + "%, var(--surf))";
+  (root || document).querySelectorAll("section.cq").forEach(sec => {
+    const pick = p => {
+      sec.querySelectorAll(".cq-tile").forEach(t => t.classList.toggle("sel", t.dataset.p === p));
+      sec.querySelectorAll(".cq-pick").forEach(d => { d.hidden = d.dataset.p !== p; });
+      const hint = sec.querySelector(".cq-hint");
+      if (hint) hint.hidden = true;
     };
-    const paint = () => {
-      const i = +range.value, until = i >= g.years.length ? null : g.years[i];
-      const n = {}, before = {};
-      for (const [p, y] of g.v) {
-        if (until === null || (y !== null && y <= until)) n[p] = (n[p] || 0) + 1;
-        if (until !== null && y !== null && y < until) before[p] = true;
-      }
-      sec.querySelectorAll(".cq-tile[data-p]").forEach(t => {
-        const p = t.dataset.p, k = n[p] || 0, tot = g.total[p];
-        t.querySelector("rect").setAttribute("fill", fill(k));
-        const num = t.querySelector("text.n");
-        if (num) num.textContent = g.known ? k + "/" + tot : String(k);
-        const tip = t.querySelector("title");
-        if (tip) tip.textContent = p + "：" + k + (g.known ? " / " + tot : "") + " か所";
-        t.classList.toggle("new", until !== null && k > 0 && !before[p]);
-      });
-      const venues = Object.values(n).reduce((a, b) => a + b, 0), prefs = Object.keys(n).length;
-      const fresh = until === null ? 0 : g.v.filter(([, y]) => y === until).length;
-      const label = until === null ? "今まで" : until + " 年まで";
-      out.textContent = label + "：" + venues + " か所・" + prefs + " 都道府県" + (fresh ? "（この年はじめて " + fresh + " か所）" : "");
-      range.setAttribute("aria-valuetext", label);
-    };
-    range.addEventListener("input", paint);
-    paint();
+    sec.querySelectorAll(".cq-tile[data-p]").forEach(t => {
+      t.addEventListener("click", () => pick(t.dataset.p));
+      t.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(t.dataset.p); } });
+    });
   });
 }
 

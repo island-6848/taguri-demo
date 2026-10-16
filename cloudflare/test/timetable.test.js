@@ -10,7 +10,9 @@ test('weekday and matinée / soirée', () => {
   assert.equal(weekday('2026-10-19'), 0);          // 月
   assert.equal(weekday('2026-13-01'), null);
   assert.equal(slotOf('13:00'), 'm');
-  assert.equal(slotOf('16:59'), 'm');
+  assert.equal(slotOf('14:59'), 'm');
+  assert.equal(slotOf('15:00'), 'j');
+  assert.equal(slotOf('16:59'), 'j');
   assert.equal(slotOf('17:00'), 's');
   assert.equal(slotOf('19:30'), 's');
   assert.equal(slotOf(''), 'u');
@@ -28,9 +30,12 @@ test('the panel counts each weekday and slot, names the busiest, and writes ever
   const html = timetablePanel([
     {date: '2026-10-10', time: '13:00'}, {date: '2026-10-03', time: '12:00'},   // 土 マチネ ×2
     {date: '2026-10-08', time: '19:00'},                                        // 木 ソワレ
+    {date: '2026-10-11', time: '15:30'},                                        // 日 ジュルネ
     {date: '2026-10-05', time: ''}]);                                            // 月 時刻なし
   assert.match(html, /いちばん多いのは <b>土曜のマチネ（2 回）<\/b>/);
-  assert.match(html, /<b>4 回のうち 3 回<\/b>/);
+  assert.match(html, /<b>5 回のうち 4 回<\/b>/);
+  assert.match(html, /<th scope="col" title="15 時から 17 時より前">ジュルネ<\/th>/);
+  assert.match(html, /title="日曜 ジュルネ：1 回"><span class="tt-n">1<\/span>/);
   assert.match(html, /<th scope="row">土<\/th><td class="tt-c tt-4" title="土曜 マチネ：2 回"><span class="tt-n">2<\/span>/);
   assert.match(html, /<td class="tt-c tt-0" title="火曜 マチネ：0 回"><span class="tt-n">·<\/span>/);
   assert.equal(timetablePanel([]), '');

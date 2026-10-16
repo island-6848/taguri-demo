@@ -19,6 +19,7 @@ import {compose, cardTemplates, posterHtml, mytixHtml, preNote} from './cards.js
 import {titleKey} from './works.js';
 import {indexTabs} from './rate.js';
 import {PREFS} from './prefs.js';
+import {CONTENT_AXES} from '../recommend.js';
 import {rankedGroups, reasonRows} from './recommend.js';
 
 export const KINDS = ['団体', '人', '主催', '作品', '原作者', '題材'];
@@ -223,7 +224,28 @@ export async function nameHits(ctx, declared, words, {catalogue = false} = {}) {
       if (w && !(a.length && !a.every(h => h.startsWith('主催「')))) dec.set(sid, w);
     }
   }
+  // おすすめ理由の種類（#形式 ミュージカル、#原作の国 韓国、#ジャンル 2.5次元 …）にだけ出てくる語も当てる
+  // （起案者の指摘 2026-10-16「出さない語が反映されてない」）。種類の印は本文（blob）に無いことがあるので、
+  // 索引の (種類, 語) を主キーで引く
+  for (const [sid, w] of await kindTagged(ctx, words)) {
+    const a = hits.get(sid)?.a || [];
+    if (!dec.has(sid) && !(a.length && !a.every(h => h.startsWith('主催「')))) dec.set(sid, w);
+  }
   return {hits, declined: dec};
+}
+
+/** stage_id -> the word, for the stages whose kind tags (CONTENT_AXES) are one of these words. */
+async function kindTagged(ctx, words) {
+  const out = new Map();
+  const ws = [...new Set(words.map(w => String(w).trim()).filter(Boolean))];
+  if (!ws.length) return out;
+  const keys = ws.flatMap(w => CONTENT_AXES.map(axis => [axis, w]));
+  for (const part of chunks(keys, 45)) {
+    const {results} = await ctx.db.prepare(`SELECT person, stage_id FROM rec_credit WHERE ver=(SELECT v FROM rec_meta WHERE k='current') AND (role,person) IN (VALUES ${part.map(() => '(?,?)').join(',')})`)
+      .bind(...part.flat()).all();
+    for (const r of results) if (!out.has(r.stage_id)) out.set(r.stage_id, r.person);
+  }
+  return out;
 }
 
 /** app._owned_done_date over the production's stages. */
@@ -457,11 +479,11 @@ export function kindOffBox(keys) {
 </details>`;
 }
 
-function declinedBox(words) {
+export function declinedBox(words) {
   const tags = words.map(w => `<span class="tag" data-word="${E(w)}">「${E(w)}」<button data-dec="remove">✕</button></span>`).join('');
   return `<details class="pbox" id="declined">
 <summary>${ico('flag')}出さない語 <b>${words.length} 語</b></summary>
-<p class="lead">ここに入れた語が題名・団体・劇場・出演者・題材のどれかに出てくる公演は、
+<p class="lead">ここに入れた語が題名・団体・劇場・出演者・題材・おすすめ理由の種類（形式・原作・ジャンルなど）のどれかに出てくる公演は、
 おすすめに出しません。消してはいないので、語を外せば戻ります。
 お気に入りに登録した名前の公演は、この語に当たっても外れません。
 <b>ただし「主催」で登録した名前だけで出てきた公演は例外で、この語に当たれば外れます</b>

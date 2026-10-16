@@ -21,7 +21,7 @@ import {castOffOf} from './diary.js';
 import {compose, cardTemplates, posterHtml} from './cards.js';
 import {PREFS, prefForm, prefsFor, regionCounts} from './prefs.js';
 export {prefForm, prefsFor};
-import {loadDeclared, loadDeclined, loadKindOff, nameHits, KINDS, reactionsOf} from './lists.js';
+import {loadDeclared, loadDeclined, loadKindOff, nameHits, KINDS, reactionsOf, declinedBox} from './lists.js';
 
 export const TOP = 15;
 const TIPS = `<section class="card tips">
@@ -38,7 +38,7 @@ const TIPS = `<section class="card tips">
 `;
 // Groups kept per user between requests: enough to fill 15 cards in any one prefecture.
 const KEEP = 400;
-const VERSION = 'screen-v14';   // v14: #ジャンル (a genre turned off hides its stages); v13: no 原作「原作もの」 (DROPPED_KEYS); v12: no #値段 (DROPPED_AXES); v11: reasons of answered stages (answered_why); v2: the user's 効かせ方 (rank_weight) and the per-group counts; v3: 興味あり as seeds; v4: diag; v5: 興味あり split (impl-interest-split); v6: by part importance; v7: tiers + トメ; v8: two tiers only; v9: トメ joins the main roles; v10: spread leads + one-step partners
+const VERSION = 'screen-v15';   // v15: 出さない語 also hits the kind tags; v14: #ジャンル (a genre turned off hides its stages); v13: no 原作「原作もの」 (DROPPED_KEYS); v12: no #値段 (DROPPED_AXES); v11: reasons of answered stages (answered_why); v2: the user's 効かせ方 (rank_weight) and the per-group counts; v3: 興味あり as seeds; v4: diag; v5: 興味あり split (impl-interest-split); v6: by part importance; v7: tiers + トメ; v8: two tiers only; v9: トメ joins the main roles; v10: spread leads + one-step partners
 export {PREFS} from './prefs.js';
 const ROLE_SRC = '公演ページのクレジット';
 const KIND_LABEL = {'#形式': '形式', '#原作': '原作', '#翻訳': '', '#原作の国': '原作の国', '#会場': '劇場', '#題材': '題材', '#ジャンル': 'ジャンル'};
@@ -182,8 +182,11 @@ export async function rankedGroups(ctx) {
     (SELECT v FROM rec_meta WHERE k='index_rev') AS ir`).bind(ctx.uid).first();
   // 索引は差分で入れ、版（ver）は 'live' のまま変わらないので、中身が変わった合図は index_rev（q-index-incremental）。
   // 「使わない」にした種類の理由は中身ごと控えの印に入れる（同じ秒に外して戻しても、控えが古いまま残らない）
+  // 出さない語も中身ごと（同じ秒に足して外すと、更新日時だけでは控えが古いまま残る）
   const off = new Set(await loadKindOff(ctx));
-  const stamp = [VERSION, ver, st.ir || '', ctx.today, st.wn, st.wm, st.an, st.am, st.fn, st.mn, st.xn, st.dm, st.cv, st.km, [...off].sort().join(',')].join('|');
+  const words = await loadDeclined(ctx);
+  const stamp = [VERSION, ver, st.ir || '', ctx.today, st.wn, st.wm, st.an, st.am, st.fn, st.mn, st.xn, st.dm, st.cv, st.km, [...off].sort().join(','),
+    [...words].sort().join('\n')].join('|');
   const access = d1Access(db, ver);
   const cached = await db.prepare('SELECT body FROM rec_cache WHERE user_id=? AND stamp=?').bind(ctx.uid, stamp).first();
   if (cached) {
@@ -206,7 +209,7 @@ export async function rankedGroups(ctx) {
   const seeds = withoutKinds(fav.seeds, off);
   // Stages of a registered name are お気に入り, stages of a word not to show are left out
   // (app._rebucket): neither is ranked here.
-  const {hits, declined} = await nameHits(ctx, declared, await loadDeclined(ctx));
+  const {hits, declined} = await nameHits(ctx, declared, words);
   const ranked = await scoreFromIndex({...access, rated: gate.aspects ? rated : rated.map(r => ({...r, aspects: []})),
     multipliers, today: ctx.today, seeds, skip, liked, disliked, expand: {peopleFor: access.peopleFor, exclude: castOffKeys(rated)}});
   // app._weight_counts: per group, the candidates it matches (the people and kinds that raised them).
@@ -366,7 +369,7 @@ export async function recommendScreen(params, ctx) {
   const body = `<h1>${E(head)}</h1>
 ${lede}
 ${notes}
-${tips}<div class="fil2">${prefForm(prefCounts(data.groups), prefs, '/recommend', '', {}, regionCounts(data.groups.map(g => ({key: g.stage_id, prefs: g.venues.map(v => v.pref)}))))}${weightForm(data.weights || {}, data.w_counts || {})}</div>
+${tips}<div class="fil2">${prefForm(prefCounts(data.groups), prefs, '/recommend', '', {}, regionCounts(data.groups.map(g => ({key: g.stage_id, prefs: g.venues.map(v => v.pref)}))))}${weightForm(data.weights || {}, data.w_counts || {})}${declinedBox(await loadDeclined(ctx))}</div>
 ${cards.join('')}
 <p class="lede">気になった公演で「興味あり」を押すと、
 <a href="/recommend/interest?t=__TAGURI_TOKEN__">「興味あり」（いま ${nInterest} 件）</a>に移ります。</p>

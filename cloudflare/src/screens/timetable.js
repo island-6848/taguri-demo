@@ -5,8 +5,10 @@ import {E} from './py.js';
 import {h2} from './icons.js';
 
 export const DAYS = ['月', '火', '水', '木', '金', '土', '日'];
-export const SLOTS = [['m', 'マチネ', '17 時より前'], ['s', 'ソワレ', '17 時から'], ['u', '時刻なし', '開演時刻が分からない回']];
-const SOIREE_FROM = 17 * 60;
+// ジュルネは 1 日 3 回公演の真ん中の回（起案者「観劇時間割、ジュルネもある」2026-10-16、finding timetable-journee）。
+// 何回公演の日かは分からないので、開演の時刻で分ける: 15 時より前がマチネ、15 時から 17 時より前がジュルネ
+export const SLOTS = [['m', 'マチネ', '15 時より前'], ['j', 'ジュルネ', '15 時から 17 時より前'], ['s', 'ソワレ', '17 時から'], ['u', '時刻なし', '開演時刻が分からない回']];
+const JOURNEE_FROM = 15 * 60, SOIREE_FROM = 17 * 60;
 
 /** 0 = 月 … 6 = 日 of a YYYY-MM-DD date (null if not a date). */
 export function weekday(date) {
@@ -18,11 +20,12 @@ export function weekday(date) {
   return (d.getUTCDay() + 6) % 7;
 }
 
-/** 'm' (before 17:00), 's' (from 17:00) or 'u' (no time). */
+/** 'm' (before 15:00), 'j' (15:00–16:59), 's' (from 17:00) or 'u' (no time). */
 export function slotOf(time) {
   const m = /^(\d{1,2}):(\d{2})/.exec(String(time || '').trim());
   if (!m) return 'u';
-  return +m[1] * 60 + +m[2] < SOIREE_FROM ? 'm' : 's';
+  const t = +m[1] * 60 + +m[2];
+  return t < JOURNEE_FROM ? 'm' : t < SOIREE_FROM ? 'j' : 's';
 }
 
 /**
@@ -62,9 +65,9 @@ export function timetablePanel(vs) {
   const cell = (d, s) => grid.get(d + '|' + s) || 0;
   const max = Math.max(...grid.values());
   const timed = vs.filter(v => slotOf(v.time) !== 'u').length;
-  // The busiest weekday × matinée/soirée (ties: earlier in the week, matinée first).
+  // The busiest weekday × matinée/journée/soirée (ties: earlier in the week, earlier in the day).
   let best = null;
-  for (let d = 0; d < 7; d++) for (const [s] of SLOTS.slice(0, 2)) if (cell(d, s) && (!best || cell(d, s) > best[2])) best = [d, s, cell(d, s)];
+  for (let d = 0; d < 7; d++) for (const [s] of SLOTS.slice(0, 3)) if (cell(d, s) && (!best || cell(d, s) > best[2])) best = [d, s, cell(d, s)];
   const slotName = s => SLOTS.find(x => x[0] === s)[1];
   const rows = DAYS.map((name, d) => {
     const cells = SLOTS.map(([s, label]) => {
@@ -81,9 +84,9 @@ export function timetablePanel(vs) {
     : '開演時刻の分かる回がまだありません。';
   return `<section class="card">
 ${h2('clock', '観劇の時間割 ── 1 週間のどこで観ているか', `<span class="badge part">${vs.length} 回</span>`)}
-<p class="lead">観た回を、曜日と開演の時刻（17 時より前がマチネ、17 時からがソワレ）で数えています。${lead}
+<p class="lead">観た回を、曜日と開演の時刻（15 時より前がマチネ、15 時から 17 時より前がジュルネ、17 時からがソワレ）で数えています。${lead}
 開演時刻が分かるのは <b>${vs.length} 回のうち ${timed} 回</b>で、チケットか日記帳に時刻を入れた回です。</p>
-<table class="tt" aria-label="観劇の時間割。行が曜日、列がマチネ・ソワレ・時刻なし、数は観た回数">
+<table class="tt" aria-label="観劇の時間割。行が曜日、列がマチネ・ジュルネ・ソワレ・時刻なし、数は観た回数">
 <thead><tr><th></th>${head}<th scope="col">計</th></tr></thead>
 <tbody>${rows}</tbody></table>
 </section>`;

@@ -2223,6 +2223,19 @@
    "verifies": []
   },
   {
+   "id": "fix-declined-kind-tags",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-16",
+   "title": "出さない語を、おすすめ理由の種類（形式・原作・原作の国・翻訳・題材・ジャンル）にも当てる。おすすめ画面でも足し外しできるようにした",
+   "sources": [
+    "cloudflare/src/screens/lists.js",
+    "cloudflare/src/screens/recommend.js",
+    "cloudflare/test/declined.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "fix-failing-tool-tests",
    "type": "finding",
    "status": "confirmed",
@@ -5105,6 +5118,19 @@
    ]
   },
   {
+   "id": "timetable-journee",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-16",
+   "title": "ジュルネは 1 日 3 回公演の真ん中の回（マチネ・ジュルネ・ソワレ）。公式の定義は見つからず、時刻の決まりも無い",
+   "sources": [
+    "https://x.com/suemitsu/status/482826243285344257",
+    "https://news.livedoor.com/article/detail/24102863/",
+    "https://detail.chiebukuro.yahoo.co.jp/qa/question_detail/q13271335148"
+   ],
+   "verifies": []
+  },
+  {
    "id": "title-font-candidates",
    "type": "finding",
    "status": "confirmed",
@@ -7148,6 +7174,11 @@
    "to": "q-firebase-key-restriction"
   },
   {
+   "from": "fix-declined-kind-tags",
+   "rel": "depends_on",
+   "to": "impl-kind-reason-off"
+  },
+  {
    "from": "four-level-unsupported",
    "rel": "affects",
    "to": "q-rating-scale"
@@ -9111,6 +9142,11 @@
    "from": "throttle-keyed-by-client-address",
    "rel": "raises",
    "to": "q-cf-connecting-ip-trust"
+  },
+  {
+   "from": "timetable-journee",
+   "rel": "affects",
+   "to": "impl-timetable"
   },
   {
    "from": "title-font-candidates",
