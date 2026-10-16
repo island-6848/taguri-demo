@@ -2220,6 +2220,21 @@
    ]
   },
   {
+   "id": "genre-25d-signals",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-16",
+   "title": "2.5次元は「漫画・アニメ・ゲームが原作の舞台」と定義されるが、CoRich にジャンルの欄は無く、原作の書き添え・主催の「製作委員会」・題名の型を合わせてもいくらか漏れと混ざりが出る",
+   "sources": [
+    "https://www.issoh.co.jp/column/details/8322/",
+    "https://www.ticket.co.jp/stage/25d",
+    "https://imidas.jp/genre/detail/L-108-0126.html",
+    "https://l-tike.com/play/mevent/?mid=506254",
+    "taguri-crawler state: review/candidates.jsonl（2026-10-16）"
+   ],
+   "verifies": []
+  },
+  {
    "id": "genre-schemes-found",
    "type": "finding",
    "status": "unverified",
@@ -6790,6 +6805,16 @@
    "from": "gemini-budget-cap",
    "rel": "affects",
    "to": "comp-catalog-pipeline"
+  },
+  {
+   "from": "genre-25d-signals",
+   "rel": "depends_on",
+   "to": "genre-schemes-found"
+  },
+  {
+   "from": "genre-25d-signals",
+   "rel": "affects",
+   "to": "comp-recommender"
   },
   {
    "from": "genre-schemes-found",
