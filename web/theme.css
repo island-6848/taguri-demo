@@ -848,3 +848,8 @@ a.ftag:hover,a.ftag:focus-visible{background:color-mix(in srgb,var(--s2) 12%,tra
 .nmlist .v{color:var(--curtain);font-weight:700}
 .nmlist .w{color:var(--mute);font-size:12px;flex-basis:100%;padding-left:calc(6.5em + 12px)}
 h2 .cnt{font-size:13px;font-weight:400;color:var(--mute);margin-left:6px}
+
+/* **画面の外枠に余白を付けない**（起案者の指摘 2026-10-16「全ページのこの余白なに？消して」）。
+   style.css の body{padding:0} を、後ろに重ねた単独ページ用の body{padding:32px 20px 72px} が上書きして、
+   上に 32px・左右に 20px の空きができていた。左の帯（スマホでは上の帯）のある画面では外枠の余白を消す */
+body:has(>.shell){padding:0}
