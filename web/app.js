@@ -1271,6 +1271,10 @@ document.addEventListener("click", ev => {
       "出さないことにしました")
       .then(d => { if (d) { if (r) { r.classList.add("done"); b.disabled = true; }
                             waitJob(r || b.parentElement, true); } });
+  } else if (b.dataset.kindoffRemove) {
+    const t = b.closest(".tag");
+    post("/api/kind_off", {action: "remove", key: t.dataset.kindkey}, t.parentElement, "戻しました")
+      .then(d => { if (d) { t.remove(); waitJob(null, true); } });
   } else if (b.dataset.dec === "remove") {
     const t = b.closest(".tag");
     post("/api/decline", {action: "remove", word: t.dataset.word}, t.parentElement,
@@ -1284,7 +1288,11 @@ document.addEventListener("click", ev => {
     // **押した行をその場で消す。** 組み直しは数秒かかるので、消えるまで待たせない
     const li = b.closest("li.rs");
     b.disabled = true;
-    const req = b.dataset.kind
+    // 種類の理由（原作「オリジナル」など）は語として外すと公演ごと消えるので、
+    // 「この理由を使わない」として別に控える（起案者の指示 2026-10-16、q-kind-reason-off）
+    const req = b.dataset.kindoff
+      ? post("/api/kind_off", {action: "add", key: b.dataset.kindoff}, null, null)
+      : b.dataset.kind
       ? post("/api/favourite", {action: "remove", kind: b.dataset.kind, name: b.dataset.name},
              null, null)
       : post("/api/decline", {action: "add", word: b.dataset.word}, null, null);

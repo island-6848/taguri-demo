@@ -21,7 +21,7 @@ import {castOffOf} from './diary.js';
 import {compose, cardTemplates, posterHtml} from './cards.js';
 import {PREFS, prefForm, prefsFor, regionCounts} from './prefs.js';
 export {prefForm, prefsFor};
-import {loadDeclared, loadDeclined, nameHits, KINDS, reactionsOf} from './lists.js';
+import {loadDeclared, loadDeclined, loadKindOff, nameHits, KINDS, reactionsOf} from './lists.js';
 
 export const TOP = 15;
 const TIPS = `<section class="card tips">
@@ -143,9 +143,16 @@ export function reasonRows(group, titles) {
     const label = Object.hasOwn(KIND_LABEL, axis) ? KIND_LABEL[axis] : axis.replace(/^#+/, '');
     out.push(`<li class="rs c k"><span class="net">種類</span>${label ? E(label) + ' ' : ''}<b>${E(tag)}</b>`
       + `<span class="n">${worksText(titles.get(axis + '\t' + tag), n)}</span>`
-      + `<span class="src">［出典: ${E(KIND_SRC[axis] || ROLE_SRC)}］</span></li>`);
+      + `<span class="src">［出典: ${E(KIND_SRC[axis] || ROLE_SRC)}］</span>`
+      + `<button class="rsx" data-kindoff="${E(axis + '\t' + tag)}" title="この理由をおすすめに使わない（公演は消さない）">✕</button></li>`);
   }
   return out.length ? out.join('') : '<li class="rs none">理由を出せていません</li>';
+}
+
+/** Each item's people without the kind keys the user turned off ('#原作\tオリジナル'; q-kind-reason-off). */
+export function withoutKinds(items, off) {
+  if (!off.size) return items;
+  return items.map(r => ({...r, people: (r.people || []).filter(([role, p]) => !(role.startsWith('#') && off.has(role + '\t' + p)))}));
 }
 
 /** Stages the user has answered (interest / not interested / owned): out of the recommendations. */
@@ -172,14 +179,17 @@ export async function rankedGroups(ctx) {
     (SELECT v FROM rec_meta WHERE k='rec_card') AS cv,
     (SELECT v FROM rec_meta WHERE k='index_rev') AS ir`).bind(ctx.uid).first();
   // 索引は差分で入れ、版（ver）は 'live' のまま変わらないので、中身が変わった合図は index_rev（q-index-incremental）。
-  const stamp = [VERSION, ver, st.ir || '', ctx.today, st.wn, st.wm, st.an, st.am, st.fn, st.mn, st.xn, st.dm, st.cv, st.km].join('|');
+  // 「使わない」にした種類の理由は中身ごと控えの印に入れる（同じ秒に外して戻しても、控えが古いまま残らない）
+  const off = new Set(await loadKindOff(ctx));
+  const stamp = [VERSION, ver, st.ir || '', ctx.today, st.wn, st.wm, st.an, st.am, st.fn, st.mn, st.xn, st.dm, st.cv, st.km, [...off].sort().join(',')].join('|');
   const access = d1Access(db, ver);
   const cached = await db.prepare('SELECT body FROM rec_cache WHERE user_id=? AND stamp=?').bind(ctx.uid, stamp).first();
   if (cached) {
     const body = JSON.parse(cached.body);
     return {...body, titles: new Map(body.titles), cached: true};
   }
-  const rated = await ratedWorks(ctx, access);
+  // 「使わない」にした種類の理由（q-kind-reason-off）は、評価・興味あり・お気に入りのどこからも値を持たせない
+  const rated = withoutKinds(await ratedWorks(ctx, access), off);
   const gate = chooseVariant(rated);
   // 効かせ方（本人が決めた段）は、裏の答え合わせが選んだ倍率に掛け合わせる。
   // 「効かせない」（0）にした項目は、順位からも理由からも消える（scoreFromIndex は 0 の寄与を捨てる）
@@ -189,8 +199,9 @@ export async function rankedGroups(ctx) {
   const declared = await loadDeclared(ctx);
   const favourites = KINDS.flatMap(kind => (declared[kind] || []).map(name => ({name, kind}))).slice(0, 200);
   const fav = await seedsFromFavourites(access, favourites), skip = fav.skip;
-  const {seeds: liked, disliked, n: nLiked} = await interestSeeds(ctx, access);
-  const seeds = fav.seeds;
+  const interest = await interestSeeds(ctx, access), nLiked = interest.n;
+  const liked = withoutKinds(interest.seeds, off), disliked = withoutKinds(interest.disliked, off);
+  const seeds = withoutKinds(fav.seeds, off);
   // Stages of a registered name are お気に入り, stages of a word not to show are left out
   // (app._rebucket): neither is ranked here.
   const {hits, declined} = await nameHits(ctx, declared, await loadDeclined(ctx));

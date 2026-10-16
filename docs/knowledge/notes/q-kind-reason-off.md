@@ -1,7 +1,7 @@
 ---
 id: q-kind-reason-off
 type: question
-status: open
+status: answered
 date: 2026-10-16
 title: 「原作 オリジナル」のような種類の理由を、利用者ごとに「使わない」にできるようにするか
 sources:

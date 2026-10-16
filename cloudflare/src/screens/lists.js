@@ -22,6 +22,9 @@ import {PREFS} from './prefs.js';
 
 export const KINDS = ['団体', '人', '主催', '作品', '原作者', '題材'];
 const DECLARED_KEY = 'declared', DECLINED_KEY = 'declined';
+// 「この理由を使わない」にした種類（起案者の指示 2026-10-16「自分に合わないなと思うおすすめ理由を消すことはできる？」、
+// q-kind-reason-off）。'#原作\tオリジナル' の形で控え、点数にも理由にも使わない。公演そのものは消さない
+export const KIND_OFF_KEY = 'kind_off', KIND_OFF_MAX = 100;
 const LIST_TOP = 8;
 const ICO = {star: 'M12 3.8l2.5 5.1 5.6.8-4 3.9 1 5.6-5.1-2.7-5.1 2.7 1-5.6-4-3.9 5.6-.8z', flag: 'M5 21V4h13l-2.5 4.5L18 13H5'};
 const ico = name => `<svg class="ico " viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${ICO[name]}"/></svg>`;
@@ -52,6 +55,12 @@ export async function loadDeclared(ctx) {
 export async function loadDeclined(ctx) {
   const v = await readJson(ctx, DECLINED_KEY);
   return Array.isArray(v) ? v.filter(w => typeof w === 'string' && w.trim()) : [];
+}
+
+/** Kind reasons the user turned off, as '#axis\ttag' keys (kindOffAction). */
+export async function loadKindOff(ctx) {
+  const v = await readJson(ctx, KIND_OFF_KEY);
+  return Array.isArray(v) ? v.filter(k => typeof k === 'string' && /^#[^\t]+\t[^\t]+$/.test(k)) : [];
 }
 
 /** reaction rows merged per stage, newest last (feedback.reactions). */
@@ -397,6 +406,22 @@ ${mfoot}`;
   return {title: '興味あり', body_html: body};
 }
 
+const KIND_OFF_LABEL = {'#形式': '形式', '#原作': '原作', '#翻訳': '翻訳', '#会場': '劇場', '#値段': '料金帯', '#題材': '題材'};
+/** 「使わない」にした種類の理由の一覧（q-kind-reason-off）。1 つも無いときは出さない */
+export function kindOffBox(keys) {
+  if (!keys.length) return '';
+  const tags = keys.map(k => {
+    const [axis, tag] = k.split('\t');
+    return `<span class="tag" data-kindkey="${E(k)}">${E(KIND_OFF_LABEL[axis] || axis.replace(/^#+/, ''))}「${E(tag)}」<button data-kindoff-remove="1">✕</button></span>`;
+  }).join('');
+  return `<details class="pbox" id="kind-off">
+<summary>${ico('flag')}使わない理由 <b>${keys.length} 件</b></summary>
+<p class="lead">おすすめの理由の ✕ で外した種類です。おすすめの順位にも理由にも使いません。
+公演そのものは消していないので、ほかの理由（好きな人など）があれば今までどおり出ます。✕ で戻せます。</p>
+<div class="tags">${tags}</div>
+</details>`;
+}
+
 function declinedBox(words) {
   const tags = words.map(w => `<span class="tag" data-word="${E(w)}">「${E(w)}」<button data-dec="remove">✕</button></span>`).join('');
   return `<details class="pbox" id="declined">
@@ -577,7 +602,7 @@ export async function favouritesScreen(params, ctx) {
     + '<p class="lead">観た記録に無い名前も登録できます。おすすめは ◎ を付けた公演の作り手からしか作れないので、まだ観たことのない劇団や、人から聞いただけの名前は、ここから登録してください。'
     + '<b>表記ゆれ（漢字とカタカナ、送り仮名の違いなど）は自動では気づけません。</b>ありそうなときは、両方の書き方をそれぞれ登録してください。</p>'
     + `<div class="fav-add"><select id="fav-kind">${kinds}</select> <input id="fav-name" type="text" placeholder="団体名・人名・作品名・題材" size="26"> <button data-fav="add">登録する</button>`
-    + `<span class="said"></span></div><div class="tags">${tags}</div></details>${declinedBox(b.words)}</div>`;
+    + `<span class="said"></span></div><div class="tags">${tags}</div></details>${declinedBox(b.words)}${kindOffBox(await loadKindOff(ctx))}</div>`;
   // 当たった名前（「人「俳優甲」」→「俳優甲」）をハッシュタグにする。理由の欄は出さない（起案者の指示 2026-10-15）
   const why = r => ({owned: Boolean(r.owned), tags: [...new Set(r.a.map(w => (/「(.*)」$/.exec(w) || [, w])[1]))]});
   const list = favs.length
@@ -637,6 +662,17 @@ async function declineAction(b, ctx) {
   return {body: {ok: true, word, n: cur.length}};
 }
 
+/** 種類の理由を「使わない」にする・戻す（q-kind-reason-off）。key は '#原作\tオリジナル' の形 */
+async function kindOffAction(b, ctx) {
+  const action = String(b.action ?? ''), key = String(b.key ?? '').trim().slice(0, 80);
+  if (!['add', 'remove'].includes(action) || !/^#[^\t]+\t[^\t]+$/.test(key)) throw new ValueError('action（add / remove）と key（#種類 と 中身）が要る');
+  let cur = await loadKindOff(ctx);
+  if (action === 'add') { if (!cur.includes(key)) cur.push(key); } else cur = cur.filter(k => k !== key);
+  cur = [...new Set(cur)].slice(0, KIND_OFF_MAX);
+  await writeJson(ctx, KIND_OFF_KEY, cur);
+  return {body: {ok: true, key, n: cur.length}};
+}
+
 /** app.save_ticket: add / confirm / delete one ticket of a stage. */
 async function ticketAction(b, ctx) {
   let sid = String(b.stage_id ?? '').trim();
@@ -670,5 +706,5 @@ async function ticketAction(b, ctx) {
 
 export const listScreens = {
   screens: {interest: interestScreen, favourites: favouritesScreen, tickets: ticketsScreen},
-  actions: {favourite: favouriteAction, decline: declineAction, ticket: ticketAction},
+  actions: {favourite: favouriteAction, decline: declineAction, kind_off: kindOffAction, ticket: ticketAction},
 };

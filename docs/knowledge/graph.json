@@ -2349,6 +2349,20 @@
    "verifies": []
   },
   {
+   "id": "impl-kind-reason-off",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-16",
+   "title": "種類の理由（原作「オリジナル」など）に ✕ を付け、押すとその利用者のおすすめで点数にも理由にも使わない。公演は消さない",
+   "sources": [
+    "cloudflare/src/screens/recommend.js",
+    "cloudflare/src/screens/lists.js",
+    "web/app.js",
+    "cloudflare/test/kind-off.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "impl-onboarding-list",
    "type": "finding",
    "status": "confirmed",
@@ -3730,7 +3744,7 @@
   {
    "id": "q-kind-reason-off",
    "type": "question",
-   "status": "open",
+   "status": "answered",
    "date": "2026-10-16",
    "title": "「原作 オリジナル」のような種類の理由を、利用者ごとに「使わない」にできるようにするか",
    "sources": [
@@ -6812,6 +6826,11 @@
    "from": "impl-interest-split",
    "rel": "depends_on",
    "to": "lit-content-overspecialization"
+  },
+  {
+   "from": "impl-kind-reason-off",
+   "rel": "answers",
+   "to": "q-kind-reason-off"
   },
   {
    "from": "impl-onboarding-list",
