@@ -1,7 +1,7 @@
 ---
 id: q-theater-master
 type: question
-status: open
+status: answered
 date: 2026-10-16
 title: 劇場の制覇で使う「全国の全劇場の名前が載ったデータベース」はどれか。件数・都道府県・利用の条件は
 links:

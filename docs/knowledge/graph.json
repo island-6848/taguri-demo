@@ -2892,6 +2892,17 @@
    "verifies": []
   },
   {
+   "id": "lit-kakiuchi2012-hyogo-audience",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-16",
+   "title": "柿内 2012（Planning and Public Management 35(2)）── 兵庫県の公立劇場の観客は、何度も来るリピーターが多く、年齢・学歴・所得が高めに偏る",
+   "sources": [
+    "https://www.jstage.jst.go.jp/article/jappm/35/2/35_60/_article"
+   ],
+   "verifies": []
+  },
+  {
    "id": "lit-lasthistory-baur2010",
    "type": "finding",
    "status": "unverified",
@@ -3064,6 +3075,17 @@
    "sources": [
     "https://www.sodanet.gr/publications/bibliography/consumer-perceptions-of-price-quality-and-value-a-means-end-model-and-synthesis-of-evidence",
     "https://fi.ee.tsinghua.edu.cn/~gaochen/papers/ICDE2020.pdf"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "lit-radbourne2009-audience-experience",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-16",
+   "title": "Radbourne, Johanson, Glow, White 2009「The audience experience」（International Journal of Arts Management 11(3)）── 観客の体験の質は 知識・リスク・本物らしさ・みんなで味わうこと の 4 つ",
+   "sources": [
+    "https://dro.deakin.edu.au/articles/journal_contribution/Audience_experience_measuring_quality_in_the_performing_arts/21059110"
    ],
    "verifies": []
   },
@@ -3282,6 +3304,17 @@
    "verifies": []
   },
   {
+   "id": "lit-walmsley2011-why-theatre",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-16",
+   "title": "Walmsley 2011「Why people go to the theatre」（Journal of Customer Behaviour 10(4)）── 劇場に行くいちばんの動機は、気晴らし・学び・人付き合い・楽しさではなく「心が動く体験とその余韻」",
+   "sources": [
+    "https://eprints.whiterose.ac.uk/79376/"
+   ],
+   "verifies": []
+  },
+  {
    "id": "lit-yahoo-multicriteria",
    "type": "finding",
    "status": "unverified",
@@ -3438,6 +3471,17 @@
     "https://lp.p.pia.jp/article/news/500029/index.html",
     "https://v.daum.net/v/20160131170804398",
     "https://prtimes.jp/main/html/rd/p/000000007.000181387.html"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "oshikatsu-ensei-surveys",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-16",
+   "title": "推し活の調査（Oshicoco 2026・CDG と Oshicoco 2025）── 推し活をする人の 6 割超が遠征を経験し、年 2〜3 回が多い。推し活人口の推計は約 1,384 万人",
+   "sources": [
+    "https://www.commercepick.com/archives/90611"
    ],
    "verifies": []
   },
@@ -4515,7 +4559,7 @@
   {
    "id": "q-theater-master",
    "type": "question",
-   "status": "open",
+   "status": "answered",
    "date": "2026-10-16",
    "title": "劇場の制覇で使う「全国の全劇場の名前が載ったデータベース」はどれか。件数・都道府県・利用の条件は",
    "sources": [],
@@ -4967,6 +5011,20 @@
    "title": "あらすじの読み取りは Gemini API。以前の claude CLI 呼び出しは起案者の判断でやめている",
    "sources": [
     "tools/credits/extract_theme_llm.py"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "theater-master-options",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-16",
+   "title": "全国の劇場の一覧の候補。いちばん使えるのは自前の公演データ（これからの公演と 2019 年以降の過去の公演の会場、約 2,980 件・全部に都道府県）。公立の名簿は民間の劇場が入らず、国の文化施設データと OSM は条件か件数が未確認",
+   "sources": [
+    "https://github.com/island-6848/taguri-crawler/tree/state",
+    "https://www.zenkoubun.jp/info/2023/pdf/0619_info.pdf",
+    "https://Nlftp.Mlit.Go.Jp/ksj/gml/product_spec/KS-PS-P27-v1_1.pdf",
+    "https://wiki.openstreetmap.org/JA:Key:theatre:genre"
    ],
    "verifies": []
   },
@@ -7537,6 +7595,11 @@
    "to": "q-reco-learning-design"
   },
   {
+   "from": "lit-kakiuchi2012-hyogo-audience",
+   "rel": "affects",
+   "to": "q-records-viz"
+  },
+  {
    "from": "lit-lasthistory-baur2010",
    "rel": "affects",
    "to": "q-records-viz"
@@ -7632,6 +7695,11 @@
    "to": "q-rating-aspects"
   },
   {
+   "from": "lit-radbourne2009-audience-experience",
+   "rel": "affects",
+   "to": "q-records-viz"
+  },
+  {
    "from": "lit-rating-noise",
    "rel": "affects",
    "to": "q-rating-scale"
@@ -7718,6 +7786,11 @@
   },
   {
    "from": "lit-visual-mementos-thudt2016",
+   "rel": "affects",
+   "to": "q-records-viz"
+  },
+  {
+   "from": "lit-walmsley2011-why-theatre",
    "rel": "affects",
    "to": "q-records-viz"
   },
@@ -7865,6 +7938,11 @@
    "from": "origin-korea-in-catalogue",
    "rel": "answers",
    "to": "q-origin-country-tag"
+  },
+  {
+   "from": "oshikatsu-ensei-surveys",
+   "rel": "affects",
+   "to": "q-records-viz"
   },
   {
    "from": "pages-404-fallback",
@@ -8920,6 +8998,11 @@
    "from": "synopsis-llm-history",
    "rel": "affects",
    "to": "q-synopsis-reader"
+  },
+  {
+   "from": "theater-master-options",
+   "rel": "answers",
+   "to": "q-theater-master"
   },
   {
    "from": "theatre-genre-sources",
