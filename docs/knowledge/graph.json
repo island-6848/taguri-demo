@@ -1578,6 +1578,19 @@
    "verifies": []
   },
   {
+   "id": "dec-review-tests-in-ci",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-16",
+   "title": "test_measure_nets・test_interest_roster・test_rate_performances を CI（recommendation-loop）で動かす。持ち主のデータが無いときは作った材料で試し、要るファイルが無い検査は名前を出して飛ばす",
+   "sources": [
+    ".github/workflows/recommendation-loop.yml",
+    "tools/review/test_rate_performances.py",
+    "tools/review/fixtures/performances.jsonl"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-scale-workers",
    "type": "decision",
    "status": "superseded",
@@ -4160,6 +4173,19 @@
    "verifies": []
   },
   {
+   "id": "q-role-prefix-bare-saku",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-16",
+   "title": "クレジットの行頭の「作」「演出」を区切りなしでも剥がすので、「作間」「作田」のような本物の姓も 1 字欠けるのではないか",
+   "sources": [
+    "tools/review/measure_nets.py",
+    "cloudflare/src/screens/credits.js",
+    "cloudflare/test/credits.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "q-safari-cookies",
    "type": "question",
    "status": "open",
@@ -4530,6 +4556,22 @@
     "tools/taguri/serve.py",
     "tools/taguri/app.py",
     "web/app.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "review-tests-stale-1016",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-16",
+   "title": "tools/review の 3 つの検査が落ちていたのは、検査のほうが古かった（仮の名前「作り手N」・画面の作り替え・持ち主の手元のデータ）。1 か所だけ本物のコードの規則違反（hook.py の splitlines）",
+   "sources": [
+    "tools/review/test_measure_nets.py",
+    "tools/review/test_interest_roster.py",
+    "tools/review/test_rate_performances.py",
+    "tools/review/measure_nets.py",
+    "tools/taguri/app.py",
+    "tools/knowledge/hook.py"
    ],
    "verifies": []
   },
@@ -6179,6 +6221,16 @@
    "from": "dec-render-full-migration",
    "rel": "affects",
    "to": "q-direction"
+  },
+  {
+   "from": "dec-review-tests-in-ci",
+   "rel": "depends_on",
+   "to": "review-tests-stale-1016"
+  },
+  {
+   "from": "dec-review-tests-in-ci",
+   "rel": "depends_on",
+   "to": "github-actions-public-free"
   },
   {
    "from": "dec-scale-workers",
@@ -8076,6 +8128,11 @@
    "to": "lit-beyond-accuracy"
   },
   {
+   "from": "q-role-prefix-bare-saku",
+   "rel": "affects",
+   "to": "dec-credit-part-names"
+  },
+  {
    "from": "q-safari-cookies",
    "rel": "depends_on",
    "to": "dec-own-domain"
@@ -8359,6 +8416,16 @@
    "from": "render-ui-server-rendered",
    "rel": "affects",
    "to": "comp-public-server"
+  },
+  {
+   "from": "review-tests-stale-1016",
+   "rel": "affects",
+   "to": "dec-credit-part-names"
+  },
+  {
+   "from": "review-tests-stale-1016",
+   "rel": "raises",
+   "to": "q-role-prefix-bare-saku"
   },
   {
    "from": "robotparser-decimal-delay",

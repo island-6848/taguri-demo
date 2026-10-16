@@ -66,6 +66,12 @@ jobs:
         run: python tools/review/test_past_stages.py
       - name: Person reasons name the works
         run: python tools/review/test_reason_works.py
+      - name: Credits read every name (【役職】 tags, role：name)
+        run: python tools/review/test_measure_nets.py
+      - name: Interest and missed stages feed the roster
+        run: python tools/review/test_interest_roster.py
+      - name: Rating screen (works, fixes, navigation; synthetic purchases without the owner's data)
+        run: python tools/review/test_rate_performances.py
       - name: Unrated nudge on the recommendation screen
         run: python tools/taguri/test_unrated_nudge.py
       - name: Hashtags in impressions

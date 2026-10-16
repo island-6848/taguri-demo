@@ -41,7 +41,11 @@ def _entries() -> list[dict]:
     if not INBOX.exists():
         return []
     out = []
-    for line in INBOX.read_text(encoding="utf-8").splitlines():
+    # **`splitlines()` で割らない。** U+2028 でも割れるが、`json.dumps(ensure_ascii=False)` は
+    # それを escape しないので、1 件が 2 つに割れて読めなくなる（test_rate_performances の検査）
+    for line in INBOX.read_text(encoding="utf-8").split("\n"):
+        if not line.strip():
+            continue
         try:
             out.append(json.loads(line))
         except json.JSONDecodeError:

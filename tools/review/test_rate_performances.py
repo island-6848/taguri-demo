@@ -10,6 +10,12 @@
     python3 tools/review/test_rate_performances.py
 
 本物の保存先には触らず、一時ディレクトリの DB を使う。
+
+**持ち主の手元の材料が無いときは、作った材料で試す。** 購入確認メールから作る
+`data/tickets/performances.jsonl` も、館の座標・区の境界・推薦の控え・クレジットの控えも
+`data/` にあり、リポジトリには入らない（.gitignore）。そのため CI や新しい作業環境では
+`tools/review/fixtures/performances.jsonl`（題名・劇場は仮の名前）を読み、**持ち主の
+ファイルが要る検査は「飛ばした」と名前を出して**数えない（落ちたことにも通ったことにもしない）。
 """
 from __future__ import annotations
 
@@ -33,6 +39,17 @@ import rate_performances as R  # noqa: E402
 LOCAL = R.LOCAL_USER_ID   # 検査はローカルの持ち主の記録で行う（E3）
 
 R.DB = Path(tempfile.mkdtemp()) / "test.db"
+
+# **持ち主の購入の控えが無ければ、作った材料に差し替える**（上の説明）
+OWNER_DATA = R.SRC.exists()
+if not OWNER_DATA:
+    R.SRC = ROOT / "tools" / "review" / "fixtures" / "performances.jsonl"
+SKIPPED: list[tuple[str, str]] = []
+
+
+def skip(name: str, why: str) -> None:
+    """持ち主の手元にしか無いファイルが要る検査。**黙って消さず、名前を出して飛ばす。**"""
+    SKIPPED.append((name, why))
 
 
 class Client:
@@ -211,6 +228,15 @@ def check_figures(check) -> None:
     check("図の点から記録へ飛べる", bool(sample) and not miss,
           f"辿れなかった点 {len(miss)} / {len(sample)} 件（全 {len(links)} 点）")
 
+    check("地図の縦横比を潰さない",
+          abs(CH._frame(CH.JP, 300) - 325.5) < 2,
+          "緯度の余弦で高さを決めている（日本の形が横に伸びない）")
+    if not ((ROOT / "data" / "review" / "venue_geo.json").exists()
+            and (ROOT / "data" / "review" / "tokyo_wards.json").exists()):
+        for name in ("座標の無い館を地図の外に隠さない", "東京の拡大図に地がある",
+                     "枠の外に点を置かない"):
+            skip(name, "館の座標・区の境界（data/review/venue_geo.json・tokyo_wards.json）が無い")
+        return
     mp = CH.map_panel(ws)
     geo = CH._geo()
     vis = VN.visits(ws)
@@ -225,9 +251,6 @@ def check_figures(check) -> None:
           bool(tokyo) and '<path d="M' in tokyo.group(1),
           f"区の境界 {len(re.findall(chr(60) + 'path', tokyo.group(1))) if tokyo else 0} 枚"
           if tokyo else "拡大図そのものが無い")
-    check("地図の縦横比を潰さない",
-          abs(CH._frame(CH.JP, 300) - 325.5) < 2,
-          "緯度の余弦で高さを決めている（日本の形が横に伸びない）")
     # **区切りの外に点を出さない。** 枠の外の座標を描くと、地図の余白に点が浮く
     outside = [k for k in vis if (geo.get(k) or {}).get("lat")
                and not (CH.JP[0] <= geo[k]["lon"] <= CH.JP[2]
@@ -275,8 +298,12 @@ def check_unseen(check) -> None:
     # **記録からは消さない。** 買った事実は残るので、戻す口がその行に要る
     # **1 公演ごとの行は「日記帳」に移った**（2026-08-24 の画面の分割）
     page = APP.page_works(LOCAL)
-    check("記録には残り、戻す口が出る",
-          f'data-seen="{key}"' in page, "「やはり観た」を同じ行に置いている")
+    # **戻す口は「設定」にある**（起案者の指示・2026-08-26 ──「行かなかったにしたものは
+    # 設定画面で管理して、設定から『やはり観た』で復帰できるようにしてください」）。
+    # 日記帳には耳も含めて出さない（`page_works` の説明）
+    check("記録には残り、戻す口が設定に出る",
+          f'data-seen="{key}"' in APP.page_settings(LOCAL) and f'data-seen="{key}"' not in page,
+          "「やはり観た」は設定の「行かなかった公演」に置いている")
     un = [w for w in after.values() if w.get("unseen")]
     # **母数はどの画面にも同じ文で置いてある**（`_records_lede`）
     check("観た作品の件数から外れる",
@@ -349,6 +376,9 @@ def check_live_lists(check) -> None:
     # --- 反応を押すと、束が変わる（点は変えない）
     try:
         raw, _ = RR.load()
+    except FileNotFoundError:
+        skip("反応を押すと束が変わる（check_live_lists の後半）", "推薦の控え（data/review/recommend2.json）が無い")
+        return
     except Exception as e:                                          # noqa: BLE001
         check("推薦の控えが読める", False, str(e)[:50])
         return
@@ -425,6 +455,9 @@ def check_weights(check) -> None:
     uid = AU.LOCAL_USER_ID
     try:
         raw, _ = RR.load()
+    except FileNotFoundError:
+        skip("効かせ方の目盛り（check_weights）", "推薦の控え（data/review/recommend2.json）が無い")
+        return
     except Exception as e:                                          # noqa: BLE001
         check("推薦の控えが読める", False, str(e)[:50])
         return
@@ -589,17 +622,14 @@ def check_nav(check) -> None:
           "・".join(miss[:3]) if miss else f"{len(pages)} 画面すべてに {len(flow)} 本ある")
     check("現在地は 1 か所だけ光る", not wrong, "・".join(wrong) if wrong else "親と子で重ねない")
 
-    # --- 4 つを 1 行に置く（折り返さない）
+    # --- 段の帯（`.sub`）は全画面から消した
+    # 起案者の指摘「おすすめと評価のリンクを外して」→「これ自体消してほしい」→
+    # 「記録を見返すのも消してよい」（2026-08-25）。戻るボタンと道のり（`.crumbbar`）が
+    # 役目を引き継いだので、帯の CSS（「折り返さない」「下限の幅」「狭いときに説明だけ落とす」を
+    # 確かめていた所）も無い。**戻っていないこと**を確かめる
     css = APP.APP_CSS
-    blk = css[css.index(".sub{"):css.index(".sub .step:hover")]
-    check("フローは折り返さない", "flex-wrap:nowrap" in blk,
-          "4 つ目が 2 段目に落ちない")
-    check("札に下限の幅を置かない", "flex:1 1 0" in blk,
-          "左のナビゲーションを引いた残り幅でも 4 つ入る")
-    # **狭いときに落とすのは説明だけ。** 段の名前と件数は落とさない
-    check("狭いときも段の名前は残す",
-          ".sub .fd{display:none}" in css and ".sub .fl{display:none}" not in css,
-          "落とすのは説明文だけ")
+    check("段の帯（.sub）は戻していない", ".sub .step" not in css and ".sub{" not in css,
+          "戻るボタンとパンくずリストが引き継いだ（2026-08-25）")
 
 
 def check_perf_dates(check) -> None:
@@ -768,10 +798,14 @@ def check_suggest(check) -> None:
         check("複数の観劇日があるときは日付を入れない", not bad,
               f"{len(many)} 公演が複数の観劇日を持つ" if many else "該当なし")
 
-    # **ツアーの別会場は畳まない**（別の公演である）
+    # **ツアーの別会場は畳まない**（別の公演である）。実例は観た公演のクレジットの控えにしか無い
+    no_credits = "観た公演のクレジットの控え（data/credits/credits.jsonl）が無い"
     tours = _c.Counter(r["k"] for r in pool if r["kind"] == "stage")
-    check("同じ題名の別の上演は残す", any(v > 1 for v in tours.values()),
-          f"同じ題名が {sum(1 for v in tours.values() if v > 1)} 組ある（劇場と日程で選び分ける）")
+    if cr.exists():
+        check("同じ題名の別の上演は残す", any(v > 1 for v in tours.values()),
+              f"同じ題名が {sum(1 for v in tours.values() if v > 1)} 組ある（劇場と日程で選び分ける）")
+    else:
+        skip("同じ題名の別の上演は残す", no_credits)
     # --- 作品を親、会場ごとの上演を子として並べる（起案者のイメージ・2026-08-24）
     check("作品を親にして会場を子として並べる",
           'className = "sug-work"' in APP.SCRIPT
@@ -779,7 +813,7 @@ def check_suggest(check) -> None:
           "同じ作品の会場は 1 つの親の下に入る")
     check("どの上演かを選ぶ理由を書く",
           "観に行った会場と日程を選んでください" in APP.SCRIPT
-          and "観ていない公演の作り手が名簿に入ります" in APP.SCRIPT,
+          and "観ていない公演の作り手がおすすめの材料に入ってしまいます" in APP.SCRIPT,
           "会場ごとに座組が違いうることまで書いている")
     # **題名だけで畳まない。** 別の団体が同じ戯曲を上演したものを 1 つにすると、
     # 観ていない公演の作り手が名簿に入る（実データの「ハムレット」がこれに当たった）
@@ -798,8 +832,11 @@ def check_suggest(check) -> None:
               len({x["wk"] for x in pk}) == 1,
               f"{len(pk)} 会場 → 作品 {len({x['wk'] for x in pk})} 個")
     # **打ち切りは作品の単位で数える。** 行で切ると 14 会場のツアーが枠を使い切る
-    check("ツアーの会場が枠を使い切らない", len(pk) >= 8,
-          f"{len(pk)} 会場ぶんを返している（行ではなく作品で数えている）")
+    if cr.exists():
+        check("ツアーの会場が枠を使い切らない", len(pk) >= 8,
+              f"{len(pk)} 会場ぶんを返している（行ではなく作品で数えている）")
+    else:
+        skip("ツアーの会場が枠を使い切らない", no_credits)
 
 
 def _state() -> tuple:
@@ -1021,8 +1058,14 @@ def main() -> int:  # noqa: C901
 
     # --- 題名が取れていない回を、印を付けて出し、直せる
     sus = [x for x in works if x["suspect"]]
-    check("題名が怪しいものに印を付ける", bool(sus),
-          "／".join(x["title_display"][:12] for x in sus) if sus else "該当なし")
+    if not OWNER_DATA:
+        # 印の付いた行は、直す手がかりとして本文を Gmail から読む（/api/mail）── 作った材料には本文が無い
+        skip("題名が怪しいものに印を付ける（と直す・戻す・本文の手がかり）",
+             "持ち主の購入確認メールが無い（作った材料で試している）")
+        sus = []
+    else:
+        check("題名が怪しいものに印を付ける", bool(sus),
+              "／".join(x["title_display"][:12] for x in sus) if sus else "該当なし")
     if sus:
         one = sus[0]
         uid = one["shows"][0]["uid"]
@@ -1096,6 +1139,8 @@ def main() -> int:  # noqa: C901
     for name, good, note in checks:
         print(("  OK " if good else "  NG ") + f"{name:<22} {note}")
         failed += not good
+    for name, why in SKIPPED:
+        print(f"  -- {name:<22} 飛ばした: {why}")
     print("\nすべて通った。" if not failed else f"\n{failed} 件 失敗。")
     return 1 if failed else 0
 

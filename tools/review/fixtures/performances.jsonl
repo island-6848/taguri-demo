@@ -1,0 +1,8 @@
+{"uid": "f01", "from": "example.jp", "subject": "ご購入ありがとうございます（作品1）", "mail_date": "Mon, 01 Jan 2024 09:00:00 +0900", "title": "作品1", "date": "2024-05-03", "time": "13:00", "venue": "劇場A", "pickup": false}
+{"uid": "f02", "from": "example.jp", "subject": "ご購入ありがとうございます（作品1）", "mail_date": "Mon, 01 Jan 2024 09:00:00 +0900", "title": "作品1", "date": "2024-05-10", "time": "18:00", "venue": "劇場A", "pickup": false}
+{"uid": "f03", "from": "example.jp", "subject": "ご購入ありがとうございます（作品1）", "mail_date": "Mon, 01 Jan 2024 09:00:00 +0900", "title": "作品1", "date": "2025-09-01", "time": "14:00", "venue": "劇場A", "pickup": false}
+{"uid": "f04", "from": "example.jp", "subject": "ご購入ありがとうございます（作品2）", "mail_date": "Mon, 01 Jan 2024 09:00:00 +0900", "title": "作品2", "date": "2024-07-01", "time": "19:00", "venue": "劇場B", "pickup": false}
+{"uid": "f05", "from": "example.jp", "subject": "ご購入ありがとうございます（作品2）", "mail_date": "Mon, 01 Jan 2024 09:00:00 +0900", "title": "作品2", "date": "2024-07-08", "time": "19:00", "venue": "劇場B", "pickup": false}
+{"uid": "f06", "from": "example.jp", "subject": "ご購入ありがとうございます（作品3）", "mail_date": "Mon, 01 Jan 2024 09:00:00 +0900", "title": "作品3", "date": "2023-03-01", "time": "13:00", "venue": "劇場C", "pickup": false}
+{"uid": "f07", "from": "example.jp", "subject": "ご購入ありがとうございます（〈セット券〉「企画1」「演目A」「演目B」）", "mail_date": "Mon, 01 Jan 2024 09:00:00 +0900", "title": "〈セット券〉「企画1」「演目A」「演目B」", "date": "2024-11-02", "time": "13:00", "venue": "劇場B", "pickup": false}
+{"uid": "f08", "from": "example.jp", "subject": "ご購入ありがとうございます（作品4）", "mail_date": "Mon, 01 Jan 2024 09:00:00 +0900", "title": "作品4", "date": "2027-03-01", "time": "13:00", "venue": "劇場D", "pickup": false}
