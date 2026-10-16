@@ -4200,6 +4200,19 @@
    "verifies": []
   },
   {
+   "id": "q-records-viz",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-16",
+   "title": "「眺める」に、今あるデータでどんな図を足すか（起案者が選ぶ）",
+   "sources": [
+    "cloudflare/src/screens/records.js",
+    "cloudflare/src/screens/charts.js",
+    "cloudflare/migrations"
+   ],
+   "verifies": []
+  },
+  {
    "id": "q-render-free-viable",
    "type": "question",
    "status": "answered",
