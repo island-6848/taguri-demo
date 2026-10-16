@@ -338,7 +338,7 @@ body{font-family:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",YuGothic,syst
  .rec-row{grid-template-columns:140px minmax(0,1fr);padding-right:22px}
  .rec-row .pin{padding:16px 12px 12px 16px}
  .rec-row .pin>*,.rec-row:nth-of-type(2n) .pin>*{width:112px;height:158px}
- .rec-row>.page>:not(.ttl):not(.where){margin-left:22px}}
+ .rec-row>.page>:not(.ttl):not(.where):not(.tools){margin-left:22px}}
 
 /* 書いてある感想は、明朝の斜体をやめて本文と同じ字で置く。見出し「感想」は左の列にそろえる
    （おすすめの「出演」「あらすじ」と同じ形）。書き直すときは、この文がそのまま書ける欄になる（app.js） */
@@ -385,7 +385,7 @@ body{font-family:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",YuGothic,syst
 .rec-row .rb{margin-left:0}
 /* 未評価などの行の ◎○△×（星も同じ .rb の中）は、行の右端にそろえる（起案者の指示 2026-10-15「右寄せ」）。
    評価一覧の押し直しの札（.rbpop）は浮かせて出すので対象外 */
-.rec-row .tools>.rb:not(.rbpop){flex:1 0 100%;justify-content:flex-end}
+.rec-row .tools>.rb:not(.rbpop){flex:1 0 100%;justify-content:flex-start}
 
 /* ---- 日記帳・評価一覧などの切り替え（.idx の耳）── えんじの縁取りと塗りの「索引の耳」をやめ、
    行き先の帯と同じ形にする: 白い札に細い灰の線、いま開いているものだけ薄いえんじで塗る（下線は使わない）。
@@ -854,3 +854,29 @@ h2 .cnt{font-size:13px;font-weight:400;color:var(--mute);margin-left:6px}
    上に 32px・左右に 20px の空きができていた。左の帯（スマホでは上の帯）のある画面では上の余白だけ消す
    （左右の余白は残す。起案者の指示 2026-10-16「左右の余白は更新前でよかった。上だけ詰めてほしかった」） */
 body:has(>.shell){padding-top:0}
+
+/* ---- 評価の行（起案者の指示 2026-10-16）
+   星は会場のすぐ下に左寄せで置く（省スペース）。いまの星の数を星の右に出す（app.js の starValue）。
+   付けたあとも押し直せる（.rb.done で押せなくなるのは評価待ちの半券だけ） */
+.rec-row .tools{margin:2px 0 6px}
+.rec-row .rb.done button{pointer-events:auto;opacity:1}
+.rb .stv{margin-left:8px;color:var(--ink2);font-size:13px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.rb .stv:empty{display:none}
+/* 何も書いていない感想は文を出さず、見出しと鉛筆だけ。書いているあいだは薄い案内を出す */
+.inb>.int:empty[contenteditable]::before{content:"どう感じましたか";color:var(--mute)}
+/* 判子の無い行（星の段階）は、星を会場のすぐ下（右の列の 4 段目。判子の場所）に置き、ポスターの横に収める */
+.rec-row:not(:has(.stamp))>.page>.tools{grid-column:2;grid-row:4;margin:6px 0 0;align-self:start}
+.rec-row:not(:has(.stamp)) .tools>.rb{flex-wrap:wrap;row-gap:0}
+.rec-row:not(:has(.stamp)) .rb .hs{width:32px;font-size:25px}
+.rec-row:not(:has(.stamp)) .rb button.star0{width:24px;min-width:24px}
+.rec-row .rb .said:not(:empty){margin-left:6px;font-size:12px}
+.rec-row:not(:has(.stamp)){grid-template-rows:auto auto auto 1fr}
+@media(max-width:420px){
+ .rec-row:not(:has(.stamp)) .rb .hs{width:28px;font-size:22px}
+ .rec-row:not(:has(.stamp)) .rb button.star0{width:20px;min-width:20px}}
+@media(max-width:380px){
+ .rec-row:not(:has(.stamp)) .rb .hs{width:26px;font-size:21px}
+ .rec-row:not(:has(.stamp)) .rb button.star0{width:18px;min-width:18px}}
+@media(max-width:340px){
+ .rec-row:not(:has(.stamp)) .rb .hs{width:21px;font-size:18px}
+ .rec-row:not(:has(.stamp)) .rb button.star0{width:14px;min-width:14px}}
