@@ -108,7 +108,8 @@ jobs:
           if [ -s ../d1-out/catalogue.sql ]; then
             npx --yes wrangler@4 d1 execute taguri-demo --remote --yes --file ../d1-out/catalogue.sql
           fi
-          for f in index-upload.sql labels-upload.sql cards-upload.sql; do
+          # 索引は 1 MB ずつに分けてある（index-upload-01.sql …、7009 で止まらないように）。名前の順に送る
+          for f in $(cd ../d1-out && ls index-upload-*.sql 2>/dev/null) labels-upload.sql cards-upload.sql; do
             if [ -f "../d1-out/$f" ]; then
               npx --yes wrangler@4 d1 execute taguri-demo --remote --yes --file "../d1-out/$f"
             fi
@@ -123,8 +124,9 @@ jobs:
         continue-on-error: true
         working-directory: cloudflare
         run: |
-          # 新しく作った索引は index-upload.sql に、前と同じなら index.sql に残っている
-          idx=../d1-out/index-upload.sql; [ -f "$idx" ] || idx=../d1-out/index.sql
+          # 新しく作った索引は index-upload-01.sql … に分けてある。前と同じなら index.sql に残っている
+          idx=../d1-out/index.sql
+          if ls ../d1-out/index-upload-*.sql >/dev/null 2>&1; then cat ../d1-out/index-upload-*.sql > ../d1-out/index-measure.sql; idx=../d1-out/index-measure.sql; fi
           if [ ! -f "$idx" ]; then echo "索引が無いので測らない"; exit 0; fi
           npm install --no-save --no-package-lock --omit=dev --no-audit --no-fund --silent
           node scripts/measure_worker.mjs --index "$idx"

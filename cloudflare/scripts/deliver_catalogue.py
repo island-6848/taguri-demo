@@ -148,6 +148,31 @@ INDEX_HASHES = Path("d1") / "index-hashes.json"
 # 索引を入れるときも、題名（stage_label）とカード（rec_card）の毎日の入れ替えの分は残す
 # （Catalog #6 で約 9,600 と 3,100）。索引の初回は全部で約 5 万行なので、何日かに分けて入れる（q-index-first-load）。
 LABELS_CARDS_RESERVE = 15_000
+# 1 回の wrangler d1 execute に送る大きさ。2026-10-16 の索引 2 万行を 1 つのファイルで送ったら、D1 の
+# import が 60 秒で "Upstream service unavailable [code: 7009]" になった（Catalog #7、q-index-load-now）。
+# 文の切れ目で分け、1 つずつ送る。どの文も upsert か delete なので、途中で止まっても送り直してよい
+UPLOAD_PART_BYTES = 1_000_000
+
+
+def split_upload(sql: Path, stem: str, max_bytes: int = UPLOAD_PART_BYTES) -> list[Path]:
+    """Split one SQL file (one statement per line) into stem-01.sql, stem-02.sql, … of at most max_bytes.
+    The order is kept, so the rec_meta line at the end stays in the last part."""
+    parts: list[list[str]] = [[]]
+    size = 0
+    for line in sql.read_text(encoding="utf-8").splitlines(keepends=True):
+        n = len(line.encode("utf-8"))
+        if parts[-1] and size + n > max_bytes:
+            parts.append([])
+            size = 0
+        parts[-1].append(line)
+        size += n
+    out = []
+    for i, lines in enumerate(p for p in parts if p):
+        f = sql.parent / f"{stem}-{i + 1:02d}.sql"
+        f.write_text("".join(lines), encoding="utf-8")
+        out.append(f)
+    sql.unlink()
+    return out
 
 
 def build_index(out: Path, data: Path, max_rows: int | None = None) -> tuple[str, int, Path, int, int] | None:
@@ -257,7 +282,7 @@ def build(data: Path, out: Path, today: datetime.date, with_index: bool, budget:
             report["index"] = f"skipped: {got[1]} writes would exceed the budget"
             (out / "index-hashes.json").unlink(missing_ok=True)       # not sent: keep the old hashes
         else:
-            shutil.move(got[2], out / "index-upload.sql")
+            report["index_parts"] = len(split_upload(got[2], "index-upload"))
             # 全部入れ終えたときだけ版を控える（途中なら、次回も同じ版の残りを送る）
             if not got[4]:
                 state["index"] = got[0]

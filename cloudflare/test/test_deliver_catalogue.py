@@ -193,3 +193,19 @@ class IndexDiffStateTest(DeliverTest):
         after = json.loads((self.data / D.STATE).read_text())
         self.assertEqual(after['rows'], before['rows'])    # the changed title waits for the daily run
         self.assertEqual(after['index'], 'rev1')
+
+
+class SplitUploadTest(unittest.TestCase):
+    def test_parts_keep_every_statement_in_order(self):
+        # 2026-10-16 の 7009（q-index-load-now）: 大きな索引は文の切れ目で分けて送る
+        d = Path(tempfile.mkdtemp())
+        lines = [f"INSERT INTO t VALUES('{'あ' * (i % 7 + 1)}',{i});\n" for i in range(200)]
+        lines.append("INSERT OR REPLACE INTO rec_meta VALUES('index_rev','r');\n")
+        (d / 'x.sql').write_text(''.join(lines), encoding='utf-8')
+        parts = D.split_upload(d / 'x.sql', 'x-upload', max_bytes=500)
+        self.assertGreater(len(parts), 1)
+        self.assertFalse((d / 'x.sql').exists())
+        self.assertEqual([p.name for p in parts], sorted(p.name for p in parts))
+        self.assertEqual(''.join(p.read_text(encoding='utf-8') for p in parts), ''.join(lines))
+        self.assertTrue(all(len(p.read_bytes()) <= 500 for p in parts))
+        self.assertIn('rec_meta', parts[-1].read_text(encoding='utf-8'))
