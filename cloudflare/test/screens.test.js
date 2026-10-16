@@ -20,7 +20,7 @@ const EDITOR_PY = /<details class="editor"[\s\S]*?<div class="ed-mail" hidden>[\
 const EDITOR_JS = /<details class="editor"[\s\S]*?<!--\/editor--><\/details>/g;
 // 評価の段階は 2026-10-14 からサービス版だけ星 5 段階が初期設定（screens/grade.js、起案者の指示「星5段階を初期設定にして」）。
 // Python は ◎○△× のままなので、星のボタンは ◎○△× のボタンに読み替えて比べ、星の形は grade.test.js で確かめる。
-const STAR_BTNS = /(?:<button class="star(?: on)?" data-v="[1-5]\/5" aria-label="星 [1-5]"><\/button>){5}/g;
+const STAR_BTNS = /(?:<button class="star(?: on)?" data-v="[1-5]\/5" aria-label="星 [1-5]"><\/button>){5}<button class="nograde(?: on)?" data-v="まだ判断できない">評価しない<\/button>/g;
 const MARK_BTNS = ['◎', '○', '△', '×'].map(g => `<button data-v="${g}">${g}</button>`).join('');
 // 星の行は余白の判子を出さず、星の列を常に出す（2026-10-15 起案者の指示「下に星で表示されるんなら、〇の枠いらなくない？」、
 // screens/row.js の starRow）。Python の行は判子と「評価を押し直す」のままなので、星の段階の人の画面では Python の側を星の行の形に直して比べる。

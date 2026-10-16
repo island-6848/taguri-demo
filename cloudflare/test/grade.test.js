@@ -14,7 +14,7 @@ test('star helpers: text, side, top, and the recommender reads n/5', () => {
   assert.deepEqual(gradeOf('3/5'), [3, 5]);
   // no words on the stars: each person's own scale (the recommender reads the place among their own ratings)
   assert.doesNotMatch(gradeButtons('stars5'), /合って|とても|ふつう/);
-  assert.equal((gradeButtons('stars5').match(/<button/g) || []).length, 5);
+  assert.equal((gradeButtons('stars5').match(/<button class="star/g) || []).length, 5);
 });
 
 test('a new user rates with stars; the saved n/5 shows as ★n and groups on the rate screen', async () => {
@@ -61,7 +61,11 @@ test('scale helpers: ○× and ○△× show as shapes, 0.5 steps as ★n.5, sid
   assert.deepEqual(['11/11', '8/11', '6/11', '4/11', '1/11'].map(markOf), ['◎', '○', '', '△', '×']);
   assert.ok(isTop('2/2') && isTop('3/3') && isTop('11/11') && !isTop('10/11'));
   assert.equal(gradeButtons('marks2'), '<button data-v="2/2">○</button><button data-v="1/2">×</button>');
-  assert.match(gradeButtons('stars11', '8/11'), /<button class="star0" data-v="1\/11"[^>]*>0<\/button>(<span class="hs on">.*?<\/span>){3}<span class="hs h">/);
+  assert.match(gradeButtons('stars11', '8/11'), /^(<span class="hs on">.*?<\/span>){3}<span class="hs h">/);
+  // 星 0 の押し口はやめ、「評価しない」にした（起案者の指示 2026-10-16）
+  assert.doesNotMatch(gradeButtons('stars11'), /star0|data-v="1\/11"/);
+  assert.match(gradeButtons('stars11'), /<button class="nograde" data-v="まだ判断できない">評価しない<\/button>$/);
+  assert.match(gradeButtons('stars5', 'まだ判断できない'), /<button class="nograde on" data-v="まだ判断できない">評価しない<\/button>$/);
   assert.deepEqual(gradeOf('8/11'), [8, 11]);
 });
 
@@ -86,6 +90,6 @@ test('the scale is chosen on 設定; old ratings keep their own scale', async ()
     assert.match(rate, /data-stamp="1"[^>]*>△<\/span>/);
     assert.match(rate, /<tr data-v="2\/3"><td>△<\/td>/);
     await step(env, a, {post: '/api/rating_scale', body: {scale: 'stars11'}});
-    assert.match((await step(env, a, {get: '/api/screen/rate?v=all'})).body.body_html, /class="star0/);
+    assert.match((await step(env, a, {get: '/api/screen/rate?v=all'})).body.body_html, /class="nograde/);
   } finally { sqlite.close(); }
 });
