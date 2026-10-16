@@ -578,6 +578,19 @@
    "verifies": []
   },
   {
+   "id": "data-inventory-1016",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-16",
+   "title": "たぐりのデータを、利用者の記録・公演の側・取得の作業データに分け、定量・順序・定性（名義・自由記述）で整理した（docs/data-inventory.md）",
+   "sources": [
+    "docs/data-inventory.md",
+    "cloudflare/migrations",
+    "https://github.com/island-6848/taguri-crawler/tree/state"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-about-on-login",
    "type": "decision",
    "status": "adopted",
@@ -1516,6 +1529,15 @@
     "web/app.js",
     "tools/taguri/app.py"
    ],
+   "verifies": []
+  },
+  {
+   "id": "dec-records-viz-picks",
+   "type": "decision",
+   "status": "proposed",
+   "date": "2026-10-16",
+   "title": "眺めるには「劇場の制覇マップ」と「観劇の時間割」を足す。ポスターの壁は眺めるでなく日記帳の作品のまとめの見せ方にする。年報カードは保留",
+   "sources": [],
    "verifies": []
   },
   {
@@ -5422,6 +5444,11 @@
    "to": "q-index-incremental"
   },
   {
+   "from": "data-inventory-1016",
+   "rel": "affects",
+   "to": "q-records-viz"
+  },
+  {
    "from": "dec-account-cap-counted",
    "rel": "answers",
    "to": "q-account-limit-100"
@@ -6295,6 +6322,21 @@
    "from": "dec-record-row-card",
    "rel": "depends_on",
    "to": "dec-recommend-compact-poster"
+  },
+  {
+   "from": "dec-records-viz-picks",
+   "rel": "answers",
+   "to": "q-records-viz"
+  },
+  {
+   "from": "dec-records-viz-picks",
+   "rel": "depends_on",
+   "to": "q-theater-master"
+  },
+  {
+   "from": "dec-records-viz-picks",
+   "rel": "depends_on",
+   "to": "data-inventory-1016"
   },
   {
    "from": "dec-records-worker",
