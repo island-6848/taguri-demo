@@ -102,16 +102,19 @@ jobs:
           if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
             echo "Cloudflare の鍵が無いので D1 には入れない"; exit 0
           fi
+          # wrangler の出力を <ファイル>.log に残し、commit が D1 の数（rows_written）で控えを直す（d1-upsert-counts）。
+          # tee を挟んでも wrangler の失敗で止まるように pipefail
+          set -o pipefail
           # index のときは推薦の索引だけ（その日の予算をまるごと索引に回す。公演一覧・題名・カードは毎日の実行で）
           only=""; [ "${{ steps.plan.outputs.mode }}" = "index" ] && only="--index-only"
           python scripts/deliver_catalogue.py build --data ../data --out ../d1-out --index $only
           if [ -s ../d1-out/catalogue.sql ]; then
-            npx --yes wrangler@4 d1 execute taguri-demo --remote --yes --file ../d1-out/catalogue.sql
+            npx --yes wrangler@4 d1 execute taguri-demo --remote --yes --file ../d1-out/catalogue.sql 2>&1 | tee ../d1-out/catalogue.sql.log
           fi
           # 索引は 1 MB ずつに分けてある（index-upload-01.sql …、7009 で止まらないように）。名前の順に送る
           for f in $(cd ../d1-out && ls index-upload-*.sql 2>/dev/null) labels-upload.sql cards-upload.sql; do
             if [ -f "../d1-out/$f" ]; then
-              npx --yes wrangler@4 d1 execute taguri-demo --remote --yes --file "../d1-out/$f"
+              npx --yes wrangler@4 d1 execute taguri-demo --remote --yes --file "../d1-out/$f" 2>&1 | tee "../d1-out/$f.log"
             fi
           done
           # 入れ終えてから「入れた」と記録する（失敗した分は次回まるごと入れ直す）

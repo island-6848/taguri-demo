@@ -209,3 +209,35 @@ class SplitUploadTest(unittest.TestCase):
         self.assertEqual(''.join(p.read_text(encoding='utf-8') for p in parts), ''.join(lines))
         self.assertTrue(all(len(p.read_bytes()) <= 500 for p in parts))
         self.assertIn('rec_meta', parts[-1].read_text(encoding='utf-8'))
+
+
+class SettleTest(unittest.TestCase):
+    """d1-upsert-counts: commit puts D1's own count in place of the estimate, only when every sent file has one."""
+    def setUp(self):
+        self.data = Path(tempfile.mkdtemp())
+        self.out = self.data / 'out'
+        self.out.mkdir()
+        self.day = D.FT.today()
+        D.FT.d1_spend(self.data, 30_000)
+        (self.out / 'spent.json').write_text(json.dumps({'day': self.day, 'writes': 30_000}))
+        (self.out / 'catalogue.sql').write_text('')                     # empty: not sent
+        for f in ('index-upload-01.sql', 'index-upload-02.sql', 'cards-upload.sql'):
+            (self.out / f).write_text('SELECT 1;\n')
+
+    def log(self, name, n):
+        (self.out / (name + '.log')).write_text(f'[{{"meta": {{"rows_written": {n}}}}}]')
+
+    def test_every_file_counted(self):
+        self.log('index-upload-01.sql', 2672)
+        self.log('index-upload-02.sql', 2750)
+        self.log('cards-upload.sql', 6000)
+        self.assertIn('-> D1 counted 11422', D.settle(self.data, self.out))
+        self.assertEqual(D.FT.d1_left(self.data), D.FT.CAPS['d1_writes_day'] - 11422)
+        self.assertFalse((self.out / 'spent.json').exists())             # settled once
+
+    def test_a_missing_count_keeps_the_estimate(self):
+        self.log('index-upload-01.sql', 2672)
+        (self.out / 'index-upload-02.sql.log').write_text('✘ [ERROR] Upstream service unavailable [code: 7009]')
+        self.log('cards-upload.sql', 6000)
+        self.assertIn('kept the estimate 30000', D.settle(self.data, self.out))
+        self.assertEqual(D.FT.d1_left(self.data), D.FT.CAPS['d1_writes_day'] - 30_000)

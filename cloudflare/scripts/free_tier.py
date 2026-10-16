@@ -27,6 +27,7 @@ import datetime as dt
 import json
 import math
 import os
+import re
 import sys
 import urllib.parse
 import urllib.request
@@ -95,6 +96,27 @@ def d1_spend(data: Path, writes: int, now: dt.datetime | None = None) -> None:
     d = today(now)
     u["d1_writes"][d] = int(u["d1_writes"].get(d, 0)) + int(writes)
     save(data, u)
+
+
+_ROWS_WRITTEN = re.compile(r'"rows_written"\s*:\s*(\d+)')
+
+
+def rows_written(text: str) -> int | None:
+    """D1 の rows_written（wrangler d1 execute の出力の meta）。1 回の実行に 1 つ。読めなければ None。"""
+    got = _ROWS_WRITTEN.findall(text or "")
+    return int(got[-1]) if got else None
+
+
+def d1_settle(data: Path, day: str, estimated: int, measured: int) -> int:
+    """書く前に足した見積もりを、入れ終えたあとに D1 が返した数（rows_written）に置き換える。
+    書き込みは upsert で既にある行に当たると 1（主キーの索引は書かない）、新しい行は 2 なので、
+    見積もり（全部を新しい行として数える）は多めになる（d1-upsert-counts）。少なく数えないよう、
+    呼ぶのは全部のファイルを入れ終え、全部の数が読めたときだけ。置き換えた日の値を返す。"""
+    u = load(data)
+    cur = int(u["d1_writes"].get(day, 0))
+    u["d1_writes"][day] = max(0, cur - int(estimated) + int(measured))
+    save(data, u)
+    return u["d1_writes"][day]
 
 
 def r2_bytes(u: dict) -> int:

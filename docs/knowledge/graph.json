@@ -550,6 +550,21 @@
    ]
   },
   {
+   "id": "d1-upsert-counts",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-16",
+   "title": "D1 は upsert が既にある行に当たると 1 行 1（主キーの索引は書かない）、新しい行は 2 と数える。見積もりは全部を新しい行として数えるので、送り直しのときは約 2 倍多い。7009 で失敗と出た Catalog #7 の import は、実は D1 に入っていた",
+   "sources": [
+    "https://developers.cloudflare.com/d1/platform/pricing/",
+    "https://developers.cloudflare.com/d1/best-practices/use-indexes/",
+    "https://github.com/island-6848/taguri-crawler/actions/runs/38851892982",
+    "https://github.com/island-6848/taguri-crawler/actions/runs/38853274508",
+    "https://github.com/island-6848/taguri-crawler/actions/runs/38856122652"
+   ],
+   "verifies": []
+  },
+  {
    "id": "d1-writes-undercounted",
    "type": "finding",
    "status": "confirmed",
@@ -2322,6 +2337,22 @@
     "cloudflare/src/screens/recommend.js",
     "web/app.js",
     "cloudflare/test/cast-seen.test.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "impl-d1-settle",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-16",
+   "title": "D1 に入れ終えたら、書く前に足した見積もりを D1 が返した rows_written に置き換える。見積もり自体は下げない",
+   "sources": [
+    "cloudflare/scripts/free_tier.py",
+    "cloudflare/scripts/deliver_catalogue.py",
+    "cloudflare/test/test_free_tier.py",
+    "cloudflare/test/test_deliver_catalogue.py",
+    "tools/taguri/deploy/github-actions/catalog.yml",
+    "https://github.com/island-6848/taguri-crawler/blob/main/.github/workflows/catalog.yml"
    ],
    "verifies": []
   },
@@ -5260,6 +5291,16 @@
    "to": "workers-d1-preview-state"
   },
   {
+   "from": "d1-upsert-counts",
+   "rel": "depends_on",
+   "to": "d1-writes-undercounted"
+  },
+  {
+   "from": "d1-upsert-counts",
+   "rel": "affects",
+   "to": "index-only-run-1016"
+  },
+  {
    "from": "d1-writes-undercounted",
    "rel": "depends_on",
    "to": "d1-meta-size-after"
@@ -6813,6 +6854,16 @@
    "from": "impl-cast-seen",
    "rel": "affects",
    "to": "impl-person-ordinal-v3"
+  },
+  {
+   "from": "impl-d1-settle",
+   "rel": "depends_on",
+   "to": "d1-upsert-counts"
+  },
+  {
+   "from": "impl-d1-settle",
+   "rel": "depends_on",
+   "to": "dec-free-tier-only"
   },
   {
    "from": "impl-favourite-seed",

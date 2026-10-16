@@ -81,6 +81,18 @@ class LedgerTest(unittest.TestCase):
         FT.CAPS.update(self.caps)
         self.tmp.cleanup()
 
+    def test_the_estimate_is_replaced_by_what_d1_counted(self):
+        # d1-upsert-counts: 書く前に見積もりを足し、入れ終えたら D1 の rows_written に置き換える
+        day = FT.today(NOW)
+        FT.d1_spend(self.data, 10_000, NOW)          # an earlier delivery the same day
+        FT.d1_spend(self.data, 27_578, NOW)          # this one's estimate
+        self.assertEqual(FT.d1_settle(self.data, day, 27_578, 15_548), 25_548)
+        # A count above the estimate is taken too (never less than what D1 says).
+        self.assertEqual(FT.d1_settle(self.data, day, 100, 400), 25_848)
+        log = '🚣 Executed 14 queries ("Rows written": 8706)\n[{"meta": {"rows_read": 8615, "rows_written": 8706}}]'
+        self.assertEqual(FT.rows_written(log), 8706)
+        self.assertIsNone(FT.rows_written('✘ [ERROR] Upstream service unavailable [code: 7009]'))
+
     def test_d1_writes_are_counted_per_utc_day(self):
         FT.d1_spend(self.data, 70_000, NOW)
         self.assertEqual(FT.d1_left(self.data, NOW), FT.CAPS['d1_writes_day'] - 70_000)

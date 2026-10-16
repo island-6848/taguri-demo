@@ -327,7 +327,35 @@ def build(data: Path, out: Path, today: datetime.date, with_index: bool, budget:
     return report
 
 
+def sent_files(out: Path) -> list[Path]:
+    """The SQL files the workflow sends with wrangler (an empty catalogue.sql is not sent)."""
+    files = [out / "catalogue.sql"] if (out / "catalogue.sql").exists() and (out / "catalogue.sql").stat().st_size else []
+    files += sorted(out.glob("index-upload-*.sql"))
+    return files + [out / f for f in ("labels-upload.sql", "cards-upload.sql") if (out / f).exists()]
+
+
+def settle(data: Path, out: Path) -> str:
+    """Replace today's estimate with what D1 counted (rows_written in each file's wrangler log, <file>.log).
+    Only when every sent file has its number; otherwise the estimate stays (it is never less)."""
+    spent = out / "spent.json"
+    if not spent.exists():
+        return "no estimate to settle"
+    s = json.loads(spent.read_text(encoding="utf-8"))
+    measured = []
+    for f in sent_files(out):
+        log = f.with_name(f.name + ".log")
+        n = FT.rows_written(log.read_text(encoding="utf-8", errors="replace")) if log.exists() else None
+        if n is None:
+            return f"kept the estimate {s['writes']} (no rows_written for {f.name})"
+        measured.append(n)
+    total = sum(measured)
+    day = FT.d1_settle(data, s["day"], s["writes"], total)
+    spent.unlink()
+    return f"settled {s['day']}: estimate {s['writes']} -> D1 counted {total} (day total {day})"
+
+
 def commit(data: Path, out: Path) -> None:
+    print(settle(data, out))
     (data / STATE).parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(out / "pending.json", data / STATE)
     # The index rows just sent: the next delivery sends only what differs from these.
@@ -357,8 +385,12 @@ def main() -> int:
     # 今日（UTC）の D1 の書き込みの残り（free_tier.py の控え）を越えない。書く前に控えに足す
     budget = min(a.budget, FT.d1_left(a.data))
     report = build(a.data, a.out, datetime.date.fromisoformat(a.today), a.index, budget, **({"index_only": True} if a.index_only else {}))
+    day = FT.today()
     FT.d1_spend(a.data, report["writes"])
     report["d1_left_today"] = FT.d1_left(a.data)
+    # 入れ終えたら commit が D1 の数に置き換える（足した日と見積もり。日をまたいでも足した日を直す）
+    a.out.mkdir(parents=True, exist_ok=True)
+    (a.out / "spent.json").write_text(json.dumps({"day": day, "writes": report["writes"]}), encoding="utf-8")
     print(json.dumps(report, ensure_ascii=False))
     return 0
 
