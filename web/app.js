@@ -806,7 +806,8 @@ function filterRow(el) {
 }
 
 function compactTickets(root) {
-  root.querySelectorAll("article.ticket.recommend, article.ticket.interest, article.ticket.owned").forEach(t => {
+  // お気に入りも同じ形にする（起案者の指示 2026-10-15「お気に入りのページのレイアウト変更して。購入済み公演と似た感じ」）
+  root.querySelectorAll("article.ticket.recommend, article.ticket.interest, article.ticket.owned, article.ticket.favourite").forEach(t => {
     if (t.classList.contains("cmp")) return;
     const main = t.querySelector(".main");
     if (!main) return;
