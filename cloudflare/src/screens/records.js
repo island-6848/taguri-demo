@@ -13,6 +13,7 @@ import {craftRows, panel as comparePanel, popNote, population} from './compare.j
 import {RECORDS_EMPTY} from './diary.js';
 import {localNow} from './py.js';
 import {timetableFor} from './timetable.js';
+import {conquestFor} from './conquest.js';
 
 const GRADES = ['◎', '○', '△', '×'];
 const norm = s => strip(String(s || '').normalize('NFKC'));
@@ -102,12 +103,15 @@ export async function recordsScreen(_params, ctx) {
   }
   let timetable = '';
   try { timetable = await timetableFor(ctx, d.seen, localNow().slice(0, 10)); } catch { /* 時間割は無くても画面は出す */ }
+  let conquest = '';
+  try { conquest = await conquestFor(ctx, d.seen); } catch { /* 制覇マップは無くても画面は出す */ }
   const body = `<h1>眺める ── 図で見る</h1>
 ${recordsLede(d)}
 ${d.seen.length ? '' : RECORDS_EMPTY}
 <div class="figs">
 ${spiralPanel(d.seen)}
 ${timetable}
+${conquest}
 
 ${venuePanel(d.rated)}
 <div data-fig="storyline"></div>

@@ -105,6 +105,51 @@ if __name__ == '__main__':
     unittest.main()
 
 
+class VenueCensusTest(DeliverTest):
+    """劇場制覇マップの分母（migration 0027）: 2 公演以上・ホールは分けたまま・会場でないものは除く。"""
+
+    def past(self, rows):
+        (self.data / 'past').mkdir(exist_ok=True)
+        (self.data / 'past' / 'stages.jsonl').write_text(
+            ''.join(json.dumps(r, ensure_ascii=False) + '\n' for r in rows), encoding='utf-8')
+
+    def test_census_keeps_halls_apart_and_drops_what_is_not_a_venue(self):
+        self.write([stage('1', 'これから', '2026/11/01 ～ 2026/11/09', theater='東京芸術劇場 シアターイースト', pref='東京都'),
+                    stage('5', '配信', '2026/12/01 ～ 2026/12/03', theater='オンライン配信', pref='東京都')])
+        self.past([{'stage_id': '9', 'theater': '東京芸術劇場　シアターイースト', 'pref': '東京都'},
+                   {'stage_id': '10', 'theater': '東京芸術劇場 プレイハウス', 'pref': '東京都'},
+                   {'stage_id': '11', 'theater': '東京芸術劇場 プレイハウス', 'pref': '東京都'},
+                   {'stage_id': '12', 'theater': '一度だけの場所', 'pref': '東京都'},
+                   {'stage_id': '13', 'theater': 'オンライン配信', 'pref': '東京都'},
+                   {'stage_id': '14', 'theater': '某所', 'pref': '大阪府'},
+                   {'stage_id': '15', 'theater': '某所', 'pref': '大阪府'},
+                   {'stage_id': '1', 'theater': '東京芸術劇場 シアターイースト', 'pref': '東京都'}])   # same stage: once
+        self.assertEqual(D.venue_census(self.data), {'東京芸術劇場シアターイースト': '東京都', '東京芸術劇場プレイハウス': '東京都'})
+
+    def test_census_is_delivered_with_counts_and_only_changes_after(self):
+        self.write([stage('1', 'これから', '2026/11/01 ～ 2026/11/09', theater='劇場A', pref='東京都')])
+        self.past([{'stage_id': '9', 'theater': '劇場A', 'pref': '東京都'},
+                   {'stage_id': '10', 'theater': '劇場B', 'pref': '大阪府'},
+                   {'stage_id': '11', 'theater': '劇場B', 'pref': '大阪府'}])
+        self.assertEqual(self.deliver()['venue_census'], '2 venues (2 changed)')
+        self.assertEqual(sorted(self.db.execute('SELECT venue,pref FROM venue_census')), [('劇場A', '東京都'), ('劇場B', '大阪府')])
+        counts = self.db.execute("SELECT v FROM rec_meta WHERE k='venue_counts'").fetchone()[0]
+        self.assertEqual(json.loads(counts), {'東京都': 1, '大阪府': 1})
+        before = self.deliver()
+        self.assertEqual(before['venue_census'], '2 venues (0 changed)')
+        self.past([{'stage_id': '9', 'theater': '劇場A', 'pref': '東京都'}])       # 劇場B is gone: deleted
+        self.assertEqual(self.deliver()['venue_census'], '1 venues (1 changed)')
+        self.assertEqual(self.db.execute('SELECT venue FROM venue_census').fetchall(), [('劇場A',)])
+
+    def test_census_waits_for_a_day_with_room(self):
+        self.write([stage('1', 'これから', '2026/11/01 ～ 2026/11/09', theater='劇場A', pref='東京都')])
+        self.past([{'stage_id': '9', 'theater': '劇場A', 'pref': '東京都'}])
+        report = self.deliver(budget=12)
+        self.assertTrue(report['venue_census'].startswith('skipped'))
+        self.assertEqual(self.db.execute('SELECT COUNT(*) FROM venue_census').fetchone()[0], 0)
+        self.assertEqual(self.deliver()['venue_census'], '1 venues (1 changed)')    # sent the next day
+
+
 class PathsTest(unittest.TestCase):
     # The workflow passes --out ../d1-out from cloudflare/, while the index / labels / cards builders run
     # with cwd=ROOT: a relative path made them fail (FileNotFoundError) and no index ever reached D1.

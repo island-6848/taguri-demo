@@ -2263,3 +2263,18 @@ code.cmd{display:inline-block;margin:10px 0 4px;padding:8px 14px;border-radius:8
 /* 「時刻なし」は好みではなく分からない回なので、色（--curtain）を使わず灰の段で */
 .tt .tt-u.tt-1,.tt .tt-u.tt-2{background:color-mix(in srgb,var(--ink) 8%,var(--surf))}
 .tt .tt-u.tt-3,.tt .tt-u.tt-4{background:color-mix(in srgb,var(--ink) 16%,var(--surf));font-weight:400}
+/* 劇場制覇マップ（screens/conquest.js）: 1 県 1 マスのタイル地図。濃さは時間割と同じく --curtain を面に混ぜる。
+   マスには「行った/その県の劇場」の数を書くので、色だけで読ませない */
+.cq-map{overflow-x:auto;direction:rtl}  /* 狭い画面では右端（東京のある側）から見せる */
+.cq-map svg{min-width:480px;direction:ltr}  /* 幅の狭い画面では字が読めないので、箱の中だけ横に動かす */
+.cq-map svg text{font-family:var(--sans,inherit);fill:var(--ink);font-size:11px;text-anchor:middle;pointer-events:none}
+.cq-map svg text.n{font-size:9.5px;fill:var(--ink2);font-variant-numeric:tabular-nums}
+.cq-tile rect{stroke:var(--surf);stroke-width:2}
+.cq-legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--ink2);margin:8px 0 0}
+.cq-legend i{display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;margin-right:4px}
+.cq-legend i.cq-none{background:var(--plane);border:1px solid var(--grid,var(--ring))}
+.cq-list{margin:10px 0 0;display:grid;gap:4px}
+.cq-list details{background:var(--plane);border-radius:8px;padding:6px 12px}
+.cq-list summary{cursor:pointer}
+.cq-list ul{margin:4px 0 2px;padding-left:1.2em}
+.cq .fine{font-size:12px;color:var(--mute);margin:10px 0 0}

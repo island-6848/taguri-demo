@@ -2561,6 +2561,19 @@
    "verifies": []
   },
   {
+   "id": "impl-theater-conquest",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-16",
+   "title": "劇場制覇マップを眺めるに入れた（タイル地図 1 枚。分母は取得した公演に 2 回以上出た会場 1,360、同じ建物のホールは別に数える）",
+   "sources": [
+    "cloudflare/src/screens/conquest.js",
+    "cloudflare/scripts/deliver_catalogue.py",
+    "cloudflare/migrations/0027.sql"
+   ],
+   "verifies": []
+  },
+  {
    "id": "impl-theme-favourite",
    "type": "finding",
    "status": "confirmed",
@@ -3378,7 +3391,7 @@
   {
    "id": "mock-theater-conquest",
    "type": "decision",
-   "status": "proposed",
+   "status": "superseded",
    "date": "2026-10-16",
    "title": "劇場制覇マップの見本を作った（都道府県のタイル地図、3 つの見せ方: 行った劇場の数・はじめて行った年・年ごとの並び）。分母はたぐりの会場データ",
    "sources": [
@@ -7409,6 +7422,26 @@
    "from": "impl-rating-aspects",
    "rel": "affects",
    "to": "comp-recommender"
+  },
+  {
+   "from": "impl-theater-conquest",
+   "rel": "supersedes",
+   "to": "mock-theater-conquest"
+  },
+  {
+   "from": "impl-theater-conquest",
+   "rel": "depends_on",
+   "to": "theater-master-options"
+  },
+  {
+   "from": "impl-theater-conquest",
+   "rel": "depends_on",
+   "to": "lit-tilemap-mcneill2017"
+  },
+  {
+   "from": "impl-theater-conquest",
+   "rel": "affects",
+   "to": "dec-records-viz-picks"
   },
   {
    "from": "impl-theme-favourite",

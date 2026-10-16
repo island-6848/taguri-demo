@@ -19,6 +19,9 @@ wrangler succeeded, so a failed upload is retried in full the next day.
   once per stage by the owner's Claude (docs/knowledge dec-synopsis-reader-claude).
 - rec_meta: `catalogue_scan` / `catalogue_delivered` / `catalogue_upcoming`, for
   the public `/api/health` (dates and counts only).
+- venue_census + rec_meta `venue_counts` (migration 0027): the denominator of the theatre-conquest map,
+  every venue named by two or more crawled stages (coming and past), halls kept apart. Only changed rows,
+  and only on a day with room for all of them.
 - `--index`: the person-score index (`build_recommend_index.py`) and the stage
   names the original screens show (`build_stage_labels.py`, migration 0011),
   each uploaded only when its version changed and the day's write budget allows it.
@@ -33,6 +36,7 @@ import re
 import shutil
 import subprocess
 import sys
+import unicodedata
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -49,6 +53,7 @@ WRITE_BUDGET = 60_000          # of the 100,000 rows/day free tier; the rest is 
 ROWS_PER_UPSERT = 3            # the row, its primary-key index and the catalogue_date index
 VENUE_WRITES = 2               # venue_pref: the row and its primary-key index
 META_WRITES = 2                # rec_meta: the row and its primary-key index
+CENSUS_WRITES = 2              # venue_census (migration 0027): the row and its primary-key index
 INDEX_WRITES_PER_ROW = 2       # rec_* / stage_label / rec_card rows: the row and its primary-key index
 STATE = Path("d1") / "delivered.json"
 
@@ -108,6 +113,58 @@ def venue_prefs(data: Path) -> dict[str, str]:
 
 def venue_sql(venue: str, pref: str) -> str:
     return (f"INSERT INTO venue_pref(venue,pref) VALUES({_q(venue)},{_q(pref)}) "
+            "ON CONFLICT(venue) DO UPDATE SET pref=excluded.pref;")
+
+
+# 劇場制覇マップの分母（migration 0027、mock-theater-conquest）。同じ建物のホールはまとめない
+PREFS = ("北海道", "青森県", "岩手県", "宮城県", "秋田県", "山形県", "福島県", "茨城県", "栃木県", "群馬県",
+         "埼玉県", "千葉県", "東京都", "神奈川県", "新潟県", "富山県", "石川県", "福井県", "山梨県", "長野県",
+         "岐阜県", "静岡県", "愛知県", "三重県", "滋賀県", "京都府", "大阪府", "兵庫県", "奈良県", "和歌山県",
+         "鳥取県", "島根県", "岡山県", "広島県", "山口県", "徳島県", "香川県", "愛媛県", "高知県", "福岡県",
+         "佐賀県", "長崎県", "熊本県", "大分県", "宮崎県", "鹿児島県", "沖縄県")
+# 会場でないもの（配信・場所を伏せた回・道順・複数の会場を並べた書き方）
+NOT_A_VENUE = re.compile(r"配信|某所|徒歩|オンライン|未定|ほか|他会場|[、/／,]|にて|特設|会場|各地|ウェディング|ホテル")
+CENSUS_MIN_SHOWS = 2
+
+
+def venue_key(name: str) -> str:
+    """The venue name as the map matches it (screens/conquest.js venueKey): NFKC, no whitespace."""
+    return re.sub(r"\s+", "", unicodedata.normalize("NFKC", str(name or "")))
+
+
+def venue_census(data: Path) -> dict[str, str]:
+    """{venue: prefecture} of the venues named by at least CENSUS_MIN_SHOWS crawled stages (coming and
+    past, each stage once). A venue named under two prefectures takes the one most of its stages give."""
+    shows: dict[str, dict[str, int]] = {}
+    done: set[str] = set()
+    for rel in (Path("review") / "candidates.jsonl", Path("past") / "stages.jsonl"):
+        for c in _jsonl(data / rel):
+            sid = str(c.get("stage_id") or "")
+            if not sid or sid in done:
+                continue
+            done.add(sid)
+            v = venue_key(c.get("venue") or c.get("theater") or "")
+            p = str(c.get("pref") or "").strip()
+            if not v or len(v) > 30 or NOT_A_VENUE.search(v) or p not in PREFS:
+                continue
+            by = shows.setdefault(v, {})
+            by[p] = by.get(p, 0) + 1
+    return {v: min(by, key=lambda p: (-by[p], PREFS.index(p))) for v, by in sorted(shows.items())
+            if sum(by.values()) >= CENSUS_MIN_SHOWS}
+
+
+def census_counts(census: dict[str, str]) -> str:
+    """rec_meta 'venue_counts': {prefecture: venues} in the order of PREFS."""
+    n = {p: 0 for p in PREFS}
+    for p in census.values():
+        n[p] += 1
+    return json.dumps({p: k for p, k in n.items() if k}, ensure_ascii=False, separators=(",", ":"))
+
+
+def census_sql(venue: str, pref: str | None) -> str:
+    if pref is None:
+        return f"DELETE FROM venue_census WHERE venue={_q(venue)};"
+    return (f"INSERT INTO venue_census(venue,pref) VALUES({_q(venue)},{_q(pref)}) "
             "ON CONFLICT(venue) DO UPDATE SET pref=excluded.pref;")
 
 
@@ -252,6 +309,22 @@ def build(data: Path, out: Path, today: datetime.date, with_index: bool, budget:
     if writes > budget:
         raise SystemExit(f"{len(stmts)} catalogue rows exceed today's write budget ({writes} > {budget}); "
                          "raise --budget only after checking the D1 usage")
+    # 劇場制覇マップの分母: 変わった行だけ。今日の残りに収まらなければ、まるごと次の日に回す
+    prev_census: dict[str, str] = dict(prev.get("census") or {})
+    census = prev_census if index_only else venue_census(data)
+    census_changed = {v: p for v, p in census.items() if prev_census.get(v) != p}
+    census_changed.update({v: None for v in prev_census if v not in census})
+    counts = census_counts(census)
+    census_writes = CENSUS_WRITES * len(census_changed) + (META_WRITES if counts != prev.get("census_counts") else 0)
+    if census_writes and writes + census_writes + META_WRITES * 3 > budget:
+        census_report = f"skipped: {census_writes} writes would exceed the budget"
+        census, counts = prev_census, prev.get("census_counts", "")
+    else:
+        census_report = f"{len(census)} venues ({len(census_changed)} changed)"
+        stmts += [census_sql(v, p) for v, p in sorted(census_changed.items())]
+        if counts != prev.get("census_counts"):
+            stmts.append(meta_sql("venue_counts", counts))
+        writes += census_writes
     meta = {"catalogue_scan": scan_date(data),
             "catalogue_delivered": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
             "catalogue_upcoming": str(len(rows))}
@@ -260,9 +333,10 @@ def build(data: Path, out: Path, today: datetime.date, with_index: bool, budget:
     stmts += [meta_sql(k, v) for k, v in meta.items() if v]
     writes += META_WRITES * len(meta)
     report = {"stages": len(rows), "changed": len(changed), "venues_changed": len(venue_changed), "writes": writes,
-              "with_synopsis": sum(1 for r in rows.values() if json.loads(r[5]).get("synopsis"))}
+              "with_synopsis": sum(1 for r in rows.values() if json.loads(r[5]).get("synopsis")),
+              "venue_census": census_report}
     state = {"rows": seen, "venues": {**prev_venues, **venues}, "index": prev.get("index", ""), "labels": prev.get("labels", ""),
-             "cards": prev.get("cards", "")}
+             "cards": prev.get("cards", ""), "census": census, "census_counts": counts}
     if out.exists():
         shutil.rmtree(out)
     out.mkdir(parents=True)
