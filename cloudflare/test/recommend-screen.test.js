@@ -184,3 +184,10 @@ test('興味あり pressed on おすすめ keeps the reasons it was shown with, 
     assert.match(old, reason);
   } finally { sqlite.close(); }
 });
+
+test('a kept reason with a price band does not show it', async () => {
+  const {reasonRows} = await import('../src/screens/recommend.js');
+  const html = reasonRows({parts: [], kinds: [[1, '#値段', '〜5000円', 1], [1, '#形式', 'ミュージカル', 1]]}, new Map());
+  assert.doesNotMatch(html, /値段|5000/);
+  assert.match(html, /ミュージカル/);
+});

@@ -45,3 +45,13 @@ test('the reason names the liked person the partner works with', async () => {
   const html = reasonRows({parts: [[0.1, '出演', 'Q', 0]], kinds: [], via: [['出演\tQ', 'P']]}, new Map());
   assert.match(html, /出演 <b>Q<\/b><span class="n">（好きなPと同じ公演に関わる人）<\/span>/);
 });
+
+// 起案者の指摘 2026-10-16「おすすめ理由に料金出たまま」: 本番の索引に残っている料金帯（#値段）の行は読まない。
+test('a price band left in the index raises nothing and is no reason', async () => {
+  const withPrice = [...CREDITS, ['#値段', '〜5000円', 'S2', 1, 'price'], ['#値段', '〜5000円', 'S4', 1, 'price']];
+  const acc = {...access, postingsFor: async keys => { const want = new Set(keys.map(k => k.join('\u0000'))); return withPrice.filter(c => want.has(c[0] + '\u0000' + c[1])); }};
+  const r = [...rated, {key: 'r3', verdict: '◎', people: [['#値段', '〜5000円']], updated_at: '3'}];
+  const out = await scoreFromIndex({...acc, rated: r, today: '2026-10-15'});
+  assert.deepEqual(out.map(c => c.stage_id), ['S2']);
+  assert.ok(out.every(c => c.kinds.every(k => k[1] !== '#値段')));
+});
