@@ -422,6 +422,7 @@ function renderScreen(el, activePath, d, exposureSource) {
   el.querySelectorAll("li.rs.q").forEach(n => n.remove());
   compactTickets(el);
   penNotes(el);
+  el.querySelectorAll(".rb").forEach(starValue);
   shortAddButtons(el);
   divergeVerdicts(el);
   stampRerate(el);
@@ -1108,7 +1109,30 @@ function fillStars(g, b) {
     if (z) z.classList.toggle("on", v === 0);
     g.querySelectorAll(".hs").forEach((x, i) => { x.classList.toggle("on", v >= i + 1); x.classList.toggle("h", v === i + 0.5); });
   }
-  return () => items.forEach((x, i) => { x.className = was[i]; });
+  const undo = () => { items.forEach((x, i) => { x.className = was[i]; }); starValue(g); };
+  starValue(g);
+  return undo;
+}
+// いまの星の数を星の右に出す（起案者の指摘 2026-10-16「選んでも評価が0のまま」── 左端の「0」は
+// 星 0 を選ぶ押し口で、いまの値ではない）。まだ付けていなければ何も出さない
+function starValue(g) {
+  if (!g.querySelector("button.star, .hs")) return;
+  let v = null;
+  const st = g.querySelectorAll("button.star");
+  if (st.length) { const n = g.querySelectorAll("button.star.on").length; v = n ? n : null; }
+  else {
+    const z = g.querySelector("button.star0.on");
+    const on = g.querySelectorAll(".hs.on").length, h = g.querySelector(".hs.h") ? 0.5 : 0;
+    v = z ? 0 : (on + h) || null;
+  }
+  let out = g.querySelector(":scope > .stv");
+  if (!out) {
+    out = document.createElement("span");
+    out.className = "stv";
+    const said = g.querySelector(":scope > .said");
+    said ? said.before(out) : g.append(out);
+  }
+  out.textContent = v === null ? "" : "★" + v;
 }
 document.addEventListener("click", ev => {
   if (!live) return;

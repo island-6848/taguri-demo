@@ -6896,6 +6896,10 @@ def _rec_row(user_id: str, w: dict, *, poster: str = "", rate_always: bool = Fal
             f'<div class="page">'
             f'<div class="ttl">{E(w["title"])}</div>'
             + (f'<div class="where">{where}</div>' if where else "")
+            # **評価の押し口は会場のすぐ下に置く**（起案者の指示 2026-10-16「星の位置を会場の下に入れて
+            # 省スペース化」）。あらすじ・出演者はその下
+            + (f'<div class="tools">{rate}{imp_head}{vn_head}</div>'
+               if (rate or imp_head or vn_head) else "")
             # **あらすじ・出演者は会場の下に置く。** 思い出をたどる手がかりの並びに
             # 沿わせる ── 日付・題名・どこで観たか、の次に「何だったか」が来る
             + _synopsis_html(w.get("synopsis"))
@@ -6903,8 +6907,6 @@ def _rec_row(user_id: str, w: dict, *, poster: str = "", rate_always: bool = Fal
             # **行の中に差し込む欄**（探す画面の「ヒットした箇所」）。題名のすぐ下に
             # 置く ── 別の行に出すと、どの記録に掛かる説明なのかが分からなくなる
             + extra
-            + (f'<div class="tools">{rate}{imp_head}{vn_head}</div>'
-               if (rate or imp_head or vn_head) else "")
             + imp_box + vn_box
             + (_edit_html(user_id, w) if editable else "")
             + f'</div>{pin}</article>')
@@ -6941,11 +6943,13 @@ def _impression_parts(w: dict) -> tuple[str, str]:
                     f'<span class="int">{E(note)}</span>'
                     f'<button class="wnb" data-note-open="1">書き直す</button></div>'
                     f'{box}</div>')
-    # **まだ何も書いていないときは、押し口の列に入れる。** 評価の ◎○△× と並ぶ ──
-    # どちらも「観た帰りにその場で答える」操作である
-    return ('<button class="wnb" data-note-open="1">感想を書く'
-            '<span class="opt">任意</span></button>',
-            f'<div class="inw">{box}</div>')
+    # **まだ何も書いていないときも、感想の欄を出しておく。文は何も出さず、鉛筆を押すとその場で書ける**
+    # （起案者の指示 2026-10-16「感想の欄がデフォルトで出てて、何もないときは何も文章を表示しないように。
+    # 書き込むときはえんぴつのアイコンを押したら編集できるように」）。鉛筆は app.js の penNotes が付ける
+    return ("", f'<div class="inw"><div class="inr"><span class="inl">感想</span>'
+                f'<span class="int"></span>'
+                f'<button class="wnb" data-note-open="1">書き直す</button></div>'
+                f'{box}</div>')
 
 
 def _visit_note_html(uid: str, note: str) -> tuple[str, str]:
@@ -7915,7 +7919,7 @@ def _works_body(user_id: str, year: str = "", page: int = 1, want: str = "", gro
              "<b>「この回のメモ」だけは行ごとに別々に持てます</b>（推薦には使いません）。")
     return f"""<h1>日記帳</h1>
 {_records_lede(d)}
-<p class="lede">1 件ごとに、日付・評価・感想が出ます。<b>感想は各行の「感想を書く」から
+<p class="lede">1 件ごとに、日付・評価・感想が出ます。<b>感想は各行の「感想」の鉛筆から
 書けます</b>（欄から離れたときに保存されます）。<b>題名・上演日・劇場は、各行の
 「公演詳細を直す」から直せます。</b>ポスターを出せたのは {d["n_pos"]} 件、
 あらすじが出せたのは {n_syn} 件、出演者が出せたのは {n_cast} 件です。{gnote}

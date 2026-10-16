@@ -88,9 +88,11 @@ export function impressionParts(w) {
       + `<button class="wnb" data-note-open="1">書き直す</button></div>`
       + `${box}</div>`];
   }
-  return ['<button class="wnb" data-note-open="1">感想を書く'
-    + '<span class="opt">任意</span></button>',
-  `<div class="inw">${box}</div>`];
+  // 何も書いていないときも感想の欄を出し、文は出さない。鉛筆（app.js の penNotes）で書く（起案者の指示 2026-10-16）
+  return ['', `<div class="inw"><div class="inr"><span class="inl">感想</span>`
+    + `<span class="int"></span>`
+    + `<button class="wnb" data-note-open="1">書き直す</button></div>`
+    + `${box}</div>`];
 }
 
 /** app._synopsis_html */
@@ -180,10 +182,11 @@ export function recRow(w, {poster = '', rateAlways = false, editable = false, ra
     + `<div class="page">`
     + `<div class="ttl">${E(w.title)}</div>`
     + (where ? `<div class="where">${where}</div>` : '')
+    // 評価の押し口は会場のすぐ下（起案者の指示 2026-10-16「星の位置を会場の下に入れて省スペース化」）
+    + ((rate || impHead) ? `<div class="tools">${rate}${impHead}</div>` : '')
     + synopsisHtml(w.synopsis)
     + castHtml(w.people)
     + extra                         // 探す画面の「ヒットした箇所」（題名のすぐ下）
-    + ((rate || impHead) ? `<div class="tools">${rate}${impHead}</div>` : '')
     + impBox
     + (editable ? editHtml(w, label) : '')
     + `</div>${pin}</article>`;
