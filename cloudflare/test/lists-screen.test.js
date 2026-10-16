@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
 import {readFileSync} from 'node:fs';
 import {setup, step, signIn} from './screens/harness.js';
-import {wholeTour} from '../src/screens/lists.js';
+import {wholeTour, pastShard} from '../src/screens/lists.js';
 
 const here = p => new URL(p, import.meta.url).pathname;
 const FIXTURE = JSON.parse(execFileSync('python3', [here('./screens/recommend_fixture.py')], {encoding: 'utf8', maxBuffer: 64 * 1024 * 1024}));
@@ -511,7 +511,7 @@ test('お気に入りのハッシュタグ: the name coming stages, works seen a
     assert.equal((t.match(/昔の舞台/g) || []).length, 1);
     // 1 日の回数の上限を越えたら探さない
     sqlite.prepare("INSERT INTO rec_meta(k,v) VALUES('past_scan',?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").run('2026-10-12 150');
-    assert.match((await screen(env, a, 'favourites', '?n=' + encodeURIComponent('俳優甲'))).body_html, /今日は過去の公演を探せる回数/);
+    assert.match((await screen(env, a, 'favourites', '?n=' + encodeURIComponent('俳優甲'))).body_html, /代わりの検索も今日の回数の上限に達しました/);
   } finally { sqlite.close(); }
 });
 
@@ -528,5 +528,27 @@ test('wholeTour: a tour card shows the whole run, without the per-region schedul
     assert.match(out, /data-range="10\/6〜11\/10" data-state="上演中"/);
     assert.doesNotMatch(out, /data-tour=|tourfull|大阪公演/);
     assert.match(out, /<div class="cast">出演<\/div>/);
+  } finally { sqlite.close(); }
+});
+
+test('過去の公演は名前の索引（R2）から読み、D1 の一覧は読まない (起案者 2026-10-15「すぐ表示できるための方法」)', async () => {
+  const {env, sqlite} = withIndex();
+  const a = await signIn(env);
+  try {
+    assert.equal(pastShard('上村聡'), 0x9b);                             // deliver_past_index.shard_of と同じ
+    const shard = {v: 1, stages: {s1: ['索引の舞台', '索引の舞台', '2024-03-01', '2024-03-10', '本多劇場', '劇団あおば'],
+      s2: ['索引の舞台', '索引の舞台', '2024-04-01', '2024-04-03', '梅田劇場', '劇団あおば']}, names: {'上村聡': ['s1', 's2']}};
+    const gets = [];
+    env.POSTERS = {get: async key => { gets.push(key); return key === 'pastidx/v1/9b.json' ? {json: async () => shard} : null; }};
+    // D1 の一覧には別の行（索引を読めば使われない）
+    sqlite.prepare("INSERT INTO past_stage(stage_id,title,tkey,start,end,venue,grp,pref,people) VALUES('d1','一覧だけの舞台','x','2023-01-01','2023-01-02','劇場','劇団','東京都',?)").run(JSON.stringify([['出演', '上村聡']]));
+    const v = (await screen(env, a, 'favourites', '?n=' + encodeURIComponent('上村 聡'))).body_html;
+    assert.deepEqual(gets, ['pastidx/v1/9b.json']);
+    assert.match(v, /2024\/03\/01〜04\/03<\/span><span class="t">索引の舞台<\/span><span class="w">劇団あおば／本多劇場 ほか 1 会場<\/span>/);
+    assert.doesNotMatch(v, /一覧だけの舞台/);
+    assert.equal(sqlite.prepare("SELECT v FROM rec_meta WHERE k='past_scan'").get(), undefined);   // 一覧を読む回数を使っていない
+    // 索引がまだ無いときは、一覧を読む（回数に上限あり）
+    env.POSTERS = {get: async () => null};
+    assert.match((await screen(env, a, 'favourites', '?n=' + encodeURIComponent('上村聡'))).body_html, /一覧だけの舞台/);
   } finally { sqlite.close(); }
 });

@@ -435,7 +435,7 @@ async function nativeRoute(request, env, url) {
   try {
     const uid = await user(request, env.DB);
     // env.CLOCK exists only in tests (an object cannot come from wrangler vars).
-    const ctx = {db: env.DB, uid, today: env.CLOCK?.today ?? jstToday(), now: env.CLOCK?.now ?? Date.now()};
+    const ctx = {db: env.DB, env, uid, today: env.CLOCK?.today ?? jstToday(), now: env.CLOCK?.now ?? Date.now()};
     if (isScreen) return json(await nativeScreenBody(m[1], url.searchParams, ctx));
     if (request.headers.get('origin') !== url.origin) fail(403,'同じサイトから操作してください。');
     if (!(request.headers.get('content-type') || '').startsWith('application/json')) fail(415,'JSONで送ってください。');
