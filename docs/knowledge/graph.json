@@ -3728,6 +3728,19 @@
    "verifies": []
   },
   {
+   "id": "q-kind-reason-off",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-16",
+   "title": "「原作 オリジナル」のような種類の理由を、利用者ごとに「使わない」にできるようにするか",
+   "sources": [
+    "cloudflare/src/screens/recommend.js",
+    "tools/review/user_recommender.py",
+    "web/app.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "q-lockfile-reproducible",
    "type": "question",
    "status": "open",
@@ -3830,6 +3843,17 @@
    "verifies": [
     "S29"
    ]
+  },
+  {
+   "id": "q-origin-country-tag",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-16",
+   "title": "「韓国原作」のように、原作の国・元の上演地を種類の理由に使えるか",
+   "sources": [
+    "tools/review/user_recommender.py"
+   ],
+   "verifies": []
   },
   {
    "id": "q-original-ui-csp",
@@ -7753,6 +7777,11 @@
    "from": "q-offsite-backup",
    "rel": "depends_on",
    "to": "q-r2-boto3"
+  },
+  {
+   "from": "q-origin-country-tag",
+   "rel": "depends_on",
+   "to": "q-kind-reason-off"
   },
   {
    "from": "q-original-ui-csp",
