@@ -53,13 +53,15 @@ export async function loadDeclined(ctx) {
 
 /** reaction rows merged per stage, newest last (feedback.reactions). */
 export async function reactionsOf(ctx) {
-  const {results} = await ctx.db.prepare('SELECT stage_id,interest,owned,note,note_no,note_pre,source FROM reaction WHERE user_id=? ORDER BY updated_at').bind(ctx.uid).all();
+  const {results} = await ctx.db.prepare('SELECT stage_id,interest,owned,note,note_no,note_pre,source,updated_at FROM reaction WHERE user_id=? ORDER BY updated_at').bind(ctx.uid).all();
   const out = new Map();
   for (const r of results) {
     const d = out.get(r.stage_id) || {};
     // src: the screen the newest 興味あり／なし was pressed on ('reminder', 'search', 'screen' …)
     if (r.interest !== null) { d.interest = Number(r.interest); d.src = String(r.source || '').replace(/_tour$/, ''); }
     if (r.owned !== null) d.owned = Number(r.owned);
+    // at: when the newest 興味あり／持っている was pressed (the list's 「追加した新しい順」)
+    if (r.interest !== null || r.owned !== null) d.at = String(r.updated_at || '');
     if (r.note !== null) d.note = r.note;
     if (r.note_no !== null) d.note_no = r.note_no;
     if (r.note_pre !== null && r.note_pre !== undefined) d.note_pre = r.note_pre;
@@ -283,7 +285,8 @@ export async function buckets(ctx, {catalogue = false} = {}) {
       interest: rs.find(x => x.interest !== undefined)?.interest};
     const pick = sids.find(s => react.has(s)) || m.stage_id;
     const pre = sids.map(s => react.get(s)?.note_pre).find(Boolean) || '';
-    const row = {...(group.find(v => v.stage_id === pick) || m), sids, note: react.get(pick)?.note || '', note_pre: pre, src: react.get(pick)?.src || ''};
+    const row = {...(group.find(v => v.stage_id === pick) || m), sids, note: react.get(pick)?.note || '', note_pre: pre, src: react.get(pick)?.src || '',
+      at: sids.map(x => react.get(x)?.at || '').sort().at(-1) || ''};
     if (r.owned === 1) {
       seen.add(key);
       const done = doneDate(sids, row.end, tickets);
@@ -304,10 +307,34 @@ export async function buckets(ctx, {catalogue = false} = {}) {
   return out;
 }
 
+// 並べ替え（起案者の指示 2026-10-15「今どのページも上演日の近い順に並べてるけど、それ以外の並べ替えをプルダウンで
+// 選べるようにできる？規定は近い順でいい」）。興味あり・お気に入り・購入済み公演で同じ選択肢を使う（?s=）。
+export const SORTS = {start: '上演日の近い順', end: '楽日の近い順', added: '追加した新しい順', title: '公演名順', pref: '都道府県順'};
+const JA = new Intl.Collator('ja');
+const prefIdx = p => (PREFS.includes(p) ? PREFS.indexOf(p) : PREFS.length);
+export function sortRows(rows, key) {
+  const byStart = (a, b) => cmp(a.start || '9999', b.start || '9999') || cmp(a.stage_id, b.stage_id);
+  const f = {
+    start: byStart,
+    end: (a, b) => cmp(a.end || '9999', b.end || '9999') || byStart(a, b),
+    added: (a, b) => cmp(b.at || '', a.at || '') || byStart(a, b),
+    title: (a, b) => JA.compare(a.title || '', b.title || '') || byStart(a, b),
+    pref: (a, b) => (prefIdx(a.pref) - prefIdx(b.pref)) || byStart(a, b),
+  }[key] || byStart;
+  return [...rows].sort(f);
+}
+const sortOf = (params, keys) => { const k = params.get('s') || 'start'; return keys.includes(k) ? k : 'start'; };
+/** The 並べ替え pull-down (a GET form: app.js turns it into a screen change). */
+function sortForm(action, sort, keys) {
+  const opts = keys.map(k => `<option value="${k}"${k === sort ? ' selected' : ''}>${E(SORTS[k])}</option>`).join('');
+  return `<form class="sortf" method="get" action="${action}"><input type="hidden" name="t" value="__TAGURI_TOKEN__">`
+    + `<label>並べ替え <select name="s" onchange="this.form.requestSubmit ? this.form.requestSubmit() : this.form.submit()">${opts}</select></label>`
+    + '<noscript><button type="submit">並べ替える</button></noscript></form>';
+}
 const monthKey = r => (r.start || '').slice(0, 7);
 const monthLabel = m => { const [y, mo] = m.split('-'); return mo ? `${y} 年 ${Number(mo)} 月` : '上演日が分からない公演'; };
 /** render_recommend.month_pick */
-export function monthPick(rows, sel, page, action) {
+export function monthPick(rows, sel, page, action, sort = 'start') {
   const counts = {};
   for (const c of rows) { const k = monthKey(c) || 'none'; counts[k] = (counts[k] || 0) + 1; }
   const months = Object.keys(counts).filter(k => k !== 'none').sort();
@@ -318,10 +345,10 @@ export function monthPick(rows, sel, page, action) {
   page = Math.min(Math.max(page, 1), last);
   const show = hit.slice((page - 1) * LIST_TOP, page * LIST_TOP);
   const link = `${action}?t=__TAGURI_TOKEN__`;
-  const url = (m, pg) => link + (m ? `&amp;m=${E(m)}` : '') + (pg > 1 ? `&amp;p=${pg}` : '');
+  const url = (m, pg) => link + (m ? `&amp;m=${E(m)}` : '') + (pg > 1 ? `&amp;p=${pg}` : '') + (sort !== 'start' ? `&amp;s=${E(sort)}` : '');
   const tabs = indexTabs([['', 'すべて', rows.length], ...months.map(m => [m, monthLabel(m === 'none' ? '' : m), counts[m]])],
     sel, m => url(m, 1), '月で切り替える');
-  const where = !sel ? '上演日の近い順' : `<b>${E(monthLabel(sel === 'none' ? '' : sel))}</b>の ${hit.length} 件`;
+  const where = !sel ? E(SORTS[sort] || SORTS.start) : `<b>${E(monthLabel(sel === 'none' ? '' : sel))}</b>の ${hit.length} 件`;
   const first = (page - 1) * LIST_TOP + 1;
   const now = hit.length <= LIST_TOP ? `${where}で、${hit.length} 件すべてを表示しています。`
     : `${where}の <b>${first}〜${first + show.length - 1} 件目</b>を表示しています（全 ${hit.length} 件）。<b>残りは下の「次の ${LIST_TOP} 件」か、上の見出しのタブから見られます。</b>`;
@@ -350,15 +377,17 @@ const qInt = (params, k) => Math.max(1, Number.parseInt(params.get(k) || '1', 10
 const ORIGIN = {reminder: '開幕リマインドからの追加', search: '探すからの追加'};
 export async function interestScreen(params, ctx) {
   const b = await buckets(ctx);
-  const rows = b.tracking;
-  const [show, mfil, mfoot] = monthPick(rows, params.get('m') || '', qInt(params, 'p'), '/recommend/interest');
+  const keys = ['start', 'end', 'added', 'title', 'pref'], sort = sortOf(params, keys);
+  const rows = sortRows(b.tracking, sort);
+  const [show, mfil, mfoot] = monthPick(rows, params.get('m') || '', qInt(params, 'p'), '/recommend/interest', sort);
   const list = rows.length
-    ? '<p class="lead"><b>上演日の近い順</b>に並んでいます。順位は付けていません。</p><div class="tickets">'
+    ? `<p class="lead"><b>${E(SORTS[sort])}</b>に並んでいます。順位は付けていません。</p><div class="tickets">`
       + (await cards(ctx, show, 'interest', r => ({note: r.note, origin: ORIGIN[r.src] || ''}))).join('') + '</div>'
     : '<p class="empty">追いかけている公演はありません。「おすすめ」の画面で「興味あり」を押すと、ここに並びます。</p>';
   const body = `<h1>追いかけている ${rows.length} 件</h1>
-<p class="lede">「興味あり」を押した公演を、上演日の近い順に並べています。順位は付けていません。チケットが取れたら「すでに持っている」を押してください。観る予定に移り、上演日を過ぎると評価待ちに並びます。<br>
+<p class="lede">「興味あり」を押した公演を並べています（並べ替えは下の「並べ替え」から）。順位は付けていません。チケットが取れたら「すでに持っている」を押してください。観る予定に移り、上演日を過ぎると評価待ちに並びます。<br>
 「なぜ気になったか」に書いた名前は、<a href="/recommend/favourites?t=__TAGURI_TOKEN__">お気に入り</a>に加える候補として並びます。</p>
+${rows.length ? sortForm('/recommend/interest', sort, keys) : ''}
 ${mfil}
 ${list}
 ${mfoot}`;
@@ -385,8 +414,9 @@ ${words.length ? tags : '<p class="empty">まだ 1 つも外していません�
 export async function favouritesScreen(params, ctx) {
   const b = await buckets(ctx, {catalogue: true});
   const nCat = Number((await ctx.db.prepare("SELECT v FROM rec_meta WHERE k='catalogue_upcoming'").first().catch(() => null))?.v || 0);
-  const favs = [...b.favourites, ...b.favOwned].sort((x, y) => cmp(x.start || '9999', y.start || '9999') || cmp(x.stage_id, y.stage_id)), dec = b.declared;
-  const [show, mfil, mfoot] = monthPick(favs, params.get('m') || '', qInt(params, 'p'), '/recommend/favourites');
+  const keys = ['start', 'end', 'title', 'pref'], sort = sortOf(params, keys);
+  const favs = sortRows([...b.favourites, ...b.favOwned], sort), dec = b.declared;
+  const [show, mfil, mfoot] = monthPick(favs, params.get('m') || '', qInt(params, 'p'), '/recommend/favourites', sort);
   const kinds = KINDS.map(k => `<option value="${E(k)}">${E(k)}</option>`).join('');
   const tags = KINDS.flatMap(k => (dec[k] || []).map(n => `<span class="tag" data-kind="${E(k)}" data-name="${E(n)}">`
     + `<span class="wax" aria-hidden="true">${E(Array.from(n)[0] || '')}</span><span class="tgn">${E(k)}「${E(n)}」</span>`
@@ -401,27 +431,29 @@ export async function favouritesScreen(params, ctx) {
     + `<span class="said"></span></div><div class="tags">${tags}</div></details>${declinedBox(b.words)}</div>`;
   const why = r => ({owned: Boolean(r.owned), why: r.a.map(w => `<li class="rs a"><span class="net">お気に入り</span>登録した${E(w)}の公演です<span class="src">［出典: ${E(ROLE_SRC)}］</span></li>`).join('')});
   const list = favs.length
-    ? '<p class="lead"><b>上演日の近い順</b>に並んでいます。順位は付けていません。観ると決めたら、公式サイトから券を求めてください。<b>券を取ったら「購入済みにする」を押してください。</b>この一覧には「購入済み」の印を付けて残し、<a href="/tickets?t=__TAGURI_TOKEN__">購入済み公演</a>にも入ります（行く日はそちらで入れられます）。</p>'
+    ? `<p class="lead"><b>${E(SORTS[sort])}</b>に並んでいます。順位は付けていません。観ると決めたら、公式サイトから券を求めてください。<b>券を取ったら「購入済みにする」を押してください。</b>この一覧には「購入済み」の印を付けて残し、<a href="/tickets?t=__TAGURI_TOKEN__">購入済み公演</a>にも入ります（行く日はそちらで入れられます）。</p>`
       + `<div class="tickets">${(await cards(ctx, show, 'favourite', why)).join('')}</div>`
     : `<p class="empty">登録した名前に当たる公演は、いまたぐりが集めている公演${nCat ? `（CoRich・ステイジーズカレンダーから毎日集めている、これからの公演 ${nCat} 件）` : ''}の中にはありません。<b>新しい公演が集まると、毎日の更新のあと、ここに出ます。</b>表記ゆれ（漢字とカタカナなど）があるときは、別の書き方も登録してみてください。</p>`;
   const body = `<h1>お気に入り ── 新着 ${favs.length} 件</h1>
 <p class="lede">登録した名前の公演を、件数の制限なしにすべて出します。順位は付けていません。件数が多いので、上演月ごとに分けています。</p>
 ${tools}
+${favs.length ? sortForm('/recommend/favourites', sort, keys) : ''}
 ${mfil}
 ${list}
 ${mfoot}`;
   return {title: 'お気に入り', body_html: body};
 }
 
-export async function ticketsScreen(_params, ctx) {
+export async function ticketsScreen(params, ctx) {
   const b = await buckets(ctx);
-  const rank = r => [PREFS.includes(r.pref) ? PREFS.indexOf(r.pref) : PREFS.length, r.end || '9999-99-99', r.title || ''];
-  const owned = [...b.owned].sort((x, y) => { const p = rank(x), q = rank(y); return (p[0] - q[0]) || cmp(p[1], q[1]) || cmp(p[2], q[2]); });
+  const keys = ['start', 'end', 'added', 'title', 'pref'], sort = sortOf(params, keys);
+  const owned = sortRows(b.owned, sort);
   const mine = r => r.sids.flatMap(s => (b.tickets.get(s) || []).map(t => ({...t, sid: s})))
     .sort((p, q) => cmp(p.date, q.date) || cmp(p.time || '', q.time || ''));
   const html = (await cards(ctx, owned, 'owned', r => ({mytix: mytixHtml(r.stage_id, r.start, r.end, mine(r)) + preNote(r.stage_id, r.note_pre)}))).join('');
   const body = `<h1>購入済み公演 ── ${owned.length} 件</h1>
 <p class="lede">「すでに持っている」と答えた公演と、購入確認メールから見つかった公演です。<b>この一覧は、次のおすすめを変えません。</b>上演日を過ぎると一覧から外れ、<a href="/rate?t=__TAGURI_TOKEN__">評価一覧</a>の評価待ちに移ります。行く日は、各公演の「行く日」の欄から入れられます。</p>
+${owned.length ? sortForm('/tickets', sort, keys) : ''}
 ${html || '<p class="empty">チケットを持っている公演はまだありません。推薦の画面で「すでに持っている」を押した公演が、ここに並びます。</p>'}
 `;
   return {title: '購入済み公演', body_html: body};

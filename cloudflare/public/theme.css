@@ -827,3 +827,9 @@ a.htag-in:hover{text-decoration:underline}
  font-family:var(--mincho);font-size:14px;font-weight:700;color:var(--ink)}
 .mgrid.tl .ms{border-left:1.5px solid color-mix(in srgb,var(--ink) 45%,transparent);align-self:stretch;z-index:2;pointer-events:none}
 @media(max-width:700px){.mgrid.tl{--nmw:150px}}
+/* 興味ありの「なぜ気になったか」は、「回答を直す」を押すまで畳む（起案者の指示 2026-10-15） */
+.wnw[hidden]{display:none}
+/* 並べ替えのプルダウン（起案者の指示 2026-10-15。興味あり・お気に入り・購入済み公演） */
+.sortf{display:flex;justify-content:flex-end;margin:6px 0 10px}
+.sortf label{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--ink2)}
+.sortf select{font:inherit;font-size:13.5px;padding:5px 8px;border:1px solid var(--ring);border-radius:8px;background:var(--surf);color:var(--ink)}

@@ -1028,6 +1028,18 @@
    "verifies": []
   },
   {
+   "id": "dec-list-sort",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-15",
+   "title": "興味あり・お気に入り・購入済み公演に並べ替えのプルダウンを置く（既定は上演日の近い順）",
+   "sources": [
+    "cloudflare/src/screens/lists.js",
+    "web/theme.css"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-lists-worker",
    "type": "decision",
    "status": "adopted",
@@ -5531,6 +5543,11 @@
   },
   {
    "from": "dec-interest-card-1015",
+   "rel": "affects",
+   "to": "comp-frontend"
+  },
+  {
+   "from": "dec-list-sort",
    "rel": "affects",
    "to": "comp-frontend"
   },

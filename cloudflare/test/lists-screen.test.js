@@ -2,6 +2,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
+import {readFileSync} from 'node:fs';
 import {setup, step, signIn} from './screens/harness.js';
 
 const here = p => new URL(p, import.meta.url).pathname;
@@ -421,7 +422,60 @@ test('興味あり added from 開幕リマインド says so in place of おす�
     assert.match(card('101'), /<div class="whyh origin">[\s\S]*開幕リマインドからの追加<\/div>/);
     assert.doesNotMatch(card('101'), /おすすめ理由|<ul class="why">/);
     assert.match(card('101'), /<span class="wnt">ポスターがかわいい<\/span>/);
+    // 書いた理由は、ふだんは畳む（「回答を直す」で開く。起案者 2026-10-15）
+    assert.match(card('101'), /<div class="wnw" hidden>/);
     assert.match(card('102'), /おすすめ理由/);
     assert.equal(sqlite.prepare("SELECT source FROM reaction WHERE stage_id='101' AND interest=1").get().source, 'reminder');
+  } finally { sqlite.close(); }
+});
+
+test('migration 0025 relabels the older 興味あり as added from 開幕リマインド (起案者 2026-10-15)', async () => {
+  const {env, sqlite} = withIndex();
+  const a = await signIn(env);
+  try {
+    const uid = sqlite.prepare('SELECT id FROM users').get().id;
+    const put = (sid, interest, source, at) => sqlite.prepare('INSERT INTO reaction(user_id,label,stage_id,interest,source,updated_at) VALUES(?,?,?,?,?,?)')
+      .run(uid, '2026-10-14', sid, interest, source, at);
+    put('101', 1, 'screen', '2026-10-14T10:00:00.000Z');
+    put('102', 1, 'screen_tour', '2026-10-14T10:00:00.000Z');
+    put('103', 0, 'screen', '2026-10-14T10:00:00.000Z');          // 興味なしは触らない
+    put('104', 1, 'screen', '2026-10-15T23:50:00.000Z');          // PR #28 より後の 'screen' はおすすめから押したもの。触らない
+    put('105', 1, 'screen', '2026-10-15T23:00:00.000Z');          // 理由を書いて時刻が新しくなった古い行
+    sqlite.exec(readFileSync(new URL('../migrations/0025.sql', import.meta.url), 'utf8'));
+    const src = Object.fromEntries(sqlite.prepare('SELECT stage_id,source FROM reaction').all().map(r => [r.stage_id, r.source]));
+    assert.deepEqual(src, {101: 'reminder', 102: 'reminder_tour', 103: 'screen', 104: 'screen', 105: 'reminder'});
+    assert.match((await screen(env, a, 'interest')).body_html, /data-stage="101"[\s\S]*?開幕リマインドからの追加/);
+  } finally { sqlite.close(); }
+});
+
+test('並べ替え: 興味あり・お気に入り・購入済み公演 can be sorted; 上演日の近い順 by default (起案者 2026-10-15)', async () => {
+  const {env, sqlite} = withIndex();
+  const a = await signIn(env);
+  try {
+    const add = (id, title, start, end, venue) => sqlite.prepare("INSERT INTO catalogue(id,title,date,venue,url,metadata) VALUES(?,?,?,?,'',?)")
+      .run(id, title, start, venue, JSON.stringify({end_date: end}));
+    add('971', 'う', '2026-10-20', '2026-12-01', '劇場Q');
+    add('972', 'あ', '2026-10-25', '2026-10-27', '劇場Q');
+    add('973', 'い', '2026-10-18', '2026-11-05', '劇場Q');
+    for (const sid of ['972', '973', '971']) await step(env, a, {post: '/api/react', body: {stage_id: sid, value: 'interest', nofill: true}});
+    // 押した時刻（テストの時計は止まっているので、ここで付ける）: 972 → 973 → 971 の順に押した
+    [['972', '10:00'], ['973', '11:00'], ['971', '12:00']].forEach(([sid, t]) =>
+      sqlite.prepare('UPDATE reaction SET updated_at=? WHERE stage_id=?').run(`2026-10-12T${t}:00.000Z`, sid));
+    const order = async q => {
+      const html = (await screen(env, a, 'interest', q)).body_html;
+      return [...html.matchAll(/<article class="ticket interest" data-stage="(97\d)"/g)].map(m => m[1]);
+    };
+    const def = (await screen(env, a, 'interest')).body_html;
+    assert.match(def, /<select name="s"[^>]*><option value="start" selected>上演日の近い順<\/option>/);
+    assert.deepEqual(await order(''), ['973', '971', '972']);           // 開幕 10/18, 10/20, 10/25
+    assert.deepEqual(await order('?s=end'), ['972', '973', '971']);     // 楽日 10/27, 11/5, 12/1
+    assert.deepEqual(await order('?s=title'), ['972', '973', '971']);   // あ・い・う
+    assert.deepEqual(await order('?s=added'), ['971', '973', '972']);   // 押したのが新しい順
+    assert.deepEqual(await order('?s=bogus'), ['973', '971', '972']);
+    assert.match((await screen(env, a, 'interest', '?s=end')).body_html, /<b>楽日の近い順<\/b>に並んでいます/);
+    for (const sid of ['971', '972']) await step(env, a, {post: '/api/react', body: {stage_id: sid, value: 'owned', nofill: true}});
+    const t = (await screen(env, a, 'tickets', '?s=end')).body_html;
+    assert.match(t, /<option value="end" selected>楽日の近い順/);
+    assert.ok(t.indexOf('data-stage="972"') < t.indexOf('data-stage="971"'));
   } finally { sqlite.close(); }
 });

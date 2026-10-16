@@ -884,7 +884,10 @@ def why_note(stage_id, note: str = "", *, open_: bool = False, ask: bool = False
     else:
         head = ('<button class="wnb" data-why="1">なぜ気になったかを書く'
                 '<span class="opt">任意</span></button>')
-    return f'<div class="wnw">{head}{box}</div>'
+    # **ふだんは畳んでおき、「回答を直す」を押したときに三択と一緒に出す**（起案者の指示 2026-10-15
+    # 「なぜ気になったか？の理由ユーザーに向けて出す必要ある？ユーザー自身は分かってると思う。
+    # 回答を直すのボタンを押したら出るように」）。書いた理由は消さず、直す場所に置く
+    return f'<div class="wnw" hidden>{head}{box}</div>'
 
 
 def no_note(stage_id, note: str = "", *, hidden: bool = False) -> str:
