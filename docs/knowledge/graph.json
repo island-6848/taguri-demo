@@ -3376,6 +3376,17 @@
    "verifies": []
   },
   {
+   "id": "mock-theater-conquest",
+   "type": "decision",
+   "status": "proposed",
+   "date": "2026-10-16",
+   "title": "劇場制覇マップの見本を作った（都道府県のタイル地図、3 つの見せ方: 行った劇場の数・はじめて行った年・年ごとの並び）。分母はたぐりの会場データ",
+   "sources": [
+    "https://claude.ai/artifact/2Z6pxr1nC1w5PVKrga5f6T"
+   ],
+   "verifies": []
+  },
+  {
    "id": "native-cutover-map",
    "type": "finding",
    "status": "outdated",
@@ -7848,6 +7859,26 @@
    "from": "migration-wip-received",
    "rel": "affects",
    "to": "migration-handover-stage0"
+  },
+  {
+   "from": "mock-theater-conquest",
+   "rel": "depends_on",
+   "to": "theater-master-options"
+  },
+  {
+   "from": "mock-theater-conquest",
+   "rel": "depends_on",
+   "to": "lit-tilemap-mcneill2017"
+  },
+  {
+   "from": "mock-theater-conquest",
+   "rel": "depends_on",
+   "to": "lit-space-time-cube-bach2014"
+  },
+  {
+   "from": "mock-theater-conquest",
+   "rel": "affects",
+   "to": "dec-records-viz-picks"
   },
   {
    "from": "native-cutover-map",
