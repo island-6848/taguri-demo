@@ -1027,6 +1027,22 @@
    "verifies": []
   },
   {
+   "id": "dec-index-only-run",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-16",
+   "title": "推薦の索引の初回を早く入れるため、取得のワークフローに「索引だけ」の手動実行（mode index）を足す",
+   "sources": [
+    "cloudflare/scripts/deliver_catalogue.py",
+    "cloudflare/scripts/free_tier.py",
+    "cloudflare/test/test_deliver_catalogue.py",
+    "cloudflare/test/test_free_tier.py",
+    "tools/taguri/deploy/github-actions/catalog.yml",
+    "https://github.com/island-6848/taguri-crawler/blob/main/.github/workflows/catalog.yml"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-interest-card-1015",
    "type": "decision",
    "status": "adopted",
@@ -5599,6 +5615,16 @@
    "from": "dec-index-first-load",
    "rel": "depends_on",
    "to": "d1-writes-undercounted"
+  },
+  {
+   "from": "dec-index-only-run",
+   "rel": "depends_on",
+   "to": "q-index-load-now"
+  },
+  {
+   "from": "dec-index-only-run",
+   "rel": "depends_on",
+   "to": "dec-index-first-load"
   },
   {
    "from": "dec-interest-card-1015",

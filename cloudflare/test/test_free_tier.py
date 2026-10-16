@@ -58,6 +58,13 @@ class ActionsTest(unittest.TestCase):
         self.assertEqual((p['run'], p['mode'], p['past_minutes']), (True, 'daily', 0))
 
 
+    def test_index_only_run_reads_nothing_and_keeps_the_daily_reserve(self):
+        # 索引だけの手動実行（q-index-load-now）: 取り直しも過去の公演も読まない
+        p = FT.plan([0] * 31, 'index')
+        self.assertEqual((p['run'], p['mode'], p['past_minutes'], p['catalog_minutes']), (True, 'index', 0, 1))
+        self.assertFalse(FT.plan([60] * 31, 'index')['run'])
+        self.assertFalse(FT.plan(None, 'index')['run'])
+
 class LedgerTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()

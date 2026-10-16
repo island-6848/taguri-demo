@@ -21,7 +21,7 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'daily か weekly（初回は weekly）'
+        description: 'daily・weekly・index（初回は weekly）。index は推薦の索引だけを入れる（取り直し・ポスター・過去の公演はしない。q-index-load-now）'
         required: false
         default: 'weekly'
 
@@ -87,6 +87,7 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: python cloudflare/scripts/free_tier.py plan --data data --mode "$MODE"
       - name: Rebuild the catalog
+        if: steps.plan.outputs.mode != 'index'
         timeout-minutes: ${{ fromJSON(steps.plan.outputs.catalog_minutes) }}
         run: python tools/taguri/publish_catalog.py --mode "${{ steps.plan.outputs.mode }}" --dry-run --out catalog.tar.gz
       - name: Deliver the catalogue to D1 (changed rows only)
@@ -101,8 +102,12 @@ jobs:
           if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
             echo "Cloudflare の鍵が無いので D1 には入れない"; exit 0
           fi
-          python scripts/deliver_catalogue.py build --data ../data --out ../d1-out --index
-          npx --yes wrangler@4 d1 execute taguri-demo --remote --yes --file ../d1-out/catalogue.sql
+          # index のときは推薦の索引だけ（その日の予算をまるごと索引に回す。公演一覧・題名・カードは毎日の実行で）
+          only=""; [ "${{ steps.plan.outputs.mode }}" = "index" ] && only="--index-only"
+          python scripts/deliver_catalogue.py build --data ../data --out ../d1-out --index $only
+          if [ -s ../d1-out/catalogue.sql ]; then
+            npx --yes wrangler@4 d1 execute taguri-demo --remote --yes --file ../d1-out/catalogue.sql
+          fi
           for f in index-upload.sql labels-upload.sql cards-upload.sql; do
             if [ -f "../d1-out/$f" ]; then
               npx --yes wrangler@4 d1 execute taguri-demo --remote --yes --file "../d1-out/$f"
@@ -114,7 +119,7 @@ jobs:
         # 本物の索引で、評価 0〜300 件の作り物の利用者のおすすめを Worker と同じ関数で計算し、
         # JavaScript の CPU 時間と D1 の読み込み行数を出す（cloudflare/scripts/measure_worker.mjs、S20・S21）。
         # 利用者の記録は使わない。結果を見るだけで、失敗しても先へ進む
-        if: always() && steps.plan.outputs.run == 'true'
+        if: always() && steps.plan.outputs.run == 'true' && steps.plan.outputs.mode != 'index'
         continue-on-error: true
         working-directory: cloudflare
         run: |
@@ -128,7 +133,7 @@ jobs:
         # R2 は無料枠を越えると請求が来るので、保存 8 GB・月 30 万回の手前で止まる（free_tier.py）。
         # R2 に入れ終えた分は作業データから外れる（crawler_state.py）。鍵に R2 の権限が無いか、
         # バケットが無いときは何も変えずに先へ進む（ポスターは今までどおり作業データに残る）
-        if: always() && steps.plan.outputs.run == 'true'
+        if: always() && steps.plan.outputs.run == 'true' && steps.plan.outputs.mode != 'index'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -145,14 +150,14 @@ jobs:
       - name: Read past stage pages (2019 onwards, newest first)
         # 過去の公演の一覧（q-auto-link-past）。1.1 秒に 1 枚（polite_http）。読む枚数と分数は Plan の段が
         # 無料枠から決める（起案者の「1 日 6,000 件」は、無料枠に収まる分だけにした。free-tier-budget.md）
-        if: always() && steps.plan.outputs.run == 'true' && steps.plan.outputs.past_minutes != '0'
+        if: always() && steps.plan.outputs.run == 'true' && steps.plan.outputs.past_minutes != '0' && steps.plan.outputs.mode != 'index'
         timeout-minutes: ${{ fromJSON(steps.plan.outputs.past_timeout) }}
         run: |
           python tools/review/fetch_past_stages.py --limit "${{ steps.plan.outputs.past_limit }}" \
             --since 2019-01-01 --max-minutes "${{ steps.plan.outputs.past_minutes }}"
           python tools/review/fetch_past_stages.py --report | head -20
       - name: Deliver the new past stages to D1 (past_stage)
-        if: always() && steps.plan.outputs.run == 'true'
+        if: always() && steps.plan.outputs.run == 'true' && steps.plan.outputs.mode != 'index'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -170,7 +175,7 @@ jobs:
         # 利用者の記録の表だけを書き出し、行数を D1 と比べてから gpg（AES-256）で暗号化して R2 の
         # backup/d1/ に置く。30 日より古いものは消す（cloudflare/scripts/backup_d1.py、S31）。
         # 合言葉 BACKUP_PASSPHRASE が無ければ何もしない。失敗しても取得の結果の保存は続ける
-        if: always() && steps.plan.outputs.run == 'true'
+        if: always() && steps.plan.outputs.run == 'true' && steps.plan.outputs.mode != 'index'
         continue-on-error: true
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

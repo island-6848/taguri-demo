@@ -207,16 +207,19 @@ def build_cards(out: Path, today: datetime.date) -> tuple[str, int, Path] | None
     return m.group(1), INDEX_WRITES_PER_ROW * json.loads(r.stdout.strip().splitlines()[-1])["stages"], sql
 
 
-def build(data: Path, out: Path, today: datetime.date, with_index: bool, budget: int) -> dict:
+def build(data: Path, out: Path, today: datetime.date, with_index: bool, budget: int,
+          index_only: bool = False) -> dict:
+    """`index_only`: the manual index-only run of the crawler (q-index-load-now). The catalogue rows,
+    venues, labels and cards are left for the daily run, so the whole of today's budget goes to the index."""
     prev = json.loads((data / STATE).read_text(encoding="utf-8")) if (data / STATE).exists() else {}
     seen: dict[str, str] = dict(prev.get("rows") or {})
-    rows = catalogue_rows(data, today)
+    rows = {} if index_only else catalogue_rows(data, today)
     changed = {sid: row for sid, row in rows.items() if seen.get(sid) != _hash(row)}
     stmts = [upsert_sql(row) for _, row in sorted(changed.items())]
     for sid, row in changed.items():
         seen[sid] = _hash(row)
     # 劇場の都道府県: 変わった行だけ（1 行 1 書き込み）。一覧の行を書き直さずに都道府県を付ける
-    venues = venue_prefs(data)
+    venues = {} if index_only else venue_prefs(data)
     prev_venues: dict[str, str] = dict(prev.get("venues") or {})
     venue_changed = {v: p for v, p in venues.items() if prev_venues.get(v) != p}
     stmts += [venue_sql(v, p) for v, p in venue_changed.items()]
@@ -227,6 +230,8 @@ def build(data: Path, out: Path, today: datetime.date, with_index: bool, budget:
     meta = {"catalogue_scan": scan_date(data),
             "catalogue_delivered": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
             "catalogue_upcoming": str(len(rows))}
+    if index_only:
+        meta = {}
     stmts += [meta_sql(k, v) for k, v in meta.items() if v]
     writes += META_WRITES * len(meta)
     report = {"stages": len(rows), "changed": len(changed), "venues_changed": len(venue_changed), "writes": writes,
@@ -236,9 +241,10 @@ def build(data: Path, out: Path, today: datetime.date, with_index: bool, budget:
     if out.exists():
         shutil.rmtree(out)
     out.mkdir(parents=True)
-    if with_index:
+    if with_index or index_only:
+        reserve = 0 if index_only else LABELS_CARDS_RESERVE
         # 1 行は行＋主キーの索引で 2、rec_stage はさらに 1。多めに 3 で割って、今日入れられる行数にする
-        got = build_index(out, data, (budget - writes - LABELS_CARDS_RESERVE) // (INDEX_WRITES_PER_ROW + 1))
+        got = build_index(out, data, (budget - writes - reserve) // (INDEX_WRITES_PER_ROW + 1))
         if got is None:
             report["index"] = "not built (see the log above)"
         elif got[3] == 0 and got[4]:
@@ -259,6 +265,7 @@ def build(data: Path, out: Path, today: datetime.date, with_index: bool, budget:
                                + (f", {got[4]} rows left for the next delivery)" if got[4] else ")"))
             writes += got[1]
             report["writes"] = writes
+    if with_index and not index_only:
         got = build_labels(out)
         got = got and (got[0], got[1] * (2 if prev.get("labels") else 1), got[2])   # + deleting the previous version
         if got is None:
@@ -289,7 +296,8 @@ def build(data: Path, out: Path, today: datetime.date, with_index: bool, budget:
             report["cards"] = f"version {got[0]} ({got[1]} writes)"
             writes += got[1]
             report["writes"] = writes
-    (out / "catalogue.sql").write_text("\n".join(stmts) + "\n", encoding="utf-8")
+    # 索引だけの実行では空（wrangler には送らない）
+    (out / "catalogue.sql").write_text("\n".join(stmts) + "\n" if stmts else "", encoding="utf-8")
     (out / "pending.json").write_text(json.dumps(state, ensure_ascii=False), encoding="utf-8")
     return report
 
@@ -308,6 +316,8 @@ def main() -> int:
     ap.add_argument("--data", type=Path, default=ROOT / "data")
     ap.add_argument("--out", type=Path, required=True, help="directory for the SQL files (replaced)")
     ap.add_argument("--index", action="store_true", help="also upload the person-score index if it changed")
+    ap.add_argument("--index-only", action="store_true",
+                    help="only the person-score index, with the whole of today's budget (manual crawler run)")
     ap.add_argument("--budget", type=int, default=WRITE_BUDGET)
     ap.add_argument("--today", default=datetime.datetime.now(JST).date().isoformat())
     a = ap.parse_args()
@@ -321,7 +331,7 @@ def main() -> int:
         return 0
     # 今日（UTC）の D1 の書き込みの残り（free_tier.py の控え）を越えない。書く前に控えに足す
     budget = min(a.budget, FT.d1_left(a.data))
-    report = build(a.data, a.out, datetime.date.fromisoformat(a.today), a.index, budget)
+    report = build(a.data, a.out, datetime.date.fromisoformat(a.today), a.index, budget, **({"index_only": True} if a.index_only else {}))
     FT.d1_spend(a.data, report["writes"])
     report["d1_left_today"] = FT.d1_left(a.data)
     print(json.dumps(report, ensure_ascii=False))

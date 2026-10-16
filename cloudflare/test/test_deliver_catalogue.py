@@ -168,3 +168,28 @@ class IndexDiffStateTest(DeliverTest):
         r = self.deliver_index('rev3', 0, 0, D.WRITE_BUDGET)
         self.assertEqual(r['index'], 'unchanged')
         self.assertEqual(json.loads(hashes.read_text())['rec_stage']['1'], 'rev1')
+
+    def test_index_only_run_gives_the_whole_budget_to_the_index(self):
+        # 索引だけの手動実行（q-index-load-now）: 一覧・題名・カードは書かず、予算をまるごと索引に回す
+        self.deliver()                                     # the daily run delivered the catalogue earlier
+        seen = {}
+
+        def run(out, data, max_rows=None):
+            seen['max_rows'] = max_rows
+            return self.fake_index('rev1', 300, 100)(out, data, max_rows)
+        build_index, build_labels, build_cards = D.build_index, D.build_labels, D.build_cards
+        D.build_index = run
+        D.build_labels = D.build_cards = lambda *a: self.fail('labels and cards are for the daily run')
+        try:
+            self.write([stage('1', '題名が変わった', '2026/11/01 (日) ～ 2026/11/09 (月)')])
+            r = D.build(self.data, self.out, TODAY, False, 30_000, index_only=True)
+        finally:
+            D.build_index, D.build_labels, D.build_cards = build_index, build_labels, build_cards
+        self.assertEqual(seen['max_rows'], 30_000 // (D.INDEX_WRITES_PER_ROW + 1))
+        self.assertEqual((r['changed'], r['writes']), (0, 300))
+        self.assertEqual((self.out / 'catalogue.sql').read_text(), '')
+        before = json.loads((self.data / D.STATE).read_text())
+        D.commit(self.data, self.out)
+        after = json.loads((self.data / D.STATE).read_text())
+        self.assertEqual(after['rows'], before['rows'])    # the changed title waits for the daily run
+        self.assertEqual(after['index'], 'rev1')
