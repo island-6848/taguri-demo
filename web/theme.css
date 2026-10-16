@@ -848,4 +848,3 @@ a.ftag:hover,a.ftag:focus-visible{background:color-mix(in srgb,var(--s2) 12%,tra
 .nmlist .v{color:var(--curtain);font-weight:700}
 .nmlist .w{color:var(--mute);font-size:12px;flex-basis:100%;padding-left:calc(6.5em + 12px)}
 h2 .cnt{font-size:13px;font-weight:400;color:var(--mute);margin-left:6px}
-.pastbtn{display:inline-block;padding:8px 14px;border:1px solid var(--ring);border-radius:10px;text-decoration:none}

@@ -1213,6 +1213,19 @@
    "verifies": []
   },
   {
+   "id": "dec-past-name-index",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-16",
+   "title": "過去の公演の「名前 → 公演」の索引を R2 に置き、ハッシュタグの画面は 1 回の読み出しで過去の公演を出す",
+   "sources": [
+    "cloudflare/scripts/deliver_past_index.py",
+    "cloudflare/src/screens/lists.js",
+    "cloudflare/test/test_deliver_past_index.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-phone-nav-four",
    "type": "decision",
    "status": "adopted",
@@ -5689,6 +5702,21 @@
    "from": "dec-passkeys",
    "rel": "raises",
    "to": "q-passkey-real-devices"
+  },
+  {
+   "from": "dec-past-name-index",
+   "rel": "depends_on",
+   "to": "dec-auto-link-past"
+  },
+  {
+   "from": "dec-past-name-index",
+   "rel": "depends_on",
+   "to": "dec-posters-r2"
+  },
+  {
+   "from": "dec-past-name-index",
+   "rel": "affects",
+   "to": "comp-frontend"
   },
   {
    "from": "dec-phone-nav-four",

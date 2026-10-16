@@ -1532,7 +1532,7 @@ def ticket(c: dict, *, rank=None, mode: str = "recommend", note: str = "",
  <div class="sale">{sale_pill(c, onsale, cls)}</div>
  {cast_block(c)}
  {syn_html}
- {'' if top_why else f'<div class="whyh">{IC.ico("eye", 14)}{whyh}</div><ul class="why">{why}</ul>'}
+ {'' if top_why or mode == "owned" else f'<div class="whyh">{IC.ico("eye", 14)}{whyh}</div><ul class="why">{why}</ul>'}
  {act}
  {'' if mode in ("favourite", "owned", "ended", "ended_added") else why_note(c["stage_id"], note, ask=(mode == "interest"))}
  {'' if mode in ("favourite", "owned", "ended", "ended_added") else no_note(c["stage_id"], hidden=True)}
