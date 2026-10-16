@@ -19,6 +19,7 @@ import {compose, cardTemplates, posterHtml, mytixHtml, preNote} from './cards.js
 import {titleKey} from './works.js';
 import {indexTabs} from './rate.js';
 import {PREFS} from './prefs.js';
+import {rankedGroups, reasonRows} from './recommend.js';
 
 export const KINDS = ['団体', '人', '主催', '作品', '原作者', '題材'];
 const DECLARED_KEY = 'declared', DECLINED_KEY = 'declined';
@@ -65,7 +66,7 @@ export async function loadKindOff(ctx) {
 
 /** reaction rows merged per stage, newest last (feedback.reactions). */
 export async function reactionsOf(ctx) {
-  const {results} = await ctx.db.prepare('SELECT stage_id,interest,owned,note,note_no,note_pre,source,updated_at FROM reaction WHERE user_id=? ORDER BY updated_at').bind(ctx.uid).all();
+  const {results} = await ctx.db.prepare('SELECT stage_id,interest,owned,note,note_no,note_pre,why,source,updated_at FROM reaction WHERE user_id=? ORDER BY updated_at').bind(ctx.uid).all();
   const out = new Map();
   for (const r of results) {
     const d = out.get(r.stage_id) || {};
@@ -77,6 +78,8 @@ export async function reactionsOf(ctx) {
     if (r.note !== null) d.note = r.note;
     if (r.note_no !== null) d.note_no = r.note_no;
     if (r.note_pre !== null && r.note_pre !== undefined) d.note_pre = r.note_pre;
+    // why: the reasons shown on おすすめ when 興味あり was pressed there (migrations/0026.sql)
+    if (r.why) { try { d.why = JSON.parse(r.why); } catch { /* a broken row shows no reasons */ } }
     out.set(r.stage_id, d);
   }
   return out;
@@ -298,6 +301,7 @@ export async function buckets(ctx, {catalogue = false} = {}) {
     const pick = sids.find(s => react.has(s)) || m.stage_id;
     const pre = sids.map(s => react.get(s)?.note_pre).find(Boolean) || '';
     const row = {...(group.find(v => v.stage_id === pick) || m), sids, note: react.get(pick)?.note || '', note_pre: pre, src: react.get(pick)?.src || '',
+      why: sids.map(s => react.get(s)?.why).find(Boolean) || null,
       at: sids.map(x => react.get(x)?.at || '').sort().at(-1) || ''};
     if (r.owned === 1) {
       seen.add(key);
@@ -387,14 +391,43 @@ const qInt = (params, k) => Math.max(1, Number.parseInt(params.get(k) || '1', 10
 // 興味ありを押した画面が、おすすめ以外のとき、おすすめ理由の欄の代わりに出す言葉（起案者の指示 2026-10-15
 // 「開幕リマインドから追加したものは、おすすめ理由という欄ではなく、「開幕リマインドからの追加」だけ書いて」）
 const ORIGIN = {reminder: '開幕リマインドからの追加', search: '探すからの追加'};
+/**
+ * 理由を残す前に押した興味ありの理由（おすすめの控えの answered_why）。興味ありの公演は自分も種になっているので、
+ * 作品名から自分の題名を除き、自分のほかに作品が無い人と種類は理由から外す。
+ */
+export function ownlessWhy(w, title) {
+  const titles = new Map((w.titles || []).map(([k, v]) => [k, (v || []).filter(t => t !== title)]));
+  const via = new Map(w.via || []);
+  const keep = p => { const k = p[1] + '\t' + p[2]; return via.has(k) || (titles.get(k) || []).length > 0; };
+  return {...w, parts: w.parts.filter(keep), kinds: w.kinds.filter(keep), titles: [...titles]};
+}
+
+/** 興味ありの各行のおすすめ理由（押したときに残したもの、無ければ今のおすすめの控えから。どちらも無ければ空） */
+async function interestWhy(ctx, show) {
+  const out = new Map();
+  for (const r of show) if (r.why) out.set(r.stage_id, reasonRows(r.why, new Map(r.why.titles || [])));
+  const rest = show.filter(r => !r.why && !ORIGIN[r.src]);
+  if (!rest.length) return out;
+  const data = await rankedGroups(ctx);
+  const ans = new Map(data.answered_why || []);
+  for (const r of rest) {
+    const w = [r.stage_id, ...(r.sids || [])].map(s => ans.get(s)).find(Boolean);
+    if (!w) continue;
+    const o = ownlessWhy(w, r.title);
+    if (o.parts.length || o.kinds.length) out.set(r.stage_id, reasonRows(o, new Map(o.titles)));
+  }
+  return out;
+}
+
 export async function interestScreen(params, ctx) {
   const b = await buckets(ctx);
   const keys = ['start', 'end', 'added', 'title', 'pref'], sort = sortOf(params, keys);
   const rows = sortRows(b.tracking, sort);
   const [show, mfil, mfoot] = monthPick(rows, params.get('m') || '', qInt(params, 'p'), '/recommend/interest', sort);
+  const whys = rows.length ? await interestWhy(ctx, show) : new Map();
   const list = rows.length
     ? `<p class="lead"><b>${E(SORTS[sort])}</b>に並んでいます。順位は付けていません。</p><div class="tickets">`
-      + (await cards(ctx, show, 'interest', r => ({note: r.note, origin: ORIGIN[r.src] || ''}))).join('') + '</div>'
+      + (await cards(ctx, show, 'interest', r => ({note: r.note, origin: ORIGIN[r.src] || '', why: whys.get(r.stage_id) || ''}))).join('') + '</div>'
     : '<p class="empty">追いかけている公演はありません。「おすすめ」の画面で「興味あり」を押すと、ここに並びます。</p>';
   const body = `<h1>追いかけている ${rows.length} 件</h1>
 <p class="lede">「興味あり」を押した公演を並べています（並べ替えは下の「並べ替え」から）。順位は付けていません。チケットが取れたら「すでに持っている」を押してください。観る予定に移り、上演日を過ぎると評価待ちに並びます。<br>

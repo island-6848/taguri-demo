@@ -1058,6 +1058,19 @@
    "verifies": []
   },
   {
+   "id": "dec-interest-why-1016",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-16",
+   "title": "興味ありのカードに、おすすめで押したときの理由を出す（reaction.why）",
+   "sources": [
+    "cloudflare/migrations/0026.sql",
+    "cloudflare/src/screens/recommend.js",
+    "cloudflare/src/screens/lists.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-list-sort",
    "type": "decision",
    "status": "adopted",
@@ -5681,6 +5694,16 @@
    "from": "dec-interest-card-1015",
    "rel": "affects",
    "to": "comp-frontend"
+  },
+  {
+   "from": "dec-interest-why-1016",
+   "rel": "affects",
+   "to": "comp-frontend"
+  },
+  {
+   "from": "dec-interest-why-1016",
+   "rel": "depends_on",
+   "to": "dec-interest-card-1015"
   },
   {
    "from": "dec-list-sort",

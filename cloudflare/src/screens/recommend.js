@@ -38,7 +38,7 @@ const TIPS = `<section class="card tips">
 `;
 // Groups kept per user between requests: enough to fill 15 cards in any one prefecture.
 const KEEP = 400;
-const VERSION = 'screen-v10';   // v2: the user's 効かせ方 (rank_weight) and the per-group counts; v3: 興味あり as seeds; v4: diag; v5: 興味あり split (impl-interest-split); v6: by part importance; v7: tiers + トメ; v8: two tiers only; v9: トメ joins the main roles; v10: spread leads + one-step partners
+const VERSION = 'screen-v11';   // v11: reasons of answered stages (answered_why); v2: the user's 効かせ方 (rank_weight) and the per-group counts; v3: 興味あり as seeds; v4: diag; v5: 興味あり split (impl-interest-split); v6: by part importance; v7: tiers + トメ; v8: two tiers only; v9: トメ joins the main roles; v10: spread leads + one-step partners
 export {PREFS} from './prefs.js';
 const ROLE_SRC = '公演ページのクレジット';
 const KIND_LABEL = {'#形式': '形式', '#原作': '原作', '#翻訳': '', '#会場': '劇場', '#値段': '料金帯', '#題材': '題材'};
@@ -247,11 +247,14 @@ export async function rankedGroups(ctx) {
     g.venues = g.venues.filter(v => v.stage_id === g.stage_id || !done.has(v.stage_id));
   }
   const titles = personTitles(rated, liked);
+  // 答えた公演の理由（理由を残す前に押した興味ありのため。lists.interestScreen が reaction.why の無い行に使う）。
+  // 興味ありの公演は自分自身も種になっているので、作品名からは自分を除いて出す（lists.ownlessWhy）。
+  const answeredWhy = ranked.filter(c => done.has(c.stage_id)).slice(0, 200).map(c => [c.stage_id, whyOf(c, titles)]);
   // 推薦が出ないときに本番で何が足りないかを見るための数（画面には出さない。/api/screen/recommend の JSON の diag）。
   const diag = {rated: rated.length, rated_linked: rated.filter(r => r.people.length).length,
     interest: nLiked, interest_with_people: liked.length, favourite_seeds: fav.seeds.length,
     ranked: ranked.length, after_answered: groups.length};
-  const body = {ready: true, ver, n_rated: rated.length, n_scored: groups.length, groups: kept, weights, w_counts: wCounts, diag,
+  const body = {ready: true, ver, n_rated: rated.length, n_scored: groups.length, groups: kept, weights, w_counts: wCounts, diag, answered_why: answeredWhy,
     titles: [...titles].filter(([k]) => kept.some(g => g.parts.slice(0, 4).some(p => p[1] + '\t' + p[2] === k) || g.kinds.slice(0, 2).some(p => p[1] + '\t' + p[2] === k)))};
   await db.prepare('INSERT INTO rec_cache(user_id,stamp,body,created_at) VALUES(?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET stamp=excluded.stamp,body=excluded.body,created_at=excluded.created_at')
     .bind(ctx.uid, stamp, JSON.stringify(body), Math.floor(ctx.now / 1000)).run();
@@ -371,12 +374,32 @@ const FROM = {reminder: 'reminder', search: 'search', favourites: 'favourites'};
 
 async function reactRow(ctx, stageId, cols, source) {
   const label = ctx.today;
-  const v = {interest: null, owned: null, note: null, note_no: null, note_pre: null, ...cols};
-  await ctx.db.prepare(`INSERT INTO reaction(user_id,label,stage_id,interest,owned,note,note_no,note_pre,source,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)
+  const v = {interest: null, owned: null, note: null, note_no: null, note_pre: null, why: null, ...cols};
+  await ctx.db.prepare(`INSERT INTO reaction(user_id,label,stage_id,interest,owned,note,note_no,note_pre,why,source,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)
     ON CONFLICT(user_id,label,stage_id) DO UPDATE SET interest=COALESCE(excluded.interest,reaction.interest), owned=COALESCE(excluded.owned,reaction.owned),
     note=COALESCE(excluded.note,reaction.note), note_no=COALESCE(excluded.note_no,reaction.note_no), note_pre=COALESCE(excluded.note_pre,reaction.note_pre),
+    why=COALESCE(excluded.why,reaction.why),
     source=CASE WHEN excluded.interest IS NOT NULL OR excluded.owned IS NOT NULL THEN excluded.source ELSE reaction.source END, updated_at=excluded.updated_at`)
-    .bind(ctx.uid, label, stageId, v.interest, v.owned, v.note, v.note_no, v.note_pre, source, new Date(ctx.now).toISOString()).run();
+    .bind(ctx.uid, label, stageId, v.interest, v.owned, v.note, v.note_no, v.note_pre, v.why, source, new Date(ctx.now).toISOString()).run();
+}
+
+/** The reasons of one ranked production, small enough to keep (the 4 people and 2 kinds reasonRows shows, and their titles). */
+export function whyOf(g, titles) {
+  const parts = g.parts.slice(0, 4), kinds = g.kinds.slice(0, 2);
+  const keys = [...parts, ...kinds].map(p => p[1] + '\t' + p[2]);
+  return {parts, kinds, ...(g.via ? {via: g.via} : {}), titles: keys.filter(k => titles.has(k)).map(k => [k, titles.get(k)])};
+}
+
+/**
+ * 興味ありを押したときに見えていた理由（reaction.why）。押す前のおすすめの控え（rec_cache）は、その画面を
+ * 出したときのものなので、印を確かめずに読む（D1 の読み取り 1 行。ticker.js と同じ）。無ければ残さない。
+ */
+async function whySnapshot(ctx, stageId) {
+  const row = await ctx.db.prepare('SELECT body FROM rec_cache WHERE user_id=?').bind(ctx.uid).first();
+  if (!row) return null;
+  const body = JSON.parse(row.body);
+  const g = (body.groups || []).find(x => x.stage_id === stageId || (x.venues || []).some(v => v.stage_id === stageId));
+  return g ? JSON.stringify(whyOf(g, new Map(body.titles || []))) : null;
 }
 
 /** serve.fill_slot: the next card in place of the one answered, honouring the saved prefectures. */
@@ -407,11 +430,14 @@ export async function reactAction(b, ctx) {
   // どの画面で答えたか（起案者の指示 2026-10-15: 開幕リマインドから足した興味ありは、おすすめ理由の欄ではなく
   // 「開幕リマインドからの追加」と出す）。画面（app.js）が from を送る。無ければこれまでどおり 'screen'。
   const source = Object.hasOwn(FROM, String(b.from ?? '')) ? FROM[String(b.from)] : 'screen';
-  await reactRow(ctx, stageId, {...(REACT[value] || {}), ...given}, source);
+  // おすすめの画面で押した興味ありは、そのとき見えていた理由も残す（興味ありの画面で出す。答えた公演は
+  // おすすめの計算から外れるので、あとからは作れない）
+  const why = value === 'interest' && source === 'screen' ? await whySnapshot(ctx, stageId) : null;
+  await reactRow(ctx, stageId, {...(REACT[value] || {}), ...given, ...(why ? {why} : {})}, source);
   if (Object.hasOwn(REACT, value) && Array.isArray(b.siblings)) {
     // The same answer for the production's other venues (the card's data-tours); notes stay on the pressed one.
     for (const sid of b.siblings.slice(0, 40).map(String).filter(s => /^\d+$/.test(s) && s !== stageId))
-      await reactRow(ctx, sid, REACT[value], source + '_tour');
+      await reactRow(ctx, sid, {...REACT[value], ...(why ? {why} : {})}, source + '_tour');
   }
   const out = {ok: true, stage_id: stageId, value, note: 'note' in given, note_no: 'note_no' in given};
   if (Object.hasOwn(REACT, value) && !b.nofill) {

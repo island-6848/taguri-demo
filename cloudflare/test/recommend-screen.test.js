@@ -162,3 +162,25 @@ test('a person raised only by pseudo ratings is not shown as 履歴 0 本', asyn
   const html = reasonRows({parts: [[0.5, '脚本', '家丁', 0]], kinds: []}, new Map());
   assert.match(html, /脚本 <b>家丁<\/b><span class="n">（お気に入り・興味ありの公演から）<\/span>/);
 });
+
+// 起案者の質問 2026-10-16「おすすめ画面では理由がちゃんと出てるのに、興味ありに移ったらおすすめ理由が空欄になるのなんで？」
+test('興味あり pressed on おすすめ keeps the reasons it was shown with, and the 興味あり list shows them', async () => {
+  const {env, sqlite} = await withIndex();
+  const a = await signIn(env);
+  try {
+    await rateSeen(env, a, '終わった舞台', '2026-08-05', '103', '◎');
+    await rateSeen(env, a, '一日だけの舞台', '2026-09-05', '104', '×');
+    const reason = /<li class="rs b"><span class="net">人物<\/span>出演 <b>俳優甲<\/b><span class="n">（『終わった舞台』）<\/span>/;
+    assert.match((await step(env, a, {get: '/api/screen/recommend'})).body.body_html, reason);
+    assert.equal((await step(env, a, {post: '/api/react', body: {stage_id: '101', value: 'interest', nofill: true, siblings: []}})).status, 200);
+    assert.match(sqlite.prepare("SELECT why FROM reaction WHERE stage_id='101'").get().why, /俳優甲/);
+    const html = (await step(env, a, {get: '/api/screen/interest'})).body.body_html;
+    assert.match(html, /data-stage="101"/);
+    assert.match(html, reason);
+    assert.doesNotMatch(html, /理由を出せていません/);
+    // A 興味あり from before the reasons were kept: the reasons come from the cache, without the stage's own title.
+    sqlite.exec("UPDATE reaction SET why=NULL");
+    const old = (await step(env, a, {get: '/api/screen/interest'})).body.body_html;
+    assert.match(old, reason);
+  } finally { sqlite.close(); }
+});
