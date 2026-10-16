@@ -996,6 +996,23 @@
    "verifies": []
   },
   {
+   "id": "dec-genre-axis",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-16",
+   "title": "大きなくくりのジャンル（#ジャンル: 2.5次元・宝塚）をおすすめ理由に出し、理由の ✕ で外すとその公演ごとおすすめから外す",
+   "sources": [
+    "tools/review/user_recommender.py",
+    "cloudflare/scripts/build_recommend_index.py",
+    "cloudflare/src/recommend.js",
+    "cloudflare/src/screens/recommend.js",
+    "cloudflare/src/screens/lists.js",
+    "https://gikyokutosyokan.com/blog/ja/2026-musical-vs-straight-play",
+    "https://www.oricon.co.jp/news/2317972/full/"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-hide-own-words",
    "type": "decision",
    "status": "adopted",
@@ -5973,6 +5990,21 @@
    "from": "dec-free-tier-only",
    "rel": "raises",
    "to": "q-r2-poster-growth"
+  },
+  {
+   "from": "dec-genre-axis",
+   "rel": "depends_on",
+   "to": "genre-25d-signals"
+  },
+  {
+   "from": "dec-genre-axis",
+   "rel": "depends_on",
+   "to": "impl-kind-reason-off"
+  },
+  {
+   "from": "dec-genre-axis",
+   "rel": "affects",
+   "to": "comp-recommender"
   },
   {
    "from": "dec-hide-own-words",

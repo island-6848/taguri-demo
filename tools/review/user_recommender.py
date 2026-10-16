@@ -173,7 +173,38 @@ def source_kinds(text: str) -> list[str]:
     return [name for name, pat in SOURCE_KINDS if pat.search(text or "")]
 
 
-def stage_tags(title: str, venues, credits, prices=(), source: str = "") -> list[tuple[str, str]]:
+# 大きなくくりのジャンル（#ジャンル）。起案者の指示 2026-10-16「おすすめ理由に2.5次元として出してほしい。
+# いらない人はそれ✕押せばいい」「宝塚は宝塚ってジャンルかな」。CoRich にジャンルの欄は無いので、
+# 手がかりから推し量る（genre-25d-signals）:
+# - 宝塚: 主催・劇団が宝塚歌劇団。漫画が原作でも 2.5次元ではなく宝塚とする。
+# - 2.5次元（漫画・アニメ・ゲームが原作の舞台。日本2.5次元ミュージカル協会の定義）:
+#   原作の書き添えが漫画・アニメ・ゲーム原作のとき、または主催が「〜製作委員会」で題名が
+#   『作品名』・THE STAGE などの型のとき（製作委員会だけでは 2.5次元でない公演も多く混ざる）。
+GENRE_AXIS = "#ジャンル"
+_TAKARAZUKA = "宝塚歌劇団"
+_25D_SOURCES = {"漫画原作", "アニメ原作", "ゲーム原作"}
+_25D_TITLE = re.compile(r"the\s*stage|^\s*(?:舞台|ミュージカル|音楽劇)?\s*『", re.I)
+_BRACKETED = re.compile(r"[『「]([^』」]{2,})[』」]")
+
+
+def genres(title: str, group: str = "", source: str = "") -> list[str]:
+    """Big genres of one production ('2.5次元', '宝塚'). 宝塚 is read from the troupe only: the staff
+    lists name 宝塚歌劇団 for people lent to other shows."""
+    title, group = title or "", group or ""
+    if _TAKARAZUKA in group:
+        return ["宝塚"]
+    if set(source_kinds(source)) & _25D_SOURCES:
+        return ["2.5次元"]
+    if "製作委員会" in group:
+        # 『作品名』・THE STAGE の題名か、題名のかぎ括弧の作品名が製作委員会の名前にもある
+        # （舞台「呪術廻戦」製作委員会）。「飛龍伝」のような戯曲名だけの題名は入れない。
+        named = _BRACKETED.search(title)
+        if _25D_TITLE.search(title) or (named and named.group(1) in group):
+            return ["2.5次元"]
+    return []
+
+
+def stage_tags(title: str, venues, credits, prices=(), source: str = "", group: str = "") -> list[tuple[str, str]]:
     """Kind-of-show tags of one production. `credits`: (role, person) pairs; `source`: the 原作・原案
     text with its notes (source_text). `prices` is no longer used: the price band is not a reason and
     does not score (起案者の指示 2026-10-16「料金帯はおすすめ理由に入れないで。重み付けでも料金入ってるなら消して」)."""
@@ -194,6 +225,7 @@ def stage_tags(title: str, venues, credits, prices=(), source: str = "") -> list
             tags.add(("#翻訳", "翻訳劇"))
     if korean_origin(title, credits):
         tags.add(("#原作の国", "韓国"))
+    tags.update((GENRE_AXIS, g) for g in genres(title, group, source))
     for v in venues or ():
         v = M.norm(v)
         if v:
@@ -252,7 +284,7 @@ def rated_keys(r: dict) -> list[tuple]:
     people = {tuple(p) for p in r.get("people") or []}
     credits = [p for p in people if not p[0].startswith("#")]
     return sorted(people | set(stage_tags(r.get("title") or "", r.get("venues") or [], credits,
-                                          r.get("prices") or ())))
+                                          r.get("prices") or (), group=r.get("group") or "")))
 
 
 def person_values(rated: list[dict], seeds: list[dict] = (), skip: set = frozenset()) -> tuple[dict, dict]:
@@ -368,7 +400,7 @@ def prepare(raw: dict, candidates: list[dict], rated: list[dict], *,
             elif contrib < 0:
                 negative.append([contrib, role, person, n])
         for axis, tag in stage_tags(c.get("title") or "", [fields.get("劇場", "")], credits,
-                                    source=source_text(fields)):
+                                    source=source_text(fields), group=c.get("group") or ""):
             if (axis, tag) in values:
                 n, value = values[(axis, tag)]
                 contrib = round(value * (GENRE_W * multipliers.get("theme", 1.0)), 6)
@@ -422,7 +454,7 @@ def plain_sum(values) -> float:
 
 
 # 公演そのものを表す種類。劇場（#会場）と料金帯（#値段）は並びを直すだけで、おすすめの理由にはしない
-CONTENT_AXES = ("#形式", "#原作", "#翻訳", "#原作の国", "#題材")
+CONTENT_AXES = ("#形式", "#原作", "#翻訳", "#原作の国", "#題材", "#ジャンル")
 
 
 def has_reason(parts, kinds) -> bool:

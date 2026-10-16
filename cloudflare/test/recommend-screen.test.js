@@ -191,3 +191,21 @@ test('a kept reason with a price band does not show it', async () => {
   assert.doesNotMatch(html, /値段|5000/);
   assert.match(html, /ミュージカル/);
 });
+
+// 起案者の指示 2026-10-16「おすすめ理由に2.5次元として出してほしい。いらない人はそれ✕押せばいい」
+test('a genre turned off with ✕ takes its stages out of the recommendations', async () => {
+  const {env, sqlite} = await withIndex();
+  const a = await signIn(env);
+  try {
+    await rateSeen(env, a, '終わった舞台', '2026-08-05', '103', '◎');
+    await rateSeen(env, a, '一日だけの舞台', '2026-09-05', '104', '×');
+    const ver = sqlite.prepare("SELECT v FROM rec_meta WHERE k='current'").get().v;
+    sqlite.prepare("INSERT INTO rec_credit(ver,role,person,stage_id,role_w,role_group) VALUES(?,'#ジャンル','2.5次元','101',1,'theme')").run(ver);
+    assert.match((await step(env, a, {get: '/api/screen/recommend'})).body.body_html, /data-stage="101"/);
+    assert.equal((await step(env, a, {post: '/api/kind_off', body: {action: 'add', key: '#ジャンル\t2.5次元'}})).status, 200);
+    assert.doesNotMatch((await step(env, a, {get: '/api/screen/recommend'})).body.body_html, /data-stage="101"/);
+    // ✕ で戻すと、また出る
+    assert.equal((await step(env, a, {post: '/api/kind_off', body: {action: 'remove', key: '#ジャンル\t2.5次元'}})).status, 200);
+    assert.match((await step(env, a, {get: '/api/screen/recommend'})).body.body_html, /data-stage="101"/);
+  } finally { sqlite.close(); }
+});

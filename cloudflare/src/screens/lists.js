@@ -439,7 +439,7 @@ ${mfoot}`;
   return {title: '興味あり', body_html: body};
 }
 
-const KIND_OFF_LABEL = {'#形式': '形式', '#原作': '原作', '#翻訳': '翻訳', '#原作の国': '原作の国', '#会場': '劇場', '#題材': '題材'};
+const KIND_OFF_LABEL = {'#形式': '形式', '#原作': '原作', '#翻訳': '翻訳', '#原作の国': '原作の国', '#会場': '劇場', '#題材': '題材', '#ジャンル': 'ジャンル'};
 /** 「使わない」にした種類の理由の一覧（q-kind-reason-off）。1 つも無いときは出さない */
 export function kindOffBox(keys) {
   if (!keys.length) return '';
@@ -451,7 +451,8 @@ export function kindOffBox(keys) {
   return `<details class="pbox" id="kind-off">
 <summary>${ico('flag')}使わない理由 <b>${keys.length} 件</b></summary>
 <p class="lead">おすすめの理由の ✕ で外した種類です。おすすめの順位にも理由にも使いません。
-公演そのものは消していないので、ほかの理由（好きな人など）があれば今までどおり出ます。✕ で戻せます。</p>
+公演そのものは消していないので、ほかの理由（好きな人など）があれば今までどおり出ます。
+ただし<b>ジャンル</b>（2.5次元・宝塚）は、そのジャンルの公演をおすすめに出しません。✕ で戻せます。</p>
 <div class="tags">${tags}</div>
 </details>`;
 }
