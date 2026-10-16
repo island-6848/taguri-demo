@@ -113,9 +113,70 @@ def price_texts(entry: dict) -> list[str]:
                                           if k.startswith("料金") and isinstance(v, str)]
 
 
-def stage_tags(title: str, venues, credits, prices=()) -> list[tuple[str, str]]:
-    """Kind-of-show tags of one production. `credits`: (role, person) pairs;
-    `prices`: price texts (price_texts)."""
+# 原作の国（起案者の指示 2026-10-16「韓国原作とかは気になる」「A」、origin-korea-in-catalogue）。取得元の説明文は
+# 国をほとんど書かないので、作り手のクレジットの韓国人の名前（「キム・ソルジ」の形）とハングルで見分ける。
+# 姓だけでは英語名とぶつかる（アン・チスレット＝Anne Chislett、ジョン・ドゥ）ので、アン・ジョンは姓に入れず、
+# 名の側に ッ・ー・ヴ（韓国の名の片仮名にはまず出ない）があるものは外す。見落としはある（翻訳者しか載らない公演）
+KOREAN_FAMILY = ("キム", "イ", "パク", "チェ", "チョン", "カン", "チョ", "ユン", "チャン", "イム", "ハン", "オ", "ソ",
+                 "シン", "クォン", "ファン", "ソン", "ホン", "ユ", "コ", "ムン", "ヤン", "ペク", "ノ", "ハ", "チュ",
+                 "ミン", "ヨン", "ペ", "ナム", "ピョン", "オム", "ク", "ホ")
+_KOREAN_NAME = re.compile(r"(?:" + "|".join(KOREAN_FAMILY) + r")・[ァ-ヶ]{2,5}")
+_HANGUL = re.compile(r"[\uac00-\ud7a3]")
+_CREATOR_ROLE = re.compile(r"原作|原案|脚本|作曲|作詞|台本|脚色")
+
+
+def korean_origin(title: str, credits) -> bool:
+    """A Korean work: Hangul in the title, or a Korean name (or Hangul) among the writers and composers.
+    Performers are not looked at: a Korean actor in a Japanese play does not make it a Korean work."""
+    if _HANGUL.search(title or ""):
+        return True
+    for role, person in credits:
+        if not (_CREATOR_ROLE.search(role) or role in ("作", "音楽")):
+            continue
+        if _HANGUL.search(person or ""):
+            return True
+        name = re.sub(r"[\s（(].*$", "", (person or "").strip())
+        if _KOREAN_NAME.fullmatch(name) and not re.search(r"[ッーヴ]", name.split("・", 1)[1]):
+            return True
+    return False
+
+
+# 原作の種類（起案者の指示 2026-10-16「おすすめ理由の『原作もの』って変。考えられるとしても『映画原作』とか
+# 『小説原作』とかはあるかな」）。原作・原案の欄の書き添え（「集英社ジャンプコミックス刊」「文春文庫」「映画『…』」
+# 「TVアニメ」）から読む。読めないときは種類を付けない（「原作もの」とは言わない）。クレジットの読み取り
+# （parse_credits）は括弧の中を捨てるので、欄の文（source_text）をそのまま渡す
+SOURCE_KINDS = (
+    ("漫画原作", re.compile(r"コミック|漫画|マンガ|まんが|連載|ジャンプ|マガジン|サンデー|カドコミ|COMIC|Comic|webtoon|ウェブトゥーン")),
+    ("小説原作", re.compile(r"小説|文庫|ノベル|新書")),
+    ("映画原作", re.compile(r"映画|監督")),
+    ("アニメ原作", re.compile(r"アニメ")),
+    ("ゲーム原作", re.compile(r"ゲーム|GAMES|Games")),
+)
+
+
+def source_text(fields: dict) -> str:
+    """The 原作・原案 text of a catalogue entry, with its notes: the fields and the スタッフ lines naming them."""
+    # 「振付原案」「舞台美術原案」は原作ではないので、役職が 原作・原案 で始まるものだけ
+    fields = fields or {}
+    lines = [v for k, v in fields.items() if isinstance(v, str) and _SOURCE_ROLE.match(k)]
+    for ln in str(fields.get("スタッフ") or "").splitlines():
+        lines += [m.group(1) for m in _SOURCE_LINE.finditer(ln)]
+    return "\n".join(lines)
+
+
+_SOURCE_ROLE = re.compile(r"^(?:原作|原案)")
+_SOURCE_LINE = re.compile(r"(?:^|[\s　【／/])(?:原作|原案)(?:者)?(?:・[^：:】\s]{1,8})?[】：:／/]\s*([^\n]*?)(?=\s{2,}|　|$|[／/][^／/：:]{1,8}[：:])")
+
+
+def source_kinds(text: str) -> list[str]:
+    """Kinds of the original work read from its credit text ('漫画原作', '小説原作', …); [] when it does not say."""
+    return [name for name, pat in SOURCE_KINDS if pat.search(text or "")]
+
+
+def stage_tags(title: str, venues, credits, prices=(), source: str = "") -> list[tuple[str, str]]:
+    """Kind-of-show tags of one production. `credits`: (role, person) pairs; `source`: the 原作・原案
+    text with its notes (source_text). `prices` is no longer used: the price band is not a reason and
+    does not score (起案者の指示 2026-10-16「料金帯はおすすめ理由に入れないで。重み付けでも料金入ってるなら消して」)."""
     roles = {role for role, _ in credits if not role.startswith("#")}
     tags = set()
     t = M.norm(title or "")
@@ -125,16 +186,18 @@ def stage_tags(title: str, venues, credits, prices=()) -> list[tuple[str, str]]:
     if form:
         tags.add(("#形式", form))
     if roles:
-        tags.add(("#原作", "原作もの" if roles & {"原作", "原案"} else "オリジナル"))
+        if roles & {"原作", "原案"} or (source or "").strip():
+            tags.update(("#原作", k) for k in source_kinds(source))
+        else:
+            tags.add(("#原作", "オリジナル"))
         if "翻訳" in roles:
             tags.add(("#翻訳", "翻訳劇"))
+    if korean_origin(title, credits):
+        tags.add(("#原作の国", "韓国"))
     for v in venues or ():
         v = M.norm(v)
         if v:
             tags.add(("#会場", v))
-    band = price_band(prices)
-    if band:
-        tags.add(("#値段", band))
     return sorted(tags)
 
 
@@ -149,7 +212,7 @@ def stage_tags(title: str, venues, credits, prices=()) -> list[tuple[str, str]]:
 ASPECTS = {
     "story": ("話・脚本・構成", {"脚本": 1.0, "作": 1.0, "原作": 1.0, "原案": 1.0, "翻訳": 1.0, "潤色": 1.0,
                               "構成": 1.0, "演出": 0.5, "演出・振付": 0.5,
-                              "#形式": 0.5, "#原作": 0.5, "#翻訳": 0.5}),
+                              "#形式": 0.5, "#原作": 0.5, "#翻訳": 0.5, "#原作の国": 0.5}),
     "direction": ("演出・見せ方", {"演出": 1.0, "演出・振付": 1.0, "美術": 0.5, "照明": 0.5, "音響": 0.5,
                                "映像": 0.5, "#形式": 0.5}),
     "acting": ("演技・出演", {"出演": 1.0, "演出": 0.2, "演出・振付": 0.2}),
@@ -305,7 +368,7 @@ def prepare(raw: dict, candidates: list[dict], rated: list[dict], *,
             elif contrib < 0:
                 negative.append([contrib, role, person, n])
         for axis, tag in stage_tags(c.get("title") or "", [fields.get("劇場", "")], credits,
-                                    price_texts(c)):
+                                    source=source_text(fields)):
             if (axis, tag) in values:
                 n, value = values[(axis, tag)]
                 contrib = round(value * (GENRE_W * multipliers.get("theme", 1.0)), 6)
@@ -359,7 +422,7 @@ def plain_sum(values) -> float:
 
 
 # 公演そのものを表す種類。劇場（#会場）と料金帯（#値段）は並びを直すだけで、おすすめの理由にはしない
-CONTENT_AXES = ("#形式", "#原作", "#翻訳", "#題材")
+CONTENT_AXES = ("#形式", "#原作", "#翻訳", "#原作の国", "#題材")
 
 
 def has_reason(parts, kinds) -> bool:

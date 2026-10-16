@@ -41,8 +41,8 @@ const KEEP = 400;
 const VERSION = 'screen-v11';   // v11: reasons of answered stages (answered_why); v2: the user's 効かせ方 (rank_weight) and the per-group counts; v3: 興味あり as seeds; v4: diag; v5: 興味あり split (impl-interest-split); v6: by part importance; v7: tiers + トメ; v8: two tiers only; v9: トメ joins the main roles; v10: spread leads + one-step partners
 export {PREFS} from './prefs.js';
 const ROLE_SRC = '公演ページのクレジット';
-const KIND_LABEL = {'#形式': '形式', '#原作': '原作', '#翻訳': '', '#会場': '劇場', '#値段': '料金帯', '#題材': '題材'};
-const KIND_SRC = {'#形式': '公演名とクレジット', '#会場': '公演ページの劇場', '#値段': '公演ページの料金'};
+const KIND_LABEL = {'#形式': '形式', '#原作': '原作', '#翻訳': '', '#原作の国': '原作の国', '#会場': '劇場', '#題材': '題材'};
+const KIND_SRC = {'#形式': '公演名とクレジット', '#原作': '原作・原案のクレジット', '#原作の国': 'クレジットの作り手の名前', '#会場': '公演ページの劇場'};
 const WORKS_SHOWN = 3;
 // Every scale sorts with the marks by its place: the top (◎, ★5, ○ of ○×) first, the bottom last
 // (grade.js). 興味あり comes after every rating.
@@ -140,7 +140,9 @@ export function reasonRows(group, titles) {
       + `<button class="rsx" data-word="${E(person)}" title="この人物を理由に出さない">✕</button></li>`);
   }
   for (const [, axis, tag, n] of group.kinds.slice(0, 2)) {
-    const label = Object.hasOwn(KIND_LABEL, axis) ? KIND_LABEL[axis] : axis.replace(/^#+/, '');
+    // 「漫画原作」のように中身が見出しを含むときは見出しを出さない（「原作 漫画原作」にしない）
+    const label0 = Object.hasOwn(KIND_LABEL, axis) ? KIND_LABEL[axis] : axis.replace(/^#+/, '');
+    const label = label0 && tag.endsWith(label0) ? '' : label0;
     out.push(`<li class="rs c k"><span class="net">種類</span>${label ? E(label) + ' ' : ''}<b>${E(tag)}</b>`
       + `<span class="n">${worksText(titles.get(axis + '\t' + tag), n)}</span>`
       + `<span class="src">［出典: ${E(KIND_SRC[axis] || ROLE_SRC)}］</span>`

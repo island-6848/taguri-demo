@@ -1,7 +1,7 @@
 ---
 id: q-origin-country-tag
 type: question
-status: open
+status: answered
 date: 2026-10-16
 title: 「韓国原作」のように、原作の国・元の上演地を種類の理由に使えるか
 sources:
