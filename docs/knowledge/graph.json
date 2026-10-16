@@ -2444,6 +2444,19 @@
    "verifies": []
   },
   {
+   "id": "index-only-run-1016",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-16",
+   "title": "索引だけの実行で、推薦の索引の初回 1.2 万行（公演 3,510 件）が本番 D1 に入った。1 つのファイルで送ると D1 の import が 7009 で止まり、1 MB ずつに分けたら通った",
+   "sources": [
+    "https://github.com/island-6848/taguri-crawler/actions/runs/38851892982",
+    "https://github.com/island-6848/taguri-crawler/actions/runs/38853274508",
+    "cloudflare/scripts/deliver_catalogue.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "interest-not-in-v3",
    "type": "finding",
    "status": "confirmed",
@@ -3675,7 +3688,7 @@
   {
    "id": "q-index-load-now",
    "type": "question",
-   "status": "open",
+   "status": "answered",
    "date": "2026-10-16",
    "title": "推薦の索引の初回（約 11 万書き込み）を、4 日待たずに早く入れるにはどうするか",
    "sources": [
@@ -6885,6 +6898,16 @@
    "from": "index-never-delivered",
    "rel": "affects",
    "to": "impl-interest-seed"
+  },
+  {
+   "from": "index-only-run-1016",
+   "rel": "answers",
+   "to": "q-index-load-now"
+  },
+  {
+   "from": "index-only-run-1016",
+   "rel": "depends_on",
+   "to": "dec-index-only-run"
   },
   {
    "from": "interest-not-in-v3",
