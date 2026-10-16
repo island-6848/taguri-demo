@@ -677,8 +677,8 @@ def cast_block(c: dict) -> str:
 
 WORKS_SHOWN = 3
 # 種類の理由の見出しと出典（user_recommender.stage_tags が付ける軸）
-KIND_LABEL = {"#形式": "形式", "#原作": "原作", "#翻訳": "", "#会場": "劇場", "#値段": "料金帯", "#題材": "題材"}
-KIND_SRC = {"#形式": "公演名とクレジット", "#会場": "公演ページの劇場", "#値段": "公演ページの料金"}
+KIND_LABEL = {"#形式": "形式", "#原作": "原作", "#翻訳": "", "#原作の国": "原作の国", "#会場": "劇場", "#値段": "料金帯", "#題材": "題材"}
+KIND_SRC = {"#形式": "公演名とクレジット", "#原作の国": "クレジットの作り手の名前", "#会場": "公演ページの劇場", "#値段": "公演ページの料金"}
 
 
 def works_text(works: list, n: int) -> str:
@@ -754,7 +754,7 @@ def reason_rows(c: dict) -> str:
     # が並んでいた（起案者の指摘「理由を出せていませんが増えすぎた」）。点を上げた種類だけを、強い順に 2 つ
     kind_works = c.get("why_kind_works") or {}
     # 公演そのものの種類（形式・原作など）を先に、劇場・料金帯は後に
-    content = ("#形式", "#原作", "#翻訳", "#題材")
+    content = ("#形式", "#原作", "#翻訳", "#原作の国", "#題材")
     for contrib, axis, tag, n in sorted((k for k in c.get("why_kind") or [] if k[0] > 0),
                                         key=lambda k: (k[1] not in content, -k[0], k[1], k[2]))[:2]:
         works = (kind_works.get(f"{axis}\t{tag}") or []) if isinstance(kind_works, dict) else []

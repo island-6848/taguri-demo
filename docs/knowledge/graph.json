@@ -2376,6 +2376,20 @@
    "verifies": []
   },
   {
+   "id": "impl-origin-korea-tag",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-16",
+   "title": "種類「原作の国 韓国」を、作り手のクレジットの韓国人名とハングルから自動で付ける（案 A）",
+   "sources": [
+    "tools/review/user_recommender.py",
+    "tools/review/test_origin_country.py",
+    "cloudflare/src/screens/recommend.js",
+    "cloudflare/test/kind-off.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "impl-person-graded-v2",
    "type": "finding",
    "status": "confirmed",
@@ -6875,6 +6889,16 @@
    "from": "impl-onboarding-list",
    "rel": "affects",
    "to": "comp-recommender"
+  },
+  {
+   "from": "impl-origin-korea-tag",
+   "rel": "answers",
+   "to": "q-origin-country-how"
+  },
+  {
+   "from": "impl-origin-korea-tag",
+   "rel": "depends_on",
+   "to": "origin-korea-in-catalogue"
   },
   {
    "from": "impl-person-graded-v2",

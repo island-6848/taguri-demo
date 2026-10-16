@@ -41,8 +41,8 @@ const KEEP = 400;
 const VERSION = 'screen-v10';   // v2: the user's 効かせ方 (rank_weight) and the per-group counts; v3: 興味あり as seeds; v4: diag; v5: 興味あり split (impl-interest-split); v6: by part importance; v7: tiers + トメ; v8: two tiers only; v9: トメ joins the main roles; v10: spread leads + one-step partners
 export {PREFS} from './prefs.js';
 const ROLE_SRC = '公演ページのクレジット';
-const KIND_LABEL = {'#形式': '形式', '#原作': '原作', '#翻訳': '', '#会場': '劇場', '#値段': '料金帯', '#題材': '題材'};
-const KIND_SRC = {'#形式': '公演名とクレジット', '#会場': '公演ページの劇場', '#値段': '公演ページの料金'};
+const KIND_LABEL = {'#形式': '形式', '#原作': '原作', '#翻訳': '', '#原作の国': '原作の国', '#会場': '劇場', '#値段': '料金帯', '#題材': '題材'};
+const KIND_SRC = {'#形式': '公演名とクレジット', '#原作の国': 'クレジットの作り手の名前', '#会場': '公演ページの劇場', '#値段': '公演ページの料金'};
 const WORKS_SHOWN = 3;
 // Every scale sorts with the marks by its place: the top (◎, ★5, ○ of ○×) first, the bottom last
 // (grade.js). 興味あり comes after every rating.

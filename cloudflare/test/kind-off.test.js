@@ -59,3 +59,10 @@ test('turning a kind reason off takes it out of the reasons and the score, for t
     assert.equal((await step(env, a, {post: '/api/kind_off', body: {action: 'add', key: 'オリジナル'}})).status, 400);
   } finally { sqlite.close(); }
 });
+
+test('原作の国 is a kind reason with its own label and source, and can be turned off like the others', () => {
+  const html = reasonRows({parts: [], kinds: [[0.3, '#原作の国', '韓国', 2]]}, new Map());
+  assert.match(html, /<span class="net">種類<\/span>原作の国 <b>韓国<\/b>/);
+  assert.match(html, /［出典: クレジットの作り手の名前］/);
+  assert.match(html, /data-kindoff="#原作の国\t韓国"/);
+});

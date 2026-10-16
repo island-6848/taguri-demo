@@ -406,7 +406,7 @@ ${mfoot}`;
   return {title: '興味あり', body_html: body};
 }
 
-const KIND_OFF_LABEL = {'#形式': '形式', '#原作': '原作', '#翻訳': '翻訳', '#会場': '劇場', '#値段': '料金帯', '#題材': '題材'};
+const KIND_OFF_LABEL = {'#形式': '形式', '#原作': '原作', '#翻訳': '翻訳', '#原作の国': '原作の国', '#会場': '劇場', '#値段': '料金帯', '#題材': '題材'};
 /** 「使わない」にした種類の理由の一覧（q-kind-reason-off）。1 つも無いときは出さない */
 export function kindOffBox(keys) {
   if (!keys.length) return '';

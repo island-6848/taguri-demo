@@ -28,7 +28,7 @@ export const nz = s => String(s ?? '').normalize('NFKC').replaceAll(' ', '').rep
 // 詳細 (good / trouble per aspect): user_recommender.ASPECTS (checked against Python in the test).
 export const ASPECTS = {
   story: ['話・脚本・構成', {'脚本': 1.0, '作': 1.0, '原作': 1.0, '原案': 1.0, '翻訳': 1.0, '潤色': 1.0, '構成': 1.0,
-    '演出': 0.5, '演出・振付': 0.5, '#形式': 0.5, '#原作': 0.5, '#翻訳': 0.5}],
+    '演出': 0.5, '演出・振付': 0.5, '#形式': 0.5, '#原作': 0.5, '#翻訳': 0.5, '#原作の国': 0.5}],
   direction: ['演出・見せ方', {'演出': 1.0, '演出・振付': 1.0, '美術': 0.5, '照明': 0.5, '音響': 0.5, '映像': 0.5, '#形式': 0.5}],
   acting: ['演技・出演', {'出演': 1.0, '演出': 0.2, '演出・振付': 0.2}],
   music: ['歌・音楽', {'作曲': 1.0, '音楽': 1.0, '編曲': 1.0, '音楽監督': 1.0, '歌唱指導': 1.0, '出演': 0.5, '#形式': 0.5}],
@@ -66,7 +66,7 @@ export function gradeOf(verdict) {
   return levels >= MIN_LEVELS && levels <= MAX_LEVELS && value >= 1 && value <= levels ? [value, levels] : null;
 }
 // user_recommender.CONTENT_AXES
-export const CONTENT_AXES = ['#形式', '#原作', '#翻訳', '#題材'];
+export const CONTENT_AXES = ['#形式', '#原作', '#翻訳', '#原作の国', '#題材'];
 const KEYS_PER_QUERY = 49;     // D1 binds at most 100 parameters: ver + 2 per key
 const IDS_PER_QUERY = 98;
 
