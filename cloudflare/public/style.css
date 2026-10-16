@@ -2278,3 +2278,10 @@ code.cmd{display:inline-block;margin:10px 0 4px;padding:8px 14px;border-radius:8
 .cq-list summary{cursor:pointer}
 .cq-list ul{margin:4px 0 2px;padding-left:1.2em}
 .cq .fine{font-size:12px;color:var(--mute);margin:10px 0 0}
+/* 時点で育つ地図（web/app.js fixupConquest）: 目盛りと、その年にはじめて行った県の縁取り */
+.cq-grow{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;margin:0 0 8px;font-size:13px;color:var(--ink2)}
+.cq-grow label{display:flex;align-items:center;gap:8px}
+.cq-grow input[type=range]{width:min(260px,52vw);accent-color:var(--curtain)}
+.cq-grow output{color:var(--ink);font-variant-numeric:tabular-nums}
+.cq-grow .cq-new{font-size:12px;color:var(--mute)}
+.cq-tile.new rect{stroke:var(--ink);stroke-width:2.5}

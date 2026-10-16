@@ -63,3 +63,17 @@ test('眺める shows the map from the diary, with the census as the denominator
     assert.match(html, /都道府県が分からない劇場　1 か所/);
   } finally { sqlite.close(); }
 });
+
+test('the map grows by year: each venue keeps the first year it was visited', () => {
+  const vis = [{key: 'a', name: '劇場A', pref: '東京都', year: 2021}, {key: 'b', name: '劇場B', pref: '大阪府', year: 2024},
+    {key: 'c', name: '劇場C', pref: '東京都', year: null}];
+  const html = conquestPanel(tally(vis, {'東京都': 3, '大阪府': 2}, new Set(['a', 'b', 'c'])));
+  const m = /data-cq="([^"]*)"/.exec(html);
+  assert.ok(m, 'two or more years: the slider data is there');
+  const g = JSON.parse(m[1].replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&#x27;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>'));
+  assert.deepEqual(g.years, [2021, 2024]);
+  assert.deepEqual(g.v.filter(([p]) => p === '東京都').map(x => x[1]).sort(), [2021, null]);
+  assert.match(html, /<input type="range" min="0" max="2" value="2"/);
+  // One year only: nothing to move through.
+  assert.doesNotMatch(conquestPanel(tally(vis.slice(0, 1), null, new Set())), /data-cq|type="range"/);
+});

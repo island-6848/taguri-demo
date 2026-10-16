@@ -36,14 +36,19 @@ export function fill(k) {
  * venue), `counts`: {pref: venues in the census} or null, `inCensus`: the keys found in the census.
  */
 export function tally(visited, counts, inCensus) {
-  const by = Object.fromEntries(PREFS.map(p => [p, {names: [], total: counts ? counts[p] || 0 : null}]));
+  const by = Object.fromEntries(PREFS.map(p => [p, {names: [], years: [], total: counts ? counts[p] || 0 : null}]));
   for (const v of visited) {
     const t = by[v.pref];
     if (!t) continue;
     t.names.push(v.name);
+    t.years.push(v.year ?? null);
     if (t.total !== null && !inCensus.has(v.key)) t.total += 1;
   }
-  for (const t of Object.values(by)) t.names.sort((a, b) => a.localeCompare(b, 'ja'));
+  for (const t of Object.values(by)) {
+    const order = t.names.map((n, i) => i).sort((i, j) => t.names[i].localeCompare(t.names[j], 'ja'));
+    t.names = order.map(i => t.names[i]);
+    t.years = order.map(i => t.years[i]);
+  }
   return by;
 }
 
@@ -61,7 +66,7 @@ export function conquestPanel(by, unknown = []) {
   const tiles = PREFS.map(p => {
     const [c, r] = POS[p], x = c * W, y = r * H;
     const tip = known ? `${p}：${n(p)} / ${by[p].total} か所` : `${p}：${n(p)} か所`;
-    return `<g class="cq-tile"><title>${E(tip)}</title>`
+    return `<g class="cq-tile" data-p="${E(p)}"><title>${E(tip)}</title>`
       + `<rect x="${x + 1}" y="${y + 1}" width="${W - 2}" height="${H - 2}" rx="5" fill="${fill(n(p))}"/>`
       + `<text x="${x + W / 2}" y="${y + H * 0.45}">${E(short(p))}</text>`
       + `<text class="n" x="${x + W / 2}" y="${y + H * 0.8}">${E(of(p))}</text></g>`;
@@ -73,11 +78,20 @@ export function conquestPanel(by, unknown = []) {
   const rest = unknown.length
     ? `<details><summary>都道府県が分からない劇場　${unknown.length} か所</summary><ul>${unknown.map(v => `<li>${E(v)}</li>`).join('')}</ul></details>`
     : '';
+  // 時点で育つ地図: 年の目盛り（JS が無ければ出さない。web/app.js fixupConquest が塗り直す）
+  const years = [...new Set(PREFS.flatMap(p => by[p].years).filter(y => y !== null))].sort((a, b) => a - b);
+  const grow = years.length >= 2 ? {years, steps: STEPS.map(([min, pct]) => [min, pct]), known,
+    v: PREFS.flatMap(p => by[p].names.map((name, i) => [p, by[p].years[i], name])),
+    total: Object.fromEntries(PREFS.map(p => [p, by[p].total]))} : null;
+  const slider = grow ? `<div class="cq-grow" hidden><label>いつまでに行ったか
+<input type="range" min="0" max="${years.length}" value="${years.length}" step="1" aria-valuetext="今まで"></label>
+<output>今まで</output><span class="cq-new">はじめて行った県は縁取り</span></div>` : '';
   const lead = `行った劇場 <b>${visited}</b>${total !== null ? `（全国 ${total.toLocaleString('ja-JP')} のうち）` : ''}・`
     + `行った都道府県 <b>${prefs} / 47</b>。マスの色は、その県で行った劇場の数です。`;
-  return `<section class="card cq">
+  return `<section class="card cq"${grow ? ` data-cq="${E(JSON.stringify(grow))}"` : ''}>
 ${h2('building', '劇場制覇マップ ── どこの劇場に行ったか', `<span class="badge part">${visited} か所</span>`)}
 <p class="lead">${lead}</p>
+${slider}
 <div class="cq-map"><svg viewBox="0 0 ${13 * W} ${10 * H}" width="100%" style="max-width:${13 * W}px" role="img" aria-label="都道府県のタイル地図。色が行った劇場の数">${tiles}</svg></div>
 <div class="cq-legend">${legend}</div>
 <div class="cq-list">${list}${rest}</div>
@@ -90,7 +104,10 @@ async function inChunks(keys, run) {
 }
 const marks = n => Array(n).fill('?').join(',');
 
-/** The venues of the seen works: [{key, name, pref}] (pref '' when unknown), one per venue. */
+/**
+ * The venues of the seen works: [{key, name, pref, year}] (pref '' when unknown), one per venue.
+ * `year` is the first year the user went there (the earliest 観た日 of its works; null when no work has one).
+ */
 export async function visitedVenues(db, seen) {
   const sids = [...new Set(seen.map(w => w.stage_id).filter(Boolean).map(String))];
   const stage = {};
@@ -113,9 +130,13 @@ export async function visitedVenues(db, seen) {
     const s = stage[w.stage_id] || (w.venue ? {name: w.venue, pref: ''} : null);
     const key = s && venueKey(s.name);
     if (!key) continue;
+    const year = /^\d{4}/.test(w.first_date || '') ? +w.first_date.slice(0, 4) : null;
     const had = out.get(key);
-    if (!had) out.set(key, {key, name: String(s.name).trim(), pref: s.pref});
-    else if (!had.pref && s.pref) had.pref = s.pref;
+    if (!had) out.set(key, {key, name: String(s.name).trim(), pref: s.pref, year});
+    else {
+      if (!had.pref && s.pref) had.pref = s.pref;
+      if (year !== null && (had.year === null || year < had.year)) had.year = year;
+    }
   }
   return [...out.values()];
 }
