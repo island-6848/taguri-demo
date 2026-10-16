@@ -94,7 +94,16 @@ def row_from_html(html: str, sid: str) -> dict:
         "theater": theater or f.get("劇場", ""),
         "pref": FCand.txt(mp.group(1)).strip("()（）") if mp else "",
         "fields": {k: v for k, v in f.items() if k in KEEP_FIELDS and v},
+        # ポスターの画像の URL（無ければ空）。ページは残さないので、ここで控える
+        # （起案者の指示 2026-10-16「過去の公演の全てのポスターデータも欲しい」、posters.fetch_past）
+        "poster": _poster_url(html),
     }
+
+
+def _poster_url(html: str) -> str:
+    sys.path.insert(0, str(ROOT / "tools" / "taguri"))
+    import posters
+    return posters.url_in(html)
 
 
 def load_progress() -> dict:

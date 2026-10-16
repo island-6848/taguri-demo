@@ -229,6 +229,115 @@ def main(all_candidates: bool = False) -> int:
     return 0
 
 
+# ---------------------------------------------------------------- 過去の公演
+# 起案者の指示（2026-10-16）「過去の公演の全てのポスターデータも欲しい」。過去の公演の一覧
+# （data/past/stages.jsonl、fetch_past_stages.py が作る。2019 年以降）は、ページの HTML を残さないので
+# 画像の URL が手元に無い。これから読むページは行に `poster`（画像の URL）を残す。それより前に読んだ行は、
+# ページを読み直して URL だけを data/past/poster_urls.json に控える（1 公演 1 回だけ）。
+# - 公演ページ（stage.corich.jp）と画像（stage-image.corich.jp）は別のホストなので、polite_http の
+#   「同じホストへ 1.1 秒に 1 回」を守ったまま交互に読める（1 公演およそ 1.2 秒）
+# - 同じ画像（ツアーの各会場など）は 1 回だけ取り、ほかの公演には写しを置く
+# - 時間の上限（--max-minutes）で止め、次の回は続きから（取り込んだ・控えたものは飛ばす）
+# - R2 と D1 へは、これまでどおり deliver_posters.py が無料枠の控えを見ながら入れる
+PAST_ROWS = ROOT / "data" / "past" / "stages.jsonl"
+PAST_URLS = ROOT / "data" / "past" / "poster_urls.json"
+
+
+def past_rows() -> list[dict]:
+    """過去の公演（上演の新しい順）。"""
+    if not PAST_ROWS.exists():
+        return []
+    rows = []
+    for line in PAST_ROWS.read_text(encoding="utf-8").split("\n"):
+        if line.strip():
+            try:
+                rows.append(json.loads(line))
+            except ValueError:
+                continue
+    rows.sort(key=lambda r: (r.get("start") or "", str(r.get("stage_id") or "")), reverse=True)
+    return rows
+
+
+def url_in(html: str) -> str:
+    """ページの HTML から画像の URL（大きい版を優先。nophoto は無し）。"""
+    best = ""
+    for m in SRC_RE.finditer(html or ""):
+        if "nophoto" in m.group(0):
+            continue
+        if m.group(1) == "l":
+            return m.group(0)
+        best = best or m.group(0)
+    return best
+
+
+def fetch_past(*, max_minutes: float = 0, limit: int = 0, page=None, image=None, rows=None) -> dict[str, int]:
+    """過去の公演のポスターを取り込む。`page(sid) -> html`・`image(url) -> bytes` は試験で差し替える。"""
+    page = page or (lambda sid: PH.fetch(f"https://stage.corich.jp/stage/{sid}", timeout=45).decode("utf-8", "replace"))
+    image = image or (lambda url: PH.fetch(url, timeout=20, max_bytes=12_000_000))
+    IMG.mkdir(parents=True, exist_ok=True)
+    urls = json.loads(PAST_URLS.read_text(encoding="utf-8")) if PAST_URLS.exists() else {}
+    got = {**uploaded(), **have()}
+    by_url = {}                                    # 今回取った画像の URL → ファイル
+    n = {"済み": 0, "取得": 0, "写し": 0, "画像なし": 0, "ページ": 0, "失敗": 0}
+    t0 = time.monotonic()
+    done = 0
+    try:
+        for r in (rows if rows is not None else past_rows()):
+            sid = str(r.get("stage_id") or "")
+            if not sid:
+                continue
+            if sid in got:
+                n["済み"] += 1
+                continue
+            if max_minutes and (time.monotonic() - t0) / 60 > max_minutes:
+                print(f"時間の上限（{max_minutes} 分）に来たので、ここまでにする")
+                break
+            if limit and done >= limit:
+                break
+            done += 1
+            url = r["poster"] if "poster" in r else urls.get(sid)
+            if url is None:
+                try:
+                    url = url_in(page(sid))
+                except PH.Skipped as e:            # ホストから手を引いた（robots.txt・429 が続いた等）
+                    print(f"取得をやめる: {e}")
+                    break
+                except Exception:                  # noqa: BLE001  消えたページ・一時的な失敗は次の回に
+                    n["失敗"] += 1
+                    continue
+                urls[sid] = url
+                n["ページ"] += 1
+            if not url:
+                n["画像なし"] += 1
+                continue
+            ext = ".png" if url.endswith(".png") else ".jpg"
+            if url in by_url:
+                src = by_url[url]
+                (IMG / f"{sid}{src.suffix}").write_bytes(src.read_bytes())
+                got[sid] = f"{sid}{src.suffix}"
+                n["写し"] += 1
+                continue
+            try:
+                (IMG / f"{sid}{ext}").write_bytes(image(url))
+            except PH.Skipped as e:
+                print(f"取得をやめる: {e}")
+                break
+            except Exception:                      # noqa: BLE001
+                n["失敗"] += 1
+                continue
+            shrink(IMG / f"{sid}{ext}")
+            f = next((x for x in IMG.glob(f"{sid}.*")), IMG / f"{sid}{ext}")
+            by_url[url] = f
+            got[sid] = f.name
+            n["取得"] += 1
+            if n["取得"] % 50 == 0:
+                print(f"    過去のポスター {n['取得']} 枚", flush=True)
+    finally:
+        PAST_URLS.parent.mkdir(parents=True, exist_ok=True)
+        PAST_URLS.write_text(json.dumps(urls, ensure_ascii=False, sort_keys=True), encoding="utf-8")
+    return n
+
+
 def cli() -> int:
     import argparse
     ap = argparse.ArgumentParser(description=__doc__,
@@ -237,7 +346,16 @@ def cli() -> int:
                     help="すでに取り込んだ画像をまとめて縮める")
     ap.add_argument("--all-candidates", action="store_true",
                     help="手で足す欄の候補になる公演のぶんも取り込む（月 1 回・約 11 分）")
+    ap.add_argument("--past", action="store_true",
+                    help="過去の公演（data/past/stages.jsonl）のポスターを、上演の新しい順に取り込む")
+    ap.add_argument("--max-minutes", type=float, default=0, help="--past の時間の上限（分）")
     a = ap.parse_args()
+    if a.past:
+        if a.max_minutes <= 0:
+            print("過去のポスター ── 今日は時間の割り当てが無いので取らない")
+            return 0
+        print("過去のポスター ── " + "／".join(f"{k} {v}" for k, v in fetch_past(max_minutes=a.max_minutes).items()))
+        return 0
     if a.shrink_existing:
         print("ポスターを縮めた ── " + "／".join(f"{k} {v}" for k, v in shrink_all().items()))
         return 0

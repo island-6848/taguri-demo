@@ -45,6 +45,10 @@ CATALOG_MINUTES = {"daily": 15, "weekly": 120}
 WEEKLY_EXTRA = CATALOG_MINUTES["weekly"] - CATALOG_MINUTES["daily"]
 PAST_MAX_MINUTES = 135           # 過去の公演の読み取りは 1 日これまで
 PAST_SECONDS_PER_PAGE = 1.15     # polite_http の 1.1 秒の間隔と処理
+# 過去の公演のポスター（起案者の指示 2026-10-16「過去の公演の全てのポスターデータも欲しい」、posters.fetch_past）。
+# 過去の公演の読み取りと同じ残りから、3 分の 1（1 日 POSTER_MAX_MINUTES まで）を回す。段の時間の上限の余り 5 分も取っておく
+POSTER_MAX_MINUTES = 60
+POSTER_AFTER_MINUTES = 5
 AFTER_PAST_MINUTES = 15          # 読み取りの段の時間の上限の余り（5 分）と、そのあとの D1・書き戻し
 
 LEDGER = Path("free_tier") / "usage.json"
@@ -217,10 +221,13 @@ def plan(by_day: list[int] | None, mode: str) -> dict:
                 "note": f"Actions の分数が上限 {cap} 分に届く見込みなので、今日は動かさない"}
     if mode == "weekly":
         room -= WEEKLY_EXTRA
-    past = min(PAST_MAX_MINUTES, room - AFTER_PAST_MINUTES)
+    share = room - AFTER_PAST_MINUTES
+    poster = min(POSTER_MAX_MINUTES, (share - POSTER_AFTER_MINUTES) // 3) if share - POSTER_AFTER_MINUTES >= 30 else 0
+    past = min(PAST_MAX_MINUTES, share - (poster + POSTER_AFTER_MINUTES if poster else 0))
     if past < 10:
         past = 0
     return {"run": True, "mode": mode,
+            "poster_minutes": poster, "poster_timeout": poster + POSTER_AFTER_MINUTES if poster else 1,
             # 取り直しの段の時間の上限。見積もりの 3 倍か、残りのどちらか小さいほう（最低 10 分）
             "catalog_minutes": max(10, min(CATALOG_MINUTES[mode] * 3, 240, room + CATALOG_MINUTES[mode])),
             "past_minutes": past, "past_limit": int(past * 60 / PAST_SECONDS_PER_PAGE),
@@ -280,7 +287,9 @@ def main() -> int:
     if a.action == "plan":
         p = plan(by_day, a.mode)
         print(json.dumps(p, ensure_ascii=False))
-        _out({k: v for k, v in p.items() if k in ("run", "mode", "catalog_minutes", "past_minutes", "past_limit", "past_timeout")})
+        _out({"poster_minutes": 0, "poster_timeout": 1,
+              **{k: v for k, v in p.items() if k in ("run", "mode", "catalog_minutes", "past_minutes", "past_limit", "past_timeout",
+                                                     "poster_minutes", "poster_timeout")}})
         if p["note"]:
             print(f"::warning::{p['note']}")
         if not p["run"]:
