@@ -36,10 +36,18 @@ class ActionsTest(unittest.TestCase):
                 p = FT.plan(list(used), mode)
                 if not p['run']:
                     continue
-                today = used[0] + FT.CATALOG_MINUTES[p['mode']] + p['past_minutes'] + FT.AFTER_PAST_MINUTES
+                today = (used[0] + FT.CATALOG_MINUTES[p['mode']] + p['past_minutes'] + FT.AFTER_PAST_MINUTES
+                         + (p.get('poster_minutes', 0) + FT.POSTER_AFTER_MINUTES if p.get('poster_minutes') else 0))
                 for k in range(31):
                     window = today + sum(used[1:31 - k]) + FT.future_catalog(k)
                     self.assertLessEqual(window, FT.CAPS['actions_minutes_31d'], (used[:3], mode, k))
+
+    def test_past_posters_share_the_room(self):
+        # 起案者の指示 2026-10-16「過去の公演の全てのポスターデータも欲しい」: 余裕があれば毎日回し、少なければ回さない
+        self.assertEqual(FT.plan([0] * 31, 'daily')['poster_minutes'], FT.POSTER_MAX_MINUTES)
+        tight = FT.plan([44] * 31, 'daily')
+        if tight['run']:
+            self.assertLessEqual(tight['poster_minutes'], tight['past_minutes'] or FT.POSTER_MAX_MINUTES)
 
     def test_stops_when_the_cap_is_near(self):
         p = FT.plan([60] * 31, 'daily')

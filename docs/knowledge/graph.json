@@ -1314,6 +1314,20 @@
    "verifies": []
   },
   {
+   "id": "dec-past-posters",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-16",
+   "title": "過去の公演（2019 年以降）のポスターも、毎日の取得で少しずつ取り込む（無料枠の残りの 3 分の 1、1 日 60 分まで）",
+   "sources": [
+    "tools/taguri/posters.py",
+    "tools/review/fetch_past_stages.py",
+    "cloudflare/scripts/free_tier.py",
+    "taguri-crawler .github/workflows/catalog.yml"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-phone-nav-four",
    "type": "decision",
    "status": "adopted",
@@ -6302,6 +6316,16 @@
    "from": "dec-past-name-index",
    "rel": "affects",
    "to": "comp-frontend"
+  },
+  {
+   "from": "dec-past-posters",
+   "rel": "depends_on",
+   "to": "dec-posters-r2"
+  },
+  {
+   "from": "dec-past-posters",
+   "rel": "affects",
+   "to": "comp-crawler"
   },
   {
    "from": "dec-phone-nav-four",
