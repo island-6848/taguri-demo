@@ -1099,9 +1099,13 @@ const gradeText = v => {
 const isTopGrade = v => v === "◎" || (gradeParts(v) || [0, -1])[0] === (gradeParts(v) || [0, -1])[1];
 // 星を押した所まで塗る（5 段階は 1 つずつ、0.5 きざみは半分ずつ）。戻すための前の状態を返す
 function fillStars(g, b) {
-  const items = [...g.querySelectorAll("button.star, button.star0, .hs")];
+  const items = [...g.querySelectorAll("button.star, button.star0, .hs, button.nograde")];
   const was = items.map(x => x.className);
   const p = gradeParts(b.dataset.v);
+  // 「評価しない」を押したら星を消し、星を押したら「評価しない」の印を外す
+  const ng = g.querySelector("button.nograde");
+  if (ng) ng.classList.toggle("on", b === ng);
+  if (b === ng) g.querySelectorAll("button.star, button.star0, .hs").forEach(x => x.classList.remove("on", "h"));
   if (p && p[1] === 5) g.querySelectorAll("button.star").forEach((x, i) => x.classList.toggle("on", i < p[0]));
   if (p && p[1] === 11) {
     const v = (p[0] - 1) / 2;
@@ -1129,8 +1133,9 @@ function starValue(g) {
   if (!out) {
     out = document.createElement("span");
     out.className = "stv";
-    const said = g.querySelector(":scope > .said");
-    said ? said.before(out) : g.append(out);
+    // 星のすぐ右（「評価しない」より前）
+    const last = [...g.querySelectorAll(":scope > button.star, :scope > .hs")].pop();
+    last.after(out);
   }
   out.textContent = v === null ? "" : "★" + v;
 }

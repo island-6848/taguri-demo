@@ -80,20 +80,24 @@ export async function scaleOf(ctx) {
  * そこまで星の色がつく」): stars5 has one button per star; stars11 a 0 button and two halves per star
  * (left = .5, right = whole), the star filled half or whole (.h / .on). app.js fills at once on a press.
  */
+/** 「評価しない」の値（rate.VERDICTS の「まだ判断できない」。評価には数えない） */
+export const HOLD = 'まだ判断できない';
 export function gradeButtons(scale, current = '') {
   const btn = (v, text) => `<button data-v="${v}">${text}</button>`;
   if (scale === 'marks2') return btn('2/2', '○') + btn('1/2', '×');
   if (scale === 'marks3') return btn('3/3', '○') + btn('2/3', '△') + btn('1/3', '×');
+  // 星のあとに「評価しない」（まだ判断できない）。星 0 の押し口はやめた（起案者の指示 2026-10-16
+  // 「星0は不要。評価しない、のボタンにして」）。前に付けた 1/11（★0）はそのまま読める
+  const none = `<button class="nograde${current === HOLD ? ' on' : ''}" data-v="${HOLD}">評価しない</button>`;
   if (scale === 'stars5') {
     const now = parts(current)?.[1] === 5 ? parts(current)[0] : 0;
-    return [1, 2, 3, 4, 5].map(n => `<button class="star${n <= now ? ' on' : ''}" data-v="${n}/5" aria-label="星 ${n}"></button>`).join('');
+    return [1, 2, 3, 4, 5].map(n => `<button class="star${n <= now ? ' on' : ''}" data-v="${n}/5" aria-label="星 ${n}"></button>`).join('') + none;
   }
   if (scale === 'stars11') {
     const now = parts(current)?.[1] === 11 ? (parts(current)[0] - 1) / 2 : -1;
-    return `<button class="star0${now === 0 ? ' on' : ''}" data-v="1/11" aria-label="星 0">0</button>`
-      + [1, 2, 3, 4, 5].map(k => `<span class="hs${now >= k ? ' on' : now === k - 0.5 ? ' h' : ''}">`
+    return [1, 2, 3, 4, 5].map(k => `<span class="hs${now >= k ? ' on' : now === k - 0.5 ? ' h' : ''}">`
         + `<button class="half l" data-v="${2 * k}/11" aria-label="星 ${k - 0.5}"></button>`
-        + `<button class="half r" data-v="${2 * k + 1}/11" aria-label="星 ${k}"></button></span>`).join('');
+        + `<button class="half r" data-v="${2 * k + 1}/11" aria-label="星 ${k}"></button></span>`).join('') + none;
   }
   return MARKS.map(g => btn(g, g)).join('');
 }

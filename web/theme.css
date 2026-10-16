@@ -880,3 +880,8 @@ body:has(>.shell){padding-top:0}
 @media(max-width:340px){
  .rec-row:not(:has(.stamp)) .rb .hs{width:21px;font-size:18px}
  .rec-row:not(:has(.stamp)) .rb button.star0{width:14px;min-width:14px}}
+/* 「評価しない」（星 0 の代わり。起案者の指示 2026-10-16）。星の右に小さく置き、押したら印を付ける */
+.rb button.nograde{width:auto;min-width:0;height:auto;min-height:30px;white-space:nowrap;line-height:1.2;margin-left:8px;padding:4px 10px;border:1px solid var(--ring);border-radius:99px;
+ background:var(--surf);color:var(--ink2);font-size:12px;box-shadow:none}
+.rb button.nograde.on{border-color:var(--curtain);color:var(--curtain);background:#f0e6e8;font-weight:700}
+.rec-row .rb.done button.nograde{opacity:1}
