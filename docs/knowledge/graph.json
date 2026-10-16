@@ -2542,6 +2542,20 @@
    "verifies": []
   },
   {
+   "id": "impl-timetable",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-16",
+   "title": "眺めるに「観劇の時間割」（曜日 × マチネ／ソワレ／時刻なし、観た回の数）を足した",
+   "sources": [
+    "cloudflare/src/screens/timetable.js",
+    "cloudflare/src/screens/records.js",
+    "web/style.css",
+    "cloudflare/test/timetable.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "impl-tour-slots",
    "type": "finding",
    "status": "confirmed",
@@ -7212,6 +7226,16 @@
    "from": "impl-theme-favourite",
    "rel": "affects",
    "to": "comp-recommender"
+  },
+  {
+   "from": "impl-timetable",
+   "rel": "depends_on",
+   "to": "dec-records-viz-picks"
+  },
+  {
+   "from": "impl-timetable",
+   "rel": "depends_on",
+   "to": "data-inventory-1016"
   },
   {
    "from": "impl-tour-slots",

@@ -1,0 +1,21 @@
+---
+id: impl-timetable
+type: decision
+status: adopted
+date: 2026-10-16
+title: 眺めるに「観劇の時間割」（曜日 × マチネ／ソワレ／時刻なし、観た回の数）を足した
+sources:
+  - cloudflare/src/screens/timetable.js
+  - cloudflare/src/screens/records.js
+  - web/style.css
+  - cloudflare/test/timetable.test.js
+links:
+  - depends_on: dec-records-viz-picks
+  - depends_on: data-inventory-1016
+---
+起案者「時間割から実装してよい」（2026-10-16）。年輪（何年のどの季節か）と別の問い「1 週間のどこで観るか」に答える。
+- 観た回: 日付が過ぎたチケット（1 枚 1 回、開演時刻つき）と、日記帳の作品の初めて・最後に観た日のうちチケットの無い日（時刻は作品に入れた時刻を初めての日にだけ使う）。同じ作品を 3 回以上観ても、日付が分かるのはこの 2 つとチケットだけ
+- マチネは 17 時より前、ソワレは 17 時から。時刻の無い回は「時刻なし」の列
+- 表の形（行が曜日、列が時間帯、マスに数）。濃さは 1 色（--curtain を面の色に混ぜる 4 段、暗い表示でも同じ式）。どのマスにも数を書き、色だけで読ませない。「時刻なし」は好みではないので灰の段。マスに title（いつ・何回）
+- いちばん多い曜日と時間帯を文で出す。時刻の分かる回の数も出す（チケットか時刻を入れた回だけなので、少ないと偏る）
+- Worker だけ（Python のデモには無い）。D1 の読みは利用者のチケットを 1 回
