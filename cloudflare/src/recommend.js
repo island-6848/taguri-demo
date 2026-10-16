@@ -23,6 +23,11 @@ export const SEED_ROLES = ['出演', '演出', '脚本', '作', '原作', '翻�
 export const SEED_KINDS = ['人', '原作者'], MAX_SEED_FAVS = 20, MAX_SEED_STAGES = 60;
 export const SEED_GROUP_KINDS = ['団体', '主催'], SEED_WORK_KINDS = ['作品'], SEED_THEME_KINDS = ['題材'];
 export const THEME_AXIS = '#題材';
+/**
+ * 索引から外した種類（起案者の指示 2026-10-16、dec-source-kind-no-price）。新しい索引には入らないが、
+ * 本番の D1 の索引は差分で何日もかけて入れ替わるので、それまで残っている行もここで読まない。
+ */
+export const DROPPED_AXES = new Set(['#値段']);
 /** recommend2.nz: NFKC, no spaces (ASCII or full-width), lower case. */
 export const nz = s => String(s ?? '').normalize('NFKC').replaceAll(' ', '').replaceAll('\u3000', '').toLowerCase();
 // 詳細 (good / trouble per aspect): user_recommender.ASPECTS (checked against Python in the test).
@@ -261,7 +266,8 @@ export async function scoreFromIndex({postingsFor, stagesFor, rated, multipliers
   const values = personValues(rated, seeds, skip, liked, disliked);
   const seeded = new Set(seeds.map(r => r.stage_id));
   // Everyone with a non-zero value can raise or lower a show.
-  const keys = [...values.entries()].filter(([, [, v]]) => v).map(([k]) => k.split('\u0000')).sort((a, b) => cmpTuple(a, b));
+  // 使わなくなった種類（料金帯 #値段、dec-source-kind-no-price）は、本番の索引に残っている間も点数と理由に使わない
+  const keys = [...values.entries()].filter(([k, [, v]]) => v && !DROPPED_AXES.has(k.split('\u0000')[0])).map(([k]) => k.split('\u0000')).sort((a, b) => cmpTuple(a, b));
   const byStage = new Map();
   const mult = g => (Object.prototype.hasOwnProperty.call(multipliers, g) ? multipliers[g] : 1.0);
   for (const [role, person, sid, roleW, group] of await postingsFor(keys)) {

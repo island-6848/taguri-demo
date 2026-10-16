@@ -10,7 +10,7 @@
 // weights.js. Left out for now: the map above the prefecture chips (no outlines in
 // D1), the count of shows a setting hid (w_dropped) and the impression re-ranking.
 import {frac} from './grade.js';
-import {scoreFromIndex, d1Access, seedsFromFavourites, gradeOf, MAX_SEED_STAGES} from '../recommend.js';
+import {scoreFromIndex, d1Access, seedsFromFavourites, gradeOf, MAX_SEED_STAGES, DROPPED_AXES} from '../recommend.js';
 import {stageInfo} from './fallback.js';
 import {parseCredits} from './credits.js';
 import {chooseVariant, groupOf} from '../reco-gate.js';
@@ -38,7 +38,7 @@ const TIPS = `<section class="card tips">
 `;
 // Groups kept per user between requests: enough to fill 15 cards in any one prefecture.
 const KEEP = 400;
-const VERSION = 'screen-v11';   // v11: reasons of answered stages (answered_why); v2: the user's 効かせ方 (rank_weight) and the per-group counts; v3: 興味あり as seeds; v4: diag; v5: 興味あり split (impl-interest-split); v6: by part importance; v7: tiers + トメ; v8: two tiers only; v9: トメ joins the main roles; v10: spread leads + one-step partners
+const VERSION = 'screen-v12';   // v12: no #値段 (DROPPED_AXES); v11: reasons of answered stages (answered_why); v2: the user's 効かせ方 (rank_weight) and the per-group counts; v3: 興味あり as seeds; v4: diag; v5: 興味あり split (impl-interest-split); v6: by part importance; v7: tiers + トメ; v8: two tiers only; v9: トメ joins the main roles; v10: spread leads + one-step partners
 export {PREFS} from './prefs.js';
 const ROLE_SRC = '公演ページのクレジット';
 const KIND_LABEL = {'#形式': '形式', '#原作': '原作', '#翻訳': '', '#原作の国': '原作の国', '#会場': '劇場', '#題材': '題材'};
@@ -139,7 +139,7 @@ export function reasonRows(group, titles) {
       + `<span class="src">［出典: ${E(ROLE_SRC)}］</span>`
       + `<button class="rsx" data-word="${E(person)}" title="この人物を理由に出さない">✕</button></li>`);
   }
-  for (const [, axis, tag, n] of group.kinds.slice(0, 2)) {
+  for (const [, axis, tag, n] of group.kinds.filter(k => !DROPPED_AXES.has(k[1])).slice(0, 2)) {
     // 「漫画原作」のように中身が見出しを含むときは見出しを出さない（「原作 漫画原作」にしない）
     const label0 = Object.hasOwn(KIND_LABEL, axis) ? KIND_LABEL[axis] : axis.replace(/^#+/, '');
     const label = label0 && tag.endsWith(label0) ? '' : label0;
