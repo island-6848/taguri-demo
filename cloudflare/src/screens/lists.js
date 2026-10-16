@@ -420,12 +420,89 @@ ${words.length ? tags : '<p class="empty">まだ 1 つも外していません�
  * - 観た公演: 自分の記録のうち、出演・作り手にその名前がある（名前全体で一致）か、題名・団体に含むもの。
  * - 過去の公演（2019 年以降の一覧 past_stage）: 一覧を全部読むので（D1 の読み取り行数）、押したときだけ探す。
  */
+const PAST_SCANS_PER_DAY = 150;           // 150 × 2 万行 = 300 万行（1 日 500 万行の 6 割）
+/** 今日の過去の公演の検索が上限の内なら数えて true（rec_meta 'past_scan' = "YYYY-MM-DD n"）。 */
+async function takePastScan(ctx) {
+  const row = await ctx.db.prepare("SELECT v FROM rec_meta WHERE k='past_scan'").first().catch(() => null);
+  const [day, n] = String(row?.v || '').split(' ');
+  const used = day === ctx.today ? Number(n) || 0 : 0;
+  if (used >= PAST_SCANS_PER_DAY) return false;
+  await ctx.db.prepare("INSERT INTO rec_meta(k,v) VALUES('past_scan',?) ON CONFLICT(k) DO UPDATE SET v=excluded.v")
+    .bind(`${ctx.today} ${used + 1}`).run();
+  return true;
+}
+const slash = d => String(d || '').replaceAll('-', '/');
+/**
+ * 過去の公演（2019 年以降の一覧）のうち、出演・作り手に名前全体が一致するか、団体に含むもの。
+ * ツアーは会場ごとに分けず 1 行にまとめる（起案者の指示 2026-10-15「ツアーでも地方ごとに表示せず、ひとまとめにして記載」）:
+ * 題名の鍵（tkey）と団体が同じ行を 1 つにし、期間は最初の初日〜最後の楽日、会場は「A ほか N 会場」。
+ */
+async function pastByName(ctx, name, key, seenSids) {
+  if (!await takePastScan(ctx)) return '<p class="empty">今日は過去の公演を探せる回数（全体で 1 日の上限）に達しました。明日また表示されます。</p>';
+  const raw = String(name).replace(/[\s　]+/gu, '');
+  let rows = [];
+  try {
+    ({results: rows} = await ctx.db.prepare('SELECT stage_id,title,tkey,start,end,venue,grp,pref,people FROM past_stage WHERE instr(people,?)>0 OR instr(grp,?)>0 ORDER BY start DESC LIMIT 500')
+      .bind(raw, raw).all());
+  } catch { rows = []; }
+  const hit = rows.filter(r => !seenSids.has(String(r.stage_id)) && r.end < ctx.today).filter(r => {
+    let ps = [];
+    try { ps = JSON.parse(r.people || '[]'); } catch { /* no credits */ }
+    return ps.some(([, n]) => nz(n) === key) || nz(r.grp).includes(key);
+  });
+  const groups = new Map();
+  for (const r of hit) {
+    const k = (r.tkey || nz(r.title)) + '\u0000' + nz(r.grp);
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(r);
+  }
+  const prod = [...groups.values()].map(g => {
+    const start = g.map(r => r.start).filter(Boolean).sort()[0] || '', end = g.map(r => r.end).filter(Boolean).sort().at(-1) || '';
+    const venues = [...new Set([...g].sort((a, b) => cmp(a.start, b.start)).map(r => r.venue).filter(Boolean))];   // 初日の早い会場から
+    return {title: g[0].title, grp: g[0].grp, start, end, where: venues.length > 1 ? `${venues[0]} ほか ${venues.length - 1} 会場` : (venues[0] || '')};
+  }).sort((a, b) => cmp(b.start, a.start));
+  if (!prod.length) return '<p class="empty">過去の公演の一覧（2019 年以降。毎日少しずつ増えています）には見つかりませんでした。</p>';
+  return '<ul class="nmlist">' + prod.map(r => `<li><span class="d">${E(slash(r.start))}${r.end && r.end !== r.start ? `〜${E(slash(r.end).slice(5))}` : ''}</span>`
+    + `<span class="t">${E(r.title)}</span><span class="w">${E([r.grp, r.where].filter(Boolean).join('／'))}</span></li>`).join('') + '</ul>'
+    + (rows.length >= 500 ? '<p class="lead">新しいほうから 500 会場ぶんまで探しました。</p>' : '');
+}
+
+/** ツアーのカードを 1 つにまとめる: 期間を全会場の最初〜最後にし、地方ごとの日程の欄と「〇〇公演の日程」を出さない。 */
+export async function wholeTour(ctx, html, rows) {
+  const multi = rows.filter(r => (r.sids || []).length > 1);
+  if (!multi.length) return html;
+  const info = await stageInfo(ctx.db, multi.flatMap(r => r.sids));
+  const md = d => `${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}`;
+  const byStage = new Map(multi.map(r => [String(r.stage_id), r]));
+  return html.map(h => {
+    const sid = (/data-stage="([^"]+)"/.exec(h) || [])[1];
+    const r = byStage.get(sid);
+    if (!r) return h;
+    const ss = r.sids.map(x => info.get(x)).filter(Boolean);
+    const lo = ss.map(x => x.start).filter(Boolean).sort()[0], hi = ss.map(x => x.end).filter(Boolean).sort().at(-1);
+    let out = h.replace(/ data-tour="[^"]*"/, '');
+    if (lo && hi) {
+      const state = lo > ctx.today ? '' : hi >= ctx.today ? '上演中' : '終了';
+      out = out.replace(/ data-range="[^"]*" data-state="[^"]*"/, ` data-range="${md(lo)}〜${md(hi)}" data-state="${state}"`);
+    }
+    // 地方ごとの日程の欄（.tourfull、中に .tf-row の div が並ぶ）を外す
+    const i = out.indexOf('<div class="tourfull">');
+    if (i >= 0) {
+      const tag = /<(\/?)div\b[^>]*>/g;
+      tag.lastIndex = i;
+      let depth = 0, m;
+      while ((m = tag.exec(out))) { depth += m[1] ? -1 : 1; if (!depth) { out = out.slice(0, i) + out.slice(m.index + m[0].length); break; } }
+    }
+    return out;
+  });
+}
+
 async function nameView(params, ctx, b, name) {
   const key = nz(name);
   const label = r => (/「(.*)」$/.exec(r) || [, r])[1];
   const favs = sortRows([...b.favourites, ...b.favOwned].filter(r => r.a.some(x => nz(label(x)) === key)), 'start');
   const why = r => ({owned: Boolean(r.owned), tags: [...new Set(r.a.map(label))]});
-  const up = favs.length ? `<div class="tickets">${(await cards(ctx, favs, 'favourite', why)).join('')}</div>`
+  const up = favs.length ? `<div class="tickets">${(await wholeTour(ctx, await cards(ctx, favs, 'favourite', why), favs)).join('')}</div>`
     : '<p class="empty">これから観られる公演には、いま見つかっていません。</p>';
   // 観た公演
   const ws = (await loadWorks(ctx)).filter(w => !w.unseen);
@@ -437,33 +514,17 @@ async function nameView(params, ctx, b, name) {
   const seen = seenRows.length ? '<ul class="nmlist">' + seenRows.map(w => `<li><span class="d">${E((w.first_date || '').replaceAll('-', '/'))}</span>`
     + `<span class="t">${E(w.title)}</span>${w.verdict ? `<span class="v">${E(gradeText(w.verdict))}</span>` : ''}</li>`).join('') + '</ul>'
     : '<p class="empty">観た公演の記録には、この名前は見つかりませんでした。</p>';
-  // 過去の公演（押したときだけ）
-  const href = `/recommend/favourites?t=__TAGURI_TOKEN__&amp;n=${encodeURIComponent(name)}`;
-  let past = `<p><a class="pastbtn" href="${href}&amp;past=1">2019 年以降の過去の公演からも探す</a></p>`;
-  if (params.get('past') === '1') {
-    const raw = String(name).replace(/[\s　]+/gu, '');
-    let rows = [];
-    try {
-      ({results: rows} = await ctx.db.prepare('SELECT stage_id,title,start,end,venue,grp,pref,people FROM past_stage WHERE instr(people,?)>0 OR instr(grp,?)>0 ORDER BY start DESC LIMIT 300')
-        .bind(raw, raw).all());
-    } catch { rows = []; }
-    const hit = rows.filter(r => !seenSids.has(String(r.stage_id)) && r.end < ctx.today).filter(r => {
-      let ps = [];
-      try { ps = JSON.parse(r.people || '[]'); } catch { /* no credits */ }
-      return ps.some(([, n]) => nz(n) === key) || nz(r.grp).includes(key);
-    });
-    past = hit.length ? '<ul class="nmlist">' + hit.map(r => `<li><span class="d">${E(r.start.replaceAll('-', '/'))}</span>`
-      + `<span class="t">${E(r.title)}</span><span class="w">${E([r.grp, r.venue].filter(Boolean).join('／'))}</span></li>`).join('') + '</ul>'
-      + (rows.length >= 300 ? '<p class="lead">新しいほうから 300 件まで探しました。</p>' : '')
-      : '<p class="empty">過去の公演の一覧（2019 年以降。毎日少しずつ増えています）には見つかりませんでした。</p>';
-  }
+  // 過去の公演: 開いたときに自動で探す（起案者の指示 2026-10-15「過去の公演はボタン押して調べるんじゃなくて自動的に表示して」）。
+  // 一覧（past_stage、上限 2 万行）を全部読むので、1 回で D1 の読み取りが最大 2 万行かかる。無料枠（1 日 500 万行）を
+  // 越えないよう、全利用者あわせて 1 日 PAST_SCANS_PER_DAY 回までにし、越えた日は「明日また出します」と言う。
+  const past = await pastByName(ctx, name, key, seenSids);
   const body = `<h1><span class="ftag big">#${E(name)}</span> の公演</h1>
 <p class="lede"><a href="/recommend/favourites?t=__TAGURI_TOKEN__">← お気に入りに戻る</a></p>
 <h2>これから観られる公演 <span class="cnt">${favs.length} 件</span></h2>
 ${up}
 <h2>観た公演 <span class="cnt">${seenRows.length} 件</span></h2>
 ${seen}
-<h2>過去の公演</h2>
+<h2>過去の公演 <span class="cnt">2019 年以降</span></h2>
 ${past}`;
   return {title: `#${name}`, body_html: body};
 }

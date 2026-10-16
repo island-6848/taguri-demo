@@ -26,6 +26,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -170,6 +171,9 @@ def compose(template: str, sid: str, mode: str, *, rank: int | None = None, why:
                              f'</h3>\n <div class="whyh top">{IC.ico("eye", 14)}ヒットした箇所：</div>'
                              f'<ul class="why top">{top}</ul>\n <div class="meta">', 1)
                 .replace(f'<div class="whyh">{IC.ico("eye", 14)}おすすめ理由</div><ul class="why">{why or _NO_REASON}</ul>', "", 1))
+    if mode == "owned":
+        # 購入済み公演: おすすめ理由の欄は出さない（起案者の指示 2026-10-15、render_recommend.ticket と同じ）
+        html = re.sub(r'<div class="whyh">[\s\S]*?</ul>', "", html, count=1)
     return html.replace('<div class="act"></div>', "").replace('<div class="pcol"></div>', "")
 
 

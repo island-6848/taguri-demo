@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
 import {readFileSync} from 'node:fs';
 import {setup, step, signIn} from './screens/harness.js';
+import {wholeTour} from '../src/screens/lists.js';
 
 const here = p => new URL(p, import.meta.url).pathname;
 const FIXTURE = JSON.parse(execFileSync('python3', [here('./screens/recommend_fixture.py')], {encoding: 'utf8', maxBuffer: 64 * 1024 * 1024}));
@@ -500,10 +501,32 @@ test('お気に入りのハッシュタグ: the name coming stages, works seen a
     assert.match(v, /<h1><span class="ftag big">#俳優甲<\/span> の公演<\/h1>/);
     assert.match(v, /これから観られる公演 <span class="cnt">1 件<\/span>[\s\S]*data-stage="101"/);
     assert.match(v, /観た公演 <span class="cnt">1 件<\/span>[\s\S]*終わった舞台[\s\S]*★5/);
-    assert.match(v, /2019 年以降の過去の公演からも探す/);
-    assert.doesNotMatch(v, /昔の舞台/);                                    // 押すまでは探さない
-    const pv = (await screen(env, a, 'favourites', '?n=' + encodeURIComponent('俳優甲') + '&past=1')).body_html;
-    assert.match(pv, /2023\/05\/01<\/span><span class="t">昔の舞台/);
-    assert.doesNotMatch(pv, /別人の舞台/);                                 // 名前全体で当てる
+    // 過去の公演は開いたときに自動で出す（起案者 2026-10-15）。名前全体で当てる
+    assert.match(v, /2023\/05\/01〜05\/10<\/span><span class="t">昔の舞台/);
+    assert.doesNotMatch(v, /別人の舞台/);
+    // ツアー（同じ題名・団体の別会場）は 1 行にまとめる
+    sqlite.prepare("INSERT INTO past_stage(stage_id,title,tkey,start,end,venue,grp,pref,people) VALUES('p3','昔の舞台','昔の舞台','2023-06-01','2023-06-03','劇場R','劇団P','大阪府',?)").run(JSON.stringify([['出演', '俳優甲']]));
+    const t = (await screen(env, a, 'favourites', '?n=' + encodeURIComponent('俳優甲'))).body_html;
+    assert.match(t, /2023\/05\/01〜06\/03<\/span><span class="t">昔の舞台<\/span><span class="w">劇団P／劇場P ほか 1 会場<\/span>/);
+    assert.equal((t.match(/昔の舞台/g) || []).length, 1);
+    // 1 日の回数の上限を越えたら探さない
+    sqlite.prepare("INSERT INTO rec_meta(k,v) VALUES('past_scan',?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").run('2026-10-12 150');
+    assert.match((await screen(env, a, 'favourites', '?n=' + encodeURIComponent('俳優甲'))).body_html, /今日は過去の公演を探せる回数/);
+  } finally { sqlite.close(); }
+});
+
+test('wholeTour: a tour card shows the whole run, without the per-region schedule (起案者 2026-10-15)', async () => {
+  const {env, sqlite} = withIndex();
+  try {
+    const add = (id, start, end, venue) => sqlite.prepare("INSERT INTO catalogue(id,title,date,venue,url,metadata) VALUES(?,'ツアーの舞台',?,?,'',?)")
+      .run(id, start, venue, JSON.stringify({end_date: end}));
+    add('981', '2026-10-06', '2026-10-25', '劇場T');
+    add('982', '2026-11-07', '2026-11-10', '劇場O');
+    const card = '<article class="ticket favourite" data-stage="981" data-tours="982"><div class="stub"><span class="sd" data-range="10/6〜10/25" data-state="上演中" data-tour="東京公演／劇場T"><b>10/6</b></span></div>'
+      + '<div class="tourfull"><div class="tf-row here"><span class="tf-loc">東京公演</span></div><div class="tf-row"><span class="tf-loc">大阪公演</span></div></div><div class="cast">出演</div></article>';
+    const [out] = await wholeTour({db: env.DB, today: '2026-10-12'}, [card], [{stage_id: '981', sids: ['981', '982']}]);
+    assert.match(out, /data-range="10\/6〜11\/10" data-state="上演中"/);
+    assert.doesNotMatch(out, /data-tour=|tourfull|大阪公演/);
+    assert.match(out, /<div class="cast">出演<\/div>/);
   } finally { sqlite.close(); }
 });
