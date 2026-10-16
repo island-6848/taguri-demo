@@ -85,7 +85,7 @@ export const posterHtml = file => `<span class="pwrap"><img class="poster" src="
   + `<span class="pmsg">読み込み中…</span></span>`;
 
 /** build_cards.compose */
-export function compose(template, sid, mode, {rank = null, why = '', poster = '', note = '', mytix = '', top = '', owned = false, origin = ''} = {}) {
+export function compose(template, sid, mode, {rank = null, why = '', poster = '', note = '', mytix = '', top = '', owned = false, origin = '', tags = null} = {}) {
   const mark = {recommend: rank ? `<span class="sn">No.${String(rank).padStart(2, '0')}</span>` : '',
     interest: `<span class="sn done">${ico('check', 15)}</span>`,
     favourite: '<span class="wax" aria-hidden="true"></span>'}[mode] || '';
@@ -107,7 +107,11 @@ export function compose(template, sid, mode, {rank = null, why = '', poster = ''
     .replace('</h3>\n \n <div class="meta">', () => (top ? `</h3>\n <div class="whyh top">${ico('eye', 14)}ヒットした箇所：</div><ul class="why top">${top}</ul>\n <div class="meta">` : '</h3>\n \n <div class="meta">'))
     .replace(`<div class="whyh">${ico('eye', 14)}おすすめ理由</div><ul class="why">${why || NO_REASON}</ul>`, () => (top ? '' : `<div class="whyh">${ico('eye', 14)}おすすめ理由</div><ul class="why">${why || NO_REASON}</ul>`))
     // おすすめ以外の画面で足した興味ありは、理由の欄の代わりに足した場所だけを書く
-    .replace(origin ? /<div class="whyh">[\s\S]*?<\/ul>/ : /(?!)/, () => `<div class="whyh origin">${ico('inbox', 14)}${E(origin)}</div>`);
+    .replace(origin ? /<div class="whyh">[\s\S]*?<\/ul>/ : /(?!)/, () => `<div class="whyh origin">${ico('inbox', 14)}${E(origin)}</div>`)
+    // お気に入り: 「なぜお知らせしているか」の欄の代わりに、当たった名前をハッシュタグで並べる
+    // （起案者の指示 2026-10-15「「なぜお知らせしているか」の欄消して…お気に入りって丸で囲んであるところの色で、
+    // 理由の人名とか団体とかだけハッシュタグで羅列して」）
+    .replace(tags ? /<div class="whyh">[\s\S]*?<\/ul>/ : /(?!)/, () => `<div class="favtags">${(tags || []).map(t => `<a class="ftag" href="/recommend/favourites?t=__TAGURI_TOKEN__&amp;n=${encodeURIComponent(t)}">#${E(t)}</a>`).join('')}</div>`);
 }
 
 /** Card templates and posters of these stages: Map(sid -> html), Map(sid -> file). */

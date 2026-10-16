@@ -10,6 +10,9 @@
 // demotions), the matching of a subject word inside a longer registered subject.
 import {stageInfo, fallbackTemplate} from './fallback.js';
 import {parseCredits} from './credits.js';
+import {loadWorks} from './works.js';
+import {peopleByKey} from './diary.js';
+import {gradeText} from './grade.js';
 import {E, ValueError} from './py.js';
 import {compose, cardTemplates, posterHtml, mytixHtml, preNote} from './cards.js';
 import {titleKey} from './works.js';
@@ -19,7 +22,6 @@ import {PREFS} from './prefs.js';
 export const KINDS = ['団体', '人', '主催', '作品', '原作者', '題材'];
 const DECLARED_KEY = 'declared', DECLINED_KEY = 'declined';
 const LIST_TOP = 8;
-const ROLE_SRC = '公演ページのクレジット';
 const ICO = {star: 'M12 3.8l2.5 5.1 5.6.8-4 3.9 1 5.6-5.1-2.7-5.1 2.7 1-5.6-4-3.9 5.6-.8z', flag: 'M5 21V4h13l-2.5 4.5L18 13H5'};
 const ico = name => `<svg class="ico " viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${ICO[name]}"/></svg>`;
 /** recommend2.nz */
@@ -411,8 +413,65 @@ ${words.length ? tags : '<p class="empty">まだ 1 つも外していません�
 </details>`;
 }
 
+/**
+ * お気に入りのハッシュタグを押したときの画面（?n=名前）。起案者の指示（2026-10-15）「押したらその絞り込みみたいなの
+ * できたらいいけど（その人名が登録されてる公演（過去も含め）が全部表示されるとか）」。
+ * - これからの公演: お気に入りの一覧のうち、その名前で当たったもの（カードの形）。
+ * - 観た公演: 自分の記録のうち、出演・作り手にその名前がある（名前全体で一致）か、題名・団体に含むもの。
+ * - 過去の公演（2019 年以降の一覧 past_stage）: 一覧を全部読むので（D1 の読み取り行数）、押したときだけ探す。
+ */
+async function nameView(params, ctx, b, name) {
+  const key = nz(name);
+  const label = r => (/「(.*)」$/.exec(r) || [, r])[1];
+  const favs = sortRows([...b.favourites, ...b.favOwned].filter(r => r.a.some(x => nz(label(x)) === key)), 'start');
+  const why = r => ({owned: Boolean(r.owned), tags: [...new Set(r.a.map(label))]});
+  const up = favs.length ? `<div class="tickets">${(await cards(ctx, favs, 'favourite', why)).join('')}</div>`
+    : '<p class="empty">これから観られる公演には、いま見つかっていません。</p>';
+  // 観た公演
+  const ws = (await loadWorks(ctx)).filter(w => !w.unseen);
+  const people = await peopleByKey(ctx, ws);
+  const seenRows = ws.filter(w => (people[w.work_key] || []).some(([, n]) => nz(n) === key)
+    || nz(w.title).includes(key) || nz(w.group || '').includes(key))
+    .sort((p, q) => cmp(q.first_date || '', p.first_date || ''));
+  const seenSids = new Set(seenRows.map(w => w.stage_id).filter(Boolean));
+  const seen = seenRows.length ? '<ul class="nmlist">' + seenRows.map(w => `<li><span class="d">${E((w.first_date || '').replaceAll('-', '/'))}</span>`
+    + `<span class="t">${E(w.title)}</span>${w.verdict ? `<span class="v">${E(gradeText(w.verdict))}</span>` : ''}</li>`).join('') + '</ul>'
+    : '<p class="empty">観た公演の記録には、この名前は見つかりませんでした。</p>';
+  // 過去の公演（押したときだけ）
+  const href = `/recommend/favourites?t=__TAGURI_TOKEN__&amp;n=${encodeURIComponent(name)}`;
+  let past = `<p><a class="pastbtn" href="${href}&amp;past=1">2019 年以降の過去の公演からも探す</a></p>`;
+  if (params.get('past') === '1') {
+    const raw = String(name).replace(/[\s　]+/gu, '');
+    let rows = [];
+    try {
+      ({results: rows} = await ctx.db.prepare('SELECT stage_id,title,start,end,venue,grp,pref,people FROM past_stage WHERE instr(people,?)>0 OR instr(grp,?)>0 ORDER BY start DESC LIMIT 300')
+        .bind(raw, raw).all());
+    } catch { rows = []; }
+    const hit = rows.filter(r => !seenSids.has(String(r.stage_id)) && r.end < ctx.today).filter(r => {
+      let ps = [];
+      try { ps = JSON.parse(r.people || '[]'); } catch { /* no credits */ }
+      return ps.some(([, n]) => nz(n) === key) || nz(r.grp).includes(key);
+    });
+    past = hit.length ? '<ul class="nmlist">' + hit.map(r => `<li><span class="d">${E(r.start.replaceAll('-', '/'))}</span>`
+      + `<span class="t">${E(r.title)}</span><span class="w">${E([r.grp, r.venue].filter(Boolean).join('／'))}</span></li>`).join('') + '</ul>'
+      + (rows.length >= 300 ? '<p class="lead">新しいほうから 300 件まで探しました。</p>' : '')
+      : '<p class="empty">過去の公演の一覧（2019 年以降。毎日少しずつ増えています）には見つかりませんでした。</p>';
+  }
+  const body = `<h1><span class="ftag big">#${E(name)}</span> の公演</h1>
+<p class="lede"><a href="/recommend/favourites?t=__TAGURI_TOKEN__">← お気に入りに戻る</a></p>
+<h2>これから観られる公演 <span class="cnt">${favs.length} 件</span></h2>
+${up}
+<h2>観た公演 <span class="cnt">${seenRows.length} 件</span></h2>
+${seen}
+<h2>過去の公演</h2>
+${past}`;
+  return {title: `#${name}`, body_html: body};
+}
+
 export async function favouritesScreen(params, ctx) {
   const b = await buckets(ctx, {catalogue: true});
+  const named = String(params.get('n') || '').trim().slice(0, 80);
+  if (named) return nameView(params, ctx, b, named);
   const nCat = Number((await ctx.db.prepare("SELECT v FROM rec_meta WHERE k='catalogue_upcoming'").first().catch(() => null))?.v || 0);
   const keys = ['start', 'end', 'title', 'pref'], sort = sortOf(params, keys);
   const favs = sortRows([...b.favourites, ...b.favOwned], sort), dec = b.declared;
@@ -429,7 +488,8 @@ export async function favouritesScreen(params, ctx) {
     + '<b>表記ゆれ（漢字とカタカナ、送り仮名の違いなど）は自動では気づけません。</b>ありそうなときは、両方の書き方をそれぞれ登録してください。</p>'
     + `<div class="fav-add"><select id="fav-kind">${kinds}</select> <input id="fav-name" type="text" placeholder="団体名・人名・作品名・題材" size="26"> <button data-fav="add">登録する</button>`
     + `<span class="said"></span></div><div class="tags">${tags}</div></details>${declinedBox(b.words)}</div>`;
-  const why = r => ({owned: Boolean(r.owned), why: r.a.map(w => `<li class="rs a"><span class="net">お気に入り</span>登録した${E(w)}の公演です<span class="src">［出典: ${E(ROLE_SRC)}］</span></li>`).join('')});
+  // 当たった名前（「人「俳優甲」」→「俳優甲」）をハッシュタグにする。理由の欄は出さない（起案者の指示 2026-10-15）
+  const why = r => ({owned: Boolean(r.owned), tags: [...new Set(r.a.map(w => (/「(.*)」$/.exec(w) || [, w])[1]))]});
   const list = favs.length
     ? `<p class="lead"><b>${E(SORTS[sort])}</b>に並んでいます。順位は付けていません。観ると決めたら、公式サイトから券を求めてください。<b>券を取ったら「購入済みにする」を押してください。</b>この一覧には「購入済み」の印を付けて残し、<a href="/tickets?t=__TAGURI_TOKEN__">購入済み公演</a>にも入ります（行く日はそちらで入れられます）。</p>`
       + `<div class="tickets">${(await cards(ctx, show, 'favourite', why)).join('')}</div>`
