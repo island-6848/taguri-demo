@@ -833,3 +833,7 @@ a.htag-in:hover{text-decoration:underline}
 .sortf{display:flex;justify-content:flex-end;margin:6px 0 10px}
 .sortf label{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--ink2)}
 .sortf select{font:inherit;font-size:13.5px;padding:5px 8px;border:1px solid var(--ring);border-radius:8px;background:var(--surf);color:var(--ink)}
+/* お気に入り: 当たった名前をハッシュタグで並べる（「お気に入り」の札と同じ色。起案者の指示 2026-10-15） */
+.favtags{display:flex;flex-wrap:wrap;gap:6px 8px;margin:8px 0 4px}
+.ftag{display:inline-block;font-size:12px;font-weight:600;padding:2px 10px;border-radius:99px;
+ color:var(--s2);border:1px solid color-mix(in srgb,var(--s2) 42%,transparent)}
