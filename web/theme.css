@@ -1038,16 +1038,20 @@ a.pill.buy .go:not(#_){font-size:12px;margin-left:2px}
 /* 段の中が 1 つだけ（開幕リマインドの場所・お気に入りの登録した名前など）なら全幅に */
 .fil2:not(.tabbed)>:only-child{grid-column:1/-1}
 
-/* 公演修正依頼（app.js fixLinks）。カードの下に小さく置き、押すとその場で欄が開く */
-.fixq{margin:10px 0 0;text-align:right}
-.fixq-open{background:none;border:0;padding:4px 0;font:inherit;font-size:12px;color:var(--mute);text-decoration:underline;cursor:pointer;min-height:32px}
-.fixq-open:hover{color:var(--ink2)}
-.fixq-form{text-align:left;margin:6px 0 0;padding:10px 12px;border:1px solid var(--grid);border-radius:8px;background:var(--surf)}
-.fixq-form label{display:block;font-size:12.5px;margin:0 0 6px}
-.fixq-form select{font:inherit;margin-left:6px}
-.fixq-form textarea{width:100%;box-sizing:border-box;font:inherit;font-size:13px}
-.fixq-foot{margin:6px 0 0;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.fixq-form .note{margin:6px 0 0;font-size:11.5px}
+/* 公演修正依頼（app.js fixLinks・openFixPopup）。カードの右下にヘルプの印、押すとポップアップ */
+.fixq{margin:8px 0 0;text-align:right}
+.fixq-open{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;padding:0;border:0;border-radius:50%;background:none;color:var(--mute);cursor:pointer}
+.fixq-open:hover,.fixq-open:focus-visible{color:var(--acc);background:color-mix(in srgb,var(--acc) 10%,transparent)}
+.fixpop{position:fixed;inset:0;z-index:2147483000;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px}
+.fixpop-box{position:relative;width:min(440px,100%);max-height:calc(100vh - 32px);overflow:auto;background:var(--surf);color:var(--ink);border-radius:12px;padding:18px 18px 14px;box-shadow:0 8px 32px rgba(0,0,0,.3)}
+.fixpop-box h2{font-size:16px;margin:0 32px 4px 0}
+.fixpop-t{margin:0 0 12px;color:var(--ink2);font-size:13px}
+.fixpop-box label{display:block;font-size:13px;margin:0 0 8px}
+.fixpop-box select{font:inherit;margin-left:6px}
+.fixpop-box textarea{width:100%;box-sizing:border-box;font:inherit;font-size:14px}
+.fixpop-box .fixq-foot{margin:8px 0 0;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.fixpop-box .note{margin:8px 0 0;font-size:11.5px}
+.fixpop-x{position:absolute;top:8px;right:8px;width:40px;height:40px;border:0;border-radius:50%;background:none;color:var(--ink2);font-size:22px;line-height:40px;cursor:pointer}
 /* お気に入りの「足す・外す」の欄の名前も、カードの中のハッシュタグ（.ftag）と同じ形に（起案者の指示 2026-10-17） */
 .tags .tag.ftag:not(#_){display:inline-flex;align-items:center;gap:6px;padding:2px 2px 2px 10px;background:transparent;
  font-size:12px;font-weight:600;color:var(--s2);border:1px solid color-mix(in srgb,var(--s2) 42%,transparent)}
@@ -1056,3 +1060,5 @@ a.pill.buy .go:not(#_){font-size:12px;margin-left:2px}
 .tags .tag.ftag .tgk{font-size:11px;font-weight:400;color:var(--mute)}
 .tags .tag.ftag button{font-size:12px;line-height:1.5;color:var(--s2);opacity:.75;padding:0 7px;border-radius:99px}
 .tags .tag.ftag button:hover{opacity:1;background:color-mix(in srgb,var(--s2) 12%,transparent);color:var(--s2)}
+.fixpop-box .fixq-send{min-height:40px;padding:6px 20px;border:1px solid var(--acc);border-radius:8px;background:var(--acc);color:#fff;font:inherit;font-weight:600;cursor:pointer}
+.fixpop-box .fixq-send:disabled{opacity:.6;cursor:default}
