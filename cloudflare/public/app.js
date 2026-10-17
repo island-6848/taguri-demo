@@ -1230,8 +1230,7 @@ function pollHandTheme(sid, el, tries) {
   }, 4000);
 }
 
-// **つまみを動かしても保存しない。** 変わったのは画面の上だけであることを、
-// 札と確定の押し口の色で言う ── 動かしただけで効いたと読まれないためである
+// つまみを動かしている間は画面の上だけ。一覧に効くのは確定の押し口を押してから（保存は離したとき。下の change）
 document.addEventListener("input", ev => {
   const sl = ev.target.closest && ev.target.closest(".wsl");
   if (!sl) return;
@@ -1242,6 +1241,17 @@ document.addEventListener("input", ev => {
   box.classList.add("dirty");
   const said = box.querySelector(".wsaid");
   if (said) said.textContent = "まだ確定していません";
+});
+// **つまみを離したら、その時点でアカウントに保存する**（起案者の指摘 2026-10-18「前設定した『効かせ方』が次起動したら
+// 消えていた。アカウントに紐づいて設定できるようにして」── 確定の押し口を押さずに離れると残らなかった）。
+// 一覧の作り直し（読み込み直し）は、これまでどおり確定の押し口で行う。書くのは動かした 1 項目だけ（D1 は 1〜2 行）
+document.addEventListener("change", ev => {
+  const sl = ev.target.closest && ev.target.closest(".wsl");
+  if (!sl) return;
+  const box = sl.closest(".wbox"), said = box.querySelector(".wsaid");
+  post("/api/weight", {weights: {[sl.dataset.weight]: WSTEPS[+sl.value]}}, null, null).then(d => {
+    if (said) said.textContent = d ? "保存しました。「この効かせ方でおすすめを読み込む」を押すと一覧を作り直します" : "保存できませんでした";
+  });
 });
 
 // **前におすすめを開いた日から今日までに終わった公演があり、未評価が残っていたら知らせる**
@@ -1578,7 +1588,8 @@ document.addEventListener("click", ev => {
     const r = b.closest(".prom"), box = b.closest(".pbox");
     const w = b.dataset.word || (box.querySelector("#dec-word") || {}).value || "";
     if (!w.trim()) return;
-    post("/api/decline", {action: "add", word: w.trim()}, r || b.parentElement,
+    const kind = b.dataset.word ? "" : ((box && box.querySelector("#dec-kind")) || {}).value || "";
+    post("/api/decline", {action: "add", word: w.trim(), kind}, r || b.parentElement,
       "出さないことにしました")
       .then(d => { if (d) { if (r) { r.classList.add("done"); b.disabled = true; }
                             waitJob(r || b.parentElement, true); } });

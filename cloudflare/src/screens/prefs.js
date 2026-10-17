@@ -32,7 +32,7 @@ export function regionCounts(items) {
 export function regionsHtml(counts, rcounts, all = false) {
   const out = REGIONS.map(([r, ps]) => {
     const live = all ? ps : ps.filter(p => counts[p]);
-    return live.length ? `<button type="button" class="prg" data-prefs="${live.join(' ')}">${r}地方<span class="pn">${rcounts[r] || 0}</span></button>` : '';
+    return live.length ? `<button type="button" class="prg" data-prefs="${live.join(' ')}">${r}地方<span class="pn">${rcounts[r] || 0}件</span></button>` : '';
   }).join('');
   return `<div class="prgs" role="group" aria-label="地方でまとめて選ぶ"><span class="prgl">地方でまとめて選ぶ</span>${out}<button type="button" class="prg clr">選択を消す</button></div>`;
 }
@@ -43,7 +43,7 @@ export function prefForm(counts, prefs, action = '/recommend', note = '', hidden
   const keep = new Set(prefs);
   const chips = PREFS.filter(p => counts[p]).map(p => `<label class="pchip${keep.has(p) ? ' on' : ''}">`
     + `<input type="checkbox" name="pref" value="${E(p)}"${keep.has(p) ? ' checked' : ''}>`
-    + `<span class="pl">${E(p)}</span><span class="pn">${counts[p]}</span></label>`).join('');
+    + `<span class="pl">${E(p)}</span><span class="pn">${counts[p]}件</span></label>`).join('');
   const now = !keep.size ? '全国' : PREFS.filter(p => keep.has(p)).join('・') + `（${keep.size} 県）`;
   const hiddenIn = Object.entries(hidden).map(([k, v]) => `<input type="hidden" name="${E(k)}" value="${E(v)}">`).join('');
   const hiddenQs = Object.entries(hidden).map(([k, v]) => `&amp;${E(k)}=${E(v)}`).join('');
@@ -55,7 +55,7 @@ ${hiddenIn}
 <summary>${ico('search', 15)}観に行ける場所で絞り込む　いまは<b>${E(now)}</b></summary>
 <p class="lead">${note || PREF_NOTE}</p>
 ${rcounts ? regionsHtml(counts, rcounts) : ''}
-<div class="pchips">${chips}</div>
+<div class="pchw"><span class="prgl">個別で選ぶ</span><div class="pchips">${chips}</div></div>
 <div class="pfoot"><button type="submit">${ico('search')}この都道府県で絞り込む</button>
 <a class="pall" href="${E(action)}?t=__TAGURI_TOKEN__&amp;f=1${hiddenQs}">全国に戻す</a></div>
 </details></form>`;

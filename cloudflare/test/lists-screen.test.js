@@ -59,7 +59,7 @@ test('a registered name brings its stages to お気に入り and out of おす�
     assert.match(fav, /<h1>お気に入り ── 新着 1 件<\/h1>/);
     assert.match(fav, /<article class="ticket favourite" data-stage="101"/);
     // 場所はこのページだけの絞り込み（保存しない）。当たらない県では 0 件と、全国に戻す案内
-    const pin = /<span class="pl">([^<]+)<\/span><span class="pn">1<\/span>/.exec(fav);
+    const pin = /<span class="pl">([^<]+)<\/span><span class="pn">1件<\/span>/.exec(fav);
     assert.ok(pin, 'the stage counts under its prefecture');
     const here = (await screen(env, a, 'favourites', '?f=1&pref=' + encodeURIComponent(pin[1]))).body_html;
     assert.match(here, /<article class="ticket favourite" data-stage="101"/);

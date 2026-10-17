@@ -27,6 +27,8 @@ export {prefForm, prefsFor};
 import {loadDeclared, loadDeclined, loadKindOff, nameHits, KINDS, reactionsOf, declinedBox, kindOffBox} from './lists.js';
 
 export const TOP = 15;
+// 起案者の指示 2026-10-17: おすすめの「場所」の説明。共通の絞り込みは設定に保存する
+const REC_PREF_NOTE = '他ページでもこの絞り込みを適用したい場合は、<a href="/settings?t=__TAGURI_TOKEN__">設定</a>から表示する都道府県の規定を設定してください。';
 const TIPS = `<section class="card tips">
 <h2>おすすめを出すためのワンポイント</h2>
 <ol>
@@ -425,10 +427,10 @@ export async function recommendScreen(params, ctx) {
 評価・公演情報・設定が変わると、順位も変わることがあります</p>` : '';
   const body = `<h1>${E(head)}</h1>
 ${lede}
-${tips}<p class="fgh">${ico('light', 15)}<b>おすすめの選び方</b><span>好みの計算そのものを変えるので、どの公演が選ばれるかが変わります</span></p>
+${tips}<p class="fgh">${ico('light', 15)}<b>おすすめの選び方</b><span>おすすめに表示される結果自体が変わります。</span></p>
 <div class="fil2 tune">${weightForm(data.weights || {}, data.w_counts || {})}${declinedBox(await loadDeclined(ctx))}${kindOffBox(await loadKindOff(ctx))}</div>
-<p class="fgh">${ico('search', 15)}<b>表示の絞り込み</b><span>選ばれたおすすめのうち、見る分だけに絞ります。順位は変わりません</span></p>
-<div class="fil2 narrow">${prefForm(prefCounts(data.groups), prefs, '/recommend', '', {}, regionCounts(data.groups.map(g => ({key: g.stage_id, prefs: g.venues.map(v => v.pref)}))))}</div>
+<p class="fgh">${ico('search', 15)}<b>表示の絞り込み</b><span>おすすめの候補の中から、表示する項目を設定できます。</span></p>
+<div class="fil2 narrow">${prefForm(prefCounts(data.groups), prefs, '/recommend', REC_PREF_NOTE, {}, regionCounts(data.groups.map(g => ({key: g.stage_id, prefs: g.venues.map(v => v.pref)}))))}</div>
 ${cards.join('')}
 <p class="lede">気になった公演で「興味あり」を押すと、
 <a href="/recommend/interest?t=__TAGURI_TOKEN__">「興味あり」（いま ${nInterest} 件）</a>に移ります。</p>

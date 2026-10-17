@@ -84,18 +84,12 @@ export function weightForm(w, cnt = {}, drop = 0) {
   return `<div class="wfil">
 <details class="pbox wbox" id="weights">
 <summary>${ico('light', 15)}おすすめの効かせ方を変える　いまは<b>${E(now)}</b></summary>
-<p class="lead">おすすめの順位に、どの情報をどれくらい効かせるかを決められます。
-つまみを動かして「この効かせ方でおすすめを読み込む」を押すと、一覧を作り直します。
-押すまでは変わりません。既定は「ふつう」です。
-いちばん左の「効かせない」にすると、その情報は順位からも理由からも消えます。
-件数はおすすめの候補のうち、その情報が一致している公演の数です。
-件数が少ない項目は、動かしても一覧はあまり変わりません。</p>
+<p class="lead">おすすめ表示に使用している情報の度合いを、個別に調節できます。</p>
 ${scale}
 ${rows}
 <div class="pfoot"><button data-wsave="1">${ico('light')}この効かせ方でおすすめを読み込む</button>
  <button class="pall-btn" data-wreset="1">すべて「ふつう」に戻す</button>
  <span class="wsaid"></span></div>
 ${dropped}
-<p class="lead">お気に入りに登録した名前の公演は、この設定に関係なく出ます。</p>
 </details></div>`;
 }

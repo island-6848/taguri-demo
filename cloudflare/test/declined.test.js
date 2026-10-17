@@ -38,3 +38,28 @@ for (const word of ['ひとつめ', '俳優乙', 'オリジナル']) {
     } finally { sqlite.close(); }
   });
 }
+
+// 対象を選んで入れる出さない語（起案者の指示 2026-10-18）: 選んだ欄にだけ当てる
+test('a word with a target hides the stage only when that field has it', async () => {
+  const {env, sqlite} = setup();
+  for (const s of FIXTURE.sql) sqlite.exec(s);
+  const a = await signIn(env);
+  try {
+    await rateSeen(env, a, '終わった舞台', '2026-08-05', '103', '◎');
+    await rateSeen(env, a, '一日だけの舞台', '2026-09-05', '104', '×');
+    const rec = async () => (await step(env, a, {get: '/api/screen/recommend'})).body.body_html;
+    assert.match(await rec(), /<select id="dec-kind" aria-label="出さない語の対象"><option value="">すべて<\/option><option value="題名">題名<\/option>/);
+    // 「ひとつめ」は題名にあるが、人の名前ではない
+    assert.equal((await step(env, a, {post: '/api/decline', body: {action: 'add', word: 'ひとつめ', kind: '団体'}})).status, 200);
+    assert.match(await rec(), /data-stage="101"/);
+    assert.equal((await step(env, a, {post: '/api/decline', body: {action: 'add', word: 'ひとつめ', kind: '題名'}})).status, 200);
+    const html = await rec();
+    assert.doesNotMatch(html, /data-stage="101"/);
+    assert.ok(html.includes('<span class="tag" data-word="題名\tひとつめ">題名「ひとつめ」<button data-dec="remove">✕</button></span>'));
+    assert.deepEqual(JSON.parse(sqlite.prepare("SELECT value FROM app_setting WHERE key='declined'").get().value), ['団体\tひとつめ', '題名\tひとつめ']);
+    // 外すときは控えの形のまま届く
+    assert.equal((await step(env, a, {post: '/api/decline', body: {action: 'remove', word: '題名\tひとつめ'}})).status, 200);
+    assert.match(await rec(), /data-stage="101"/);
+    assert.equal((await step(env, a, {post: '/api/decline', body: {action: 'add', word: 'x', kind: '天気'}})).status, 400);
+  } finally { sqlite.close(); }
+});

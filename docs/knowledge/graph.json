@@ -1574,6 +1574,23 @@
    "verifies": []
   },
   {
+   "id": "dec-recommend-ui-1017",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-17",
+   "title": "出さない語に対象（題名・団体・人・劇場・題材・ジャンル）を付け、効かせ方はつまみを動かした時点で保存する。説明文・場所の欄・回答の押し口も直した",
+   "sources": [
+    "cloudflare/src/screens/lists.js",
+    "cloudflare/src/screens/prefs.js",
+    "cloudflare/src/screens/recommend.js",
+    "cloudflare/src/screens/weights.js",
+    "web/app.js",
+    "web/theme.css",
+    "cloudflare/test/declined.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-recommend-weights-worker",
    "type": "decision",
    "status": "adopted",
@@ -7028,6 +7045,21 @@
    "from": "dec-recommend-ui-1014b",
    "rel": "affects",
    "to": "dec-phone-nav-four"
+  },
+  {
+   "from": "dec-recommend-ui-1017",
+   "rel": "depends_on",
+   "to": "fix-declined-kind-tags"
+  },
+  {
+   "from": "dec-recommend-ui-1017",
+   "rel": "depends_on",
+   "to": "dec-recommend-filter-tiers"
+  },
+  {
+   "from": "dec-recommend-ui-1017",
+   "rel": "depends_on",
+   "to": "dec-recommend-weights-worker"
   },
   {
    "from": "dec-recommend-weights-worker",

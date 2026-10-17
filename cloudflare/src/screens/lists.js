@@ -54,6 +54,15 @@ export async function loadDeclared(ctx) {
   for (const f of results) if (out[f.kind] && !out[f.kind].includes(f.name)) out[f.kind].push(f.name);
   return out;
 }
+// 出さない語の対象（起案者の指示 2026-10-18「出さない語も、お気に入りと同様どれを対象に（ジャンルや人、団体など）を
+// 選んでから語を指定できるように」）。控えは '対象\t語'。対象の無い語（これまでに入れた語・理由の ✕ で足した語）は「すべて」
+export const DEC_KINDS = [['', 'すべて'], ['題名', '題名'], ['団体', '団体'], ['人', '人'], ['劇場', '劇場'], ['題材', '題材'], ['種類', 'ジャンル・形式']];
+const DEC_KIND_SET = new Set(DEC_KINDS.map(([k]) => k));
+/** '対象\t語' or '語' -> {kind, word} */
+export function decEntry(e) {
+  const i = String(e).indexOf('\t');
+  return i > 0 && DEC_KIND_SET.has(String(e).slice(0, i)) ? {kind: String(e).slice(0, i), word: String(e).slice(i + 1)} : {kind: '', word: String(e)};
+}
 /** app.load_declined */
 export async function loadDeclined(ctx) {
   const v = await readJson(ctx, DECLINED_KEY);
@@ -113,7 +122,17 @@ export function declaredLabels(m, declared) {
 /** recommend2.declined_hit */
 export function declinedWord(m, words) {
   const ws = m.ws ? m.ws.split('\n') : [];
-  return words.find(w => nz(w) && (m.blob.includes(nz(w)) || ws.some(x => x.includes(nz(w))))) || '';
+  for (const e of words) {
+    const {kind, word} = decEntry(e), w = nz(word);
+    if (!w) continue;
+    const hit = kind === '' ? (m.blob.includes(w) || ws.some(x => x.includes(w)))
+      : kind === '題名' ? nz(m.title || '').includes(w)
+        : kind === '団体' ? (m.gnz || '').includes(w)
+          : kind === '人' || kind === '劇場' ? m.blob.includes(w)
+            : kind === '題材' ? ws.some(x => x.includes(w)) : false;   // 種類は kindTagged が当てる
+    if (hit) return word;
+  }
+  return '';
 }
 
 /**
@@ -217,7 +236,11 @@ export async function nameHits(ctx, declared, words, {catalogue = false} = {}) {
   await wholePersonNames(ctx, hits, declared);
   const dec = new Map();
   if (words.length) {
-    const rows = await cardsMatching(ctx, words.flatMap(w => [['blob', nz(w)], ['ws', nz(w)]]));
+    const rows = await cardsMatching(ctx, words.flatMap(e => {
+      const {kind, word} = decEntry(e), w = nz(word);
+      return kind === '' ? [['blob', w], ['ws', w]] : kind === '団体' ? [['gnz', w]] : kind === '題材' ? [['ws', w]]
+        : kind === '種類' ? [] : [['blob', w]];
+    }));
     for (const [sid, m] of rows) {
       const w = declinedWord(m, words);
       const a = hits.get(sid)?.a || [];
@@ -238,7 +261,8 @@ export async function nameHits(ctx, declared, words, {catalogue = false} = {}) {
 /** stage_id -> the word, for the stages whose kind tags (CONTENT_AXES) are one of these words. */
 async function kindTagged(ctx, words) {
   const out = new Map();
-  const ws = [...new Set(words.map(w => String(w).trim()).filter(Boolean))];
+  // 対象が「すべて」か「ジャンル・形式」の語だけ
+  const ws = [...new Set(words.map(decEntry).filter(d => d.kind === '' || d.kind === '種類').map(d => d.word.trim()).filter(Boolean))];
   if (!ws.length) return out;
   const keys = ws.flatMap(w => CONTENT_AXES.map(axis => [axis, w]));
   for (const part of chunks(keys, 45)) {
@@ -488,17 +512,17 @@ export function kindOffBox(keys) {
 }
 
 export function declinedBox(words) {
-  const tags = words.map(w => `<span class="tag" data-word="${E(w)}">「${E(w)}」<button data-dec="remove">✕</button></span>`).join('');
+  const label = k => (DEC_KINDS.find(([v]) => v === k) || ['', ''])[1];
+  const tags = words.map(e => {
+    const {kind, word} = decEntry(e);
+    return `<span class="tag" data-word="${E(e)}">${kind ? `${E(label(kind))}` : ''}「${E(word)}」<button data-dec="remove">✕</button></span>`;
+  }).join('');
+  const kinds = DEC_KINDS.map(([v, t]) => `<option value="${E(v)}">${E(t)}</option>`).join('');
   return `<details class="pbox" id="declined">
 <summary>${ico('flag')}出さない語 <b>${words.length} 語</b></summary>
-<p class="lead">ここに入れた語が、題名・団体・劇場・出演者・題材・おすすめ理由の種類（形式・原作・ジャンルなど）のどれかに出てくる公演は、
-おすすめに出しません。公演を消してはいないので、語を外せば元に戻ります。
-お気に入りに登録した名前の公演は、この語に当たってもおすすめから外れません。
-<b>ただし、「主催」で登録した名前だけで出てきた公演は例外で、この語に当たれば外れます</b>
-（「主催」は劇場の自主公演をまとめて拾う登録なので、団体・人・作品・原作者のような
-狭い登録とは扱いが違います）。</p>
+<p class="lead">おすすめに表示しない言葉を設定できます。</p>
 ${words.length ? tags : '<p class="empty">まだ 1 つも外していません。</p>'}
-<div class="fav-add"><input id="dec-word" type="text"
+<div class="fav-add"><select id="dec-kind" aria-label="出さない語の対象">${kinds}</select> <input id="dec-word" type="text"
   placeholder="出さない語（例: バレエ）" size="22">
  <button data-dec="add">出さない</button><span class="said"></span></div>
 </details>`;
@@ -739,13 +763,19 @@ async function favouriteAction(b, ctx) {
 
 /** serve.on_decline (public user) */
 async function declineAction(b, ctx) {
-  const action = String(b.action ?? ''), word = String(b.word ?? '').trim().slice(0, 40);
+  const action = String(b.action ?? ''), kind = String(b.kind ?? '');
+  // 外すときは控えの形（'対象\t語'）のまま届く。足すときは対象と語が別々に届く
+  const raw = String(b.word ?? '').trim();
+  const {kind: k0, word: w0} = decEntry(raw);
+  const word = w0.trim().slice(0, 40);
   if (!['add', 'remove'].includes(action) || !word) throw new ValueError('action（add / remove）と word が要る');
+  if (!DEC_KIND_SET.has(kind)) throw new ValueError('対象がおかしい');
+  const entry = (k0 || kind) ? `${k0 || kind}\t${word}` : word;
   let cur = await loadDeclined(ctx);
-  if (action === 'add') { if (!cur.includes(word)) cur.push(word); } else cur = cur.filter(w => w !== word);
-  cur = [...new Set(cur.map(w => w.trim().slice(0, 40)).filter(Boolean))].slice(0, 200);
+  if (action === 'add') { if (!cur.includes(entry)) cur.push(entry); } else cur = cur.filter(w => w !== entry);
+  cur = [...new Set(cur.map(w => w.trim().slice(0, 60)).filter(Boolean))].slice(0, 200);
   await writeJson(ctx, DECLINED_KEY, cur);
-  return {body: {ok: true, word, n: cur.length}};
+  return {body: {ok: true, word, kind: k0 || kind, n: cur.length}};
 }
 
 /** 種類の理由を「使わない」にする・戻す（q-kind-reason-off）。key は '#原作\tオリジナル' の形 */
