@@ -980,3 +980,13 @@ a.pill.buy .go:not(#_){font-size:12px;margin-left:2px}
 .ticket.cmp .lp-k{color:var(--ink2);margin-right:.8em}
 .ticket.cmp .lp-v{color:var(--ink);font-variant-numeric:tabular-nums}
 .tourfull.v2 .lp-none{margin:0;font-size:12px;color:var(--ink2)}
+/* 公演カレンダーの「○日 に行きます」: 次の行の題名と同じ太字で詰まって見えたので、太さを落とし、
+   下にすき間を空けて次の公演と分ける（起案者の指示 2026-10-17） */
+.mgrid .nm .go:not(#_){font-weight:500;color:var(--ink2);margin:2px 0 0}
+.mgrid .nm:has(.go):not(#_){padding-bottom:10px}
+/* 題名の列を、行の高さいっぱい・行の間（3px）まで紙の色で埋める。横に送ったとき、今日の線や
+   ほかの行の帯が題名の上下のすき間から透けて、列が留まっていないように見えていた（起案者の指示 2026-10-17）。
+   右端に細い線を引いて、留まっている列だと分かるようにする */
+.mgrid .nm:not(#_){align-self:stretch;display:flex;flex-direction:column;justify-content:center;
+ box-shadow:0 3px 0 var(--plane),inset -1px 0 0 var(--grid)}
+.mgrid .hc:not(#_){box-shadow:0 3px 0 var(--plane),inset -1px 0 0 var(--grid)}

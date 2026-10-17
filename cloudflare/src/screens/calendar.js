@@ -180,7 +180,6 @@ export function panel(d, today, tickets, selKinds = null, selPrefs = null) {
   const tail = over.length ? `<p class="lead"><b>${over.length} 件は ${MAX_MONTHS} か月より先なので、このカレンダーには表示していません。</b>「おすすめ ▸ 興味あり／お気に入り」の一覧には出ているので、そちらで確認してください。</p>` : '';
   return `${filt}${unknown}<p class="lead">帯の<b>右端が楽日</b>、つまり締切です。縦に目を落とすと、その日に何本かかっているかが数えられます。<b>土曜は青、日曜は赤</b>で示してあります。</p>`
     + `<div class="cal-legend">${legend}</div>`
-    + '<p class="calnote"><b>券を持っている公演は、行く日を入れるとその日が半券の形で帯から抜けて見えます。</b>入れていないものは帯だけで出しますので、<b>「この期間のどこかに行く」という意味</b>になります。印の付いていない日が空いているという意味ではありません。</p>'
     + `${blocks}${tail}${CALENDAR_JS}`;
 }
 
@@ -264,7 +263,6 @@ export async function calendarScreen(params, ctx) {
   const prefs = params.getAll('pref').filter(p => PREFS.includes(p));
   const body = `<h1>公演カレンダー</h1>
 ${addTicketButtonHtml(d, ctx.today, b.tickets)}
-<p class="lede">券を持っている公演、「興味あり」を押した公演、お気に入りに当たった公演を、上演期間の帯で並べています。<b>いつまで観られるか</b>が1枚で分かります。券を持っている公演は、行く日を入れるとその日が半券の形で出ます。</p>
 ${panel(d, ctx.today, b.tickets, kinds.length ? new Set(kinds) : null, prefs.length ? new Set(prefs) : null)}`;
   return {title: '公演カレンダー', body_html: body};
 }
