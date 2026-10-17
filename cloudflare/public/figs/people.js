@@ -684,7 +684,7 @@ export function panel(rated) {
   const cutsByDeg = [...g.cuts].sort((a, b) => g.adj.get(b).size - g.adj.get(a).size);
   const cutBtns = cutsByDeg.map(p =>
     `<button data-cut="${idx.get(p)}">${E(p)}<span class="cn">`
-    + `${components(g, [p]).length} つに割れる</span></button>`).join('');
+    + `${components(g, [p]).length} つに分かれる</span></button>`).join('');
   const cutTxt = !g.cuts.length ? 'このつながりには、外すとグループが分かれる人がいません。'
     : `<b>外すとつながりが分かれるのは、この ${g.cuts.length} 名です。</b>`
       + '名前を押すと、その人を図から外したときに残りがどう分かれるかが出ます。';
@@ -710,9 +710,9 @@ export function panel(rated) {
     + `さかのぼるとこの分（${tl.gap_people} 名）はつながりから外れます。`
     + '<a href="/records/works?t=__TAGURI_TOKEN__">日記帳</a>の「公演詳細を直す」から'
     + '日付を入れると載ります。';
-  const unchangedTxt = `このつまみに出るのは、つながりが変わった ${nStages} 件です。<b>残り ${nUnchanged} 件は、`
+  const unchangedTxt = `このつまみに出るのは、つながりが変わった ${nStages} 件です。<b>残り ${nUnchanged} 件は`
     + '観た日につながりが変わらなかった公演です。</b>'
-    + `${u.not_yet} 件は、そのときまだ 1 回しか観ていない人ばかりの公演です`
+    + `${u.not_yet} 件はそのときまだ 1 回しか観ていない人ばかりの公演です`
     + '（同じ人をもう 1 本観た日に、図に入りました）。'
     + `${u.repeat} 件は同じ顔ぶれをもう一度観た公演、${u.no_credit} 件は出演者が`
     + '取れていない公演です。'
@@ -736,7 +736,7 @@ ${g.nodes.length} 名のうち、線を持つ ${ns.length} 名</b>を出して�
 （全員は ${g.n_people} 名です）。${isoTxt}</p>
 <p class="lead">この図で分かるのは、<b>グループがいくつあるか</b>と、
 <b>どの人がグループをつないでいるか</b>です。
-いまは、線を持つ ${ns.length} 名が
+いまは線を持つ ${ns.length} 名が
 <b>${comps.length === 1 ? 'ひと続きのグループです' : `${comps.length} 個のグループに分かれています`}</b>。
 ${cutTxt}</p>
 ${readBlock}
@@ -757,8 +757,8 @@ ${timeBlock}
 <span class="ky"><span class="sw ring"></span>外すとグループが分かれる人</span>
 <span class="ky">点の大きさ ＝ 観た作品数</span>
 <span class="ky">線の太さ ＝ 共演した作品数</span></p>
-<p class="lead"><b>点はつまんで動かせます。</b>触れるとその人の線だけが浮きます
-（下の表の行に触れても同じところが浮きます）。評価は色にも大きさにも入れていません。
+<p class="lead"><b>点はつまんで動かせます。</b>触れるとその人の線だけが浮きます。
+下の表の行に触れても、同じところが浮きます。評価は色にも大きさにも入れていません。
 気になる人がいたら、<a href="/recommend/favourites?t=__TAGURI_TOKEN__">お気に入り</a>に
 名前で登録してください。<br>
 <b>作り手が分かったのは、評価済み ${g.n_rated} 作品のうち ${g.n_works} 件です。</b>

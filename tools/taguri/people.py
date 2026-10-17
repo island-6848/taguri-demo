@@ -757,7 +757,7 @@ def panel(rated: list[dict], *, owner: bool = True) -> str:
     # **外すと何束に割れるかは、押す前に計算して書く**（探す仕事を読み手に投げない）
     cut_btns = "".join(
         f'<button data-cut="{idx[p]}">{E(p)}<span class="cn">'
-        f'{len(components(g, {p}))} つに割れる</span></button>'
+        f'{len(components(g, {p}))} つに分かれる</span></button>'
         for p in sorted(g["cuts"], key=lambda q: -len(g["adj"][q])))
     cut_txt = ("このつながりには、外すとグループが分かれる人がいません。" if not g["cuts"] else
                f'<b>外すとつながりが分かれるのは、この {len(g["cuts"])} 名です。</b>'
@@ -807,9 +807,9 @@ def panel(rated: list[dict], *, owner: bool = True) -> str:
         f'<a href="/records/works?t=__TAGURI_TOKEN__">日記帳</a>の「公演詳細を直す」から'
         '日付を入れると載ります。')
     unchanged_txt = (
-        f'このつまみに出るのは、つながりが変わった {n_stages} 件です。<b>残り {n_unchanged} 件は、'
+        f'このつまみに出るのは、つながりが変わった {n_stages} 件です。<b>残り {n_unchanged} 件は'
         '観た日につながりが変わらなかった公演です。</b>'
-        f'{u["not_yet"]} 件は、そのときまだ 1 回しか観ていない人ばかりの公演です'
+        f'{u["not_yet"]} 件はそのときまだ 1 回しか観ていない人ばかりの公演です'
         '（同じ人をもう 1 本観た日に、図に入りました）。'
         f'{u["repeat"]} 件は同じ顔ぶれをもう一度観た公演、{u["no_credit"]} 件は出演者が'
         '取れていない公演です。'
@@ -835,7 +835,7 @@ def panel(rated: list[dict], *, owner: bool = True) -> str:
 （全員は {g["n_people"]} 名です）。{iso_txt}</p>
 <p class="lead">この図で分かるのは、<b>グループがいくつあるか</b>と、
 <b>どの人がグループをつないでいるか</b>です。
-いまは、線を持つ {len(ns)} 名が
+いまは線を持つ {len(ns)} 名が
 <b>{"ひと続きのグループです" if len(comps) == 1 else f"{len(comps)} 個のグループに分かれています"}</b>。
 {cut_txt}</p>
 {read_block}
@@ -856,8 +856,8 @@ def panel(rated: list[dict], *, owner: bool = True) -> str:
 <span class="ky"><span class="sw ring"></span>外すとグループが分かれる人</span>
 <span class="ky">点の大きさ ＝ 観た作品数</span>
 <span class="ky">線の太さ ＝ 共演した作品数</span></p>
-<p class="lead"><b>点はつまんで動かせます。</b>触れるとその人の線だけが浮きます
-（下の表の行に触れても同じところが浮きます）。評価は色にも大きさにも入れていません。
+<p class="lead"><b>点はつまんで動かせます。</b>触れるとその人の線だけが浮きます。
+下の表の行に触れても、同じところが浮きます。評価は色にも大きさにも入れていません。
 気になる人がいたら、<a href="/recommend/favourites?t=__TAGURI_TOKEN__">お気に入り</a>に
 名前で登録してください。<br>
 <b>作り手が分かったのは、評価済み {g["n_rated"]} 作品のうち {g["n_works"]} 件です。</b>

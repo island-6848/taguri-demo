@@ -301,7 +301,7 @@ test('たどる: a name seen in two stages becomes a thread', async () => {
   const {env, sqlite} = withIndex();
   const a = await signIn(env);
   try {
-    assert.match((await screen(env, a, 'trace')).body_html, /2 つ以上の公演で観た名前が、まだありません/);
+    assert.match((await screen(env, a, 'trace')).body_html, /2 つ以上の公演で観た名前がまだありません/);
     for (const [t, d, sid] of [['終わった舞台', '2026-08-05', '103'], ['舞台ひとつめ', '2026-11-02', '101']]) {
       const key = (await step(env, a, {post: '/api/add_work', body: {title: t, date: d}})).body.work_key;
       await step(env, a, {post: '/api/link_stage', body: {work_key: key, stage_id: sid}});

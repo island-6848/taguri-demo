@@ -148,7 +148,7 @@ function figure(f) {
     + `${grid.join('')}${rowsSvg.join('')}${dots.join('')}</svg></div>`
     + '<div class="legend chleg"><span class="lg"><svg width="13" height="13" viewBox="0 0 13 13" aria-hidden="true"><circle class="dot on" cx="6.5" cy="6.5" r="4.5"/></svg>' + topOf(marks) + ' を付けた作品</span>'
     + '<span class="lg"><svg width="13" height="13" viewBox="0 0 13 13" aria-hidden="true"><circle class="dot" cx="6.5" cy="6.5" r="4.5"/></svg>そのほかの作品</span>'
-    + '<span class="lgn">行は劇場です。<b>初めて行った順</b>に上から並べていますので、<b>行の始まりと終わりが、通い始めた時期と途切れた時期です。</b>'
+    + '<span class="lgn">行は劇場です。<b>初めて行った順</b>に上から並べているので、<b>行の始まりと終わりが通い始めた時期と途切れた時期です。</b>'
     + `${LANE_MIN} 回以上行った ${big.length} 館（${nLane} 作品）を 1 行ずつにし、1 回だけの劇場は下に 1 行でまとめています。</span></div>`
     + table(['劇場', ...yrs.map(y => `${y} 年`), '計'], tbl);
 }

@@ -263,7 +263,7 @@ def pop_note(rated: list[dict]) -> str:
            f'{d["last"].year} 年 {d["last"].month} 月）')
     return f"""<section class="card">
 <h2>比べる相手は何か</h2>
-<p class="why"><b>比べる相手は、演劇の情報サイト CoRich に載っている
+<p class="why"><b>比べる相手は演劇の情報サイト CoRich に載っている
 「これから上演される公演」{d["n"]} 件です</b>{per}。
 内訳は、初日前が {d["n_upcoming"]} 件、上演中が {d["n_running"]} 件、
 最近終わった分が {d["n_ended"]} 件です。</p>
@@ -358,7 +358,7 @@ def panel(rated: list[dict], *, owner: bool = True) -> str:
 <p class="note">あなたの側はクレジットの取れた <b>{km} 作品</b>、比べる相手は
 <b>{kw} 件</b>です。<b>{MIN_MINE} 件に満たない行は薄く表示しています。</b>
 件数が少ないと、倍率が大きく振れるためです。
-クレジットに欄が無いだけで実際には翻訳劇である公演は、数えられていません。</p>
+実際には翻訳劇でも、クレジットに欄が無い公演は数えられていません。</p>
 </section>""")
 
     if not out:

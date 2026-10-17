@@ -362,7 +362,7 @@ def pick_panel(g: dict) -> str:
     """
     ps = picks(g)
     if not ps:
-        return ('<section class="card"><p class="empty">2 つ以上の公演で観た名前が、'
+        return ('<section class="card"><p class="empty">2 つ以上の公演で観た名前が'
                 'まだありません。観た記録が増えると出るようになります。</p></section>')
     rows = "".join(
         f'<li><a href="{HREF}&amp;name={E(_q(p["name"]))}" class="pk">'
@@ -377,11 +377,11 @@ def pick_panel(g: dict) -> str:
 {IC.h2("light", "どの名前をたどりますか",
        f'<span class="badge part">{len(ps)} 名</span>')}
 <p class="lead"><b>2 つ以上の公演で観た名前です。</b>お気に入りに登録していない名前を先に、
-そのなかで<b>最初に観た日から最後に観た日までが長い順</b>に並べています
-（登録済みの {n_dec} 名は、すでにご存じの名前なので後ろにしています）。</p>
+そのなかで<b>最初に観た日から最後に観た日までが長い順</b>に並べています。
+登録済みの {n_dec} 名はすでにご存じの名前なので後ろにしています。</p>
 <div class="pk-search">{IC.ico("search", 15)}
 <input type="text" data-pk-filter="1" placeholder="名前で絞り込む" autocomplete="off"
- aria-label="つまむ相手を名前で絞り込む"></div>
+ aria-label="たどる名前を絞り込む"></div>
 <ol class="picks">{rows}</ol>
 <p class="empty pk-none" hidden>その名前は見つかりませんでした。</p></section>"""
 
@@ -395,7 +395,7 @@ def thread_panel(g: dict, name: str, trail: list[str]) -> str:
     rows = g["threads"].get(name)
     if not rows:
         return (f'<section class="card"><p class="empty">'
-                f'<b>{E(name)}</b>の記録は、上演日のあるものが 2 件そろっていません。'
+                f'<b>{E(name)}</b>の記録には、上演日のあるものが 2 件そろっていません。'
                 f'この線は 2 件目から引けます。</p></section>')
     brs = branches(g, name)
     # **枝を押したときは、たどってきた道を持ち回る。** 道が消えると「どこから来たか」が
