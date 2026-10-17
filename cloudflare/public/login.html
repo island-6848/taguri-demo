@@ -9,7 +9,7 @@
 <link rel="stylesheet" href="/auth.css">
 </head>
 <body class="auth">
-<header class="auth-top"><a class="brand" href="/login"><svg class="tgm " viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-linecap="round" aria-hidden="true"><path d="M11.0 4.5V19.5" stroke-width="1.6"/><path d="M14.5 4.5V19.5" stroke-width="1.6"/><path d="M18.0 4.5V19.5" stroke-width="1.6"/><path d="M21.5 4.5V19.5" stroke-width="1.6"/><path d="M11 4.5C10.4 12 8.6 16 4.4 17.6" stroke-width="2.45"/><circle cx="4.4" cy="17.6" r="2.15" fill="currentColor" stroke="none"/></svg><span>たぐり</span></a><nav><a class="nav-about" href="#about">たぐりとは</a><a href="#login">ログイン</a><a href="https://island-6848.github.io/taguri-demo/docs/000010-user-guide-taguri.html" rel="noopener">使い方ガイド</a></nav></header>
+<header class="auth-top"><a class="brand" href="/login"><svg class="tgm " viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-linecap="round" aria-hidden="true"><path d="M11.0 4.5V19.5" stroke-width="1.6"/><path d="M14.5 4.5V19.5" stroke-width="1.6"/><path d="M18.0 4.5V19.5" stroke-width="1.6"/><path d="M21.5 4.5V19.5" stroke-width="1.6"/><path d="M11 4.5C10.4 12 8.6 16 4.4 17.6" stroke-width="2.45"/><circle cx="4.4" cy="17.6" r="2.15" fill="currentColor" stroke="none"/></svg><span>たぐり</span></a></header>
 <main class="auth-main acct">
 <section id="about" class="auth-card about">
 <h1>観たかった舞台を、見逃さない。</h1>
@@ -35,6 +35,7 @@
 </figure>
 <p class="guide"><a href="https://island-6848.github.io/taguri-demo/docs/000010-user-guide-taguri.html" rel="noopener">使い方ガイドを読む（GitHub）</a></p>
 </section>
+<div class="auth-col">
 <section id="delete-intro" class="auth-card danger-zone" hidden>
 <h1>アカウントの削除</h1>
 <p>たぐりに保存しているあなたのデータを、すべて削除します。<b>元に戻せません。</b>必要なら、先に「設定」の「書き出す」で記録を保存してください。</p>
@@ -68,6 +69,7 @@
 <div class="block"><button id="copy-recovery" type="button" class="wide">コピーする</button><button id="recovery-done" type="button" class="wide primary">控えました</button></div>
 </section>
 <p class="auth-foot"><a href="https://island-6848.github.io/taguri-demo/docs/000010-user-guide-taguri.html" rel="noopener">使い方ガイド</a></p>
+</div>
 </main>
 <script type="module" src="/vendor/firebase-login.js"></script>
 </body>
