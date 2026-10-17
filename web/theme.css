@@ -233,6 +233,11 @@ body{font-family:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",YuGothic,syst
 .ticket.cmp.moreopen .lcast .lrest{display:inline}
 .ticket.cmp.moreopen .lcast .n{display:none}
 .ticket.cmp .lsyn .lv{color:var(--ink2)}
+/* あらすじを理由（.why: 左に幕の色の太線＋塗り）と同じ形の枠で囲う。目立ち方は理由より下にする
+   （起案者の指示 2026-10-17「おすすめ理由みたいに囲って目立つようにして。でも理由より目立たせたらだめ」）:
+   左の線は灰色、塗りは無し、細い枠だけ */
+.ticket.cmp .leadbox .lsyn{margin:4px 0 0;padding:7px 10px;border:1px solid var(--grid);border-left:3px solid var(--grid);
+ border-radius:0 8px 8px 0;background:none}
 .ticket.cmp .rs{font-size:12.5px;line-height:1.55;padding:2px 0}
 .ticket.cmp .rs .n{font-size:11px}
 .ticket.cmp .why.fold>li:nth-child(n+4){display:none}
