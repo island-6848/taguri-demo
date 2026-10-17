@@ -1,7 +1,7 @@
 ---
 id: q-mamelon-license
 type: question
-status: open
+status: answered
 date: 2026-10-18
 title: マメロンを Web フォントとしてサイトに置いて配ってよいか（ライセンス）と、ファイルをどこから取るか
 sources:
@@ -14,3 +14,5 @@ links:
 - 確かめること: 公式の配布ページ（moji-waku.com/mamelon/）の利用規約で、Web フォントとしての埋め込み・サーバーに置いての配信が許されているか。許されていれば、ファイルを web/assets/fonts/mamelon/ に置き、theme.css に @font-face を足す（woff2 にして、必要なら文字を絞る）
 - このセッションからは配布元に接続できない。起案者がファイルを置くか、環境の許可するドメインに moji-waku.com を足す
 - 許されていなければ、近い形の「キウイ丸」（OFL）を候補にする
+
+答え（2026-10-18）: 配布ファイルの readme で Web フォントでの利用が認められていた（〔font-trial〕の追記）。二次配布を避けるため、公開リポジトリには入れずに R2 から配る。詳しい規約のページ（mj_work_license）は未読のまま

@@ -436,11 +436,52 @@ def analyze_now(db: D1, data: Path, sids: list[str] | None = None, run=run_claud
     return apply_answers(db, data, parse_answer(run(prompt_for(tasks))), by="Claude Code（管理画面から）")
 
 
+# ── 本文のお試しの文字（マメロン）を R2 に置く（起案者の回答 2026-10-18「R2 から配る」「太さ 3」）──
+# 配布元の readme は Web フォントでの利用を認め（ファイル名は変えてよい）、無断での改変・二次配布は控えるよう求めている。
+# 公開リポジトリには入れず、ファイルは変換せずに R2 に置き、Worker の /img/<名前>（ログインした人だけ）で配る。
+# theme.css の @font-face が /img/mamelon-3-hi-regular.otf を読む
+FONT_KEY = "mamelon-3-hi-regular.otf"
+FONT_MAX = 10 * 1024 * 1024
+
+
+def upload_font(data: Path, src: Path, *, put=None) -> dict:
+    body = Path(src).read_bytes()
+    if not body[:4] in (b"OTTO", b"\x00\x01\x00\x00", b"true"):
+        raise AdminError("OpenType（.otf / .ttf）のフォントのファイルを選んでください")
+    if len(body) > FONT_MAX:
+        raise AdminError("フォントのファイルが大きすぎます（10 MB まで）")
+    u = FT.load(data)
+    if FT.r2_bytes(u) + len(body) > FT.CAPS["r2_bytes"] or FT.r2_class_a(u) + 1 > FT.CAPS["r2_class_a_month"]:
+        raise AdminError("R2 の上限に届くので止めました（R2 は越えると請求されるため）")
+    u["r2"]["class_a"][FT.month()] = FT.r2_class_a(u) + 1       # 送る前に数える
+    FT.save(data, u)
+    account, token = os.environ.get("CLOUDFLARE_ACCOUNT_ID", ""), os.environ.get("CLOUDFLARE_API_TOKEN", "")
+    if put is None:
+        if not account or not token:
+            raise AdminError("CLOUDFLARE_ACCOUNT_ID と CLOUDFLARE_API_TOKEN（R2 の書き込み権限）を環境変数に入れてください")
+        put = DP.put_object
+    ctype = "font/otf" if body[:4] == b"OTTO" else "font/ttf"
+    put(account, token, BUCKET, FONT_KEY, body, ctype)
+    u = FT.load(data)
+    u["r2"]["sizes"][FONT_KEY] = len(body)
+    FT.save(data, u)
+    data.mkdir(parents=True, exist_ok=True)
+    with (data / LOG).open("a", encoding="utf-8") as f:
+        f.write(json.dumps({"at": now_iso(), "stage_id": "", "action": "font", "detail": {"key": FONT_KEY, "bytes": len(body), "from": Path(src).name}}, ensure_ascii=False) + "\n")
+    return {"key": FONT_KEY, "bytes": len(body)}
+
+
 def main(argv: list[str]) -> int:
     """Claude Code のセッションから積んだ読み取りを片付ける:
       python3 tools/admin/admin.py queue           積んだ読み取りと、そのまま読める指示を出す
       python3 tools/admin/admin.py answer FILE     答え（JSON）を確かめて D1 と記録に書く
+    本文のお試しの文字（マメロン 3）を R2 に置く（1 回だけ）:
+      python3 tools/admin/admin.py font Mamelon-3-Hi-Regular.otf
     """
+    if len(argv) >= 2 and argv[0] == "font":
+        r = upload_font(DATA, Path(argv[1]))
+        print(f"R2 に入れました: {r['key']}（{r['bytes']:,} バイト）。次に開いた画面から本文がマメロンになります")
+        return 0
     if len(argv) >= 1 and argv[0] == "queue":
         tasks = queue_list(DATA)
         print(prompt_for(tasks) if tasks else "積んだ読み取りはありません")

@@ -142,6 +142,20 @@ class AdminTest(unittest.TestCase):
         with self.assertRaises(A.AdminError):
             A.resolve(self.d1, self.data, 1, "maybe")
 
+    def test_the_body_font_goes_to_r2_unchanged_and_counted(self):
+        f = self.data / "Mamelon-3-Hi-Regular.otf"
+        f.write_bytes(b"OTTO" + b"x" * 100)
+        put = []
+        r = A.upload_font(self.data, f, put=lambda a, t, b, k, body, ct: put.append((k, ct, body)))
+        self.assertEqual((r["key"], put[0][0], put[0][1], put[0][2]), ("mamelon-3-hi-regular.otf", "mamelon-3-hi-regular.otf", "font/otf", f.read_bytes()))
+        u = A.FT.load(self.data)
+        self.assertEqual(u["r2"]["sizes"]["mamelon-3-hi-regular.otf"], 104)
+        self.assertEqual(A.read_log(self.data)[0]["action"], "font")
+        bad = self.data / "x.otf"
+        bad.write_bytes(b"not a font")
+        with self.assertRaises(A.AdminError):
+            A.upload_font(self.data, bad, put=lambda *a: None)
+
     def test_sql_values_are_quoted(self):
         A.save(self.d1, self.data, "101", synopsis="it's 「引用」'); DROP TABLE poster; --")
         self.assertEqual(self.fake.db.execute("SELECT synopsis FROM stage_override").fetchone()[0], "it's 「引用」'); DROP TABLE poster; --")
