@@ -1014,3 +1014,12 @@ a.pill.buy .go:not(#_){font-size:12px;margin-left:2px}
 .ttb-legend:not(#_){font-size:12px}
 /* ⓘ の中に移した公演カレンダーの注記は、ほかの説明の段落と同じ体裁にする（左の線・小さい字をやめる） */
 .infopop .calnote:not(#_){border-left:0;padding:0;font-size:14px;color:inherit;margin:8px 0 0}
+
+/* 出せる候補に答え終えたとき（recommend.js THANKS） */
+.card.thx{text-align:center}
+.card.thx .thx-art{display:block;margin:4px auto 6px;max-width:100%;height:auto}
+.card.thx .thx-h{font-family:var(--mincho);font-size:1.2em;font-weight:700;margin:4px 0 2px;color:var(--ink)}
+.card.thx .thx-s{color:var(--mute);margin:0 0 14px}
+.card.thx h2{font-size:1em;margin:10px 0 6px;text-align:left}
+.card.thx ol{text-align:left;margin:0;padding-left:1.6em;line-height:1.7}
+.card.thx li{margin:2px 0}

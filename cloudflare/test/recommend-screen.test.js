@@ -53,10 +53,12 @@ test('a ◎ on a stage recommends the coming stage of the same people, with the 
     assert.match(html, /<button data-v="interest">興味あり<\/button>/);
     // The other user sees none of it.
     assert.doesNotMatch((await step(env, b, {get: '/api/screen/recommend'})).body.body_html, /<article/);
-    // Prefecture filter: saved with ?f=1, applied on the next visit, cleared by an empty ?f=1.
+    // Prefecture filter: ?f=1 holds it for this page only (not saved), an empty ?f=1 is 全国.
     const osaka = (await step(env, a, {get: '/api/screen/recommend?f=1&pref=' + encodeURIComponent('大阪府')})).body.body_html;
     assert.match(osaka, /<h1>大阪府のおすすめはありません<\/h1>/);
-    assert.match((await step(env, a, {get: '/api/screen/recommend'})).body.body_html, /いまは<b>大阪府（1 県）<\/b>/);
+    assert.match(osaka, /<input type="hidden" name="f" value="1"><input type="hidden" name="pref" value="大阪府">\n<input type="text" name="find"/);
+    assert.match((await step(env, a, {get: '/api/screen/recommend'})).body.body_html, /いまは<b>全国<\/b>/);
+    assert.equal(sqlite.prepare("SELECT count(*) AS n FROM app_setting WHERE key='recommend_prefs'").get().n, 0);
     const tokyo = (await step(env, a, {get: '/api/screen/recommend?f=1&pref=' + encodeURIComponent('東京都')})).body.body_html;
     assert.match(tokyo, /<h1>東京都のおすすめ 1 件<\/h1>/);
     assert.match((await step(env, a, {get: '/api/screen/recommend?f=1'})).body.body_html, /いまは<b>全国<\/b>/);
@@ -81,8 +83,14 @@ test('answering a card takes it out of the recommendations, for this user only',
     const fill = await step(env, a, {post: '/api/react', body: {stage_id: '101', fill_only: true, shown: ['101']}});
     assert.equal(fill.body.fill.html, '');
     assert.match(fill.body.fill.said, /入れ替える候補はもうありません/);
-    assert.match((await step(env, a, {get: '/api/screen/recommend'})).body.body_html, /<h1>今週のおすすめはありません<\/h1>/);
-    assert.match((await step(env, b, {get: '/api/screen/recommend'})).body.body_html, /data-stage="101"/);
+    // Every candidate answered: the thank-you block with its advice, not the new-user tips
+    const doneHtml = (await step(env, a, {get: '/api/screen/recommend'})).body.body_html;
+    assert.match(doneHtml, /<h1>今週のおすすめは、すべて答えました<\/h1>/);
+    assert.match(doneHtml, /回答ありがとうございました[\s\S]*過去の観劇記録を足す/);
+    assert.doesNotMatch(doneHtml, /おすすめを出すためのワンポイント|<template id="rec-thanks-t">/);
+    const bHtml = (await step(env, b, {get: '/api/screen/recommend'})).body.body_html;
+    assert.match(bHtml, /data-stage="101"/);
+    assert.match(bHtml, /<template id="rec-thanks-t"><section class="card thx"/);
     // A note alone is saved without answering; bad input is refused.
     assert.equal((await step(env, b, {post: '/api/react', body: {stage_id: '101', note: '俳優甲が観たい'}})).status, 200);
     assert.match((await step(env, b, {get: '/api/screen/recommend'})).body.body_html, /data-stage="101"/);

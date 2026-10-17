@@ -112,7 +112,7 @@ test('購入済み shows owned stages with their tickets; an ended one moves to 
   } finally { sqlite.close(); }
 });
 
-test('開幕リマインド: every stage opening this week, with the shared prefecture filter', async () => {
+test('開幕リマインド: every stage opening this week, with a prefecture filter of its own page', async () => {
   const {env, sqlite} = withIndex();
   const a = await signIn(env);
   try {
@@ -130,9 +130,16 @@ test('開幕リマインド: every stage opening this week, with the shared pref
     assert.match(answered, /<li class="dgli dgfold trk" data-stage="101">/);
     // 答えた公演は「回答を直す」1 つ（押すと三択が開く）。
     assert.match(answered, /<button class="wnb" data-btns-open="1">回答を直す<\/button><span class="btns" hidden data-stage="101">/);
-    // The filter chosen here applies to おすすめ too.
-    await screen(env, a, 'reminder', '?w=next&f=1&pref=' + encodeURIComponent('大阪府'));
-    assert.match((await screen(env, a, 'recommend')).body_html, /いまは<b>大阪府（1 県）<\/b>/);
+    // The filter chosen here stays on this page only (起案者の指示 2026-10-17): the week tabs carry it,
+    // おすすめ and the next visit use the 設定 default.
+    const osaka = (await screen(env, a, 'reminder', '?w=next&f=1&pref=' + encodeURIComponent('大阪府'))).body_html;
+    assert.match(osaka, /いまは<b>大阪府（1 県）<\/b>/);
+    assert.match(osaka, /href="\/recommend\/reminder\?t=__TAGURI_TOKEN__&w=this&amp;f=1&amp;pref=%E5%A4%A7%E9%98%AA%E5%BA%9C"/);
+    assert.match((await screen(env, a, 'recommend')).body_html, /いまは<b>全国<\/b>/);
+    assert.match((await screen(env, a, 'reminder', '?w=next')).body_html, /いまは<b>全国<\/b>/);
+    await step(env, a, {post: '/api/pref_setting', body: {prefs: ['大阪府']}});
+    assert.match((await screen(env, a, 'reminder', '?w=next')).body_html, /いまは<b>大阪府（1 県）<\/b>/);
+    assert.match((await screen(env, a, 'reminder', '?w=next&f=1')).body_html, /いまは<b>全国<\/b>/);
   } finally { sqlite.close(); }
 });
 

@@ -21,3 +21,5 @@ links:
 - 県の絞り込みはおすすめと共有（app_setting の recommend_prefs）。地図はまだ
 - アイコンは tools/taguri/icons.py から scripts/write_icons.py で src/screens/icons.js に書き出し、icons.test.js がずれを見張る
 無料枠: 画面を開くたびに、2 週間ぶんの初日の公演（索引で数百行まで）と、答え・券・お気に入りの照合（lists.js と同じ）を読む。
+
+追記（2026-10-17）: ページで選んだ県の絞り込みは保存せず、そのページの中（URL）だけで効くように変えた。recommend_prefs は書かない・読まない〔dec-page-pref-filter〕

@@ -1294,6 +1294,22 @@
    "verifies": []
   },
   {
+   "id": "dec-page-pref-filter",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-17",
+   "title": "ページで選んだ県の絞り込みは、そのページの中だけで効かせる（保存するのは設定の県だけ）",
+   "sources": [
+    "cloudflare/src/screens/prefs.js",
+    "cloudflare/src/screens/recommend.js",
+    "cloudflare/src/screens/reminder.js",
+    "web/app.js",
+    "cloudflare/test/lists-screen.test.js",
+    "cloudflare/test/recommend-screen.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-part-tiers-tome",
    "type": "decision",
    "status": "superseded",
@@ -2661,6 +2677,19 @@
    "sources": [
     "cloudflare/src/screens/recommend.js",
     "cloudflare/test/recommend-find.test.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "impl-recommend-thanks",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-17",
+   "title": "おすすめに答え終えたら「回答ありがとうございました」の絵と、また出るようにするためのワンポイントを出す",
+   "sources": [
+    "cloudflare/src/screens/recommend.js",
+    "web/app.js",
+    "cloudflare/test/recommend-screen.test.js"
    ],
    "verifies": []
   },
@@ -6418,6 +6447,16 @@
    "to": "q-domain"
   },
   {
+   "from": "dec-page-pref-filter",
+   "rel": "affects",
+   "to": "dec-settings-worker"
+  },
+  {
+   "from": "dec-page-pref-filter",
+   "rel": "affects",
+   "to": "dec-reminder-worker"
+  },
+  {
    "from": "dec-part-tiers-tome",
    "rel": "answers",
    "to": "q-part-importance-overlap"
@@ -7621,6 +7660,16 @@
    "from": "impl-recommend-find",
    "rel": "affects",
    "to": "new-user-reco-threshold"
+  },
+  {
+   "from": "impl-recommend-thanks",
+   "rel": "affects",
+   "to": "new-user-reco-threshold"
+  },
+  {
+   "from": "impl-recommend-thanks",
+   "rel": "depends_on",
+   "to": "impl-recommend-find"
   },
   {
    "from": "impl-search-past-stages",

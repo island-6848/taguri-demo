@@ -40,7 +40,7 @@
 | お気に入り | `favourites.name` `kind` | 名義 | 人・団体・作品・原作者・主催・題材 |
 | 出さない語・使わない理由 | `app_setting.declined` `kind_off` | 名義 | |
 | 効かせ方 | `rank_weight` | 順序 | 推薦の効き具合の段 |
-| 県の絞り込み | `app_setting.pref_filter` `recommend_prefs` | 名義 | よく観に行く地域 |
+| 県の絞り込み | `app_setting.pref_filter`（`recommend_prefs` は 2026-10-17 から書かない・読まない） | 名義 | よく観に行く地域 |
 | 開いた画面 | `viewed` | 名義・定量（日時） | どのまとまりを最初にいつ見たか |
 | 来場メモ | `visit_note` | 自由記述 | |
 | 探してほしい公演 | `search_request` | 自由記述 | |

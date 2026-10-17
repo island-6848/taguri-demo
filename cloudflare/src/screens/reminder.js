@@ -10,7 +10,7 @@ import {buttons, changeAnswer, posterHtml, cardTemplates} from './cards.js';
 import {stageInfo, detailHtml, detailFromCard} from './fallback.js';
 import {indexTabs} from './rate.js';
 import {nz, buckets} from './lists.js';
-import {prefsFor, prefForm, regionCounts} from './prefs.js';
+import {prefsFor, prefForm, prefQs, regionCounts} from './prefs.js';
 
 export const WINDOW = 7, TICKET_MAX = 6;
 export const WEEKS = [['this', '今週'], ['next', '来週']];
@@ -199,12 +199,12 @@ function row(r, today, poster, detail, hereLabel) {
 }
 
 /** digest.panel */
-export function panel({cands, status, owned, tickets, today, prefs = [], week = 'this', poster = () => '', detail = null, hereLabel = 'このおすすめの日程'}) {
+export function panel({cands, status, owned, tickets, today, prefs = [], week = 'this', poster = () => '', detail = null, hereLabel = 'このおすすめの日程', pq = ''}) {
   week = WEEKS.some(([k]) => k === week) ? week : 'this';
   const wks = Object.fromEntries(WEEKS.map(([k], i) => [k, weekAll(cands, status, today, prefs, i)]));
   const wk = wks[week];
   const tk = nearTickets(owned, tickets, today);
-  const tabs = indexTabs(WEEKS.map(([k, lab]) => [k, lab, wks[k].n]), week, k => `/recommend/reminder?t=__TAGURI_TOKEN__&w=${k}`, '週で切り替える');
+  const tabs = indexTabs(WEEKS.map(([k, lab]) => [k, lab, wks[k].n]), week, k => `/recommend/reminder?t=__TAGURI_TOKEN__&w=${k}${pq}`, '週で切り替える');
   const where = prefs.length > 0 && prefs.length <= 3 ? prefs.join('・') : prefs.length ? `${prefs[0]}ほか ${prefs.length - 1} 県` : '';
   const span = `${md(wk.lo)}〜${md(wk.hi)}`;
   let open;
@@ -329,7 +329,7 @@ export async function reminderScreen(params, ctx) {
   const bare = shown.filter(sid => !details.has(sid));
   if (bare.length) for (const [sid, s] of await stageInfo(ctx.db, bare)) details.set(sid, detailHtml(s));
   const poster = sid => (pics.has(sid) ? posterHtml(pics.get(sid)) : ''), detail = sid => details.get(sid) || '';
-  const html = panel({cands, status, owned, tickets: b.tickets, today: ctx.today, prefs, week, poster, detail, hereLabel: 'この行の会場'});
+  const html = panel({cands, status, owned, tickets: b.tickets, today: ctx.today, prefs, week, poster, detail, hereLabel: 'この行の会場', pq: prefQs(params)});
   const unknownHtml = !unknown.length ? '' : `<details class="dgday" open><summary>都道府県が分からない公演 ── ${unknown.length} 件</summary>`
     + '<p class="dglead">会場の都道府県がまだ分からないため、場所の絞り込みに入れられない公演です。見逃さないように、ここに分けて出しています。</p>'
     + `<ul class="dglist">${unknown.map(r => row(r, ctx.today, poster, detail, 'この行の会場')).join('')}</ul></details>`;
