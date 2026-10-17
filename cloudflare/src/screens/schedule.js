@@ -61,8 +61,31 @@ export function parseTimetable(text, start, end) {
   return out;
 }
 
-/** The weekly calendar of one venue ('' when there is nothing to draw). */
-export function timetableGrid(perf, start, end, today) {
+const reEsc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const DATE_LINE = /\d{1,2}月\d{1,2}日|(?:^|\D)\d{1,2}\/\d{1,2}(?:\D|$)/;
+/**
+ * What each mark means, read from the stage page's texts (起案者の指示 2026-10-17「ちゃんと各公演記載して」):
+ * 「★・・・鑑賞マナーゆるめの回」「★：…」「★＝…」「A→…」, or a line that begins with the mark.
+ * Lines with a date (the timetable itself) are skipped. Map mark -> description (marks without one are left out).
+ */
+export function markLegend(marks, texts) {
+  const out = new Map();
+  const lines = texts.join('\n').normalize('NFKC').split(/\n/).map(x => x.trim()).filter(x => x && !DATE_LINE.test(x));
+  for (const m of marks) {
+    const e = reEsc(m);
+    const sep = new RegExp(`(?:^|[\\s※・、(（])${e}\\s*(?:[=＝:：→]|・{2,}|…+|‥+|\\.{2,})\\s*(.+?)(?=\\s+\\S\\s*(?:[=＝:：]|・{2,})|$)`);
+    const head = new RegExp(`^※?\\s*${e}\\s*([^\\s=＝:：].+)$`);
+    let desc = '';
+    for (const line of lines) { const r = sep.exec(line); if (r) { desc = r[1]; break; } }
+    if (!desc) for (const line of lines) { const r = head.exec(line); if (r) { desc = r[1]; break; } }
+    desc = desc.replace(/\s+/g, ' ').trim();
+    if (desc) out.set(m, desc.length > 70 ? desc.slice(0, 68) + '…' : desc);
+  }
+  return out;
+}
+
+/** The weekly calendar of one venue ('' when there is nothing to draw). `texts`: the stage page's texts for the legend. */
+export function timetableGrid(perf, start, end, today, texts = []) {
   if (!perf.size || !start) return '';
   const last = /^\d{4}-\d{2}-\d{2}$/.test(end || '') ? end : start;
   const days = [...perf.keys()].sort();
@@ -89,8 +112,12 @@ export function timetableGrid(perf, start, end, today) {
   }
   const n = [...perf.values()].reduce((a, ps) => a + ps.length, 0);
   const marks = [...new Set([...perf.values()].flat().map(p => p.m).filter(Boolean))];
-  // 印（★・◆・A/B など）は、出演者の組やアフタートークなど公演ごとに意味が違うので、公演ページの書き方のまま出す
-  const note = marks.length ? `<p class="ttb-note">${marks.map(E).join('・')} の意味は公演ページをご覧ください（出演者の組・アフタートークなど）。</p>` : '';
+  // 印（★・◆・A/B など）の意味は公演ごとに違うので、その公演のページの説明を書く。説明が無い印はそう書く
+  const legend = markLegend(marks, texts);
+  const missing = marks.filter(m => !legend.has(m));
+  const note = !marks.length ? '' : '<ul class="ttb-legend">'
+    + [...legend].map(([m, d]) => `<li><b>${E(m)}</b>${E(d)}</li>`).join('')
+    + (missing.length ? `<li class="miss"><b>${missing.map(E).join('・')}</b>公演ページに印の説明がありません</li>` : '') + '</ul>';
   return `<table class="ttb" aria-label="公演日時（${n} 回）"><thead><tr>${head}</tr></thead><tbody>${rows.join('')}</tbody></table>${note}`;
 }
 
@@ -112,9 +139,12 @@ export function priceRows(text, {dropRange = false} = {}) {
   const rest = uniq.filter(r => !(r.length === 1 && RANGE.test(r[0])));
   return dropRange && rest.length ? rest : uniq;
 }
+// お金の絵記号（web/app.js の ICON_P.yen と同じ形）。金額の頭に付ける（起案者の指示 2026-10-17）
+export const YEN_ICON = '<svg class="ico" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+  + '<path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM8.6 7.4 12 12l3.4-4.6M12 12v5.2M9.2 12.6h5.6M9.2 15.2h5.6"/></svg>';
 export function priceTable(rows) {
   if (!rows.length) return '';
-  return `<table class="ptb">${rows.map(r => (r.length > 1 ? `<tr><th>${E(r[0])}</th><td>${E(r[1])}</td></tr>` : `<tr><td colspan="2">${E(r[0])}</td></tr>`)).join('')}</table>`;
+  return `<span class="lp-ico">${YEN_ICON}</span><table class="ptb">${rows.map(r => (r.length > 1 ? `<tr><th>${E(r[0])}</th><td>${E(r[1])}</td></tr>` : `<tr><td colspan="2">${E(r[0])}</td></tr>`)).join('')}</table>`;
 }
 
 /**
@@ -132,12 +162,13 @@ export function tourBlock(venues, shown, today) {
     const when = v.start === end ? md(v.start) : `${md(v.start)}〜${md(end)}`;
     const where = (v.venue || '会場未定') + (v.pref ? `（${v.pref}）` : '');
     const perf = parseTimetable(v.fields?.['タイムテーブル'] || '', v.start, end);
-    const grid = timetableGrid(perf, v.start, end, today);
+    const f = v.fields || {};
+    const grid = timetableGrid(perf, v.start, end, today, [f['タイムテーブル'], f['その他注意事項'], f['公演情報'], f['その他'], f['出演']].filter(Boolean).map(String));
     // おすすめに出ている会場の印は、ツアー（会場が 2 つ以上）のときだけ。帯ではなく日付の前の ★（起案者の指示 2026-10-17）
     const shownRow = String(v.stage_id) === String(shown) || vs.length === 1;   // 暦を開いておく行
     const isHere = vs.length > 1 && shownRow;
     const n = [...perf.values()].reduce((a, ps) => a + ps.length, 0);
-    const price = perVenuePrice ? (priceTable(priceOf(v)) || '<p class="lp-none">料金 不明</p>') : '';
+    const price = perVenuePrice ? (priceTable(priceOf(v)) || `<p class="lp-none"><span class="lp-ico">${YEN_ICON}</span>料金 不明</p>`) : '';
     // 会場の名前はツアーのときだけ（1 か所なら上の劇場の行と同じなので出さない。起案者の指示 2026-10-17）
     const head = `<span class="tf-when">${isHere ? '<span class="tf-star" title="おすすめに出ている会場">★</span>' : ''}${E(when)}</span>`
       + (vs.length > 1 ? `<span class="tf-loc">${E(where)}</span>` : '');

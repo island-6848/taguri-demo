@@ -972,3 +972,23 @@ a.pill.buy .go:not(#_){font-size:12px;margin-left:2px}
 .ticket.cmp .lp-k{color:var(--ink2);margin-right:.8em}
 .ticket.cmp .lp-v{color:var(--ink);font-variant-numeric:tabular-nums}
 .tourfull.v2 .lp-none{margin:0;font-size:12px;color:var(--ink2)}
+/* お金の絵記号: 料金の 1 行目の頭。続きの行は同じ幅だけ下げて金額の頭をそろえる */
+.lp-ico{display:inline-block;width:17px;color:var(--ink2);vertical-align:-2px}
+.lp-ico .ico{display:block}
+.tourfull.v2 .tf-price{display:flex;align-items:flex-start}
+.tourfull.v2 .tf-price .lp-ico{margin-top:3px}
+.ticket .sale .yen .ico{vertical-align:-2px;margin-right:2px;color:var(--ink2)}
+/* ツアーの各会場の行: 日付の欄の幅をそろえて、会場名の書き始めを縦にそろえる。★ は行の左の余白に置く（起案者の指示 2026-10-17） */
+.tourfull.v2:not(.one) .tf-row{position:relative;padding-left:1.1em}
+.tourfull.v2:not(.one) .tf-when{display:inline-block;min-width:6.9em;font-variant-numeric:tabular-nums}
+.tourfull.v2:not(.one) .tf-head .tf-loc{margin-left:.3em}
+.tourfull.v2 .tf-star{position:absolute;left:.1em}
+/* 印の説明（公演ページから読んだもの） */
+.ttb-legend{list-style:none;margin:2px 0 0;padding:0;font-size:11px;color:var(--ink2);line-height:1.5}
+.ttb-legend b{color:var(--curtain);margin-right:4px}
+.ttb-legend .miss{color:var(--mute)}
+/* ポスターを押したときの拡大（web/app.js posterZoom） */
+.ticket .pwrap img.poster{cursor:zoom-in}
+.pzoom{position:fixed;inset:0;z-index:2147483000;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;padding:16px;cursor:zoom-out}
+.pzoom img{max-width:100%;max-height:100%;object-fit:contain;border-radius:4px;box-shadow:0 4px 24px rgba(0,0,0,.5)}
+.pzoom button{position:absolute;top:12px;right:12px;min-width:44px;min-height:44px;border:0;border-radius:22px;background:rgba(255,255,255,.92);color:#1d1d1f;font:inherit;font-size:14px;cursor:pointer}
