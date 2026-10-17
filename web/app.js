@@ -1154,16 +1154,21 @@ document.addEventListener("click", ev => {
     // いるのは画面だけなので、除く分を送らないと、いま並んでいる 1 枚がもう 1 枚増える。
     // **推薦の枠だけが対象である** ── 興味あり・お気に入りは順位で切った枠ではないので、
     // 埋める先が無い
-    const slot = b.closest(".ticket.recommend");
+    // **おすすめの画面の一覧だけ。** 探す画面と、おすすめ画面の「おすすめに出てこない公演を探す」の結果も
+    // 同じ形のカード（.ticket.recommend）なので、形では見分けられない。そこで答えると、言葉と関係のない
+    // おすすめが足されていた（起案者の指摘 2026-10-17）
+    const onRecommend = ["/", "/recommend"].includes(location.pathname.slice(REPO_BASE.length) || "/");
+    const slot = onRecommend && !b.closest(".rfind") ? b.closest(".ticket.recommend") : null;
     // 記録だけを先に送り、入れ替わりの 1 枚はあとで別に頼む（fill_only）。同じ要求でしていると、
     // 次の候補を選ぶ重い計算が終わるまで「記録しました」が出なかった（起案者の指摘 2026-10-14）
-    const shown = slot ? [...document.querySelectorAll(".ticket.recommend")].map(a => a.dataset.stage).filter(Boolean) : null;
+    const shown = slot ? [...document.querySelectorAll(".ticket.recommend")].filter(a => !a.closest(".rfind")).map(a => a.dataset.stage).filter(Boolean) : null;
     if (g.dataset.stage) {
       body.nofill = true;
       // どの画面で答えたか（興味ありの一覧で「開幕リマインドからの追加」などと出すため。起案者の指示 2026-10-15）
       const here = (location.pathname.slice(REPO_BASE.length) || "/");
       const from = {"/recommend/reminder": "reminder", "/search": "search", "/recommend/favourites": "favourites"}[here];
       if (from) body.from = from;
+      if (b.closest(".rfind")) body.from = "search";     // おすすめ画面の「出てこない公演を探す」で答えた
       const tk0 = b.closest(".ticket");
       if (tk0 && tk0.dataset.tours !== undefined) body.siblings = tk0.dataset.tours.split(",").filter(Boolean);
     }
@@ -1240,7 +1245,7 @@ document.addEventListener("click", ev => {
         const said = g.querySelector(".said");
         if (d.fill.said && said) said.textContent = d.fill.said;
         if (d.fill.html) {
-          const all = document.querySelectorAll(".ticket.recommend");
+          const all = [...document.querySelectorAll(".ticket.recommend")].filter(a => !a.closest(".rfind"));
           const box = document.createElement("div");
           box.innerHTML = d.fill.html;
           box.querySelectorAll("li.rs.q").forEach(n => n.remove());
