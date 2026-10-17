@@ -2349,6 +2349,21 @@
    "verifies": []
   },
   {
+   "id": "font-trial",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "文字の形を試す。ボタンは Zen丸ゴシック Bold（手元に置いて配る）、本文はマメロン（ファイル未入手）。これまでの文字を「規定」として残し、設定で戻せる",
+   "sources": [
+    "https://fonts.google.com/specimen/Zen+Maru+Gothic",
+    "https://github.com/googlefonts/zen-marugothic/blob/main/OFL.txt",
+    "https://sankoufont.com/japanese-font/mamelon-3/",
+    "web/theme.css",
+    "web/app.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "four-level-unsupported",
    "type": "finding",
    "status": "confirmed",
@@ -4516,6 +4531,18 @@
    "title": "メールリンクのログインで、メールアドレスを端末に残してよいか",
    "sources": [
     "https://github.com/island-6848/taguri-demo/blob/cloudflare-d1-preview/docs/cloudflare-security-review.md"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "q-mamelon-license",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-18",
+   "title": "マメロンを Web フォントとしてサイトに置いて配ってよいか（ライセンス）と、ファイルをどこから取るか",
+   "sources": [
+    "https://moji-waku.com/mamelon/",
+    "https://free-font.blog.jp/archives/8470502.html"
    ],
    "verifies": []
   },
@@ -7629,6 +7656,11 @@
    "to": "impl-recommend-find"
   },
   {
+   "from": "font-trial",
+   "rel": "raises",
+   "to": "q-mamelon-license"
+  },
+  {
    "from": "four-level-unsupported",
    "rel": "affects",
    "to": "q-rating-scale"
@@ -9132,6 +9164,11 @@
    "from": "q-login-email-storage",
    "rel": "affects",
    "to": "comp-firebase-login"
+  },
+  {
+   "from": "q-mamelon-license",
+   "rel": "affects",
+   "to": "font-trial"
   },
   {
    "from": "q-migration-branch",

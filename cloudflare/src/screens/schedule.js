@@ -175,7 +175,7 @@ export function priceTable(rows) {
  * The tour block of a card: one row per venue (`venues`: stageInfo entries), the shown one with a band,
  * each with its calendar and, when the prices differ, its price table.
  */
-export function tourBlock(venues, shown, today) {
+export function tourBlock(venues, shown, today, prefs = []) {
   const vs = [...venues].filter(v => v && v.start).sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0));
   if (!vs.length) return {html: '', perVenuePrice: false};
   const priceOf = v => priceRows(v.fields?.['料金（1枚あたり）'] || v.price || '', {dropRange: true});
@@ -188,16 +188,19 @@ export function tourBlock(venues, shown, today) {
     const perf = parseTimetable(v.fields?.['タイムテーブル'] || '', v.start, end);
     const f = v.fields || {};
     const grid = timetableGrid(perf, v.start, end, today, [f['タイムテーブル'], f['その他注意事項'], f['公演情報'], f['その他'], f['出演']].filter(Boolean).map(String));
-    // おすすめに出ている会場の印は、ツアー（会場が 2 つ以上）のときだけ。帯ではなく日付の前の ★（起案者の指示 2026-10-17）
-    const shownRow = String(v.stage_id) === String(shown) || vs.length === 1;   // 暦を開いておく行
-    const isHere = vs.length > 1 && shownRow;
+    // ツアー（会場が 2 つ以上）は箇条書き（行頭の「・」）にし、都道府県で絞っているときは、その県の会場の行頭を
+    // 「★」にする（起案者の指示 2026-10-18「日程はツアーの場合箇条書きで表現。絞り込んでいる場合は、該当の公演を・→★にして」）
+    const tour = vs.length > 1;
+    const isHere = tour && prefs.length > 0 && prefs.includes(v.pref);
+    const shownRow = vs.length === 1 || (prefs.length ? isHere : String(v.stage_id) === String(shown));   // 暦を開いておく行
     const n = [...perf.values()].reduce((a, ps) => a + ps.length, 0);
     const price = perVenuePrice ? (priceTable(priceOf(v)) || `<p class="lp-none"><span class="lp-ico">${YEN_ICON}</span>料金 不明</p>`) : '';
     // 会場の名前はツアーのときだけ（1 か所なら上の劇場の行と同じなので出さない。起案者の指示 2026-10-17）
-    const head = `<span class="tf-when">${isHere ? '<span class="tf-star" title="おすすめに出ている会場">★</span>' : ''}${E(when)}</span>`
-      + (vs.length > 1 ? `<span class="tf-loc">${E(where)}</span>` : '');
-    const body = (price ? `<div class="tf-price">${price}</div>` : '')
-      + (grid ? `<p class="tf-n">公演日時（${n} 回）</p>${grid}` : '');
+    // 公演の回数は、開く前の日程の横に「（N 回）」（起案者の指示 2026-10-18。開いた中の「公演日時（N 回）」の見出しはやめた）
+    const head = `<span class="tf-when">${tour ? (isHere ? '<span class="tf-star" title="絞り込んだ都道府県の会場">★</span>' : '<span class="tf-dot" aria-hidden="true">・</span>') : ''}${E(when)}`
+      + (grid && n ? `<span class="tf-cnt">（${n} 回）</span>` : '') + '</span>'
+      + (tour ? `<span class="tf-loc">${E(where)}</span>` : '');
+    const body = (price ? `<div class="tf-price">${price}</div>` : '') + (grid || '');
     const cls = `tf-row${isHere ? ' here' : ''}${end < today ? ' done' : ''}`;
     // 日程の行そのものを押す口にし、行の右に「▶詳細」。開いた中身（料金・暦）は一段右にずらす（起案者の指示 2026-10-17）
     return body

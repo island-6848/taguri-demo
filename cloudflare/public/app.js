@@ -443,6 +443,13 @@ function openFixPopup(t) {
   document.body.appendChild(pop);
   pop.querySelector(".fixq-msg").focus();
 }
+// あらすじの続きを開いたあと「折りたたむ」で閉じる（起案者の指示 2026-10-18）
+document.addEventListener("click", ev => {
+  const b = ev.target.closest && ev.target.closest(".lsynfold");
+  if (!b) return;
+  const d = b.closest("details.lsynmore");
+  if (d) d.open = false;
+});
 document.addEventListener("click", ev => {
   const b = ev.target.closest && ev.target.closest(".fixq-open");
   if (!b) return;
@@ -509,7 +516,7 @@ function renderScreen(el, activePath, d, exposureSource) {
   divergeVerdicts(el);
   stampRerate(el);
   aspectsPanel(el);
-  if (activePath === "/settings") aspectsSetting(el);
+  if (activePath === "/settings") { aspectsSetting(el); creditSetting(el); fontSetting(el); }
   if (window.TaguriExposure) TaguriExposure.start(el, exposureSource || "network", async (path, body) => {
     const r = await fetch(API_BASE + path, {method: "POST", credentials: "include", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
     const result = await r.json(); return r.ok && result.ok === true;
@@ -922,6 +929,30 @@ function filterRowOf(fil) {
   fil.classList.add("tabbed");
 }
 
+// カードに出す作り手の名前（compactTickets）。作・原作・脚本・演出はいつも出す。ほかは設定（creditSetting）で選ぶ。
+// 選んだものはこの端末に覚える（観点の設定と同じ）。既定は出演だけ足す（これまでどおり出演も出る）
+const CREDIT_BASE = ["作", "原作", "脚本", "演出"];
+const CREDIT_OPTIONS = [["cast", "出演"], ["trans", "翻訳"], ["music", "音楽・作曲"], ["choreo", "振付"]];
+const CREDIT_KEY = "taguri_credit_roles_v1";
+function creditChoice() {
+  try { const v = JSON.parse(localStorage.getItem(CREDIT_KEY) || "null"); if (Array.isArray(v)) return new Set(v); } catch (e) { /* 既定 */ }
+  return new Set(["cast"]);
+}
+const creditParts = label => label.split(/[・／/、\s]+/).filter(Boolean);
+function creditGroup(label) {
+  const parts = creditParts(label);
+  if (parts.some(p => CREDIT_BASE.includes(p))) return "base";
+  if (parts.includes("出演")) return "cast";
+  if (parts.includes("翻訳")) return "trans";
+  if (parts.some(p => p === "音楽" || p === "作曲")) return "music";
+  if (parts.includes("振付")) return "choreo";
+  return "other";
+}
+function creditRank(x) {
+  if (x.g !== "base") return 10 + CREDIT_OPTIONS.findIndex(o => o[0] === x.g);
+  return Math.min(...creditParts(x.label).map(p => CREDIT_BASE.indexOf(p)).filter(i => i >= 0));
+}
+
 function compactTickets(root) {
   // おすすめの画面の一覧のカードには「くわしく」の折りたたみを付けない（起案者の指示 2026-10-17「おすすめページには
   // 『くわしく』の折りたたみなくして」）。閉じた 1 枚に出す分（日程・出演 5 人・あらすじの 1 文・料金・公式サイト）だけにする
@@ -949,23 +980,32 @@ function compactTickets(root) {
     more.addEventListener("toggle", () => t.classList.toggle("moreopen", more.open));
     const lead = document.createElement("div");
     lead.className = "leadbox";
-    // 出演: 出演順に 5 人まで
-    const cv = t.querySelector(".cast .cr .cv");
-    if (cv && cv.closest(".cr").querySelector(".cl")?.textContent === "出演") {
-      const c = cv.cloneNode(true);
+    // 作り手と出演の名前。作・原作・脚本・演出はどの画面でも必ず出し、ほかは設定で選んだ役職だけ出す
+    // （起案者の指示 2026-10-18「全画面、最低限（詳細じゃなくてあっさり表示の場合でも）作、（原作）、脚本、演出くらいまでは
+    // 名前載せて。あとは設定でどこの名前まで表示するかにしてチェックリストで選べるようにして」）。出した行は「くわしく」から外す
+    const choice = creditChoice();
+    const credits = [...t.querySelectorAll(".cast .cr")].map(row => {
+      const label = (row.querySelector(".cl")?.textContent || "").trim();
+      return {row, label, g: creditGroup(label)};
+    }).filter(x => x.g === "base" || choice.has(x.g)).sort((x, y) => creditRank(x) - creditRank(y));
+    for (const {row, label, g} of credits) {
+      const c = row.querySelector(".cv")?.cloneNode(true);
+      if (!c) continue;
       c.querySelectorAll("button").forEach(b => b.remove());
-      const names = c.textContent.split("、").map(x => x.trim()).filter(Boolean);
       const p = document.createElement("p");
       p.className = "lcast";
-      // 6 人目からは隠しておき、「くわしく」を開いたらこの行のまま続きを出す（起案者の指示 2026-10-13
-      // 「くわしく、を押したとき『ほか6名』が展開されて…名前たちが出るように」）
-      const lead0 = noMore ? names.length : CAST_LEAD;   // おすすめの画面では「ほか」で省かない
-      p.innerHTML = '<span class="cl">出演</span><span class="lv">' + E(names.slice(0, lead0).join("、"))
-        + (names.length > lead0 ? '<span class="lrest">、' + E(names.slice(CAST_LEAD).join("、")) + "</span>"
-          + '<span class="n">　ほか ' + (names.length - CAST_LEAD) + " 名</span>" : "") + "</span>";
+      if (g === "cast") {
+        // 出演は出演順。6 人目からは隠しておき、「くわしく」を開いたらこの行のまま続きを出す（起案者の指示 2026-10-13）
+        const names = c.textContent.split("、").map(x => x.trim()).filter(Boolean);
+        const lead0 = noMore ? names.length : CAST_LEAD;   // おすすめ・興味あり・お気に入りでは「ほか」で省かない
+        p.innerHTML = '<span class="cl">出演</span><span class="lv">' + E(names.slice(0, lead0).join("、"))
+          + (names.length > lead0 ? '<span class="lrest">、' + E(names.slice(CAST_LEAD).join("、")) + "</span>"
+            + '<span class="n">　ほか ' + (names.length - CAST_LEAD) + " 名</span>" : "") + "</span>";
+      } else {
+        p.innerHTML = '<span class="cl">' + E(label) + '</span><span class="lv">' + E(c.textContent.trim()) + "</span>";
+      }
       lead.appendChild(p);
-      // 「くわしく」の中では出演の行を重ねて出さない（作り手の行と出典は残す）
-      const row = cv.closest(".cr"), cast = row.closest(".cast");
+      const cast = row.closest(".cast");
       row.remove();
       if (cast && !cast.querySelector(".cr")) cast.remove();
     }
@@ -993,7 +1033,8 @@ function compactTickets(root) {
           if (m >= 0) cut = 80 + m + 1;
           const head = full.slice(0, cut), rest = full.slice(cut);
           p.innerHTML = '<span class="cl">あらすじ</span><span class="lv">' + E(head)
-            + (rest ? '<details class="lsynmore"><summary>続きを読む</summary>' + E(rest) + "</details>" : "") + "</span>";
+            + (rest ? '<details class="lsynmore"><summary>続きを読む</summary><span class="lsynrest">' + E(rest)
+              + '</span><button type="button" class="lsynfold">折りたたむ</button></details>' : "") + "</span>";
         } else {
           p.innerHTML = '<span class="cl">あらすじ</span><span class="lv">' + E(firstSentence(text)) + "</span>";
         }
@@ -1046,6 +1087,9 @@ function compactTickets(root) {
       sale.appendChild(pr);
     }
     (sale || main.querySelector(".meta")).after(lead);
+    // 発売の札（発売済み など）は、公式サイトへ行くボタンの下に置く（起案者の指示 2026-10-18）
+    const siteBtn = t.querySelector(".pcol .sitebtn");
+    if (sale && siteBtn) siteBtn.after(sale);
     // おすすめ理由: 全部出す。WHY_SHOWN 本を超えたら残りを畳む
     const ul = main.querySelector("ul.why:not(.top)");
     const lis = ul ? ul.querySelectorAll(":scope > li") : [];
@@ -1995,8 +2039,11 @@ document.addEventListener("click", ev => {
          body.action === "confirm" ? "確定しました" : "取り消しました")
       .then(r => { if (r) setTimeout(() => location.reload(), 500); });
   } else if (b.dataset.more) {
-    // あらすじの続きと、出演者の残り。**同じ押し口で開く**
-    (b.closest(".syn") || b.closest(".cast")).classList.toggle("open");
+    // あらすじの続きと、出演者の残り。**同じ押し口で開く**。開いたら「折りたたむ」で閉じられる（起案者の指示 2026-10-18）
+    const box = b.closest(".syn") || b.closest(".cast");
+    const open = box.classList.toggle("open");
+    if (!b.dataset.label) b.dataset.label = b.textContent;
+    b.textContent = open ? "折りたたむ" : b.dataset.label;
   } else if (b.dataset.close) {
     fetch(API_BASE + "/api/close", {method: "POST", keepalive: true, credentials: "include"});
     b.textContent = "閉じて大丈夫です";
@@ -2650,6 +2697,57 @@ function aspectsSetting(el) {
   sec.addEventListener("change", ev => {
     try { localStorage.setItem(ASPECT_MODE_KEY, ev.target.value); } catch (e) { /* 覚えられなくても既定で動く */ }
     sec.querySelector(".said").textContent = "保存しました（この端末で有効です）";
+  });
+  const last = [...el.querySelectorAll("section, .pbox, details")].filter(n => n.parentElement === el).pop();
+  (last || h1).after(sec);
+}
+
+// カードに出す作り手の名前を選ぶ（設定。起案者の指示 2026-10-18「設定でどこの名前まで表示するかにしてチェックリストで選べるように」）
+function creditSetting(el) {
+  if (el.querySelector(".credset")) return;
+  const h1 = el.querySelector("h1");
+  if (!h1) return;
+  const cur = creditChoice();
+  const sec = document.createElement("section");
+  sec.className = "credset pbox";
+  sec.innerHTML = '<h2>カードに出す名前</h2><p class="lead">公演のカードに、どの役職の名前まで出すかを選べます。'
+    + '<b>作・原作・脚本・演出は、いつも出します。</b>表示だけの設定で、おすすめの計算は変わりません。</p>'
+    + '<div class="credlist">'
+    + '<label class="credi"><input type="checkbox" checked disabled><span>作・原作・脚本・演出（いつも出します）</span></label>'
+    + CREDIT_OPTIONS.map(([k, t]) => '<label class="credi"><input type="checkbox" value="' + k + '"' + (cur.has(k) ? " checked" : "") + "><span>" + E(t) + "</span></label>").join("")
+    + '</div><p class="said" role="status"></p>';
+  sec.addEventListener("change", () => {
+    const v = [...sec.querySelectorAll("input[value]:checked")].map(i => i.value);
+    try { localStorage.setItem(CREDIT_KEY, JSON.stringify(v)); } catch (e) { /* 覚えられなくても既定で動く */ }
+    sec.querySelector(".said").textContent = "保存しました（この端末で有効です。次に開いたカードから反映されます）";
+  });
+  const last = [...el.querySelectorAll("section, .pbox, details")].filter(n => n.parentElement === el).pop();
+  (last || h1).after(sec);
+}
+
+// 文字の形（お試し）。ボタンは Zen丸ゴシックの Bold、本文はマメロン（起案者の指示 2026-10-18）。
+// 「あくまでお試しなので、現在のフォントを規定として」── これまでの文字を「規定」として残し、設定でいつでも戻せる。
+// 既定はお試し。theme.css の html[data-font="trial"] が切り替える
+const FONT_KEY = "taguri_font_v1";
+function fontMode() { try { return localStorage.getItem(FONT_KEY) === "default" ? "default" : "trial"; } catch (e) { return "trial"; } }
+document.documentElement.dataset.font = fontMode();
+function fontSetting(el) {
+  if (el.querySelector(".fontset")) return;
+  const h1 = el.querySelector("h1");
+  if (!h1) return;
+  const cur = fontMode();
+  const sec = document.createElement("section");
+  sec.className = "fontset pbox";
+  sec.innerHTML = '<h2>文字の形（お試し）</h2><p class="lead">いまは、ボタンを Zen丸ゴシック、本文をマメロンにして試しています。'
+    + 'これまでの文字に戻すときは「規定の文字」を選んでください。この端末で有効です。</p>'
+    + '<div class="aspmode" role="radiogroup" aria-label="文字の形">'
+    + [["trial", "お試しの文字", "ボタン: Zen丸ゴシック（Bold）／本文: マメロン"], ["default", "規定の文字", "これまでの文字（Zen角ゴシック）"]].map(([v, t, d]) =>
+      '<label class="aspm"><input type="radio" name="fontmode" value="' + v + '"' + (v === cur ? " checked" : "") + '><b>' + t + "</b><span>" + d + "</span></label>").join("")
+    + '</div><p class="said" role="status"></p>';
+  sec.addEventListener("change", ev => {
+    try { localStorage.setItem(FONT_KEY, ev.target.value); } catch (e) { /* 覚えられなくても、この画面では切り替わる */ }
+    document.documentElement.dataset.font = ev.target.value === "default" ? "default" : "trial";
+    sec.querySelector(".said").textContent = "切り替えました";
   });
   const last = [...el.querySelectorAll("section, .pbox, details")].filter(n => n.parentElement === el).pop();
   (last || h1).after(sec);

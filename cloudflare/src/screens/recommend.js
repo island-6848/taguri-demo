@@ -358,7 +358,7 @@ export async function cardsHtml(ctx, rows, titles, first = 1) {
     if (!card) continue;
     const pic = posters.get(r.shown) || posters.get(r.stage_id);
     const sids = [...new Set([r.shown, ...(r.venues || []).map(v => v.stage_id)].map(String))];
-    const tour = tourBlock(sids.map(s => info.get(s)).filter(Boolean), r.shown, ctx.today);
+    const tour = tourBlock(sids.map(s => info.get(s)).filter(Boolean), r.shown, ctx.today, ctx.prefs || []);
     out.push(withTour(compose(card, r.shown, 'recommend', {rank: rank++, why: reasonRows(r, titles), poster: pic ? posterHtml(pic) : ''}), tour));
   }
   return out;
@@ -382,6 +382,7 @@ async function unratedEnds(ctx) {
 
 export async function recommendScreen(params, ctx) {
   const prefs = await prefsFor(params, ctx);
+  ctx.prefs = prefs;   // ツアーの日程で、絞り込んだ県の会場に ★（schedule.tourBlock）
   const data = await rankedGroups(ctx);
   const nCand = Number((await ctx.db.prepare("SELECT v FROM rec_meta WHERE k='catalogue_upcoming'").first())?.v || 0);
   const {rows, hit} = filtered(data.groups, prefs);
@@ -476,6 +477,7 @@ async function fillSlot(ctx, shown, pressed, page = null) {
   if (!shown.length) return {html: '', left: 0, said: ''};
   // そのページで絞った県（画面が URL から送る）。無ければ設定の県
   const prefs = await prefsFor(page ? new URLSearchParams([['f', '1'], ...page.map(p => ['pref', p])]) : new URLSearchParams(), ctx);
+  ctx.prefs = prefs;
   const data = await rankedGroups(ctx);
   const {rows} = filtered(data.groups, prefs, 1e6);
   const seen = new Set([...shown.map(String), String(pressed)]);

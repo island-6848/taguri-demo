@@ -413,7 +413,7 @@ async function cards(ctx, rows, mode, extra = () => ({})) {
     const card = compose(html.get(r.stage_id), r.stage_id, mode, {poster: pic ? posterHtml(pic) : '', ...extra(r)});
     if (!info) return card;
     const sids = [...new Set([r.stage_id, ...(r.sids || [])].map(String))];
-    return withTour(card, tourBlock(sids.map(s => info.get(s)).filter(Boolean), r.stage_id, ctx.today));
+    return withTour(card, tourBlock(sids.map(s => info.get(s)).filter(Boolean), r.stage_id, ctx.today, ctx.prefs || []));
   });
 }
 const qInt = (params, k) => Math.max(1, Number.parseInt(params.get(k) || '1', 10) || 1);
@@ -657,6 +657,7 @@ export async function favouritesScreen(params, ctx) {
   const keys = ['start', 'end', 'title', 'pref'], sort = sortOf(params, keys);
   // 場所の絞り込みは結果の絞り込み（起案者の指摘 2026-10-17）。そのページの中だけで効き、既定は設定の県
   const prefs = await prefsFor(params, ctx);
+  ctx.prefs = prefs;   // ツアーの日程で、絞り込んだ県の会場に ★（schedule.tourBlock）
   const prefsOf = r => (r.prefs && r.prefs.length ? r.prefs : [r.pref].filter(Boolean));
   const allFavs = sortRows([...b.favourites, ...b.favOwned], sort), dec = b.declared;
   const pcounts = {};

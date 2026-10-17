@@ -17,9 +17,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 WEB, PUBLIC = ROOT / "web", ROOT / "cloudflare" / "public"
 COPIED = ("tour.js", "style.css", "tour.css", "theme.css", "recommendation-exposure.js",
-          "assets/fonts/OFL-ZenKakuGothicAntique.txt")
+          "assets/fonts/OFL-ZenKakuGothicAntique.txt", "assets/fonts/OFL-ZenMaruGothic.txt")
 # Self-hosted title font (SIL OFL, subset to the page titles). Copied byte for byte.
 BINARY = ("assets/fonts/zkga-title.woff2",)
+# お試しのボタンの文字（Zen丸ゴシック Bold、SIL OFL）。文字の範囲ごとのファイルを丸ごと写す
+BINARY += tuple("assets/fonts/zen-maru-gothic/" + p.name for p in sorted((WEB / "assets/fonts/zen-maru-gothic").glob("*.woff2")))
 
 
 def expected() -> dict[str, str | bytes]:

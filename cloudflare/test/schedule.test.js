@@ -42,12 +42,17 @@ test('price rows: 券種と金額, sale-date lines left out', () => {
   assert.deepEqual(priceRows('2,750円 ～ 7,150円', {dropRange: true}), [['2,750円 ~ 7,150円']]);
 });
 
-test('the tour block: one row per venue in date order, the shown one marked, prices per venue only when they differ', () => {
+test('the tour block: a bulleted row per venue in date order, ★ on the filtered prefectures, the count beside the dates, prices per venue only when they differ', () => {
   const v = (sid, start, end, venue, pref, price, tt = '') => ({stage_id: sid, start, end, venue, pref, fields: {'料金（1枚あたり）': price, 'タイムテーブル': tt}});
   const same = tourBlock([v('2', '2026-11-06', '2026-11-08', 'ささしまスタジオ', '愛知県', '一般：5,000円'), v('1', '2026-10-28', '2026-11-01', '恵比寿・エコー劇場', '東京都', '一般：5,000円', '10月28日(水) 19:00')], '2', '2026-10-20');
   assert.equal(same.perVenuePrice, false);
-  assert.match(same.html, /<details class="tf-row"><summary class="tf-head"><span class="tf-when">10\/28〜11\/1<\/span><span class="tf-loc">恵比寿・エコー劇場（東京都）<\/span><span class="tf-more">詳細<\/span><\/summary><div class="tf-body"><p class="tf-n">公演日時（1 回）<\/p>/);
-  assert.match(same.html, /<div class="tf-row here"><div class="tf-head"><span class="tf-when"><span class="tf-star" title="おすすめに出ている会場">★<\/span>11\/6〜11\/8<\/span><span class="tf-loc">ささしまスタジオ（愛知県）<\/span><\/div><\/div>/);
+  assert.match(same.html, /<details class="tf-row"><summary class="tf-head"><span class="tf-when"><span class="tf-dot" aria-hidden="true">・<\/span>10\/28〜11\/1<span class="tf-cnt">（1 回）<\/span><\/span><span class="tf-loc">恵比寿・エコー劇場（東京都）<\/span><span class="tf-more">詳細<\/span><\/summary><div class="tf-body"><table class="ttb"/);
+  assert.match(same.html, /<div class="tf-row"><div class="tf-head"><span class="tf-when"><span class="tf-dot" aria-hidden="true">・<\/span>11\/6〜11\/8<\/span><span class="tf-loc">ささしまスタジオ（愛知県）<\/span><\/div><\/div>/);
+  assert.doesNotMatch(same.html, /tf-n|★/);
+  // 都道府県で絞っているときは、その県の会場の行頭が ★
+  const filtered = tourBlock([v('2', '2026-11-06', '2026-11-08', 'ささしまスタジオ', '愛知県', '一般：5,000円'), v('1', '2026-10-28', '2026-11-01', '恵比寿・エコー劇場', '東京都', '一般：5,000円', '10月28日(水) 19:00')], '1', '2026-10-20', ['愛知県']);
+  assert.match(filtered.html, /<div class="tf-row here"><div class="tf-head"><span class="tf-when"><span class="tf-star" title="絞り込んだ都道府県の会場">★<\/span>11\/6〜11\/8/);
+  assert.match(filtered.html, /<details class="tf-row"><summary class="tf-head"><span class="tf-when"><span class="tf-dot"/);
   assert.ok(same.html.indexOf('恵比寿') < same.html.indexOf('ささしま'));
   // 会場が 1 つなら印を付けない
   const one = tourBlock([v('1', '2026-10-28', '2026-11-01', 'A', '東京都', '一般：5,000円')], '1', '2026-10-20');
