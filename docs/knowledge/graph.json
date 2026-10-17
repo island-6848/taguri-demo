@@ -3833,6 +3833,17 @@
    "verifies": []
   },
   {
+   "id": "plan-real-data-eval",
+   "type": "decision",
+   "status": "proposed",
+   "date": "2026-10-17",
+   "title": "推薦の効き目を本番の利用者のデータで測る設計。主な方法はバックアップを手元で再生する方法で、開幕リマインドでの答えを偏りの少ない主な結果にする。足す記録は答えの行の列と、1 人 1 日 1 行だけ",
+   "sources": [
+    "docs/research/real-data-eval-plan.md"
+   ],
+   "verifies": []
+  },
+  {
    "id": "pr-branch-is-production",
    "type": "finding",
    "status": "outdated",
@@ -8436,6 +8447,31 @@
    "from": "people-tie-order-hash",
    "rel": "affects",
    "to": "dec-records-worker"
+  },
+  {
+   "from": "plan-real-data-eval",
+   "rel": "depends_on",
+   "to": "q-academic-novelty"
+  },
+  {
+   "from": "plan-real-data-eval",
+   "rel": "depends_on",
+   "to": "dec-no-n1-evidence"
+  },
+  {
+   "from": "plan-real-data-eval",
+   "rel": "depends_on",
+   "to": "dec-d1-backup"
+  },
+  {
+   "from": "plan-real-data-eval",
+   "rel": "depends_on",
+   "to": "lit-mnar"
+  },
+  {
+   "from": "plan-real-data-eval",
+   "rel": "depends_on",
+   "to": "impl-hidden-gate"
   },
   {
    "from": "pr-branch-is-production",
