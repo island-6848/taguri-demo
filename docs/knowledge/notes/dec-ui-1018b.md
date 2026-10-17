@@ -14,6 +14,7 @@ sources:
   - cloudflare/test/same-production.test.js
   - docs/design/logo/sheet2.html
   - docs/design/logo/make.py
+  - docs/design/logo/make_type.py
 links:
   - depends_on: dec-rec-row-like-card
 ---
@@ -29,3 +30,4 @@ links:
 - 日記帳はノートの見た目: 生成りの紙・横罫・綴じ穴・余白の赤い縦線・重ねたページの影。画面の [data-route] で日記帳だけに当てる
 - ロゴ案: 最初の 3 案（えんじの塗りの記号）は、起案者から「単色・線画で、絵と字を組んだ形（丸い枠・リボン・縦書きなど）を想定していた」と参考の画像をもらい、作り直した。いまは黒一色の細い線画の 5 案（docs/design/logo/: 1 糸の幕・2 オペラグラスの糸・3 スポットライトの丸印・4 縦書きと針の糸・5 半券と糸）。題字「たぐり」は一本線で手描き、小さな欧文と添え書きは Zen Kaku Gothic New（OFL）の字形を図形にした。作り直しは make.py。決めるのは起案者
 - ロゴ案 1（糸の幕）を起案者が選んだ（「1いいけど、日本語フォントださい」）。手描きの題字をやめ、書体違いの 8 つを作った（docs/design/logo/logo1-fonts/）: Kaisei Decol・Zen Old Mincho・Shippori Mincho B1・Hina Mincho・Klee One・Zen Antique Soft・Yuji Syuku・Zen Kurenaido（どれも Google Fonts の OFL。使う字だけの部分フォントを取り、字形を図形にして SVG に入れた）。線の細い絵に合わせて細めの太さにした。書体を決めるのは起案者
+- 起案者「たぐりの文字、図形の下に明記するんじゃなくてうまく図に組み込めない？ひな明朝がいいかも」（参考: 字を伸ばす・つなげる・部品を絵に替えるアレンジ例）。ひな明朝の字形を部品に分け、字そのものを絵に組み込んだ 3 案（docs/design/logo/type/）: 1 幕の中のたぐり（案 1 の丸い舞台に字を立たせ、「り」の払いから出た糸が床の線になる）・2 糸でたぐる横組み（「り」の払いから出た糸が字の下をくぐって「た」に一巻き）・3 幕の間の縦組み。どれも「ぐ」の濁点を 2 つの星（スポットライト）に替えた

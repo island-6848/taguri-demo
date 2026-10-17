@@ -2014,7 +2014,8 @@
     "cloudflare/src/screens/autolink.js",
     "cloudflare/test/same-production.test.js",
     "docs/design/logo/sheet2.html",
-    "docs/design/logo/make.py"
+    "docs/design/logo/make.py",
+    "docs/design/logo/make_type.py"
    ],
    "verifies": []
   },
