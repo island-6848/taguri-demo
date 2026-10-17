@@ -14,6 +14,7 @@ import {KINDS, loadDeclared} from './lists.js';
 import {loadWorks, titleKey, DROP_KEEP_DAYS} from './works.js';
 import {dateParts} from './row.js';
 import {splitNames} from './cast.js';
+import {optedOut, optoutCardHtml, optoutAction} from './evalrec.js';
 
 const cardH2 = (name, text, extra = '') => `<summary>${h2(name, text, extra)}</summary>`;
 
@@ -131,6 +132,7 @@ ${regionsHtml(counts, rcounts, true)}
 ${await (async () => { const sc = await scaleOf(ctx); return scaleCardHtml(sc, cardH2('star', '評価の付け方', `<span class="badge part">いまは${E(SCALE_LABEL[sc])}</span>`)); })()}
 <details class="card">${cardH2('gear', 'アカウント')}
 <p class="lead">表示名・ログインの方法・パスキー・ログアウト・アカウントの削除は、<a href="/account">アカウント</a>の画面にまとめてあります。</p></details>
+${await (async () => { const off = await optedOut(ctx); return optoutCardHtml(off, cardH2('gear', '推薦の改善の分析', `<span class="badge part">いまは${off ? '分析に使わない' : '分析に使ってよい'}</span>`)); })()}
 ${await exportCardHtml(ctx)}
 ${droppedHtml(await droppedRows(ctx))}
 ${skippedHtml(works.filter(w => w.unseen))}`;
@@ -327,5 +329,5 @@ async function missedAction(b, ctx) {
 
 export const settingsScreens = {
   screens: {settings: settingsScreen, start: startScreen, register: registerScreen},
-  actions: {pref_setting: prefSettingAction, missed: missedAction},
+  actions: {pref_setting: prefSettingAction, missed: missedAction, analysis_optout: optoutAction},
 };

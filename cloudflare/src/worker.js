@@ -165,7 +165,7 @@ async function deleteAccount(request, env, uid, input) {
   // Firebase sign-in, so a linked account must be deleted after signing in
   // with Google or the email link (otherwise the email would stay at Google).
   if (linked && input.firebase_ready !== true) fail(409,'このアカウントは Google またはメールと結び付いています。Google 側の記録も消すため、Google かメールのリンクでログインし直してから削除してください。');
-  await env.DB.batch(['records','favourites','reactions','passkeys','webauthn_challenges','rec_cache',...SCREEN_TABLES,'sessions']
+  await env.DB.batch(['records','favourites','reactions','passkeys','webauthn_challenges','rec_cache','rec_shown',...SCREEN_TABLES,'sessions']
     .map(t => env.DB.prepare(`DELETE FROM ${t} WHERE user_id=?`).bind(uid))
     .concat(env.DB.prepare('DELETE FROM users WHERE id=?').bind(uid)));
   return json({deleted:true,firebase_linked:!!linked},200,{'Set-Cookie':`${COOKIE}=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0`});

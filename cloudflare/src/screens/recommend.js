@@ -17,6 +17,7 @@ import {parseCredits} from './credits.js';
 import {chooseVariant, groupOf} from '../reco-gate.js';
 import {readWeights, multipliersOf, weightForm, weightAction} from './weights.js';
 import {E, ValueError} from './py.js';
+import {answerSnapshot, recordShown} from './evalrec.js';
 import {ico} from './icons.js';
 import {loadWorks} from './works.js';
 import {castOffOf} from './diary.js';
@@ -385,6 +386,8 @@ export async function recommendScreen(params, ctx) {
   const nCand = Number((await ctx.db.prepare("SELECT v FROM rec_meta WHERE k='catalogue_upcoming'").first())?.v || 0);
   const {rows, hit} = filtered(data.groups, prefs);
   const cards = await cardsHtml(ctx, rows, data.titles);
+  // その日に出した公演（測るための記録 rec_shown。新しく出した公演があるときだけ書く）
+  if (data.ready) await recordShown(ctx, 'recommend', rows.map(r => r.shown), `${VERSION}|${data.ver || ''}`);
   const where = prefs.length <= 3 ? prefs.join('・') : `${prefs[0]}ほか ${prefs.length - 1} 県`;
   let head, lede;
   // 候補はあったが、すべて答え終えた（新しく使い始めた人の「まだ候補が無い」とは分ける）
@@ -440,13 +443,15 @@ const FROM = {reminder: 'reminder', search: 'search', favourites: 'favourites'};
 
 async function reactRow(ctx, stageId, cols, source) {
   const label = ctx.today;
-  const v = {interest: null, owned: null, note: null, note_no: null, note_pre: null, why: null, ...cols};
-  await ctx.db.prepare(`INSERT INTO reaction(user_id,label,stage_id,interest,owned,note,note_no,note_pre,why,source,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)
+  const v = {interest: null, owned: null, note: null, note_no: null, note_pre: null, why: null, rank: null, score: null, ver: null, arm: null, ...cols};
+  await ctx.db.prepare(`INSERT INTO reaction(user_id,label,stage_id,interest,owned,note,note_no,note_pre,why,source,updated_at,rank,score,ver,arm) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     ON CONFLICT(user_id,label,stage_id) DO UPDATE SET interest=COALESCE(excluded.interest,reaction.interest), owned=COALESCE(excluded.owned,reaction.owned),
     note=COALESCE(excluded.note,reaction.note), note_no=COALESCE(excluded.note_no,reaction.note_no), note_pre=COALESCE(excluded.note_pre,reaction.note_pre),
     why=COALESCE(excluded.why,reaction.why),
+    rank=CASE WHEN excluded.ver IS NOT NULL THEN excluded.rank ELSE reaction.rank END, score=CASE WHEN excluded.ver IS NOT NULL THEN excluded.score ELSE reaction.score END,
+    ver=COALESCE(excluded.ver,reaction.ver), arm=COALESCE(excluded.arm,reaction.arm),
     source=CASE WHEN excluded.interest IS NOT NULL OR excluded.owned IS NOT NULL THEN excluded.source ELSE reaction.source END, updated_at=excluded.updated_at`)
-    .bind(ctx.uid, label, stageId, v.interest, v.owned, v.note, v.note_no, v.note_pre, v.why, source, new Date(ctx.now).toISOString()).run();
+    .bind(ctx.uid, label, stageId, v.interest, v.owned, v.note, v.note_no, v.note_pre, v.why, source, new Date(ctx.now).toISOString(), v.rank, v.score, v.ver, v.arm).run();
 }
 
 /** The reasons of one ranked production, small enough to keep (the 4 people and 2 kinds reasonRows shows, and their titles). */
@@ -460,10 +465,8 @@ export function whyOf(g, titles) {
  * 興味ありを押したときに見えていた理由（reaction.why）。押す前のおすすめの控え（rec_cache）は、その画面を
  * 出したときのものなので、印を確かめずに読む（D1 の読み取り 1 行。ticker.js と同じ）。無ければ残さない。
  */
-async function whySnapshot(ctx, stageId) {
-  const row = await ctx.db.prepare('SELECT body FROM rec_cache WHERE user_id=?').bind(ctx.uid).first();
-  if (!row) return null;
-  const body = JSON.parse(row.body);
+function whySnapshot(body, stageId) {
+  if (!body) return null;
   const g = (body.groups || []).find(x => x.stage_id === stageId || (x.venues || []).some(v => v.stage_id === stageId));
   return g ? JSON.stringify(whyOf(g, new Map(body.titles || []))) : null;
 }
@@ -500,12 +503,16 @@ export async function reactAction(b, ctx) {
   const source = Object.hasOwn(FROM, String(b.from ?? '')) ? FROM[String(b.from)] : 'screen';
   // おすすめの画面で押した興味ありは、そのとき見えていた理由も残す（興味ありの画面で出す。答えた公演は
   // おすすめの計算から外れるので、あとからは作れない）
-  const why = value === 'interest' && source === 'screen' ? await whySnapshot(ctx, stageId) : null;
-  await reactRow(ctx, stageId, {...(REACT[value] || {}), ...given, ...(why ? {why} : {})}, source);
+  // 答えたときの順位・点・版（測るための記録。real-data-eval-plan §5）も、同じ控えの 1 回の読み出しから取る。
+  // どの画面で答えても残す（開幕リマインドの答えにも、そのときの点が要る）。理由だけを書き足す行には付けない
+  const snap = Object.hasOwn(REACT, value) ? await answerSnapshot(ctx, stageId, VERSION) : {body: null, eval: null};
+  const ev = snap.eval || {};
+  const why = value === 'interest' && source === 'screen' ? whySnapshot(snap.body, stageId) : null;
+  await reactRow(ctx, stageId, {...(REACT[value] || {}), ...given, ...(why ? {why} : {}), ...ev}, source);
   if (Object.hasOwn(REACT, value) && Array.isArray(b.siblings)) {
     // The same answer for the production's other venues (the card's data-tours); notes stay on the pressed one.
     for (const sid of b.siblings.slice(0, 40).map(String).filter(s => /^\d+$/.test(s) && s !== stageId))
-      await reactRow(ctx, sid, {...REACT[value], ...(why ? {why} : {})}, source + '_tour');
+      await reactRow(ctx, sid, {...REACT[value], ...(why ? {why} : {}), ...ev}, source + '_tour');
   }
   const out = {ok: true, stage_id: stageId, value, note: 'note' in given, note_no: 'note_no' in given};
   if (Object.hasOwn(REACT, value) && !b.nofill) {

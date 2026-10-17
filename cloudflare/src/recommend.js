@@ -201,7 +201,18 @@ export function interestContrast(liked, disliked, skip = new Set()) {
   return out;
 }
 
-export function personValues(rated, seeds = [], skip = new Set(), liked = [], disliked = []) {
+/** 配り分けを外した計算（分析の H5 だけで使う）: 興味ありの 1 公演ぶんを、人と種類に同じだけ割る。 */
+function evenShares(stage, skip = new Set()) {
+  const keys = [...new Set((stage.people || []).filter(([, person]) => !skip.has(person)).map(([role, person]) => keyOf(role, person)))];
+  return new Map(keys.map(k => [k, 1 / keys.length]));
+}
+
+// 部品を 1 つずつ外して比べるための旗（docs/research/real-data-eval-plan.md の H5）。分析の再生だけが渡す。
+// 既定（{}）では何も外さず、画面の計算は変わらない。split: 興味ありの配り分け（式 10–11）、expand: 1 段広げる（式 12）。
+// 並べ直し（式 13）と裏の答え合わせ（式 14–16）は画面の側（spreadLeads・chooseVariant）なので、再生の側で外す
+export const ABLATIONS = ['split', 'expand'];
+
+export function personValues(rated, seeds = [], skip = new Set(), liked = [], disliked = [], ablate = {}) {
   // person-ordinal-v3: a rating's place among the user's own ratings on the
   // same scale, ((lower) + ½ (equal)) / n − ½, times √12.
   const byScale = new Map();
@@ -244,7 +255,7 @@ export function personValues(rated, seeds = [], skip = new Set(), liked = [], di
   // 興味あり: 評価とお気に入りから分かった値（values）を (2) の手がかりにして、1 公演ぶんを割って足す。
   const contrast = interestContrast(liked, disliked, skip);
   for (const s of liked) {
-    for (const [k, share] of interestShares(s, values, contrast, skip)) {
+    for (const [k, share] of ablate.split ? evenShares(s, skip) : interestShares(s, values, contrast, skip)) {
       const t = tally.get(k) || [0, 0, 0];
       t[1] += w * SEED_Z * share; t[2] += w * share;
       tally.set(k, t);
@@ -267,9 +278,9 @@ export function personValues(rated, seeds = [], skip = new Set(), liked = [], di
 // その人の別の公演も候補にする。すでに値のある人・お気に入りの名前は除く。理由には「○○と組む」と出す。
 // Python の参照実装には無いので、一致試験の経路（expand なし）では動かない。値は舞台では未検証。
 export const EXPAND_PEOPLE = 20, EXPAND_STAGES = 60, EXPAND_WEIGHT = 0.3, EXPAND_MIN_SHARED = 1;
-export async function scoreFromIndex({postingsFor, stagesFor, rated, multipliers = {}, today, seeds = [], skip = new Set(), liked = [], disliked = [], expand = null}) {
+export async function scoreFromIndex({postingsFor, stagesFor, rated, multipliers = {}, today, seeds = [], skip = new Set(), liked = [], disliked = [], expand = null, ablate = {}}) {
   rated = independentRatings(rated);
-  const values = personValues(rated, seeds, skip, liked, disliked);
+  const values = personValues(rated, seeds, skip, liked, disliked, ablate);
   const seeded = new Set(seeds.map(r => r.stage_id));
   // Everyone with a non-zero value can raise or lower a show.
   // 使わなくなった種類（料金帯 #値段、dec-source-kind-no-price）は、本番の索引に残っている間も点数と理由に使わない
@@ -287,7 +298,7 @@ export async function scoreFromIndex({postingsFor, stagesFor, rated, multipliers
   }
   // 1 段だけ広げる: 好きな人（値が正）が出る公演の共演者・作り手
   const via = new Map();                       // key -> name of the liked person they work with
-  if (expand?.peopleFor) {
+  if (expand?.peopleFor && !ablate.expand) {
     const top = [...values.entries()].filter(([k, [, v]]) => v > 0 && !k.startsWith('#')).sort((a, b) => (b[1][1] - a[1][1]) || cmp(a[0], b[0])).slice(0, EXPAND_PEOPLE);
     const likedTop = new Map(top.map(([k, [, v]]) => [k, v]));
     const stageLiked = new Map();               // sid -> [[key, v]...] of liked people in it

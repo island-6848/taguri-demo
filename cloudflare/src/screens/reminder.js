@@ -5,6 +5,7 @@
 // Candidates are the stages of the current index (rec_stage: the pool the batch builds
 // from digest.all_candidates). Not ported: the prefecture map (prefmap.panel).
 import {E} from './py.js';
+import {recordShown} from './evalrec.js';
 import {ico, h2} from './icons.js';
 import {buttons, changeAnswer, posterHtml, cardTemplates} from './cards.js';
 import {stageInfo, detailHtml, detailFromCard} from './fallback.js';
@@ -324,6 +325,8 @@ export async function reminderScreen(params, ctx) {
   const unknown = prefs.length ? weekAll(cands, status, ctx.today, [], offset).days.flatMap(([, rows]) => rows).filter(r => !r.pref) : [];
   const shown = [...weekAll(cands, status, ctx.today, prefs, offset).days.flatMap(([, rows]) => rows.map(r => r.stage_id)),
     ...unknown.map(r => r.stage_id)].filter(Boolean);
+  // その日に出した公演（測るための記録 rec_shown。点と関係なく出す画面なので、偏りの少ない分母になる）
+  await recordShown(ctx, 'reminder', shown);
   const {html: cardHtml} = await cardTemplates(ctx.db, shown);
   const details = new Map([...cardHtml].map(([sid, h]) => [sid, detailFromCard(h)]));
   const bare = shown.filter(sid => !details.has(sid));
