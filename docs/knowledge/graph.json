@@ -2651,6 +2651,19 @@
    "verifies": []
   },
   {
+   "id": "impl-recommend-thanks",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-17",
+   "title": "おすすめに答え終えたら「回答ありがとうございました」の絵と、また出るようにするためのワンポイントを出す",
+   "sources": [
+    "cloudflare/src/screens/recommend.js",
+    "web/app.js",
+    "cloudflare/test/recommend-screen.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "impl-search-past-stages",
    "type": "decision",
    "status": "adopted",
@@ -7577,6 +7590,16 @@
    "from": "impl-recommend-find",
    "rel": "affects",
    "to": "new-user-reco-threshold"
+  },
+  {
+   "from": "impl-recommend-thanks",
+   "rel": "affects",
+   "to": "new-user-reco-threshold"
+  },
+  {
+   "from": "impl-recommend-thanks",
+   "rel": "depends_on",
+   "to": "impl-recommend-find"
   },
   {
    "from": "impl-search-past-stages",

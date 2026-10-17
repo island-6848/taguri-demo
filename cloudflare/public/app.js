@@ -1154,6 +1154,16 @@ document.addEventListener("click", ev => {
   close.focus();
 });
 
+function showThanks() {
+  const t = document.getElementById("rec-thanks-t");
+  if (!t || document.getElementById("rec-thanks")) return;
+  const all = [...document.querySelectorAll(".ticket.recommend")].filter(a => !a.closest(".rfind"));
+  if (!all.length || !all.every(a => a.classList.contains("tomove") || a.querySelector(".btns.done"))) return;
+  const sec = t.content.firstElementChild.cloneNode(true);
+  sec.classList.add("filled");
+  all[all.length - 1].after(sec);
+}
+
 function movedToOwned(tk) {
   const title = ((tk.querySelector("h3") || {}).textContent || "").trim();
   tk.classList.add("tomove");
@@ -1363,6 +1373,9 @@ document.addEventListener("click", ev => {
           }
         }
       }
+      // 入れ替える候補が尽きて、一覧の全部に答えたら「回答ありがとうございました」を出す（起案者の指示 2026-10-17。
+      // 中身はサーバーが <template id="rec-thanks-t"> で置く。都道府県で絞っているときは置かない）
+      if (d.fill && !d.fill.html) showThanks();
       // **「すでに持っている」を押した 1 枚は、この一覧から外して「購入済み公演」へ送る**
       // （起案者の指示 2026-10-14「押したら、持ってる公演のところだけに表示されて」）。
       // 外したあとに 1 行だけ残し、行き先へ飛べるようにする（どこへ行ったか分からなくしない）

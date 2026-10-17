@@ -39,6 +39,41 @@ const TIPS = `<section class="card tips">
 <p class="lead"><a href="/rate?t=__TAGURI_TOKEN__">観た公演の評価</a>・<a href="/recommend/favourites?t=__TAGURI_TOKEN__">お気に入り</a>・<a href="/records/works?t=__TAGURI_TOKEN__">日記帳</a>から始められます。</p>
 </section>
 `;
+// 出せる候補にすべて答え終えたとき（起案者の指示 2026-10-17「本当に全部回答しきってオススメに出せるものが
+// なくなったときは、『回答ありがとうございました』のイラストを出して。その下にワンポイントアドバイス」）。
+// 幕の下りた舞台に花束。色は画面の色（--curtain など）なので、暗い画面でもそのまま読める
+const THANKS_ART = `<svg class="thx-art" viewBox="0 0 240 132" width="240" height="132" role="img" aria-label="幕の下りた舞台と花束">
+<rect x="8" y="10" width="224" height="10" rx="3" fill="var(--curtain)"/>
+<path d="M14 20h106v94c-18 6-40 6-58 0-18 6-34 6-48 0z" fill="var(--curtain)" opacity=".85"/>
+<path d="M120 20h106v94c-14 6-30 6-48 0-18 6-40 6-58 0z" fill="var(--curtain)" opacity=".85"/>
+<path d="M120 20v94" stroke="var(--surf)" stroke-width="2" opacity=".6"/>
+<path d="M40 20v90M66 20v94M92 20v92M148 20v92M174 20v94M200 20v90" stroke="var(--surf)" stroke-width="1.2" opacity=".25"/>
+<rect x="4" y="114" width="232" height="12" rx="3" fill="var(--ink2)" opacity=".5"/>
+<ellipse cx="120" cy="121" rx="46" ry="5" fill="var(--acc)" opacity=".18"/>
+<g transform="translate(120 122)">
+<path d="M-4 -24l-6 -12M0 -24v-16M4 -24l6 -12" stroke="var(--mute)" stroke-width="2"/>
+<circle cx="-12" cy="-38" r="7" fill="var(--acc)"/><circle cx="-12" cy="-38" r="2.5" fill="var(--surf)"/>
+<circle cx="12" cy="-38" r="7" fill="var(--acc)"/><circle cx="12" cy="-38" r="2.5" fill="var(--surf)"/>
+<circle cx="0" cy="-44" r="8" fill="var(--acc)"/><circle cx="0" cy="-44" r="3" fill="var(--surf)"/>
+<path d="M-13 -26h26l-13 26z" fill="var(--surf)" stroke="var(--ink2)" stroke-width="1.5"/>
+<path d="M-6 -14q6 5 12 0" stroke="var(--acc)" stroke-width="2.5" fill="none"/>
+</g>
+</svg>`;
+const THANKS = `<section class="card thx" id="rec-thanks">
+${THANKS_ART}
+<p class="thx-h">回答ありがとうございました</p>
+<p class="thx-s">いまおすすめできる公演には、すべて答えていただきました。</p>
+<h2>また おすすめが出るようにするには</h2>
+<ol>
+<li><b>過去の観劇記録を足す</b> ── <a href="/records/works?t=__TAGURI_TOKEN__">日記帳</a>に観た公演を足すと、その出演者・作り手の公演が候補に入ります。</li>
+<li><b>観た公演を評価する</b> ── <a href="/rate?t=__TAGURI_TOKEN__">評価</a>が増えるほど、好みに合う公演を見つけやすくなります。</li>
+<li><b>お気に入りを登録する</b> ── 好きな俳優・劇団・作品を<a href="/recommend/favourites?t=__TAGURI_TOKEN__">お気に入り</a>に入れると、その人たちの公演が出ます。</li>
+<li><b>「探す」で興味ありを押す</b> ── 下の「おすすめに出てこない公演を探す」で見つけた公演の興味ありも、次のおすすめの手がかりになります。</li>
+<li><b>出さない語・都道府県の設定を見直す</b> ── 絞り込みを外すと、隠れていた候補が出ます。</li>
+<li><b>少し待つ</b> ── 新しい公演は毎日取り込んでいます。日をおいて開くと、新しい候補が出ていることがあります。</li>
+</ol>
+</section>
+`;
 // Groups kept per user between requests: enough to fill 15 cards in any one prefecture.
 const KEEP = 400;
 const VERSION = 'screen-v17';   // v17: no 出典 on the reasons; v16: #会場 dropped, 行けない (interest=2) as a liked seed; v15: 出さない語 also hits the kind tags; v14: #ジャンル (a genre turned off hides its stages); v13: no 原作「原作もの」 (DROPPED_KEYS); v12: no #値段 (DROPPED_AXES); v11: reasons of answered stages (answered_why); v2: the user's 効かせ方 (rank_weight) and the per-group counts; v3: 興味あり as seeds; v4: diag; v5: 興味あり split (impl-interest-split); v6: by part importance; v7: tiers + トメ; v8: two tiers only; v9: トメ joins the main roles; v10: spread leads + one-step partners
@@ -375,7 +410,12 @@ export async function recommendScreen(params, ctx) {
   const cards = await cardsHtml(ctx, rows, data.titles);
   const where = prefs.length <= 3 ? prefs.join('・') : `${prefs[0]}ほか ${prefs.length - 1} 県`;
   let head, lede;
-  if (!prefs.length && !cards.length) {
+  // 候補はあったが、すべて答え終えた（新しく使い始めた人の「まだ候補が無い」とは分ける）
+  const allAnswered = !cards.length && !data.groups.length && (data.diag?.ranked || 0) > 0;
+  if (!prefs.length && allAnswered) {
+    head = '今週のおすすめは、すべて答えました';
+    lede = '';
+  } else if (!prefs.length && !cards.length) {
     head = '今週のおすすめはありません';
     lede = '';
   } else if (!prefs.length) {
@@ -392,7 +432,8 @@ export async function recommendScreen(params, ctx) {
   // 推薦を出すためのワンポイント（起案者の指示 2026-10-14「なにがしたら出るか、使うユーザーが
   // わかりやすい文章で（技術的なことは書かないで）おすすめの初期画面に追加して」）。
   // 条件は new-user-reco-threshold: 公演とつながった記録が 2 件以上で、評価が 2 種類以上。
-  const tips = !cards.length && !prefs.length ? TIPS : '';
+  // 一覧の途中で答え終えたときは、画面（app.js）がこの控えを最後のカードの下に出す
+  const tips = prefs.length ? '' : allAnswered ? THANKS : !cards.length ? TIPS : `<template id="rec-thanks-t">${THANKS}</template>`;
   const nInterest = (await ctx.db.prepare('SELECT count(DISTINCT stage_id) AS n FROM reaction WHERE user_id=? AND interest=1 AND COALESCE(owned,0)=0').bind(ctx.uid).first())?.n || 0;
   const nSyn = cards.filter(h => /<div class="syn( doubt)?"/.test(h)).length;
   const limits = cards.length ? `<p class="note toinfo"><b>この ${cards.length} 件で、出せていない情報です。</b><br>
