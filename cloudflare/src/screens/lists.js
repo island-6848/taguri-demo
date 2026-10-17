@@ -664,9 +664,11 @@ export async function favouritesScreen(params, ctx) {
   const favs = prefs.length ? allFavs.filter(r => prefsOf(r).some(p => prefs.includes(p))) : allFavs;
   const [show, mfil, mfoot] = monthPick(favs, params.get('m') || '', qInt(params, 'p'), '/recommend/favourites', sort, prefQs(params));
   const kinds = KINDS.map(k => `<option value="${E(k)}">${E(k)}</option>`).join('');
-  const tags = KINDS.flatMap(k => (dec[k] || []).map(n => `<span class="tag" data-kind="${E(k)}" data-name="${E(n)}">`
-    + `<span class="wax" aria-hidden="true">${E(Array.from(n)[0] || '')}</span><span class="tgn">${E(k)}「${E(n)}」</span>`
-    + '<button data-fav="remove">✕</button></span>')).join('');
+  // 登録した名前は、カードの中のハッシュタグ（.ftag）と同じ形で並べる（起案者の指示 2026-10-17「お気に入りに登録したときの
+  // 『足す外す』の欄のデザイン、本文カード内のハッシュタグのデザインと合わせて」）。押すとその名前の公演の画面へ
+  const tags = KINDS.flatMap(k => (dec[k] || []).map(n => `<span class="tag ftag" data-kind="${E(k)}" data-name="${E(n)}">`
+    + `<a class="tgn" href="/recommend/favourites?t=__TAGURI_TOKEN__&amp;n=${encodeURIComponent(n)}">#${E(n)}</a><span class="tgk">${E(k)}</span>`
+    + `<button data-fav="remove" aria-label="「${E(n)}」を外す">✕</button></span>`)).join('');
   const keep = !allFavs.length;
   const n = KINDS.reduce((s, k) => s + (dec[k] || []).length, 0);
   // 登録した名前は、この一覧に出る公演そのものを決める。場所・料金は出てきた公演の絞り込み。2 段に分ける
