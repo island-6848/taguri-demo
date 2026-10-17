@@ -53,6 +53,12 @@ class CrawlerState(unittest.TestCase):
             self.assertEqual(CS.restore(self.state), 2)
             self.assertEqual(self.files(fresh), ["review/candidates.jsonl", "review/requests_cache.json"])
 
+    def test_backups_of_user_records_are_never_kept(self):
+        # 安全の点検 2026-10-17: 控えの平文が state ブランチ（git）に残らない
+        for name in ("backup.sql", "drill.sql", "d1/x.sql.gpg"):
+            self.assertFalse(CS.keep(name), name)
+        self.assertTrue(CS.keep("d1/delivered.json"))
+
     def test_posters_already_in_r2_are_left_out(self):
         img = self.data / "review" / "img"
         img.mkdir(parents=True)

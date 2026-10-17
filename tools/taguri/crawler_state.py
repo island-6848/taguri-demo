@@ -41,6 +41,9 @@ def keep(rel: str) -> bool:
         return False
     if any(t in name for t in (".db", ".sqlite", "pepper")):
         return False
+    # 利用者の記録の控え（平文の SQL・暗号化した控え・戻しの予行）は入れない（安全の点検 2026-10-17）
+    if name.endswith((".sql", ".sql.gpg")):
+        return False
     if name.endswith(".part") or name.startswith(".publish_catalog.lock"):
         return False
     # **R2 に入れ終えたポスターは残さない**（docs/knowledge の dec-posters-r2・q-crawler-state-size）。

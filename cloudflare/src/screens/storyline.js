@@ -571,7 +571,9 @@ export function panel(rated, minTimes = MIN_TIMES) {
   const wsOut = ws.map(w => ({...w, ly: f(w.ly)}));
   const sesOut = d.sessions.map(s => ({...s, y0: f(s.y0), y1: f(s.y1)}));
   const payload = jd({lines, worlds: wsOut, sessions: sesOut, height: f(d.height),
-                      from: d.from, to: d.to, runPx: f(RUN_PX), X, width: f(width), ticks, rowHref: ROW_HREF});
+                      from: d.from, to: d.to, runPx: f(RUN_PX), X, width: f(width), ticks, rowHref: ROW_HREF})
+    // <script> の中に置くので「<」を逃がす（名前や題名に「</script>」があっても、そこで閉じない。people.js の scriptSafe と同じ）
+    .replace(/</g, '\\u003c');
   return `<div class="card wide">${h2('light', '同じ作品で一緒だった人の流れ')}
 <p class="lead"><b>1 本の線が 1 人、横が時間です。同じ作品に出た方の線は、その日に束になります。</b>
 <b>● が「その日その作品に出ていた」印です。</b>束が 1 つの公演で、押すとその記録へ移動します。<br>

@@ -818,7 +818,8 @@ def panel(rated: list[dict], min_times: int = MIN_TIMES) -> str:
                           "sessions": d["sessions"], "height": d["height"],
                           "from": d["from"], "to": d["to"], "runPx": RUN_PX,
                           "X": xs, "width": width, "ticks": ticks,
-                          "rowHref": CH.ROW_HREF}, ensure_ascii=False)
+                          "rowHref": CH.ROW_HREF}, ensure_ascii=False).replace("<", "\\u003c")
+    # ↑ <script> の中に置くので「<」を逃がす（名前や題名に「</script>」があっても、そこで閉じない）
     return f"""<div class="card wide">{IC.h2("light", "同じ作品で一緒だった人の流れ")}
 <p class="lead"><b>1 本の線が 1 人、横が時間です。同じ作品に出た方の線は、その日に束になります。</b>
 <b>● が「その日その作品に出ていた」印です。</b>束が 1 つの公演で、押すとその記録へ移動します。<br>

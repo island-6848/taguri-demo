@@ -25,9 +25,11 @@ import argparse
 import datetime as dt
 import json
 import os
+import re
 import sqlite3
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.error
 import urllib.parse
@@ -54,8 +56,11 @@ def wrangler(*args: str, capture: bool = True) -> str:
     cmd = ["npx", "--yes", "wrangler@4", *args]
     r = subprocess.run(cmd, cwd=HERE.parent, capture_output=capture, text=True, check=False)
     if r.returncode != 0:
-        # 中身（SQL や行）は出さない。wrangler のエラーの最後だけ
-        raise RuntimeError(f"wrangler {args[0]} {args[1] if len(args) > 1 else ''} が失敗した: {(r.stderr or '')[-400:]}")
+        # 中身（SQL や行）は出さない。wrangler のエラーの最後だけ。失敗した SQL 文を wrangler が引用することがあるので、
+        # SQL の文らしい行は落とす（Actions のログに利用者の記録が残らないように）
+        tail = "\n".join(l for l in (r.stderr or "").splitlines()
+                         if not re.search(r"\b(INSERT|UPDATE|DELETE|CREATE|VALUES)\b", l, re.I))
+        raise RuntimeError(f"wrangler {args[0]} {args[1] if len(args) > 1 else ''} が失敗した: {tail[-400:]}")
     return r.stdout or ""
 
 
@@ -154,11 +159,13 @@ def backup(data: Path, *, export=None, counts=None, put=r2_put, delete=r2_delete
     if export is None:
         tables = user_tables(remote_tables(DB_NAME))
         want = remote_counts(DB_NAME, tables)
-        out = data / "backup.sql"
+        # 暗号化する前の SQL は data/ の外（一時ディレクトリ）に書き、失敗しても必ず消す。
+        # data/ は取得の state ブランチに丸ごと保存されるので、途中で落ちると平文が git に残る（安全の点検 2026-10-17）
         flags = [x for t in tables for x in ("--table", t)]
-        wrangler("d1", "export", DB_NAME, "--remote", "--output", str(out), *flags)
-        sql_text = out.read_text(encoding="utf-8")
-        out.unlink()
+        with tempfile.TemporaryDirectory(prefix="taguri-backup-") as tmp:
+            out = Path(tmp) / "backup.sql"
+            wrangler("d1", "export", DB_NAME, "--remote", "--output", str(out), *flags)
+            sql_text = out.read_text(encoding="utf-8")
     else:
         tables, want, sql_text = export()
     got = (counts or local_counts)(sql_text, tables)
@@ -210,7 +217,9 @@ def drill(data: Path, get=r2_get) -> dict:
         return {"ok": False, "mismatch": ["この 4 日の控えが R2 に無い"]}
     sql_text = decrypt(body, passphrase).decode("utf-8")
     t_open = time.monotonic() - t0
-    path = data / "drill.sql"
+    # 復号した平文は data/ の外に置く（backup と同じ）。消すのは下の finally
+    tmp = Path(tempfile.mkdtemp(prefix="taguri-drill-"))
+    path = tmp / "drill.sql"
     path.write_text(sql_text, encoding="utf-8")
     try:
         try:
@@ -226,6 +235,7 @@ def drill(data: Path, get=r2_get) -> dict:
         backed = local_counts(sql_text, tables)
     finally:
         path.unlink(missing_ok=True)
+        tmp.rmdir()
         try:
             wrangler("d1", "delete", DRILL_DB, "--skip-confirmation")
         except RuntimeError:

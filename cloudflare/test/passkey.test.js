@@ -219,3 +219,11 @@ test('starting with a passkey asks for the terms before the device makes one', a
   assert.equal((await call('auth/passkey/register/verify', {challenge_id, response, agree: undefined})).status, 400);
   assert.equal(sqlite.prepare('SELECT count(*) AS n FROM users').get().n, 0);
 });
+
+test('deleting a passkey needs a sign-in within 10 minutes, so a stolen cookie alone cannot lock the owner out', async () => {
+  const {call, sqlite} = setup();
+  const up = await signUp(call, new SoftAuthenticator());
+  sqlite.prepare('UPDATE sessions SET created_at=created_at-3600').run();
+  assert.equal((await call('auth/passkeys/delete', {id: up.id}, up.cookie)).status, 401);
+  assert.equal(sqlite.prepare('SELECT count(*) AS n FROM passkeys').get().n, 1);
+});
