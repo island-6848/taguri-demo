@@ -17,3 +17,6 @@ backup*.sql
 
 # yomiyasu の検査の記録（.claude/skills/yomiyasu/scripts/yomiyasu_check.py が書く）
 .yomiyasu/
+
+# Claude Code の並行作業の作業用コピー（git worktree）
+.claude/worktrees/
