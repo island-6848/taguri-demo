@@ -303,6 +303,7 @@ svg text{font-family:"Noto Sans JP","Hiragino Kaku Gothic ProN",sans-serif}
  border-radius:14px;padding:14px 16px}
 .faq svg{flex:none;width:52px;height:52px}
 .faq p{margin:0;font-size:13.5px;line-height:1.6}.faq p b{display:block;color:var(--ink);font-size:14.5px}
+.cap{margin:10px 0 0;color:var(--muted);font-size:13.5px}
 </style>
 </head>
 <body>
@@ -313,7 +314,7 @@ svg text{font-family:"Noto Sans JP","Hiragino Kaku Gothic ProN",sans-serif}
     <a href="#cover"><b>―</b>表紙</a>
     <a href="#ch1"><b>01</b>たぐりとは</a>
     <a href="#ch2"><b>02</b>はじめかた</a>
-    <a href="#ch3"><b>03</b>3 つのボタン</a>
+    <a href="#ch3"><b>03</b>4 つの答え</a>
     <a href="#ch4"><b>04</b>画面マップ</a>
     <a href="#ch5"><b>05</b>観たら記録</a>
     <a href="#ch6"><b>06</b>データと安心</a>
@@ -361,6 +362,7 @@ svg text{font-family:"Noto Sans JP","Hiragino Kaku Gothic ProN",sans-serif}
   </div>
   <div class="meta">
     <div><b>読む時間</b><span>約 2 分</span></div>
+    <div><b>アプリ</b><span><a href="https://app.taguri.workers.dev/">app.taguri.workers.dev</a></span></div>
     <div><b>デモ</b><span><a href="https://island-6848.github.io/taguri-demo/">island-6848.github.io/taguri-demo</a></span></div>
   </div>
 </section>
@@ -398,7 +400,7 @@ svg text{font-family:"Noto Sans JP","Hiragino Kaku Gothic ProN",sans-serif}
       <svg viewBox="0 0 200 130" role="img" aria-label="開いた日記帳に◎と感想、その横に半券">
         <path d="M30 26c22-6 46-6 68 6v84c-22-12-46-12-68-6z" class="fP sL w1"/>
         <path d="M170 26c-22-6-46-6-68 6v84c22-12 46-12 68-6z" class="fP sL w1"/>
-        <text x="64" y="70" text-anchor="middle" class="tx-xl" style="fill:var(--thread)">◎</text>
+        <text x="64" y="70" text-anchor="middle" style="font-size:20px;font-weight:700;fill:var(--thread)">★★★★</text>
         <rect x="114" y="46" width="42" height="5" rx="2.5" class="fL"/><rect x="114" y="58" width="36" height="5" rx="2.5" class="fL"/>
         <rect x="114" y="70" width="40" height="5" rx="2.5" class="fL"/><rect x="114" y="82" width="28" height="5" rx="2.5" class="fL"/>
         <g transform="translate(140 90) rotate(14)"><rect width="46" height="24" rx="3" class="fBs sB w1"/><path d="M14 0v24" class="sB w1 dash"/></g>
@@ -409,7 +411,7 @@ svg text{font-family:"Noto Sans JP","Hiragino Kaku Gothic ProN",sans-serif}
 
   <h3 class="sub">使い方は、この輪をまわすだけ</h3>
   <div class="big">
-    <svg viewBox="0 0 900 330" role="img" aria-label="おすすめを見る、興味ありを押す、観に行く、◎○△×を付ける、の4つが輪になってつながる図。評価するとおすすめが自分向けになる">
+    <svg viewBox="0 0 900 330" role="img" aria-label="おすすめを見る、興味ありを押す、観に行く、星を付ける、の4つが輪になってつながる図。評価するとおすすめが自分向けになる">
       <defs><marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1l7 4-7 4z" style="fill:var(--muted)"/></marker>
       <marker id="arT" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1l7 4-7 4z" style="fill:var(--thread)"/></marker></defs>
       
@@ -428,8 +430,8 @@ svg text{font-family:"Noto Sans JP","Hiragino Kaku Gothic ProN",sans-serif}
         <rect x="16" y="28" width="48" height="24" rx="3" class="fP sB w2"/><path d="M30 28v24" class="sB w2 dash"/>
         <text x="40" y="104" text-anchor="middle" class="tx-m" style="fill:var(--ink)">③ 観に行く</text></g>
       <g transform="translate(150 196)"><circle cx="40" cy="40" r="40" class="fTs"/>
-        <text x="40" y="51" text-anchor="middle" class="tx-xl" style="fill:var(--thread)">◎</text>
-        <text x="40" y="104" text-anchor="middle" class="tx-m" style="fill:var(--ink)">④ ◎○△× を付ける</text></g>
+        <text x="40" y="51" text-anchor="middle" class="tx-xl" style="fill:var(--thread)">★</text>
+        <text x="40" y="104" text-anchor="middle" class="tx-m" style="fill:var(--ink)">④ 星を付ける</text></g>
       <!-- 中央 -->
       <g transform="translate(450 165)"><circle r="54" class="fP sL w1"/>
         <text y="-6" text-anchor="middle" class="tx-m" style="fill:var(--brand)">まわすほど</text>
@@ -441,111 +443,105 @@ svg text{font-family:"Noto Sans JP","Hiragino Kaku Gothic ProN",sans-serif}
 <!-- ============================================================ 2章 はじめかた -->
 <section class="sec" id="ch2">
   <div class="eyebrow"><span class="n">02</span><span>はじめかた</span></div>
-  <h2 class="title">登録なし。開くだけ。</h2>
+  <h2 class="title">ログインするだけ。パスワードなし。</h2>
   <div class="phones">
-    <div class="phone">
-      <svg viewBox="0 0 180 300" role="img" aria-label="スマホの画面で、舞台の準備をしている絵と砂時計">
-        <rect x="10" y="4" width="160" height="292" rx="24" class="fI"/><rect x="18" y="16" width="144" height="268" rx="16" class="fP"/>
-        <rect x="30" y="34" width="120" height="14" rx="4" class="fT"/>
-        <path d="M44 48c0 40 6 70 18 92H44zM136 48c0 40-6 70-18 92h18z" class="fT" opacity=".85"/>
-        <circle cx="90" cy="120" r="9" class="fM"/><path d="M90 129v26M90 138l-12 8M90 138l12 8M90 155l-9 18M90 155l9 18" class="fN sM w3 rd"/>
-        <path d="M70 200h40l-14 20 14 20H70l14-20z" class="fN sB w2 rd"/><path d="M78 236h24l-12-12z" class="fB2"/>
-      </svg>
-      <span class="no">1</span><b>ページを開く</b><span>最初は 10〜20 秒ほど待ちます</span>
+    <div class="phone"><svg viewBox="0 0 180 300" role="img" aria-label="スマホのログイン画面。Google で続ける、パスキーでログイン、メールのリンクを受け取る、のボタン"><rect x="10" y="4" width="160" height="292" rx="24" class="fI"/><rect x="18" y="16" width="144" height="268" rx="16" class="fP"/>
+<text x="90" y="62" text-anchor="middle" class="tx-m" style="fill:var(--ink)">ログイン</text>
+<rect x="32" y="84" width="116" height="28" rx="14" class="fT"/><text x="90" y="102" text-anchor="middle" style="font-size:10px;font-weight:700" fill="#fff">Google で続ける</text>
+<rect x="32" y="120" width="116" height="28" rx="14" class="fN sM w1"/><text x="90" y="138" text-anchor="middle" style="font-size:10px;fill:var(--ink)">パスキーでログイン</text>
+<text x="90" y="166" text-anchor="middle" style="font-size:9px;fill:var(--muted)">― または ―</text>
+<rect x="32" y="176" width="116" height="22" rx="5" class="fW sL w1"/><text x="40" y="191" style="font-size:9px;fill:var(--muted)">name@example.com</text>
+<rect x="32" y="204" width="116" height="26" rx="13" class="fT" opacity=".85"/><text x="90" y="221" text-anchor="middle" style="font-size:9px;font-weight:700" fill="#fff">リンクを受け取る</text>
+<path d="M44 252h92" class="sT w3 rd"/><text x="90" y="272" text-anchor="middle" style="font-size:9.5px;fill:var(--thread);font-weight:700">パスワードは使いません</text></svg>
+      <span class="no">1</span><b>ログイン</b><span>Google・メールのリンク・パスキー</span>
     </div>
-    <div class="phone">
-      <svg viewBox="0 0 180 300" role="img" aria-label="スマホの画面に復旧コードのカードと鍵、コピーのボタン">
-        <rect x="10" y="4" width="160" height="292" rx="24" class="fI"/><rect x="18" y="16" width="144" height="268" rx="16" class="fW"/>
-        <rect x="30" y="70" width="120" height="150" rx="12" class="fP sT w2"/>
-        <circle cx="90" cy="104" r="20" class="fTs"/><circle cx="84" cy="104" r="7" class="fN sT w3"/><path d="M91 104h14v8M100 104v6" class="fN sT w3 rd"/>
-        <rect x="44" y="136" width="92" height="18" rx="4" class="fW"/><text x="90" y="149" text-anchor="middle" class="tx-s" style="fill:var(--ink);font-family:'IBM Plex Mono';font-size:10px">7KQ2-…-M9XA</text>
-        <rect x="44" y="166" width="42" height="20" rx="10" class="fB"/><text x="65" y="180" text-anchor="middle" style="font-size:9px" fill="#fff">コピー</text>
-        <rect x="94" y="166" width="42" height="20" rx="10" class="fN sB w1"/><text x="115" y="180" text-anchor="middle" style="font-size:9px;fill:var(--brand)">控えた</text>
-        <text x="90" y="244" text-anchor="middle" style="font-size:10px;fill:var(--thread);font-weight:700">1 回しか出ません</text>
-      </svg>
-      <span class="no">2</span><b>復旧コードを控える</b><span>記録に戻るための鍵</span>
+    <div class="phone"><svg viewBox="0 0 180 300" role="img" aria-label="スマホの画面で、ボタンが光って指で押している"><rect x="10" y="4" width="160" height="292" rx="24" class="fI"/><rect x="18" y="16" width="144" height="268" rx="16" class="fP"/>
+<rect x="18" y="16" width="144" height="268" rx="16" style="fill:rgba(16,18,16,.45)"/>
+<rect x="32" y="60" width="116" height="80" rx="10" class="fP"/>
+<rect x="42" y="72" width="70" height="7" rx="3" class="fL"/><rect x="42" y="86" width="90" height="7" rx="3" class="fL"/>
+<rect x="36" y="100" width="56" height="30" rx="14" class="fN sT w2"/><text x="64" y="119" text-anchor="middle" style="font-size:8.5px;fill:var(--thread)">興味あり</text>
+<path d="M76 160c0-10 6-14 10-14s6 3 6 8v20l8-6c4-3 9 0 7 5l-12 22c-3 5-8 8-14 8h-6c-7 0-12-5-12-12v-16c0-4 3-6 6-6s5 2 5 5z" class="fP sI w1"/>
+<rect x="96" y="246" width="56" height="24" rx="12" class="fP"/><text x="124" y="262" text-anchor="middle" style="font-size:9px;fill:var(--ink)">使い方</text></svg>
+      <span class="no">2</span><b>ツアーで試す</b><span>右下の「使い方」からいつでも</span>
     </div>
-    <div class="phone">
-      <svg viewBox="0 0 180 300" role="img" aria-label="スマホの画面で、ボタンが光って指で押している">
-        <rect x="10" y="4" width="160" height="292" rx="24" class="fI"/><rect x="18" y="16" width="144" height="268" rx="16" class="fP"/>
-        <rect x="18" y="16" width="144" height="268" rx="16" style="fill:rgba(16,18,16,.45)"/>
-        <rect x="32" y="60" width="116" height="80" rx="10" class="fP"/>
-        <rect x="42" y="72" width="70" height="7" rx="3" class="fL"/><rect x="42" y="86" width="90" height="7" rx="3" class="fL"/>
-        <rect x="42" y="106" width="44" height="18" rx="9" class="fN sT w2"/><text x="64" y="119" text-anchor="middle" style="font-size:8.5px;fill:var(--thread)">興味あり</text>
-        <rect x="36" y="100" width="56" height="30" rx="14" class="fN sT w2"/>
-        <path d="M76 160c0-10 6-14 10-14s6 3 6 8v20l8-6c4-3 9 0 7 5l-12 22c-3 5-8 8-14 8h-6c-7 0-12-5-12-12v-16c0-4 3-6 6-6s5 2 5 5z" class="fP sI w1"/>
-        <rect x="28" y="214" width="124" height="54" rx="10" class="fP"/>
-        <rect x="38" y="226" width="80" height="7" rx="3" class="fT" opacity=".6"/><rect x="38" y="240" width="96" height="6" rx="3" class="fL"/>
-      </svg>
-      <span class="no">3</span><b>ツアーで試す</b><span>右下の「使い方」からいつでも</span>
+    <div class="phone"><svg viewBox="0 0 180 300" role="img" aria-label="スマホの画面で、何枚ものカードに興味ありの印が付いている"><rect x="10" y="4" width="160" height="292" rx="24" class="fI"/><rect x="18" y="16" width="144" height="268" rx="16" class="fP"/>
+<g><rect x="30" y="34" width="120" height="56" rx="8" class="fW sL w1"/><rect x="40" y="46" width="60" height="6" rx="3" class="fL"/><circle cx="130" cy="62" r="12" class="fT"/><path d="M124 62l4 4 8-8" class="fN w2 rd" stroke="#fff"/></g>
+<g><rect x="30" y="100" width="120" height="56" rx="8" class="fW sL w1"/><rect x="40" y="112" width="60" height="6" rx="3" class="fL"/><circle cx="130" cy="128" r="12" class="fN sL w2"/></g>
+<g><rect x="30" y="166" width="120" height="56" rx="8" class="fW sL w1"/><rect x="40" y="178" width="60" height="6" rx="3" class="fL"/><circle cx="130" cy="194" r="12" class="fT"/><path d="M124 194l4 4 8-8" class="fN w2 rd" stroke="#fff"/></g>
+<g><rect x="30" y="232" width="120" height="40" rx="8" class="fW sL w1"/><circle cx="130" cy="252" r="12" class="fT"/><path d="M124 252l4 4 8-8" class="fN w2 rd" stroke="#fff"/></g></svg>
+      <span class="no">3</span><b>いくつか「興味あり」</b><span>ここがいちばん大事</span>
     </div>
-    <div class="phone">
-      <svg viewBox="0 0 180 300" role="img" aria-label="スマホの画面で、何枚ものカードに興味ありの印が付いている">
-        <rect x="10" y="4" width="160" height="292" rx="24" class="fI"/><rect x="18" y="16" width="144" height="268" rx="16" class="fP"/>
-        <g><rect x="30" y="34" width="120" height="56" rx="8" class="fW sL w1"/><rect x="40" y="46" width="60" height="6" rx="3" class="fL"/><circle cx="130" cy="62" r="12" class="fT"/><path d="M124 62l4 4 8-8" class="fN w2 rd" stroke="#fff"/></g>
-        <g><rect x="30" y="100" width="120" height="56" rx="8" class="fW sL w1"/><rect x="40" y="112" width="60" height="6" rx="3" class="fL"/><circle cx="130" cy="128" r="12" class="fN sL w2"/></g>
-        <g><rect x="30" y="166" width="120" height="56" rx="8" class="fW sL w1"/><rect x="40" y="178" width="60" height="6" rx="3" class="fL"/><circle cx="130" cy="194" r="12" class="fT"/><path d="M124 194l4 4 8-8" class="fN w2 rd" stroke="#fff"/></g>
-        <g><rect x="30" y="232" width="120" height="40" rx="8" class="fW sL w1"/><circle cx="130" cy="252" r="12" class="fT"/><path d="M124 252l4 4 8-8" class="fN w2 rd" stroke="#fff"/></g>
-      </svg>
-      <span class="no">4</span><b>いくつか「興味あり」</b><span>ここがいちばん大事</span>
+    <div class="phone"><svg viewBox="0 0 180 300" role="img" aria-label="おすすめの画面の上の検索欄に題名を入れると、出てこなかった公演が出て、興味ありを押せる"><rect x="10" y="4" width="160" height="292" rx="24" class="fI"/><rect x="18" y="16" width="144" height="268" rx="16" class="fP"/>
+<text x="34" y="52" style="font-size:9.5px;font-weight:700;fill:var(--ink)">おすすめに出てこない</text><text x="34" y="66" style="font-size:9.5px;font-weight:700;fill:var(--ink)">公演を探す</text>
+<rect x="30" y="76" width="120" height="24" rx="6" class="fW sL w1"/><circle cx="42" cy="88" r="5" class="fN sM w2"/><path d="M46 92l4 4" class="sM w2 rd"/><text x="56" y="92" style="font-size:9.5px;fill:var(--ink)">題名・人名…</text>
+<rect x="30" y="112" width="120" height="96" rx="8" class="fP sB w2"/>
+<rect x="40" y="122" width="34" height="46" rx="4" class="fBs"/><rect x="80" y="126" width="60" height="6" rx="3" class="fL"/><rect x="80" y="138" width="46" height="6" rx="3" class="fL"/>
+<rect x="40" y="178" width="48" height="20" rx="10" class="fT"/><text x="64" y="192" text-anchor="middle" style="font-size:8.5px;font-weight:700" fill="#fff">興味あり</text>
+<rect x="94" y="178" width="46" height="20" rx="10" class="fN sM w1"/><text x="117" y="192" text-anchor="middle" style="font-size:8.5px;fill:var(--muted)">興味なし</text></svg>
+      <span class="no">4</span><b>出てこない公演は探す</b><span>おすすめの上の検索欄から答えられる</span>
     </div>
   </div>
   <div class="callout">
     <svg viewBox="0 0 24 24" width="26" height="26" class="fN sT w2 rd"><path d="M12 8v5M12 16h.01M12 3 2 20h20L12 3z"/></svg>
-    1 件も押さないと、ほかの画面は全部 0 件のままです。
+    1 件も答えないと、おすすめは出ません。「興味あり」か評価をいくつか。
   </div>
 </section>
 
-<!-- ============================================================ 3章 3つのボタン -->
+<!-- ============================================================ 3章 4つの答え -->
 <section class="sec" id="ch3">
-  <div class="eyebrow"><span class="n">03</span><span>3 つのボタン</span></div>
+  <div class="eyebrow"><span class="n">03</span><span>4 つの答え</span></div>
   <h2 class="title">押すと、ここに並ぶ</h2>
-  <div class="big">
-    <svg viewBox="0 0 960 420" role="img" aria-label="おすすめの公演カードの3つのボタンから、それぞれ行き先の画面へ矢印が伸びる図。すでに持っているは購入済み公演へ、興味ありは興味ありの一覧と公演カレンダーへ、興味なしはおすすめの下にまとめて残る">
-      <defs><marker id="ar3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1l7 4-7 4z" style="fill:var(--muted)"/></marker></defs>
-      <!-- カード -->
-      <g transform="translate(30 40)">
-        <rect width="300" height="340" rx="16" class="fP sL w1"/>
-        <rect x="20" y="20" width="96" height="128" rx="8" class="fTs"/><path d="M68 64l6 12 13 2-9.5 9 2.3 13-11.8-6.2-11.8 6.2 2.3-13-9.5-9 13-2z" class="fT"/>
-        <text x="132" y="44" class="tx-m" style="fill:var(--ink)">公演のタイトル</text>
-        <rect x="132" y="58" width="140" height="8" rx="4" class="fL"/><rect x="132" y="74" width="120" height="8" rx="4" class="fL"/>
-        <rect x="132" y="98" width="148" height="44" rx="8" class="fBs"/><text x="142" y="118" class="tx-s" style="fill:var(--brand);font-weight:600">おすすめの理由</text>
-        <rect x="142" y="126" width="110" height="6" rx="3" class="fB2" opacity=".5"/>
-        <rect x="20" y="166" width="260" height="8" rx="4" class="fL"/><rect x="20" y="182" width="230" height="8" rx="4" class="fL"/><rect x="20" y="198" width="200" height="8" rx="4" class="fL"/>
-        <g transform="translate(20 236)"><rect width="260" height="26" rx="13" class="fN sM w1"/><text x="130" y="18" text-anchor="middle" class="tx-s" style="fill:var(--ink)">すでに持っている</text></g>
-        <g transform="translate(20 270)"><rect width="260" height="26" rx="13" class="fT"/><text x="130" y="18" text-anchor="middle" class="tx-s" fill="#fff" style="font-weight:700">興味あり</text></g>
-        <g transform="translate(20 304)"><rect width="260" height="26" rx="13" class="fN sM w1"/><text x="130" y="18" text-anchor="middle" class="tx-s" style="fill:var(--muted)">興味なし</text></g>
-      </g>
-      <!-- 矢印 -->
-      <path d="M312 289C420 289 440 70 560 70" class="fN sM w2" marker-end="url(#ar3)"/>
-      <path d="M312 323C440 323 460 210 560 210" class="fN sT w3" marker-end="url(#ar3)"/>
-      <path d="M312 357C440 357 470 350 560 350" class="fN sM w2 dash" marker-end="url(#ar3)"/>
-      <!-- 行き先1 購入済み -->
-      <g transform="translate(570 28)">
-        <rect width="360" height="84" rx="14" class="fW sL w1"/>
-        <g transform="translate(18 22)"><rect width="56" height="40" rx="4" class="fP sB w2"/><path d="M16 0v40" class="sB w2 dash"/></g>
-        <text x="94" y="38" class="tx-m" style="fill:var(--ink)">購入済み公演</text>
-        <text x="94" y="60" class="tx-s" style="fill:var(--muted)">行く日を入れられる</text>
-      </g>
-      <!-- 行き先2 興味あり + カレンダー -->
-      <g transform="translate(570 146)">
-        <rect width="360" height="128" rx="14" class="fTs sT w2"/>
-        <g transform="translate(18 18)"><path d="M10 0v44M10 2h28l-7 9 7 9H10" class="fN sT w3 rd"/></g>
-        <text x="72" y="38" class="tx-m" style="fill:var(--ink)">興味ありの一覧</text>
-        <text x="72" y="58" class="tx-s" style="fill:var(--muted)">公演カレンダーにも載る</text>
-        <rect x="18" y="76" width="324" height="36" rx="8" class="fP"/>
-        <rect x="30" y="86" width="150" height="7" rx="3.5" class="fB2"/><rect x="90" y="98" width="200" height="7" rx="3.5" class="fT"/>
-        
-      </g>
-      <!-- 行き先3 興味なし -->
-      <g transform="translate(570 310)">
-        <rect width="360" height="80" rx="14" class="fN sL w1 dash"/>
-        <g transform="translate(20 20)"><rect width="44" height="40" rx="6" class="fW sL w1"/><path d="M8 12h28M8 20h28M8 28h18" class="sL w2"/></g>
-        <text x="84" y="36" class="tx-m" style="fill:var(--ink)">下にまとめて残る</text>
-        <text x="84" y="58" class="tx-s" style="fill:var(--muted)">迷ったら押してOK。消えません</text>
-      </g>
-    </svg>
-  </div>
+  <div class="big"><svg viewBox="0 0 960 470" role="img" aria-label="おすすめの公演カードの4つの答えから、それぞれ行き先へ矢印が伸びる図。興味ありは興味ありの一覧と公演カレンダーへ、購入済は購入済み公演とカレンダーの半券へ、行けないは一覧には出ず好みの手がかりにだけ使う、興味なしはおすすめから外れる。">
+<defs><marker id="ar3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1l7 4-7 4z" style="fill:var(--muted)"/></marker></defs>
+<g transform="translate(30 40)">
+<rect width="300" height="390" rx="16" class="fP sL w1"/>
+<rect x="20" y="20" width="96" height="128" rx="8" class="fTs"/><path d="M68 64l6 12 13 2-9.5 9 2.3 13-11.8-6.2-11.8 6.2 2.3-13-9.5-9 13-2z" class="fT"/>
+<text x="132" y="44" class="tx-m" style="fill:var(--ink)">公演のタイトル</text>
+<rect x="132" y="58" width="140" height="8" rx="4" class="fL"/><rect x="132" y="74" width="120" height="8" rx="4" class="fL"/>
+<rect x="132" y="96" width="70" height="16" rx="8" class="fN sM w1"/><text x="167" y="108" text-anchor="middle" style="font-size:9px;fill:var(--muted)">¥ 料金</text>
+<rect x="20" y="164" width="260" height="62" rx="8" class="fBs"/><text x="32" y="184" class="tx-s" style="fill:var(--brand);font-weight:600">おすすめ理由</text>
+<rect x="32" y="194" width="170" height="7" rx="3" class="fB2" opacity=".5"/><text x="264" y="201" text-anchor="end" style="font-size:12px;fill:var(--muted)">✕</text>
+<rect x="32" y="208" width="140" height="7" rx="3" class="fB2" opacity=".5"/><text x="264" y="215" text-anchor="end" style="font-size:12px;fill:var(--muted)">✕</text>
+<rect x="20" y="240" width="260" height="8" rx="4" class="fL"/><rect x="20" y="256" width="200" height="8" rx="4" class="fL"/>
+<g transform="translate(20 286)"><rect width="260" height="26" rx="13" class="fT"/><text x="130" y="18" text-anchor="middle" class="tx-s" fill="#fff" style="font-weight:700">興味あり</text></g>
+<g transform="translate(20 318)"><rect width="260" height="26" rx="13" class="fN sM w1"/><text x="130" y="18" text-anchor="middle" class="tx-s" style="fill:var(--ink)">購入済</text></g>
+<g transform="translate(20 350)"><rect width="126" height="26" rx="13" class="fN sM w1"/><text x="63" y="18" text-anchor="middle" class="tx-s" style="fill:var(--ink)">行けない</text></g>
+<g transform="translate(154 350)"><rect width="126" height="26" rx="13" class="fN sM w1"/><text x="63" y="18" text-anchor="middle" class="tx-s" style="fill:var(--muted)">興味なし</text></g>
+</g>
+<path d="M312 339C440 339 450 70 560 70" class="fN sT w3" marker-end="url(#ar3)"/>
+<path d="M312 371C440 371 460 190 560 190" class="fN sM w2" marker-end="url(#ar3)"/>
+<path d="M178 418C300 450 460 300 560 300" class="fN sM w2" marker-end="url(#ar3)"/>
+<path d="M312 403C440 420 480 405 560 405" class="fN sM w2 dash" marker-end="url(#ar3)"/>
+<g transform="translate(570 20)"><rect width="370" height="110" rx="14" class="fTs sT w2"/>
+<g transform="translate(18 18)"><path d="M10 0v44M10 2h28l-7 9 7 9H10" class="fN sT w3 rd"/></g>
+<text x="72" y="38" class="tx-m" style="fill:var(--ink)">興味ありの一覧</text><text x="72" y="58" class="tx-s" style="fill:var(--muted)">公演カレンダーにも帯で載る</text>
+<rect x="18" y="72" width="334" height="24" rx="6" class="fP"/><rect x="30" y="80" width="150" height="8" rx="4" class="fN sT w1 dash"/><rect x="120" y="80" width="200" height="8" rx="4" class="fN sT w1 dash" opacity=".5"/></g>
+<g transform="translate(570 146)"><rect width="370" height="96" rx="14" class="fW sL w1"/>
+<g transform="translate(18 24)"><rect width="56" height="40" rx="4" class="fP sB w2"/><path d="M16 0v40" class="sB w2 dash"/></g>
+<text x="94" y="40" class="tx-m" style="fill:var(--ink)">購入済み公演</text><text x="94" y="62" class="tx-s" style="fill:var(--muted)">行く日を入れると、カレンダーに半券</text></g>
+<g transform="translate(570 258)"><rect width="370" height="84" rx="14" class="fW sL w1"/>
+<g transform="translate(20 20)"><rect width="44" height="44" rx="22" class="fN sM w2"/><path d="M12 22h20" class="sM w3 rd"/></g>
+<text x="84" y="38" class="tx-m" style="fill:var(--ink)">行けない</text><text x="84" y="60" class="tx-s" style="fill:var(--muted)">一覧には出さない。好みの手がかりには使う</text></g>
+<g transform="translate(570 360)"><rect width="370" height="84" rx="14" class="fN sL w1 dash"/>
+<g transform="translate(20 20)"><rect width="44" height="40" rx="6" class="fW sL w1"/><path d="M8 12h28M8 20h28M8 28h18" class="sL w2"/></g>
+<text x="84" y="38" class="tx-m" style="fill:var(--ink)">興味なし</text><text x="84" y="60" class="tx-s" style="fill:var(--muted)">おすすめから外れる。似た公演も下がる</text></g>
+</svg></div>
+  <p class="cap">答えたあとでも「回答を直す」で選び直せます。</p>
+
+  <h3 class="sub">理由の ✕ で、いらないものを外す</h3>
+  <div class="big"><svg viewBox="0 0 960 230" role="img" aria-label="おすすめ理由の行の✕を押すと、人物はその人の公演が出なくなり、種類は理由から外れ、2.5次元や宝塚のジャンルはその公演ごと出なくなる">
+<defs><marker id="arx" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1l7 4-7 4z" style="fill:var(--muted)"/></marker></defs>
+<rect x="20" y="20" width="420" height="190" rx="14" class="fBs"/>
+<text x="40" y="50" class="tx-m" style="fill:var(--brand)">おすすめ理由</text>
+<g transform="translate(40 66)"><rect width="44" height="22" rx="11" class="fN sB w1"/><text x="22" y="15" text-anchor="middle" style="font-size:11px;fill:var(--brand)">人物</text><text x="56" y="16" class="tx-s" style="fill:var(--ink)">出演 <tspan font-weight="700">俳優A</tspan>（『観た作品』）</text><text x="370" y="16" text-anchor="end" style="font-size:15px;fill:var(--thread);font-weight:700">✕</text></g>
+<g transform="translate(40 110)"><rect width="44" height="22" rx="11" class="fN sG w1"/><text x="22" y="15" text-anchor="middle" style="font-size:11px;fill:var(--good)">種類</text><text x="56" y="16" class="tx-s" style="fill:var(--ink)">原作 <tspan font-weight="700">漫画原作</tspan></text><text x="370" y="16" text-anchor="end" style="font-size:15px;fill:var(--thread);font-weight:700">✕</text></g>
+<g transform="translate(40 154)"><rect width="44" height="22" rx="11" class="fN sG w1"/><text x="22" y="15" text-anchor="middle" style="font-size:11px;fill:var(--good)">種類</text><text x="56" y="16" class="tx-s" style="fill:var(--ink)">ジャンル <tspan font-weight="700">2.5次元</tspan></text><text x="370" y="16" text-anchor="end" style="font-size:15px;fill:var(--thread);font-weight:700">✕</text></g>
+<path d="M420 77H540" class="fN sM w2" marker-end="url(#arx)"/><path d="M420 121H540" class="fN sM w2" marker-end="url(#arx)"/><path d="M420 165H540" class="fN sM w2" marker-end="url(#arx)"/>
+<g transform="translate(550 60)"><rect width="390" height="34" rx="10" class="fW sL w1"/><text x="16" y="22" class="tx-s" style="fill:var(--ink)">その人の名前を「出さない語」に → その人の公演は出ない</text></g>
+<g transform="translate(550 104)"><rect width="390" height="34" rx="10" class="fW sL w1"/><text x="16" y="22" class="tx-s" style="fill:var(--ink)">その種類を理由にも点にも使わない（公演は残る）</text></g>
+<g transform="translate(550 148)"><rect width="390" height="34" rx="10" class="fTs sT w1"/><text x="16" y="22" class="tx-s" style="fill:var(--ink)">そのジャンルの公演を<tspan font-weight="700">まるごと</tspan>出さない</text></g>
+<text x="745" y="214" text-anchor="middle" class="tx-s" style="fill:var(--muted)">元に戻すときは「設定」の出さない語・外した理由から</text>
+</svg></div>
 
   <h3 class="sub">押さなかったら？</h3>
   <div class="ill-grid">
@@ -566,6 +562,15 @@ svg text{font-family:"Noto Sans JP","Hiragino Kaku Gothic ProN",sans-serif}
       </svg>
       <b>初日が近いと「開幕リマインド」へ</b>
     </div>
+    <div class="ill">
+      <svg viewBox="0 0 220 110" role="img" aria-label="会場ごとの行と、週の暦に公演の時刻が並ぶ">
+        <rect x="20" y="14" width="180" height="20" rx="5" class="fW sL w1"/><text x="30" y="28" style="font-size:10px;fill:var(--ink)">★ 10/28〜11/3 東京</text><text x="190" y="28" text-anchor="end" style="font-size:9px;fill:var(--thread)">▼詳細</text>
+        <g class="fW"><rect x="20" y="42" width="24" height="26" rx="3"/><rect x="46" y="42" width="24" height="26" rx="3"/><rect x="72" y="42" width="24" height="26" rx="3"/><rect x="98" y="42" width="24" height="26" rx="3"/><rect x="124" y="42" width="24" height="26" rx="3"/><rect x="150" y="42" width="24" height="26" rx="3"/><rect x="176" y="42" width="24" height="26" rx="3"/></g>
+        <g style="font-size:8px;fill:var(--ink);font-weight:600" text-anchor="middle"><text x="84" y="62">19:00</text><text x="110" y="56">14:00</text><text x="110" y="65">19:00</text><text x="162" y="56">12:00</text><text x="162" y="65">16:30</text><text x="188" y="62">13:00</text></g>
+        <rect x="20" y="76" width="180" height="20" rx="5" class="fW sL w1"/><text x="30" y="90" style="font-size:10px;fill:var(--muted)">11/6〜11/8 愛知</text>
+      </svg>
+      <b>日程と料金はカードで分かる</b>
+    </div>
   </div>
 </section>
 
@@ -573,91 +578,94 @@ svg text{font-family:"Noto Sans JP","Hiragino Kaku Gothic ProN",sans-serif}
 <section class="sec" id="ch4">
   <div class="eyebrow"><span class="n">04</span><span>画面マップ</span></div>
   <h2 class="title">メニューの地図</h2>
-  <div class="big">
-    <svg viewBox="0 0 1000 470" role="img" aria-label="メニューの構成図。おすすめ、公演カレンダー、購入済み公演、観た公演の評価、公演情報の登録、記録を見返す、探す、設定と、その中の画面">
-      <style>.mp-h{font-size:14px;font-weight:700;fill:var(--ink)}.mp-c{font-size:12.5px;fill:var(--body)}.mp-k{font-size:11px;fill:var(--muted)}</style>
-      <!-- 列1 これから観る -->
-      <text x="20" y="24" class="mp-k">これから観る</text>
-      <g transform="translate(20 36)"><rect width="300" height="190" rx="14" class="fBs"/>
-        <g transform="translate(16 16)"><circle cx="16" cy="16" r="16" class="fB"/><path d="M16 8l2.4 5 5.4.8-3.9 3.8.9 5.4-4.8-2.6-4.8 2.6.9-5.4-3.9-3.8 5.4-.8z" fill="#fff"/><text x="42" y="22" class="mp-h">おすすめ</text></g>
-        <g class="mp-c"><rect x="16" y="62" width="128" height="50" rx="10" class="fP"/><text x="28" y="84">今週のおすすめ</text><text x="28" y="102" class="mp-k">理由つきで15件</text>
-        <rect x="156" y="62" width="128" height="50" rx="10" class="fP"/><text x="168" y="84">開幕リマインド</text><text x="168" y="102" class="mp-k">初日が近い公演</text>
-        <rect x="16" y="122" width="128" height="50" rx="10" class="fP"/><text x="28" y="144">興味あり</text><text x="28" y="162" class="mp-k">押した公演</text>
-        <rect x="156" y="122" width="128" height="50" rx="10" class="fP"/><text x="168" y="144">お気に入り</text><text x="168" y="162" class="mp-k">登録した名前の新着</text></g>
-      </g>
-      <g transform="translate(20 240)"><rect width="300" height="64" rx="14" class="fBs"/>
-        <g transform="translate(16 16)"><rect x="2" y="4" width="28" height="26" rx="5" class="fB"/><path d="M8 14h16M8 20h10" stroke="#fff" stroke-width="2"/><text x="42" y="22" class="mp-h">公演カレンダー</text></g>
-      </g>
-      <g transform="translate(20 318)"><rect width="300" height="64" rx="14" class="fBs"/>
-        <g transform="translate(16 16)"><rect y="7" width="32" height="20" rx="3" class="fB"/><path d="M10 7v20" stroke="#fff" stroke-dasharray="3 3"/><text x="42" y="22" class="mp-h">購入済み公演</text></g>
-      </g>
-      <!-- 列2 観たあと -->
-      <text x="350" y="24" class="mp-k">観たあと</text>
-      <g transform="translate(350 36)"><rect width="300" height="130" rx="14" class="fTs"/>
-        <g transform="translate(16 16)"><circle cx="16" cy="16" r="16" class="fT"/><text x="16" y="22" text-anchor="middle" fill="#fff" style="font-size:16px;font-weight:700">◎</text><text x="42" y="22" class="mp-h">観た公演の評価</text></g>
-        <g class="mp-c"><rect x="16" y="62" width="84" height="50" rx="10" class="fP"/><text x="28" y="92">評価一覧</text>
-        <rect x="108" y="62" width="84" height="50" rx="10" class="fP"/><text x="120" y="92">未評価</text>
-        <rect x="200" y="62" width="84" height="50" rx="10" class="fP"/><text x="212" y="92">感想</text></g>
-      </g>
-      <g transform="translate(350 180)"><rect width="300" height="64" rx="14" class="fTs"/>
-        <g transform="translate(16 16)"><circle cx="16" cy="16" r="16" class="fT"/><path d="M16 9v14M9 16h14" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/><text x="42" y="22" class="mp-h">公演情報の登録</text></g>
-      </g>
-      <g transform="translate(350 258)"><rect width="300" height="190" rx="14" class="fTs"/>
-        <g transform="translate(16 16)"><circle cx="16" cy="16" r="16" class="fT"/><path d="M9 23h14M11 23v-5M16 23V10M21 23v-8" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/><text x="42" y="22" class="mp-h">記録を見返す</text></g>
-        <g class="mp-c"><rect x="16" y="62" width="128" height="50" rx="10" class="fP"/><text x="28" y="84">眺める</text><text x="28" y="102" class="mp-k">図で見る</text>
-        <rect x="156" y="62" width="128" height="50" rx="10" class="fP"/><text x="168" y="84">たどる</text><text x="168" y="102" class="mp-k">1人の名前から</text>
-        <rect x="16" y="122" width="128" height="50" rx="10" class="fP"/><text x="28" y="144">観劇史年表</text><text x="28" y="162" class="mp-k">年ごとの変化</text>
-        <rect x="156" y="122" width="128" height="50" rx="10" class="fP"/><text x="168" y="144">日記帳</text><text x="168" y="162" class="mp-k">1公演ずつ</text></g>
-      </g>
-      <!-- 列3 いつでも -->
-      <text x="680" y="24" class="mp-k">いつでも</text>
-      <g transform="translate(680 36)"><rect width="300" height="64" rx="14" class="fW sL w1"/>
-        <g transform="translate(16 16)"><circle cx="13" cy="13" r="10" class="fN sB w3"/><path d="M21 21l8 8" class="sB w3 rd"/><text x="42" y="22" class="mp-h">探す</text></g>
-      </g>
-      <g transform="translate(680 114)"><rect width="300" height="64" rx="14" class="fW sL w1"/>
-        <g transform="translate(16 16)"><circle cx="16" cy="16" r="6" class="fN sB w3"/><circle cx="16" cy="16" r="13" class="fN sB w2 dash"/><text x="42" y="22" class="mp-h">設定</text></g>
-      </g>
-      <g transform="translate(680 210)">
-        <rect width="300" height="238" rx="14" class="fP sL w1"/>
-        <text x="20" y="34" class="mp-k">右下の</text>
-        <rect x="20" y="48" width="104" height="36" rx="18" class="fP sM w1"/><text x="72" y="71" text-anchor="middle" class="mp-c">使い方</text>
-        <path d="M72 92v20" class="sM w2 rd"/>
-        <rect x="20" y="118" width="260" height="44" rx="10" class="fW"/><text x="36" y="146" class="mp-c">▶ 操作ツアー</text>
-        <rect x="20" y="172" width="260" height="44" rx="10" class="fW"/><text x="36" y="200" class="mp-c">▶ 説明動画（約 70 秒）</text>
-      </g>
-    </svg>
-  </div>
+  <div class="big"><svg viewBox="0 0 1000 520" role="img" aria-label="メニューの構成図。下のメニューにおすすめ、予定、評価、記録の4つ。右上に観劇記録を追加の＋、アカウント、設定。上に探す。画面の名前の右のⓘで説明が開く">
+<style>.mp-h{font-size:14px;font-weight:700;fill:var(--ink)}.mp-c{font-size:12.5px;fill:var(--body)}.mp-k{font-size:11px;fill:var(--muted)}</style>
+<text x="20" y="24" class="mp-k">メニュー（スマホは画面の上の 4 つ）</text>
+<g transform="translate(20 36)"><rect width="470" height="200" rx="14" class="fBs"/>
+<text x="20" y="32" class="mp-h">おすすめ</text>
+<g class="mp-c"><rect x="16" y="48" width="140" height="56" rx="10" class="fP"/><text x="28" y="72">今週のおすすめ</text><text x="28" y="92" class="mp-k">理由つき 15 件</text>
+<rect x="166" y="48" width="140" height="56" rx="10" class="fP"/><text x="178" y="72">興味あり</text><text x="178" y="92" class="mp-k">答えた公演を追う</text>
+<rect x="316" y="48" width="140" height="56" rx="10" class="fP"/><text x="328" y="72">お気に入り</text><text x="328" y="92" class="mp-k">登録した名前の公演</text></g>
+<text x="20" y="134" class="mp-h">予定</text>
+<g class="mp-c"><rect x="16" y="146" width="140" height="44" rx="10" class="fP"/><text x="28" y="173">公演カレンダー</text>
+<rect x="166" y="146" width="140" height="44" rx="10" class="fP"/><text x="178" y="173">開幕リマインド</text>
+<rect x="316" y="146" width="140" height="44" rx="10" class="fP"/><text x="328" y="173">購入済み公演</text></g></g>
+<g transform="translate(20 252)"><rect width="470" height="250" rx="14" class="fTs"/>
+<text x="20" y="32" class="mp-h">評価</text>
+<g class="mp-c"><rect x="16" y="46" width="104" height="44" rx="10" class="fP"/><text x="28" y="73">評価一覧</text>
+<rect x="128" y="46" width="104" height="44" rx="10" class="fP"/><text x="140" y="73">未評価</text>
+<rect x="240" y="46" width="104" height="44" rx="10" class="fP"/><text x="252" y="73">感想</text>
+<rect x="352" y="46" width="104" height="44" rx="10" class="fP"/><text x="364" y="66">観劇記録</text><text x="364" y="82">を追加</text></g>
+<text x="20" y="128" class="mp-h">記録</text>
+<g class="mp-c"><rect x="16" y="142" width="104" height="56" rx="10" class="fP"/><text x="28" y="166">日記帳</text><text x="28" y="184" class="mp-k">1 公演ずつ</text>
+<rect x="128" y="142" width="104" height="56" rx="10" class="fP"/><text x="140" y="166">眺める</text><text x="140" y="184" class="mp-k">図で見る</text>
+<rect x="240" y="142" width="104" height="56" rx="10" class="fP"/><text x="252" y="166">たどる</text><text x="252" y="184" class="mp-k">名前から</text>
+<rect x="352" y="142" width="104" height="56" rx="10" class="fP"/><text x="364" y="166">観劇史年表</text><text x="364" y="184" class="mp-k">年ごとの変化</text></g>
+<text x="20" y="232" class="mp-k">観た公演の記録は「評価」の各画面から直せる</text></g>
+<text x="520" y="24" class="mp-k">画面の右上</text>
+<g transform="translate(520 36)"><rect width="460" height="210" rx="14" class="fP sL w1"/>
+<rect x="16" y="16" width="428" height="44" rx="10" class="fW"/>
+<text x="30" y="44" style="font-size:15px;font-weight:700;fill:var(--thread)">たぐり</text>
+<rect x="110" y="26" width="130" height="24" rx="6" class="fP sL w1"/><circle cx="124" cy="38" r="5" class="fN sM w2"/><text x="136" y="43" class="mp-k">探す</text>
+<text x="290" y="45" text-anchor="middle" style="font-size:22px;fill:var(--ink)">＋</text>
+<circle cx="350" cy="38" r="9" class="fN sI w2"/><circle cx="410" cy="38" r="9" class="fN sI w2 dash"/>
+<path d="M175 60v34M290 60v34M350 60v34M410 60v34" class="sM w1 dash"/>
+<g class="mp-c"><text x="140" y="112" text-anchor="middle">題名・人名で</text><text x="140" y="128" text-anchor="middle">探す（過去も）</text>
+<text x="290" y="112" text-anchor="middle">観劇記録を</text><text x="290" y="128" text-anchor="middle">追加</text>
+<text x="352" y="112" text-anchor="middle" style="font-size:11px">アカウント</text>
+<text x="410" y="112" text-anchor="middle">設定</text></g>
+<text x="20" y="170" class="mp-k">設定：評価の付け方（星・◎○△× など）・</text><text x="20" y="188" class="mp-k">おすすめの効かせ方・出さない語・書き出し</text></g>
+<g transform="translate(520 262)"><rect width="460" height="110" rx="14" class="fP sL w1"/>
+<text x="20" y="32" class="mp-k">画面の名前の右</text>
+<text x="20" y="66" class="mp-c">たぐり › 予定 › <tspan font-weight="700">公演カレンダー</tspan></text>
+<circle cx="250" cy="61" r="11" class="fN sT w2"/><text x="250" y="66" text-anchor="middle" style="font-size:13px;font-weight:700;fill:var(--thread)">i</text>
+<text x="20" y="96" class="mp-c">ⓘ を押すと、その画面の説明が開く</text></g>
+<g transform="translate(520 388)"><rect width="460" height="114" rx="14" class="fP sL w1"/>
+<text x="20" y="32" class="mp-k">右下の</text>
+<rect x="20" y="44" width="104" height="36" rx="18" class="fP sM w1"/><text x="72" y="67" text-anchor="middle" class="mp-c">使い方</text>
+<text x="146" y="58" class="mp-c">▶ 操作ツアー</text><text x="146" y="82" class="mp-c">▶ 説明動画（約 70 秒）</text></g>
+</svg></div>
 </section>
 
 <!-- ============================================================ 5章 観たら記録 -->
 <section class="sec" id="ch5">
   <div class="eyebrow"><span class="n">05</span><span>観たら記録</span></div>
   <h2 class="title">基準は「自分に合っていたか」</h2>
-  <div class="big">
-    <svg viewBox="0 0 960 260" role="img" aria-label="◎とても合っていた、○合っていた、△あまり合わなかった、×合わなかった、の4段階。◎だけが次のおすすめの材料になる">
-      <defs><linearGradient id="gr" x1="0" x2="1"><stop offset="0" style="stop-color:var(--thread)"/><stop offset="1" style="stop-color:var(--line)"/></linearGradient>
-      <marker id="ar5" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1l7 4-7 4z" style="fill:var(--thread)"/></marker></defs>
-      <rect x="60" y="118" width="840" height="8" rx="4" fill="url(#gr)"/>
-      <g text-anchor="middle">
-        <g transform="translate(120 120)"><circle r="52" class="fT"/><text y="16" fill="#fff" style="font-size:46px;font-weight:700">◎</text><text y="84" class="tx-m" style="fill:var(--ink)">とても合っていた</text></g>
-        <g transform="translate(360 120)"><circle r="42" class="fP sT w3"/><text y="14" style="font-size:38px;font-weight:700;fill:var(--thread)">○</text><text y="84" class="tx-m" style="fill:var(--ink)">合っていた</text></g>
-        <g transform="translate(600 120)"><circle r="42" class="fP sL w3"/><text y="14" style="font-size:38px;font-weight:700;fill:var(--muted)">△</text><text y="84" class="tx-m" style="fill:var(--ink)">あまり合わなかった</text></g>
-        <g transform="translate(840 120)"><circle r="42" class="fP sL w3"/><text y="14" style="font-size:38px;font-weight:700;fill:var(--muted)">×</text><text y="84" class="tx-m" style="fill:var(--ink)">合わなかった</text></g>
-      </g>
-      <path d="M120 60V30h120" class="fN sT w2" marker-end="url(#ar5)"/>
-      <rect x="250" y="12" width="230" height="36" rx="18" class="fTs"/><text x="365" y="35" text-anchor="middle" class="tx-m" style="fill:var(--thread)">次のおすすめの材料に</text>
-    </svg>
-  </div>
+  <div class="big"><svg viewBox="0 0 960 250" role="img" aria-label="星5段階で付ける。星を押した所まで塗られる。判断できないときは評価しないを押す。設定で◎○△×などにも変えられる">
+<text x="70" y="44" class="tx-m" style="fill:var(--muted)">合わなかった</text><text x="560" y="44" text-anchor="end" class="tx-m" style="fill:var(--thread)">とても合っていた</text>
+<path d="M150.0 80.0L157.9 99.1L178.5 100.7L162.8 114.2L167.6 134.3L150.0 123.5L132.4 134.3L137.2 114.2L121.5 100.7L142.1 99.1z" class="fT"/><path d="M228.0 80.0L235.9 99.1L256.5 100.7L240.8 114.2L245.6 134.3L228.0 123.5L210.4 134.3L215.2 114.2L199.5 100.7L220.1 99.1z" class="fT"/><path d="M306.0 80.0L313.9 99.1L334.5 100.7L318.8 114.2L323.6 134.3L306.0 123.5L288.4 134.3L293.2 114.2L277.5 100.7L298.1 99.1z" class="fT"/><path d="M384.0 80.0L391.9 99.1L412.5 100.7L396.8 114.2L401.6 134.3L384.0 123.5L366.4 134.3L371.2 114.2L355.5 100.7L376.1 99.1z" class="fT"/><path d="M462.0 80.0L469.9 99.1L490.5 100.7L474.8 114.2L479.6 134.3L462.0 123.5L444.4 134.3L449.2 114.2L433.5 100.7L454.1 99.1z" class="fN sM w2"/>
+<rect x="640" y="88" width="150" height="44" rx="22" class="fN sM w2"/><text x="715" y="116" text-anchor="middle" class="tx-m" style="fill:var(--ink)">評価しない</text>
+<text x="715" y="160" text-anchor="middle" class="tx-s" style="fill:var(--muted)">まだ判断できないとき</text>
+<text x="715" y="178" text-anchor="middle" class="tx-s" style="fill:var(--muted)">（おすすめには数えない）</text>
+<rect x="70" y="190" width="520" height="44" rx="12" class="fTs"/>
+<text x="330" y="218" text-anchor="middle" class="tx-s" style="fill:var(--ink)">甘め・辛めは気にしなくていい。自分の付け方の中での位置で読みます</text>
+<text x="840" y="110" class="tx-s" style="fill:var(--muted)">設定で</text><text x="840" y="130" class="tx-s" style="fill:var(--muted)">◎○△× にも</text>
+</svg></div>
+
+  <h3 class="sub">記録の足し方</h3>
+  <div class="big"><svg viewBox="0 0 960 250" role="img" aria-label="右上の＋から観劇記録を追加。題名で探す、Googleカレンダーから取り込む。Wキャストの公演は観た回に出ていなかった人を外せる">
+<defs><marker id="ara" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1l7 4-7 4z" style="fill:var(--muted)"/></marker></defs>
+<circle cx="80" cy="120" r="44" class="fT"/><text x="80" y="136" text-anchor="middle" style="font-size:46px;font-weight:300" fill="#fff">＋</text>
+<text x="80" y="190" text-anchor="middle" class="tx-m" style="fill:var(--ink)">右上の ＋</text>
+<path d="M130 100C190 60 220 50 270 50" class="fN sM w2" marker-end="url(#ara)"/><path d="M130 140C190 180 220 190 270 190" class="fN sM w2" marker-end="url(#ara)"/>
+<g transform="translate(280 16)"><rect width="300" height="74" rx="14" class="fW sL w1"/><circle cx="34" cy="37" r="12" class="fN sB w3"/><path d="M43 46l8 8" class="sB w3 rd"/><text x="66" y="34" class="tx-m" style="fill:var(--ink)">題名で探す</text><text x="66" y="56" class="tx-s" style="fill:var(--muted)">2 文字で候補。劇場・日程・出演ごと入る</text></g>
+<g transform="translate(280 156)"><rect width="300" height="74" rx="14" class="fW sL w1"/><rect x="20" y="20" width="30" height="34" rx="5" class="fN sB w2"/><path d="M20 30h30" class="sB w2"/><text x="66" y="34" class="tx-m" style="fill:var(--ink)">Google カレンダーから</text><text x="66" y="56" class="tx-s" style="fill:var(--muted)">予定にある観劇をまとめて取り込む</text></g>
+<path d="M590 120H640" class="fN sM w2" marker-end="url(#ara)"/>
+<g transform="translate(650 40)"><rect width="290" height="160" rx="14" class="fP sL w1"/>
+<text x="20" y="34" class="tx-m" style="fill:var(--ink)">観た回の出演者</text><text x="20" y="54" class="tx-s" style="fill:var(--muted)">W キャスト・休演の人を外せる</text>
+<g transform="translate(20 70)"><rect width="16" height="16" rx="4" class="fT"/><path d="M4 8l3 3 6-6" class="fN w2 rd" stroke="#fff"/><text x="26" y="13" class="tx-s" style="fill:var(--ink)">俳優A</text></g>
+<g transform="translate(20 96)"><rect width="16" height="16" rx="4" class="fN sM w2"/><text x="26" y="13" class="tx-s" style="fill:var(--muted);text-decoration:line-through">俳優B（別の回）</text></g>
+<g transform="translate(20 122)"><rect width="16" height="16" rx="4" class="fT"/><path d="M4 8l3 3 6-6" class="fN w2 rd" stroke="#fff"/><text x="26" y="13" class="tx-s" style="fill:var(--ink)">俳優C</text></g>
+</g></svg></div>
 
   <h3 class="sub">記録がたまると、見返せる</h3>
   <div class="ill-grid">
     <div class="ill">
-      <svg viewBox="0 0 200 120" role="img" aria-label="年ごとの棒グラフ">
-        <path d="M20 104h164" class="sL w2"/>
-        <g class="fB2"><rect x="30" y="70" width="22" height="34" rx="3"/><rect x="62" y="52" width="22" height="52" rx="3"/><rect x="94" y="60" width="22" height="44" rx="3"/><rect x="126" y="30" width="22" height="74" rx="3"/></g>
-        <rect x="158" y="18" width="22" height="86" rx="3" class="fT"/>
+      <svg viewBox="0 0 200 120" role="img" aria-label="日本地図のタイルの一部が塗られている">
+        <g class="fW sL w1"><rect x="40" y="16" width="22" height="22" rx="3"/><rect x="66" y="16" width="22" height="22" rx="3"/><rect x="92" y="42" width="22" height="22" rx="3"/><rect x="118" y="42" width="22" height="22" rx="3"/><rect x="66" y="68" width="22" height="22" rx="3"/><rect x="40" y="94" width="22" height="22" rx="3"/><rect x="144" y="68" width="22" height="22" rx="3"/></g>
+        <g class="fT"><rect x="92" y="16" width="22" height="22" rx="3"/><rect x="118" y="16" width="22" height="22" rx="3"/><rect x="92" y="68" width="22" height="22" rx="3"/><rect x="66" y="42" width="22" height="22" rx="3"/></g>
       </svg>
-      <b>眺める</b><span>本数・評価・劇場の地図</span>
+      <b>眺める</b><span>劇場制覇の地図・観劇の時間割・本数</span>
     </div>
     <div class="ill">
       <svg viewBox="0 0 200 120" role="img" aria-label="劇場ごとの横線に点が並ぶ年表">
@@ -677,11 +685,11 @@ svg text{font-family:"Noto Sans JP","Hiragino Kaku Gothic ProN",sans-serif}
       <b>たどる</b><span>名前から作品をたどる</span>
     </div>
     <div class="ill">
-      <svg viewBox="0 0 200 120" role="img" aria-label="日記帳のページに日付と評価と感想が並ぶ">
+      <svg viewBox="0 0 200 120" role="img" aria-label="日記帳のページに日付と星と感想が並ぶ">
         <rect x="40" y="10" width="120" height="100" rx="8" class="fP sL w1"/>
-        <g><text x="54" y="38" style="font-size:16px;fill:var(--thread);font-weight:700">◎</text><rect x="76" y="27" width="70" height="6" rx="3" class="fL"/><rect x="76" y="37" width="50" height="5" rx="2.5" class="fL"/></g>
-        <g><text x="54" y="68" style="font-size:16px;fill:var(--thread);font-weight:700">○</text><rect x="76" y="57" width="62" height="6" rx="3" class="fL"/><rect x="76" y="67" width="54" height="5" rx="2.5" class="fL"/></g>
-        <g><text x="54" y="98" style="font-size:16px;fill:var(--muted);font-weight:700">△</text><rect x="76" y="87" width="66" height="6" rx="3" class="fL"/><rect x="76" y="97" width="40" height="5" rx="2.5" class="fL"/></g>
+        <g><text x="52" y="38" style="font-size:12px;fill:var(--thread);font-weight:700">★★★★</text><rect x="104" y="29" width="44" height="6" rx="3" class="fL"/></g>
+        <g><text x="52" y="68" style="font-size:12px;fill:var(--thread);font-weight:700">★★★</text><rect x="96" y="59" width="52" height="6" rx="3" class="fL"/></g>
+        <g><text x="52" y="98" style="font-size:12px;fill:var(--muted);font-weight:700">★★</text><rect x="86" y="89" width="62" height="6" rx="3" class="fL"/></g>
       </svg>
       <b>日記帳</b><span>1 公演ずつの記録</span>
     </div>
@@ -691,26 +699,26 @@ svg text{font-family:"Noto Sans JP","Hiragino Kaku Gothic ProN",sans-serif}
 <!-- ============================================================ 6章 データと安心 -->
 <section class="sec" id="ch6">
   <div class="eyebrow"><span class="n">06</span><span>データと安心</span></div>
-  <h2 class="title">メールもパスワードも預かりません</h2>
+  <h2 class="title">パスワードもメールアドレスも預かりません</h2>
   <div class="ill-grid">
     <div class="ill">
-      <svg viewBox="0 0 220 130" role="img" aria-label="メールとパスワードの入力欄に斜線">
+      <svg viewBox="0 0 220 130" role="img" aria-label="パスワードの入力欄に斜線">
         <rect x="30" y="24" width="160" height="30" rx="8" class="fW sL w1"/><path d="M42 32h20v14H42zM42 32l10 7 10-7" class="fN sM w1"/><rect x="72" y="36" width="80" height="6" rx="3" class="fL"/>
         <rect x="30" y="68" width="160" height="30" rx="8" class="fW sL w1"/><text x="44" y="89" style="font-size:16px;fill:var(--muted)">＊＊＊＊＊</text>
         <path d="M24 112L196 14" class="sT w3 rd"/>
       </svg>
-      <b>登録なし</b><span>復旧コードと Cookie だけ</span>
+      <b>パスワードなし</b><span>保存するのはログインの番号だけ</span>
     </div>
     <div class="ill">
-      <svg viewBox="0 0 220 130" role="img" aria-label="パソコンからスマホへ6桁のコードを渡す">
+      <svg viewBox="0 0 220 130" role="img" aria-label="パソコンとスマホに同じ記録が出ている">
         <rect x="16" y="26" width="90" height="62" rx="6" class="fI"/><rect x="22" y="32" width="78" height="50" rx="3" class="fP"/><rect x="6" y="88" width="110" height="8" rx="3" class="fM"/>
-        <text x="61" y="64" text-anchor="middle" style="font-family:'IBM Plex Mono';font-size:14px;font-weight:600;fill:var(--brand)">482 913</text>
+        <text x="61" y="64" text-anchor="middle" style="font-size:14px;fill:var(--thread);font-weight:700">★★★★</text>
         <path d="M120 58h36" class="fN sB w2 rd dash"/><path d="M150 52l6 6-6 6" class="fN sB w2 rd"/>
         <rect x="166" y="18" width="44" height="84" rx="9" class="fI"/><rect x="171" y="26" width="34" height="66" rx="5" class="fP"/>
-        <path d="M180 60l5 5 10-10" class="fN sG w3 rd"/>
-        <text x="110" y="122" text-anchor="middle" class="tx-s" style="fill:var(--muted)">10 分・1 回限り</text>
+        <text x="188" y="64" text-anchor="middle" style="font-size:9px;fill:var(--thread);font-weight:700">★★★★</text>
+        <text x="110" y="122" text-anchor="middle" class="tx-s" style="fill:var(--muted)">同じログインで</text>
       </svg>
-      <b>別の端末を追加</b><span>設定で 6 桁のコードを発行</span>
+      <b>別の端末でも続きから</b><span>同じ方法でログインするだけ</span>
     </div>
     <div class="ill">
       <svg viewBox="0 0 220 130" role="img" aria-label="記録が1つのファイルにまとまってダウンロードされる">
@@ -733,7 +741,7 @@ svg text{font-family:"Noto Sans JP","Hiragino Kaku Gothic ProN",sans-serif}
   </div>
   <div class="callout">
     <svg viewBox="0 0 24 24" width="26" height="26" class="fN sT w2 rd"><circle cx="8" cy="12" r="4"/><path d="M12 12h9v4M17 12v3"/></svg>
-    復旧コードは 1 回しか出ません。なくすと記録に戻れません。
+    パスキーだけで始めた人は、最初に出る復旧コードを控えてください。1 回しか出ません。
   </div>
 </section>
 
@@ -742,20 +750,20 @@ svg text{font-family:"Noto Sans JP","Hiragino Kaku Gothic ProN",sans-serif}
   <div class="eyebrow"><span class="n">07</span><span>困ったとき</span></div>
   <h2 class="title">困ったとき</h2>
   <div class="faq">
-    <div><svg viewBox="0 0 52 52" aria-hidden="true"><circle cx="26" cy="26" r="24" class="fBs"/><path d="M18 14h16l-6 12 6 12H18l6-12z" class="fN sB w2 rd"/></svg>
-      <p><b>表示が遅い</b>無料サーバーの目覚めに 10〜20 秒。待ってから再読み込み。</p></div>
     <div><svg viewBox="0 0 52 52" aria-hidden="true"><circle cx="26" cy="26" r="24" class="fTs"/><text x="26" y="34" text-anchor="middle" style="font-size:22px;font-weight:700;fill:var(--thread)">0</text></svg>
-      <p><b>どの画面も 0 件</b>おすすめで「興味あり」をいくつか押す。</p></div>
-    <div><svg viewBox="0 0 52 52" aria-hidden="true"><circle cx="26" cy="26" r="24" class="fBs"/><path d="M16 18h20v20H16z" class="fN sB w2"/><path d="M20 28h12" class="sB w2"/></svg>
-      <p><b>おすすめが「ありません」</b>◎ を付けるか、見逃したくない名前を登録。</p></div>
+      <p><b>おすすめが出ない</b>「興味あり」をいくつか押すか、観た公演に星を 2 種類以上付ける。</p></div>
+    <div><svg viewBox="0 0 52 52" aria-hidden="true"><circle cx="26" cy="26" r="24" class="fBs"/><circle cx="23" cy="23" r="8" class="fN sB w2"/><path d="M29 29l8 8" class="sB w2 rd"/></svg>
+      <p><b>見たい公演が出てこない</b>おすすめの上の検索欄で探して答える。</p></div>
     <div><svg viewBox="0 0 52 52" aria-hidden="true"><circle cx="26" cy="26" r="24" class="fBs"/><path d="M14 26a12 12 0 0 1 21-8M38 26a12 12 0 0 1-21 8M35 12v6h-6M17 40v-6h6" class="fN sB w2 rd"/></svg>
-      <p><b>同じ公演が毎週出る</b>3 つのボタンのどれかを押すと外れる。</p></div>
+      <p><b>同じ公演が毎週出る</b>4 つの答えのどれかを押すと外れる。</p></div>
+    <div><svg viewBox="0 0 52 52" aria-hidden="true"><circle cx="26" cy="26" r="24" class="fTs"/><text x="26" y="33" text-anchor="middle" style="font-size:20px;font-weight:700;fill:var(--thread)">✕</text></svg>
+      <p><b>興味のないジャンル・人ばかり</b>おすすめ理由の ✕ を押す。2.5次元・宝塚は公演ごと外れる。</p></div>
     <div><svg viewBox="0 0 52 52" aria-hidden="true"><circle cx="26" cy="26" r="24" class="fBs"/><text x="26" y="33" text-anchor="middle" style="font-size:17px;font-weight:700;fill:var(--brand)">ア/亜</text></svg>
       <p><b>表記ゆれが拾われない</b>両方の書き方をお気に入りに登録。</p></div>
     <div><svg viewBox="0 0 52 52" aria-hidden="true"><circle cx="26" cy="26" r="24" class="fBs"/><rect x="14" y="19" width="24" height="14" rx="2" class="fN sB w2"/><path d="M21 19v14" class="sB w2 dash"/></svg>
       <p><b>チケットの残りは？</b>公演カードの「公式サイト」で確認。</p></div>
-    <div><svg viewBox="0 0 52 52" aria-hidden="true"><circle cx="26" cy="26" r="24" class="fTs"/><circle cx="20" cy="26" r="5" class="fN sT w2"/><path d="M25 26h11v5M32 26v4" class="fN sT w2 rd"/></svg>
-      <p><b>復旧コードをなくした</b>開けるうちに「設定」の書き出しで記録を保存。</p></div>
+    <div><svg viewBox="0 0 52 52" aria-hidden="true"><circle cx="26" cy="26" r="24" class="fBs"/><circle cx="26" cy="26" r="11" class="fN sT w2"/><text x="26" y="31" text-anchor="middle" style="font-size:14px;font-weight:700;fill:var(--thread)">i</text></svg>
+      <p><b>この画面は何？</b>画面の名前の右の ⓘ を押す。</p></div>
     <div><svg viewBox="0 0 52 52" aria-hidden="true"><circle cx="26" cy="26" r="24" class="fBs"/><path d="M22 18l12 8-12 8z" class="fB"/></svg>
       <p><b>使い方を忘れた</b>右下の「使い方」からツアーと動画。</p></div>
   </div>

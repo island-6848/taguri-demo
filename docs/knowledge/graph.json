@@ -931,6 +931,20 @@
    "verifies": []
   },
   {
+   "id": "dec-docs-refresh-1017",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-17",
+   "title": "使い方ガイドとプレゼン資料を 10-17 の画面と推薦に合わせて直した。推薦の章は 3.1–3.13・式 1–16・図 1–9・参考文献 21 件の論文の形にした",
+   "sources": [
+    "docs/000003-final-presentation-taguri.html",
+    "docs/000010-user-guide-taguri.html",
+    "cloudflare/src/recommend.js",
+    "cloudflare/src/screens/recommend.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-drop-venue-kind",
    "type": "decision",
    "status": "adopted",
@@ -6121,6 +6135,36 @@
    "from": "dec-design-default-ito",
    "rel": "depends_on",
    "to": "simple-design-principles"
+  },
+  {
+   "from": "dec-docs-refresh-1017",
+   "rel": "depends_on",
+   "to": "dec-deck-algo-paper"
+  },
+  {
+   "from": "dec-docs-refresh-1017",
+   "rel": "depends_on",
+   "to": "impl-interest-split"
+  },
+  {
+   "from": "dec-docs-refresh-1017",
+   "rel": "depends_on",
+   "to": "dec-spread-and-partners"
+  },
+  {
+   "from": "dec-docs-refresh-1017",
+   "rel": "depends_on",
+   "to": "dec-genre-axis"
+  },
+  {
+   "from": "dec-docs-refresh-1017",
+   "rel": "depends_on",
+   "to": "dec-drop-venue-kind"
+  },
+  {
+   "from": "dec-docs-refresh-1017",
+   "rel": "depends_on",
+   "to": "dec-source-kind-no-price"
   },
   {
    "from": "dec-drop-venue-kind",
