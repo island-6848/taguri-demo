@@ -3,10 +3,12 @@ id: font-trial
 type: decision
 status: adopted
 date: 2026-10-18
-title: 文字の形を試す。ボタンは Zen丸ゴシック Bold（サイトに置いて配る）、本文はマメロン 3 Hi Regular（R2 から配る）。これまでの文字を「規定」として残し、設定で戻せる
+title: 文字の形を試す。ボタンは Zen丸ゴシック Bold、本文は Zen角ゴシック New（どちらもサイトに置いて配る）。これまでの文字を「規定」として残し、設定で戻せる
 sources:
   - https://fonts.google.com/specimen/Zen+Maru+Gothic
   - https://github.com/googlefonts/zen-marugothic/blob/main/OFL.txt
+  - https://fonts.google.com/specimen/Zen+Kaku+Gothic+New
+  - https://github.com/googlefonts/zen-kakugothic/blob/main/OFL.txt
   - https://sankoufont.com/japanese-font/mamelon-3/
   - web/theme.css
   - web/app.js
@@ -23,3 +25,9 @@ links:
 - 起案者の回答: 「R2 から配る」「太さは 3」。公開リポジトリ（GitHub）に入れると誰でも取れる＝二次配布に当たるおそれがあるため、リポジトリには入れず、変換もせず、名前だけ mamelon-3-hi-regular.otf に変えて R2 に置き、Worker の /img/（ログインした人だけ・1 週間ブラウザに残る）で配る。theme.css の @font-face がそれを読む。ログインの画面と、ファイルを入れるまでは規定の文字
 - R2 に入れる: お手元で `python3 tools/admin/admin.py font Mamelon-3-Hi-Regular.otf`（CLOUDFLARE_ACCOUNT_ID・CLOUDFLARE_API_TOKEN が要る。R2 の上限の前に止まる）。約 3 MB で、R2 の保存 8 GB の上限と比べて小さい。読み出しは 1 人 1 週間に 1 回ほど
 - 手元のファイルを読ませたブラウザで、本文がマメロン・ボタンが Zen丸ゴシックになることを確かめた
+
+追記（2026-10-18、その 2）: 起案者「（Zen Kaku Gothic New）本文これにして」。本文のお試しをマメロンから Zen角ゴシック New に変えた。
+- Google Fonts の Regular（400）と Bold（700）を文字の範囲ごとの woff2（242 ファイル、計約 2.7 MB）で web/assets/fonts/zen-kaku-gothic-new/ に置き、@font-face を theme.css に入れた。ライセンスは SIL OFL 1.1（公式リポジトリの OFL.txt を取得元から取って assets/fonts/OFL-ZenKakuGothicNew.txt に置いた）
+- これまでの「規定」の文字の指定にも Zen Kaku Gothic New の名前はあったが、ファイルを置いていなかったので、端末に入っていなければヒラギノ・游ゴシックなどで出ていた。お試し（既定）ではサイトのファイルで必ず Zen角ゴシック New になる
+- マメロンの @font-face は外した（R2 には入れていない）。admin.py の font（R2 に入れる命令）は残っているが、使わない
+- ブラウザで、本文が Zen角ゴシック New・ボタンが Zen丸ゴシックで出ることを確かめた

@@ -2353,10 +2353,12 @@
    "type": "decision",
    "status": "adopted",
    "date": "2026-10-18",
-   "title": "文字の形を試す。ボタンは Zen丸ゴシック Bold（サイトに置いて配る）、本文はマメロン 3 Hi Regular（R2 から配る）。これまでの文字を「規定」として残し、設定で戻せる",
+   "title": "文字の形を試す。ボタンは Zen丸ゴシック Bold、本文は Zen角ゴシック New（どちらもサイトに置いて配る）。これまでの文字を「規定」として残し、設定で戻せる",
    "sources": [
     "https://fonts.google.com/specimen/Zen+Maru+Gothic",
     "https://github.com/googlefonts/zen-marugothic/blob/main/OFL.txt",
+    "https://fonts.google.com/specimen/Zen+Kaku+Gothic+New",
+    "https://github.com/googlefonts/zen-kakugothic/blob/main/OFL.txt",
     "https://sankoufont.com/japanese-font/mamelon-3/",
     "web/theme.css",
     "web/app.js"
