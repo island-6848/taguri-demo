@@ -598,7 +598,7 @@ ol.refs li:target{background:rgba(var(--brand-rgb),.12)}
       <div class="flow">
         <div class="step"><span class="dot act">1</span><div class="tx"><b>ログインする</b><span>Google・メールのリンク・パスキー。はじめての人には、実際の画面で試せる操作ツアーが始まる</span></div></div>
         <div class="step"><span class="dot act">2</span><div class="tx"><b>今週のおすすめを見る</b><span>理由つきの 15 件・開幕リマインド・興味ありの追跡・お気に入りの新着</span></div></div>
-        <div class="step"><span class="dot act">3</span><div class="tx"><b>その場で答える</b><span>興味あり／興味なし／購入済／行けない の 4 つ。答えた公演は抜け、次点が繰り上がる。出てこない公演は上の検索欄で探して答える</span></div></div>
+        <div class="step"><span class="dot act">3</span><div class="tx"><b>その場で答える</b><span>興味あり／興味なし／購入済／行けない の 4 つ。答えた公演は抜け、次点が繰り上がる。全部答えると「回答ありがとうございました」と次の手が出る。出てこない公演は上の検索欄で探して答える</span></div></div>
         <div class="step"><span class="dot">4</span><div class="tx"><b>閉じてよい</b><span>記録はサーバー側の本人の領域に保存される</span></div></div>
         <div class="step"><span class="dot eval">5</span><div class="tx"><b>次に開くと、反応と評価が反映されている</b><span>本人の評価と答えから、その場で推薦を計算し直す（3 章）</span></div></div>
       </div>
@@ -816,7 +816,7 @@ ol.refs li:target{background:rgba(var(--brand-rgb),.12)}
       <path d="M500 520V540" class="aL" marker-end="url(#fn)"/>
       <rect x="350" y="542" width="300" height="58" rx="29" class="aGoal"/>
       <text x="500" y="568" text-anchor="middle" class="aGoalT">今週のおすすめ 上位 15 件</text>
-      <text x="500" y="588" text-anchor="middle" class="aGoalT" style="font-size:12px">観に行ける都道府県でも絞れる</text>
+      <text x="500" y="588" text-anchor="middle" class="aGoalT" style="font-size:12px">都道府県で絞れる（その画面の中だけ）</text>
       <rect x="690" y="176" width="300" height="146" rx="12" class="aTip"/>
       <text x="840" y="204" text-anchor="middle" class="aH">裏の答え合わせ（3.11）</text>
       <text x="840" y="228" text-anchor="middle" class="aS">本人の過去の評価を時間順に再生し、</text>
@@ -1071,6 +1071,8 @@ ol.refs li:target{background:rgba(var(--brand-rgb),.12)}
         <tr><td>理由の ✕（#ジャンル：2.5次元・宝塚）</td><td>そのジャンルの公演</td><td><b>公演ごと</b>推薦枠から外す</td></tr>
         <tr><td>出さない語</td><td>その語が名前・題名・種類のタグに当たる公演</td><td>推薦枠から外す</td></tr>
         <tr><td>お気に入りの名前</td><td>その名前の公演</td><td>点とは別の「お気に入り」の枠で必ず知らせる</td></tr>
+        <tr><td>都道府県で絞る</td><td>その県に会場の無い公演</td><td>その画面の中だけ外す。開き直すと設定の県（既定の絞り込み）に戻る</td></tr>
+        <tr><td>候補に全部答え終えた</td><td>（推薦枠が空になる）</td><td>「回答ありがとうございました」と、また出すための 6 つの手（記録を足す・評価する・お気に入り・探す・絞り込みを見直す・待つ）を出す</td></tr>
       </tbody>
     </table>
   </div>
