@@ -221,7 +221,7 @@ body{font-family:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",YuGothic,syst
 .ticket.cmp .leadbox{display:flex;flex-direction:column;gap:4px;margin:0 0 10px;font-size:12.5px;line-height:1.65}
 .ticket.cmp .leadbox p{margin:0}
 /* 「出演」「あらすじ」の見出しを左の列にそろえ、折り返した行は本文の頭にそろえる */
-.ticket.cmp .lcast,.ticket.cmp .lsyn,.ticket.cmp .lprice{display:grid;grid-template-columns:4em minmax(0,1fr);column-gap:6px}
+.ticket.cmp .lcast,.ticket.cmp .lsyn{display:grid;grid-template-columns:4em minmax(0,1fr);column-gap:6px}
 /* おすすめの画面: あらすじの続き（100 字から先）だけを畳む */
 .ticket.cmp .lsynmore{display:inline}
 .ticket.cmp .lsynmore summary{display:inline;cursor:pointer;color:var(--curtain);font-size:12px;margin-left:4px;list-style:none}
@@ -922,10 +922,8 @@ body:has(>.shell){padding-top:0}
 .ticket.cmp .lprice{margin:6px 0 8px}
 /* 畳んだ料金: 1 行目の表の下に「ほか N 件を見る」。押せる範囲（summary）の中に収める */
 .ticket.cmp details.lprice{display:block}
-.ticket.cmp details.lprice summary{cursor:pointer;list-style:none;display:flex;align-items:baseline;flex-wrap:wrap;width:100%}
+.ticket.cmp details.lprice summary{cursor:pointer;list-style:none;display:block}
 /* 畳んだ料金の中の長い文は折り返す（はみ出さない） */
-.ticket.cmp .lprice .ptb{max-width:100%}
-.ticket.cmp .lprice .ptb td{white-space:normal;overflow-wrap:anywhere}
 .ticket.cmp details.lprice summary::-webkit-details-marker{display:none}
 /* 暦を置く日程は、見出し「日程」を上に出して、暦にカードの幅いっぱいを使う（電話の幅で時刻が重ならないように） */
 .ticket.cmp .ltour:has(.tourfull.v2:not(.one)){display:block}
@@ -976,3 +974,9 @@ a.pill.buy .go:not(#_){font-size:12px;margin-left:2px}
 .ttb .tm:not(#_){letter-spacing:-.06em}
 .ttb .tm i:not(#_){display:block;font-size:12px;margin:0;vertical-align:0}
 @media(max-width:520px){.tourfull.v2 .tf-body:not(#_){margin-left:.4em}}
+/* 料金の行（販売の札の下）: 「券種 金額」を 1 行ずつ。金額は長ければ折り返す。「▼詳細」は 1 行目の金額の続きに */
+.ticket.cmp .lprice{display:block;font-size:12px;line-height:1.6}
+.ticket.cmp .lp-row{overflow-wrap:break-word}
+.ticket.cmp .lp-k{color:var(--ink2);margin-right:.8em}
+.ticket.cmp .lp-v{color:var(--ink);font-variant-numeric:tabular-nums}
+.tourfull.v2 .lp-none{margin:0;font-size:12px;color:var(--ink2)}
