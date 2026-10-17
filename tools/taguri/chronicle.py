@@ -590,7 +590,7 @@ def _figure(f: dict, read: dict) -> str:
             f' aria-hidden="true"><circle class="dot" cx="6.5" cy="6.5" r="4.5"/>'
             f'</svg>そのほかの作品</span>'
             f'<span class="lgn">行は劇場です。<b>初めて行った順</b>に上から'
-            f'並べていますので、<b>行の始まりと終わりが、通い始めた時期と'
+            f'並べているので、<b>行の始まりと終わりが通い始めた時期と'
             f'途切れた時期です。</b>'
             f'{LANE_MIN} 回以上行った {len(big)} 館（{n_lane} 作品）を 1 行ずつにし、'
             f'1 回だけの劇場は下に 1 行でまとめています。</span></div>'

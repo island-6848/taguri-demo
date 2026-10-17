@@ -84,7 +84,7 @@ export function timetablePanel(vs) {
     : '開演時刻の分かる回がまだありません。';
   return `<section class="card">
 ${h2('clock', '観劇の時間割 ── 1 週間のどこで観ているか', `<span class="badge part">${vs.length} 回</span>`)}
-<p class="lead">観た回を、曜日と開演の時刻（15 時より前がマチネ、15 時から 17 時より前がジュルネ、17 時からがソワレ）で数えています。${lead}
+<p class="lead">観た回を曜日と開演の時刻（15 時より前がマチネ、15 時から 17 時より前がジュルネ、17 時からがソワレ）で数えています。${lead}
 開演時刻が分かるのは <b>${vs.length} 回のうち ${timed} 回</b>で、チケットか日記帳に時刻を入れた回です。</p>
 <table class="tt" aria-label="観劇の時間割。行が曜日、列がマチネ・ジュルネ・ソワレ・時刻なし、数は観た回数">
 <thead><tr><th></th>${head}<th scope="col">計</th></tr></thead>

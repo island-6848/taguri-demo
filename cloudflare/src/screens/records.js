@@ -60,7 +60,7 @@ export async function traceScreen(params, ctx) {
   try {
     main = traceBody(d.rated, params.get('name') || '', params.get('via') || '', await loadDeclared(ctx));
   } catch {
-    main = '<section class="card"><p class="empty">この線は、いまの記録では組めませんでした。観た公演が増えると出るようになります。</p></section>';
+    main = '<section class="card"><p class="empty">この線はいまの記録では組めませんでした。観た公演が増えると出るようになります。</p></section>';
   }
   const body = `<h1>たどる ── 1 つの名前をたどる</h1>
 ${recordsLede(d)}
@@ -119,7 +119,7 @@ ${venuePanel(d.rated)}
 </div>
 <script id="figs-src" type="application/json">${scriptJson({rated: d.rated})}</script>
 <h2>比べる ── これから上演される公演との差</h2>
-<p class="lede">観た記録を、これから観られる公演の一覧と並べて、差の大きいところを出しています。</p>
+<p class="lede">観た記録をこれから観られる公演の一覧と並べて、差の大きいところを出しています。</p>
 ${d.seen.length ? '' : COMPARE_EMPTY}
 <div class="figs">${cmpPanels}</div>`;
   return {title: '眺める', body_html: body};

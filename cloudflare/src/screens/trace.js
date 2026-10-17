@@ -128,7 +128,7 @@ function threadSvg(name, rows, brs, nxt) {
 
 function pickPanel(g) {
   const ps = picks(g);
-  if (!ps.length) return '<section class="card"><p class="empty">2 つ以上の公演で観た名前が、まだありません。観た記録が増えると出るようになります。</p></section>';
+  if (!ps.length) return '<section class="card"><p class="empty">2 つ以上の公演で観た名前がまだありません。観た記録が増えると出るようになります。</p></section>';
   const rows = ps.map(p => `<li><a href="${HREF}&amp;name=${E(q(p.name))}" class="pk"><span class="pk-n">${E(p.name)}</span>`
     + `<span class="pk-r">${E(p.role)}</span><span class="pk-c">${p.n} 作品</span>`
     + `<span class="pk-s">${E(jdate(p.from))} 〜 ${E(jdate(p.to))}</span>${p.declared ? '<span class="pk-d">お気に入りに登録済み</span>' : ''}</a></li>`).join('');
@@ -136,18 +136,18 @@ function pickPanel(g) {
   return `<section class="card">
 ${h2('light', 'どの名前をたどりますか', `<span class="badge part">${ps.length} 名</span>`)}
 <p class="lead"><b>2 つ以上の公演で観た名前です。</b>お気に入りに登録していない名前を先に、
-そのなかで<b>最初に観た日から最後に観た日までが長い順</b>に並べています
-（登録済みの ${nDec} 名は、すでにご存じの名前なので後ろにしています）。</p>
+そのなかで<b>最初に観た日から最後に観た日までが長い順</b>に並べています。
+登録済みの ${nDec} 名はすでにご存じの名前なので後ろにしています。</p>
 <div class="pk-search">${ico('search', 15)}
 <input type="text" data-pk-filter="1" placeholder="名前で絞り込む" autocomplete="off"
- aria-label="つまむ相手を名前で絞り込む"></div>
+ aria-label="たどる名前を絞り込む"></div>
 <ol class="picks">${rows}</ol>
 <p class="empty pk-none" hidden>その名前は見つかりませんでした。</p></section>`;
 }
 
 function threadPanel(g, name, trail) {
   const rows = g.threads.get(name);
-  if (!rows) return `<section class="card"><p class="empty"><b>${E(name)}</b>の記録は、上演日のあるものが 2 件そろっていません。この線は 2 件目から引けます。</p></section>`;
+  if (!rows) return `<section class="card"><p class="empty"><b>${E(name)}</b>の記録には、上演日のあるものが 2 件そろっていません。この線は 2 件目から引けます。</p></section>`;
   const brs = branches(g, name);
   const nxt = `${HREF}&amp;via=${E(q([...trail, name].slice(-TRAIL_MAX).join(ARROW)))}&amp;name=`;
   const dec = declaredNames(g).has(nz(name)) ? '（お気に入りに登録済みです）' : '';

@@ -54,11 +54,11 @@ export function movingScreen(name) {
   const settings = name === 'settings'
     ? '<p class="lede">表示名・ログインの方法・ログアウト・アカウントの削除は、<a href="/account">アカウント</a>の画面にあります。</p>' : '';
   const body = `<h1>${title}</h1>${settings}
-<p class="pnow">この画面は、いま新しい仕組みに移しています。移し終えたら、ここに表示されます。</p>
+<p class="pnow">この画面はいま新しい仕組みに移しています。移し終えたら、ここに表示されます。</p>
 <p class="note">いま使えるのは、観た公演の<a href="/rate?t=__TAGURI_TOKEN__">評価一覧</a>・<a href="/rate/unrated?t=__TAGURI_TOKEN__">未評価</a>・<a href="/rate/notes?t=__TAGURI_TOKEN__">感想</a>・<a href="/records/works?t=__TAGURI_TOKEN__">日記帳</a>と、<a href="/account">アカウント</a>です。ここで記録したものは、移し終えた画面にもそのまま使われます。</p>`;
   return withToken(envelope({ok: true, title, body_html: body, moving: true}));
 }
-export const movingAction = () => ({status: 503, body: envelope({error: 'この操作は、いま新しい仕組みに移しているところです。移し終えるまでお待ちください'})});
+export const movingAction = () => ({status: 503, body: envelope({error: 'この操作はいま新しい仕組みに移しているところです。移し終えるまでお待ちください'})});
 
 export async function screen(name, params, ctx) {
   const out = await SCREENS[name](params, ctx);

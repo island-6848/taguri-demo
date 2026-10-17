@@ -7582,7 +7582,7 @@ def _records_body(user_id: str) -> str:
 {PE.panel(rated_rows, owner=owner)}
 </div>
 <h2>比べる ── これから上演される公演との差</h2>
-<p class="lede">観た記録を、これから観られる公演の一覧と並べて、差の大きいところを出しています。</p>
+<p class="lede">観た記録をこれから観られる公演の一覧と並べて、差の大きいところを出しています。</p>
 {'' if d["seen"] else _compare_empty_note()}
 <div class="figs">{cmp_panels}</div>"""
 
@@ -7662,7 +7662,7 @@ def _trace_body(user_id: str, name: str = "", via: str = "") -> str:
         main = TR.body(d["rated_rows"], name, via, declared=load_declared(user_id))
     except Exception:                                               # noqa: BLE001
         # **落ちても「記録を見返す」の他の画面は生きている。** ここだけ空にする
-        main = ('<section class="card"><p class="empty">この線は、いまの記録では'
+        main = ('<section class="card"><p class="empty">この線はいまの記録では'
                 '組めませんでした。観た公演が増えると出るようになります。</p></section>')
     return f"""<h1>たどる ── 1 つの名前をたどる</h1>
 {_records_lede(d)}

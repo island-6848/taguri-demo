@@ -534,7 +534,7 @@ function recentLine(worlds) {
   if (act.length === 1) {
     const w = act[0];
     return `<b>直近 1 年に束があるのは ${w.loc + 1} つめだけで、`
-      + `${w.recent} 回です。</b>ほかの流れは、この 1 年は観ていらっしゃいません。`;
+      + `${w.recent} 回です。</b>ほかの流れの公演は、この 1 年は観ていらっしゃいません。`;
   }
   let top = act[0];
   for (const w of act) if (w.recent > top.recent) top = w;
@@ -575,14 +575,14 @@ export function panel(rated, minTimes = MIN_TIMES) {
     // <script> の中に置くので「<」を逃がす（名前や題名に「</script>」があっても、そこで閉じない。people.js の scriptSafe と同じ）
     .replace(/</g, '\\u003c');
   return `<div class="card wide">${h2('light', '同じ作品で一緒だった人の流れ')}
-<p class="lead"><b>1 本の線が 1 人、横が時間です。同じ作品に出た方の線は、その日に束になります。</b>
-<b>● が「その日その作品に出ていた」印です。</b>束が 1 つの公演で、押すとその記録へ移動します。<br>
+<p class="lead"><b>1 本の線が 1 人、横が時間です。同じ作品に出た方の線はその日に束になります。</b>
+<b>● が「その日その作品に出ていた」印です。</b>束 1 つが 1 公演で、押すとその記録へ移動します。<br>
 <b>線の色は ${ws.length} つに分かれています。</b>
 ${ws.map(w => `${w.n_people} 人（${w.from} 〜 ${w.to}）`).join('、')}で、
 <b>この ${ws.length} つのあいだで一緒に出た方は 1 人もいません。</b>
 ${recentLine(ws)}<br>
-線にしているのは <b>${minTimes} 回以上観た ${d.n_lines} 名</b>です
-（作り手が分かっている ${d.n_credited} 件の記録には、のべ ${d.n_people_all} 名が出てきます）。
+線にしているのは <b>${minTimes} 回以上観た ${d.n_lines} 名</b>です。
+作り手が分かっている ${d.n_credited} 件の記録には、のべ ${d.n_people_all} 名が出てきます。
 横に引っぱると時間を伸ばせます。<b>線を押すと、その人の流れだけが浮き上がります。</b>
 何人でも選べます。背景を押すと戻ります。</p>
 <div class="sl-legend">${ws.map(w =>
