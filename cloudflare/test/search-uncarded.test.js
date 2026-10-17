@@ -52,3 +52,46 @@ test('with a word, the 観た記録 calendar counts only the records it hits; wi
     assert.match(none, /これから観られる公演<span class="mn">0<\/span>/);
   } finally { sqlite.close(); }
 });
+
+test('past stages (2019-) show on 探す by title prefix, with 観た and 観ればよかった', async () => {
+  const {env, sqlite} = setup();
+  const ins = sqlite.prepare('INSERT INTO past_stage(stage_id,title,tkey,start,end,venue,grp,pref,people) VALUES(?,?,?,?,?,?,?,?,?)');
+  ins.run('700001', '夏の夜の夢', '夏の夜の夢', '2023-07-01', '2023-07-10', '劇場A', '劇団甲', '東京都', '[["出演","俳優甲"]]');
+  ins.run('700002', '夏の夜の夢', '夏の夜の夢', '2023-08-01', '2023-08-03', '劇場B', '劇団甲', '大阪府', '[["出演","俳優甲"]]');   // the tour: one row
+  ins.run('700003', '夏の夜の夢 再演', '夏の夜の夢再演', '2025-05-01', '2025-05-05', '劇場C', '劇団乙', '東京都', '[]');
+  ins.run('700004', '冬物語', '冬物語', '2024-01-01', '2024-01-05', '劇場D', '劇団丙', '東京都', '[]');
+  const a = await signIn(env);
+  try {
+    const html = await search(env, a, '夏の夜');
+    assert.match(html, /<h2>過去の公演（2019 年〜） 2 件<\/h2>/);
+    assert.match(html, /data-stage="700003" data-title="夏の夜の夢 再演"[\s\S]*?data-stage="700001" data-title="夏の夜の夢"/);   // newest first
+    assert.match(html, /2023\/7\/1〜2023\/8\/3・劇場A ほか 1 会場/);
+    assert.match(html, /<button type="button" data-past="seen">観た<\/button><button type="button" data-past="missed">観ればよかった<\/button>/);
+    assert.doesNotMatch(html, /冬物語/);
+    // 観た: into the diary, linked to that stage; it then leaves this list.
+    const added = await step(env, a, {post: '/api/add_work', body: {title: '夏の夜の夢', stage_id: '700001'}});
+    assert.equal(added.status, 200);
+    assert.equal(added.body.stage_id, '700001');
+    assert.doesNotMatch(await search(env, a, '夏の夜'), /data-stage="700001"/);
+    // 観ればよかった: the missed list, pointing at the very stage.
+    assert.equal((await step(env, a, {post: '/api/missed', body: {title: '夏の夜の夢 再演', stage_id: '700003'}})).status, 200);
+    assert.equal(sqlite.prepare("SELECT stage_id FROM missed WHERE title='夏の夜の夢 再演'").get().stage_id, '700003');
+    assert.match(await search(env, a, '夏の夜'), /data-past="missed" disabled>観ればよかったに入っています/);
+  } finally { sqlite.close(); }
+});
+
+test('past stages are found by a person name through the R2 name index (one shard read, no scan)', async () => {
+  const {env, sqlite} = setup();
+  const {pastShard} = await import('../src/screens/lists.js');
+  const name = '俳優甲', file = `pastidx/v1/${pastShard(name).toString(16).padStart(2, '0')}.json`;
+  const shard = {v: 1, stages: {'800001': ['ある舞台', 'ある舞台', '2022-03-01', '2022-03-05', '劇場E', '劇団丁']}, names: {[name]: ['800001']}};
+  const gets = [];
+  env.POSTERS = {get: async key => { gets.push(key); return key === file ? {json: async () => shard} : null; }};
+  const a = await signIn(env);
+  try {
+    const html = await search(env, a, '俳優甲');
+    assert.match(html, /data-stage="800001" data-title="ある舞台"/);
+    assert.match(html, /ヒットした箇所：出演・作り手・団体/);
+    assert.deepEqual([...new Set(gets)], [file]);
+  } finally { sqlite.close(); }
+});

@@ -20,7 +20,8 @@ import {posterHtml, posterFiles, indexTabs} from './rate.js';
 import {peopleByKey} from './diary.js';
 import {parseCredits} from './credits.js';
 import {loadWorks, titleKey} from './works.js';
-import {loadDeclared, buckets, nz} from './lists.js';
+import {loadDeclared, buckets, nz, pastFromIndex} from './lists.js';
+import {titleKey as indexKey} from '../stage-search.js';
 import {stageInfo, fallbackTemplate} from './fallback.js';
 import {runRange, periodStart} from './reminder.js';
 
@@ -142,6 +143,64 @@ async function upcomingMonths(ctx) {
   const rows = new Map(idx.results.map(r => [String(r.stage_id), {period: slashed(r.start, r.end)}]));
   for (const r of cat.results) if (!rows.has(String(r.id))) rows.set(String(r.id), {period: slashed(r.date, r.end || r.date)});
   return {counts: monthCounts([...rows.values()], ctx.today), n: rows.size};
+}
+
+// ---------------------------------------------------------------- 過去の公演（2019 年〜）
+// 起案者の指示（2026-10-17）「『探す』で興味ありにもお気に入りにも観たわけでもないけど、過去の公演表示させることできる？」
+// →「ボタン 2 つで入れて」: 観た（日記帳に足して公演に結び付ける）／観ればよかった（見逃した公演の一覧）。
+// 引き方は 2 つだけ（どちらも past_stage を全部は読まない）: 題名の先頭一致（tkey の索引）と、人・団体の名前の
+// 完全一致（R2 の名前の索引 pastidx、lists.pastFromIndex）。途中の語や、名前の後ろの括弧（所属）では当たらない
+const PAST_TITLE_ROWS = 80, PAST_SHOW = 15;
+const md = d => (/^\d{4}-\d{2}-\d{2}$/.test(d || '') ? `${d.slice(0, 4)}/${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}` : '');
+
+async function pastHits(ctx, q, ws) {
+  const linked = new Set(ws.map(w => w.stage_id).filter(Boolean).map(String));
+  const rows = new Map();
+  const add = (r, why) => {
+    const sid = String(r.stage_id);
+    if (!r.end || r.end >= ctx.today || linked.has(sid)) return;
+    const had = rows.get(sid);
+    if (had) { if (!had.why.includes(why)) had.why.push(why); } else rows.set(sid, {...r, stage_id: sid, why: [why]});
+  };
+  const k = indexKey(q);
+  if (Array.from(k).length >= 2) {
+    const {results} = await ctx.db.prepare('SELECT stage_id,title,tkey,start,end,venue,grp FROM past_stage WHERE tkey>=? AND tkey<? ORDER BY tkey LIMIT ?')
+      .bind(k, k + '\u{10FFFF}', PAST_TITLE_ROWS).all();
+    for (const r of results) add(r, '題名');
+  }
+  for (const key of [...new Set([nz(q), nz(fold(q))])].filter(x => Array.from(x).length >= 2)) {
+    for (const r of (await pastFromIndex(ctx, key)) || []) add(r, '出演・作り手・団体');
+  }
+  // ツアーは 1 行に（お気に入りのハッシュタグの画面と同じ: 題名の鍵と団体が同じ行をまとめる）
+  const groups = new Map();
+  for (const r of rows.values()) {
+    const g = (r.tkey || nz(r.title)) + '\u0000' + nz(r.grp);
+    if (!groups.has(g)) groups.set(g, []);
+    groups.get(g).push(r);
+  }
+  const prods = [...groups.values()].map(g => {
+    g.sort((a, b) => cmp(a.start, b.start));
+    const venues = [...new Set(g.map(r => r.venue).filter(Boolean))];
+    return {sid: g[0].stage_id, title: g[0].title, grp: g[0].grp || '', start: g[0].start, end: g.map(r => r.end).sort().at(-1),
+      where: venues.length > 1 ? `${venues[0]} ほか ${venues.length - 1} 会場` : (venues[0] || ''), why: [...new Set(g.flatMap(r => r.why))]};
+  }).sort((a, b) => cmp(b.start, a.start));
+  if (!prods.length) return ['', 0];
+  const {results: miss} = await ctx.db.prepare('SELECT title FROM missed WHERE user_id=?').bind(ctx.uid).all();
+  const missed = new Set(miss.map(m => indexKey(m.title)));
+  const li = prods.slice(0, PAST_SHOW).map(p => {
+    const run = p.start === p.end ? md(p.start) : `${md(p.start)}〜${md(p.end)}`;
+    const isMissed = missed.has(indexKey(p.title));
+    return `<li class="pastrow" data-stage="${E(p.sid)}" data-title="${E(p.title)}">
+<div class="past-t"><b>${E(p.title)}</b>${p.grp ? `<span class="past-g">${E(p.grp)}</span>` : ''}</div>
+<div class="past-w">${E(run)}${p.where ? '・' + E(p.where) : ''}</div>
+<div class="past-why">ヒットした箇所：${p.why.map(E).join('・')}</div>
+<div class="past-btns"><button type="button" data-past="seen">観た</button>`
+      + `<button type="button" data-past="missed"${isMissed ? ' disabled' : ''}>${isMissed ? '観ればよかったに入っています' : '観ればよかった'}</button><span class="said"></span></div></li>`;
+  }).join('');
+  const more = prods.length > PAST_SHOW ? `<p class="lead">見つかったのは ${prods.length} 件で、新しい順に ${PAST_SHOW} 件を表示しています。言葉を足すと絞れます。</p>` : '';
+  return [`<h2>過去の公演（2019 年〜） ${prods.length} 件</h2>
+<p class="lead">終わった公演のうち、まだ日記帳に無いものです。<b>「観た」</b>を押すと日記帳に足して公演に結び付けます（観た日と評価は日記帳で入れられます）。<b>「観ればよかった」</b>は見逃した公演の一覧に入れます。
+題名は先頭からの一致、人・団体は名前全体の一致で探しています。</p>${more}<ul class="pastlist">${li}</ul>`, prods.length];
 }
 
 /** app._search_follow */
@@ -318,18 +377,19 @@ export async function searchScreen(params, ctx) {
   cal = monthGrid(hits.map(([w]) => w), upCounts, nUpAll, side, ym, q);
   const web = await webHits(ctx, q);
   const dec = await loadDeclared(ctx);
+  const [pastHtml, nPast] = await pastHits(ctx, q, ws);
   let body;
-  if (!hits.length && !nUp) {
+  if (!hits.length && !nUp && !nPast) {
     const narrowed = ym && side === 'up' ? `<b>いまは ${ym.slice(0, 4)} 年 ${Number(ym.slice(5, 7))} 月に絞っています。</b>ほかの月にはあるかもしれません。カレンダーの月を押し直すか、<a href="/search?t=__TAGURI_TOKEN__&amp;cal=up&amp;q=${E(q)}">月の指定を外して</a>お試しください。<br>` : '';
     body = `<p class="empty">${narrowed}手元には、これから観られる公演にも観た記録にも見つかりませんでした。<b>公演ページを見つけられなかった記録は、出演者や題材では探せません。</b>その場合は題名で探してください。</p>` + web + cal;
   } else if (!hits.length) {
-    body = searchFollow(dec, names) + upHtml + '<h2>観た記録</h2><p class="empty">観た記録の中には見つかりませんでした。</p>' + web + cal;
+    body = searchFollow(dec, names) + upHtml + '<h2>観た記録</h2><p class="empty">観た記録の中には見つかりませんでした。</p>' + pastHtml + web + cal;
   } else {
     const nUn = hits.filter(([w]) => !w.verdict).length;
     const lead = `<h2>観た記録 ${hits.length} 件</h2>` + (nUn ? `<p class="lead">このうち ${nUn} 件はまだ評価が付いていません。<b>この場で${{marks4: ' ◎○△× ', stars5: '★', stars11: '★'}[await scaleOf(ctx)] || '評価'}を押せます。</b></p>`
       : '<p class="lead">評価を付け直すことも、感想を足すこともできます。</p>');
     const why = new Map(hits.map(([w, h]) => [w.work_key, h]));
-    body = searchFollow(dec, names) + upHtml + lead + await foundRows(ctx, hits.map(([w]) => w), people, w => why.get(w.work_key)) + web + cal;
+    body = searchFollow(dec, names) + upHtml + lead + await foundRows(ctx, hits.map(([w]) => w), people, w => why.get(w.work_key)) + pastHtml + web + cal;
   }
   return {title: '探す', body_html: head + body};
 }

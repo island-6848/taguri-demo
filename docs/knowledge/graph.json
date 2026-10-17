@@ -2613,6 +2613,18 @@
    "verifies": []
   },
   {
+   "id": "impl-search-past-stages",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-17",
+   "title": "探すに「過去の公演（2019 年〜）」を出し、観た（日記帳に足して結び付ける）・観ればよかった の 2 つのボタンを付けた",
+   "sources": [
+    "cloudflare/src/screens/search.js",
+    "cloudflare/test/search-uncarded.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "impl-theater-conquest",
    "type": "decision",
    "status": "adopted",
@@ -7512,6 +7524,16 @@
    "from": "impl-recommend-find",
    "rel": "affects",
    "to": "new-user-reco-threshold"
+  },
+  {
+   "from": "impl-search-past-stages",
+   "rel": "depends_on",
+   "to": "dec-past-name-index"
+  },
+  {
+   "from": "impl-search-past-stages",
+   "rel": "affects",
+   "to": "fix-search-uncarded"
   },
   {
    "from": "impl-theater-conquest",

@@ -2284,3 +2284,11 @@ code.cmd{display:inline-block;margin:10px 0 4px;padding:8px 14px;border-radius:8
 .cq-unknown{margin:8px 0 0;background:var(--plane);border-radius:8px;padding:6px 12px}
 .cq-unknown summary{cursor:pointer}
 .cq-unknown ul{margin:4px 0 2px;padding-left:1.2em}
+/* 探す画面の過去の公演（screens/search.js pastHits）: 観た・観ればよかったの 2 つのボタンを付けた行 */
+.pastlist{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:8px}
+.pastrow{background:var(--surf);border-radius:10px;padding:10px 14px}
+.pastrow .past-t b{font-size:15px}
+.pastrow .past-g{margin-left:8px;color:var(--ink2);font-size:13px}
+.pastrow .past-w{color:var(--ink2);font-size:13px;margin-top:2px}
+.pastrow .past-why{color:var(--mute);font-size:12px;margin-top:2px}
+.pastrow .past-btns{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px}

@@ -530,7 +530,7 @@ export function pastShard(key) {
  * 名前の索引（R2 の pastidx/v1/<shard>.json、毎日の取得が deliver_past_index.py で置く）から、その名前の過去の公演を読む。
  * R2 の読み出し 1 回で済み、D1 は読まない（docs/knowledge: dec-past-name-index）。索引がまだ無い・R2 が使えないときは null。
  */
-async function pastFromIndex(ctx, key) {
+export async function pastFromIndex(ctx, key) {
   const bucket = ctx.env?.POSTERS;
   if (!bucket) return null;
   try {

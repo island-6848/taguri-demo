@@ -295,7 +295,17 @@ async function missedAction(b, ctx) {
   if (!title) throw new ValueError('title が要る');
   const k = titleKey(title);
   let sid = '', fields = {}, note = '';
-  if (k) {
+  // 探す画面の過去の公演から押したときは、その公演を指して来る（同じ題名の別の公演に取り違えない）
+  const want = String(b.stage_id ?? '').trim();
+  if (/^\d{1,12}$/.test(want)) {
+    const past = await ctx.db.prepare('SELECT stage_id, people FROM past_stage WHERE stage_id=?').bind(want).first();
+    if (past) {
+      sid = past.stage_id;
+      try { for (const [role, person] of JSON.parse(past.people || '[]')) fields[role] = fields[role] ? `${fields[role]}、${person}` : person; } catch { fields = {}; }
+      note = '過去の公演の一覧から、出演者と作り手だけを拾いました。';
+    }
+  }
+  if (k && !sid) {
     const cur = await ctx.db.prepare("SELECT stage_id, entry FROM rec_stage WHERE ver=(SELECT v FROM rec_meta WHERE k='current') AND tkey=? ORDER BY start DESC LIMIT 1").bind(k).first();
     if (cur) { sid = cur.stage_id; try { fields = JSON.parse(cur.entry || '{}').fields || {}; } catch { fields = {}; } }
     else {

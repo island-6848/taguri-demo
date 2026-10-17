@@ -1,0 +1,20 @@
+---
+id: impl-search-past-stages
+type: decision
+status: adopted
+date: 2026-10-17
+title: 探すに「過去の公演（2019 年〜）」を出し、観た（日記帳に足して結び付ける）・観ればよかった の 2 つのボタンを付けた
+sources:
+  - cloudflare/src/screens/search.js
+  - cloudflare/test/search-uncarded.test.js
+links:
+  - depends_on: dec-past-name-index
+  - affects: fix-search-uncarded
+---
+起案者「『探す』で興味ありにもお気に入りにも観たわけでもないけど、過去の公演表示させることできる？」→「ボタン 2 つで入れて」（2026-10-17）。
+- 出すもの: 終わった公演（past_stage）のうち、本人の日記帳に結び付いていないもの。ツアーは題名の鍵と団体が同じ行を 1 行に（「A ほか N 会場」、期間は最初の初日〜最後の楽日）。新しい順に 15 件まで
+- 引き方は無料枠に収まる 2 つだけ: 題名の先頭一致（past_stage の tkey の索引、最大 80 行）と、人・団体の名前全体の一致（R2 の名前の索引 pastidx の 1 個を読む〔dec-past-name-index〕。波ダッシュをそろえた鍵でも引く）。past_stage を全部読む部分一致はしない（1 回で約 2 万行）
+- できないこと: 題名の途中の語、名前の後ろの括弧（所属）、2019 年より前の公演
+- ボタン: 「観た」→ /api/add_work（題名と stage_id。観た日は空のまま、日記帳で入れる）。「観ればよかった」→ /api/missed（stage_id を渡すと、同じ題名の別の公演に取り違えずその公演の出演・作り手を拾う。missedAction に足した）。もう観ればよかったにある題名は押せない形で出す
+- 書き込み: 押したときの 1 行（works か missed）だけ。表示では D1 に書かない
+- 見つけて直したこと: 行の部品に付けた短い名前（.pt）が公演カレンダーの印の名前と同じで、題名が赤い印の形になっていた。past- で始まる名前にした（ブラウザで確かめた）

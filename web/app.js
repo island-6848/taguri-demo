@@ -1342,6 +1342,18 @@ document.addEventListener("click", ev => {
     post("/api/missed", {title: i.value.trim()}, g,
          "登録しました。出演者とあらすじを調べています…")
       .then(d => { if (d) { i.value = ""; waitJob(g, true); } });
+  } else if (b.dataset.past) {
+    // **探す画面の過去の公演**（起案者の指示 2026-10-17「ボタン 2 つで入れて」）。観た＝日記帳に足して
+    // その公演に結び付ける。観ればよかった＝見逃した公演の一覧へ。押した行はそのまま残し、結果を書く
+    const li = b.closest(".pastrow"), g = b.closest(".past-btns");
+    const body = {title: li.dataset.title, stage_id: li.dataset.stage};
+    if (b.dataset.past === "seen") {
+      post("/api/add_work", body, g, "日記帳に足しました。観た日と評価は日記帳で入れられます")
+        .then(d => { if (d) { b.disabled = true; b.textContent = "日記帳に足しました"; } });
+    } else {
+      post("/api/missed", body, g, "観ればよかったに入れました")
+        .then(d => { if (d) { b.disabled = true; b.textContent = "観ればよかったに入っています"; } });
+    }
   } else if (b.dataset.imp) {
     const g = b.closest(".imp");
     b.disabled = true;
