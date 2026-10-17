@@ -1,7 +1,7 @@
 ---
 id: plan-real-data-eval
 type: decision
-status: proposed
+status: adopted
 date: 2026-10-17
 title: 推薦の効き目を本番の利用者のデータで測る設計。主な方法はバックアップを手元で再生する方法で、開幕リマインドでの答えを偏りの少ない主な結果にする。足す記録は答えの行の列と、1 人 1 日 1 行だけ
 sources:

@@ -2554,6 +2554,27 @@
    "verifies": []
   },
   {
+   "id": "impl-eval-logging",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-17",
+   "title": "推薦を本番で測るための記録を入れた。答えの行に順位・点・版、1 人 1 日 1 画面 1 行の rec_shown（書き直しは 6 回まで・180 日で消す）、設定の「推薦の改善の分析に使わない」。規約の文面は草案",
+   "sources": [
+    "cloudflare/migrations/0029.sql",
+    "cloudflare/src/screens/evalrec.js",
+    "cloudflare/src/screens/recommend.js",
+    "cloudflare/src/screens/reminder.js",
+    "cloudflare/src/screens/settings.js",
+    "cloudflare/src/recommend.js",
+    "cloudflare/test/evalrec.test.js",
+    "tools/review/replay_eval.py",
+    "cloudflare/test/test_replay_eval.py",
+    "docs/000007-taguri-terms-of-use.md",
+    "docs/service-privacy-draft.md"
+   ],
+   "verifies": []
+  },
+  {
    "id": "impl-favourite-seed",
    "type": "finding",
    "status": "confirmed",
@@ -3853,7 +3874,7 @@
   {
    "id": "plan-real-data-eval",
    "type": "decision",
-   "status": "proposed",
+   "status": "adopted",
    "date": "2026-10-17",
    "title": "推薦の効き目を本番の利用者のデータで測る設計。主な方法はバックアップを手元で再生する方法で、開幕リマインドでの答えを偏りの少ない主な結果にする。足す記録は答えの行の列と、1 人 1 日 1 行だけ",
    "sources": [
@@ -7602,6 +7623,16 @@
    "from": "impl-d1-settle",
    "rel": "depends_on",
    "to": "dec-free-tier-only"
+  },
+  {
+   "from": "impl-eval-logging",
+   "rel": "depends_on",
+   "to": "plan-real-data-eval"
+  },
+  {
+   "from": "impl-eval-logging",
+   "rel": "depends_on",
+   "to": "dec-no-n1-evidence"
   },
   {
    "from": "impl-favourite-seed",

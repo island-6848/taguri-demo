@@ -1620,6 +1620,14 @@ document.addEventListener("click", ev => {
     post("/api/rating_scale", {scale: on.value}, card, "保存しました。次に評価するときから、この形で出ます").then(d => {
       if (d) setTimeout(() => location.reload(), 700);
     });
+  } else if (b.dataset.setAnalysis) {
+    // 推薦の改善の分析から外れる（設定）。押したときに 1 回だけ書く
+    const card = b.closest("#analysis-setting"), on = card.querySelector('input[name="analysis"]:checked');
+    if (!on) return;
+    post("/api/analysis_optout", {off: on.value === "1"}, card,
+      on.value === "1" ? "保存しました。分析から外します" : "保存しました").then(d => {
+      if (d) setTimeout(() => location.reload(), 700);
+    });
   } else if (b.dataset.setPref || b.dataset.setPrefAll) {
     // **設定は「押したときに 1 回だけ書く」**（効かせ方と同じ規約）。チェックの
     // 並びは `.pfil` の form が持っているので、そこから読む ── 別の場所に状態を
