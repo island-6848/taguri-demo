@@ -471,24 +471,25 @@ flowchart LR
   n448("ジュルネは 1 日 3 回公演の真ん中の回（マチネ・ジュルネ・ソワレ）。公式の定義は見つからず、時刻の決まりも無い")
   n449("題字の書体の候補（明朝と本文ゴシックの間）── どれも SIL OFL")
   n450("題名の正規化（title_key）は JS でも Python と同じにできる")
-  n451("画面の△の説明「あまり合わなかった」は、起案者の考える△（まあ良いが気になる所がある）と食い違う")
-  n452("1 人が D1 に置く量は、ふつうに使って約 0.7 MB、いまの行数の歯止めの中でいちばん長い文字で埋めると約 218 MB（しかも上限の無い表があった）")
-  n453("note・Notion のような白基調の記録サイトの見た目（白い紙面・真っ黒でない文字・差し色 1 つ・広い余白）")
-  n454("本番の Worker の /api/health は、Render への橋渡しに取られて 404 になっていた（直した）")
-  n455("Worker での推薦計算は 1 回 10〜12 ミリ秒、重い想定で 39 ミリ秒（見積もり）")
-  n456("起案者が Workers Builds を master だけ組み立てるようにした")
-  n457("push するたびに Workers Builds が D1 の migration を当ててから deploy する")
-  n458("コミットの ✗（Workers Builds）は、master 以外のブランチの組み立てが失敗しているもの。master の組み立ては毎回成功している見込み")
-  n459("Workers Builds（GitHub からの自動配信）は無料プランで月 3,000 分・同時 1 本・1 回 20 分まで")
-  n460("コミットの ✗ は Workers Builds が cloudflare/ の無い master を組もうとして失敗していたため")
-  n461("Workers の Cache API は *.workers.dev では何もしない（独自ドメインでだけ効く）")
-  n462("Workers の定期実行は、無料プランだと 1 回あたり CPU 10 ミリ秒・外部への要求 50 回まで")
-  n463("別の作業で、Workers＋D1 の版が workers.dev で動き始めている")
-  n464("workers.dev の URL は無料のまま名前を変えられる（アカウントの subdomain と Worker の名前）。独自ドメインは年額がかかる")
-  n465("Workers の無料プランは 1 要求あたり CPU 10 ミリ秒・1 日 10 万要求まで")
-  n466("Workers の有料プランは月 5 ドルで、要求 1000 万回・CPU 3000 万ミリ秒・D1 の読み 250 億行が含まれる")
-  n467("master 以外のブランチの組み立ては `npx wrangler preview` を走らせ、設定に previews の欄が無いので失敗している")
-  n468("Workers の静的ファイルへの要求は無料・無制限で、要求数の上限に数えない")
+  n451[["サイトの文章を yomiyasu（日本語の推敲スキル）で書き直す。スキルは .claude/skills/yomiyasu に入れた"]]
+  n452("画面の△の説明「あまり合わなかった」は、起案者の考える△（まあ良いが気になる所がある）と食い違う")
+  n453("1 人が D1 に置く量は、ふつうに使って約 0.7 MB、いまの行数の歯止めの中でいちばん長い文字で埋めると約 218 MB（しかも上限の無い表があった）")
+  n454("note・Notion のような白基調の記録サイトの見た目（白い紙面・真っ黒でない文字・差し色 1 つ・広い余白）")
+  n455("本番の Worker の /api/health は、Render への橋渡しに取られて 404 になっていた（直した）")
+  n456("Worker での推薦計算は 1 回 10〜12 ミリ秒、重い想定で 39 ミリ秒（見積もり）")
+  n457("起案者が Workers Builds を master だけ組み立てるようにした")
+  n458("push するたびに Workers Builds が D1 の migration を当ててから deploy する")
+  n459("コミットの ✗（Workers Builds）は、master 以外のブランチの組み立てが失敗しているもの。master の組み立ては毎回成功している見込み")
+  n460("Workers Builds（GitHub からの自動配信）は無料プランで月 3,000 分・同時 1 本・1 回 20 分まで")
+  n461("コミットの ✗ は Workers Builds が cloudflare/ の無い master を組もうとして失敗していたため")
+  n462("Workers の Cache API は *.workers.dev では何もしない（独自ドメインでだけ効く）")
+  n463("Workers の定期実行は、無料プランだと 1 回あたり CPU 10 ミリ秒・外部への要求 50 回まで")
+  n464("別の作業で、Workers＋D1 の版が workers.dev で動き始めている")
+  n465("workers.dev の URL は無料のまま名前を変えられる（アカウントの subdomain と Worker の名前）。独自ドメインは年額がかかる")
+  n466("Workers の無料プランは 1 要求あたり CPU 10 ミリ秒・1 日 10 万要求まで")
+  n467("Workers の有料プランは月 5 ドルで、要求 1000 万回・CPU 3000 万ミリ秒・D1 の読み 250 億行が含まれる")
+  n468("master 以外のブランチの組み立ては `npx wrangler preview` を走らせ、設定に previews の欄が無いので失敗している")
+  n469("Workers の静的ファイルへの要求は無料・無制限で、要求数の上限に数えない")
   n0 -- 新たな問いを生む --> n319
   n0 -- 影響する --> n375
   n1 -- 影響する --> n345
@@ -544,7 +545,7 @@ flowchart LR
   n41 -- 根拠になる --> n48
   n42 -- 影響する --> n25
   n43 -- 影響する --> n366
-  n43 -- 影響する --> n463
+  n43 -- 影響する --> n464
   n44 -- 前提にする --> n45
   n44 -- 影響する --> n221
   n45 -- 前提にする --> n41
@@ -636,7 +637,7 @@ flowchart LR
   n78 -- 前提にする --> n415
   n78 -- 前提にする --> n187
   n78 -- 前提にする --> n39
-  n78 -- 前提にする --> n465
+  n78 -- 前提にする --> n466
   n78 -- 影響する --> n52
   n78 -- 影響する --> n108
   n78 -- 影響する --> n365
@@ -746,7 +747,7 @@ flowchart LR
   n124 -- 前提にする --> n403
   n124 -- 前提にする --> n46
   n125 -- 前提にする --> n59
-  n125 -- 前提にする --> n465
+  n125 -- 前提にする --> n466
   n125 -- 前提にする --> n78
   n125 -- 影響する --> n22
   n126 -- 前提にする --> n128
@@ -798,7 +799,7 @@ flowchart LR
   n147 -- 前提にする --> n48
   n148 -- 前提にする --> n126
   n149 -- 答える --> n343
-  n149 -- 前提にする --> n464
+  n149 -- 前提にする --> n465
   n149 -- 根拠になる --> n78
   n150 -- 答える --> n407
   n150 -- 影響する --> n26
@@ -816,7 +817,7 @@ flowchart LR
   n154 -- 置き換える --> n67
   n154 -- 置き換える --> n153
   n154 -- 食い違う --> n67
-  n154 -- 前提にする --> n465
+  n154 -- 前提にする --> n466
   n154 -- 影響する --> n16
   n154 -- 影響する --> n342
   n155 -- 影響する --> n26
@@ -1070,7 +1071,7 @@ flowchart LR
   n302 -- 影響する --> n210
   n303 -- 影響する --> n402
   n304 -- 根拠になる --> n125
-  n304 -- 前提にする --> n465
+  n304 -- 前提にする --> n466
   n305 -- 影響する --> n125
   n306 -- 影響する --> n125
   n307 -- 前提にする --> n314
@@ -1110,7 +1111,7 @@ flowchart LR
   n318 -- 影響する --> n286
   n319 -- 前提にする --> n0
   n319 -- 影響する --> n375
-  n320 -- 影響する --> n458
+  n320 -- 影響する --> n459
   n321 -- 前提にする --> n332
   n322 -- 前提にする --> n389
   n322 -- 前提にする --> n291
@@ -1138,7 +1139,7 @@ flowchart LR
   n341 -- 影響する --> n129
   n342 -- 前提にする --> n389
   n342 -- 前提にする --> n408
-  n343 -- 前提にする --> n464
+  n343 -- 前提にする --> n465
   n343 -- 影響する --> n78
   n343 -- 影響する --> n344
   n344 -- 前提にする --> n342
@@ -1191,7 +1192,7 @@ flowchart LR
   n386 -- 影響する --> n16
   n387 -- 前提にする --> n388
   n387 -- 影響する --> n391
-  n388 -- 前提にする --> n451
+  n388 -- 前提にする --> n452
   n388 -- 影響する --> n391
   n389 -- 前提にする --> n345
   n390 -- 前提にする --> n116
@@ -1238,7 +1239,7 @@ flowchart LR
   n411 -- 前提にする --> n117
   n412 -- 前提にする --> n413
   n412 -- 前提にする --> n389
-  n413 -- 前提にする --> n465
+  n413 -- 前提にする --> n466
   n413 -- 影響する --> n22
   n415 -- 検証項目 --> n416
   n415 -- 根拠になる --> n78
@@ -1291,7 +1292,7 @@ flowchart LR
   n441 -- 根拠になる --> n153
   n441 -- 答える --> n414
   n442 -- 根拠になる --> n125
-  n442 -- 前提にする --> n465
+  n442 -- 前提にする --> n466
   n443 -- 影響する --> n401
   n444 -- 答える --> n403
   n445 -- 影響する --> n406
@@ -1301,35 +1302,35 @@ flowchart LR
   n448 -- 影響する --> n218
   n449 -- 根拠になる --> n293
   n449 -- 影響する --> n70
-  n451 -- 新たな問いを生む --> n388
-  n451 -- 影響する --> n26
-  n452 -- 根拠になる --> n48
-  n453 -- 影響する --> n71
-  n454 -- 影響する --> n3
-  n454 -- 根拠になる --> n78
-  n455 -- 食い違う --> n67
-  n455 -- 新たな問いを生む --> n389
-  n455 -- 影響する --> n342
-  n456 -- 影響する --> n467
-  n457 -- 影響する --> n18
-  n458 -- 影響する --> n460
-  n458 -- 新たな問いを生む --> n320
-  n459 -- 根拠になる --> n78
-  n460 -- 影響する --> n16
-  n461 -- 影響する --> n78
-  n462 -- 影響する --> n332
-  n463 -- 食い違う --> n67
-  n463 -- 影響する --> n342
-  n463 -- 影響する --> n26
-  n464 -- 影響する --> n344
-  n464 -- 根拠になる --> n78
-  n465 -- 根拠になる --> n67
-  n465 -- 答える --> n414
-  n466 -- 根拠になる --> n131
-  n466 -- 影響する --> n342
-  n467 -- 答える --> n320
-  n467 -- 根拠になる --> n458
-  n468 -- 影響する --> n434
+  n452 -- 新たな問いを生む --> n388
+  n452 -- 影響する --> n26
+  n453 -- 根拠になる --> n48
+  n454 -- 影響する --> n71
+  n455 -- 影響する --> n3
+  n455 -- 根拠になる --> n78
+  n456 -- 食い違う --> n67
+  n456 -- 新たな問いを生む --> n389
+  n456 -- 影響する --> n342
+  n457 -- 影響する --> n468
+  n458 -- 影響する --> n18
+  n459 -- 影響する --> n461
+  n459 -- 新たな問いを生む --> n320
+  n460 -- 根拠になる --> n78
+  n461 -- 影響する --> n16
+  n462 -- 影響する --> n78
+  n463 -- 影響する --> n332
+  n464 -- 食い違う --> n67
+  n464 -- 影響する --> n342
+  n464 -- 影響する --> n26
+  n465 -- 影響する --> n344
+  n465 -- 根拠になる --> n78
+  n466 -- 根拠になる --> n67
+  n466 -- 答える --> n414
+  n467 -- 根拠になる --> n131
+  n467 -- 影響する --> n342
+  n468 -- 答える --> n320
+  n468 -- 根拠になる --> n459
+  n469 -- 影響する --> n434
   class n0 finding_confirmed
   class n1 finding_confirmed
   class n2 finding_confirmed
@@ -1781,17 +1782,17 @@ flowchart LR
   class n448 finding_unverified
   class n449 finding_confirmed
   class n450 finding_confirmed
-  class n451 finding_confirmed
+  class n451 decision_adopted
   class n452 finding_confirmed
-  class n453 finding_unverified
-  class n454 finding_confirmed
-  class n455 finding_unverified
+  class n453 finding_confirmed
+  class n454 finding_unverified
+  class n455 finding_confirmed
   class n456 finding_unverified
-  class n457 finding_confirmed
+  class n457 finding_unverified
   class n458 finding_confirmed
   class n459 finding_confirmed
-  class n460 finding_outdated
-  class n461 finding_confirmed
+  class n460 finding_confirmed
+  class n461 finding_outdated
   class n462 finding_confirmed
   class n463 finding_confirmed
   class n464 finding_confirmed
@@ -1799,6 +1800,7 @@ flowchart LR
   class n466 finding_confirmed
   class n467 finding_confirmed
   class n468 finding_confirmed
+  class n469 finding_confirmed
   classDef finding_confirmed fill:#e6f4ea,stroke:#2e7d32
   classDef finding_unverified fill:#fff8e1,stroke:#b26a00,stroke-dasharray:4 3
   classDef finding_outdated fill:#eeeeee,stroke:#9e9e9e
@@ -1872,7 +1874,7 @@ flowchart LR
 | [たぐりの推薦に学術的な新規性はあるか。部品はどれも既存の手法で、言えるとすれば「組み合わせと場面」。主張するには実データでの検証と、文献の確認のやり直しが要る](notes/q-academic-novelty.md) | 未着手 | 2026-10-17 | ─ | 前提にする → [評価を等間隔の数ではなく順序として扱う研究（OrdRec）と、少ない件数を割り引く「damping」は推薦の定番](notes/lit-ordinal-damping.md)<br>前提にする → [推薦では、利用者ごとの評価の甘さ辛さ（user bias）を差し引いて扱うのが定番（Koren 2008 ほか）](notes/lit-user-bias.md)<br>前提にする → [利用者ごとの好みを、全体の事前分布から少しずつ個人に寄せる学習は確立した方法（Zhang & Koren 2007）](notes/lit-hierarchical-user-model.md)<br>前提にする → [内容ベースの推薦で、本人の初期の好みを評価が増えるたびに修正する方法がある（Billsus & Pazzani）](notes/lit-syskill-webert-prior.md)<br>前提にする → [届いた順に「予想してから答え合わせ」する評価（prequential）は、変わり続ける推薦の評価に使われている（Vinagre ほか 2014）](notes/lit-prequential.md)<br>前提にする → [新しい方式は「前より悪くないと高い確信で言えるときだけ」採る、という考え方がある（Thomas ほか 2015）](notes/lit-safe-improvement.md)<br>前提にする → [推薦の一覧を話題が偏らないよう並べ直すと、平均の精度は下がるが利用者の満足は上がった（Ziegler・McNee・Konstan・Lausen, WWW 2005）](notes/lit-topic-diversification.md)<br>前提にする → [コンサート・演劇・サーカスの新しい公演は購入履歴が無いので、内容の似かよいを購入者のつながりに広げて推薦する（Creusefond・Latapy 2018）](notes/lit-live-show-propagation.md)<br>前提にする → [舞台芸術の推薦の先行例は少なく、主に劇場側の販売データでの協調フィルタリング](notes/lit-performing-arts.md)<br>前提にする → [持ち主 1 人（n=1）の実験結果は、推薦の改善の根拠にしない](notes/dec-no-n1-evidence.md)<br>前提にする → [評価を利用者ごとの百分位に直してから推薦すると、ランキングの精度が上がった（Mansoury・Burke・Mobasher, ACM TIST 2021）。たぐりの順序化（式 1–2）とほぼ同じ考え方](notes/lit-percentile-transform.md)<br>前提にする → [利用者ごとに推薦の手法を選ぶ研究は 2012 年からある（Ekstrand・Riedl RecSys 2012、Collins ほか 2018–2020）。効果は小さく、2026 年の監査では利用者ごとの重みに一貫した効き目は無かった](notes/lit-per-user-algorithm-selection.md)<br>前提にする → [興味ありの配り分け（式 10–11）の 4 つの手がかりは、どれも先行研究に近い形がある。まとめて学習なしの閉じた式で配る形は見つからなかったが、新しさは「組み合わせと場面」にとどまる](notes/lit-interest-split-precedents.md)<br>[興味ありの配り分け（式 10–11）の 4 つの手がかりは、どれも先行研究に近い形がある。まとめて学習なしの閉じた式で配る形は見つからなかったが、新しさは「組み合わせと場面」にとどまる](notes/lit-interest-split-precedents.md) が影響する<br>[利用者ごとに推薦の手法を選ぶ研究は 2012 年からある（Ekstrand・Riedl RecSys 2012、Collins ほか 2018–2020）。効果は小さく、2026 年の監査では利用者ごとの重みに一貫した効き目は無かった](notes/lit-per-user-algorithm-selection.md) が影響する<br>[評価を利用者ごとの百分位に直してから推薦すると、ランキングの精度が上がった（Mansoury・Burke・Mobasher, ACM TIST 2021）。たぐりの順序化（式 1–2）とほぼ同じ考え方](notes/lit-percentile-transform.md) が影響する<br>[推薦の効き目を本番の利用者のデータで測る設計。主な方法はバックアップを手元で再生する方法で、開幕リマインドでの答えを偏りの少ない主な結果にする。足す記録は答えの行の列と、1 人 1 日 1 行だけ](notes/plan-real-data-eval.md) が前提にする |
 | [管理画面で手で直した題材・あらすじを、おすすめの計算（rec_credit の #題材）と検索（rec_card の ws/synz）にも効かせるには、取得の側（taguri-crawler）が D1 の stage_override を読む必要があるか](notes/q-admin-override-in-index.md) | 未着手 | 2026-10-17 | ─ | 影響する → [手元で開く管理画面（tools/admin）を作った。手で直した分は D1 の stage_override に置き、Worker が画面に出すときに重ねる。読み取りは Claude Code](notes/impl-admin-tool.md)<br>[手元で開く管理画面（tools/admin）を作った。手で直した分は D1 の stage_override に置き、Worker が画面に出すときに重ねる。読み取りは Claude Code](notes/impl-admin-tool.md) が新たな問いを生む |
 
-## 決めたこと（130 件）
+## 決めたこと（131 件）
 
 | 項目 | 状態 | 日付 | 検証項目 | つながり |
 | --- | --- | --- | --- | --- |
@@ -1992,6 +1994,7 @@ flowchart LR
 | [探すに「過去の公演（2019 年〜）」を出し、観た（日記帳に足して結び付ける）・観ればよかった の 2 つのボタンを付けた](notes/impl-search-past-stages.md) | 採用 | 2026-10-17 | ─ | 前提にする → [過去の公演の「名前 → 公演」の索引を R2 に置き、ハッシュタグの画面は 1 回の読み出しで過去の公演を出す](notes/dec-past-name-index.md)<br>影響する → [探すを、カードの無い公演（索引だけ・一覧だけの新しい公演）まで広げ、波ダッシュの揺れと名前の後ろの括弧でも当たるようにした。言葉があるときは札とカレンダーも当たった数だけ](notes/fix-search-uncarded.md) |
 | [利用規約（/terms）とプライバシーの説明（/privacy）をサービスの画面として置いた。ログイン画面は上がログイン、下が新規登録。新規登録は「利用規約とプライバシーの説明に同意して始める」にチェックを入れたときだけ通し、同意した版と日時を users に残す。ログインの欄からはアカウントを作らない](notes/impl-terms-consent.md) | 採用 | 2026-10-17 | ─ | 前提にする → [推薦を本番で測るための記録を入れた。答えの行に順位・点・版、1 人 1 日 1 画面 1 行の rec_shown（書き直しは 6 回まで・180 日で消す）、設定の「推薦の改善の分析に使わない」。規約の文面は草案](notes/impl-eval-logging.md)<br>前提にする → [推薦の効き目を本番の利用者のデータで測る設計。主な方法はバックアップを手元で再生する方法で、開幕リマインドでの答えを偏りの少ない主な結果にする。足す記録は答えの行の列と、1 人 1 日 1 行だけ](notes/plan-real-data-eval.md)<br>[安全の点検（ログイン・データの分け方・ブラウザ側・保存先と控え）。重大・高は無し。直したもの 8 件と、起案者に決めてもらうもの・あとで直すものを分けた](notes/sec-audit-1017.md) が前提にする |
 | [推薦の効き目を本番の利用者のデータで測る設計。主な方法はバックアップを手元で再生する方法で、開幕リマインドでの答えを偏りの少ない主な結果にする。足す記録は答えの行の列と、1 人 1 日 1 行だけ](notes/plan-real-data-eval.md) | 採用 | 2026-10-17 | ─ | 前提にする → [たぐりの推薦に学術的な新規性はあるか。部品はどれも既存の手法で、言えるとすれば「組み合わせと場面」。主張するには実データでの検証と、文献の確認のやり直しが要る](notes/q-academic-novelty.md)<br>前提にする → [持ち主 1 人（n=1）の実験結果は、推薦の改善の根拠にしない](notes/dec-no-n1-evidence.md)<br>前提にする → [D1 の控えは Time Travel（7 日）に加え、利用者の記録の表を毎日書き出し、gpg で暗号化して R2 に 30 日置く。月に 1 回、新しい D1 に戻す予行を自動で流す](notes/dec-d1-backup.md)<br>前提にする → [評価が付いていないこと自体が情報になり、付いた評価だけで学ぶ・測ると偏る（Steck 2010）](notes/lit-mnar.md)<br>前提にする → [裏の答え合わせを Worker に入れた（本人の記録を時間順に再生して、別の計算が確かに勝ったときだけ使う）](notes/impl-hidden-gate.md)<br>[推薦を本番で測るための記録を入れた。答えの行に順位・点・版、1 人 1 日 1 画面 1 行の rec_shown（書き直しは 6 回まで・180 日で消す）、設定の「推薦の改善の分析に使わない」。規約の文面は草案](notes/impl-eval-logging.md) が前提にする<br>[利用規約（/terms）とプライバシーの説明（/privacy）をサービスの画面として置いた。ログイン画面は上がログイン、下が新規登録。新規登録は「利用規約とプライバシーの説明に同意して始める」にチェックを入れたときだけ通し、同意した版と日時を users に残す。ログインの欄からはアカウントを作らない](notes/impl-terms-consent.md) が前提にする |
+| [サイトの文章を yomiyasu（日本語の推敲スキル）で書き直す。スキルは .claude/skills/yomiyasu に入れた](notes/tool-yomiyasu.md) | 採用 | 2026-10-17 | ─ | ─ |
 | [独自ドメインを取り、画面と API を同じドメインの下に置く](notes/dec-own-domain.md) | 提案 | 2026-10-13 | S04, S09 | 影響する → [画面（web/・config.js）](notes/comp-frontend.md)<br>前提にする → [どのドメインをどこで取るか](notes/q-domain.md)<br>[Cloudflare Tunnel は無料で使え、ドメインを Cloudflare の DNS に置く必要がある](notes/cf-tunnel-free.md) が根拠になる<br>[Pages と Render は別サイトなので、Cookie が別サイトの扱いになる](notes/cross-origin-cookies.md) が根拠になる<br>[サービス版は常時稼働の VM で動かし、前段に Cloudflare を置く](notes/dec-vm-cloudflare.md) が前提にする<br>[パスキーはドメインに結び付くので、ドメインを変えると使えなくなる](notes/passkey-rpid-domain.md) が根拠になる<br>[Safari で Cookie が通るか（実機）](notes/q-safari-cookies.md) が前提にする |
 | [見た目は 1 つに決めず、いくつかの型から利用者が選べるようにする（ポスターの色で染める型も含む）](notes/dec-theme-user-choice.md) | 提案 | 2026-10-13 | ─ | 影響する → [たぐりの見た目をどの方向に変えるか（A 幕と半券・B 観劇ノート・C 客電が落ちる）](notes/q-design-direction.md)<br>新たな問いを生む → [好きな作品のポスターから色を取り出して画面を染めるには、何が要るか](notes/q-poster-palette.md)<br>[いまの見た目（たぐる糸・あたたかい灰の地・1 行の回答の帯・判子）を採用し、調整室は一旦閉じる](notes/dec-design-adopted.md) が影響する<br>[既定の見た目は「たぐる糸」に半券を合わせたものにし、A（幕と半券）はやめる。カード型のレイアウトは使わない](notes/dec-design-default-ito.md) が前提にする<br>[見た目の調整室（起案者が色・文字・ボタン・配置・文言を決めて保存し、Claude が読み取って実際の画面に反映する）](notes/design-studio.md) が影響する<br>[好きな作品のポスターから色を取り出して画面を染めるには、何が要るか](notes/q-poster-palette.md) が前提にする<br>[シンプルなデザインは「削る」ことではなく、要るものを一つに絞って際立たせ、押せる手がかりは残すこと](notes/simple-design-principles.md) が影響する |
 | [パソコンの見た目の案（左の行き先の帯に 14 項目を組で並べ、本文は 920px 幅、半券にポスターの列）](notes/design-desktop.md) | 提案 | 2026-10-13 | ─ | 前提にする → [いまの見た目（たぐる糸・あたたかい灰の地・1 行の回答の帯・判子）を採用し、調整室は一旦閉じる](notes/dec-design-adopted.md) |

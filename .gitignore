@@ -14,3 +14,6 @@ d1-out/
 !cloudflare/migrations/*.sql
 *.sql.gpg
 backup*.sql
+
+# yomiyasu の検査の記録（.claude/skills/yomiyasu/scripts/yomiyasu_check.py が書く）
+.yomiyasu/

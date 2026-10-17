@@ -5493,6 +5493,19 @@
    "verifies": []
   },
   {
+   "id": "tool-yomiyasu",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-17",
+   "title": "サイトの文章を yomiyasu（日本語の推敲スキル）で書き直す。スキルは .claude/skills/yomiyasu に入れた",
+   "sources": [
+    "https://github.com/nanaism/yomiyasu",
+    ".claude/skills/yomiyasu/SKILL.md",
+    ".claude/skills/yomiyasu/UPSTREAM"
+   ],
+   "verifies": []
+  },
+  {
    "id": "triangle-label-mismatch",
    "type": "finding",
    "status": "confirmed",
