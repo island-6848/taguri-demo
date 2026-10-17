@@ -72,3 +72,22 @@ def arc_text(s, cx, cy, r, center_deg, size, spacing=0.0, inside=False, weight=4
             out.append(_path(gs, n, k * cs, k * sn, k * sn, -k * cs, px - hw * cs - oy * sn, py - hw * sn + oy * cs))
         pos += a
     return ' '.join(out)
+
+
+_FILES = {}
+def ftext(path, s, x, y, size, spacing=0.0, anchor='start'):
+    """手元のフォントファイル 1 つで組む横組みの 1 行（Google Fonts の部分フォントなど）。"""
+    if path not in _FILES:
+        t = TTFont(path)
+        _FILES[path] = (t.getBestCmap(), t.getGlyphSet(), t['head'].unitsPerEm)
+    cmap, gs, upm = _FILES[path]
+    k = size / upm
+    advs = [(size * 0.3 if ch == ' ' else gs[cmap[ord(ch)]].width * k) + size * spacing for ch in s]
+    total = sum(advs) - size * spacing
+    x0 = x - (total if anchor == 'end' else total / 2 if anchor == 'middle' else 0)
+    out = []
+    for ch, a in zip(s, advs):
+        if ch != ' ':
+            out.append(_path(gs, cmap[ord(ch)], k, 0, 0, -k, x0, y))
+        x0 += a
+    return ' '.join(out)

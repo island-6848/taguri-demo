@@ -1,10 +1,11 @@
 """たぐりのロゴ案（黒一色の線画＋手描きの題字）を docs/design/logo/ に書く。"""
-import math, sys
-sys.path.insert(0, __import__('os').path.dirname(__file__))
-from glyphs import text, arc_text
+# 書体違いの案 1（logo1-fonts/）は、Google Fonts の部分フォント（OFL）を GF_DIR に置いて OUT_DIR=logo1-fonts/ GF_DIR=... python3 make.py で作る
+import math, sys, os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from glyphs import text, arc_text, ftext
 
 INK = '#1d1d1f'
-OUT = __import__('os').path.dirname(__file__) + '/'
+OUT = os.environ.get('OUT_DIR', os.path.dirname(os.path.abspath(__file__)) + '/')
 
 # 題字「たぐり」: 細い一本線で描いた字（1 字 100 の枠、y は下向き）
 TAGURI = [
@@ -38,7 +39,7 @@ def sparkle(cx, cy, r, sw=1.6):
     return line(f'M{cx} {cy - r} Q{cx} {cy} {cx + r} {cy} Q{cx} {cy} {cx} {cy + r} Q{cx} {cy} {cx - r} {cy} Q{cx} {cy} {cx} {cy - r}Z', sw)
 
 # ---------------------------------------------------------------- 案1 糸の幕（丸い枠の一筆の糸と、開いた幕）
-def logo1():
+def logo1(font=None, title_size=52, spacing=0.14):
     cx, cy, r = 150, 118, 78
     b = []
     # 円は糸 1 本: 下から右回りにほぼ 1 周し、右下で糸がほどけて結び目の輪をつくる
@@ -64,11 +65,18 @@ def logo1():
     b.append(sparkle(150, 108, 9, 1.6))
     b.append(sparkle(138, 92, 3.5, 1.1))
     b.append(sparkle(163, 96, 2.8, 1.1))
-    b.append(lettering(87, 222, 44, gap=0.98, sw=5.2))
-    b.append(filled(text('TAGURI', 150, 290, 10, spacing=0.5, anchor='middle')))
-    b.append(line('M84 300.5 L104 300.5 M196 300.5 L216 300.5', 1))
-    b.append(filled(text('観劇の縁をたぐる', 150, 303.5, 7.5, spacing=0.25, anchor='middle')))
-    return svg(300, 316, '\n'.join(b), 'たぐり')
+    if font:
+        # 題字・欧文・添え書きを 1 つの書体で組む（起案者 2026-10-18「1いいけど、日本語フォントださい」）
+        b.append(filled(ftext(font, 'たぐり', 150, 276, title_size, spacing=spacing, anchor='middle')))
+        b.append(filled(ftext(font, 'TAGURI', 150, 297, 10, spacing=0.5, anchor='middle')))
+        b.append(line('M84 309.5 L104 309.5 M196 309.5 L216 309.5', 1))
+        b.append(filled(ftext(font, '観劇の縁をたぐる', 150, 313, 8, spacing=0.3, anchor='middle')))
+    else:
+        b.append(lettering(87, 222, 44, gap=0.98, sw=5.2))
+        b.append(filled(text('TAGURI', 150, 290, 10, spacing=0.5, anchor='middle')))
+        b.append(filled(text('観劇の縁をたぐる', 150, 303.5, 7.5, spacing=0.25, anchor='middle')))
+        b.append(line('M84 300.5 L104 300.5 M196 300.5 L216 300.5', 1))
+    return svg(300, 326 if font else 316, '\n'.join(b), 'たぐり')
 
 # ---------------------------------------------------------------- 案2 オペラグラスの糸
 def logo2():
@@ -158,6 +166,15 @@ def logo5():
     b.append(filled(text('No.', 254, 154, 7, anchor='middle')))
     return svg(320, 230, '\n'.join(b), 'たぐり')
 
+import os
+GF = os.environ.get('GF_DIR')
+if GF:
+    for key, label in [('Kaisei_Decol_wght_400', 'Kaisei Decol'), ('Zen_Old_Mincho_wght_400', 'Zen Old Mincho'),
+                       ('Shippori_Mincho_B1_wght_500', 'Shippori Mincho B1'), ('Klee_One_wght_400', 'Klee One'),
+                       ('Hina_Mincho', 'Hina Mincho'), ('Zen_Antique_Soft', 'Zen Antique Soft'),
+                       ('Yuji_Syuku', 'Yuji Syuku'), ('Zen_Kurenaido', 'Zen Kurenaido')]:
+        open(f'{OUT}font-{key}.svg', 'w', encoding='utf-8').write(logo1(f'{GF}/{key}.ttf'))
+    raise SystemExit
 for name, f in [('logo1-thread-curtain', logo1), ('logo2-opera-glasses', logo2), ('logo3-spotlight-seal', logo3),
                 ('logo4-vertical-needle', logo4), ('logo5-ticket-thread', logo5)]:
     open(OUT + name + '.svg', 'w', encoding='utf-8').write(f())
