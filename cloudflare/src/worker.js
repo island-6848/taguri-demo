@@ -1,7 +1,7 @@
 import {isOriginalRoute, originalUI, ORIGINAL_SCREENS, ORIGINAL_WRITES} from './original-ui.js';
 import {verifyIdToken, isAuthError} from './firebase-auth.js';
 import {passkeyRoutes} from './passkey.js';
-import {TERMS_VERSION, requireAgreement} from './terms.js';
+import {TERMS_VERSION, requireAgreement, needsAgreement} from './terms.js';
 import {scoreFromIndex, d1Access, gradeOf, seedsFromFavourites, collapseRanked, cleanAspects, SEED_KINDS, SEED_ROLES, MAX_SEED_FAVS, cmp} from './recommend.js';
 import {searchIndex, d1Search} from './stage-search.js';
 import {suggest} from './screens/suggest.js';
@@ -10,7 +10,8 @@ import {chooseVariant} from './reco-gate.js';
 import {R2_READS_CAP, r2ReadAllowed, d1RoomLeft, d1Bytes, D1_BYTES_CAP, MAX_ACCOUNTS} from './free-tier.js';
 import {rateLimit, checkNewAccount} from './rate-limit.js';
 // Writes that only remove a user's rows: allowed even when D1 is at its storage cap.
-const SHRINKING_ACTIONS = new Set(['drop_work', 'purge_work', 'unseen']);
+// 保存の上限でも通す操作（減らす操作と、既にある行を書き換えるだけの規約の同意 terms.agreeAction）
+const SHRINKING_ACTIONS = new Set(['drop_work', 'purge_work', 'unseen', 'agree']);
 const STORAGE_FULL = '保存できる量の上限に近づいたので、無料の範囲で動かすために、いまは保存を止めています。見ることと消すことはできます。';
 import {fetchCalendar} from './screens/import.js';
 import {SCREEN_TABLES, nativeScreen, nativeAction, allNative, movingScreen, movingAction, screen as nativeScreenBody, action as nativeActionBody, readInput as nativeInput} from './screens/index.js';
@@ -443,7 +444,12 @@ async function nativeRoute(request, env, url) {
     const uid = await user(request, env.DB);
     // env.CLOCK exists only in tests (an object cannot come from wrangler vars).
     const ctx = {db: env.DB, env, uid, today: env.CLOCK?.today ?? jstToday(), now: env.CLOCK?.now ?? Date.now()};
-    if (isScreen) return json(await nativeScreenBody(m[1], url.searchParams, ctx));
+    if (isScreen) {
+      const body = await nativeScreenBody(m[1], url.searchParams, ctx);
+      // 規約の版が上がっていたら、画面が同意を求める（terms.agreeAction）
+      if (body && typeof body === 'object' && await needsAgreement(env.DB, uid)) body.terms_update = TERMS_VERSION;
+      return json(body);
+    }
     if (request.headers.get('origin') !== url.origin) fail(403,'同じサイトから操作してください。');
     if (!(request.headers.get('content-type') || '').startsWith('application/json')) fail(415,'JSONで送ってください。');
     const read = await nativeInput(request, m[2]);

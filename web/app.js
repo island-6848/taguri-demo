@@ -467,8 +467,37 @@ function applyDemoRestrictions(root) {
   });
 }
 
+// 規約の版が上がったとき、登録済みの人に同意し直してもらう（サーバーが画面の答えに terms_update を付ける。
+// src/terms.js agreeAction）。同意するまで画面の上に出し続ける。読むための規約・説明へのリンクと、
+// 同意しない人のためにアカウントの画面（退会・ログアウト）へのリンクを置く
+function agreeAgain(version) {
+  if (!version || document.querySelector(".agreepop")) return;
+  const pop = document.createElement("div");
+  pop.className = "agreepop";
+  pop.innerHTML = '<div class="agreepop-box" role="dialog" aria-modal="true" aria-labelledby="agreepop-h">'
+    + '<h2 id="agreepop-h">利用規約とプライバシーの説明を改定しました</h2>'
+    + '<p>文言を読みやすく書き直しました。権利・義務・条件・数値は変えていません。'
+    + '引き続きたぐりを使うには、改定後の内容に同意してください。</p>'
+    + '<p class="agreepop-links"><a href="/terms" target="_blank" rel="noopener">利用規約を読む</a>'
+    + '<a href="/privacy" target="_blank" rel="noopener">プライバシーの説明を読む</a></p>'
+    + '<label class="agreepop-check"><input type="checkbox"> 改定後の利用規約とプライバシーの説明に同意します</label>'
+    + '<div class="agreepop-foot"><button type="button" class="agreepop-ok" disabled>同意して続ける</button><span class="said" role="status"></span></div>'
+    + '<p class="note">同意しない場合は、<a href="/account">アカウント</a>の画面からログアウトや退会ができます。</p></div>';
+  const box = pop.querySelector(".agreepop-box"), ok = pop.querySelector(".agreepop-ok");
+  pop.querySelector("input").addEventListener("change", ev => { ok.disabled = !ev.target.checked; });
+  // アカウントの画面へ行くときは閉じる（その画面でログアウト・退会できるように。ほかの画面を開くとまた出る）
+  pop.querySelector('.note a[href="/account"]').addEventListener("click", () => pop.remove());
+  ok.addEventListener("click", async () => {
+    ok.disabled = true;
+    const d = await post("/api/agree", {agree: version}, box, "ありがとうございます");
+    if (d) setTimeout(() => pop.remove(), 600); else ok.disabled = false;
+  });
+  document.body.appendChild(pop);
+}
+
 function renderScreen(el, activePath, d, exposureSource) {
   el.innerHTML = d.body_html;
+  if (d.terms_update) agreeAgain(d.terms_update);
   // 推薦の理由に引いていた本人の感想（「あなたの言葉」）は出さない。個人の文がそのまま画面に出るため
   // （起案者の指示 2026-10-13「あなたの言葉は個人情報すぎるので表示しないで。サービス版もデモ版も」）。
   // サーバー（render_recommend.reason_rows）も出さないようにしたが、古いサーバーの HTML にも効かせる

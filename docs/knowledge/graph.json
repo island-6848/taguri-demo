@@ -2822,6 +2822,22 @@
    "verifies": []
   },
   {
+   "id": "impl-terms-reagree",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "規約・プライバシーの説明を yomiyasu で書き直して版を 2026-10-18-2 に上げ、登録済みの人にも次に開いたときに同意し直してもらう",
+   "sources": [
+    "cloudflare/src/terms.js",
+    "cloudflare/src/worker.js",
+    "web/app.js",
+    "cloudflare/public/terms.html",
+    "cloudflare/public/privacy.html",
+    "cloudflare/test/terms-reagree.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "impl-theater-conquest",
    "type": "decision",
    "status": "adopted",
@@ -7986,6 +8002,11 @@
    "from": "impl-terms-consent",
    "rel": "depends_on",
    "to": "plan-real-data-eval"
+  },
+  {
+   "from": "impl-terms-reagree",
+   "rel": "depends_on",
+   "to": "tool-yomiyasu"
   },
   {
    "from": "impl-theater-conquest",
