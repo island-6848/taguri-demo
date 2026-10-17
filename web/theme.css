@@ -968,3 +968,11 @@ a.pill.buy .go:not(#_){font-size:12px;margin-left:2px}
 .ticket.cmp .ltour:has(.tourfull.v2) .tourfull{margin-top:0;line-height:1.6}
 .tourfull.v2 .tf-price .ptb td{white-space:normal;overflow-wrap:anywhere}
 .tourfull.v2 details.tf-row{margin:0}
+/* 公演日時の暦も 12px にそろえる（起案者の指示 2026-10-17）。スマホでは 1 列が 31px ほどしかないので、
+   升の間と余白を詰め、時刻の字間を少し詰めて「19:00」を 1 行に収める。出演の組の印は時刻の上の行に出す */
+:is(.ttb,.ttb .d,.ttb .tm,.ttb .off,.ttb-note,.tourfull.v2 .tf-n,.tf-here):not(#_){font-size:12px}
+.ttb:not(#_){border-spacing:1px}
+.ttb td:not(#_){padding:2px 0}
+.ttb .tm:not(#_){letter-spacing:-.06em}
+.ttb .tm i:not(#_){display:block;font-size:12px;margin:0;vertical-align:0}
+@media(max-width:520px){.tourfull.v2 .tf-body:not(#_){margin-left:.4em}}
