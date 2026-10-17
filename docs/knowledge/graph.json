@@ -3124,11 +3124,12 @@
   {
    "id": "lit-negative-ratings",
    "type": "finding",
-   "status": "unverified",
+   "status": "confirmed",
    "date": "2026-10-13",
    "title": "低い評価は、とくにデータが少ないときに推薦の役に立つ（Negative ratings play a positive role in information filtering）",
    "sources": [
-    "https://core.ac.uk/display/20656098"
+    "https://core.ac.uk/display/20656098",
+    "https://ideas.repec.org/a/eee/phsmap/v390y2011i23p4486-4493.html"
    ],
    "verifies": []
   },
@@ -3177,6 +3178,32 @@
     "https://recsys.acm.org/recsys11/session-methodological-issues/",
     "https://lkpy.readthedocs.io/en/0.14.1/bias.html",
     "https://evanmiller.org/bayesian-average-ratings.html"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "lit-per-user-algorithm-selection",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-17",
+   "title": "利用者ごとに推薦の手法を選ぶ研究は 2012 年からある（Ekstrand・Riedl RecSys 2012、Collins ほか 2018–2020）。効果は小さく、2026 年の監査では利用者ごとの重みに一貫した効き目は無かった",
+   "sources": [
+    "https://grouplens.org/recsys2012-error-analysis",
+    "https://arxiv.org/pdf/1805.12118",
+    "https://arxiv.org/pdf/2509.20134",
+    "https://arxiv.org/html/2608.05655"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "lit-percentile-transform",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-17",
+   "title": "評価を利用者ごとの百分位に直してから推薦すると、ランキングの精度が上がった（Mansoury・Burke・Mobasher, ACM TIST 2021）。たぐりの順序化（式 1–2）とほぼ同じ考え方",
+   "sources": [
+    "https://dblp.org/pid/58/2337",
+    "https://vivo-cub.colorado.edu/display/pubid_308948"
    ],
    "verifies": []
   },
@@ -7997,6 +8024,26 @@
    "to": "eval-design-choices"
   },
   {
+   "from": "lit-per-user-algorithm-selection",
+   "rel": "affects",
+   "to": "q-academic-novelty"
+  },
+  {
+   "from": "lit-per-user-algorithm-selection",
+   "rel": "affects",
+   "to": "impl-hidden-gate"
+  },
+  {
+   "from": "lit-percentile-transform",
+   "rel": "supports",
+   "to": "impl-person-ordinal-v3"
+  },
+  {
+   "from": "lit-percentile-transform",
+   "rel": "affects",
+   "to": "q-academic-novelty"
+  },
+  {
    "from": "lit-performing-arts",
    "rel": "affects",
    "to": "q-theatre-differences"
@@ -8460,6 +8507,16 @@
    "from": "q-academic-novelty",
    "rel": "depends_on",
    "to": "dec-no-n1-evidence"
+  },
+  {
+   "from": "q-academic-novelty",
+   "rel": "depends_on",
+   "to": "lit-percentile-transform"
+  },
+  {
+   "from": "q-academic-novelty",
+   "rel": "depends_on",
+   "to": "lit-per-user-algorithm-selection"
   },
   {
    "from": "q-account-limit-100",
