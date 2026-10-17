@@ -3064,6 +3064,25 @@
    "verifies": []
   },
   {
+   "id": "lit-interest-split-precedents",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-17",
+   "title": "興味ありの配り分け（式 10–11）の 4 つの手がかりは、どれも先行研究に近い形がある。まとめて学習なしの閉じた式で配る形は見つからなかったが、新しさは「組み合わせと場面」にとどまる",
+   "sources": [
+    "https://ir.webis.de/anthology/2017.sigirconf_conference-2017.36/",
+    "https://arxiv.org/pdf/1908.05928",
+    "https://ir.webis.de/anthology/2018.cikm_conference-2018.45",
+    "https://arxiv.org/pdf/1510.07545",
+    "https://khoury.northeastern.edu/home/vip/teach/DMcourse/6_graph_analysis/notes_slides/collab_filter/Aggrawal_recomm_systems/Recommender_Systems_An_Introduction_Chapter03_Content-based_recommendation.pdf",
+    "https://cs.fit.edu/~pkc/apweb/related/pazzani-mlj97.pdf",
+    "https://neo4j.com/graphgists/movie-recommendation-based-on-user-preferences-and-actor-weights/",
+    "https://link.springer.com/article/10.1007/s10489-005-5602-z",
+    "https://dl.acm.org/doi/10.1145/3477495.3531844"
+   ],
+   "verifies": []
+  },
+  {
    "id": "lit-kakiuchi2012-hyogo-audience",
    "type": "finding",
    "status": "unverified",
@@ -7959,6 +7978,16 @@
    "to": "q-reco-learning-design"
   },
   {
+   "from": "lit-interest-split-precedents",
+   "rel": "affects",
+   "to": "q-academic-novelty"
+  },
+  {
+   "from": "lit-interest-split-precedents",
+   "rel": "affects",
+   "to": "impl-interest-split"
+  },
+  {
    "from": "lit-kakiuchi2012-hyogo-audience",
    "rel": "affects",
    "to": "q-records-viz"
@@ -8517,6 +8546,11 @@
    "from": "q-academic-novelty",
    "rel": "depends_on",
    "to": "lit-per-user-algorithm-selection"
+  },
+  {
+   "from": "q-academic-novelty",
+   "rel": "depends_on",
+   "to": "lit-interest-split-precedents"
   },
   {
    "from": "q-account-limit-100",
