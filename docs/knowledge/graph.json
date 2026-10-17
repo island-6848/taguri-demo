@@ -3064,6 +3064,25 @@
    "verifies": []
   },
   {
+   "id": "lit-interest-split-precedents",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-17",
+   "title": "興味ありの配り分け（式 10–11）の 4 つの手がかりは、どれも先行研究に近い形がある。まとめて学習なしの閉じた式で配る形は見つからなかったが、新しさは「組み合わせと場面」にとどまる",
+   "sources": [
+    "https://ir.webis.de/anthology/2017.sigirconf_conference-2017.36/",
+    "https://arxiv.org/pdf/1908.05928",
+    "https://ir.webis.de/anthology/2018.cikm_conference-2018.45",
+    "https://arxiv.org/pdf/1510.07545",
+    "https://khoury.northeastern.edu/home/vip/teach/DMcourse/6_graph_analysis/notes_slides/collab_filter/Aggrawal_recomm_systems/Recommender_Systems_An_Introduction_Chapter03_Content-based_recommendation.pdf",
+    "https://cs.fit.edu/~pkc/apweb/related/pazzani-mlj97.pdf",
+    "https://neo4j.com/graphgists/movie-recommendation-based-on-user-preferences-and-actor-weights/",
+    "https://link.springer.com/article/10.1007/s10489-005-5602-z",
+    "https://dl.acm.org/doi/10.1145/3477495.3531844"
+   ],
+   "verifies": []
+  },
+  {
    "id": "lit-kakiuchi2012-hyogo-audience",
    "type": "finding",
    "status": "unverified",
@@ -3810,6 +3829,17 @@
    "sources": [
     "tools/taguri/people.py",
     "cloudflare/test/screens/people_fixture.py"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "plan-real-data-eval",
+   "type": "decision",
+   "status": "proposed",
+   "date": "2026-10-17",
+   "title": "推薦の効き目を本番の利用者のデータで測る設計。主な方法はバックアップを手元で再生する方法で、開幕リマインドでの答えを偏りの少ない主な結果にする。足す記録は答えの行の列と、1 人 1 日 1 行だけ",
+   "sources": [
+    "docs/research/real-data-eval-plan.md"
    ],
    "verifies": []
   },
@@ -7959,6 +7989,16 @@
    "to": "q-reco-learning-design"
   },
   {
+   "from": "lit-interest-split-precedents",
+   "rel": "affects",
+   "to": "q-academic-novelty"
+  },
+  {
+   "from": "lit-interest-split-precedents",
+   "rel": "affects",
+   "to": "impl-interest-split"
+  },
+  {
    "from": "lit-kakiuchi2012-hyogo-audience",
    "rel": "affects",
    "to": "q-records-viz"
@@ -8409,6 +8449,31 @@
    "to": "dec-records-worker"
   },
   {
+   "from": "plan-real-data-eval",
+   "rel": "depends_on",
+   "to": "q-academic-novelty"
+  },
+  {
+   "from": "plan-real-data-eval",
+   "rel": "depends_on",
+   "to": "dec-no-n1-evidence"
+  },
+  {
+   "from": "plan-real-data-eval",
+   "rel": "depends_on",
+   "to": "dec-d1-backup"
+  },
+  {
+   "from": "plan-real-data-eval",
+   "rel": "depends_on",
+   "to": "lit-mnar"
+  },
+  {
+   "from": "plan-real-data-eval",
+   "rel": "depends_on",
+   "to": "impl-hidden-gate"
+  },
+  {
    "from": "pr-branch-is-production",
    "rel": "raises",
    "to": "q-production-branch"
@@ -8517,6 +8582,11 @@
    "from": "q-academic-novelty",
    "rel": "depends_on",
    "to": "lit-per-user-algorithm-selection"
+  },
+  {
+   "from": "q-academic-novelty",
+   "rel": "depends_on",
+   "to": "lit-interest-split-precedents"
   },
   {
    "from": "q-account-limit-100",

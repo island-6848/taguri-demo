@@ -1002,6 +1002,7 @@ ol.refs li:target{background:rgba(var(--brand-rgb),.12)}
     <figcaption><b>図 6.</b>　式 10–11 の計算例。漫画原作のミュージカルに「興味あり」を押したとき。評価で好きと分かっている俳優 A（<i>v</i><sup>0</sup> ＝ 0.40）に人物の取り分の 4 割強が配られ、アンサンブルとスタッフは少なくなる。ミュージカルは興味なしの公演にもあるので、種類の取り分の 1/3 に弱まる。値は <code>recommend.js</code> の <code>interestShares</code> で計算した。</figcaption>
   </figure>
   <p class="para">配った <i>π</i> は、お気に入りと同じ <i>z</i><sub>0</sub> と重み <i>ω<sub>u</sub></i> で式 4 に入る。評価が増えるほど、興味ありの効き目は薄まる。</p>
+<p class="para"><b>先行研究との関係。</b>気になる候補を一覧に入れる操作は、観た・買ったとは別の暗黙の信号として推薦の質を上げると報告されている <a href="#ref-27">[27]</a>。1 件ぶんを手がかりに割って本人の像に足す形は、内容に基づく推薦の Rocchio の更新 <a href="#ref-24">[24]</a> に近い。興味なしの公演にある手がかりを弱めるのは、その負の項や、好き・嫌いでの特徴の出かたの比 <a href="#ref-10">[10]</a> にあたる。本人の好みに比例して部品に多く配るのは、品の中の部品・属性への注意の推薦 <a href="#ref-25">[25]</a><a href="#ref-26">[26]</a> の考え方を、学習なしの閉じた式にしたものである。4 つの手がかりはどれも既存の考え方で、たぐりで新しいのは、それを役職つきのクレジットに当てはめ、本人の数十件の記録だけで動かす点に限られる。</p>
   <div class="grid2 wide">
     <div class="card">
       <h4>なぜ割るのか</h4>
@@ -1203,6 +1204,10 @@ ol.refs li:target{background:rgba(var(--brand-rgb),.12)}
     <li id="ref-21">「2.5次元」は、2 次元の漫画・アニメ・ゲームなどを舞台などの 3 次元で表現することを指す造語として広く説明されている（バンダイナムコアミューズメントの資料ほか）。研究者の間でも概念は曖昧とされる（立命館大学の論文）。日本2.5次元ミュージカル協会自身の定義文は確かめられていない.（<code>genre-25d-signals</code>）</li>
     <li id="ref-22">M. Mansoury, R. Burke, B. Mobasher. Flatter Is Better: Percentile Transformations for Recommender Systems. <i>ACM TIST</i> 12(2): 19, 2021（arXiv:1907.07766）.（<code>lit-percentile-transform</code>）</li>
     <li id="ref-23">M. Ekstrand, J. Riedl. When Recommenders Fail: Predicting Recommender Failure for Algorithm Selection and Combination. <i>RecSys</i> 2012／A. Collins ほか（arXiv:1805.12118）／Is Personalized Modality Weighting Actually Personalized?（arXiv:2608.05655, 2026）.（<code>lit-per-user-algorithm-selection</code>）</li>
+    <li id="ref-24">D. Jannach, M. Zanker, A. Felfernig, G. Friedrich. <i>Recommender Systems: An Introduction</i>, 3 章（内容に基づく推薦・Rocchio の更新）. Cambridge University Press, 2010.（<code>lit-interest-split-precedents</code>）</li>
+    <li id="ref-25">J. Chen, H. Zhang, X. He, L. Nie, W. Liu, T.-S. Chua. Attentive Collaborative Filtering: Multimedia Recommendation with Item- and Component-Level Attention. <i>SIGIR</i> 2017.（<code>lit-interest-split-precedents</code>）</li>
+    <li id="ref-26">Recommendation with Attribute-aware Product Networks: A Representation Learning Model. arXiv:1908.05928, 2019（著者は未確認）.（<code>lit-interest-split-precedents</code>）</li>
+    <li id="ref-27">T. Schnabel, P. Bennett, S. Dumais, T. Joachims. Using Shortlists to Support Decision Making and Improve Recommender System Performance. <i>WWW</i> 2016.（<code>lit-interest-split-precedents</code>）</li>
   </ol>
 </section>
 
