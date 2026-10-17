@@ -504,6 +504,7 @@ function agreeAgain(version) {
 
 function renderScreen(el, activePath, d, exposureSource) {
   el.innerHTML = d.body_html;
+  el.dataset.route = activePath;   // 画面ごとの見た目（日記帳のノートの形など。theme.css の [data-route]）
   if (d.terms_update) agreeAgain(d.terms_update);
   // 推薦の理由に引いていた本人の感想（「あなたの言葉」）は出さない。個人の文がそのまま画面に出るため
   // （起案者の指示 2026-10-13「あなたの言葉は個人情報すぎるので表示しないで。サービス版もデモ版も」）。
@@ -795,7 +796,7 @@ fixupSynClamp(document);
 // おすすめ理由の全部（4 本目からは畳む）・回答の帯。会期と料金・日程・出演と作り手の全員・
 // あらすじの全文と入れ口・公式サイトは「くわしく」の中へ移す。**画面の HTML は Render の
 // Python が組むので、ここで組み替える**（Render を起こし直さずにデモとサービスの両方へ届く）。
-const WHY_SHOWN = 3, CAST_LEAD = 5, SYN_LEAD = 100;
+const CAST_LEAD = 5, SYN_LEAD = 100;
 /** 料金の欄の文から、金額の行を [券種, 金額] か [文] にして返す（screens/schedule.js priceRows と同じ決まり） */
 function priceRowsOf(text) {
   const out = [];
@@ -1044,6 +1045,18 @@ function compactRows(root) {
     if (meta.children.length) {
       if (where) where.replaceWith(meta); else r.querySelector(".ttl")?.after(meta);
     }
+    // 公式サイトへの道はポスターの真下（おすすめのカードと同じ）。公式サイトの URL が無い公演は、情報を取った公演ページ
+    const href = info.dataset.url || info.dataset.page;
+    const pin = r.querySelector(".pin");
+    if (href && pin && !pin.querySelector(".sitelink")) {
+      const a = document.createElement("a");
+      a.className = "sitelink";
+      a.href = href;
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      a.innerHTML = ico("link", 13) + (info.dataset.url ? "公式サイト" : "公演ページ");
+      pin.appendChild(a);
+    }
     const lead = document.createElement("div");
     lead.className = "leadbox";
     leadCredits(info, lead, true);
@@ -1136,24 +1149,7 @@ function compactTickets(root) {
     // 発売の札（発売済み など）は、公式サイトへ行くボタンの下に置く（起案者の指示 2026-10-18）
     const siteBtn = t.querySelector(".pcol .sitebtn");
     if (sale && siteBtn) siteBtn.after(sale);
-    // おすすめ理由: 全部出す。WHY_SHOWN 本を超えたら残りを畳む
-    const ul = main.querySelector("ul.why:not(.top)");
-    const lis = ul ? ul.querySelectorAll(":scope > li") : [];
-    if (ul && lis.length > WHY_SHOWN) {
-      ul.classList.add("fold");
-      const b = document.createElement("button");
-      b.type = "button";
-      b.className = "whyfold";
-      const label = () => ul.classList.contains("fold") ? "ほか " + (lis.length - WHY_SHOWN) + " 本の理由を見る" : "理由をたたむ";
-      b.textContent = label();
-      b.setAttribute("aria-expanded", "false");
-      b.addEventListener("click", () => {
-        ul.classList.toggle("fold");
-        b.textContent = label();
-        b.setAttribute("aria-expanded", ul.classList.contains("fold") ? "false" : "true");
-      });
-      ul.after(b);
-    }
+    // おすすめ理由は畳まず、いつも全部出す（起案者の指示 2026-10-18「おすすめ理由は常に折りたたまず、全部表示」）
     // ツアーの日程は、閉じていても全部出す（起案者の指示 2026-10-14「おすすめ欄にはつねにツアー日程を全部書いて
     // （土地で絞り込んでたとしても）」）。出演・あらすじと同じ形で「日程」の見出しを付けて先頭に置く
     const tf = main.querySelector(".tourfull");
@@ -1374,41 +1370,21 @@ function showThanks() {
   const t = document.getElementById("rec-thanks-t");
   if (!t || document.getElementById("rec-thanks")) return;
   const all = [...document.querySelectorAll(".ticket.recommend")].filter(a => !a.closest(".rfind"));
-  if (!all.length || !all.every(a => a.classList.contains("tomove") || a.querySelector(".btns.done"))) return;
+  if (!all.length || !all.every(a => a.querySelector(".btns.done"))) return;
   const sec = t.content.firstElementChild.cloneNode(true);
   sec.classList.add("filled");
   all[all.length - 1].after(sec);
 }
 
-function movedToOwned(tk) {
-  const title = ((tk.querySelector("h3") || {}).textContent || "").trim();
-  tk.classList.add("tomove");
-  setTimeout(() => {
-    const p = document.createElement("p");
-    p.className = "movedto";
-    p.setAttribute("role", "status");
-    p.append("「" + title + "」を購入済み公演に移しました ");
-    const a = document.createElement("a");
-    a.setAttribute("href", "/tickets");
-    a.textContent = "購入済み公演を見る";
-    p.append(a);
-    // 押し間違えたときは、その場でカードを戻して選び直せる（起案者の指示 2026-10-17）。戻したカードで別の答えを
-    // 押すと、購入済みの印は外れる（サーバーの REACT が owned=0 にする）
-    const undo = document.createElement("button");
-    undo.type = "button";
-    undo.className = "wnb undo";
-    undo.textContent = "押し間違い（選び直す）";
-    undo.addEventListener("click", () => {
-      tk.classList.remove("tomove", "torn");
-      const g = tk.querySelector(".btns");
-      if (g) g.querySelectorAll("button[data-v]").forEach(x => x.classList.remove("picked"));
-      const said = tk.querySelector(".btns .said");
-      if (said) said.textContent = "選び直してください。別の答えを押すと、購入済みは外れます";
-      p.replaceWith(tk);
-    });
-    p.append(" ", undo);
-    tk.replaceWith(p);
-  }, matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 450);
+// 購入済みを押したカードの帯の下に、入った先（購入済み公演）への道を添える。カードはそのまま残す
+function ownedNote(g) {
+  const said = g.querySelector(".said");
+  if (!said) return;
+  said.textContent = "購入済みにしました。";
+  const a = document.createElement("a");
+  a.setAttribute("href", "/tickets");
+  a.textContent = "購入済み公演を見る";
+  said.append(a);
 }
 
 // 評価の段階（screens/grade.js と同じ読み方）: ◎○△× と "n/L"（L = 2 ○×・3 ○△×・5 ★・11 ★ 0.5 きざみ）。
@@ -1580,7 +1556,11 @@ document.addEventListener("click", ev => {
           compactTickets(box);
           fixLinks(box);
           const fresh = box.firstElementChild;
-          if (fresh && all.length) {
+          // 続けて 2 枚に答えると、2 つの入れ替えが同じ候補を返すことがある。もう出ている公演（どの会場の番号でも）は足さない
+          const ids = a => [a.dataset.stage, ...(a.dataset.tours || "").split(/[\s,]+/)].filter(Boolean);
+          const here = new Set(all.flatMap(ids));
+          const dup = fresh && ids(fresh).some(x => here.has(x));
+          if (fresh && all.length && !dup) {
             fresh.classList.add("filled");
             all[all.length - 1].after(fresh);
             if (window.TaguriExposure) TaguriExposure.refresh(contentEl(), "fill");
@@ -1596,7 +1576,9 @@ document.addEventListener("click", ev => {
       // **「すでに持っている」を押した 1 枚は、この一覧から外して「購入済み公演」へ送る**
       // （起案者の指示 2026-10-14「押したら、持ってる公演のところだけに表示されて」）。
       // 外したあとに 1 行だけ残し、行き先へ飛べるようにする（どこへ行ったか分からなくしない）
-      if (b.dataset.v === "owned" && tk && !tk.classList.contains("owned") && !tk.classList.contains("favourite")) movedToOwned(tk);
+      // 2026-10-18 から: 押したカードは消さずにそのまま置き、入った先だけ添える（起案者の指示「対象全ページに対して、
+      // 購入済押しても、勝手に消さないで。そのままカード表示していて」）。以前は一覧から外して 1 行だけ残していた
+      if (b.dataset.v === "owned" && tk && !tk.classList.contains("owned") && !tk.classList.contains("favourite")) ownedNote(g);
       // **見送った理由は出すだけで、開かない。** 書く頻度が低い入力なので、
       // 焦点まで移すと「書かないと進めない」ように見える
       if (b.dataset.v === "nointerest") {

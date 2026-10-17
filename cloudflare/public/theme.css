@@ -294,11 +294,11 @@ html[data-font="trial"] :is(button,.sitebtn,.pill,.ftab,.btns button,select,[rol
    ボタンは隠す。スマホもパソコンも同じ形（起案者の指示 2026-10-13「パソコン版のおすすめ画面も同じ形に
    そろえて」→「やっぱ公式サイトのボタンはポスターの下に」） */
 .ticket.cmp .sale{flex-wrap:wrap;align-items:center;gap:8px}
-.ticket.cmp .sitelink{display:inline-flex;align-items:center;gap:4px;min-height:32px;padding:0 10px;
+:is(.ticket.cmp,.rec-row.cmp) .sitelink{display:inline-flex;align-items:center;gap:4px;min-height:32px;padding:0 10px;
  border:1px solid var(--ink);border-radius:8px;background:var(--surf);color:var(--ink);
  font-size:12px;font-weight:500;text-decoration:none;white-space:nowrap}
-.ticket.cmp .sitelink:hover{background:var(--curtain-w);color:var(--ink)}
-.ticket.cmp .sitelink:focus-visible{outline:2px solid var(--curtain);outline-offset:2px}
+:is(.ticket.cmp,.rec-row.cmp) .sitelink:hover{background:var(--curtain-w);color:var(--ink)}
+:is(.ticket.cmp,.rec-row.cmp) .sitelink:focus-visible{outline:2px solid var(--curtain);outline-offset:2px}
 .ticket.cmp .morebody .sitebtn{display:none}
 .ticket.cmp>.pcol .sitelink{width:100%;box-sizing:border-box;justify-content:center;padding:0 4px;gap:3px;font-size:11px}
 .ticket.cmp>.pcol .sitelink svg{flex:none;width:12px;height:12px}
@@ -526,12 +526,6 @@ html[data-font="trial"] :is(button,.sitebtn,.pill,.ftab,.btns button,select,[rol
 .ticket .act{justify-content:flex-end}
 .ticket.cmp .act .btns{margin-left:auto;margin-right:0}
 
-/* ---- 「すでに持っている」を押した 1 枚は、たたんで「購入済み公演」へ送る（app.js の movedToOwned） */
-.ticket.tomove{transition:opacity .4s ease,transform .4s ease;opacity:0;transform:translateX(24px)}
-.movedto{margin:0 0 14px;padding:10px 14px;border:1px dashed var(--grid);border-radius:8px;
- font-size:13px;color:var(--ink2);background:var(--plane)}
-.movedto a{margin-left:4px;color:var(--acc);font-weight:700}
-@media (prefers-reduced-motion:reduce){.ticket.tomove{transition:none}}
 
 /* ---- 未評価を促すポップアップ（app.js の unratedNudge）。画面の下の中央に 1 枚だけ出す */
 .nudge{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:1000;box-sizing:border-box;
@@ -1119,13 +1113,13 @@ a.pill.buy .go:not(#_){font-size:12px;margin-left:2px}
    起案者の指示 2026-10-17「くっついてるボタンはそれぞれ独立させて」＋渡された btn-border の形。
    色は黒・白の決め打ちでなくテーマの墨（--ink）と地（--surf）に合わせ、暗い画面でも見えるようにする。
    台は ::after（::before は押したときの ✓ に使っている） */
-.btns,.ticket .btns,.btns:not(.ticket .btns):not([hidden]){column-gap:10px;padding-bottom:8px}
+.btns,.ticket .btns,.btns:not(.ticket .btns):not([hidden]){column-gap:6px;padding-bottom:8px}
 .btns button,.btns button:first-of-type,.btns button:last-of-type,.btns button:only-of-type{
- position:relative;border:2px solid var(--ink);border-radius:.5rem;background:var(--surf);color:var(--ink);
+ position:relative;border:1.5px solid var(--ink);border-radius:.5rem;background:var(--surf);color:var(--ink);
  font-weight:700;letter-spacing:.1em;box-shadow:none;margin:0;
  top:0;transition:top .2s,background-color .12s ease}
-.btns button::after{content:"";position:absolute;z-index:-1;left:-2px;right:-2px;bottom:-8px;height:14px;
- border:2px solid var(--ink);border-radius:0 0 .5rem .5rem;
+.btns button::after{content:"";position:absolute;z-index:-1;left:-1.5px;right:-1.5px;bottom:-8px;height:14px;
+ border:1.5px solid var(--ink);border-radius:0 0 .5rem .5rem;
  background-image:repeating-linear-gradient(-45deg,var(--ink),var(--ink) 1px,transparent 2px,transparent 5px);
  background-size:7px 7px;background-color:var(--surf);transition:bottom .2s}
 /* 沈みは transform でなく top でずらす（transform は重なりの層を作り、台が押し口の上に描かれてしまう） */
@@ -1162,3 +1156,34 @@ a.pill.buy .go:not(#_){font-size:12px;margin-left:2px}
 .rec-row.cmp .noposter b{font-weight:700;color:var(--ink)}
 .rec-row.cmp .noposter span{font-size:9.5px;color:var(--mute);white-space:nowrap;letter-spacing:-.05em}
 .rec-row.cmp .where.meta span+span::before{content:none}
+/* 公式サイト（公演ページ）への道はポスターの真下（compactRows）。.rec-row .pin>* の半券の寸法は当てない */
+.rec-row.cmp .pin{flex-direction:column;align-items:flex-start;gap:8px}
+.rec-row.cmp .pin>.sitelink,.rec-row.cmp:nth-of-type(2n) .pin>.sitelink{width:84px;height:auto;min-height:32px;box-sizing:border-box;
+ justify-content:center;padding:0 4px;gap:3px;font-size:11px;border:1px solid var(--ink);border-radius:8px;transform:none}
+.rec-row.cmp .pin>.sitelink::after{display:none}
+.rec-row.cmp .pin>.sitelink svg{flex:none;width:12px;height:12px}
+@media(min-width:701px){.rec-row.cmp .pin>.sitelink,.rec-row.cmp:nth-of-type(2n) .pin>.sitelink{width:112px}}
+
+/* ---- 日記帳はノートの見た目（起案者の指示 2026-10-18「日記帳はもう少しノートっぽいデザインにしたい」）。
+   1 件が 1 ページ: 生成りの紙、横罫、左の綴じ穴、余白の赤い縦線、重ねたページの影。色はテーマの地から混ぜて作り、暗い画面でも沈ませる */
+[data-route="/records/works"] .idxsheet>.rec-row{
+ --paper:color-mix(in srgb,var(--surf) 88%,#f3e6c2);
+ --rule:color-mix(in srgb,var(--grid) 62%,#7fa9d6);
+ --margin-line:color-mix(in srgb,var(--curtain) 55%,transparent);
+ background-color:var(--paper);
+ background-image:linear-gradient(90deg,transparent 0 21px,var(--margin-line) 21px 22px,transparent 22px 24px,var(--margin-line) 24px 25px,transparent 25px),
+  repeating-linear-gradient(to bottom,transparent 0 27px,var(--rule) 27px 28px);
+ background-position:0 0,0 10px;
+ border:1px solid color-mix(in srgb,var(--ring) 70%,#c9b88f);border-radius:2px 10px 10px 2px;
+ padding-left:26px;margin-bottom:16px;
+ box-shadow:2px 2px 0 color-mix(in srgb,var(--paper) 80%,var(--ink) 8%),4px 4px 0 color-mix(in srgb,var(--ring) 80%,transparent)}
+/* 綴じ穴 */
+[data-route="/records/works"] .idxsheet>.rec-row::before{content:"";position:absolute;left:5px;top:10px;bottom:10px;width:10px;
+ background:radial-gradient(circle at 5px 12px,var(--plane) 0 3.5px,color-mix(in srgb,var(--ink) 25%,transparent) 3.5px 4.5px,transparent 4.6px) 0 0/10px 26px repeat-y;pointer-events:none}
+/* 日付は手帳の見出しのように、細い下線つき */
+[data-route="/records/works"] .idxsheet>.rec-row .dt .md{font-size:17px;border-bottom:2px solid var(--margin-line);padding-bottom:1px}
+[data-route="/records/works"] .idxsheet>.rec-row .pin{border-right:1.5px dashed var(--rule)}
+[data-route="/records/works"] .idxsheet>.rec-row .poster,[data-route="/records/works"] .idxsheet>.rec-row .noposter{transform:rotate(-1.5deg);box-shadow:0 2px 4px rgba(0,0,0,.12)}
+[data-route="/records/works"] .idxsheet>.rec-row .leadbox .lsyn{background:color-mix(in srgb,var(--paper) 70%,var(--surf))}
+/* 感想は罫線の上に書いた字のように（行の高さを罫の間隔にそろえる） */
+[data-route="/records/works"] .idxsheet>.rec-row .inr .int{line-height:28px}

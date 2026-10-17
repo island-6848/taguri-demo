@@ -2000,6 +2000,24 @@
    "verifies": []
   },
   {
+   "id": "dec-ui-1018b",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "理由は畳まない・購入済みでもカードを残す・同じ公演の重複を直す・日記帳をノートの見た目に・行に公式サイト・ロゴ案 3 つ",
+   "sources": [
+    "web/app.js",
+    "web/theme.css",
+    "cloudflare/src/screens/recommend.js",
+    "cloudflare/src/screens/reminder.js",
+    "cloudflare/src/screens/rowinfo.js",
+    "cloudflare/src/screens/autolink.js",
+    "cloudflare/test/same-production.test.js",
+    "docs/design/logo/sheet.html"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-url-app-taguri",
    "type": "decision",
    "status": "adopted",
@@ -7393,6 +7411,11 @@
    "from": "dec-ui-1014-drop-calendar-editor",
    "rel": "depends_on",
    "to": "dec-reminder-catalogue-fill"
+  },
+  {
+   "from": "dec-ui-1018b",
+   "rel": "depends_on",
+   "to": "dec-rec-row-like-card"
   },
   {
    "from": "dec-url-app-taguri",

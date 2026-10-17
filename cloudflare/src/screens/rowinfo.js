@@ -50,7 +50,7 @@ export function creditRows(people, fields = {}) {
 }
 
 /**
- * work_key -> {grp, venue, synopsis, credits} for the rows on this sheet. people: diary.peopleByKey の結果
+ * work_key -> {grp, venue, synopsis, credits, url, page} for the rows on this sheet. people: diary.peopleByKey の結果
  * （手で入れた作り手も入っている）。つながった公演が無く、出すものも無い記録は入れない。
  */
 export async function rowInfos(ctx, ws, people = {}) {
@@ -64,9 +64,12 @@ export async function rowInfos(ctx, ws, people = {}) {
     const s = info.get(sid) || {}, p = past[sid] || {};
     const credits = creditRows(people[w.work_key] || [], s.fields || {});
     const synopsis = String(s.synopsis || cards.get(sid) || '').trim();
-    const venue = s.venue ? s.venue + (s.pref ? `（${s.pref}）` : '') : (p.venue || '');
+    const venue = s.venue ? s.venue + (s.pref ? `（${s.pref}）` : '') : p.venue ? p.venue + (p.pref ? `（${p.pref}）` : '') : '';
     if (!sid && !credits.length) continue;
-    out[w.work_key] = {grp: s.group || '', venue, synopsis, credits};
+    // 公式サイト（公演の欄の URL）。無ければ公演の情報を取ったページ（stage.corich.jp。stage_id はその番号）
+    const url = /^https?:\/\//.test(s.url || '') ? s.url : '';
+    const page = !url && /^\d+$/.test(sid) ? `https://stage.corich.jp/stage/${sid}` : '';
+    out[w.work_key] = {grp: s.group || p.grp || '', venue, synopsis, credits, url, page};
   }
   return out;
 }
@@ -80,6 +83,7 @@ export function rinfoHtml(info, venue, times) {
     `<div class="cr"><span class="cl">${E(r)}</span><span class="cv">${ns.map(E).join('、')}</span></div>`).join('')}</div>` : '';
   const syn = info.synopsis ? `<div class="syn"><p class="txt">${E(info.synopsis)}</p>`
     + '<button class="mrb" data-more="1">続きを読む</button></div>' : '';
-  return `<div class="rinfo" data-grp="${E(info.grp)}" data-venue="${E(venue || info.venue)}" data-times="${E(times)}">`
+  return `<div class="rinfo" data-grp="${E(info.grp)}" data-venue="${E(venue || info.venue)}" data-times="${E(times)}"`
+    + (info.url ? ` data-url="${E(info.url)}"` : info.page ? ` data-page="${E(info.page)}"` : '') + '>'
     + `${cast}${syn}<!--/rinfo--></div>`;
 }

@@ -107,18 +107,26 @@ export function weekRows(cands, status, today, offset = 0) {
   return rows.sort((a, b) => cmp(a.start, b.start) || cmp(a.title, b.title));
 }
 
+// 会場名の表記ゆれ（空白・全角半角）を寄せる
+const looseTheater = t => String(t || '').normalize('NFKC').replace(/\s+/gu, '');
+
+// 同じ公演が索引（rec_stage）と一覧（catalogue）に別の番号で載っているときは 1 行にする。会場・初日・題名で見る。
+// 終わりの日は鍵に入れない: 一覧の行は終わりの日が無いと初日と同じになり、索引の行と合わなかった
+// （起案者の指摘 2026-10-18「開幕リマインドに同じの2個」）
 function dedupeCrossSource(rows) {
   const groups = new Map();
   for (const r of rows) {
-    const k = JSON.stringify([r.theater || '', periodStart(r.period), periodEnd(r.period), looseTitle(r.title)]);
+    const k = JSON.stringify([looseTheater(r.theater), periodStart(r.period), '', looseTitle(r.title)]);
     if (!groups.has(k)) groups.set(k, []);
     groups.get(k).push(r);
   }
   const out = [];
   for (const [k, members] of groups) {
-    const [theater, s, e] = JSON.parse(k);
-    if (members.length === 1 || !theater || !s || !e) { out.push(...members); continue; }
-    members.sort((a, b) => String(a.stage_id).startsWith('cal') - String(b.stage_id).startsWith('cal'));
+    const [theater, s] = JSON.parse(k);
+    if (members.length === 1 || !theater || !s) { out.push(...members); continue; }
+    // 残すのは、県と終わりの日が分かる方（索引の行）。暦（cal…）の行は後ろ
+    members.sort((a, b) => (String(a.stage_id).startsWith('cal') - String(b.stage_id).startsWith('cal'))
+      || (!a.pref - !b.pref) || (periodEnd(b.period) > periodEnd(a.period)) - (periodEnd(a.period) > periodEnd(b.period)));
     out.push(members[0]);
   }
   return out;
@@ -126,9 +134,22 @@ function dedupeCrossSource(rows) {
 
 function mergeSiblings(rows) {
   rows = dedupeCrossSource(rows);
+  // 県の分からない行（一覧にだけある行）は、同じ題名の行が 1 つの地方にだけあれば、その地方の束に入れる
+  // （県が空だと別の束になり、同じ公演が 2 行になっていた）
+  const regionsOf = new Map();
+  for (const r of rows) if (r.pref) {
+    const w = workKey(r.title, r.stage_id);
+    if (!regionsOf.has(w)) regionsOf.set(w, new Set());
+    regionsOf.get(w).add(regionOf(r.pref));
+  }
+  const regionKey = r => {
+    if (r.pref) return regionOf(r.pref);
+    const rs = regionsOf.get(workKey(r.title, r.stage_id));
+    return rs && rs.size === 1 ? [...rs][0] : '';
+  };
   const groups = new Map();
   for (const r of rows) {
-    const k = workKey(r.title, r.stage_id) + '\u0000' + regionOf(r.pref || '');
+    const k = workKey(r.title, r.stage_id) + '\u0000' + regionKey(r);
     if (!groups.has(k)) groups.set(k, []);
     groups.get(k).push(r);
   }
@@ -322,9 +343,12 @@ export async function reminderScreen(params, ctx) {
   // only in the catalogue) its credits and synopsis from there (fallback.js).
   // 都道府県が分からない公演（一覧 catalogue にだけあり、索引に無い公演）は、場所で絞ると落ちる。開幕リマインドは
   // 見逃しを防ぐ画面なので隠さず、絞った一覧の下に別にまとめて出す（起案者の指摘 2026-10-15「場所絞ったら開幕リマインド0件になる」）
-  const unknown = prefs.length ? weekAll(cands, status, ctx.today, [], offset).days.flatMap(([, rows]) => rows).filter(r => !r.pref) : [];
-  const shown = [...weekAll(cands, status, ctx.today, prefs, offset).days.flatMap(([, rows]) => rows.map(r => r.stage_id)),
-    ...unknown.map(r => r.stage_id)].filter(Boolean);
+  const main = weekAll(cands, status, ctx.today, prefs, offset).days.flatMap(([, rows]) => rows);
+  // 絞った一覧に同じ題名で出ている公演は、県の分からない箱には重ねて出さない
+  const mainKeys = new Set(main.map(r => workKey(r.title, r.stage_id)));
+  const unknown = prefs.length ? weekAll(cands, status, ctx.today, [], offset).days.flatMap(([, rows]) => rows)
+    .filter(r => !r.pref && !mainKeys.has(workKey(r.title, r.stage_id))) : [];
+  const shown = [...main.map(r => r.stage_id), ...unknown.map(r => r.stage_id)].filter(Boolean);
   // その日に出した公演（測るための記録 rec_shown。点と関係なく出す画面なので、偏りの少ない分母になる）
   await recordShown(ctx, 'reminder', shown);
   const {html: cardHtml} = await cardTemplates(ctx.db, shown);

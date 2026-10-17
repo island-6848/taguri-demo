@@ -25,7 +25,7 @@ test('a linked record shows the group, venue, credits and synopsis on 評価一�
     sqlite.prepare("INSERT INTO stage_override(stage_id,synopsis,themes,info,updated_at) VALUES('103','港町の下宿屋の物語。',NULL,NULL,'x')").run();
     for (const path of ['/api/screen/rate', '/api/screen/works']) {
       const h = (await step(env, a, {get: path})).body.body_html;
-      const m = /<div class="rinfo" data-grp="([^"]*)" data-venue="([^"]*)" data-times="[^"]*">([\s\S]*?)<!--\/rinfo--><\/div>/.exec(h);
+      const m = /<div class="rinfo" data-grp="([^"]*)" data-venue="([^"]*)" data-times="[^"]*"(?: data-(?:url|page)="[^"]*")?>([\s\S]*?)<!--\/rinfo--><\/div>/.exec(h);
       assert.ok(m, path);
       assert.ok(m[1] || m[2], `${path}: group or venue`);
       assert.match(m[3], /<div class="cr"><span class="cl">出演<\/span>/, path);

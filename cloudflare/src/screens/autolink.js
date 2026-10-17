@@ -100,7 +100,7 @@ export async function pastStages(db, ids) {
     const part = want.slice(i, i + PER_QUERY);
     let results;
     try {
-      ({results} = await db.prepare(`SELECT stage_id, title, venue, start, end, people FROM past_stage WHERE stage_id IN (${part.map(() => '?').join(',')})`)
+      ({results} = await db.prepare(`SELECT stage_id, title, venue, start, end, people, grp, pref FROM past_stage WHERE stage_id IN (${part.map(() => '?').join(',')})`)
         .bind(...part).all());
     } catch {
       return out;
@@ -108,7 +108,7 @@ export async function pastStages(db, ids) {
     for (const r of results) {
       let people;
       try { people = JSON.parse(r.people || '[]'); } catch { people = []; }
-      out[r.stage_id] = {title: r.title, venue: r.venue || '', start: r.start || '', end: r.end || '', people};
+      out[r.stage_id] = {title: r.title, venue: r.venue || '', start: r.start || '', end: r.end || '', people, grp: r.grp || '', pref: r.pref || ''};
     }
   }
   return out;

@@ -78,7 +78,7 @@ ${THANKS_ART}
 `;
 // Groups kept per user between requests: enough to fill 15 cards in any one prefecture.
 const KEEP = 400;
-const VERSION = 'screen-v17';   // v17: no 出典 on the reasons; v16: #会場 dropped, 行けない (interest=2) as a liked seed; v15: 出さない語 also hits the kind tags; v14: #ジャンル (a genre turned off hides its stages); v13: no 原作「原作もの」 (DROPPED_KEYS); v12: no #値段 (DROPPED_AXES); v11: reasons of answered stages (answered_why); v2: the user's 効かせ方 (rank_weight) and the per-group counts; v3: 興味あり as seeds; v4: diag; v5: 興味あり split (impl-interest-split); v6: by part importance; v7: tiers + トメ; v8: two tiers only; v9: トメ joins the main roles; v10: spread leads + one-step partners
+const VERSION = 'screen-v18';   // v18: one card per title+group (sameProduction); v17: no 出典 on the reasons; v16: #会場 dropped, 行けない (interest=2) as a liked seed; v15: 出さない語 also hits the kind tags; v14: #ジャンル (a genre turned off hides its stages); v13: no 原作「原作もの」 (DROPPED_KEYS); v12: no #値段 (DROPPED_AXES); v11: reasons of answered stages (answered_why); v2: the user's 効かせ方 (rank_weight) and the per-group counts; v3: 興味あり as seeds; v4: diag; v5: 興味あり split (impl-interest-split); v6: by part importance; v7: tiers + トメ; v8: two tiers only; v9: トメ joins the main roles; v10: spread leads + one-step partners
 export {PREFS} from './prefs.js';
 const KIND_LABEL = {'#形式': '形式', '#原作': '原作', '#翻訳': '', '#原作の国': '原作の国', '#会場': '劇場', '#題材': '題材', '#ジャンル': 'ジャンル'};
 const WORKS_SHOWN = 3;
@@ -267,17 +267,21 @@ export async function rankedGroups(ctx) {
     const key = c.tour || 'stage:' + c.stage_id;
     if (!byTour.has(key)) byTour.set(key, {stage_id: c.stage_id, tour: c.tour || '', parts: c.parts, kinds: c.kinds, b: c.b, ...(c.via ? {via: c.via} : {})});
   }
-  const groups = spreadLeads([...byTour.values()]);
+  const groups = await sameProduction(db, ver, spreadLeads([...byTour.values()]));
   const kept = groups.slice(0, KEEP);
   // Every venue of the kept productions (the index groups a tour by rec_stage.tour).
   const venues = new Map();
-  const tours = [...new Set(kept.map(g => g.tour).filter(Boolean))];
+  // 同じ公演としてまとめた別の束（sameProduction の aliases）の会場も、残した束の会場に入れる
+  const primary = new Map();
+  for (const g of kept) for (const t of [g.tour, ...(g.aliases || [])]) if (t && g.tour) primary.set(t, g.tour);
+  const tours = [...primary.keys()];
   for (const part of chunks(tours, 90)) {
     const {results} = await db.prepare(`SELECT stage_id,tour,start,end,entry FROM rec_stage WHERE ver=? AND tour IN (${part.map(() => '?').join(',')})`).bind(ver, ...part).all();
     for (const r of results) {
       if (r.end && r.end < ctx.today) continue;
-      if (!venues.has(r.tour)) venues.set(r.tour, []);
-      venues.get(r.tour).push({stage_id: r.stage_id, pref: JSON.parse(r.entry || '{}').pref || '', start: r.start || ''});
+      const t = primary.get(r.tour) || r.tour;
+      if (!venues.has(t)) venues.set(t, []);
+      venues.get(t).push({stage_id: r.stage_id, pref: JSON.parse(r.entry || '{}').pref || '', start: r.start || ''});
     }
   }
   const lone = kept.filter(g => !g.tour).map(g => g.stage_id);
@@ -305,6 +309,37 @@ export async function rankedGroups(ctx) {
   await db.prepare('INSERT INTO rec_cache(user_id,stamp,body,created_at) VALUES(?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET stamp=excluded.stamp,body=excluded.body,created_at=excluded.created_at')
     .bind(ctx.uid, stamp, JSON.stringify(body), Math.floor(ctx.now / 1000)).run();
   return {...body, titles: new Map(body.titles), cached: false};
+}
+
+/**
+ * 同じ公演が 2 枚出ないよう、題名（正規化した tkey）と団体（gkey）が同じ束を 1 つにまとめる（起案者の指摘 2026-10-18
+ * 「同じ公演が重複して2個あるときがある」）。束の鍵（rec_stage.tour）は題名・団体・作り手の全部から作るので、会場ごとに
+ * 出演の行が少し違う（Wキャスト・載っていない行）、別の番号で載り直した、などで同じ公演が別の束になっていた。
+ * 先に来た（点の高い）束を残し、後の束の鍵は aliases に入れて会場を合わせる。終わっていない公演だけが並ぶので、
+ * 同じ題名・同じ団体は同じ公演とみなす。読むのは残す分（KEEP）の少し先までの主キーの行だけ。
+ */
+export async function sameProduction(db, ver, groups, limit = Math.ceil(KEEP * 1.5)) {
+  const head = groups.slice(0, limit);
+  const key = new Map();
+  for (const part of chunks([...new Set(head.map(g => g.stage_id))], 90)) {
+    let results = [];
+    try {
+      ({results} = await db.prepare(`SELECT stage_id,tkey,gkey FROM rec_stage WHERE ver=? AND stage_id IN (${part.map(() => '?').join(',')})`).bind(ver, ...part).all());
+    } catch { return groups; }
+    for (const r of results) if (r.tkey) key.set(String(r.stage_id), r.tkey + '\t' + (r.gkey || ''));
+  }
+  const first = new Map(), out = [];
+  for (const g of head) {
+    const k = key.get(String(g.stage_id));
+    const keep = k && first.get(k);
+    if (keep) {
+      if (g.tour && g.tour !== keep.tour) keep.aliases = [...new Set([...(keep.aliases || []), g.tour])];
+      continue;
+    }
+    if (k) first.set(k, g);
+    out.push(g);
+  }
+  return [...out, ...groups.slice(limit)];
 }
 
 /**
@@ -483,7 +518,9 @@ async function fillSlot(ctx, shown, pressed, page = null) {
   const data = await rankedGroups(ctx);
   const {rows} = filtered(data.groups, prefs, 1e6);
   const seen = new Set([...shown.map(String), String(pressed)]);
-  const rest = rows.filter(r => !seen.has(String(r.stage_id)) && !seen.has(String(r.shown)));
+  // 画面に出ている公演は、どの会場の番号で出ていても足さない（束の代表の会場は、答えるたびの並べ直しで変わる）
+  const onScreen = r => [r.stage_id, r.shown, ...(r.venues || []).map(v => v.stage_id)].some(x => seen.has(String(x)));
+  const rest = rows.filter(r => !onScreen(r));
   if (!rest.length) return {html: '', left: 0, said: '記録しました。入れ替える候補はもうありません。好みに合いそうだと判断できた分は出し切りました。'};
   const [card] = await cardsHtml(ctx, rest.slice(0, 1), data.titles, shown.length + 1);
   return {html: card || '', left: rest.length,
