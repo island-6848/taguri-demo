@@ -2353,7 +2353,7 @@
    "type": "decision",
    "status": "adopted",
    "date": "2026-10-18",
-   "title": "文字の形を試す。ボタンは Zen丸ゴシック Bold（手元に置いて配る）、本文はマメロン（ファイル未入手）。これまでの文字を「規定」として残し、設定で戻せる",
+   "title": "文字の形を試す。ボタンは Zen丸ゴシック Bold（サイトに置いて配る）、本文はマメロン 3 Hi Regular（R2 から配る）。これまでの文字を「規定」として残し、設定で戻せる",
    "sources": [
     "https://fonts.google.com/specimen/Zen+Maru+Gothic",
     "https://github.com/googlefonts/zen-marugothic/blob/main/OFL.txt",
@@ -3677,6 +3677,18 @@
    "verifies": []
   },
   {
+   "id": "mamelon-readme",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-18",
+   "title": "マメロン Hi Regular の配布ファイルの readme は、商用利用と Web フォントでの利用を認め、無断の改変・二次配布は控えるよう求めている",
+   "sources": [
+    "mamelon_hireg.zip の readme.txt（起案者がアップロードした配布元のファイル。リポジトリには入れていない）",
+    "https://moji-waku.com/mj_work_license/"
+   ],
+   "verifies": []
+  },
+  {
    "id": "measure-worker-fixture-1014",
    "type": "finding",
    "status": "confirmed",
@@ -4537,7 +4549,7 @@
   {
    "id": "q-mamelon-license",
    "type": "question",
-   "status": "open",
+   "status": "answered",
    "date": "2026-10-18",
    "title": "マメロンを Web フォントとしてサイトに置いて配ってよいか（ライセンス）と、ファイルをどこから取るか",
    "sources": [
@@ -8489,6 +8501,16 @@
    "from": "lit-yahoo-multicriteria",
    "rel": "affects",
    "to": "q-aspect-attribution-check"
+  },
+  {
+   "from": "mamelon-readme",
+   "rel": "answers",
+   "to": "q-mamelon-license"
+  },
+  {
+   "from": "mamelon-readme",
+   "rel": "affects",
+   "to": "font-trial"
   },
   {
    "from": "measure-worker-fixture-1014",
