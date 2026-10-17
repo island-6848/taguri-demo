@@ -76,6 +76,8 @@ def make_handler(token: str, db: A.D1, data: Path):
                     sid = q.get("id", "")
                     return self._send(200, {"ok": True, "stage": A.stage(db, sid), "log": A.read_log(data, sid),
                                             "queued": any(t["stage_id"] == sid for t in A.queue_list(data))})
+                if u.path == "/api/requests":
+                    return self._send(200, {"ok": True, "rows": A.requests(db, q.get("status", "open"))})
                 if u.path == "/api/queue":
                     return self._send(200, {"ok": True, "tasks": A.queue_list(data), "claude": bool(A.claude_cli())})
                 if u.path == "/api/log":
@@ -112,6 +114,8 @@ def make_handler(token: str, db: A.D1, data: Path):
                         return self._send(200, {"ok": True, **A.add_poster(db, data, sid, body, ended=bool(b.get("ended")))})
                     if u.path == "/api/analyze":
                         return self._send(200, {"ok": True, "done": A.analyze_now(db, data, [sid] if sid else None)})
+                    if u.path == "/api/resolve":
+                        return self._send(200, {"ok": True, **A.resolve(db, data, int(b.get("id") or 0), str(b.get("status") or ""), str(b.get("note") or ""))})
                     if u.path == "/api/queue_drop":
                         A.queue_drop(data, {sid})
                         return self._send(200, {"ok": True})

@@ -124,6 +124,24 @@ class AdminTest(unittest.TestCase):
         with self.assertRaises(A.AdminError):
             A.parse_answer("no json here")
 
+    def test_fix_requests_are_listed_and_resolved_with_a_log(self):
+        self.fake.db.execute("INSERT INTO fix_request(stage_id,user_id,kind,message,created_at) VALUES('101','u1','料金','6,000 円です','2026-10-17T01:00:00Z')")
+        self.fake.db.commit()
+        rows = A.requests(self.d1)
+        self.assertEqual([(r["id"], r["title"], r["kind"], r["status"]) for r in rows], [(1, "港の三婆", "料金", "open")])
+        self.assertTrue(A.resolve(self.d1, self.data, 1, "done", "料金を直した")["changed"])
+        self.assertEqual(A.requests(self.d1), [])
+        done = A.requests(self.d1, "done")[0]
+        self.assertEqual((done["note"], bool(done["resolved_at"])), ("料金を直した", True))
+        self.assertEqual(A.read_log(self.data, "101")[0]["detail"], {"request": 1, "before": "open", "after": "done", "note": "料金を直した"})
+        self.assertFalse(A.resolve(self.d1, self.data, 1, "done", "料金を直した")["changed"])
+        A.resolve(self.d1, self.data, 1, "open")
+        self.assertIsNone(A.requests(self.d1)[0]["resolved_at"])
+        with self.assertRaises(A.AdminError):
+            A.resolve(self.d1, self.data, 99, "done")
+        with self.assertRaises(A.AdminError):
+            A.resolve(self.d1, self.data, 1, "maybe")
+
     def test_sql_values_are_quoted(self):
         A.save(self.d1, self.data, "101", synopsis="it's 「引用」'); DROP TABLE poster; --")
         self.assertEqual(self.fake.db.execute("SELECT synopsis FROM stage_override").fetchone()[0], "it's 「引用」'); DROP TABLE poster; --")

@@ -317,6 +317,39 @@ def add_poster(db: D1, data: Path, sid: str, body: bytes, *, put=None, ended: bo
     return {"file": key, "bytes": len(out), "log": entry}
 
 
+# ── 公演修正依頼（利用者から。migration 0030、Worker の src/screens/fixrequest.js が受けてメールで知らせる）──
+STATUS = {"open": "未対応", "done": "直した", "dropped": "見送った"}
+
+
+def requests(db: D1, status: str = "open", limit: int = 100) -> list[dict]:
+    if status not in STATUS and status != "all":
+        raise AdminError("状態がおかしい")
+    where = "" if status == "all" else f"WHERE r.status={sq(status)}"
+    return db.query(
+        "SELECT r.id, r.stage_id, r.kind, r.message, r.created_at, r.status, r.note, r.resolved_at, r.mailed, "
+        "COALESCE((SELECT title FROM rec_stage s WHERE s.ver=(SELECT v FROM rec_meta WHERE k='current') AND s.stage_id=r.stage_id),"
+        " (SELECT title FROM catalogue c WHERE c.id=r.stage_id), '') AS title "
+        f"FROM fix_request r {where} ORDER BY r.created_at DESC LIMIT {int(limit)}")
+
+
+def resolve(db: D1, data: Path, req_id: int, status: str, note: str = "") -> dict:
+    """依頼を「直した」「見送った」にする（未対応に戻すこともできる）。D1 と記録に書く。"""
+    if status not in STATUS:
+        raise AdminError("状態がおかしい")
+    cur = db.query(f"SELECT id, stage_id, status, note FROM fix_request WHERE id={int(req_id)}")
+    if not cur:
+        raise AdminError("その依頼が見つかりません")
+    old = cur[0]
+    note = (note or "").strip()[:1000]
+    if old["status"] == status and (old.get("note") or "") == note:
+        return {"changed": False}
+    spend_d1(data, WRITES_SAVE)
+    at = now_iso() if status != "open" else None
+    entry, log_sql = log_entry(data, old["stage_id"], "request", {"request": int(req_id), "before": old["status"], "after": status, "note": note})
+    db.execute([f"UPDATE fix_request SET status={sq(status)}, note={sq(note or None)}, resolved_at={sq(at)} WHERE id={int(req_id)}", log_sql])
+    return {"changed": True, "log": entry}
+
+
 # ── LLM の読み取り（Claude Code）──
 PROMPT = """あなたは演劇公演の紹介文から「題材」の語を読み取る係です。次の公演ごとに、あらすじに書かれている内容から、
 おすすめの手がかりになる題材の語を最大 {n} 語選んでください（例: 家族、戦争、港町、落語、人情、恋愛、介護、宇宙）。

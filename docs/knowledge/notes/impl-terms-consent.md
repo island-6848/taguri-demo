@@ -12,7 +12,7 @@ sources:
   - cloudflare/src/worker.js
   - cloudflare/src/passkey.js
   - cloudflare/src/client/login.js
-  - cloudflare/migrations/0030.sql
+  - cloudflare/migrations/0031.sql
   - cloudflare/test/worker.test.js
 links:
   - depends_on: impl-eval-logging
@@ -26,7 +26,7 @@ links:
   - パスキーは、端末に作らせる前（options）にも確かめる。作ったあとで断らないため。
   - 版が古い画面から来たときは 409 で、読み込み直してもらう。
   - 民法 548 条の 2（定型約款の組入れ）の「契約の内容とする旨の合意」を、このチェックで取る。
-- **同意の記録。** users.terms_version・terms_at（migrations/0030）。これより前のアカウントは NULL。
+- **同意の記録。** users.terms_version・terms_at（migrations/0031）。これより前のアカウントは NULL。
 - **既存の利用者。** 同意を求め直してはいない（指示は新規登録のとき）。
 - **参照した他社の文面。** 他社のページは、この環境から直接は開けなかった（ネットワークの許可が無い）。そのため、検索結果の抜粋で確かめた。
   - Spotify：「新機能、技術、改善を評価および開発するため。これには、アルゴリズムや機械学習モデルの開発およびトレーニングが含まれます」。

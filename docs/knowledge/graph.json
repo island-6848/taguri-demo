@@ -2308,6 +2308,19 @@
    "verifies": []
   },
   {
+   "id": "fix-request-mail",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-17",
+   "title": "Worker から Gmail の SMTP（465・TLS）で自分宛てにメールを送れる見込み（Workers の TCP ソケット・Gmail のアプリ パスワード・1 日 500 通）",
+   "sources": [
+    "https://developers.cloudflare.com/workers/runtime-apis/tcp-sockets/",
+    "https://support.google.com/mail/answer/22839",
+    "https://support.google.com/accounts/answer/185833"
+   ],
+   "verifies": []
+  },
+  {
    "id": "fix-search-uncarded",
    "type": "decision",
    "status": "adopted",
@@ -2589,6 +2602,22 @@
    "verifies": []
   },
   {
+   "id": "impl-fix-request",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-17",
+   "title": "利用者の「公演修正依頼」をカードから受け、起案者に Gmail で知らせ、手元の管理画面で一覧・対応する",
+   "sources": [
+    "cloudflare/migrations/0030.sql",
+    "cloudflare/src/screens/fixrequest.js",
+    "cloudflare/test/fixrequest.test.js",
+    "web/app.js",
+    "tools/admin/admin.py",
+    "tools/admin/admin.html"
+   ],
+   "verifies": []
+  },
+  {
    "id": "impl-four-answers",
    "type": "decision",
    "status": "adopted",
@@ -2772,7 +2801,7 @@
     "cloudflare/src/worker.js",
     "cloudflare/src/passkey.js",
     "cloudflare/src/client/login.js",
-    "cloudflare/migrations/0030.sql",
+    "cloudflare/migrations/0031.sql",
     "cloudflare/test/worker.test.js"
    ],
    "verifies": []
@@ -7504,6 +7533,11 @@
    "to": "impl-kind-reason-off"
   },
   {
+   "from": "fix-request-mail",
+   "rel": "affects",
+   "to": "impl-fix-request"
+  },
+  {
    "from": "fix-search-uncarded",
    "rel": "affects",
    "to": "impl-recommend-find"
@@ -7677,6 +7711,16 @@
    "from": "impl-favourite-seed",
    "rel": "affects",
    "to": "comp-recommender"
+  },
+  {
+   "from": "impl-fix-request",
+   "rel": "depends_on",
+   "to": "impl-admin-tool"
+  },
+  {
+   "from": "impl-fix-request",
+   "rel": "depends_on",
+   "to": "fix-request-mail"
   },
   {
    "from": "impl-four-answers",

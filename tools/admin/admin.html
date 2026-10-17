@@ -46,6 +46,8 @@ label.f>span{display:block;font-size:12px;color:var(--mute);margin-bottom:2px}
 .log li{border-top:1px solid var(--line);padding:6px 0}
 .log code{font-size:11px;color:var(--mute);word-break:break-all}
 .note{font-size:12px;color:var(--mute)}
+.req{border-color:var(--acc)}
+.req blockquote{margin:8px 0;padding:8px 12px;background:var(--bg);border-radius:6px;white-space:pre-wrap;word-break:break-all}
 </style>
 </head>
 <body>
@@ -56,6 +58,11 @@ label.f>span{display:block;font-size:12px;color:var(--mute);margin-bottom:2px}
     <h2>公演を探す</h2>
     <form id="sf" class="row"><input id="q" type="text" placeholder="題名か公演の番号" autocomplete="off"><button class="main">探す</button></form>
     <ul id="hits" class="list"></ul>
+  </div>
+  <div class="card">
+    <h2>公演修正依頼 <span id="rqn" class="badge"></span></h2>
+    <div class="row"><select id="rqs"><option value="open">未対応</option><option value="done">直した</option><option value="dropped">見送った</option><option value="all">すべて</option></select><button id="rqr">読み直す</button></div>
+    <ul id="rql" class="list"></ul>
   </div>
   <div class="card">
     <h2>読み取り待ち（あらすじ → 題材）</h2>
@@ -103,7 +110,33 @@ document.getElementById("hits").addEventListener("click", ev => {
   open(li.dataset.id);
 });
 
-async function open(id) {
+const RQ_STATUS = {open: "未対応", done: "直した", dropped: "見送った"};
+let requestsNow = [];
+async function loadRequests() {
+  const ul = document.getElementById("rql"), st = document.getElementById("rqs").value;
+  try {
+    const {rows} = await api("/api/requests?status=" + st);
+    requestsNow = rows;
+    if (st === "open") {
+      document.getElementById("rqn").textContent = rows.length ? `未対応 ${rows.length} 件` : "なし";
+      document.title = (rows.length ? `(${rows.length}) ` : "") + "たぐり 管理画面";
+    }
+    ul.innerHTML = rows.length ? rows.map(r => `<li data-rq="${r.id}"><div class="t">${E(r.title || "#" + r.stage_id)}</div>`
+      + `<div class="m">#${r.id}　${E(r.kind)}　${E(String(r.created_at).slice(0, 16).replace("T", " "))}`
+      + `<span class="badge${r.status === "open" ? " no" : " ok"}">${E(RQ_STATUS[r.status] || r.status)}</span></div>`
+      + `<div class="m">${E(String(r.message).slice(0, 50))}</div></li>`).join("") : '<li class="empty">ありません</li>';
+  } catch (e) { ul.innerHTML = `<li class="empty">${E(e.message)}</li>`; }
+}
+document.getElementById("rqr").addEventListener("click", loadRequests);
+document.getElementById("rqs").addEventListener("change", loadRequests);
+document.getElementById("rql").addEventListener("click", ev => {
+  const li = ev.target.closest("li[data-rq]");
+  if (!li) return;
+  const r = requestsNow.find(x => String(x.id) === li.dataset.rq);
+  if (r) open(r.stage_id, r);
+});
+
+async function open(id, req) {
   const box = document.getElementById("detail");
   box.innerHTML = '<div class="card empty">読み込み中…</div>';
   let d;
@@ -112,7 +145,16 @@ async function open(id) {
   const info = ov.info || {}, of = info.fields || {};
   const val = (k, base) => info[k] ?? base ?? "";
   const fval = k => of[k] ?? (s.fields || {})[k] ?? "";
-  box.innerHTML = `
+  const reqHtml = req ? `
+<div class="card req">
+  <h2>公演修正依頼 #${req.id}（${E(req.kind)}）<span class="badge">${E(RQ_STATUS[req.status] || req.status)}</span></h2>
+  <div class="note">${E(String(req.created_at).replace("T", " ").slice(0, 19))} に届いた依頼${req.mailed ? "（メールで知らせ済み）" : "（メールは送れていません）"}</div>
+  <blockquote>${E(req.message)}</blockquote>
+  <label class="f"><span>対応の控え（どう直したか・見送った理由。利用者には出ません）</span><textarea id="rqnote" rows="2">${E(req.note || "")}</textarea></label>
+  <div class="row"><button id="rqdone" class="main">直した</button><button id="rqdrop">見送る</button>${req.status !== "open" ? '<button id="rqopen">未対応に戻す</button>' : ""}<span id="rqsaid" class="said"></span></div>
+  <p class="note">下の欄で公演の情報を直して保存してから「直した」を押してください。</p>
+</div>` : "";
+  box.innerHTML = reqHtml + `
 <div class="card">
   <h2>${E(s.title)} <span class="badge">#${E(s.stage_id)}</span>${s.has_card ? "" : '<span class="badge no">カード無し（取得の一覧に未登録）</span>'}</h2>
   <div class="note">${E(s.start)}〜${E(s.end)}　${s.corich ? `<a href="${E(s.corich)}" target="_blank" rel="noopener">CoRich の公演ページ</a>` : ""}
@@ -176,7 +218,7 @@ async function open(id) {
     try {
       const r = await api("/api/save", body);
       say(out, r.queued ? "保存しました。題材の読み取りを積みました（「Claude で題材を読み取る」で読めます）" : "保存しました", true);
-      refreshQueue(); setTimeout(() => open(s.stage_id), 900);
+      refreshQueue(); setTimeout(() => open(s.stage_id, req), 900);
     } catch (e) { say(out, e.message, false); }
   });
   box.querySelector("#ana").addEventListener("click", async ev => {
@@ -185,20 +227,35 @@ async function open(id) {
     try {
       const r = await api("/api/analyze", {stage_id: s.stage_id});
       say(out, r.done.length ? "題材: " + (r.done[0].themes.join("、") || "（読み取れませんでした）") : "読み取り待ちがありません", true);
-      refreshQueue(); setTimeout(() => open(s.stage_id), 1200);
+      refreshQueue(); setTimeout(() => open(s.stage_id, req), 1200);
     } catch (e) { say(out, e.message, false); ev.target.disabled = false; }
   });
   box.querySelector("#isave").addEventListener("click", async () => {
     const out = box.querySelector("#isaid");
-    try { const r = await api("/api/save", {stage_id: s.stage_id, info: infoNow()}); say(out, r.changed ? "保存しました" : "変わっていません", r.changed); if (r.changed) setTimeout(() => open(s.stage_id), 900); }
+    try { const r = await api("/api/save", {stage_id: s.stage_id, info: infoNow()}); say(out, r.changed ? "保存しました" : "変わっていません", r.changed); if (r.changed) setTimeout(() => open(s.stage_id, req), 900); }
     catch (e) { say(out, e.message, false); }
   });
   box.querySelector("#reset").addEventListener("click", async () => {
     if (!confirm("この公演で手で直した分（あらすじ・題材・詳細）を全部消して、取得した内容に戻します。よろしいですか？（記録には残ります）")) return;
     const out = box.querySelector("#isaid");
-    try { await api("/api/save", {stage_id: s.stage_id, synopsis: "", themes: [], info: {}}); say(out, "戻しました", true); setTimeout(() => open(s.stage_id), 900); }
+    try { await api("/api/save", {stage_id: s.stage_id, synopsis: "", themes: [], info: {}}); say(out, "戻しました", true); setTimeout(() => open(s.stage_id, req), 900); }
     catch (e) { say(out, e.message, false); }
   });
+  const setStatus = async status => {
+    const out = box.querySelector("#rqsaid");
+    try {
+      const r = await api("/api/resolve", {id: req.id, status, note: box.querySelector("#rqnote").value});
+      say(out, r.changed ? `「${RQ_STATUS[status]}」にしました` : "変わっていません", true);
+      req.status = status; req.note = box.querySelector("#rqnote").value;
+      box.querySelector(".req h2 .badge").textContent = RQ_STATUS[status] || status;
+      loadRequests();
+    } catch (e) { say(out, e.message, false); }
+  };
+  if (req) {
+    box.querySelector("#rqdone").addEventListener("click", () => setStatus("done"));
+    box.querySelector("#rqdrop").addEventListener("click", () => setStatus("dropped"));
+    box.querySelector("#rqopen")?.addEventListener("click", () => setStatus("open"));
+  }
   let picked = null;
   box.querySelector("#pf").addEventListener("change", ev => {
     const f = ev.target.files[0];
@@ -210,7 +267,7 @@ async function open(id) {
   box.querySelector("#pup").addEventListener("click", async ev => {
     const out = box.querySelector("#psaid");
     ev.target.disabled = true; say(out, "縮めて入れています…", true);
-    try { const r = await api("/api/poster", {stage_id: s.stage_id, data: picked, ended: box.querySelector("#pend").checked}); say(out, `入れました（${r.file}・${Math.round(r.bytes / 1024)} KB）`, true); setTimeout(() => open(s.stage_id), 900); }
+    try { const r = await api("/api/poster", {stage_id: s.stage_id, data: picked, ended: box.querySelector("#pend").checked}); say(out, `入れました（${r.file}・${Math.round(r.bytes / 1024)} KB）`, true); setTimeout(() => open(s.stage_id, req), 900); }
     catch (e) { say(out, e.message, false); ev.target.disabled = false; }
   });
 }
@@ -224,6 +281,11 @@ async function refreshQueue() {
   } catch (e) { box.textContent = e.message; }
 }
 refreshQueue();
+if (!TOKEN.startsWith("__")) {
+  loadRequests();
+  // 開いているあいだは 5 分ごとに読み直す（新しい依頼が来たら題名の件数が増える。メールでも届く）
+  setInterval(() => { if (document.getElementById("rqs").value === "open") loadRequests(); }, 5 * 60 * 1000);
+}
 </script>
 </body>
 </html>

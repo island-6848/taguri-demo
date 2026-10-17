@@ -24,6 +24,7 @@
 | GitHub Pages（デモ） | 無料 | ― | ― | ― |
 | Firebase Authentication | 無料の Spark プラン〔q-firebase-free-tier〕 | ― | ― | カード登録をしない |
 | Gemini API | 使う場合も月の呼び出しに上限〔gemini-budget-cap〕 | ― | 月 300 回（既定） | 取得では呼ばない |
+| Gmail（公演修正依頼の知らせ） | 個人の Gmail は 1 日 500 通まで〔fix-request-mail〕 | その日は送れない（請求なし） | 1 日 30 通（`free-tier.js` の `FIX_MAILS_PER_DAY`）・依頼は 1 人 1 日 5 件 | Worker が送る前に D1 の `usage` に数える。越えた日は保存だけして管理画面で見る〔impl-fix-request〕 |
 | 管理画面（手元・`tools/admin`） | 上の D1・R2 の枠の中 | ― | D1 の書き込み 1 日 1,000 行・ポスター月 300 枚（`CAPS` の `admin_*`） | 書く前に控え（`data/admin/free_tier/usage.json`）で数え、取得と共通の上限も見る。読み取り（あらすじ → 題材）は手元の Claude Code で、従量課金の API キーは渡さない〔impl-admin-tool〕 |
 
 R2 だけは **越えると止まらずに請求される**。Cloudflare には使いすぎを止める仕組みが無く、
