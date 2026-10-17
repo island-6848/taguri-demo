@@ -37,6 +37,9 @@ test('the weekly calendar: times on their days, 休演 inside the run, blank out
 test('price rows: 券種と金額, sale-date lines left out', () => {
   assert.deepEqual(priceRows('2,750円 ～ 7,150円\n\n 【発売日】2026/03/01\n\n 【全席指定】\n前売：6,600円\n当日：7,150円'),
     [['2,750円 ~ 7,150円'], ['前売', '6,600円'], ['当日', '7,150円']]);
+  // ツアーの各会場の行では、値段の幅だけの行は出さない（明細があるとき）
+  assert.deepEqual(priceRows('2,750円 ～ 7,150円\n前売：6,600円', {dropRange: true}), [['前売', '6,600円']]);
+  assert.deepEqual(priceRows('2,750円 ～ 7,150円', {dropRange: true}), [['2,750円 ~ 7,150円']]);
 });
 
 test('the tour block: one row per venue in date order, the shown one marked, prices per venue only when they differ', () => {

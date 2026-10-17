@@ -920,18 +920,17 @@ function compactTickets(root) {
     let priced = false;
     if (noMore && !t.dataset.tourprice) {
       const rows = priceRowsOf(main.querySelector(".when .price")?.textContent || "");
-      if (rows.length) {
-        const box = document.createElement(rows.length > 2 ? "details" : "div");
-        box.className = "lprice";
-        const table = rs => '<table class="ptb">' + rs.map(r => r.length > 1
-          ? "<tr><th>" + E(r[0]) + "</th><td>" + E(r[1]) + "</td></tr>" : '<tr><td colspan="2">' + E(r[0]) + "</td></tr>").join("") + "</table>";
-        // 1 行目の横に「▶詳細」。開いた残りは一段右にずらす（起案者の指示 2026-10-17）
-        box.innerHTML = rows.length > 2
-          ? "<summary>" + table(rows.slice(0, 1)) + '<span class="lp-more">詳細</span></summary><div class="lp-body">' + table(rows.slice(1)) + "</div>"
-          : table(rows);
-        (sale || main.querySelector(".when") || main.querySelector(".meta")).after(box);
-        priced = true;
-      }
+      const cell = r => r.length > 1 ? '<span class="lp-k">' + E(r[0]) + '</span><span class="lp-v">' + E(r[1]) + "</span>"
+        : '<span class="lp-v lp-all">' + E(r[0]) + "</span>";
+      const list = rs => rs.map(r => '<div class="lp-row">' + cell(r) + "</div>").join("");
+      const box = document.createElement(rows.length > 2 ? "details" : "div");
+      box.className = "lprice";
+      // 1 行目の金額のすぐ横に「▼詳細」。開いた残りは一段右へ。料金を読めない公演は「不明」（起案者の指示 2026-10-17）
+      box.innerHTML = !rows.length ? '<div class="lp-row"><span class="lp-k">料金</span><span class="lp-v">不明</span></div>'
+        : rows.length > 2 ? '<summary><div class="lp-row">' + cell(rows[0]) + '<span class="lp-more">詳細</span></div></summary><div class="lp-body">' + list(rows.slice(1)) + "</div>"
+        : list(rows);
+      (sale || main.querySelector(".when") || main.querySelector(".meta")).after(box);
+      priced = true;
     }
     // 料金（1 枚あたり）を発売の札の隣に出す（起案者の指示 2026-10-14「チケット代金も…おすすめ画面において」）。
     // 金額はサーバーが料金の欄から読んだもの（render_recommend.price_range）。読めなかった公演には出さない

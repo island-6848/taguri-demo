@@ -94,8 +94,13 @@ export function timetableGrid(perf, start, end, today) {
   return `<table class="ttb" aria-label="公演日時（${n} 回）"><thead><tr>${head}</tr></thead><tbody>${rows.join('')}</tbody></table>${note}`;
 }
 
-/** Price rows of a price text: [[券種, 金額] | [文]]. Lines about sale dates are left out. */
-export function priceRows(text) {
+// 値段の幅だけの行（「2,750円 ~ 7,150円」）
+const RANGE = /^[\d,]+円\s*[~〜～\-－]\s*[\d,]+円$/;
+/**
+ * Price rows of a price text: [[券種, 金額] | [文]]. Lines about sale dates are left out.
+ * `dropRange`: leave out the range-only line when there are other rows (ツアーの各会場の行。起案者の指示 2026-10-17）.
+ */
+export function priceRows(text, {dropRange = false} = {}) {
   const out = [];
   for (const raw of String(text || '').normalize('NFKC').split(/\n+/)) {
     const line = raw.replace(/\s+/g, ' ').trim();
@@ -103,7 +108,9 @@ export function priceRows(text) {
     const m = /^【?([^:：】]{1,24})】?\s*[:：]\s*(.+)$/.exec(line);
     out.push(m ? [m[1].trim(), m[2].trim()] : [line]);
   }
-  return out.filter((r, i) => out.findIndex(x => x.join('\t') === r.join('\t')) === i);
+  const uniq = out.filter((r, i) => out.findIndex(x => x.join('\t') === r.join('\t')) === i);
+  const rest = uniq.filter(r => !(r.length === 1 && RANGE.test(r[0])));
+  return dropRange && rest.length ? rest : uniq;
 }
 export function priceTable(rows) {
   if (!rows.length) return '';
@@ -117,7 +124,7 @@ export function priceTable(rows) {
 export function tourBlock(venues, shown, today) {
   const vs = [...venues].filter(v => v && v.start).sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0));
   if (!vs.length) return {html: '', perVenuePrice: false};
-  const priceOf = v => priceRows(v.fields?.['料金（1枚あたり）'] || v.price || '');
+  const priceOf = v => priceRows(v.fields?.['料金（1枚あたり）'] || v.price || '', {dropRange: true});
   const keys = new Set(vs.map(v => JSON.stringify(priceOf(v))));
   const perVenuePrice = vs.length > 1 && keys.size > 1;
   const rows = vs.map(v => {
@@ -130,7 +137,7 @@ export function tourBlock(venues, shown, today) {
     const shownRow = String(v.stage_id) === String(shown) || vs.length === 1;   // 暦を開いておく行
     const isHere = vs.length > 1 && shownRow;
     const n = [...perf.values()].reduce((a, ps) => a + ps.length, 0);
-    const price = perVenuePrice ? priceTable(priceOf(v)) : '';
+    const price = perVenuePrice ? (priceTable(priceOf(v)) || '<p class="lp-none">料金 不明</p>') : '';
     // 会場の名前はツアーのときだけ（1 か所なら上の劇場の行と同じなので出さない。起案者の指示 2026-10-17）
     const head = `<span class="tf-when">${isHere ? '<span class="tf-star" title="おすすめに出ている会場">★</span>' : ''}${E(when)}</span>`
       + (vs.length > 1 ? `<span class="tf-loc">${E(where)}</span>` : '');
