@@ -1148,7 +1148,7 @@ function unratedNudge(ends) {
   box.querySelector(".go").focus();
 }
 
-// ポスターを押すと、画面いっぱいに拡大して出す（起案者の指示 2026-10-17）。外側・閉じる・Esc で閉じる
+// ポスターを押すと、画面いっぱいに拡大して出す（起案者の指示 2026-10-17）。外側・×・Esc で閉じる
 document.addEventListener("click", ev => {
   const img = ev.target.closest && ev.target.closest(".ticket .pwrap img.poster");
   if (!img || !img.closest(".pwrap.ld")) return;
@@ -1160,10 +1160,16 @@ document.addEventListener("click", ev => {
   const big = document.createElement("img");
   big.src = img.currentSrc || img.src;
   big.alt = (img.closest(".ticket")?.querySelector("h3")?.textContent || "") + "のポスター";
+  // 「×」はポスターの右上に重ねる（起案者の指示 2026-10-17「画面の中の右上ではなくポスター画像の右上に」）
+  const frame = document.createElement("div");
+  frame.className = "pz-in";
   const close = document.createElement("button");
   close.type = "button";
-  close.textContent = "閉じる";
-  box.append(big, close);
+  close.className = "pz-x";
+  close.setAttribute("aria-label", "閉じる");
+  close.textContent = "×";
+  frame.append(big, close);
+  box.append(frame);
   const done = () => { box.remove(); document.removeEventListener("keydown", esc); };
   const esc = e => { if (e.key === "Escape") done(); };
   box.addEventListener("click", done);
