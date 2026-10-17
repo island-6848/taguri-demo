@@ -6072,7 +6072,7 @@ def _venue_form(ws: list, keep: set, action: str, hidden: dict) -> str:
 <details class="pbox">
 <summary>{IC.ico("search", 15)}会場で絞り込む ── いまは<b>{E(now)}</b></summary>
 <p class="lead">会場は<b>いくつでも同時に選べます</b>。選んだ会場で観た記録だけを表示します。
-数字は、いま選んでいる評価・年の中でその会場の件数です。</p>
+数字はいま選んでいる評価と年のうち、その会場で観た件数です。</p>
 <div class="pchips">{chips}</div>
 <div class="pfoot"><button type="submit">{IC.ico("search")}この会場で絞り込む</button>
 <a class="pall" href="{E(action)}?t=__TAGURI_TOKEN__{hidden_qs}">すべての会場に戻す</a></div>
@@ -6224,14 +6224,14 @@ def _rate_body(user_id: str, verdict: str = "", year: str = "", venues=(), page:
     rows = "".join(_rec_row(user_id, w, poster=_poster_html(w), rate_reopen=True)
                    for w in show)
     body = f"""<h1>評価一覧 ── 付けた {len(rated)} 件</h1>
-<p class="lede">付けた評価を◎○△×ごとに分けています。<b>基準は「自分に合っていたか」で、作品の出来ではありません。</b>評価は作品ごとに1つです。おすすめは◎を付けた公演の作り手から作るので、<b>ここで答えると次のおすすめが変わります。</b>題名・日付・会場そのものを直したいときは、<a href="/records/works?t=__TAGURI_TOKEN__">日記帳</a>で直せます。</p>
+<p class="lede">付けた評価を◎○△×ごとに分けています。<b>基準は「自分に合っていたか」で、作品の出来ではありません。</b>評価は作品ごとに1つです。おすすめは◎を付けた公演の作り手から作るので、<b>ここで評価を押し直すと、次のおすすめが変わります。</b>題名・日付・会場は<a href="/records/works?t=__TAGURI_TOKEN__">日記帳</a>で直せます。</p>
 {verdict_fig}
 {chips}
 {ytabs}
 {vform}
 <div class="idxsheet">
 <p class="mnow"><b>{E(lab)}</b>を付けた作品を、観た日の新しい順に {now}
-ほかの評価は、上のインデックスで切り替えられます。
+上のインデックスで、ほかの評価に切り替えられます。
 評価をまたいで続けて読むときは<a href="/records/works?t=__TAGURI_TOKEN__">日記帳</a>です。</p>
 {rows}</div>
 {foot}"""
@@ -6268,7 +6268,7 @@ def _unrated_body(user_id: str) -> str:
                f'<a href="/records/works?t=__TAGURI_TOKEN__">日記帳</a>に残っていますので、'
                f'付け間違えたときはその行の「やはり観た」で戻してください。')
     return f"""<h1>未評価 ── {len(unrated)} 件</h1>
-<p class="lede">評価がまだ付いていない記録です。<b>上演日が分からない記録も含みます。</b>日付がないと上演が終わったか判定できないので、「まだ答えていない」には出てきません。{skipped}<br>
+<p class="lede">評価がまだ付いていない記録です。<b>上演日が分からない記録も含みます。</b>日付がないと上演が終わったかどうかを判定できないので、「まだ答えていない」には出てきません。{skipped}<br>
 <b>実際には観ていない公演が混じっていたら、各行の「公演詳細を直す」から外せます。</b>券を買って行かなかった公演と、舞台ではない記録は、そこで書き分けられます。どちらも、あとで戻せます。</p>
 {"".join(_rec_row(user_id, w, poster=_poster_html(w), rate_always=True, editable=True)
          for w in unrated) or '<p class="empty">評価が付いていない記録はありません。</p>'}"""
@@ -6297,7 +6297,7 @@ def _hashtags_html(all_w: list[dict], tag: str = "") -> str:
     from urllib.parse import quote as _q
     tag = unicodedata.normalize("NFKC", (tag or "").lstrip("#＃").strip())[:30]
     cnt = HT.counts(w.get("note_impression") or "" for w in all_w)
-    head = ('<p class="lede">感想の中に <b>#タグ</b> と書くと、ここに並び、押すとそのタグの感想を集めて見られます'
+    head = ('<p class="lede">感想の中に <b>#タグ</b> と書くと、タグがここに並びます。押すと、そのタグの感想をまとめて見られます'
             '（例: #泣いた #また観たい #会場がよかった）。</p>')
     if not cnt:
         return '<section class="htags">' + head + "</section>"
@@ -7304,7 +7304,7 @@ def _skipped_html(user_id: str) -> str:
 def _records_empty_note() -> str:
     """記録が 1 件も無いときに、図の代わりに出す文。**空欄のまま見出しだけを残さない。**"""
     return ('<p class="pnow">観た公演の記録がまだ無いので、図は出せません。'
-            '<a href="/register?t=__TAGURI_TOKEN__">観劇記録を追加</a>で'
+            '「<a href="/register?t=__TAGURI_TOKEN__">観劇記録を追加</a>」から'
             '購入確認メールを取り込むか、観た公演を手で足すと、'
             '<b>本数・評価の分かれ方・行った場所・時期</b>がここに出ます。</p>')
 
@@ -7321,9 +7321,9 @@ def _check_line(n: int) -> str:
     if not n:
         return ("<b>いまのところ、読み取りを間違えたらしい記録はありません。</b>"
                 "見つかったものは、この一覧の先頭に出します。")
-    return (f"購入確認メールからの読み取りに失敗した跡がある記録が {n} 件あります"
-            f"（括弧が閉じていないなど）。<b>この {n} 件を先に出しています。</b>"
-            f"直した内容は、次の取り込みと公演ページの検索にも効きます。")
+    return (f"購入確認メールの読み取りに失敗した跡（括弧が閉じていないなど）がある記録が {n} 件あります。"
+            f"<b>この {n} 件を先に出しています。</b>"
+            f"直した内容は次の取り込みと公演ページの検索にも使われます。")
 
 
 def _d3_tag(*panels: str) -> str:
@@ -7448,7 +7448,7 @@ def _records_lede(d: dict) -> str:
     """
     skip = ("" if not d["n_skip"] else
             f'<br>「行かなかった」と答えた {d["n_skip"]} 件は、件数と図から外しています。'
-            f'「日記帳」には出さず、「設定」の「行かなかった公演」にまとめてあり、'
+            f'「日記帳」には出さずに「設定」の「行かなかった公演」にまとめてあります。'
             f'「やはり観た」で戻せます。')
     return (f'<p class="lede">観た記録は <b>{len(d["seen"])} 作品</b>です'
             f'（評価が付いているのは {d["n_rated"]} 件、感想が書いてあるのは '
@@ -7904,7 +7904,7 @@ def _works_body(user_id: str, year: str = "", page: int = 1, want: str = "", gro
     show, now, foot = RR.paginate(hit, page, SHEET_TOP, lambda pg: url(sel, pg, group), "件")
     lead = ("読み取りに失敗した跡がある記録です。年をまたいで散らばるので、"
             "1 枚にまとめてあります。" if sel == "check" else
-            "上演日が分からない記録です。日付が無いと年で切れないので、"
+            "上演日が分からない記録です。日付が無いと年で分けられないので、"
             "1 枚にまとめてあります。" if sel == "none" else
             f"{sel} 年に観た記録です。")
     n_syn = sum(1 for w in ws if syn_by_key.get(w["work_key"]))
@@ -7914,22 +7914,21 @@ def _works_body(user_id: str, year: str = "", page: int = 1, want: str = "", gro
     # 「今どっちを見ているか」より先に用語の説明を読むことになる
     gnote = ("同じ作品は 1 行にまとめています。複数回観ていれば、日付は最初に観た日を出し、"
              "「N 回観た」と添えます。" if group == "work" else
-             "観た回ごとに 1 行で出しています（すべて表示は、畳まずに 1 回ずつ出す、"
-             "という意味です）。同じ作品を複数回観ていれば、行った日の数だけ並びます。"
-             "評価・感想はどの行にも同じ値が付きます（回ごとには記録していません）。"
-             "<b>「この回のメモ」だけは行ごとに別々に持てます</b>（推薦には使いません）。")
+             "観た回ごとに 1 行で出しています。「すべて表示」はまとめずに 1 回ずつ出すという意味です。"
+             "同じ作品を複数回観ていれば、行った日の数だけ並びます。"
+             "評価と感想は回ごとには記録していないので、どの行にも同じものが出ます。"
+             "<b>「この回のメモ」だけは行ごとに別々に書けます</b>。このメモは推薦には使いません。")
     return f"""<h1>日記帳</h1>
 {_records_lede(d)}
-<p class="lede">1 件ごとに、日付・評価・感想が出ます。<b>感想は各行の「感想」の鉛筆から
-書けます</b>（欄から離れたときに保存されます）。<b>題名・上演日・劇場は、各行の
-「公演詳細を直す」から直せます。</b>ポスターを出せたのは {d["n_pos"]} 件、
-あらすじが出せたのは {n_syn} 件、出演者が出せたのは {n_cast} 件です。{gnote}
+<p class="lede">1 件ごとに、日付・評価・感想が出ます。<b>感想は各行の「感想」の鉛筆から書けます</b>。書いた感想は欄から離れたときに保存されます。
+<b>題名・上演日・劇場は、各行の「公演詳細を直す」から直せます。</b>ポスターを出せたのは {d["n_pos"]} 件、
+あらすじは {n_syn} 件、出演者は {n_cast} 件です。{gnote}
 {_check_line(len(check))}</p>
 {index_tabs(groups, group, lambda g: url(sel if sel in piles else "", 1, g),
             "作品でまとめる・すべて表示を切り替える")}
 {index_tabs(tabs, sel, lambda k: url(k, 1, group), "年で切り替える")}
 <div class="idxsheet">
-<p class="mnow">{lead}{now}ほかの年は、上のインデックスで切り替えられます。</p>
+<p class="mnow">{lead}{now}上のインデックスで、ほかの年に切り替えられます。</p>
 {"".join(row(w) for w in show)}</div>
 {foot}"""
 

@@ -256,7 +256,7 @@ def pending_html(rows: list[dict], n_all: int) -> str:
     """
     if not rows:
         return ('<p class="empty">◎ を付けた作品には、すべて感想が書かれています。</p>')
-    more = (f"残りは次の {n_all - len(rows)} 件です。" if n_all > len(rows) else "")
+    more = (f"残りの {n_all - len(rows)} 件は次に出します。" if n_all > len(rows) else "")
     # **行の形は評価待ちと同じものを使う**（`RR.wait_shell`）。ここで自分で組んでいた
     # ため、`.wait` が 3 列（耳・ミシン目・本文）に変わったときに崩れた ── 余白と間隔を
     # 持つ `.wbody` を省いていたので、**題名と日付がくっつき、入力欄が題名の長さで

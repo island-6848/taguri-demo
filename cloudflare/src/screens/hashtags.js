@@ -32,7 +32,7 @@ export function hashtagsHtml(all, tag = '') {
   tag = String(tag || '').replace(/^[#＃]+/, '').trim().normalize('NFKC');
   tag = Array.from(tag).slice(0, 30).join('');
   const cnt = tagCounts(all.map(w => w.note_impression || ''));
-  const head = '<p class="lede">感想の中に <b>#タグ</b> と書くと、ここに並び、押すとそのタグの感想を集めて見られます'
+  const head = '<p class="lede">感想の中に <b>#タグ</b> と書くと、タグがここに並びます。押すと、そのタグの感想をまとめて見られます'
     + '（例: #泣いた #また観たい #会場がよかった）。</p>';
   if (!cnt.length) return '<section class="htags">' + head + '</section>';
   const chips = cnt.map(([t, n]) =>
