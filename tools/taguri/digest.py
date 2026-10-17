@@ -482,7 +482,7 @@ def panel(d: dict, today: datetime.date, tickets: dict | None = None, prefs=(),
         # それより先の日は畳んでおき、押せば開く（消さない・件数は見出しに出す）。
         days_html = "".join(
             f'<details class="dgday"{" open" if (day - today).days <= 1 else ""}>'
-            f'<summary>{_jd(day)} ── {len(rows)} 件</summary>'
+            f'<summary>{_jd(day)}　{len(rows)} 件</summary>'
             f'<ul class="dglist">{"".join(_row(r, today) for r in rows)}</ul></details>'
             for day, rows in wk["days"])
         lead = (f'<b>{E(where)}</b>で観られる、{E(span)} に開幕する公演が '
@@ -514,7 +514,7 @@ def panel(d: dict, today: datetime.date, tickets: dict | None = None, prefs=(),
                     'に日を入れると、ここに出ます。</p>')
 
     return f"""{tabs}
-<section class="dgcard dgmain">{IC.h2("inbox", f"{dict(WEEKS)[week]}開幕する公演（全部）")}
+<section class="dgcard dgmain">{IC.h2("inbox", f"{dict(WEEKS)[week]}開幕するすべての公演")}
 {open_html}</section>
 <section class="dgcard">{IC.h2("ticket", "直近の観劇予定")}
 <p class="dglead">チケットを入れてある公演だけです。</p>

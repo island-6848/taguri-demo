@@ -47,7 +47,7 @@ test('a request is saved, the owner is mailed (no requester details), and one us
     const b64 = /=\?UTF-8\?B\?(.*)\?=/.exec(subject)[1];
     assert.match(new TextDecoder().decode(Uint8Array.from(atob(b64), c => c.charCodeAt(0))), /^【たぐり】公演修正依頼: .+（料金）$/);
     const body = new TextDecoder().decode(Uint8Array.from(atob(seen.data.slice(seen.data.indexOf('') + 1).join('')), c => c.charCodeAt(0)));
-    assert.match(body, /依頼 #1[\s\S]*どこが: 料金[\s\S]*一般は 6,000 円です/);
+    assert.match(body, /依頼 #1[\s\S]*違うところ: 料金[\s\S]*一般は 6,000 円です/);
     assert.doesNotMatch(body, new RegExp(sqlite.prepare('SELECT user_id FROM fix_request').get().user_id));
     // bad input
     assert.equal((await step(env, a, {post: '/api/fix_request', body: {stage_id: '101', kind: '天気', message: 'x'}})).status, 400);

@@ -37,7 +37,7 @@ export function regionsHtml(counts, rcounts, all = false) {
   return `<div class="prgs" role="group" aria-label="地方でまとめて選ぶ"><span class="prgl">地方でまとめて選ぶ</span>${out}<button type="button" class="prg clr">選択を消す</button></div>`;
 }
 
-const PREF_NOTE = `都道府県は<b>いくつでも同時に選べます</b>。選んだ県で観られる公演を、好みに合いそうな順に <b>${TOP} 件</b>まで表示します。数字は、その県で観られる件数です。<b>選ばなければ全国です。</b>ツアーで来る公演も入ります。本拠地が他県でも、選んだ県の会場に来る公演は、その会場の日程で表示します。`;
+const PREF_NOTE = `都道府県は<b>いくつでも同時に選べます</b>。選んだ県で観られる公演を、好みに合いそうな順に <b>${TOP} 件</b>まで表示します。数字はその県で観られる件数です。<b>選ばなければ全国です。</b>ツアーで来る公演も入ります。本拠地が他県でも、選んだ県の会場に来る公演は、その会場の日程で表示します。`;
 /** render_recommend.pref_form, with the region buttons above the chips (prefmap.panel without the map). */
 export function prefForm(counts, prefs, action = '/recommend', note = '', hidden = {}, rcounts = null) {
   const keep = new Set(prefs);
@@ -52,7 +52,7 @@ export function prefForm(counts, prefs, action = '/recommend', note = '', hidden
 <input type="hidden" name="f" value="1">
 ${hiddenIn}
 <details class="pbox">
-<summary>${ico('search', 15)}観に行ける場所で絞り込む ── いまは<b>${E(now)}</b></summary>
+<summary>${ico('search', 15)}観に行ける場所で絞り込む　いまは<b>${E(now)}</b></summary>
 <p class="lead">${note || PREF_NOTE}</p>
 ${rcounts ? regionsHtml(counts, rcounts) : ''}
 <div class="pchips">${chips}</div>

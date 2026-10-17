@@ -547,7 +547,7 @@ EXTRA = None
 
 
 _PREF_NOTE = (f'都道府県は<b>いくつでも同時に選べます</b>。選んだ県で観られる公演を、'
-              f'好みに合いそうな順に <b>{TOP} 件</b>まで表示します。数字は、その県で'
+              f'好みに合いそうな順に <b>{TOP} 件</b>まで表示します。数字はその県で'
               f'観られる件数です。<b>選ばなければ全国です。</b>ツアーで来る公演も'
               f'入ります。本拠地が他県でも、選んだ県の会場に来る公演は、その会場の日程で表示します。')
 
@@ -605,7 +605,7 @@ def pref_form(counts: dict, prefs=(), action: str = "/recommend", note: str = ""
 <input type="hidden" name="f" value="1">
 {hidden_in}
 <details class="pbox">
-<summary>{IC.ico("search", 15)}観に行ける場所で絞り込む ── いまは<b>{E(now)}</b></summary>
+<summary>{IC.ico("search", 15)}観に行ける場所で絞り込む　いまは<b>{E(now)}</b></summary>
 <p class="lead">{note or _PREF_NOTE}</p>
 {EXTRA() if EXTRA else ""}
 <div class="pchips">{chips}</div>
@@ -781,7 +781,7 @@ def reason_rows(c: dict) -> str:
         evidence = part["evidence"]
         direction = "好みに合う可能性があります" if part["value"] > 0 else "好みに合わない可能性があります"
         out.append('<li class="rs c"><span class="net">感想</span>'
-                   f'<b>{E(part["label"])}</b>は、あなたの感想から{direction}。'
+                   f'あなたの感想からみて、<b>{E(part["label"])}</b>は{direction}。'
                    f'<span class="n">（記録 {part["count"]} 本）</span>'
                    f'<span class="src">《{E(evidence["title"])}》に「{E(evidence["quote"])}」'
                    'と書いています。</span></li>')
@@ -879,7 +879,7 @@ def why_note(stage_id, note: str = "", *, open_: bool = False, ask: bool = False
            f'<label>なぜ気になったか<span class="opt">任意</span></label>'
            f'<textarea placeholder="例: 作り手30の脚本だから／作品4に興味がある／'
            f'題材が題材3そう" rows="2">{E(note)}</textarea>'
-           f'<div class="wn-foot"><span class="hint">書いた文に出てきた名前は、'
+           f'<div class="wn-foot"><span class="hint">書いた文にある名前は、'
            f'「お気に入り」に登録する候補として出てきます</span>'
            f'<span class="said"></span></div></div>')
     if open_ or not ask:
@@ -1296,7 +1296,7 @@ def syn_block(c: dict) -> str:
         return (f'<div class="syn part" data-stage="{E(c["stage_id"])}">{head}'
                 f'{tag_html}{form}</div>')
     return (f'<div class="syn no" data-stage="{E(c["stage_id"])}">'
-            f'あらすじを取れませんでした（公演ページに本文がありません）{form}</div>')
+            f'公演ページに本文がないため、あらすじを取れませんでした{form}</div>')
 
 
 # **手で入れられる出演者・作り手の欄。** `tools/taguri/app.py` の `HAND_FIELDS`
@@ -2252,7 +2252,7 @@ def limits_html(d: dict, rows: list | None = None) -> str:
     # 起案者の指示 2026-10-14「この 15 件で、出せていない情報です。、はインフォーメーションマークのとこに書くのでよい」）
     return f"""<p class="note toinfo"><b>この {len(rec)} 件で、出せていない情報です。</b><br>
 ・<b>チケットの販売期限と、販売終了・完売</b>：手元に情報がないので表示できません。
-残っているかどうかは公式サイトで確認してください<br>
+チケットが残っているかどうかは公式サイトで確認してください<br>
 ・<b>あらすじ</b>：{n_syn}/{len(rec)} 件で表示できました。残りは、まだ読み取りが済んでいないか、公演のページに載っていませんでした<br>
 ・<b>まだ答えていない公演は、次回も候補に残ります。</b>
 評価・公演情報・設定が変わると、順位も変わることがあります</p>"""

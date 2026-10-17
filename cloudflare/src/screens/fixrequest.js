@@ -94,12 +94,12 @@ async function fixRequestAction(b, ctx) {
     .bind(stageId, ctx.uid, kind, message, at).first();
   const open = (await ctx.db.prepare("SELECT count(*) AS n FROM fix_request WHERE status='open'").first())?.n || 0;
   const text = `たぐりに公演修正依頼が届きました（依頼 #${row.id}）。\n\n公演: ${title || '（題名不明）'}（#${stageId}）\n`
-    + `どこが: ${kind}\n内容:\n${message}\n\n${/^\d+$/.test(stageId) ? `公演のページ: https://stage.corich.jp/stage/${stageId}\n` : ''}`
+    + `違うところ: ${kind}\n内容:\n${message}\n\n${/^\d+$/.test(stageId) ? `公演のページ: https://stage.corich.jp/stage/${stageId}\n` : ''}`
     + `\n手元の管理画面（tools/admin/open-admin）の「公演修正依頼」から開いて直せます。まだ対応していない依頼: ${open} 件\n`
-    + '（このメールは、たぐりの Worker が起案者の Gmail から自分宛てに送っています。依頼した人の名前やアドレスは入れていません）';
+    + 'このメールは、たぐりの Worker が起案者の Gmail から自分宛てに送っています。依頼した人の名前やアドレスは入れていません。';
   const mailed = await notifyOwner(ctx, `【たぐり】公演修正依頼: ${title || stageId}（${kind}）`, text, ctx.env?.SMTP_OPEN);
   if (mailed) await ctx.db.prepare('UPDATE fix_request SET mailed=1 WHERE id=?').bind(row.id).run();
-  return {body: {ok: true, id: row.id, said: '送りました。ありがとうございます。確かめて直します（直すまで少し時間がかかることがあります）'}};
+  return {body: {ok: true, id: row.id, said: '送りました。ありがとうございます。確かめて直します。直すまで少し時間がかかることがあります'}};
 }
 
 export const fixRequestScreens = {actions: {fix_request: fixRequestAction}};

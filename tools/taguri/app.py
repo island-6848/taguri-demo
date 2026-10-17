@@ -3599,12 +3599,12 @@ def weight_form(user_id: str, d: dict) -> str:
              + "<span>" + E(labels["max"]) + ' →</span></span><span class="wv"></span></div>')
     return f"""<div class="wfil">
 <details class="pbox wbox" id="weights">
-<summary>{IC.ico("light", 15)}おすすめの効かせ方を変える ── いまは<b>{E(now)}</b></summary>
+<summary>{IC.ico("light", 15)}おすすめの効かせ方を変える　いまは<b>{E(now)}</b></summary>
 <p class="lead">おすすめの順位に、どの情報をどれくらい効かせるかを決められます。
 つまみを動かして「この効かせ方でおすすめを読み込む」を押すと、一覧を作り直します。
 押すまでは変わりません。既定は「ふつう」です。
 いちばん左の「効かせない」にすると、その情報は順位からも理由からも消えます。
-件数は、おすすめの候補のうち、その情報が一致している公演の数です。
+件数はおすすめの候補のうち、その情報が一致している公演の数です。
 件数が少ない項目は、動かしても一覧はあまり変わりません。</p>
 {scale}
 {"".join(rows)}
@@ -4173,13 +4173,13 @@ def _reminder_body(user_id: str, prefs=(), week: str = "this") -> str:
     pc = RR.pref_counts({"ranked": wr})
     RR.EXTRA = lambda: PM.panel(pc, PM.region_counts({"ranked": wr}))
     note = ('都道府県は<b>いくつでも同時に選べます</b>。選んだ県で開幕する公演を、'
-            '<b>順位は付けずに日付が近い順で全部</b>表示します。数字は、その県で'
+            '<b>順位は付けずに日付が近い順で全部</b>表示します。数字はその県で'
             f'{dict(DG.WEEKS)[week]}開幕する件数です。<b>選ばなければ全国です。</b>'
             'ツアーで来る公演は、その会場のある県として数えます。<br>'
             '<b>「今週のおすすめ」と同じ絞り込みです。</b>'
             'どちらの画面で選んでも、両方に反映されます。')
     return f"""<h1>開幕リマインド ── 見逃していませんか</h1>
-<p class="lede"><b>初日が近い公演を、答えたかどうかに関わらず全部出します。</b>「興味あり」も「興味なし」も押さないうちに開幕してしまうのが、いちばんの見逃しだからです。未回答の行は、その場で答えられます。</p>
+<p class="lede"><b>初日が近い公演を、答えたかどうかに関わらず全部出します。</b>「興味あり」も「興味なし」も押さないうちに開幕してしまうのが、いちばんの見逃しだからです。未回答の行はその場で答えられます。</p>
 {RR.pref_form(pc, prefs, action="/recommend/reminder", note=note, hidden={"w": week})}
 {DG.panel(d, today, ticket_map(user_id), prefs, week)}"""
 

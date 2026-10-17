@@ -83,12 +83,12 @@ export function weightForm(w, cnt = {}, drop = 0) {
     + '<span>' + E(labels.max) + ' →</span></span><span class="wv"></span></div>';
   return `<div class="wfil">
 <details class="pbox wbox" id="weights">
-<summary>${ico('light', 15)}おすすめの効かせ方を変える ── いまは<b>${E(now)}</b></summary>
+<summary>${ico('light', 15)}おすすめの効かせ方を変える　いまは<b>${E(now)}</b></summary>
 <p class="lead">おすすめの順位に、どの情報をどれくらい効かせるかを決められます。
 つまみを動かして「この効かせ方でおすすめを読み込む」を押すと、一覧を作り直します。
 押すまでは変わりません。既定は「ふつう」です。
 いちばん左の「効かせない」にすると、その情報は順位からも理由からも消えます。
-件数は、おすすめの候補のうち、その情報が一致している公演の数です。
+件数はおすすめの候補のうち、その情報が一致している公演の数です。
 件数が少ない項目は、動かしても一覧はあまり変わりません。</p>
 ${scale}
 ${rows}
