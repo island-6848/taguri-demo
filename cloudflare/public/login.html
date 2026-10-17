@@ -13,11 +13,11 @@
 <main class="auth-main acct">
 <section id="about" class="auth-card about">
 <h1>観たかった舞台を、見逃さない。</h1>
-<p class="about-lead">たぐりは、観た演劇の記録と評価から、これから観られる公演の中であなたに合いそうな舞台を毎週届けるアプリです。</p>
+<p class="about-lead">たぐりは観た演劇の記録と評価から、これから観られる公演の中であなたに合いそうな舞台を毎週届けるアプリです。</p>
 <figure class="cycle">
 <svg viewBox="0 0 340 300" role="img" aria-labelledby="cycle-t cycle-d">
 <title id="cycle-t">たぐりの使い方の流れ</title>
-<desc id="cycle-d">記録する、おすすめが届く、興味ありで選ぶ、観にいく、をくり返すほど、おすすめがあなたの好みに近づく。</desc>
+<desc id="cycle-d">「記録する」「おすすめが届く」「興味ありで選ぶ」「観にいく」をくり返すほど、おすすめがあなたの好みに近づく。</desc>
 <defs><marker id="cyc-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" class="cyc-head"/></marker></defs>
 <path class="cyc-line" d="M120 40 Q170 6 220 40" marker-end="url(#cyc-arrow)"/>
 <path class="cyc-line" d="M300 116 Q318 150 300 184" marker-end="url(#cyc-arrow)"/>
@@ -31,7 +31,7 @@
 <g class="cyc-node"><rect x="206" y="190" width="132" height="70" rx="12"/><text class="cyc-n" x="272" y="210" text-anchor="middle">3</text><text class="cyc-t" x="272" y="232" text-anchor="middle">興味ありで選ぶ</text><text class="cyc-s" x="272" y="250" text-anchor="middle">日程がそろう</text></g>
 <g class="cyc-node"><rect x="2" y="190" width="132" height="70" rx="12"/><text class="cyc-n" x="68" y="210" text-anchor="middle">4</text><text class="cyc-t" x="68" y="232" text-anchor="middle">観にいく</text><text class="cyc-s" x="68" y="250" text-anchor="middle">見逃さない</text></g>
 </svg>
-<figcaption>観た公演を記録すると、次のおすすめに効きます。おすすめには「なぜおすすめなのか」の理由が付きます。</figcaption>
+<figcaption>観た公演を記録すると、次のおすすめに反映されます。おすすめには「なぜおすすめなのか」の理由が付きます。</figcaption>
 </figure>
 <p class="guide"><a href="https://island-6848.github.io/taguri-demo/docs/000010-user-guide-taguri.html" rel="noopener">使い方ガイドを読む（GitHub）</a></p>
 </section>
@@ -64,7 +64,7 @@
 <button id="passkey-signup" type="button" class="wide">パスキーで始める</button>
 </div>
 <form id="signup-email-form" class="mailrow" hidden><label>登録するメールアドレス<span class="mailin"><input id="signup-email" type="email" required autocomplete="email" maxlength="254" placeholder="name@example.com"><button>リンクを受け取る</button></span></label></form>
-<p class="fine" id="carry-over">パスキーは、指紋・顔認証・端末のロック解除で使えます（Google もメールも使いません）。たぐりが保存するのはログインの識別番号だけで、メールアドレスは保存しません。</p>
+<p class="fine" id="carry-over">パスキーは指紋・顔認証・端末のロック解除で使えます。Google もメールも使いません。たぐりが保存するのはログインの識別番号だけで、メールアドレスは保存しません。</p>
 </section>
 <form id="recovery-login" class="auth-card" hidden><h1>復旧コードでログイン</h1><label>復旧コード<input id="recovery-input" required autocomplete="off" maxlength="80"></label><button class="wide">ログインする</button></form>
 <form id="delete-confirm" class="auth-card danger-zone" hidden><h1>削除の確認</h1><p>確認のため「削除」と入力してください。</p><label>確認<input id="delete-word" required autocomplete="off" maxlength="10"></label><button class="wide">すべて削除する</button></form>

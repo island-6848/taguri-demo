@@ -11,7 +11,7 @@ import {R2_READS_CAP, r2ReadAllowed, d1RoomLeft, d1Bytes, D1_BYTES_CAP, MAX_ACCO
 import {rateLimit, checkNewAccount} from './rate-limit.js';
 // Writes that only remove a user's rows: allowed even when D1 is at its storage cap.
 const SHRINKING_ACTIONS = new Set(['drop_work', 'purge_work', 'unseen']);
-const STORAGE_FULL = 'いまは保存を止めています（無料の範囲で動かすため、保存できる量の上限に近づいています）。見ることと消すことはできます。';
+const STORAGE_FULL = '保存できる量の上限に近づいたので、無料の範囲で動かすために、いまは保存を止めています。見ることと消すことはできます。';
 import {fetchCalendar} from './screens/import.js';
 import {SCREEN_TABLES, nativeScreen, nativeAction, allNative, movingScreen, movingAction, screen as nativeScreenBody, action as nativeActionBody, readInput as nativeInput} from './screens/index.js';
 const MAX_BODY = 262144;
@@ -149,7 +149,7 @@ async function firebaseSignIn(request, env) {
   if (!uid) {
     // ログインの欄（intent: 'login'）から来たときは、新しいアカウントを作らない（起案者の指示 2026-10-17
     // 「ログイン（上）または新規登録（下）にレイアウトし直して」）。新規登録の欄は intent: 'signup'
-    if (input.intent === 'login') fail(404,'この Google・メールでは、まだ登録されていません。はじめての方は、下の「新規登録」から始めてください。');
+    if (input.intent === 'login') fail(404,'この Google・メールは、まだ登録されていません。はじめての方は、下の「新規登録」から始めてください。');
     if (env.ALLOW_REGISTRATION !== 'true') fail(503,'新規登録を一時停止しています。');
     requireAgreement(input, fail);
     await checkNewAccount(db, env, fail, undefined, request);

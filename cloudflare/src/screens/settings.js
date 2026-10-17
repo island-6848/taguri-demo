@@ -93,7 +93,7 @@ async function exportCardHtml(ctx) {
     + `${Array.isArray(v) ? v.length : Object.values(v).reduce((s, x) => s + x.length, 0)} 件</b><span class="xk">${E(k)}</span></li>`).join('');
   return `<details class="card">${cardH2('download', '書き出す')}
 <p class="lead">記録・評価・感想・お気に入りを、1 つのファイルにまとめて保存できます。
-中身は下のとおりで、ほかの道具で読める形（JSON）です。</p>
+中身は下のとおりで、ほかのアプリでも読める形式（JSON）です。</p>
 <ul class="lead">${li}</ul>
 <a class="dl" href="/export.json?t=__TAGURI_TOKEN__" download="taguri-export.json">
  taguri-export.json を保存する</a>
@@ -115,12 +115,12 @@ export async function settingsScreen(_params, ctx) {
   const now = !prefs.length ? '全国' : prefs.join('・') + `（${prefs.length} 県）`;
   const works = await loadWorks(ctx);
   const body = `<h1>設定</h1>
-<p class="lede">ここで決めたことは、おすすめ全体に効きます。<b>内容をまとめて確かめてから保存します。</b></p>
+<p class="lede">ここで決めたことは、おすすめ全体に反映されます。<b>内容をまとめて確かめてから保存します。</b></p>
 <details class="card">${cardH2('gear', '観に行ける場所を決めておく', `<span class="badge part">いまは${E(now)}</span>`)}
 <p class="lead">都道府県を選んで保存すると、<b>「今週のおすすめ」と「公演カレンダー」を
 開くたびに、その都道府県で絞り込んだ状態になります。</b>選ばなければ全国です。
 <b>いくつでも同時に選べます。</b><br>
-<b>すでに「興味あり」を押した公演・お気に入り・買った券には効きません。</b>
+<b>すでに「興味あり」を押した公演・お気に入り・買った券には影響しません。</b>
 一度決めたことを、この設定で見えなくすることはありません。</p>
 <form class="pfil" id="pref-setting" onsubmit="return false">
 ${regionsHtml(counts, rcounts, true)}
@@ -154,15 +154,15 @@ export async function startScreen(_params, ctx) {
   const form = `<div class="fav-add"><select id="fav-kind">${kinds}</select> <input id="fav-name" type="text" placeholder="劇団名・俳優名・作品名・題材" size="26">`
     + ` <button data-fav="add">${ico('star')}登録する</button><span class="said"></span></div>` + (tags ? `<div class="tags">${tags}</div>` : '');
   const step1 = stepCard(1, `見逃したくない名前を登録する（いま ${nDec} 件）`, nDec > 0,
-    '劇団・俳優・演出家・作品・原作者・題材のどれでも登録できます。<b>登録した名前の公演は、内容を問わず、件数の制限も付けずに出します。</b>1 件登録するだけで動き始めます。<br>あとから「おすすめ ▸ お気に入り」で足せますし、外せます。', form);
+    '劇団・俳優・演出家・作品・原作者・題材のどれでも登録できます。<b>登録した名前の公演は、内容を問わず、件数の制限も付けずに出します。</b>1 件登録するだけで動き始めます。<br>あとから「おすすめ ▸ お気に入り」で足すことも外すこともできます。', form);
   const step2 = stepCard(2, '公演の情報を取り寄せる', nCand > 0, nCand > 0
     ? `手元にこれから観られる公演を ${nCand} 件持っています。毎日取り直しています。`
     : 'まだ公演の情報が届いていません。毎日の取得のあとに、ここに件数が出ます。');
   const step3 = stepCard(3, `観た公演を入れる（いま ${nWorks} 件・任意です）`, nWorks > 0,
-    '<b>観た記録が 1 件もないうちは、好みに合わせたおすすめは出ません。</b>おすすめは、◎ を付けた公演の作り手をもとに作るためです。<b>1 段目で登録した名前の公演は、記録が無くても出ます。</b>'
-    + '<br><a href="/register?t=__TAGURI_TOKEN__">観劇記録を追加</a> から、手での追加ができます。観た公演には <a href="/rate?t=__TAGURI_TOKEN__">観た公演の評価</a> で ◎○△× を付けてください。');
-  const body = `<h1>はじめに ── 見逃したくない名前を 1 つ登録してください</h1>
-<p class="lede">たぐりは、<b>これから観られる公演の中から、見逃したくない舞台を毎週届けるアプリ</b>です。まだ登録も記録もないので、届けられるものがありません。<b>下の3つのうち、1つ目だけで始められます。</b></p>
+    '<b>観た記録が 1 件もないうちは、好みに合わせたおすすめは出ません。</b>おすすめは ◎ を付けた公演の作り手をもとに作るためです。<b>1 段目で登録した名前の公演は、記録が無くても出ます。</b>'
+    + '<br><a href="/register?t=__TAGURI_TOKEN__">観劇記録を追加</a> から、手で追加できます。観た公演には <a href="/rate?t=__TAGURI_TOKEN__">観た公演の評価</a> で ◎○△× を付けてください。');
+  const body = `<h1>はじめに、見逃したくない名前を 1 つ登録してください</h1>
+<p class="lede">たぐりは<b>これから観られる公演の中から、見逃したくない舞台を毎週届けるアプリ</b>です。まだ登録も記録もないので、届けられるものがありません。<b>下の3つのうち、1つ目だけで始められます。</b></p>
 ${step1}
 ${step2}
 ${step3}
@@ -200,7 +200,7 @@ function missedHtml(rows) {
     }
     return `<div class="prom"><span class="k">${E(head)}</span><span class="w">${E(r.title)}</span><span class="src">${E(r.at)} に登録</span><span class="q">${why}</span>${look}</div>`;
   }).join('');
-  return `<p class="lead">登録した ${rows.length} 件と、<b>どこで漏れたのか</b>・<b>演者とあらすじ</b>です。出演者・作り手は、調べ終わり次第、次の推薦に自動で反映されます（観ていない公演なので、◎ より弱い扱いです）。</p>${out}`;
+  return `<p class="lead">登録した ${rows.length} 件の、<b>どこで漏れたのか</b>と<b>演者とあらすじ</b>です。出演者・作り手は調べ終わり次第、次の推薦に自動で反映されます（観ていない公演なので、◎ より弱い扱いです）。</p>${out}`;
 }
 
 /** render_recommend.cast_block */
@@ -229,7 +229,7 @@ export async function registerScreen(_params, ctx) {
 <p class="lede">公演を記録に足す場所です。<b>入口は3つあります。</b>Google カレンダー・購入確認メールからの取り込み、メールに残らない分（招待・当日券・人に取ってもらった分）の手入力、そして<b>観ればよかった公演（観ていないもの）の追加</b>です。評価は「観た公演の評価」で付けます。評価がなくても、記録は残せます。</p>
 
 <div class="card imx" data-import>${h2('mail', '① Google カレンダー・購入確認メールから取り込む')}
-<p class="lead">観た公演を、カレンダーの予定や購入確認メールから見つけて足します。
+<p class="lead">カレンダーの予定や購入確認メールから、観た公演を見つけて足します。
 <b>読み取りはこの端末の中だけで行い、カレンダーやメールの中身はたぐりに送りません。</b>
 読み取った題名・日付を公演と照合し、選んだものだけを記録に足します。</p>
 <details class="imx-src" open><summary>Google カレンダーから</summary>
@@ -238,7 +238,7 @@ export async function registerScreen(_params, ctx) {
 <div class="imx-row"><button type="button" class="primary" data-imx-google="1">Google カレンダーから取り込む</button></div>
 <details class="imx-alt"><summary>アドレスやファイルから読み込む</summary>
 <p class="note">パソコンの Google カレンダーで、設定 → 取り込むカレンダー → 「カレンダーの統合」にある
-<b>「iCal 形式の非公開アドレス」</b>をコピーして貼ってください。アドレスは保存しません（読むのはこの 1 回だけです）。</p>
+<b>「iCal 形式の非公開アドレス」</b>をコピーして貼ってください。アドレスは保存せず、読むのはこの 1 回だけです。</p>
 <div class="imx-row"><input id="imx-url" type="url" inputmode="url" autocomplete="off" placeholder="https://calendar.google.com/calendar/ical/…/basic.ics" size="40">
 <button type="button" data-imx-cal="1">読み込む</button></div>
 <p class="note">書き出した .ics ファイルを選んでも読めます：<input id="imx-ics" type="file" accept=".ics,text/calendar"></p>
@@ -246,7 +246,7 @@ export async function registerScreen(_params, ctx) {
 </details>
 <details class="imx-src"><summary>購入確認メールから</summary>
 <p class="note">ぴあ・ローチケ・おけぴ・東宝ナビザーブ・劇団のチケットサービスの書式を読めます（ほかのサイトもできるだけ読みます）。
-メールの本文をコピーして貼るか、メールを .eml ファイルで保存してまとめて選んでください（Gmail はメールの「︙」→「メッセージをダウンロード」）。</p>
+メールの本文をコピーして貼るか、メールを .eml ファイルで保存してまとめて選んでください。Gmail では、メールの「︙」→「メッセージをダウンロード」で保存できます。</p>
 <textarea id="imx-text" rows="6" placeholder="購入確認メールの本文を貼る（何通分でも、続けて貼れます）"></textarea>
 <div class="imx-row"><button type="button" data-imx-mail="1">読み取る</button>
 <span class="note">または <input id="imx-eml" type="file" accept=".eml,message/rfc822" multiple></span></div>
@@ -256,7 +256,7 @@ export async function registerScreen(_params, ctx) {
 <div class="imx-row"><button type="button" class="primary" data-imx-add="1">選んだものを記録に足す</button></div></div>
 </div>
 
-<div class="card">${h2('plus', '② 手で 1 件足す ── メールに残らない分')}
+<div class="card">${h2('plus', '② メールに残らない分を手で 1 件足す')}
 <p class="lead">招待・当日窓口・人に取ってもらった分は購入確認メールに残らないので、
 ここから足してください。</p>
 <div class="add-work"><input id="w-title" type="text" placeholder="公演の題名" size="26"
@@ -269,12 +269,12 @@ export async function registerScreen(_params, ctx) {
 <p class="ed-lead"><b>題名を 2 文字入れると、手元の情報から候補が出ます。</b>
 選ぶと劇場・日程・出演者・作り手が一緒に入り、次のおすすめの材料になります。
 すでに記録にあるものは「記録あり」と出るので、二重に足さずに済みます。<br>
-<b>候補に出てこないときは「検索」を押してください。</b>その場で公演情報を探します
+<b>候補に出てこないときは「CoRichで検索」を押してください。</b>その場で公演情報を探します
 （8 秒ほどかかります）。同じ題名の公演が複数出ることがあります。
 別の劇場での上演や再演なので、劇場と日程を見て、観た公演を選んでください。<br>
 ポスターが出るのは、手元に画像がある公演だけです。</p></div>
 
-<div class="card">${h2('flag', '③ 「観ればよかった」を足す ── 観ていない公演', missed.length ? `<span class="badge part">${missed.length} 件</span>` : '')}
+<div class="card">${h2('flag', '③ 観ていない公演を「観ればよかった」に足す', missed.length ? `<span class="badge part">${missed.length} 件</span>` : '')}
 <p class="lead">出てこなかったせいで見逃した公演を登録してください。
 どこで漏れたのか（一覧に無かった／順位が低かった／出したのに押されなかった）と、
 演者・あらすじを調べて下に出します（数十秒かかることがあります）。<br>
@@ -294,7 +294,7 @@ ${missedHtml(missed)}</div>
 /** serve.on_missed, looked up in D1 at once: the current stage, else a past one, whose title key matches. */
 async function missedAction(b, ctx) {
   const title = String(b.title ?? '').trim().slice(0, 200);
-  if (!title) throw new ValueError('title が要る');
+  if (!title) throw new ValueError('題名を入れてください');
   const k = titleKey(title);
   let sid = '', fields = {}, note = '';
   // 探す画面の過去の公演から押したときは、その公演を指して来る（同じ題名の別の公演に取り違えない）

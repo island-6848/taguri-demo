@@ -145,9 +145,9 @@ export async function fetchCalendar(value, fetcher = fetch) {
   if (!url) return {status: 400, error: 'Google カレンダーの「iCal 形式の非公開アドレス」を貼ってください。'};
   let res;
   try { res = await fetcher(url, {redirect: 'manual', headers: {accept: 'text/calendar'}}); }
-  catch { return {status: 502, error: 'カレンダーを読みにいけませんでした。'}; }
-  if (res.status !== 200 || !res.body) return {status: 502, error: res.status === 404 ? 'このアドレスのカレンダーは見つかりませんでした。アドレスを確かめてください。' : 'カレンダーを読みにいけませんでした。'};
-  if (Number(res.headers.get('content-length') || 0) > ICS_MAX) return {status: 413, error: 'カレンダーが大きすぎます（8MB まで）。'};
+  catch { return {status: 502, error: 'カレンダーを読み込めませんでした。'}; }
+  if (res.status !== 200 || !res.body) return {status: 502, error: res.status === 404 ? 'このアドレスのカレンダーは見つかりませんでした。アドレスを確かめてください。' : 'カレンダーを読み込めませんでした。'};
+  if (Number(res.headers.get('content-length') || 0) > ICS_MAX) return {status: 413, error: 'カレンダーが大きすぎます。読み込めるのは 8MB までです。'};
   let seen = 0;
   const cap = new TransformStream({transform(chunk, c) {
     seen += chunk.byteLength;
