@@ -5,3 +5,6 @@ data/
 
 state/
 .claude/knowledge-inbox.jsonl
+
+# deliver_catalogue のテストが書く作業ファイル（--out ../d1-out）
+d1-out/
