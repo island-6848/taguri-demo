@@ -64,8 +64,15 @@ label.f>span{display:block;font-size:12px;color:var(--mute);margin-bottom:2px}
 </section>
 <section id="detail"><div class="card empty">左で公演を選んでください。</div></section>
 </main>
+<div id="nostart" hidden style="margin:16px 20px;padding:12px 16px;border:1px solid var(--warn);border-radius:8px">
+<b>このファイルを直接開いても動きません。</b>ターミナルで <code>python3 tools/admin/serve_admin.py</code>（Windows は <code>py tools\admin\serve_admin.py</code>、
+または tools/admin の open-admin.command / open-admin.bat をダブルクリック）を動かすと、ブラウザで管理画面が開きます。</div>
 <script>
 const TOKEN = "__TOKEN__";
+if (location.protocol === "file:" || TOKEN.startsWith("__")) {
+  document.getElementById("nostart").hidden = false;
+  document.querySelector("main").hidden = true;
+}
 const FIELDS = ["劇場", "料金（1枚あたり）", "タイムテーブル", "出演", "演出", "脚本", "スタッフ", "公式／劇場サイト", "その他注意事項"];
 const E = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
 const api = async (path, body) => {

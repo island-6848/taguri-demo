@@ -26,3 +26,5 @@ links:
 - 無料枠: 書く前に数える。CAPS に admin_d1_writes_day（1,000）・admin_posters_month（300）を足し、取得と共通の D1・R2 の上限も見る（控えは手元の data/admin/free_tier/usage.json。取得の控えとは別なので、R2 の保存の合計は取得の控えと Worker の点検で見る）
 - 確かめたこと: Worker のテスト（override.test.js、全 224 件）、Python のテスト（test_admin_tool.py: 偽の D1 に migration を当てて、検索・保存・記録・上限で止まる・ポスター・読み取り・SQL の引用）、ブラウザで管理画面（偽の D1）を動かし、保存・記録・読み取り待ち・鍵が違うと 403 を確かめた。本番の D1・R2 にはまだ書いていない（手元のパソコンで wrangler にログインして使う）
 - まだのこと: おすすめの計算に使う題材（rec_credit の #題材）と、探す・出さない語が引く rec_card の ws/synz は、手で直した分をまだ使わない〔q-admin-override-in-index〕
+
+追記（2026-10-17）: 起案者「開きません」。こちらでは起動・鍵付き URL で 200・鍵なしで 403 を確かめたので、手元での開き方の側の問題と見て、よくある原因に手を打った: ① URL を固定（127.0.0.1:8770、ふさがっていれば空き番号）し、鍵を data/admin/token（本人だけ読める）に控えて起動し直しても同じ URL に ② 鍵なしで開くと JSON ではなく「鍵の付いた URL から開いてください」の案内 ③ admin.html を直接開いたら起動のしかたを出す ④ ダブルクリックで開く open-admin.command（Mac）・open-admin.bat（Windows、py か python）⑤ Windows の npx.cmd を探す・Node.js が無いと案内・思わぬ失敗も理由を画面に出す ⑥ README に初めての手順（clone・Node.js・wrangler login）。どこで止まったかは起案者に確かめる

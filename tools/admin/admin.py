@@ -67,8 +67,15 @@ def sq(v) -> str:
 
 # ── D1（本番）── 差し替えられるようにしてある（テストは node:sqlite ではなく sqlite3 の偽物を使う）
 def wrangler_run(args: list[str]) -> str:
-    cmd = ["npx", "--yes", "wrangler@4", "d1", "execute", DB_NAME, "--remote", *args]
-    r = subprocess.run(cmd, cwd=ROOT / "cloudflare", capture_output=True, text=True, timeout=180)
+    npx = shutil.which("npx") or shutil.which("npx.cmd")      # Windows は npx.cmd
+    if not npx:
+        raise AdminError("Node.js（npx）が見つかりません。https://nodejs.org から入れてから、もう一度開いてください")
+    cmd = [npx, "--yes", "wrangler@4", "d1", "execute", DB_NAME, "--remote", *args]
+    try:
+        r = subprocess.run(cmd, cwd=ROOT / "cloudflare", capture_output=True, text=True, encoding="utf-8",
+                           errors="replace", timeout=300)
+    except subprocess.TimeoutExpired as e:
+        raise AdminError("D1 から返事がありませんでした（初めての実行は wrangler の取り込みに時間がかかります。もう一度押してください）") from e
     if r.returncode:
         raise AdminError("D1 に届きませんでした（wrangler にログインしているか確かめてください）: " + (r.stderr or r.stdout)[-400:])
     return r.stdout
