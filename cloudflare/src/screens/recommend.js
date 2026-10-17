@@ -370,13 +370,13 @@ export async function recommendScreen(params, ctx) {
   } else if (!prefs.length) {
     head = `今週のおすすめ ${cards.length} 件`;
     // 件数は 1 行で（起案者の指示 2026-10-17「『埼玉県ほか 3 県／◯件中上位◯件を表示中』に変えて」。全国も同じ形）
-    lede = `<p class="pnow"><b>全国</b>／${data.n_scored} 件中上位 ${cards.length} 件を表示中</p>`;
+    lede = `<p class="pnow"><b>全国</b>／${data.n_scored} 件中 上位 ${cards.length} 件を表示中</p>`;
   } else if (!cards.length) {
     head = `${where}のおすすめはありません`;
     lede = `<p class="pnow">これから観られる公演 ${nCand} 件のうち、<b>${E(where)}</b>で観られるものはありませんでした。ほかの都道府県を選ぶか、全国に戻してください。</p>`;
   } else {
     head = `${where}のおすすめ ${cards.length} 件`;
-    lede = `<p class="pnow"><b>${E(where)}</b>／${hit} 件中上位 ${cards.length} 件を表示中</p>`;
+    lede = `<p class="pnow"><b>${E(where)}</b>／${hit} 件中 上位 ${cards.length} 件を表示中</p>`;
   }
   // 推薦を出すためのワンポイント（起案者の指示 2026-10-14「なにがしたら出るか、使うユーザーが
   // わかりやすい文章で（技術的なことは書かないで）おすすめの初期画面に追加して」）。

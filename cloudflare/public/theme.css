@@ -102,10 +102,10 @@ body{font-family:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",YuGothic,syst
  background:var(--surf);color:var(--ink);border:1px solid var(--ink);border-radius:0;
  box-shadow:0 1px 2px rgba(29,29,31,.12);cursor:pointer;transition:background-color .12s ease}
 .btns button:hover{background:var(--curtain-w);color:var(--ink);border-color:var(--ink)}
-.btns button[data-v=interest]{order:1;border-radius:8px 0 0 8px}
-.btns button[data-v=nointerest]{order:2;border-left:0}
-.btns button[data-v=owned]{order:3;border-left:0}
-.btns button[data-v=cantgo]{order:4;border-left:0;border-radius:0 8px 8px 0}
+/* 並びは書いた順（興味あり・興味なし・購入済・行けない。画面によって 3 つ）。最初と最後だけ角を丸める */
+.btns button{border-left:0}
+.btns button:first-of-type{border-left:1px solid var(--ink);border-radius:8px 0 0 8px}
+.btns button:last-of-type{border-radius:0 8px 8px 0}
 /* 「記録しました…」は帯の右に詰めると 1 字ずつ折り返して縦に伸びる（起案者の指摘 2026-10-13）ので、
    帯の下の行に出す */
 .btns .said{order:5;margin-left:8px;white-space:normal}
@@ -221,7 +221,12 @@ body{font-family:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",YuGothic,syst
 .ticket.cmp .leadbox{display:flex;flex-direction:column;gap:4px;margin:0 0 10px;font-size:12.5px;line-height:1.65}
 .ticket.cmp .leadbox p{margin:0}
 /* 「出演」「あらすじ」の見出しを左の列にそろえ、折り返した行は本文の頭にそろえる */
-.ticket.cmp .lcast,.ticket.cmp .lsyn{display:grid;grid-template-columns:4em minmax(0,1fr);column-gap:6px}
+.ticket.cmp .lcast,.ticket.cmp .lsyn,.ticket.cmp .lprice{display:grid;grid-template-columns:4em minmax(0,1fr);column-gap:6px}
+/* おすすめの画面: あらすじの続き（100 字から先）だけを畳む */
+.ticket.cmp .lsynmore{display:inline}
+.ticket.cmp .lsynmore summary{display:inline;cursor:pointer;color:var(--curtain);font-size:12px;margin-left:4px;list-style:none}
+.ticket.cmp .lsynmore summary::-webkit-details-marker{display:none}
+.ticket.cmp .lsynmore[open] summary{display:none}
 .ticket.cmp .leadbox .cl{color:var(--mute);font-size:11.5px;padding-top:1px}
 .ticket.cmp .lcast .n{color:var(--mute)}
 .ticket.cmp .lcast .lrest{display:none}

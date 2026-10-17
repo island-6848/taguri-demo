@@ -153,7 +153,7 @@ def compose(template: str, sid: str, mode: str, *, rank: int | None = None, why:
             "interest": f'<span class="sn done">{IC.ico("check", 15)}</span>',
             "favourite": '<span class="wax" aria-hidden="true"></span>'}.get(mode, "")
     btns = {"recommend": RR.buttons(sid),
-            "interest": '<button class="wnb" data-btns-open="1">回答を直す</button>' + RR.buttons(sid, hidden=True),
+            "interest": RR.interest_buttons(sid),
             "owned": '<button class="wnb" data-btns-open="1">回答を直す</button>' + RR.buttons(sid, hidden=True),
             "favourite": RR.owned_button(sid)}.get(mode, "")
     answer = mode in ("recommend", "interest")

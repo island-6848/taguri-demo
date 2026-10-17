@@ -702,7 +702,7 @@ fixupSynClamp(document);
 // おすすめ理由の全部（4 本目からは畳む）・回答の帯。会期と料金・日程・出演と作り手の全員・
 // あらすじの全文と入れ口・公式サイトは「くわしく」の中へ移す。**画面の HTML は Render の
 // Python が組むので、ここで組み替える**（Render を起こし直さずにデモとサービスの両方へ届く）。
-const WHY_SHOWN = 3, CAST_LEAD = 5;
+const WHY_SHOWN = 3, CAST_LEAD = 5, SYN_LEAD = 100;
 function firstSentence(t) {
   t = (t || "").replace(/\s+/g, " ").trim();
   const m = t.match(/^.*?[。！？!?][」』）)]*/);
@@ -817,6 +817,9 @@ function compactTickets(root) {
     const main = t.querySelector(".main");
     if (!main) return;
     t.classList.add("cmp");
+    // おすすめの画面の一覧のカード: 折りたたみを付けず、料金の明細・出演の全員・あらすじの 100 字ほどを出す
+    // （起案者の指示 2026-10-17。あらすじの続きだけ畳む）
+    const noMore = recPage && t.classList.contains("recommend") && !t.closest(".rfind");
     const more = document.createElement("details");
     more.className = "more";
     more.innerHTML = "<summary><b>くわしく</b><span>会期・料金・出演の全員・あらすじの全文</span></summary>";
@@ -836,8 +839,9 @@ function compactTickets(root) {
       p.className = "lcast";
       // 6 人目からは隠しておき、「くわしく」を開いたらこの行のまま続きを出す（起案者の指示 2026-10-13
       // 「くわしく、を押したとき『ほか6名』が展開されて…名前たちが出るように」）
-      p.innerHTML = '<span class="cl">出演</span><span class="lv">' + E(names.slice(0, CAST_LEAD).join("、"))
-        + (names.length > CAST_LEAD ? '<span class="lrest">、' + E(names.slice(CAST_LEAD).join("、")) + "</span>"
+      const lead0 = noMore ? names.length : CAST_LEAD;   // おすすめの画面では「ほか」で省かない
+      p.innerHTML = '<span class="cl">出演</span><span class="lv">' + E(names.slice(0, lead0).join("、"))
+        + (names.length > lead0 ? '<span class="lrest">、' + E(names.slice(CAST_LEAD).join("、")) + "</span>"
           + '<span class="n">　ほか ' + (names.length - CAST_LEAD) + " 名</span>" : "") + "</span>";
       lead.appendChild(p);
       // 「くわしく」の中では出演の行を重ねて出さない（作り手の行と出典は残す）
@@ -861,7 +865,18 @@ function compactTickets(root) {
         p.className = "lsyn";
         // 「出演」と同じく見出しを付ける ── 無いと出演の続きと区別が付かない（起案者の指摘 2026-10-13
         // 「どこからがあらすじの1文目なのかわかりにくい」）
-        p.innerHTML = '<span class="cl">あらすじ</span><span class="lv">' + E(firstSentence(text)) + "</span>";
+        if (noMore) {
+          // 100 字ほどを出し、続きは畳む（文の切れ目が 80〜120 字にあればそこで切る）
+          const full = text.replace(/\s+/g, " ").trim();
+          let cut = SYN_LEAD;
+          const m = full.slice(80, 121).search(/[。！？!?]/);
+          if (m >= 0) cut = 80 + m + 1;
+          const head = full.slice(0, cut), rest = full.slice(cut);
+          p.innerHTML = '<span class="cl">あらすじ</span><span class="lv">' + E(head)
+            + (rest ? '<details class="lsynmore"><summary>続きを読む</summary>' + E(rest) + "</details>" : "") + "</span>";
+        } else {
+          p.innerHTML = '<span class="cl">あらすじ</span><span class="lv">' + E(firstSentence(text)) + "</span>";
+        }
         lead.appendChild(p);
       }
     }
@@ -881,10 +896,24 @@ function compactTickets(root) {
           + (stops > 1 ? '<span class="mt">ほか ' + (stops - 1) + " 会場</span>" : "") + "</span></span>" : "");
     }
     const sale = main.querySelector(".sale");
+    // 料金の明細（おすすめの画面。値段の幅だけでなく、券種ごとの値段を書く。発売日などの行は除く）
+    let priced = false;
+    if (noMore) {
+      const raw = main.querySelector(".when .price")?.textContent || "";
+      const rows = raw.split(/\n+/).map(x => x.replace(/\s+/g, " ").trim())
+        .filter(x => /円|無料/.test(x) && !/発売|受付|抽選|開始/.test(x));
+      if (rows.length) {
+        const p = document.createElement("p");
+        p.className = "lprice";
+        p.innerHTML = '<span class="cl">料金</span><span class="lv">' + E([...new Set(rows)].join("／")) + "</span>";
+        lead.appendChild(p);
+        priced = true;
+      }
+    }
     // 料金（1 枚あたり）を発売の札の隣に出す（起案者の指示 2026-10-14「チケット代金も…おすすめ画面において」）。
     // 金額はサーバーが料金の欄から読んだもの（render_recommend.price_range）。読めなかった公演には出さない
     const yen = yenOf(t);
-    if (yen && sale) {
+    if (yen && sale && !priced) {   // 明細を出したカードには、幅（〜円）を重ねて出さない
       const pr = document.createElement("span");
       pr.className = "yen";
       pr.textContent = yenLabel(yen);
@@ -942,7 +971,6 @@ function compactTickets(root) {
     }
     // 「くわしく」は「おすすめ理由」の上に置く（起案者の指示 2026-10-15「「くわしく」は「おすすめ理由」の上にして」）
     const act = main.querySelector(".act"), why0 = main.querySelector(":scope > .whyh:not(.top)");
-    const noMore = recPage && t.classList.contains("recommend") && !t.closest(".rfind");
     if (noMore) { /* 折りたたみを置かない */ }
     else if (why0) why0.before(more); else if (act) act.after(more); else main.appendChild(more);
     // 耳（日付の札）の代わりに、ポスターを切り取り線の左に立てる。順位はポスターの左上、

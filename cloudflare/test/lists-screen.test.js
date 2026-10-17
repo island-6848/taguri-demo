@@ -37,7 +37,9 @@ test('興味あり lists what was answered "interest", with the note; other user
     assert.match(html, /<h1>追いかけている 1 件<\/h1>/);
     assert.match(html, /<article class="ticket interest" data-stage="101"/);
     assert.match(html, /<span class="wnt">俳優甲 &amp; 乙<\/span>/);
-    assert.match(html, /回答を直す/);
+    // 興味ありの一覧は 興味なし・購入済・行けない を畳まずに（起案者 2026-10-17）。「興味あり」は出さない
+    assert.match(html, /<span class="btns" data-stage="101"><button data-v="nointerest">興味なし<\/button><button data-v="owned">購入済<\/button><button data-v="cantgo">行けない<\/button>/);
+    assert.doesNotMatch(html.slice(html.indexOf('data-stage="101"')), /data-v="interest"/);
     assert.match(html, /<nav class="idx" aria-label="月で切り替える">/);
     assert.match((await screen(env, b, 'interest')).body_html, /追いかけている 0 件/);
     // Not interested: out of 興味あり.
@@ -425,7 +427,7 @@ test('興味あり added from 開幕リマインド says so in place of おす�
     assert.match(card('101'), /<div class="whyh origin">[\s\S]*開幕リマインドからの追加<\/div>/);
     assert.doesNotMatch(card('101'), /おすすめ理由|<ul class="why">/);
     assert.match(card('101'), /<span class="wnt">ポスターがかわいい<\/span>/);
-    // 書いた理由は、ふだんは畳む（「回答を直す」で開く。起案者 2026-10-15）
+    // 書いた理由は、ふだんは畳む（「なぜ気になったか」で開く。起案者 2026-10-15・17）
     assert.match(card('101'), /<div class="wnw" hidden>/);
     assert.match(card('102'), /おすすめ理由/);
     assert.equal(sqlite.prepare("SELECT source FROM reaction WHERE stage_id='101' AND interest=1").get().source, 'reminder');

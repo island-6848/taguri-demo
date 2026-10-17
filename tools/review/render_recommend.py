@@ -843,12 +843,23 @@ def buttons(stage_id, *, hidden: bool = False) -> str:
     # チケットの絵に付けた呼び名であって、**利用者がふだん使う言葉ではない**
     # （起案者の指示・2026-08-24）。動き（`.torn`）はそのまま残す ── 形で結果が
     # 分かることと、その動きに名前を付けて画面に書くことは別である
+    return _band(stage_id, ("interest", "nointerest", "owned"), hidden=hidden)
+
+
+# 回答の名前（cloudflare/src/screens/cards.js の LABEL と同じ）。行けない は興味ありの一覧だけに出す（起案者 2026-10-17）
+ANSWER_LABEL = {"interest": "興味あり", "nointerest": "興味なし", "owned": "購入済", "cantgo": "行けない"}
+
+
+def _band(stage_id, values, *, hidden: bool = False) -> str:
     return (f'<span class="btns"{" hidden" if hidden else ""} data-stage="{E(stage_id)}">'
-            '<button data-v="interest">興味あり</button>'
-            '<button data-v="nointerest">興味なし</button>'
-            '<button data-v="owned">購入済</button>'
-            '<button data-v="cantgo">行けない</button>'
-            '<span class="said"></span></span>')
+            + "".join(f'<button data-v="{v}">{ANSWER_LABEL[v]}</button>' for v in values)
+            + '<span class="said"></span></span>')
+
+
+def interest_buttons(stage_id) -> str:
+    """興味ありの一覧: 押してある「興味あり」を除いた 3 つを畳まずに出す（起案者の指示 2026-10-17）。"""
+    return ('<button class="wnb" data-btns-open="1">なぜ気になったか</button>'
+            + _band(stage_id, ("nointerest", "owned", "cantgo")))
 
 
 def why_note(stage_id, note: str = "", *, open_: bool = False, ask: bool = False) -> str:
@@ -1449,7 +1460,10 @@ def ticket(c: dict, *, rank=None, mode: str = "recommend", note: str = "",
     # 「評価一覧」の「評価を押し直す」と同じ形にそろえる（起案者の指摘・2026-08-26）
     if mode == "favourite":
         act_btns = owned_button(c["stage_id"])
-    elif mode in ("interest", "owned"):
+    elif mode == "interest":
+        # 興味ありの一覧は、押してある「興味あり」を除いた 3 つを畳まずに出す（起案者の指示 2026-10-17）
+        act_btns = interest_buttons(c["stage_id"])
+    elif mode == "owned":
         # 答えた公演は「回答を直す」1 つ（起案者の指示 2026-10-14）。持っているも答えのうち
         act_btns = ('<button class="wnb" data-btns-open="1">回答を直す</button>'
                     + buttons(c["stage_id"], hidden=True))
