@@ -362,7 +362,7 @@ export async function peopleByKey(ctx, ws) {
 /** app._records_lede */
 export function recordsLede(d) {
   const skip = !d.nSkip ? '' : `<br>「行かなかった」と答えた ${d.nSkip} 件は、件数と図から外しています。`
-    + '「日記帳」には出さず、「設定」の「行かなかった公演」にまとめてあり、「やはり観た」で戻せます。';
+    + '「日記帳」には出さずに「設定」の「行かなかった公演」にまとめてあります。「やはり観た」で戻せます。';
   return `<p class="lede">観た記録は <b>${d.seen.length} 作品</b>です`
     + `（評価が付いているのは ${d.nRated} 件、感想が書いてあるのは `
     + `${d.nNotes} 件）。この画面の数字は、すべて手元のデータだけで作っています。`
@@ -371,16 +371,16 @@ export function recordsLede(d) {
 
 /** app._records_empty_note */
 export const RECORDS_EMPTY = '<p class="pnow">観た公演の記録がまだ無いので、図は出せません。'
-  + '<a href="/register?t=__TAGURI_TOKEN__">観劇記録を追加</a>で'
+  + '「<a href="/register?t=__TAGURI_TOKEN__">観劇記録を追加</a>」から'
   + '購入確認メールを取り込むか、観た公演を手で足すと、'
   + '<b>本数・評価の分かれ方・行った場所・時期</b>がここに出ます。</p>';
 
 /** app._check_line */
 const checkLine = n => !n
   ? '<b>いまのところ、読み取りを間違えたらしい記録はありません。</b>見つかったものは、この一覧の先頭に出します。'
-  : `購入確認メールからの読み取りに失敗した跡がある記録が ${n} 件あります`
-    + `（括弧が閉じていないなど）。<b>この ${n} 件を先に出しています。</b>`
-    + '直した内容は、次の取り込みと公演ページの検索にも効きます。';
+  : `購入確認メールの読み取りに失敗した跡（括弧が閉じていないなど）がある記録が ${n} 件あります。`
+    + `<b>この ${n} 件を先に出しています。</b>`
+    + '直した内容は次の取り込みと公演ページの検索にも使われます。';
 
 /**
  * app._works_body (GET /api/screen/works?y=&p=&w=&g=). Posters are not on the
@@ -434,15 +434,15 @@ async function worksScreen(params, ctx) {
     + (k ? `&amp;y=${quote(k)}` : '') + (pg > 1 ? `&amp;p=${pg}` : '') + (g && g !== 'work' ? `&amp;g=${g}` : '');
   const [show, now, foot] = paginate(hit, page, SHEET_TOP, pg => url(sel, pg, group), '件');
   const lead = sel === 'check' ? '読み取りに失敗した跡がある記録です。年をまたいで散らばるので、1 枚にまとめてあります。'
-    : sel === 'none' ? '上演日が分からない記録です。日付が無いと年で切れないので、1 枚にまとめてあります。'
+    : sel === 'none' ? '上演日が分からない記録です。日付が無いと年で分けられないので、1 枚にまとめてあります。'
       : `${sel} 年に観た記録です。`;
   const nCast = ws.filter(w => (people[w.work_key] || []).some(([r]) => r === '出演')).length;
   const gnote = group === 'work'
     ? '同じ作品は 1 行にまとめています。複数回観ていれば、日付は最初に観た日を出し、「N 回観た」と添えます。'
-    : '観た回ごとに 1 行で出しています（すべて表示は、畳まずに 1 回ずつ出す、という意味です）。'
+    : '観た回ごとに 1 行で出しています。「すべて表示」はまとめずに 1 回ずつ出すという意味です。'
       + '同じ作品を複数回観ていれば、行った日の数だけ並びます。'
-      + '評価・感想はどの行にも同じ値が付きます（回ごとには記録していません）。'
-      + '<b>「この回のメモ」だけは行ごとに別々に持てます</b>（推薦には使いません）。';
+      + '評価と感想は回ごとには記録していないので、どの行にも同じものが出ます。'
+      + '<b>「この回のメモ」だけは行ごとに別々に書けます</b>。このメモは推薦には使いません。';
   const labels = await stageLabels(ctx, show.map(w => w.stage_id));
   const files = await posterFiles(ctx, show);
   const scale = await scaleOf(ctx);
@@ -450,15 +450,14 @@ async function worksScreen(params, ctx) {
     {poster: posterHtml(w, files), editable: true, label: labels[w.stage_id] || '', scale})).join('');
   return {title, body_html: `<h1>日記帳</h1>
 ${recordsLede(d)}
-<p class="lede">1 件ごとに、日付・評価・感想が出ます。<b>感想は各行の「感想」の鉛筆から
-書けます</b>（欄から離れたときに保存されます）。<b>題名・上演日・劇場は、各行の
-「公演詳細を直す」から直せます。</b>ポスターを出せたのは 0 件、
-あらすじが出せたのは 0 件、出演者が出せたのは ${nCast} 件です。${gnote}
+<p class="lede">1 件ごとに、日付・評価・感想が出ます。<b>感想は各行の「感想」の鉛筆から書けます</b>。書いた感想は欄から離れたときに保存されます。
+<b>題名・上演日・劇場は、各行の「公演詳細を直す」から直せます。</b>ポスターを出せたのは 0 件、
+あらすじは 0 件、出演者は ${nCast} 件です。${gnote}
 ${checkLine(check.length)}</p>
 ${indexTabs(groups, group, g => url(piles.has(sel) ? sel : '', 1, g), '作品でまとめる・すべて表示を切り替える')}
 ${indexTabs(tabs, sel, k => url(k, 1, group), '年で切り替える')}
 <div class="idxsheet">
-<p class="mnow">${lead}${now}ほかの年は、上のインデックスで切り替えられます。</p>
+<p class="mnow">${lead}${now}上のインデックスで、ほかの年に切り替えられます。</p>
 ${rows}</div>
 ${foot}`};
 }

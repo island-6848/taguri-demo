@@ -76,7 +76,7 @@ function verdictPanel(works) {
   return `<section class="card">
 ${h2('star', '付けた評価の分布', `<span class="badge part">分母 ${tot} 作品</span>`)}
 <p class="lead"><b>基準は「自分に合っていたか」で、作品の出来ではありません。</b>
-${scaled ? '高い評価の側と低い評価の側を左右に分けて置いています。高い評価も低い評価も、おすすめの材料になります。' : '◎ 側と × 側を左右に分けて置いています。おすすめの材料に数えるのは <b>◎ だけ</b>です。'}</p>
+${scaled ? '高い評価と低い評価を、左右に分けて並べています。高い評価も低い評価も、おすすめの材料になります。' : '◎ 側と × 側を左右に分けて置いています。おすすめの材料に数えるのは <b>◎ だけ</b>です。'}</p>
 <div class="dbar"><svg viewBox="0 0 100 26" width="100%" height="26" preserveAspectRatio="none"
  role="img" aria-label="評価の分布">${segs.join('')}</svg>
 <div class="dlabs">${labs.join('')}</div></div>
@@ -148,7 +148,7 @@ const waitNote = (key, note) => `<div class="wnote">`
   + `<span class="said"></span></div>`;
 /** impressions.pending_html */
 function pendingHtml(rows, nAll, top = '◎') {
-  const more = nAll > rows.length ? `残りは次の ${nAll - rows.length} 件です。` : '';
+  const more = nAll > rows.length ? `残りの ${nAll - rows.length} 件は次に出します。` : '';
   const items = rows.map(w => waitShell(w, `<span class="wt">${e2(w.title)}</span>`
     + `<span class="wm">${e2(jdate(w.first_date))}`
     + ((w.times || 1) > 1 ? `・${w.times} 回観た` : '')
@@ -190,7 +190,7 @@ ${hiddenIn}
 <details class="pbox">
 <summary>${ico('search', 15)}会場で絞り込む ── いまは<b>${E(now)}</b></summary>
 <p class="lead">会場は<b>いくつでも同時に選べます</b>。選んだ会場で観た記録だけを表示します。
-数字は、いま選んでいる評価・年の中でその会場の件数です。</p>
+数字はいま選んでいる評価と年のうち、その会場で観た件数です。</p>
 <div class="pchips">${chips}</div>
 <div class="pfoot"><button type="submit">${ico('search')}この会場で絞り込む</button>
 <a class="pall" href="${E(action)}?t=__TAGURI_TOKEN__${hiddenQs}">すべての会場に戻す</a></div>
@@ -282,14 +282,14 @@ async function rateScreen(params, ctx) {
   const scale = await scaleOf(ctx);
   const rows = show.map(w => recRow(w, {poster: posterHtml(w, files), rateReopen: true, scale})).join('');
   return {title, body_html: `<h1>評価一覧 ── 付けた ${rated.length} 件</h1>
-${scaled ? `<p class="lede">付けた評価を${stars ? '星の数' : '記号'}ごとに分けています。<b>評価の付け方は自分の尺度で構いません。</b>`+'おすすめは、自分の付けた評価の中での高い・低いで読みます。評価は作品ごとに1つです。' : '<p class="lede">付けた評価を◎○△×ごとに分けています。<b>基準は「自分に合っていたか」で、作品の出来ではありません。</b>評価は作品ごとに1つです。おすすめは◎を付けた公演の作り手から作るので、'}<b>ここで答えると次のおすすめが変わります。</b>題名・日付・会場そのものを直したいときは、<a href="/records/works?t=__TAGURI_TOKEN__">日記帳</a>で直せます。</p>
+${scaled ? `<p class="lede">付けた評価を${stars ? '星の数' : '記号'}ごとに分けています。<b>評価の付け方は自分の尺度で構いません。</b>`+'おすすめは、自分が付けた評価の中で高いか低いかを見て作ります。評価は作品ごとに1つです。' : '<p class="lede">付けた評価を◎○△×ごとに分けています。<b>基準は「自分に合っていたか」で、作品の出来ではありません。</b>評価は作品ごとに1つです。おすすめは◎を付けた公演の作り手から作るので、'}<b>ここで評価を押し直すと、次のおすすめが変わります。</b>題名・日付・会場は<a href="/records/works?t=__TAGURI_TOKEN__">日記帳</a>で直せます。</p>
 ${verdictFig}
 ${chips}
 ${ytabs}
 ${vform}
 <div class="idxsheet">
 <p class="mnow"><b>${E(lab)}</b>を付けた作品を、観た日の新しい順に ${now}
-ほかの評価は、上のインデックスで切り替えられます。
+上のインデックスで、ほかの評価に切り替えられます。
 評価をまたいで続けて読むときは<a href="/records/works?t=__TAGURI_TOKEN__">日記帳</a>です。</p>
 ${rows}</div>
 ${foot}`, note_tags: noteTags(b.all)};
@@ -308,7 +308,7 @@ async function unratedScreen(_params, ctx) {
   const scale = await scaleOf(ctx);
   const rows = unrated.map(w => recRow(w, {poster: posterHtml(w, files), rateAlways: true, editable: true, label: labels[w.stage_id] || '', scale})).join('');
   return {title: '未評価', body_html: `<h1>未評価 ── ${unrated.length} 件</h1>
-<p class="lede">評価がまだ付いていない記録です。<b>上演日が分からない記録も含みます。</b>日付がないと上演が終わったか判定できないので、「まだ答えていない」には出てきません。${skipped}<br>
+<p class="lede">評価がまだ付いていない記録です。<b>上演日が分からない記録も含みます。</b>日付がないと上演が終わったかどうかを判定できないので、「まだ答えていない」には出てきません。${skipped}<br>
 <b>実際には観ていない公演が混じっていたら、各行の「公演詳細を直す」から外せます。</b>券を買って行かなかった公演と、舞台ではない記録は、そこで書き分けられます。どちらも、あとで戻せます。</p>
 ${rows || '<p class="empty">評価が付いていない記録はありません。</p>'}`, note_tags: noteTags(b.all)};
 }

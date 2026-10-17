@@ -200,7 +200,7 @@ const HAND_FIELDS = [
   ['出演', '出演者', '1 行に 1 名でも、読点や中黒で区切っても構いません'],
   ['演出', '演出', ''],
   ['脚本', '脚本・原作・翻訳', ''],
-  ['スタッフ', 'そのほかの作り手', '「美術：〇〇」のように役職を添えると、役職ごとに数えられます。役職が分からないものは名前だけで構いません'],
+  ['スタッフ', 'そのほかの作り手', '「美術：〇〇」のように役職を添えると、役職ごとに数えられます。役職が分からない人は、名前だけで構いません'],
 ];
 
 /** app._hand_html */
@@ -257,7 +257,7 @@ export function editHtml(w, label) {
   if (sid && w.auto_linked) {
     linkNote = '<b>題名と観た日から、観た公演を見つけてつなげました。</b>出演者やあらすじは、この公演のものを使っています。ちがう公演だったら「つながりを外す」を押して、探し直してください。';
   } else if (sid) {
-    linkNote = '観た公演の出演者・作り手・あらすじを使っています。おすすめにも、この情報が生きます。';
+    linkNote = '観た公演の出演者・作り手・あらすじを使っています。この情報はおすすめにも使います。';
   } else if (handCreditCount((w.hand || {}).fields || {})) {
     linkNote = '観た公演はまだ見つかっていませんが、下に手で入れた出演者・作り手を使っています。公演が見つかったら、上の欄で選ぶとあらすじも入ります。';
   } else {
@@ -275,7 +275,7 @@ export function editHtml(w, label) {
     + `<span class="said"></span><div class="lk-sug"></div>`
     + '</div>';
   const pnote = sid
-    ? '観た公演のポスターは、まだ手元にありません（公演の情報を取得するときに、一緒に保存します）。'
+    ? '観た公演のポスターはまだ手元にありません。公演の情報を取得するときに、ポスターも一緒に保存します。'
     : 'ポスターはまだありません。上の欄で観た公演を選ぶと、その公演のポスターが出ます。';
   const posterRow = `<div class="ed-pos"><span class="ed-lk">ポスター</span>`
     + `<span class="ed-pv"><span class="ed-pn"></span></span>`
@@ -286,7 +286,7 @@ export function editHtml(w, label) {
   try { const v = JSON.parse(w.cast_off || '[]'); nOff = Array.isArray(v) ? v.length : 0; } catch { nOff = 0; }
   const castRow = !sid ? '' : `<div class="ed-cast" data-work="${key}"><span class="ed-lk">観た回の出演者</span>`
     + `<button data-cast-open="${key}">Wキャスト・休演で出ていなかった人を選ぶ</button>`
-    + `<span class="ed-m">${nOff ? `いま ${nOff} 人を「観た回に出ていなかった」にしています。` : 'Wキャストの公演は、観た回に出ていなかった人のチェックを外すと、おすすめがその人の好みとして数えなくなります。'}</span>`
+    + `<span class="ed-m">${nOff ? `いま ${nOff} 人を「観た回に出ていなかった」にしています。` : 'Wキャストの公演では、観た回に出ていなかった人のチェックを外すと、おすすめはその人を好みに数えなくなります。'}</span>`
     + '<span class="said"></span><div class="ed-castl"></div></div>';
   return `<details class="editor" data-work="${key}">
 <summary>記録を直す${mg.length ? `・まとめた ${mg.length} 件` : ''}</summary>

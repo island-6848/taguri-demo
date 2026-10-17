@@ -107,8 +107,8 @@ export function scaleCardHtml(scale, head = `<summary><h2>評価の付け方</h2
   const opt = s => `<label class="pchip${s === scale ? ' on' : ''}"><input type="radio" name="rscale" value="${s}"${s === scale ? ' checked' : ''}>`
     + `<span class="pl">${SCALE_LABEL[s]}</span></label>`;
   return `<details class="card">${head}
-<p class="lead">観た公演に付ける評価の形を選べます。<b>段階の意味は自分の尺度で構いません。</b>おすすめは、自分の付けた評価の中での高い・低いで読むので、どの形でも同じように効きます。<br>
-<b>変えても、これまでに付けた評価はそのまま残ります</b>（付けたときの形で表示します）。</p>
+<p class="lead">観た公演に付ける評価の形を選べます。<b>段階の意味は自分の尺度で決めて構いません。</b>おすすめは自分が付けた評価の中で高いか低いかを見て作るので、どの形でも同じように働きます。<br>
+<b>形を変えても、これまでに付けた評価はそのまま残ります。</b>表示も付けたときの形のままです。</p>
 <form class="pfil" id="scale-setting" onsubmit="return false">
 <p class="pgrp"><b>図形</b></p><div class="pchips">${['marks2', 'marks3', 'marks4'].map(opt).join('')}</div>
 <p class="pgrp"><b>星</b></p><div class="pchips">${['stars5', 'stars11'].map(opt).join('')}</div>

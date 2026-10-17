@@ -4756,6 +4756,19 @@
    "verifies": []
   },
   {
+   "id": "q-rate-diary-copy-mismatch",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-17",
+   "title": "評価一覧・未評価・日記帳の文が、画面の実際の名前・動きと食い違っている所がある",
+   "sources": [
+    "cloudflare/src/screens/rate.js",
+    "cloudflare/src/screens/diary.js",
+    "cloudflare/src/screens/row.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "q-rate-limiting",
    "type": "question",
    "status": "answered",
