@@ -3593,9 +3593,10 @@ def weight_form(user_id: str, d: dict) -> str:
                f'「すべて「ふつう」に戻す」を押すと戻ります。</p>')
     # **目盛りの意味は 1 か所にだけ書く。** 7 行それぞれに 5 つの言葉を並べると、
     # 読む量が増えるばかりで、どの行を動かすかの判断には使われない
-    scale = ('<div class="wscale"><span>← ' + E(labels["off"]) + "</span>"
-             + f'<span class="wmid">{E(labels[DEFAULT_STEP])}（既定）</span>'
-             + "<span>" + E(labels["max"]) + " →</span></div>")
+    # 目盛りの言葉はつまみの真上だけに置く（2026-10-17）。行と同じ並びの、つまみの列にだけ字を入れる
+    scale = ('<div class="wscale" aria-hidden="true"><span class="wl"></span><span class="ws"><span>← ' + E(labels["off"]) + "</span>"
+             + f'<span class="wmid">{E(labels[DEFAULT_STEP])}</span>'
+             + "<span>" + E(labels["max"]) + ' →</span></span><span class="wv"></span></div>')
     return f"""<div class="wfil">
 <details class="pbox wbox" id="weights">
 <summary>{IC.ico("light", 15)}おすすめの効かせ方を変える ── いまは<b>{E(now)}</b></summary>

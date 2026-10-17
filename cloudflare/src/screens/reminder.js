@@ -335,7 +335,8 @@ export async function reminderScreen(params, ctx) {
     + `<ul class="dglist">${unknown.map(r => row(r, ctx.today, poster, detail, 'この行の会場')).join('')}</ul></details>`;
   const body = `<h1>開幕リマインド ── 見逃していませんか</h1>
 <p class="lede"><b>初日が近い公演を、答えたかどうかに関わらず全部出します。</b>「興味あり」も「興味なし」も押さないうちに開幕してしまうのが、いちばんの見逃しだからです。未回答の行は、その場で答えられます。</p>
-${prefForm(counts, prefs, '/recommend/reminder', note, {w: week}, regionCounts(wr.map(r => ({key: r.stage_id || r.title, prefs: [r.pref]}))))}
+<p class="fgh">${ico('search', 15)}<b>表示の絞り込み</b><span>初日が近い公演のうち、見る分だけに絞ります</span></p>
+<div class="fil2 narrow">${prefForm(counts, prefs, '/recommend/reminder', note, {w: week}, regionCounts(wr.map(r => ({key: r.stage_id || r.title, prefs: [r.pref]}))))}</div>
 ${FOLD_STYLE}
 ${unknownHtml ? html.replace('</section>\n<section class="dgcard">', `${unknownHtml}</section>\n<section class="dgcard">`) : html}`;
   return {title: '開幕リマインド', body_html: body};

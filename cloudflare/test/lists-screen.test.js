@@ -58,6 +58,16 @@ test('a registered name brings its stages to お気に入り and out of おす�
     const fav = (await screen(env, a, 'favourites')).body_html;
     assert.match(fav, /<h1>お気に入り ── 新着 1 件<\/h1>/);
     assert.match(fav, /<article class="ticket favourite" data-stage="101"/);
+    // 場所はこのページだけの絞り込み（保存しない）。当たらない県では 0 件と、全国に戻す案内
+    const pin = /<span class="pl">([^<]+)<\/span><span class="pn">1<\/span>/.exec(fav);
+    assert.ok(pin, 'the stage counts under its prefecture');
+    const here = (await screen(env, a, 'favourites', '?f=1&pref=' + encodeURIComponent(pin[1]))).body_html;
+    assert.match(here, /<article class="ticket favourite" data-stage="101"/);
+    const far = pin[1] === '沖縄県' ? '北海道' : '沖縄県';
+    const none = (await screen(env, a, 'favourites', '?f=1&pref=' + encodeURIComponent(far))).body_html;
+    assert.doesNotMatch(none, /data-stage="101"/);
+    assert.match(none, new RegExp(`<b>${far}</b>で観られるお気に入りの公演はありません（全国では 1 件）`));
+    assert.match((await screen(env, a, 'favourites')).body_html, /data-stage="101"/);
     // 理由の欄は出さず、当たった名前をハッシュタグで並べる（起案者 2026-10-15）
     assert.match(fav, /<div class="favtags"><a class="ftag" href="\/recommend\/favourites\?t=__TAGURI_TOKEN__&amp;n=%E4%BF%B3%E5%84%AA%E7%94%B2">#俳優甲<\/a><\/div>/);
     assert.doesNotMatch(fav, /なぜお知らせしているか/);
@@ -79,7 +89,11 @@ test('a registered name brings its stages to お気に入り and out of おす�
     assert.equal((await step(env, a, {post: '/api/favourite', body: {action: 'add', kind: '星', name: 'x'}})).status, 400);
     // 出さない語
     assert.equal((await step(env, a, {post: '/api/decline', body: {action: 'add', word: 'バレエ'}})).status, 200);
-    assert.match((await screen(env, a, 'favourites')).body_html, /出さない語 <b>1 語<\/b>[\s\S]*「バレエ」/);
+    // 出さない語 is set on おすすめ only; お気に入り shows 登録した名前 (選び方) and 場所 (表示の絞り込み).
+    const favHtml = (await screen(env, a, 'favourites')).body_html;
+    assert.doesNotMatch(favHtml, /id="declined"/);
+    assert.match(favHtml, /<div class="fil2 tune"><details class="pbox" id="names"[\s\S]*<div class="fil2 narrow"><form class="pfil" method="get" action="\/recommend\/favourites">/);
+    assert.match((await screen(env, a, 'recommend')).body_html, /出さない語 <b>1 語<\/b>[\s\S]*「バレエ」/);
   } finally { sqlite.close(); }
 });
 

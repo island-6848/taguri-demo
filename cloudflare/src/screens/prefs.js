@@ -89,6 +89,11 @@ export function prefQs(params) {
   return '&amp;f=1' + PREFS.filter(p => params.getAll('pref').includes(p)).map(p => `&amp;pref=${encodeURIComponent(p)}`).join('');
 }
 
+export function prefHidden(params) {
+  if (!params.has('f')) return '';
+  return '<input type="hidden" name="f" value="1">' + PREFS.filter(p => params.getAll('pref').includes(p)).map(p => `<input type="hidden" name="pref" value="${E(p)}">`).join('');
+}
+
 /** serve.on_pref_setting: save the default and use it now. */
 export async function prefSettingAction(b, ctx) {
   const prefs = b.prefs;

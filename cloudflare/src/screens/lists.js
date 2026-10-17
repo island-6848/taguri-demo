@@ -18,7 +18,7 @@ import {E, ValueError} from './py.js';
 import {compose, cardTemplates, posterHtml, mytixHtml, preNote} from './cards.js';
 import {titleKey} from './works.js';
 import {indexTabs} from './rate.js';
-import {PREFS} from './prefs.js';
+import {PREFS, prefsFor, prefForm, prefQs, prefHidden, regionCounts} from './prefs.js';
 import {CONTENT_AXES} from '../recommend.js';
 import {rankedGroups, reasonRows, withTour} from './recommend.js';
 import {tourBlock} from './schedule.js';
@@ -29,7 +29,7 @@ const DECLARED_KEY = 'declared', DECLINED_KEY = 'declined';
 // q-kind-reason-off）。'#原作\tオリジナル' の形で控え、点数にも理由にも使わない。公演そのものは消さない
 export const KIND_OFF_KEY = 'kind_off', KIND_OFF_MAX = 100;
 const LIST_TOP = 8;
-const ICO = {star: 'M12 3.8l2.5 5.1 5.6.8-4 3.9 1 5.6-5.1-2.7-5.1 2.7 1-5.6-4-3.9 5.6-.8z', flag: 'M5 21V4h13l-2.5 4.5L18 13H5'};
+const ICO = {search: 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM16.2 16.2 21 21', star: 'M12 3.8l2.5 5.1 5.6.8-4 3.9 1 5.6-5.1-2.7-5.1 2.7 1-5.6-4-3.9 5.6-.8z', flag: 'M5 21V4h13l-2.5 4.5L18 13H5'};
 const ico = name => `<svg class="ico " viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${ICO[name]}"/></svg>`;
 /** recommend2.nz */
 export const nz = s => String(s ?? '').normalize('NFKC').replaceAll(' ', '').replaceAll('　', '').toLowerCase();
@@ -323,7 +323,7 @@ export async function buckets(ctx, {catalogue = false} = {}) {
       interest: rs.find(x => x.interest !== undefined)?.interest};
     const pick = sids.find(s => react.has(s)) || m.stage_id;
     const pre = sids.map(s => react.get(s)?.note_pre).find(Boolean) || '';
-    const row = {...(group.find(v => v.stage_id === pick) || m), sids, note: react.get(pick)?.note || '', note_pre: pre, src: react.get(pick)?.src || '',
+    const row = {...(group.find(v => v.stage_id === pick) || m), sids, prefs: [...new Set(group.map(v => v.pref).filter(Boolean))], note: react.get(pick)?.note || '', note_pre: pre, src: react.get(pick)?.src || '',
       why: sids.map(s => react.get(s)?.why).find(Boolean) || null,
       at: sids.map(x => react.get(x)?.at || '').sort().at(-1) || ''};
     if (r.owned === 1) {
@@ -365,16 +365,16 @@ export function sortRows(rows, key) {
 }
 const sortOf = (params, keys) => { const k = params.get('s') || 'start'; return keys.includes(k) ? k : 'start'; };
 /** The 並べ替え pull-down (a GET form: app.js turns it into a screen change). */
-function sortForm(action, sort, keys) {
+function sortForm(action, sort, keys, keep = '') {
   const opts = keys.map(k => `<option value="${k}"${k === sort ? ' selected' : ''}>${E(SORTS[k])}</option>`).join('');
-  return `<form class="sortf" method="get" action="${action}"><input type="hidden" name="t" value="__TAGURI_TOKEN__">`
+  return `<form class="sortf" method="get" action="${action}"><input type="hidden" name="t" value="__TAGURI_TOKEN__">${keep}`
     + `<label>並べ替え <select name="s" onchange="this.form.requestSubmit ? this.form.requestSubmit() : this.form.submit()">${opts}</select></label>`
     + '<noscript><button type="submit">並べ替える</button></noscript></form>';
 }
 const monthKey = r => (r.start || '').slice(0, 7);
 const monthLabel = m => { const [y, mo] = m.split('-'); return mo ? `${y} 年 ${Number(mo)} 月` : '上演日が分からない公演'; };
 /** render_recommend.month_pick */
-export function monthPick(rows, sel, page, action, sort = 'start') {
+export function monthPick(rows, sel, page, action, sort = 'start', keep = '') {
   const counts = {};
   for (const c of rows) { const k = monthKey(c) || 'none'; counts[k] = (counts[k] || 0) + 1; }
   const months = Object.keys(counts).filter(k => k !== 'none').sort();
@@ -385,7 +385,7 @@ export function monthPick(rows, sel, page, action, sort = 'start') {
   page = Math.min(Math.max(page, 1), last);
   const show = hit.slice((page - 1) * LIST_TOP, page * LIST_TOP);
   const link = `${action}?t=__TAGURI_TOKEN__`;
-  const url = (m, pg) => link + (m ? `&amp;m=${E(m)}` : '') + (pg > 1 ? `&amp;p=${pg}` : '') + (sort !== 'start' ? `&amp;s=${E(sort)}` : '');
+  const url = (m, pg) => link + (m ? `&amp;m=${E(m)}` : '') + (pg > 1 ? `&amp;p=${pg}` : '') + (sort !== 'start' ? `&amp;s=${E(sort)}` : '') + keep;
   const tabs = indexTabs([['', 'すべて', rows.length], ...months.map(m => [m, monthLabel(m === 'none' ? '' : m), counts[m]])],
     sel, m => url(m, 1), '月で切り替える');
   const where = !sel ? E(SORTS[sort] || SORTS.start) : `<b>${E(monthLabel(sel === 'none' ? '' : sel))}</b>の ${hit.length} 件`;
@@ -648,36 +648,54 @@ ${past}`;
   return {title: `#${name}`, body_html: body};
 }
 
+const FAV_PREF_NOTE = '都道府県は<b>いくつでも同時に選べます</b>。選んだ県の会場で観られるお気に入りの公演だけを出します（ツアーは、どこか 1 会場が選んだ県にあれば出します）。数字は、その県で観られる件数です。<b>選ばなければ全国です。</b>この絞り込みはこのページの中だけで効きます。いつも使う県は<a href="/settings?t=__TAGURI_TOKEN__">設定</a>で保存できます。';
 export async function favouritesScreen(params, ctx) {
   const b = await buckets(ctx, {catalogue: true});
   const named = String(params.get('n') || '').trim().slice(0, 80);
   if (named) return nameView(params, ctx, b, named);
   const nCat = Number((await ctx.db.prepare("SELECT v FROM rec_meta WHERE k='catalogue_upcoming'").first().catch(() => null))?.v || 0);
   const keys = ['start', 'end', 'title', 'pref'], sort = sortOf(params, keys);
-  const favs = sortRows([...b.favourites, ...b.favOwned], sort), dec = b.declared;
-  const [show, mfil, mfoot] = monthPick(favs, params.get('m') || '', qInt(params, 'p'), '/recommend/favourites', sort);
+  // 場所の絞り込みは結果の絞り込み（起案者の指摘 2026-10-17）。そのページの中だけで効き、既定は設定の県
+  const prefs = await prefsFor(params, ctx);
+  const prefsOf = r => (r.prefs && r.prefs.length ? r.prefs : [r.pref].filter(Boolean));
+  const allFavs = sortRows([...b.favourites, ...b.favOwned], sort), dec = b.declared;
+  const pcounts = {};
+  for (const r of allFavs) for (const p of new Set(prefsOf(r))) pcounts[p] = (pcounts[p] || 0) + 1;
+  const favs = prefs.length ? allFavs.filter(r => prefsOf(r).some(p => prefs.includes(p))) : allFavs;
+  const [show, mfil, mfoot] = monthPick(favs, params.get('m') || '', qInt(params, 'p'), '/recommend/favourites', sort, prefQs(params));
   const kinds = KINDS.map(k => `<option value="${E(k)}">${E(k)}</option>`).join('');
   const tags = KINDS.flatMap(k => (dec[k] || []).map(n => `<span class="tag" data-kind="${E(k)}" data-name="${E(n)}">`
     + `<span class="wax" aria-hidden="true">${E(Array.from(n)[0] || '')}</span><span class="tgn">${E(k)}「${E(n)}」</span>`
     + '<button data-fav="remove">✕</button></span>')).join('');
-  const keep = !favs.length;
+  const keep = !allFavs.length;
   const n = KINDS.reduce((s, k) => s + (dec[k] || []).length, 0);
-  const tools = `<div class="fil2"><details class="pbox" id="names"${keep ? ' open' : ''}>`
+  // 登録した名前は、この一覧に出る公演そのものを決める。場所・料金は出てきた公演の絞り込み。2 段に分ける
+  // （起案者の指示 2026-10-17。出さない語・使わない理由はおすすめの設定なので、おすすめの画面に置く）
+  const tools = `<p class="fgh">${ico('star', 15)}<b>お気に入りに出す名前</b><span>登録した名前が、この一覧に出る公演そのものを決めます</span></p>`
+    + `<div class="fil2 tune"><details class="pbox" id="names"${keep ? ' open' : ''}>`
     + `<summary>${ico('star')}登録した名前 <b>${n} 件</b> ── 足す・外す</summary>`
     + '<p class="lead">観た記録に無い名前も登録できます。おすすめは ◎ を付けた公演の作り手からしか作れないので、まだ観たことのない劇団や、人から聞いただけの名前は、ここから登録してください。'
     + '<b>表記ゆれ（漢字とカタカナ、送り仮名の違いなど）は自動では気づけません。</b>ありそうなときは、両方の書き方をそれぞれ登録してください。</p>'
     + `<div class="fav-add"><select id="fav-kind">${kinds}</select> <input id="fav-name" type="text" placeholder="団体名・人名・作品名・題材" size="26"> <button data-fav="add">登録する</button>`
-    + `<span class="said"></span></div><div class="tags">${tags}</div></details>${declinedBox(b.words)}${kindOffBox(await loadKindOff(ctx))}</div>`;
+    + `<span class="said"></span></div><div class="tags">${tags}</div></details></div>`
+    + (allFavs.length ? `<p class="fgh">${ico('search', 15)}<b>表示の絞り込み</b><span>出てきた公演のうち、見る分だけに絞ります</span></p>`
+      + `<div class="fil2 narrow">${prefForm(pcounts, prefs, '/recommend/favourites', FAV_PREF_NOTE, sort !== 'start' ? {s: sort} : {},
+        regionCounts(allFavs.map(r => ({key: r.stage_id, prefs: prefsOf(r)}))))}</div>` : '');
   // 当たった名前（「人「俳優甲」」→「俳優甲」）をハッシュタグにする。理由の欄は出さない（起案者の指示 2026-10-15）
   const why = r => ({owned: Boolean(r.owned), tags: [...new Set(r.a.map(w => (/「(.*)」$/.exec(w) || [, w])[1]))]});
-  const list = favs.length
+  const where = prefs.length <= 3 ? prefs.join('・') : `${prefs[0]}ほか ${prefs.length - 1} 県`;
+  const list = !favs.length && allFavs.length
+    ? `<p class="empty"><b>${E(where)}</b>で観られるお気に入りの公演はありません（全国では ${allFavs.length} 件）。ほかの都道府県を選ぶか、全国に戻してください。</p>`
+    : favs.length
     ? `<p class="lead"><b>${E(SORTS[sort])}</b>に並んでいます。順位は付けていません。観ると決めたら、公式サイトから券を求めてください。<b>券を取ったら「購入済みにする」を押してください。</b>この一覧には「購入済み」の印を付けて残し、<a href="/tickets?t=__TAGURI_TOKEN__">購入済み公演</a>にも入ります（行く日はそちらで入れられます）。</p>`
       + `<div class="tickets">${(await cards(ctx, show, 'favourite', why)).join('')}</div>`
     : `<p class="empty">登録した名前に当たる公演は、いまたぐりが集めている公演${nCat ? `（CoRich・ステイジーズカレンダーから毎日集めている、これからの公演 ${nCat} 件）` : ''}の中にはありません。<b>新しい公演が集まると、毎日の更新のあと、ここに出ます。</b>表記ゆれ（漢字とカタカナなど）があるときは、別の書き方も登録してみてください。</p>`;
+  const pnow = prefs.length && allFavs.length ? `<p class="pnow"><b>${E(where)}</b>／全 ${allFavs.length} 件中 ${favs.length} 件を表示中</p>` : '';
   const body = `<h1>お気に入り ── 新着 ${favs.length} 件</h1>
+${pnow}
 <p class="lede">登録した名前の公演を、件数の制限なしにすべて出します。順位は付けていません。件数が多いので、上演月ごとに分けています。</p>
 ${tools}
-${favs.length ? sortForm('/recommend/favourites', sort, keys) : ''}
+${favs.length ? sortForm('/recommend/favourites', sort, keys, prefHidden(params)) : ''}
 ${mfil}
 ${list}
 ${mfoot}`;

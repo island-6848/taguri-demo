@@ -23,7 +23,7 @@ import {castOffOf} from './diary.js';
 import {compose, cardTemplates, posterHtml} from './cards.js';
 import {PREFS, prefForm, prefsFor, regionCounts} from './prefs.js';
 export {prefForm, prefsFor};
-import {loadDeclared, loadDeclined, loadKindOff, nameHits, KINDS, reactionsOf, declinedBox} from './lists.js';
+import {loadDeclared, loadDeclined, loadKindOff, nameHits, KINDS, reactionsOf, declinedBox, kindOffBox} from './lists.js';
 
 export const TOP = 15;
 const TIPS = `<section class="card tips">
@@ -422,7 +422,7 @@ export async function recommendScreen(params, ctx) {
   const body = `<h1>${E(head)}</h1>
 ${lede}
 ${tips}<p class="fgh">${ico('light', 15)}<b>おすすめの選び方</b><span>好みの計算そのものを変えます（どの公演が選ばれるかが変わります）</span></p>
-<div class="fil2 tune">${weightForm(data.weights || {}, data.w_counts || {})}${declinedBox(await loadDeclined(ctx))}</div>
+<div class="fil2 tune">${weightForm(data.weights || {}, data.w_counts || {})}${declinedBox(await loadDeclined(ctx))}${kindOffBox(await loadKindOff(ctx))}</div>
 <p class="fgh">${ico('search', 15)}<b>表示の絞り込み</b><span>選ばれたおすすめのうち、見る分だけに絞ります（順位は変わりません）</span></p>
 <div class="fil2 narrow">${prefForm(prefCounts(data.groups), prefs, '/recommend', '', {}, regionCounts(data.groups.map(g => ({key: g.stage_id, prefs: g.venues.map(v => v.pref)}))))}</div>
 ${cards.join('')}

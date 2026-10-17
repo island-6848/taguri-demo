@@ -534,6 +534,8 @@ body{font-family:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",YuGothic,syst
 .ticket.cmp .sale .yen{margin:0;white-space:nowrap;font-size:12.5px;color:var(--ink);font-variant-numeric:tabular-nums}
 .yrow{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px;margin:8px 0 4px}
 .yrow .ysl{width:100%;accent-color:var(--acc);min-height:32px}
+.yrow .ysc{grid-column:2;display:flex;justify-content:space-between;font-size:11px;color:var(--mute);margin-top:-6px;white-space:nowrap}
+@media(max-width:560px){.yrow{grid-template-columns:minmax(0,1fr) auto;row-gap:2px}.yrow .wl{grid-column:1/-1}.yrow .ysc{grid-column:1}}
 .yfil .yenn{margin:6px 0 0;color:var(--mute);font-size:12px}
 .yfil .yenn:empty{display:none}
 /* 絞り込みの 3 つの札を横 1 列に（app.js の filterRow）。押した 1 つだけを下に全幅で開く */
@@ -1029,3 +1031,5 @@ a.pill.buy .go:not(#_){font-size:12px;margin-left:2px}
 .fgh svg.ico{align-self:center;color:var(--mute)}
 .fgh span{color:var(--mute);font-size:12px}
 .fil2.tune{margin-bottom:4px}
+/* 段の中が 1 つだけ（開幕リマインドの場所・お気に入りの登録した名前など）なら全幅に */
+.fil2:not(.tabbed)>:only-child{grid-column:1/-1}

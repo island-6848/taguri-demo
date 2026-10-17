@@ -754,13 +754,24 @@ function priceFilter(el) {
     + '<p class="lead">いちばん安い券がこの金額までの公演を出します。料金の分からない公演は出したままにします。</p>'
     + '<div class="yrow"><span class="wl">1 枚の料金</span>'
     + '<input class="ysl" type="range" min="0" max="' + (YEN_STEPS.length - 1) + '" step="1" value="' + idx + '" aria-label="1 枚の料金の上限">'
-    + '<span class="wv yv"></span></div>'
-    + '<div class="wscale"><span>← ' + yenStepLabel(YEN_STEPS[0]) + '</span><span>' + yenStepLabel(0) + ' →</span></div>'
+    + '<span class="wv yv"></span>'
+    // 目盛りの言葉はつまみの真下の列だけに（起案者の指摘 2026-10-17「関係ないところまで幅広く広げすぎてる」）
+    + '<span class="ysc" aria-hidden="true"><span>← ' + yenStepLabel(YEN_STEPS[0]) + '</span><span>' + yenStepLabel(0) + ' →</span></span></div>'
     + '<p class="yenn" role="status"></p></details>';
   // 料金は結果の絞り込みなので「表示の絞り込み」の段へ（起案者の指摘 2026-10-17。効かせ方・出さない語とは分ける）
-  const fil = el.querySelector(".fil2.narrow") || el.querySelector(".fil2");
-  if (fil) fil.appendChild(box);
-  else { const h1 = el.querySelector("h1"); if (!h1) return; h1.after(box); }
+  let fil = el.querySelector(".fil2.narrow") || el.querySelector(".fil2");
+  if (!fil) {
+    // 絞り込みの欄が無い画面（興味あり・購入済み公演など）でも、同じ「表示の絞り込み」の見出しの下に置く
+    const h1 = el.querySelector("h1"); if (!h1) return;
+    const lede = h1.nextElementSibling && h1.nextElementSibling.matches(".lede, .pnow") ? h1.nextElementSibling : h1;
+    const head = document.createElement("p");
+    head.className = "fgh";
+    head.innerHTML = ico("search", 15) + "<b>表示の絞り込み</b><span>並んでいる公演のうち、見る分だけに絞ります</span>";
+    fil = document.createElement("div");
+    fil.className = "fil2 narrow";
+    lede.after(head, fil);
+  }
+  fil.appendChild(box);
   const sl = box.querySelector(".ysl");
   const apply = () => {
     const max = YEN_STEPS[Number(sl.value)] || 0;
@@ -798,7 +809,8 @@ function filterRowOf(fil) {
   // 札の名前は箱ごとに決める。お気に入りの画面の 2 つ（登録した名前・出さない語）まで「場所」と
   // 出ていた（起案者の指摘 2026-10-14「『お気に入り』画面の『場所』ってなに？」）
   const name = d => d.classList.contains("wbox") ? ["効かせ方", "light"] : d.classList.contains("ybox") ? ["料金", "ticket"]
-    : d.id === "names" ? ["登録した名前", "star"] : d.id === "declined" ? ["出さない語", "flag"] : ["場所", "search"];
+    : d.id === "names" ? ["登録した名前", "star"] : d.id === "declined" ? ["出さない語", "flag"]
+    : d.id === "kind-off" ? ["使わない理由", "flag"] : ["場所", "search"];
   const tabs = document.createElement("div");
   tabs.className = "ftabs";
   tabs.setAttribute("role", "group");

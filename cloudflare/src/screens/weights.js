@@ -76,9 +76,11 @@ export function weightForm(w, cnt = {}, drop = 0) {
   }).join('');
   const dropped = !drop ? '' : `<p class="lead">いまの設定で、おすすめに出なくなった公演が ${drop} 件あります。`
     + '「すべて「ふつう」に戻す」を押すと戻ります。</p>';
-  const scale = '<div class="wscale"><span>← ' + E(labels.off) + '</span>'
-    + `<span class="wmid">${E(labels[DEFAULT_STEP])}（既定）</span>`
-    + '<span>' + E(labels.max) + ' →</span></div>';
+  // 目盛りの言葉はつまみの真上だけに置く（起案者の指摘 2026-10-17「関係ないところまで幅広く広げすぎてる」）。
+  // 行と同じ並び（名前・件数・つまみ・段）の、つまみの列にだけ字を入れる
+  const scale = '<div class="wscale" aria-hidden="true"><span class="wl"></span><span class="ws"><span>← ' + E(labels.off) + '</span>'
+    + `<span class="wmid">${E(labels[DEFAULT_STEP])}</span>`
+    + '<span>' + E(labels.max) + ' →</span></span><span class="wv"></span></div>';
   return `<div class="wfil">
 <details class="pbox wbox" id="weights">
 <summary>${ico('light', 15)}おすすめの効かせ方を変える ── いまは<b>${E(now)}</b></summary>
