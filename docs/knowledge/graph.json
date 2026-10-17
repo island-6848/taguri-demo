@@ -3844,6 +3844,17 @@
    "verifies": []
   },
   {
+   "id": "q-academic-novelty",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-17",
+   "title": "たぐりの推薦に学術的な新規性はあるか。部品はどれも既存の手法で、言えるとすれば「組み合わせと場面」。主張するには実データでの検証と、文献の確認のやり直しが要る",
+   "sources": [
+    "docs/000003-final-presentation-taguri.html"
+   ],
+   "verifies": []
+  },
+  {
    "id": "q-account-limit-100",
    "type": "question",
    "status": "answered",
@@ -8375,6 +8386,56 @@
    "from": "python-workers-migration-state",
    "rel": "raises",
    "to": "q-d1-python-workers"
+  },
+  {
+   "from": "q-academic-novelty",
+   "rel": "depends_on",
+   "to": "lit-ordinal-damping"
+  },
+  {
+   "from": "q-academic-novelty",
+   "rel": "depends_on",
+   "to": "lit-user-bias"
+  },
+  {
+   "from": "q-academic-novelty",
+   "rel": "depends_on",
+   "to": "lit-hierarchical-user-model"
+  },
+  {
+   "from": "q-academic-novelty",
+   "rel": "depends_on",
+   "to": "lit-syskill-webert-prior"
+  },
+  {
+   "from": "q-academic-novelty",
+   "rel": "depends_on",
+   "to": "lit-prequential"
+  },
+  {
+   "from": "q-academic-novelty",
+   "rel": "depends_on",
+   "to": "lit-safe-improvement"
+  },
+  {
+   "from": "q-academic-novelty",
+   "rel": "depends_on",
+   "to": "lit-topic-diversification"
+  },
+  {
+   "from": "q-academic-novelty",
+   "rel": "depends_on",
+   "to": "lit-live-show-propagation"
+  },
+  {
+   "from": "q-academic-novelty",
+   "rel": "depends_on",
+   "to": "lit-performing-arts"
+  },
+  {
+   "from": "q-academic-novelty",
+   "rel": "depends_on",
+   "to": "dec-no-n1-evidence"
   },
   {
    "from": "q-account-limit-100",
