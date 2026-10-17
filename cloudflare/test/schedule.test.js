@@ -57,3 +57,15 @@ test('the tour block: one row per venue in date order, the shown one marked, pri
   assert.equal(diff.perVenuePrice, true);
   assert.match(diff.html, /<table class="ptb"><tr><th>S席<\/th><td>12,000円<\/td><\/tr><tr><th>A席<\/th><td>9,500円<\/td><\/tr><\/table>/);
 });
+
+test('mark legends from the stage page, and an honest line for marks it does not explain', async () => {
+  const {markLegend, timetableGrid: grid} = await import('../src/screens/schedule.js');
+  const L = markLegend(['★', '◆', 'A', '歩'], ['10月8日(水) ★13:00\n★・・・鑑賞マナーゆるめの回(4歳~客席入場OK)', '◆:鑑賞サポートあり(音声ガイド) A=小野桜介 B=駒井末宙']);
+  assert.equal(L.get('★'), '鑑賞マナーゆるめの回(4歳~客席入場OK)');
+  assert.equal(L.get('◆'), '鑑賞サポートあり(音声ガイド)');
+  assert.equal(L.get('A'), '小野桜介');
+  assert.equal(L.has('歩'), false);
+  const perf = parseTimetable('10月8日(水) ★13:00／歩18:00', '2025-10-08', '2025-10-08');
+  const html = grid(perf, '2025-10-08', '2025-10-08', '2025-10-01', ['★・・・アフタートークあり']);
+  assert.match(html, /<ul class="ttb-legend"><li><b>★<\/b>アフタートークあり<\/li><li class="miss"><b>歩<\/b>公演ページに印の説明がありません<\/li><\/ul>/);
+});

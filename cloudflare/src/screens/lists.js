@@ -405,8 +405,9 @@ async function cards(ctx, rows, mode, extra = () => ({})) {
   const bare = rows.map(r => r.stage_id).filter(sid => !html.has(sid));
   // お気に入り says why each stage is there (the registered name), as its prebuilt cards do.
   if (bare.length) for (const [sid, s] of await stageInfo(ctx.db, bare)) html.set(sid, fallbackTemplate(s, {why: mode === 'favourite'}));
-  // 興味ありの一覧は、おすすめと同じ日程（会場ごとの行・公演日時の暦・会場で違う料金）にする（起案者の指示 2026-10-17）
-  const info = mode === 'interest' ? await stageInfo(ctx.db, rows.flatMap(r => r.sids || [r.stage_id])) : null;
+  // 興味あり・お気に入り・購入済みの一覧も、おすすめと同じ日程（会場ごとの行・公演日時の暦・会場で違う料金）にする
+  // （起案者の指示 2026-10-17「お気に入りページにまだ『このおすすめの日程』が生き残ってるので他のページと揃えて」）
+  const info = ['interest', 'favourite', 'owned'].includes(mode) ? await stageInfo(ctx.db, rows.flatMap(r => r.sids || [r.stage_id])) : null;
   return rows.filter(r => html.has(r.stage_id)).map(r => {
     const pic = posters.get(r.stage_id) || r.sids?.map(s => posters.get(s)).find(Boolean);
     const card = compose(html.get(r.stage_id), r.stage_id, mode, {poster: pic ? posterHtml(pic) : '', ...extra(r)});
