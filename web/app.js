@@ -116,9 +116,10 @@ const PNAV = [
   ["rec2", "記録", "notebook", [["/records/works", "日記帳"], ["/records", "眺める"], ["/records/trace", "たどる"], ["/records/chronicle", "観劇史年表"]]],
 ];
 function renderPNav() {
-  // 公演情報の登録は「記録」の子から外し、歯車の左の「＋」から入る（起案者の指示 2026-10-13「スマホ版のみ」）
+  // 公演情報の登録は「記録」の子から外し、歯車の左の「＋」から入る（起案者の指示 2026-10-13「スマホ版のみ」）。
+  // 押したら登録の画面へそのまま移る。3 つの入口を選ぶ札は出さない（起案者の指示 2026-10-17「ポップアップ消して」）
   return '<a class="padd" href="/register" data-path="/register" aria-label="観劇記録を追加" title="観劇記録を追加"'
-    + ' aria-haspopup="menu" aria-expanded="false">' + ico("plus", 22) + "</a>" + regPopHtml()
+    + '>' + ico("plus", 22) + "</a>"
     + (IS_DEMO ? "" : '<a class="pacct" href="/account" data-path="/account" aria-label="アカウント" title="アカウント">' + ico("user", 20) + "</a>")
     + '<a class="pset" href="/settings" data-path="/settings" aria-label="設定">' + ico("gear", 20) + "</a>"
     + '<div class="pnav">' + PNAV.map(([id, label, icon]) =>
@@ -428,7 +429,6 @@ function renderScreen(el, activePath, d, exposureSource) {
   stampRerate(el);
   aspectsPanel(el);
   if (activePath === "/settings") aspectsSetting(el);
-  gotoRegisterCard(el);
   if (window.TaguriExposure) TaguriExposure.start(el, exposureSource || "network", async (path, body) => {
     const r = await fetch(API_BASE + path, {method: "POST", credentials: "include", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
     const result = await r.json(); return r.ok && result.ok === true;
@@ -570,6 +570,9 @@ document.addEventListener("submit", ev => {
   const action = f.getAttribute("action") || location.pathname;
   if (!isInternalPath(action)) return;
   ev.preventDefault();
+  // 検索の結果を出す前に、入力欄から焦点を外してスマホのキーボードを閉じる（起案者の指示 2026-10-17）。
+  // ページを移らずに中身だけ差し替えるので、閉じないとキーボードが結果の上に残る
+  if (document.activeElement && f.contains(document.activeElement)) document.activeElement.blur();
   const usp = new URLSearchParams(new FormData(f));
   navigate(action, usp.toString());
 });
@@ -2486,60 +2489,6 @@ function stampRerate(root) {
     document.addEventListener("click", ev => { if (!rb.hidden && !rb.contains(ev.target) && ev.target !== st) close(); });
   });
 }
-
-// **右上の「＋」は、登録の 3 つの入口を選ぶ小さな札を開く**（起案者の指示 2026-10-13「右上のプラスを押した際は
-// ページに飛ぶんじゃなくてポップアップで追加方法の3種類選べるようにして」）。選ぶと公演情報の登録の画面の
-// その札（① メール ② 手で 1 件 ③ 観ればよかった）へ移り、最初の入力欄に焦点を置く
-const REG_WAYS = [
-  ["1", "mail", IS_DEMO ? "購入確認メールから取り込む" : "Google カレンダー・購入確認メールから取り込む",
-   IS_DEMO ? "手元のパソコンで動かしているときだけ" : "カレンダーの予定や購入確認メールから見つけて足す"],
-  ["2", "plus", "手で 1 件足す", "招待・当日券など、メールに残らない分"],
-  ["3", "flag", "「観ればよかった」を足す", "出てこなかったせいで見逃した公演（観ていない公演）"],
-];
-let regGoto = "";
-function regPopHtml() {
-  return '<div class="padd-pop" role="menu" aria-label="観劇記録を追加" hidden>'
-    + REG_WAYS.map(([n, icon, t, sub]) => '<button type="button" role="menuitem" data-reg="' + n + '">'
-      + ico(icon, 18) + '<span><b>' + E(t) + "</b><small>" + E(sub) + "</small></span></button>").join("")
-    + "</div>";
-}
-function gotoRegisterCard(root) {
-  if (!regGoto) return;
-  const n = regGoto;
-  regGoto = "";
-  const mark = ["①", "②", "③"][Number(n) - 1];
-  const card = [...root.querySelectorAll(".card")].find(c => (c.querySelector("h2")?.textContent || "").includes(mark));
-  if (!card) return;
-  card.scrollIntoView({behavior: "smooth", block: "start"});
-  card.classList.add("reg-hi");
-  setTimeout(() => card.classList.remove("reg-hi"), 1600);
-  card.querySelector("input:not([type=hidden]), button")?.focus({preventScroll: true});
-}
-document.addEventListener("click", ev => {
-  const add = ev.target.closest(".side .padd");
-  const pop = document.querySelector(".side .padd-pop");
-  if (add && pop) {
-    ev.preventDefault();
-    ev.stopPropagation();
-    pop.hidden = !pop.hidden;
-    add.setAttribute("aria-expanded", pop.hidden ? "false" : "true");
-    if (!pop.hidden) pop.querySelector("button")?.focus();
-    return;
-  }
-  const way = ev.target.closest(".padd-pop [data-reg]");
-  if (way) {
-    pop.hidden = true;
-    regGoto = way.dataset.reg;
-    if ((location.pathname.slice(REPO_BASE.length) || "/") === "/register") gotoRegisterCard(contentEl());
-    else navigate("/register", "");
-    return;
-  }
-  if (pop && !pop.hidden && !ev.target.closest(".padd-pop")) pop.hidden = true;
-}, true);
-document.addEventListener("keydown", ev => {
-  const pop = document.querySelector(".side .padd-pop");
-  if (ev.key === "Escape" && pop && !pop.hidden) { pop.hidden = true; document.querySelector(".side .padd")?.focus(); }
-});
 
 // **画面の説明文は、パンくずの右端の「ⓘ」から開く。**（起案者の指示 2026-10-13「こういう文章はパンくずリストの
 // 一番右にあるやつの右に、インフォーメーションマークつけて、押したらポップアップで説明出るように（パソコンも）。
