@@ -83,7 +83,7 @@ export function passkeyRoutes(h) {
       if (ch.user_id && !await h.freshSession(env.DB, request, uid)) fail(401, REAUTH);
       if (!ch.user_id && env.ALLOW_REGISTRATION !== 'true') fail(503, '新規登録を一時停止しています。');
       if (!ch.user_id) requireAgreement(input, fail);
-      if (!ch.user_id) await h.checkNewAccount(env.DB, env, fail);
+      if (!ch.user_id) await h.checkNewAccount(env.DB, env, fail, undefined, request);
       let result;
       try {
         result = await verifyRegistrationResponse({response, expectedChallenge: ch.challenge, expectedOrigin: origin,
@@ -151,6 +151,8 @@ export function passkeyRoutes(h) {
     async remove(request, env, uid) {
       const input = await h.body(request);
       if (typeof input.id !== 'string' || input.id.length > 1024) fail(400, '入力を確認してください。');
+      // 盗まれた Cookie だけで、本人のパスキーを消して締め出せないように、10 分以内のログインし直しを求める（追加と同じ）
+      if (!await h.freshSession(env.DB, request, uid)) fail(401, '本人確認のため、ログインし直してから10分以内にパスキーを削除してください。');
       await env.DB.prepare('DELETE FROM passkeys WHERE id=? AND user_id=?').bind(input.id, uid).run();
       return json({ok: true});
     },

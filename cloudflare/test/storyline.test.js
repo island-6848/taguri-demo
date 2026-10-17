@@ -16,3 +16,16 @@ test('人の流れ matches storyline.panel', () => {
     }
   });
 });
+
+// 名前や題名に「</script>」があっても、図のデータの <script> がそこで閉じない（安全の点検 2026-10-17）
+test('a name or title with </script> stays inside the data block', () => {
+  const evil = '</script><img src=x onerror=alert(1)>';
+  const rated = [0, 1, 2, 3, 4].map(k => ({key: `x${k}#2024-0${k + 1}-01`, title: `${evil}${k}`, date: `2024-0${k + 1}-01`, verdict: '◎',
+    people: [['出演', evil], ['出演', '乙'], ['出演', '丙']], venues: []}));
+  const html = panel(rated, 2);
+  const data = /<script id="sl-data" type="application\/json">([\s\S]*?)<\/script>/.exec(html);
+  assert.ok(data, 'the data block is there');
+  assert.doesNotMatch(data[1], /</);
+  assert.equal(JSON.parse(data[1]).lines.some(l => l.name === evil), true);
+  assert.doesNotMatch(html, /<img src=x/);
+});
