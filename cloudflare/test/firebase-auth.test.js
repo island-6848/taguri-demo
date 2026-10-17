@@ -235,3 +235,16 @@ test('a first Google sign-in without the terms agreed makes no account; a return
   assert.equal((await signIn(call, token)).status, 200);
   assert.equal((await signIn(call, await idToken(), '', {agree: undefined})).status, 200);
 });
+
+test('the login box never makes an account; the sign-up box does, and signs in an existing one', async () => {
+  const {call, sqlite} = setup();
+  const token = await idToken();
+  const login = await signIn(call, token, '', {intent: 'login'});
+  assert.equal(login.status, 404);
+  assert.match(login.body.error, /新規登録/);
+  assert.equal(sqlite.prepare('SELECT count(*) AS n FROM users').get().n, 0);
+  assert.equal((await signIn(call, token, '', {intent: 'signup'})).status, 200);
+  assert.equal((await signIn(call, await idToken(), '', {intent: 'login', agree: undefined})).status, 200);
+  assert.equal((await signIn(call, await idToken(), '', {intent: 'signup', agree: undefined})).status, 200);
+  assert.equal(sqlite.prepare('SELECT count(*) AS n FROM users').get().n, 1);
+});

@@ -99,3 +99,13 @@ test('the sign-up checkbox, the terms and the privacy page carry the version the
   for (const f of ['terms.html', 'privacy.html']) assert.match(read(f), new RegExp(`版 ${TERMS_VERSION}`), f);
   assert.match(read('vendor/firebase-login.js'), /taguri_login_agree/);
 });
+test('the login page puts ログイン above 新規登録, and only the sign-up box has the terms checkbox', () => {
+  const html = readFileSync(new URL('../public/login.html', import.meta.url), 'utf8');
+  const login = html.indexOf('<section id="login"'), signup = html.indexOf('<section id="signup"');
+  assert.ok(login > 0 && signup > login);
+  const agree = html.indexOf('id="agree"');
+  assert.ok(agree > signup);
+  for (const id of ['google-signup', 'email-signup', 'passkey-signup', 'signup-email-form']) assert.ok(html.indexOf(`id="${id}"`) > signup, id);
+  for (const id of ['google', 'passkey-login', 'email-form']) { const i = html.indexOf(`id="${id}"`); assert.ok(i > login && i < signup, id); }
+  assert.match(readFileSync(new URL('../public/vendor/firebase-login.js', import.meta.url), 'utf8'), /taguri_login_intent/);
+});
