@@ -32,3 +32,23 @@ test('stages without a card are found: in the index, and only in the catalogue; 
     assert.match(rec, /data-stage="990001"/);
   } finally { sqlite.close(); }
 });
+
+test('with a word, the 観た記録 calendar counts only the records it hits; with no hit it shows zeros instead of vanishing', async () => {
+  const {env, sqlite} = setup();
+  for (const s of FIXTURE.sql) sqlite.exec(s);
+  const a = await signIn(env);
+  try {
+    for (const [title, date] of [['夏の夜の夢', '2025-10-05'], ['冬物語', '2025-11-02'], ['夏の終わり', '2024-07-01']])
+      assert.ok((await step(env, a, {post: '/api/add_work', body: {title, date}})).body.work_key);
+    const all = await search(env, a, '', '&cal=past');
+    assert.match(all, /観た記録<span class="mn">3<\/span>/);
+    const hit = await search(env, a, '夏', '&cal=past');
+    assert.match(hit, /観た記録<span class="mn">2<\/span>/);
+    assert.match(hit, /aria-label="2025 年 10 月 1 件"/);
+    assert.match(hit, /aria-label="2024 年 7 月 1 件"/);
+    assert.doesNotMatch(hit, /aria-label="2025 年 11 月/);
+    const none = await search(env, a, 'ふぉ〜ゆ〜', '&cal=past');
+    assert.match(none, /観た記録<span class="mn">0<\/span>/);
+    assert.match(none, /これから観られる公演<span class="mn">0<\/span>/);
+  } finally { sqlite.close(); }
+});

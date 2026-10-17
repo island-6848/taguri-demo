@@ -235,7 +235,8 @@ function monthGrid(ws, upCounts, nUp, side, sel, q = '') {
   // The calendar goes only when neither side has anything: a new account has no records
   // yet, and hiding it then also hid the tab to the coming stages (起案者の指摘 2026-10-14
   // 「『探す』にあったカレンダーが消えてる」).
-  if (!Object.keys(nPast).length && !nNone && !Object.keys(upCounts).length) return '';
+  // 言葉が入っているときは、当たらなくても札（0 件）を残す（どちらにも無いことが見て分かるように）
+  if (!q && !Object.keys(nPast).length && !nNone && !Object.keys(upCounts).length) return '';
   const years = [...new Set(Object.keys(n).map(k => k.slice(0, 4)))].sort();
   if (side !== 'up') years.reverse();
   const top = Object.keys(n).length ? Math.max(...Object.values(n)) : 1;
@@ -256,7 +257,7 @@ function monthGrid(ws, upCounts, nUp, side, sel, q = '') {
   return `<div class="cal" id="cal">
 ${tabs}
 <div class="idxsheet loose"><p class="mnow">${only}${lead}</p>
-${rows ? `<div class="cal-grid"><span class="cal-y"></span>${head}${rows}</div>` : `<p class="empty">${side === 'up' ? 'これから観られる公演は、いま手元にありません。' : 'まだ観た記録がありません。「これから観られる公演」の札から、月で探せます。'}</p>`}
+${rows ? `<div class="cal-grid"><span class="cal-y"></span>${head}${rows}</div>` : `<p class="empty">${q ? (side === 'up' ? `「${E(q)}」に当たる、これから観られる公演はありません。` : `「${E(q)}」に当たる観た記録はありません。`) : side === 'up' ? 'これから観られる公演は、いま手元にありません。' : 'まだ観た記録がありません。「これから観られる公演」の札から、月で探せます。'}</p>`}
 ${none}</div></div>`;
 }
 
