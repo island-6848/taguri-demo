@@ -703,6 +703,18 @@ fixupSynClamp(document);
 // あらすじの全文と入れ口・公式サイトは「くわしく」の中へ移す。**画面の HTML は Render の
 // Python が組むので、ここで組み替える**（Render を起こし直さずにデモとサービスの両方へ届く）。
 const WHY_SHOWN = 3, CAST_LEAD = 5, SYN_LEAD = 100;
+/** 料金の欄の文から、金額の行を [券種, 金額] か [文] にして返す（screens/schedule.js priceRows と同じ決まり） */
+function priceRowsOf(text) {
+  const out = [];
+  for (const raw of String(text || "").normalize("NFKC").split(/\n+/)) {
+    const line = raw.replace(/\s+/g, " ").trim();
+    if (!/円|無料/.test(line) || /発売|受付|抽選|開始|販売/.test(line)) continue;
+    const m = /^【?([^:：】]{1,24})】?\s*[:：]\s*(.+)$/.exec(line);
+    const r = m ? [m[1].trim(), m[2].trim()] : [line];
+    if (!out.some(x => x.join("\t") === r.join("\t"))) out.push(r);
+  }
+  return out;
+}
 function firstSentence(t) {
   t = (t || "").replace(/\s+/g, " ").trim();
   const m = t.match(/^.*?[。！？!?][」』）)]*/);
@@ -896,17 +908,21 @@ function compactTickets(root) {
           + (stops > 1 ? '<span class="mt">ほか ' + (stops - 1) + " 会場</span>" : "") + "</span></span>" : "");
     }
     const sale = main.querySelector(".sale");
-    // 料金の明細（おすすめの画面。値段の幅だけでなく、券種ごとの値段を書く。発売日などの行は除く）
+    // 料金の明細（おすすめの画面。値段の幅ではなく券種ごとの金額を、販売の札の下に書く。発売日などの行は除く。
+    // 3 行以上は最初の 1 行だけ出して残りを畳む）（起案者の指示 2026-10-17）。会場ごとに料金が違うカードは
+    // 日程の各行に表があるので、ここには出さない（data-tourprice）
     let priced = false;
-    if (noMore) {
-      const raw = main.querySelector(".when .price")?.textContent || "";
-      const rows = raw.split(/\n+/).map(x => x.replace(/\s+/g, " ").trim())
-        .filter(x => /円|無料/.test(x) && !/発売|受付|抽選|開始/.test(x));
+    if (noMore && !t.dataset.tourprice) {
+      const rows = priceRowsOf(main.querySelector(".when .price")?.textContent || "");
       if (rows.length) {
-        const p = document.createElement("p");
-        p.className = "lprice";
-        p.innerHTML = '<span class="cl">料金</span><span class="lv">' + E([...new Set(rows)].join("／")) + "</span>";
-        lead.appendChild(p);
+        const box = document.createElement(rows.length > 2 ? "details" : "div");
+        box.className = "lprice";
+        const table = rs => '<table class="ptb">' + rs.map(r => r.length > 1
+          ? "<tr><th>" + E(r[0]) + "</th><td>" + E(r[1]) + "</td></tr>" : '<tr><td colspan="2">' + E(r[0]) + "</td></tr>").join("") + "</table>";
+        box.innerHTML = rows.length > 2
+          ? "<summary>" + table(rows.slice(0, 1)) + '<span class="more">ほか ' + (rows.length - 1) + " 件</span></summary>" + table(rows.slice(1))
+          : table(rows);
+        (sale || main.querySelector(".when") || main.querySelector(".meta")).after(box);
         priced = true;
       }
     }

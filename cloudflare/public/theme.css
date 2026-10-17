@@ -891,3 +891,45 @@ body:has(>.shell){padding-top:0}
  background:var(--surf);color:var(--ink2);font-size:12px;box-shadow:none}
 .rb button.nograde.on{border-color:var(--curtain);color:var(--curtain);background:#f0e6e8;font-weight:700}
 .rec-row .rb.done button.nograde{opacity:1}
+
+/* ---- おすすめのカードの日程（screens/schedule.js tourBlock、起案者の指示 2026-10-17）。
+   会場ごとに「10/28〜11/1　恵比寿・エコー劇場（東京都）」の 1 行。おすすめに出ている会場は帯で示す */
+.tourfull.v2{display:grid;gap:4px}
+.tourfull.v2 .tf-row{display:block;padding:2px 6px;border-radius:6px}
+.tourfull.v2 .tf-row.here{background:color-mix(in srgb,var(--curtain) 10%,var(--surf));box-shadow:inset 3px 0 0 var(--curtain)}
+.tourfull.v2 .tf-head{display:flex;flex-wrap:wrap;column-gap:1em}
+.tourfull.v2 .tf-when{color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap}
+.tourfull.v2 .tf-loc{color:var(--ink2);font-weight:500;flex:0 1 auto}
+.tourfull.v2 .tf-row.here .tf-when,.tourfull.v2 .tf-row.here .tf-loc{font-weight:700;color:var(--ink)}
+.tourfull.v2 .tf-tt summary{cursor:pointer;color:var(--curtain);font-size:12px}
+.tourfull.v2 .tf-price{margin:2px 0}
+/* 公演日時の暦: 週ごとの行、月〜日の列。開演の時刻を日に並べる。公演の無い日は「休演」 */
+.ttb{border-collapse:separate;border-spacing:2px;width:100%;table-layout:fixed;margin:4px 0 2px;font-size:11px;line-height:1.35}
+.ttb th{font-weight:600;color:var(--mute);text-align:center;padding:1px 0}
+.ttb th.sat,.ttb td.sat .d{color:#2f6fa8}
+.ttb th.sun,.ttb td.sun .d{color:#b8432f}
+.ttb td{vertical-align:top;text-align:center;background:var(--plane);border-radius:4px;padding:2px 1px;min-height:30px}
+.ttb td.out{background:transparent}
+.ttb td.out .d{color:var(--grid,var(--ring))}
+.ttb td.past{opacity:.45}
+.ttb .d{display:block;font-size:10.5px;color:var(--ink2)}
+.ttb .tm{display:block;font-variant-numeric:tabular-nums;color:var(--ink);font-weight:600;white-space:nowrap}
+.ttb .tm i{font-style:normal;font-weight:700;color:var(--curtain);margin-right:1px}
+.ttb .off{display:block;color:var(--mute);font-size:10px}
+.ttb-note{margin:0;font-size:11px;color:var(--mute)}
+/* 料金の表（券種と金額）。販売の札の下、または日程の各会場の行に置く */
+.ptb{border-collapse:collapse;font-size:12px;line-height:1.6}
+.ptb th{font-weight:500;color:var(--ink2);text-align:left;padding:0 10px 0 0;white-space:nowrap}
+.ptb td{font-variant-numeric:tabular-nums;color:var(--ink);white-space:nowrap}
+.ticket.cmp .lprice{margin:6px 0 8px}
+.ticket.cmp details.lprice summary{cursor:pointer;list-style:none;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.ticket.cmp details.lprice summary::-webkit-details-marker{display:none}
+.ticket.cmp details.lprice summary .more{color:var(--curtain);font-size:12px}
+.ticket.cmp details.lprice[open] summary .more{display:none}
+/* 暦を置く日程は、見出し「日程」を上に出して、暦にカードの幅いっぱいを使う（電話の幅で時刻が重ならないように） */
+.ticket.cmp .ltour:has(.tourfull.v2){display:block}
+.ticket.cmp .ltour:has(.tourfull.v2)>.cl{display:block;margin:0 0 2px}
+.ttb .tm{font-size:10.5px;letter-spacing:-.02em}
+.ttb .tm i{font-size:8.5px;vertical-align:1px}
+.ticket.cmp details.lprice summary{flex-wrap:nowrap}
+.ticket.cmp details.lprice summary .ptb{display:inline-table}

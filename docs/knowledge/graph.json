@@ -2447,6 +2447,19 @@
    "verifies": []
   },
   {
+   "id": "impl-card-schedule",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-17",
+   "title": "おすすめのカードの日程を会場ごとの行にし、各行の下に公演日時の暦（タイムテーブルの文から読む）、会場で違う料金は表。料金は販売の札の下に、長いときは畳む",
+   "sources": [
+    "cloudflare/src/screens/schedule.js",
+    "cloudflare/test/schedule.test.js",
+    "https://github.com/island-6848/taguri-crawler/tree/state"
+   ],
+   "verifies": []
+  },
+  {
    "id": "impl-cast-seen",
    "type": "decision",
    "status": "adopted",
@@ -7349,6 +7362,11 @@
    "from": "github-actions-public-free",
    "rel": "raises",
    "to": "q-crawler-host"
+  },
+  {
+   "from": "impl-card-schedule",
+   "rel": "affects",
+   "to": "impl-four-answers"
   },
   {
    "from": "impl-cast-seen",

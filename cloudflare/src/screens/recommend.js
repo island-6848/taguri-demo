@@ -12,6 +12,7 @@
 import {frac} from './grade.js';
 import {scoreFromIndex, d1Access, seedsFromFavourites, gradeOf, MAX_SEED_STAGES, droppedKind, GENRE_AXIS} from '../recommend.js';
 import {stageInfo} from './fallback.js';
+import {tourBlock} from './schedule.js';
 import {parseCredits} from './credits.js';
 import {chooseVariant, groupOf} from '../reco-gate.js';
 import {readWeights, multipliersOf, weightForm, weightAction} from './weights.js';
@@ -317,14 +318,28 @@ export function prefCounts(groups) {
 /** The cards of these rows, rank from `first`; rows without a card yet are left out. */
 export async function cardsHtml(ctx, rows, titles, first = 1) {
   const {html, posters} = await cardTemplates(ctx.db, rows.flatMap(r => [r.shown, r.stage_id]));
+  // 日程（会場ごとの行と公演日時の暦、会場で違う料金）は、会場ごとの公演の情報から組み直す（schedule.js）
+  const info = await stageInfo(ctx.db, rows.flatMap(r => [r.shown, ...(r.venues || []).map(v => v.stage_id)]));
   const out = [];
   let rank = first;
   for (const r of rows) {
     const card = html.get(r.shown);
     if (!card) continue;
     const pic = posters.get(r.shown) || posters.get(r.stage_id);
-    out.push(compose(card, r.shown, 'recommend', {rank: rank++, why: reasonRows(r, titles), poster: pic ? posterHtml(pic) : ''}));
+    const sids = [...new Set([r.shown, ...(r.venues || []).map(v => v.stage_id)].map(String))];
+    const tour = tourBlock(sids.map(s => info.get(s)).filter(Boolean), r.shown, ctx.today);
+    out.push(withTour(compose(card, r.shown, 'recommend', {rank: rank++, why: reasonRows(r, titles), poster: pic ? posterHtml(pic) : ''}), tour));
   }
+  return out;
+}
+
+/** The card with its tour block replaced (or put after the run line when the card had none). */
+function withTour(card, {html, perVenuePrice}) {
+  if (!html) return card;
+  const old = /<div class="tourfull">(?:<div class="tf-row[^"]*">[\s\S]*?<\/div>)*<\/div>/;
+  let out = old.test(card) ? card.replace(old, () => html) : card.replace(/(<div class="when">[\s\S]*?<\/div>)/, (m) => m + html);
+  // 会場ごとに料金を書いたカードは、販売の札の横の料金（おすすめに出ている会場の分）を重ねない
+  if (perVenuePrice) out = out.replace('<article class="ticket recommend"', '<article class="ticket recommend" data-tourprice="1"');
   return out;
 }
 
