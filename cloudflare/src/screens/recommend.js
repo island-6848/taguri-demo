@@ -41,11 +41,9 @@ const TIPS = `<section class="card tips">
 `;
 // Groups kept per user between requests: enough to fill 15 cards in any one prefecture.
 const KEEP = 400;
-const VERSION = 'screen-v16';   // v16: #会場 dropped, 行けない (interest=2) as a liked seed; v15: 出さない語 also hits the kind tags; v14: #ジャンル (a genre turned off hides its stages); v13: no 原作「原作もの」 (DROPPED_KEYS); v12: no #値段 (DROPPED_AXES); v11: reasons of answered stages (answered_why); v2: the user's 効かせ方 (rank_weight) and the per-group counts; v3: 興味あり as seeds; v4: diag; v5: 興味あり split (impl-interest-split); v6: by part importance; v7: tiers + トメ; v8: two tiers only; v9: トメ joins the main roles; v10: spread leads + one-step partners
+const VERSION = 'screen-v17';   // v17: no 出典 on the reasons; v16: #会場 dropped, 行けない (interest=2) as a liked seed; v15: 出さない語 also hits the kind tags; v14: #ジャンル (a genre turned off hides its stages); v13: no 原作「原作もの」 (DROPPED_KEYS); v12: no #値段 (DROPPED_AXES); v11: reasons of answered stages (answered_why); v2: the user's 効かせ方 (rank_weight) and the per-group counts; v3: 興味あり as seeds; v4: diag; v5: 興味あり split (impl-interest-split); v6: by part importance; v7: tiers + トメ; v8: two tiers only; v9: トメ joins the main roles; v10: spread leads + one-step partners
 export {PREFS} from './prefs.js';
-const ROLE_SRC = '公演ページのクレジット';
 const KIND_LABEL = {'#形式': '形式', '#原作': '原作', '#翻訳': '', '#原作の国': '原作の国', '#会場': '劇場', '#題材': '題材', '#ジャンル': 'ジャンル'};
-const KIND_SRC = {'#形式': '公演名とクレジット', '#原作': '原作・原案のクレジット', '#原作の国': 'クレジットの作り手の名前', '#会場': '公演ページの劇場', '#ジャンル': '原作のクレジットと主催'};
 const WORKS_SHOWN = 3;
 // Every scale sorts with the marks by its place: the top (◎, ★5, ○ of ○×) first, the bottom last
 // (grade.js). 興味あり comes after every rating.
@@ -140,7 +138,6 @@ export function reasonRows(group, titles) {
     const w = via.get(role + '\t' + person);
     out.push(`<li class="rs b"><span class="net">人物</span>${E(role)} <b>${E(person)}</b>`
       + `<span class="n">${w ? `（好きな${E(w)}と同じ公演に関わる人）` : worksText(titles.get(role + '\t' + person), n)}</span>`
-      + `<span class="src">［出典: ${E(ROLE_SRC)}］</span>`
       + `<button class="rsx" data-word="${E(person)}" title="この人物を理由に出さない">✕</button></li>`);
   }
   for (const [, axis, tag, n] of group.kinds.filter(k => !droppedKind(k[1], k[2])).slice(0, 2)) {
@@ -149,7 +146,6 @@ export function reasonRows(group, titles) {
     const label = label0 && tag.endsWith(label0) ? '' : label0;
     out.push(`<li class="rs c k"><span class="net">種類</span>${label ? E(label) + ' ' : ''}<b>${E(tag)}</b>`
       + `<span class="n">${worksText(titles.get(axis + '\t' + tag), n)}</span>`
-      + `<span class="src">［出典: ${E(KIND_SRC[axis] || ROLE_SRC)}］</span>`
       + `<button class="rsx" data-kindoff="${E(axis + '\t' + tag)}" title="この理由をおすすめに使わない（公演は消さない）">✕</button></li>`);
   }
   return out.length ? out.join('') : '<li class="rs none">理由を出せていません</li>';

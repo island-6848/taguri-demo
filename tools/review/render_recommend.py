@@ -676,9 +676,8 @@ def cast_block(c: dict) -> str:
 
 
 WORKS_SHOWN = 3
-# 種類の理由の見出しと出典（user_recommender.stage_tags が付ける軸）
+# 種類の理由の見出し（user_recommender.stage_tags が付ける軸）
 KIND_LABEL = {"#形式": "形式", "#原作": "原作", "#翻訳": "", "#原作の国": "原作の国", "#会場": "劇場", "#題材": "題材", "#ジャンル": "ジャンル"}
-KIND_SRC = {"#形式": "公演名とクレジット", "#原作": "原作・原案のクレジット", "#原作の国": "クレジットの作り手の名前", "#会場": "公演ページの劇場", "#ジャンル": "原作のクレジットと主催"}
 
 
 def works_text(works: list, n: int) -> str:
@@ -695,7 +694,10 @@ def works_text(works: list, n: int) -> str:
 
 
 def reason_rows(c: dict) -> str:
-    """理由を、網ごとに 1 行ずつ。**出典を必ず添える**（事実であることを読み手が確かめられる）。
+    """理由を、網ごとに 1 行ずつ。
+
+    **出典は添えない**（起案者の指示 2026-10-17「おすすめ理由の出典消して」）。人物・種類は
+    クレジットから、内容はあらすじから取ったもので、出所は「くわしく」の出演とあらすじの枠に出ている。
 
     ## 自分が書いた感想を 1 行だけ添える（2026-08-24）
 
@@ -733,8 +735,7 @@ def reason_rows(c: dict) -> str:
         m = re.match(r'^(.+?)「(.+)」$', w)
         rmbtn = (f'<button class="rsx" data-kind="{E(m.group(1))}" data-name="{E(m.group(2))}"'
                  f' title="この登録をやめる">✕</button>' if m else "")
-        out.append(f'<li class="rs a"><span class="net">申告</span>{E(w)}'
-                   f'<span class="src">［出典: {E(ROLE_SRC)}］</span>{rmbtn}</li>')
+        out.append(f'<li class="rs a"><span class="net">申告</span>{E(w)}{rmbtn}</li>')
     works_of = c.get("why_b_works") or {}
     for contrib, role, person, n in c.get("why_b", [])[:4]:
         # **本数ではなく作品名を書く**（起案者の指示・2026-10-14 ──「『（◎ を付けた・気になった
@@ -746,7 +747,6 @@ def reason_rows(c: dict) -> str:
         out.append(f'<li class="rs b"><span class="net">人物</span>'
                    f'{E(role)} <b>{E(person)}</b>'
                    f'<span class="n">{works_text(works, n)}</span>'
-                   f'<span class="src">［出典: {E(ROLE_SRC)}］</span>'
                    f'<button class="rsx" data-word="{E(person)}"'
                    f' title="この人物を理由に出さない">✕</button></li>')
     # **公演の種類（#形式・#原作・#翻訳・#会場・#値段）の理由も出す**（2026-10-14）。v3 の点は人物に
@@ -760,14 +760,13 @@ def reason_rows(c: dict) -> str:
         works = (kind_works.get(f"{axis}\t{tag}") or []) if isinstance(kind_works, dict) else []
         out.append(f'<li class="rs c k"><span class="net">種類</span>'
                    f'{(E(label) + " ") if (label := KIND_LABEL.get(axis, axis.lstrip("#"))) and not tag.endswith(label) else ""}<b>{E(tag)}</b>'
-                   f'<span class="n">{works_text(works, n)}</span>'
-                   f'<span class="src">［出典: {E(KIND_SRC.get(axis, ROLE_SRC))}］</span></li>')
+                   f'<span class="n">{works_text(works, n)}</span></li>')
     # **本人の感想の引用（「あなたの言葉」）は出さない**（起案者の指示・2026-10-13 ──
     # 「あなたの言葉は個人情報すぎるので表示しないで。サービス版もデモ版も」）。感想の文が
     # そのまま推薦の画面に並ぶと、画面を人に見せたとき・写したときに個人の文が漏れる。
     # 感想は今までどおり名簿と内容の好みの材料にはなる（`impressions` の他の関数）── 出すのを
     # やめるのは画面への引用だけ。`IM.quote_row` 自体は残してある（試験と、戻すときのため）
-    _src, _doubt = synopsis_source(str(c["stage_id"]), c.get("synopsis") or "")
+    _doubt = synopsis_source(str(c["stage_id"]), c.get("synopsis") or "")[1]
     for it in c.get("why_c", [])[:3]:
         word = it[1] if isinstance(it, (list, tuple)) and len(it) > 1 else it
         n_rated = it[2] if isinstance(it, (list, tuple)) and len(it) > 2 else None
@@ -776,7 +775,6 @@ def reason_rows(c: dict) -> str:
         n_txt = f"（◎ を付けた作品に多い要素・記録 {n_rated} 本）" if n_rated else "（◎ を付けた作品に多い要素）"
         out.append(f'<li class="rs c{" doubt" if _doubt else ""}"><span class="net">内容</span>あらすじに '
                    f'<b>{E(word)}</b><span class="n">{E(n_txt)}</span>'
-                   f'<span class="src">［出典: {E(_src)}のあらすじ］</span>'
                    f'<button class="rsx" data-word="{E(word)}"'
                    f' title="この語を理由に出さない">✕</button></li>')
     for part in c.get("why_impression") or []:
@@ -1245,8 +1243,7 @@ def declared_rows(c: dict) -> str:
         return ('<li class="rs none">お気に入りに登録した名前に当たった公演ですが、'
                 'どの登録に当たったかを取れていません</li>')
     return "".join(f'<li class="rs a"><span class="net">お気に入り</span>'
-                   f'登録した{E(w)}の公演です'
-                   f'<span class="src">［出典: {E(ROLE_SRC)}］</span></li>' for w in a)
+                   f'登録した{E(w)}の公演です</li>' for w in a)
 
 
 def syn_block(c: dict) -> str:

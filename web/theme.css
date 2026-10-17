@@ -235,7 +235,6 @@ body{font-family:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",YuGothic,syst
 .ticket.cmp .lsyn .lv{color:var(--ink2)}
 .ticket.cmp .rs{font-size:12.5px;line-height:1.55;padding:2px 0}
 .ticket.cmp .rs .n{font-size:11px}
-.ticket.cmp .rs .src{font-size:10px}
 .ticket.cmp .why.fold>li:nth-child(n+4){display:none}
 .ticket.cmp .whyfold{min-height:32px;padding:0;border:0;background:none;color:var(--ink);font:inherit;font-size:12px;
  text-decoration:underline;text-underline-offset:3px;cursor:pointer}
@@ -450,20 +449,9 @@ body{font-family:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",YuGothic,syst
 .mt-add button{flex:none;display:inline-flex;align-items:center;gap:4px;padding:0 12px}
 .mt-add .said:empty{display:none}
 
-/* ---- 右上の「＋」から開く、登録の 3 つの入口 */
+/* ---- 右上の並びの置き場（下に開く札の基準。上に貼り付けない） */
 .side{position:relative}
-.side .padd-pop{position:absolute;right:8px;top:52px;z-index:30;width:min(320px,calc(100vw - 32px));
- display:flex;flex-direction:column;padding:6px;background:var(--surf);border:1px solid var(--ring);border-radius:10px;
- box-shadow:0 8px 24px rgba(29,29,31,.14)}
-.side .padd-pop[hidden]{display:none}
-.side .padd-pop button{display:flex;align-items:flex-start;gap:10px;min-height:52px;padding:8px 10px;border:0;border-radius:8px;
- background:none;color:var(--ink);font:inherit;text-align:left;cursor:pointer}
-.side .padd-pop button:hover,.side .padd-pop button:focus-visible{background:var(--plane);outline:0}
-.side .padd-pop button svg.ico{flex:none;width:18px;height:18px;margin-top:2px;color:var(--curtain)}
-.side .padd-pop b{display:block;font-size:14px;font-weight:700}
-.side .padd-pop small{display:block;font-size:11.5px;color:var(--mute);line-height:1.5}
-@media(min-width:821px){.side .padd-pop{display:none}}
-.card.reg-hi{outline:2px solid var(--curtain);outline-offset:3px;transition:outline-color 1s}
+
 
 /* ---- 評価の分布 ── 0 を中心に左右へ分ける帯（app.js の divergeVerdicts。Heiberger & Robbins 2014、
    Cleveland & McGill 1984）。右が「合っていた」（えんじ: ◎ 濃い・○ 薄い）、左が「合わなかった」（灰: × 濃い・△ 薄い）。
@@ -946,3 +934,14 @@ body:has(>.shell){padding-top:0}
 @media(max-width:820px){
  .side .padd,.side .pacct,.side .pset{width:44px;height:44px}
  .side .pacct,.side .pset{margin-left:-4px}}
+/* パンくずの「›」を、文字より一回り大きくする（起案者の指示 2026-10-17） */
+.crumbsep{font-size:18px;line-height:1;margin:0 1px}
+/* 小さすぎる文字を 12px にそろえる（起案者の指示 2026-10-17「レイアウト崩れないように大きく」）。
+   12px 未満だった所だけを上げる。元の指定は枠ごとに細かく書かれているので、:not(#_) で 1 段強くして上書きする */
+:is(.vdv-ax span,.vdv-s i,.vdv-n small,.vdv-p small,.asp .asph,.asc span,.badge.part,.pchip .pn,.idx-lab,.ix .mn,
+ .whyh,.more>summary span,.cr .cl,.lcast .cl,.ed-m,.ftab .fv,.hand-h,.inr .inl,thead th,
+ .sitelink,.rs .rsx,.rs .n,.rs .net,.sn.rk,.noposter b,.noposter span,.cast .src):not(#_){font-size:12px}
+a.pill.warn.buy:not(#_){font-size:12px;padding:1px 8px}
+a.pill.buy .go:not(#_){font-size:12px;margin-left:2px}
+/* 「ポスターなし」は 84px の枠に 1 行で収める（12px にしたら 2 行に割れたため、字間を少し詰める） */
+.ticket.cmp .noposter span:not(#_){white-space:nowrap;letter-spacing:-.05em}
