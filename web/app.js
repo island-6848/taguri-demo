@@ -925,8 +925,9 @@ function compactTickets(root) {
         box.className = "lprice";
         const table = rs => '<table class="ptb">' + rs.map(r => r.length > 1
           ? "<tr><th>" + E(r[0]) + "</th><td>" + E(r[1]) + "</td></tr>" : '<tr><td colspan="2">' + E(r[0]) + "</td></tr>").join("") + "</table>";
+        // 1 行目の横に「▶詳細」。開いた残りは一段右にずらす（起案者の指示 2026-10-17）
         box.innerHTML = rows.length > 2
-          ? "<summary>" + table(rows.slice(0, 1)) + '<span class="lp-more">▸ ほか ' + (rows.length - 1) + " 件の料金を見る</span></summary>" + table(rows.slice(1))
+          ? "<summary>" + table(rows.slice(0, 1)) + '<span class="lp-more">詳細</span></summary><div class="lp-body">' + table(rows.slice(1)) + "</div>"
           : table(rows);
         (sale || main.querySelector(".when") || main.querySelector(".meta")).after(box);
         priced = true;
@@ -1010,7 +1011,8 @@ function compactTickets(root) {
       const mark = stub.querySelector(".sn, .wax");
       if (mark) { const rk = mark.cloneNode(true); rk.classList.add("rk"); pcol.prepend(rk); }
       const sd = stub.querySelector(".sd");
-      if (sd) {
+      // おすすめ・興味ありの一覧では、題名の上の日付は出さない（日程の欄にあるため。起案者の指示 2026-10-17）
+      if (sd && !noMore) {
         const cd = document.createElement("div");
         cd.className = "cdate";
         // 期間（「10/24〜10/31」）と、上演中・終了の別。ツアーなら、どの会場の日程かを添える
@@ -1137,6 +1139,21 @@ function movedToOwned(tk) {
     a.setAttribute("href", "/tickets");
     a.textContent = "購入済み公演を見る";
     p.append(a);
+    // 押し間違えたときは、その場でカードを戻して選び直せる（起案者の指示 2026-10-17）。戻したカードで別の答えを
+    // 押すと、購入済みの印は外れる（サーバーの REACT が owned=0 にする）
+    const undo = document.createElement("button");
+    undo.type = "button";
+    undo.className = "wnb undo";
+    undo.textContent = "押し間違い（選び直す）";
+    undo.addEventListener("click", () => {
+      tk.classList.remove("tomove", "torn");
+      const g = tk.querySelector(".btns");
+      if (g) g.querySelectorAll("button[data-v]").forEach(x => x.classList.remove("picked"));
+      const said = tk.querySelector(".btns .said");
+      if (said) said.textContent = "選び直してください（購入済みは、別の答えを押すと外れます）";
+      p.replaceWith(tk);
+    });
+    p.append(" ", undo);
     tk.replaceWith(p);
   }, matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 450);
 }
@@ -1237,6 +1254,7 @@ document.addEventListener("click", ev => {
     const tear = (tk && b.dataset.v === "interest")
               || (wt && isGrade(b.dataset.v));
     if (tear) row.classList.add("torn");
+    else if (tk) tk.classList.remove("torn");   // 押し直し（興味あり→興味なし など）では、もいだ印を戻す
     // 押した 1 つだけに印を付ける（色が変わって弾む・theme.css の .picked）。記録できなかったら外す
     // （起案者の指摘 2026-10-13「興味ありだけ黒いのなぜ？押したら色変わるとかなにかしらのアニメーション」）
     g.querySelectorAll("button[data-v]").forEach(x => x.classList.toggle("picked", x === b));
@@ -1248,7 +1266,9 @@ document.addEventListener("click", ev => {
       if (!d) { if (tear) row.classList.remove("torn"); b.classList.remove("picked"); unfill(); return; }
       g.classList.add("done");
       if (said0) { b.textContent = "購入済み"; b.disabled = true; }
-      if (shown && g.dataset.stage) {
+      // 入れ替わりの 1 枚は、その 1 枚で初めて答えたときだけ足す（押し直すたびに増やさない）
+      if (shown && g.dataset.stage && !slot.dataset.filled) {
+        slot.dataset.filled = "1";
         const f = await fetch(API_BASE + "/api/react", {method: "POST", credentials: "include",
           headers: {"Content-Type": "application/json"},
           body: JSON.stringify({stage_id: g.dataset.stage, fill_only: true, shown})})
@@ -1319,7 +1339,7 @@ document.addEventListener("click", ev => {
       // **「すでに持っている」を押した 1 枚は、この一覧から外して「購入済み公演」へ送る**
       // （起案者の指示 2026-10-14「押したら、持ってる公演のところだけに表示されて」）。
       // 外したあとに 1 行だけ残し、行き先へ飛べるようにする（どこへ行ったか分からなくしない）
-      if (b.dataset.v === "owned" && tk && !tk.classList.contains("owned")) movedToOwned(tk);
+      if (b.dataset.v === "owned" && tk && !tk.classList.contains("owned") && !tk.classList.contains("favourite")) movedToOwned(tk);
       // **見送った理由は出すだけで、開かない。** 書く頻度が低い入力なので、
       // 焦点まで移すと「書かないと進めない」ように見える
       if (b.dataset.v === "nointerest") {

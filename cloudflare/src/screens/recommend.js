@@ -413,7 +413,8 @@ ${limits}`;
 
 // ---------------------------------------------------------------- react (serve.on_react)
 // cantgo（行けない）は interest=2: 答えた公演としておすすめから外し、興味ありの一覧には出さず、好みの手がかりには使う
-const REACT = {owned: {owned: 1}, interest: {interest: 1}, nointerest: {interest: 0}, cantgo: {interest: 2}};
+// 押し間違いをその場で直せるように（起案者の指示 2026-10-17）、購入済み以外を押したら購入済みの印を外す（owned=0）
+const REACT = {owned: {owned: 1}, interest: {interest: 1, owned: 0}, nointerest: {interest: 0, owned: 0}, cantgo: {interest: 2, owned: 0}};
 const FROM = {reminder: 'reminder', search: 'search', favourites: 'favourites'};
 
 async function reactRow(ctx, stageId, cols, source) {

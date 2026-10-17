@@ -131,11 +131,16 @@ export function tourBlock(venues, shown, today) {
     const isHere = vs.length > 1 && shownRow;
     const n = [...perf.values()].reduce((a, ps) => a + ps.length, 0);
     const price = perVenuePrice ? priceTable(priceOf(v)) : '';
-    return `<div class="tf-row${isHere ? ' here' : ''}${end < today ? ' done' : ''}"><div class="tf-head"><span class="tf-when">${isHere ? '<span class="tf-star" title="おすすめに出ている会場">★</span>' : ''}${E(when)}</span>`
-      + `<span class="tf-loc">${E(where)}</span></div>`
-      + (price ? `<div class="tf-price">${price}</div>` : '')
-      + (grid ? `<details class="tf-tt"${shownRow ? ' open' : ''}><summary>公演日時（${n} 回）</summary>${grid}</details>` : '')
-      + '</div>';
+    // 会場の名前はツアーのときだけ（1 か所なら上の劇場の行と同じなので出さない。起案者の指示 2026-10-17）
+    const head = `<span class="tf-when">${isHere ? '<span class="tf-star" title="おすすめに出ている会場">★</span>' : ''}${E(when)}</span>`
+      + (vs.length > 1 ? `<span class="tf-loc">${E(where)}</span>` : '');
+    const body = (price ? `<div class="tf-price">${price}</div>` : '')
+      + (grid ? `<p class="tf-n">公演日時（${n} 回）</p>${grid}` : '');
+    const cls = `tf-row${isHere ? ' here' : ''}${end < today ? ' done' : ''}`;
+    // 日程の行そのものを押す口にし、行の右に「▶詳細」。開いた中身（料金・暦）は一段右にずらす（起案者の指示 2026-10-17）
+    return body
+      ? `<details class="${cls}"${shownRow ? ' open' : ''}><summary class="tf-head">${head}<span class="tf-more">詳細</span></summary><div class="tf-body">${body}</div></details>`
+      : `<div class="${cls}"><div class="tf-head">${head}</div></div>`;
   });
   return {html: `<div class="tourfull v2">${rows.join('')}</div>`, perVenuePrice};
 }

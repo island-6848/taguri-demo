@@ -1284,7 +1284,8 @@ h3{font-family:var(--mincho);font-size:17.5px;font-weight:600;margin:0 0 3px;
 .btns button,.rb button{font:inherit;font-size:12.5px;padding:4px 12px;border-radius:99px;
  border:1px solid var(--ring);background:var(--surf);color:var(--ink2);cursor:pointer}
 .btns button:hover,.rb button:hover{border-color:var(--acc);color:var(--acc)}
-.btns.done button,.rb.done button{opacity:.35;pointer-events:none}
+/* 答えたあとも押し直せる（押し間違いをその場で直す。起案者の指示 2026-10-17）。押した 1 つ以外を薄く */
+.btns.done button,.rb.done button{opacity:.55}
 .btns.dead,.rb.dead{opacity:.4;pointer-events:none}
 .said{font-size:12px;color:var(--good);min-width:0}
 .waits{margin:0 0 8px}

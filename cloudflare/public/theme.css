@@ -294,7 +294,7 @@ body{font-family:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",YuGothic,syst
 /* 興味なしは薄いグレーの地（黒は「すでに持っている」だけ。起案者の指示 2026-10-14） */
 .btns button[data-v=nointerest].picked{background:var(--base);color:var(--ink);border-color:var(--ink)}
 .btns button.picked::before{content:"✓";display:inline-block;margin-right:4px;animation:tg-check .3s ease-out}
-.btns.done button{opacity:.4}
+.btns.done button{opacity:.55}
 .btns.done button.picked{opacity:1}
 @keyframes tg-pick{0%{transform:scale(1)}35%{transform:scale(.93)}70%{transform:scale(1.05)}100%{transform:scale(1)}}
 @keyframes tg-check{from{opacity:0;transform:scale(.4) rotate(-20deg)}to{opacity:1;transform:none}}
@@ -883,13 +883,21 @@ body:has(>.shell){padding-top:0}
 /* ---- おすすめのカードの日程（screens/schedule.js tourBlock、起案者の指示 2026-10-17）。
    会場ごとに「10/28〜11/1　恵比寿・エコー劇場（東京都）」の 1 行。ツアーのときだけ、おすすめに出ている会場の日付の前に ★ */
 .tourfull.v2{display:grid;gap:4px}
-.tourfull.v2 .tf-row{display:block;padding:2px 6px;border-radius:6px}
+.tourfull.v2 .tf-row{display:block;padding:0 4px;border-radius:6px}
 .tourfull.v2 .tf-star{color:var(--curtain);margin-right:2px}
-.tourfull.v2 .tf-head{display:flex;flex-wrap:wrap;column-gap:1em}
+.tourfull.v2 .tf-head{display:flex;flex-wrap:nowrap;column-gap:1em}
 .tourfull.v2 .tf-when{color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap}
-.tourfull.v2 .tf-loc{color:var(--ink2);font-weight:500;flex:0 1 auto}
+.tourfull.v2 .tf-loc{color:var(--ink2);font-weight:500;flex:1 1 auto;min-width:0}
 .tourfull.v2 .tf-row.here .tf-when,.tourfull.v2 .tf-row.here .tf-loc{font-weight:700;color:var(--ink)}
-.tourfull.v2 .tf-tt summary{cursor:pointer;color:var(--curtain);font-size:12px}
+/* 日程の行そのものが押す口（details の summary）。行の右に「▶詳細」、開いた中身は一段右へ */
+.tourfull.v2 summary.tf-head{cursor:pointer;list-style:none;align-items:baseline}
+.tourfull.v2 summary.tf-head::-webkit-details-marker{display:none}
+.tourfull.v2 .tf-more,.ticket.cmp details.lprice summary .lp-more{margin-left:auto;padding-left:10px;color:var(--curtain);font-size:12px;white-space:nowrap}
+.tourfull.v2 .tf-more::before,.ticket.cmp details.lprice summary .lp-more::before{content:"▶";font-size:9px;margin-right:3px}
+.tourfull.v2 details[open]>summary .tf-more::before,.ticket.cmp details.lprice[open] summary .lp-more::before{content:"▼"}
+.tourfull.v2 .tf-body{margin:0 0 2px 1.2em}
+.tourfull.v2 .tf-n{margin:0;font-size:11px;color:var(--mute)}
+.ticket.cmp .lp-body{margin-left:1.2em}
 .tourfull.v2 .tf-price{margin:2px 0}
 /* 公演日時の暦: 週ごとの行、月〜日の列。開演の時刻を日に並べる。公演の無い日は「休演」 */
 .ttb{border-collapse:separate;border-spacing:2px;width:100%;table-layout:fixed;margin:4px 0 2px;font-size:11px;line-height:1.35}
@@ -912,10 +920,8 @@ body:has(>.shell){padding-top:0}
 .ticket.cmp .lprice{margin:6px 0 8px}
 /* 畳んだ料金: 1 行目の表の下に「ほか N 件を見る」。押せる範囲（summary）の中に収める */
 .ticket.cmp details.lprice{display:block}
-.ticket.cmp details.lprice summary{cursor:pointer;list-style:none;display:block;width:100%}
+.ticket.cmp details.lprice summary{cursor:pointer;list-style:none;display:flex;align-items:baseline;width:100%}
 .ticket.cmp details.lprice summary::-webkit-details-marker{display:none}
-.ticket.cmp details.lprice summary .lp-more{display:inline-block;color:var(--curtain);font-size:12px;white-space:nowrap;padding:4px 0}
-.ticket.cmp details.lprice[open] summary .lp-more{display:none}
 /* 暦を置く日程は、見出し「日程」を上に出して、暦にカードの幅いっぱいを使う（電話の幅で時刻が重ならないように） */
 .ticket.cmp .ltour:has(.tourfull.v2){display:block}
 .ticket.cmp .ltour:has(.tourfull.v2)>.cl{display:block;margin:0 0 2px}
@@ -945,3 +951,5 @@ a.pill.warn.buy:not(#_){font-size:12px;padding:1px 8px}
 a.pill.buy .go:not(#_){font-size:12px;margin-left:2px}
 /* 「ポスターなし」は 84px の枠に 1 行で収める（12px にしたら 2 行に割れたため、字間を少し詰める） */
 .ticket.cmp .noposter span:not(#_){white-space:nowrap;letter-spacing:-.05em}
+/* 日程の見出しと最初の行の間を詰める */
+.ticket.cmp .ltour:has(.tourfull.v2) .tourfull{margin-top:0;line-height:1.6}
