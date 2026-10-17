@@ -71,16 +71,16 @@ def stage():
     # 幕: 竿・飾り幕・左右の幕（外へ寄せて留め、字の舞台を空ける）
     b.append(line('M70 74 L230 74', 2.0))
     b.append(line('M70 76 ' + ' '.join(f'Q{70 + 16 + 32 * i} 94 {70 + 32 * (i + 1)} 76' for i in range(5)), 1.8))
-    b.append(line('M71 78 C70 104 71 126 75 140 C70 156 67 182 66 210', 2.0))
+    b.append(line('M71 78 C70 104 71 126 75 140 C70 160 67 192 66 218', 2.0))
     b.append(line('M80 82 C80 104 78 124 75 140', 1.2))
-    b.append(line('M229 78 C230 104 229 126 225 140 C230 156 233 182 234 210', 2.0))
+    b.append(line('M229 78 C230 104 229 126 225 140 C230 160 233 192 234 218', 2.0))
     b.append(line('M220 82 C220 104 222 124 225 140', 1.2))
     for x in (75, 225):
         b.append(f'<circle cx="{x}" cy="141" r="2.8" fill="none" stroke="{INK}" stroke-width="1.4"/>')
         b.append(line(f'M{x - 2} 144 L{x - 3.5} 152 M{x} 144 L{x} 153 M{x + 2} 144 L{x + 3.5} 152', 1.1))
     # 字: 舞台の真ん中。濁点は星に、「り」の払いの先から糸が床へ垂れて、床の線になる
-    size, base = 54, 184
-    xs = (90, 141, 186)                         # 字ごとの左端（字の幅 1000 を詰めて組む）
+    size, base = 62, 200
+    xs = (84, 141, 190)                         # 字ごとの左端（字の幅 1000 を詰めて組む）
     b.append(glyph('た', xs[0] - 141 * size / 1000 + 4, base, size))
     gx = xs[1] - 241 * size / 1000
     b.append(glyph('ぐ', gx, base, size, skip=DAKUTEN['ぐ']))
@@ -90,11 +90,11 @@ def stage():
     tip = at(rx, base, size, RI_TIP)
     b.append(line(f'M{tip[0]:.1f} {tip[1]:.1f} C{tip[0] - 6:.1f} {tip[1] + 8:.1f} {tip[0] - 14:.1f} {tip[1] + 10:.1f} {tip[0] - 12:.1f} {tip[1] + 18:.1f} '
                   f'C{tip[0] - 10:.1f} {tip[1] + 24:.1f} {tip[0] + 2:.1f} {tip[1] + 22:.1f} {tip[0]:.1f} {tip[1] + 16:.1f} '
-                  f'C{tip[0] - 2:.1f} {tip[1] + 10:.1f} {tip[0] - 24:.1f} 212 {tip[0] - 40:.1f} 212 L64 212', 1.4))
-    b.append(line(f'M{tip[0] + 2:.1f} 212 L236 212', 1.4))
-    b.append(line('M86 219 L214 219', 1.0, ' stroke-dasharray="5 4"'))
-    b.append(sparkle(150, 114, 6, 1.2))
-    b.append(f'<path d="{ftext(FONT, "TAGURI", 150, 238, 8.5, spacing=0.6, anchor="middle")}" fill="{INK}"/>')
+                  f'C{tip[0] - 2:.1f} {tip[1] + 10:.1f} {tip[0] - 24:.1f} 220 {tip[0] - 40:.1f} 220 L66 220', 1.4))
+    b.append(line(f'M{tip[0] + 2:.1f} 220 L234 220', 1.4))
+    b.append(line('M88 228 L212 228', 1.0, ' stroke-dasharray="5 4"'))
+    b.append(sparkle(150, 118, 6.5, 1.2))
+    # 英語の表記は入れない（起案者 2026-10-18「ひな明朝のときの1で、英語表記消しがいいかも」）
     return svg(300, 300, b)
 
 # ---------------------------------------------------------------- 2 糸でたぐる横組み（ヘッダー向け）
