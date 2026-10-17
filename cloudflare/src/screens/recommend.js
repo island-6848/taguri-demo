@@ -16,12 +16,14 @@ import {parseCredits} from './credits.js';
 import {chooseVariant, groupOf} from '../reco-gate.js';
 import {readWeights, multipliersOf, weightForm, weightAction} from './weights.js';
 import {E, ValueError} from './py.js';
+import {ico} from './icons.js';
 import {loadWorks} from './works.js';
 import {castOffOf} from './diary.js';
 import {compose, cardTemplates, posterHtml} from './cards.js';
 import {PREFS, prefForm, prefsFor, regionCounts} from './prefs.js';
 export {prefForm, prefsFor};
-import {loadDeclared, loadDeclined, loadKindOff, nameHits, KINDS, reactionsOf, declinedBox} from './lists.js';
+import {loadDeclared, loadDeclined, loadKindOff, nameHits, KINDS, reactionsOf, declinedBox, buckets} from './lists.js';
+import {upcomingHits} from './search.js';
 
 export const TOP = 15;
 const TIPS = `<section class="card tips">
@@ -30,7 +32,7 @@ const TIPS = `<section class="card tips">
 <li><b>観た公演を 2 本以上、評価してください。</b>「◎」だけでなく「○」「△」「×」も混ぜて付けるのがコツです。よかった公演といまひとつだった公演の両方があると、どこが好みなのかが分かります。全部「◎」だと、違いが分からず、おすすめが出ません。</li>
 <li><b>観た公演は、題名と観た日を正しく入れてください。</b>公演の情報（出演者や作り手）が分かると、その人たちの次の公演をおすすめできます。日記帳で「まだどの公演とも結び付いていません」と出る記録は、その欄から観た公演を選んでください。</li>
 <li><b>好きな俳優・劇団・作品を「お気に入り」に登録してください。</b>登録した名前の公演は、評価が無くてもすぐ「お気に入り」に出ます。一緒に出ている人の公演も、おすすめに出やすくなります。</li>
-<li><b>気になる公演に「興味あり」を押してください。</b>観た記録が無くても、押した公演に出ている人や作り手の、ほかの公演がおすすめに出ます。<a href="/recommend/reminder?t=__TAGURI_TOKEN__">開幕リマインド</a>から選ぶのが手軽です。</li>
+<li><b>気になる公演に「興味あり」を押してください。</b>観た記録が無くても、押した公演に出ている人や作り手の、ほかの公演がおすすめに出ます。この画面の「おすすめに出てこない公演を探す」で題名や人名から探すか、<a href="/recommend/reminder?t=__TAGURI_TOKEN__">開幕リマインド</a>から選ぶのが手軽です。</li>
 <li><b>評価が増えるほど、おすすめは増えて、当たりやすくなります。</b>まずは 10 本ほどを目安にどうぞ。</li>
 </ol>
 <p class="lead"><a href="/rate?t=__TAGURI_TOKEN__">観た公演の評価</a>・<a href="/recommend/favourites?t=__TAGURI_TOKEN__">お気に入り</a>・<a href="/records/works?t=__TAGURI_TOKEN__">日記帳</a>から始められます。</p>
@@ -331,6 +333,29 @@ async function unratedEnds(ctx) {
     .map(w => w.last_date).sort();
 }
 
+/**
+ * おすすめに出てこない公演を、題名・人名・団体名で探して「興味あり」を押す欄（起案者の指示 2026-10-17
+ * 「でないときは探す、みたいにおすすめ画面に一個専用検索の検索バー置いて」）。これから観られる公演だけを、
+ * 探す画面と同じ引き方（search.upcomingHits）で引き、結果はこの画面に出す。
+ */
+async function findBox(ctx, find) {
+  const form = `<form class="fav-add rfind-form" method="get" action="/recommend">
+<input type="hidden" name="t" value="__TAGURI_TOKEN__">
+<input type="text" name="find" value="${E(find)}" size="26" placeholder="題名・人名・団体名" aria-label="おすすめに出てこない公演を探す">
+<button type="submit">${ico('search')}探す</button></form>`;
+  let found = '';
+  if (find) {
+    const [html, , n] = await upcomingHits(ctx, find, '', await buckets(ctx), 15);
+    found = n ? html.replace(/^<h2>/, '<h3>').replace(/<\/h2>/, '</h3>')
+      : `<p class="empty">これから観られる公演には「${E(find)}」が見つかりませんでした。言葉を変えるか、`
+        + `<a href="/search?t=__TAGURI_TOKEN__&amp;q=${encodeURIComponent(find)}">探す</a>で観た記録も含めて探してください。</p>`;
+  }
+  return `<section class="card rfind"${find ? ' id="rfind"' : ''}>
+<h2>${ico('search', 18)}<span>おすすめに出てこない公演を探す</span></h2>
+<p class="lead">気になる公演がおすすめに無いときは、ここで探して「興味あり」を押してください。押した公演は「興味あり」に入り、そこに出ている人や作り手の公演がおすすめに出やすくなります。</p>
+${form}${found}</section>`;
+}
+
 export async function recommendScreen(params, ctx) {
   const prefs = await prefsFor(params, ctx);
   const data = await rankedGroups(ctx);
@@ -369,7 +394,7 @@ export async function recommendScreen(params, ctx) {
   const body = `<h1>${E(head)}</h1>
 ${lede}
 ${notes}
-${tips}<div class="fil2">${prefForm(prefCounts(data.groups), prefs, '/recommend', '', {}, regionCounts(data.groups.map(g => ({key: g.stage_id, prefs: g.venues.map(v => v.pref)}))))}${weightForm(data.weights || {}, data.w_counts || {})}${declinedBox(await loadDeclined(ctx))}</div>
+${tips}${await findBox(ctx, String(params.get('find') || '').trim().slice(0, 60))}<div class="fil2">${prefForm(prefCounts(data.groups), prefs, '/recommend', '', {}, regionCounts(data.groups.map(g => ({key: g.stage_id, prefs: g.venues.map(v => v.pref)}))))}${weightForm(data.weights || {}, data.w_counts || {})}${declinedBox(await loadDeclined(ctx))}</div>
 ${cards.join('')}
 <p class="lede">気になった公演で「興味あり」を押すと、
 <a href="/recommend/interest?t=__TAGURI_TOKEN__">「興味あり」（いま ${nInterest} 件）</a>に移ります。</p>

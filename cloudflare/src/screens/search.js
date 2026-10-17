@@ -109,7 +109,7 @@ ${out.slice(0, 8).join('')}</div>`;
 }
 
 /** app._upcoming_hits: [html, names, n] */
-async function upcomingHits(ctx, q, ym, b, top = 8) {
+export async function upcomingHits(ctx, q, ym, b, top = 8) {
   const rows = await upcoming(ctx, q);
   const state = new Map();
   for (const [k, lab] of [['tracking', '追いかけています（興味ありと答えました）'], ['owned', '観る予定です（すでに持っていると答えました）'], ['others', '興味なしと答えました']])

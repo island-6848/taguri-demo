@@ -2588,6 +2588,18 @@
    "verifies": []
   },
   {
+   "id": "impl-recommend-find",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-17",
+   "title": "おすすめ画面に「おすすめに出てこない公演を探す」欄を置いた（これから観られる公演だけを引き、その場で「興味あり」を押せる）",
+   "sources": [
+    "cloudflare/src/screens/recommend.js",
+    "cloudflare/test/recommend-find.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "impl-theater-conquest",
    "type": "decision",
    "status": "adopted",
@@ -7477,6 +7489,11 @@
    "from": "impl-rating-aspects",
    "rel": "affects",
    "to": "comp-recommender"
+  },
+  {
+   "from": "impl-recommend-find",
+   "rel": "affects",
+   "to": "new-user-reco-threshold"
   },
   {
    "from": "impl-theater-conquest",

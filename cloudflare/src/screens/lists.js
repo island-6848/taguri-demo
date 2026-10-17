@@ -450,7 +450,7 @@ export async function interestScreen(params, ctx) {
   const list = rows.length
     ? `<p class="lead"><b>${E(SORTS[sort])}</b>に並んでいます。順位は付けていません。</p><div class="tickets">`
       + (await cards(ctx, show, 'interest', r => ({note: r.note, origin: ORIGIN[r.src] || '', why: whys.get(r.stage_id) || ''}))).join('') + '</div>'
-    : '<p class="empty">追いかけている公演はありません。「おすすめ」の画面で「興味あり」を押すと、ここに並びます。</p>';
+    : '<p class="empty">追いかけている公演はありません。「おすすめ」の画面で「興味あり」を押すと、ここに並びます。おすすめに出てこない公演は、おすすめの画面の「おすすめに出てこない公演を探す」か「探す」で、題名や人名から探して押せます。</p>';
   const body = `<h1>追いかけている ${rows.length} 件</h1>
 <p class="lede">「興味あり」を押した公演を並べています（並べ替えは下の「並べ替え」から）。順位は付けていません。チケットが取れたら「すでに持っている」を押してください。観る予定に移り、上演日を過ぎると評価待ちに並びます。<br>
 「なぜ気になったか」に書いた名前は、<a href="/recommend/favourites?t=__TAGURI_TOKEN__">お気に入り</a>に加える候補として並びます。</p>
