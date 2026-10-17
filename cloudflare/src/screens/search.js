@@ -23,6 +23,8 @@ import {loadWorks, titleKey} from './works.js';
 import {loadDeclared, buckets, nz, pastFromIndex} from './lists.js';
 import {titleKey as indexKey} from '../stage-search.js';
 import {stageInfo, fallbackTemplate} from './fallback.js';
+import {tourBlock} from './schedule.js';
+import {withTour} from './recommend.js';
 import {runRange, periodStart} from './reminder.js';
 
 const cmp = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
@@ -259,11 +261,27 @@ export async function upcomingHits(ctx, q, ym, b, top = 8) {
   // カードがまだ無い公演（新しい公演など）は、一覧と索引の中身から描く（fallback.js）
   const bare = show.map(h => h[0]).filter(sid => !html.has(sid));
   if (bare.length) for (const [sid, st] of await stageInfo(ctx.db, bare)) html.set(sid, fallbackTemplate(st));
+  // 日程は、おすすめと同じ会場ごとの行（「このおすすめの日程」の札は使わない。起案者の指示 2026-10-17）
+  // ツアーのほかの会場は、索引の同じ tour の公演（rec_stage.tour）
+  const ids = show.map(h => String(h[0]));
+  const tourOf = new Map(), byTour = new Map();
+  if (ids.length) {
+    const {results} = await ctx.db.prepare(`SELECT stage_id, tour FROM rec_stage WHERE ver=(SELECT v FROM rec_meta WHERE k='current') AND stage_id IN (${ids.map(() => '?').join(',')})`).bind(...ids).all();
+    for (const r of results) if (r.tour) tourOf.set(String(r.stage_id), r.tour);
+    const tours = [...new Set(tourOf.values())];
+    if (tours.length) {
+      const {results: sib} = await ctx.db.prepare(`SELECT stage_id, tour FROM rec_stage WHERE ver=(SELECT v FROM rec_meta WHERE k='current') AND tour IN (${tours.map(() => '?').join(',')})`).bind(...tours).all();
+      for (const r of sib) { if (!byTour.has(r.tour)) byTour.set(r.tour, []); byTour.get(r.tour).push(String(r.stage_id)); }
+    }
+  }
+  const tourSids = new Map(ids.map(sid => [sid, [sid, ...(byTour.get(tourOf.get(sid)) || [])]]));
+  const info = await stageInfo(ctx.db, [...tourSids.values()].flat());
   const cards = show.filter(h => html.has(h[0])).map(([sid, , why]) => {
     const st = state.get(sid);
     const w = why + (st ? `<li class="rs state">${E(st)}</li>` : '');
     const pic = posters.get(sid);
-    return compose(html.get(sid), sid, tracking.has(sid) ? 'interest' : 'recommend', {top: w, poster: pic ? cardPoster(pic) : ''});
+    const card = compose(html.get(sid), sid, tracking.has(sid) ? 'interest' : 'recommend', {top: w, poster: pic ? cardPoster(pic) : ''});
+    return withTour(card, tourBlock([...new Set(tourSids.get(String(sid)))].map(x => info.get(x)).filter(Boolean), sid, ctx.today));
   });
   const tail = hits.length <= top ? '' : `<p class="lead">見つかったのは ${hits.length} 件で、上演日の近い ${top} 件を表示しています。<b>残りは`
     + (!q ? '言葉を入れると絞り込めます' : '言葉を変えると出てきます') + '</b>（人名・団体名・劇場名など）。</p>';

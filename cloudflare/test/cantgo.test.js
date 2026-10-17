@@ -70,3 +70,15 @@ test('興味あり cards get the same schedule block as おすすめ (venue rows
     assert.match(html, /<p class="tf-n">公演日時（2 回）<\/p><table class="ttb"/);
   } finally { sqlite.close(); }
 });
+
+test('お気に入り cards use the same schedule block, with no 「このおすすめの日程」', async () => {
+  const {env, sqlite} = setup();
+  for (const s of FIXTURE.sql) sqlite.exec(s);
+  const a = await signIn(env);
+  try {
+    assert.equal((await step(env, a, {post: '/api/favourite', body: {action: 'add', kind: '人', name: '俳優甲'}})).status, 200);
+    const html = (await step(env, a, {get: '/api/screen/favourites'})).body.body_html;
+    assert.match(html, /<article class="ticket favourite"[\s\S]*<div class="tourfull v2/);
+    assert.doesNotMatch(html, /このおすすめの日程/);
+  } finally { sqlite.close(); }
+});

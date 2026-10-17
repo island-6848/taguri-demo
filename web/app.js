@@ -828,6 +828,7 @@ function compactTickets(root) {
   const here = location.pathname.slice(REPO_BASE.length) || "/";
   const recPage = ["/", "/recommend"].includes(here);
   const interestPage = here === "/recommend/interest";   // 興味ありの一覧もおすすめと同じ表示（起案者の指示 2026-10-17）
+  const favPage = here === "/recommend/favourites";       // お気に入りも同じ表示（起案者の指示 2026-10-17）
   // お気に入りも同じ形にする（起案者の指示 2026-10-15「お気に入りのページのレイアウト変更して。購入済み公演と似た感じ」）
   root.querySelectorAll("article.ticket.recommend, article.ticket.interest, article.ticket.owned, article.ticket.favourite").forEach(t => {
     if (t.classList.contains("cmp")) return;
@@ -837,7 +838,8 @@ function compactTickets(root) {
     // おすすめの画面の一覧のカード: 折りたたみを付けず、料金の明細・出演の全員・あらすじの 100 字ほどを出す
     // （起案者の指示 2026-10-17。あらすじの続きだけ畳む）
     const noMore = (recPage && t.classList.contains("recommend") && !t.closest(".rfind"))
-      || (interestPage && t.classList.contains("interest"));
+      || (interestPage && t.classList.contains("interest"))
+      || (favPage && t.classList.contains("favourite"));
     const more = document.createElement("details");
     more.className = "more";
     more.innerHTML = "<summary><b>くわしく</b><span>会期・料金・出演の全員・あらすじの全文</span></summary>";
