@@ -1343,16 +1343,30 @@ document.addEventListener("click", ev => {
          "登録しました。出演者とあらすじを調べています…")
       .then(d => { if (d) { i.value = ""; waitJob(g, true); } });
   } else if (b.dataset.past) {
-    // **探す画面の過去の公演**（起案者の指示 2026-10-17「ボタン 2 つで入れて」）。観た＝日記帳に足して
-    // その公演に結び付ける。観ればよかった＝見逃した公演の一覧へ。押した行はそのまま残し、結果を書く
-    const li = b.closest(".pastrow"), g = b.closest(".past-btns");
+    // **探す画面の過去の公演**（起案者の指示 2026-10-17「ボタン 2 つで入れて」「観たならば、日時を入れて
+    // 観劇記録に追加できるようにして」）。観た＝観た日（と開演）を入れる欄を開き、追加でその公演に結び付ける。
+    // 観ればよかった＝見逃した公演の一覧へ。押した行はそのまま残し、結果を書く
+    const li = b.closest(".pastrow"), said = li.querySelector(":scope > .said");
+    const form = li.querySelector(".past-seen");
     const body = {title: li.dataset.title, stage_id: li.dataset.stage};
     if (b.dataset.past === "seen") {
-      post("/api/add_work", body, g, "日記帳に足しました。観た日と評価は日記帳で入れられます")
-        .then(d => { if (d) { b.disabled = true; b.textContent = "日記帳に足しました"; } });
+      form.hidden = !form.hidden;
+      b.classList.toggle("picked", !form.hidden);
+      if (!form.hidden) form.querySelector("input[name=date]").focus();
+    } else if (b.dataset.past === "seen-save") {
+      const d = form.querySelector("input[name=date]"), t = form.querySelector("input[name=time]");
+      if (!d.value) { if (said) said.textContent = "観た日を入れてください"; d.focus(); return; }
+      if (!d.checkValidity()) { if (said) said.textContent = "観た日は上演期間の中から選んでください"; d.focus(); return; }
+      post("/api/add_work", {...body, date: d.value, time: t.value || ""}, li, "観劇記録に追加しました")
+        .then(r => {
+          if (!r) return;
+          form.hidden = true;
+          const seen = li.querySelector("[data-past=seen]");
+          seen.disabled = true; seen.textContent = "観劇記録に追加しました"; seen.classList.remove("picked");
+        });
     } else {
-      post("/api/missed", body, g, "観ればよかったに入れました")
-        .then(d => { if (d) { b.disabled = true; b.textContent = "観ればよかったに入っています"; } });
+      post("/api/missed", body, li, "観ればよかったに入れました")
+        .then(r => { if (r) { b.disabled = true; b.textContent = "観ればよかったに入っています"; } });
     }
   } else if (b.dataset.imp) {
     const g = b.closest(".imp");

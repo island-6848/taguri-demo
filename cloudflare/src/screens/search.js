@@ -190,16 +190,20 @@ async function pastHits(ctx, q, ws) {
   const li = prods.slice(0, PAST_SHOW).map(p => {
     const run = p.start === p.end ? md(p.start) : `${md(p.start)}〜${md(p.end)}`;
     const isMissed = missed.has(indexKey(p.title));
+    // 観た日の欄: 1 日だけの公演はその日を入れておく。期間の外は選べない（min/max）
+    const one = p.start === p.end ? p.start : '';
+    const seenForm = `<div class="past-seen" hidden><label>観た日 <input type="date" name="date" value="${E(one)}" min="${E(p.start || '')}" max="${E(p.end || '')}" required></label>`
+      + `<label>開演 <input type="time" name="time" step="60"></label><button type="button" data-past="seen-save">観劇記録に追加</button></div>`;
     return `<li class="pastrow" data-stage="${E(p.sid)}" data-title="${E(p.title)}">
 <div class="past-t"><b>${E(p.title)}</b>${p.grp ? `<span class="past-g">${E(p.grp)}</span>` : ''}</div>
 <div class="past-w">${E(run)}${p.where ? '・' + E(p.where) : ''}</div>
 <div class="past-why">ヒットした箇所：${p.why.map(E).join('・')}</div>
 <div class="past-btns"><button type="button" data-past="seen">観た</button>`
-      + `<button type="button" data-past="missed"${isMissed ? ' disabled' : ''}>${isMissed ? '観ればよかったに入っています' : '観ればよかった'}</button><span class="said"></span></div></li>`;
+      + `<button type="button" data-past="missed"${isMissed ? ' disabled' : ''}>${isMissed ? '観ればよかったに入っています' : '観ればよかった'}</button></div>${seenForm}<span class="said"></span></li>`;
   }).join('');
   const more = prods.length > PAST_SHOW ? `<p class="lead">見つかったのは ${prods.length} 件で、新しい順に ${PAST_SHOW} 件を表示しています。言葉を足すと絞れます。</p>` : '';
   return [`<h2>過去の公演（2019 年〜） ${prods.length} 件</h2>
-<p class="lead">終わった公演のうち、まだ日記帳に無いものです。<b>「観た」</b>を押すと日記帳に足して公演に結び付けます（観た日と評価は日記帳で入れられます）。<b>「観ればよかった」</b>は見逃した公演の一覧に入れます。
+<p class="lead">終わった公演のうち、まだ日記帳に無いものです。<b>「観た」</b>を押して観た日（と開演の時刻）を入れると、観劇記録に足してその公演に結び付けます。<b>「観ればよかった」</b>は見逃した公演の一覧に入れます。
 題名は先頭からの一致、人・団体は名前全体の一致で探しています。</p>${more}<ul class="pastlist">${li}</ul>`, prods.length];
 }
 

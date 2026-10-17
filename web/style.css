@@ -2291,4 +2291,18 @@ code.cmd{display:inline-block;margin:10px 0 4px;padding:8px 14px;border-radius:8
 .pastrow .past-g{margin-left:8px;color:var(--ink2);font-size:13px}
 .pastrow .past-w{color:var(--ink2);font-size:13px;margin-top:2px}
 .pastrow .past-why{color:var(--mute);font-size:12px;margin-top:2px}
-.pastrow .past-btns{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px}
+.pastrow .past-btns{display:flex;justify-content:flex-end;align-items:center;flex-wrap:nowrap;margin-top:8px}
+/* 回答の帯（theme.css の .btns button）と同じ形: 1 本の区切りの帯で外側だけ角を丸める。右寄せ */
+.pastrow .past-btns button,.pastrow .past-seen button{min-height:40px;padding:0 12px;margin:0;font:inherit;font-size:12.5px;font-weight:500;white-space:nowrap;
+ background:var(--surf);color:var(--ink);border:1px solid var(--ink);border-radius:0;box-shadow:0 1px 2px rgba(29,29,31,.12);cursor:pointer;transition:background-color .12s ease}
+.pastrow .past-btns button:hover,.pastrow .past-seen button:hover{background:var(--curtain-w)}
+.pastrow .past-btns button:first-child{border-radius:8px 0 0 8px}
+.pastrow .past-btns button:last-child{border-left:0;border-radius:0 8px 8px 0}
+.pastrow .past-btns button.picked{background:var(--curtain);color:#fff;border-color:var(--curtain)}
+.pastrow .past-btns button:disabled,.pastrow .past-seen button:disabled{opacity:.45;cursor:default}
+.pastrow .past-seen{display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:8px 12px;margin-top:8px;font-size:13px;color:var(--ink2)}
+.pastrow .past-seen[hidden]{display:none}
+.pastrow .past-seen input{font:inherit;padding:6px 8px;border:1px solid var(--ring);border-radius:8px;background:var(--surf);color:var(--ink)}
+.pastrow .past-seen button{border-radius:8px}
+.pastrow > .said{display:block;text-align:right;margin-top:6px}
+.pastrow > .said:empty{display:none}

@@ -67,11 +67,14 @@ test('past stages (2019-) show on 探す by title prefix, with 観た and 観れ
     assert.match(html, /data-stage="700003" data-title="夏の夜の夢 再演"[\s\S]*?data-stage="700001" data-title="夏の夜の夢"/);   // newest first
     assert.match(html, /2023\/7\/1〜2023\/8\/3・劇場A ほか 1 会場/);
     assert.match(html, /<button type="button" data-past="seen">観た<\/button><button type="button" data-past="missed">観ればよかった<\/button>/);
+    // 観た: the date (within the run) and the curtain time, then 観劇記録に追加
+    assert.match(html, /<div class="past-seen" hidden><label>観た日 <input type="date" name="date" value="" min="2023-07-01" max="2023-08-03" required><\/label><label>開演 <input type="time" name="time" step="60"><\/label><button type="button" data-past="seen-save">観劇記録に追加<\/button><\/div>/);
     assert.doesNotMatch(html, /冬物語/);
     // 観た: into the diary, linked to that stage; it then leaves this list.
-    const added = await step(env, a, {post: '/api/add_work', body: {title: '夏の夜の夢', stage_id: '700001'}});
+    const added = await step(env, a, {post: '/api/add_work', body: {title: '夏の夜の夢', stage_id: '700001', date: '2023-07-08', time: '18:30'}});
     assert.equal(added.status, 200);
     assert.equal(added.body.stage_id, '700001');
+    assert.deepEqual({...sqlite.prepare("SELECT first_date, time, stage_id FROM works WHERE title='夏の夜の夢'").get()}, {first_date: '2023-07-08', time: '18:30', stage_id: '700001'});
     assert.doesNotMatch(await search(env, a, '夏の夜'), /data-stage="700001"/);
     // 観ればよかった: the missed list, pointing at the very stage.
     assert.equal((await step(env, a, {post: '/api/missed', body: {title: '夏の夜の夢 再演', stage_id: '700003'}})).status, 200);
