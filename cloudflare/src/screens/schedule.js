@@ -13,7 +13,7 @@ const iso = ms => new Date(ms).toISOString().slice(0, 10);
 const ms = d => Date.parse(d + 'T00:00:00Z');
 const md = d => `${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}`;
 // 回の印（Wキャストの「歩」「印」など）にしない字
-const NOT_MARK = /[\d\s:：/／、,，.。()（）\[\]［］「」『』【】~〜～\-ー・開演場時分午前後休夜昼※とや]/u;
+const NOT_MARK = /[\d\s:：/／、,，.。()（）\[\]［］「」『』【】~〜～\-ー・開演場時分午前後休夜昼※とや回]/u;
 
 /**
  * The performances read from a timetable text: Map 'YYYY-MM-DD' -> [{t: '13:00' | 'マチネ' | '', m: '歩' | ''}].
@@ -25,36 +25,60 @@ export function parseTimetable(text, start, end) {
   const lo = ms(start) - 14 * DAY, hi = ms(/^\d{4}-\d{2}-\d{2}$/.test(end || '') ? end : start) + 14 * DAY;
   const y0 = Number(start.slice(0, 4));
   let month = 0;          // 「10月」「2026年11月」だけの見出しの行の月（その下の「27日（火）…」に使う）
+  // 日付の行と、その下に続く時刻だけの行（「11月03日( 火 )」の次の行に「13:00 -」。起案者の指摘 2026-10-17 の
+  // 「三婆」）をまとめて 1 日分の文にする。続きの行は時刻・「-」・貸切・休演などで始まる短い行だけ
+  const days = [];
+  let open = null;
+  const CONT = /^(?:\S?\s*\d{1,2}(?::\d{2}|時)|[-ー‐－―・]|\S{1,3}回|貸切|休演|マチネ|ソワレ|開場|開演)/;
   for (const raw of String(text || '').normalize('NFKC').split(/\n/)) {
     const line = raw.trim();
+    if (!line) continue;
     const head = /^(?:\d{4}年)?\s*(\d{1,2})月\s*$/.exec(line);
-    if (head) { month = Number(head[1]); continue; }
+    if (head) { month = Number(head[1]); open = null; continue; }
     let dates = [...line.matchAll(/(\d{1,2})月(\d{1,2})日|(?:^|[^\d/])(\d{1,2})\/(\d{1,2})(?=\s*[(（])/g)];
     if (!dates.length && month) dates = [...line.matchAll(/^()()()()(\d{1,2})日/g)];
-    if (dates.length !== 1) continue;
+    if (dates.length !== 1) {
+      if (!dates.length && open && !open.timed && line.length <= 40 && CONT.test(line)) open.text += ' ' + line;
+      else open = null;
+      continue;
+    }
     const dm = dates[0], M = Number(dm[1] || dm[3] || month), D = Number(dm[2] || dm[4] || dm[5]);
     // 「10月21日(水)〜25日」のような期間の行は 1 日の行ではない
-    if (/^\s*(?:[(（][^)）]*[)）])?\s*[~〜～]\s*\d/.test(line.slice(dm.index + dm[0].length))) continue;
+    if (/^\s*(?:[(（][^)）]*[)）])?\s*[~〜～]\s*\d/.test(line.slice(dm.index + dm[0].length))) { open = null; continue; }
     let date = '';
     for (const y of [y0, y0 + 1, y0 - 1]) {
       const d = `${y}-${String(M).padStart(2, '0')}-${String(D).padStart(2, '0')}`;
       const t = ms(d);
       if (!Number.isNaN(t) && iso(t) === d && t >= lo && t <= hi) { date = d; break; }
     }
-    if (!date) continue;
-    const after = line.slice(dm.index + dm[0].length);
-    if (/休演/.test(after)) continue;
+    if (!date) { open = null; continue; }
+    const rest = line.slice(dm.index + dm[0].length);
+    // 日付の行に時刻があれば、その下の行（「●13:15開場」のような注意書き）は続きにしない
+    open = {date, text: rest, timed: /\d:\d{2}|\d時(?!間)/.test(rest)};
+    days.push(open);
+  }
+  for (const {date, text: raw} of days) {
+    if (/休演/.test(raw)) continue;
+    // 「19時」「14時半」「1830開演」も時刻に直す。開場・受付・終演の時刻は公演の回ではないので落とす
+    const after = raw
+      .replace(/(午前|午後)?\s*(?<!\d)(\d{1,2})時(?!間)(?:(\d{1,2})分|(半))?/g, (_, ap, h, mi, half) => `${ap === '午後' && +h < 12 ? +h + 12 : h}:${half ? '30' : String(mi || 0).padStart(2, '0')}`)
+      .replace(/午後\s*(\d{1,2}):(\d{2})/g, (_, h, mi) => `${+h < 12 ? +h + 12 : h}:${mi}`)
+      .replace(/(?<!\d)([012]\d)([0-5]\d)(?=\s*開演)/g, '$1:$2')
+      .replace(/(?:開場|受付(?:開始)?|終演)(?:・開場)?\s*[:：]?\s*\d{1,2}:\d{2}|\d{1,2}:\d{2}\s*(?:終演|開場)/g, '');
     const list = out.get(date) || [];
     let found = false;
     // 印は時刻の前（「歩13:00」）か後ろ（「19:00 A」）の 1 字
-    for (const m of after.matchAll(/(?:(\S)\s*)?(\d{1,2}):(\d{2})(?:\s?([A-Za-z]|[^\x00-\x7F])(?=$|[\s/／、,]))?/gu)) {
+    for (const m of after.matchAll(/(?:([^\s\d])\s*)?(?<!\d)(\d{1,2}):(\d{2})(?:\s?([A-Za-z]|[^\x00-\x7F])(?=$|[\s/／、,]))?/gu)) {
       const pre = m[1] && !NOT_MARK.test(m[1]) ? m[1] : '';
-      const post = m[4] && !NOT_MARK.test(m[4]) ? m[4] : '';
-      const mark = pre || post;
-      list.push({t: `${Number(m[2])}:${m[3]}`, m: mark});
+      const post = m[4] && !NOT_MARK.test(m[4]) && m[4] !== '貸' ? m[4] : '';
+      list.push({t: `${Number(m[2])}:${m[3]}`, m: pre || post});
       found = true;
     }
+    // 貸切の回（一般には売らない回）も、その日の公演として出す
+    for (const _ of after.match(/貸切/g) || []) { list.push({t: '貸切', m: ''}); found = true; }
     if (!found) for (const w of after.match(/マチネ|ソワレ|昼|夜/g) || []) { list.push({t: w, m: ''}); found = true; }
+    // 時刻の欄が「- -」だけの日は公演が無い（休演）。何も書いていない日は、時刻の分からない公演
+    if (!found && /[-ー‐－―]/.test(after.replace(/[(（][^)）]*[)）]/g, ''))) continue;
     if (!found) list.push({t: '', m: ''});
     out.set(date, list);
   }
