@@ -2,7 +2,7 @@
 // チェックボックスいれてもらってから登録できるようにする」）。民法 548 条の 2（定型約款の組入れ）の「契約の内容とする
 // 旨の合意」を、登録のときのチェックで取る。画面（login.html）のチェックが送る版と、ここの版が同じときだけ登録する。
 // 文面は public/terms.html・public/privacy.html。変えたら版を上げる（古い画面のまま押した人は読み込み直しになる）
-export const TERMS_VERSION = '2026-10-17';
+export const TERMS_VERSION = '2026-10-18';
 
 /** 新しいアカウントを作る前に呼ぶ。同意が無い・版が古いときは fail で止める */
 export function requireAgreement(input, fail) {
