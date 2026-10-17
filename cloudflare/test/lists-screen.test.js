@@ -350,7 +350,7 @@ test('公演カレンダー shows an owned stage that only the catalogue has', a
     // 2026-10-15 起案者「場所絞ったら公演カレンダー0件になる」: the catalogue has no prefecture, so a
     // place filter cannot show it; the calendar says how many it left out instead of a silent 0.
     const tokyo = (await screen(env, a, 'calendar', '?pref=' + encodeURIComponent('東京都'))).body_html;
-    assert.match(tokyo, /都道府県が分からない公演が 1 件あり、場所で絞ると出せません/);
+    assert.match(tokyo, /都道府県が分からない公演が 1 件あり、場所で絞ると表示できません/);
     // 開幕リマインド keeps them, below the chosen prefecture's list (it is there so nothing opens unnoticed).
     const rem = (await screen(env, a, 'reminder', '?f=1&pref=' + encodeURIComponent('東京都'))).body_html;
     assert.match(rem, /<summary>都道府県が分からない公演 ── 1 件<\/summary>[\s\S]*一覧だけの舞台[\s\S]*<\/section>\n<section class="dgcard">/);

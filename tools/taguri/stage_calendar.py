@@ -331,8 +331,8 @@ def filter_html(rows: list[dict], sel_kinds: set[str] | None,
 <input type="hidden" name="t" value="__TAGURI_TOKEN__">
 <details class="pbox"{" open" if active else ""}>
 <summary>{IC.ico("search", 15)}種類と都道府県で絞り込む（種類：<b>{E(now_k)}</b>・場所：<b>{E(now_p)}</b>）</summary>
-<p class="lead">押した種類・都道府県の公演だけを、下のカレンダーに表示します。<b>いくつでも同時に選べます。</b>
-ページの上の「観劇日を追加する」に出す公演は、絞り込みの影響を受けません。</p>
+<p class="lead">選んだ種類と都道府県の公演だけを、下のカレンダーに表示します。<b>いくつでも同時に選べます。</b>
+ページの上の「観劇日を追加する」で選べる公演は、絞り込んでも変わりません。</p>
 <div class="pchips">{kind_chips}</div>
 <div class="pchips">{pref_chips}</div>
 <div class="pfoot"><button type="submit">{IC.ico("search")}この条件で絞り込む</button>
@@ -349,7 +349,7 @@ def panel(d: dict, today: dt.date | None = None, tickets: dict | None = None,
     if not rows:
         return ('<p class="empty">カレンダーに表示できる公演がありません。'
                 '推薦の画面で「興味あり」を押した公演と、お気に入りに登録した名前で'
-                '当たった公演が、ここに並びます。</p>')
+                '見つかった公演が、ここに並びます。</p>')
 
     filt = filter_html(rows, sel_kinds, sel_prefs)
     keep_k = sel_kinds if sel_kinds is not None else {k for k, *_ in KINDS}
@@ -361,7 +361,7 @@ def panel(d: dict, today: dt.date | None = None, tickets: dict | None = None,
     # 都道府県が分からない公演は、場所で絞ると出せない。黙って消すと「絞ったら 0 件」に見えるので、
     # 件数を言う（起案者の指摘 2026-10-15「場所絞ったら公演カレンダー0件になる」。Worker の calendar.js と同じ）
     n_unknown = 0 if sel_prefs is None else sum(1 for r in rows if r["key"] in keep_k and not r["pref"])
-    unknown = (f'<p class="lead"><b>都道府県が分からない公演が {n_unknown} 件あり、場所で絞ると出せません。</b>'
+    unknown = (f'<p class="lead"><b>都道府県が分からない公演が {n_unknown} 件あり、場所で絞ると表示できません。</b>'
                f'<a href="/calendar?t=__TAGURI_TOKEN__">絞り込みを外す</a>と表示されます。</p>' if n_unknown else "")
     if not view:
         return (f'{filt}{unknown}<p class="empty">選んだ条件に一致する公演がありません。'
@@ -386,17 +386,17 @@ def panel(d: dict, today: dt.date | None = None, tickets: dict | None = None,
     blocks = _timeline(view, ms, today)
 
     over = [r for r in view if (r["start"].year, r["start"].month) > ms[-1]]
-    tail = (f'<p class="lead"><b>{len(over)} 件は {MAX_MONTHS} か月より先なので、'
+    tail = (f'<p class="lead"><b>{len(over)} 件は {MAX_MONTHS} か月より先の公演なので、'
             f'このカレンダーには表示していません。</b>「おすすめ ▸ 興味あり／お気に入り」の一覧には'
-            f'出ているので、そちらで確認してください。</p>' if over else "")
+            f'載っているので、そちらで確認してください。</p>' if over else "")
 
     return (f'{filt}{unknown}<p class="lead toinfo">帯の<b>右端が楽日</b>、つまり締切です。'
-            f'縦に目を落とすと、その日に何本かかっているかが数えられます。'
-            f'<b>土曜は青、日曜は赤</b>で示してあります。</p>'
+            f'縦にたどると、その日に上演している公演の数を数えられます。'
+            f'<b>土曜は青、日曜は赤</b>で示しています。</p>'
             f'<div class="cal-legend">{legend}</div>'
-            f'<p class="calnote toinfo"><b>券を持っている公演は、行く日を入れると'
-            f'その日が半券の形で帯から抜けて見えます。</b>入れていないものは帯だけで'
-            f'出しますので、<b>「この期間のどこかに行く」という意味</b>になります。'
+            f'<p class="calnote toinfo"><b>券を持っている公演は、行く日を入れると、'
+            f'その日が半券の形で帯から抜けて見えます。</b>行く日を入れていない公演は帯だけで'
+            f'表示するので、<b>「この期間のどこかに行く」という意味</b>になります。'
             f'印の付いていない日が空いているという意味ではありません。</p>'
             f'{blocks}{tail}{_unplaced_html(unplaced or [])}{JS}')
 
