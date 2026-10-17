@@ -8,6 +8,8 @@ on:
       - 'tools/review/measure_nets.py'
       - 'tools/review/recommend2.py'
       - 'tools/taguri/app.py'
+      # the local admin tool writes the tables the Worker reads (stage_override, admin_log)
+      - 'tools/admin/**'
       - '.github/workflows/cloudflare-preview-check.yml'
   workflow_dispatch:
 permissions:

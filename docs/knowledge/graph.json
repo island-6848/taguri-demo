@@ -2491,6 +2491,24 @@
    "verifies": []
   },
   {
+   "id": "impl-admin-tool",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-17",
+   "title": "手元で開く管理画面（tools/admin）を作った。手で直した分は D1 の stage_override に置き、Worker が画面に出すときに重ねる。読み取りは Claude Code",
+   "sources": [
+    "tools/admin/admin.py",
+    "tools/admin/serve_admin.py",
+    "tools/admin/admin.html",
+    "cloudflare/migrations/0028.sql",
+    "cloudflare/src/screens/override.js",
+    "cloudflare/test/override.test.js",
+    "cloudflare/test/test_admin_tool.py",
+    ".claude/skills/taguri-admin-queue/SKILL.md"
+   ],
+   "verifies": []
+  },
+  {
    "id": "impl-card-schedule",
    "type": "decision",
    "status": "adopted",
@@ -3933,6 +3951,18 @@
    "title": "D1 の users 表に「全体で 100 人まで」の歯止め（試験版の名残り）があるが、本番でもこのままにするか",
    "sources": [
     "cloudflare/migrations/0001.sql"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "q-admin-override-in-index",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-17",
+   "title": "管理画面で手で直した題材・あらすじを、おすすめの計算（rec_credit の #題材）と検索（rec_card の ws/synz）にも効かせるには、取得の側（taguri-crawler）が D1 の stage_override を読む必要があるか",
+   "sources": [
+    "cloudflare/scripts/build_recommend_index.py",
+    "cloudflare/scripts/build_cards.py"
    ],
    "verifies": []
   },
@@ -7539,6 +7569,16 @@
    "to": "q-crawler-host"
   },
   {
+   "from": "impl-admin-tool",
+   "rel": "depends_on",
+   "to": "dec-synopsis-reader-claude"
+  },
+  {
+   "from": "impl-admin-tool",
+   "rel": "raises",
+   "to": "q-admin-override-in-index"
+  },
+  {
    "from": "impl-card-schedule",
    "rel": "affects",
    "to": "impl-four-answers"
@@ -8597,6 +8637,11 @@
    "from": "q-account-limit-100",
    "rel": "affects",
    "to": "dec-free-tier-only"
+  },
+  {
+   "from": "q-admin-override-in-index",
+   "rel": "affects",
+   "to": "impl-admin-tool"
   },
   {
    "from": "q-aspect-attribution-check",

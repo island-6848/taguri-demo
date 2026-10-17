@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>たぐり 管理画面</title>
+<style>
+:root{--ink:#1d1d1f;--mute:#6e6e73;--line:#d8d8dc;--bg:#f5f5f7;--surf:#fff;--acc:#9b2335;--ok:#1d6b3a;--warn:#a1550b}
+@media (prefers-color-scheme:dark){:root{--ink:#f2f2f4;--mute:#a1a1a8;--line:#3a3a3e;--bg:#151517;--surf:#1f1f22;--acc:#e0707f;--ok:#6fc28f;--warn:#e6a35a}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.6 system-ui,-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif}
+header{padding:12px 20px;border-bottom:1px solid var(--line);background:var(--surf);display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
+header h1{font-size:17px;margin:0}
+header .sub{color:var(--mute);font-size:12px}
+main{display:grid;grid-template-columns:minmax(260px,340px) minmax(0,1fr);gap:16px;padding:16px 20px;max-width:1280px;margin:0 auto}
+@media(max-width:820px){main{grid-template-columns:1fr}}
+.card{background:var(--surf);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:0 0 14px}
+.card h2{font-size:14px;margin:0 0 10px}
+input[type=text],input[type=url],textarea,select{width:100%;font:inherit;color:inherit;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:6px 8px}
+textarea{min-height:84px;resize:vertical}
+button{font:inherit;border:1px solid var(--line);background:var(--surf);color:var(--ink);border-radius:6px;padding:6px 12px;cursor:pointer;min-height:34px}
+button.main{background:var(--acc);border-color:var(--acc);color:#fff}
+button:disabled{opacity:.5;cursor:default}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.row>button{flex:none;white-space:nowrap}
+#sf{flex-wrap:nowrap}
+.list{list-style:none;margin:8px 0 0;padding:0;max-height:62vh;overflow:auto}
+.list li{padding:7px 8px;border-radius:6px;cursor:pointer;border-bottom:1px solid var(--line)}
+.list li:hover,.list li.on{background:var(--bg)}
+.list .t{font-weight:600}
+.list .m{color:var(--mute);font-size:12px}
+.badge{display:inline-block;font-size:11px;border:1px solid var(--line);border-radius:10px;padding:0 6px;margin-left:4px;color:var(--mute)}
+.badge.ok{color:var(--ok);border-color:var(--ok)}
+.badge.no{color:var(--warn);border-color:var(--warn)}
+label.f{display:block;margin:0 0 10px}
+label.f>span{display:block;font-size:12px;color:var(--mute);margin-bottom:2px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+@media(max-width:560px){.grid2{grid-template-columns:1fr}}
+.was{font-size:12px;color:var(--mute);margin-top:2px;white-space:pre-wrap}
+.said{font-size:13px;margin-left:8px}
+.said.err{color:var(--warn)}.said.ok{color:var(--ok)}
+.empty{color:var(--mute)}
+.pv{max-width:180px;max-height:240px;border-radius:4px;border:1px solid var(--line);display:block;margin:8px 0}
+.pv[hidden]{display:none}
+.log{font-size:12px;margin:0;padding:0;list-style:none}
+.log li{border-top:1px solid var(--line);padding:6px 0}
+.log code{font-size:11px;color:var(--mute);word-break:break-all}
+.note{font-size:12px;color:var(--mute)}
+</style>
+</head>
+<body>
+<header><h1>たぐり 管理画面</h1><span class="sub">このパソコンだけで開いています。直した内容は本番のデータベースと記録（data/admin/log.jsonl）に書き込まれます。</span></header>
+<main>
+<section>
+  <div class="card">
+    <h2>公演を探す</h2>
+    <form id="sf" class="row"><input id="q" type="text" placeholder="題名か公演の番号" autocomplete="off"><button class="main">探す</button></form>
+    <ul id="hits" class="list"></ul>
+  </div>
+  <div class="card">
+    <h2>読み取り待ち（あらすじ → 題材）</h2>
+    <div id="queue" class="note">読み込み中…</div>
+  </div>
+</section>
+<section id="detail"><div class="card empty">左で公演を選んでください。</div></section>
+</main>
+<script>
+const TOKEN = "__TOKEN__";
+const FIELDS = ["劇場", "料金（1枚あたり）", "タイムテーブル", "出演", "演出", "脚本", "スタッフ", "公式／劇場サイト", "その他注意事項"];
+const E = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
+const api = async (path, body) => {
+  const r = await fetch(path, body === undefined ? {headers: {"X-Admin-Token": TOKEN}}
+    : {method: "POST", headers: {"X-Admin-Token": TOKEN, "Content-Type": "application/json"}, body: JSON.stringify(body)});
+  const d = await r.json().catch(() => ({ok: false, error: "返事が読めませんでした"}));
+  if (!d.ok) throw new Error(d.error || r.status);
+  return d;
+};
+const say = (el, msg, ok) => { el.textContent = msg; el.className = "said " + (ok ? "ok" : "err"); };
+
+document.getElementById("sf").addEventListener("submit", async ev => {
+  ev.preventDefault();
+  const ul = document.getElementById("hits");
+  ul.innerHTML = '<li class="empty">探しています…</li>';
+  try {
+    const {rows} = await api("/api/search?q=" + encodeURIComponent(document.getElementById("q").value));
+    ul.innerHTML = rows.length ? rows.map(r => `<li data-id="${E(r.stage_id)}"><div class="t">${E(r.title)}</div>`
+      + `<div class="m">${E(r.start || "")}〜${E(r.end || "")}　${E(r.venue || "")}　#${E(r.stage_id)}`
+      + `${r.poster ? '<span class="badge ok">ポスター</span>' : '<span class="badge no">ポスター無し</span>'}`
+      + `${r.edited ? '<span class="badge ok">手で直した</span>' : ""}</div></li>`).join("") : '<li class="empty">見つかりません</li>';
+  } catch (e) { ul.innerHTML = `<li class="empty">${E(e.message)}</li>`; }
+});
+document.getElementById("hits").addEventListener("click", ev => {
+  const li = ev.target.closest("li[data-id]");
+  if (!li) return;
+  document.querySelectorAll("#hits li").forEach(x => x.classList.toggle("on", x === li));
+  open(li.dataset.id);
+});
+
+async function open(id) {
+  const box = document.getElementById("detail");
+  box.innerHTML = '<div class="card empty">読み込み中…</div>';
+  let d;
+  try { d = await api("/api/stage?id=" + encodeURIComponent(id)); } catch (e) { box.innerHTML = `<div class="card">${E(e.message)}</div>`; return; }
+  const s = d.stage, ov = s.override || {synopsis: null, themes: null, info: {}};
+  const info = ov.info || {}, of = info.fields || {};
+  const val = (k, base) => info[k] ?? base ?? "";
+  const fval = k => of[k] ?? (s.fields || {})[k] ?? "";
+  box.innerHTML = `
+<div class="card">
+  <h2>${E(s.title)} <span class="badge">#${E(s.stage_id)}</span>${s.has_card ? "" : '<span class="badge no">カード無し（取得の一覧に未登録）</span>'}</h2>
+  <div class="note">${E(s.start)}〜${E(s.end)}　${s.corich ? `<a href="${E(s.corich)}" target="_blank" rel="noopener">CoRich の公演ページ</a>` : ""}
+  ${ov.updated_at ? `　手で直した日時: ${E(ov.updated_at)}` : ""}</div>
+</div>
+<div class="card">
+  <h2>ポスター</h2>
+  <div class="note">${s.poster ? `いまのポスター: ${E(s.poster)}（差し替えると、新しい名前で入れ直します）` : "ポスターはまだありません。"}</div>
+  <input id="pf" type="file" accept="image/jpeg,image/png,image/webp">
+  <img id="pv" class="pv" hidden alt="選んだポスター">
+  <label class="note"><input id="pend" type="checkbox"${s.end && s.end < new Date().toISOString().slice(0, 10) ? " checked" : ""}> 終わった公演として小さめに縮める</label>
+  <div class="row" style="margin-top:8px"><button id="pup" class="main" disabled>このポスターを入れる</button><span id="psaid" class="said"></span></div>
+</div>
+<div class="card">
+  <h2>あらすじ・題材</h2>
+  <label class="f"><span>あらすじ</span><textarea id="syn" rows="6">${E(ov.synopsis ?? s.synopsis)}</textarea>
+    ${ov.synopsis != null && s.synopsis ? `<div class="was">取得した分: ${E(s.synopsis)}</div>` : ""}</label>
+  <label class="f"><span>題材（読点か空白で区切る・${6} 語まで。空のままあらすじを入れると、Claude Code に読み取りを頼みます）</span>
+    <input id="thm" type="text" value="${E((ov.themes ?? s.themes ?? []).join("、"))}">
+    ${ov.themes ? `<div class="was">取得した分: ${E((s.themes || []).join("、") || "（なし）")}</div>` : ""}</label>
+  <div class="row"><button id="ssave" class="main">あらすじ・題材を保存</button>
+    <button id="ana"${d.queued ? "" : " disabled"}>Claude で題材を読み取る</button><span id="ssaid" class="said"></span></div>
+</div>
+<div class="card">
+  <h2>詳細</h2>
+  <div class="grid2">
+    <label class="f"><span>会場</span><input id="i-venue" type="text" value="${E(val("venue", s.venue))}"></label>
+    <label class="f"><span>都道府県</span><input id="i-pref" type="text" value="${E(val("pref", s.pref))}"></label>
+    <label class="f"><span>期間（例: 2026/11/01 ～ 2026/11/10）</span><input id="i-period" type="text" value="${E(val("period", s.period))}"></label>
+    <label class="f"><span>公式サイトの URL</span><input id="i-url" type="url" value="${E(val("url", s.url))}"></label>
+  </div>
+  ${FIELDS.map((k, i) => `<label class="f"><span>${E(k)}</span><textarea data-f="${E(k)}" rows="${/タイムテーブル|出演|スタッフ/.test(k) ? 4 : 2}">${E(fval(k))}</textarea></label>`).join("")}
+  <div class="row"><button id="isave" class="main">詳細を保存</button><button id="reset">手で直した分を全部消す（取得した内容に戻す）</button><span id="isaid" class="said"></span></div>
+  <p class="note">保存すると、すぐに本番の画面（おすすめ・興味あり・お気に入り・探す）のカードに重なって出ます。取得し直してもこの内容は残ります。</p>
+</div>
+<div class="card">
+  <h2>この公演の記録</h2>
+  ${d.log.length ? `<ul class="log">${d.log.map(l => `<li><b>${E(l.at)}</b>　${E({edit: "直した", poster: "ポスター"}[l.action] || l.action)}　<code>${E(JSON.stringify(l.detail))}</code></li>`).join("")}</ul>` : '<p class="note">まだありません。</p>'}
+</div>`;
+  const syn0 = box.querySelector("#syn").value, thm0 = box.querySelector("#thm").value;
+  const base = {synopsis: s.synopsis, themes: (s.themes || []).join("、")};
+  // 詳細: 取得した値と違う欄だけを「手で直した分」として送る
+  const infoNow = () => {
+    const out = {fields: {}};
+    for (const k of ["venue", "pref", "period", "url"]) {
+      const v = box.querySelector("#i-" + k).value.trim();
+      if (v && v !== (s[k] || "")) out[k] = v;
+    }
+    box.querySelectorAll("textarea[data-f]").forEach(t => {
+      const v = t.value.trim();
+      if (v && v !== String((s.fields || {})[t.dataset.f] || "").trim()) out.fields[t.dataset.f] = v;
+    });
+    return out;
+  };
+  box.querySelector("#ssave").addEventListener("click", async () => {
+    const out = box.querySelector("#ssaid"), syn = box.querySelector("#syn").value.trim(), thm = box.querySelector("#thm").value.trim();
+    const body = {stage_id: s.stage_id, title: s.title,
+      synopsis: syn === base.synopsis.trim() ? "" : syn,
+      themes: thm === base.themes ? [] : thm.split(/[、,，\s]+/).filter(Boolean)};
+    if (syn === syn0.trim() && thm === thm0.trim()) return say(out, "変わっていません", false);
+    try {
+      const r = await api("/api/save", body);
+      say(out, r.queued ? "保存しました。題材の読み取りを積みました（「Claude で題材を読み取る」で読めます）" : "保存しました", true);
+      refreshQueue(); setTimeout(() => open(s.stage_id), 900);
+    } catch (e) { say(out, e.message, false); }
+  });
+  box.querySelector("#ana").addEventListener("click", async ev => {
+    const out = box.querySelector("#ssaid");
+    ev.target.disabled = true; say(out, "Claude Code が読んでいます（1 分ほどかかることがあります）…", true);
+    try {
+      const r = await api("/api/analyze", {stage_id: s.stage_id});
+      say(out, r.done.length ? "題材: " + (r.done[0].themes.join("、") || "（読み取れませんでした）") : "読み取り待ちがありません", true);
+      refreshQueue(); setTimeout(() => open(s.stage_id), 1200);
+    } catch (e) { say(out, e.message, false); ev.target.disabled = false; }
+  });
+  box.querySelector("#isave").addEventListener("click", async () => {
+    const out = box.querySelector("#isaid");
+    try { const r = await api("/api/save", {stage_id: s.stage_id, info: infoNow()}); say(out, r.changed ? "保存しました" : "変わっていません", r.changed); if (r.changed) setTimeout(() => open(s.stage_id), 900); }
+    catch (e) { say(out, e.message, false); }
+  });
+  box.querySelector("#reset").addEventListener("click", async () => {
+    if (!confirm("この公演で手で直した分（あらすじ・題材・詳細）を全部消して、取得した内容に戻します。よろしいですか？（記録には残ります）")) return;
+    const out = box.querySelector("#isaid");
+    try { await api("/api/save", {stage_id: s.stage_id, synopsis: "", themes: [], info: {}}); say(out, "戻しました", true); setTimeout(() => open(s.stage_id), 900); }
+    catch (e) { say(out, e.message, false); }
+  });
+  let picked = null;
+  box.querySelector("#pf").addEventListener("change", ev => {
+    const f = ev.target.files[0];
+    if (!f) return;
+    const rd = new FileReader();
+    rd.onload = () => { picked = rd.result; const pv = box.querySelector("#pv"); pv.src = picked; pv.hidden = false; box.querySelector("#pup").disabled = false; };
+    rd.readAsDataURL(f);
+  });
+  box.querySelector("#pup").addEventListener("click", async ev => {
+    const out = box.querySelector("#psaid");
+    ev.target.disabled = true; say(out, "縮めて入れています…", true);
+    try { const r = await api("/api/poster", {stage_id: s.stage_id, data: picked, ended: box.querySelector("#pend").checked}); say(out, `入れました（${r.file}・${Math.round(r.bytes / 1024)} KB）`, true); setTimeout(() => open(s.stage_id), 900); }
+    catch (e) { say(out, e.message, false); ev.target.disabled = false; }
+  });
+}
+
+async function refreshQueue() {
+  const box = document.getElementById("queue");
+  try {
+    const {tasks, claude} = await api("/api/queue");
+    box.innerHTML = (tasks.length ? `<ul class="log">${tasks.map(t => `<li>#${E(t.stage_id)} ${E(t.title)}<br><code>${E(t.synopsis.slice(0, 60))}…</code></li>`).join("")}</ul>` : "読み取り待ちはありません。")
+      + `<p>${claude ? "このパソコンの Claude Code で読み取れます。" : "このパソコンに claude（Claude Code）が見つかりません。Claude Code のセッションで <code>python3 tools/admin/admin.py queue</code> を頼んでください。"}</p>`;
+  } catch (e) { box.textContent = e.message; }
+}
+refreshQueue();
+</script>
+</body>
+</html>

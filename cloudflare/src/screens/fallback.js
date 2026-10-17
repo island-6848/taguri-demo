@@ -8,6 +8,7 @@
 import {E} from './py.js';
 import {ico} from './icons.js';
 import {castBlock} from './settings.js';
+import {loadOverrides, mergeInfo} from './override.js';
 
 const PER_QUERY = 90;
 const slash = d => String(d || '').replaceAll('-', '/');
@@ -43,6 +44,8 @@ export async function stageInfo(db, sids) {
         synopsis: m.synopsis || '', url: have.url || r.url || ''});
     }
   }
+  // 管理者が手で直した欄（会場・期間・料金・タイムテーブルなど）を重ねる（migration 0028、tools/admin）
+  for (const [sid, ov] of await loadOverrides(db, [...out.keys()])) out.set(sid, mergeInfo(out.get(sid), ov));
   return out;
 }
 

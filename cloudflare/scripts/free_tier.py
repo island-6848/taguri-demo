@@ -37,7 +37,9 @@ from pathlib import Path
 FREE = {"actions_minutes_month": 2_000, "d1_writes_day": 100_000, "r2_bytes": 10 * 10**9,
         "r2_class_a_month": 1_000_000, "r2_class_b_month": 10_000_000}
 CAPS = {"actions_minutes_31d": 1_500, "d1_writes_day": 80_000, "r2_bytes": 8 * 10**9,
-        "r2_class_a_month": 300_000, "r2_class_b_month": 3_000_000}
+        "r2_class_a_month": 300_000, "r2_class_b_month": 3_000_000,
+        # 手元の管理画面（tools/admin）の分。取得の分と同じ上限の中で、さらにこれだけに抑える
+        "admin_d1_writes_day": 1_000, "admin_posters_month": 300}
 WARN = 0.8                       # 上限のこの割合を越えたら check が失敗する（通知のため）
 
 # Catalog のジョブ 1 回の分数の見積もり（過去の公演の読み取りを除く）。多めに取る
