@@ -1154,6 +1154,12 @@ document.addEventListener("click", ev => {
   close.focus();
 });
 
+// このページで絞った都道府県（URL の f=1&pref=…）。絞っていなければ空（サーバーが設定の県を使う）
+function pagePrefs() {
+  const usp = new URLSearchParams(location.search);
+  return usp.has("f") ? {prefs: usp.getAll("pref")} : {};
+}
+
 function showThanks() {
   const t = document.getElementById("rec-thanks-t");
   if (!t || document.getElementById("rec-thanks")) return;
@@ -1308,7 +1314,7 @@ document.addEventListener("click", ev => {
         slot.dataset.filled = "1";
         const f = await fetch(API_BASE + "/api/react", {method: "POST", credentials: "include",
           headers: {"Content-Type": "application/json"},
-          body: JSON.stringify({stage_id: g.dataset.stage, fill_only: true, shown})})
+          body: JSON.stringify({stage_id: g.dataset.stage, fill_only: true, shown, ...pagePrefs()})})
           .then(r => r.ok ? r.json() : null).catch(() => null);
         if (f && f.fill) d.fill = f.fill;
       }

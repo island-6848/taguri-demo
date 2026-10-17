@@ -21,7 +21,7 @@ import {ico} from './icons.js';
 import {loadWorks} from './works.js';
 import {castOffOf} from './diary.js';
 import {compose, cardTemplates, posterHtml} from './cards.js';
-import {PREFS, prefForm, prefsFor, regionCounts} from './prefs.js';
+import {PREFS, prefForm, prefsFor, prefHidden, regionCounts} from './prefs.js';
 export {prefForm, prefsFor};
 import {loadDeclared, loadDeclined, loadKindOff, nameHits, KINDS, reactionsOf, declinedBox, buckets} from './lists.js';
 import {upcomingHits} from './search.js';
@@ -385,9 +385,9 @@ async function unratedEnds(ctx) {
  * 「でないときは探す、みたいにおすすめ画面に一個専用検索の検索バー置いて」）。これから観られる公演だけを、
  * 探す画面と同じ引き方（search.upcomingHits）で引き、結果はこの画面に出す。
  */
-async function findBox(ctx, find) {
+async function findBox(ctx, find, keep = '') {
   const form = `<form class="fav-add rfind-form" method="get" action="/recommend">
-<input type="hidden" name="t" value="__TAGURI_TOKEN__">
+<input type="hidden" name="t" value="__TAGURI_TOKEN__">${keep}
 <input type="text" name="find" value="${E(find)}" size="26" placeholder="題名・人名・団体名" aria-label="おすすめに出てこない公演を探す">
 <button type="submit">${ico('search')}探す</button></form>`;
   let found = '';
@@ -444,7 +444,7 @@ export async function recommendScreen(params, ctx) {
 評価・公演情報・設定が変わると、順位も変わることがあります</p>` : '';
   const body = `<h1>${E(head)}</h1>
 ${lede}
-${tips}${await findBox(ctx, String(params.get('find') || '').trim().slice(0, 60))}<div class="fil2">${prefForm(prefCounts(data.groups), prefs, '/recommend', '', {}, regionCounts(data.groups.map(g => ({key: g.stage_id, prefs: g.venues.map(v => v.pref)}))))}${weightForm(data.weights || {}, data.w_counts || {})}${declinedBox(await loadDeclined(ctx))}</div>
+${tips}${await findBox(ctx, String(params.get('find') || '').trim().slice(0, 60), prefHidden(params))}<div class="fil2">${prefForm(prefCounts(data.groups), prefs, '/recommend', '', {}, regionCounts(data.groups.map(g => ({key: g.stage_id, prefs: g.venues.map(v => v.pref)}))))}${weightForm(data.weights || {}, data.w_counts || {})}${declinedBox(await loadDeclined(ctx))}</div>
 ${cards.join('')}
 <p class="lede">気になった公演で「興味あり」を押すと、
 <a href="/recommend/interest?t=__TAGURI_TOKEN__">「興味あり」（いま ${nInterest} 件）</a>に移ります。</p>
@@ -489,9 +489,10 @@ async function whySnapshot(ctx, stageId) {
 }
 
 /** serve.fill_slot: the next card in place of the one answered, honouring the saved prefectures. */
-async function fillSlot(ctx, shown, pressed) {
+async function fillSlot(ctx, shown, pressed, page = null) {
   if (!shown.length) return {html: '', left: 0, said: ''};
-  const prefs = await prefsFor(new URLSearchParams(), ctx);
+  // そのページで絞った県（画面が URL から送る）。無ければ設定の県
+  const prefs = await prefsFor(page ? new URLSearchParams([['f', '1'], ...page.map(p => ['pref', p])]) : new URLSearchParams(), ctx);
   const data = await rankedGroups(ctx);
   const {rows} = filtered(data.groups, prefs, 1e6);
   const seen = new Set([...shown.map(String), String(pressed)]);
@@ -507,7 +508,8 @@ export async function reactAction(b, ctx) {
   if (b.fill_only) {
     if (!stageId) throw new ValueError('stage_id が要る');
     const shown = (Array.isArray(b.shown) ? b.shown : []).slice(0, 120).map(x => String(x).slice(0, 20));
-    return {body: {ok: true, stage_id: stageId, fill: await fillSlot(ctx, shown, stageId)}};
+    const page = Array.isArray(b.prefs) ? b.prefs.slice(0, 47).map(x => String(x).slice(0, 8)) : null;
+    return {body: {ok: true, stage_id: stageId, fill: await fillSlot(ctx, shown, stageId, page)}};
   }
   const given = {};
   for (const k of ['note', 'note_no', 'note_pre']) if (b[k] !== undefined && b[k] !== null) given[k] = String(b[k]).slice(0, 2000);

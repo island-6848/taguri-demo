@@ -19,7 +19,6 @@ export const REGIONS = [['北海道', ['北海道']], ['東北', ['青森県', '
   ['中国', ['鳥取県', '島根県', '岡山県', '広島県', '山口県']], ['四国', ['徳島県', '香川県', '愛媛県', '高知県']],
   ['九州・沖縄', ['福岡県', '佐賀県', '長崎県', '熊本県', '大分県', '宮崎県', '鹿児島県', '沖縄県']]];
 export const TOP = 15;
-const RECOMMEND_KEY = 'recommend_prefs';      // the filter in use (serve.prefs_by_user)
 export const SETTING_KEY = 'pref_filter';     // the default chosen in 設定 (app.PREF_SETTING_KEY)
 
 /** prefmap.region_counts: productions (not venues) per region. items: [{key, prefs: [...]}] */
@@ -74,15 +73,24 @@ async function writePrefs(ctx, key, prefs) {
 /** app.read_pref_setting */
 export const readPrefSetting = async ctx => (await readPrefs(ctx, SETTING_KEY)) || [];
 
-/** serve.get_prefs / set_prefs: a submitted form (?f=1) sets the filter, otherwise the one in
- * use, otherwise the default chosen in 設定. */
+/**
+ * The filter of this page: a submitted form (?f=1&pref=…) holds it in the page's URL only, otherwise the
+ * default chosen in 設定. 起案者の指示 2026-10-17「絞り込んだ都道府県は、そのページ内でのみ維持されるように。
+ * 全部の共通の絞り込みは設定で保存しているので」── 以前はページで絞ると保存し（recommend_prefs）、
+ * おすすめ・開幕リマインド・開幕の帯のどれにも効いていた。いまは保存しない（D1 の書き込みも減る）。
+ */
 export async function prefsFor(params, ctx) {
-  if (params.has('f')) {
-    const prefs = PREFS.filter(p => params.getAll('pref').includes(p));
-    await writePrefs(ctx, RECOMMEND_KEY, prefs);
-    return prefs;
-  }
-  return (await readPrefs(ctx, RECOMMEND_KEY)) ?? (await readPrefSetting(ctx));
+  if (params.has('f')) return PREFS.filter(p => params.getAll('pref').includes(p));
+  return readPrefSetting(ctx);
+}
+/** The page's filter carried on its own links and forms ('' when the page uses the 設定 default). */
+export function prefQs(params) {
+  if (!params.has('f')) return '';
+  return '&amp;f=1' + PREFS.filter(p => params.getAll('pref').includes(p)).map(p => `&amp;pref=${encodeURIComponent(p)}`).join('');
+}
+export function prefHidden(params) {
+  if (!params.has('f')) return '';
+  return '<input type="hidden" name="f" value="1">' + PREFS.filter(p => params.getAll('pref').includes(p)).map(p => `<input type="hidden" name="pref" value="${E(p)}">`).join('');
 }
 
 /** serve.on_pref_setting: save the default and use it now. */
@@ -91,6 +99,5 @@ export async function prefSettingAction(b, ctx) {
   if (!Array.isArray(prefs) || prefs.length > 47) throw new ValueError('都道府県の並びがおかしい');
   const keep = PREFS.filter(p => prefs.includes(p));
   await writePrefs(ctx, SETTING_KEY, keep);
-  await writePrefs(ctx, RECOMMEND_KEY, keep);
   return {body: {ok: true, prefs: keep}};
 }

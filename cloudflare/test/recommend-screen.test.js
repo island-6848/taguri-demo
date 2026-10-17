@@ -53,10 +53,12 @@ test('a ◎ on a stage recommends the coming stage of the same people, with the 
     assert.match(html, /<button data-v="interest">興味あり<\/button>/);
     // The other user sees none of it.
     assert.doesNotMatch((await step(env, b, {get: '/api/screen/recommend'})).body.body_html, /<article/);
-    // Prefecture filter: saved with ?f=1, applied on the next visit, cleared by an empty ?f=1.
+    // Prefecture filter: ?f=1 holds it for this page only (not saved), an empty ?f=1 is 全国.
     const osaka = (await step(env, a, {get: '/api/screen/recommend?f=1&pref=' + encodeURIComponent('大阪府')})).body.body_html;
     assert.match(osaka, /<h1>大阪府のおすすめはありません<\/h1>/);
-    assert.match((await step(env, a, {get: '/api/screen/recommend'})).body.body_html, /いまは<b>大阪府（1 県）<\/b>/);
+    assert.match(osaka, /<input type="hidden" name="f" value="1"><input type="hidden" name="pref" value="大阪府">\n<input type="text" name="find"/);
+    assert.match((await step(env, a, {get: '/api/screen/recommend'})).body.body_html, /いまは<b>全国<\/b>/);
+    assert.equal(sqlite.prepare("SELECT count(*) AS n FROM app_setting WHERE key='recommend_prefs'").get().n, 0);
     const tokyo = (await step(env, a, {get: '/api/screen/recommend?f=1&pref=' + encodeURIComponent('東京都')})).body.body_html;
     assert.match(tokyo, /<h1>東京都のおすすめ 1 件<\/h1>/);
     assert.match((await step(env, a, {get: '/api/screen/recommend?f=1'})).body.body_html, /いまは<b>全国<\/b>/);
