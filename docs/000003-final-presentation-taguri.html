@@ -382,7 +382,7 @@ ol.refs li:target{background:rgba(var(--brand-rgb),.12)}
   <div class="toc-grid wide">
     <a href="#ch2"><span class="n">01</span><span><h4>企画内容</h4><p>課題・価値・対象ユーザー・想定シーン</p></span></a>
     <a href="#ch3"><span class="n">02</span><span><h4>機能概要</h4><p>機能の分類・使用イメージ・使っている技術・システム構成</p></span></a>
-    <a href="#algo"><span class="n">03</span><span><h4>推薦アルゴリズム</h4><p>問題設定・評価の順序化・縮約した人物の値・点の式と出す条件・お気に入りの事前・裏の答え合わせ（符号検定）・検証と限界</p></span></a>
+    <a href="#algo"><span class="n">03</span><span><h4>推薦アルゴリズム</h4><p>問題設定・評価の順序化・縮約した値・種類のタグ・点の式と出す条件・お気に入りと興味ありの事前・1 段広げる・並べ直し・裏の答え合わせ（符号検定）・検証と限界</p></span></a>
     <a href="#ch4"><span class="n">04</span><span><h4>セキュリティ</h4><p>境界線の概念図</p></span></a>
     <a href="#ch5"><span class="n">05</span><span><h4>達成事項</h4><p>実現できたこと・メリット・未実装</p></span></a>
     <a href="#ch6"><span class="n">06</span><span><h4>今後の展望</h4><p>検討中の拡張・応用の可能性</p></span></a>
@@ -455,7 +455,7 @@ ol.refs li:target{background:rgba(var(--brand-rgb),.12)}
         <rect x="250" y="206" width="510" height="30" rx="15" class="aOut"/>
         <text x="264" y="226" class="aO" style="font-size:13px">興味あり → 一覧・公演カレンダーで期限まで追う</text>
         <rect x="770" y="246" width="200" height="30" rx="15" class="aBoxB"/>
-        <text x="786" y="266" class="aO" style="font-size:13px">◎○△× と感想を記録</text>
+        <text x="786" y="266" class="aO" style="font-size:13px">星と感想を記録</text>
       </g>
       <path d="M870 276V292H60V141H84" class="aLt aDash" marker-end="url(#ta)"/>
     </svg>
@@ -474,7 +474,7 @@ ol.refs li:target{background:rgba(var(--brand-rgb),.12)}
     </div>
     <div class="card">
       <h4><span class="icwrap"><svg class="ic" viewBox="0 0 24 24" width="18" height="18"><path d="M4 20h4L18 10l-4-4L4 16zM13.5 6.5l4 4"/></svg></span>観た公演の記録・評価を残したいとき</h4>
-      <p class="muted">感想を書き、◎○△× を付ける。</p>
+      <p class="muted">星（設定で ◎○△× にも変えられる）を付け、感想を書く。</p>
     </div>
     <div class="card">
       <h4><span class="icwrap"><svg class="ic" viewBox="0 0 24 24" width="18" height="18"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7.5V12l3.5 2"/></svg></span>見逃しに気づいたとき</h4>
@@ -543,12 +543,12 @@ ol.refs li:target{background:rgba(var(--brand-rgb),.12)}
     <div class="loomrow">
       <div class="loomcol" style="grid-column:1">
         <ul class="tree flush">
-          <li class="leaf"><b>公演情報の登録（メール取得／手入力）</b></li>
-          <li class="leaf"><b>購入済み公演一覧</b></li>
+          <li class="leaf"><b>観劇記録を追加（右上の ＋：題名で探す／Google カレンダー）</b></li>
+          <li class="leaf"><b>購入済み公演</b></li>
           <li class="node">記録を見返す
             <ul>
-              <li class="leaf"><b>好みの傾向の可視化</b></li>
-              <li class="leaf"><b>作り手と作品のつながりを可視化</b></li>
+              <li class="leaf"><b>眺める（好みの傾向・劇場制覇の地図・観劇の時間割）</b></li>
+              <li class="leaf"><b>たどる（作り手と作品のつながり）</b></li>
               <li class="leaf"><b>観劇史年表</b></li>
               <li class="leaf"><b>日記帳</b></li>
             </ul>
@@ -557,46 +557,50 @@ ol.refs li:target{background:rgba(var(--brand-rgb),.12)}
       </div>
       <div class="loomcol" style="grid-column:3">
         <ul class="tree flush">
-          <li class="leaf"><b>設定</b></li>
+          <li class="leaf"><b>設定（評価の付け方・効かせ方・出さない語）</b></li>
         </ul>
       </div>
       <div class="loomcol" style="grid-column:5">
         <ul class="tree flush">
           <li class="node">おすすめ
             <ul>
-              <li class="leaf"><b>今週のおすすめ</b></li>
-              <li class="leaf"><b>開幕リマインド（今週／来週）</b></li>
+              <li class="leaf"><b>今週のおすすめ（理由・✕・出てこない公演の検索）</b></li>
               <li class="leaf"><b>興味あり</b></li>
               <li class="leaf"><b>お気に入り</b></li>
             </ul>
           </li>
-          <li class="leaf"><b>公演カレンダー</b></li>
-          <li class="leaf"><b>検索</b></li>
+          <li class="node">予定
+            <ul>
+              <li class="leaf"><b>公演カレンダー</b></li>
+              <li class="leaf"><b>開幕リマインド（今週／来週）</b></li>
+            </ul>
+          </li>
+          <li class="leaf"><b>探す（これから・過去の公演）</b></li>
         </ul>
       </div>
       <div class="loomcol" style="grid-column:7">
         <ul class="tree flush">
-          <li class="leaf"><b>自分がつけた評価一覧</b></li>
-          <li class="leaf"><b>未評価作品一覧</b></li>
-          <li class="leaf"><b>◎作品の感想記入</b></li>
+          <li class="leaf"><b>評価一覧（星 5 段階・評価しない）</b></li>
+          <li class="leaf"><b>未評価</b></li>
+          <li class="leaf"><b>感想</b></li>
         </ul>
       </div>
     </div>
-    <figcaption>上段が 4 分類の概念図。④ 評価するから ① 記録する・見るへ戻る輪を、上の矢印とラベルで明記した。下段は、各分類に対応する実際の画面（<code>app.py</code> の <code>NAV</code>）と、学習するが裏で作っている知識を補足する図である。</figcaption>
+    <figcaption>上段が 4 分類の概念図。④ 評価するから ① 記録する・見るへ戻る輪を、上の矢印とラベルで明記した。下段は、各分類に対応する実際の画面（<code>web/app.js</code> の <code>NAV</code>）と、学習するが裏で作っている知識を補足する図である。</figcaption>
   </figure>
 
   <h3 class="sub">2-2　ユーザーの使い方</h3>
-  <p class="col">公開版は Web アプリとして動く。登録なしで URL を開けば使え、スマホでも PC でも同じ記録を続けられる。</p>
+  <p class="col">公開版は Web アプリとして動く。Google・メールのリンク・パスキーのどれかでログインすれば、スマホでも PC でも同じ記録を続けられる。パスワードは使わない。</p>
 
   <div class="grid2 wide pair" style="align-items:start">
     <div class="card">
       <h4>推薦を使う場合（週 1 回・約 3 分）</h4>
       <div class="flow">
-        <div class="step"><span class="dot act">1</span><div class="tx"><b>URL を開く</b><span>はじめての人には復旧コードを 1 回だけ表示し、操作ツアーが始まる</span></div></div>
+        <div class="step"><span class="dot act">1</span><div class="tx"><b>ログインする</b><span>Google・メールのリンク・パスキー。はじめての人には、実際の画面で試せる操作ツアーが始まる</span></div></div>
         <div class="step"><span class="dot act">2</span><div class="tx"><b>今週のおすすめを見る</b><span>理由つきの 15 件・開幕リマインド・興味ありの追跡・お気に入りの新着</span></div></div>
-        <div class="step"><span class="dot act">3</span><div class="tx"><b>その場で反応する</b><span>興味あり／すでに持っている／興味なし。答えた公演は抜け、次点が繰り上がる</span></div></div>
+        <div class="step"><span class="dot act">3</span><div class="tx"><b>その場で答える</b><span>興味あり／興味なし／購入済／行けない の 4 つ。答えた公演は抜け、次点が繰り上がる。出てこない公演は上の検索欄で探して答える</span></div></div>
         <div class="step"><span class="dot">4</span><div class="tx"><b>閉じてよい</b><span>記録はサーバー側の本人の領域に保存される</span></div></div>
-        <div class="step"><span class="dot eval">5</span><div class="tx"><b>次に開くと、反応と評価が反映されている</b><span>本人の評価から、その場で推薦を計算し直す（3-6）</span></div></div>
+        <div class="step"><span class="dot eval">5</span><div class="tx"><b>次に開くと、反応と評価が反映されている</b><span>本人の評価と答えから、その場で推薦を計算し直す（3 章）</span></div></div>
       </div>
       <div class="loopback"><svg class="ic" viewBox="0 0 24 24" width="16" height="16"><path d="M4 12a8 8 0 0 1 14-5.3M18 3v4h-4"/></svg>1 へ戻る（週 1 回の輪）</div>
     </div>
@@ -604,9 +608,9 @@ ol.refs li:target{background:rgba(var(--brand-rgb),.12)}
       <h4>記録を残す・振り返る場合（観たあと）</h4>
       <div class="flow">
         <div class="step"><span class="dot">1</span><div class="tx"><b>観に行く</b><span>上演日を過ぎた公演は「未評価」に並ぶ</span></div></div>
-        <div class="step"><span class="dot eval">2</span><div class="tx"><b>◎○△× を付ける</b><span>押すと感想の欄が開く（任意・1〜3 分）</span></div></div>
-        <div class="step"><span class="dot">3</span><div class="tx"><b>足りない記録を追加する</b><span>題名 2 文字で候補が出て、劇場・日程・出演者ごと入る。購入確認メールからの自動取り込みは手元で動かす版だけ</span></div></div>
-        <div class="step"><span class="dot act">4</span><div class="tx"><b>振り返る</b><span>眺める・たどる・観劇史年表・日記帳</span></div></div>
+        <div class="step"><span class="dot eval">2</span><div class="tx"><b>星を付ける</b><span>星 5 段階か「評価しない」。押すと感想の欄が開く（任意・1〜3 分）</span></div></div>
+        <div class="step"><span class="dot">3</span><div class="tx"><b>足りない記録を追加する</b><span>右上の ＋ から。題名で探す・Google カレンダーから取り込む。W キャストの公演は、観た回に出ていなかった人を外せる</span></div></div>
+        <div class="step"><span class="dot act">4</span><div class="tx"><b>振り返る</b><span>眺める（劇場制覇の地図・観劇の時間割など）・たどる・観劇史年表・日記帳</span></div></div>
       </div>
       <p class="muted" style="margin-top:14px">推薦を使わず、記録だけを残す使い方も成り立つ。</p>
     </div>
@@ -614,16 +618,14 @@ ol.refs li:target{background:rgba(var(--brand-rgb),.12)}
 
   <h3 class="sub">2-3　使っている技術・システム構成</h3>
   <figure class="wide dg">
-    <svg viewBox="0 0 1000 520" role="img" aria-label="システム構成図。ブラウザの画面はGitHub Pagesから静的に配信され、HTTPSでRender上のAPIサーバーとやり取りする。APIサーバーはPython標準ライブラリで動き、利用者ごとの状態をSQLiteに、共通の公演カタログをJSONとJSONLに持つ。カタログは事前の取得バッチがCoRich、ステイジーズカレンダー、Gemini API、OpenStreetMapから作り、S3経由でサーバーに渡す。">
+    <svg viewBox="0 0 1000 540" role="img" aria-label="システム構成図。ブラウザはCloudflare WorkersのアプリにHTTPSでつながる。Workersは画面のファイルを配り、本人を見分け、推薦を計算し、反応と評価を保存し、画面の中身を返す。利用者ごとの状態と推薦の索引はD1に、ポスターと過去の公演の索引はR2に置く。GitHub Actionsが毎日公演を取得し、無料枠の予算の中でD1とR2に入れる。ログインはFirebase Authentication。Googleカレンダーの取り込みはブラウザから直接読む。">
       <defs>
         <marker id="ga" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1l7 4-7 4z" class="aF-m"/></marker>
         <marker id="gat" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1l7 4-7 4z" class="aF-t"/></marker>
       </defs>
-      <!-- 列見出し -->
       <text x="20" y="22" class="aK">利用者の端末</text>
-      <text x="300" y="22" class="aK">公開サーバー（常時稼働）</text>
-      <text x="740" y="22" class="aK">事前の取得（訪問者の操作とは切り離す）</text>
-      <!-- 利用者 -->
+      <text x="300" y="22" class="aK">Cloudflare（無料プラン・常時稼働）</text>
+      <text x="740" y="22" class="aK">毎日の取得（訪問者の操作とは切り離す）</text>
       <g transform="translate(20 36)">
         <rect width="240" height="200" rx="14" class="aBox"/>
         <rect x="20" y="20" width="56" height="96" rx="10" class="aDotM"/><rect x="26" y="30" width="44" height="74" rx="4" class="aBox"/>
@@ -632,74 +634,76 @@ ol.refs li:target{background:rgba(var(--brand-rgb),.12)}
         <text x="120" y="170" text-anchor="middle" class="aS">画面：HTML・CSS・JavaScript</text>
         <text x="120" y="188" text-anchor="middle" class="aS">フレームワークなし</text>
       </g>
-      <g transform="translate(20 268)">
-        <rect width="240" height="74" rx="14" class="aSide"/>
-        <text x="120" y="30" text-anchor="middle" class="aH">GitHub Pages</text>
-        <text x="120" y="52" text-anchor="middle" class="aS">画面のファイルを静的に配信</text>
+      <g transform="translate(20 262)">
+        <rect width="240" height="64" rx="14" class="aSide"/>
+        <text x="120" y="28" text-anchor="middle" class="aH">Firebase Authentication</text>
+        <text x="120" y="48" text-anchor="middle" class="aS">Google・メールのリンク・パスキー</text>
       </g>
-      <path d="M140 268V240" class="aL" marker-end="url(#ga)"/>
-      <!-- API -->
+      <path d="M140 262V240" class="aL" marker-end="url(#ga)"/>
+      <g transform="translate(20 344)">
+        <rect width="240" height="64" rx="14" class="aSide"/>
+        <text x="120" y="28" text-anchor="middle" class="aH">Google カレンダー</text>
+        <text x="120" y="48" text-anchor="middle" class="aS">ブラウザから直接読む（読み取りだけ）</text>
+      </g>
+      <path d="M140 344V330" class="aL" style="stroke-dasharray:3 3"/>
       <path d="M262 120H296" class="aLt" marker-end="url(#gat)"/><path d="M296 150H262" class="aLt" marker-end="url(#gat)"/>
       <text x="279" y="108" text-anchor="middle" class="aY">HTTPS</text>
       <g transform="translate(300 36)">
         <rect width="410" height="210" rx="14" class="aBoxB"/>
-        <text x="20" y="30" class="aH">API サーバー（Render）</text>
-        <text x="20" y="50" class="aS">Python 標準ライブラリのみ（http.server・sqlite3・urllib）</text>
-        <g transform="translate(20 66)"><rect width="176" height="58" rx="10" class="aBox"/><text x="88" y="25" text-anchor="middle" class="aO">本人を見分ける</text><text x="88" y="45" text-anchor="middle" class="aS">復旧コード・Cookie</text></g>
-        <g transform="translate(214 66)"><rect width="176" height="58" rx="10" class="aBox"/><text x="88" y="25" text-anchor="middle" class="aO">推薦を計算する</text><text x="88" y="45" text-anchor="middle" class="aS">開いたときに本人の分</text></g>
-        <g transform="translate(20 136)"><rect width="176" height="58" rx="10" class="aBox"/><text x="88" y="25" text-anchor="middle" class="aO">反応・評価を保存</text><text x="88" y="45" text-anchor="middle" class="aS">決めた操作だけ受け付ける</text></g>
-        <g transform="translate(214 136)"><rect width="176" height="58" rx="10" class="aBox"/><text x="88" y="25" text-anchor="middle" class="aO">画面の中身を返す</text><text x="88" y="45" text-anchor="middle" class="aS">HTML 断片（JSON）</text></g>
+        <text x="20" y="30" class="aH">Workers（app.taguri.workers.dev）</text>
+        <text x="20" y="50" class="aS">JavaScript・1 回の CPU 10 ms 以内</text>
+        <g transform="translate(20 66)"><rect width="176" height="58" rx="10" class="aBox"/><text x="88" y="25" text-anchor="middle" class="aO">本人を見分ける</text><text x="88" y="45" text-anchor="middle" class="aS">ログインの印・Cookie</text></g>
+        <g transform="translate(214 66)"><rect width="176" height="58" rx="10" class="aBox"/><text x="88" y="25" text-anchor="middle" class="aO">推薦を計算する</text><text x="88" y="45" text-anchor="middle" class="aS">開いたときに本人の分（3 章）</text></g>
+        <g transform="translate(20 136)"><rect width="176" height="58" rx="10" class="aBox"/><text x="88" y="25" text-anchor="middle" class="aO">反応・評価を保存</text><text x="88" y="45" text-anchor="middle" class="aS">決めた操作・回数だけ</text></g>
+        <g transform="translate(214 136)"><rect width="176" height="58" rx="10" class="aBox"/><text x="88" y="25" text-anchor="middle" class="aO">画面を返す</text><text x="88" y="45" text-anchor="middle" class="aS">ファイル・HTML 断片（JSON）</text></g>
       </g>
-      <!-- 保存 -->
       <g transform="translate(300 286)">
         <path d="M0 14C0 0 190 0 190 14V110C190 124 0 124 0 110z" class="aOut"/><path d="M0 14C0 28 190 28 190 14" class="aLt"/>
-        <text x="95" y="54" text-anchor="middle" class="aO">利用者ごとの状態</text>
-        <text x="95" y="74" text-anchor="middle" class="aS">SQLite（評価・感想・反応・</text>
-        <text x="95" y="92" text-anchor="middle" class="aS">お気に入り／認証）</text>
+        <text x="95" y="50" text-anchor="middle" class="aO">D1（データベース）</text>
+        <text x="95" y="72" text-anchor="middle" class="aS">利用者ごとの状態</text>
+        <text x="95" y="90" text-anchor="middle" class="aS">（評価・答え・お気に入り）</text>
+        <text x="95" y="108" text-anchor="middle" class="aS">推薦の索引・カード</text>
       </g>
       <g transform="translate(520 286)">
         <path d="M0 14C0 0 190 0 190 14V110C190 124 0 124 0 110z" class="aBox"/><path d="M0 14C0 28 190 28 190 14" class="aL"/>
-        <text x="95" y="54" text-anchor="middle" class="aO">共通の公演カタログ</text>
-        <text x="95" y="74" text-anchor="middle" class="aS">JSON・JSONL（候補・あらすじ・</text>
-        <text x="95" y="92" text-anchor="middle" class="aS">クレジット・カレンダー）</text>
+        <text x="95" y="54" text-anchor="middle" class="aO">R2（ファイル置き場）</text>
+        <text x="95" y="76" text-anchor="middle" class="aS">ポスター画像と、</text>
+        <text x="95" y="94" text-anchor="middle" class="aS">過去の公演の名前の索引</text>
       </g>
       <path d="M395 246V282" class="aL" marker-end="url(#ga)"/><path d="M615 282V246" class="aL" marker-end="url(#ga)"/>
       <text x="410" y="270" class="aK">読み書き</text><text x="630" y="270" class="aK">読むだけ</text>
-      <!-- バッチ -->
       <g transform="translate(740 36)">
-        <rect width="240" height="96" rx="14" class="aBox"/>
-        <text x="120" y="32" text-anchor="middle" class="aH">取得バッチ</text>
-        <text x="120" y="56" text-anchor="middle" class="aS">手元で月 1 回ほど実行</text>
-        <text x="120" y="76" text-anchor="middle" class="aS">1 リクエスト/秒を守る</text>
+        <rect width="240" height="116" rx="14" class="aBox"/>
+        <text x="120" y="30" text-anchor="middle" class="aH">GitHub Actions（毎日 1 回）</text>
+        <text x="120" y="54" text-anchor="middle" class="aS">これからの公演を読み、索引と</text>
+        <text x="120" y="72" text-anchor="middle" class="aS">カードの下書きを作る</text>
+        <text x="120" y="96" text-anchor="middle" class="aS">1 リクエスト/秒・無料枠の 8 割で止める</text>
       </g>
       <g class="aS">
-        <g transform="translate(740 160)"><rect width="114" height="40" rx="8" class="aSide"/><text x="57" y="25" text-anchor="middle">CoRich</text></g>
-        <g transform="translate(866 160)"><rect width="114" height="40" rx="8" class="aSide"/><text x="57" y="18" text-anchor="middle">ステイジーズ</text><text x="57" y="33" text-anchor="middle">カレンダー</text></g>
-        <g transform="translate(740 208)"><rect width="114" height="40" rx="8" class="aSide"/><text x="57" y="18" text-anchor="middle">Gemini API</text><text x="57" y="33" text-anchor="middle" class="aK">題材・文章</text></g>
-        <g transform="translate(866 208)"><rect width="114" height="40" rx="8" class="aSide"/><text x="57" y="18" text-anchor="middle">OpenStreetMap</text><text x="57" y="33" text-anchor="middle" class="aK">劇場の座標</text></g>
+        <g transform="translate(740 172)"><rect width="114" height="40" rx="8" class="aSide"/><text x="57" y="25" text-anchor="middle">CoRich</text></g>
+        <g transform="translate(866 172)"><rect width="114" height="40" rx="8" class="aSide"/><text x="57" y="18" text-anchor="middle">公式サイトの</text><text x="57" y="33" text-anchor="middle">クレジット</text></g>
+        <g transform="translate(740 220)"><rect width="114" height="40" rx="8" class="aSide"/><text x="57" y="18" text-anchor="middle">LLM</text><text x="57" y="33" text-anchor="middle" class="aK">あらすじ → 題材</text></g>
+        <g transform="translate(866 220)"><rect width="114" height="40" rx="8" class="aSide"/><text x="57" y="18" text-anchor="middle">OpenStreetMap</text><text x="57" y="33" text-anchor="middle" class="aK">劇場の座標</text></g>
       </g>
-      <path d="M860 154V136" class="aL" marker-end="url(#ga)"/>
-      <!-- S3 -->
-      <g transform="translate(780 300)"><rect width="160" height="70" rx="14" class="aBox"/>
-        <text x="80" y="30" text-anchor="middle" class="aH">S3</text><text x="80" y="52" text-anchor="middle" class="aS">カタログ一式を置く</text></g>
-      <path d="M860 250V296" class="aL" marker-end="url(#ga)"/>
-      <path d="M780 335H714" class="aL" marker-end="url(#ga)"/>
-      <text x="747" y="326" text-anchor="middle" class="aK">起動時に取得</text>
-      <!-- 注記 -->
-      <rect x="20" y="430" width="960" height="76" rx="12" class="aTip"/>
-      <text x="40" y="458" class="aS"><tspan class="aSb" font-weight="700">訪問者の操作では、外部サイトへの取得も LLM の呼び出しも走らない。</tspan>サーバーは事前に作ったカタログと、本人の保存データだけで画面を作る。</text>
-      <text x="40" y="484" class="aS">手元で動かす版（run.py）は同じコードを 127.0.0.1 だけで動かし、購入確認メールの取り込みや取得もその場で行う。</text>
+      <path d="M860 168V154" class="aL" marker-end="url(#ga)"/>
+      <path d="M800 262V276H500V282" class="aL" marker-end="url(#ga)"/><path d="M800 276V340H714" class="aL" marker-end="url(#ga)"/>
+      <text x="760" y="330" text-anchor="middle" class="aK">差分だけ入れる</text>
+      <g transform="translate(740 380)"><rect width="240" height="40" rx="10" class="aSide"/><text x="120" y="25" text-anchor="middle" class="aS">GitHub Pages：デモ・ガイド・資料</text></g>
+      <rect x="20" y="440" width="960" height="84" rx="12" class="aTip"/>
+      <text x="40" y="468" class="aS"><tspan class="aSb" font-weight="700">訪問者の操作では、外部サイトへの取得も LLM の呼び出しも走らない。</tspan>Workers は、事前に作った索引と本人の保存データだけで画面を作る。</text>
+      <text x="40" y="494" class="aS">D1 の大きさは毎日見張り、無料枠の 8 割（4 GB）で書き込みと新規登録を止める。利用者は 300 人まで、新規は 1 日 30 人まで。</text>
     </svg>
-    <figcaption>状態（本人にしか作れないデータ・失うと戻らない）と、取得物（外から取ったコピー・消えても取り直せる）を分けて保存する。取得物は、1 行 1 件の形のものを JSONL にし、1 行が壊れても他の行は読めるようにしている。</figcaption>
+    <figcaption>状態（本人にしか作れないデータ・失うと戻らない）と、取得物（外から取ったコピー・消えても取り直せる）を分けて保存する。取得物は取得側の作業用の枝にも JSONL で残し、D1 には毎日の差分だけを入れる。</figcaption>
   </figure>
 
   <h3 class="sub">2-4　設計判断：測って選んだところ</h3>
   <ul class="plain col">
-    <li><b>画面は静的に配信し、計算とデータは API 側に置く。</b>GitHub Pages はサーバー側のコードを動かせないため、DB への書き込みを伴う本体は Render に残した。</li>
+    <li><b>画面・計算・記録を Cloudflare の無料枠（Workers・D1・R2）に置く。</b>以前は画面を GitHub Pages、本体を Render に分けていたが、Render の無料プランは保存が再デプロイで消える。D1 に移して、記録が消えないようにした。</li>
     <li><b>訪問者の操作で外部取得や LLM を走らせない。</b>費用と取得先への礼儀の両面から、取得は事前のバッチだけにまとめた。</li>
-    <li><b>状態は SQLite に集め、取得物は JSONL のまま置く。</b>画面が書き戻すのは状態だけなので、状態が 2 つの形式に分かれると反映漏れが起きる。</li>
-    <li><b>LLM は Gemini API を <code>urllib</code> で直接呼ぶ。</b>専用の SDK は使わず、呼び出し口も <code>tools/llm_gemini.py</code> の 1 か所に絞った。</li>
-    <li><b>技術スタックは Python 標準ライブラリ・SQLite・素の HTML/CSS/JS。</b>追加のインストールがいらないので、環境が変わっても動かなくなりにくい。</li>
+    <li><b>重い計算は毎日の取得に寄せる。</b>Workers の CPU は 1 回 10 ms なので、公演の索引とカードの下書きは取得側で作り、開いたときは本人の分の計算と差し込みだけを行う。結果は本人ごとに控え、記録が変わるまで使い回す。</li>
+    <li><b>D1 には差分だけを入れる。</b>1 日の書き込みには上限があるので、変わった行だけを書き、無料枠の 8 割を超えそうな日は次の日に回す。</li>
+    <li><b>LLM は、あらすじから題材を一度だけ取り出す用途に絞る。</b>順位付けには使わないので、同じ記録からは毎回同じ順位と理由が出る。</li>
+    <li><b>技術スタックは、取得側が Python 標準ライブラリ、画面と Workers が素の HTML/CSS/JavaScript。</b>Python の参照実装と Worker が同じ推薦を出すことを、変更のたびに試験で確かめる。</li>
   </ul>
 
 </section>
@@ -708,18 +712,18 @@ ol.refs li:target{background:rgba(var(--brand-rgb),.12)}
 <section class="sec" id="algo">
   <div class="eyebrow"><span class="n">03</span><span>推薦アルゴリズム</span></div>
   <h2 class="title">推薦アルゴリズム</h2>
-  <p class="kicker">本章では、いま本番（Cloudflare Workers）で動いている推薦 <code>person-ordinal-v3+fav3+asp1+tour1+why1</code> を、式・根拠・検証の順に述べる。順位は <b>LLM を使わず、本人の記録から数えた統計だけ</b>で決める。そのため、同じ記録からは毎回同じ順位と同じ理由が出る。Python の参照実装と Worker の実装が、同じ公演・同じ順・同じ点・同じ理由を出すことは、変更のたびにテストで確かめている。</p>
+  <p class="kicker">本章では、いま本番（Cloudflare Workers）で動いている推薦（画面の控え <code>screen-v17</code>、2026-10-17 時点）を、式・根拠・検証の順に述べる。順位は <b>LLM を使わず、本人の記録から数えた統計だけ</b>で決める。そのため、同じ記録からは毎回同じ順位と同じ理由が出る。Python の参照実装と Worker の実装が、同じ公演・同じ順・同じ点・同じ理由を出すことは、変更のたびにテストで確かめている。</p>
 
   <div class="abstract">
     <h4>要旨</h4>
     <p>観劇の記録は 1 人あたり数十件と少なく、他の利用者の記録は方針として集めない。そこで、公開されているクレジット（役職と人物）と公演の種類のタグを手がかりに、<b>本人の評価だけ</b>で、これからの公演に点を付ける。手順は 4 つある。</p>
     <ol>
-      <li>評価 ◎○△× を、本人の評価の分布の中での位置 <i>z</i> に直し、人による付け方の癖を消す（式 1–2）。</li>
-      <li>人物とタグごとに <i>z</i> を縮約して平均し、その「値」を作る（式 4）。</li>
-      <li>公演の点を、上げる人物の上位 3、下げる人物の上位 3、種類の平均の和とする（式 7）。理由を言える公演だけを残す（式 8）。</li>
-      <li>評価が少ないうちは、お気に入りを仮の評価として足す（式 9）。</li>
+      <li>評価（星・◎○△×）を、本人の評価の分布の中での位置 <i>z</i> に直し、人による付け方の癖を消す（式 1–2）。</li>
+      <li>人物と種類のタグごとに <i>z</i> を縮約して平均し、その「値」を作る（式 4）。評価が少ないうちは、お気に入りと「興味あり」「行けない」を仮の評価として足す。興味ありは 1 公演ぶんを人物と種類に割って配る（式 9–11）。</li>
+      <li>公演の点を、上げる人物の上位 3、下げる人物の上位 3、種類の平均の和とする（式 7）。好きな人と組む人へ 1 段だけ広げる（式 12）。理由を言える公演だけを残す（式 8）。</li>
+      <li>同じ人が筆頭の理由の公演は、1 ページに 2 件までに並べ直す（式 13）。</li>
     </ol>
-    <p>さらに、本人の過去の評価を時間順に再生する符号検定で、重み付けを人ごとに切り替える（式 10–12）。公開の映画評価データ（500 人）では、以前の計算より AUC が +0.024〜0.036 上がった。<b>舞台の実データでの効果は、まだ測っていない</b>（3.9）。</p>
+    <p>さらに、本人の過去の評価を時間順に再生する符号検定で、重み付けを人ごとに切り替える（式 14–16）。公開の映画評価データ（500 人）では、以前の計算より AUC が +0.024〜0.036 上がった。<b>舞台の実データでの効果は、まだ測っていない</b>。2026-10-15 以降に足した興味ありの配り方・1 段広げる・並べ直しは、性質を試験で確かめただけで、効き目は測っていない（3.13）。</p>
   </div>
 
   <h3 class="sub">3.1　問題設定と記法</h3>
@@ -732,7 +736,7 @@ ol.refs li:target{background:rgba(var(--brand-rgb),.12)}
         <li><b>毎回同じ結果を出し、理由を説明できる。</b></li>
         <li><b>無料プランの CPU（1 回 10 ms）に収める。</b></li>
       </ul>
-      <p class="muted">手がかりは、公演ごとのクレジットの組（役職 <i>r</i>, 人物 <i>p</i>）の集合 <i>P</i>(<i>s</i>) と、種類のタグの集合 <i>K</i>(<i>s</i>) である。</p>
+      <p class="muted">手がかりは、公演ごとのクレジットの組（役職 <i>r</i>, 人物 <i>p</i>）の集合 <i>P</i>(<i>s</i>) と、種類のタグの集合 <i>K</i>(<i>s</i>) である。答え（興味あり・興味なし・行けない）は、評価より弱い手がかりとして使う。</p>
     </div>
     <div class="card">
       <h4>記法</h4>
@@ -740,7 +744,7 @@ ol.refs li:target{background:rgba(var(--brand-rgb),.12)}
         <table class="calc" style="min-width:0;font-size:12.5px">
           <thead><tr><th>記号</th><th>意味</th></tr></thead>
           <tbody>
-            <tr><td><i>g<sub>s</sub></i></td><td>公演 <i>s</i> への評価。◎○△× ＝ 4/3/2/1 の 4 段階。または「値/段階数」（例 4/5）</td></tr>
+            <tr><td><i>g<sub>s</sub></i></td><td>公演 <i>s</i> への評価。◎○△× ＝ 4/3/2/1 の 4 段階、または「値/段階数」（星 5 段階なら 1/5〜5/5、0.5 きざみなら 10 段階）。「評価しない」は数えない</td></tr>
             <tr><td><i>z<sub>s</sub></i></td><td>評価を本人の中での位置に直した値（式 2）</td></tr>
             <tr><td><i>q</i></td><td>手がかり 1 つ。（役職, 人物）の組か、種類のタグ（#形式 など）</td></tr>
             <tr><td><i>R<sub>u</sub></i>(<i>q</i>)、<i>n<sub>u</sub></i>(<i>q</i>)</td><td><i>q</i> が関わる評価済みの公演と、その本数</td></tr>
@@ -748,6 +752,11 @@ ol.refs li:target{background:rgba(var(--brand-rgb),.12)}
             <tr><td><i>ρ</i>(<i>r</i>)</td><td>役職の重み（式 6）</td></tr>
             <tr><td><i>μ<sub>u</sub></i>(<i>G</i>)</td><td>役職のまとまりごとの倍率（本人の「効かせ方」×裏の答え合わせ）</td></tr>
             <tr><td><i>S</i>(<i>s</i>)</td><td>公演の点（式 7）</td></tr>
+            <tr><td><i>K</i>(<i>s</i>)、<i>𝒞</i></td><td>公演の種類のタグと、そのうち作品の内容を表すもの（3.5）</td></tr>
+            <tr><td><i>Φ<sub>u</sub></i>(<i>q</i>)</td><td>お気に入りから選んだ、<i>q</i> が関わる公演（3.7）</td></tr>
+            <tr><td><i>L<sub>u</sub></i>、<i>D<sub>u</sub></i></td><td>「興味あり・行けない」と答えた公演、「興味なし」と答えた公演（3.8）</td></tr>
+            <tr><td><i>π<sub>s</sub></i>(<i>q</i>)</td><td>興味ありの公演 <i>s</i> から <i>q</i> に配る量（式 10）</td></tr>
+            <tr><td><i>z</i><sub>0</sub>、<i>ω<sub>u</sub></i></td><td>仮の評価の位置と、その重み（式 9）</td></tr>
             <tr><td><i>κ</i> ＝ 3</td><td>縮約の強さ（仮の「ふつう」評価が何件ぶんか）</td></tr>
           </tbody>
         </table>
@@ -757,90 +766,87 @@ ol.refs li:target{background:rgba(var(--brand-rgb),.12)}
 
   <h3 class="sub">3.2　全体の流れ</h3>
   <figure class="wide">
-    <svg viewBox="0 0 1000 560" role="img" aria-label="推薦の全体の流れ。毎日の取得で公演の索引を作り、本人の評価を順位として読み、人物と公演の種類ごとの値を作る。お気に入りは仮の評価として足す。候補の公演に点を付け、理由のある公演だけを残し、お気に入りに一致する公演・出さない語の公演・答えた公演を振り分け、ツアーを1枠にまとめて上位15件を出す。">
+    <svg viewBox="0 0 1000 640" role="img" aria-label="推薦の全体の流れ。毎日の取得で公演の索引と種類のタグを作る。本人の評価を本人の中での位置に直し、人物と種類ごとの値を作る。お気に入りと興味あり・行けないは仮の評価として割って足す。候補の公演に点を付け、好きな人と組む人へ一段広げ、理由を言える公演だけを残す。お気に入りの名前の公演は別枠、出さない語・答えた公演・外したジャンルの公演は除き、ツアーを一枠にまとめ、同じ人が理由の公演は一ページ二件までにして上位十五件を出す。">
       <defs>
         <marker id="fn" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1l7 4-7 4z" class="aF-m"/></marker>
       </defs>
-      <!-- 左: 毎日の取得 -->
-      <rect x="10" y="10" width="300" height="118" rx="12" class="aTip"/>
-      <text x="160" y="38" text-anchor="middle" class="aH">毎日の取得（GitHub Actions）</text>
-      <text x="160" y="62" text-anchor="middle" class="aS">CoRich のこれからの公演を読み、</text>
-      <text x="160" y="82" text-anchor="middle" class="aS">クレジットを（役職, 人物）に分け、</text>
-      <text x="160" y="102" text-anchor="middle" class="aS">公演の種類のタグを付けて D1 の索引へ</text>
-      <!-- 右: 本人の記録 -->
-      <rect x="690" y="10" width="300" height="118" rx="12" class="aTip"/>
-      <text x="840" y="38" text-anchor="middle" class="aH">本人の記録（D1）</text>
-      <text x="840" y="62" text-anchor="middle" class="aS">観た公演の ◎○△×（と良かった所・</text>
-      <text x="840" y="82" text-anchor="middle" class="aS">気になった所）、お気に入りの名前、</text>
-      <text x="840" y="102" text-anchor="middle" class="aS">「興味あり」などの答え</text>
-      <!-- 中央の列 -->
-      <g>
-        <rect x="330" y="10" width="340" height="56" rx="12" class="aBox"/>
-        <text x="500" y="34" text-anchor="middle" class="aH">① 評価を「本人の中での順位」に直す</text>
-        <text x="500" y="55" text-anchor="middle" class="aS">人ごとの付け方の癖をそろえる（3.3）</text>
-      </g>
-      <path d="M690 60H674" class="aL" marker-end="url(#fn)"/>
+      <rect x="10" y="10" width="300" height="138" rx="12" class="aTip"/>
+      <text x="160" y="36" text-anchor="middle" class="aH">毎日の取得（GitHub Actions）</text>
+      <text x="160" y="60" text-anchor="middle" class="aS">これからの公演のクレジットを</text>
+      <text x="160" y="80" text-anchor="middle" class="aS">（役職, 人物）に分け、種類のタグを付ける</text>
+      <text x="160" y="104" text-anchor="middle" class="aS">#形式・#原作・#翻訳・#原作の国</text>
+      <text x="160" y="124" text-anchor="middle" class="aS">#題材・#ジャンル（3.5）</text>
+      <rect x="690" y="10" width="300" height="138" rx="12" class="aTip"/>
+      <text x="840" y="36" text-anchor="middle" class="aH">本人の記録（D1）</text>
+      <text x="840" y="60" text-anchor="middle" class="aS">観た公演の評価（星・◎○△×）と詳細</text>
+      <text x="840" y="80" text-anchor="middle" class="aS">お気に入りの名前</text>
+      <text x="840" y="100" text-anchor="middle" class="aS">興味あり・行けない・興味なし</text>
+      <text x="840" y="120" text-anchor="middle" class="aS">観た回に出ていなかった人（W キャスト）</text>
+      <rect x="330" y="10" width="340" height="56" rx="12" class="aBox"/>
+      <text x="500" y="34" text-anchor="middle" class="aH">① 評価を「本人の中での位置」に直す</text>
+      <text x="500" y="55" text-anchor="middle" class="aS">人ごとの付け方の癖をそろえる（3.3）</text>
+      <path d="M690 40H674" class="aL" marker-end="url(#fn)"/>
       <path d="M500 66V84" class="aL" marker-end="url(#fn)"/>
-      <g>
-        <rect x="330" y="86" width="340" height="56" rx="12" class="aBoxB"/>
-        <text x="500" y="110" text-anchor="middle" class="aH">② 人物と種類ごとの「値」を作る</text>
-        <text x="500" y="131" text-anchor="middle" class="aS">お気に入りは評価が少ないうち仮の ◎ に（3.4・3.6）</text>
-      </g>
-      <path d="M500 142V160" class="aL" marker-end="url(#fn)"/>
-      <path d="M160 128V190H326" class="aL" marker-end="url(#fn)"/>
-      <g>
-        <rect x="330" y="162" width="340" height="56" rx="12" class="aBoxB"/>
-        <text x="500" y="186" text-anchor="middle" class="aH">③ これからの公演すべてに点を付ける</text>
-        <text x="500" y="207" text-anchor="middle" class="aS">上げる人 3 ＋ 下げる人 3 ＋ 種類の平均（3.5）</text>
-      </g>
-      <path d="M500 218V236" class="aL" marker-end="url(#fn)"/>
-      <g>
-        <rect x="330" y="238" width="340" height="56" rx="12" class="aBox"/>
-        <text x="500" y="262" text-anchor="middle" class="aH">④ 理由を言える公演だけ残す</text>
-        <text x="500" y="283" text-anchor="middle" class="aS">点が正で、上げた人物か作品の種類がある</text>
-      </g>
-      <path d="M500 294V312" class="aL" marker-end="url(#fn)"/>
-      <g>
-        <rect x="330" y="314" width="340" height="70" rx="12" class="aBox"/>
-        <text x="500" y="338" text-anchor="middle" class="aH">⑤ 振り分ける</text>
-        <text x="500" y="358" text-anchor="middle" class="aS">お気に入りの名前の公演 → 別枠で必ず出す</text>
-        <text x="500" y="376" text-anchor="middle" class="aS">出さない語・答えた公演 → 推薦枠から外す</text>
-      </g>
-      <path d="M500 384V402" class="aL" marker-end="url(#fn)"/>
-      <g>
-        <rect x="330" y="404" width="340" height="56" rx="12" class="aBox"/>
-        <text x="500" y="428" text-anchor="middle" class="aH">⑥ ツアーは 1 枠に（tour1）</text>
-        <text x="500" y="449" text-anchor="middle" class="aS">ほかの会場は、いちばん上の会場に添える</text>
-      </g>
-      <path d="M500 460V480" class="aL" marker-end="url(#fn)"/>
-      <rect x="350" y="482" width="300" height="58" rx="29" class="aGoal"/>
-      <text x="500" y="508" text-anchor="middle" class="aGoalT">今週のおすすめ 上位 15 件</text>
-      <text x="500" y="528" text-anchor="middle" class="aGoalT" style="font-size:12px">観に行ける都道府県でも絞れる</text>
-      <!-- 右下: 裏の答え合わせ -->
-      <rect x="690" y="162" width="300" height="132" rx="12" class="aTip"/>
-      <text x="840" y="190" text-anchor="middle" class="aH">裏の答え合わせ（3.7）</text>
-      <text x="840" y="214" text-anchor="middle" class="aS">本人の過去の評価を時間順に再生し、</text>
-      <text x="840" y="234" text-anchor="middle" class="aS">別の重み付けがはっきり勝ったときだけ</text>
-      <text x="840" y="254" text-anchor="middle" class="aS">その人にはそちらを使う</text>
-      <path d="M690 228H674" class="aL" marker-end="url(#fn)"/>
-      <!-- 左下: 開幕リマインド -->
-      <rect x="10" y="314" width="300" height="118" rx="12" class="aTip"/>
-      <text x="160" y="342" text-anchor="middle" class="aH">開幕リマインド（別の画面）</text>
-      <text x="160" y="366" text-anchor="middle" class="aS">点とは関係なく、今週・来週に初日の</text>
-      <text x="160" y="386" text-anchor="middle" class="aS">公演を全部出す。答えないうちに開幕する</text>
-      <text x="160" y="406" text-anchor="middle" class="aS">のが、いちばんの見逃しだから</text>
+      <rect x="330" y="86" width="340" height="70" rx="12" class="aBoxB"/>
+      <text x="500" y="110" text-anchor="middle" class="aH">② 人物と種類ごとの「値」を作る</text>
+      <text x="500" y="130" text-anchor="middle" class="aS">お気に入り（3.7）と興味あり・行けない（3.8）は</text>
+      <text x="500" y="148" text-anchor="middle" class="aS">評価が少ないうちだけ効く仮の評価として足す</text>
+      <path d="M690 110H674" class="aL" marker-end="url(#fn)"/>
+      <path d="M500 156V174" class="aL" marker-end="url(#fn)"/>
+      <path d="M160 148V204H326" class="aL" marker-end="url(#fn)"/>
+      <rect x="330" y="176" width="340" height="70" rx="12" class="aBoxB"/>
+      <text x="500" y="200" text-anchor="middle" class="aH">③ これからの公演すべてに点を付ける</text>
+      <text x="500" y="220" text-anchor="middle" class="aS">上げる人 3 ＋ 下げる人 3 ＋ 種類の平均（3.6）</text>
+      <text x="500" y="238" text-anchor="middle" class="aS">好きな人と組む人へ 1 段だけ広げる（3.9）</text>
+      <path d="M500 246V264" class="aL" marker-end="url(#fn)"/>
+      <rect x="330" y="266" width="340" height="56" rx="12" class="aBox"/>
+      <text x="500" y="290" text-anchor="middle" class="aH">④ 理由を言える公演だけ残す</text>
+      <text x="500" y="311" text-anchor="middle" class="aS">点が正で、上げた人物か作品の種類がある（式 8）</text>
+      <path d="M500 322V340" class="aL" marker-end="url(#fn)"/>
+      <rect x="330" y="342" width="340" height="88" rx="12" class="aBox"/>
+      <text x="500" y="366" text-anchor="middle" class="aH">⑤ 振り分ける（3.10）</text>
+      <text x="500" y="387" text-anchor="middle" class="aS">お気に入りの名前の公演 → 別枠で必ず出す</text>
+      <text x="500" y="406" text-anchor="middle" class="aS">出さない語・答えた公演・✕ したジャンル</text>
+      <text x="500" y="423" text-anchor="middle" class="aS">→ 推薦枠から外す</text>
+      <path d="M500 430V448" class="aL" marker-end="url(#fn)"/>
+      <rect x="330" y="450" width="340" height="70" rx="12" class="aBox"/>
+      <text x="500" y="474" text-anchor="middle" class="aH">⑥ 並べ直す（3.10）</text>
+      <text x="500" y="494" text-anchor="middle" class="aS">ツアーは 1 枠。同じ人が筆頭の理由の公演は</text>
+      <text x="500" y="512" text-anchor="middle" class="aS">1 ページ（15 件）に 2 件まで。残りは次のページへ</text>
+      <path d="M500 520V540" class="aL" marker-end="url(#fn)"/>
+      <rect x="350" y="542" width="300" height="58" rx="29" class="aGoal"/>
+      <text x="500" y="568" text-anchor="middle" class="aGoalT">今週のおすすめ 上位 15 件</text>
+      <text x="500" y="588" text-anchor="middle" class="aGoalT" style="font-size:12px">観に行ける都道府県でも絞れる</text>
+      <rect x="690" y="176" width="300" height="146" rx="12" class="aTip"/>
+      <text x="840" y="204" text-anchor="middle" class="aH">裏の答え合わせ（3.11）</text>
+      <text x="840" y="228" text-anchor="middle" class="aS">本人の過去の評価を時間順に再生し、</text>
+      <text x="840" y="248" text-anchor="middle" class="aS">別の重み付けがはっきり勝ったときだけ</text>
+      <text x="840" y="268" text-anchor="middle" class="aS">その人にはそちらを使う</text>
+      <text x="840" y="296" text-anchor="middle" class="aS">本人の「効かせ方」の倍率と掛け合わせる</text>
+      <path d="M690 220H674" class="aL" marker-end="url(#fn)"/>
+      <rect x="10" y="342" width="300" height="118" rx="12" class="aTip"/>
+      <text x="160" y="370" text-anchor="middle" class="aH">開幕リマインド（別の画面）</text>
+      <text x="160" y="394" text-anchor="middle" class="aS">点とは関係なく、今週・来週に初日の</text>
+      <text x="160" y="414" text-anchor="middle" class="aS">公演を全部出す。答えないうちに開幕する</text>
+      <text x="160" y="434" text-anchor="middle" class="aS">のが、いちばんの見逃しだから</text>
+      <rect x="690" y="342" width="300" height="118" rx="12" class="aTip"/>
+      <text x="840" y="370" text-anchor="middle" class="aH">探す（おすすめの上の検索欄）</text>
+      <text x="840" y="394" text-anchor="middle" class="aS">推薦に出てこない公演を、題名・人名・</text>
+      <text x="840" y="414" text-anchor="middle" class="aS">団体名で探して答えられる。答えは</text>
+      <text x="840" y="434" text-anchor="middle" class="aS">②の興味あり・興味なしに入る</text>
+      <path d="M990 400H996V60H994" class="aL" style="stroke-dasharray:4 4" marker-end="url(#fn)"/>
     </svg>
-    <figcaption><b>図 1.</b>　推薦の全体の流れ。答えた公演は推薦枠から抜け、次の候補が繰り上がる。計算の結果は本人ごとに D1 に控え、評価・答え・お気に入り・索引のどれかが変わったときだけ計算し直す。</figcaption>
+    <figcaption><b>図 1.</b>　推薦の全体の流れ。答えた公演は推薦枠から抜け、次の候補が繰り上がる。計算の結果は本人ごとに D1 に控え、評価・答え・お気に入り・索引・外した理由のどれかが変わったときだけ計算し直す。</figcaption>
   </figure>
 
   <h3 class="sub">3.3　評価を本人の中での位置に直す（順序化）</h3>
-  <p class="para">◎○△× を 4・3・2・1 という等間隔の数としては扱わない。本人の評価の分布での<b>中央順位</b>（mid-rank）に直す。この値は、評価の段階数 <i>L</i> ごとに別々に数える。</p>
+  <p class="para">◎○△× や星を、4・3・2・1 のような等間隔の数としては扱わない。本人の評価の分布での<b>中央順位</b>（mid-rank）に直す。この値は、評価の段階数 <i>L</i> ごとに別々に数える。</p>
   <div class="eq"><math display="block"><mrow><msub><mi>F</mi><mi>u</mi></msub><mo stretchy="false">(</mo><mi>g</mi><mo stretchy="false">)</mo><mo>=</mo><mfrac><mrow><mo form="prefix">#</mo><mo stretchy="false">{</mo><msup><mi>s</mi><mo>′</mo></msup><mo>:</mo><msub><mi>g</mi><msup><mi>s</mi><mo>′</mo></msup></msub><mo>&lt;</mo><mi>g</mi><mo stretchy="false">}</mo><mo>+</mo><mfrac><mn>1</mn><mn>2</mn></mfrac><mo form="prefix">#</mo><mo stretchy="false">{</mo><msup><mi>s</mi><mo>′</mo></msup><mo>:</mo><msub><mi>g</mi><msup><mi>s</mi><mo>′</mo></msup></msub><mo>=</mo><mi>g</mi><mo stretchy="false">}</mo></mrow><msub><mi>N</mi><mi>u</mi></msub></mfrac></mrow></math><span class="eqn">(1)</span></div>
   <div class="eq"><math display="block"><mrow><msub><mi>z</mi><mi>s</mi></msub><mo>=</mo><msqrt><mn>12</mn></msqrt><mspace width="0.2em"/><mrow><mo>(</mo><msub><mi>F</mi><mi>u</mi></msub><mo stretchy="false">(</mo><msub><mi>g</mi><mi>s</mi></msub><mo stretchy="false">)</mo><mo>−</mo><mfrac><mn>1</mn><mn>2</mn></mfrac><mo>)</mo></mrow></mrow></math><span class="eqn">(2)</span></div>
   <p class="para"><b>性質。</b>式 1 の分子を全評価について足すと <i>N<sub>u</sub></i><sup>2</sup>/2 になる（評価の違う組は高い側に 1、同じ組は両方に ½、各評価が自分自身に ½）。したがって</p>
   <div class="eq"><math display="block"><mrow><mfrac><mn>1</mn><msub><mi>N</mi><mi>u</mi></msub></mfrac><munder><mo>∑</mo><mrow><mi>s</mi><mo>∈</mo><msub><mi>R</mi><mi>u</mi></msub></mrow></munder><msub><mi>z</mi><mi>s</mi></msub><mo>=</mo><mn>0</mn></mrow></math><span class="eqn">(3)</span></div>
   <p class="para">となる。どの人でも <i>z</i> の平均は 0 である。√12 は、[0,1] の一様分布の標準偏差 1/√12 で割る係数で、評価に同順位が無ければ、<i>z</i> のばらつきはほぼ 1 になる。</p>
-  <p class="para"><b>推薦が出始める条件。</b>式 3 から、評価が 1 件だけの人や、全部同じ評価の人は、<i>z</i> がすべて 0 になる。そのため、誰の値も 0 のままで推薦は出ない。評価だけで推薦が出るには、公演に結び付いた記録が 2 件以上あり、評価が 2 種類以上あることが要る。それまでは、3.6 のお気に入りの仮の評価だけが推薦の材料になる。</p>
+  <p class="para"><b>推薦が出始める条件。</b>式 3 から、評価が 1 件だけの人や、全部同じ評価の人は、<i>z</i> がすべて 0 になる。そのため、誰の値も 0 のままで推薦は出ない。評価だけで推薦が出るには、公演に結び付いた記録が 2 件以上あり、評価が 2 種類以上あることが要る。それまでは、お気に入り（3.7）と興味あり・行けない（3.8）の仮の評価だけが推薦の材料になる。</p>
   <figure class="wide">
     <svg viewBox="0 0 960 325" role="img" aria-label="評価の分布から z を求める図。利用者 A は ○ が多く ◎ が 1.212、利用者 B は ◎ が多く ◎ が 0.693。"><text x="30" y="40" class="aH">利用者 A</text><rect x="30.0" y="50" width="90.0" height="34" class="fS"/><text x="75.0" y="73" text-anchor="middle" class="fT">× ×1</text><path d="M75.0 84V102" class="aL"/><circle cx="75.0" cy="102" r="4" class="fDot"/><text x="75.0" y="122" text-anchor="middle" class="aS">z = -1.559</text><rect x="120.0" y="50" width="180.0" height="34" class="fW"/><text x="210.0" y="73" text-anchor="middle" class="fT">△ ×2</text><path d="M210.0 84V102" class="aL"/><circle cx="210.0" cy="102" r="4" class="fDot"/><text x="210.0" y="122" text-anchor="middle" class="aS">z = -1.039</text><rect x="300.0" y="50" width="360.0" height="34" class="fN"/><text x="480.0" y="73" text-anchor="middle" class="fT">○ ×4</text><path d="M480.0 84V102" class="aL"/><circle cx="480.0" cy="102" r="4" class="fDot"/><text x="480.0" y="122" text-anchor="middle" class="aS">z = +0.000</text><rect x="660.0" y="50" width="270.0" height="34" class="fG"/><text x="795.0" y="73" text-anchor="middle" class="fT">◎ ×3</text><path d="M795.0 84V102" class="aL"/><circle cx="795.0" cy="102" r="4" class="fDot"/><text x="795.0" y="122" text-anchor="middle" class="aS">z = +1.212</text><text x="30" y="165" class="aH">利用者 B（◎ をよく付ける）</text><rect x="30.0" y="175" width="90.0" height="34" class="fW"/><text x="75.0" y="198" text-anchor="middle" class="fT">△ ×1</text><path d="M75.0 209V227" class="aL"/><circle cx="75.0" cy="227" r="4" class="fDot"/><text x="75.0" y="247" text-anchor="middle" class="aS">z = -1.559</text><rect x="120.0" y="175" width="270.0" height="34" class="fN"/><text x="255.0" y="198" text-anchor="middle" class="fT">○ ×3</text><path d="M255.0 209V227" class="aL"/><circle cx="255.0" cy="227" r="4" class="fDot"/><text x="255.0" y="247" text-anchor="middle" class="aS">z = -0.866</text><rect x="390.0" y="175" width="540.0" height="34" class="fG"/><text x="660.0" y="198" text-anchor="middle" class="fT">◎ ×6</text><path d="M660.0 209V227" class="aL"/><circle cx="660.0" cy="227" r="4" class="fDot"/><text x="660.0" y="247" text-anchor="middle" class="aS">z = +0.693</text><path d="M30.0 268V276" class="aL"/><text x="30.0" y="292" text-anchor="middle" class="aS">0</text><path d="M255.0 268V276" class="aL"/><text x="255.0" y="292" text-anchor="middle" class="aS">0.25</text><path d="M480.0 268V276" class="aL"/><text x="480.0" y="292" text-anchor="middle" class="aS">0.5</text><path d="M705.0 268V276" class="aL"/><text x="705.0" y="292" text-anchor="middle" class="aS">0.75</text><path d="M930.0 268V276" class="aL"/><text x="930.0" y="292" text-anchor="middle" class="aS">1</text><path d="M30 268H930" class="aL"/><text x="480.0" y="314" text-anchor="middle" class="aS">本人の評価の中での位置 F（下の数＋同じ数の半分）／総数。z ＝ (F − ½)·√12</text></svg>
     <figcaption><b>図 2.</b>　同じ ◎ でも、人によって <i>z</i> が違う。○ が最も多い利用者 A の ◎ は <i>z</i> ＝ +1.212。◎ をよく付ける利用者 B の ◎ は +0.693 で、B の ○ は −0.866 と「平均より下」になる。</figcaption>
@@ -858,15 +864,16 @@ ol.refs li:target{background:rgba(var(--brand-rgb),.12)}
       <h4>設計上の判断</h4>
       <ul class="muted">
         <li>公演の順位そのものだけを使う方法は、情報を捨てすぎて精度が落ちたと報告されている <a href="#ref-3">[3]</a>。式 1 は公演どうしの順位ではなく、<b>段階の使われ方</b>を使うので、◎ と ○ の差の大きさは分布に応じて残る。</li>
-        <li>同じ公演への評価は、最新の 1 件だけを数える。</li>
+        <li>同じ公演への評価は、最新の 1 件だけを数える。「評価しない」（まだ判断できない）は評価に数えない。</li>
+        <li>星と ◎○△× の両方を使った人は、段階数 <i>L</i> ごとに別々に位置を数えるので、付け方を変えても前の評価の意味は変わらない。</li>
       </ul>
     </div>
   </div>
 
   <h3 class="sub">3.4　人物と種類の値（縮約つきの平均）</h3>
-  <p class="para">手がかり <i>q</i>（役職と人物の組、または種類のタグ）ごとに、<i>q</i> が関わった公演の <i>z</i> を平均する。ただし、分母に <i>κ</i> を足して 0 のほうへ縮める。第 2 項はお気に入りから作る仮の評価で、3.6 で述べる。</p>
-  <div class="eq"><math display="block"><mrow><msub><mi>v</mi><mi>u</mi></msub><mo stretchy="false">(</mo><mi>q</mi><mo stretchy="false">)</mo><mo>=</mo><mfrac><mrow><munder><mo>∑</mo><mrow><mi>s</mi><mo>∈</mo><msub><mi>R</mi><mi>u</mi></msub><mo stretchy="false">(</mo><mi>q</mi><mo stretchy="false">)</mo></mrow></munder><msub><mi>a</mi><mi>s</mi></msub><mo stretchy="false">(</mo><mi>q</mi><mo stretchy="false">)</mo><mspace width="0.1em"/><msub><mi>z</mi><mi>s</mi></msub><mo>+</mo><msub><mi>ω</mi><mi>u</mi></msub><mspace width="0.1em"/><msub><mi>z</mi><mn>0</mn></msub><mspace width="0.1em"/><mo stretchy="false">|</mo><msub><mi>Φ</mi><mi>u</mi></msub><mo stretchy="false">(</mo><mi>q</mi><mo stretchy="false">)</mo><mo stretchy="false">|</mo></mrow><mrow><msub><mi>n</mi><mi>u</mi></msub><mo stretchy="false">(</mo><mi>q</mi><mo stretchy="false">)</mo><mo>+</mo><msub><mi>ω</mi><mi>u</mi></msub><mspace width="0.1em"/><mo stretchy="false">|</mo><msub><mi>Φ</mi><mi>u</mi></msub><mo stretchy="false">(</mo><mi>q</mi><mo stretchy="false">)</mo><mo stretchy="false">|</mo><mo>+</mo><mi>κ</mi></mrow></mfrac><mo>,</mo><mspace width="1em"/><mi>κ</mi><mo>=</mo><mn>3</mn></mrow></math><span class="eqn">(4)</span></div>
-  <p class="para"><i>Φ<sub>u</sub></i>(<i>q</i>) は、お気に入りから選んだ、<i>q</i> が関わる公演である。お気に入りが無く、評価の詳細も付けていなければ、式 4 は <i>v</i> ＝ Σ<i>z</i> / (<i>n</i> ＋ <i>κ</i>) になる。これは「<i>z</i> ＝ 0（ふつう）の評価を <i>κ</i> 件ぶん足した平均」と同じである。真の平均が <i>μ</i> なら、期待値は <i>n</i><i>μ</i> / (<i>n</i> ＋ <i>κ</i>) になる。つまり、1 本しか観ていない人物は値が 1/4 に割り引かれる（図 4 の実線）。</p>
+  <p class="para">手がかり <i>q</i>（役職と人物の組、または種類のタグ）ごとに、<i>q</i> が関わった公演の <i>z</i> を平均する。ただし、分母に <i>κ</i> を足して 0 のほうへ縮める。分子・分母の第 2 項はお気に入りと興味ありから作る仮の評価で、3.7・3.8 で述べる。</p>
+  <div class="eq"><math display="block"><mrow><msub><mi>v</mi><mi>u</mi></msub><mo stretchy="false">(</mo><mi>q</mi><mo stretchy="false">)</mo><mo>=</mo><mfrac><mrow><munder><mo>∑</mo><mrow><mi>s</mi><mo>∈</mo><msub><mi>R</mi><mi>u</mi></msub><mo stretchy="false">(</mo><mi>q</mi><mo stretchy="false">)</mo></mrow></munder><msub><mi>a</mi><mi>s</mi></msub><mo stretchy="false">(</mo><mi>q</mi><mo stretchy="false">)</mo><mspace width="0.1em"/><msub><mi>z</mi><mi>s</mi></msub><mo>+</mo><msub><mi>ω</mi><mi>u</mi></msub><mspace width="0.1em"/><msub><mi>z</mi><mn>0</mn></msub><mspace width="0.1em"/><msub><mi>h</mi><mi>u</mi></msub><mo stretchy="false">(</mo><mi>q</mi><mo stretchy="false">)</mo></mrow><mrow><msub><mi>n</mi><mi>u</mi></msub><mo stretchy="false">(</mo><mi>q</mi><mo stretchy="false">)</mo><mo>+</mo><msub><mi>ω</mi><mi>u</mi></msub><mspace width="0.1em"/><msub><mi>h</mi><mi>u</mi></msub><mo stretchy="false">(</mo><mi>q</mi><mo stretchy="false">)</mo><mo>+</mo><mi>κ</mi></mrow></mfrac><mo>,</mo><mspace width="1em"/><msub><mi>h</mi><mi>u</mi></msub><mo stretchy="false">(</mo><mi>q</mi><mo stretchy="false">)</mo><mo>=</mo><mo stretchy="false">|</mo><msub><mi>Φ</mi><mi>u</mi></msub><mo stretchy="false">(</mo><mi>q</mi><mo stretchy="false">)</mo><mo stretchy="false">|</mo><mo>+</mo><munder><mo>∑</mo><mrow><mi>s</mi><mo>∈</mo><msub><mi>L</mi><mi>u</mi></msub></mrow></munder><msub><mi>π</mi><mi>s</mi></msub><mo stretchy="false">(</mo><mi>q</mi><mo stretchy="false">)</mo><mo>,</mo><mspace width="1em"/><mi>κ</mi><mo>=</mo><mn>3</mn></mrow></math><span class="eqn">(4)</span></div>
+  <p class="para"><i>h<sub>u</sub></i>(<i>q</i>) は仮の評価の件数にあたる量で、お気に入りの公演の数と、興味ありから配った量（式 10）の和である。観た回に出ていなかった人（W キャスト・休演で外した人）は、その記録の <i>P</i>(<i>s</i>) に入れない。お気に入りも興味ありも無く、評価の詳細も付けていなければ、式 4 は <i>v</i> ＝ Σ<i>z</i> / (<i>n</i> ＋ <i>κ</i>) になる。これは「<i>z</i> ＝ 0（ふつう）の評価を <i>κ</i> 件ぶん足した平均」と同じである。真の平均が <i>μ</i> なら、期待値は <i>n</i><i>μ</i> / (<i>n</i> ＋ <i>κ</i>) になる。つまり、1 本しか観ていない人物は値が 1/4 に割り引かれる（図 5 の実線）。</p>
 
   <h4 class="eqhead">評価の詳細の振り分け（asp1）</h4>
   <p class="para">評価に「良かった所」「気になった所」の項目 <i>c</i> が付いているときは、式 4 の <i>a<sub>s</sub></i>(<i>q</i>) で、評価が届く強さを役職ごとに変える。<i>z</i> &gt; 0 なら良かった所が主（<i>M<sub>s</sub></i>）で、気になった所が従（<i>O<sub>s</sub></i>）になる。<i>z</i> &lt; 0 なら逆になる。</p>
@@ -875,24 +882,87 @@ ol.refs li:target{background:rgba(var(--brand-rgb),.12)}
   <p class="para"><i>α<sub>c</sub></i>(<i>r</i>) は、項目 <i>c</i> と役職 <i>r</i> の関わりの強さである。値の例を挙げる。</p>
   <ul class="para">
     <li>「演技・出演」：出演 1.0、演出 0.2</li>
-    <li>「話・脚本・構成」：脚本・作・原作・翻訳 1.0、演出・#形式 0.5</li>
-    <li>「値段」：#値段 1.0</li>
+    <li>「話・脚本・構成」：脚本・作・原作・翻訳 1.0、演出・#形式・#原作・#原作の国 0.5</li>
+    <li>「歌・音楽」：作曲・音楽・編曲 1.0、出演・#形式 0.5</li>
   </ul>
-  <p class="para">何も付けていない評価では <i>a</i> ＝ 1 で、関わった全員に同じだけ届く。たとえば × に「演技」だけを付けると、出演者に届く強さは 1 になり、脚本家には 0 になる。観点ごとの評価を推薦に使うと精度が上がるという報告がある <a href="#ref-6">[6]</a>。</p>
+  <p class="para">何も付けていない評価では <i>a</i> ＝ 1 で、関わった全員に同じだけ届く。たとえば × に「演技」だけを付けると、出演者に届く強さは 1 になり、脚本家には 0 になる。観点ごとの評価を推薦に使うと精度が上がるという報告がある <a href="#ref-6">[6]</a>。「値段」「会場・座席」の項目は付けられるが、#値段・#会場のタグを使わなくなったので、いまは推薦に届かない。</p>
 
-  <h3 class="sub">3.5　公演の点と、出す条件</h3>
+  <h3 class="sub">3.5　公演の種類のタグ</h3>
+  <p class="para">人物のほかの手がかりは、公演ごとに付ける種類のタグ <i>K</i>(<i>s</i>) である。タグは毎日の取得で、公演ページのどの欄から読むかを決めて機械的に付ける（図 3）。LLM を使うのは #題材 だけで、あらすじから一度だけ取り出す。</p>
+  <figure class="wide">
+    <svg viewBox="0 0 960 470" role="img" aria-label="種類のタグの読み取り元。公演名とクレジットから形式、原作の書き添えから原作の種類、翻訳のクレジットから翻訳劇、作り手の名前から原作の国、あらすじから題材、主催と原作の種類と題名の型からジャンルを付ける。劇場名と料金帯は使わない。">
+      <defs><marker id="fk" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1l7 4-7 4z" class="aF-m"/></marker></defs>
+      <text x="200" y="24" text-anchor="middle" class="aH">公演ページの読む所</text>
+      <text x="720" y="24" text-anchor="middle" class="aH">付けるタグ（例）</text>
+      <g>
+        <rect x="40" y="40" width="320" height="44" rx="10" class="aTip"/><text x="200" y="67" text-anchor="middle" class="aS">公演名・音楽の作り手がいるか</text>
+        <path d="M360 62H516" class="aL" marker-end="url(#fk)"/>
+        <rect x="520" y="40" width="400" height="44" rx="10" class="aBoxB"/><text x="720" y="67" text-anchor="middle" class="aS"><tspan class="aH">#形式</tspan>　ミュージカル・音楽劇・朗読劇 …</text>
+      </g>
+      <g>
+        <rect x="40" y="96" width="320" height="44" rx="10" class="aTip"/><text x="200" y="123" text-anchor="middle" class="aS">原作・原案の欄と書き添え</text>
+        <path d="M360 118H516" class="aL" marker-end="url(#fk)"/>
+        <rect x="520" y="96" width="400" height="44" rx="10" class="aBoxB"/><text x="720" y="123" text-anchor="middle" class="aS"><tspan class="aH">#原作</tspan>　漫画原作・小説原作 …／オリジナル</text>
+      </g>
+      <g>
+        <rect x="40" y="152" width="320" height="44" rx="10" class="aTip"/><text x="200" y="179" text-anchor="middle" class="aS">翻訳のクレジット</text>
+        <path d="M360 174H516" class="aL" marker-end="url(#fk)"/>
+        <rect x="520" y="152" width="400" height="44" rx="10" class="aBoxB"/><text x="720" y="179" text-anchor="middle" class="aS"><tspan class="aH">#翻訳</tspan>　翻訳劇</text>
+      </g>
+      <g>
+        <rect x="40" y="208" width="320" height="44" rx="10" class="aTip"/><text x="200" y="235" text-anchor="middle" class="aS">作り手の名前（ハングル・韓国名の片仮名）</text>
+        <path d="M360 230H516" class="aL" marker-end="url(#fk)"/>
+        <rect x="520" y="208" width="400" height="44" rx="10" class="aBoxB"/><text x="720" y="235" text-anchor="middle" class="aS"><tspan class="aH">#原作の国</tspan>　韓国</text>
+      </g>
+      <g>
+        <rect x="40" y="264" width="320" height="44" rx="10" class="aTip"/><text x="200" y="291" text-anchor="middle" class="aS">あらすじ（LLM で一度だけ取り出す）</text>
+        <path d="M360 286H516" class="aL" marker-end="url(#fk)"/>
+        <rect x="520" y="264" width="400" height="44" rx="10" class="aBoxB"/><text x="720" y="291" text-anchor="middle" class="aS"><tspan class="aH">#題材</tspan>　家族・戦争・青春 …</text>
+      </g>
+      <g>
+        <rect x="40" y="320" width="320" height="58" rx="10" class="aTip"/><text x="200" y="344" text-anchor="middle" class="aS">主催（宝塚歌劇団・〜製作委員会）、</text><text x="200" y="364" text-anchor="middle" class="aS">原作の種類、題名の型（『作品名』・THE STAGE）</text>
+        <path d="M360 349H516" class="aL" marker-end="url(#fk)"/>
+        <rect x="520" y="320" width="400" height="58" rx="10" class="aBoxB"/><text x="720" y="354" text-anchor="middle" class="aS"><tspan class="aH">#ジャンル</tspan>　2.5次元・宝塚（✕ で公演ごと外せる）</text>
+      </g>
+      <g>
+        <rect x="40" y="398" width="320" height="58" rx="10" class="aTip" style="opacity:.55"/><text x="200" y="422" text-anchor="middle" class="aS">劇場名</text><text x="200" y="442" text-anchor="middle" class="aS">料金</text>
+        <path d="M360 427H516" class="aL" style="stroke-dasharray:4 4"/>
+        <rect x="520" y="398" width="400" height="58" rx="10" class="aTip" style="opacity:.55"/><text x="720" y="422" text-anchor="middle" class="aS"><tspan style="text-decoration:line-through">#会場・#値段</tspan>　使わない</text><text x="720" y="442" text-anchor="middle" class="aS">点にも理由にも入れない（索引に残る行も読まない）</text>
+      </g>
+    </svg>
+    <figcaption><b>図 3.</b>　種類のタグの読み取り元。上の 6 種類はどれも作品の内容を表すタグ <i>𝒞</i> で、推薦の理由になる（式 8）。劇場名と料金帯は、理由として不自然だという判断で 2026-10-16〜17 に外した。</figcaption>
+  </figure>
+  <div class="grid2 wide">
+    <div class="card">
+      <h4>根拠</h4>
+      <ul class="muted">
+        <li>ジャンルは新作にも最初から付いているので、新しい利用者・新作の立ち上がりを補う手がかりとして使われてきた <a href="#ref-8">[8]</a>。</li>
+        <li>2.5次元は「漫画・アニメ・ゲームを原作とする 3 次元の舞台」の総称とされる（日本2.5次元ミュージカル協会の定義。二次資料で確認）<a href="#ref-21">[21]</a>。取得元の公演ページにジャンルの欄は無いので、原作の書き添え・主催・題名の型の 3 つを合わせて見分ける。</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4>限界</h4>
+      <ul class="muted">
+        <li>2026-10-16 のこれからの公演では、2.5次元 18 作品、宝塚 7 作品に印が付いた。原作の欄も製作委員会も無い作品は漏れる。</li>
+        <li>#原作の国 は作り手の名前で見分けるので、翻訳者しか載らない公演は漏れる。</li>
+        <li>舞台に業界共通のジャンル分けは無く、販売サイトごとに区分が違う。</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3 class="sub">3.6　公演の点と、出す条件</h3>
   <p class="para">公演 <i>s</i> の手がかり <i>q</i>（役職 <i>r</i>）の寄与は、値に役職の重み <i>ρ</i> と、役職のまとまり <i>G</i>(<i>r</i>) ごとの倍率 <i>μ<sub>u</sub></i> を掛けたものとする。</p>
   <div class="eq"><math display="block"><mrow><msub><mi>c</mi><mi>s</mi></msub><mo stretchy="false">(</mo><mi>q</mi><mo stretchy="false">)</mo><mo>=</mo><mi>ρ</mi><mo stretchy="false">(</mo><mi>r</mi><mo stretchy="false">)</mo><mspace width="0.15em"/><msub><mi>μ</mi><mi>u</mi></msub><mo stretchy="false">(</mo><mi>G</mi><mo stretchy="false">(</mo><mi>r</mi><mo stretchy="false">)</mo><mo stretchy="false">)</mo><mspace width="0.15em"/><msub><mi>v</mi><mi>u</mi></msub><mo stretchy="false">(</mo><mi>q</mi><mo stretchy="false">)</mo><mo>,</mo><mspace width="1em"/><msub><mi>μ</mi><mi>u</mi></msub><mo stretchy="false">(</mo><mi>G</mi><mo stretchy="false">)</mo><mo>=</mo><msubsup><mi>μ</mi><mi>u</mi><mtext>答え合わせ</mtext></msubsup><mo stretchy="false">(</mo><mi>G</mi><mo stretchy="false">)</mo><mo>·</mo><msubsup><mi>μ</mi><mi>u</mi><mtext>本人</mtext></msubsup><mo stretchy="false">(</mo><mi>G</mi><mo stretchy="false">)</mo></mrow></math><span class="eqn"></span></div>
-  <p class="para"><i>G</i>(<i>r</i>) は、出演者・演出・脚本・翻訳・つくり・進行・制作・宣伝・その他・作品の内容（種類のタグ）の 7 つのまとまりである。<i>μ</i><sup>本人</sup> は、本人がおすすめの画面の「効かせ方」で選ぶ 5 段階 {0, 0.5, 1, 2, 4}（既定 1）。<i>μ</i><sup>答え合わせ</sup> は 3.7 で選ばれた案の倍率（標準なら 1）。役職の重みは次のとおり。</p>
+  <p class="para"><i>G</i>(<i>r</i>) は、出演者・演出・脚本・翻訳・つくり・進行・制作・宣伝・その他・作品の内容（種類のタグ）の 7 つのまとまりである。<i>μ</i><sup>本人</sup> は、本人がおすすめの画面の「効かせ方」で選ぶ 5 段階 {0, 0.5, 1, 2, 4}（既定 1）。<i>μ</i><sup>答え合わせ</sup> は 3.11 で選ばれた案の倍率（標準なら 1）。役職の重みは次のとおり。</p>
   <div class="eq"><math display="block"><mrow><mi>ρ</mi><mo stretchy="false">(</mo><mi>r</mi><mo stretchy="false">)</mo><mo>=</mo><mrow><mo>{</mo><mtable columnalign="left"><mtr><mtd><mn>1.0</mn></mtd><mtd><mtext>出演、および種類のタグ</mtext></mtd></mtr><mtr><mtd><mn>0.4</mn></mtd><mtd><mtext>演出・脚本・作・原作</mtext></mtd></mtr><mtr><mtd><mn>0.3</mn></mtd><mtd><mtext>翻訳</mtext></mtd></mtr><mtr><mtd><mn>0.1</mn></mtd><mtd><mtext>そのほか（裏方）</mtext></mtd></mtr></mtable></mrow></mrow></math><span class="eqn">(6)</span></div>
   <p class="para">人物の寄与を正のもの <i>c</i><sup>+</sup> と負のもの <i>c</i><sup>−</sup> に分け、それぞれ絶対値の大きい順に並べる。並べた <i>i</i> 番目を <i>c</i><sub>(<i>i</i>)</sub> と書く。種類のタグ <i>K</i>(<i>s</i>) は平均で足す。</p>
   <div class="eq"><math display="block"><mrow><mi>S</mi><mo stretchy="false">(</mo><mi>s</mi><mo stretchy="false">)</mo><mo>=</mo><munderover><mo>∑</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mn>3</mn></munderover><msubsup><mi>c</mi><mrow><mo stretchy="false">(</mo><mi>i</mi><mo stretchy="false">)</mo></mrow><mo>+</mo></msubsup><mo>+</mo><munderover><mo>∑</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mn>3</mn></munderover><msubsup><mi>c</mi><mrow><mo stretchy="false">(</mo><mi>i</mi><mo stretchy="false">)</mo></mrow><mo>−</mo></msubsup><mo>+</mo><mfrac><mn>1</mn><mrow><mo stretchy="false">|</mo><mi>K</mi><mo stretchy="false">(</mo><mi>s</mi><mo stretchy="false">)</mo><mo stretchy="false">|</mo></mrow></mfrac><munder><mo>∑</mo><mrow><mi>k</mi><mo>∈</mo><mi>K</mi><mo stretchy="false">(</mo><mi>s</mi><mo stretchy="false">)</mo></mrow></munder><msub><mi>c</mi><mi>s</mi></msub><mo stretchy="false">(</mo><mi>k</mi><mo stretchy="false">)</mo></mrow></math><span class="eqn">(7)</span></div>
   <p class="para">公演を推薦に出すのは、点が正で、かつ<b>理由を言える</b>ときだけである（why1）。</p>
   <div class="eq"><math display="block"><mrow><mi>s</mi><mtext>&#160;を出す</mtext><mspace width="0.5em"/><mo>⟺</mo><mspace width="0.5em"/><mi>S</mi><mo stretchy="false">(</mo><mi>s</mi><mo stretchy="false">)</mo><mo>&gt;</mo><mn>0</mn><mspace width="0.3em"/><mo>∧</mo><mspace width="0.3em"/><mrow><mo>(</mo><mo>∃</mo><msup><mi>c</mi><mo>+</mo></msup><mspace width="0.3em"/><mo>∨</mo><mspace width="0.3em"/><mo>∃</mo><mi>k</mi><mo>∈</mo><mi>K</mi><mo stretchy="false">(</mo><mi>s</mi><mo stretchy="false">)</mo><mo>∩</mo><mi mathvariant="script">C</mi><mo>:</mo><msub><mi>c</mi><mi>s</mi></msub><mo stretchy="false">(</mo><mi>k</mi><mo stretchy="false">)</mo><mo>&gt;</mo><mn>0</mn><mo>)</mo></mrow></mrow></math><span class="eqn">(8)</span></div>
-  <p class="para"><i>𝒞</i> は作品の内容に関わるタグ {#形式, #原作, #翻訳, #題材} である。#会場 と #値段 は式 7 の並べ替えには効くが、それだけでは推薦の理由にしない。</p>
+  <p class="para"><i>𝒞</i> は作品の内容に関わるタグ {#形式, #原作, #翻訳, #原作の国, #題材, #ジャンル} である（3.5 の 6 種類すべて）。以前は #会場・#値段 を並べ替えにだけ使っていたが、いまは点にも入れない。</p>
   <figure class="wide">
     <svg viewBox="0 0 960 262" role="img" aria-label="公演の点の内訳。上げる人物 +0.404 と +0.014、下げる人物 −0.520、種類の平均 +0.485 を足して +0.383。"><text x="216" y="41" text-anchor="end" class="aS">出演 俳優 A</text><rect x="351.8" y="20" width="246.1" height="30" class="fG"/><text x="605.9" y="41" class="aS">+0.404</text><text x="216" y="85" text-anchor="end" class="aS">演出 演出家 B</text><rect x="597.9" y="64" width="8.5" height="30" class="fG"/><text x="614.4" y="85" class="aS">+0.014</text><text x="216" y="129" text-anchor="end" class="aS">出演 俳優 D</text><rect x="289.7" y="108" width="316.7" height="30" class="fS"/><text x="614.4" y="129" class="aS">-0.520</text><text x="216" y="173" text-anchor="end" class="aS">#形式 ミュージカル</text><rect x="289.7" y="152" width="295.4" height="30" class="fG"/><text x="593.1" y="173" class="aS">+0.485</text><text x="216" y="217" text-anchor="end" class="aH">公演の点 S</text><rect x="351.8" y="196" width="233.3" height="30" class="fN2"/><text x="593.1" y="217" class="aH">+0.383</text><path d="M351.8 10V236" class="aL"/><text x="351.8" y="252" text-anchor="middle" class="aS">0</text></svg>
-    <figcaption><b>図 3.</b>　式 7 の計算例。3.3 の利用者 A のある公演に、手がかりが 4 つ一致した場合。俳優 A（◎◎○）は <i>v</i> ＝ 0.404 × <i>ρ</i> 1.0、演出家 B（◎△）は 0.035 × 0.4、俳優 D（△×）は −0.520 × 1.0、#形式 ミュージカル（◎◎）は 0.485 × 1.0。点は正で、上げる人物がいるので出す（式 8）。理由の欄には、俳優 A と、A が出ていた本人の観た作品名が出る。</figcaption>
+    <figcaption><b>図 4.</b>　式 7 の計算例。3.3 の利用者 A のある公演に、手がかりが 4 つ一致した場合。俳優 A（◎◎○）は <i>v</i> ＝ 0.404 × <i>ρ</i> 1.0、演出家 B（◎△）は 0.035 × 0.4、俳優 D（△×）は −0.520 × 1.0、#形式 ミュージカル（◎◎）は 0.485 × 1.0。点は正で、上げる人物がいるので出す（式 8）。理由の欄には、俳優 A と、A が出ていた本人の観た作品名が出る。</figcaption>
   </figure>
   <div class="grid2 wide">
     <div class="card">
@@ -901,30 +971,120 @@ ol.refs li:target{background:rgba(var(--brand-rgb),.12)}
     </div>
     <div class="card">
       <h4>なぜ下げる人も数えるのか</h4>
-      <p class="muted">以前は、負の値を 0 で切っていた。低い評価は、とくにデータがまばらなときに推薦の役に立つと報告されている <a href="#ref-7">[7]</a>。記録が数十件しかないたぐりは、まさにこの状況にある。種類のタグは、新しい利用者や新作の立ち上がりを補う手がかりとして使われてきた <a href="#ref-8">[8]</a>。値段は、品質と支払う犠牲の釣り合いという別の軸として扱う <a href="#ref-9">[9]</a>。</p>
+      <p class="muted">以前は、負の値を 0 で切っていた。低い評価は、とくにデータがまばらなときに推薦の役に立つと報告されている <a href="#ref-7">[7]</a>。記録が数十件しかないたぐりは、まさにこの状況にある。種類のタグは、新しい利用者や新作の立ち上がりを補う手がかりとして使われてきた <a href="#ref-8">[8]</a>。値段は品質と支払う犠牲の釣り合いという別の軸だとされる <a href="#ref-9">[9]</a>。理由の欄に料金帯が出るのは不自然だという判断で、2026-10-16 に点と理由の両方から外した。</p>
     </div>
   </div>
 
-  <h3 class="sub">3.6　お気に入りを仮の評価にする（fav3）</h3>
+  <h3 class="sub">3.7　お気に入りを仮の評価にする（fav3）</h3>
   <p class="para">登録したばかりで評価が 0 件の人にも、好みに沿った推薦を出したい。そこで、お気に入りの手がかりが関わる公演を、<b>評価が少ないうちだけ効く仮の評価</b>として式 4 に入れる。お気に入りに登録できるのは、人・原作者（最大 20 人）と、団体・主催、作品、題材である（対象の公演は最大 60 件）。</p>
   <div class="eq"><math display="block"><mrow><msub><mi>z</mi><mn>0</mn></msub><mo>=</mo><mn>0.4</mn><msqrt><mn>12</mn></msqrt><mo>≈</mo><mn>1.386</mn><mspace width="0.3em"/><mrow><mo>(</mo><mi>F</mi><mo>=</mo><mn>0.9</mn><mo>)</mo></mrow><mo>,</mo><mspace width="1.5em"/><msub><mi>ω</mi><mi>u</mi></msub><mo>=</mo><mfrac><mi>κ</mi><mrow><mi>κ</mi><mo>+</mo><msub><mi>N</mi><mi>u</mi></msub></mrow></mfrac></mrow></math><span class="eqn">(9)</span></div>
-  <p class="para"><i>z</i><sub>0</sub> は、本人の評価の上から 1 割の位置にあたる。重み <i>ω</i> は、評価が 0 件のとき 1、3 件で ½、27 件で 0.1 と減っていく。仮の評価は分母の重みには入るが、件数 <i>n</i> には数えない。お気に入りの名前そのものが載っている公演は、点とは別の枠「お気に入り」で必ず知らせる。</p>
+  <p class="para"><i>z</i><sub>0</sub> は、本人の評価の上から 1 割の位置にあたる。重み <i>ω</i> は、評価が 0 件のとき 1、3 件で ½、27 件で 0.1 と減っていく。仮の評価は分母の重みには入るが、件数 <i>n</i> には数えない。3.8 の興味ありも、同じ <i>z</i><sub>0</sub> と <i>ω</i> を使う。お気に入りの名前そのものが載っている公演は、点とは別の枠「お気に入り」で必ず知らせる。</p>
   <figure class="wide">
     <svg viewBox="0 0 960 300" role="img" aria-label="評価の件数が増えると、人物の値の縮みは1に近づき、お気に入りの仮の評価の重みは0に近づく。3件で半々。"><path d="M90 250.0H920" class="fGrid"/><text x="80" y="254.0" text-anchor="end" class="aS">0</text><path d="M90 197.5H920" class="fGrid"/><text x="80" y="201.5" text-anchor="end" class="aS">0.25</text><path d="M90 145.0H920" class="fGrid"/><text x="80" y="149.0" text-anchor="end" class="aS">0.5</text><path d="M90 92.5H920" class="fGrid"/><text x="80" y="96.5" text-anchor="end" class="aS">0.75</text><path d="M90 40.0H920" class="fGrid"/><text x="80" y="44.0" text-anchor="end" class="aS">1</text><text x="90.0" y="270" text-anchor="middle" class="aS">0</text><text x="173.0" y="270" text-anchor="middle" class="aS">3</text><text x="228.3" y="270" text-anchor="middle" class="aS">5</text><text x="366.7" y="270" text-anchor="middle" class="aS">10</text><text x="643.3" y="270" text-anchor="middle" class="aS">20</text><text x="920.0" y="270" text-anchor="middle" class="aS">30</text><text x="505.0" y="292" text-anchor="middle" class="aS">件数（n または N）</text><path d="M90.0 250.0 L117.7 197.5 L145.3 166.0 L173.0 145.0 L200.7 130.0 L228.3 118.8 L256.0 110.0 L283.7 103.0 L311.3 97.3 L339.0 92.5 L366.7 88.5 L394.3 85.0 L422.0 82.0 L449.7 79.4 L477.3 77.1 L505.0 75.0 L532.7 73.2 L560.3 71.5 L588.0 70.0 L615.7 68.6 L643.3 67.4 L671.0 66.2 L698.7 65.2 L726.3 64.2 L754.0 63.3 L781.7 62.5 L809.3 61.7 L837.0 61.0 L864.7 60.3 L892.3 59.7 L920.0 59.1" class="fLine1"/><path d="M90.0 40.0 L117.7 92.5 L145.3 124.0 L173.0 145.0 L200.7 160.0 L228.3 171.2 L256.0 180.0 L283.7 187.0 L311.3 192.7 L339.0 197.5 L366.7 201.5 L394.3 205.0 L422.0 208.0 L449.7 210.6 L477.3 212.9 L505.0 215.0 L532.7 216.8 L560.3 218.5 L588.0 220.0 L615.7 221.4 L643.3 222.6 L671.0 223.8 L698.7 224.8 L726.3 225.8 L754.0 226.7 L781.7 227.5 L809.3 228.3 L837.0 229.0 L864.7 229.7 L892.3 230.3 L920.0 230.9" class="fLine2"/><circle cx="173.0" cy="145.0" r="5" class="fDot"/><text x="187.0" y="167.0" class="aS">件数 ＝ κ ＝ 3 で半々</text><text x="920" y="45.1" text-anchor="end" class="fL1">人物の値の縮み n／(n＋κ)（その人の公演を n 本評価）</text><text x="920" y="216.9" text-anchor="end" class="fL2">お気に入りの仮の評価の重み κ／(κ＋N)（評価が全部で N 件）</text></svg>
-    <figcaption><b>図 4.</b>　縮約の 2 つの重み。実線：人物の値が、その人の公演を観た本数とともに 1 に近づく様子（式 4 で <i>z</i> がそろっている場合の掛け目）。破線：お気に入りの仮の評価の重みが、本人の評価の件数とともに 0 に近づく様子（式 9）。どちらも <i>κ</i> ＝ 3 で半々になる。</figcaption>
+    <figcaption><b>図 5.</b>　縮約の 2 つの重み。実線：人物の値が、その人の公演を観た本数とともに 1 に近づく様子（式 4 で <i>z</i> がそろっている場合の掛け目）。破線：お気に入りの仮の評価の重みが、本人の評価の件数とともに 0 に近づく様子（式 9）。どちらも <i>κ</i> ＝ 3 で半々になる。</figcaption>
   </figure>
   <p class="para"><b>根拠。</b>本人の初期の profile を事前にして、評価が届くたびに更新する方法は、内容ベースの推薦で古くから使われている <a href="#ref-10">[10]</a>。データの少ない人は事前に近く、多い人は本人に寄るという階層ベイズの考え方 <a href="#ref-5">[5]</a> を、全体の事前を学ばずに「人が決めた既定の値」で置き換えたものにあたる。公開の映画評価データでお気に入りの代わりを確かめた（団体の代わりに監督、題材の代わりにジャンル）。評価 0 件のとき AUC は +0.024〜0.031 上がり、評価が 10〜20 件を超えると差は消えた。式 9 が狙ったとおりの振る舞いである。</p>
 
-  <h3 class="sub">3.7　裏の答え合わせ：本人に合う重み付けを、本人の記録で選ぶ</h3>
+  <h3 class="sub">3.8　興味あり・行けないを、1 公演ぶんに割って配る</h3>
+  <p class="para">「興味あり」は押すだけで理由を聞かない。そこで、1 公演ぶんの重さ（評価 1 件と同じ 1）を、その公演の人物と種類に<b>割って</b>配り、式 4 の仮の評価として足す。「行けない」（日程が合わないなど）も、気になった公演として同じ向きに数える。集合を <i>L<sub>u</sub></i>（興味あり・行けない、新しい順に 60 件まで）、<i>D<sub>u</sub></i>（興味なし、同じく 60 件まで）と書く。</p>
+  <div class="eq"><math display="block"><mrow><msub><mi>π</mi><mi>s</mi></msub><mo stretchy="false">(</mo><mi>q</mi><mo stretchy="false">)</mo><mo>=</mo><msub><mi>β</mi><mi>q</mi></msub><mspace width="0.15em"/><mfrac><mrow><msub><mi>f</mi><mi>s</mi></msub><mo stretchy="false">(</mo><mi>q</mi><mo stretchy="false">)</mo></mrow><mrow><munder><mo>∑</mo><mrow><msup><mi>q</mi><mo>′</mo></msup><mo>∈</mo><msub><mi>Q</mi><mi>s</mi></msub><mo stretchy="false">(</mo><mi>q</mi><mo stretchy="false">)</mo></mrow></munder><msub><mi>f</mi><mi>s</mi></msub><mo stretchy="false">(</mo><msup><mi>q</mi><mo>′</mo></msup><mo stretchy="false">)</mo></mrow></mfrac><mo>,</mo><mspace width="1em"/><msub><mi>β</mi><mi>q</mi></msub><mo>=</mo><mrow><mo>{</mo><mtable columnalign="left"><mtr><mtd><mfrac><mn>1</mn><mn>2</mn></mfrac></mtd><mtd><mtext>人物と種類の両方がある</mtext></mtd></mtr><mtr><mtd><mn>1</mn></mtd><mtd><mtext>片方だけ</mtext></mtd></mtr></mtable></mrow></mrow></math><span class="eqn">(10)</span></div>
+  <p class="para"><i>Q<sub>s</sub></i>(<i>q</i>) は、<i>q</i> が人物なら公演 <i>s</i> の人物 <i>P</i>(<i>s</i>)、種類なら <i>K</i>(<i>s</i>) である。1 公演ぶんの合計は Σ<i>π</i> ＝ 1 になる。割る比 <i>f</i> は、本人がなぜ気になったかを推し量る 4 つの手がかりの積とする。</p>
+  <div class="eq"><math display="block"><mrow><msub><mi>f</mi><mi>s</mi></msub><mo stretchy="false">(</mo><mi>q</mi><mo stretchy="false">)</mo><mo>=</mo><msub><mi>ι</mi><mi>s</mi></msub><mo stretchy="false">(</mo><mi>q</mi><mo stretchy="false">)</mo><mspace width="0.15em"/><mrow><mo>(</mo><mn>1</mn><mo>+</mo><mi>λ</mi><mspace width="0.1em"/><mi>max</mi><mo stretchy="false">(</mo><msubsup><mi>v</mi><mi>u</mi><mn>0</mn></msubsup><mo stretchy="false">(</mo><mi>q</mi><mo stretchy="false">)</mo><mo>,</mo><mn>0</mn><mo stretchy="false">)</mo><mo>)</mo></mrow><mspace width="0.15em"/><msup><mi>η</mi><mrow><mn mathvariant="bold">1</mn><mo stretchy="false">[</mo><mi>q</mi><mo>∈</mo><msub><mtext>メモ</mtext><mi>s</mi></msub><mo stretchy="false">]</mo></mrow></msup><mspace width="0.15em"/><mfrac><mrow><mi>y</mi><mo stretchy="false">(</mo><mi>q</mi><mo stretchy="false">)</mo></mrow><mrow><mi>y</mi><mo stretchy="false">(</mo><mi>q</mi><mo stretchy="false">)</mo><mo>+</mo><mi>n</mi><mo stretchy="false">(</mo><mi>q</mi><mo stretchy="false">)</mo></mrow></mfrac><mo>,</mo><mspace width="1em"/><mi>λ</mi><mo>=</mo><mn>3</mn><mo>,</mo><mspace width="0.5em"/><mi>η</mi><mo>=</mo><mn>5</mn></mrow></math><span class="eqn">(11)</span></div>
+  <ul class="para">
+    <li><b>役の格 <i>ι</i>。</b>役名つきで書かれた出演者と、中心の作り手（演出・脚本・原作・作曲・振付・翻訳など）は 1。アンサンブルとそのほかのスタッフは 0.3。出演欄の最後に別の行で書かれた人（トメ）は 1。種類のタグは 1。</li>
+    <li><b>好みの手がかり。</b><i>v</i><sup>0</sup> は、評価とお気に入りだけで作った値（式 4 から興味ありを除いたもの）。好きと分かっている人ほど多めに配る。</li>
+    <li><b>「なぜ気になったか」のメモ。</b>メモに名前が書いてある人には <i>η</i> ＝ 5 倍で配る。</li>
+    <li><b>興味なしとの比べ。</b><i>y</i>(<i>q</i>)、<i>n</i>(<i>q</i>) は、<i>q</i> を含む <i>L<sub>u</sub></i>・<i>D<sub>u</sub></i> の公演の数。興味なしの公演にもいる人・種類は弱める。</li>
+  </ul>
+  <figure class="wide">
+    <svg viewBox="0 0 960 318" role="img" aria-label="興味ありの1公演ぶんの重さ1を、人物に半分、種類に半分配る例。好きな俳優Aに多め、アンサンブルとスタッフは0.3倍、興味なしの公演にもあるミュージカルは弱める。"><text x="40" y="26" class="aH">人物（合計 ½）</text><text x="480" y="26" class="aH">種類（合計 ½）</text><rect x="40.0" y="40" width="190.1" height="40" class="fG" stroke="#fff" stroke-width="1.5"/><text x="135.0" y="58" text-anchor="middle" class="fT">俳優A</text><text x="135.0" y="74" text-anchor="middle" class="fT">0.216</text><rect x="230.1" y="40" width="86.2" height="40" class="fN" stroke="#fff" stroke-width="1.5"/><text x="273.2" y="58" text-anchor="middle" class="fT">俳優B</text><text x="273.2" y="74" text-anchor="middle" class="fT">0.098</text><rect x="316.3" y="40" width="86.2" height="40" class="fN" stroke="#fff" stroke-width="1.5"/><text x="359.4" y="58" text-anchor="middle" class="fT">演出家D</text><text x="359.4" y="74" text-anchor="middle" class="fT">0.098</text><rect x="402.6" y="40" width="25.5" height="40" class="fW" stroke="#fff" stroke-width="1.5"/><rect x="428.1" y="40" width="25.5" height="40" class="fW" stroke="#fff" stroke-width="1.5"/><rect x="453.6" y="40" width="25.5" height="40" class="fW" stroke="#fff" stroke-width="1.5"/><rect x="479.1" y="40" width="293.0" height="40" class="fN2" stroke="#fff" stroke-width="1.5"/><text x="625.6" y="58" text-anchor="middle" class="fT" style="fill:#fff">#原作 漫画原作</text><text x="625.6" y="74" text-anchor="middle" class="fT" style="fill:#fff">0.333</text><rect x="772.2" y="40" width="147.0" height="40" class="fN2" stroke="#fff" stroke-width="1.5"/><text x="845.6" y="58" text-anchor="middle" class="fT" style="fill:#fff">#形式 ミュージカル</text><text x="845.6" y="74" text-anchor="middle" class="fT" style="fill:#fff">0.167</text><path d="M480 34V86" class="aL"/><text x="40" y="112" class="aS" style="font-weight:600">手がかり</text><text x="330" y="112" class="aS" style="font-weight:600">役の格 ι</text><text x="430" y="112" class="aS" style="font-weight:600">好みの手がかり</text><text x="640" y="112" class="aS" style="font-weight:600">興味なしとの比べ</text><text x="830" y="112" class="aS" style="font-weight:600">配る量 π</text><text x="40" y="144" class="aS">出演 俳優A（役名つき）</text><text x="330" y="144" class="aS">1</text><text x="430" y="144" class="aS">1＋3×0.40 ＝ 2.2</text><text x="640" y="144" class="aS">1/1</text><text x="830" y="144" class="aS">0.216</text><text x="40" y="170" class="aS">出演 俳優B（役名つき）</text><text x="330" y="170" class="aS">1</text><text x="430" y="170" class="aS">1</text><text x="640" y="170" class="aS">1/1</text><text x="830" y="170" class="aS">0.098</text><text x="40" y="196" class="aS">演出 演出家D</text><text x="330" y="196" class="aS">1</text><text x="430" y="196" class="aS">1</text><text x="640" y="196" class="aS">1/1</text><text x="830" y="196" class="aS">0.098</text><text x="40" y="222" class="aS">出演 俳優C・E（アンサンブル）</text><text x="330" y="222" class="aS">0.3</text><text x="430" y="222" class="aS">1</text><text x="640" y="222" class="aS">1/1</text><text x="830" y="222" class="aS">各 0.029</text><text x="40" y="248" class="aS">美術 美術家F</text><text x="330" y="248" class="aS">0.3</text><text x="430" y="248" class="aS">1</text><text x="640" y="248" class="aS">1/1</text><text x="830" y="248" class="aS">0.029</text><text x="40" y="274" class="aS">#原作 漫画原作</text><text x="330" y="274" class="aS">—</text><text x="430" y="274" class="aS">1</text><text x="640" y="274" class="aS">1/1</text><text x="830" y="274" class="aS">0.333</text><text x="40" y="300" class="aS">#形式 ミュージカル</text><text x="330" y="300" class="aS">—</text><text x="430" y="300" class="aS">1</text><text x="640" y="300" class="aS">1/(1＋1)</text><text x="830" y="300" class="aS">0.167</text></svg>
+    <figcaption><b>図 6.</b>　式 10–11 の計算例。漫画原作のミュージカルに「興味あり」を押したとき。評価で好きと分かっている俳優 A（<i>v</i><sup>0</sup> ＝ 0.40）に人物の取り分の 4 割強が配られ、アンサンブルとスタッフは少なくなる。ミュージカルは興味なしの公演にもあるので、種類の取り分の 1/3 に弱まる。値は <code>recommend.js</code> の <code>interestShares</code> で計算した。</figcaption>
+  </figure>
+  <p class="para">配った <i>π</i> は、お気に入りと同じ <i>z</i><sub>0</sub> と重み <i>ω<sub>u</sub></i> で式 4 に入る。評価が増えるほど、興味ありの効き目は薄まる。</p>
+  <div class="grid2 wide">
+    <div class="card">
+      <h4>なぜ割るのか</h4>
+      <p class="muted">以前は、興味ありの公演の全員に仮の ◎ を丸ごと配っていた。大人数の公演では、アンサンブルの 1 人の別の公演まで上がる。そこから推薦 → 興味あり → 同じ人、という輪で一覧が偏る <a href="#ref-14">[14]</a>。1 公演ぶんを割ると、<b>何件もの興味ありに共通する人・種類だけが積み上がる</b>。</p>
+    </div>
+    <div class="card">
+      <h4>限界</h4>
+      <p class="muted">興味の理由は主演とは限らない。役の格は「公演の中で大きい人」を表すだけで、「本人が惹かれた人」ではない。そのため、役の格は 2 段だけの弱い歯止めにとどめた。<i>β</i>・<i>λ</i>・<i>η</i>・0.3 の値は、舞台のデータで確かめていない。</p>
+    </div>
+  </div>
+
+  <h3 class="sub">3.9　好きな人と組む人へ、1 段だけ広げる</h3>
+  <p class="para">内容に基づく推薦は、好きだったものに似たものばかりを勧め、まだ知らない作り手に届かないのが弱みとされる <a href="#ref-17">[17]</a>。公演の推薦では、内容の似かよいを人のつながりに沿って広げる方法が報告されている <a href="#ref-18">[18]</a>。たぐりは他の利用者の記録を使わないので、<b>クレジットの共演・共作のつながり</b>だけで 1 段広げる。</p>
+  <p class="para">値が正の人物の上位 20 人を <i>T<sub>u</sub></i> とする。<i>T<sub>u</sub></i> の人が出るこれからの公演（値の和が大きい順に 60 件まで）で、一緒に名前のある人 <i>p</i>′ に、仮の値を与える。</p>
+  <div class="eq"><math display="block"><mrow><msubsup><mi>v</mi><mi>u</mi><mo>′</mo></msubsup><mo stretchy="false">(</mo><msup><mi>p</mi><mo>′</mo></msup><mo stretchy="false">)</mo><mo>=</mo><mi>γ</mi><mspace width="0.2em"/><munder><mi>max</mi><mrow><mi>s</mi><mo>∈</mo><mi>C</mi><mo>:</mo><mspace width="0.2em"/><msup><mi>p</mi><mo>′</mo></msup><mo>∈</mo><mi>P</mi><mo stretchy="false">(</mo><mi>s</mi><mo stretchy="false">)</mo></mrow></munder><mspace width="0.2em"/><munder><mi>max</mi><mrow><mi>p</mi><mo>∈</mo><msub><mi>T</mi><mi>u</mi></msub><mo>∩</mo><mi>P</mi><mo stretchy="false">(</mo><mi>s</mi><mo stretchy="false">)</mo></mrow></munder><msub><mi>v</mi><mi>u</mi></msub><mo stretchy="false">(</mo><mi>p</mi><mo stretchy="false">)</mo><mo>,</mo><mspace width="1em"/><mi>γ</mi><mo>=</mo><mn>0.3</mn></mrow></math><span class="eqn">(12)</span></div>
+  <p class="para"><i>v</i>′ を与えるのは、まだ値の無い人だけである（お気に入りの名前と、観た回に出ていなかった人も除く）。<i>v</i>′ は式 7 の人物の寄与として足すが、<b><i>T<sub>u</sub></i> の人がすでに出ている公演には足さない</b>。二重に数えないためで、広げた先は新しい公演だけになる。理由の欄には「好きな○○と同じ公演に関わる人」と書く。</p>
+  <figure class="wide">
+    <svg viewBox="0 0 960 230" role="img" aria-label="好きな俳優Aと公演Xで共演する演出家Pに、Aの値0.40の0.3倍の0.12を仮に与える。Pの別の公演Yが新しく候補に入り、理由に好きな俳優Aと同じ公演に関わる人と出る。">
+      <defs><marker id="fx" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1l7 4-7 4z" class="aF-m"/></marker></defs>
+      <circle cx="110" cy="110" r="62" class="aBoxB"/><text x="110" y="104" text-anchor="middle" class="aH">俳優 A</text><text x="110" y="126" text-anchor="middle" class="aS">v ＝ +0.40</text>
+      <rect x="250" y="70" width="190" height="80" rx="12" class="aTip"/><text x="345" y="102" text-anchor="middle" class="aH">公演 X</text><text x="345" y="124" text-anchor="middle" class="aS">A と P が出る</text>
+      <circle cx="580" cy="110" r="62" class="aBox"/><text x="580" y="104" text-anchor="middle" class="aH">演出家 P</text><text x="580" y="126" text-anchor="middle" class="aS">v′ ＝ 0.3 × 0.40</text>
+      <rect x="720" y="70" width="210" height="80" rx="12" class="aBoxB"/><text x="825" y="102" text-anchor="middle" class="aH">公演 Y（新しい候補）</text><text x="825" y="124" text-anchor="middle" class="aS">P は出るが A は出ない</text>
+      <path d="M172 110H246" class="aL" marker-end="url(#fx)"/><path d="M440 110H514" class="aL" marker-end="url(#fx)"/><path d="M642 110H716" class="aL" marker-end="url(#fx)"/>
+      <text x="345" y="186" text-anchor="middle" class="aS">X には足さない（A ですでに点がある）</text>
+      <text x="825" y="180" text-anchor="middle" class="aS">理由：演出 P</text><text x="825" y="198" text-anchor="middle" class="aS">（好きな俳優 A と同じ公演に関わる人）</text>
+      <text x="480" y="220" text-anchor="middle" class="aS">広げるのは 1 段だけ。P からさらに先の人へは広げない</text>
+    </svg>
+    <figcaption><b>図 7.</b>　式 12 の例。好きな人と組んだことのある人の、別の公演を候補に入れる。値は本人の評価から作った値の 3 割に抑え、理由を言える形で出す。</figcaption>
+  </figure>
+  <p class="para"><b>限界。</b><i>γ</i> ＝ 0.3・上位 20 人・60 公演は、舞台のデータで確かめていない。Python の参照実装には無いので、Python と Worker の一致の試験の経路では動かない。</p>
+
+  <h3 class="sub">3.10　一覧の並べ直しと、外すもの</h3>
+  <p class="para">点の順に並べるだけだと、出演の多い 1 人の公演が上位を埋めやすい。話題が偏らないよう一覧を並べ直すと、平均の精度は下がっても満足が上がったという報告がある <a href="#ref-19">[19]</a>。人気のある人への偏りを本人ごとの並べ直しで和らげる方法もある <a href="#ref-20">[20]</a>。たぐりは、いちばん強い理由の人（筆頭）を <i>ℓ</i>(<i>s</i>) と書き、表示の 1 ページ（15 件）ごとに次を満たすよう、上から順に詰める。</p>
+  <div class="eq"><math display="block"><mrow><mo>∀</mo><mi>k</mi><mo>,</mo><mspace width="0.3em"/><mo>∀</mo><mi>p</mi><mo>:</mo><mspace width="0.6em"/><mo stretchy="false">|</mo><mo stretchy="false">{</mo><mi>s</mi><mo>∈</mo><msub><mtext>ページ</mtext><mi>k</mi></msub><mo>:</mo><mi>ℓ</mi><mo stretchy="false">(</mo><mi>s</mi><mo stretchy="false">)</mo><mo>=</mo><mi>p</mi><mo stretchy="false">}</mo><mo stretchy="false">|</mo><mo>≤</mo><mn>2</mn></mrow></math><span class="eqn">(13)</span></div>
+  <p class="para">越えた公演は消さずに、次のページ以降へ回す。筆頭の人がいない公演（種類だけで上がった公演）は数えない。</p>
+  <figure class="wide">
+    <svg viewBox="0 0 960 300" role="img" aria-label="並べ直しの例。点の順ではAが筆頭の公演が4件続くが、1ページ2件までにすると、BとCの公演が前に出て、Aの残り2件は次のページへ回る。">
+      <defs><marker id="fl" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1l7 4-7 4z" class="aF-m"/></marker></defs>
+      <text x="200" y="24" text-anchor="middle" class="aH">点の順</text><text x="720" y="24" text-anchor="middle" class="aH">並べ直した後（1 ページに同じ筆頭は 2 件まで）</text>
+      <g class="aS">
+        <rect x="80" y="40" width="240" height="34" rx="8" class="fG"/><text x="200" y="62" text-anchor="middle" class="fT">1. 筆頭 A</text>
+        <rect x="80" y="80" width="240" height="34" rx="8" class="fG"/><text x="200" y="102" text-anchor="middle" class="fT">2. 筆頭 A</text>
+        <rect x="80" y="120" width="240" height="34" rx="8" class="fG"/><text x="200" y="142" text-anchor="middle" class="fT">3. 筆頭 A</text>
+        <rect x="80" y="160" width="240" height="34" rx="8" class="fN"/><text x="200" y="182" text-anchor="middle" class="fT">4. 筆頭 B</text>
+        <rect x="80" y="200" width="240" height="34" rx="8" class="fG"/><text x="200" y="222" text-anchor="middle" class="fT">5. 筆頭 A</text>
+        <rect x="80" y="240" width="240" height="34" rx="8" class="fW"/><text x="200" y="262" text-anchor="middle" class="fT">6. 種類だけ</text>
+        <rect x="600" y="40" width="240" height="34" rx="8" class="fG"/><text x="720" y="62" text-anchor="middle" class="fT">1. 筆頭 A</text>
+        <rect x="600" y="80" width="240" height="34" rx="8" class="fG"/><text x="720" y="102" text-anchor="middle" class="fT">2. 筆頭 A</text>
+        <rect x="600" y="120" width="240" height="34" rx="8" class="fN"/><text x="720" y="142" text-anchor="middle" class="fT">3. 筆頭 B</text>
+        <rect x="600" y="160" width="240" height="34" rx="8" class="fW"/><text x="720" y="182" text-anchor="middle" class="fT">4. 種類だけ</text>
+        <text x="720" y="214" text-anchor="middle" class="aS">― ここまでが 1 ページ（例では 4 件）―</text>
+        <rect x="600" y="226" width="240" height="30" rx="8" class="fG" style="opacity:.6"/><text x="720" y="246" text-anchor="middle" class="fT">5. 筆頭 A（次のページへ）</text>
+        <rect x="600" y="262" width="240" height="30" rx="8" class="fG" style="opacity:.6"/><text x="720" y="282" text-anchor="middle" class="fT">6. 筆頭 A（次のページへ）</text>
+      </g>
+      <path d="M330 140H590" class="aL" marker-end="url(#fl)"/>
+    </svg>
+    <figcaption><b>図 8.</b>　式 13 の並べ直し（1 ページを 4 件にした例。本番は 15 件）。点の順を崩すのは、同じ人が 3 件目に入ろうとしたときだけで、ほかは点の順のまま。</figcaption>
+  </figure>
+  <h4 class="eqhead">推薦枠から外すもの</h4>
+  <div class="twrap wide">
+    <table class="calc" style="font-size:13px">
+      <thead><tr><th>本人の操作</th><th>外れるもの</th><th>公演はどうなるか</th></tr></thead>
+      <tbody>
+        <tr><td>おすすめで答える（興味あり・興味なし・購入済・行けない）</td><td>答えた公演とツアーのほかの会場</td><td>推薦枠から抜け、次の候補が繰り上がる</td></tr>
+        <tr><td>理由の ✕（人物）</td><td>その名前を「出さない語」に足す</td><td>その人の名前が載る公演を推薦枠から外す</td></tr>
+        <tr><td>理由の ✕（種類：#形式・#原作 など）</td><td>その種類を、点と理由の両方から外す</td><td>公演は残る（ほかの理由で出ることがある）</td></tr>
+        <tr><td>理由の ✕（#ジャンル：2.5次元・宝塚）</td><td>そのジャンルの公演</td><td><b>公演ごと</b>推薦枠から外す</td></tr>
+        <tr><td>出さない語</td><td>その語が名前・題名・種類のタグに当たる公演</td><td>推薦枠から外す</td></tr>
+        <tr><td>お気に入りの名前</td><td>その名前の公演</td><td>点とは別の「お気に入り」の枠で必ず知らせる</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 class="sub">3.11　裏の答え合わせ：本人に合う重み付けを、本人の記録で選ぶ</h3>
   <p class="para">公開データでは決めきれなかった選び方がある。たとえば、舞台では作り手と出演のどちらが効くか、である。これを、人ごとに本人の記録で選ぶ。直近 120 件の評価を<b>付けた順に</b>再生し、重ならない 6 件ずつの区切り <i>B<sub>j</sub></i> に分ける。各区切りの点 <i>S<sub>m</sub></i><sup>(<i>j</i>)</sup> は、その区切りより前の評価だけで計算する。予想してから答え合わせをする prequential 評価 <a href="#ref-11">[11]</a> の形である。各案 <i>m</i> について、区切りの中で本人が付けた順位の組を正しく並べた数を数える。</p>
-  <div class="eq"><math display="block"><mrow><msub><mi>A</mi><mi>m</mi></msub><mo stretchy="false">(</mo><mi>j</mi><mo stretchy="false">)</mo><mo>=</mo><munder><mo>∑</mo><mrow><mi>i</mi><mo>&lt;</mo><msup><mi>i</mi><mo>′</mo></msup><mo>∈</mo><msub><mi>B</mi><mi>j</mi></msub><mo>,</mo><mspace width="0.2em"/><msub><mi>g</mi><mi>i</mi></msub><mo>≠</mo><msub><mi>g</mi><msup><mi>i</mi><mo>′</mo></msup></msub></mrow></munder><mn mathvariant="bold">1</mn><mrow><mo>[</mo><mi>sgn</mi><mo stretchy="false">(</mo><msubsup><mi>S</mi><mi>m</mi><mrow><mo stretchy="false">(</mo><mi>j</mi><mo stretchy="false">)</mo></mrow></msubsup><mo stretchy="false">(</mo><mi>i</mi><mo stretchy="false">)</mo><mo>−</mo><msubsup><mi>S</mi><mi>m</mi><mrow><mo stretchy="false">(</mo><mi>j</mi><mo stretchy="false">)</mo></mrow></msubsup><mo stretchy="false">(</mo><msup><mi>i</mi><mo>′</mo></msup><mo stretchy="false">)</mo><mo stretchy="false">)</mo><mo>=</mo><mi>sgn</mi><mo stretchy="false">(</mo><msub><mi>g</mi><mi>i</mi></msub><mo>−</mo><msub><mi>g</mi><msup><mi>i</mi><mo>′</mo></msup></msub><mo stretchy="false">)</mo><mo>]</mo></mrow></mrow></math><span class="eqn">(10)</span></div>
+  <div class="eq"><math display="block"><mrow><msub><mi>A</mi><mi>m</mi></msub><mo stretchy="false">(</mo><mi>j</mi><mo stretchy="false">)</mo><mo>=</mo><munder><mo>∑</mo><mrow><mi>i</mi><mo>&lt;</mo><msup><mi>i</mi><mo>′</mo></msup><mo>∈</mo><msub><mi>B</mi><mi>j</mi></msub><mo>,</mo><mspace width="0.2em"/><msub><mi>g</mi><mi>i</mi></msub><mo>≠</mo><msub><mi>g</mi><msup><mi>i</mi><mo>′</mo></msup></msub></mrow></munder><mn mathvariant="bold">1</mn><mrow><mo>[</mo><mi>sgn</mi><mo stretchy="false">(</mo><msubsup><mi>S</mi><mi>m</mi><mrow><mo stretchy="false">(</mo><mi>j</mi><mo stretchy="false">)</mo></mrow></msubsup><mo stretchy="false">(</mo><mi>i</mi><mo stretchy="false">)</mo><mo>−</mo><msubsup><mi>S</mi><mi>m</mi><mrow><mo stretchy="false">(</mo><mi>j</mi><mo stretchy="false">)</mo></mrow></msubsup><mo stretchy="false">(</mo><msup><mi>i</mi><mo>′</mo></msup><mo stretchy="false">)</mo><mo stretchy="false">)</mo><mo>=</mo><mi>sgn</mi><mo stretchy="false">(</mo><msub><mi>g</mi><mi>i</mi></msub><mo>−</mo><msub><mi>g</mi><msup><mi>i</mi><mo>′</mo></msup></msub><mo stretchy="false">)</mo><mo>]</mo></mrow></mrow></math><span class="eqn">(14)</span></div>
   <p class="para">区切り <i>j</i> で <i>A<sub>m</sub></i> ＞ <i>A</i><sub>標準</sub> なら案 <i>m</i> の勝ち、<i>A<sub>m</sub></i> ＜ <i>A</i><sub>標準</sub> なら負けとし、勝ちの数 <i>W<sub>m</sub></i> と負けの数 <i>L<sub>m</sub></i> を数える。帰無仮説「どちらも同じくらい当たる」のもとでは、決着した区切りの勝ち負けは確率 ½ の二項分布に従う。<i>W</i> − <i>L</i> の平均は 0、分散は <i>W</i> ＋ <i>L</i> なので、片側の符号検定（正規近似）を使う。</p>
-  <div class="eq"><math display="block"><mrow><msub><mi mathvariant="script">M</mi><mi>u</mi></msub><mo>=</mo><mrow><mo>{</mo><mi>m</mi><mo>:</mo><mspace width="0.3em"/><msub><mi>W</mi><mi>m</mi></msub><mo>+</mo><msub><mi>L</mi><mi>m</mi></msub><mo>≥</mo><mn>6</mn><mo>,</mo><mspace width="0.6em"/><mfrac><mrow><msub><mi>W</mi><mi>m</mi></msub><mo>−</mo><msub><mi>L</mi><mi>m</mi></msub></mrow><msqrt><mrow><msub><mi>W</mi><mi>m</mi></msub><mo>+</mo><msub><mi>L</mi><mi>m</mi></msub></mrow></msqrt></mfrac><mo>≥</mo><mn>1.96</mn><mo>}</mo></mrow></mrow></math><span class="eqn">(11)</span></div>
-  <div class="eq"><math display="block"><mrow><msup><mi>m</mi><mo>*</mo></msup><mo>=</mo><munder><mrow><mi>arg</mi><mspace width="0.2em"/><mi>max</mi></mrow><mrow><mi>m</mi><mo>∈</mo><msub><mi mathvariant="script">M</mi><mi>u</mi></msub></mrow></munder><mspace width="0.2em"/><mo stretchy="false">(</mo><msub><mi>W</mi><mi>m</mi></msub><mo>−</mo><msub><mi>L</mi><mi>m</mi></msub><mo stretchy="false">)</mo></mrow></math><span class="eqn">(12)</span></div>
+  <div class="eq"><math display="block"><mrow><msub><mi mathvariant="script">M</mi><mi>u</mi></msub><mo>=</mo><mrow><mo>{</mo><mi>m</mi><mo>:</mo><mspace width="0.3em"/><msub><mi>W</mi><mi>m</mi></msub><mo>+</mo><msub><mi>L</mi><mi>m</mi></msub><mo>≥</mo><mn>6</mn><mo>,</mo><mspace width="0.6em"/><mfrac><mrow><msub><mi>W</mi><mi>m</mi></msub><mo>−</mo><msub><mi>L</mi><mi>m</mi></msub></mrow><msqrt><mrow><msub><mi>W</mi><mi>m</mi></msub><mo>+</mo><msub><mi>L</mi><mi>m</mi></msub></mrow></msqrt></mfrac><mo>≥</mo><mn>1.96</mn><mo>}</mo></mrow></mrow></math><span class="eqn">(15)</span></div>
+  <div class="eq"><math display="block"><mrow><msup><mi>m</mi><mo>*</mo></msup><mo>=</mo><munder><mrow><mi>arg</mi><mspace width="0.2em"/><mi>max</mi></mrow><mrow><mi>m</mi><mo>∈</mo><msub><mi mathvariant="script">M</mi><mi>u</mi></msub></mrow></munder><mspace width="0.2em"/><mo stretchy="false">(</mo><msub><mi>W</mi><mi>m</mi></msub><mo>−</mo><msub><mi>L</mi><mi>m</mi></msub><mo stretchy="false">)</mo></mrow></math><span class="eqn">(16)</span></div>
   <p class="para"><i>𝓜<sub>u</sub></i> が空なら標準を使う。評価が少ないうちは、全員が標準のままになる。予想した点は保存も送信もしない。</p>
   <figure class="wide">
     <svg viewBox="0 0 960 160" role="img" aria-label="裏の答え合わせ。20の区切りのうち勝ち14、負け4、引き分け2で、zが2.36となり1.96を超えるので切り替える例。"><defs><marker id="fg" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M1 1l7 4-7 4z" class="aF-m"/></marker></defs><rect x="40" y="40" width="40" height="40" rx="6" class="fG"/><text x="60.0" y="66" text-anchor="middle" class="fT">勝</text><rect x="84" y="40" width="40" height="40" rx="6" class="fG"/><text x="104.0" y="66" text-anchor="middle" class="fT">勝</text><rect x="128" y="40" width="40" height="40" rx="6" class="fS"/><text x="148.0" y="66" text-anchor="middle" class="fT">負</text><rect x="172" y="40" width="40" height="40" rx="6" class="fG"/><text x="192.0" y="66" text-anchor="middle" class="fT">勝</text><rect x="216" y="40" width="40" height="40" rx="6" class="fGrid2"/><text x="236.0" y="66" text-anchor="middle" class="fT">分</text><rect x="260" y="40" width="40" height="40" rx="6" class="fG"/><text x="280.0" y="66" text-anchor="middle" class="fT">勝</text><rect x="304" y="40" width="40" height="40" rx="6" class="fG"/><text x="324.0" y="66" text-anchor="middle" class="fT">勝</text><rect x="348" y="40" width="40" height="40" rx="6" class="fS"/><text x="368.0" y="66" text-anchor="middle" class="fT">負</text><rect x="392" y="40" width="40" height="40" rx="6" class="fG"/><text x="412.0" y="66" text-anchor="middle" class="fT">勝</text><rect x="436" y="40" width="40" height="40" rx="6" class="fG"/><text x="456.0" y="66" text-anchor="middle" class="fT">勝</text><rect x="480" y="40" width="40" height="40" rx="6" class="fG"/><text x="500.0" y="66" text-anchor="middle" class="fT">勝</text><rect x="524" y="40" width="40" height="40" rx="6" class="fGrid2"/><text x="544.0" y="66" text-anchor="middle" class="fT">分</text><rect x="568" y="40" width="40" height="40" rx="6" class="fG"/><text x="588.0" y="66" text-anchor="middle" class="fT">勝</text><rect x="612" y="40" width="40" height="40" rx="6" class="fS"/><text x="632.0" y="66" text-anchor="middle" class="fT">負</text><rect x="656" y="40" width="40" height="40" rx="6" class="fG"/><text x="676.0" y="66" text-anchor="middle" class="fT">勝</text><rect x="700" y="40" width="40" height="40" rx="6" class="fG"/><text x="720.0" y="66" text-anchor="middle" class="fT">勝</text><rect x="744" y="40" width="40" height="40" rx="6" class="fG"/><text x="764.0" y="66" text-anchor="middle" class="fT">勝</text><rect x="788" y="40" width="40" height="40" rx="6" class="fG"/><text x="808.0" y="66" text-anchor="middle" class="fT">勝</text><rect x="832" y="40" width="40" height="40" rx="6" class="fS"/><text x="852.0" y="66" text-anchor="middle" class="fT">負</text><rect x="876" y="40" width="40" height="40" rx="6" class="fG"/><text x="896.0" y="66" text-anchor="middle" class="fT">勝</text><text x="40" y="26" class="aS">直近 120 件の評価を付けた順に 6 件ずつ 20 区切り。各区切りは、それより前の評価だけで予想して答え合わせする</text><path d="M40 96H916" class="aL" marker-end="url(#fg)"/><text x="916" y="114" text-anchor="end" class="aS">時間</text><text x="40" y="146" class="aH">例：勝 W ＝ 14、負 L ＝ 4 → z ＝ (W − L)／√(W ＋ L) ＝ 2.36 ≥ 1.96 なので、この人には別の計算を使う</text></svg>
-    <figcaption><b>図 5.</b>　式 11–12 の判定の例。20 の区切りのうち、勝ち 14、負け 4、引き分け 2（引き分けは数えない）。<i>z</i> ＝ 10/√18 ≈ 2.36 ≥ 1.96 なので、この人には案 <i>m</i> を使う。</figcaption>
+    <figcaption><b>図 9.</b>　式 15–16 の判定の例。20 の区切りのうち、勝ち 14、負け 4、引き分け 2（引き分けは数えない）。<i>z</i> ＝ 10/√18 ≈ 2.36 ≥ 1.96 なので、この人には案 <i>m</i> を使う。</figcaption>
   </figure>
   <div class="grid2 wide pair calcgrid">
     <div class="card">
@@ -951,15 +1111,15 @@ ol.refs li:target{background:rgba(var(--brand-rgb),.12)}
     </div>
   </div>
 
-  <h3 class="sub">3.8　計算の置き場所</h3>
+  <h3 class="sub">3.12　計算の置き場所</h3>
   <div class="grid2 wide">
     <div class="card"><h4><span class="tag good">毎日 1 回</span>取得側（GitHub Actions）</h4><p class="muted">公演の索引（公演・役職×人物・種類のタグ）と、おすすめのカードの下書き（題名・会期・出演・あらすじの HTML）を作って D1 に入れる。書き込みは、無料枠の 8 割の予算に収まる日だけ入れ替える。</p></div>
-    <div class="card"><h4><span class="tag good">開いたとき</span>Worker</h4><p class="muted">本人の記録だけで式 1〜12 を計算し、カードに理由と印を差し込む。結果は本人ごとに控え、記録が変わるまで使い回す（ふだんは数行を読むだけ）。無料プランの CPU は 1 回 10 ms なので、重い計算は取得側に寄せてある。</p></div>
+    <div class="card"><h4><span class="tag good">開いたとき</span>Worker</h4><p class="muted">本人の記録だけで式 1〜16 を計算し、カードに理由と印を差し込む。結果は本人ごとに控え、記録が変わるまで使い回す（ふだんは数行を読むだけ）。無料プランの CPU は 1 回 10 ms なので、重い計算は取得側に寄せてある。</p></div>
     <div class="card"><h4><span class="tag warn">一致の確認</span>Python と一字一句</h4><p class="muted">同じ架空の公演一覧と記録で、Python と Worker が同じ公演・順・点・理由を出すことを確かめる。浮動小数の足し算の順序もそろえてある（Python 3.12 以降の <code>sum()</code> は誤差を補正するので使わない）。</p></div>
     <div class="card"><h4><span class="tag stop">使わない</span>LLM による順位付け</h4><p class="muted">順位と理由を毎回同じ形で説明できるようにするため、LLM の用途は 2 つに限った。あらすじからの題材の取り出し（一度だけ）と、文章づくりである。</p></div>
   </div>
 
-  <h3 class="sub">3.9　検証と限界</h3>
+  <h3 class="sub">3.13　検証と限界</h3>
   <div class="twrap wide">
     <table class="calc" style="font-size:13px">
       <thead><tr><th>確かめたこと</th><th>データ</th><th>結果</th></tr></thead>
@@ -967,8 +1127,11 @@ ol.refs li:target{background:rgba(var(--brand-rgb),.12)}
         <tr><td>順序化（式 1–8）と、以前の計算の比較</td><td>公開の映画評価（Douban）。選ぶのに使っていない 500 人を 2 回抽出。公演の種類はジャンルで代用</td><td>AUC +0.024〜0.036、良くなった人 63〜76%</td></tr>
         <tr><td>お気に入りの仮の評価（式 9）</td><td>同上。選ぶ 300 人と確かめる 500 人は別</td><td>評価 0 件で +0.024〜0.031。10〜20 件で差なし</td></tr>
         <tr><td>使うほど当たるか</td><td>同上（439 人、記録を 5→80 件に増やす）</td><td>AUC 0.507 → 0.537。上がった人 63%</td></tr>
-        <tr><td>裏の答え合わせ（式 10–12）</td><td>作った利用者（各 200〜400 人）</td><td>誤って切り替わる割合 3% 以下（120 件）</td></tr>
-        <tr><td>Python と Worker の一致</td><td>架空の公演一覧と記録</td><td>公演・順・点・理由が一致（変更のたびにテスト）</td></tr>
+        <tr><td>裏の答え合わせ（式 14–16）</td><td>作った利用者（各 200〜400 人）</td><td>誤って切り替わる割合 3% 以下（120 件）</td></tr>
+        <tr><td>Python と Worker の一致</td><td>架空の公演一覧と記録</td><td>公演・順・点・理由が一致（変更のたびにテスト）。式 12（1 段広げる）は Worker だけにあり、一致の経路の外</td></tr>
+        <tr><td>興味ありの配り方（式 10–11）</td><td>試験用の公演と記録</td><td>性質だけを確認：合計が 1、共通する人が積み上がる、好きな人に多め、興味なしと比べて弱まる、メモの名前に多め、評価が増えると薄まる</td></tr>
+        <tr><td>1 段広げる・並べ直し（式 12–13）</td><td>試験用の公演と記録</td><td>性質だけを確認：好きな人の公演には足さない、筆頭が同じ公演は 1 ページ 2 件まで、越えた分は消えずに後ろへ</td></tr>
+        <tr><td>ジャンルの印（3.5）</td><td>2026-10-16 のこれからの公演 1,001 題名</td><td>2.5次元 18 作品・宝塚 7 作品。原作の欄も製作委員会も無いものは漏れる</td></tr>
       </tbody>
     </table>
   </div>
@@ -985,23 +1148,27 @@ ol.refs li:target{background:rgba(var(--brand-rgb),.12)}
       <h4><span class="tag warn">偏り</span>運用で気をつけること</h4>
       <ul class="muted">
         <li><b>付いた評価だけで学ぶと偏る。</b>利用者は推薦されたものを観て評価しやすいので、付いた評価だけで学ぶ・測ると偏る <a href="#ref-15">[15]</a>。推薦が行動を変え、その行動で次を学ぶ輪は、推薦を同じ方向に寄せる <a href="#ref-14">[14]</a>。開幕リマインドで点と関係なく全公演を出しているのは、この輪の外の公演に触れる窓でもある。</li>
-        <li><b>精度だけを上げても役に立つとは限らない</b> <a href="#ref-13">[13]</a>。同じ人ばかり勧めていないかも、合わせて見る必要がある。</li>
+        <li><b>精度だけを上げても役に立つとは限らない</b> <a href="#ref-13">[13]</a>。同じ人ばかり勧めないよう、1 段広げる（式 12）と並べ直し（式 13）を入れたが、多様さはまだ測っていない。</li>
         <li><b>舞台芸術の推薦は先行例が少ない</b> <a href="#ref-16">[16]</a>。</li>
       </ul>
     </div>
   </div>
 
-  <h4 class="eqhead">以前の仕組み（Render・共通の推薦）からの変更</h4>
+  <h4 class="eqhead">以前の仕組みからの変更</h4>
   <div class="twrap wide">
     <table class="calc" style="font-size:13px">
       <thead><tr><th>項目</th><th>以前</th><th>いま</th></tr></thead>
       <tbody>
-        <tr><td>評価の読み方</td><td>◎ だけを当たり 1、ほかは 0</td><td>本人の中での位置 <i>z</i>（式 2）。△ と × も点を下げる</td></tr>
+        <tr><td>評価の読み方</td><td>◎ だけを当たり 1、ほかは 0</td><td>本人の中での位置 <i>z</i>（式 2）。△ と × も点を下げる。星 5 段階でも同じ式</td></tr>
         <tr><td>苦手な人物</td><td>0 で切って理由にしない</td><td>下げる人物の上位 3 人ぶん点を下げる（式 7）</td></tr>
         <tr><td>あらすじ</td><td>別の網（網 C）を 90% 点でそろえて足す</td><td>#題材 のタグとして、人物と同じ式 4 で足す</td></tr>
-        <tr><td>会場</td><td>使わない</td><td>#会場 のタグとして並べ替えにだけ使い、理由にはしない（式 8）</td></tr>
+        <tr><td>会場・料金帯</td><td>#会場・#値段 を並べ替えにだけ使う</td><td>点にも理由にも使わない（3.5）</td></tr>
+        <tr><td>作品のくくり</td><td>#形式・#原作（原作もの）・#翻訳</td><td>原作の種類（漫画原作 …）・#原作の国・#ジャンル（2.5次元・宝塚）を足した（3.5）</td></tr>
         <tr><td>お気に入り</td><td>点に足さず、必ず出す別枠だけ</td><td>別枠に加えて、仮の評価として足す（式 9）</td></tr>
-        <tr><td>重みの選び方</td><td>持ち主の記録で一度決めた</td><td>本人の記録で、はっきり勝ったときだけ切り替える（式 12）</td></tr>
+        <tr><td>興味あり</td><td>推薦の材料に使わない → 全員に仮の ◎</td><td>1 公演ぶんを割って配る。行けないも同じ向き（式 10–11）</td></tr>
+        <tr><td>まだ知らない作り手</td><td>評価した人の公演しか出ない</td><td>好きな人と組む人へ 1 段広げる（式 12）</td></tr>
+        <tr><td>同じ人ばかり</td><td>点の順のまま</td><td>筆頭が同じ公演は 1 ページ 2 件まで（式 13）</td></tr>
+        <tr><td>重みの選び方</td><td>持ち主の記録で一度決めた</td><td>本人の記録で、はっきり勝ったときだけ切り替える（式 16）</td></tr>
       </tbody>
     </table>
   </div>
@@ -1025,6 +1192,11 @@ ol.refs li:target{background:rgba(var(--brand-rgb),.12)}
     <li id="ref-14">A. Chaney, B. Stewart, B. Engelhardt. How Algorithmic Confounding in Recommendation Systems Increases Homogeneity. <i>RecSys</i> 2018（arXiv:1710.11214）.（<code>lit-feedback-loop</code>）</li>
     <li id="ref-15">H. Steck. Training and Testing of Recommender Systems on Data Missing Not at Random. <i>KDD</i> 2010.（<code>lit-mnar</code>）</li>
     <li id="ref-16">J. Abernethy ほか. arXiv:1611.05788／INTIX の実務報告.（<code>lit-performing-arts</code>）</li>
+    <li id="ref-17">P. Lops, M. de Gemmis, G. Semeraro. Content-based Recommender Systems: State of the Art and Trends. <i>Recommender Systems Handbook</i>, Springer 2011, pp.73–105.（<code>lit-content-overspecialization</code>）</li>
+    <li id="ref-18">J. Creusefond, M. Latapy. Propagation of content similarity through a collaborative network for live show recommendation. arXiv:1804.09073, 2018.（<code>lit-live-show-propagation</code>）</li>
+    <li id="ref-19">C.-N. Ziegler, S. McNee, J. Konstan, G. Lausen. Improving Recommendation Lists Through Topic Diversification. <i>WWW</i> 2005.（<code>lit-topic-diversification</code>）</li>
+    <li id="ref-20">H. Abdollahpouri, R. Burke, B. Mobasher. Managing Popularity Bias in Recommender Systems with Personalized Re-ranking. <i>FLAIRS</i> 2019.（<code>lit-popularity-bias</code>）</li>
+    <li id="ref-21">日本2.5次元ミュージカル協会による「2.5次元」の定義（二次資料で確認。協会のサイトはこの環境から開けなかった）.（<code>genre-25d-signals</code>）</li>
   </ol>
 </section>
 
@@ -1033,7 +1205,7 @@ ol.refs li:target{background:rgba(var(--brand-rgb),.12)}
 <section class="sec" id="ch4">
     <div class="eyebrow"><span class="n">04</span><span>セキュリティ</span></div>
   <h2 class="title">セキュリティ</h2>
-  <p class="kicker">守るのは、利用者が入れた記録と行動（誰を好きか・何を観たか）。アカウント登録なしで不特定多数が使う前提で、<b>他の利用者から見えない・外に出ない・決めた操作しかできない</b>の 3 点を守る。</p>
+  <p class="kicker">守るのは、利用者が入れた記録と行動（誰を好きか・何を観たか）。パスワードを預からないログインで不特定多数が使う前提で、<b>他の利用者から見えない・外に出ない・決めた操作しかできない</b>の 3 点を守る。</p>
 
   <figure class="wide dg">
     <svg viewBox="0 0 1000 430" role="img" aria-label="セキュリティの全体図。ブラウザとサーバーはHTTPSでつながり、本人はCookieの鍵で自分の領域だけを読み書きする。復旧コードはハッシュだけを保存し、別の端末は10分で失効する6桁のコードで追加する。外への送信は事前の取得バッチだけで、個人の情報は乗らない。">
@@ -1052,8 +1224,8 @@ ol.refs li:target{background:rgba(var(--brand-rgb),.12)}
       <g transform="translate(20 214)">
         <rect width="200" height="100" rx="14" class="aSide"/>
         <text x="100" y="28" text-anchor="middle" class="aH">別の端末</text>
-        <text x="100" y="52" text-anchor="middle" class="aS">6 桁の連携コード</text>
-        <text x="100" y="72" text-anchor="middle" class="aS">10 分で失効・1 回限り</text>
+        <text x="100" y="52" text-anchor="middle" class="aS">同じ Google・メール・</text>
+        <text x="100" y="72" text-anchor="middle" class="aS">パスキーでログイン</text>
       </g>
       <!-- 通信 -->
       <path d="M222 110H330" class="aLt" marker-end="url(#sat)"/>
@@ -1075,8 +1247,8 @@ ol.refs li:target{background:rgba(var(--brand-rgb),.12)}
         <g transform="translate(270 104)"><rect width="110" height="106" rx="12" class="aSide"/><text x="55" y="58" text-anchor="middle" class="aS">別の利用者</text></g>
         <path d="M144 98V216" class="aL aDash"/>
         <g transform="translate(20 224)"><rect width="380" height="70" rx="10" class="aBox"/>
-          <text x="16" y="28" class="aS"><tspan class="aSb" font-weight="700">復旧コード（128 bit）</tspan>　初回に 1 回だけ表示</text>
-          <text x="16" y="50" class="aS">保存するのは scrypt のハッシュだけ。元のコードは持たない</text></g>
+          <text x="16" y="28" class="aS"><tspan class="aSb" font-weight="700">復旧コード</tspan>　パスキーだけで始めた人に 1 回だけ表示</text>
+          <text x="16" y="50" class="aS">保存するのはハッシュだけ。ログインの Cookie も同じ</text></g>
       </g>
       <!-- 外 -->
       <g transform="translate(790 40)">
@@ -1106,11 +1278,12 @@ ol.refs li:target{background:rgba(var(--brand-rgb),.12)}
 
   <h3 class="sub">守りと、防いでいるもの</h3>
   <div class="grid2 wide">
-    <div class="card"><h4><span class="tag good">環境</span>HTTPS で通信を暗号化</h4><p class="muted">復旧コードや Cookie が平文でインターネットを流れない。</p></div>
+    <div class="card"><h4><span class="tag good">環境</span>HTTPS で通信を暗号化</h4><p class="muted">ログインの印や Cookie が平文でインターネットを流れない。</p></div>
     <div class="card"><h4><span class="tag good">コード</span>利用者ごとにデータを分ける</h4><p class="muted">要求ごとに Cookie の鍵から利用者を決め、その人の領域だけを読み書きする。</p></div>
     <div class="card"><h4><span class="tag good">コード</span>パラメータ化クエリと表示前のエスケープ</h4><p class="muted">入力した文字が SQL の命令や画面のプログラムとして解釈されない。</p></div>
     <div class="card"><h4><span class="tag good">コード</span>LLM には集計した事実だけを渡す</h4><p class="muted">本文や記録そのものは渡さない。渡していない名前を挙げた文は、画面に載せない。</p></div>
-    <div class="card"><h4><span class="tag warn">未完了</span>公開先の永続保存</h4><p class="muted">保存先を分ける実装は済んだが、公開先の永続ディスクは未設定。再デプロイをまたいだ保存はまだ確認していない。</p></div>
+    <div class="card"><h4><span class="tag good">環境</span>パスワードを預からない</h4><p class="muted">ログインは Google・メールのリンク・パスキー。たぐりが保存するのはログインの識別番号だけで、メールアドレスは保存しない。戻り先は URL として検査し、パスキーの追加と結び付けの前には再ログインを求める。</p></div>
+    <div class="card"><h4><span class="tag good">コード</span>回数と量の上限</h4><p class="muted">書き込みの回数を利用者ごとに制限する。利用者は 300 人、新規は 1 日 30 人まで。D1 が 4 GB に近づいたら書き込みと新規登録を止める。</p></div>
     <div class="card"><h4><span class="tag warn">凍結</span>購入確認メールの取り込み（公開版）</h4><p class="muted">Gmail の読み取り権限は審査が必要な制限付きスコープのため、公開版では接続しない。手元で動かす版だけで使う。</p></div>
   </div>
 </section>
@@ -1125,8 +1298,8 @@ ol.refs li:target{background:rgba(var(--brand-rgb),.12)}
   <div class="col" style="max-width:820px">
 
     <div class="ach">
-      <div class="head"><span class="num">1</span><p>推薦が反応で変わる仕組みを確認した</p></div>
-      <p class="body">「興味あり」（見逃して悔しかった「観ればよかった」も同じ扱い）は作り手・出演者の名簿に ◎ より弱い正例として加わり、次の推薦に反映される。本番データで実際に動かし、名簿が <span class="mono">1,305 件 → 2,116 件</span>（うち 999 件が興味あり・観ればよかった由来）に増え、◎ の基準は動かないことを確認した。</p>
+      <div class="head"><span class="num">1</span><p>推薦が答えで変わる仕組みを作った</p></div>
+      <p class="body">「興味あり」「行けない」は、1 公演ぶんの重さを、その公演の人物と種類に割って配る（3.8）。何件にも共通する人・種類だけが積み上がり、興味なしの公演にもいるものは弱まる。評価が増えるほど、答えの効き目は評価に譲る。合計が 1 になること、共通するものが積み上がること、評価が増えると薄まることを試験で確かめた。</p>
       <p class="benefit"><b>メリット：</b>使うほど、自分に合った推薦に近づいていく。</p>
     </div>
 
@@ -1163,15 +1336,27 @@ ol.refs li:target{background:rgba(var(--brand-rgb),.12)}
     </div>
 
     <div class="ach">
-      <div class="head"><span class="num">6</span><p>登録なしで誰でも使える公開版にした</p></div>
-      <p class="body">画面・計算・記録を Cloudflare（Workers と D1）に移し、無料枠の中だけで動かしている。Google・メールのリンク・パスキーでログインでき、復旧コードでも戻れる。記録は利用者ごとに分けて保存する。別の端末は 6 桁の連携コードで追加できる。はじめての人向けに、実際の画面で試せる操作ツアーと約 70 秒の説明動画を付けた。</p>
+      <div class="head"><span class="num">6</span><p>パスワードなしで誰でも使える公開版にした</p></div>
+      <p class="body">画面・計算・記録を Cloudflare（Workers と D1）に移し、無料枠の中だけで動かしている。Google・メールのリンク・パスキーでログインでき、復旧コードでも戻れる。記録は利用者ごとに分けて保存し、同じログインで別の端末からも続けられる。はじめての人向けに、実際の画面で試せる操作ツアーと約 70 秒の説明動画を付けた。</p>
       <p class="benefit"><b>メリット：</b>メールアドレスもパスワードも預けずに、スマホからでもすぐ使い始められる。</p>
     </div>
 
     <div class="ach">
       <div class="head"><span class="num">7</span><p>本人の評価が、本人の次の推薦に届くようにした</p></div>
-      <p class="body">利用者が付けた ◎○△× を保存し、次におすすめを開いたときに、その人の評価だけで推薦を計算する（3-1〜3-5）。評価の変更・取り消し・公演の結び付け直しも次の計算に反映され、他の利用者の推薦には混ざらないことを検査で確認した。</p>
+      <p class="body">利用者が付けた評価（星 5 段階が既定。設定で ◎○△× などにも変えられる）を保存し、次におすすめを開いたときに、その人の評価と答えだけで推薦を計算する（3 章）。評価の変更・取り消し・公演の結び付け直しも次の計算に反映され、他の利用者の推薦には混ざらないことを検査で確認した。</p>
       <p class="benefit"><b>メリット：</b>持ち主 1 人の好みではなく、使う人それぞれの好みでおすすめが変わる。</p>
+    </div>
+
+    <div class="ach">
+      <div class="head"><span class="num">8</span><p>おすすめの理由を、本人が外せるようにした</p></div>
+      <p class="body">理由の行の ✕ で、その人物・種類を次から使わないようにできる。「2.5次元」「宝塚」のジャンルは ✕ で公演ごと外れる（3.10）。同じ人ばかり並ばないよう、筆頭の理由が同じ公演は 1 ページに 2 件までにした。</p>
+      <p class="benefit"><b>メリット：</b>興味のないくくりを、自分で 1 回押すだけで減らせる。</p>
+    </div>
+
+    <div class="ach">
+      <div class="head"><span class="num">9</span><p>日程と料金を、カード 1 枚で確かめられるようにした</p></div>
+      <p class="body">ツアーは会場ごとの行に分け、押すと公演日時の週の暦と会場ごとの料金が開く。公演カレンダーは、持っている・興味あり・お気に入りの公演を上演期間の帯で 1 枚に並べ、行く日を半券の形で示す。</p>
+      <p class="benefit"><b>メリット：</b>どの日に行けるかを、公式サイトを開き直さずに決められる。</p>
     </div>
 
   </div>
@@ -1184,7 +1369,7 @@ ol.refs li:target{background:rgba(var(--brand-rgb),.12)}
     </div>
     <div class="row">
       <b>名前・題材での検索の高度化、記録を見返す画面の作り替え</b><span class="tag warn">一部のみ実装</span>
-      <p class="why">同上。一周が閉じたあとに回す判断。</p>
+      <p class="why">一周が閉じたあとに回した。その後、探すで過去の公演（2019 年以降）とカードの無い公演も出せるようにし、眺めるに劇場制覇の地図と観劇の時間割を足した。題材での検索はまだ無い。</p>
     </div>
     <div class="row">
       <b>未回答の推薦枠が翌週も残り、枠が詰まる問題</b><span class="tag stop">直さないと決定</span>
@@ -1233,7 +1418,7 @@ ol.refs li:target{background:rgba(var(--brand-rgb),.12)}
       </div>
       <div class="card">
         <h4><svg class="ic" viewBox="0 0 24 24" width="17" height="17" style="color:var(--brand)"><path d="M3 20h18M6.5 20v-5M11.5 20V6M16.5 20v-9"/></svg>利用者ごとの推薦を、実データで育てる</h4>
-        <p class="muted">公開先の永続保存を整えたうえで、利用者ごとの推薦にあらすじの点を加え、当たりやすさを実際の評価で測る。重みを人ごとに学習することも検討している。</p>
+        <p class="muted">本番の利用者の評価と答えで、当たりやすさと一覧の多様さを実際に測る。興味ありの配り方・1 段広げる・並べ直しの数（0.5・3・5・0.3・2 件）も、そこで確かめる。重みを人ごとに学習することも検討している。</p>
       </div>
     </div>
   </div>
