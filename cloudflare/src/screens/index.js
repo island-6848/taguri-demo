@@ -19,6 +19,7 @@ import {searchScreens} from './search.js';
 import {recordScreens} from './records.js';
 import {importScreens} from './import.js';
 import {ValueError} from './py.js';
+import {fixRequestScreens} from './fixrequest.js';
 
 export const SCREEN_TABLES = ['works', 'excluded', 'merges', 'hand_credits', 'visit_note', 'reaction', 'viewed',
   'ticket', 'missed', 'rank_weight', 'app_setting', 'search_request'];
@@ -27,7 +28,7 @@ export const SCREEN_TABLES = ['works', 'excluded', 'merges', 'hand_credits', 'vi
 export const TOKEN = 'cfw0000000000000000000000000000000';
 
 const SCREENS = {...tickerScreens.screens, ...rateScreens.screens, ...diaryScreens.screens, ...accountScreens.screens, ...recommendScreens.screens, ...listScreens.screens, ...reminderScreens.screens, ...calendarScreens.screens, ...settingsScreens.screens, ...searchScreens.screens, ...recordScreens.screens};
-const ACTIONS = {...rateScreens.actions, ...diaryScreens.actions, ...accountScreens.actions, ...recommendScreens.actions, ...listScreens.actions, ...settingsScreens.actions, ...searchScreens.actions, ...importScreens.actions};
+const ACTIONS = {...rateScreens.actions, ...diaryScreens.actions, ...accountScreens.actions, ...recommendScreens.actions, ...listScreens.actions, ...settingsScreens.actions, ...searchScreens.actions, ...importScreens.actions, ...fixRequestScreens.actions};
 
 const enabled = (env, kind, name) => {
   const list = String(env.NATIVE_UI || '').split(',').map(s => s.trim());

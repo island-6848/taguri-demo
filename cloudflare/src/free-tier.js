@@ -69,3 +69,9 @@ export async function d1RoomLeft(db, env, nowMs = Date.now()) {
   d1Gate.full = bytes !== null && bytes >= cap;
   return !d1Gate.full;
 }
+
+// 公演修正依頼（migration 0030, src/screens/fixrequest.js）。1 人 1 日の依頼の数と、起案者へのメールの 1 日の数。
+// メールは起案者の Gmail から自分宛てに送る（Gmail の 1 日の送信の上限は 500 通。そのずっと手前で止める）。
+// 上限を越えた日の依頼は保存だけして、管理画面で見る
+export const FIX_REQUESTS_PER_USER_DAY = 5;
+export const FIX_MAILS_PER_DAY = 30;

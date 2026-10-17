@@ -398,12 +398,48 @@ function fixupFigs(root) {
 // **公開版(デモ・サービスとも)の制限。** 公演情報と画像は全員で共有するので編集させず、
 // 外部サイトもその場では検索しない(探す先は手元の公演一覧)。文言だけ版で変える
 const WEB_BUTTON = IS_DEMO ? "デモの公演から探す" : "公演一覧から探す";
+// ---- 公演修正依頼（起案者の指示 2026-10-17。届くと起案者にメールが行き、手元の管理画面で直す）。
+// カードの下に「公演情報の誤りを知らせる」を置き、押すとその場で小さな欄が開く（src/screens/fixrequest.js）
+const FIX_KINDS = ["日程", "料金", "会場", "あらすじ", "出演・スタッフ", "ポスター", "その他"];
+function fixLinks(root) {
+  if (IS_DEMO || !API_BASE) return;
+  root.querySelectorAll("article.ticket[data-stage]").forEach(t => {
+    if (t.querySelector(".fixq")) return;
+    const box = document.createElement("div");
+    box.className = "fixq";
+    box.innerHTML = '<button type="button" class="fixq-open">公演情報の誤りを知らせる</button>'
+      + '<div class="fixq-form" hidden><label>どこが違いますか <select class="fixq-kind">'
+      + FIX_KINDS.map(k => '<option>' + E(k) + '</option>').join("") + '</select></label>'
+      + '<textarea class="fixq-msg" rows="3" maxlength="1000" placeholder="正しい情報や、載っているページの URL を書いてください"></textarea>'
+      + '<div class="fixq-foot"><button type="button" class="fixq-send">送る</button> <button type="button" class="fixq-cancel">やめる</button>'
+      + ' <span class="said" role="status"></span></div>'
+      + '<p class="note">送った内容は、たぐりの運営者だけが読みます。あなたの名前やアドレスは運営者への知らせに入れません。</p></div>';
+    (t.querySelector(".main") || t).appendChild(box);
+  });
+}
+document.addEventListener("click", async ev => {
+  const b = ev.target.closest && ev.target.closest(".fixq button");
+  if (!b) return;
+  const box = b.closest(".fixq"), form = box.querySelector(".fixq-form");
+  if (b.classList.contains("fixq-open")) { form.hidden = !form.hidden; if (!form.hidden) box.querySelector(".fixq-msg").focus(); return; }
+  if (b.classList.contains("fixq-cancel")) { form.hidden = true; return; }
+  if (b.classList.contains("fixq-send")) {
+    const msg = box.querySelector(".fixq-msg").value.trim(), said = box.querySelector(".said");
+    if (!msg) { said.textContent = "どう違うかを書いてください"; return; }
+    b.disabled = true;
+    const d = await post("/api/fix_request", {stage_id: box.closest("article.ticket").dataset.stage,
+      kind: box.querySelector(".fixq-kind").value, message: msg}, box, "送りました。ありがとうございます。確かめて直します");
+    b.disabled = false;
+    if (d) { box.querySelector(".fixq-msg").value = ""; setTimeout(() => { form.hidden = true; }, 3000); }
+  }
+});
+
 function applyDemoRestrictions(root) {
   root.querySelectorAll(".handt").forEach(editor => {
     const note = document.createElement("p");
     note.className = "note";
     note.textContent = IS_DEMO ? "デモでは、公演情報の編集はできません。"
-      : "公演情報は全員で共有しているため、ここでは編集できません。";
+      : "公演情報は全員で共有しているため、ここでは編集できません。誤りは「公演情報の誤りを知らせる」から送ってください。";
     editor.replaceWith(note);
   });
   root.querySelectorAll("[data-hand-img], [data-hand-off]").forEach(control => {
@@ -444,6 +480,7 @@ function renderScreen(el, activePath, d, exposureSource) {
   if (activePath === "/recommend" && Array.isArray(d.unrated_ends)) unratedNudge(d.unrated_ends);
   priceFilter(el);
   filterRow(el);
+  fixLinks(el);
   updateNavActive(activePath);
   fixupSynClamp(el);
   fixupMonthScroll(el);
@@ -1392,6 +1429,7 @@ document.addEventListener("click", ev => {
           box.innerHTML = d.fill.html;
           box.querySelectorAll("li.rs.q").forEach(n => n.remove());
           compactTickets(box);
+          fixLinks(box);
           const fresh = box.firstElementChild;
           if (fresh && all.length) {
             fresh.classList.add("filled");
