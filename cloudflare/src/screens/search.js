@@ -2,9 +2,12 @@
 // and the search_request write.
 //
 // Same layout and words. Where Python reads files on the server, the Worker reads D1:
-// the coming stages are the current cards (rec_card, with the stage entry from rec_stage),
-// matched in SQL first (instr over the normalised texts) and then checked here like
-// app._hit_upcoming; a work's people come from its linked stage (diary.peopleByKey).
+// the coming stages are every stage of the index (rec_stage) that has not ended, plus the
+// delivered catalogue's stages the index does not have yet — with or without a prebuilt card
+// (起案者の指示 2026-10-17「カードがない新しい公演も検索で出るようにして」; a stage without a
+// card is drawn by fallback.fallbackTemplate). They are matched in SQL first (instr over the
+// texts) and then checked here like app._hit_upcoming; a work's people come from its linked
+// stage (diary.peopleByKey).
 // Not available: the subject words of the works seen (themes.jsonl of the rated side is
 // the owner's batch output) and the live CoRich search (the public service asks the next
 // daily run instead, as the Python service does).
@@ -18,11 +21,18 @@ import {peopleByKey} from './diary.js';
 import {parseCredits} from './credits.js';
 import {loadWorks, titleKey} from './works.js';
 import {loadDeclared, buckets, nz} from './lists.js';
+import {stageInfo, fallbackTemplate} from './fallback.js';
 import {runRange, periodStart} from './reminder.js';
 
 const cmp = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
-/** render_recommend._norm */
-const norm = s => String(s || '').replace(/\s+/gu, '').normalize('NFKC');
+// 波ダッシュの揺れ（〜 U+301C と ～ U+FF5E など）は NFKC でも 1 つにならない。取得元は「ふぉ～ゆ～」、
+// 打つと「ふぉ〜ゆ〜」になりやすい（起案者の検索 2026-10-17 で 0 件だった）ので、どれも ~ にそろえて比べる
+const WAVES = /[\u301c\uff5e\u223c\u2053\u02dc]/gu;
+const fold = s => String(s || '').normalize('NFKC').replace(WAVES, '~');
+/** render_recommend._norm (plus the wave dashes folded) */
+const norm = s => fold(String(s || '').replace(/\s+/gu, ''));
+/** The SQL side of `fold` for a column (NFKC already turns ～ into ~ in the prebuilt texts, not in entry JSON). */
+const sqlFold = col => `replace(replace(replace(${col},'〜','~'),'～','~'),'∼','~')`;
 const chunks = (xs, n) => Array.from({length: Math.ceil(xs.length / n)}, (_, i) => xs.slice(i * n, i * n + n));
 const DATE_RE = /(20\d\d)\/(\d{1,2})\/(\d{1,2})/g;
 
@@ -55,6 +65,14 @@ function hitUpcoming(q, c, themes) {
   if (norm(c.title).includes(key)) why.push(['題名', '']);
   if (norm(c.group).includes(key)) { why.push(['団体', c.group || '']); names.push(['団体', c.group || '']); }
   for (const [role, person] of parseCredits(c.fields || {})) if (norm(person).includes(key)) { why.push([role, person]); names.push([role, person]); }
+  // 名前の後ろの括弧（所属。例「越岡裕貴（ふぉ～ゆ～）」）は名前の読み取りで外れるので、欄の文そのものでも当てる。
+  // 出すのは当たった区切り（、・改行）の 1 つ
+  if (why.length === (norm(c.title).includes(key) ? 1 : 0) + (norm(c.group).includes(key) ? 1 : 0)) {
+    for (const [field, text] of Object.entries(c.fields || {})) {
+      const part = String(text || '').split(/[、,，\n]/).map(x => x.trim()).find(x => norm(x).includes(key));
+      if (part) why.push([field, part.slice(0, 40)]);
+    }
+  }
   const th = (themes || []).filter(t => norm(t).includes(key));
   if (th.length) { why.push(['題材', th.slice(0, 4).join('・')]); names.push(...th.map(t => ['題材', t])); }
   if (norm(c.theater).includes(key)) why.push(['劇場', c.theater || '']);
@@ -69,25 +87,61 @@ function hitUpcoming(q, c, themes) {
   return [out.slice(0, 6).join(''), names];
 }
 
-/** The coming stages (current cards) with their catalogue entry; `q` narrows them in SQL. */
+const slashed = (a, b) => (a ? `${a.replaceAll('-', '/')} ～ ${(b || a).replaceAll('-', '/')}` : '');
+// 一覧（catalogue）は終わった公演の行も残るので、初日が 1 年以内の行だけを日付の索引で読む（D1 の読み取りを抑える）
+const CATALOGUE_SINCE_DAYS = 366;
+const since = today => new Date(Date.parse(today + 'T00:00:00Z') - CATALOGUE_SINCE_DAYS * 86400000).toISOString().slice(0, 10);
+
+/**
+ * The coming stages, with or without a card: the index's stages that have not ended, then the
+ * catalogue's that the index does not have yet. `q` narrows them in SQL (folded, lower-cased).
+ */
 async function upcoming(ctx, q = '') {
-  const key = nz(q);
-  const where = key ? ' AND (instr(c.blob,?)>0 OR instr(c.ws,?)>0 OR instr(lower(s.entry),?)>0)' : '';
-  const {results} = await ctx.db.prepare(`SELECT c.stage_id, c.ws, c.start, c.end, s.title, s.entry FROM rec_card c
-    JOIN rec_stage s ON s.stage_id=c.stage_id AND s.ver=(SELECT v FROM rec_meta WHERE k='current')
-    WHERE c.ver=(SELECT v FROM rec_meta WHERE k='rec_card')${where}`).bind(...(key ? [key, key, key] : [])).all();
-  return results.map(r => ({...JSON.parse(r.entry || '{}'), title: r.title, stage_id: r.stage_id, _ws: r.ws ? r.ws.split('\n') : []}));
-}
-/** Coming stages counted by month (app._up_month_counts): one cheap read of the card dates. */
-async function upcomingMonths(ctx) {
-  const {results} = await ctx.db.prepare("SELECT start, end FROM rec_card WHERE ver=(SELECT v FROM rec_meta WHERE k='rec_card')").all();
-  const now = ctx.today.slice(0, 7);
-  const out = {};
+  const key = q ? nz(fold(q)) : '';
+  const out = new Map();
+  const idxWhere = key ? ` AND (instr(${sqlFold('c.blob')},?)>0 OR instr(${sqlFold('c.ws')},?)>0 OR instr(${sqlFold('lower(s.entry)')},?)>0 OR instr(${sqlFold('lower(s.title)')},?)>0)` : '';
+  const {results} = await ctx.db.prepare(`SELECT s.stage_id, s.title, s.entry, s.start, s.end, c.ws FROM rec_stage s
+    LEFT JOIN rec_card c ON c.stage_id=s.stage_id AND c.ver=(SELECT v FROM rec_meta WHERE k='rec_card')
+    WHERE s.ver=(SELECT v FROM rec_meta WHERE k='current') AND (s.end='' OR s.end>=?)${idxWhere}`)
+    .bind(ctx.today, ...(key ? [key, key, key, key] : [])).all();
   for (const r of results) {
-    const period = r.start ? `${r.start.replaceAll('-', '/')} ～ ${(r.end || r.start).replaceAll('-', '/')}` : '';
-    for (const m of periodMonths(period)) if (m >= now) out[m] = (out[m] || 0) + 1;
+    let e = {};
+    try { e = JSON.parse(r.entry || '{}') || {}; } catch { /* no entry */ }
+    out.set(String(r.stage_id), {...e, period: e.period || slashed(r.start, r.end), title: r.title, stage_id: String(r.stage_id), _ws: r.ws ? r.ws.split('\n') : []});
   }
-  return {counts: out, n: results.length};
+  // 索引に入る前の新しい公演（毎日の一覧の配達には入っている）
+  const catWhere = key ? ` AND (instr(${sqlFold('lower(title)')},?)>0 OR instr(${sqlFold('lower(metadata)')},?)>0)` : '';
+  let cat = [];
+  try {
+    ({results: cat} = await ctx.db.prepare(`SELECT c.id, c.title, c.date, c.venue, c.metadata, vp.pref AS vpref FROM catalogue c LEFT JOIN venue_pref vp ON vp.venue=c.venue
+      WHERE c.date>=? AND COALESCE(json_extract(c.metadata,'$.end_date'), c.date)>=?${catWhere}`).bind(since(ctx.today), ctx.today, ...(key ? [key, key] : [])).all());
+  } catch { cat = []; }
+  for (const r of cat) {
+    const sid = String(r.id);
+    if (out.has(sid)) continue;
+    let m = {};
+    try { m = JSON.parse(r.metadata || '{}') || {}; } catch { /* no metadata */ }
+    const end = /^\d{4}-\d{2}-\d{2}$/.test(m.end_date || '') ? m.end_date : r.date;
+    out.set(sid, {stage_id: sid, title: r.title, period: slashed(r.date, end), theater: r.venue || '', venue: r.venue || '', pref: r.vpref || '',
+      group: m.group || '', fields: m.fields && typeof m.fields === 'object' ? m.fields : {}, _ws: Array.isArray(m.words) ? m.words.map(String) : []});
+  }
+  return [...out.values()];
+}
+
+/** {month: stages} of these stages, from this month on (app._up_month_counts). */
+function monthCounts(rows, today) {
+  const now = today.slice(0, 7), out = {};
+  for (const r of rows) for (const m of periodMonths(r.period)) if (m >= now) out[m] = (out[m] || 0) + 1;
+  return out;
+}
+/** Coming stages counted by month, without a word: only the dates are read (no entry JSON to parse). */
+async function upcomingMonths(ctx) {
+  const [idx, cat] = await ctx.db.batch([
+    ctx.db.prepare("SELECT stage_id, start, end FROM rec_stage WHERE ver=(SELECT v FROM rec_meta WHERE k='current') AND (end='' OR end>=?)").bind(ctx.today),
+    ctx.db.prepare("SELECT id, date, json_extract(metadata,'$.end_date') AS end FROM catalogue WHERE date>=? AND COALESCE(json_extract(metadata,'$.end_date'), date)>=?").bind(since(ctx.today), ctx.today)]);
+  const rows = new Map(idx.results.map(r => [String(r.stage_id), {period: slashed(r.start, r.end)}]));
+  for (const r of cat.results) if (!rows.has(String(r.id))) rows.set(String(r.id), {period: slashed(r.date, r.end || r.date)});
+  return {counts: monthCounts([...rows.values()], ctx.today), n: rows.size};
 }
 
 /** app._search_follow */
@@ -108,7 +162,7 @@ function searchFollow(dec, names) {
 ${out.slice(0, 8).join('')}</div>`;
 }
 
-/** app._upcoming_hits: [html, names, n] */
+/** app._upcoming_hits: [html, names, n, {month: n} of the stages the word hits (empty without a word), stages the word hits in any month] */
 export async function upcomingHits(ctx, q, ym, b, top = 8) {
   const rows = await upcoming(ctx, q);
   const state = new Map();
@@ -133,9 +187,15 @@ export async function upcomingHits(ctx, q, ym, b, top = 8) {
     hits.sort((p, q2) => cmp(periodStart(p[1].period) || '9999', periodStart(q2[1].period) || '9999'));
   }
   const names = hits.flatMap(h => h[3]);
-  if (!hits.length) return ['', [], 0];
+  // 言葉で引いたときの月ごとの数（カレンダーも当たった公演だけを数える。月の指定より前の全部）
+  const matched = q ? rows.filter(c => hitUpcoming(q, c, c._ws)[0]) : rows;
+  const counts = q ? monthCounts(matched, ctx.today) : {};
+  if (!hits.length) return ['', [], 0, counts, matched.length];
   const show = hits.slice(0, top);
   const {html, posters} = await cardTemplates(ctx.db, show.map(h => h[0]));
+  // カードがまだ無い公演（新しい公演など）は、一覧と索引の中身から描く（fallback.js）
+  const bare = show.map(h => h[0]).filter(sid => !html.has(sid));
+  if (bare.length) for (const [sid, st] of await stageInfo(ctx.db, bare)) html.set(sid, fallbackTemplate(st));
   const cards = show.filter(h => html.has(h[0])).map(([sid, , why]) => {
     const st = state.get(sid);
     const w = why + (st ? `<li class="rs state">${E(st)}</li>` : '');
@@ -146,7 +206,7 @@ export async function upcomingHits(ctx, q, ym, b, top = 8) {
     + (!q ? '言葉を入れると絞り込めます' : '言葉を変えると出てきます') + '</b>（人名・団体名・劇場名など）。</p>';
   const head = ym ? `${ym.slice(0, 4)} 年 ${Number(ym.slice(5, 7))} 月に観られる公演` : 'これから観られる公演';
   const order = ym ? 'この月に始まる公演を先に、すでに続いている公演を後に（終わりの近い順）並べています。' : '上演日の近い順です。';
-  return [`<h2>${E(head)} ${hits.length} 件</h2><p class="lead">${order}順位は付けていません。<b>ここから「興味あり」を押すと、追いかけている一覧に入ります。</b></p>${tail}${cards.join('')}`, names, hits.length];
+  return [`<h2>${E(head)} ${hits.length} 件</h2><p class="lead">${order}順位は付けていません。<b>ここから「興味あり」を押すと、追いかけている一覧に入ります。</b></p>${tail}${cards.join('')}`, names, hits.length, counts, matched.length];
 }
 
 /** app._request_query */
@@ -192,9 +252,10 @@ function monthGrid(ws, upCounts, nUp, side, sel, q = '') {
   const lead = side === 'up'
     ? '<b>これから観られる公演を、月から探せます。</b>数字はその月に観られる公演の数です（上演期間がその月にかかっているもの）。<b>件数が多い月は、言葉と一緒に使うと絞れます。</b>'
     : '<b>観た記録を、観た月から探せます。</b>数字はその月に観た作品の数です。押すと、その月の記録が下に出ます。';
+  const only = q ? `<b>「${E(q)}」に当たったものだけを数えています。</b>` : '';
   return `<div class="cal" id="cal">
 ${tabs}
-<div class="idxsheet loose"><p class="mnow">${lead}</p>
+<div class="idxsheet loose"><p class="mnow">${only}${lead}</p>
 ${rows ? `<div class="cal-grid"><span class="cal-y"></span>${head}${rows}</div>` : `<p class="empty">${side === 'up' ? 'これから観られる公演は、いま手元にありません。' : 'まだ観た記録がありません。「これから観られる公演」の札から、月で探せます。'}</p>`}
 ${none}</div></div>`;
 }
@@ -225,7 +286,7 @@ export async function searchScreen(params, ctx) {
   const head = `<h1>探す</h1>
 <p class="lede">人名・団体・題材・題名で、<b>これから観られる公演 ${months.n} 件と観た記録の両方から探します。</b>見つけたものには、この画面のまま答えられます。これから観られる公演には「興味あり」を、観た記録には評価と感想を付けられます。</p>${form}${note}`;
   const seen = ws.filter(w => !w.unseen);
-  const cal = monthGrid(seen, months.counts, months.n, side, ym, q);
+  let cal = monthGrid(seen, months.counts, months.n, side, ym, q);
   const b = await buckets(ctx);
   if (!q) {
     let body;
@@ -249,8 +310,11 @@ export async function searchScreen(params, ctx) {
     if (why) { hits.push([w, why]); names.push(...found); }
   }
   hits.sort((x, y) => cmp(y[0].first_date || '', x[0].first_date || ''));
-  const [upHtml, upNames, nUp] = await upcomingHits(ctx, q, side === 'up' ? ym : '', b);
+  const [upHtml, upNames, nUp, upCounts, nUpAll] = await upcomingHits(ctx, q, side === 'up' ? ym : '', b);
   names.push(...upNames);
+  // 言葉が入っているときは、下の札とカレンダーも当たったものだけを数える（起案者の指示 2026-10-17
+  // 「ワードが入って検索されてるなら、次のところも該当件数のみ表示されるようにして」）
+  cal = monthGrid(hits.map(([w]) => w), upCounts, nUpAll, side, ym, q);
   const web = await webHits(ctx, q);
   const dec = await loadDeclared(ctx);
   let body;

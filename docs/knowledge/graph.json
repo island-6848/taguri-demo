@@ -2252,6 +2252,19 @@
    "verifies": []
   },
   {
+   "id": "fix-search-uncarded",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-17",
+   "title": "探すを、カードの無い公演（索引だけ・一覧だけの新しい公演）まで広げ、波ダッシュの揺れと名前の後ろの括弧でも当たるようにした。言葉があるときは札とカレンダーも当たった数だけ",
+   "sources": [
+    "cloudflare/src/screens/search.js",
+    "cloudflare/test/search-uncarded.test.js",
+    "https://app.taguri.workers.dev/search"
+   ],
+   "verifies": []
+  },
+  {
    "id": "four-level-unsupported",
    "type": "finding",
    "status": "confirmed",
@@ -7189,6 +7202,11 @@
    "from": "fix-declined-kind-tags",
    "rel": "depends_on",
    "to": "impl-kind-reason-off"
+  },
+  {
+   "from": "fix-search-uncarded",
+   "rel": "affects",
+   "to": "impl-recommend-find"
   },
   {
    "from": "four-level-unsupported",
