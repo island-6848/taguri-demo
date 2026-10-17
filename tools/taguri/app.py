@@ -9001,7 +9001,6 @@ def _calendar_body(user_id: str, kinds: set[str] | None = None,
     # にある。
     return f"""<h1>公演カレンダー</h1>
 {SC.add_ticket_button_html(d, tickets=tickets)}
-<p class="lede">券を持っている公演、「興味あり」を押した公演、お気に入りに当たった公演を、上演期間の帯で並べています。<b>いつまで観られるか</b>が1枚で分かります。券を持っている公演は、行く日を入れるとその日が半券の形で出ます。</p>
 {SC.panel(d, tickets=tickets, unplaced=left, sel_kinds=kinds, sel_prefs=prefs)}"""
 
 
