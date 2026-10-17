@@ -1023,3 +1023,9 @@ a.pill.buy .go:not(#_){font-size:12px;margin-left:2px}
 .card.thx h2{font-size:1em;margin:10px 0 6px;text-align:left}
 .card.thx ol{text-align:left;margin:0;padding-left:1.6em;line-height:1.7}
 .card.thx li{margin:2px 0}
+
+/* おすすめの絞り込みの 2 段の見出し（recommend.js。選び方＝計算を変える／表示の絞り込み＝結果を絞る） */
+.fgh{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 8px;margin:14px 0 6px;font-size:13px;color:var(--ink)}
+.fgh svg.ico{align-self:center;color:var(--mute)}
+.fgh span{color:var(--mute);font-size:12px}
+.fil2.tune{margin-bottom:4px}

@@ -1526,6 +1526,20 @@
    "verifies": []
   },
   {
+   "id": "dec-recommend-filter-tiers",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-17",
+   "title": "おすすめ画面の道具を「おすすめの選び方」（効かせ方・出さない語）と「表示の絞り込み」（場所・料金）の 2 段に分け、「おすすめに出てこない公演を探す」を外した",
+   "sources": [
+    "cloudflare/src/screens/recommend.js",
+    "web/app.js",
+    "web/theme.css",
+    "cloudflare/test/search-uncarded.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-recommend-ui-1014",
    "type": "decision",
    "status": "adopted",
@@ -2671,7 +2685,7 @@
   {
    "id": "impl-recommend-find",
    "type": "decision",
-   "status": "adopted",
+   "status": "superseded",
    "date": "2026-10-17",
    "title": "おすすめ画面に「おすすめに出てこない公演を探す」欄を置いた（これから観られる公演だけを引き、その場で「興味あり」を押せる）",
    "sources": [
@@ -6701,6 +6715,16 @@
    "from": "dec-recommend-compact-poster",
    "rel": "raises",
    "to": "q-worker-posters"
+  },
+  {
+   "from": "dec-recommend-filter-tiers",
+   "rel": "supersedes",
+   "to": "impl-recommend-find"
+  },
+  {
+   "from": "dec-recommend-filter-tiers",
+   "rel": "affects",
+   "to": "dec-page-pref-filter"
   },
   {
    "from": "dec-recommend-ui-1014",

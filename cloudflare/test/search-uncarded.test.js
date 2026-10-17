@@ -27,9 +27,9 @@ test('stages without a card are found: in the index, and only in the catalogue; 
     assert.match(cat, /aria-label="2099 年 12 月 1 件"/);
     assert.match(cat, /観た記録<span class="mn">0<\/span>/);
     assert.match(cat, /「ふぉ〜ゆ〜」に当たったものだけを数えています/);
-    // The recommend screen's box finds it too.
+    // The recommend screen has no search box of its own any more (起案者の指示 2026-10-17): ?find is ignored.
     const rec = (await step(env, a, {get: '/api/screen/recommend?find=' + encodeURIComponent('ふぉ〜ゆ〜')})).body.body_html;
-    assert.match(rec, /data-stage="990001"/);
+    assert.doesNotMatch(rec, /data-stage="990001"|rfind/);
   } finally { sqlite.close(); }
 });
 

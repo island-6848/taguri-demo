@@ -757,7 +757,8 @@ function priceFilter(el) {
     + '<span class="wv yv"></span></div>'
     + '<div class="wscale"><span>← ' + yenStepLabel(YEN_STEPS[0]) + '</span><span>' + yenStepLabel(0) + ' →</span></div>'
     + '<p class="yenn" role="status"></p></details>';
-  const fil = el.querySelector(".fil2");
+  // 料金は結果の絞り込みなので「表示の絞り込み」の段へ（起案者の指摘 2026-10-17。効かせ方・出さない語とは分ける）
+  const fil = el.querySelector(".fil2.narrow") || el.querySelector(".fil2");
   if (fil) fil.appendChild(box);
   else { const h1 = el.querySelector("h1"); if (!h1) return; h1.after(box); }
   const sl = box.querySelector(".ysl");
@@ -785,9 +786,13 @@ function priceFilter(el) {
 // ---- 絞り込みを横 1 列に並べる（起案者の指示 2026-10-14「場所、効かせ方、料金などの絞り込み、横1列に3つ
 // 並べてほしい」）。3 つの見出しを札として 1 行に並べ、押した 1 つだけを下に全幅で開く（ほかは閉じる）。
 // 中身（都道府県の札・効かせ方のつまみ・料金のつまみ）はそれぞれの details のまま使う
+// おすすめの画面は「おすすめの選び方」（効かせ方・出さない語）と「表示の絞り込み」（場所・料金）の 2 段に分かれ、
+// 段ごとに札を並べる（起案者の指摘 2026-10-17「4 つを並列に並べるのはおかしい」）
 function filterRow(el) {
-  const fil = el.querySelector(".fil2");
-  if (!fil || fil.querySelector(".ftabs")) return;
+  el.querySelectorAll(".fil2").forEach(filterRowOf);
+}
+function filterRowOf(fil) {
+  if (fil.querySelector(".ftabs")) return;
   const boxes = [...fil.querySelectorAll("details.pbox")];
   if (boxes.length < 2) return;
   // 札の名前は箱ごとに決める。お気に入りの画面の 2 つ（登録した名前・出さない語）まで「場所」と
@@ -818,6 +823,7 @@ function filterRow(el) {
     });
     tabs.appendChild(b);
   });
+  tabs.style.gridTemplateColumns = "repeat(" + boxes.length + ",minmax(0,1fr))";
   fil.prepend(tabs);
   fil.classList.add("tabbed");
 }
