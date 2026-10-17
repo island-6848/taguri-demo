@@ -142,5 +142,6 @@ export function tourBlock(venues, shown, today) {
       ? `<details class="${cls}"${shownRow ? ' open' : ''}><summary class="tf-head">${head}<span class="tf-more">詳細</span></summary><div class="tf-body">${body}</div></details>`
       : `<div class="${cls}"><div class="tf-head">${head}</div></div>`;
   });
-  return {html: `<div class="tourfull v2">${rows.join('')}</div>`, perVenuePrice};
+  // 会場が 1 つなら one: 見出し「日程」の横から書き始める（起案者の指示 2026-10-17）
+  return {html: `<div class="tourfull v2${vs.length === 1 ? ' one' : ''}">${rows.join('')}</div>`, perVenuePrice};
 }

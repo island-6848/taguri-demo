@@ -66,7 +66,7 @@ test('興味あり cards get the same schedule block as おすすめ (venue rows
   try {
     assert.equal((await step(env, a, {post: '/api/react', body: {stage_id: '101', value: 'interest', nofill: true}})).status, 200);
     const html = (await step(env, a, {get: '/api/screen/interest'})).body.body_html;
-    assert.match(html, /<article class="ticket interest" data-stage="101"[\s\S]*<div class="tourfull v2"><details class="tf-row" open><summary class="tf-head"><span class="tf-when">11\/1〜11\/10<\/span><span class="tf-more">詳細<\/span><\/summary>/);
+    assert.match(html, /<article class="ticket interest" data-stage="101"[\s\S]*<div class="tourfull v2 one"><details class="tf-row" open><summary class="tf-head"><span class="tf-when">11\/1〜11\/10<\/span><span class="tf-more">詳細<\/span><\/summary>/);
     assert.match(html, /<p class="tf-n">公演日時（2 回）<\/p><table class="ttb"/);
   } finally { sqlite.close(); }
 });

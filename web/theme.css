@@ -885,16 +885,18 @@ body:has(>.shell){padding-top:0}
 .tourfull.v2{display:grid;gap:4px}
 .tourfull.v2 .tf-row{display:block;padding:0 4px;border-radius:6px}
 .tourfull.v2 .tf-star{color:var(--curtain);margin-right:2px}
-.tourfull.v2 .tf-head{display:flex;flex-wrap:nowrap;column-gap:1em}
+.tourfull.v2 .tf-head{display:block}
+.tourfull.v2 .tf-head .tf-loc{margin-left:.6em}
 .tourfull.v2 .tf-when{color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap}
-.tourfull.v2 .tf-loc{color:var(--ink2);font-weight:500;flex:1 1 auto;min-width:0}
+.tourfull.v2 .tf-loc{color:var(--ink2);font-weight:500}
 .tourfull.v2 .tf-row.here .tf-when,.tourfull.v2 .tf-row.here .tf-loc{font-weight:700;color:var(--ink)}
 /* 日程の行そのものが押す口（details の summary）。行の右に「▶詳細」、開いた中身は一段右へ */
 .tourfull.v2 summary.tf-head{cursor:pointer;list-style:none;align-items:baseline}
 .tourfull.v2 summary.tf-head::-webkit-details-marker{display:none}
-.tourfull.v2 .tf-more,.ticket.cmp details.lprice summary .lp-more{margin-left:auto;padding-left:10px;color:var(--curtain);font-size:12px;white-space:nowrap}
-.tourfull.v2 .tf-more::before,.ticket.cmp details.lprice summary .lp-more::before{content:"▶";font-size:9px;margin-right:3px}
-.tourfull.v2 details[open]>summary .tf-more::before,.ticket.cmp details.lprice[open] summary .lp-more::before{content:"▼"}
+/* 「▼詳細」は、日程は会場名（県）のすぐ後ろ、料金は 1 行目の金額のすぐ横に置く（起案者の指示 2026-10-17）。開くと ▲ */
+.tourfull.v2 .tf-more,.ticket.cmp details.lprice summary .lp-more{display:inline-block;margin-left:.6em;color:var(--curtain);font-size:12px;font-weight:500;white-space:nowrap}
+.tourfull.v2 .tf-more::before,.ticket.cmp details.lprice summary .lp-more::before{content:"▼";font-size:9px;margin-right:2px}
+.tourfull.v2 details[open]>summary .tf-more::before,.ticket.cmp details.lprice[open] summary .lp-more::before{content:"▲"}
 .tourfull.v2 .tf-body{margin:0 0 2px 1.2em}
 .tourfull.v2 .tf-n{margin:0;font-size:11px;color:var(--mute)}
 .ticket.cmp .lp-body{margin-left:1.2em}
@@ -920,11 +922,22 @@ body:has(>.shell){padding-top:0}
 .ticket.cmp .lprice{margin:6px 0 8px}
 /* 畳んだ料金: 1 行目の表の下に「ほか N 件を見る」。押せる範囲（summary）の中に収める */
 .ticket.cmp details.lprice{display:block}
-.ticket.cmp details.lprice summary{cursor:pointer;list-style:none;display:flex;align-items:baseline;width:100%}
+.ticket.cmp details.lprice summary{cursor:pointer;list-style:none;display:flex;align-items:baseline;flex-wrap:wrap;width:100%}
+/* 畳んだ料金の中の長い文は折り返す（はみ出さない） */
+.ticket.cmp .lprice .ptb{max-width:100%}
+.ticket.cmp .lprice .ptb td{white-space:normal;overflow-wrap:anywhere}
 .ticket.cmp details.lprice summary::-webkit-details-marker{display:none}
 /* 暦を置く日程は、見出し「日程」を上に出して、暦にカードの幅いっぱいを使う（電話の幅で時刻が重ならないように） */
-.ticket.cmp .ltour:has(.tourfull.v2){display:block}
-.ticket.cmp .ltour:has(.tourfull.v2)>.cl{display:block;margin:0 0 2px}
+.ticket.cmp .ltour:has(.tourfull.v2:not(.one)){display:block}
+.ticket.cmp .ltour:has(.tourfull.v2:not(.one))>.cl{display:block;margin:0 0 2px}
+/* 日程の最後の行と、出演の最初の行の間を空ける */
+.ticket.cmp .ltour:has(.tourfull.v2){margin-bottom:8px}
+/* 会場が 1 つ: 日付は見出し「日程」の横から。開いた暦は見出しの下に回り込んで、カードの幅を使う */
+.ticket.cmp .ltour:has(.tourfull.v2.one){display:block}
+.ticket.cmp .ltour:has(.tourfull.v2.one)>.cl{float:left;width:4em;margin-right:6px}
+.ticket.cmp .ltour:has(.tourfull.v2.one) .tf-row{padding:0}
+.tourfull.v2.one{display:block}
+.tourfull.v2.one .tf-body{clear:left;margin-left:1.2em}
 .ttb .tm{font-size:10.5px;letter-spacing:-.02em}
 .ttb .tm i{font-size:8.5px;vertical-align:1px}
 /* 押せる範囲を 44px 四方以上にする（起案者の指示 2026-10-17）。見た目の大きさは変えず、透明な当たり判定を重ねる */
@@ -953,3 +966,5 @@ a.pill.buy .go:not(#_){font-size:12px;margin-left:2px}
 .ticket.cmp .noposter span:not(#_){white-space:nowrap;letter-spacing:-.05em}
 /* 日程の見出しと最初の行の間を詰める */
 .ticket.cmp .ltour:has(.tourfull.v2) .tourfull{margin-top:0;line-height:1.6}
+.tourfull.v2 .tf-price .ptb td{white-space:normal;overflow-wrap:anywhere}
+.tourfull.v2 details.tf-row{margin:0}
