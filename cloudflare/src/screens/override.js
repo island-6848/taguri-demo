@@ -58,6 +58,36 @@ export function applySynopsis(html, sid, ov) {
   return at < 0 ? html + block : html.slice(0, at) + block + html.slice(at);
 }
 
+/**
+ * カードにあらすじの本文が無いのに、公演一覧（catalogue）には読み取り済みのあらすじがある公演に、その本文を入れる
+ * （起案者の質問 2026-10-17「すでにあらすじが取れている公演なのに、各画面に実際の文章が表示されていないのはなぜ？」）。
+ * カード（rec_card）は全部を 1 つの版として毎日作り直し、その日の書き込みの枠に入らない日は丸ごと見送る
+ * （deliver_catalogue.py）。一覧の行は変わった分だけ先に入るので、あとから読み取ったあらすじは一覧にだけ届き、
+ * カードは古いままになることがある。どちらも同じ themes.jsonl（本文に実在するか確かめた分）から来る。
+ * html: Map(sid -> card)。手で入れたあらすじ（stage_override）がある公演は触らない。
+ */
+export async function fillCatalogueSynopsis(db, html, overrides = new Map()) {
+  const want = [...html].filter(([sid, h]) => !/<p class="txt">/.test(h) && !(typeof overrides.get(sid)?.synopsis === 'string')).map(([sid]) => sid);
+  for (let i = 0; i < want.length; i += 90) {
+    const part = want.slice(i, i + 90);
+    const {results} = await db.prepare(`SELECT id,metadata FROM catalogue WHERE id IN (${part.map(() => '?').join(',')})`).bind(...part).all();
+    for (const r of results) {
+      const syn = String(parseJson(r.metadata, {})?.synopsis || '').trim();
+      const sid = String(r.id);
+      if (!syn || !html.has(sid)) continue;
+      const card = html.get(sid), span = synSpan(card, sid);
+      const old = span ? card.slice(span[0], span[1]) : '';
+      // 題材のタグと、内容を直す入れ口（details）は、もとの枠のものを残す
+      const tags = (/<div class="tags">[\s\S]*?<\/div>/.exec(old) || [''])[0];
+      const form = (/<details class="handt">[\s\S]*<\/details>/.exec(old) || [''])[0];
+      const block = `<div class="syn" data-stage="${E(sid)}"><p class="txt">${E(syn)}</p>${tags}`
+        + `<span class="src">［出典: 公演の紹介文］</span><button class="mrb" data-more="1">続きを読む</button>${form}</div>`;
+      if (span) html.set(sid, card.slice(0, span[0]) + block + card.slice(span[1]));
+    }
+  }
+  return html;
+}
+
 /** stageInfo's entry with the hand-entered details laid over it. */
 export function mergeInfo(s, ov) {
   if (!ov) return s;

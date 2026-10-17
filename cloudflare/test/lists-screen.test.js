@@ -71,7 +71,8 @@ test('a registered name brings its stages to お気に入り and out of おす�
     // 理由の欄は出さず、当たった名前をハッシュタグで並べる（起案者 2026-10-15）
     assert.match(fav, /<div class="favtags"><a class="ftag" href="\/recommend\/favourites\?t=__TAGURI_TOKEN__&amp;n=%E4%BF%B3%E5%84%AA%E7%94%B2">#俳優甲<\/a><\/div>/);
     assert.doesNotMatch(fav, /なぜお知らせしているか/);
-    assert.match(fav, /<span class="tgn">人「俳優甲」<\/span>/);
+    // 登録した名前も、カードのハッシュタグと同じ形（起案者 2026-10-17）
+    assert.match(fav, /<span class="tag ftag" data-kind="人" data-name="俳優甲"><a class="tgn" href="\/recommend\/favourites\?t=__TAGURI_TOKEN__&amp;n=%E4%BF%B3%E5%84%AA%E7%94%B2">#俳優甲<\/a><span class="tgk">人<\/span><button data-fav="remove" aria-label="「俳優甲」を外す">✕<\/button><\/span>/);
     assert.doesNotMatch(fav, /data-v="interest"/);                 // no 興味あり here, only 購入済み
     assert.match(fav, /<span class="btns" data-stage="101"><button data-v="owned">購入済みにする<\/button>/);
     // Group names match the producing company only.

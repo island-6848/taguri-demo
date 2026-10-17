@@ -1185,11 +1185,14 @@ function unratedNudge(ends) {
   box.querySelector(".go").focus();
 }
 
-// ポスターを押すと、画面いっぱいに拡大して出す（起案者の指示 2026-10-17）。外側・×・Esc で閉じる
+// ポスターを押すと、画面いっぱいに拡大して出す（起案者の指示 2026-10-17）。外側・×・Esc で閉じる。
+// ポスターが出るすべての画面で（おすすめ・興味あり・お気に入り・購入済み・探す・開幕リマインド・評価・日記帳。
+// 起案者の指示 2026-10-17「ポスターが出る全ページこれにして」）。読み込めた画像だけ
 document.addEventListener("click", ev => {
-  const img = ev.target.closest && ev.target.closest(".ticket .pwrap img.poster");
-  if (!img || !img.closest(".pwrap.ld")) return;
+  const img = ev.target.closest && ev.target.closest("img.poster");
+  if (!img || !img.complete || !img.naturalWidth || img.closest(".pzoom")) return;
   ev.preventDefault();
+  ev.stopPropagation();
   const box = document.createElement("div");
   box.className = "pzoom";
   box.setAttribute("role", "dialog");
@@ -1197,7 +1200,8 @@ document.addEventListener("click", ev => {
   const big = document.createElement("img");
   big.src = img.currentSrc || img.src;
   big.alt = (img.closest(".ticket")?.querySelector("h3")?.textContent || "") + "のポスター";
-  // 「×」はポスターの右上に重ねる（起案者の指示 2026-10-17「画面の中の右上ではなくポスター画像の右上に」）
+  // 「×」はポスターに重ねず、ポスターの右上の角の上に置く（起案者の指示 2026-10-17「閉じる×はポスターに被せず、
+  // ポスターの右上の角の上に置いて」。その前は「画面の中の右上ではなくポスター画像の右上に」）
   const frame = document.createElement("div");
   frame.className = "pz-in";
   const close = document.createElement("button");

@@ -2279,6 +2279,21 @@
    "verifies": []
   },
   {
+   "id": "fix-card-synopsis-stale",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-17",
+   "title": "読み取り済みのあらすじが画面に出ないのは、カード（rec_card）が古い版のまま残るため。一覧（catalogue）には先に届くので、画面に出すときに一覧の本文で埋める",
+   "sources": [
+    "cloudflare/src/screens/override.js",
+    "cloudflare/src/screens/cards.js",
+    "cloudflare/scripts/deliver_catalogue.py",
+    "tools/admin/admin.py",
+    "cloudflare/test/override.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "fix-declined-kind-tags",
    "type": "decision",
    "status": "adopted",
@@ -7526,6 +7541,16 @@
    "from": "firebase-apikey-public",
    "rel": "raises",
    "to": "q-firebase-key-restriction"
+  },
+  {
+   "from": "fix-card-synopsis-stale",
+   "rel": "depends_on",
+   "to": "dec-synopsis-reader-claude"
+  },
+  {
+   "from": "fix-card-synopsis-stale",
+   "rel": "depends_on",
+   "to": "dec-recommend-worker-cards"
   },
   {
    "from": "fix-declined-kind-tags",

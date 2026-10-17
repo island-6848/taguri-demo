@@ -3,7 +3,7 @@
 // build_cards.compose; test/cards.test.js checks it against the Python output for
 // every list (recommend / interest / favourite / owned).
 import {E} from './py.js';
-import {loadOverrides, applySynopsis, applyPrice} from './override.js';
+import {loadOverrides, applySynopsis, applyPrice, fillCatalogueSynopsis} from './override.js';
 
 const ICONS = {check: 'M4.5 12.5 9.5 18 20 6', plus: 'M12 5v14M5 12h14', eye: 'M2.5 12S6 6 12 6s9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6zM12 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z',
   inbox: 'M3 12h5l1.5 2.5h5L16 12h5M3 12l3-7h12l3 7v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z'};
@@ -136,6 +136,9 @@ export async function cardTemplates(db, sids) {
     for (const r of pics.results) posters.set(r.stage_id, r.file);
   }
   // 管理者が手で入れたあらすじ・題材を重ねる（migration 0028、tools/admin）
-  for (const [sid, ov] of await loadOverrides(db, [...html.keys()])) html.set(sid, applyPrice(applySynopsis(html.get(sid), sid, ov), ov));
+  const overrides = await loadOverrides(db, [...html.keys()]);
+  for (const [sid, ov] of overrides) html.set(sid, applyPrice(applySynopsis(html.get(sid), sid, ov), ov));
+  // カードが古くて、あとから読み取ったあらすじが入っていない公演は、公演一覧の本文で埋める
+  await fillCatalogueSynopsis(db, html, overrides);
   return {html, posters};
 }

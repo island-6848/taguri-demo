@@ -51,3 +51,27 @@ test('priceRange matches render_recommend.price_range', () => {
   assert.deepEqual(priceRange('入場無料'), [0, 0]);
   assert.deepEqual(priceRange('未定'), null);
 });
+
+// 起案者の質問 2026-10-17「すでにあらすじが取れている公演なのに、各画面に実際の文章が表示されていないのはなぜ？」
+// カードは古い版のまま（あらすじ無し）でも、公演一覧に読み取り済みのあらすじが届いていれば、画面ではそれを出す
+test('a card built before the synopsis was read shows the one the catalogue already has', async () => {
+  const {env, sqlite} = setup();
+  for (const s of FIXTURE.sql) sqlite.exec(s);
+  const a = await signIn(env);
+  try {
+    for (const [title, date, sid, verdict] of [['終わった舞台', '2026-08-05', '103', '◎'], ['一日だけの舞台', '2026-09-05', '104', '×']]) {
+      const key = (await step(env, a, {post: '/api/add_work', body: {title, date}})).body.work_key;
+      await step(env, a, {post: '/api/link_stage', body: {work_key: key, stage_id: sid}});
+      await step(env, a, {post: '/api/rate', body: {work_key: key, verdict}});
+    }
+    assert.match((await step(env, a, {get: '/api/screen/recommend'})).body.body_html, /<div class="syn no" data-stage="101">/);
+    sqlite.prepare("INSERT INTO catalogue(id,title,date,metadata) VALUES('101','x','2026-11-01',?) ON CONFLICT(id) DO UPDATE SET metadata=excluded.metadata")
+      .run(JSON.stringify({synopsis: '港町に<帰ってきた>男の話。'}));
+    const html = (await step(env, a, {get: '/api/screen/recommend'})).body.body_html;
+    assert.match(html, /<div class="syn" data-stage="101"><p class="txt">港町に&lt;帰ってきた&gt;男の話。<\/p><span class="src">［出典: 公演の紹介文］<\/span><button class="mrb" data-more="1">続きを読む<\/button><details class="handt">/);
+    assert.doesNotMatch(html, /あらすじを取れませんでした/);
+    // 手で入れたあらすじがあれば、そちらが勝つ
+    sqlite.prepare("INSERT INTO stage_override(stage_id,synopsis,themes,info,updated_at) VALUES('101','管理者の文',NULL,'{}','x')").run();
+    assert.match((await step(env, a, {get: '/api/screen/recommend'})).body.body_html, /<p class="txt">管理者の文<\/p>/);
+  } finally { sqlite.close(); }
+});

@@ -1008,11 +1008,13 @@ a.pill.buy .go:not(#_){font-size:12px;margin-left:2px}
 .ttb-legend b{color:var(--curtain);margin-right:4px}
 .ttb-legend .miss{color:var(--mute)}
 /* ポスターを押したときの拡大（web/app.js posterZoom） */
-.ticket .pwrap img.poster{cursor:zoom-in}
+.pwrap.ld img.poster,img.poster{cursor:zoom-in}
+/* 「×」はポスターの右上の角の真上に置く（ポスターに被せない）。そのぶん、画像の高さは × の段（44px＋すき間 8px）を引く */
 .pzoom{position:fixed;inset:0;z-index:2147483000;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;padding:16px;cursor:zoom-out}
-.pzoom .pz-in{position:relative;line-height:0}
-.pzoom img{display:block;max-width:calc(100vw - 32px);max-height:calc(100vh - 32px);object-fit:contain;border-radius:4px;box-shadow:0 4px 24px rgba(0,0,0,.5)}
-.pzoom .pz-x{position:absolute;top:6px;right:6px;width:44px;height:44px;padding:0;border:0;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;font:inherit;font-size:26px;line-height:44px;text-align:center;cursor:pointer;box-shadow:0 0 0 1.5px rgba(255,255,255,.75)}
+.pzoom .pz-in{position:relative;line-height:0;margin-top:52px}
+.pzoom img{display:block;max-width:calc(100vw - 32px);max-height:calc(100vh - 32px - 52px);max-height:calc(100dvh - 32px - 52px);object-fit:contain;border-radius:4px;box-shadow:0 4px 24px rgba(0,0,0,.5)}
+.pzoom .pz-x{position:absolute;bottom:calc(100% + 8px);right:0;width:44px;height:44px;padding:0;border:0;border-radius:50%;background:rgba(255,255,255,.14);color:#fff;font:inherit;font-size:26px;line-height:44px;text-align:center;cursor:pointer;box-shadow:0 0 0 1.5px rgba(255,255,255,.75)}
+.pzoom .pz-x:hover{background:rgba(255,255,255,.26)}
 .pzoom .pz-x:focus-visible{outline:2px solid #fff;outline-offset:2px}
 /* 暦の印の説明も、暦の文字と同じ 12px に */
 .ttb-legend:not(#_){font-size:12px}
@@ -1046,3 +1048,11 @@ a.pill.buy .go:not(#_){font-size:12px;margin-left:2px}
 .fixq-form textarea{width:100%;box-sizing:border-box;font:inherit;font-size:13px}
 .fixq-foot{margin:6px 0 0;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .fixq-form .note{margin:6px 0 0;font-size:11.5px}
+/* お気に入りの「足す・外す」の欄の名前も、カードの中のハッシュタグ（.ftag）と同じ形に（起案者の指示 2026-10-17） */
+.tags .tag.ftag:not(#_){display:inline-flex;align-items:center;gap:6px;padding:2px 2px 2px 10px;background:transparent;
+ font-size:12px;font-weight:600;color:var(--s2);border:1px solid color-mix(in srgb,var(--s2) 42%,transparent)}
+.tags .tag.ftag .tgn{color:inherit;text-decoration:none}
+.tags .tag.ftag .tgn:hover,.tags .tag.ftag .tgn:focus-visible{text-decoration:underline}
+.tags .tag.ftag .tgk{font-size:11px;font-weight:400;color:var(--mute)}
+.tags .tag.ftag button{font-size:12px;line-height:1.5;color:var(--s2);opacity:.75;padding:0 7px;border-radius:99px}
+.tags .tag.ftag button:hover{opacity:1;background:color-mix(in srgb,var(--s2) 12%,transparent);color:var(--s2)}
