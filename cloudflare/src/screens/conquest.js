@@ -76,15 +76,15 @@ export function conquestPanel(by, unknown = []) {
     ? `<details class="cq-unknown"><summary>都道府県が分からない劇場　${unknown.length} か所</summary><ul>${unknown.map(v => `<li>${E(v)}</li>`).join('')}</ul></details>`
     : '';
   const lead = `行った劇場 <b>${visited}</b>${total !== null ? `（全国 ${total.toLocaleString('ja-JP')} のうち）` : ''}・`
-    + `行った都道府県 <b>${prefs} / 47</b>。マスの色は、その県で行った劇場の数です。`;
+    + `行った都道府県 <b>${prefs} / 47</b>。マスの色はその県で行った劇場の数です。`;
   return `<section class="card cq">
-${h2('building', '劇場制覇マップ ── どこの劇場に行ったか', `<span class="badge part">${visited} か所</span>`)}
+${h2('building', '劇場制覇マップ', `<span class="badge part">${visited} か所</span>`)}
 <p class="lead">${lead}</p>
-<div class="cq-map"><svg viewBox="0 0 ${13 * W} ${10 * H}" width="100%" style="max-width:${13 * W}px" role="img" aria-label="都道府県のタイル地図。色が行った劇場の数">${tiles}</svg></div>
+<div class="cq-map"><svg viewBox="0 0 ${13 * W} ${10 * H}" width="100%" style="max-width:${13 * W}px" role="img" aria-label="都道府県のタイル地図。色は行った劇場の数を表します">${tiles}</svg></div>
 <div class="cq-legend">${legend}</div>
 <div class="cq-detail" aria-live="polite"><p class="cq-hint">マスを押すと、その県で行った劇場が出ます。</p>${picks}</div>
 ${rest}
-<p class="fine">その県の劇場の数は、たぐりが集めた公演（これからの公演と 2019 年以降の過去の公演）に 2 回以上出てきた会場です。同じ建物の別のホールは別に数えます。そこに無い劇場に行っていたら、行った劇場として数え、その県の数にも足しています。</p>
+<p class="fine">その県の劇場として数えているのは、たぐりが集めた公演（これからの公演と 2019 年以降の過去の公演）に 2 回以上出てきた会場です。同じ建物の別のホールは別に数えます。この数に入っていない劇場に行っていたら、行った劇場として数え、その県の数にも足しています。</p>
 </section>`;
 }
 

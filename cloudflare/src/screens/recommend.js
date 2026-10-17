@@ -31,8 +31,8 @@ const TIPS = `<section class="card tips">
 <h2>おすすめを出すためのワンポイント</h2>
 <ol>
 <li><b>観た公演を 2 本以上、評価してください。</b>「◎」だけでなく「○」「△」「×」も混ぜて付けるのがコツです。よかった公演といまひとつだった公演の両方があると、どこが好みなのかが分かります。全部「◎」だと、違いが分からず、おすすめが出ません。</li>
-<li><b>観た公演は、題名と観た日を正しく入れてください。</b>公演の情報（出演者や作り手）が分かると、その人たちの次の公演をおすすめできます。日記帳で「まだどの公演とも結び付いていません」と出る記録は、その欄から観た公演を選んでください。</li>
-<li><b>好きな俳優・劇団・作品を「お気に入り」に登録してください。</b>登録した名前の公演は、評価が無くてもすぐ「お気に入り」に出ます。一緒に出ている人の公演も、おすすめに出やすくなります。</li>
+<li><b>観た公演は題名と観た日を正しく入れてください。</b>公演の情報（出演者や作り手）が分かると、その人たちの次の公演をおすすめできます。日記帳で「まだどの公演とも結び付いていません」と出る記録は、その欄から観た公演を選んでください。</li>
+<li><b>好きな俳優・劇団・作品を「お気に入り」に登録してください。</b>登録した名前の公演は、評価が無くてもすぐ「お気に入り」に出ます。一緒に出ている人の公演もおすすめに出やすくなります。</li>
 <li><b>気になる公演に「興味あり」を押してください。</b>観た記録が無くても、押した公演に出ている人や作り手の、ほかの公演がおすすめに出ます。<a href="/search?t=__TAGURI_TOKEN__">探す</a>で題名や人名から探すか、<a href="/recommend/reminder?t=__TAGURI_TOKEN__">開幕リマインド</a>から選ぶのが手軽です。</li>
 <li><b>評価が増えるほど、おすすめは増えて、当たりやすくなります。</b>まずは 10 本ほどを目安にどうぞ。</li>
 </ol>
@@ -65,12 +65,12 @@ ${THANKS_ART}
 <p class="thx-s">いまおすすめできる公演には、すべて答えていただきました。</p>
 <h2>また おすすめが出るようにするには</h2>
 <ol>
-<li><b>過去の観劇記録を足す</b> ── <a href="/records/works?t=__TAGURI_TOKEN__">日記帳</a>に観た公演を足すと、その出演者・作り手の公演が候補に入ります。</li>
-<li><b>観た公演を評価する</b> ── <a href="/rate?t=__TAGURI_TOKEN__">評価</a>が増えるほど、好みに合う公演を見つけやすくなります。</li>
-<li><b>お気に入りを登録する</b> ── 好きな俳優・劇団・作品を<a href="/recommend/favourites?t=__TAGURI_TOKEN__">お気に入り</a>に入れると、その人たちの公演が出ます。</li>
-<li><b>「探す」で興味ありを押す</b> ── <a href="/search?t=__TAGURI_TOKEN__">探す</a>で見つけた公演に押した興味ありも、次のおすすめの手がかりになります。</li>
-<li><b>出さない語・都道府県の設定を見直す</b> ── 絞り込みを外すと、隠れていた候補が出ます。</li>
-<li><b>少し待つ</b> ── 新しい公演は毎日取り込んでいます。日をおいて開くと、新しい候補が出ていることがあります。</li>
+<li><a href="/records/works?t=__TAGURI_TOKEN__">日記帳</a>に<b>過去に観た公演を足す</b>と、その出演者・作り手の公演が候補に入ります。</li>
+<li><b>観た公演の<a href="/rate?t=__TAGURI_TOKEN__">評価</a></b>が増えるほど、好みに合う公演を見つけやすくなります。</li>
+<li>好きな俳優・劇団・作品を<b><a href="/recommend/favourites?t=__TAGURI_TOKEN__">お気に入り</a>に登録する</b>と、その人たちの公演が出ます。</li>
+<li><b><a href="/search?t=__TAGURI_TOKEN__">探す</a>で見つけた公演に興味ありを押す</b>と、それも次のおすすめの手がかりになります。</li>
+<li><b>出さない語・都道府県の設定を見直して</b>絞り込みを外すと、隠れていた候補が出ます。</li>
+<li>新しい公演は毎日取り込んでいます。<b>少し日をおいて開く</b>と、新しい候補が出ていることがあります。</li>
 </ol>
 </section>
 `;
@@ -393,7 +393,7 @@ export async function recommendScreen(params, ctx) {
   // 候補はあったが、すべて答え終えた（新しく使い始めた人の「まだ候補が無い」とは分ける）
   const allAnswered = !cards.length && !data.groups.length && (data.diag?.ranked || 0) > 0;
   if (!prefs.length && allAnswered) {
-    head = '今週のおすすめは、すべて答えました';
+    head = '今週のおすすめにはすべて答えました';
     lede = '';
   } else if (!prefs.length && !cards.length) {
     head = '今週のおすすめはありません';
@@ -418,15 +418,15 @@ export async function recommendScreen(params, ctx) {
   const nSyn = cards.filter(h => /<div class="syn( doubt)?"/.test(h)).length;
   const limits = cards.length ? `<p class="note toinfo"><b>この ${cards.length} 件で、出せていない情報です。</b><br>
 ・<b>チケットの販売期限と、販売終了・完売</b>：手元に情報がないので表示できません。
-残っているかどうかは公式サイトで確認してください<br>
+チケットが残っているかどうかは公式サイトで確認してください<br>
 ・<b>あらすじ</b>：${nSyn}/${cards.length} 件で表示できました。残りは、まだ読み取りが済んでいないか、公演のページに載っていませんでした<br>
 ・<b>まだ答えていない公演は、次回も候補に残ります。</b>
 評価・公演情報・設定が変わると、順位も変わることがあります</p>` : '';
   const body = `<h1>${E(head)}</h1>
 ${lede}
-${tips}<p class="fgh">${ico('light', 15)}<b>おすすめの選び方</b><span>好みの計算そのものを変えます（どの公演が選ばれるかが変わります）</span></p>
+${tips}<p class="fgh">${ico('light', 15)}<b>おすすめの選び方</b><span>好みの計算そのものを変えるので、どの公演が選ばれるかが変わります</span></p>
 <div class="fil2 tune">${weightForm(data.weights || {}, data.w_counts || {})}${declinedBox(await loadDeclined(ctx))}${kindOffBox(await loadKindOff(ctx))}</div>
-<p class="fgh">${ico('search', 15)}<b>表示の絞り込み</b><span>選ばれたおすすめのうち、見る分だけに絞ります（順位は変わりません）</span></p>
+<p class="fgh">${ico('search', 15)}<b>表示の絞り込み</b><span>選ばれたおすすめのうち、見る分だけに絞ります。順位は変わりません</span></p>
 <div class="fil2 narrow">${prefForm(prefCounts(data.groups), prefs, '/recommend', '', {}, regionCounts(data.groups.map(g => ({key: g.stage_id, prefs: g.venues.map(v => v.pref)}))))}</div>
 ${cards.join('')}
 <p class="lede">気になった公演で「興味あり」を押すと、
@@ -480,10 +480,10 @@ async function fillSlot(ctx, shown, pressed, page = null) {
   const {rows} = filtered(data.groups, prefs, 1e6);
   const seen = new Set([...shown.map(String), String(pressed)]);
   const rest = rows.filter(r => !seen.has(String(r.stage_id)) && !seen.has(String(r.shown)));
-  if (!rest.length) return {html: '', left: 0, said: '記録しました。入れ替える候補はもうありません（好みに合いそうだと判断できた分は出し切りました）。'};
+  if (!rest.length) return {html: '', left: 0, said: '記録しました。入れ替える候補はもうありません。好みに合いそうだと判断できた分は出し切りました。'};
   const [card] = await cardsHtml(ctx, rest.slice(0, 1), data.titles, shown.length + 1);
   return {html: card || '', left: rest.length,
-    said: `記録しました。入れ替わりに 1 件を下に足しました（まだ出していない候補が ${rest.length - 1} 件あります）。`};
+    said: `記録しました。入れ替わりに 1 件を下に足しました。まだ出していない候補が ${rest.length - 1} 件あります。`};
 }
 
 export async function reactAction(b, ctx) {

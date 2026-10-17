@@ -30,14 +30,14 @@ export const interestButtons = sid => '<button class="wnb" data-btns-open="1">�
 export const ownedButton = sid => `<span class="btns" data-stage="${E(sid)}">`
   + '<button data-v="owned">購入済みにする</button><span class="said"></span></span>';
 /** お気に入り: 購入済みにした公演は一覧に残し、ボタンの代わりに印を出す（起案者の指示 2026-10-15「購入済み押してもお気に入りから消さないで」）。 */
-export const ownedMark = '<span class="owned-mark">購入済み ── <a href="/tickets?t=__TAGURI_TOKEN__">購入済み公演で行く日を入れる</a></span>';
+export const ownedMark = '<span class="owned-mark">購入済みです。<a href="/tickets?t=__TAGURI_TOKEN__">購入済み公演で行く日を入れる</a></span>';
 
 /** render_recommend.why_note */
 export function whyNote(sid, note = '', {open = false, ask = false} = {}) {
   const box = `<div class="why-note" data-stage="${E(sid)}"${open ? '' : ' hidden'}>`
     + '<label>なぜ気になったか<span class="opt">任意</span></label>'
     + `<textarea placeholder="例: 作り手30の脚本だから／作品4に興味がある／題材が題材3そう" rows="2">${E(note)}</textarea>`
-    + '<div class="wn-foot"><span class="hint">書いた文に出てきた名前は、「お気に入り」に登録する候補として出てきます</span>'
+    + '<div class="wn-foot"><span class="hint">書いた文にある名前は、「お気に入り」に登録する候補として出てきます</span>'
     + '<span class="said"></span></div></div>';
   if (open || !ask) return box;
   const head = note

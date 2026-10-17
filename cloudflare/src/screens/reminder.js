@@ -211,7 +211,7 @@ export function panel({cands, status, owned, tickets, today, prefs = [], week = 
   let open;
   if (wk.days.length) {
     const days = wk.days.map(([day, rows]) => `<details class="dgday"${dayDiff(day, today) <= 1 ? ' open' : ''}>`
-      + `<summary>${jd(day)} ── ${rows.length} 件</summary>`
+      + `<summary>${jd(day)}　${rows.length} 件</summary>`
       + `<ul class="dglist">${rows.map(r => row(r, today, poster, detail, hereLabel)).join('')}</ul></details>`).join('');
     const lead = prefs.length ? `<b>${E(where)}</b>で観られる、${E(span)} に開幕する公演が <b>${wk.n} 件</b>あります。`
       : `<b>${E(span)} に開幕する公演が ${wk.n} 件</b>あります。`;
@@ -232,7 +232,7 @@ export function panel({cands, status, owned, tickets, today, prefs = [], week = 
   }
   const label = Object.fromEntries(WEEKS)[week];
   return `${tabs}
-<section class="dgcard dgmain">${h2('inbox', `${label}開幕する公演（全部）`)}
+<section class="dgcard dgmain">${h2('inbox', `${label}開幕するすべての公演`)}
 ${open}</section>
 <section class="dgcard">${h2('ticket', '直近の観劇予定')}
 <p class="dglead">チケットを入れてある公演だけです。</p>
@@ -310,7 +310,7 @@ export async function reminderScreen(params, ctx) {
   for (const r of wr) if (r.pref) counts[r.pref] = (counts[r.pref] || 0) + 1;
   const label = Object.fromEntries(WEEKS)[week];
   const note = '都道府県は<b>いくつでも同時に選べます</b>。選んだ県で開幕する公演を、'
-    + '<b>順位は付けずに日付が近い順で全部</b>表示します。数字は、その県で'
+    + '<b>順位は付けずに日付が近い順で全部</b>表示します。数字はその県で'
     + `${label}開幕する件数です。<b>選ばなければ全国です。</b>`
     + 'ツアーで来る公演は、その会場のある県として数えます。<br>'
     + '<b>「今週のおすすめ」と同じ絞り込みです。</b>'
@@ -333,11 +333,11 @@ export async function reminderScreen(params, ctx) {
   if (bare.length) for (const [sid, s] of await stageInfo(ctx.db, bare)) details.set(sid, detailHtml(s));
   const poster = sid => (pics.has(sid) ? posterHtml(pics.get(sid)) : ''), detail = sid => details.get(sid) || '';
   const html = panel({cands, status, owned, tickets: b.tickets, today: ctx.today, prefs, week, poster, detail, hereLabel: 'この行の会場', pq: prefQs(params)});
-  const unknownHtml = !unknown.length ? '' : `<details class="dgday" open><summary>都道府県が分からない公演 ── ${unknown.length} 件</summary>`
+  const unknownHtml = !unknown.length ? '' : `<details class="dgday" open><summary>都道府県が分からない公演　${unknown.length} 件</summary>`
     + '<p class="dglead">会場の都道府県がまだ分からないため、場所の絞り込みに入れられない公演です。見逃さないように、ここに分けて出しています。</p>'
     + `<ul class="dglist">${unknown.map(r => row(r, ctx.today, poster, detail, 'この行の会場')).join('')}</ul></details>`;
   const body = `<h1>開幕リマインド ── 見逃していませんか</h1>
-<p class="lede"><b>初日が近い公演を、答えたかどうかに関わらず全部出します。</b>「興味あり」も「興味なし」も押さないうちに開幕してしまうのが、いちばんの見逃しだからです。未回答の行は、その場で答えられます。</p>
+<p class="lede"><b>初日が近い公演を、答えたかどうかに関わらず全部出します。</b>「興味あり」も「興味なし」も押さないうちに開幕してしまうのが、いちばんの見逃しだからです。未回答の行はその場で答えられます。</p>
 <p class="fgh">${ico('search', 15)}<b>表示の絞り込み</b><span>初日が近い公演のうち、見る分だけに絞ります</span></p>
 <div class="fil2 narrow">${prefForm(counts, prefs, '/recommend/reminder', note, {w: week}, regionCounts(wr.map(r => ({key: r.stage_id || r.title, prefs: [r.pref]}))))}</div>
 ${FOLD_STYLE}
