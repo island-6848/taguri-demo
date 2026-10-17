@@ -5,6 +5,7 @@ import {readFileSync, readdirSync} from 'node:fs';
 import {execFileSync} from 'node:child_process';
 import worker from '../../src/worker.js';
 import {TOKEN} from '../../src/screens/index.js';
+import {TERMS_VERSION} from '../../src/terms.js';
 
 const here = p => new URL(p, import.meta.url).pathname;
 const catalogue = JSON.parse(execFileSync('python3', [here('./catalogue.py'), '--sql'], {encoding: 'utf8', maxBuffer: 64 * 1024 * 1024}));
@@ -21,7 +22,7 @@ export function setup() {
   return {sqlite, env};
 }
 export async function signIn(env) {
-  const res = await worker.fetch(new Request(`${ORIGIN}/migration-api/register`, {method: 'POST', headers: {origin: ORIGIN, 'content-type': 'application/json'}, body: '{}'}), env);
+  const res = await worker.fetch(new Request(`${ORIGIN}/migration-api/register`, {method: 'POST', headers: {origin: ORIGIN, 'content-type': 'application/json'}, body: JSON.stringify({agree: TERMS_VERSION})}), env);
   return res.headers.get('set-cookie').split(';')[0];
 }
 export async function step(env, cookie, s) {

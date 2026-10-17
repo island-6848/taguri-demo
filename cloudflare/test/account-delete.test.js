@@ -5,6 +5,7 @@ import {readFileSync, readdirSync} from 'node:fs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import worker from '../src/worker.js';
+import {TERMS_VERSION} from '../src/terms.js';
 
 const ORIGIN = 'https://taguri.example';
 function setup() {
@@ -17,7 +18,7 @@ function setup() {
 }
 const cookieOf = r => r.headers.get('set-cookie')?.split(';')[0] ?? '';
 async function account(call, sqlite, label) {
-  const reg = await call('register', {});
+  const reg = await call('register', {agree: TERMS_VERSION});
   const cookie = cookieOf(reg), {recovery_code} = await reg.json();
   await call('record', {id: `${label}-r`, title: `${label}の記録`, date: '2026-09-01', rating: '◎', note: '感想'}, cookie);
   await call('favourite', {name: `${label}の作者`, kind: '人'}, cookie);
@@ -96,7 +97,7 @@ test('with the Render bridge on, deletion and recovery reach this Worker via /mi
   const {sqlite, env} = setup();
   env.ORIGINAL_UI_BRIDGE = 'true';
   const post = (path, value, cookie = '') => worker.fetch(new Request(`${ORIGIN}${path}`, {method: 'POST', headers: {cookie, origin: ORIGIN, 'content-type': 'application/json'}, body: JSON.stringify(value)}), env);
-  const reg = await post('/migration-api/register', {});
+  const reg = await post('/migration-api/register', {agree: TERMS_VERSION});
   const {recovery_code} = await reg.json();
   const fresh = cookieOf(await post('/migration-api/recover', {code: recovery_code}));
   assert.match(fresh, /taguri_session=/);

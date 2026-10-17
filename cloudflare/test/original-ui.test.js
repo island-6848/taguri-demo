@@ -2,6 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {originalUI,isOriginalRoute} from '../src/original-ui.js';
 import worker from '../src/worker.js';
+import {TERMS_VERSION} from '../src/terms.js';
 test('all original screen names are transported without changing fragment HTML',async()=>{
  const names=['recommend','reminder','interest','favourites','calendar','tickets','rate','unrated','notes','register','records','trace','chronicle','works','search','settings','start'];
  for(const name of names) {
@@ -28,6 +29,6 @@ test('session cookies and redirects stay on this site; global backups are not ex
  assert.equal(isOriginalRoute('/rate'),false);
 });
 test('D1 migration API and its records stay accessible after restoring the original frontend',async()=>{
- const result=await worker.fetch(new Request('https://taguri.example/migration-api/register',{method:'POST',headers:{origin:'https://taguri.example','content-type':'application/json'},body:'{}'}),{ORIGINAL_UI_BRIDGE:'true',ALLOW_REGISTRATION:'false'});
+ const result=await worker.fetch(new Request('https://taguri.example/migration-api/register',{method:'POST',headers:{origin:'https://taguri.example','content-type':'application/json'},body:JSON.stringify({agree:TERMS_VERSION})}),{ORIGINAL_UI_BRIDGE:'true',ALLOW_REGISTRATION:'false'});
  assert.equal(result.status,503);assert.match((await result.json()).error,/新規登録/);
 });

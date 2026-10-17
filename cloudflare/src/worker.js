@@ -1,6 +1,7 @@
 import {isOriginalRoute, originalUI, ORIGINAL_SCREENS, ORIGINAL_WRITES} from './original-ui.js';
 import {verifyIdToken, isAuthError} from './firebase-auth.js';
 import {passkeyRoutes} from './passkey.js';
+import {TERMS_VERSION, requireAgreement} from './terms.js';
 import {scoreFromIndex, d1Access, gradeOf, seedsFromFavourites, collapseRanked, cleanAspects, SEED_KINDS, SEED_ROLES, MAX_SEED_FAVS, cmp} from './recommend.js';
 import {searchIndex, d1Search} from './stage-search.js';
 import {suggest} from './screens/suggest.js';
@@ -146,9 +147,10 @@ async function firebaseSignIn(request, env) {
   }
   if (!uid) {
     if (env.ALLOW_REGISTRATION !== 'true') fail(503,'新規登録を一時停止しています。');
+    requireAgreement(input, fail);
     await checkNewAccount(db, env, fail);
     uid = crypto.randomUUID(); created = true;
-    commands.push(db.prepare('INSERT INTO users(id,recovery_hash,created_at,firebase_uid) VALUES(?,?,?,?)').bind(uid,'firebase:'+token(),now(),identity.uid));
+    commands.push(db.prepare('INSERT INTO users(id,recovery_hash,created_at,firebase_uid,terms_version,terms_at) VALUES(?,?,?,?,?,?)').bind(uid,'firebase:'+token(),now(),identity.uid,TERMS_VERSION,now()));
   }
   const session = await startSession(db, uid, commands, oldRaw);
   return json({linked,created},200,{'Set-Cookie':cookie(session)});
@@ -370,7 +372,8 @@ async function calendarCallbackPage(request, env) {
 // Signed-out visitors may see only /login (which now also explains what たぐり
 // is; /about moved there) and the static files it needs. Every other page
 // sends them to sign in; the original screens' data answers 401.
-const PUBLIC_PAGES = new Set(['/login', '/about']);   // /about only redirects to /login
+// /terms・/privacy は登録の前に読むので、ログインなしで開ける（public/terms.html・privacy.html）
+const PUBLIC_PAGES = new Set(['/login', '/about', '/terms', '/privacy']);   // /about only redirects to /login
 // APIs that start a session (or hold no user data) must work before sign-in.
 const PUBLIC_APIS = new Set(['/api/register', '/api/recover', '/api/catalogue', '/api/health']);
 const STATIC_FILE = /\.(css|js|mjs|map|png|jpe?g|gif|webp|svg|ico|mp4|webmanifest|txt)$/;
@@ -518,6 +521,7 @@ export default {
         let uid; let recovery;
         if (path === '/api/register') {
           if (env.ALLOW_REGISTRATION !== 'true') fail(503,'新規登録を一時停止しています。');
+          requireAgreement(input, fail);
           await checkNewAccount(env.DB, env, fail);
           recovery = token(); uid = crypto.randomUUID();
         } else {
@@ -527,7 +531,7 @@ export default {
           if (!uid) fail(401,'復旧コードを確認してください。');
         }
         const commands = [];
-        if (recovery) commands.push(env.DB.prepare('INSERT INTO users(id,recovery_hash,created_at) VALUES(?,?,?)').bind(uid,await hash(recovery),now()));
+        if (recovery) commands.push(env.DB.prepare('INSERT INTO users(id,recovery_hash,created_at,terms_version,terms_at) VALUES(?,?,?,?,?)').bind(uid,await hash(recovery),now(),TERMS_VERSION,now()));
         const session = await startSession(env.DB, uid, commands, null);
         return json({recovery_code:recovery},200,{'Set-Cookie':cookie(session)});
       }

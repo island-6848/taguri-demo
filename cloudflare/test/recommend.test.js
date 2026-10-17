@@ -53,6 +53,7 @@ test('only the latest rating per linked stage counts; unlinked records stay sepa
 
 // ---------------------------------------------------------------- through the Worker
 import worker, {recommendFor, onboardingFor} from '../src/worker.js';
+import {TERMS_VERSION} from '../src/terms.js';
 const ORIGIN = 'https://taguri.example';
 function envFor(sqlite) {
   const wrap = (sql, args = []) => ({bind(...v) { return wrap(sql, v); }, async first() { return sqlite.prepare(sql).get(...args) ?? null; }, async all() { return {results: sqlite.prepare(sql).all(...args)}; }, async run() { return sqlite.prepare(sql).run(...args); }, async execute() { return /^SELECT/.test(sql) ? this.all() : this.run(); }});
@@ -65,7 +66,7 @@ test('records saved through the API give the same recommendations as Python, min
   for (const cat of fixture.catalogues.slice(0, 6)) {
     for (const c of cat.cases.filter(x => !x.favourites && Object.keys(x.multipliers).length === 0 && x.expected.length >= 3)) {
       const sqlite = load(cat), env = envFor(sqlite);
-      const reg = await call(env, 'register', {});
+      const reg = await call(env, 'register', {agree: TERMS_VERSION});
       const cookie = reg.headers.get('set-cookie').split(';')[0];
       const uid = sqlite.prepare('SELECT id FROM users').get().id;
       for (const r of c.rated) {
@@ -120,7 +121,7 @@ test('favourites give recommendations before any rating, as Python, and fade as 
     const c = cat.cases.find(x => x.favourites && !x.rated.length && x.expected.length >= 3);
     if (!c) continue;
     const sqlite = load(cat), env = envFor(sqlite);
-    const cookie = (await call(env, 'register', {})).headers.get('set-cookie').split(';')[0];
+    const cookie = (await call(env, 'register', {agree: TERMS_VERSION})).headers.get('set-cookie').split(';')[0];
     const uid = sqlite.prepare('SELECT id FROM users').get().id;
     assert.equal((await recommendFor(env.DB, uid, fixture.today)).items.length, 0, 'nothing to go on yet');
     for (const f of c.favourites) assert.equal((await call(env, 'favourite', f, cookie)).status, 200);
@@ -142,7 +143,7 @@ test('the first stages to ask about: favourites already on, then the batch list,
   for (const cat of fixture.catalogues.slice(0, 6)) {
     const c = cat.cases.find(x => x.favourites);
     const sqlite = load(cat), env = envFor(sqlite);
-    const cookie = (await call(env, 'register', {})).headers.get('set-cookie').split(';')[0];
+    const cookie = (await call(env, 'register', {agree: TERMS_VERSION})).headers.get('set-cookie').split(';')[0];
     const uid = sqlite.prepare('SELECT id FROM users').get().id;
     const plain = await onboardingFor(env.DB, uid, fixture.today);
     assert.deepEqual(plain.items.map(i => i.stage_id), cat.onboarding.slice(0, 20));
@@ -171,7 +172,7 @@ test('the first stages to ask about: favourites already on, then the batch list,
 test('詳細 are saved as known codes (troubles, then "+goods") in a fixed order, and anything else is refused', async () => {
   const cat = fixture.catalogues[0];
   const sqlite = load(cat), env = envFor(sqlite);
-  const cookie = (await call(env, 'register', {})).headers.get('set-cookie').split(';')[0];
+  const cookie = (await call(env, 'register', {agree: TERMS_VERSION})).headers.get('set-cookie').split(';')[0];
   const base = {id: 'a1', title: 't', date: '2026-09-01', rating: '2/5'};
   const saved = () => sqlite.prepare("SELECT aspects FROM records WHERE id='a1'").get().aspects;
   assert.equal((await call(env, 'record', {...base, aspects: ['+acting', 'venue', 'price']}, cookie)).status, 200);
@@ -191,7 +192,7 @@ test('the API needs sign-in, and says when the index is not built yet', async ()
   for (const f of readdirSync(new URL('../migrations/', import.meta.url)).filter(n => n.endsWith('.sql')).sort()) sqlite.exec(readFileSync(new URL(`../migrations/${f}`, import.meta.url), 'utf8'));
   const env = envFor(sqlite);
   assert.equal((await call(env, 'recommend')).status, 401);
-  const cookie = (await call(env, 'register', {})).headers.get('set-cookie').split(';')[0];
+  const cookie = (await call(env, 'register', {agree: TERMS_VERSION})).headers.get('set-cookie').split(';')[0];
   assert.deepEqual(await (await call(env, 'recommend', undefined, cookie)).json(), {ready: false, items: []});
   assert.equal((await call(env, 'record', {title: 'x', date: '2026-01-01', stage_id: '../x'}, cookie)).status, 400);
 });

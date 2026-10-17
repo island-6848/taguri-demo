@@ -12,6 +12,7 @@
 import {generateRegistrationOptions, verifyRegistrationResponse,
         generateAuthenticationOptions, verifyAuthenticationResponse} from '@simplewebauthn/server';
 import {isoBase64URL} from '@simplewebauthn/server/helpers';
+import {TERMS_VERSION, requireAgreement} from './terms.js';
 
 const CHALLENGE_TTL = 300;
 const MAX_CHALLENGES = 1000;     // pending challenges overall; bounds unauthenticated writes
@@ -54,6 +55,8 @@ export function passkeyRoutes(h) {
       const uid = await h.currentUser(request, env.DB);
       if (uid && !await h.freshSession(env.DB, request, uid)) fail(401, REAUTH);
       if (!uid && env.ALLOW_REGISTRATION !== 'true') fail(503, '新規登録を一時停止しています。');
+      // 新しく始めるときは、端末でパスキーを作る前に同意を確かめる（作ったあとで断らない）
+      if (!uid) requireAgreement(await h.body(request), fail);
       const existing = uid ? (await env.DB.prepare('SELECT id,user_handle,transports FROM passkeys WHERE user_id=?').bind(uid).all()).results : [];
       if (existing.length >= 10) fail(409, 'パスキーは10個まで登録できます。');
       const userHandle = existing[0]?.user_handle ?? isoBase64URL.fromBuffer(crypto.getRandomValues(new Uint8Array(32)));
@@ -79,6 +82,7 @@ export function passkeyRoutes(h) {
       if (ch.user_id && ch.user_id !== uid) fail(401, 'ログインし直してから、もう一度追加してください。');
       if (ch.user_id && !await h.freshSession(env.DB, request, uid)) fail(401, REAUTH);
       if (!ch.user_id && env.ALLOW_REGISTRATION !== 'true') fail(503, '新規登録を一時停止しています。');
+      if (!ch.user_id) requireAgreement(input, fail);
       if (!ch.user_id) await h.checkNewAccount(env.DB, env, fail);
       let result;
       try {
@@ -99,7 +103,7 @@ export function passkeyRoutes(h) {
       // only its hash is kept, as for recovery-code accounts.
       const newUid = crypto.randomUUID(), recovery = token();
       const session = await h.startSession(env.DB, newUid, [
-        env.DB.prepare('INSERT INTO users(id,recovery_hash,created_at) VALUES(?,?,?)').bind(newUid, await hash(recovery), now()),
+        env.DB.prepare('INSERT INTO users(id,recovery_hash,created_at,terms_version,terms_at) VALUES(?,?,?,?,?)').bind(newUid, await hash(recovery), now(), TERMS_VERSION, now()),
         insert(newUid)], h.sessionCookie(request));
       return json({created: true, recovery_code: recovery}, 200, {'Set-Cookie': h.cookie(session)});
     },

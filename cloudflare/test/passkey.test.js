@@ -7,6 +7,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {encodeCBOR} from '@levischuck/tiny-cbor';
 import worker from '../src/worker.js';
+import {TERMS_VERSION} from '../src/terms.js';
 
 const ORIGIN = 'https://taguri.example';
 const enc = new TextEncoder();
@@ -52,7 +53,7 @@ function setup() {
   sqlite.exec('PRAGMA foreign_keys = ON');
   const wrap = (sql, args = []) => ({bind(...v) { return wrap(sql, v); }, async first() { return sqlite.prepare(sql).get(...args) ?? null; }, async all() { return {results: sqlite.prepare(sql).all(...args)}; }, async run() { return sqlite.prepare(sql).run(...args); }, async execute() { return /^SELECT/.test(sql) ? this.all() : this.run(); }});
   const env = {ALLOW_REGISTRATION: 'true', DB: {prepare: sql => wrap(sql), async batch(cs) { sqlite.exec('BEGIN'); try { const r = []; for (const c of cs) r.push(await c.execute()); sqlite.exec('COMMIT'); return r; } catch (e) { sqlite.exec('ROLLBACK'); throw e; } }}, ASSETS: {fetch: () => new Response('static')}};
-  const call = (path, value, cookie = '', origin = ORIGIN) => worker.fetch(new Request(`${ORIGIN}/api/${path}`, {method: value === undefined ? 'GET' : 'POST', headers: {cookie, origin, 'content-type': 'application/json'}, body: value === undefined ? undefined : JSON.stringify(value)}), env);
+  const call = (path, value, cookie = '', origin = ORIGIN) => worker.fetch(new Request(`${ORIGIN}/api/${path}`, {method: value === undefined ? 'GET' : 'POST', headers: {cookie, origin, 'content-type': 'application/json'}, body: value === undefined ? undefined : JSON.stringify({agree: TERMS_VERSION, ...value})}), env);
   return {call, sqlite, env};
 }
 const cookieOf = r => r.headers.get('set-cookie')?.split(';')[0] ?? '';
@@ -208,4 +209,13 @@ test('cross-origin requests are refused and pending challenges are bounded', asy
   assert.equal((await call('auth/passkey/login/options', {})).status, 429);
   sqlite.prepare('UPDATE webauthn_challenges SET expires_at=0').run();       // expired ones are swept
   assert.equal((await call('auth/passkey/login/options', {})).status, 200);
+});
+
+test('starting with a passkey asks for the terms before the device makes one', async () => {
+  const {call, sqlite} = setup();
+  assert.equal((await call('auth/passkey/register/options', {agree: undefined})).status, 400);
+  const {challenge_id, options} = await (await call('auth/passkey/register/options', {})).json();
+  const response = await new SoftAuthenticator().create(options);
+  assert.equal((await call('auth/passkey/register/verify', {challenge_id, response, agree: undefined})).status, 400);
+  assert.equal(sqlite.prepare('SELECT count(*) AS n FROM users').get().n, 0);
 });
