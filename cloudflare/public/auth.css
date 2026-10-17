@@ -82,20 +82,26 @@ body.auth{margin:0;padding:0;min-height:100vh;display:flex;flex-direction:column
 .auth-card .agree-box.need{outline:2px solid var(--neg)}
 .auth-card label.agree{display:flex;align-items:center;gap:10px;margin:0;font-size:14px;line-height:1.5;cursor:pointer;min-height:44px}
 .auth-card .agree input{width:20px;height:20px;margin:0;flex:none;accent-color:var(--ink)}
-#agree-box .fine{margin:-4px 0 6px 30px;line-height:1.5}
 /* 利用規約・プライバシーの説明（/terms・/privacy） */
 .auth-card.legal{max-width:760px;line-height:1.8;font-size:14.5px;padding:30px 34px 26px}
 @media(max-width:520px){.auth-card.legal{padding:24px 20px 20px}}
 .auth-card.legal h2{font-size:16.5px;margin:26px 0 8px}
 .auth-card.legal ol,.auth-card.legal ul{padding-left:1.4em;margin:0 0 8px}
 .auth-card.legal li{margin:0 0 6px}
-/* パソコンの 2 列（1366×657 でもスクロールなし）: 同意の欄を足した分、ログインの欄の上下を詰める */
+/* ログイン（上）と新規登録（下）を分ける（起案者の指示 2026-10-17） */
+.auth-card#signup h2{text-align:center;justify-content:center;font-size:17px;margin:0 0 12px}
+.auth-col>#signup{margin-top:14px}
+.auth-card .mailrow{margin:14px 0 0}
+.auth-card .mailrow label{margin:0;font-size:13px;color:var(--ink2)}
+.auth-card .mailin{display:flex;gap:8px;margin:6px 0 0}
+.auth-card .mailin input{flex:1;min-width:0}
+.auth-card .mailin button{flex:none;margin:0;padding:8px 14px;font-size:13.5px}
+.auth-card .agree-box{margin:0 0 12px}
+#signup #carry-over{margin:12px 0 0}
 @media(min-width:900px){
- .auth-main:has(>#about:not([hidden])) #login-lead{display:none}
- .auth-main:has(>#about:not([hidden])) #login h1{margin:0 0 10px}
- .auth-main:has(>#about:not([hidden])) #login .agree-box{margin:0 0 12px;padding:4px 12px}
- .auth-main:has(>#about:not([hidden])) #login .or{margin:8px 0 4px}
- .auth-main:has(>#about:not([hidden])) #login .newbie{margin:10px 0 0;padding:8px 0 0}
- .auth-main:has(>#about:not([hidden])) #login .newbie .fine{margin:0 0 6px}
- .auth-main:has(>#about:not([hidden])) #login #carry-over{margin:6px 0 0;font-size:11.5px;line-height:1.45}
+ .auth-main:has(>#about:not([hidden])) .block.pair,.auth-main:has(>#about:not([hidden])) .block.trio{flex-direction:row}
+ .auth-main:has(>#about:not([hidden])) .block.pair button.wide,.auth-main:has(>#about:not([hidden])) .block.trio button.wide{flex:1;padding:9px 4px;font-size:13.5px;white-space:nowrap}
+ .auth-main:has(>#about:not([hidden])) #signup{padding:16px 24px 14px}
+ .auth-main:has(>#about:not([hidden])) .auth-col>#signup{margin-top:12px}
+ .auth-main:has(>#about:not([hidden])) #login h1{margin:0 0 2px}
 }

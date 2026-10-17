@@ -117,7 +117,8 @@ async function freshSession(db, request, uid) {
 // - unknown UID while signed in to an unlinked account without {link:true}:
 //   refused, so signing in on a shared device never links someone else's
 //   account and never silently starts a new one
-// - otherwise: create a new account (if registration is open)
+// - unknown UID from the login box ({intent:'login'}): refused (sign up from the sign-up box)
+// - otherwise: create a new account (if registration is open and the terms are agreed)
 // Two existing accounts are never merged automatically.
 async function firebaseSignIn(request, env) {
   const input = await body(request);
@@ -146,6 +147,9 @@ async function firebaseSignIn(request, env) {
     fail(409,'いまログインしているアカウントの記録を引き継ぐには、アカウントのページの「Google・メールを結び付ける」から進んでください。別のアカウントとして始めるなら、ログアウトしてからログインしてください。');
   }
   if (!uid) {
+    // ログインの欄（intent: 'login'）から来たときは、新しいアカウントを作らない（起案者の指示 2026-10-17
+    // 「ログイン（上）または新規登録（下）にレイアウトし直して」）。新規登録の欄は intent: 'signup'
+    if (input.intent === 'login') fail(404,'この Google・メールでは、まだ登録されていません。はじめての方は、下の「新規登録」から始めてください。');
     if (env.ALLOW_REGISTRATION !== 'true') fail(503,'新規登録を一時停止しています。');
     requireAgreement(input, fail);
     await checkNewAccount(db, env, fail);
