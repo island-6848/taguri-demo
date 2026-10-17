@@ -844,9 +844,10 @@ def buttons(stage_id, *, hidden: bool = False) -> str:
     # （起案者の指示・2026-08-24）。動き（`.torn`）はそのまま残す ── 形で結果が
     # 分かることと、その動きに名前を付けて画面に書くことは別である
     return (f'<span class="btns"{" hidden" if hidden else ""} data-stage="{E(stage_id)}">'
-            '<button data-v="owned">すでに持っている</button>'
             '<button data-v="interest">興味あり</button>'
             '<button data-v="nointerest">興味なし</button>'
+            '<button data-v="owned">購入済</button>'
+            '<button data-v="cantgo">行けない</button>'
             '<span class="said"></span></span>')
 
 

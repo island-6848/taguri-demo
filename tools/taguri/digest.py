@@ -106,7 +106,8 @@ KIND = {
     "tracking": ("興味あり", "flag", "trk"),
     "favourites": ("お気に入り", "star", "fav"),
     "declined": ("興味なし", "tag", "dec"),
-    "owned": ("持っている", "ticket", "own"),
+    "cantgo": ("行けない", "tag", "dec"),
+    "owned": ("購入済", "ticket", "own"),
 }
 # **三択を置くのは「未回答」だけ。**（起案者の指摘・2026-08-26 ──「すでに興味ありとか
 # 評価してる公演には『興味あり』などのボタンを表示しないでください」）
@@ -123,12 +124,12 @@ KIND = {
 NEEDS_BUTTONS = {"unanswered"}
 # **答えた公演は「回答を直す」1 つにし、押すと三択が開く**（起案者の指示 2026-10-14「一度興味ありなしなどの
 # 回答を押したものに関しては『回答を直す』に統一すればいいのでは」）。お気に入りは読むだけのまま。
-ANSWERED = {"tracking", "declined", "owned"}
+ANSWERED = {"tracking", "declined", "cantgo", "owned"}
 
 # **同じ作品を会場ごとに 1 行へまとめるとき、決着の強いほうを残す並び。**
 # `_status_map` が重ねる順（持っている＞興味あり＞お気に入り＞興味なし＞未回答）と同じ
 # 強さで、数字が大きいほど決着している。片方の会場だけ答えていれば、その答えを出す。
-_STATUS_RANK = {"unanswered": 0, "declined": 1, "favourites": 2, "tracking": 3, "owned": 4}
+_STATUS_RANK = {"unanswered": 0, "declined": 1, "cantgo": 1, "favourites": 2, "tracking": 3, "owned": 4}
 
 
 def _jsonl(path: Path) -> list[dict]:

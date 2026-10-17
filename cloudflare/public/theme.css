@@ -104,11 +104,12 @@ body{font-family:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",YuGothic,syst
 .btns button:hover{background:var(--curtain-w);color:var(--ink);border-color:var(--ink)}
 .btns button[data-v=interest]{order:1;border-radius:8px 0 0 8px}
 .btns button[data-v=nointerest]{order:2;border-left:0}
-.btns button[data-v=owned]{order:3;border-left:0;border-radius:0 8px 8px 0}
+.btns button[data-v=owned]{order:3;border-left:0}
+.btns button[data-v=cantgo]{order:4;border-left:0;border-radius:0 8px 8px 0}
 /* 「記録しました…」は帯の右に詰めると 1 字ずつ折り返して縦に伸びる（起案者の指摘 2026-10-13）ので、
    帯の下の行に出す */
-.btns .said{order:4;margin-left:8px;white-space:normal}
-.ticket .btns{display:grid;grid-template-columns:repeat(3,auto) minmax(0,1fr);justify-content:start;row-gap:8px}
+.btns .said{order:5;margin-left:8px;white-space:normal}
+.ticket .btns{display:grid;grid-template-columns:repeat(4,auto) minmax(0,1fr);justify-content:start;row-gap:8px}
 .ticket .btns .said{grid-column:1/-1;margin:0;line-height:1.6}
 .ticket .btns .said:empty{display:none}
 /* 答えた公演の帯は「回答を直す」を押すまで隠す（hidden）。上の display:grid が
@@ -116,7 +117,7 @@ body{font-family:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",YuGothic,syst
 .ticket .btns[hidden],.btns[hidden]{display:none}
 /* カードの外の帯（開幕リマインドなど）でも、「記録しました」は横ではなく帯の下に出す
    （起案者の指摘 2026-10-14「記録しましたは横に出すより下で出したほうがいい」） */
-.btns:not(.ticket .btns):not([hidden]){display:grid;grid-template-columns:repeat(3,auto) minmax(0,1fr);justify-content:start;row-gap:8px}
+.btns:not(.ticket .btns):not([hidden]){display:grid;grid-template-columns:repeat(4,auto) minmax(0,1fr);justify-content:start;row-gap:8px}
 .btns:not(.ticket .btns) .said{grid-column:1/-1;margin:0;line-height:1.6}
 .btns:not(.ticket .btns) .said:empty{display:none}
 /* 押し口が 1 つだけの帯（「追加する」など）は、四隅を丸める */
@@ -509,7 +510,7 @@ body{font-family:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",YuGothic,syst
 
 /* ---- 回答の帯（興味あり・興味なし・持っている）は半券の右に寄せる（起案者の指示 2026-10-14。
    いったん中央にしたあと「回答ボタン右寄せにして」）。「記録しました…」の行も帯の下で右にそろえる */
-.ticket .btns{grid-template-columns:repeat(3,auto);justify-content:end}
+.ticket .btns{grid-template-columns:repeat(4,auto);justify-content:end}
 .ticket .btns .said{text-align:right}
 .ticket .act{justify-content:flex-end}
 .ticket.cmp .act .btns{margin-left:auto;margin-right:0}
@@ -759,7 +760,7 @@ a.htag-in:hover{text-decoration:underline}
  .dgcard{padding:14px 12px 12px}
  .dgw{white-space:normal;overflow-wrap:anywhere;flex-basis:100%}
  .dgli.dgfold{padding:10px 12px}
- .dgli.dgfold .btns{grid-template-columns:repeat(3,minmax(0,1fr));width:100%}
+ .dgli.dgfold .btns{grid-template-columns:repeat(4,minmax(0,1fr));width:100%}
  .dgli.dgfold .btns button{min-width:0;padding-left:4px;padding-right:4px}
  .dgli.dgfold .dgdetail{flex-wrap:wrap}}
 

@@ -230,7 +230,7 @@ export async function upcomingHits(ctx, q, ym, b, top = 8) {
   const rows = await upcoming(ctx, q);
   const state = new Map();
   for (const [k, lab] of [['tracking', '追いかけています（興味ありと答えました）'], ['owned', '観る予定です（すでに持っていると答えました）'], ['others', '興味なしと答えました']])
-    for (const r of b[k]) for (const sid of r.sids || [r.stage_id]) state.set(sid, lab);
+    for (const r of b[k]) for (const sid of r.sids || [r.stage_id]) state.set(sid, r.cantgo ? '行けないと答えました' : lab);
   const tracking = new Set(b.tracking.flatMap(r => r.sids || [r.stage_id]));
   const hits = [];
   for (const c of rows) {

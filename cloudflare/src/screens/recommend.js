@@ -40,7 +40,7 @@ const TIPS = `<section class="card tips">
 `;
 // Groups kept per user between requests: enough to fill 15 cards in any one prefecture.
 const KEEP = 400;
-const VERSION = 'screen-v15';   // v15: 出さない語 also hits the kind tags; v14: #ジャンル (a genre turned off hides its stages); v13: no 原作「原作もの」 (DROPPED_KEYS); v12: no #値段 (DROPPED_AXES); v11: reasons of answered stages (answered_why); v2: the user's 効かせ方 (rank_weight) and the per-group counts; v3: 興味あり as seeds; v4: diag; v5: 興味あり split (impl-interest-split); v6: by part importance; v7: tiers + トメ; v8: two tiers only; v9: トメ joins the main roles; v10: spread leads + one-step partners
+const VERSION = 'screen-v16';   // v16: #会場 dropped, 行けない (interest=2) as a liked seed; v15: 出さない語 also hits the kind tags; v14: #ジャンル (a genre turned off hides its stages); v13: no 原作「原作もの」 (DROPPED_KEYS); v12: no #値段 (DROPPED_AXES); v11: reasons of answered stages (answered_why); v2: the user's 効かせ方 (rank_weight) and the per-group counts; v3: 興味あり as seeds; v4: diag; v5: 興味あり split (impl-interest-split); v6: by part importance; v7: tiers + トメ; v8: two tiers only; v9: トメ joins the main roles; v10: spread leads + one-step partners
 export {PREFS} from './prefs.js';
 const ROLE_SRC = '公演ページのクレジット';
 const KIND_LABEL = {'#形式': '形式', '#原作': '原作', '#翻訳': '', '#原作の国': '原作の国', '#会場': '劇場', '#題材': '題材', '#ジャンル': 'ジャンル'};
@@ -81,8 +81,9 @@ async function interestSeeds(ctx, access) {
     .bind(ctx.uid).all();
   const last = new Map();
   for (const r of results) { last.delete(r.stage_id); last.set(r.stage_id, Number(r.interest)); }
-  const newest = v => [...last].filter(([, x]) => x === v).map(([s]) => String(s)).reverse().slice(0, MAX_SEED_STAGES);
-  const sids = newest(1), noes = newest(0);
+  const newest = (...vs) => [...last].filter(([, x]) => vs.includes(x)).map(([s]) => String(s)).reverse().slice(0, MAX_SEED_STAGES);
+  // 行けない（2）も、気になった公演として興味ありと同じ向きの手がかりにする
+  const sids = newest(1, 2), noes = newest(0);
   if (!sids.length) return {seeds: [], disliked: [], n: 0};
   const all = [...sids, ...noes];
   const [people, info] = await Promise.all([access.peopleFor(all), stageInfo(ctx.db, all)]);
@@ -352,7 +353,6 @@ async function findBox(ctx, find) {
   }
   return `<section class="card rfind"${find ? ' id="rfind"' : ''}>
 <h2>${ico('search', 18)}<span>おすすめに出てこない公演を探す</span></h2>
-<p class="lead">気になる公演がおすすめに無いときは、ここで探して「興味あり」を押してください。押した公演は「興味あり」に入り、そこに出ている人や作り手の公演がおすすめに出やすくなります。</p>
 ${form}${found}</section>`;
 }
 
@@ -369,21 +369,20 @@ export async function recommendScreen(params, ctx) {
     lede = '';
   } else if (!prefs.length) {
     head = `今週のおすすめ ${cards.length} 件`;
-    lede = `<p class="lede">これから観られる公演 ${nCand} 件のうち、好みに合いそうだと判断できたのは ${data.n_scored} 件でした。上位 ${cards.length} 件を表示しています。答えた公演は、この一覧から外して「興味あり」「購入済み公演」などに移します。</p>`;
+    // 件数は 1 行で（起案者の指示 2026-10-17「『埼玉県ほか 3 県／◯件中上位◯件を表示中』に変えて」。全国も同じ形）
+    lede = `<p class="pnow"><b>全国</b>／${data.n_scored} 件中上位 ${cards.length} 件を表示中</p>`;
   } else if (!cards.length) {
     head = `${where}のおすすめはありません`;
     lede = `<p class="pnow">これから観られる公演 ${nCand} 件のうち、<b>${E(where)}</b>で観られるものはありませんでした。ほかの都道府県を選ぶか、全国に戻してください。</p>`;
   } else {
-    const tail = hit > cards.length ? `好みに合いそうな順に、上位 ${cards.length} 件を表示しています（残り ${hit - cards.length} 件は出していません）。` : `${cards.length} 件すべてを表示しています。`;
     head = `${where}のおすすめ ${cards.length} 件`;
-    lede = `<p class="pnow"><b>${E(where)}</b>で観られる公演のうち、好みに合いそうだと判断できたのは ${hit} 件でした。${tail}</p>`;
+    lede = `<p class="pnow"><b>${E(where)}</b>／${hit} 件中上位 ${cards.length} 件を表示中</p>`;
   }
   // 推薦を出すためのワンポイント（起案者の指示 2026-10-14「なにがしたら出るか、使うユーザーが
   // わかりやすい文章で（技術的なことは書かないで）おすすめの初期画面に追加して」）。
   // 条件は new-user-reco-threshold: 公演とつながった記録が 2 件以上で、評価が 2 種類以上。
   const tips = !cards.length && !prefs.length ? TIPS : '';
   const nInterest = (await ctx.db.prepare('SELECT count(DISTINCT stage_id) AS n FROM reaction WHERE user_id=? AND interest=1 AND COALESCE(owned,0)=0').bind(ctx.uid).first())?.n || 0;
-  const notes = `<p class="note">現在のあなたの評価 ${data.n_rated || 0} 作品から計算しています。評価の変更・取り消しは、次におすすめを開くと反映されます。</p>`;
   const nSyn = cards.filter(h => /<div class="syn( doubt)?"/.test(h)).length;
   const limits = cards.length ? `<p class="note toinfo"><b>この ${cards.length} 件で、出せていない情報です。</b><br>
 ・<b>チケットの販売期限と、販売終了・完売</b>：手元に情報がないので表示できません。
@@ -393,7 +392,6 @@ export async function recommendScreen(params, ctx) {
 評価・公演情報・設定が変わると、順位も変わることがあります</p>` : '';
   const body = `<h1>${E(head)}</h1>
 ${lede}
-${notes}
 ${tips}${await findBox(ctx, String(params.get('find') || '').trim().slice(0, 60))}<div class="fil2">${prefForm(prefCounts(data.groups), prefs, '/recommend', '', {}, regionCounts(data.groups.map(g => ({key: g.stage_id, prefs: g.venues.map(v => v.pref)}))))}${weightForm(data.weights || {}, data.w_counts || {})}${declinedBox(await loadDeclined(ctx))}</div>
 ${cards.join('')}
 <p class="lede">気になった公演で「興味あり」を押すと、
@@ -403,7 +401,8 @@ ${limits}`;
 }
 
 // ---------------------------------------------------------------- react (serve.on_react)
-const REACT = {owned: {owned: 1}, interest: {interest: 1}, nointerest: {interest: 0}};
+// cantgo（行けない）は interest=2: 答えた公演としておすすめから外し、興味ありの一覧には出さず、好みの手がかりには使う
+const REACT = {owned: {owned: 1}, interest: {interest: 1}, nointerest: {interest: 0}, cantgo: {interest: 2}};
 const FROM = {reminder: 'reminder', search: 'search', favourites: 'favourites'};
 
 async function reactRow(ctx, stageId, cols, source) {
@@ -460,7 +459,7 @@ export async function reactAction(b, ctx) {
   const given = {};
   for (const k of ['note', 'note_no', 'note_pre']) if (b[k] !== undefined && b[k] !== null) given[k] = String(b[k]).slice(0, 2000);
   if (!stageId || !/^[A-Za-z0-9_-]{1,40}$/.test(stageId) || (!Object.hasOwn(REACT, value) && !Object.keys(given).length))
-    throw new ValueError('stage_id と、value（owned / interest / nointerest）か理由が要る');
+    throw new ValueError('stage_id と、value（owned / interest / nointerest / cantgo）か理由が要る');
   // どの画面で答えたか（起案者の指示 2026-10-15: 開幕リマインドから足した興味ありは、おすすめ理由の欄ではなく
   // 「開幕リマインドからの追加」と出す）。画面（app.js）が from を送る。無ければこれまでどおり 'screen'。
   const source = Object.hasOwn(FROM, String(b.from ?? '')) ? FROM[String(b.from)] : 'screen';

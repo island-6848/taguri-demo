@@ -16,8 +16,8 @@ export const WINDOW = 7, TICKET_MAX = 6;
 export const WEEKS = [['this', '今週'], ['next', '来週']];
 const WEEK = '月火水木金土日';
 const KIND = {unanswered: ['未回答', 'inbox', 'und'], tracking: ['興味あり', 'flag', 'trk'],
-  favourites: ['お気に入り', 'star', 'fav'], declined: ['興味なし', 'tag', 'dec'], owned: ['持っている', 'ticket', 'own']};
-const STATUS_RANK = {unanswered: 0, declined: 1, favourites: 2, tracking: 3, owned: 4};
+  favourites: ['お気に入り', 'star', 'fav'], declined: ['興味なし', 'tag', 'dec'], cantgo: ['行けない', 'tag', 'dec'], owned: ['購入済', 'ticket', 'own']};
+const STATUS_RANK = {unanswered: 0, declined: 1, cantgo: 1, favourites: 2, tracking: 3, owned: 4};
 export const REGIONS = [['北海道', ['北海道']], ['東北', ['青森県', '岩手県', '宮城県', '秋田県', '山形県', '福島県']],
   ['関東', ['茨城県', '栃木県', '群馬県', '埼玉県', '千葉県', '東京都', '神奈川県']],
   ['中部', ['新潟県', '富山県', '石川県', '福井県', '山梨県', '長野県', '岐阜県', '静岡県', '愛知県']],
@@ -183,7 +183,7 @@ function until(start, today) {
 }
 function row(r, today, poster, detail, hereLabel) {
   const [u, urgent] = until(r.start, today);
-  const answered = ['tracking', 'declined', 'owned'].includes(r.kind_key);
+  const answered = ['tracking', 'declined', 'cantgo', 'owned'].includes(r.kind_key);
   const btns = !r.stage_id ? '' : r.kind_key === 'unanswered' ? buttons(r.stage_id) : answered ? changeAnswer(r.stage_id) : '';
   const tour = r.tours ? scheduleHtml(r, today, hereLabel) : '';
   const head = `<span class="dgk ${r.cls}">${ico(r.icon, 13)}${E(r.kind)}</span>`
@@ -274,7 +274,7 @@ export async function openingCandidates(ctx) {
 export function statusOf(b) {
   const out = new Map();
   for (const [key, kind] of [['others', 'declined'], ['favourites', 'favourites'], ['tracking', 'tracking'], ['owned', 'owned']])
-    for (const r of b[key]) for (const sid of r.sids || [r.stage_id]) out.set(sid, kind);
+    for (const r of b[key]) for (const sid of r.sids || [r.stage_id]) out.set(sid, r.cantgo ? 'cantgo' : kind);
   return out;
 }
 

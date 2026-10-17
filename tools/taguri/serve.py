@@ -103,7 +103,7 @@ VERDICTS = ("◎", "○", "△", "×", "まだ判断できない")
 # **三択の各値が DB のどの列に入るかを 1 か所に固定する。**
 # `owned` と `interest` は別の列である ── 「持っている」は「興味あり」の上位互換ではなく、
 # 強さの順序（持っている ＞ 興味あり ＞ 興味なし）が入力の側に入っている。
-REACT = {"owned": {"owned": 1}, "interest": {"interest": 1}, "nointerest": {"interest": 0}}
+REACT = {"owned": {"owned": 1}, "interest": {"interest": 1}, "nointerest": {"interest": 0}, "cantgo": {"interest": 2}}
 
 # 「観ればよかった」の申告。**口が無いままだと絞り込みの穴を永久に測れない**（V35）
 MISSED_SCHEMA = """
@@ -1345,7 +1345,7 @@ class Server(http.server.ThreadingHTTPServer):
                  for k in ("note", "note_no")}
         given = {k: v for k, v in notes.items() if v is not None}
         if not stage_id or (value not in REACT and not given):
-            raise ValueError("stage_id と、value（owned / interest / nointerest）か理由が要る")
+            raise ValueError("stage_id と、value（owned / interest / nointerest / cantgo）か理由が要る")
         kw = dict(REACT.get(value) or {})
         kw.update(given)
         with self.lock:

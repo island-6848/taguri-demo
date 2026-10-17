@@ -84,7 +84,8 @@ class NoPersonNoRecommendationTest(unittest.TestCase):
                   "fields": {"劇場": "本多劇場", "出演": "好きな人"}}]
         d = UR.prepare({}, cands, rated, multipliers={}, role_group=lambda r: "cast")
         venue_only = next(c for c in d["ranked"] if c["stage_id"] == "8")
-        self.assertGreater(venue_only["b"], 0)            # 劇場の点だけで 0 を越えている
+        # 劇場はもう種類にしない（2026-10-17）ので、劇場だけの公演には点が付かない
+        self.assertEqual(venue_only["b"], 0)
         got = UR.finish(d, top=15, weights={})
         self.assertEqual([c["stage_id"] for c in got["recommend"]], ["9"])
         self.assertIn("8", [c["stage_id"] for c in got["unscored"]])

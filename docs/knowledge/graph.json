@@ -931,6 +931,18 @@
    "verifies": []
   },
   {
+   "id": "dec-drop-venue-kind",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-17",
+   "title": "劇場（#会場）を、おすすめの種類（理由にも点にも）から外した。主催が劇場の公演は主催の名前として効く",
+   "sources": [
+    "tools/review/user_recommender.py",
+    "cloudflare/src/recommend.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-edition-split",
    "type": "decision",
    "status": "adopted",
@@ -2477,6 +2489,19 @@
     "cloudflare/scripts/build_recommend_index.py",
     "cloudflare/src/recommend.js",
     "cloudflare/src/worker.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "impl-four-answers",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-17",
+   "title": "回答を 4 択（興味あり・興味なし・購入済・行けない）にした。行けない＝interest 2、好みの手がかりには興味ありと同じ向きで使う",
+   "sources": [
+    "cloudflare/src/screens/cards.js",
+    "cloudflare/src/screens/recommend.js",
+    "cloudflare/test/cantgo.test.js"
    ],
    "verifies": []
   },
@@ -6056,6 +6081,11 @@
    "to": "simple-design-principles"
   },
   {
+   "from": "dec-drop-venue-kind",
+   "rel": "depends_on",
+   "to": "dec-source-kind-no-price"
+  },
+  {
    "from": "dec-edition-split",
    "rel": "affects",
    "to": "comp-public-server"
@@ -7364,6 +7394,11 @@
    "from": "impl-favourite-seed",
    "rel": "affects",
    "to": "comp-recommender"
+  },
+  {
+   "from": "impl-four-answers",
+   "rel": "affects",
+   "to": "impl-recommend-find"
   },
   {
    "from": "impl-hidden-gate",

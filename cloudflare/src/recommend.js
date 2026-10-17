@@ -27,7 +27,8 @@ export const THEME_AXIS = '#題材';
  * 索引から外した種類（起案者の指示 2026-10-16、dec-source-kind-no-price）。新しい索引には入らないが、
  * 本番の D1 の索引は差分で何日もかけて入れ替わるので、それまで残っている行もここで読まない。
  */
-export const DROPPED_AXES = new Set(['#値段']);
+// #会場: 劇場の名前は理由にも点にも使わない（起案者の指示 2026-10-17、dec-drop-venue-kind）
+export const DROPPED_AXES = new Set(['#値段', '#会場']);
 // 使わなくなった種類の値（「原作もの」→ 漫画原作・小説原作 …、dec-source-kind-no-price）。索引に残っている間も読まない
 export const DROPPED_KEYS = new Set(['#原作\u0000原作もの']);
 export const droppedKind = (axis, tag) => DROPPED_AXES.has(axis) || DROPPED_KEYS.has(axis + '\u0000' + tag);

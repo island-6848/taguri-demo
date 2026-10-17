@@ -14,10 +14,13 @@ export const NO_REASON = '<li class="rs none">理由を出せていません</li
 /** render_recommend.buttons */
 /** 答えた公演は、どの画面でも「回答を直す」1 つにし、押すと三択が開く（起案者の指示 2026-10-14）。 */
 export const changeAnswer = sid => '<button class="wnb" data-btns-open="1">回答を直す</button>' + buttons(sid, true);
+// 4 択（起案者の指示 2026-10-17「興味あり、興味なし、購入済、行けないの 4 択にして」）。行けない＝気にはなるが
+// 行けない: おすすめから外し、興味ありの一覧には入れず、好みの手がかり（興味ありと同じ向き）には使う
 export const buttons = (sid, hidden = false) => `<span class="btns"${hidden ? ' hidden' : ''} data-stage="${E(sid)}">`
-  + '<button data-v="owned">すでに持っている</button>'
   + '<button data-v="interest">興味あり</button>'
   + '<button data-v="nointerest">興味なし</button>'
+  + '<button data-v="owned">購入済</button>'
+  + '<button data-v="cantgo">行けない</button>'
   + '<span class="said"></span></span>';
 /** お気に入り: 購入済みにするボタンだけ（起案者の指示 2026-10-15「お気に入りから、購入済みを登録できるようにして」）。 */
 export const ownedButton = sid => `<span class="btns" data-stage="${E(sid)}">`

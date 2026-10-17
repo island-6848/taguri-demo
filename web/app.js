@@ -808,6 +808,9 @@ function filterRow(el) {
 }
 
 function compactTickets(root) {
+  // おすすめの画面の一覧のカードには「くわしく」の折りたたみを付けない（起案者の指示 2026-10-17「おすすめページには
+  // 『くわしく』の折りたたみなくして」）。閉じた 1 枚に出す分（日程・出演 5 人・あらすじの 1 文・料金・公式サイト）だけにする
+  const recPage = ["/", "/recommend"].includes(location.pathname.slice(REPO_BASE.length) || "/");
   // お気に入りも同じ形にする（起案者の指示 2026-10-15「お気に入りのページのレイアウト変更して。購入済み公演と似た感じ」）
   root.querySelectorAll("article.ticket.recommend, article.ticket.interest, article.ticket.owned, article.ticket.favourite").forEach(t => {
     if (t.classList.contains("cmp")) return;
@@ -939,7 +942,9 @@ function compactTickets(root) {
     }
     // 「くわしく」は「おすすめ理由」の上に置く（起案者の指示 2026-10-15「「くわしく」は「おすすめ理由」の上にして」）
     const act = main.querySelector(".act"), why0 = main.querySelector(":scope > .whyh:not(.top)");
-    if (why0) why0.before(more); else if (act) act.after(more); else main.appendChild(more);
+    const noMore = recPage && t.classList.contains("recommend") && !t.closest(".rfind");
+    if (noMore) { /* 折りたたみを置かない */ }
+    else if (why0) why0.before(more); else if (act) act.after(more); else main.appendChild(more);
     // 耳（日付の札）の代わりに、ポスターを切り取り線の左に立てる。順位はポスターの左上、
     // 日付は公演名の上に移す。ポスターの無い公演は、灰の地に公演名を置く
     const stub = t.querySelector(".stub"), perf = t.querySelector(".perf");

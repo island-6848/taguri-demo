@@ -337,6 +337,7 @@ export async function buckets(ctx, {catalogue = false} = {}) {
       if (fav) out.favOwned.push({...row, stage_id: fav, a: hits.get(fav).a, owned: true});
     } else if (r.interest === 1) { seen.add(key); out.tracking.push(row); }
     else if (r.interest === 0) { seen.add(key); out.others.push(row); }
+    else if (r.interest === 2) { seen.add(key); out.others.push({...row, cantgo: true}); }   // 行けない
     else if (hits.has(m.stage_id)) { seen.add(key); out.favourites.push({...row, stage_id: m.stage_id, a: hits.get(m.stage_id).a}); }
   }
   const byStart = (a, b) => cmp(a.start || '9999', b.start || '9999');

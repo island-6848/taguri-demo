@@ -226,10 +226,8 @@ def stage_tags(title: str, venues, credits, prices=(), source: str = "", group: 
     if korean_origin(title, credits):
         tags.add(("#原作の国", "韓国"))
     tags.update((GENRE_AXIS, g) for g in genres(title, group, source))
-    for v in venues or ():
-        v = M.norm(v)
-        if v:
-            tags.add(("#会場", v))
+    # 劇場（#会場）は入れない（起案者の指示 2026-10-17「おすすめの種類に劇場名出てくるのなぜ？不要…ただ会場で
+    # 出てくるのは不要」）。主催が劇場の公演は、主催（団体）の名前として別に効く。`venues` は呼び出し側との形のために残す
     return sorted(tags)
 
 
@@ -453,7 +451,7 @@ def plain_sum(values) -> float:
     return total
 
 
-# 公演そのものを表す種類。劇場（#会場）と料金帯（#値段）は並びを直すだけで、おすすめの理由にはしない
+# 公演そのものを表す種類。劇場（#会場）と料金帯（#値段）は索引から外した（dec-drop-venue-kind・dec-source-kind-no-price）
 CONTENT_AXES = ("#形式", "#原作", "#翻訳", "#原作の国", "#題材", "#ジャンル")
 
 
