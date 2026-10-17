@@ -8,3 +8,9 @@ state/
 
 # deliver_catalogue のテストが書く作業ファイル（--out ../d1-out）
 d1-out/
+
+# 利用者の記録の控え（復号した平文の SQL など）は、どこにあってもコミットしない（安全の点検 2026-10-17）
+*.sql
+!cloudflare/migrations/*.sql
+*.sql.gpg
+backup*.sql

@@ -34,14 +34,15 @@ npx wrangler d1 time-travel restore taguri-demo --bookmark=<印>
 
 ```sh
 cd cloudflare
-npx wrangler r2 object get taguri-posters/backup/d1/2026-10-01.sql.gpg --remote --file backup.sql.gpg
-gpg --decrypt -o backup.sql backup.sql.gpg            # 合言葉を聞かれる
+W=$(mktemp -d)                                          # 平文はリポジトリの外に置く（公開リポジトリに入れない）
+npx wrangler r2 object get taguri-posters/backup/d1/2026-10-01.sql.gpg --remote --file "$W/backup.sql.gpg"
+gpg --decrypt -o "$W/backup.sql" "$W/backup.sql.gpg"   # 合言葉を聞かれる
 npx wrangler d1 create taguri-restored                 # 新しい D1 に入れて中身を確かめる
-npx wrangler d1 execute taguri-restored --remote --yes --file backup.sql
+npx wrangler d1 execute taguri-restored --remote --yes --file "$W/backup.sql"
 npx wrangler d1 migrations apply taguri-restored --remote   # 控えのあとに足された表を作る
 ```
 
-そのあと、毎日作り直す表（カタログ・索引）を取得のジョブで入れ直し、`wrangler.jsonc` の `database_id` を新しい D1 に向けて master に入れる。確かめ終わった `backup.sql` は消す（暗号化されていない）。
+そのあと、毎日作り直す表（カタログ・索引）を取得のジョブで入れ直し、`wrangler.jsonc` の `database_id` を新しい D1 に向けて master に入れる。確かめ終わったら `rm -rf "$W"` で消す（暗号化されていない）。`*.sql` は `.gitignore` で除外してあるが、リポジトリの中には置かない。
 
 **注意: 控えの日付より後に「完全削除」した人の記録も戻ってしまう。** 戻したら、その間に届いた削除の依頼をもう一度実行する（いまは削除した人の一覧を残していない〔q-restore-redelete〕）。
 

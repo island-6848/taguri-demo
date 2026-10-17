@@ -84,3 +84,19 @@ test('the JST day boundary: 23:59 JST counts toward that day, 00:00 JST starts a
   await checkNewAccount(db, {}, fail, t - 1);
   assert.deepEqual(rows, [t, t - 86400]);
 });
+
+// 安全の点検 2026-10-17: 1 つの接続元から 1 日の新規登録の枠（と総数の上限）を使い切れない
+test('one address makes at most 3 accounts a day; another address still can, and the next day it resets', async () => {
+  const {post, sqlite} = setup();
+  const codes = [];
+  for (let i = 0; i < 4; i++) codes.push((await post('/api/register', '198.51.100.7')).status);
+  assert.deepEqual(codes, [200, 200, 200, 429]);
+  assert.match((await (await post('/api/register', '198.51.100.7')).json()).error, /同じ場所/);
+  assert.equal((await post('/api/register', '203.0.113.8')).status, 200);
+  assert.equal(sqlite.prepare('SELECT count(*) AS n FROM users').get().n, 4);
+  // the address itself is not kept, only a hash with the day
+  assert.ok(sqlite.prepare("SELECT k FROM usage WHERE k LIKE 'newacct:%'").all().every(r => !r.k.includes('198.51')));
+  sqlite.prepare("UPDATE usage SET k=replace(k, substr(k, 9, 10), '2000-01-01') WHERE k LIKE 'newacct:%'").run();
+  assert.equal((await post('/api/register', '198.51.100.7')).status, 200);
+  assert.equal(sqlite.prepare("SELECT count(*) AS n FROM usage WHERE k LIKE 'newacct:2000%'").get().n, 0);
+});

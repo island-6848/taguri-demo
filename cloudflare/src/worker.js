@@ -152,7 +152,7 @@ async function firebaseSignIn(request, env) {
     if (input.intent === 'login') fail(404,'この Google・メールでは、まだ登録されていません。はじめての方は、下の「新規登録」から始めてください。');
     if (env.ALLOW_REGISTRATION !== 'true') fail(503,'新規登録を一時停止しています。');
     requireAgreement(input, fail);
-    await checkNewAccount(db, env, fail);
+    await checkNewAccount(db, env, fail, undefined, request);
     uid = crypto.randomUUID(); created = true;
     commands.push(db.prepare('INSERT INTO users(id,recovery_hash,created_at,firebase_uid,terms_version,terms_at) VALUES(?,?,?,?,?,?)').bind(uid,'firebase:'+token(),now(),identity.uid,TERMS_VERSION,now()));
   }
@@ -526,7 +526,7 @@ export default {
         if (path === '/api/register') {
           if (env.ALLOW_REGISTRATION !== 'true') fail(503,'新規登録を一時停止しています。');
           requireAgreement(input, fail);
-          await checkNewAccount(env.DB, env, fail);
+          await checkNewAccount(env.DB, env, fail, undefined, request);
           recovery = token(); uid = crypto.randomUUID();
         } else {
           const code = string(input.code, 80, true).replaceAll('-', '').toLowerCase();
@@ -536,7 +536,8 @@ export default {
         }
         const commands = [];
         if (recovery) commands.push(env.DB.prepare('INSERT INTO users(id,recovery_hash,created_at,terms_version,terms_at) VALUES(?,?,?,?,?)').bind(uid,await hash(recovery),now(),TERMS_VERSION,now()));
-        const session = await startSession(env.DB, uid, commands, null);
+        // この端末の古いセッションは消す（firebase・パスキーと同じ。共有の端末で前の人のセッションが残らない）
+        const session = await startSession(env.DB, uid, commands, sessionCookie(request));
         return json({recovery_code:recovery},200,{'Set-Cookie':cookie(session)});
       }
       if (method === 'POST' && path === '/api/auth/firebase') return await firebaseSignIn(request, env);
@@ -615,7 +616,7 @@ export default {
         return json({ok:true},200,{'Set-Cookie':`${COOKIE}=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0`});
       }
       if (path === '/api/logout') {
-        const raw = request.headers.get('cookie')?.match(/taguri_session=([a-f0-9]{64})/)?.[1];
+        const raw = sessionCookie(request);
         await env.DB.prepare('DELETE FROM sessions WHERE hash=? AND user_id=?').bind(await hash(raw),uid).run();
         return json({ok:true},200,{'Set-Cookie':`${COOKIE}=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0`});
       }
