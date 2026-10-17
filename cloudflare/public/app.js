@@ -320,8 +320,8 @@ function showWelcomeCode(code) {
   wrap.innerHTML =
     '<div class="tg-welcome-box">'
     + (IS_DEMO ? '<h2>デモ用の復旧コードです</h2>' : '<h2>あなたの復旧コードです</h2>')
-    + '<p>他の端末でも同じ記録を使いたいとき、Cookieを消してしまったときに'
-    + '必要になります。<b>今だけ表示していて、二度と表示できません。</b>'
+    + '<p>他の端末でも同じ記録を使いたいときや、Cookieを消してしまったときには、'
+    + 'このコードが必要になります。<b>表示するのは今だけで、二度と表示できません。</b>'
     + (IS_DEMO ? 'デモの再起動で記録がリセットされると、このコードも使えなくなります。'
                : 'このコードがあれば、別の端末からも同じ記録に戻れます。大切に控えてください。')
     + '</p>'
@@ -423,9 +423,9 @@ function openFixPopup(t) {
     + '<h2 id="fixpop-h">公演情報の誤りを知らせる</h2>'
     + '<p class="fixpop-t">' + E(title) + '</p>'
     + '<label>どこが違いますか <select class="fixq-kind">' + FIX_KINDS.map(k => '<option>' + E(k) + '</option>').join("") + '</select></label>'
-    + '<textarea class="fixq-msg" rows="4" maxlength="1000" placeholder="正しい情報や、載っているページの URL を書いてください"></textarea>'
+    + '<textarea class="fixq-msg" rows="4" maxlength="1000" placeholder="正しい情報や、それが載っているページの URL を書いてください"></textarea>'
     + '<div class="fixq-foot"><button type="button" class="fixq-send">送る</button><span class="said" role="status"></span></div>'
-    + '<p class="note">たぐりの運営者にメールで届きます。あなたの名前やアドレスは運営者への知らせに入れません。</p></div>';
+    + '<p class="note">知らせた内容は、たぐりの運営者にメールで届きます。あなたの名前やアドレスは運営者への知らせに入れません。</p></div>';
   const close = () => { pop.remove(); document.removeEventListener("keydown", esc); };
   const esc = e => { if (e.key === "Escape") close(); };
   pop.addEventListener("click", async ev => {
@@ -436,7 +436,7 @@ function openFixPopup(t) {
     if (!msg) { said.textContent = "どう違うかを書いてください"; return; }
     b.disabled = true;
     const d = await post("/api/fix_request", {stage_id: t.dataset.stage, kind: pop.querySelector(".fixq-kind").value, message: msg},
-      pop.querySelector(".fixpop-box"), "送りました。ありがとうございます。確かめて直します");
+      pop.querySelector(".fixpop-box"), "送りました。ありがとうございます。運営者が確かめて直します");
     if (d) setTimeout(close, 2200); else b.disabled = false;
   });
   document.addEventListener("keydown", esc);
@@ -454,7 +454,7 @@ function applyDemoRestrictions(root) {
   root.querySelectorAll(".handt").forEach(editor => {
     const note = document.createElement("p");
     note.className = "note";
-    note.textContent = IS_DEMO ? "デモでは、公演情報の編集はできません。"
+    note.textContent = IS_DEMO ? "デモでは公演情報の編集はできません。"
       : "公演情報は全員で共有しているため、ここでは編集できません。誤りはカードの右下の「？」から知らせてください。";
     editor.replaceWith(note);
   });
@@ -487,7 +487,7 @@ function renderScreen(el, activePath, d, exposureSource) {
   });
   if (d.demo_mode) {
     el.insertAdjacentHTML("afterbegin", '<p class="note">操作を試せるデモです。入力した内容は、デモの再起動時にリセットされます。'
-      + '記録を残して使うときは<a href="' + EDITION.demoBase + '/app/">サービス版</a>へ。</p>');
+      + '記録を残して使うときは<a href="' + EDITION.demoBase + '/app/">サービス版</a>をお使いください。</p>');
   }
   if (d.public) applyDemoRestrictions(el);
   renderCrumbBar(activePath, d.title || "");
@@ -538,7 +538,7 @@ async function loadScreen(path, search) {
   if (!IMPLEMENTED.has(name)) {
     if (stale()) return;
     el.innerHTML = "<h1>この画面は準備中です</h1>"
-      + "<p>GitHub Pages移行はPhase 0(今週のおすすめ)のみ対応しています。"
+      + "<p>GitHub Pagesへの移行で対応しているのは、Phase 0(今週のおすすめ)のみです。"
       + "現行の全画面版は <a href=\"" + API_BASE + path + "\">Renderの旧UI</a> で見られます。</p>";
     renderCrumbBar(path, "準備中");
     updateNavActive(path);
@@ -804,7 +804,7 @@ function priceFilter(el) {
   const box = document.createElement("div");
   box.className = "yfil";
   box.innerHTML = '<details class="pbox ybox"><summary>' + ico("ticket", 15) + '料金で絞り込む ── いまは<b class="ynow"></b></summary>'
-    + '<p class="lead">いちばん安い券がこの金額までの公演を出します。料金の分からない公演は出したままにします。</p>'
+    + '<p class="lead">いちばん安い券の料金がこの金額までの公演を出します。料金の分からない公演は出したままにします。</p>'
     + '<div class="yrow"><span class="wl">1 枚の料金</span>'
     + '<input class="ysl" type="range" min="0" max="' + (YEN_STEPS.length - 1) + '" step="1" value="' + idx + '" aria-label="1 枚の料金の上限">'
     + '<span class="wv yv"></span>'
@@ -1274,7 +1274,7 @@ function movedToOwned(tk) {
       const g = tk.querySelector(".btns");
       if (g) g.querySelectorAll("button[data-v]").forEach(x => x.classList.remove("picked"));
       const said = tk.querySelector(".btns .said");
-      if (said) said.textContent = "選び直してください（購入済みは、別の答えを押すと外れます）";
+      if (said) said.textContent = "選び直してください。別の答えを押すと、購入済みは外れます";
       p.replaceWith(tk);
     });
     p.append(" ", undo);
@@ -1810,7 +1810,7 @@ document.addEventListener("click", ev => {
     post("/api/cast_seen", {work_key: b.dataset.castOpen}, g, null).then(d => {
       if (!d) return;
       list.textContent = "";
-      if (!d.cast.length) { list.textContent = "この公演の出演者は、まだ手元にありません。"; return; }
+      if (!d.cast.length) { list.textContent = "この公演の出演者はまだ手元にありません。"; return; }
       const off = new Set(d.off);
       for (const name of d.cast) {
         const lab = document.createElement("label"), cb = document.createElement("input");
@@ -1831,7 +1831,7 @@ document.addEventListener("click", ev => {
     const g = b.closest(".ed-cast");
     const off = [...g.querySelectorAll("input[data-cast-name]")].filter(c => !c.checked).map(c => c.dataset.castName);
     post("/api/cast_seen", {work_key: b.dataset.castSave, off}, g, off.length
-      ? `${off.length} 人を「観た回に出ていなかった」にしました` : "全員を観たことにしました");
+      ? `${off.length} 人を「観た回に出ていなかった」にしました` : "全員を「観た回に出ていた」にしました");
   } else if (b.dataset.unlink) {
     const g = b.closest(".ed-link");
     post("/api/link_stage", {work_key: b.dataset.unlink, stage_id: ""}, g,
@@ -2181,13 +2181,13 @@ function lkRender(box, rows) {
       d.className = "sug-work";
       const sm = document.createElement("summary");
       const mine = xs.reduce((a, x) => a + (x.mine || 0), 0);
-      sm.textContent = xs[0].title + "（" + xs.length + " 会場の上演）"
-        + (mine ? "（うち " + mine + " 回の記録があります）" : "");
+      sm.textContent = xs[0].title + "（" + xs.length + " 会場の上演"
+        + (mine ? "、うち " + mine + " 回の記録があります" : "") + "）";
       d.append(sm);
       const p = document.createElement("p");
       p.className = "sug-head";
       p.textContent = "観に行った会場と日程を選んでください。"
-        + " 会場ごとに出演者や座組が違うことがあるので、"
+        + "会場ごとに出演者や座組が違うことがあるので、"
         + "別の上演を選ぶと、観ていない公演の作り手がおすすめの材料に入ってしまいます。";
       d.append(p);
       xs.forEach(x => d.append(stageRow(x)));
@@ -2383,7 +2383,7 @@ if (location.hash.length > 1) {
 let IMP_T0 = 0;
 
 function impMin(sec) {
-  if (sec < 60) return "残り 1 分もかかりません";
+  if (sec < 60) return "あと 1 分もかかりません";
   const m = Math.round(sec / 60);
   return m < 60 ? "残り およそ " + m + " 分" : "残り およそ " + Math.round(m / 6) / 10 + " 時間";
 }
@@ -2564,7 +2564,7 @@ function aspectsPanel(root) {
       + STEP[state[c] || ""] + '"><span class="aspv"></span></div>').join("");
     box.innerHTML = '<summary><span class="aspt">詳細</span><span class="asps"></span></summary>'
       + '<p class="asph">項目ごとに、つまみを 左（気になった）・まん中（ふつう）・右（良かった）に動かします（任意）。'
-      + '選んだ印は、次のおすすめで「どの人のおかげ・せいだったか」を分けるのに使います。</p>'
+      + '選んだ印は次のおすすめで「どの人のおかげ・せいだったか」を分けるのに使います。</p>'
       + '<div class="aspscale" aria-hidden="true"><span></span><span class="asc"><span>← 気になった</span><span>ふつう</span><span>良かった →</span></span><span></span></div>'
       + '<div class="aspg">' + items + '</div><p class="said" role="status"></p>';
     const paint = () => {
