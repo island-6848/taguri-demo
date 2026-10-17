@@ -510,6 +510,7 @@ function renderScreen(el, activePath, d, exposureSource) {
   // サーバー（render_recommend.reason_rows）も出さないようにしたが、古いサーバーの HTML にも効かせる
   el.querySelectorAll("li.rs.q").forEach(n => n.remove());
   compactTickets(el);
+  compactRows(el);
   penNotes(el);
   el.querySelectorAll(".rb").forEach(starValue);
   shortAddButtons(el);
@@ -953,36 +954,8 @@ function creditRank(x) {
   return Math.min(...creditParts(x.label).map(p => CREDIT_BASE.indexOf(p)).filter(i => i >= 0));
 }
 
-function compactTickets(root) {
-  // おすすめの画面の一覧のカードには「くわしく」の折りたたみを付けない（起案者の指示 2026-10-17「おすすめページには
-  // 『くわしく』の折りたたみなくして」）。閉じた 1 枚に出す分（日程・出演 5 人・あらすじの 1 文・料金・公式サイト）だけにする
-  const here = location.pathname.slice(REPO_BASE.length) || "/";
-  const recPage = ["/", "/recommend"].includes(here);
-  const interestPage = here === "/recommend/interest";   // 興味ありの一覧もおすすめと同じ表示（起案者の指示 2026-10-17）
-  const favPage = here === "/recommend/favourites";       // お気に入りも同じ表示（起案者の指示 2026-10-17）
-  // お気に入りも同じ形にする（起案者の指示 2026-10-15「お気に入りのページのレイアウト変更して。購入済み公演と似た感じ」）
-  root.querySelectorAll("article.ticket.recommend, article.ticket.interest, article.ticket.owned, article.ticket.favourite").forEach(t => {
-    if (t.classList.contains("cmp")) return;
-    const main = t.querySelector(".main");
-    if (!main) return;
-    t.classList.add("cmp");
-    // おすすめの画面の一覧のカード: 折りたたみを付けず、料金の明細・出演の全員・あらすじの 100 字ほどを出す
-    // （起案者の指示 2026-10-17。あらすじの続きだけ畳む）
-    const noMore = (recPage && t.classList.contains("recommend") && !t.closest(".rfind"))
-      || (interestPage && t.classList.contains("interest"))
-      || (favPage && t.classList.contains("favourite"));
-    const more = document.createElement("details");
-    more.className = "more";
-    more.innerHTML = "<summary><b>くわしく</b><span>会期・料金・出演の全員・あらすじの全文</span></summary>";
-    const box = document.createElement("div");
-    box.className = "morebody";
-    more.appendChild(box);
-    more.addEventListener("toggle", () => t.classList.toggle("moreopen", more.open));
-    const lead = document.createElement("div");
-    lead.className = "leadbox";
-    // 作り手と出演の名前。作・原作・脚本・演出はどの画面でも必ず出し、ほかは設定で選んだ役職だけ出す
-    // （起案者の指示 2026-10-18「全画面、最低限（詳細じゃなくてあっさり表示の場合でも）作、（原作）、脚本、演出くらいまでは
-    // 名前載せて。あとは設定でどこの名前まで表示するかにしてチェックリストで選べるようにして」）。出した行は「くわしく」から外す
+// 作り手の名前の行（compactTickets・compactRows）。作・原作・脚本・演出はいつも出し、ほかは設定で選んだ役職だけ
+function leadCredits(t, lead, noMore) {
     const choice = creditChoice();
     const credits = [...t.querySelectorAll(".cast .cr")].map(row => {
       const label = (row.querySelector(".cl")?.textContent || "").trim();
@@ -1009,6 +982,10 @@ function compactTickets(root) {
       row.remove();
       if (cast && !cast.querySelector(".cr")) cast.remove();
     }
+}
+
+// あらすじの見出し付きの行（compactTickets・compactRows）
+function leadSynopsis(t, lead, noMore) {
     // あらすじ: 最初の 1 文
     // 閉じていても、あらすじの最初の 1 文は必ず出す。本文の枠（.txt）が無い古い形の HTML でも、
     // 出典・タグ・押し口・入れ口を除いた残りから拾う。あらすじが無い公演（.no・.part）は出さない
@@ -1041,6 +1018,75 @@ function compactTickets(root) {
         lead.appendChild(p);
       }
     }
+}
+
+// 評価一覧・未評価・日記帳の 1 件（.rec-row）を、おすすめのカードと同じ形にそろえる（起案者の指示 2026-10-18
+// 「評価一覧や日記帳のカードもおすすめと揃えて」）。サーバーが付けた .rinfo（rowinfo.js）から、団体と会場の絵記号付きの行、
+// 作り手の名前（作・原作・脚本・演出＋設定で選んだ役職）、囲んだあらすじ（100 字ほど・続きは畳む）を作る。
+// ポスターの無い記録は、おすすめと同じく灰の地に題名と「ポスターなし」を置く
+function compactRows(root) {
+  root.querySelectorAll("article.rec-row").forEach(r => {
+    if (r.classList.contains("cmp")) return;
+    r.classList.add("cmp");
+    const np = r.querySelector(".pin > .noposter");
+    if (np && !np.textContent.trim()) {
+      np.innerHTML = "<b>" + E(r.querySelector(".ttl")?.textContent || "") + "</b><span>ポスターなし</span>";
+    }
+    const info = r.querySelector(".rinfo");
+    if (!info) return;
+    const {grp = "", venue = "", times = ""} = info.dataset;
+    const where = r.querySelector(".where");
+    const meta = document.createElement("div");
+    meta.className = "where meta";
+    meta.innerHTML = (grp ? '<span class="mg">' + ico("user", 13) + "<span>" + E(grp) + "</span></span>" : "")
+      + (venue ? '<span class="mv">' + ico("building", 13) + "<span>" + E(venue) + "</span></span>" : "")
+      + (times ? '<span class="mt">' + E(times) + "</span>" : "");
+    if (meta.children.length) {
+      if (where) where.replaceWith(meta); else r.querySelector(".ttl")?.after(meta);
+    }
+    const lead = document.createElement("div");
+    lead.className = "leadbox";
+    leadCredits(info, lead, true);
+    leadSynopsis(info, lead, true);
+    // 作り手の行に出なかった役職（設定で選んでいないもの）は、カードと同じく出さない
+    info.replaceWith(lead);
+    if (!lead.children.length) lead.remove();
+  });
+}
+
+function compactTickets(root) {
+  // おすすめの画面の一覧のカードには「くわしく」の折りたたみを付けない（起案者の指示 2026-10-17「おすすめページには
+  // 『くわしく』の折りたたみなくして」）。閉じた 1 枚に出す分（日程・出演 5 人・あらすじの 1 文・料金・公式サイト）だけにする
+  const here = location.pathname.slice(REPO_BASE.length) || "/";
+  const recPage = ["/", "/recommend"].includes(here);
+  const interestPage = here === "/recommend/interest";   // 興味ありの一覧もおすすめと同じ表示（起案者の指示 2026-10-17）
+  const favPage = here === "/recommend/favourites";       // お気に入りも同じ表示（起案者の指示 2026-10-17）
+  // お気に入りも同じ形にする（起案者の指示 2026-10-15「お気に入りのページのレイアウト変更して。購入済み公演と似た感じ」）
+  root.querySelectorAll("article.ticket.recommend, article.ticket.interest, article.ticket.owned, article.ticket.favourite").forEach(t => {
+    if (t.classList.contains("cmp")) return;
+    const main = t.querySelector(".main");
+    if (!main) return;
+    t.classList.add("cmp");
+    // おすすめの画面の一覧のカード: 折りたたみを付けず、料金の明細・出演の全員・あらすじの 100 字ほどを出す
+    // （起案者の指示 2026-10-17。あらすじの続きだけ畳む）
+    const noMore = (recPage && t.classList.contains("recommend") && !t.closest(".rfind"))
+      || (interestPage && t.classList.contains("interest"))
+      || (favPage && t.classList.contains("favourite"));
+    const more = document.createElement("details");
+    more.className = "more";
+    more.innerHTML = "<summary><b>くわしく</b><span>会期・料金・出演の全員・あらすじの全文</span></summary>";
+    const box = document.createElement("div");
+    box.className = "morebody";
+    more.appendChild(box);
+    more.addEventListener("toggle", () => t.classList.toggle("moreopen", more.open));
+    const lead = document.createElement("div");
+    lead.className = "leadbox";
+    // 作り手と出演の名前。作・原作・脚本・演出はどの画面でも必ず出し、ほかは設定で選んだ役職だけ出す
+    // （起案者の指示 2026-10-18「全画面、最低限（詳細じゃなくてあっさり表示の場合でも）作、（原作）、脚本、演出くらいまでは
+    // 名前載せて。あとは設定でどこの名前まで表示するかにしてチェックリストで選べるようにして」）。出した行は「くわしく」から外す
+    leadCredits(t, lead, noMore);
+    // あらすじ: 最初の 1 文
+    leadSynopsis(t, lead, noMore);
     // 主催（団体）と会場は別の行に分ける。ツアーで会場が複数あるときは「ほか n 会場」を添える
     // （一覧は「くわしく」の中）（起案者の指摘 2026-10-13「タイトル、主催団体、会場の文字サイズが同じで
     // わかりにくい…主催団体と会場は改行して表示（ツアー公演で複数会場ある場合も考えて）」）

@@ -223,7 +223,7 @@ html[data-font="trial"] :is(button,.sitebtn,.pill,.ftab,.btns button,select,[rol
 .ticket.cmp>.pcol .wax.rk{background:none}
 .ticket.cmp .noposter{box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;
  padding:8px 6px;border:1px solid var(--grid);background:var(--plane);font-size:11.5px;line-height:1.35;overflow:hidden}
-.ticket.cmp .noposter span{font-size:9.5px;color:var(--mute)}
+:is(.ticket.cmp,.rec-row.cmp) .noposter span{font-size:9.5px;color:var(--mute)}
 .ticket.cmp .perf{margin:10px 0 0}
 .ticket.cmp .body{flex:1 1 0;min-width:0;padding:12px 14px 6px 12px}
 .ticket.cmp .cdate{display:flex;align-items:baseline;gap:6px;font-size:12px;color:var(--ink2)}
@@ -231,25 +231,25 @@ html[data-font="trial"] :is(button,.sitebtn,.pill,.ftab,.btns button,select,[rol
 .ticket.cmp .main h3{margin:2px 0 4px}
 .ticket.cmp .sale{margin:6px 0 0}
 .ticket.cmp .cfoot{flex:0 0 100%;min-width:0;box-sizing:border-box;padding:4px 14px 12px}
-.ticket.cmp .leadbox{display:flex;flex-direction:column;gap:4px;margin:0 0 10px;font-size:12.5px;line-height:1.65}
-.ticket.cmp .leadbox p{margin:0}
+:is(.ticket.cmp,.rec-row.cmp) .leadbox{display:flex;flex-direction:column;gap:4px;margin:0 0 10px;font-size:12.5px;line-height:1.65}
+:is(.ticket.cmp,.rec-row.cmp) .leadbox p{margin:0}
 /* 「出演」「あらすじ」の見出しを左の列にそろえ、折り返した行は本文の頭にそろえる */
-.ticket.cmp .lcast,.ticket.cmp .lsyn{display:grid;grid-template-columns:4em minmax(0,1fr);column-gap:6px}
+:is(.ticket.cmp,.rec-row.cmp) .lcast,:is(.ticket.cmp,.rec-row.cmp) .lsyn{display:grid;grid-template-columns:4em minmax(0,1fr);column-gap:6px}
 /* おすすめの画面: あらすじの続き（100 字から先）だけを畳む */
-.ticket.cmp .lsynmore{display:inline}
-.ticket.cmp .lsynmore summary{display:inline;cursor:pointer;color:var(--curtain);font-size:12px;margin-left:4px;list-style:none}
-.ticket.cmp .lsynmore summary::-webkit-details-marker{display:none}
-.ticket.cmp .lsynmore[open] summary{display:none}
-.ticket.cmp .leadbox .cl{color:var(--mute);font-size:11.5px;padding-top:1px}
-.ticket.cmp .lcast .n{color:var(--mute)}
-.ticket.cmp .lcast .lrest{display:none}
+:is(.ticket.cmp,.rec-row.cmp) .lsynmore{display:inline}
+:is(.ticket.cmp,.rec-row.cmp) .lsynmore summary{display:inline;cursor:pointer;color:var(--curtain);font-size:12px;margin-left:4px;list-style:none}
+:is(.ticket.cmp,.rec-row.cmp) .lsynmore summary::-webkit-details-marker{display:none}
+:is(.ticket.cmp,.rec-row.cmp) .lsynmore[open] summary{display:none}
+:is(.ticket.cmp,.rec-row.cmp) .leadbox .cl{color:var(--mute);font-size:11.5px;padding-top:1px}
+:is(.ticket.cmp,.rec-row.cmp) .lcast .n{color:var(--mute)}
+:is(.ticket.cmp,.rec-row.cmp) .lcast .lrest{display:none}
 .ticket.cmp.moreopen .lcast .lrest{display:inline}
 .ticket.cmp.moreopen .lcast .n{display:none}
-.ticket.cmp .lsyn .lv{color:var(--ink2)}
+:is(.ticket.cmp,.rec-row.cmp) .lsyn .lv{color:var(--ink2)}
 /* あらすじを理由（.why: 左に幕の色の太線＋塗り）と同じ形の枠で囲う。目立ち方は理由より下にする
    （起案者の指示 2026-10-17「おすすめ理由みたいに囲って目立つようにして。でも理由より目立たせたらだめ」）:
    左の線は灰色、塗りは無し、細い枠だけ */
-.ticket.cmp .leadbox .lsyn{margin:4px 0 0;padding:7px 10px;border:1px solid var(--grid);border-left:3px solid var(--grid);
+:is(.ticket.cmp,.rec-row.cmp) .leadbox .lsyn{margin:4px 0 0;padding:7px 10px;border:1px solid var(--grid);border-left:3px solid var(--grid);
  border-radius:0 8px 8px 0;background:none}
 .ticket.cmp .rs{font-size:12.5px;line-height:1.55;padding:2px 0}
 .ticket.cmp .rs .n{font-size:11px}
@@ -453,8 +453,8 @@ html[data-font="trial"] :is(button,.sitebtn,.pill,.ftab,.btns button,select,[rol
 .ticket.cmp .main h3{font-family:inherit;font-size:18px;font-weight:700;line-height:1.4;color:var(--ink);
  letter-spacing:.01em;margin:4px 0 6px}
 .ticket.cmp .meta{margin:0;font-size:12.5px;line-height:1.55;color:var(--ink2)}
-.ticket.cmp .meta .mg,.ticket.cmp .meta .mv{display:block}
-.ticket.cmp .meta .mv{color:var(--mute)}
+:is(.ticket.cmp,.rec-row.cmp) .meta .mg,:is(.ticket.cmp,.rec-row.cmp) .meta .mv{display:block}
+:is(.ticket.cmp,.rec-row.cmp) .meta .mv{color:var(--mute)}
 .ticket.cmp .meta .mt{margin-left:6px;white-space:nowrap}
 @media(min-width:641px){.ticket.cmp .main h3{font-size:19px}}
 
@@ -583,8 +583,8 @@ html[data-font="trial"] :is(button,.sitebtn,.pill,.ftab,.btns button,select,[rol
 .ticket.cmp .cdate{flex-wrap:wrap;row-gap:2px}
 .ticket.cmp .cdate .cst{padding:0 6px;border:1px solid var(--ink2);border-radius:4px;font-size:11px;line-height:1.5;color:var(--ink2)}
 .ticket.cmp .cdate .ctour{font-size:11.5px;color:var(--acc)}
-.ticket.cmp .meta .mg,.ticket.cmp .meta .mv{display:flex;align-items:flex-start;gap:4px}
-.ticket.cmp .meta .mg svg.ico,.ticket.cmp .meta .mv svg.ico{flex:none;margin-top:3px;color:var(--mute)}
+:is(.ticket.cmp,.rec-row.cmp) .meta .mg,:is(.ticket.cmp,.rec-row.cmp) .meta .mv{display:flex;align-items:flex-start;gap:4px}
+:is(.ticket.cmp,.rec-row.cmp) .meta .mg svg.ico,:is(.ticket.cmp,.rec-row.cmp) .meta .mv svg.ico{flex:none;margin-top:3px;color:var(--mute)}
 /* ツアーの日程の一覧では、このおすすめの会場の行に印を付ける */
 .tf-row.here .tf-loc{font-weight:700}
 .tf-here{padding:0 6px;border-radius:4px;background:#f0e6e8;color:var(--acc);font-size:11px;white-space:nowrap}
@@ -981,7 +981,7 @@ body:has(>.shell){padding-top:0}
 a.pill.warn.buy:not(#_){font-size:12px;padding:1px 8px}
 a.pill.buy .go:not(#_){font-size:12px;margin-left:2px}
 /* 「ポスターなし」は 84px の枠に 1 行で収める（12px にしたら 2 行に割れたため、字間を少し詰める） */
-.ticket.cmp .noposter span:not(#_){white-space:nowrap;letter-spacing:-.05em}
+:is(.ticket.cmp,.rec-row.cmp) .noposter span:not(#_){white-space:nowrap;letter-spacing:-.05em}
 /* 日程の見出しと最初の行の間を詰める */
 .ticket.cmp .ltour:has(.tourfull.v2) .tourfull{margin-top:0;line-height:1.6}
 .tourfull.v2 .tf-price .ptb td{white-space:normal;overflow-wrap:anywhere}
@@ -1101,8 +1101,8 @@ a.pill.buy .go:not(#_){font-size:12px;margin-left:2px}
 .tourfull.v2 .tf-body,.ticket.cmp .lp-body{padding:6px 8px}
 .ticket.cmp .morebody{padding:8px 10px}
 /* あらすじの続き: 開くと一段下の枠に出し、最後に「折りたたむ」 */
-.ticket.cmp .lsynmore[open]{display:block;margin:4px 0 0;padding:6px 8px;background:var(--fold-bg);border-radius:6px}
-.ticket.cmp .lsynfold{display:inline;margin-left:6px;padding:0;border:0;background:none;color:var(--curtain);font:inherit;font-size:12px;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+:is(.ticket.cmp,.rec-row.cmp) .lsynmore[open]{display:block;margin:4px 0 0;padding:6px 8px;background:var(--fold-bg);border-radius:6px}
+:is(.ticket.cmp,.rec-row.cmp) .lsynfold{display:inline;margin-left:6px;padding:0;border:0;background:none;color:var(--curtain);font:inherit;font-size:12px;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
 /* あらすじとおすすめ理由の間に点線（起案者の指示 2026-10-18） */
 .ticket.cmp .whyh{border-top:1px dotted var(--ring);padding-top:10px;margin-top:10px}
 /* ツアーの日程は箇条書き。行頭の「・」は ★ と同じ左の余白に置く（schedule.tourBlock） */
@@ -1149,3 +1149,16 @@ a.pill.buy .go:not(#_){font-size:12px;margin-left:2px}
 .pchw{margin-top:10px;padding-top:10px;border-top:1px solid var(--grid)}
 .pchw .prgl{display:block;margin-bottom:2px}
 .pchw .pchips{margin-top:4px}
+
+/* ---- 評価一覧・未評価・日記帳の 1 件も、おすすめのカードと同じ形（起案者の指示 2026-10-18「評価一覧や日記帳のカードもおすすめと揃えて」）。
+   団体・会場は絵記号付きの行、作り手とあらすじは見出しをそろえた行（compactRows）。ポスターなしの地も同じ */
+.rec-row.cmp .where.meta{display:flex;flex-direction:column;gap:1px;font-size:12px;line-height:1.6}
+.rec-row.cmp .where.meta .mg,.rec-row.cmp .where.meta .mv{display:flex;align-items:flex-start;gap:4px}
+.rec-row.cmp .where.meta svg.ico{flex:none;margin-top:3px;color:var(--mute)}
+.rec-row.cmp .where.meta .mv,.rec-row.cmp .where.meta .mt{color:var(--mute)}
+.rec-row.cmp .leadbox{margin:10px 0 2px}
+.rec-row.cmp .noposter{box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;
+ padding:8px 6px;font-size:11.5px;line-height:1.35;overflow:hidden;text-align:left}
+.rec-row.cmp .noposter b{font-weight:700;color:var(--ink)}
+.rec-row.cmp .noposter span{font-size:9.5px;color:var(--mute);white-space:nowrap;letter-spacing:-.05em}
+.rec-row.cmp .where.meta span+span::before{content:none}

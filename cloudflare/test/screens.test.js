@@ -28,6 +28,13 @@ const STAMP = /<span class="stamp[^"]*" data-stamp="1"[^>]*>[^<]*<\/span>/g;
 const asStarRows = r => (r && typeof r.body?.body_html === 'string'
   ? {...r, body: {...r.body, body_html: r.body.body_html.replace(STAMP, '')
     .replace(/<button class="wnb" data-rate-open="1">評価を押し直す<\/button>(<span class="rb" data-work="[^"]*") hidden>/g, '$1>')}} : r);
+// 評価一覧・未評価・日記帳の 1 件に添える、つながった公演の作り手・あらすじ（screens/rowinfo.js）は 2026-10-18 から
+// サービス版だけの形（起案者の指示「評価一覧や日記帳のカードもおすすめと揃えて」）。Python の行のあらすじ・出演の欄と
+// サービス版の欄はどちらも比べずに外し、形は rowinfo.test.js で確かめる。
+const RINFO_JS = /<div class="rinfo"[^>]*>[\s\S]*?<!--\/rinfo--><\/div>/g;
+const ROWINFO_PY = /<div class="syn"><p class="txt">[^<]*<\/p><button class="mrb" data-more="1">続きを読む<\/button><\/div>|<div class="cast">(?:<div class="cr">[\s\S]*?<\/span><\/div>)+<\/div>/g;
+const noRowInfo = r => (r && typeof r.body?.body_html === 'string' && r.body.body_html.includes('rec-row')
+  ? {...r, body: {...r.body, body_html: r.body.body_html.replace(RINFO_JS, '').replace(ROWINFO_PY, '')}} : r);
 const noEditor = (r, re) => (r && typeof r.body === 'object' && typeof r.body?.body_html === 'string'
   ? {...r, body: {...r.body, body_html: r.body.body_html.replace(re, '<EDITOR/>').replace(STAR_BTNS, MARK_BTNS).replaceAll('この場で★を押せます', 'この場で ◎○△× を押せます')}} : r);
 
@@ -37,10 +44,10 @@ for (const [i, sc] of scenarios.entries()) {
     const cookie = await signIn(env);
     for (const [j, s] of sc.steps.entries()) {
       const raw = await step(env, cookie, s);
-      const got = noEditor(raw, EDITOR_JS);
+      const got = noRowInfo(noEditor(raw, EDITOR_JS));
       // 判子が 1 つも無い画面は星の段階の人の画面（◎○△× の人は判子のまま）
       const starPage = typeof raw?.body?.body_html === 'string' && !raw.body.body_html.includes('data-stamp="1"');
-      const want = noEditor(starPage ? asStarRows(python[i].steps[j]) : python[i].steps[j], EDITOR_PY);
+      const want = noRowInfo(noEditor(starPage ? asStarRows(python[i].steps[j]) : python[i].steps[j], EDITOR_PY));
       if (typeof want.body === 'object' && typeof got.body === 'object' && got.body.body_html !== want.body.body_html && got.body.body_html && want.body.body_html) {
         // Show where the HTML first differs (the whole page is long).
         const a = got.body.body_html, b = want.body.body_html;

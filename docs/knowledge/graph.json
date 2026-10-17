@@ -1475,6 +1475,24 @@
    "verifies": []
   },
   {
+   "id": "dec-rec-row-like-card",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "評価一覧・未評価・日記帳の 1 件を、おすすめのカードと同じ形にした（団体・会場の行、作り手、囲んだあらすじ、ポスターなしの地）",
+   "sources": [
+    "cloudflare/src/screens/rowinfo.js",
+    "cloudflare/src/screens/row.js",
+    "cloudflare/src/screens/rate.js",
+    "cloudflare/src/screens/diary.js",
+    "web/app.js",
+    "web/theme.css",
+    "cloudflare/test/rowinfo.test.js",
+    "cloudflare/test/screens.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-reco-graded",
    "type": "decision",
    "status": "adopted",
@@ -6925,6 +6943,11 @@
    "from": "dec-rating-scales",
    "rel": "affects",
    "to": "comp-recommender"
+  },
+  {
+   "from": "dec-rec-row-like-card",
+   "rel": "depends_on",
+   "to": "dec-recommend-ui-1017"
   },
   {
    "from": "dec-reco-graded",

@@ -9,6 +9,8 @@ import {loadWorks, similarWorks, titleKey} from './works.js';
 import {recRow, venueOf, venueKey, ico, h2, stageLabels} from './row.js';
 import {hashtagsHtml, noteTags} from './hashtags.js';
 import {promoteOwned} from './lists.js';
+import {rowInfos} from './rowinfo.js';
+import {peopleByKey} from './diary.js';
 
 /** serve.VERDICTS / charts.VERDICT_ORDER */
 const VERDICTS = ['◎', '○', '△', '×', 'まだ判断できない'];
@@ -280,7 +282,8 @@ async function rateScreen(params, ctx) {
       + (pg > 1 ? `&amp;p=${pg}` : ''), '作品');
   const files = await posterFiles(ctx, show);
   const scale = await scaleOf(ctx);
-  const rows = show.map(w => recRow(w, {poster: posterHtml(w, files), rateReopen: true, scale})).join('');
+  const infos = await rowInfos(ctx, show, await peopleByKey(ctx, show));
+  const rows = show.map(w => recRow({...w, info: infos[w.work_key]}, {poster: posterHtml(w, files), rateReopen: true, scale})).join('');
   return {title, body_html: `<h1>評価一覧 ── 付けた ${rated.length} 件</h1>
 ${scaled ? `<p class="lede">付けた評価を${stars ? '星の数' : '記号'}ごとに分けています。<b>評価の付け方は自分の尺度で構いません。</b>`+'おすすめは、自分が付けた評価の中で高いか低いかを見て作ります。評価は作品ごとに1つです。' : '<p class="lede">付けた評価を◎○△×ごとに分けています。<b>基準は「自分に合っていたか」で、作品の出来ではありません。</b>評価は作品ごとに1つです。おすすめは◎を付けた公演の作り手から作るので、'}<b>ここで評価を押し直すと、次のおすすめが変わります。</b>題名・日付・会場は<a href="/records/works?t=__TAGURI_TOKEN__">日記帳</a>で直せます。</p>
 ${verdictFig}
@@ -306,7 +309,8 @@ async function unratedScreen(_params, ctx) {
   const labels = await stageLabels(ctx, unrated.map(w => w.stage_id));
   const files = await posterFiles(ctx, unrated);
   const scale = await scaleOf(ctx);
-  const rows = unrated.map(w => recRow(w, {poster: posterHtml(w, files), rateAlways: true, editable: true, label: labels[w.stage_id] || '', scale})).join('');
+  const infos = await rowInfos(ctx, unrated, await peopleByKey(ctx, unrated));
+  const rows = unrated.map(w => recRow({...w, info: infos[w.work_key]}, {poster: posterHtml(w, files), rateAlways: true, editable: true, label: labels[w.stage_id] || '', scale})).join('');
   return {title: '未評価', body_html: `<h1>未評価 ── ${unrated.length} 件</h1>
 <p class="lede">評価がまだ付いていない記録です。<b>上演日が分からない記録も含みます。</b>日付がないと上演が終わったかどうかを判定できないので、「まだ答えていない」には出てきません。${skipped}<br>
 <b>実際には観ていない公演が混じっていたら、各行の「公演詳細を直す」から外せます。</b>券を買って行かなかった公演と、舞台ではない記録は、そこで書き分けられます。どちらも、あとで戻せます。</p>

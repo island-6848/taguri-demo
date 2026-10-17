@@ -6,6 +6,7 @@ import {gradeButtons, gradeText, parts} from './grade.js';
 import {pastStages} from './autolink.js';
 import {E, WS, strip, cmp} from './py.js';
 import {handCreditCount} from './credits.js';
+import {rinfoHtml} from './rowinfo.js';
 
 // ---------------------------------------------------------------- icons.py
 const ICONS = {
@@ -186,8 +187,8 @@ export function recRow(w, {poster = '', rateAlways = false, editable = false, ra
     + (where ? `<div class="where">${where}</div>` : '')
     // 評価の押し口は会場のすぐ下（起案者の指示 2026-10-16「星の位置を会場の下に入れて省スペース化」）
     + ((rate || impHead) ? `<div class="tools">${rate}${impHead}</div>` : '')
-    + synopsisHtml(w.synopsis)
-    + castHtml(w.people)
+    // つながった公演の作り手・あらすじ（rowinfo.rowInfos。サービス版だけ）があれば、おすすめのカードと同じ形で出す
+    + (w.info ? rinfoHtml(w.info, venueOf(w), times) : synopsisHtml(w.synopsis) + castHtml(w.people))
     + extra                         // 探す画面の「ヒットした箇所」（題名のすぐ下）
     + impBox
     + (editable ? editHtml(w, label) : '')

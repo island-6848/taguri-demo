@@ -11,6 +11,7 @@ import {E, strip, slice, field, pyRepr, localNow, dumps, ValueError, WS, quote, 
 import {loadWorks, similarWorks, titleKey, norm, deleteWork} from './works.js';
 import {handCreditCount, parseCredits} from './credits.js';
 import {recRow, anchor, stageLabels} from './row.js';
+import {rowInfos} from './rowinfo.js';
 import {indexTabs, paginate, page as pageOf, SHEET_TOP, posterHtml, posterFiles} from './rate.js';
 
 /** Python truthiness of a value parsed from a JSON body. */
@@ -446,7 +447,8 @@ async function worksScreen(params, ctx) {
   const labels = await stageLabels(ctx, show.map(w => w.stage_id));
   const files = await posterFiles(ctx, show);
   const scale = await scaleOf(ctx);
-  const rows = show.map(w => recRow({...w, people: people[w.work_key] || [], synopsis: ''},
+  const infos = await rowInfos(ctx, show, people);
+  const rows = show.map(w => recRow({...w, people: people[w.work_key] || [], synopsis: '', info: infos[w.work_key]},
     {poster: posterHtml(w, files), editable: true, label: labels[w.stage_id] || '', scale})).join('');
   return {title, body_html: `<h1>日記帳</h1>
 ${recordsLede(d)}
