@@ -886,3 +886,16 @@ body:has(>.shell){padding-top:0}
  background:var(--surf);color:var(--ink2);font-size:12px;box-shadow:none}
 .rb button.nograde.on{border-color:var(--curtain);color:var(--curtain);background:#f0e6e8;font-weight:700}
 .rec-row .rb.done button.nograde{opacity:1}
+/* 押せる範囲を 44px 四方以上にする（起案者の指示 2026-10-17）。見た目の大きさは変えず、透明な当たり判定を重ねる */
+.rsx,a.pill,.crumb a,.crumbinfo,.wnb.pen,.backbtn,.editor>summary{position:relative}
+.rsx::after,a.pill::after,.crumb a::after,.crumbinfo::after,.wnb.pen::after,.backbtn::after,.editor>summary::after{
+ content:"";position:absolute;left:50%;top:50%;width:max(100%,44px);height:max(100%,44px);transform:translate(-50%,-50%)}
+/* 並び替えと「記録を直す」の中の欄・ボタンは、高さそのものを 44px にする */
+.sortf select,.editor input[type=text],.editor input[type=date],.editor input[type=time],.editor select,.ed-btns button,.ed-link button,.ed-cast button{min-height:44px}
+/* 題字（h1）が下に重なるので、道のりと「戻る」の当たり判定は上に出す。鉛筆は真下の「記録を直す」より上に出す */
+.crumb a::after,.crumbinfo::after,.backbtn::after{z-index:1}
+.wnb.pen::after{z-index:2}
+/* スマホの右上の ＋・アカウント・歯車は、隣どうしが並ぶので箱そのものを 44px 四方にする（並びの隙間 4px は詰めて、検索欄の幅をなるべく残す） */
+@media(max-width:820px){
+ .side .padd,.side .pacct,.side .pset{width:44px;height:44px}
+ .side .pacct,.side .pset{margin-left:-4px}}
