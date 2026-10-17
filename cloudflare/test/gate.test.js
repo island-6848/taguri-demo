@@ -6,6 +6,7 @@ import {readFileSync, readdirSync} from 'node:fs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import worker, {safeNext} from '../src/worker.js';
+import {TERMS_VERSION} from '../src/terms.js';
 
 const ORIGIN = 'https://taguri.example';
 function setup() {
@@ -53,7 +54,7 @@ test('signed out: /login and static files load, /about goes to /login; app data 
 
 test('signed in: pages are served (with the account link) and expired sessions are sent back', async () => {
   const {get, post, served} = setup();
-  const reg = await post('/migration-api/register', {});
+  const reg = await post('/migration-api/register', {agree: TERMS_VERSION});
   const cookie = reg.headers.get('set-cookie').split(';')[0];
   const page = await get('/recommend', cookie);
   assert.equal(page.status, 200);

@@ -6,6 +6,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import worker from '../src/worker.js';
 import {limitKind, checkNewAccount} from '../src/rate-limit.js';
+import {TERMS_VERSION} from '../src/terms.js';
 
 const ORIGIN = 'https://taguri.example';
 // A stand-in for the binding: exact counts per key, `limit` per window.
@@ -17,7 +18,7 @@ function setup(extra = {}) {
   const env = {ALLOW_REGISTRATION: 'true', ORIGINAL_UI_BRIDGE: 'false',
     DB: {prepare: sql => wrap(sql), async batch(cs) { sqlite.exec('BEGIN'); try { const r = []; for (const c of cs) r.push(await c.execute()); sqlite.exec('COMMIT'); return r; } catch (e) { sqlite.exec('ROLLBACK'); throw e; } }},
     ASSETS: {fetch: async () => new Response('ok', {headers: {'content-type': 'text/html'}})}, ...extra};
-  const post = (path, ip) => worker.fetch(new Request(ORIGIN + path, {method: 'POST', headers: {origin: ORIGIN, 'content-type': 'application/json', 'cf-connecting-ip': ip}, body: '{}'}), env);
+  const post = (path, ip) => worker.fetch(new Request(ORIGIN + path, {method: 'POST', headers: {origin: ORIGIN, 'content-type': 'application/json', 'cf-connecting-ip': ip}, body: JSON.stringify({agree: TERMS_VERSION})}), env);
   const get = (path, ip) => worker.fetch(new Request(ORIGIN + path, {headers: {'cf-connecting-ip': ip}}), env);
   return {env, post, get, sqlite};
 }

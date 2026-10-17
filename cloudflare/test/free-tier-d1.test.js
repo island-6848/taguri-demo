@@ -5,6 +5,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {setup, signIn, step} from './screens/harness.js';
 import {d1Gate, MAX_ACCOUNTS, NEW_ACCOUNTS_PER_DAY, D1_BYTES_CAP} from '../src/free-tier.js';
+import {TERMS_VERSION} from '../src/terms.js';
 
 const reset = () => Object.assign(d1Gate, {at: 0, bytes: null, full: false});
 /** The harness's D1 with meta.size_after on every result, as D1 returns it. */
@@ -27,7 +28,7 @@ test('sign-up stops at MAX_ACCOUNTS', async () => {
   try {
     env.MAX_ACCOUNTS = '2';
     await signIn(env); await signIn(env);
-    const res = await step(env, '', {post: '/migration-api/register', body: {}});
+    const res = await step(env, '', {post: '/migration-api/register', body: {agree: TERMS_VERSION}});
     assert.equal(res.status, 503);
     assert.match(res.body.error, /利用者の数に上限/);
   } finally { sqlite.close(); }
@@ -48,7 +49,7 @@ test('at the storage cap, writes that grow and sign-ups are refused; screens and
     assert.match(no.body.error, /保存を止めています/);
     assert.equal((await step(env, a, {get: '/api/screen/works'})).status, 200);
     assert.equal((await step(env, a, {post: '/api/drop_work', body: {work_key: add.body.work_key}})).status, 200);
-    const reg = await step(env, '', {post: '/migration-api/register', body: {}});
+    const reg = await step(env, '', {post: '/migration-api/register', body: {agree: TERMS_VERSION}});
     assert.equal(reg.status, 503);
     assert.match(reg.body.error, /保存できる量の上限/);
   } finally { sqlite.close(); reset(); }

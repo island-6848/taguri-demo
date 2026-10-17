@@ -3,6 +3,7 @@ import {readFileSync, readdirSync} from 'node:fs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import worker from '../src/worker.js';
+import {TERMS_VERSION} from '../src/terms.js';
 function setup() {
   const sqlite=new DatabaseSync(':memory:');for (const file of readdirSync(new URL('../migrations/', import.meta.url)).filter(n => n.endsWith('.sql')).sort())sqlite.exec(readFileSync(new URL(`../migrations/${file}`,import.meta.url),'utf8'));
   const wrap=(sql,args=[])=>({bind(...values){return wrap(sql,values);},async first(){return sqlite.prepare(sql).get(...args)??null;},async all(){return {results:sqlite.prepare(sql).all(...args)};},async run(){return sqlite.prepare(sql).run(...args);},async execute(){return /^SELECT/.test(sql)?this.all():this.run();}});
@@ -10,7 +11,7 @@ function setup() {
   const call=(path,value,cookie='',origin='https://taguri.example')=>worker.fetch(new Request(`https://taguri.example/api/${path}`,{method:value===undefined?'GET':'POST',headers:{cookie,origin,'content-type':'application/json'},body:value===undefined?undefined:JSON.stringify(value)}),env);
   return {call,sqlite,env};
 }
-async function register(call) {const response=await call('register',{});assert.equal(response.status,200);return {cookie:response.headers.get('set-cookie').split(';')[0],...(await response.json())};}
+async function register(call) {const response=await call('register',{agree:TERMS_VERSION});assert.equal(response.status,200);return {cookie:response.headers.get('set-cookie').split(';')[0],...(await response.json())};}
 test('records, ratings, favourites persist; recovery restores the same account',async()=>{
   const {call,sqlite}=setup();const a=await register(call);
   assert.match(a.cookie,/taguri_session=/);assert.equal(a.recovery_code.length,64);
@@ -70,4 +71,31 @@ test('health returns only the delivered catalogue dates and counts, without a lo
   sqlite.exec("INSERT INTO rec_meta(k,v) VALUES('catalogue_scan','2026-10-13'),('catalogue_delivered','2026-10-13T20:00:00+00:00'),('catalogue_upcoming','1532'),('current','abc')");
   const response=await call('health');assert.equal(response.status,200);
   assert.deepEqual((await response.json()).catalog,{present:true,uploaded_at:'2026-10-13T20:00:00+00:00',scan_date:'2026-10-13',upcoming:{candidates:1532},opening_14d:{index:0,catalogue:0},index_version:'abc'});
+});
+// 起案者の指示 2026-10-17「規約は新規登録の際に、規約に同意して始める、にチェックボックスいれてもらってから登録できるようにする」
+test('a new account needs the current terms agreed, and keeps which version and when', async () => {
+  const {call, sqlite} = setup();
+  const none = await call('register', {});
+  assert.equal(none.status, 400);
+  assert.match((await none.json()).error, /同意して始める/);
+  assert.equal((await call('register', {agree: '2000-01-01'})).status, 409);
+  assert.equal(sqlite.prepare('SELECT count(*) AS n FROM users').get().n, 0);
+  await register(call);
+  const u = sqlite.prepare('SELECT terms_version, terms_at FROM users').get();
+  assert.equal(u.terms_version, TERMS_VERSION);
+  assert.ok(u.terms_at > 0);
+});
+test('the terms and privacy pages open without signing in', async () => {
+  const {env} = setup();
+  for (const p of ['/terms', '/privacy']) {
+    const r = await worker.fetch(new Request('https://taguri.example' + p), env);
+    assert.equal(r.status, 200, p);
+  }
+});
+test('the sign-up checkbox, the terms and the privacy page carry the version the server asks for', () => {
+  const read = f => readFileSync(new URL(`../public/${f}`, import.meta.url), 'utf8');
+  assert.match(read('login.html'), new RegExp(`<input type="checkbox" id="agree" value="${TERMS_VERSION}">`));
+  assert.match(read('login.html'), /href="\/terms"[^>]*>利用規約<\/a>と<a href="\/privacy"/);
+  for (const f of ['terms.html', 'privacy.html']) assert.match(read(f), new RegExp(`版 ${TERMS_VERSION}`), f);
+  assert.match(read('vendor/firebase-login.js'), /taguri_login_agree/);
 });

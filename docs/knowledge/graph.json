@@ -2759,6 +2759,25 @@
    "verifies": []
   },
   {
+   "id": "impl-terms-consent",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-17",
+   "title": "利用規約（/terms）とプライバシーの説明（/privacy）をサービスの画面として置き、新規登録はログイン画面の「利用規約とプライバシーの説明に同意して始める」にチェックを入れたときだけ通す。同意した版と日時を users に残す",
+   "sources": [
+    "cloudflare/public/terms.html",
+    "cloudflare/public/privacy.html",
+    "cloudflare/public/login.html",
+    "cloudflare/src/terms.js",
+    "cloudflare/src/worker.js",
+    "cloudflare/src/passkey.js",
+    "cloudflare/src/client/login.js",
+    "cloudflare/migrations/0030.sql",
+    "cloudflare/test/worker.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "impl-theater-conquest",
    "type": "decision",
    "status": "adopted",
@@ -7843,6 +7862,16 @@
    "from": "impl-search-past-stages",
    "rel": "affects",
    "to": "fix-search-uncarded"
+  },
+  {
+   "from": "impl-terms-consent",
+   "rel": "depends_on",
+   "to": "impl-eval-logging"
+  },
+  {
+   "from": "impl-terms-consent",
+   "rel": "depends_on",
+   "to": "plan-real-data-eval"
   },
   {
    "from": "impl-theater-conquest",

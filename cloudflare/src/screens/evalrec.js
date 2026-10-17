@@ -65,7 +65,8 @@ export function optoutCardHtml(off, head) {
 <p class="lead">答え（興味あり・興味なし・購入済・行けない）・評価・公演の番号を、<b>運営者が手元でまとめて分析し、
 おすすめの改善に使うことがあります。</b>感想・メモの本文と名前・メールアドレスは使いません。
 結果は、利用者ごとの数（当たりの度合いなど）と全体の分布だけにして、1 人の記録が分かる形では出しません。<br>
-<b>ここで「使わない」を選ぶと、分析から外します。</b>おすすめそのものの出し方は、どちらでも変わりません。</p>
+<b>ここで「使わない」を選ぶと、分析から外します。</b>おすすめそのものの出し方は、どちらでも変わりません。
+<a href="/terms">利用規約</a>の第 4 条と、<a href="/privacy">プライバシーの説明</a>の 3. にも書いてあります。</p>
 <form class="pfil" id="analysis-setting" onsubmit="return false">
 <div class="pchips"><label class="pchip${off ? '' : ' on'}"><input type="radio" name="analysis" value="0"${off ? '' : ' checked'}><span class="pl">分析に使ってよい</span></label>
 <label class="pchip${off ? ' on' : ''}"><input type="radio" name="analysis" value="1"${off ? ' checked' : ''}><span class="pl">推薦の改善の分析に使わない</span></label></div>

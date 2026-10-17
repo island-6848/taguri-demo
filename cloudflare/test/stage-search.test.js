@@ -8,6 +8,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {titleKey, searchIndex, d1Search} from '../src/stage-search.js';
 import worker from '../src/worker.js';
+import {TERMS_VERSION} from '../src/terms.js';
 
 const fixture = JSON.parse(execFileSync('python3', [new URL('./parity_fixture.py', import.meta.url).pathname], {maxBuffer: 256 * 1024 * 1024, encoding: 'utf8'}));
 const migrations = sqlite => { for (const f of readdirSync(new URL('../migrations/', import.meta.url)).filter(n => n.endsWith('.sql')).sort()) sqlite.exec(readFileSync(new URL(`../migrations/${f}`, import.meta.url), 'utf8')); };
@@ -51,7 +52,7 @@ const post = (e, path, value, cookie = '') => worker.fetch(new Request(`${ORIGIN
 test('the API searches and names linked stages, with display fields only', async () => {
   const cat = fixture.catalogues[0], sqlite = load(cat), e = env(d1(sqlite));
   assert.equal((await get(e, 'stages?q=舞台')).status, 401);
-  const cookie = (await post(e, 'register', {})).headers.get('set-cookie').split(';')[0];
+  const cookie = (await post(e, 'register', {agree: TERMS_VERSION})).headers.get('set-cookie').split(';')[0];
   const s = cat.searches.find(x => x.expected.length >= 2 && x.date);
   const res = await (await get(e, `stages?q=${encodeURIComponent(s.q)}&date=${s.date}`, cookie)).json();
   assert.equal(res.ready, true);
@@ -74,6 +75,6 @@ test('before the index is uploaded the search says so', async () => {
   const sqlite = new DatabaseSync(':memory:');
   migrations(sqlite);
   const e = env(d1(sqlite));
-  const cookie = (await post(e, 'register', {})).headers.get('set-cookie').split(';')[0];
+  const cookie = (await post(e, 'register', {agree: TERMS_VERSION})).headers.get('set-cookie').split(';')[0];
   assert.deepEqual(await (await get(e, 'stages?q=舞台', cookie)).json(), {ready: false, items: []});
 });

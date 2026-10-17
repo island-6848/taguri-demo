@@ -4,6 +4,7 @@ import {test, beforeEach} from 'node:test';
 import assert from 'node:assert/strict';
 import worker from '../src/worker.js';
 import {JWKS_URL, MAX_AUTH_AGE, resetKeyCache, verifyIdToken} from '../src/firebase-auth.js';
+import {TERMS_VERSION} from '../src/terms.js';
 
 const PROJECT = 'taguri-test';
 const enc = new TextEncoder();
@@ -36,7 +37,7 @@ function setup() {
   for (const file of readdirSync(new URL('../migrations/', import.meta.url)).filter(n => n.endsWith('.sql')).sort()) sqlite.exec(readFileSync(new URL(`../migrations/${file}`, import.meta.url), 'utf8'));
   const wrap = (sql, args = []) => ({bind(...values) { return wrap(sql, values); }, async first() { return sqlite.prepare(sql).get(...args) ?? null; }, async all() { return {results: sqlite.prepare(sql).all(...args)}; }, async run() { return sqlite.prepare(sql).run(...args); }, async execute() { return /^SELECT/.test(sql) ? this.all() : this.run(); }});
   const env = {ALLOW_REGISTRATION: 'true', FIREBASE_PROJECT_ID: PROJECT, DB: {prepare: sql => wrap(sql), async batch(commands) { sqlite.exec('BEGIN'); try { const result = []; for (const c of commands) result.push(await c.execute()); sqlite.exec('COMMIT'); return result; } catch (e) { sqlite.exec('ROLLBACK'); throw e; } }}, ASSETS: {fetch: () => new Response('static')}};
-  const call = (path, value, cookie = '', origin = 'https://taguri.example') => worker.fetch(new Request(`https://taguri.example/api/${path}`, {method: value === undefined ? 'GET' : 'POST', headers: {cookie, origin, 'content-type': 'application/json'}, body: value === undefined ? undefined : JSON.stringify(value)}), env);
+  const call = (path, value, cookie = '', origin = 'https://taguri.example') => worker.fetch(new Request(`https://taguri.example/api/${path}`, {method: value === undefined ? 'GET' : 'POST', headers: {cookie, origin, 'content-type': 'application/json'}, body: value === undefined ? undefined : JSON.stringify({agree: TERMS_VERSION, ...value})}), env);
   return {call, sqlite, env};
 }
 const cookieOf = response => response.headers.get('set-cookie').split(';')[0];
@@ -221,6 +222,16 @@ test('login page has its own narrow policy; config is public and auth is never b
   assert.ok(!csp.includes('recaptcha') && !csp.includes('unsafe-'), csp);
   assert.equal(page.headers.get('cache-control'), 'no-store');
   // With the Render bridge on, sign-in still reaches this Worker.
-  const signed = await worker.fetch(new Request('https://taguri.example/api/auth/firebase', {method: 'POST', headers: {origin: 'https://taguri.example', 'content-type': 'application/json'}, body: JSON.stringify({id_token: await idToken()})}), env);
+  const signed = await worker.fetch(new Request('https://taguri.example/api/auth/firebase', {method: 'POST', headers: {origin: 'https://taguri.example', 'content-type': 'application/json'}, body: JSON.stringify({id_token: await idToken(), agree: TERMS_VERSION})}), env);
   assert.equal(signed.status, 200);
+});
+
+test('a first Google sign-in without the terms agreed makes no account; a returning one needs none', async () => {
+  const {call, sqlite} = setup();
+  const token = await idToken();
+  const first = await signIn(call, token, '', {agree: undefined});
+  assert.equal(first.status, 400);
+  assert.equal(sqlite.prepare('SELECT count(*) AS n FROM users').get().n, 0);
+  assert.equal((await signIn(call, token)).status, 200);
+  assert.equal((await signIn(call, await idToken(), '', {agree: undefined})).status, 200);
 });
