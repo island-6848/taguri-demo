@@ -2013,7 +2013,8 @@
     "cloudflare/src/screens/rowinfo.js",
     "cloudflare/src/screens/autolink.js",
     "cloudflare/test/same-production.test.js",
-    "docs/design/logo/sheet.html"
+    "docs/design/logo/sheet2.html",
+    "docs/design/logo/make.py"
    ],
    "verifies": []
   },

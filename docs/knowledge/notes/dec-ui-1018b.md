@@ -12,7 +12,8 @@ sources:
   - cloudflare/src/screens/rowinfo.js
   - cloudflare/src/screens/autolink.js
   - cloudflare/test/same-production.test.js
-  - docs/design/logo/sheet.html
+  - docs/design/logo/sheet2.html
+  - docs/design/logo/make.py
 links:
   - depends_on: dec-rec-row-like-card
 ---
@@ -26,4 +27,4 @@ links:
   - 開幕リマインド: 索引と一覧の同じ公演を合わせる鍵に終わりの日が入っており、一覧の行は終わりの日が無いと合わなかった → 会場（表記ゆれを寄せる）・初日・題名で合わせる。県の分からない行は、同じ題名が 1 つの地方にだけあればその束へ。絞った一覧に出ている公演は「都道府県が分からない公演」の箱に重ねない
 - 評価一覧・日記帳の行: 過去の公演（past_stage）の団体と県も読み、主催を人の絵記号で出す。ポスターの下に「公式サイト」（公演の欄の URL）、無ければ「公演ページ」（stage.corich.jp。stage_id はその番号）
 - 日記帳はノートの見た目: 生成りの紙・横罫・綴じ穴・余白の赤い縦線・重ねたページの影。画面の [data-route] で日記帳だけに当てる
-- ロゴ案 3 つ（docs/design/logo/）: A 糸玉の幕（推し）・B 半券と糸・C 判子。字は Zen Maru Gothic Bold。決めるのは起案者
+- ロゴ案: 最初の 3 案（えんじの塗りの記号）は、起案者から「単色・線画で、絵と字を組んだ形（丸い枠・リボン・縦書きなど）を想定していた」と参考の画像をもらい、作り直した。いまは黒一色の細い線画の 5 案（docs/design/logo/: 1 糸の幕・2 オペラグラスの糸・3 スポットライトの丸印・4 縦書きと針の糸・5 半券と糸）。題字「たぐり」は一本線で手描き、小さな欧文と添え書きは Zen Kaku Gothic New（OFL）の字形を図形にした。作り直しは make.py。決めるのは起案者

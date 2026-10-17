@@ -1,7 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="たぐり">
-  <!-- 案B「半券と糸」: 観た公演の半券。切り取り線の穴から糸がのびて、次の 1 本へつながる -->
-  <path d="M8 16 h34 a5 5 0 0 0 10 0 h4 v32 h-4 a5 5 0 0 0 -10 0 h-34 z" fill="#9b2335"/>
-  <path d="M47 23 v18" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-dasharray="0.1 4.4"/>
-  <path d="M15 27 h19 M15 34 h13" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/>
-  <path d="M56 32 C61 32 62 38 58 41 C54 44 49 42 50 47 C51 52 58 53 62 58" fill="none" stroke="#1d1d1f" stroke-width="2.4" stroke-linecap="round"/>
-</svg>
