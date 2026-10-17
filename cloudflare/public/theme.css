@@ -1012,3 +1012,5 @@ a.pill.buy .go:not(#_){font-size:12px;margin-left:2px}
 .pzoom button{position:absolute;top:12px;right:12px;min-width:44px;min-height:44px;border:0;border-radius:22px;background:rgba(255,255,255,.92);color:#1d1d1f;font:inherit;font-size:14px;cursor:pointer}
 /* 暦の印の説明も、暦の文字と同じ 12px に */
 .ttb-legend:not(#_){font-size:12px}
+/* ⓘ の中に移した公演カレンダーの注記は、ほかの説明の段落と同じ体裁にする（左の線・小さい字をやめる） */
+.infopop .calnote:not(#_){border-left:0;padding:0;font-size:14px;color:inherit;margin:8px 0 0}
