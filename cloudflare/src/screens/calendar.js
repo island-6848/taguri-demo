@@ -141,8 +141,8 @@ function filterHtml(rows, selKinds, selPrefs) {
 <input type="hidden" name="t" value="__TAGURI_TOKEN__">
 <details class="pbox"${active ? ' open' : ''}>
 <summary>${ico('search', 15)}種類と都道府県で絞り込む（種類：<b>${E(nowK)}</b>・場所：<b>${E(nowP)}</b>）</summary>
-<p class="lead">押した種類・都道府県の公演だけを、下のカレンダーに表示します。<b>いくつでも同時に選べます。</b>
-ページの上の「観劇日を追加する」に出す公演は、絞り込みの影響を受けません。</p>
+<p class="lead">選んだ種類と都道府県の公演だけを、下のカレンダーに表示します。<b>いくつでも同時に選べます。</b>
+ページの上の「観劇日を追加する」で選べる公演は、絞り込んでも変わりません。</p>
 <div class="pchips">${kindChips}</div>
 <div class="pchips">${prefChips}</div>
 <div class="pfoot"><button type="submit">${ico('search')}この条件で絞り込む</button>
@@ -153,14 +153,14 @@ function filterHtml(rows, selKinds, selPrefs) {
 /** stage_calendar.panel (no tickets left unplaced: mail import is the owner's only) */
 export function panel(d, today, tickets, selKinds = null, selPrefs = null) {
   const rows = rowsOf(d, today, tickets);
-  if (!rows.length) return '<p class="empty">カレンダーに表示できる公演がありません。推薦の画面で「興味あり」を押した公演と、お気に入りに登録した名前で当たった公演が、ここに並びます。</p>';
+  if (!rows.length) return '<p class="empty">カレンダーに表示できる公演がありません。推薦の画面で「興味あり」を押した公演と、お気に入りに登録した名前で見つかった公演が、ここに並びます。</p>';
   const filt = filterHtml(rows, selKinds, selPrefs);
   const keepK = selKinds ?? new Set(KIND_KEYS);
   const view = rows.filter(r => keepK.has(r.key) && (selPrefs === null || selPrefs.has(r.pref)));
   // 都道府県が分からない公演（一覧 catalogue にだけあり、索引に無い公演）は、場所で絞ると出せない。
   // 黙って消すと「絞ったら 0 件」に見えるので、件数を言う（起案者の指摘 2026-10-15「場所絞ったら公演カレンダー0件になる」）
   const nUnknown = selPrefs === null ? 0 : rows.filter(r => keepK.has(r.key) && !r.pref).length;
-  const unknown = nUnknown ? `<p class="lead"><b>都道府県が分からない公演が ${nUnknown} 件あり、場所で絞ると出せません。</b>`
+  const unknown = nUnknown ? `<p class="lead"><b>都道府県が分からない公演が ${nUnknown} 件あり、場所で絞ると表示できません。</b>`
     + `<a href="/calendar?t=__TAGURI_TOKEN__">絞り込みを外す</a>と表示されます。</p>` : '';
   if (!view.length) return `${filt}${unknown}<p class="empty">選んだ条件に一致する公演がありません。<a href="/calendar?t=__TAGURI_TOKEN__">絞り込みを外してください</a>。</p>`;
   let legend = KINDS.map(([, label, icon, cls]) => `<span class="lg"><span class="bar ${cls} sm">${ico(icon, 13)}</span>${E(label)}</span>`).join('');
@@ -177,10 +177,10 @@ export function panel(d, today, tickets, selKinds = null, selPrefs = null) {
   const blocks = timeline(view, ms, today);
   const [lastY, lastM] = ms.at(-1);
   const over = view.filter(r => { const [sy, sm] = [Number(r.start.slice(0, 4)), Number(r.start.slice(5, 7))]; return sy > lastY || (sy === lastY && sm > lastM); });
-  const tail = over.length ? `<p class="lead"><b>${over.length} 件は ${MAX_MONTHS} か月より先なので、このカレンダーには表示していません。</b>「おすすめ ▸ 興味あり／お気に入り」の一覧には出ているので、そちらで確認してください。</p>` : '';
-  return `${filt}${unknown}<p class="lead toinfo">帯の<b>右端が楽日</b>、つまり締切です。縦に目を落とすと、その日に何本かかっているかが数えられます。<b>土曜は青、日曜は赤</b>で示してあります。</p>`
+  const tail = over.length ? `<p class="lead"><b>${over.length} 件は ${MAX_MONTHS} か月より先の公演なので、このカレンダーには表示していません。</b>「おすすめ ▸ 興味あり／お気に入り」の一覧には載っているので、そちらで確認してください。</p>` : '';
+  return `${filt}${unknown}<p class="lead toinfo">帯の<b>右端が楽日</b>、つまり締切です。縦にたどると、その日に上演している公演の数を数えられます。<b>土曜は青、日曜は赤</b>で示しています。</p>`
     + `<div class="cal-legend">${legend}</div>`
-    + '<p class="calnote toinfo"><b>券を持っている公演は、行く日を入れるとその日が半券の形で帯から抜けて見えます。</b>入れていないものは帯だけで出しますので、<b>「この期間のどこかに行く」という意味</b>になります。印の付いていない日が空いているという意味ではありません。</p>'
+    + '<p class="calnote toinfo"><b>券を持っている公演は、行く日を入れると、その日が半券の形で帯から抜けて見えます。</b>行く日を入れていない公演は帯だけで表示するので、<b>「この期間のどこかに行く」という意味</b>になります。印の付いていない日が空いているという意味ではありません。</p>'
     + `${blocks}${tail}${CALENDAR_JS}`;
 }
 
@@ -264,7 +264,7 @@ export async function calendarScreen(params, ctx) {
   const prefs = params.getAll('pref').filter(p => PREFS.includes(p));
   const body = `<h1>公演カレンダー</h1>
 ${addTicketButtonHtml(d, ctx.today, b.tickets)}
-<p class="lede toinfo">券を持っている公演、「興味あり」を押した公演、お気に入りに当たった公演を、上演期間の帯で並べています。<b>いつまで観られるか</b>が1枚で分かります。券を持っている公演は、行く日を入れるとその日が半券の形で出ます。</p>
+<p class="lede toinfo">券を持っている公演、「興味あり」を押した公演、お気に入りに登録した名前で見つかった公演を、上演期間の帯で並べています。<b>いつまで観られるか</b>が1枚で分かります。券を持っている公演は、行く日を入れるとその日が半券の形で出ます。</p>
 ${panel(d, ctx.today, b.tickets, kinds.length ? new Set(kinds) : null, prefs.length ? new Set(prefs) : null)}`;
   return {title: '公演カレンダー', body_html: body};
 }

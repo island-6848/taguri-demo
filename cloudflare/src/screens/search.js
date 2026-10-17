@@ -205,8 +205,8 @@ async function pastHits(ctx, q, ws) {
   }).join('');
   const more = prods.length > PAST_SHOW ? `<p class="lead">見つかったのは ${prods.length} 件で、新しい順に ${PAST_SHOW} 件を表示しています。言葉を足すと絞れます。</p>` : '';
   return [`<h2>過去の公演（2019 年〜） ${prods.length} 件</h2>
-<p class="lead">終わった公演のうち、まだ日記帳に無いものです。<b>「観た」</b>を押して観た日（と開演の時刻）を入れると、観劇記録に足してその公演に結び付けます。<b>「観ればよかった」</b>は見逃した公演の一覧に入れます。
-題名は先頭からの一致、人・団体は名前全体の一致で探しています。</p>${more}<ul class="pastlist">${li}</ul>`, prods.length];
+<p class="lead">終わった公演のうち、まだ日記帳に無いものです。<b>「観た」</b>を押して観た日を入れると、観劇記録に追加して、その公演と結び付けます。開演の時刻も入れられます。<b>「観ればよかった」</b>を押すと、見逃した公演の一覧に入ります。
+題名は先頭から一致するもの、人・団体は名前全体が一致するものを探しています。</p>${more}<ul class="pastlist">${li}</ul>`, prods.length];
 }
 
 /** app._search_follow */
@@ -222,8 +222,8 @@ function searchFollow(dec, names) {
   }
   if (!out.length) return '';
   return `<div class="card">${h2('star', 'この名前を追いますか？', `<span class="badge part">${out.length} 件</span>`)}
-<p class="lead">お気に入りに登録すると、<b>この名前の公演がこれから始まるときに、
-件数の制限も条件も付けずに新着へ出ます。</b>いま探している名前を、ここから登録できます。</p>
+<p class="lead">お気に入りに登録すると、<b>これから始まるこの名前の公演が、
+件数の制限も条件も付けずにお気に入りの新着に出ます。</b>いま探している名前を、ここから登録できます。</p>
 ${out.slice(0, 8).join('')}</div>`;
 }
 
@@ -284,10 +284,10 @@ export async function upcomingHits(ctx, q, ym, b, top = 8) {
     return withTour(card, tourBlock([...new Set(tourSids.get(String(sid)))].map(x => info.get(x)).filter(Boolean), sid, ctx.today));
   });
   const tail = hits.length <= top ? '' : `<p class="lead">見つかったのは ${hits.length} 件で、上演日の近い ${top} 件を表示しています。<b>残りは`
-    + (!q ? '言葉を入れると絞り込めます' : '言葉を変えると出てきます') + '</b>（人名・団体名・劇場名など）。</p>';
+    + (!q ? '言葉を入れて絞り込むと出てきます' : '言葉を変えると出てきます') + '</b>（人名・団体名・劇場名など）。</p>';
   const head = ym ? `${ym.slice(0, 4)} 年 ${Number(ym.slice(5, 7))} 月に観られる公演` : 'これから観られる公演';
-  const order = ym ? 'この月に始まる公演を先に、すでに続いている公演を後に（終わりの近い順）並べています。' : '上演日の近い順です。';
-  return [`<h2>${E(head)} ${hits.length} 件</h2><p class="lead">${order}順位は付けていません。<b>ここから「興味あり」を押すと、追いかけている一覧に入ります。</b></p>${tail}${cards.join('')}`, names, hits.length, counts, matched.length];
+  const order = ym ? 'この月に始まる公演を先に並べ、そのあとに、すでに始まっている公演を終わりの近い順に並べています。' : '上演日の近い順に並べています。';
+  return [`<h2>${E(head)} ${hits.length} 件</h2><p class="lead">${order}順位は付けていません。<b>ここから「興味あり」を押すと、「興味あり」の一覧に入ります。</b></p>${tail}${cards.join('')}`, names, hits.length, counts, matched.length];
 }
 
 /** app._request_query */
@@ -303,7 +303,7 @@ async function webHits(ctx, q) {
   if (!requestQuery(q)) return '<p class="note">たぐりの公演一覧から検索できます。</p>';
   const have = await ctx.db.prepare('SELECT 1 FROM search_request WHERE user_id=? AND qkey=?').bind(ctx.uid, titleKey(requestQuery(q))).first();
   if (have) return `<div class="webq" id="web"><p class="lead">「${E(q)}」は、次の更新（毎日 4 時台）で CoRich から探すよう頼んであります。見つかれば、翌日からここに出ます。</p></div>`;
-  return `<div class="webq" id="web"><p class="lead">その場では CoRich を検索せず、毎日の更新で集めた公演から探します。<b>そこに無い公演は、次の更新で CoRich から探すよう頼めます。</b>見つかれば、翌日からこの画面と「手で足す」の候補に出ます。</p>`
+  return `<div class="webq" id="web"><p class="lead">この画面はその場では CoRich を検索せず、毎日の更新で集めた公演から探します。<b>そこに無い公演は、次の更新で CoRich から探すよう頼めます。</b>見つかれば、翌日からこの画面と「手で足す」の候補に出ます。</p>`
     + `<button type="button" data-search-request="${E(q)}" data-source="search">${ico('search')}「${E(q)}」を次の更新で探してもらう</button><span class="said"></span></div>`;
 }
 
@@ -332,13 +332,13 @@ function monthGrid(ws, upCounts, nUp, side, sel, q = '') {
   const none = nNone === 0 || side === 'up' ? '' : `<a class="cal-none${sel === 'none' ? ' on' : ''}" href="/search?t=__TAGURI_TOKEN__&amp;ym=none#cal">上演日が分からない記録<span class="mn">${nNone}</span></a>`;
   const tabs = indexTabs([['past', '観た記録', ws.length], ['up', 'これから観られる公演', nUp]], side, k => `/search?t=__TAGURI_TOKEN__&amp;cal=${k}${qs}#cal`, 'どちらのカレンダーを見るか');
   const lead = side === 'up'
-    ? '<b>これから観られる公演を、月から探せます。</b>数字はその月に観られる公演の数です（上演期間がその月にかかっているもの）。<b>件数が多い月は、言葉と一緒に使うと絞れます。</b>'
+    ? '<b>これから観られる公演を、月から探せます。</b>数字は、上演期間がその月にかかっている公演の数です。<b>件数が多い月は、言葉と組み合わせると絞り込めます。</b>'
     : '<b>観た記録を、観た月から探せます。</b>数字はその月に観た作品の数です。押すと、その月の記録が下に出ます。';
   const only = q ? `<b>「${E(q)}」に当たったものだけを数えています。</b>` : '';
   return `<div class="cal" id="cal">
 ${tabs}
 <div class="idxsheet loose"><p class="mnow">${only}${lead}</p>
-${rows ? `<div class="cal-grid"><span class="cal-y"></span>${head}${rows}</div>` : `<p class="empty">${q ? (side === 'up' ? `「${E(q)}」に当たる、これから観られる公演はありません。` : `「${E(q)}」に当たる観た記録はありません。`) : side === 'up' ? 'これから観られる公演は、いま手元にありません。' : 'まだ観た記録がありません。「これから観られる公演」の札から、月で探せます。'}</p>`}
+${rows ? `<div class="cal-grid"><span class="cal-y"></span>${head}${rows}</div>` : `<p class="empty">${q ? (side === 'up' ? `「${E(q)}」に当たる、これから観られる公演はありません。` : `「${E(q)}」に当たる観た記録はありません。`) : side === 'up' ? 'これから観られる公演は、いま手元にありません。' : 'まだ観た記録がありません。「これから観られる公演」のタブを押すと、月から公演を探せます。'}</p>`}
 ${none}</div></div>`;
 }
 
@@ -360,13 +360,13 @@ export async function searchScreen(params, ctx) {
   const people = await peopleByKey(ctx, ws);
   const months = await upcomingMonths(ctx);
   const nPeople = ws.filter(w => (people[w.work_key] || []).length).length;
-  const note = `<p class="note"><b>出演者や題材で探せるのは、公演ページを見つけられた記録だけです</b>（観た記録では ${nPeople} 作品／全 ${ws.length} 作品）。ほかの記録は題名で探せます。</p>`;
+  const note = `<p class="note"><b>出演者や題材で探せるのは、公演ページを見つけられた記録だけです</b>（観た記録 ${ws.length} 作品のうち ${nPeople} 作品）。ほかの記録は題名で探せます。</p>`;
   const form = `<form class="fav-add" method="get" action="/search">
 <input type="hidden" name="t" value="__TAGURI_TOKEN__">
 <input type="text" name="q" value="${E(q)}" size="28" placeholder="人名・団体・題材・題名">
 <button type="submit">${ico('search')}探す</button></form>`;
   const head = `<h1>探す</h1>
-<p class="lede">人名・団体・題材・題名で、<b>これから観られる公演 ${months.n} 件と観た記録の両方から探します。</b>見つけたものには、この画面のまま答えられます。これから観られる公演には「興味あり」を、観た記録には評価と感想を付けられます。</p>${form}${note}`;
+<p class="lede">人名・団体・題材・題名で、<b>これから観られる公演 ${months.n} 件と観た記録の両方から探します。</b>見つけたものには、この画面から直接答えられます。これから観られる公演には「興味あり」を押せて、観た記録には評価と感想を付けられます。</p>${form}${note}`;
   const seen = ws.filter(w => !w.unseen);
   let cal = monthGrid(seen, months.counts, months.n, side, ym, q);
   const b = await buckets(ctx);
@@ -376,7 +376,7 @@ export async function searchScreen(params, ctx) {
       const [upHtml] = await upcomingHits(ctx, '', ym, b);
       body = ym ? upHtml : '<p class="empty">上のカレンダーから月を選ぶと、その月に観られる公演が出ます。</p>';
     } else if (!ym) {
-      body = '<p class="empty">上のカレンダーから月を選ぶと、その月に観た記録が出ます。これから観られる公演は、言葉を入れて引いてください。</p>';
+      body = '<p class="empty">上のカレンダーから月を選ぶと、その月に観た記録が出ます。これから観られる公演は言葉を入れて探してください。</p>';
     } else {
       const hit = (ym === 'none' ? seen.filter(w => (w.first_date || '').length < 7) : seen.filter(w => (w.first_date || '').slice(0, 7) === ym))
         .sort((x, y) => cmp(y.first_date || '', x.first_date || ''));
@@ -402,7 +402,7 @@ export async function searchScreen(params, ctx) {
   const [pastHtml, nPast] = await pastHits(ctx, q, ws);
   let body;
   if (!hits.length && !nUp && !nPast) {
-    const narrowed = ym && side === 'up' ? `<b>いまは ${ym.slice(0, 4)} 年 ${Number(ym.slice(5, 7))} 月に絞っています。</b>ほかの月にはあるかもしれません。カレンダーの月を押し直すか、<a href="/search?t=__TAGURI_TOKEN__&amp;cal=up&amp;q=${E(q)}">月の指定を外して</a>お試しください。<br>` : '';
+    const narrowed = ym && side === 'up' ? `<b>いまは ${ym.slice(0, 4)} 年 ${Number(ym.slice(5, 7))} 月に絞っています。</b>ほかの月にはあるかもしれません。カレンダーで別の月を押すか、<a href="/search?t=__TAGURI_TOKEN__&amp;cal=up&amp;q=${E(q)}">月の指定を外して</a>お試しください。<br>` : '';
     body = `<p class="empty">${narrowed}手元には、これから観られる公演にも観た記録にも見つかりませんでした。<b>公演ページを見つけられなかった記録は、出演者や題材では探せません。</b>その場合は題名で探してください。</p>` + web + cal;
   } else if (!hits.length) {
     body = searchFollow(dec, names) + upHtml + '<h2>観た記録</h2><p class="empty">観た記録の中には見つかりませんでした。</p>' + pastHtml + web + cal;
