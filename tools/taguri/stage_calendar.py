@@ -390,10 +390,14 @@ def panel(d: dict, today: dt.date | None = None, tickets: dict | None = None,
             f'このカレンダーには表示していません。</b>「おすすめ ▸ 興味あり／お気に入り」の一覧には'
             f'出ているので、そちらで確認してください。</p>' if over else "")
 
-    return (f'{filt}{unknown}<p class="lead">帯の<b>右端が楽日</b>、つまり締切です。'
+    return (f'{filt}{unknown}<p class="lead toinfo">帯の<b>右端が楽日</b>、つまり締切です。'
             f'縦に目を落とすと、その日に何本かかっているかが数えられます。'
             f'<b>土曜は青、日曜は赤</b>で示してあります。</p>'
             f'<div class="cal-legend">{legend}</div>'
+            f'<p class="calnote toinfo"><b>券を持っている公演は、行く日を入れると'
+            f'その日が半券の形で帯から抜けて見えます。</b>入れていないものは帯だけで'
+            f'出しますので、<b>「この期間のどこかに行く」という意味</b>になります。'
+            f'印の付いていない日が空いているという意味ではありません。</p>'
             f'{blocks}{tail}{_unplaced_html(unplaced or [])}{JS}')
 
 
