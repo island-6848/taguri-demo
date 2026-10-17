@@ -85,7 +85,7 @@ test('answering a card takes it out of the recommendations, for this user only',
     // Every candidate answered: the thank-you block with its advice, not the new-user tips
     const doneHtml = (await step(env, a, {get: '/api/screen/recommend'})).body.body_html;
     assert.match(doneHtml, /<h1>今週のおすすめにはすべて答えました<\/h1>/);
-    assert.match(doneHtml, /回答ありがとうございました[\s\S]*過去に観た公演を足す/);
+    assert.match(doneHtml, /回答ありがとうございました[\s\S]*<b>過去の観劇記録を足す<\/b>：/);
     assert.doesNotMatch(doneHtml, /おすすめを出すためのワンポイント|<template id="rec-thanks-t">/);
     const bHtml = (await step(env, b, {get: '/api/screen/recommend'})).body.body_html;
     assert.match(bHtml, /data-stage="101"/);
