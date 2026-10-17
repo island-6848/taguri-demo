@@ -102,7 +102,7 @@ async function fromEvents(all, from) {
   found = await match(items, {keepUnmatched: false});
   const n = found.filter(f => !f.recorded).length;
   say(found.length ? '' : `予定 ${events.length} 件の中に、公演と一致するものはありませんでした。題名の入っていない予定は照合できません。`, !found.length);
-  render(`予定 ${events.length} 件のうち、公演と一致したもの ${found.length} 件（新しく足せるもの ${n} 件）。公演と一致しなかった予定は出していません。`);
+  render(`予定 ${events.length} 件のうち、${found.length} 件が公演と一致しました（新しく足せるのは ${n} 件です）。公演と一致しなかった予定は出していません。`);
 }
 
 async function calendarUrl() {
@@ -121,7 +121,7 @@ async function googleCalendar() {
   const config = res.ok ? await res.json() : {};
   if (!config.calendarClientId) { say('Google カレンダーからの取り込みは、まだ準備中です。下のアドレスかファイルから読み込んでください。', true); return; }
   const state = [...crypto.getRandomValues(new Uint8Array(16))].map(b => b.toString(16).padStart(2, '0')).join('');
-  try { sessionStorage.setItem(CAL_STATE_KEY, state); } catch { say('このブラウザでは使えません（保存が止められています）。', true); return; }
+  try { sessionStorage.setItem(CAL_STATE_KEY, state); } catch { say('このブラウザでは保存が止められているため、使えません。', true); return; }
   location.assign(authUrl(config.calendarClientId, location.origin, state));
 }
 function pickUpGoogle() {

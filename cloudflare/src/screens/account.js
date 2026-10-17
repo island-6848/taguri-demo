@@ -101,7 +101,7 @@ ${since ? `<p class="acsince">${since}から使っています</p>` : ''}</div>
 <div class="acpic"><label class="btn acpick">アイコン画像を選ぶ<input type="file" accept="image/*" data-account-avatar hidden></label>
 <button type="button" data-account-avatar-clear${avatar?.value ? '' : ' hidden'}>画像を外す</button>
 <span class="said" data-account-avatar-said role="status" aria-live="polite"></span>
-<small>選んだ画像は、まん中を正方形に切り抜いて小さくしてから保存します。この画面にだけ出ます。</small></div>
+<small>選んだ画像はまん中を正方形に切り抜いて、小さくしてから保存します。この画面にだけ出ます。</small></div>
 <form class="acform" data-account-name>
 <label for="acname">表示名<small>（${NAME_MAX} 文字まで。この画面にだけ出ます）</small></label>
 <div class="acrow"><input id="acname" name="display_name" maxlength="${NAME_MAX}" value="${E(display)}" autocomplete="nickname">
@@ -139,7 +139,7 @@ async function accountAction(input, ctx) {
       await ctx.db.prepare('DELETE FROM app_setting WHERE user_id=? AND key=?').bind(ctx.uid, AVATAR_KEY).run();
       return {body: {ok: true, avatar: ''}};
     }
-    if (!avatarOk(url)) throw new ValueError('この画像は使えません（WebP・JPEG・PNG で、小さくしたものだけです）');
+    if (!avatarOk(url)) throw new ValueError('この画像は使えません。使えるのは、小さくした WebP・JPEG・PNG の画像だけです。');
     await putSetting(ctx, AVATAR_KEY, url);
     return {body: {ok: true, avatar: url}};
   }

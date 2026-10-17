@@ -9,5 +9,5 @@ export function requireAgreement(input, fail) {
   const v = input?.agree;
   if (v === TERMS_VERSION) return;
   if (typeof v === 'string' && v) fail(409, '利用規約が新しくなりました。画面を読み込み直して、内容を確かめてから始めてください。');
-  fail(400, 'はじめての方は、利用規約とプライバシーの説明を読んで「同意して始める」にチェックを入れてください。');
+  fail(400, 'はじめての方は利用規約とプライバシーの説明を読んで、「同意して始める」にチェックを入れてください。');
 }

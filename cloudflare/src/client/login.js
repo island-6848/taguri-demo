@@ -62,7 +62,7 @@ const agreed = () => ($('#agree')?.checked ? $('#agree').value : undefined);
 // 同意が要ると言われたら、チェックの場所を目立たせる
 const askAgree = e => { if (/同意して始める|利用規約/.test(e?.message || '')) { $('#agree-box')?.classList.add('need'); $('#agree')?.focus(); } };
 // 新規登録の欄のボタン: チェックが無ければ、何も始めずにそう言う
-const NEED_AGREE = 'はじめる前に、利用規約とプライバシーの説明を読んで「同意して始める」にチェックを入れてください。';
+const NEED_AGREE = 'はじめる前に利用規約とプライバシーの説明を読んで、「同意して始める」にチェックを入れてください。';
 function needAgree() {
   if (agreed()) return false;
   say(NEED_AGREE, true); askAgree({message: NEED_AGREE});
@@ -103,7 +103,7 @@ function explain(e) {
   if (code.includes('popup-blocked')) return 'ポップアップが止められました。ブラウザの設定で許可してから、もう一度押してください。';
   if (code.includes('invalid-email')) return 'メールアドレスを確認してください。';
   if (code.includes('invalid-action-code') || code.includes('expired-action-code')) return 'このリンクは使えません。もう一度メールを送ってください。';
-  if (code.includes('too-many-requests') || code.includes('quota')) return '試行が多すぎます。しばらく待ってから試してください。';
+  if (code.includes('too-many-requests') || code.includes('quota')) return '試した回数が多すぎます。しばらく待ってから試してください。';
   if (code.includes('network')) return '通信できませんでした。接続を確かめてください。';
   return e instanceof Error && !code ? e.message : 'ログインできませんでした。もう一度お試しください。';
 }
@@ -124,7 +124,7 @@ async function main() {
     // Opened on another device/browser: ask again instead of trusting the URL.
     // Linking only happens in the browser that asked for the link, so a link
     // someone else sent cannot attach their email to this account.
-    if (!email && LINK_MODE) say('結び付けは、メールを送ったのと同じブラウザでリンクを開いてください。', true);
+    if (!email && LINK_MODE) say('結び付けるには、メールを送ったときと同じブラウザでリンクを開いてください。', true);
     else if (!email) email = (prompt('確認のため、リンクを送ったメールアドレスを入力してください。') || '').trim();
     if (email) {
       busy(true); say('ログインしています…');
