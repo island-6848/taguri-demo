@@ -893,10 +893,10 @@ body:has(>.shell){padding-top:0}
 .rec-row .rb.done button.nograde{opacity:1}
 
 /* ---- おすすめのカードの日程（screens/schedule.js tourBlock、起案者の指示 2026-10-17）。
-   会場ごとに「10/28〜11/1　恵比寿・エコー劇場（東京都）」の 1 行。おすすめに出ている会場は帯で示す */
+   会場ごとに「10/28〜11/1　恵比寿・エコー劇場（東京都）」の 1 行。ツアーのときだけ、おすすめに出ている会場の日付の前に ★ */
 .tourfull.v2{display:grid;gap:4px}
 .tourfull.v2 .tf-row{display:block;padding:2px 6px;border-radius:6px}
-.tourfull.v2 .tf-row.here{background:color-mix(in srgb,var(--curtain) 10%,var(--surf));box-shadow:inset 3px 0 0 var(--curtain)}
+.tourfull.v2 .tf-star{color:var(--curtain);margin-right:2px}
 .tourfull.v2 .tf-head{display:flex;flex-wrap:wrap;column-gap:1em}
 .tourfull.v2 .tf-when{color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap}
 .tourfull.v2 .tf-loc{color:var(--ink2);font-weight:500;flex:0 1 auto}

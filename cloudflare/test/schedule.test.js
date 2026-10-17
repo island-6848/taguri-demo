@@ -44,8 +44,11 @@ test('the tour block: one row per venue in date order, the shown one marked, pri
   const same = tourBlock([v('2', '2026-11-06', '2026-11-08', 'ささしまスタジオ', '愛知県', '一般：5,000円'), v('1', '2026-10-28', '2026-11-01', '恵比寿・エコー劇場', '東京都', '一般：5,000円', '10月28日(水) 19:00')], '2', '2026-10-20');
   assert.equal(same.perVenuePrice, false);
   assert.match(same.html, /<div class="tf-row"><div class="tf-head"><span class="tf-when">10\/28〜11\/1<\/span><span class="tf-loc">恵比寿・エコー劇場（東京都）<\/span><\/div><details class="tf-tt"><summary>公演日時（1 回）<\/summary>/);
-  assert.match(same.html, /<div class="tf-row here"><div class="tf-head"><span class="tf-when">11\/6〜11\/8<\/span><span class="tf-loc">ささしまスタジオ（愛知県）<\/span><\/div><\/div>/);
+  assert.match(same.html, /<div class="tf-row here"><div class="tf-head"><span class="tf-when"><span class="tf-star" title="おすすめに出ている会場">★<\/span>11\/6〜11\/8<\/span><span class="tf-loc">ささしまスタジオ（愛知県）<\/span><\/div><\/div>/);
   assert.ok(same.html.indexOf('恵比寿') < same.html.indexOf('ささしま'));
+  // 会場が 1 つなら印を付けない
+  const one = tourBlock([v('1', '2026-10-28', '2026-11-01', 'A', '東京都', '一般：5,000円')], '1', '2026-10-20');
+  assert.doesNotMatch(one.html, /here|★/);
   const diff = tourBlock([v('1', '2026-10-28', '2026-11-01', 'A', '東京都', 'S席：12,000円\nA席：9,500円'), v('2', '2026-11-06', '2026-11-08', 'B', '愛知県', '全席：8,000円')], '1', '2026-10-20');
   assert.equal(diff.perVenuePrice, true);
   assert.match(diff.html, /<table class="ptb"><tr><th>S席<\/th><td>12,000円<\/td><\/tr><tr><th>A席<\/th><td>9,500円<\/td><\/tr><\/table>/);

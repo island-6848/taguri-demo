@@ -1,6 +1,6 @@
 // おすすめのカードの日程（起案者の指示 2026-10-17）:
-// - 会場ごとに 1 行「10/28〜11/1　恵比寿・エコー劇場（東京都）」。おすすめに出ている会場の行は帯で示す
-//   （「このおすすめの日程」の札はやめた）
+// - 会場ごとに 1 行「10/28〜11/1　恵比寿・エコー劇場（東京都）」。ツアーのときは、おすすめに出ている会場の
+//   日付の前に ★ を付ける（「このおすすめの日程」の札も、行の帯もやめた）
 // - 各行の下に、公演日時の暦（月〜日の週ごと。開演の時刻を日に並べ、上演期間の中で公演の無い日は「休演」）。
 //   公演ページの「タイムテーブル」の文（「10月23日(金) 歩13:00／印18:00」のような行）から読む
 // - 料金が会場によって違うときは、各行に料金の表（券種と金額）を付ける
@@ -126,10 +126,11 @@ export function tourBlock(venues, shown, today) {
     const where = (v.venue || '会場未定') + (v.pref ? `（${v.pref}）` : '');
     const perf = parseTimetable(v.fields?.['タイムテーブル'] || '', v.start, end);
     const grid = timetableGrid(perf, v.start, end, today);
-    const isHere = String(v.stage_id) === String(shown);
+    // おすすめに出ている会場の印は、ツアー（会場が 2 つ以上）のときだけ。帯ではなく日付の前の ★（起案者の指示 2026-10-17）
+    const isHere = vs.length > 1 && String(v.stage_id) === String(shown);
     const n = [...perf.values()].reduce((a, ps) => a + ps.length, 0);
     const price = perVenuePrice ? priceTable(priceOf(v)) : '';
-    return `<div class="tf-row${isHere ? ' here' : ''}${end < today ? ' done' : ''}"><div class="tf-head"><span class="tf-when">${E(when)}</span>`
+    return `<div class="tf-row${isHere ? ' here' : ''}${end < today ? ' done' : ''}"><div class="tf-head"><span class="tf-when">${isHere ? '<span class="tf-star" title="おすすめに出ている会場">★</span>' : ''}${E(when)}</span>`
       + `<span class="tf-loc">${E(where)}</span></div>`
       + (price ? `<div class="tf-price">${price}</div>` : '')
       + (grid ? `<details class="tf-tt"${isHere ? ' open' : ''}><summary>公演日時（${n} 回）</summary>${grid}</details>` : '')
