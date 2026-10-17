@@ -127,13 +127,14 @@ export function tourBlock(venues, shown, today) {
     const perf = parseTimetable(v.fields?.['タイムテーブル'] || '', v.start, end);
     const grid = timetableGrid(perf, v.start, end, today);
     // おすすめに出ている会場の印は、ツアー（会場が 2 つ以上）のときだけ。帯ではなく日付の前の ★（起案者の指示 2026-10-17）
-    const isHere = vs.length > 1 && String(v.stage_id) === String(shown);
+    const shownRow = String(v.stage_id) === String(shown) || vs.length === 1;   // 暦を開いておく行
+    const isHere = vs.length > 1 && shownRow;
     const n = [...perf.values()].reduce((a, ps) => a + ps.length, 0);
     const price = perVenuePrice ? priceTable(priceOf(v)) : '';
     return `<div class="tf-row${isHere ? ' here' : ''}${end < today ? ' done' : ''}"><div class="tf-head"><span class="tf-when">${isHere ? '<span class="tf-star" title="おすすめに出ている会場">★</span>' : ''}${E(when)}</span>`
       + `<span class="tf-loc">${E(where)}</span></div>`
       + (price ? `<div class="tf-price">${price}</div>` : '')
-      + (grid ? `<details class="tf-tt"${isHere ? ' open' : ''}><summary>公演日時（${n} 回）</summary>${grid}</details>` : '')
+      + (grid ? `<details class="tf-tt"${shownRow ? ' open' : ''}><summary>公演日時（${n} 回）</summary>${grid}</details>` : '')
       + '</div>';
   });
   return {html: `<div class="tourfull v2">${rows.join('')}</div>`, perVenuePrice};

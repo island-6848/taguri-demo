@@ -20,7 +20,8 @@ import {titleKey} from './works.js';
 import {indexTabs} from './rate.js';
 import {PREFS} from './prefs.js';
 import {CONTENT_AXES} from '../recommend.js';
-import {rankedGroups, reasonRows} from './recommend.js';
+import {rankedGroups, reasonRows, withTour} from './recommend.js';
+import {tourBlock} from './schedule.js';
 
 export const KINDS = ['団体', '人', '主催', '作品', '原作者', '題材'];
 const DECLARED_KEY = 'declared', DECLINED_KEY = 'declined';
@@ -404,9 +405,14 @@ async function cards(ctx, rows, mode, extra = () => ({})) {
   const bare = rows.map(r => r.stage_id).filter(sid => !html.has(sid));
   // お気に入り says why each stage is there (the registered name), as its prebuilt cards do.
   if (bare.length) for (const [sid, s] of await stageInfo(ctx.db, bare)) html.set(sid, fallbackTemplate(s, {why: mode === 'favourite'}));
+  // 興味ありの一覧は、おすすめと同じ日程（会場ごとの行・公演日時の暦・会場で違う料金）にする（起案者の指示 2026-10-17）
+  const info = mode === 'interest' ? await stageInfo(ctx.db, rows.flatMap(r => r.sids || [r.stage_id])) : null;
   return rows.filter(r => html.has(r.stage_id)).map(r => {
     const pic = posters.get(r.stage_id) || r.sids?.map(s => posters.get(s)).find(Boolean);
-    return compose(html.get(r.stage_id), r.stage_id, mode, {poster: pic ? posterHtml(pic) : '', ...extra(r)});
+    const card = compose(html.get(r.stage_id), r.stage_id, mode, {poster: pic ? posterHtml(pic) : '', ...extra(r)});
+    if (!info) return card;
+    const sids = [...new Set([r.stage_id, ...(r.sids || [])].map(String))];
+    return withTour(card, tourBlock(sids.map(s => info.get(s)).filter(Boolean), r.stage_id, ctx.today));
   });
 }
 const qInt = (params, k) => Math.max(1, Number.parseInt(params.get(k) || '1', 10) || 1);

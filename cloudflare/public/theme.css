@@ -922,17 +922,17 @@ body:has(>.shell){padding-top:0}
 .ptb th{font-weight:500;color:var(--ink2);text-align:left;padding:0 10px 0 0;white-space:nowrap}
 .ptb td{font-variant-numeric:tabular-nums;color:var(--ink);white-space:nowrap}
 .ticket.cmp .lprice{margin:6px 0 8px}
-.ticket.cmp details.lprice summary{cursor:pointer;list-style:none;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+/* 畳んだ料金: 1 行目の表の下に「ほか N 件を見る」。押せる範囲（summary）の中に収める */
+.ticket.cmp details.lprice{display:block}
+.ticket.cmp details.lprice summary{cursor:pointer;list-style:none;display:block;width:100%}
 .ticket.cmp details.lprice summary::-webkit-details-marker{display:none}
-.ticket.cmp details.lprice summary .more{color:var(--curtain);font-size:12px}
-.ticket.cmp details.lprice[open] summary .more{display:none}
+.ticket.cmp details.lprice summary .lp-more{display:inline-block;color:var(--curtain);font-size:12px;white-space:nowrap;padding:4px 0}
+.ticket.cmp details.lprice[open] summary .lp-more{display:none}
 /* 暦を置く日程は、見出し「日程」を上に出して、暦にカードの幅いっぱいを使う（電話の幅で時刻が重ならないように） */
 .ticket.cmp .ltour:has(.tourfull.v2){display:block}
 .ticket.cmp .ltour:has(.tourfull.v2)>.cl{display:block;margin:0 0 2px}
 .ttb .tm{font-size:10.5px;letter-spacing:-.02em}
 .ttb .tm i{font-size:8.5px;vertical-align:1px}
-.ticket.cmp details.lprice summary{flex-wrap:nowrap}
-.ticket.cmp details.lprice summary .ptb{display:inline-table}
 /* 押せる範囲を 44px 四方以上にする（起案者の指示 2026-10-17）。見た目の大きさは変えず、透明な当たり判定を重ねる */
 .rsx,a.pill,.crumb a,.crumbinfo,.wnb.pen,.backbtn,.editor>summary{position:relative}
 .rsx::after,a.pill::after,.crumb a::after,.crumbinfo::after,.wnb.pen::after,.backbtn::after,.editor>summary::after{

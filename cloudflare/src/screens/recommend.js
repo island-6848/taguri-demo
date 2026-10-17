@@ -334,12 +334,12 @@ export async function cardsHtml(ctx, rows, titles, first = 1) {
 }
 
 /** The card with its tour block replaced (or put after the run line when the card had none). */
-function withTour(card, {html, perVenuePrice}) {
+export function withTour(card, {html, perVenuePrice}) {
   if (!html) return card;
   const old = /<div class="tourfull">(?:<div class="tf-row[^"]*">[\s\S]*?<\/div>)*<\/div>/;
   let out = old.test(card) ? card.replace(old, () => html) : card.replace(/(<div class="when">[\s\S]*?<\/div>)/, (m) => m + html);
   // 会場ごとに料金を書いたカードは、販売の札の横の料金（おすすめに出ている会場の分）を重ねない
-  if (perVenuePrice) out = out.replace('<article class="ticket recommend"', '<article class="ticket recommend" data-tourprice="1"');
+  if (perVenuePrice) out = out.replace(/<article class="ticket (\w+)"/, (m) => m + ' data-tourprice="1"');
   return out;
 }
 

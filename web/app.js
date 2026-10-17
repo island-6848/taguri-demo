@@ -822,7 +822,9 @@ function filterRow(el) {
 function compactTickets(root) {
   // おすすめの画面の一覧のカードには「くわしく」の折りたたみを付けない（起案者の指示 2026-10-17「おすすめページには
   // 『くわしく』の折りたたみなくして」）。閉じた 1 枚に出す分（日程・出演 5 人・あらすじの 1 文・料金・公式サイト）だけにする
-  const recPage = ["/", "/recommend"].includes(location.pathname.slice(REPO_BASE.length) || "/");
+  const here = location.pathname.slice(REPO_BASE.length) || "/";
+  const recPage = ["/", "/recommend"].includes(here);
+  const interestPage = here === "/recommend/interest";   // 興味ありの一覧もおすすめと同じ表示（起案者の指示 2026-10-17）
   // お気に入りも同じ形にする（起案者の指示 2026-10-15「お気に入りのページのレイアウト変更して。購入済み公演と似た感じ」）
   root.querySelectorAll("article.ticket.recommend, article.ticket.interest, article.ticket.owned, article.ticket.favourite").forEach(t => {
     if (t.classList.contains("cmp")) return;
@@ -831,7 +833,8 @@ function compactTickets(root) {
     t.classList.add("cmp");
     // おすすめの画面の一覧のカード: 折りたたみを付けず、料金の明細・出演の全員・あらすじの 100 字ほどを出す
     // （起案者の指示 2026-10-17。あらすじの続きだけ畳む）
-    const noMore = recPage && t.classList.contains("recommend") && !t.closest(".rfind");
+    const noMore = (recPage && t.classList.contains("recommend") && !t.closest(".rfind"))
+      || (interestPage && t.classList.contains("interest"));
     const more = document.createElement("details");
     more.className = "more";
     more.innerHTML = "<summary><b>くわしく</b><span>会期・料金・出演の全員・あらすじの全文</span></summary>";
@@ -920,7 +923,7 @@ function compactTickets(root) {
         const table = rs => '<table class="ptb">' + rs.map(r => r.length > 1
           ? "<tr><th>" + E(r[0]) + "</th><td>" + E(r[1]) + "</td></tr>" : '<tr><td colspan="2">' + E(r[0]) + "</td></tr>").join("") + "</table>";
         box.innerHTML = rows.length > 2
-          ? "<summary>" + table(rows.slice(0, 1)) + '<span class="more">ほか ' + (rows.length - 1) + " 件</span></summary>" + table(rows.slice(1))
+          ? "<summary>" + table(rows.slice(0, 1)) + '<span class="lp-more">▸ ほか ' + (rows.length - 1) + " 件の料金を見る</span></summary>" + table(rows.slice(1))
           : table(rows);
         (sale || main.querySelector(".when") || main.querySelector(".meta")).after(box);
         priced = true;

@@ -55,3 +55,18 @@ test('the count line: 「県／N 件中 上位 M 件を表示中」, and the two
       new RegExp(`<p class="pnow"><b>${p}</b>／\\d+ 件中 上位 \\d+ 件を表示中</p>`));
   } finally { sqlite.close(); }
 });
+
+test('興味あり cards get the same schedule block as おすすめ (venue rows, calendar)', async () => {
+  const {env, sqlite} = setup();
+  for (const s of FIXTURE.sql) sqlite.exec(s);
+  const e = JSON.parse(sqlite.prepare("SELECT entry FROM rec_stage WHERE stage_id='101'").get().entry);
+  e.fields = {...e.fields, 'タイムテーブル': '11月1日(日) 13:00\n11月3日(火) 19:00'};
+  sqlite.prepare("UPDATE rec_stage SET entry=? WHERE stage_id='101'").run(JSON.stringify(e));
+  const a = await signIn(env);
+  try {
+    assert.equal((await step(env, a, {post: '/api/react', body: {stage_id: '101', value: 'interest', nofill: true}})).status, 200);
+    const html = (await step(env, a, {get: '/api/screen/interest'})).body.body_html;
+    assert.match(html, /<article class="ticket interest" data-stage="101"[\s\S]*<div class="tourfull v2"><div class="tf-row"><div class="tf-head"><span class="tf-when">11\/1〜11\/10<\/span>/);
+    assert.match(html, /<details class="tf-tt" open><summary>公演日時（2 回）<\/summary><table class="ttb"/);
+  } finally { sqlite.close(); }
+});
