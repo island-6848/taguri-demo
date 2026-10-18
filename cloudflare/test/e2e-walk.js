@@ -65,8 +65,17 @@ function seed() {
   const past = PAST.map(r => `INSERT INTO past_stage(stage_id,title,tkey,start,end,venue,grp,pref,people) VALUES(${r.map(q).join(',')});`);
   const soon = `INSERT INTO catalogue(id,title,date,venue,url,metadata) VALUES(${[SOON.id, SOON.title, SOON.date, SOON.venue, 'https://stage.example/990001',
     JSON.stringify({end_date: SOON.end, group: SOON.group, fields: {'出演': SOON.cast}})].map(q).join(',')});`;
+  // おすすめのカードの見た目を確かめるため、舞台ひとつめ（101）に長いあらすじ・題材・料金（同じ額の幅を含む）・公演日時を
+  // 手で直した分（stage_override）として重ねる（起案者の指示 2026-10-18 のカードの 7 点）
+  const ov = `INSERT INTO stage_override(stage_id,synopsis,themes,info,updated_at) VALUES(${['101',
+    '海辺の町で小さな食堂を営む家族の物語。父が倒れ、都会に出ていた長女が十年ぶりに戻ってくる。閉めるか続けるかで揺れる家族の前に、'
+    + '父が昔書き残した献立帳が見つかる。献立帳をたどるうちに、長女は町の人たちと父の知られざる過去に出会っていく。笑って泣ける再生の物語。',
+    JSON.stringify(['家族', '再生', '食堂']),
+    JSON.stringify({fields: {'料金（1枚あたり）': '12,000円 ～ 12,000円\n【発売日】2026/09/01\nS席：12,000円\nA席：8,000円〜8,000円\nU-25：6,000円',
+      'タイムテーブル': '11月1日(日) 13:00\n11月2日(月) 19:00\n11月3日(火) 13:00/18:00'}}),
+    '2026-10-18T00:00:00Z'].map(q).join(',')});`;
   const file = join(STATE, 'seed.sql');
-  writeFileSync(file, [...cat.sql, ...rec.sql, ...past, soon, "INSERT INTO venue_pref(venue,pref) VALUES('劇場F','東京都');"].join('\n'));
+  writeFileSync(file, [...cat.sql, ...rec.sql, ...past, soon, ov, "INSERT INTO venue_pref(venue,pref) VALUES('劇場F','東京都');"].join('\n'));
   wrangler('d1', 'execute', 'taguri-demo', '--local', '--persist-to', STATE, '--file', file);
 }
 
@@ -476,6 +485,49 @@ async function walkA(A) {
     check(n === 6, '評価の数が 6 でない: ' + n);
   });
 
+  // 起案者の指示 2026-10-18（おすすめのカードの 7 点）: 理由の作品名は 2 つまで・札は「人物」「形式」で Zen丸ゴシック、
+  // 発売の札は値段帯のすぐ下、枠線 2px、同じ額の幅は 1 つの額、あらすじの続きは地の色なしで題材のハッシュタグ、日程と暦の間をあける
+  await step('今週のおすすめ: カードの見た目（理由・発売の札・料金・あらすじのハッシュタグ・暦。PC・電話の幅）', async () => {
+    await go('/');
+    const card = page.locator('.ticket.recommend[data-stage="101"]');
+    await card.waitFor({timeout: 10000});
+    const nets = await card.locator('.rs .net').allInnerTexts();
+    check(nets.length && nets.every(t => ['人物', '形式', '感想'].includes(t.trim())), '理由の札: ' + nets.join(','));
+    const works = await card.locator('.rs .n').allInnerTexts();
+    check(works.every(t => (t.match(/『/g) || []).length <= 2), '理由の作品名が 3 つ以上: ' + works.join(' / '));
+    check(!works.some(t => /お気に入り・興味ありの公演から/.test(t)), '「（お気に入り・興味ありの公演から）」が残っている');
+    const font = await card.locator('.rs .net').first().evaluate(n => [getComputedStyle(n).fontFamily, getComputedStyle(n).fontWeight]);
+    check(/Zen Maru Gothic/.test(font[0]) && font[1] === '700', '理由の札の字: ' + font.join(' '));
+    const order = await card.locator('.main').evaluate(m => [...m.children].map(n => n.className.split(' ')[0]).join(','));
+    check(/lprice,sale/.test(order), '発売の札が値段帯のすぐ下にない: ' + order);
+    const bw = await card.evaluate(t => [t.querySelector('.sale .pill'), t.querySelector('.pcol .sitebtn, .sitelink')].filter(Boolean).map(n => getComputedStyle(n).borderTopWidth));
+    check(bw[0] === '2px' && (bw.length < 2 || bw[1] === '2px'), '発売の札の枠線: ' + bw.join(','));
+    const price = await card.locator('.lprice').innerText();
+    check(!/12,000円\s*[~〜～]\s*12,000円/.test(price) && /12,000円/.test(price), '同じ額の幅が残っている: ' + price.replace(/\s+/g, ' '));
+    note('料金: ' + price.replace(/\s+/g, ' ') + ' / 並び: ' + order + ' / 枠線: ' + bw.join(','));
+    // 写しの間だけ、使い方の案内（.tgt-root）を隠す（カードに重なるため。押さないので次の段には響かない）
+    const hideTour = on => page.evaluate(v => document.querySelectorAll('.tgt-root').forEach(n => { n.style.visibility = v ? 'hidden' : ''; }), on);
+    await hideTour(true);
+    await page.setViewportSize({width: 390, height: 844});
+    await card.scrollIntoViewIfNeeded();
+    await card.screenshot({path: join(OUT, 'card-recommend-phone-closed.png')}).catch(() => {});
+    // 開く: 料金の詳細・あらすじの続き。日程の暦は会場が 1 つなら開いている
+    await card.locator('details.lprice > summary').click().catch(() => {});
+    await card.locator('details.lsynmore > summary').click();
+    const tags = await card.locator('.lsynmore .lsyntag').allInnerTexts();
+    check(tags.join(' ') === '#家族 #再生 #食堂', 'あらすじのハッシュタグ: ' + tags.join(' '));
+    const bg = await card.locator('details.lsynmore').evaluate(n => getComputedStyle(n).backgroundColor);
+    check(bg === 'rgba(0, 0, 0, 0)' || bg === 'transparent', '開いたあらすじに地の色: ' + bg);
+    const gap = await card.evaluate(t => { const b = t.querySelector('.tourfull.v2 details[open] > .tf-body'); return b ? getComputedStyle(b).marginTop : 'なし'; });
+    check(gap === '6px', '日程と暦の間: ' + gap);
+    note('ハッシュタグ: ' + tags.join(' ') + ' / 暦の上: ' + gap);
+    await card.screenshot({path: join(OUT, 'card-recommend-phone-open.png')}).catch(() => {});
+    await page.setViewportSize({width: 1280, height: 900});
+    await card.scrollIntoViewIfNeeded();
+    await card.screenshot({path: join(OUT, 'card-recommend-pc-open.png')}).catch(() => {});
+    await hideTour(false);
+  });
+
   await step('今週のおすすめ: 興味なし → 押し直して興味あり', async () => {
     await go('/');
     const card = page.locator('.ticket.recommend[data-stage="101"]');
@@ -490,6 +542,16 @@ async function walkA(A) {
     note('D1 reactions: ' + JSON.stringify(r));
     await go('/recommend/interest');
     check(/舞台ひとつめ/.test(await content()), '興味ありの一覧に出ない');
+    // 興味ありのカードの見た目（PC・電話の幅）。発売の札は値段帯のすぐ下（起案者の指示 2026-10-18）
+    const ic = page.locator('.ticket.interest[data-stage="101"]');
+    check(/lprice,sale/.test(await ic.locator('.main').evaluate(m => [...m.children].map(n => n.className.split(' ')[0]).join(','))), '興味ありのカードで発売の札が値段帯の下にない');
+    const hide = on => page.evaluate(v => document.querySelectorAll('.tgt-root').forEach(n => { n.style.visibility = v ? 'hidden' : ''; }), on);
+    await hide(true);
+    await ic.screenshot({path: join(OUT, 'card-interest-pc.png')}).catch(() => {});
+    await page.setViewportSize({width: 390, height: 844});
+    await ic.screenshot({path: join(OUT, 'card-interest-phone.png')}).catch(() => {});
+    await page.setViewportSize({width: 1280, height: 900});
+    await hide(false);
     await go('/');
     check(await page.locator('.ticket.recommend[data-stage="101"]').count() === 0, '答えた公演がおすすめに残る');
   });

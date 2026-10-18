@@ -1,7 +1,7 @@
 ---
 id: dec-font-accent-five
 type: decision
-status: adopted
+status: superseded
 date: 2026-10-18
 title: 書体は Zen角ゴシック New が基本。さわらびゴシックは指定した 5 か所（公式サイト・発売の状況・お気に入りの名前の札・理由の人物/種類・評価しない）とロゴだけ
 sources:

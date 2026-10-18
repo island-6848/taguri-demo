@@ -202,6 +202,11 @@ export function timetableGrid(perf, start, end, today, texts = []) {
 // 値段の幅だけの行（「2,750円 ~ 7,150円」）
 const RANGE = /^[\d,]+円\s*[~〜～\-－]\s*[\d,]+円$/;
 /**
+ * 両端が同じ額の幅（「12,000円 ~ 12,000円」）を「12,000円」と 1 つだけ書く（起案者の指示 2026-10-18「値段帯が12000円〜12000円って
+ * 同一金額になってるときは、簡潔に12000円と明記して」）。web/app.js の sameYen と同じ
+ */
+export const sameYen = line => line.replace(/([\d,]+)円\s*[~〜～\-－]\s*([\d,]+)円/g, (all, a, b) => (a.replace(/,/g, '') === b.replace(/,/g, '') ? a + '円' : all));
+/**
  * Price rows of a price text: [[券種, 金額] | [文]]. Lines about sale dates are left out.
  * `dropRange`: leave out the range-only line when there are other rows (ツアーの各会場の行。起案者の指示 2026-10-17）.
  */
@@ -215,7 +220,8 @@ export function priceRows(text, {dropRange = false} = {}) {
   }
   const uniq = out.filter((r, i) => out.findIndex(x => x.join('\t') === r.join('\t')) === i);
   const rest = uniq.filter(r => !(r.length === 1 && RANGE.test(r[0])));
-  return dropRange && rest.length ? rest : uniq;
+  // 幅だけの行かどうかは書き換える前の文で見る（「12,000円 ~ 12,000円」も幅だけの行として明細があれば外す）
+  return (dropRange && rest.length ? rest : uniq).map(r => r.map(sameYen));
 }
 // お金の絵記号（web/app.js の ICON_P.yen と同じ形）。金額の頭に付ける（起案者の指示 2026-10-17）
 export const YEN_ICON = '<svg class="ico" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'

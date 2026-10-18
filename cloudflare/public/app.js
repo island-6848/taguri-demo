@@ -879,11 +879,14 @@ fixupSynClamp(document);
 // あらすじの全文と入れ口・公式サイトは「くわしく」の中へ移す。**画面の HTML は Render の
 // Python が組むので、ここで組み替える**（Render を起こし直さずにデモとサービスの両方へ届く）。
 const CAST_LEAD = 5, SYN_LEAD = 100;
+// 「12,000円 ~ 12,000円」のように両端が同じ額の幅は「12,000円」と 1 つだけ書く（起案者の指示 2026-10-18
+// 「値段帯が12000円〜12000円って同一金額になってるときは、簡潔に12000円と明記して」。screens/schedule.js sameYen と同じ）
+const sameYen = line => line.replace(/([\d,]+)円\s*[~〜～\-－]\s*([\d,]+)円/g, (all, a, b) => (a.replace(/,/g, "") === b.replace(/,/g, "") ? a + "円" : all));
 /** 料金の欄の文から、金額の行を [券種, 金額] か [文] にして返す（screens/schedule.js priceRows と同じ決まり） */
 function priceRowsOf(text) {
   const out = [];
   for (const raw of String(text || "").normalize("NFKC").split(/\n+/)) {
-    const line = raw.replace(/\s+/g, " ").trim();
+    const line = sameYen(raw.replace(/\s+/g, " ").trim());
     if (!/円|無料/.test(line) || /発売|受付|抽選|開始|販売/.test(line)) continue;
     const m = /^【?([^:：】]{1,24})】?\s*[:：]\s*(.+)$/.exec(line);
     const r = m ? [m[1].trim(), m[2].trim()] : [line];
@@ -1126,9 +1129,14 @@ function leadSynopsis(t, lead, noMore) {
           const m = full.slice(80, 121).search(/[。！？!?]/);
           if (m >= 0) cut = 80 + m + 1;
           const head = full.slice(0, cut), rest = full.slice(cut);
+          // あらすじから読み取った題材（render_recommend.syn_block の .tags .tag「#ワード」。手で入れた印の札は除く）を、
+          // 開いたあらすじの下にハッシュタグで並べる（起案者の指示 2026-10-18「取得したワードをハッシュタグっぽく記載して」）。
+          // 続きの無い短いあらすじは、本文のすぐ下に出す
+          const words = [...new Set([...syn.querySelectorAll(".tags .tag:not(.mine)")].map(n => n.textContent.trim().replace(/^#/, "")).filter(Boolean))];
+          const tags = words.length ? '<span class="lsyntags">' + words.map(w => '<span class="lsyntag">#' + E(w) + "</span>").join("") + "</span>" : "";
           p.innerHTML = '<span class="cl">あらすじ</span><span class="lv">' + E(head)
             + (rest ? '<details class="lsynmore"><summary>続きを読む</summary><span class="lsynrest">' + E(rest)
-              + '</span><button type="button" class="lsynfold">折りたたむ</button></details>' : "") + "</span>";
+              + "</span>" + tags + '<button type="button" class="lsynfold">折りたたむ</button></details>' : tags) + "</span>";
         } else {
           p.innerHTML = '<span class="cl">あらすじ</span><span class="lv">' + E(firstSentence(text)) + "</span>";
         }
@@ -1233,6 +1241,9 @@ function compactTickets(root) {
           + (stops > 1 ? '<span class="mt">ほか ' + (stops - 1) + " 会場</span>" : "") + "</span></span>" : "");
     }
     const sale = main.querySelector(".sale");
+    // 料金の欄の文も、両端が同じ額の幅は 1 つの額に（くわしくの中・購入済みなどの画面。起案者の指示 2026-10-18）
+    const priceEl = main.querySelector(".when .price");
+    if (priceEl) { const pt = sameYen(priceEl.textContent); if (pt !== priceEl.textContent) priceEl.textContent = pt; }
     // 料金の明細（おすすめの画面。値段の幅ではなく券種ごとの金額を、販売の札の下に書く。発売日などの行は除く。
     // 3 行以上は最初の 1 行だけ出して残りを畳む）（起案者の指示 2026-10-17）。会場ごとに料金が違うカードは
     // 日程の各行に表があるので、ここには出さない（data-tourprice）
@@ -1251,7 +1262,7 @@ function compactTickets(root) {
         : rows.length > 2 ? '<summary><div class="lp-row">' + yen + cell(rows[0]) + '<span class="lp-more">詳細</span></div></summary><div class="lp-body">' + list(rows.slice(1), false) + "</div>"
         : list(rows);
       (sale || main.querySelector(".when") || main.querySelector(".meta")).after(box);
-      priced = true;
+      priced = box;
     }
     // 料金（1 枚あたり）を発売の札の隣に出す（起案者の指示 2026-10-14「チケット代金も…おすすめ画面において」）。
     // 金額はサーバーが料金の欄から読んだもの（render_recommend.price_range）。読めなかった公演には出さない
@@ -1263,9 +1274,12 @@ function compactTickets(root) {
       sale.appendChild(pr);
     }
     (sale || main.querySelector(".meta")).after(lead);
-    // 発売の札（発売済み など）は、公式サイトへ行くボタンの下に置く（起案者の指示 2026-10-18）
+    // 発売の札（発売済み など）は、値段帯（料金の明細の、畳む前に見えている行）のすぐ下に置く（起案者の指示 2026-10-18
+    // 「チケット発売日のボタンは、値段帯の折りたたむ前の下に置いて」。その前の同じ日の指示では公式サイトのボタンの下）。
+    // 料金の明細を出さないカード（会場ごとに料金が違う・くわしくの付く画面）は、公式サイトのボタンの下のまま
     const siteBtn = t.querySelector(".pcol .sitebtn");
-    if (sale && siteBtn) siteBtn.after(sale);
+    if (sale && priced) priced.after(sale);
+    else if (sale && siteBtn) siteBtn.after(sale);
     // おすすめ理由は畳まず、いつも全部出す（起案者の指示 2026-10-18「おすすめ理由は常に折りたたまず、全部表示」）
     // ツアーの日程は、閉じていても全部出す（起案者の指示 2026-10-14「おすすめ欄にはつねにツアー日程を全部書いて
     // （土地で絞り込んでたとしても）」）。出演・あらすじと同じ形で「日程」の見出しを付けて先頭に置く

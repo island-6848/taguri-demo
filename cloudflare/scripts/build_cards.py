@@ -70,6 +70,11 @@ def stage_dicts(pool: dict[str, dict], themes: dict, today: datetime.date) -> di
         fields = c.get("fields") or {}
         c.update(stage_id=sid, days=RC.run_days(period), onsale=RC.onsale(fields, today),
                  url=c.get("url") or RC.url_of(fields.get("公式／劇場サイト", "")), tours=[])
+        # 料金は公演ページの欄（券種ごとの明細がある）を先に使う。検索の一覧から拾った行（fetch_candidates.listing）の
+        # price は一覧に出る幅（「2,750円 ~ 7,150円」）だけで、カードに明細が出なかった（起案者の質問 2026-10-18
+        # 「たまに値段の詳細取得できてない公演があるのはなぜ？」。サイトマップから拾った行は同じ文なので変わらない）
+        if str(fields.get("料金（1枚あたり）") or "").strip():
+            c["price"] = fields["料金（1枚あたり）"]
         t = themes.get(("candidate", sid)) or {}
         c["themes"] = [e["word"] for e in (t.get("elements") or []) if e.get("word")]
         c["themes_by"] = t.get("elements_by") or ""

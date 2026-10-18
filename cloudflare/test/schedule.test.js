@@ -40,6 +40,10 @@ test('price rows: 券種と金額, sale-date lines left out', () => {
   // ツアーの各会場の行では、値段の幅だけの行は出さない（明細があるとき）
   assert.deepEqual(priceRows('2,750円 ～ 7,150円\n前売：6,600円', {dropRange: true}), [['前売', '6,600円']]);
   assert.deepEqual(priceRows('2,750円 ～ 7,150円', {dropRange: true}), [['2,750円 ~ 7,150円']]);
+  // 両端が同じ額の幅は 1 つの額で書く（起案者の指示 2026-10-18「12000円〜12000円って同一金額になってるときは、簡潔に12000円と明記して」）
+  assert.deepEqual(priceRows('12,000円 ～ 12,000円'), [['12,000円']]);
+  assert.deepEqual(priceRows('一般：12,000円〜12,000円\n学生：3,000円〜5,000円'), [['一般', '12,000円'], ['学生', '3,000円〜5,000円']]);
+  assert.deepEqual(priceRows('12,000円 ～ 12,000円\n一般：12,000円', {dropRange: true}), [['一般', '12,000円']]);
 });
 
 test('the tour block: a bulleted row per venue in date order, ★ on the filtered prefectures, the count beside the dates, prices per venue only when they differ', () => {

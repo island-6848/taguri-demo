@@ -267,10 +267,42 @@ test('興味あり copied to the tour\'s other venues counts once as a hint; a v
   } finally { sqlite.close(); }
 });
 
-test('a person raised only by pseudo ratings is not shown as 履歴 0 本', async () => {
+// 起案者の指示 2026-10-18「おすすめ理由に『（お気に入り・興味ありの公演から）』って書くのやめて。ちゃんと公演タイトル書いて」:
+// 作品名の引けない人は何も添えない（前は「（お気に入り・興味ありの公演から）」と書いていた）
+test('a person raised only by pseudo ratings is not shown as 履歴 0 本, nor as （お気に入り・興味ありの公演から）', async () => {
   const {reasonRows} = await import('../src/screens/recommend.js');
   const html = reasonRows({parts: [[0.5, '脚本', '家丁', 0]], kinds: []}, new Map());
-  assert.match(html, /脚本 <b>家丁<\/b><span class="n">（お気に入り・興味ありの公演から）<\/span>/);
+  assert.match(html, /脚本 <b>家丁<\/b><span class="n"><\/span>/);
+  assert.doesNotMatch(html, /お気に入り・興味ありの公演から|履歴 0 本/);
+});
+
+// 同じ日の指示「公演タイトルすでに書けているものも、最大2件だけ表示。一番最近の公演と一番古い公演から計2個」
+test('a reason names only the newest and the oldest work', async () => {
+  const {reasonRows} = await import('../src/screens/recommend.js');
+  const titles = new Map([['出演\t甲', ['新', '中', '古']], ['演出\t乙', ['一つ']], ['脚本\t丙', ['二', '一']]]);
+  const html = reasonRows({parts: [[0.5, '出演', '甲', 3], [0.4, '演出', '乙', 1], [0.3, '脚本', '丙', 2]], kinds: []}, titles);
+  assert.match(html, /出演 <b>甲<\/b><span class="n">（『新』・『古』 ほか 1 本）<\/span>/);
+  assert.match(html, /演出 <b>乙<\/b><span class="n">（『一つ』）<\/span>/);
+  assert.match(html, /脚本 <b>丙<\/b><span class="n">（『二』・『一』）<\/span>/);
+  assert.doesNotMatch(html, /『中』/);
+});
+
+// お気に入りの名前から引いた公演の共演者も、その公演の題名で書く（前は「（お気に入り・興味ありの公演から）」）
+test('a co-worker of a favourite is named with the favourite\'s work', async () => {
+  const {env, sqlite} = await withIndex();
+  const a = await signIn(env);
+  try {
+    await rateSeen(env, a, '終わった舞台', '2026-08-05', '103', '◎');
+    await rateSeen(env, a, '一日だけの舞台', '2026-09-05', '104', '×');
+    // 作家丁の公演（102 舞台ふたつめ、初日 2026-10-01）に出ている俳優乙が、101 の理由になる
+    assert.equal((await step(env, a, {post: '/api/favourite', body: {action: 'add', kind: '人', name: '作家丁'}})).status, 200);
+    const html = (await step(env, a, {get: '/api/screen/recommend'})).body.body_html;
+    assert.match(html, /data-stage="101"/);
+    assert.match(html, /出演 <b>俳優乙<\/b><span class="n">（『舞台ふたつめ』）<\/span>/);
+    // 種類の理由も、新しい公演（初日 10/01）→ 古い公演（観た日 08/05）の順
+    assert.match(html, /<span class="net">形式<\/span>原作 <b>オリジナル<\/b><span class="n">（『舞台ふたつめ』・『終わった舞台』）<\/span>/);
+    assert.doesNotMatch(html, /お気に入り・興味ありの公演から/);
+  } finally { sqlite.close(); }
 });
 
 // 起案者の質問 2026-10-16「おすすめ画面では理由がちゃんと出てるのに、興味ありに移ったらおすすめ理由が空欄になるのなんで？」
