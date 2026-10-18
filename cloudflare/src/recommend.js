@@ -350,7 +350,9 @@ export function personValues(rated, seeds = [], skip = new Set(), liked = [], di
       const rw = favSpread(k.slice(0, k.indexOf('\u0000')));
       if (!rw) continue;                        // 制作・宣伝・その他の役職からは広げない
       const t = tally.get(k) || [0, 0, 0];
-      t[1] += w * FAV_SEED_W * SEED_Z * rw; t[2] += w * FAV_SEED_W;
+      // 語彙表で広げた題材から拾った公演は、離れるほど弱い（r.w。src/vocab.js）。役職の広げ方の重み（rw）も掛ける
+      const sw = r.w ?? 1;
+      t[1] += w * FAV_SEED_W * SEED_Z * rw * sw; t[2] += w * FAV_SEED_W * sw;
       tally.set(k, t);
     }
   }
@@ -485,17 +487,18 @@ export async function scoreFromIndex({postingsFor, stagesFor, rated, multipliers
  * build_recommend_index.seeds_from_favourites: candidate stages crediting a
  * favourite person / original author, with their people. Returns {seeds, skip}.
  */
-export async function seedsFromFavourites({postingsFor, peopleFor, stagesMatching}, favourites) {
+export async function seedsFromFavourites({postingsFor, peopleFor, stagesMatching, stagesByWords}, favourites) {
   const names = [...new Set(favourites.filter(f => SEED_KINDS.includes(f.kind)).map(f => f.name))].sort(cmp).slice(0, MAX_SEED_FAVS);
   // 「堂本 光一」と空白を入れて登録しても、索引の「堂本光一」で引く（お気に入りの一覧は空白を詰めて当てるので公演が出るのに、
   // 推薦の種は名前そのままで引いていて 0 件になっていた。2026-10-18、fix-fav-only-no-reco）。build_recommend_index と同じ
   const lookup = new Map();                    // 索引で引く名前 -> 登録した名前
   for (const name of names) for (const n of [name, personKey(name)]) if (n && !lookup.has(n)) lookup.set(n, name);
-  const sids = new Set(), favOf = new Map();   // stage_id -> 登録した名前（理由に書く）
+  const sids = new Map(), favOf = new Map();   // stage_id -> 種の重さ（名前で当たったものは 1）／登録した名前（理由に書く）
   const note = (sid, name) => { if (!favOf.has(sid)) favOf.set(sid, new Set()); favOf.get(sid).add(name); };
+  const put = (sid, x) => { if (!(sids.get(sid) >= x)) sids.set(sid, x); };
   if (names.length) {
     const keys = [...lookup.keys()].flatMap(name => SEED_ROLES.map(role => [role, name])).sort(cmpTuple);
-    for (const r of await postingsFor(keys)) { sids.add(r[2]); note(r[2], lookup.get(r[1]) ?? r[1]); }
+    for (const r of await postingsFor(keys)) { put(r[2], 1); note(r[2], lookup.get(r[1]) ?? r[1]); }
   }
   // Troupes / producers by the producing company, works by the title
   // (recommend2.declared_hits' rules on normalised text).
@@ -506,23 +509,33 @@ export async function seedsFromFavourites({postingsFor, peopleFor, stagesMatchin
     return [...out].sort(cmp).slice(0, MAX_SEED_FAVS);
   };
   const groups = pick(SEED_GROUP_KINDS, nz), works = pick(SEED_WORK_KINDS, titleKey), subjects = pick(SEED_THEME_KINDS, nz);
-  // 題材は語彙表で下位と関連にも広げ、#題材 の言葉と丸ごと一致で当てる（src/vocab.js。「科学」→ SF・近未来…）
-  // 広げた言葉で当たった公演も、理由には登録した題材の名前を書く（wideOf: 広げた言葉 -> 登録した題材の語）
-  const wideOf = new Map();
-  for (const t of subjects) { const x = themeExpansion(t); for (const w of [...x.narrow, ...x.related]) if (!wideOf.has(w)) wideOf.set(w, t); }
-  const wider = [...wideOf.keys()].sort(cmp);
   if ((groups.length || works.length || subjects.length) && stagesMatching) {
     const labels = new Map();
-    for (const sid of await stagesMatching(groups, works, subjects, wider, labels)) {
-      sids.add(sid);
-      for (const x of labels.get(sid) || []) { const y = back.has(x) ? x : (wideOf.get(x) ?? x); note(sid, back.get(y) ?? y); }
+    for (const sid of await stagesMatching(groups, works, subjects, [], labels)) {
+      put(sid, 1);
+      for (const x of labels.get(sid) || []) note(sid, back.get(x) ?? x);
+    }
+  }
+  // 題材は語彙表で下位と関連にも広げ、#題材 の言葉と丸ごと一致で当てる。重さは離れるほど弱い（src/vocab.js。
+  // 「科学」→ SF 0.6・宇宙 0.35・近未来 0.3…）。種の数に上限があるので、重い公演から取る。
+  // 広げた言葉で当たった公演も、理由には登録した題材の名前を書く（wideOf: 広げた言葉 -> 登録した題材の語）
+  const wider = new Map(), wideOf = new Map();
+  for (const t of subjects) for (const [w, x] of themeExpansion(t).weights) {
+    if (!(wider.get(w) >= x)) { wider.set(w, x); wideOf.set(w, t); }
+  }
+  if (wider.size && stagesByWords) {
+    const labels = new Map();
+    for (const [sid, x] of await stagesByWords(wider, labels)) {
+      put(sid, x);
+      for (const w of labels.get(sid) || []) { const s = wideOf.get(w) ?? w; note(sid, back.get(s) ?? s); }
     }
   }
   const skip = new Set(lookup.keys());
-  const chosen = [...sids].sort(cmp).slice(0, MAX_SEED_STAGES);
+  const chosen = [...sids].sort((a, b) => (b[1] - a[1]) || cmp(a[0], b[0])).slice(0, MAX_SEED_STAGES);
   if (!chosen.length) return {seeds: [], skip};
-  const people = await peopleFor(chosen);
-  return {seeds: chosen.filter(sid => people.get(sid)?.length).map(sid => ({stage_id: sid, people: people.get(sid), fav: [...(favOf.get(sid) || [])].sort(cmp)})), skip};
+  const people = await peopleFor(chosen.map(([sid]) => sid));
+  return {seeds: chosen.filter(([sid]) => people.get(sid)?.length)
+    .map(([sid, x]) => ({stage_id: sid, people: people.get(sid), fav: [...(favOf.get(sid) || [])].sort(cmp), ...(x < 1 ? {w: x} : {})})), skip};
 }
 
 /**
@@ -609,6 +622,22 @@ export function d1Access(db, ver, counter = {rows: 0, queries: 0}) {
         for (const r of results) { out.add(r.stage_id); label(r.stage_id, String(r.person || '')); }
       }
       return [...out];
+    },
+    /** #題材 の言葉（丸ごと一致）→ 重さ の Map から、stage_id → 当たった言葉のいちばん重い値。
+     *  labels（任意の Map）: stage_id -> 当たった言葉（理由に登録した題材の名前を書くため） */
+    async stagesByWords(weights, labels = null) {
+      const out = new Map(), words = [...weights.keys()].sort(cmp);
+      for (let i = 0; i < words.length; i += IDS_PER_QUERY) {
+        const chunk = words.slice(i, i + IDS_PER_QUERY);
+        const {results} = await db.prepare(`SELECT stage_id,person FROM rec_credit WHERE ver=? AND role=? AND person IN (${chunk.map(() => '?').join(',')})`)
+          .bind(ver, THEME_AXIS, ...chunk).all();
+        counter.rows += results.length; counter.queries += 1;
+        for (const r of results) {
+          const x = weights.get(r.person); if (!(out.get(r.stage_id) >= x)) out.set(r.stage_id, x);
+          if (labels) { if (!labels.has(r.stage_id)) labels.set(r.stage_id, new Set()); labels.get(r.stage_id).add(r.person); }
+        }
+      }
+      return out;
     },
     async peopleFor(ids) {
       const map = new Map();
