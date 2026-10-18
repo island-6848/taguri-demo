@@ -1,7 +1,7 @@
 ---
 id: dec-font-sawarabi-round
 type: decision
-status: adopted
+status: superseded
 date: 2026-10-18
 title: 押すもの・丸の中の字（両端が半円の押し口と札）・ロゴはさわらびゴシック、公演名とほかは Zen角ゴシック New
 sources:

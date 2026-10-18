@@ -5,11 +5,10 @@ import {readFileSync, existsSync} from 'node:fs';
 
 const pub = p => new URL('../public/' + p, import.meta.url).pathname;
 
-test('every page loads fonts.css and round-text.js', () => {
+test('every page loads fonts.css', () => {
   for (const page of ['index.html', 'login.html', 'terms.html', 'privacy.html', 'oauth-calendar.html']) {
     const html = readFileSync(pub(page), 'utf8');
     assert.match(html, /<link rel="stylesheet" href="\/fonts\.css">/, page);
-    assert.match(html, /<script src="\/round-text\.js"/, page);
   }
 });
 
@@ -22,9 +21,10 @@ test('each @font-face in fonts.css points at a file that is served', () => {
   assert.deepEqual(urls.filter(u => !existsSync(pub(u))), []);
 });
 
-test('the round rule comes after the action rule so a round button gets the round font', () => {
+test('only the five named parts use the accent font', () => {
   const css = readFileSync(pub('fonts.css'), 'utf8');
-  const action = css.indexOf('font-family:var(--font-action)!important');
-  const round = css.indexOf('font-family:var(--font-round)!important');
-  assert.ok(action > 0 && round > action);
+  const uses = [...css.matchAll(/([^{}]+)\{[^}]*font-family:var\(--font-accent\)/g)].map(m => m[1]);
+  assert.equal(uses.length, 1);
+  for (const sel of ['.sitebtn', '.sale .pill', '.ftag', '.rs .net', '.rb button.nograde']) assert.ok(uses[0].includes(sel), sel);
+  assert.doesNotMatch(css, /--font-(action|round)/);
 });

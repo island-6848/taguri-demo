@@ -1122,6 +1122,20 @@
    "verifies": []
   },
   {
+   "id": "dec-font-accent-five",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "書体は Zen角ゴシック New が基本。さわらびゴシックは指定した 5 か所（公式サイト・発売の状況・お気に入りの名前の札・理由の人物/種類・評価しない）とロゴだけ",
+   "sources": [
+    "web/fonts.css",
+    "cloudflare/test/fonts.test.js",
+    "tools/review/render_recommend.py",
+    "cloudflare/src/screens/grade.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-font-action-maru",
    "type": "decision",
    "status": "superseded",
@@ -1155,7 +1169,7 @@
   {
    "id": "dec-font-sawarabi-round",
    "type": "decision",
-   "status": "adopted",
+   "status": "superseded",
    "date": "2026-10-18",
    "title": "押すもの・丸の中の字（両端が半円の押し口と札）・ロゴはさわらびゴシック、公演名とほかは Zen角ゴシック New",
    "sources": [
@@ -7720,6 +7734,11 @@
    "from": "dec-fix-request-retention",
    "rel": "affects",
    "to": "comp-d1"
+  },
+  {
+   "from": "dec-font-accent-five",
+   "rel": "supersedes",
+   "to": "dec-font-sawarabi-round"
   },
   {
    "from": "dec-font-action-maru",
