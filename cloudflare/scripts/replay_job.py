@@ -82,7 +82,7 @@ def summary(res: dict, counts: dict) -> str:
              f"評価が残っていた人 {o['with_ratings']} 人、おすすめが出た人 {o['with_recommendations']} 人" for o in res.get("per_origin", [])],
            "", "AUC は 0.5 が当てずっぽう、1.0 が全部当たり。人数が少ないうちの p 値は偶然の差を拾いやすい。", ""]
     names = {"reminder": "開幕リマインドの答え（主な結果）", "other": "ほかの画面の答え（参考）", "all": "全部"}
-    parts = {"split": "興味ありの配り分け", "expand": "1 段広げる", "spread": "並べ直し", "gate": "裏の答え合わせ"}
+    parts = {"split": "興味ありの配り分け", "expand": "1 段広げる", "spread": "並べ直し", "gate": "裏の答え合わせ", "impression": "感想の好み"}
     for key, title in names.items():
         e = res[key]
         out += [f"### {title}", "", f"- 利用者 {e['users']} 人・区切り {e['windows']} 回、AUC の中央値 {fmt(e['median_auc'])}、"

@@ -79,8 +79,8 @@ ${THANKS_ART}
 const KEEP = 400;
 // 評価がこれより少ないと答え合わせは 1 ms もかからないので、前の控え（数十 KB）を読み解くほうが重い
 const GATE_REUSE_MIN = 30;
-// 再生（H5）で 1 つずつ外す部品: 興味ありの配り分け・1 段広げる・並べ直し（spreadLeads）・裏の答え合わせ（chooseVariant）
-export const REPLAY_ABLATIONS = ['split', 'expand', 'spread', 'gate'];
+// 再生（H5）で 1 つずつ外す部品: 興味ありの配り分け・1 段広げる・並べ直し（spreadLeads）・裏の答え合わせ（chooseVariant）・感想の好み（#104）
+export const REPLAY_ABLATIONS = ['split', 'expand', 'spread', 'gate', 'impression'];
 const VERSION = 'screen-v31';   // v31: 感想で書いた特徴への好みが順位と理由に効く（#104）; v30: the hidden check's choice is reused while the ratings are unchanged (CPU, #138); v29: the cache keeps only the reasons the screens show (CPU, #138); v28: the hidden check leaves out the dropped kinds as the ranking does (#115); v27: a rating of a record dated after today is not learnt from (#116); v26: ratings ordered by when they were rated (works.rated_at), not by the last edit (#112); v25: a name in the 興味あり note counts only when not denied or compared against (#111); v24: a 興味あり copied to the tour's other venues counts once (#110); v23: 興味なし weakens after the split, not before (#109); v22: favourite seeds weigh FAV_SEED_W (お気に入り＞興味あり); v21: credits read only where needed (CPU); v20: a production answered under another stage id stays out; v19: same title + (group / venue / a shared person) is one card; v18: one card per title+group (sameProduction); v17: no 出典 on the reasons; v16: #会場 dropped, 行けない (interest=2) as a liked seed; v15: 出さない語 also hits the kind tags; v14: #ジャンル (a genre turned off hides its stages); v13: no 原作「原作もの」 (DROPPED_KEYS); v12: no #値段 (DROPPED_AXES); v11: reasons of answered stages (answered_why); v2: the user's 効かせ方 (rank_weight) and the per-group counts; v3: 興味あり as seeds; v4: diag; v5: 興味あり split (impl-interest-split); v6: by part importance; v7: tiers + トメ; v8: two tiers only; v9: トメ joins the main roles; v10: spread leads + one-step partners
 export {PREFS} from './prefs.js';
 const KIND_LABEL = {'#形式': '形式', '#原作': '原作', '#翻訳': '', '#原作の国': '原作の国', '#会場': '劇場', '#題材': '題材', '#ジャンル': 'ジャンル'};
