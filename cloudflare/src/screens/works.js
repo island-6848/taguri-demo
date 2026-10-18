@@ -38,33 +38,49 @@ async function readHand(ctx) {
 // 自動的に削除して」）。それまでは excluded の印（work:<key>）で隠しているだけで、記録は works に残っている。
 // 前の版で「完全に取り消す」（purged:<key>）を押したものも、ここで消す。記録を読むたびに、この人の印だけを見る（数行）。
 export const DROP_KEEP_DAYS = 30;
-export async function deleteWork(ctx, key) {
-  // 行く日が過ぎた券から作った記録（lists.promoteTickets）を消したときは、その回の券も消す（行かなかった回は作り直さない）
-  const w = await ctx.db.prepare('SELECT stage_id,first_date,time FROM works WHERE user_id=? AND work_key=?').bind(ctx.uid, key).first();
+// 画面を読むときに消すのは 1 回にこの件数まで（issue #194）。前は 1 件ごとに batch を流していたので、まとめて取り消した人が
+// 後で開くと 1 回の表示で N 回の batch になった。残りは隠したまま、次に読んだときに消す。消すのは 1 回の batch・5 文で、
+// 書き込みは消える行と、その行ごとの rec_rev の進め（migrations/0035 のトリガー）。50 件で多くて 500 行ほど（D1 の 1 日 10 万行の 0.5%）。
+export const EXPIRE_MAX = 50;
+export const deleteWork = (ctx, key) => deleteWorks(ctx, [key]);
+/** 記録をまとめて消す。鍵は JSON の 1 つの値で渡す（json_each。D1 の 1 文の引数は 100 個まで） */
+export async function deleteWorks(ctx, keys) {
+  if (!keys.length) return;
+  const ks = JSON.stringify(keys);
+  const marks = JSON.stringify(keys.flatMap(k => [`work:${k}`, `purged:${k}`]));
   const today = ctx.today || new Date((ctx.now ?? Date.now()) + 9 * 3600e3).toISOString().slice(0, 10);
-  const pastTicket = w?.stage_id && w.first_date && w.first_date <= today
-    ? [ctx.db.prepare("DELETE FROM ticket WHERE user_id=? AND stage_id=? AND date=? AND (?='' OR time='' OR time=?)").bind(ctx.uid, String(w.stage_id), w.first_date, w.time || '', w.time || '')]
-    : [];
+  const q = (sql, ...v) => ctx.db.prepare(sql).bind(ctx.uid, ...v);
   await ctx.db.batch([
-    ...pastTicket,
-    ctx.db.prepare('DELETE FROM works WHERE user_id=? AND work_key=?').bind(ctx.uid, key),
-    ctx.db.prepare('DELETE FROM hand_credits WHERE user_id=? AND work_key=?').bind(ctx.uid, key),
-    ctx.db.prepare('DELETE FROM merges WHERE user_id=? AND (work_key=? OR into_key=?)').bind(ctx.uid, key, key),
-    ctx.db.prepare("DELETE FROM excluded WHERE user_id=? AND uid IN (?, ?)").bind(ctx.uid, `work:${key}`, `purged:${key}`),
+    // 行く日が過ぎた券から作った記録（lists.promoteTickets）を消したときは、その回の券も消す（行かなかった回は作り直さない）。
+    // 記録を消す前に、その記録の公演・日・時刻で引く
+    q(`DELETE FROM ticket WHERE user_id=?1 AND EXISTS(SELECT 1 FROM works w WHERE w.user_id=?1
+      AND w.work_key IN (SELECT value FROM json_each(?2)) AND w.stage_id IS NOT NULL AND w.stage_id<>''
+      AND ticket.stage_id=CAST(w.stage_id AS TEXT) AND COALESCE(w.first_date,'')<>'' AND w.first_date<=?3 AND ticket.date=w.first_date
+      AND (COALESCE(w.time,'')='' OR ticket.time='' OR ticket.time=w.time))`, ks, today),
+    q('DELETE FROM works WHERE user_id=?1 AND work_key IN (SELECT value FROM json_each(?2))', ks),
+    q('DELETE FROM hand_credits WHERE user_id=?1 AND work_key IN (SELECT value FROM json_each(?2))', ks),
+    q('DELETE FROM merges WHERE user_id=?1 AND (work_key IN (SELECT value FROM json_each(?2)) OR into_key IN (SELECT value FROM json_each(?2)))', ks),
+    q('DELETE FROM excluded WHERE user_id=?1 AND uid IN (SELECT value FROM json_each(?2))', marks),
   ]);
+}
+/** この時刻より前に取り消した記録は消す（消しきれていなくても、もう出さない） */
+export const dropCutoff = ctx => localNow((ctx.now ?? Date.now()) - DROP_KEEP_DAYS * 864e5);
+/** 消す記録の鍵: 30 日たった取り消し（work:<key>）と、前の版で「完全に取り消す」を押したもの（purged:<key>） */
+export function expiredKeys(ctx, rows) {
+  const cutoff = dropCutoff(ctx);
+  const keys = new Set();
+  for (const r of rows) {
+    if (r.uid.startsWith('purged:')) keys.add(r.uid.slice(7));
+    else if (r.uid.startsWith('work:') && String(r.updated_at) < cutoff) keys.add(r.uid.slice(5));
+  }
+  return keys;
 }
 export async function expireDropped(ctx) {
   if (ctx.dropExpired) return;
   ctx.dropExpired = true;
-  const cutoff = localNow((ctx.now ?? Date.now()) - DROP_KEEP_DAYS * 864e5);
   const {results} = await ctx.db.prepare("SELECT uid, updated_at FROM excluded WHERE user_id=? AND (uid LIKE 'work:%' OR uid LIKE 'purged:%')")
     .bind(ctx.uid).all();
-  const keys = new Set();
-  for (const r of results) {
-    if (r.uid.startsWith('purged:')) keys.add(r.uid.slice(7));
-    else if (String(r.updated_at) < cutoff) keys.add(r.uid.slice(5));
-  }
-  for (const k of keys) await deleteWork(ctx, k);
+  await deleteWorks(ctx, [...expiredKeys(ctx, results)].slice(0, EXPIRE_MAX));
 }
 
 export async function loadWorks(ctx) {
@@ -75,7 +91,8 @@ export async function loadWorks(ctx) {
     ctx.db.prepare('SELECT work_key, into_key FROM merges WHERE user_id=?').bind(ctx.uid).all(),
     readHand(ctx)]);
   // Records taken back ("work:<key>") and records merged into another one drop out.
-  const dropped = new Set(excluded.results.filter(r => r.uid.startsWith('work:')).map(r => r.uid.slice(5)));
+  // 消す前の記録（purged:<key>、上限で消しきれなかった分）も、ここで外れる。
+  const dropped = new Set(excluded.results.filter(r => r.uid.startsWith('work:') || r.uid.startsWith('purged:')).map(r => r.uid.slice(r.uid.indexOf(':') + 1)));
   const mergedInto = new Map(merges.results.map(r => [r.work_key, r.into_key]));
   const out = [], into = new Map();
   for (const sv of saved) {

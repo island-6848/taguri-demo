@@ -545,6 +545,20 @@
    "verifies": []
   },
   {
+   "id": "d1-index-measure-193",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-18",
+   "title": "sessions の user_id・rec_stage と rec_card の tour をひく文は索引が無く、手元の D1 で 1 回 1,558〜5,706 行（空のアカウントの片付けは 30 万行）を読んでいた。0038 の 3 つの索引で 8〜499 行になり、書き込みは足した・upsert した行ごとに 1 増える",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/193",
+    "cloudflare/migrations/0038.sql",
+    "cloudflare/test/indexes.test.js",
+    "cloudflare/scripts/deliver_catalogue.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "d1-meta-size-after",
    "type": "finding",
    "status": "confirmed",
@@ -3818,6 +3832,22 @@
     "cloudflare/scripts/build_recommend_index.py",
     "cloudflare/src/recommend.js",
     "cloudflare/test/test_recommend_index.py"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "impl-theme-vocab",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "お気に入りの題材を語彙表（上位・下位・関連）で広げ、「科学」で SF・宇宙・ロボット・近未来の公演も拾う",
+   "sources": [
+    "cloudflare/src/vocab/concepts.json",
+    "cloudflare/src/vocab.js",
+    "cloudflare/src/screens/lists.js",
+    "cloudflare/src/recommend.js",
+    "cloudflare/test/vocab.test.js",
+    "tools/taguri/vocab_tree.py"
    ],
    "verifies": []
   },
@@ -7545,6 +7575,16 @@
    "to": "d1-free-limits"
   },
   {
+   "from": "d1-index-measure-193",
+   "rel": "depends_on",
+   "to": "d1-upsert-counts"
+  },
+  {
+   "from": "d1-index-measure-193",
+   "rel": "affects",
+   "to": "dec-recommend-worker-cards"
+  },
+  {
    "from": "d1-meta-size-after",
    "rel": "supports",
    "to": "dec-account-cap-counted"
@@ -10148,6 +10188,11 @@
    "from": "impl-theme-favourite",
    "rel": "affects",
    "to": "comp-recommender"
+  },
+  {
+   "from": "impl-theme-vocab",
+   "rel": "affects",
+   "to": "impl-past-stage-kinds"
   },
   {
    "from": "impl-timetable",
