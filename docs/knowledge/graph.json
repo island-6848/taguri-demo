@@ -2526,6 +2526,19 @@
    "verifies": []
   },
   {
+   "id": "fix-gate-dropped-kinds",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "裏の答え合わせの点（reco-gate.stageScore）も、本番の点（scoreFromIndex）と同じく、使わなくなった種類（#値段・#会場・原作「原作もの」）を数えない。答え合わせを表示の計算とそろえる残り（本人の倍率・お気に入り・興味あり・1 段広げる）は測ってから（#115）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/115",
+    "cloudflare/src/reco-gate.js",
+    "cloudflare/test/reco-gate.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "fix-interest-contrast-after-split",
    "type": "decision",
    "status": "adopted",
@@ -4831,6 +4844,19 @@
    "date": "2026-10-13",
    "title": "起案者のアカウントの設定で、無料枠を越えても請求されないようになっているか",
    "sources": [],
+   "verifies": []
+  },
+  {
+   "id": "q-gate-matches-shown-ranking",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-18",
+   "title": "裏の答え合わせ（chooseVariant）は、評価だけの personValues と自前の stageScore で方式を比べ、本人の効かせ方の倍率・お気に入り・興味あり・1 段広げる・表示の選別を入れない。表示の計算と同じ条件で比べると、選ぶ方式は変わるか（#115）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/115",
+    "cloudflare/src/reco-gate.js",
+    "cloudflare/src/screens/recommend.js"
+   ],
    "verifies": []
   },
   {
@@ -8208,6 +8234,16 @@
    "to": "impl-person-ordinal-v3"
   },
   {
+   "from": "fix-gate-dropped-kinds",
+   "rel": "affects",
+   "to": "impl-hidden-gate"
+  },
+  {
+   "from": "fix-gate-dropped-kinds",
+   "rel": "raises",
+   "to": "q-gate-matches-shown-ranking"
+  },
+  {
    "from": "fix-interest-contrast-after-split",
    "rel": "affects",
    "to": "impl-interest-split"
@@ -9756,6 +9792,11 @@
    "from": "q-free-tier-account-settings",
    "rel": "affects",
    "to": "dec-free-tier-only"
+  },
+  {
+   "from": "q-gate-matches-shown-ranking",
+   "rel": "affects",
+   "to": "impl-hidden-gate"
   },
   {
    "from": "q-hidden-gate",
