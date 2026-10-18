@@ -2849,6 +2849,7 @@ function stampRerate(root) {
       rb.style.top = (s.bottom - r.top + 6) + "px";
     };
     const close = () => { rb.hidden = true; st.setAttribute("aria-expanded", "false"); };
+    rb._close = close;   // 外を押したら閉じる（下の 1 つの受け口から呼ぶ）
     const toggle = () => {
       if (!rb.hidden) { close(); return; }
       rb.classList.remove("done");
@@ -2863,9 +2864,21 @@ function stampRerate(root) {
     // 押して記録できたら（押し口の列に done が付いたら）閉じる
     new MutationObserver(() => { if (rb.classList.contains("done")) setTimeout(close, 450); })
       .observe(rb, {attributes: true, attributeFilter: ["class"]});
-    document.addEventListener("click", ev => { if (!rb.hidden && !rb.contains(ev.target) && ev.target !== st) close(); });
   });
 }
+// **外を押したら閉じる受け口は、画面全体で 1 つだけにする**（#85）。行ごと・画面ごとに document へ足していくと、
+// 画面を移るたびに増え、外した画面の分まで残り続けていた。開いている札を、押したときに探して閉じる
+document.addEventListener("click", ev => {
+  document.querySelectorAll(".rb.rbpop:not([hidden])").forEach(rb => {
+    const st = rb.closest(".rec-row")?.querySelector("[data-stamp]");
+    if (rb._close && !rb.contains(ev.target) && !(st && st.contains(ev.target))) rb._close();
+  });
+  const pop = document.getElementById("infopop");
+  if (pop && !pop.hidden && !pop.contains(ev.target) && !ev.target.closest?.(".crumbinfo")) {
+    pop.hidden = true;
+    document.querySelectorAll(".crumbinfo").forEach(b => b.setAttribute("aria-expanded", "false"));
+  }
+});
 
 // **画面の説明文は、パンくずの右端の「ⓘ」から開く。**（起案者の指示 2026-10-13「こういう文章はパンくずリストの
 // 一番右にあるやつの右に、インフォーメーションマークつけて、押したらポップアップで説明出るように（パソコンも）。
@@ -2914,9 +2927,7 @@ function infoFromLede(root) {
   });
   pop.addEventListener("keydown", ev => { if (ev.key === "Escape") { close(); btn.focus(); } });
   btn.addEventListener("keydown", ev => { if (ev.key === "Escape") close(); });
-  document.addEventListener("click", ev => {
-    if (!pop.hidden && !pop.contains(ev.target) && ev.target !== btn) close();
-  });
+  // 外を押したら閉じるのは、stampRerate の下の 1 つの受け口（#85）
 }
 
 // **書いてある感想・回のメモの「書き直す」を、文の末尾の鉛筆にする。**（起案者の指摘 2026-10-13
