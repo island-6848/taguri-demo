@@ -21,8 +21,9 @@ async function run() {
   // The state must be the one this browser made just before going to Google.
   if (!token || !expected || params.get('state') !== expected) { say('もう一度「Google カレンダーから取り込む」を押してください。'); return; }
   const today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
-  const events = await googleEvents(token, today, n => say(`予定を読んでいます… ${n} 件`));
-  try { sessionStorage.setItem(CAL_EVENTS_KEY, JSON.stringify(events)); }
+  // {events, capped, since}: capped when older events were left out (the 登録 screen says so).
+  const got = await googleEvents(token, today, n => say(`予定を読んでいます… ${n} 件`));
+  try { sessionStorage.setItem(CAL_EVENTS_KEY, JSON.stringify(got)); }
   catch { say('予定が多すぎて受け渡せませんでした。'); return; }
   location.replace('/register');
 }

@@ -6,7 +6,10 @@ export const CAL_SCOPE = 'https://www.googleapis.com/auth/calendar.readonly';
 const API = 'https://www.googleapis.com/calendar/v3';
 const YEARS = 5;            // how far back to look
 const MAX_EVENTS = 5000;    // what is handed over (sessionStorage is about 5 MB)
-const MAX_PAGES = 10;       // per calendar, 2500 events a page
+const PAGE = 2500;          // events a page (the API's largest)
+const WINDOW_DAYS = 182;    // a calendar with more than a page is read again half a year at a time, newest first
+const WINDOW_PAGES = 2;     // pages per span
+const LIST_PAGES = 10;      // calendarList pages (250 calendars a page)
 
 /** The address of Google's consent page; `state` is kept to check the way back. */
 export function authUrl(clientId, origin, state) {
@@ -43,25 +46,80 @@ async function get(token, path, params) {
   return res.json();
 }
 
-/** Past events of the calendars the user has (holiday and other subscribed calendars left out). */
+/** Every page of a list (calendarList, events), at most `max` pages: {items, more} (more: pages were left). */
+export async function pages(fetchPage, max) {
+  const items = [];
+  let pageToken = '';
+  for (let n = 0; n < max; n++) {
+    const got = await fetchPage(pageToken);
+    items.push(...(got.items || []));
+    if (!got.nextPageToken) return {items, more: false};
+    pageToken = got.nextPageToken;
+  }
+  return {items, more: true};
+}
+
+/**
+ * How many of each calendar's events to keep when together they are more than `max`: an equal
+ * share each, and what a small calendar does not use goes to the others (a busy work calendar
+ * cannot push out a private one). [count...] -> [kept...].
+ */
+export function shares(counts, max) {
+  const out = counts.map(() => 0);
+  let left = max;
+  const order = counts.map((_, i) => i).sort((a, b) => counts[a] - counts[b]);
+  order.forEach((i, k) => { out[i] = Math.min(counts[i], Math.floor(left / (order.length - k))); left -= out[i]; });
+  return out;
+}
+
+const newestFirst = (a, b) => (b.date + b.time).localeCompare(a.date + a.time);
+
+/**
+ * Past events of the calendars the user has (holiday and other subscribed calendars left out):
+ * {events, capped, since}. When there are too many, the newer ones are kept: a calendar with
+ * more than a page in the 5 years is read again from today backwards half a year (or less) at a time,
+ * and when the calendars together hold more than MAX_EVENTS, each keeps its newest share.
+ * capped says older events were left out, and since is the oldest day kept, for the screen to
+ * tell. Requests stay few: one per calendar in the usual case (this runs on the user's quota).
+ */
 export async function googleEvents(token, today, progress = () => {}) {
-  const lists = await get(token, '/users/me/calendarList', {minAccessRole: 'writer', fields: 'items(id)'});
-  const ids = (lists.items || []).map(c => c.id).filter(Boolean);
+  const lists = await pages(pageToken => get(token, '/users/me/calendarList',
+    {minAccessRole: 'writer', maxResults: '250', fields: 'items(id),nextPageToken', ...(pageToken ? {pageToken} : {})}), LIST_PAGES);
+  const ids = [...new Set(lists.items.map(c => c.id).filter(Boolean))];
   const from = new Date(Date.parse(today + 'T00:00:00+09:00') - YEARS * 365 * 86400e3).toISOString();
   const to = new Date(Date.parse(today + 'T23:59:59+09:00')).toISOString();
-  const out = [];
+  const read = (id, timeMin, timeMax, max) => pages(pageToken => get(token, `/calendars/${encodeURIComponent(id)}/events`, {
+    timeMin, timeMax, singleEvents: 'true', orderBy: 'startTime', maxResults: String(PAGE),
+    fields: 'items(summary,start,location,status,recurringEventId),nextPageToken', ...(pageToken ? {pageToken} : {})}), max);
+  let capped = lists.more, total = 0;
+  const per = [];
   for (const id of ids.length ? ids : ['primary']) {
-    let pageToken = '';
-    for (let page = 0; page < MAX_PAGES && out.length < MAX_EVENTS; page++) {
-      const q = {timeMin: from, timeMax: to, singleEvents: 'true', orderBy: 'startTime', maxResults: '2500',
-        fields: 'items(summary,start,location,status,recurringEventId),nextPageToken'};
-      if (pageToken) q.pageToken = pageToken;
-      const got = await get(token, `/calendars/${encodeURIComponent(id)}/events`, q);
-      out.push(...eventsOf(got.items));
-      progress(out.length);
-      if (!got.nextPageToken) break;
-      pageToken = got.nextPageToken;
+    let got = await read(id, from, to, 1);
+    let events = eventsOf(got.items);
+    if (got.more) {
+      // More than a page (the API gives the oldest first): newest half year first, until this
+      // calendar alone fills the limit.
+      // A span with still more than WINDOW_PAGES is read again a quarter as long, from the same end.
+      events = [];
+      let span = WINDOW_DAYS * 86400e3;
+      for (let end = Date.parse(to), lo = Date.parse(from); end > lo;) {
+        if (events.length >= MAX_EVENTS) { capped = true; break; }
+        const start = Math.max(lo, end - span);
+        got = await read(id, new Date(start).toISOString(), new Date(end).toISOString(), WINDOW_PAGES);
+        if (got.more && span > 86400e3) { span = Math.max(86400e3, span / 4); continue; }
+        if (got.more) capped = true;
+        events.push(...eventsOf(got.items));
+        progress(total + events.length);
+        end = start;
+      }
     }
+    per.push(events.sort(newestFirst));
+    total += events.length;
+    progress(total);
   }
-  return out.slice(-MAX_EVENTS);
+  const keep = shares(per.map(e => e.length), MAX_EVENTS);
+  if (keep.some((k, i) => k < per[i].length)) capped = true;
+  const events = per.flatMap((e, i) => e.slice(0, keep[i]));
+  const since = capped && events.length ? events.reduce((a, e) => (e.date < a ? e.date : a), today) : '';
+  return {events, capped, since};
 }

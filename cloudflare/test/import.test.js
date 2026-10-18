@@ -236,3 +236,121 @@ test('the page Google returns to may talk only to the Calendar API, and the clie
   assert.match(csp, /script-src 'self';/);
   assert.equal(page.headers.get('referrer-policy'), 'no-referrer');
 });
+
+// ------------------------------------------------------------------ review fixes (2026-10-18)
+import {isDay, isTime, chunkItems, BODY_MAX} from '../src/client/import-parse.js';
+import {googleEvents, shares} from '../src/client/calendar-google.js';
+
+const VEV = body => `BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\n${body.join('\r\n')}\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n`;
+
+test('iCal: cancelled events are left out, and an alarm inside an event does not change its title (#78, #79)', () => {
+  assert.deepEqual(parseIcs(VEV(['DTSTART:20240512T050000Z', 'SUMMARY:中止になった公演', 'STATUS:CANCELLED'])), []);
+  assert.equal(parseIcs(VEV(['DTSTART:20240512T050000Z', 'SUMMARY:夜の果て', 'STATUS:CONFIRMED'])).length, 1);
+  const ev = parseIcs(VEV(['DTSTART:20240512T050000Z', 'SUMMARY:夜の果て', 'BEGIN:VALARM', 'ACTION:DISPLAY', 'SUMMARY:リマインダー',
+    'DESCRIPTION:30分前', 'END:VALARM', 'LOCATION:本多劇場']));
+  assert.deepEqual(ev.map(e => [e.summary, e.location, e.time]), [['夜の果て', '本多劇場', '14:00']]);
+  // A VALARM's summary before the event's own one is not taken either.
+  assert.equal(parseIcs(VEV(['BEGIN:VALARM', 'SUMMARY:アラーム', 'END:VALARM', 'DTSTART:20240512T050000Z', 'SUMMARY:観劇']))[0].summary, '観劇');
+});
+
+test('iCal: a time in another zone becomes Japan time, the day too; an unknown zone is marked (#80)', () => {
+  assert.deepEqual(icsDate('20261010T100000', 'America/New_York'), {date: '2026-10-10', time: '23:00'});     // EDT, UTC-4
+  assert.deepEqual(icsDate('20261210T100000', 'America/New_York'), {date: '2026-12-11', time: '00:00'});     // EST, UTC-5: the next day
+  assert.deepEqual(icsDate('20261010T230000', 'Europe/London'), {date: '2026-10-11', time: '07:00'});
+  assert.deepEqual(icsDate('20261010T100000', 'Asia/Tokyo'), {date: '2026-10-10', time: '10:00'});
+  assert.deepEqual(icsDate('20261010T100000', '"/mozilla.org/20050126_1/America/New_York"'), {date: '2026-10-10', time: '23:00'});
+  assert.deepEqual(icsDate('20261010T100000', 'Custom Zone'), {date: '2026-10-10', time: '10:00', tz_unknown: true});
+  const ev = parseIcs(VEV(['DTSTART;TZID=America/New_York:20261010T100000', 'SUMMARY:ブロードウェイ']));
+  assert.deepEqual([ev[0].date, ev[0].time, ev[0].tz_unknown], ['2026-10-10', '23:00', undefined]);
+  assert.equal(parseIcs(VEV(['DTSTART;TZID=My Own Zone:20261010T100000', 'SUMMARY:どこか']))[0].tz_unknown, true);
+});
+
+test('impossible days and times are not read, and say which (#90)', () => {
+  for (const ok of ['2024-02-29', '2026-12-31']) assert.ok(isDay(ok), ok);
+  for (const bad of ['2026-02-30', '2026-13-01', '2026-00-10', '2026-2-3', '', null]) assert.ok(!isDay(bad), String(bad));
+  for (const ok of ['00:00', '23:59']) assert.ok(isTime(ok));
+  for (const bad of ['24:00', '29:60', '9:00', '12:60']) assert.ok(!isTime(bad), bad);
+  assert.equal(icsDate('20260230T100000Z'), null);
+  assert.equal(icsDate('20261010T296000'), null);
+  assert.equal(icsDate('20260230'), null);
+  const ev = parseIcs(VEV(['DTSTART:20260230T100000', 'SUMMARY:ありえない日']));
+  assert.deepEqual([ev[0].summary, ev[0].date, Boolean(ev[0].bad)], ['ありえない日', '', true]);
+  assert.match(readMail({text: '公演名：夜の果て\n公演日：2026/02/30(月)\n会場名：本多劇場'}).skip, /2026-02-30.*実在しない/);
+  assert.equal(readMail({text: '■公演タイトル　：夜の果て\n■公演日　：2023/11/04(土)　29:60開　演\n■会場名　：本多劇場'}).time, '');
+});
+
+test('recording: an impossible day or time is turned down by name, the rest are recorded (#90)', async () => {
+  const {sqlite, act} = setup();
+  const got = await act('import_works', {items: [
+    {title: '夜の果て', date: '2023-11-04', time: '19:00'},
+    {title: '二月三十日', date: '2026-02-30'},
+    {title: '深夜', date: '2024-01-01', time: '29:60'},
+    {title: '', date: '2024-01-01'},
+  ]});
+  assert.deepEqual([got.body.added, got.body.skipped], [1, 0]);
+  assert.deepEqual(got.body.rejected.map(r => [r.index, r.title]), [[1, '二月三十日'], [2, '深夜'], [3, '']]);
+  assert.match(got.body.rejected[0].reason, /日付（2026-02-30）が実在しません/);
+  assert.match(got.body.rejected[1].reason, /時刻（29:60）/);
+  assert.equal(sqlite.prepare('SELECT count(*) AS n FROM works').get().n, 1);
+  await assert.rejects(act('import_works', {items: [{title: '二月三十日', date: '2026-02-30'}]}), /二月三十日：日付/);
+  const m = await act('import_match', {items: [{guesses: ['夜の果て'], date: '2023-02-30'}]});
+  assert.equal(m.body.items[0].stage_id, '');
+});
+
+test('requests are split by their size in bytes, under the Worker cap; one too big alone is set aside (#89)', async () => {
+  const long = i => ({title: 'あ'.repeat(190) + i, date: '2024-01-01', time: '19:00', venue: '劇'.repeat(80), stage_id: '100'});
+  const items = [...Array.from({length: 45}, (_, i) => long(i)), {title: 'い'.repeat(3000), date: '2024-01-01'}];
+  const {parts, tooBig} = chunkItems(items);
+  assert.equal(tooBig.length, 1);
+  assert.equal(parts.flat().length, 45);
+  for (const p of parts) {
+    assert.ok(p.length <= 20);
+    assert.ok(new TextEncoder().encode(JSON.stringify({items: p})).length <= BODY_MAX);
+  }
+  assert.ok(parts.length > 3);                           // 20 of these would be ~ 25 KB
+  assert.deepEqual(chunkItems(Array(41).fill({a: 1})).parts.map(p => p.length), [20, 20, 1]);
+  // Each part is taken by the Worker's own body reader.
+  const {readInput} = await import('../src/screens/index.js');
+  for (const p of parts) {
+    const body = JSON.stringify({items: p});
+    const r = await readInput(new Request('https://x/api/import_works', {method: 'POST', body, headers: {'content-length': String(new TextEncoder().encode(body).length)}}), 'import_works');
+    assert.ok(r.input, 'not 413');
+  }
+  // `send` measures what is actually sent.
+  assert.equal(chunkItems([{big: 'x'.repeat(9000), small: 1}], {send: i => ({small: i.small})}).tooBig.length, 0);
+});
+
+test('Google Calendar: every calendarList page, every calendar, newest kept fairly with a notice (#81, #82)', async () => {
+  const asked = [];
+  const ev = (d, s) => ({summary: s, start: {date: d}});
+  const day = n => new Date(Date.UTC(2026, 9, 18) - n * 86400e3).toISOString().slice(0, 10);
+  const real = globalThis.fetch;
+  globalThis.fetch = async url => {
+    const u = new URL(url), q = Object.fromEntries(u.searchParams);
+    asked.push(u.pathname + (q.pageToken ? '#' + q.pageToken : ''));
+    if (u.pathname.endsWith('/calendarList')) return Response.json(q.pageToken ? {items: [{id: 'b'}, {id: 'c'}]} : {items: [{id: 'a'}], nextPageToken: 'p2'});
+    if (u.pathname.includes('/calendars/b/')) return Response.json({items: [ev(day(1500), '古い私用'), ev(day(10), '観劇')]});
+    if (u.pathname.includes('/calendars/c/')) return Response.json({items: []});
+    // 'a': a busy work calendar, 30 a day across the 5 years, oldest first in pages of 2500.
+    const lo = Date.parse(q.timeMin), hi = Date.parse(q.timeMax);
+    const all = [];
+    for (let t = Math.ceil(lo / 86400e3) * 86400e3; t < hi; t += 86400e3) for (let k = 0; k < 30; k++) all.push(ev(new Date(t).toISOString().slice(0, 10), `会議${k}`));
+    const at = Number(q.pageToken || 0);
+    return Response.json({items: all.slice(at, at + 2500), ...(at + 2500 < all.length ? {nextPageToken: String(at + 2500)} : {})});
+  };
+  try {
+    const got = await googleEvents('tok', '2026-10-18');
+    assert.ok(asked.includes('/calendar/v3/users/me/calendarList#p2'));      // the second calendarList page is read
+    assert.ok(asked.some(a => a.includes('/calendars/b/')) && asked.some(a => a.includes('/calendars/c/')));
+    assert.equal(got.events.length, 5000);
+    assert.equal(got.capped, true);
+    assert.ok(got.events.some(e => e.summary === '観劇') && got.events.some(e => e.summary === '古い私用'));   // not crowded out
+    const work = got.events.filter(e => e.summary.startsWith('会議')).map(e => e.date).sort();
+    assert.equal(work.at(-1), '2026-10-18');                                    // the newest are kept
+    assert.equal(got.since, day(1500));
+    assert.ok(asked.length < 15, `${asked.length} requests`);
+  } finally { globalThis.fetch = real; }
+  assert.deepEqual(shares([10, 8000, 3], 5000), [10, 4987, 3]);
+  assert.deepEqual(shares([4000, 4000], 5000), [2500, 2500]);
+  assert.deepEqual(shares([1, 2], 5000), [1, 2]);
+});
