@@ -35,6 +35,33 @@ class DeliverPostersTest(unittest.TestCase):
         again = DP.build(self.data, self.out, bucket='b', limit=10, put=lambda a, t, b, k, body, ct: put.append(k))
         self.assertEqual((again['uploaded'], again['already'], put), (1, 2, ['3.jpg']))
 
+    def test_a_passing_r2_error_is_retried_and_the_rest_still_goes(self):
+        # Catalog #12（2026-10-18）: HTTP 500 が 1 回出ただけで、残りを全部見送っていた
+        calls, waits = [], []
+
+        def flaky(a, t, b, k, body, ct):
+            calls.append(k)
+            if len(calls) == 1:
+                raise urllib.error.HTTPError('u', 500, 'Internal Server Error', {}, None)
+
+        got = DP.build(self.data, self.out, bucket='b', limit=10, put=flaky, sleep=waits.append)
+        self.assertEqual(got['stopped'], '')
+        self.assertEqual(waits, [DP.RETRY_WAITS[0]])
+        self.assertEqual(got['left'], 0)
+        self.assertGreaterEqual(got['uploaded'], 2)
+
+    def test_r2_keeps_failing_stops_after_the_retries(self):
+        waits = []
+
+        def down(a, t, b, k, body, ct):
+            raise urllib.error.HTTPError('u', 503, 'Unavailable', {}, None)
+
+        got = DP.build(self.data, self.out, bucket='b', limit=10, put=down, sleep=waits.append)
+        self.assertIn('HTTP 503', got['stopped'])
+        self.assertEqual(waits, list(DP.RETRY_WAITS))
+        self.assertEqual(got['uploaded'], 0)
+        self.assertGreater(got['left'], 0)
+
     def test_no_r2_access_changes_nothing(self):
         def deny(*_a):
             raise urllib.error.HTTPError('u', 403, 'Forbidden', {}, None)
