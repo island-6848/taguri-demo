@@ -173,10 +173,11 @@ def _li_of(h, stage_id):
     return m.group(0) if m else ""
 
 
-check("本日開幕には急ぎの印が付く（<li> の class に dgurgent が入る）",
-      "dgurgent" in _li_of(h, "1"), _li_of(h, "1"))
-check("3 日後には急ぎの印が付かない",
-      "dgurgent" not in _li_of(h, "3"), _li_of(h, "3"))
+check("開幕までの日数（本日開幕・あと N 日）は出さない（日付の見出しで分かる。2026-10-18）",
+      "本日開幕" not in h and "明日開幕" not in h and "dgurgent" not in h and not re.search(r"あと\d+日", h))
+check("劇場名は「〇〇（東京都）」の形（2026-10-18）",
+      DG._where({"venue": "劇場C", "pref": "東京都"}) == "劇場C（東京都）" and DG._where({"venue": "劇場C"}) == "劇場C"
+      and '<span class="dgw">劇場C</span>' in h)
 check("空のときは「ありません」と言い切る（0 件の帯）",
       "ありません" in DG.panel({}, TODAY, {}))
 check("券が無いときは入れる先を案内する",

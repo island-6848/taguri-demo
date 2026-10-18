@@ -215,24 +215,25 @@ export function nearTickets(owned, tickets, today, cap = TICKET_MAX) {
 }
 
 const jd = isoDate => `${Number(isoDate.slice(5, 7))}月${Number(isoDate.slice(8, 10))}日（${WEEK[(new Date(isoDate + 'T00:00:00Z').getUTCDay() + 6) % 7]}）`;
-function until(start, today) {
-  const n = dayDiff(start, today);
-  return n === 0 ? ['本日開幕', true] : n === 1 ? ['明日開幕', true] : [`あと${n}日`, false];
-}
+// 劇場名は「〇〇劇場（東京都）」の形にそろえる。開幕までの日数（「本日開幕」など）は日付の見出しで分かるので出さない
+// （起案者の指示 2026-10-18）。digest._where と同じ
+const where = r => (r.venue && r.pref ? `${r.venue}（${r.pref}）` : r.venue || r.pref || '');
+// ポスターの無い公演は、灰の地に白い字で「now printing...」（起案者の指示 2026-10-18）
+export const NO_POSTER = '<div class="noposter np-print"><span>now printing...</span></div>';
 function row(r, today, poster, detail, hereLabel) {
-  const [u, urgent] = until(r.start, today);
   const answered = ['tracking', 'declined', 'cantgo', 'owned'].includes(r.kind_key);
   const btns = !r.stage_id ? '' : r.kind_key === 'unanswered' ? buttons(r.stage_id) : answered ? changeAnswer(r.stage_id) : '';
   const tour = r.tours ? scheduleHtml(r, today, hereLabel) : '';
   const head = `<span class="dgk ${r.cls}">${ico(r.icon, 13)}${E(r.kind)}</span>`
     + `<b class="dgt">${E(r.title)}</b>`
-    + `<span class="dgw">${E(u)}${r.venue ? '・' + E(r.venue) : ''}${r.pref ? '・' + E(r.pref) : ''}</span>`;
+    + `<span class="dgw">${E(where(r))}</span>`;
   const more = detail && r.stage_id ? detail(r.stage_id) : '';
   // Folded by title; opening it shows the run, credits and synopsis like the recommendation cards.
-  if (more) return `<li class="dgli dgfold ${r.cls}${urgent ? ' dgurgent' : ''}" data-stage="${E(r.stage_id)}">`
-    + `<details class="dgopen"><summary><div class="dgbody">${head}</div></summary>`
-    + `<div class="dgdetail">${r.stage_id ? poster(r.stage_id) : ''}<div class="dginfo">${more}${tour}</div></div></details>${btns}</li>`;
-  return `<li class="dgli ${r.cls}${urgent ? ' dgurgent' : ''}" data-stage="${E(r.stage_id)}">`
+  // ポスターは畳んだ中ではなく、題名の横（開かなくても見える所）に置く（起案者の指示 2026-10-18）
+  if (more) return `<li class="dgli dgfold ${r.cls}" data-stage="${E(r.stage_id)}">`
+    + `<details class="dgopen"><summary><div class="dghead">${poster(r.stage_id)}<div class="dgbody">${head}</div></div></summary>`
+    + `<div class="dgdetail"><div class="dginfo">${more}${tour}</div></div></details>${btns}</li>`;
+  return `<li class="dgli ${r.cls}" data-stage="${E(r.stage_id)}">`
     + `${r.stage_id ? poster(r.stage_id) : ''}<div class="dgbody">${head}${tour}</div>${btns}</li>`;
 }
 
@@ -367,7 +368,7 @@ export async function reminderScreen(params, ctx) {
   const details = new Map([...cardHtml].map(([sid, h]) => [sid, detailFromCard(h)]));
   const bare = shown.filter(sid => !details.has(sid));
   if (bare.length) for (const [sid, s] of await stageInfo(ctx.db, bare)) details.set(sid, detailHtml(s));
-  const poster = sid => (pics.has(sid) ? posterHtml(pics.get(sid)) : ''), detail = sid => details.get(sid) || '';
+  const poster = sid => (pics.has(sid) ? posterHtml(pics.get(sid)) : NO_POSTER), detail = sid => details.get(sid) || '';
   const html = panel({cands, status, owned, tickets: b.tickets, today: ctx.today, prefs, week, poster, detail, hereLabel: 'この行の会場', pq: prefQs(params)});
   const unknownHtml = !unknown.length ? '' : `<details class="dgday" open><summary>都道府県が分からない公演　${unknown.length} 件</summary>`
     + '<p class="dglead">会場の都道府県がまだ分からないため、場所の絞り込みに入れられない公演です。見逃さないように、ここに分けて出しています。</p>'

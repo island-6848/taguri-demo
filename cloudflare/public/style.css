@@ -1655,9 +1655,6 @@ button .ico{vertical-align:-.2em;margin-right:5px}
 .dgt{flex:1 1 auto;min-width:0}
 .dgw{color:var(--mute);font-size:12.5px;white-space:nowrap}
 .dgun{color:var(--mute);font-weight:400;font-style:normal;font-size:11.5px}
-/* **本日・明日だけ太く大きくする。** 新しい色は増やさず、太さと大きさだけで急ぎ度を
-   出す（起案者の指示・2026-08-26） */
-.dgurgent .dgw{font-size:14.5px;font-weight:700;color:var(--ink)}
 /* **決着済み（興味なし・持っている）は静かにする。** 答える必要が無い行に注意を
    引きすぎない */
 .dgli.dec{opacity:.72}

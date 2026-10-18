@@ -421,14 +421,11 @@ def _jd(d: datetime.date) -> str:
     return f"{d.month}月{d.day}日（{WEEK[d.weekday()]}）"
 
 
-def _until(d: datetime.date, today: datetime.date) -> tuple[str, bool]:
-    """「あと N 日」と、**急ぎの度合い**（本日・明日は強調する）。"""
-    n = (d - today).days
-    if n == 0:
-        return "本日開幕", True
-    if n == 1:
-        return "明日開幕", True
-    return f"あと{n}日", False
+def _where(r: dict) -> str:
+    """劇場名は「〇〇劇場（東京都）」の形にそろえる（起案者の指示 2026-10-18）。開幕までの日数（「本日開幕」など）は
+    日付の見出しで分かるので出さない（同じ指示）。"""
+    venue, pref = r.get("venue") or "", r.get("pref") or ""
+    return f"{venue}（{pref}）" if venue and pref else venue or pref
 
 
 def _kind_badge(cls: str, icon: str, label: str) -> str:
@@ -436,7 +433,6 @@ def _kind_badge(cls: str, icon: str, label: str) -> str:
 
 
 def _row(r: dict, today: datetime.date) -> str:
-    until, urgent = _until(r["start"], today)
     poster = POSTER(r["stage_id"]) if POSTER and r["stage_id"] else ""
     btns = ("" if not r["stage_id"] else RR.buttons(r["stage_id"]) if r["kind_key"] in NEEDS_BUTTONS
             else ('<button class="wnb" data-btns-open="1">回答を直す</button>' + RR.buttons(r["stage_id"], hidden=True))
@@ -444,14 +440,12 @@ def _row(r: dict, today: datetime.date) -> str:
     # **同じ地方にまとめた他会場は、`/recommend` と同じ「ツアーの全日程」表示で出す**
     # （`_merge_siblings` が `tours` を持たせている行だけ、`RR.schedule_html` が反応する）。
     tour_html = RR.schedule_html(r) if r.get("tours") else ""
-    return (f'<li class="dgli {r["cls"]}{" dgurgent" if urgent else ""}" '
+    return (f'<li class="dgli {r["cls"]}" '
             f'data-stage="{E(r["stage_id"])}">'
             f'{poster}<div class="dgbody">'
             f'{_kind_badge(r["cls"], r["icon"], r["kind"])}'
             f'<b class="dgt">{E(r["title"])}</b>'
-            f'<span class="dgw">{E(until)}'
-            f'{"・" + E(r.get("venue") or "") if r.get("venue") else ""}'
-            f'{"・" + E(r.get("pref") or "") if r.get("pref") else ""}</span>'
+            f'<span class="dgw">{E(_where(r))}</span>'
             f'{tour_html}</div>'
             f'{btns}</li>')
 
@@ -498,7 +492,7 @@ def panel(d: dict, today: datetime.date, tickets: dict | None = None, prefs=(),
         # 表示されて、ページ全体が見づらい」）。実測では関東で98件のうち88件が
         # 未回答で、答え済みの分を畳んでも大きくは減らない ── **好みに関係なく全部
         # 出すという約束は崩さず**、開いたまま見せる日を絞ることで初回の量を減らす。
-        # **既定で開くのは本日・明日だけ**（`_until` が急ぎと判定する日と同じ基準）。
+        # **既定で開くのは本日・明日だけ**。
         # それより先の日は畳んでおき、押せば開く（消さない・件数は見出しに出す）。
         days_html = "".join(
             f'<details class="dgday"{" open" if (day - today).days <= 1 else ""}>'
@@ -571,7 +565,6 @@ STYLE = """
 .dgun{color:var(--mute);font-weight:400;font-style:normal;font-size:11.5px}
 /* **本日・明日だけ太く大きくする。** 新しい色は増やさず、太さと大きさだけで急ぎ度を
    出す（起案者の指示・2026-08-26） */
-.dgurgent .dgw{font-size:14.5px;font-weight:700;color:var(--ink)}
 /* **決着済み（興味なし・持っている）は静かにする。** 答える必要が無い行に注意を
    引きすぎない */
 .dgli.dec{opacity:.72}

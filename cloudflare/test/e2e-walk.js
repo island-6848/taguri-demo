@@ -451,6 +451,23 @@ async function walkA(A) {
     note('一覧の「どこから」: ' + ((t.match(/開幕リマインド[^\n]{0,20}/) || ['（開幕リマインドの文字なし）'])[0]));
   });
 
+  // 答えた行は「回答を直す」だけ、押すと三択（興味ありを含む）が出る。パソコンと電話の幅の写しも撮る
+  await step('開幕リマインド: 答えた行は「回答を直す」だけ（パソコン・電話の幅）', async () => {
+    await go('/recommend/reminder');
+    for (const d of await page.locator('details.dgday:not([open]) > summary').all()) await d.click();
+    const card = page.locator(`li.dgli[data-stage="${SOON.id}"]`);
+    check(await card.locator('button[data-btns-open]').isVisible(), '「回答を直す」が無い');
+    await page.screenshot({path: join(OUT, 'reminder-pc.png'), fullPage: true});
+    check(!(await card.locator('button[data-v="interest"]').isVisible()), '押す前から三択が見えている');
+    await card.locator('button[data-btns-open]').click();
+    check(await card.locator('button[data-v="interest"]').isVisible(), '押しても興味ありが出ない');
+    check(!(await card.locator('button[data-btns-open]').isVisible()), '押したあとも「回答を直す」が残る');
+    await page.setViewportSize({width: 390, height: 844});
+    await sleep(300);
+    await page.screenshot({path: join(OUT, 'reminder-phone.png'), fullPage: true});
+    await page.setViewportSize({width: 1280, height: 900});
+  });
+
   await step('購入済みにする（探すから）', async () => {
     await go('/search?q=' + encodeURIComponent('舞台ふたつめ'));
     const card = page.locator('.ticket[data-stage="102"]').first();

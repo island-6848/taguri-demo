@@ -121,7 +121,8 @@ body{font-family:var(--font-body-default)}
 .ticket .btns .said:empty{display:none}
 /* 答えた公演の帯は「回答を直す」を押すまで隠す（hidden）。上の display:grid が
    style.css の .btns[hidden] より後に読まれて勝ち、隠したはずの帯が出ていた（起案者の指摘 2026-10-14） */
-.ticket .btns[hidden],.btns[hidden]{display:none}
+/* 開幕リマインドの行の帯（.dgli.dgfold .btns の display）にも負けないよう !important（起案者の指摘 2026-10-18「回答済みは『回答を直す』だけ」） */
+.ticket .btns[hidden],.btns[hidden]{display:none!important}
 /* カードの外の帯（開幕リマインドなど）でも、「記録しました」は横ではなく帯の下に出す
    （起案者の指摘 2026-10-14「記録しましたは横に出すより下で出したほうがいい」） */
 .btns:not(.ticket .btns):not([hidden]){display:grid;grid-template-columns:repeat(4,auto) minmax(0,1fr);justify-content:start;row-gap:8px}
@@ -740,6 +741,13 @@ a.htag-in:hover{text-decoration:underline}
 .dglist:has(.dgfold){gap:12px}
 .dgli.dgfold{display:block;padding:12px 14px;border:1px solid var(--ring);border-radius:12px;
  background:var(--surf)}
+/* お気に入りと興味ありの行には地の色を付ける（起案者の指示 2026-10-18）。左の線と同じ色を薄く混ぜる */
+.dgli.dgfold.trk{background:color-mix(in srgb,var(--curtain) 6%,var(--surf))}
+.dgli.dgfold.fav{background:color-mix(in srgb,var(--wax) 12%,var(--surf))}
+/* ポスターは題名の横（畳んだ中ではなく、開かなくても見える所。起案者の指示 2026-10-18） */
+.dgli.dgfold .dghead{display:flex;gap:12px;align-items:flex-start;flex:1 1 auto;min-width:0}
+.dgli.dgfold .dghead>.pwrap,.dgli.dgfold .dghead>.noposter{flex:none;width:52px;height:73px;border-radius:4px;overflow:hidden}
+.dgli.dgfold .dghead .dgbody{align-self:center}
 .dglist li.dgfold:last-child{border-bottom:1px solid var(--ring)}
 .dgli.dgfold.trk,.dgli.dgfold.fav{border-left-width:3px;border-radius:0 12px 12px 0;margin:0}
 .dgli.dgfold.trk{border-left-color:var(--curtain)}
@@ -755,8 +763,12 @@ a.htag-in:hover{text-decoration:underline}
 .dgli.dgfold .dgdetail{display:flex;gap:12px;align-items:flex-start;margin:10px 0 0 21px;
  padding-top:10px;border-top:1px dashed var(--grid)}
 .dgli.dgfold .dginfo{flex:1 1 auto;min-width:0;font-size:13px}
-.dgli.dgfold .btns{display:grid;margin:10px 0 0 21px;padding:0;border:0}
-@media(max-width:560px){.dgli.dgfold .btns,.dgli.dgfold .dgdetail{margin-left:0}}
+/* 三択と「回答を直す」は右に寄せる（起案者の指示 2026-10-18「開幕リマインドのボタン右寄せ」）。前は帯を display:grid にして
+   列を決めていなかったので、パソコンの幅で 3 つが縦に全幅で積み重なっていた（同じ日「パソコン表示したときにボタンのデザインおかしい」） */
+.dgli.dgfold .btns:not([hidden]){grid-template-columns:repeat(4,auto);justify-content:end;margin:10px 0 0 auto;padding:0;border:0}
+.dgli.dgfold .btns .said{text-align:right}
+.dgli.dgfold>.wnb:not([hidden]){display:block;margin:10px 0 0 auto}
+@media(max-width:560px){.dgli.dgfold .dgdetail{margin-left:0}}
 /* スマホで枠が画面の右へはみ出し、ページ全体が横に広がって縮んで見えていた（起案者の指摘 2026-10-15
    「開幕リマインドのスマホからの見え方どうにかして」）。原因は 2 つ: 一覧（grid）の列が中身の最小幅まで
    広がっていたこと、開幕日・劇場の行（.dgw）が折り返さなかったこと。列を画面の幅に収め、劇場名は折り返す。 */
@@ -766,7 +778,7 @@ a.htag-in:hover{text-decoration:underline}
  .dgcard{padding:14px 12px 12px}
  .dgw{white-space:normal;overflow-wrap:anywhere;flex-basis:100%}
  .dgli.dgfold{padding:10px 12px}
- .dgli.dgfold .btns{grid-template-columns:repeat(4,minmax(0,1fr));width:100%}
+ .dgli.dgfold .btns:not([hidden]){max-width:100%}
  .dgli.dgfold .btns button{min-width:0;padding-left:4px;padding-right:4px}
  .dgli.dgfold .dgdetail{flex-wrap:wrap}}
 
@@ -1263,3 +1275,16 @@ details.pbox>summary[data-fold] .fv,.ftab .fv{margin-left:auto;text-align:right;
 .loadfail{margin:12px 0 0}
 .loadbtn{display:inline-flex;align-items:center;min-height:44px;padding:6px 20px;border:1px solid var(--acc);border-radius:8px;background:var(--acc);color:#fff;font:inherit;font-weight:600;text-decoration:none;cursor:pointer}
 .loadbtn:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+
+/* ---- 枠線をもう少し太く（起案者の指示 2026-10-18「公式サイト、おすすめ理由のところの枠線もうちょっとだけ太くして」） */
+.ticket .sitebtn:not(#_){border-width:1.5px}
+.rs .net:not(#_){border-width:1.5px}
+
+/* ---- ポスターの無い公演は、灰の地に白い字で「now printing...」（起案者の指示 2026-10-18）。おすすめ・興味あり・
+   評価の行・日記帳・開幕リマインドのどこでも同じ。字は app.js（noposterText）と reminder.js（NO_POSTER）が入れる */
+.noposter:not(#_){box-sizing:border-box;display:flex;align-items:center;justify-content:center;padding:4px;
+ background:#6f7278;border:0;color:#fff;text-align:center}
+.noposter:not(#_) b{display:none}
+/* 細い枠（開幕リマインドの題名の横など）では 2 行に折り返す */
+html .noposter:not(#_):not(#_) span{color:#fff;font-size:10.5px;line-height:1.3;letter-spacing:.04em;white-space:normal;overflow-wrap:anywhere}
+html .dgli .noposter:not(#_):not(#_) span{font-size:9px;letter-spacing:0}

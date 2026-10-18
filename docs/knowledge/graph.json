@@ -1977,6 +1977,22 @@
    "verifies": []
   },
   {
+   "id": "dec-reminder-ui-1018",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "開幕リマインドの行を直す（答えた行は「回答を直す」だけ・ボタン右寄せ・ポスターを題名の横・日数を消し劇場は「〇〇（県）」・興味あり/お気に入りに地の色）。ポスターの無い公演は「now printing...」、公式サイトと理由の札の枠を太く",
+   "sources": [
+    "cloudflare/src/screens/reminder.js",
+    "tools/taguri/digest.py",
+    "tools/taguri/test_digest.py",
+    "web/theme.css",
+    "web/app.js",
+    "cloudflare/test/e2e-walk.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-reminder-worker",
    "type": "decision",
    "status": "adopted",
@@ -8454,6 +8470,11 @@
    "from": "dec-reminder-catalogue-fill",
    "rel": "affects",
    "to": "dec-free-tier-only"
+  },
+  {
+   "from": "dec-reminder-ui-1018",
+   "rel": "affects",
+   "to": "dec-ui-1018b"
   },
   {
    "from": "dec-reminder-worker",

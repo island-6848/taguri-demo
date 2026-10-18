@@ -1140,14 +1140,15 @@ function leadSynopsis(t, lead, noMore) {
 // 評価一覧・未評価・日記帳の 1 件（.rec-row）を、おすすめのカードと同じ形にそろえる（起案者の指示 2026-10-18
 // 「評価一覧や日記帳のカードもおすすめと揃えて」）。サーバーが付けた .rinfo（rowinfo.js）から、団体と会場の絵記号付きの行、
 // 作り手の名前（作・原作・脚本・演出＋設定で選んだ役職）、囲んだあらすじ（100 字ほど・続きは畳む）を作る。
-// ポスターの無い記録は、おすすめと同じく灰の地に題名と「ポスターなし」を置く
+// ポスターの無い記録は、おすすめと同じく灰の地に白い字で「now printing...」を置く（起案者の指示 2026-10-18。前は題名と「ポスターなし」）
+const NO_POSTER_TEXT = "<span>now printing...</span>";
 function compactRows(root) {
   root.querySelectorAll("article.rec-row").forEach(r => {
     if (r.classList.contains("cmp")) return;
     r.classList.add("cmp");
     const np = r.querySelector(".pin > .noposter");
     if (np && !np.textContent.trim()) {
-      np.innerHTML = "<b>" + E(r.querySelector(".ttl")?.textContent || "") + "</b><span>ポスターなし</span>";
+      np.innerHTML = NO_POSTER_TEXT;
     }
     const info = r.querySelector(".rinfo");
     if (!info) return;
@@ -1302,14 +1303,14 @@ function compactTickets(root) {
     if (noMore) { /* 折りたたみを置かない */ }
     else if (why0) why0.before(more); else if (act) act.after(more); else main.appendChild(more);
     // 耳（日付の札）の代わりに、ポスターを切り取り線の左に立てる。順位はポスターの左上、
-    // 日付は公演名の上に移す。ポスターの無い公演は、灰の地に公演名を置く
+    // 日付は公演名の上に移す。ポスターの無い公演は、灰の地に白い字で「now printing...」を置く
     const stub = t.querySelector(".stub"), perf = t.querySelector(".perf");
     let pcol = t.querySelector(".body > .pcol");
     if (!pcol) { pcol = document.createElement("div"); pcol.className = "pcol"; }
     if (!pcol.querySelector(".pwrap")) {
       const np = document.createElement("div");
       np.className = "noposter";
-      np.innerHTML = "<b>" + E(main.querySelector("h3")?.textContent || "") + "</b><span>ポスターなし</span>";
+      np.innerHTML = NO_POSTER_TEXT;
       pcol.prepend(np);
     }
     if (stub) {
