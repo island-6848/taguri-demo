@@ -108,6 +108,8 @@ export async function pastStages(db, ids) {
     for (const r of results) {
       let people;
       try { people = JSON.parse(r.people || '[]'); } catch { people = []; }
+      // 種類の言葉（'#形式' など、deliver_past の PEOPLE_REV 2）は推薦だけが使う。出演者・作り手の表示には出さない
+      people = people.filter(p => Array.isArray(p) && !String(p[0]).startsWith('#'));
       out[r.stage_id] = {title: r.title, venue: r.venue || '', start: r.start || '', end: r.end || '', people, grp: r.grp || '', pref: r.pref || ''};
     }
   }

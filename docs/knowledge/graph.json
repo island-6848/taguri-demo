@@ -3294,6 +3294,20 @@
    "verifies": []
   },
   {
+   "id": "impl-past-stage-kinds",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "過去の公演（past_stage）にも種類の言葉（形式・原作・翻訳・ジャンル）を入れ、過去の記録からも好みを学べるようにした",
+   "sources": [
+    "cloudflare/scripts/deliver_past.py",
+    "cloudflare/scripts/replay_job.py",
+    "tools/review/replay_eval.py",
+    "cloudflare/test/test_deliver_past.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "impl-person-graded-v2",
    "type": "finding",
    "status": "confirmed",
@@ -9326,6 +9340,16 @@
    "from": "impl-origin-korea-tag",
    "rel": "depends_on",
    "to": "origin-korea-in-catalogue"
+  },
+  {
+   "from": "impl-past-stage-kinds",
+   "rel": "affects",
+   "to": "impl-impression-worker"
+  },
+  {
+   "from": "impl-past-stage-kinds",
+   "rel": "affects",
+   "to": "q-auto-link-past"
   },
   {
    "from": "impl-person-graded-v2",
