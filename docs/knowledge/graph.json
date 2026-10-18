@@ -729,6 +729,17 @@
    "verifies": []
   },
   {
+   "id": "dec-btn-ink-sumi",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "回答の押し口（興味あり・興味なし・購入済・行けない）の墨を、黒からスミクロ（墨を地に 2 割混ぜた色）に弱める",
+   "sources": [
+    "web/theme.css"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-calendar-credits-daily",
    "type": "decision",
    "status": "adopted",
@@ -7572,6 +7583,11 @@
    "from": "dec-auto-link-past",
    "rel": "depends_on",
    "to": "auto-link-current-state"
+  },
+  {
+   "from": "dec-btn-ink-sumi",
+   "rel": "affects",
+   "to": "dec-ui-1018b"
   },
   {
    "from": "dec-calendar-credits-daily",

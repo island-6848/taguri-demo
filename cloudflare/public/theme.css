@@ -1422,3 +1422,18 @@ html .dgli .noposter:not(#_):not(#_) span{font-size:9px;letter-spacing:0}
  color:var(--ink2);border:1px solid color-mix(in srgb,var(--ink2) 35%,transparent);white-space:nowrap}
 /* 日程の行と、「詳細」で開いた公演日時の暦の間を少しあける（「詳細の下線と背景が被ってる」） */
 .tourfull.v2 details[open]>.tf-body:not(#_){margin-top:6px}
+
+/* ---- 回答の押し口（興味あり・興味なし・購入済・行けない）の墨を、黒からスミクロに弱める（起案者の指示 2026-10-18
+   「興味ありなしのボタンの黒色が強すぎるので、グレーの中でも黒より？スミクロ？くらいの色合いにして」）。
+   墨（--ink）を地（--surf）に 2 割混ぜた色（明るい表示で #4b4b4d ほど）。暗い表示でも同じ式で少し沈む。枠・字・下の台の斜線に使う */
+:root{--btn-ink:color-mix(in srgb,var(--ink) 80%,var(--surf))}
+.btns button:not(.picked),.btns button:not(.picked):first-of-type,.btns button:not(.picked):last-of-type,.btns button:not(.picked):only-of-type{
+ border-color:var(--btn-ink);color:var(--btn-ink)}
+.btns button:not(.picked)::after{border-color:var(--btn-ink);
+ background-image:repeating-linear-gradient(-45deg,var(--btn-ink),var(--btn-ink) 1px,transparent 2px,transparent 5px)}
+.btns button:not(.picked):hover{color:var(--ink);border-color:var(--btn-ink)}
+.btns button.picked,.btns button.picked:first-of-type,.btns button.picked:last-of-type{border-color:var(--btn-ink)}
+.btns button.picked:not([data-v=interest]):not([data-v=nointerest]){background:var(--btn-ink)}
+.btns button.picked::after{border-color:var(--btn-ink);
+ background-image:repeating-linear-gradient(-45deg,var(--btn-ink),var(--btn-ink) 1px,transparent 2px,transparent 5px)}
+.btns.done button:not(.picked),.btns.done button:not(.picked)::after{border-color:var(--mute);color:var(--mute)}
