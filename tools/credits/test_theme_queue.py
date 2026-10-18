@@ -142,6 +142,10 @@ class PromptChainTest(unittest.TestCase):
             {"kind": "舞台設定", "word": "昭和", "basis": "推定", "from": "昭和の町"},
             {"kind": "味わい", "word": "人情", "basis": "作風", "from": "人情"},
             {"kind": "ジャンル", "word": "喜劇", "basis": "作風", "from": "喜劇"},
+            {"kind": "題材", "word": "家族の秘密", "basis": "知識", "from": "三姉妹"},
+            {"kind": "題材", "word": "海の民話", "basis": "知識", "from": "人魚姫"},
+            {"kind": "味わい", "word": "しみじみ", "basis": "定評", "from": "海辺の町"},
+            {"kind": "テーマ", "word": "姉妹の確執", "basis": "定評", "from": "三姉妹"},
         ] + [{"kind": "題材", "word": f"題材{i}", "basis": "本文"} for i in range(6)],
              "tags": ["#三姉妹", "手紙", "#" + "長" * 30]}
         els = E.g5_elements(g, text, "団体「劇団A」・… 半数以上に付いている言葉: 喜劇、家族")
@@ -151,6 +155,10 @@ class PromptChainTest(unittest.TestCase):
         self.assertNotIn("姉妹愛", words, "6＋2 に組み替える前の種類（関係・感情）は落とす")
         self.assertNotIn("人情", words, "手がかりに無い作風は落とす")
         self.assertIn("喜劇", words)
+        self.assertIn("家族の秘密", words, "本文に名前が出ているものの知識は残す")
+        self.assertNotIn("海の民話", words, "本文に名前が無いものの知識は落とす")
+        self.assertIn("しみじみ", words, "定評は味わいなら残す")
+        self.assertNotIn("姉妹の確執", words, "定評はジャンルと味わいだけ")
         self.assertEqual(sum(1 for e in els if e["kind"] == "題材"), E.G5_KINDS["題材"])
         row = E.to_row({"side": "candidate", "id": "1", "title": "t", "url": "", "text": text, "hint": ""},
                        {**g, "synopsis": ""}, "claude", "g5")
