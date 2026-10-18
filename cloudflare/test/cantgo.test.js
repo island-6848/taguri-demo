@@ -47,12 +47,12 @@ test('the count line: 「県／N 件中 上位 M 件を表示中」, and the two
       await step(env, a, {post: '/api/rate', body: {work_key: key, verdict}});
     }
     const all = (await step(env, a, {get: '/api/screen/recommend'})).body.body_html;
-    assert.match(all, /<p class="pnow"><b>全国<\/b>／\d+ 件中 上位 \d+ 件を表示中<\/p>/);
+    assert.match(all, /<p class="rcount"><b>全国<\/b>／\d+ 件中 上位 \d+ 件を表示中<\/p>/);
     assert.doesNotMatch(all, /現在のあなたの評価|気になる公演がおすすめに無いときは/);
     const pref = sqlite.prepare("SELECT entry FROM rec_stage WHERE stage_id='101'").get();
     const p = JSON.parse(pref.entry).pref;
     if (p) assert.match((await step(env, a, {get: '/api/screen/recommend?f=1&pref=' + encodeURIComponent(p)})).body.body_html,
-      new RegExp(`<p class="pnow"><b>${p}</b>／\\d+ 件中 上位 \\d+ 件を表示中</p>`));
+      new RegExp(`<p class="rcount"><b>${p}</b>／\\d+ 件中 上位 \\d+ 件を表示中</p>`));
   } finally { sqlite.close(); }
 });
 

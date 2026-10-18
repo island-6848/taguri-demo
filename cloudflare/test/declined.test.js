@@ -28,7 +28,7 @@ for (const word of ['ひとつめ', '俳優乙', 'オリジナル']) {
         assert.equal(sqlite.prepare("SELECT count(*) AS n FROM rec_card WHERE stage_id='101' AND instr(blob, 'オリジナル')>0").get().n, 0);
       }
       // The box is on the recommend screen itself.
-      assert.match(before, /<details class="pbox" id="declined">[\s\S]*<button data-dec="add">出さない<\/button>/);
+      assert.match(before, /<details class="pbox" id="declined">[\s\S]*<button data-dec="add">追加する<\/button>/);
       assert.equal((await step(env, a, {post: '/api/decline', body: {action: 'add', word}})).status, 200);
       const after = (await step(env, a, {get: '/api/screen/recommend'})).body.body_html;
       assert.doesNotMatch(after, /data-stage="101"/);
@@ -48,7 +48,7 @@ test('a word with a target hides the stage only when that field has it', async (
     await rateSeen(env, a, '終わった舞台', '2026-08-05', '103', '◎');
     await rateSeen(env, a, '一日だけの舞台', '2026-09-05', '104', '×');
     const rec = async () => (await step(env, a, {get: '/api/screen/recommend'})).body.body_html;
-    assert.match(await rec(), /<select id="dec-kind" aria-label="出さない語の対象"><option value="">すべて<\/option><option value="題名">題名<\/option>/);
+    assert.match(await rec(), /<select id="dec-kind" aria-label="使わない言葉の対象"><option value="">すべて<\/option><option value="題名">題名<\/option>/);
     // 「ひとつめ」は題名にあるが、人の名前ではない
     assert.equal((await step(env, a, {post: '/api/decline', body: {action: 'add', word: 'ひとつめ', kind: '団体'}})).status, 200);
     assert.match(await rec(), /data-stage="101"/);

@@ -128,7 +128,8 @@ export function timetableGrid(perf, start, end, today, texts = []) {
       const ps = perf.get(d) || [];
       const cls = [i === 5 ? 'sat' : i === 6 ? 'sun' : '', d < today ? 'past' : '', !inRun ? 'out' : ''].filter(Boolean).join(' ');
       const body = !inRun ? '' : ps.length
-        ? ps.map(p => `<span class="tm">${p.m ? `<i>${E(p.m)}</i>` : ''}${E(p.t || '公演')}</span>`).join('')
+        // 印は時刻のすぐ後ろに（起案者の指示 2026-10-18「今図形（改行）時刻、になってるけど時刻のすぐ後ろに図形つけて」）
+        ? ps.map(p => `<span class="tm">${E(p.t || '公演')}${p.m ? `<i>${E(p.m)}</i>` : ''}</span>`).join('')
         : '<span class="off">休演</span>';
       cells.push(`<td${cls ? ` class="${cls}"` : ''}><span class="d">${E(label)}</span>${body}</td>`);
     }

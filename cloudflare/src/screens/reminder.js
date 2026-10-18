@@ -171,6 +171,22 @@ function mergeSiblings(rows) {
     if (best !== head.kind_key) [head.kind_key, [head.kind, head.icon, head.cls]] = [best, KIND[best]];
     out.push(head);
   }
+  // 地方が違って別の行になった同じ公演は、どちらかで答えたら両方の行に同じ答えを出す（起案者の指摘 2026-10-18
+  // 「1個だけ興味ありにしたら、もう片方がおすすめに出てきた」）。行を分けるのは 2026-08-26 の指示どおり。
+  // 同じ公演とみなすのは、題名が同じで、団体が同じか片方に無いとき（別の団体の同じ題名の上演はまとめない）
+  const same = (a, b) => !a.group || !b.group || nz(a.group) === nz(b.group);
+  const byTitle = new Map();
+  for (const h of out) {
+    const w = workKey(h.title, h.stage_id);
+    if (!byTitle.has(w)) byTitle.set(w, []);
+    byTitle.get(w).push(h);
+  }
+  for (const heads of byTitle.values()) {
+    if (heads.length < 2) continue;
+    // 先に全部の行の答えを決めてから入れる（入れながら決めると、団体の無い行を挟んで答えが伝わりすぎる）
+    const bests = heads.map(h => heads.filter(o => same(o, h)).map(o => o.kind_key).reduce((a, b) => (STATUS_RANK[b] > STATUS_RANK[a] ? b : a)));
+    heads.forEach((h, i) => { if (bests[i] !== h.kind_key) [h.kind_key, [h.kind, h.icon, h.cls]] = [bests[i], KIND[bests[i]]]; });
+  }
   return out.sort((a, b) => cmp(a.start, b.start) || cmp(a.title, b.title));
 }
 

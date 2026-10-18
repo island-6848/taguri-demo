@@ -109,14 +109,14 @@ test('効かせ方: the sliders show the saved steps and the counts; "効かせ�
     await rateSeen(env, a, '一日だけの舞台', '2026-09-05', '104', '×');
     let html = (await step(env, a, {get: '/api/screen/recommend'})).body.body_html;
     assert.match(html, /<details class="pbox wbox" id="weights">/);
-    assert.match(html, /いまは<b>すべて「ふつう」（これまでと同じ効き方）<\/b>/);
+    assert.match(html, /いまは<b>ふつう<\/b>/);
     assert.match(html, /<div class="wrow" data-grp="cast"><span class="wl">出演者<\/span><span class="wn">おすすめの候補 1 件で一致<\/span>/);
     assert.match(html, /<h1>今週のおすすめ 1 件<\/h1>/);
     const saved = await step(env, a, {post: '/api/weight', body: {weights: {cast: 'off', theme: 'max'}}});
     assert.equal(saved.status, 200);
     assert.deepEqual(saved.body.weights, {cast: 'off', theme: 'max'});
     html = (await step(env, a, {get: '/api/screen/recommend'})).body.body_html;
-    assert.match(html, /いまは<b>出演者を効かせない／作品の内容をとても強く<\/b>/);
+    assert.match(html, /いまは<b>作品の内容強め／出演者なし<\/b>/);
     assert.match(html, /<div class="wrow off" data-grp="cast">/);
     assert.doesNotMatch(html, /<span class="net">人物<\/span>出演 /);   // the cast leaves the reasons too
     const all = Object.fromEntries(['cast', 'author', 'craft', 'stage', 'produce', 'other', 'theme'].map(k => [k, 'off']));

@@ -61,9 +61,11 @@ export async function weightAction(b, ctx) {
 export function weightForm(w, cnt = {}, drop = 0) {
   const keys = WEIGHT_STEPS.map(s => s[0]);
   const labels = Object.fromEntries(WEIGHT_STEPS.map(([k, l]) => [k, l]));
-  const changed = ROLE_GROUPS.map(([k]) => [k, w[k] || DEFAULT_STEP]).filter(([, v]) => v !== DEFAULT_STEP)
-    .map(([k, v]) => `${GROUP_SHORT[k]}を${labels[v]}`);
-  const now = !changed.length ? 'すべて「ふつう」（これまでと同じ効き方）' : changed.join('／');
+  // いまの効かせ方は「出演者強め」のように短く（起案者の指示 2026-10-18「もしとても強くがあるなら『〇〇強め』みたいに書いて」）。
+  // 強く・とても強く → 強め、あまり効かせない → 弱め、効かせない → なし。どれも「ふつう」なら「ふつう」
+  const by = sel => ROLE_GROUPS.filter(([k]) => sel.includes(w[k] || DEFAULT_STEP)).map(([k]) => GROUP_SHORT[k]);
+  const now = [[by(['strong', 'max']), '強め'], [by(['weak']), '弱め'], [by(['off']), 'なし']]
+    .filter(([ks]) => ks.length).map(([ks, t]) => ks.join('・') + t).join('／') || 'ふつう';
   const rows = ROLE_GROUPS.map(([k, label]) => {
     const cur = w[k] || DEFAULT_STEP, i = keys.indexOf(cur), n = cnt[k] || 0;
     return `<div class="wrow${cur === 'off' ? ' off' : ''}" data-grp="${k}">`

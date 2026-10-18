@@ -986,7 +986,7 @@ a.pill.buy .go:not(#_){font-size:12px;margin-left:2px}
 .ttb:not(#_){border-spacing:1px}
 .ttb td:not(#_){padding:2px 0}
 .ttb .tm:not(#_){letter-spacing:-.06em}
-.ttb .tm i:not(#_){display:block;font-size:12px;margin:0;vertical-align:0}
+.ttb .tm i:not(#_){display:inline;font-size:11px;margin:0 0 0 1px;vertical-align:0}
 @media(max-width:520px){.tourfull.v2 .tf-body:not(#_){margin-left:.4em}}
 /* 料金の行（販売の札の下）: 「券種 金額」を 1 行ずつ。金額は長ければ折り返す。「▼詳細」は 1 行目の金額の続きに */
 .ticket.cmp .lprice{display:block;font-size:12px;line-height:1.6}
@@ -1113,25 +1113,26 @@ a.pill.buy .go:not(#_){font-size:12px;margin-left:2px}
    起案者の指示 2026-10-17「くっついてるボタンはそれぞれ独立させて」＋渡された btn-border の形。
    色は黒・白の決め打ちでなくテーマの墨（--ink）と地（--surf）に合わせ、暗い画面でも見えるようにする。
    台は ::after（::before は押したときの ✓ に使っている） */
-.btns,.ticket .btns,.btns:not(.ticket .btns):not([hidden]){column-gap:6px;padding-bottom:8px}
+.btns,.ticket .btns,.btns:not(.ticket .btns):not([hidden]){column-gap:6px;padding-bottom:5px}
 .btns button,.btns button:first-of-type,.btns button:last-of-type,.btns button:only-of-type{
  position:relative;border:1.5px solid var(--ink);border-radius:.5rem;background:var(--surf);color:var(--ink);
  font-weight:700;letter-spacing:.1em;box-shadow:none;margin:0;
  top:0;transition:top .2s,background-color .12s ease}
-.btns button::after{content:"";position:absolute;z-index:-1;left:-1.5px;right:-1.5px;bottom:-8px;height:14px;
+.btns button::after{content:"";position:absolute;z-index:-1;left:-1.5px;right:-1.5px;bottom:-5px;height:11px;
  border:1.5px solid var(--ink);border-radius:0 0 .5rem .5rem;
  background-image:repeating-linear-gradient(-45deg,var(--ink),var(--ink) 1px,transparent 2px,transparent 5px);
  background-size:7px 7px;background-color:var(--surf);transition:bottom .2s}
 /* 沈みは transform でなく top でずらす（transform は重なりの層を作り、台が押し口の上に描かれてしまう） */
-.btns button:hover{top:3px;transform:none}
-.btns button:hover::after{bottom:-5px}
-.btns button:active{top:7px}
+/* 下の斜線の台は 5px（起案者の指示 2026-10-18「斜線があるところの幅をすこし縮めて」。前は 8px） */
+.btns button:hover{top:2px;transform:none}
+.btns button:hover::after{bottom:-3px}
+.btns button:active{top:4px}
 .btns button:active::after{bottom:-1px}
-.btns button.picked,.btns button.picked:first-of-type,.btns button.picked:last-of-type{top:5px;animation:none;
+.btns button.picked,.btns button.picked:first-of-type,.btns button.picked:last-of-type{top:3px;animation:none;
  background:var(--ink);color:var(--surf)}
 .btns button[data-v=interest].picked{background:var(--curtain);border-color:var(--ink)}
 .btns button[data-v=nointerest].picked{background:var(--base);color:var(--ink)}
-.btns button.picked::after{bottom:-3px}
+.btns button.picked::after{bottom:-2px}
 .btns{isolation:isolate}
 /* 答えたあとのほかの押し口は、opacity で薄くすると台が上に描かれるので、色で薄くする */
 .btns.done button:not(.picked){opacity:1;color:var(--mute);border-color:var(--mute)}
@@ -1197,3 +1198,25 @@ a.pill.buy .go:not(#_){font-size:12px;margin-left:2px}
  .side .brand.tglock{display:flex;align-items:center;padding:0 6px 0 4px}
  .side .brand .tgl-full{display:none}
  .side .brand .tgl-row{display:block}}
+
+/* ---- 折りたたみの見出しは「▶効かせ方」「▶場所」の形。いまの値・件数（「N語」「N件」「出演者強め」など）は右に寄せる
+   （起案者の指示 2026-10-18）。札（.ftab）も箱の見出し（summary[data-fold]）も同じ形。開いたら ▶ を下へ向ける */
+details.pbox>summary[data-fold]{display:flex;align-items:center;gap:8px;list-style:none}
+details.pbox>summary[data-fold]::-webkit-details-marker{display:none}
+details.pbox>summary[data-fold]::marker{content:""}
+details.pbox>summary[data-fold] .fl,.ftab .fl{flex:none;font-weight:700;color:var(--ink)}
+details.pbox>summary[data-fold] .fl::before,.ftab .fl::before{content:"▶";display:inline-block;margin-right:6px;font-size:.72em;
+ color:var(--curtain);transition:transform .15s ease;transform-origin:50% 55%}
+details.pbox[open]>summary[data-fold] .fl::before,.ftab[aria-expanded=true] .fl::before{transform:rotate(90deg)}
+details.pbox>summary[data-fold] .fv,.ftab .fv{margin-left:auto;text-align:right;color:var(--ink2);font-weight:600;
+ min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media(max-width:560px){.ftab{flex-direction:row;align-items:center;gap:6px;padding:6px 10px}}
+@media (prefers-reduced-motion:reduce){details.pbox>summary[data-fold] .fl::before,.ftab .fl::before{transition:none}}
+/* おすすめの件数の 1 行（「埼玉県ほか 3 県／121 件中 上位 15 件を表示中」）は枠のない地の文。表示の絞り込みの下に少し空ける */
+.rcount{margin:14px 2px 16px;font-size:13px;line-height:1.7;color:var(--ink2)}
+.rcount b{color:var(--ink)}
+/* ---- 左の列の見出し（日程・作・脚本・演出・出演・あらすじ・感想）に下線（起案者の指示 2026-10-18「各ページ、あらすじとか脚本とか
+   左側の列に当たるところに下線引いて」）。おすすめ・興味あり・お気に入り・評価一覧・日記帳のどれも同じ */
+:is(.leadbox .cl,.ltour .cl,.rec-row .cast .cl,.inr .inl,.cast .cr .cl),.rec-row .syn::before{
+ text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:4px;
+ text-decoration-color:color-mix(in srgb,var(--mute) 55%,transparent);align-self:start}

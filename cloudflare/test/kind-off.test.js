@@ -51,7 +51,7 @@ test('turning a kind reason off takes it out of the reasons and the score, for t
     // The list of kinds turned off lives on おすすめ (its 選び方 row), not on お気に入り (起案者の指示 2026-10-17).
     const fav = (await step(env, a, {get: '/api/screen/favourites'})).body.body_html;
     assert.doesNotMatch(fav, /id="kind-off"/);
-    assert.match(after, /<div class="fil2 tune">[\s\S]*<details class="pbox" id="kind-off">[\s\S]*使わない理由 <b>1 件<\/b>/);
+    assert.match(after, /<div class="fil2 tune">[\s\S]*<details class="pbox" id="kind-off">[\s\S]*使わない理由 <b>1件<\/b>/);
     assert.ok(after.includes(`「${tag}」<button data-kindoff-remove="1">✕</button>`), axis);
     assert.doesNotMatch((await step(env, b, {get: '/api/screen/recommend'})).body.body_html, /id="kind-off"/);
     assert.equal((await step(env, a, {post: '/api/kind_off', body: {action: 'remove', key}})).status, 200);

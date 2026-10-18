@@ -503,10 +503,8 @@ export function kindOffBox(keys) {
     return `<span class="tag" data-kindkey="${E(k)}">${tag.endsWith(label) ? '' : E(label)}「${E(tag)}」<button data-kindoff-remove="1">✕</button></span>`;
   }).join('');
   return `<details class="pbox" id="kind-off">
-<summary>${ico('flag')}使わない理由 <b>${keys.length} 件</b></summary>
-<p class="lead">おすすめの理由の ✕ で外した種類です。おすすめの順位にも理由にも使いません。
-公演そのものは消していないので、ほかの理由（好きな人など）があれば、これまでどおりおすすめに出ます。
-ただし<b>ジャンル</b>（2.5次元・宝塚）を外したときは、そのジャンルの公演をおすすめに出しません。✕ で戻せます。</p>
+<summary>${ico('flag')}使わない理由 <b>${keys.length}件</b></summary>
+<p class="lead">「おすすめ理由」の ✕ で外した要素です。</p>
 <div class="tags">${tags}</div>
 </details>`;
 }
@@ -519,12 +517,12 @@ export function declinedBox(words) {
   }).join('');
   const kinds = DEC_KINDS.map(([v, t]) => `<option value="${E(v)}">${E(t)}</option>`).join('');
   return `<details class="pbox" id="declined">
-<summary>${ico('flag')}出さない語 <b>${words.length} 語</b></summary>
+<summary>${ico('flag')}使わない言葉 <b>${words.length}語</b></summary>
 <p class="lead">おすすめに表示しない言葉を設定できます。</p>
 ${words.length ? tags : '<p class="empty">まだ 1 つも外していません。</p>'}
-<div class="fav-add"><select id="dec-kind" aria-label="出さない語の対象">${kinds}</select> <input id="dec-word" type="text"
-  placeholder="出さない語（例: バレエ）" size="22">
- <button data-dec="add">出さない</button><span class="said"></span></div>
+<div class="fav-add"><select id="dec-kind" aria-label="使わない言葉の対象">${kinds}</select> <input id="dec-word" type="text"
+  placeholder="使わない言葉（例: バレエ）" size="22">
+ <button data-dec="add">追加する</button><span class="said"></span></div>
 </details>`;
 }
 

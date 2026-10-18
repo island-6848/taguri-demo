@@ -338,6 +338,26 @@ def _merge_siblings(rows: list[dict]) -> list[dict]:
             head["kind_key"] = best_key
             head["kind"], head["icon"], head["cls"] = KIND[best_key]
         out.append(head)
+    # **地方が違って別の行になった同じ公演は、どちらかで答えたら両方の行に同じ答えを出す**
+    # （起案者の指摘 2026-10-18「1個だけ興味ありにしたら、もう片方がおすすめに出てきた」）。行を分けるのは
+    # 上の 2026-08-26 の指示どおり。同じ公演とみなすのは、題名が同じで、団体が同じか片方に無いとき
+    def _nz(x: str) -> str:
+        return unicodedata.normalize("NFKC", x or "").replace(" ", "").replace("\u3000", "").lower()
+
+    def _same(a: dict, b: dict) -> bool:
+        return not a.get("group") or not b.get("group") or _nz(a["group"]) == _nz(b["group"])
+
+    by_title: dict[str, list[dict]] = collections.defaultdict(list)
+    for h in out:
+        by_title[RC2.work_key(h.get("title") or "", h["stage_id"])].append(h)
+    for heads in by_title.values():
+        if len(heads) < 2:
+            continue
+        best_of = {id(h): max((o["kind_key"] for o in heads if _same(o, h)), key=_STATUS_RANK.get) for h in heads}
+        for h in heads:
+            if best_of[id(h)] != h["kind_key"]:
+                h["kind_key"] = best_of[id(h)]
+                h["kind"], h["icon"], h["cls"] = KIND[h["kind_key"]]
     out.sort(key=lambda r: (r["start"], r["title"]))
     return out
 

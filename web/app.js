@@ -890,18 +890,28 @@ function priceFilter(el) {
 // 中身（都道府県の札・効かせ方のつまみ・料金のつまみ）はそれぞれの details のまま使う
 // おすすめの画面は「おすすめの選び方」（効かせ方・出さない語）と「表示の絞り込み」（場所・料金）の 2 段に分かれ、
 // 段ごとに札を並べる（起案者の指摘 2026-10-17「4 つを並列に並べるのはおかしい」）
+// 札・箱の名前は箱ごとに決める。お気に入りの画面の 2 つ（登録した名前・出さない語）まで「場所」と
+// 出ていた（起案者の指摘 2026-10-14「『お気に入り』画面の『場所』ってなに？」）
+const boxName = d => d.classList.contains("wbox") ? ["効かせ方", "light"] : d.classList.contains("ybox") ? ["料金", "ticket"]
+  : d.id === "names" ? ["登録した名前", "star"] : d.id === "declined" ? ["使わない言葉", "flag"]
+  : d.id === "kind-off" ? ["使わない理由", "flag"] : ["場所", "search"];
 function filterRow(el) {
   el.querySelectorAll(".fil2").forEach(filterRowOf);
+  // 折りたたみの見出しは、どれも「▶効かせ方」「▶場所」の形にし、いまの値・件数は右に寄せる（起案者の指示 2026-10-18
+  // 「折りたたんでいるところは、全て『▶効かせ方』や『▶場所』などで表記」）。札に並べなかった 1 つだけの箱もそろえる
+  el.querySelectorAll("details.pbox").forEach(d => {
+    const sm = d.querySelector(":scope > summary");
+    if (!sm || sm.dataset.fold) return;
+    sm.dataset.fold = "1";
+    const v = sm.querySelector("b")?.textContent || "";
+    sm.innerHTML = '<span class="fl">' + E(boxName(d)[0]) + '</span><span class="fv">' + E(v) + "</span>";
+  });
 }
 function filterRowOf(fil) {
   if (fil.querySelector(".ftabs")) return;
   const boxes = [...fil.querySelectorAll("details.pbox")];
   if (boxes.length < 2) return;
-  // 札の名前は箱ごとに決める。お気に入りの画面の 2 つ（登録した名前・出さない語）まで「場所」と
-  // 出ていた（起案者の指摘 2026-10-14「『お気に入り』画面の『場所』ってなに？」）
-  const name = d => d.classList.contains("wbox") ? ["効かせ方", "light"] : d.classList.contains("ybox") ? ["料金", "ticket"]
-    : d.id === "names" ? ["登録した名前", "star"] : d.id === "declined" ? ["出さない語", "flag"]
-    : d.id === "kind-off" ? ["使わない理由", "flag"] : ["場所", "search"];
+  const name = boxName;
   const tabs = document.createElement("div");
   tabs.className = "ftabs";
   tabs.setAttribute("role", "group");
@@ -909,13 +919,13 @@ function filterRowOf(fil) {
   boxes.forEach((d, i) => {
     const key = d.classList.contains("wbox") ? "wbox" : d.classList.contains("ybox") ? "ybox" : "pbox" + i;
     d.dataset.tab = key;
-    const [label, ic] = name(d);
+    const [label] = name(d);
     const b = document.createElement("button");
     b.type = "button";
     b.className = "ftab";
     b.dataset.for = key;
     b.setAttribute("aria-expanded", d.open ? "true" : "false");
-    b.innerHTML = ico(ic, 15) + '<span class="fl">' + label + '</span><span class="fv">'
+    b.innerHTML = '<span class="fl">' + label + '</span><span class="fv">'
       + E(d.querySelector("summary b")?.textContent || "") + "</span>";
     b.addEventListener("click", () => {
       const open = !d.open;

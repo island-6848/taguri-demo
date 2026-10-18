@@ -31,3 +31,9 @@ test('a merged stage without a tour key is kept as an extra venue', async () => 
   assert.deepEqual(out.map(g => g.stage_id), ['1']);
   assert.deepEqual(out[0].aliasStages, ['3']);
 });
+
+test('a production answered under another stage id stays out', async () => {
+  // 1 に答えた。3（団体が同じ）と 7（別の上演）が候補
+  const out = await sameProduction(db, 'v', [{stage_id: '3', tour: 'T3'}, {stage_id: '7', tour: 'T7'}], undefined, ['1']);
+  assert.deepEqual(out.map(g => g.stage_id), ['7']);
+});

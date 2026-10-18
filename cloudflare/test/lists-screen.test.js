@@ -94,7 +94,7 @@ test('a registered name brings its stages to お気に入り and out of おす�
     const favHtml = (await screen(env, a, 'favourites')).body_html;
     assert.doesNotMatch(favHtml, /id="declined"/);
     assert.match(favHtml, /<div class="fil2 tune"><details class="pbox" id="names"[\s\S]*<div class="fil2 narrow"><form class="pfil" method="get" action="\/recommend\/favourites">/);
-    assert.match((await screen(env, a, 'recommend')).body_html, /出さない語 <b>1 語<\/b>[\s\S]*「バレエ」/);
+    assert.match((await screen(env, a, 'recommend')).body_html, /使わない言葉 <b>1語<\/b>[\s\S]*「バレエ」/);
   } finally { sqlite.close(); }
 });
 

@@ -3569,11 +3569,12 @@ def weight_form(user_id: str, d: dict) -> str:
     cnt = d.get("w_counts") or {}
     keys = [k for k, _l, _m in WEIGHT_STEPS]
     labels = {k: l for k, l, _m in WEIGHT_STEPS}
-    changed = [f"{GROUP_SHORT[k]}を{labels[v]}"
-               for k, _l, _r in ROLE_GROUPS
-               for v in [w.get(k) or DEFAULT_STEP] if v != DEFAULT_STEP]
-    now = ("すべて「ふつう」（これまでと同じ効き方）" if not changed else
-           "／".join(changed))
+    # いまの効かせ方は「出演者強め」のように短く（起案者の指示 2026-10-18）。強く・とても強く → 強め、
+    # あまり効かせない → 弱め、効かせない → なし。どれも「ふつう」なら「ふつう」
+    def _by(sel):
+        return [GROUP_SHORT[k] for k, _l, _r in ROLE_GROUPS if (w.get(k) or DEFAULT_STEP) in sel]
+    now = "／".join("・".join(ks) + t for ks, t in ((_by(("strong", "max")), "強め"), (_by(("weak",)), "弱め"),
+                                                   (_by(("off",)), "なし")) if ks) or "ふつう"
     rows = []
     for k, label, _roles in ROLE_GROUPS:
         cur = w.get(k) or DEFAULT_STEP

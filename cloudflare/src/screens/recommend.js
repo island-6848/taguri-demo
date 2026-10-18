@@ -71,14 +71,14 @@ ${THANKS_ART}
 <li><b>観た公演を評価する</b>：<a href="/rate?t=__TAGURI_TOKEN__">評価</a>が増えるほど、好みに合う公演を見つけやすくなります。</li>
 <li><b>お気に入りを登録する</b>：好きな俳優・劇団・作品を<a href="/recommend/favourites?t=__TAGURI_TOKEN__">お気に入り</a>に入れると、その人たちの公演が出ます。</li>
 <li><b>「探す」で興味ありを押す</b>：<a href="/search?t=__TAGURI_TOKEN__">探す</a>で見つけた公演に押した興味ありも、次のおすすめの手がかりになります。</li>
-<li><b>出さない語・都道府県の設定を見直す</b>：絞り込みを外すと、隠れていた候補が出ます。</li>
+<li><b>使わない言葉・都道府県の設定を見直す</b>：絞り込みを外すと、隠れていた候補が出ます。</li>
 <li><b>少し待つ</b>：新しい公演は毎日取り込んでいます。日をおいて開くと、新しい候補が出ていることがあります。</li>
 </ol>
 </section>
 `;
 // Groups kept per user between requests: enough to fill 15 cards in any one prefecture.
 const KEEP = 400;
-const VERSION = 'screen-v19';   // v19: same title + (group / venue / a shared person) is one card; v18: one card per title+group (sameProduction); v17: no 出典 on the reasons; v16: #会場 dropped, 行けない (interest=2) as a liked seed; v15: 出さない語 also hits the kind tags; v14: #ジャンル (a genre turned off hides its stages); v13: no 原作「原作もの」 (DROPPED_KEYS); v12: no #値段 (DROPPED_AXES); v11: reasons of answered stages (answered_why); v2: the user's 効かせ方 (rank_weight) and the per-group counts; v3: 興味あり as seeds; v4: diag; v5: 興味あり split (impl-interest-split); v6: by part importance; v7: tiers + トメ; v8: two tiers only; v9: トメ joins the main roles; v10: spread leads + one-step partners
+const VERSION = 'screen-v20';   // v20: a production answered under another stage id stays out; v19: same title + (group / venue / a shared person) is one card; v18: one card per title+group (sameProduction); v17: no 出典 on the reasons; v16: #会場 dropped, 行けない (interest=2) as a liked seed; v15: 出さない語 also hits the kind tags; v14: #ジャンル (a genre turned off hides its stages); v13: no 原作「原作もの」 (DROPPED_KEYS); v12: no #値段 (DROPPED_AXES); v11: reasons of answered stages (answered_why); v2: the user's 効かせ方 (rank_weight) and the per-group counts; v3: 興味あり as seeds; v4: diag; v5: 興味あり split (impl-interest-split); v6: by part importance; v7: tiers + トメ; v8: two tiers only; v9: トメ joins the main roles; v10: spread leads + one-step partners
 export {PREFS} from './prefs.js';
 const KIND_LABEL = {'#形式': '形式', '#原作': '原作', '#翻訳': '', '#原作の国': '原作の国', '#会場': '劇場', '#題材': '題材', '#ジャンル': 'ジャンル'};
 const WORKS_SHOWN = 3;
@@ -267,7 +267,7 @@ export async function rankedGroups(ctx) {
     const key = c.tour || 'stage:' + c.stage_id;
     if (!byTour.has(key)) byTour.set(key, {stage_id: c.stage_id, tour: c.tour || '', parts: c.parts, kinds: c.kinds, b: c.b, ...(c.via ? {via: c.via} : {})});
   }
-  const groups = await sameProduction(db, ver, spreadLeads([...byTour.values()]));
+  const groups = await sameProduction(db, ver, spreadLeads([...byTour.values()]), undefined, [...done]);
   const kept = groups.slice(0, KEEP);
   // Every venue of the kept productions (the index groups a tour by rec_stage.tour).
   const venues = new Map();
@@ -328,10 +328,11 @@ export function sameStage(a, b) {
   for (const n of a.names) if (b.names.has(n)) return true;
   return false;
 }
-export async function sameProduction(db, ver, groups, limit = Math.ceil(KEEP * 1.5)) {
+export async function sameProduction(db, ver, groups, limit = Math.ceil(KEEP * 1.5), answered = []) {
   const head = groups.slice(0, limit);
   const info = new Map();
-  for (const part of chunks([...new Set(head.map(g => g.stage_id))], 90)) {
+  const want = [...new Set([...head.map(g => String(g.stage_id)), ...answered.map(String)])];
+  for (const part of chunks(want, 90)) {
     let results = [];
     try {
       ({results} = await db.prepare(`SELECT stage_id,tkey,gkey,credits,json_extract(entry,'$.theater') AS th FROM rec_stage WHERE ver=? AND stage_id IN (${part.map(() => '?').join(',')})`).bind(ver, ...part).all());
@@ -345,11 +346,20 @@ export async function sameProduction(db, ver, groups, limit = Math.ceil(KEEP * 1
     }
   }
   const byTitle = new Map(), out = [];
+  // 答えた公演（興味あり・興味なし・購入済・行けない）と同じ公演は出さない（起案者の指摘 2026-10-18「1個だけ興味ありにしたら、
+  // もう片方がおすすめに出てきた」── 同じ公演が別の番号で 2 つ載っていると、答えた番号だけが外れていた）
+  for (const sid of answered) {
+    const me = info.get(String(sid));
+    if (!me) continue;
+    const kept = byTitle.get(me.t) || [];
+    kept.push({g: null, me}); byTitle.set(me.t, kept);
+  }
   for (const g of head) {
     const me = info.get(String(g.stage_id));
     if (!me) { out.push(g); continue; }
     const kept = byTitle.get(me.t) || [];
     const keep = kept.find(k => sameStage(me, k.me));
+    if (keep && !keep.g) continue;      // 答えた公演と同じ公演
     if (keep) {
       if (g.tour && g.tour !== keep.g.tour) keep.g.aliases = [...new Set([...(keep.g.aliases || []), g.tour])];
       if (!g.tour) keep.g.aliasStages = [...new Set([...(keep.g.aliasStages || []), String(g.stage_id)])];
@@ -458,13 +468,13 @@ export async function recommendScreen(params, ctx) {
   } else if (!prefs.length) {
     head = `今週のおすすめ ${cards.length} 件`;
     // 件数は 1 行で（起案者の指示 2026-10-17「『埼玉県ほか 3 県／◯件中上位◯件を表示中』に変えて」。全国も同じ形）
-    lede = `<p class="pnow"><b>全国</b>／${data.n_scored} 件中 上位 ${cards.length} 件を表示中</p>`;
+    lede = `<p class="rcount"><b>全国</b>／${data.n_scored} 件中 上位 ${cards.length} 件を表示中</p>`;
   } else if (!cards.length) {
     head = `${where}のおすすめはありません`;
-    lede = `<p class="pnow">これから観られる公演 ${nCand} 件のうち、<b>${E(where)}</b>で観られるものはありませんでした。ほかの都道府県を選ぶか、全国に戻してください。</p>`;
+    lede = `<p class="rcount">これから観られる公演 ${nCand} 件のうち、<b>${E(where)}</b>で観られるものはありませんでした。ほかの都道府県を選ぶか、全国に戻してください。</p>`;
   } else {
     head = `${where}のおすすめ ${cards.length} 件`;
-    lede = `<p class="pnow"><b>${E(where)}</b>／${hit} 件中 上位 ${cards.length} 件を表示中</p>`;
+    lede = `<p class="rcount"><b>${E(where)}</b>／${hit} 件中 上位 ${cards.length} 件を表示中</p>`;
   }
   // 推薦を出すためのワンポイント（起案者の指示 2026-10-14「なにがしたら出るか、使うユーザーが
   // わかりやすい文章で（技術的なことは書かないで）おすすめの初期画面に追加して」）。
@@ -479,12 +489,13 @@ export async function recommendScreen(params, ctx) {
 ・<b>あらすじ</b>：${nSyn}/${cards.length} 件で表示できました。残りは、まだ読み取りが済んでいないか、公演のページに載っていませんでした<br>
 ・<b>まだ答えていない公演は、次回も候補に残ります。</b>
 評価・公演情報・設定が変わると、順位も変わることがあります</p>` : '';
+  // 件数の 1 行は枠に入れず地の文で、「表示の絞り込み」の下に少し空けて置く（起案者の指示 2026-10-18）
   const body = `<h1>${E(head)}</h1>
-${lede}
 ${tips}<p class="fgh">${ico('light', 15)}<b>おすすめの選び方</b><span>おすすめに表示される結果自体が変わります。</span></p>
 <div class="fil2 tune">${weightForm(data.weights || {}, data.w_counts || {})}${declinedBox(await loadDeclined(ctx))}${kindOffBox(await loadKindOff(ctx))}</div>
 <p class="fgh">${ico('search', 15)}<b>表示の絞り込み</b><span>おすすめの候補の中から、表示する項目を設定できます。</span></p>
 <div class="fil2 narrow">${prefForm(prefCounts(data.groups), prefs, '/recommend', REC_PREF_NOTE, {}, regionCounts(data.groups.map(g => ({key: g.stage_id, prefs: g.venues.map(v => v.pref)}))))}</div>
+${lede}
 ${cards.join('')}
 <p class="lede">気になった公演で「興味あり」を押すと、
 <a href="/recommend/interest?t=__TAGURI_TOKEN__">「興味あり」（いま ${nInterest} 件）</a>に移ります。</p>
