@@ -2853,6 +2853,18 @@
    "verifies": []
   },
   {
+   "id": "eval-g5-trial-1018",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-18",
+   "title": "あらすじの読み取り g5（軸ごとの言葉・語彙表・根拠の印・見せるハッシュタグ）を 40 公演で g4 と読み比べた",
+   "sources": [
+    "cloudflare/src/vocab/concepts.json",
+    "tools/credits/extract_theme_llm.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "eval-genre-preference",
    "type": "finding",
    "status": "confirmed",
@@ -9451,6 +9463,11 @@
    "from": "eval-favourite-seed",
    "rel": "affects",
    "to": "comp-recommender"
+  },
+  {
+   "from": "eval-g5-trial-1018",
+   "rel": "affects",
+   "to": "impl-theme-vocab"
   },
   {
    "from": "eval-genre-preference",
