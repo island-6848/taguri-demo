@@ -18,15 +18,19 @@
    - 書体は端末にあるものを並べる。題字だけは Zen Kaku Gothic Antique（SIL OFL）を、各画面の題字に
      使う字だけに絞って自分のサイトから配る（assets/fonts、約 43KB。title-font-candidates） */
 
+/* 選んでいる・押している項目の地（issue #144）。前は明るい固定色 #f0e6e8 で、暗い表示では文字が地に溶けた（1.07:1）。
+   暗い表示は幕の色を少し混ぜた暗い地にする。文字との差は ink 12:1・acc 5.9:1。幕の色の字は暗い地では読みにくい（2.3:1）ので、
+   --sel-curtain（7.2:1）にする。明るい表示は今までと同じ色（ink 13.8:1・acc 6.4:1） */
+:root{--sel:#432426;--sel-curtain:#f2a7b1}
 @media (prefers-color-scheme:light){:root:where(:not([data-theme=dark])){
  --plane:#f2f2f3;--surf:#ffffff;--ink:#1d1d1f;--ink2:#5c5f66;--mute:#6b6e75;
  --grid:#e6e6e8;--base:#d9d9dc;--ring:#d9d9dc;
- --acc:#9b2335;--curtain:#9b2335;--curtain-w:#f4f4f5;
+ --acc:#9b2335;--curtain:#9b2335;--curtain-w:#f4f4f5;--sel:#f0e6e8;--sel-curtain:var(--curtain);
  --mincho:"Zen Old Mincho","Hiragino Mincho ProN","Yu Mincho",YuMincho,"Noto Serif JP",serif}}
 :root[data-theme=light]{
  --plane:#f2f2f3;--surf:#ffffff;--ink:#1d1d1f;--ink2:#5c5f66;--mute:#6b6e75;
  --grid:#e6e6e8;--base:#d9d9dc;--ring:#d9d9dc;
- --acc:#9b2335;--curtain:#9b2335;--curtain-w:#f4f4f5;
+ --acc:#9b2335;--curtain:#9b2335;--curtain-w:#f4f4f5;--sel:#f0e6e8;--sel-curtain:var(--curtain);
  --mincho:"Zen Old Mincho","Hiragino Mincho ProN","Yu Mincho",YuMincho,"Noto Serif JP",serif}
 
 @font-face{font-family:"Taguri Title";src:url("assets/fonts/zkga-title.woff2") format("woff2");
@@ -70,7 +74,7 @@ html[data-font="trial"] :is(button,.sitebtn,.pill,.ftab,.btns button,select,[rol
 .side .search input:focus{outline:2px solid var(--acc)}
 .side a{color:var(--ink);border-radius:8px}
 .side a:hover{color:var(--ink);background:var(--plane)}
-.side a.on{color:var(--ink);background:#f0e6e8;border-color:#f0e6e8}
+.side a.on{color:var(--ink);background:var(--sel);border-color:var(--sel);font-weight:700}
 /* 組の名前（おすすめ・評価など）は、行き先と同じ形にしない ── 小さく字間を空けた灰の見出しに、
    細い線を添える。押すと畳む働きは残す（右の山形で示す）（起案者の指摘 2026-10-13
    「『おすすめ』もボタンの一個に見える」） */
@@ -196,7 +200,7 @@ html[data-font="trial"] :is(button,.sitebtn,.pill,.ftab,.btns button,select,[rol
  .side .pm .pl svg.cv{width:9px;height:9px;transform:rotate(90deg);transition:transform .15s}
  .side .pm[aria-expanded=true]{background:var(--plane)}
  .side .pm[aria-expanded=true] .pl svg.cv{transform:rotate(-90deg)}
- .side .pm.on{background:#f0e6e8;color:var(--acc);font-weight:700}
+ .side .pm.on{background:var(--sel);color:var(--acc);font-weight:700}
  .side .pm:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
  .side .psud{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px 6px;width:100%;
   padding:4px;box-sizing:border-box;background:var(--plane);border-radius:8px}
@@ -418,7 +422,7 @@ html[data-font="trial"] :is(button,.sitebtn,.pill,.ftab,.btns button,select,[rol
  border:1px solid var(--ring);border-radius:8px;background:var(--surf);color:var(--ink);
  font-size:13px;font-weight:500}
 .idx .ix:hover{background:var(--plane);color:var(--ink)}
-.idx .ix.on{background:#f0e6e8;border-color:#f0e6e8;color:var(--curtain);font-weight:700}
+.idx .ix.on{background:var(--sel);border-color:var(--sel);color:var(--sel-curtain);font-weight:700}
 .idx .ix .mn,.idx .ix.on .mn{color:var(--mute);font-size:11.5px}
 .idx .ix .ixck{display:none}
 .idx .ix:focus-visible{outline:2px solid var(--curtain);outline-offset:2px}
@@ -561,7 +565,7 @@ html[data-font="trial"] :is(button,.sitebtn,.pill,.ftab,.btns button,select,[rol
 .ftab svg.ico{flex:none;color:var(--mute)}
 .ftab .fl{flex:none;font-weight:700}
 .ftab .fv{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink2)}
-.ftab[aria-expanded=true]{border-color:var(--acc);background:#f0e6e8}
+.ftab[aria-expanded=true]{border-color:var(--acc);background:var(--sel)}
 .ftab[aria-expanded=true] svg.ico{color:var(--acc)}
 .ftab:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
 @media(max-width:560px){.ftab{flex-direction:column;align-items:flex-start;gap:0;padding:6px 8px}
@@ -586,7 +590,7 @@ html[data-font="trial"] :is(button,.sitebtn,.pill,.ftab,.btns button,select,[rol
 :is(.ticket.cmp,.rec-row.cmp) .meta .mg svg.ico,:is(.ticket.cmp,.rec-row.cmp) .meta .mv svg.ico{flex:none;margin-top:3px;color:var(--mute)}
 /* ツアーの日程の一覧では、このおすすめの会場の行に印を付ける */
 .tf-row.here .tf-loc{font-weight:700}
-.tf-here{padding:0 6px;border-radius:4px;background:#f0e6e8;color:var(--acc);font-size:11px;white-space:nowrap}
+.tf-here{padding:0 6px;border-radius:4px;background:var(--sel);color:var(--acc);font-size:11px;white-space:nowrap}
 /* 発売の札は、券の案内のページへのリンク */
 a.pill.buy{text-decoration:none;cursor:pointer}
 a.pill.buy .go{margin-left:3px;font-size:10px}
@@ -599,7 +603,7 @@ a.pill.buy:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
 .wtag{min-height:32px;padding:0 10px;border:1px solid var(--base);border-radius:16px;background:var(--surf);
  color:var(--ink);font:inherit;font-size:12.5px;cursor:pointer}
 .wtag:hover{border-color:var(--ink)}
-.wtag[aria-pressed=true]{background:#f0e6e8;border-color:var(--acc);color:var(--acc);font-weight:700}
+.wtag[aria-pressed=true]{background:var(--sel);border-color:var(--acc);color:var(--acc);font-weight:700}
 .wtag:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
 
 /* ---- ツアーの日程は券に全部出す（app.js の compactTickets・起案者の指示 2026-10-14） */
@@ -619,7 +623,7 @@ a.pill.buy:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
 .ticket.cmp .main h3{padding-right:40px}
 .favbtn{position:absolute;right:0;top:0;width:40px;height:40px;display:flex;align-items:center;justify-content:center;
  padding:0;border:0;border-radius:8px;background:transparent;color:var(--mute);cursor:pointer}
-.favbtn:hover,.favbtn[aria-expanded=true]{color:var(--acc);background:#f0e6e8}
+.favbtn:hover,.favbtn[aria-expanded=true]{color:var(--acc);background:var(--sel)}
 .favbtn:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
 .favpop{position:absolute;right:0;top:44px;z-index:30;box-sizing:border-box;width:min(340px,calc(100vw - 48px));
  padding:12px;border:1px solid var(--ink);border-radius:10px;background:var(--surf);box-shadow:0 8px 24px rgba(29,29,31,.16)}
@@ -630,7 +634,7 @@ a.pill.buy:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
  border-radius:18px;background:var(--surf);color:var(--ink);font:inherit;font-size:12.5px;cursor:pointer}
 .favpop .fpi .fk{font-size:10.5px;color:var(--mute)}
 .favpop .fpi:hover{border-color:var(--ink)}
-.favpop .fpi.added{background:#f0e6e8;border-color:var(--acc);color:var(--acc)}
+.favpop .fpi.added{background:var(--sel);border-color:var(--acc);color:var(--acc)}
 .favpop .fpi.added::before{content:"★";margin-right:-2px}
 .favpop .fpi:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
 .favpop .said{margin:8px 0 0;font-size:12px}
@@ -650,7 +654,7 @@ a.htag-in:hover{text-decoration:underline}
 .htag{min-height:36px;display:inline-flex;align-items:center;gap:6px;padding:0 12px;border:1px solid var(--base);
  border-radius:18px;background:var(--surf);color:var(--acc);text-decoration:none;font-size:13px}
 .htag .hn{font-size:11px;color:var(--mute)}
-.htag.on{background:#f0e6e8;border-color:var(--acc);font-weight:700}
+.htag.on{background:var(--sel);border-color:var(--acc);font-weight:700}
 .htagged{list-style:none;margin:0;padding:0}
 .htagged li{padding:10px 0;border-bottom:1px solid var(--grid)}
 .htagged .hd{margin-right:8px;font-size:12px;color:var(--mute);font-variant-numeric:tabular-nums}
@@ -690,7 +694,7 @@ a.htag-in:hover{text-decoration:underline}
 .aspmode{display:flex;flex-wrap:wrap;gap:8px}
 .aspm{display:flex;align-items:flex-start;gap:8px;min-height:44px;padding:8px 12px;border:1px solid var(--grid);border-radius:8px;cursor:pointer}
 .aspm span{display:block;font-size:11.5px;color:var(--mute)}
-.aspm:has(input:checked){border-color:var(--acc);background:#f0e6e8}
+.aspm:has(input:checked){border-color:var(--acc);background:var(--sel)}
 .aspset .said:empty{display:none}
 /* ---- アカウント（本人だけが見るページ。Worker の screens/account.js。起案者の指示 2026-10-14） ---- */
 .side .pacct{display:none}
@@ -896,7 +900,7 @@ body:has(>.shell){padding-top:0}
 /* 「評価しない」（星 0 の代わり。起案者の指示 2026-10-16）。星の右に小さく置き、押したら印を付ける */
 .rb button.nograde{width:auto;min-width:0;height:auto;min-height:30px;white-space:nowrap;line-height:1.2;margin-left:8px;padding:4px 10px;border:1px solid var(--ring);border-radius:99px;
  background:var(--surf);color:var(--ink2);font-size:12px;box-shadow:none}
-.rb button.nograde.on{border-color:var(--curtain);color:var(--curtain);background:#f0e6e8;font-weight:700}
+.rb button.nograde.on{border-color:var(--curtain);color:var(--sel-curtain);background:var(--sel);font-weight:700}
 .rec-row .rb.done button.nograde{opacity:1}
 
 /* ---- おすすめのカードの日程（screens/schedule.js tourBlock、起案者の指示 2026-10-17）。

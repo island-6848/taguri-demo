@@ -185,7 +185,8 @@ async function pastHits(ctx, q, ws) {
     g.sort((a, b) => cmp(a.start, b.start));
     const venues = [...new Set(g.map(r => r.venue).filter(Boolean))];
     return {sid: g[0].stage_id, title: g[0].title, grp: g[0].grp || '', start: g[0].start, end: g.map(r => r.end).sort().at(-1),
-      where: venues.length > 1 ? `${venues[0]} ほか ${venues.length - 1} 会場` : (venues[0] || ''), why: [...new Set(g.flatMap(r => r.why))]};
+      where: venues.length > 1 ? `${venues[0]} ほか ${venues.length - 1} 会場` : (venues[0] || ''), why: [...new Set(g.flatMap(r => r.why))],
+      legs: g.map(r => ({sid: r.stage_id, start: r.start || '', end: r.end || '', venue: r.venue || ''}))};
   }).sort((a, b) => cmp(b.start, a.start));
   if (!prods.length) return ['', 0];
   const {results: miss} = await ctx.db.prepare('SELECT title FROM missed WHERE user_id=?').bind(ctx.uid).all();
@@ -195,8 +196,13 @@ async function pastHits(ctx, q, ws) {
     const isMissed = missed.has(indexKey(p.title));
     // 観た日の欄: 1 日だけの公演はその日を入れておく。期間の外は選べない（min/max）
     const one = p.start === p.end ? p.start : '';
+    // ツアーは劇場ごとに公演が別（stage_id が違う）。観た日からその日に上演していた劇場を選び直す（画面の app.js）。
+    // 日が重なる劇場が 2 つあるときや、日を入れる前は、ここで選べる（起案者の指摘 2026-10-18「適切な観劇日を入れても
+    // 観劇した劇場がその日と対応しない」── 前は代表の 1 劇場にしか結び付かなかった）
+    const legSel = p.legs.length > 1 ? `<label>劇場 <select name="stage">${p.legs.map(l =>
+      `<option value="${E(l.sid)}" data-start="${E(l.start)}" data-end="${E(l.end)}" data-venue="${E(l.venue)}">${E(l.venue || '劇場不明')}（${E(l.start === l.end ? md(l.start) : `${md(l.start)}〜${md(l.end)}`)}）</option>`).join('')}</select></label>` : '';
     const seenForm = `<div class="past-seen" hidden><label>観た日 <input type="date" name="date" value="${E(one)}" min="${E(p.start || '')}" max="${E(p.end || '')}" required></label>`
-      + `<label>開演 <input type="time" name="time" step="60"></label><button type="button" data-past="seen-save">観劇記録に追加</button></div>`;
+      + `${legSel}<label>開演 <input type="time" name="time" step="60"></label><button type="button" data-past="seen-save">観劇記録に追加</button></div>`;
     return `<li class="pastrow" data-stage="${E(p.sid)}" data-title="${E(p.title)}">
 <div class="past-t"><b>${E(p.title)}</b>${p.grp ? `<span class="past-g">${E(p.grp)}</span>` : ''}</div>
 <div class="past-w">${E(run)}${p.where ? '・' + E(p.where) : ''}</div>
