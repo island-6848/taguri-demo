@@ -2401,6 +2401,19 @@
    "verifies": []
   },
   {
+   "id": "e2e-walk-1018",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-18",
+   "title": "サービス版の主要操作をローカルの Worker と実ブラウザーで通した（41 段、不具合 5 件を直した）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/134",
+    "https://github.com/island-6848/taguri-demo/blob/master/cloudflare/test/e2e-walk.js",
+    "https://github.com/island-6848/taguri-demo/blob/master/docs/verification/e2e-walk-2026-10-18.md"
+   ],
+   "verifies": []
+  },
+  {
    "id": "ec2-tokyo-price",
    "type": "finding",
    "status": "unverified",
@@ -5350,6 +5363,18 @@
    ]
   },
   {
+   "id": "q-migration-data-page",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-18",
+   "title": "アカウントの画面から行く /migration-data/ が、移行前の記録の画面のまま",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/blob/master/cloudflare/public/migration-data/index.html",
+    "https://github.com/island-6848/taguri-demo/blob/master/cloudflare/src/screens/account.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "q-migration-owner",
    "type": "question",
    "status": "answered",
@@ -5953,6 +5978,18 @@
    "date": "2026-10-13",
    "title": "観劇でジャンルにあたる手がかり（テーマ語・劇団・会場など）をどう取り、本人の好みとして足すか",
    "sources": [],
+   "verifies": []
+  },
+  {
+   "id": "q-ticket-to-rating",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-18",
+   "title": "行く日が過ぎた券（購入済み）から、観劇後の評価へどう進ませるか",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/blob/master/docs/verification/e2e-walk-2026-10-18.md",
+    "https://github.com/island-6848/taguri-demo/blob/master/cloudflare/src/screens/rate.js"
+   ],
    "verifies": []
   },
   {
@@ -8703,6 +8740,26 @@
    "to": "dec-theme-user-choice"
   },
   {
+   "from": "e2e-walk-1018",
+   "rel": "raises",
+   "to": "q-ticket-to-rating"
+  },
+  {
+   "from": "e2e-walk-1018",
+   "rel": "raises",
+   "to": "q-migration-data-page"
+  },
+  {
+   "from": "e2e-walk-1018",
+   "rel": "affects",
+   "to": "comp-passkeys"
+  },
+  {
+   "from": "e2e-walk-1018",
+   "rel": "affects",
+   "to": "dec-account-page"
+  },
+  {
    "from": "ec2-tokyo-price",
    "rel": "affects",
    "to": "q-ec2-cost"
@@ -10683,6 +10740,16 @@
    "to": "migration-handover-stage0"
   },
   {
+   "from": "q-migration-data-page",
+   "rel": "affects",
+   "to": "dec-account-page"
+  },
+  {
+   "from": "q-migration-data-page",
+   "rel": "affects",
+   "to": "comp-passkeys"
+  },
+  {
    "from": "q-migration-owner",
    "rel": "depends_on",
    "to": "dec-render-full-migration"
@@ -11121,6 +11188,11 @@
    "from": "q-theme-preference",
    "rel": "affects",
    "to": "comp-recommender"
+  },
+  {
+   "from": "q-ticket-to-rating",
+   "rel": "affects",
+   "to": "dec-native-cutover-now"
   },
   {
    "from": "q-user-chosen-scale",

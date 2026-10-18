@@ -1,0 +1,789 @@
+// 現行サービス版の主要操作を、本物の Worker（wrangler dev・ローカルの D1）と実ブラウザー（Chromium）で
+// 最初から最後まで通す（issue #134）。本番には繋がない。
+//
+//   cd cloudflare && node test/e2e-walk.js            # 画面の写しは $E2E_OUT（既定 /tmp/taguri-e2e）
+//
+// - 毎回まっさらなローカル D1（一時フォルダ、--persist-to）に移行を当て、試験用の公演一覧
+//   （test/screens/catalogue.py・recommend_fixture.py と、下の過去の公演）を入れてから始める
+// - 登録はパスキー（Chromium の仮想認証器）。Google・メールのリンクは外の Firebase が要るので通さない
+// - 失敗しても次の段に進み、最後に段ごとの OK / NG を表にする。NG が 1 つでもあれば終了コード 1
+// - 時計は本物（Worker の env.CLOCK は wrangler の vars から渡せない）。公演の日付は今日（2026-10-18 前後）に合わせてある
+//
+// npm test には入れない: wrangler dev と Chromium を起動し、1 回に 1〜2 分かかる。
+import {spawn, execFileSync} from 'node:child_process';
+import {mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {chromium} from 'playwright';
+
+const here = p => new URL(p, import.meta.url).pathname;
+const CF = here('..');
+const OUT = process.env.E2E_OUT || join(tmpdir(), 'taguri-e2e');
+const PORT = Number(process.env.E2E_PORT || 8797);
+const BASE = `http://localhost:${PORT}`;      // パスキーは IP では使えない（RP ID がドメインでないと断られる）
+const CHROME = process.env.E2E_CHROMIUM || '/opt/pw-browsers/chromium';
+const STATE = mkdtempSync(join(tmpdir(), 'taguri-e2e-d1-'));
+mkdirSync(OUT, {recursive: true});
+const env = {...process.env, WRANGLER_SEND_METRICS: 'false', CI: '1'};
+const wrangler = (...args) => execFileSync('npx', ['wrangler', ...args], {cwd: CF, env, encoding: 'utf8', maxBuffer: 64 << 20, stdio: ['ignore', 'pipe', 'pipe']});
+const sql = command => JSON.parse(wrangler('d1', 'execute', 'taguri-demo', '--local', '--persist-to', STATE, '--json', '--command', command))[0].results;
+
+// ---------------------------------------------------------------- 試験用のデータ
+const PAST = [
+  // 3 会場のツアー（劇場ごとに stage_id が違う）と、1 会場だけの公演
+  ['710001', '旅の芝居', '旅の芝居', '2025-07-01', '2025-07-10', '劇場A', '劇団甲', '東京都', '[["出演","俳優甲"]]'],
+  ['710002', '旅の芝居', '旅の芝居', '2025-08-01', '2025-08-03', '劇場B', '劇団甲', '大阪府', '[["出演","俳優甲"]]'],
+  ['710003', '旅の芝居', '旅の芝居', '2025-08-20', '2025-08-24', '劇場E', '劇団甲', '愛知県', '[["出演","俳優甲"]]'],
+  ['710010', '冬の物語', '冬の物語', '2024-01-05', '2024-01-20', '劇場D', '劇団丙', '東京都', '[["出演","俳優乙"]]'],
+];
+// 開幕リマインド用: 今日（日本時間）から 3 日後に開く、一覧（catalogue）だけにある公演
+const jst = (days = 0) => new Date(Date.now() + 9 * 3600e3 + days * 86400e3).toISOString().slice(0, 10);
+const SOON = {id: '990001', title: '近く開く芝居', date: jst(3), end: jst(10), venue: '劇場F', group: '劇団丁', cast: '俳優丙'};
+// 取り込みの試験用のファイル（中身は作り物）
+const ICS = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//taguri e2e//JA',
+  // 一致する予定。VALARM の SUMMARY（別の題）は予定の題名に使わない
+  'BEGIN:VEVENT', 'UID:e2e-1', 'DTSTART;TZID=Asia/Tokyo:20240110T180000', 'SUMMARY:観劇『冬の物語』', 'LOCATION:劇場D, 東京都',
+  'BEGIN:VALARM', 'ACTION:DISPLAY', 'SUMMARY:舞台ひとつめ', 'DESCRIPTION:リマインダー', 'TRIGGER:-PT1H', 'END:VALARM', 'END:VEVENT',
+  // 取り消した予定（STATUS:CANCELLED）は出さない
+  'BEGIN:VEVENT', 'UID:e2e-2', 'DTSTART;TZID=Asia/Tokyo:20250702T190000', 'SUMMARY:旅の芝居', 'STATUS:CANCELLED', 'END:VEVENT',
+  // 公演でない予定
+  'BEGIN:VEVENT', 'UID:e2e-3', 'DTSTART:20250910T010000Z', 'SUMMARY:歯医者', 'END:VEVENT',
+  'END:VCALENDAR', ''].join('\r\n');
+const eml = (id, subject, body) => ['From: =?UTF-8?B?' + Buffer.from('チケットぴあ').toString('base64') + '?= <info@pia.co.jp>', 'To: a@example.com',
+  `Subject: =?UTF-8?B?${Buffer.from(subject).toString('base64')}?=`, `Message-ID: <${id}@e2e.example>`, 'Date: Mon, 01 Jan 2024 10:00:00 +0900',
+  'MIME-Version: 1.0', 'Content-Type: text/plain; charset=UTF-8', 'Content-Transfer-Encoding: base64', '', Buffer.from(body).toString('base64'), ''].join('\r\n');
+const EMLS = [
+  ['e2e-new.eml', eml('n1', '【チケットぴあ】購入完了のお知らせ', '公演名：冬の物語\n公演日：2024/01/15(月)\n開演時刻：13:00\n会場名：劇場D\n')],
+  // もう記録してある回（旅の芝居 8/2）。「記録済み」と出て選べないはず
+  ['e2e-dup.eml', eml('n2', '【チケットぴあ】購入完了のお知らせ', '公演名：旅の芝居\n公演日：2025/08/02(土)\n会場名：劇場B\n')],
+];
+function seed() {
+  wrangler('d1', 'migrations', 'apply', 'taguri-demo', '--local', '--persist-to', STATE);
+  const cat = JSON.parse(execFileSync('python3', [here('./screens/catalogue.py'), '--sql'], {encoding: 'utf8', maxBuffer: 64 << 20}));
+  const rec = JSON.parse(execFileSync('python3', [here('./screens/recommend_fixture.py')], {encoding: 'utf8', maxBuffer: 64 << 20}));
+  const q = v => "'" + String(v).replaceAll("'", "''") + "'";
+  const past = PAST.map(r => `INSERT INTO past_stage(stage_id,title,tkey,start,end,venue,grp,pref,people) VALUES(${r.map(q).join(',')});`);
+  const soon = `INSERT INTO catalogue(id,title,date,venue,url,metadata) VALUES(${[SOON.id, SOON.title, SOON.date, SOON.venue, 'https://stage.example/990001',
+    JSON.stringify({end_date: SOON.end, group: SOON.group, fields: {'出演': SOON.cast}})].map(q).join(',')});`;
+  const file = join(STATE, 'seed.sql');
+  writeFileSync(file, [...cat.sql, ...rec.sql, ...past, soon, "INSERT INTO venue_pref(venue,pref) VALUES('劇場F','東京都');"].join('\n'));
+  wrangler('d1', 'execute', 'taguri-demo', '--local', '--persist-to', STATE, '--file', file);
+}
+
+// ---------------------------------------------------------------- 段の記録
+const results = [];
+let page, ctx, browser, current = null;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+async function shot(name) {
+  try { await page.screenshot({path: join(OUT, `${String(results.length).padStart(2, '0')}-${name}.png`), fullPage: true}); } catch {}
+}
+async function step(name, fn, opt = {}) {
+  current = {name, ok: true, notes: [], errors: [], allowFailed: !!opt.allowFailed};
+  const t0 = Date.now();
+  try { await fn(current); } catch (e) { current.ok = false; current.notes.push('例外: ' + String(e.message || e).split('\n')[0]); }
+  // 段の中で起きた JavaScript のエラー・コンソールのエラー・素の SyntaxError の文字は NG にする
+  try {
+    const text = await page.locator('body').innerText({timeout: 2000});
+    if (/SyntaxError|Unexpected token|is not valid JSON|\[object Object\]|undefined is not|TypeError/.test(text)) current.errors.push('画面に素のエラー文: ' + text.match(/.{0,40}(SyntaxError|Unexpected token|is not valid JSON|\[object Object\]|undefined is not|TypeError).{0,40}/)[0]);
+  } catch {}
+  if (current.errors.length) current.ok = false;
+  await shot(name.replace(/[^\p{L}\p{N}]+/gu, '_').slice(0, 40));
+  current.ms = Date.now() - t0;
+  delete current.allowFailed;
+  results.push(current);
+  console.log(`${current.ok ? 'OK' : 'NG'}  ${name}${current.notes.length ? ' — ' + current.notes.join(' / ') : ''}${current.errors.length ? ' — ' + current.errors.join(' / ') : ''}`);
+  current = null;
+}
+const check = (cond, msg) => { if (!cond) throw new Error(msg); };
+const note = msg => current.notes.push(msg);
+// 画面の読み込みが終わるまで待つ（#content の .tg-loading が消える）
+async function settle() {
+  await page.waitForLoadState('networkidle').catch(() => {});
+  await page.locator('#content .tg-loading').waitFor({state: 'detached', timeout: 15000}).catch(() => {});
+}
+async function go(path) { await page.goto(BASE + path); await settle(); }
+const content = () => page.locator('#content').innerText();
+// 調べるための控え（画面の文と HTML）
+async function dump(name) {
+  try { writeFileSync(join(OUT, `dump-${name}.txt`), await content()); writeFileSync(join(OUT, `dump-${name}.html`), await page.locator('#content').innerHTML()); } catch {}
+}
+async function saidOf(scope) { return (await scope.locator('.said').first().innerText().catch(() => '')).trim(); }
+async function waitSaid(scope, re, timeout = 10000) {
+  const t0 = Date.now();
+  let last = '';
+  while (Date.now() - t0 < timeout) {
+    last = (await scope.locator('.said').allInnerTexts().catch(() => [])).join(' ');
+    if (re.test(last)) return last;
+    await sleep(150);
+  }
+  throw new Error(`「${re.source}」が出ない（出ていたのは「${last}」）`);
+}
+function watch(p, who) {
+  // 失敗した要求は、どの URL かを段の控えに書く（コンソールの「Failed to load resource」には URL が無い）
+  p.on('response', r => { if (r.status() >= 400 && r.url().startsWith(BASE)) (current?.notes || orphan).push(`[${who}] ${r.status()} ${r.request().method()} ${r.url().slice(BASE.length).split('?')[0]}`); });
+  p.on('requestfailed', r => { if (r.url().startsWith(BASE)) (current?.notes || orphan).push(`[${who}] 届かなかった要求 ${r.request ? '' : ''}${r.method()} ${r.url().slice(BASE.length).split('?')[0]}`); });
+  p.on('pageerror', e => { const m = `[${who}] ページのエラー: ${e.message}`; (current?.errors || orphan).push(m); });
+  p.on('console', m => {
+    if (m.type() !== 'error') return;
+    const t = m.text();
+    // 外へ出る要求（ポスターの無い画像・止めた要求）は除く
+    if (/Failed to load resource|net::ERR_FAILED/.test(t) && current?.allowFailed) return;
+    (current?.errors || orphan).push(`[${who}] コンソールのエラー: ${t.slice(0, 200)}`);
+  });
+}
+const orphan = [];
+
+async function newUser(who) {
+  const c = await browser.newContext({viewport: {width: 1280, height: 900}, locale: 'ja-JP', timezoneId: 'Asia/Tokyo'});
+  const p = await c.newPage();
+  watch(p, who);
+  const cdp = await c.newCDPSession(p);
+  await cdp.send('WebAuthn.enable');
+  const {authenticatorId} = await cdp.send('WebAuthn.addVirtualAuthenticator', {options: {protocol: 'ctap2', transport: 'internal', hasResidentKey: true, hasUserVerification: true, isUserVerified: true, automaticPresenceSimulation: true}});
+  return {ctx: c, page: p, cdp, authenticatorId};
+}
+
+// ---------------------------------------------------------------- 起動
+console.log(`D1: ${STATE}\n画面の写し: ${OUT}`);
+seed();
+const server = spawn('npx', ['wrangler', 'dev', '--ip', '127.0.0.1', '--port', String(PORT), '--persist-to', STATE], {cwd: CF, detached: true, stdio: ['ignore', 'pipe', 'pipe'], env});
+let logs = '';
+for (const s of [server.stdout, server.stderr]) s.on('data', d => { logs = (logs + d.toString()).slice(-20000); });
+const users = {};
+try {
+  let ready = false;
+  for (let i = 0; i < 90 && !ready; i++) {
+    if (server.exitCode !== null) throw new Error('wrangler dev が止まった: ' + logs);
+    try { ready = (await fetch(`http://127.0.0.1:${PORT}/login`)).ok; } catch {}
+    if (!ready) await sleep(1000);
+  }
+  if (!ready) throw new Error('wrangler dev が立ち上がらない: ' + logs);
+  browser = await chromium.launch({executablePath: CHROME});
+  const A = await newUser('A');
+  ({page, ctx} = A);
+  users.A = A;
+  await walkA(A);
+  const B = await newUser('B');
+  ({page, ctx} = B);
+  await walkB(A, B);
+  ({page, ctx} = A);
+  await deleteA(A, B);
+} finally {
+  if (browser) await browser.close().catch(() => {});
+  try { process.kill(-server.pid, 'SIGTERM'); } catch {}
+  await sleep(1500);
+  try { process.kill(-server.pid, 'SIGKILL'); } catch {}
+  writeFileSync(join(OUT, 'results.json'), JSON.stringify({base: BASE, results, orphan}, null, 1));
+  writeFileSync(join(OUT, 'wrangler.log'), logs);
+  if (!process.env.E2E_KEEP) rmSync(STATE, {recursive: true, force: true});
+}
+const ng = results.filter(r => !r.ok);
+console.log(`\n${results.length - ng.length} / ${results.length} 段が OK${orphan.length ? `（段の外のエラー ${orphan.length} 件）` : ''}`);
+process.exitCode = ng.length ? 1 : 0;
+
+// ================================================================ 利用者 A の道のり
+async function walkA(A) {
+  let code = '';
+  await step('新規登録（同意なしでは始まらない）', async () => {
+    await go('/');
+    check(page.url().endsWith('/login'), 'ログインしていないのに /login へ行かない: ' + page.url());
+    await page.click('#passkey-signup');
+    const s = await page.locator('#status').innerText();
+    check(/同意して始める/.test(s), '同意なしで押したときの案内が出ない: ' + s);
+    check(await page.evaluate(() => document.activeElement?.id) === 'agree', '同意のチェックに焦点が移らない');
+  });
+  await step('新規登録（パスキー・復旧コード）', async () => {
+    await page.check('#agree');
+    await page.click('#passkey-signup');
+    await page.locator('#passkey-recovery:not([hidden])').waitFor({timeout: 15000});
+    code = (await page.locator('#recovery-code').innerText()).trim();
+    check(/^[0-9a-f]{64}$/.test(code), '復旧コードの形が違う: ' + code);
+    await shot('recovery-code');
+    await page.click('#recovery-done');
+    await page.waitForURL(BASE + '/');
+    await settle();
+    check(/今週のおすすめ/.test(await content()), '登録後におすすめの画面が出ない');
+  });
+  A.code = code;
+  A.uid = sql('SELECT id FROM users')[0]?.id;
+
+  await step('改定した規約への同意（キーボードの焦点）', async () => {
+    sql("UPDATE users SET terms_version='2026-10-01'");
+    await go('/rate');
+    const pop = page.locator('.agreepop-box');
+    await pop.waitFor({timeout: 10000});
+    check(await page.evaluate(() => document.activeElement?.classList.contains('agreepop-box')), '開いたときに窓へ焦点が移らない');
+    const seen = [];
+    for (let i = 0; i < 8; i++) {
+      await page.keyboard.press('Tab');
+      seen.push(await page.evaluate(() => { const a = document.activeElement; return (a.closest('.agreepop-box') ? 'in:' : 'OUT:') + (a.textContent || a.type || a.tagName).trim().slice(0, 12); }));
+    }
+    check(seen.every(x => x.startsWith('in:')), 'Tab で窓の外へ出る: ' + seen.join(' | '));
+    await page.keyboard.press('Shift+Tab');
+    check(await page.evaluate(() => !!document.activeElement.closest('.agreepop-box')), 'Shift+Tab で窓の外へ出る');
+    check(await page.evaluate(() => document.querySelector('#content').closest('[inert]') !== null), '後ろの画面が inert になっていない');
+    check(await page.locator('.agreepop-ok').isDisabled(), 'チェック前から「同意して続ける」が押せる');
+    await shot('terms-modal');
+    // チェックをキーボードで（Space）入れて、ボタンを Enter で押す
+    await page.locator('.agreepop-check input').focus();
+    await page.keyboard.press('Space');
+    await page.locator('.agreepop-ok').focus();
+    await page.keyboard.press('Enter');
+    await pop.waitFor({state: 'detached', timeout: 5000});
+    await go('/rate');
+    await sleep(500);
+    check(await page.locator('.agreepop').count() === 0, '同意したのに、開き直すとまた出る');
+    const row = sql('SELECT terms_version FROM users')[0];
+    note('D1 の terms_version: ' + row.terms_version);
+  });
+
+  await step('観劇記録を手で 1 件足す', async () => {
+    await go('/register');
+    const g = page.locator('.add-work');
+    await page.fill('#w-title', '手で足した芝居');
+    await page.fill('#w-date', '2026-09-20');
+    await page.fill('#w-time', '19:00');
+    await page.fill('#w-venue', '劇場Z');
+    const reload = page.waitForEvent('load', {timeout: 15000});
+    await g.locator('button[data-add-work]').click();
+    await waitSaid(g, /登録しました/);
+    await reload;
+    await settle();
+    await go('/rate/unrated');
+    await dump('unrated-1');
+    check(/手で足した芝居/.test(await content()), '未評価に出ない');
+    const w = sql("SELECT title, first_date, time, venue FROM works WHERE title='手で足した芝居'");
+    check(w.length === 1 && w[0].first_date === '2026-09-20' && w[0].time === '19:00' && w[0].venue === '劇場Z', 'D1 の行が違う: ' + JSON.stringify(w));
+  });
+
+  await step('探す → 過去の公演（ツアー）を「観た」で足す・別の日・同じ日の別の回', async () => {
+    await go('/search?q=' + encodeURIComponent('旅の芝居'));
+    const li = page.locator('.pastrow').first();
+    await li.waitFor();
+    await dump('search-past');
+    await li.locator('[data-past=seen]').click();
+    const form = li.locator('.past-seen');
+    check(await form.isVisible(), '「観た」で欄が開かない');
+    const add = async (date, time) => {
+      await form.locator('input[name=date]').fill(date);
+      await form.locator('input[name=date]').dispatchEvent('change');
+      if (time) await form.locator('input[name=time]').fill(time);
+      await form.locator('[data-past=seen-save]').click();
+    };
+    await add('2025-08-02', '');
+    await waitSaid(li, /8\/2 を観劇記録に追加しました/);
+    await add('2025-08-21', '13:00');
+    await waitSaid(li, /8\/21 13:00 を観劇記録に追加しました/);
+    await add('2025-08-21', '18:00');
+    await waitSaid(li, /8\/21 18:00 を観劇記録に追加しました/);
+    await add('2025-08-21', '18:00');
+    const dup = await waitSaid(li, /できませんでした|もうある/);
+    note('同じ日・同じ開演の 4 回目: 「' + dup + '」');
+    await add('2025-07-15', '');
+    note('ツアーの合間の日: 「' + (await saidOf(li)) + '」');
+    const rows = sql("SELECT work_key, first_date, time, stage_id, venue FROM works WHERE title='旅の芝居' ORDER BY work_key");
+    note('D1: ' + rows.map(r => `${r.first_date} ${r.time || '-'} ${r.stage_id} ${r.venue}`).join(' / '));
+    check(rows.length === 3, '3 回分の記録にならない: ' + rows.length);
+    check(rows.find(r => r.first_date === '2025-08-02')?.stage_id === '710002', '8/2 が劇場B（710002）に結び付かない');
+    check(rows.filter(r => r.first_date === '2025-08-21').every(r => r.stage_id === '710003'), '8/21 が劇場E（710003）に結び付かない');
+  }, {allowFailed: true});   // 4 回目は断られる（400）はずなので、その要求の失敗はコンソールに出てよい
+
+  const KEY = '手で足した芝居#2026-09-20';
+  const row = () => page.locator(`.rec-row:has([data-note="${KEY}"]), .wait:has([data-note="${KEY}"])`).first();
+  await step('星で評価する（4 つ）', async () => {
+    await go('/rate/unrated');
+    const r = row();
+    await r.locator('button.star[data-v="4/5"]').click();
+    await waitSaid(r, /記録しました/);
+    check((await r.locator('button.star.on').count()) === 4, '押した所まで星が付かない');
+    await go('/rate');
+    await dump('rate-1');
+    check(/付けた 1 件/.test(await content()), '評価一覧に出ない');
+    const v = sql(`SELECT verdict FROM works WHERE work_key='${KEY}'`)[0]?.verdict;
+    check(v === '4/5', 'D1 の評価が違う: ' + v);
+    check((await row().locator('button.star.on').count()) === 4, '開き直すと星が 4 つでない');
+  });
+
+  await step('感想を書く → 開き直して残っている', async () => {
+    await go('/rate');
+    const r = row();
+    await r.locator('[data-note-open]').first().click();
+    // まだ書いていない記録でも、空の文の上でそのまま書く形（textarea は隠れたまま）
+    const el = r.locator('.int[contenteditable]');
+    await el.waitFor();
+    await page.keyboard.type('最初に書いた感想。');
+    await el.blur();
+    await waitSaid(r, /感想を保存しました/);
+    await go('/rate');
+    check(/最初に書いた感想。/.test(await row().innerText()), '開き直すと感想が無い');
+  });
+
+  await step('感想を書き直す（その場で編集）・保存の失敗から送り直す', async () => {
+    await go('/rate');
+    const r = row();
+    // 通信を止めてから書き直す
+    await page.route('**/api/note', route => route.abort());
+    await r.locator('[data-note-open]').first().click();
+    const el = r.locator('.int[contenteditable]');
+    await el.waitFor();
+    await page.keyboard.press('End');
+    await page.keyboard.type('書き足した。');
+    await el.blur();
+    const fail = await waitSaid(r, /できませんでした/);
+    note('止めたとき: 「' + fail.trim() + '」');
+    check(/書いた文は残しています/.test(fail), '書いた文が残ると言わない');
+    check(/書き足した。/.test(await r.locator('.int').innerText()), '失敗で文が巻き戻った');
+    await page.unroute('**/api/note');
+    await sleep(700);   // 「書き終える」の直後 0.6 秒は、押しても書き始めない（editInPlace）
+    // 書き直さずにもう一度開いて離れる → 送り直す（#83）
+    await r.locator('[data-note-open]').first().click();
+    await r.locator('.int[contenteditable]').waitFor();
+    await r.locator('.int[contenteditable]').blur();
+    await waitSaid(r, /感想を保存しました/);
+    await go('/rate');
+    check(/最初に書いた感想。書き足した。/.test(await row().innerText()), '送り直した感想が開き直すと無い: ' + (await row().innerText()).slice(0, 200));
+    const n = sql(`SELECT note_impression FROM works WHERE work_key='${KEY}'`)[0]?.note_impression;
+    check(n === '最初に書いた感想。書き足した。', 'D1 の感想が違う: ' + n);
+  }, {allowFailed: true});
+
+  await step('手で足す欄の候補（公演一覧）から選んで足す', async () => {
+    for (const [q, title, sid, date] of [['終わった', '終わった舞台', '103', '2026-08-05'], ['一日だけ', '一日だけの<舞台> & "夜"', '104', '2026-09-05']]) {
+      await go('/register');
+      const g = page.locator('.add-work');
+      await page.locator('#w-title').pressSequentially(q, {delay: 30});
+      const pick = page.locator('#sug .sug-row.stage').filter({hasText: title}).locator('[data-pick]');
+      await pick.waitFor({timeout: 10000});
+      await pick.click();
+      check(await page.inputValue('#w-title') === title, '候補の題名が欄に入らない: ' + await page.inputValue('#w-title'));
+      check(await page.inputValue('#w-stage') === sid, '候補の公演 id が入らない');
+      note(`${title}: 候補を選ぶと観た日「${await page.inputValue('#w-date')}」・劇場「${await page.inputValue('#w-venue')}」`);
+      await page.fill('#w-date', date);
+      const reload = page.waitForEvent('load', {timeout: 15000});
+      await g.locator('button[data-add-work]').click();
+      await waitSaid(g, /登録しました/);
+      await reload;   // 材料を取り終えたら（waitJob）画面を読み込み直す
+      await settle();
+      const w = sql(`SELECT stage_id FROM works WHERE first_date='${date}'`);
+      check(w.length === 1 && w[0].stage_id === sid, `${title} が公演 ${sid} に結び付かない: ` + JSON.stringify(w));
+    }
+  });
+
+  await step('ほかの記録も評価する（おすすめの材料）', async () => {
+    await go('/rate/unrated');
+    for (const [t, v] of [['終わった舞台', '5/5'], ['一日だけ', '1/5']]) {
+      const r = page.locator('.rec-row, .wait').filter({hasText: t}).first();
+      await r.locator(`button.star[data-v="${v}"]`).click();
+      await waitSaid(r, /記録しました/);
+    }
+    await go('/rate/unrated');
+    for (const [i, v] of [[0, '5/5'], [1, '5/5'], [2, '4/5']]) {
+      const r = page.locator('.rec-row, .wait').filter({hasText: '旅の芝居'}).nth(0);
+      await r.locator(`button.star[data-v="${v}"]`).click();
+      await waitSaid(r, /記録しました/);
+      await go('/rate/unrated');
+    }
+    const n = sql("SELECT count(*) n FROM works WHERE verdict IS NOT NULL")[0].n;
+    check(n === 6, '評価の数が 6 でない: ' + n);
+  });
+
+  await step('今週のおすすめ: 興味なし → 押し直して興味あり', async () => {
+    await go('/');
+    const card = page.locator('.ticket.recommend[data-stage="101"]');
+    await card.waitFor({timeout: 10000});
+    note('理由: ' + (await card.locator('.rs').allInnerTexts()).map(t => t.replace(/\s+/g, ' ').trim()).join(' / '));
+    await card.locator('button[data-v="nointerest"]').click();
+    await waitSaid(card, /記録しました/);
+    check(await card.locator('.nn').isVisible(), '興味なしのあとに「見送った理由」の欄が出ない');
+    await card.locator('button[data-v="interest"]').click();
+    await waitSaid(card, /記録しました/);
+    const r = sql("SELECT stage_id, interest, owned, source FROM reaction");
+    note('D1 reactions: ' + JSON.stringify(r));
+    await go('/recommend/interest');
+    check(/舞台ひとつめ/.test(await content()), '興味ありの一覧に出ない');
+    await go('/');
+    check(await page.locator('.ticket.recommend[data-stage="101"]').count() === 0, '答えた公演がおすすめに残る');
+  });
+
+  await step('お気に入り: 名前を足す・外す', async () => {
+    await go('/recommend/favourites');
+    const g = page.locator('.fav-add');
+    for (const [kind, name] of [['人', '俳優乙'], ['団体', '劇団ナシ']]) {
+      // 欄は畳んだ「登録した名前」の中。足したあと読み込み直しても開いたまま（#names）
+      if (!(await page.locator('details#names').getAttribute('open') !== null)) await page.locator('details#names > summary').click();
+      await page.selectOption('#fav-kind', kind);
+      await page.fill('#fav-name', name);
+      const reload = page.waitForEvent('load', {timeout: 15000});
+      await g.locator('button[data-fav="add"]').click();
+      await waitSaid(g, /登録しました/);
+      await reload; await settle();
+    }
+    await dump('favourites-2');
+    const t = await content();
+    check(/俳優乙/.test(t) && /劇団ナシ/.test(t), '足した名前が出ない');
+    check(/舞台ふたつめ/.test(t), '俳優乙の公演（舞台ふたつめ）がお気に入りに出ない');
+    check(await page.locator('details#names').getAttribute('open') !== null, '足したあと「登録した名前」が畳まれる');
+    const tag = page.locator('.tag[data-name="劇団ナシ"]');
+    const reload = page.waitForEvent('load', {timeout: 15000});
+    await tag.locator('button[data-fav="remove"]').click();
+    await reload; await settle();
+    check(!/劇団ナシ/.test(await content()), '外した名前が残る');
+    const f = JSON.parse(sql("SELECT value FROM app_setting WHERE key='declared'")[0]?.value || '{}');
+    note('D1 app_setting.declared: ' + JSON.stringify(f));
+    check(JSON.stringify(f['人']) === '["俳優乙"]' && !(f['団体'] || []).length, 'D1 のお気に入りが違う');
+  });
+
+  await step('開幕リマインド: 近く開く公演に興味あり', async () => {
+    await go('/recommend/reminder');
+    await dump('reminder');
+    // 開く日ごとに畳んである（details.dgday）。開いて、その行の三択を押す
+    const day = page.locator('details.dgday').filter({has: page.locator(`[data-stage="${SOON.id}"]`)});
+    await day.locator('> summary').click();
+    const card = page.locator(`li.dgli[data-stage="${SOON.id}"]`);
+    await card.locator('button[data-v="interest"]').click();
+    await waitSaid(card, /記録しました/);
+    const r = sql(`SELECT interest, source FROM reaction WHERE stage_id='${SOON.id}'`);
+    note('D1: ' + JSON.stringify(r));
+    check(r[0]?.interest === 1, 'D1 に興味ありが無い');
+    await go('/recommend/interest');
+    await dump('interest');
+    const t = await content();
+    check(/近く開く芝居/.test(t), '興味ありの一覧に出ない');
+    note('一覧の「どこから」: ' + ((t.match(/開幕リマインド[^\n]{0,20}/) || ['（開幕リマインドの文字なし）'])[0]));
+  });
+
+  await step('購入済みにする（探すから）', async () => {
+    await go('/search?q=' + encodeURIComponent('舞台ふたつめ'));
+    const card = page.locator('.ticket[data-stage="102"]').first();
+    await card.waitFor();
+    await card.locator('button[data-v="owned"]').click();
+    const said = await waitSaid(card, /記録しました|購入済/);
+    note('押したあと: 「' + said.trim() + '」');
+    check(await card.isVisible(), '購入済みを押したらカードが消えた（2026-10-18 からは残す決まり）');
+    const r = sql("SELECT owned FROM reaction WHERE stage_id='102'");
+    check(r[0]?.owned === 1, 'D1 に購入済みが無い: ' + JSON.stringify(r));
+    await go('/tickets');
+    await dump('tickets');
+    check(/舞台ふたつめ/.test(await content()), '購入済み公演に出ない');
+  });
+
+  await step('公演カレンダー: 行く日を 2 つ入れて、1 つを「この日時を削除」', async () => {
+    const addDate = async (date, time) => {
+      await go('/calendar');
+      await page.locator('button.addtk').click();
+      const dlg = page.locator('dialog#tkdlg');
+      await dlg.waitFor();
+      await dlg.locator('.tkd-work').selectOption('102');
+      await dlg.locator('.tkd-date').fill(date);
+      if (time) await dlg.locator('.tkd-time').fill(time);
+      const reload = page.waitForEvent('load', {timeout: 15000});
+      await dlg.locator('[data-dlg-add]').click();
+      await waitSaid(dlg, /記録しました/);
+      await reload; await settle();
+    };
+    await addDate('2026-10-19', '14:00');
+    await addDate('2026-10-20', '18:30');
+    await dump('calendar-2');
+    let t = sql("SELECT date, time FROM ticket WHERE stage_id='102' ORDER BY date");
+    check(t.length === 2, 'D1 の行く日が 2 つでない: ' + JSON.stringify(t));
+    await page.locator('button.addtk').click();
+    const dlg = page.locator('dialog#tkdlg');
+    await dlg.locator('.tkd-work').selectOption('102');
+    const li = dlg.locator('.tkinfo:not([hidden]) .tklist li');
+    check(await li.count() === 2, '入れてある日が 2 つ並ばない: ' + await li.count());
+    const reload = page.waitForEvent('load', {timeout: 15000});
+    await li.first().locator('button[data-del]').click();
+    const said = await waitSaid(dlg, /削除しました/);
+    note('削除のあと: 「' + said.trim() + '」');
+    await reload; await settle();
+    t = sql("SELECT date, time FROM ticket WHERE stage_id='102'");
+    check(t.length === 1 && t[0].date === '2026-10-20' && t[0].time === '18:30', 'D1 に残った行く日が違う: ' + JSON.stringify(t));
+    check(sql("SELECT owned FROM reaction WHERE stage_id='102'")[0]?.owned === 1, '行く日を消したら購入済みまで消えた');
+    await go('/recommend/reminder');
+    const plan = await page.locator('section.dgcard').filter({hasText: '直近の観劇予定'}).innerText();
+    note('開幕リマインドの直近の観劇予定: ' + plan.replace(/\s+/g, ' ').slice(0, 160));
+    check(/舞台ふたつめ/.test(plan) && /10\/20|10月20日/.test(plan) && !/10\/19|10月19日/.test(plan), '直近の観劇予定が残った日（10/20）だけになっていない');
+  });
+
+  await step('観察: 行く日が過ぎた券（昨日）は評価待ちになるか', async () => {
+    await go('/calendar');
+    await page.locator('button.addtk').click();
+    const dlg = page.locator('dialog#tkdlg');
+    await dlg.locator('.tkd-work').selectOption('102');
+    await dlg.locator('.tkd-date').fill(jst(-1));
+    const reload = page.waitForEvent('load', {timeout: 15000});
+    await dlg.locator('[data-dlg-add]').click();
+    await waitSaid(dlg, /記録しました|できませんでした/);
+    await reload.catch(() => {}); await settle();
+    for (const p of ['/', '/rate/unrated', '/records/works']) {
+      await go(p);
+      await dump('after-ticket' + p.replace(/\W+/g, '_'));
+      note(`${p}: 舞台ふたつめ ${/舞台ふたつめ/.test(await content()) ? 'あり' : 'なし'}`);
+    }
+  });
+
+  await step('設定: 観に行ける場所（東京都・大阪府）', async () => {
+    await go('/settings');
+    const card = page.locator('#pref-setting');
+    await page.locator('details:has(#pref-setting) > summary').click();   // 「観に行ける場所を決めておく」は畳んである
+    for (const p of ['東京都', '大阪府']) await card.locator(`input[name=pref][value="${p}"]`).check();
+    const reload = page.waitForEvent('load', {timeout: 15000});
+    await card.locator('button[data-set-pref]').click();
+    await waitSaid(card, /保存しました/);
+    await reload; await settle();
+    const t = await content();
+    note('設定の見出し: ' + (t.match(/いまは[^\n]*/) || [''])[0]);
+    check(/東京都/.test(t) && /大阪府/.test(t), '開き直すと場所が出ない');
+    await go('/recommend/reminder');
+    note('開幕リマインドの絞り込み: ' + ((await content()).match(/場所\n[^\n]*/) || [''])[0].replace('\n', ' '));
+  });
+
+  await step('今週のおすすめ: 効かせ方のつまみ（保存して開き直す・ふつうに戻す）', async () => {
+    await go('/');
+    await page.locator('button.ftab[data-for="wbox"]').click();
+    const sl = page.locator('.wsl[data-weight="cast"]');
+    await sl.waitFor();
+    await sl.fill('4');
+    await sleep(800);
+    check((await page.locator('.wrow[data-grp="cast"] .wv').innerText()).includes('とても強く'), 'つまみの札が変わらない');
+    await go('/');
+    const v = await page.locator('.wsl[data-weight="cast"]').inputValue();
+    check(v === '4', '開き直すとつまみが戻る: ' + v);
+    note('D1 rank_weight: ' + JSON.stringify(sql('SELECT * FROM rank_weight')));
+    await page.locator('button.ftab[data-for="wbox"]').click();
+    const reload = page.waitForEvent('load', {timeout: 15000});
+    await page.locator('button[data-wreset]').click();
+    await reload; await settle();
+    check(await page.locator('.wsl[data-weight="cast"]').inputValue() === '2', '「ふつうに戻す」で戻らない');
+  });
+
+  await step('取り込み: iCal ファイル（取り消した予定・VALARM を含む）', async () => {
+    const f = join(OUT, 'e2e-calendar.ics');
+    writeFileSync(f, ICS);
+    await go('/register');
+    await page.locator('details.imx-alt > summary').click();
+    await page.setInputFiles('#imx-ics', f);
+    const box = page.locator('.imx-found');
+    await box.locator('.imx-list li').first().waitFor({timeout: 15000});
+    const items = await box.locator('.imx-list li').allInnerTexts();
+    note('一覧: ' + items.map(t => t.replace(/\s+/g, ' ').trim()).join(' / '));
+    note('見出し: ' + (await box.locator('.imx-head').innerText().catch(() => '')).trim());
+    check(items.length === 1 && /冬の物語/.test(items[0]), '一致したのが冬の物語 1 件だけでない');
+    check(!items.some(t => /旅の芝居|舞台ひとつめ|歯医者/.test(t)), '取り消した予定・VALARM の題・公演でない予定が出た');
+    if (await box.locator('[data-imx-all]').isEnabled()) await box.locator('[data-imx-all]').click();   // 未登録は初めから選んである
+    await box.locator('[data-imx-add]').click();
+    await waitSaid(page.locator('[data-import]'), /1 件を記録に足しました|記録に足しました/, 15000).catch(async () => note('said: ' + await page.locator('[data-import] .said').first().innerText()));
+    const w = sql("SELECT first_date, time, stage_id, venue FROM works WHERE title='冬の物語'");
+    note('D1: ' + JSON.stringify(w));
+    check(w.length === 1 && w[0].first_date === '2024-01-10' && w[0].time === '18:00', 'D1 の行が違う');
+  });
+
+  await step('取り込み: 購入確認メール（.eml 2 通、1 通は記録済み）', async () => {
+    const files = EMLS.map(([name, text]) => { const f = join(OUT, name); writeFileSync(f, text); return f; });
+    await go('/register');
+    await page.locator('details.imx-src').filter({hasText: '購入確認メールから'}).locator('> summary').click();
+    await page.setInputFiles('#imx-eml', files);
+    const box = page.locator('.imx-found');
+    await box.locator('.imx-list li').first().waitFor({timeout: 15000});
+    const items = await box.locator('.imx-list li').allInnerTexts();
+    note('一覧: ' + items.map(t => t.replace(/\s+/g, ' ').trim()).join(' / '));
+    check(items.length === 2, '2 件出ない');
+    const dup = box.locator('.imx-list li').filter({hasText: '旅の芝居'});
+    check(await dup.locator('input[type=checkbox]').isDisabled(), '記録済みの回が選べる');
+    if (await box.locator('[data-imx-all]').isEnabled()) await box.locator('[data-imx-all]').click();   // 未登録は初めから選んである
+    await box.locator('[data-imx-add]').click();
+    await sleep(1500);
+    note('said: ' + (await page.locator('[data-import] .said').first().innerText()).trim());
+    const w = sql("SELECT first_date, time FROM works WHERE title='冬の物語' ORDER BY first_date");
+    check(w.length === 2 && w[1].first_date === '2024-01-15' && w[1].time === '13:00', 'メールの回が足されない: ' + JSON.stringify(w));
+    check(sql("SELECT count(*) n FROM works WHERE title='旅の芝居'")[0].n === 3, '記録済みの回が二重に足された');
+  });
+
+  await step('内部リンクを Ctrl+クリックすると新しいタブで開く', async () => {
+    await go('/rate');
+    const link = page.locator('nav a[href="/records/works"], .side a[href="/records/works"]').first();
+    const [tab] = await Promise.all([ctx.waitForEvent('page', {timeout: 5000}), link.click({modifiers: ['Control']})]);
+    await tab.waitForLoadState();
+    note('新しいタブ: ' + tab.url().slice(BASE.length));
+    check(tab.url().startsWith(BASE + '/records/works'), '新しいタブの行き先が違う');
+    check(page.url() === BASE + '/rate', '元のタブが移動した: ' + page.url());
+    await tab.close();
+    // ふつうのクリックは同じタブの中で移る
+    await link.click();
+    await page.waitForURL(BASE + '/records/works');
+  });
+
+  await step('書き出す（taguri-export.json）', async () => {
+    await go('/settings');
+    await page.locator('details:has(a.dl) > summary').click();
+    const [dl] = await Promise.all([page.waitForEvent('download'), page.locator('a.dl').click()]);
+    const path = join(OUT, 'taguri-export-A.json');
+    await dl.saveAs(path);
+    const data = JSON.parse(readFileSync(path, 'utf8'));
+    const text = JSON.stringify(data);
+    note('鍵: ' + Object.keys(data).join(','));
+    for (const want of ['手で足した芝居', '最初に書いた感想。書き足した。', '4/5', '旅の芝居', '冬の物語', '俳優乙'])
+      check(text.includes(want), `書き出しに「${want}」が無い`);
+    check(!text.includes(A.code), '書き出しに復旧コードが入っている');
+  });
+
+  await step('ログアウト → 開くとログインの画面', async () => {
+    await go('/account');
+    await page.locator('button[data-account-logout]:not([data-account-logout="all"])').click();
+    await page.waitForURL(/\/login/);
+    await go('/rate');
+    check(page.url().includes('/login'), 'ログアウト後に記録の画面が開く: ' + page.url());
+    const r = await page.request.get(BASE + '/api/screen/rate');
+    check(r.status() === 401, 'ログアウト後に API が ' + r.status());
+  });
+
+  await step('もう一度ログイン（パスキー）', async () => {
+    await go('/login');
+    await page.click('#passkey-login');
+    await page.waitForURL(BASE + '/', {timeout: 15000});
+    await go('/rate?v=' + encodeURIComponent('4/5'));
+    const t = await content();
+    check(/手で足した芝居/.test(t) && /最初に書いた感想。書き足した。/.test(t), 'ログインし直すと記録・感想が無い');
+  });
+
+  await step('復旧コードでログイン', async () => {
+    await go('/account');
+    await page.locator('button[data-account-logout]:not([data-account-logout="all"])').click();
+    await page.waitForURL(/\/login/);
+    await settle();
+    const form = page.locator('#recovery-login');
+    check(await form.isVisible(), 'ログイン画面に復旧コードの欄が無い（削除・結び付けの画面にしか無い）');
+    // 違うコードは断られる
+    await page.fill('#recovery-input', '0'.repeat(64));
+    await form.locator('button').click();
+    await page.locator('#status.bad').waitFor({timeout: 5000});
+    note('違うコード: 「' + (await page.locator('#status').innerText()).trim() + '」');
+    await page.fill('#recovery-input', A.code);
+    await form.locator('button').click();
+    await page.waitForURL(BASE + '/', {timeout: 10000});
+    await go('/rate?v=' + encodeURIComponent('4/5'));
+    check(/手で足した芝居/.test(await content()), '復旧コードで戻れない');
+  }, {allowFailed: true});
+
+  await step('アカウントの画面のリンク（別のページへ行くもの）', async () => {
+    const seen = [];
+    for (const [href, want] of [['/migration-data/#passkeys', /パスキー/], ['/login?link=1&next=%2Faccount', /結び付け/]]) {
+      await go('/account');
+      await page.locator(`a[href="${href}"]`).click();
+      await page.waitForLoadState('networkidle');
+      const t = await page.locator('body').innerText();
+      seen.push(`${href} → ${page.url().slice(BASE.length)}`);
+      check(!/このページはありません/.test(t) && want.test(t), `${href} が開けない（「見つかりません」）`);
+      if (href.startsWith('/migration-data')) note('/migration-data/ の「観劇記録」: ' + ((t.match(/観劇記録\n+(\d+件)/) || [, '?'])[1]) + '（日記帳には ' + sql(`SELECT count(*) n FROM works WHERE user_id='${A.uid}'`)[0].n + ' 件）');
+    }
+    await go('/settings');
+    await page.locator('details:has(a[href="/terms"]) > summary').first().click().catch(() => {});
+    const terms = page.locator('#content a[href="/terms"]').first();
+    if (await terms.count()) {
+      await terms.click();
+      await page.waitForLoadState('networkidle');
+      seen.push('/terms → ' + page.url().slice(BASE.length));
+      check(!/このページはありません/.test(await page.locator('body').innerText()), '設定の利用規約へのリンクが開けない');
+    }
+    note(seen.join(' / '));
+  });
+
+  // 残りの画面も開いて、エラーが出ないことだけを確かめる
+  for (const p of ['/records', '/records/chronicle', '/records/trace', '/records/works', '/rate/notes', '/tickets', '/settings', '/account', '/search']) {
+    await step('開く ' + p, async () => { await go(p); check((await content()).trim().length > 0, '中身が空'); check(!/このページはありません|読み込めませんでした/.test(await content()), '画面が出ない'); });
+  }
+}
+
+// ================================================================ 利用者 B（別の履歴）と分離
+async function walkB(A, B) {
+  await step('利用者 B を登録（同じブラウザーの別の窓）', async () => {
+    await go('/login');
+    await page.check('#agree');
+    await page.click('#passkey-signup');
+    await page.locator('#passkey-recovery:not([hidden])').waitFor({timeout: 15000});
+    B.code = (await page.locator('#recovery-code').innerText()).trim();
+    check(B.code !== A.code, '復旧コードが A と同じ');
+    await page.click('#recovery-done');
+    await page.waitForURL(BASE + '/');
+    B.uid = sql(`SELECT id FROM users WHERE id<>'${A.uid}'`)[0]?.id;
+    check(B.uid && B.uid !== A.uid, 'B のアカウントが別にできない');
+  });
+  await step('B には A の記録・評価・感想・お気に入り・興味あり・券が見えない', async () => {
+    const leaks = [];
+    for (const p of ['/rate', '/rate/unrated', '/rate/notes', '/records/works', '/recommend/interest', '/recommend/favourites', '/tickets', '/calendar', '/recommend/reminder', '/account', '/search?q=' + encodeURIComponent('旅の芝居')]) {
+      await go(p);
+      const t = await content();
+      for (const w of ['手で足した芝居', '最初に書いた感想', '冬の物語', '俳優乙', '近く開く芝居', '舞台ふたつめ'])
+        if (t.includes(w) && !(p.startsWith('/search') || p === '/recommend/reminder') ) leaks.push(`${p}: ${w}`);
+      if (p === '/recommend/reminder' && /舞台ふたつめ/.test(await page.locator('section.dgcard').filter({hasText: '直近の観劇予定'}).innerText())) leaks.push('reminder: A の行く日');
+      if (p.startsWith('/search') && await page.locator('.pastrow .past-done, [data-past=missed][disabled]').count()) leaks.push('search: A の「観た」');
+    }
+    check(!leaks.length, '見えた: ' + leaks.join(' / '));
+    const ex = await page.request.get(BASE + '/export.json');
+    const text = await ex.text();
+    check(ex.status() === 200 && !/手で足した芝居|冬の物語|俳優乙/.test(text), 'B の書き出しに A の記録が入る');
+  });
+  await step('B は A の記録を名指ししても書き換えられない', async () => {
+    const KEY = '手で足した芝居#2026-09-20';
+    const tries = [['/api/note', {work_key: KEY, note_impression: 'Bが書いた'}], ['/api/rate', {work_key: KEY, verdict: '1/5'}], ['/api/drop_work', {work_key: KEY}]];
+    const got = [];
+    for (const [path, body] of tries) {
+      const r = await page.request.post(BASE + path, {data: body, headers: {origin: BASE}});
+      got.push(`${path} ${r.status()}`);
+    }
+    note(got.join(' / '));
+    check(got.every(g => / 4\d\d$/.test(g)), 'B の書き込みが通った');
+    const w = sql(`SELECT verdict, note_impression FROM works WHERE user_id='${A.uid}' AND work_key='${KEY}'`)[0];
+    check(w?.verdict === '4/5' && w?.note_impression === '最初に書いた感想。書き足した。', 'A の記録が変わった: ' + JSON.stringify(w));
+  });
+  await step('B が自分の記録を足す（A には見えない）', async () => {
+    await go('/register');
+    await page.fill('#w-title', 'Bだけの芝居');
+    await page.fill('#w-date', '2026-10-01');
+    const reload = page.waitForEvent('load', {timeout: 15000});
+    await page.locator('.add-work button[data-add-work]').click();
+    await waitSaid(page.locator('.add-work'), /登録しました/);
+    await reload; await settle();
+    const ap = A.page;
+    await ap.goto(BASE + '/rate/unrated'); await ap.waitForLoadState('networkidle');
+    check(!/Bだけの芝居/.test(await ap.locator('#content').innerText()), 'A に B の記録が見える');
+  });
+}
+
+// ================================================================ アカウントの削除（A）
+async function deleteA(A, B) {
+  let cookie = '';
+  await step('アカウントの削除（復旧コードで本人確認 →「削除」）', async () => {
+    cookie = (await ctx.cookies(BASE)).map(c => `${c.name}=${c.value}`).join('; ');
+    await go('/account');
+    await page.locator('a[href="/login?purpose=delete"]').click();
+    await page.waitForURL(/purpose=delete/);
+    await settle();
+    check(await page.locator('#delete-intro').isVisible(), '削除の説明が出ない');
+    await page.fill('#recovery-input', A.code);
+    await page.locator('#recovery-login button').click();
+    await page.locator('#delete-confirm:not([hidden])').waitFor({timeout: 10000});
+    await page.fill('#delete-word', '削除');
+    await page.locator('#delete-confirm button').click();
+    await page.locator('#delete-done:not([hidden])').waitFor({timeout: 10000});
+    note('終わり: 「' + (await page.locator('#status').innerText()).trim() + '」');
+    const left = [];
+    for (const t of ['users', 'sessions', 'works', 'reaction', 'ticket', 'app_setting', 'rank_weight', 'passkeys']) {
+      const col = t === 'users' ? 'id' : 'user_id';
+      const n = sql(`SELECT count(*) n FROM ${t} WHERE ${col}='${A.uid}'`)[0].n;
+      if (n) left.push(`${t} ${n}`);
+    }
+    check(!left.length, 'A の行が残る: ' + left.join(', '));
+    check(sql(`SELECT count(*) n FROM works WHERE user_id='${B.uid}'`)[0].n === 1, 'B の記録まで消えた');
+    const old = await fetch(BASE + '/api/screen/rate', {headers: {cookie}});
+    check(old.status === 401, '前のセッションで ' + old.status);
+    const rec = await fetch(BASE + '/migration-api/recover', {method: 'POST', headers: {origin: BASE, 'content-type': 'application/json'}, body: JSON.stringify({code: A.code})});
+    check(rec.status === 401, '消したあとも復旧コードで ' + rec.status);
+  }, {allowFailed: true});
+  await step('消したアカウントのパスキーではログインできない', async () => {
+    await go('/login');
+    await page.click('#passkey-login');
+    await page.locator('#status.bad').waitFor({timeout: 10000});
+    note('「' + (await page.locator('#status').innerText()).trim() + '」');
+    check(page.url().includes('/login'), 'ログインできてしまう');
+  }, {allowFailed: true});
+}

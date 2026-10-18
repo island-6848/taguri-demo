@@ -114,6 +114,21 @@ test('NATIVE_UI=all: nothing of a user goes to Render; every screen is native, u
   } finally { r.restore(); sqlite.close(); }
 });
 
+// #134 の通し検証: 記録を足すたびに画面（web/app.js waitJob）が聞きに来る /api/import_status が 404 で、
+// ブラウザーのコンソールにエラーが出ていた。Worker には裏で走る取得が無いので「走っていない」と答える
+test('NATIVE_UI=all: /api/import_status says nothing is running, for signed-in users only, without Render', async () => {
+  const {env, sqlite} = setup();
+  const cookie = await signIn(env);
+  const r = stubRender();
+  try {
+    const got = await step(env, cookie, {get: '/api/import_status'});
+    assert.equal(got.status, 200);
+    assert.deepEqual(got.body, {running: false});
+    assert.equal((await step(env, 'x=y', {get: '/api/import_status'})).status, 401);
+    assert.deepEqual(r.sent, []);
+  } finally { r.restore(); sqlite.close(); }
+});
+
 test('signed out, a moving screen still asks to sign in', async () => {
   const {env, sqlite} = setup();
   try {

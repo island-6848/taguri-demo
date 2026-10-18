@@ -572,6 +572,7 @@ function renderScreen(el, activePath, d, exposureSource) {
   fixupConquest(el);
   fixupWeightHash(el);
   bindNotes(el);
+  if (live) sugWatch();
   el.querySelectorAll('img[src^="/img/"]').forEach(img => {
     img.src = API_BASE + img.getAttribute("src");
   });
@@ -592,6 +593,9 @@ function scrollToHash(hash) {
   let id = hash.slice(1);
   try { id = decodeURIComponent(id); } catch (e) { /* そのままの名前で探す */ }
   const t = document.getElementById(id);
+  // 指された道具（<details>）は開く。足したあと読み込み直したとき（waitJob が #names などを付ける）に、
+  // 開いていた枠を開いたままにするため。読み込みのときの同じ処理は、画面の中身が入る前に走るので効かない（#134）
+  if (t && t.tagName === "DETAILS") t.open = true;
   if (t) t.scrollIntoView();
 }
 
@@ -699,9 +703,14 @@ function navigate(path, search, push, hash) {
   loadScreen(path, qs, hash);
 }
 
+// 画面の中で描かない、サーバーの別のページ（ログイン・規約・説明・記録の保存先・カレンダーの戻り先）。
+// ここへのリンクを画面の中で開くと「見つかりません」になっていた（#134 の通し検証。アカウントの画面の
+// 「アカウントを削除する」「Google・メールを結び付ける」「パスキーを追加・削除する」、設定の利用規約へのリンク）
+const PAGE_PATHS = /^\/(login|terms|privacy|about|migration-data|oauth)(\/|$)/;
 function isInternalPath(p) {
   return p.startsWith("/") && !p.startsWith("/img/") && !p.startsWith("/vendor")
-    && !p.startsWith("/api/") && !p.startsWith("/export.json") && !p.startsWith("/data.zip");
+    && !p.startsWith("/api/") && !p.startsWith("/export.json") && !p.startsWith("/data.zip")
+    && !PAGE_PATHS.test(p);
 }
 
 document.addEventListener("click", ev => {
@@ -2469,9 +2478,13 @@ function lkRender(box, rows) {
 
 // **手で足す欄の候補。** すでにある情報を、打っている最中に出す
 let sugTimer = null;
+// **画面を差し込むたびに呼ぶ**（renderScreen）。画面の中身は読み込んだあとに fetch で入るので、
+// 読み込みのときに 1 度だけ呼んでいた頃は欄がまだ無く、打っても候補が出なかった（#134 の通し検証）。
+// 2 度結ばないように印を付ける
 function sugWatch() {
   const t = document.getElementById("w-title"), box = document.getElementById("sug");
-  if (!t || !box) return;
+  if (!t || !box || t.dataset.sugBound) return;
+  t.dataset.sugBound = "1";
   t.addEventListener("input", () => {
     document.getElementById("w-stage").value = "";   // 打ち直したら結び付きを外す
     clearTimeout(sugTimer);
