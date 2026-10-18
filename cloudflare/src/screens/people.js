@@ -1,5 +1,5 @@
 // 記録を見返す ▸ 一緒に出てくる人のつながり: tools/taguri/people.py's panel(rated, owner=False)
-// ported to the Worker (no LLM read, no rebuild button ── the visitor path). people.test.js checks
+// ported (with the rule-based 「この図から分かること」 reading; no LLM, no rebuild button). people.test.js checks
 // panel() against people.panel on the same rated rows, byte for byte.
 //
 // **Floats follow Python step by step.** The force layout (layout/_separate) is written with the
@@ -643,6 +643,172 @@ function payload(g, px, py, rad, idx) {
   return scriptSafe(cdumps({w: new F(W), h: new F(H), pad: new F(PAD), nodes, edges}));
 }
 
+// ---------------------------------------------------------------- 読み（規則）
+// people.py の read_facts / READ_SCORE / _sentence / reading / read_block と同じ規則・同じ文。
+// 何を言うかは点数で選び、名前は網の点からしか取らない（LLM は呼ばない ── 持ち主の指示
+// 2026-10-18）。記録を 1 回なめる足し算と点・線の並べ替えだけで、D1 も外部も読まない。
+export const READ_PICK = 3, RECENT_YEARS = 2, RECENT_MIN = 2, LONG_MIN = 3;
+export const READ_ORDER = ['shape', 'top', 'bridge', 'pair', 'merge', 'started', 'recent', 'long', 'mix'];
+const yearOf = d => (/^[0-9]{4}/.test(d) ? parseInt(d.slice(0, 4), 10) : null);
+const ysMin = ys => Math.min(...ys.keys()), ysMax = ys => Math.max(...ys.keys());
+
+/** people.read_facts */
+export function readFacts(rated, g, comps, tl) {
+  const nodes = new Set(g.nodes), years = new Map(), allYears = [];
+  for (const r of rated) {
+    const y = yearOf(r.date || '');
+    if (y === null) continue;
+    const ps = new Set((r.people || []).filter(([role]) => KEEP.has(role)).map(([, p]) => p));
+    if (!ps.size) continue;
+    allYears.push(y);
+    for (const p of ps) {
+      if (!nodes.has(p)) continue;
+      if (!years.has(p)) years.set(p, new Map());
+      const ys = years.get(p);
+      ys.set(y, (ys.get(y) || 0) + 1);
+    }
+  }
+  const cnt = p => g.cnt.get(p), deg = p => g.adj.get(p).size;
+  const splits = new Map(g.cuts.map(p => [p, components(g, [p]).length]));
+  const core = [...g.core].sort((a, b) => (cnt(b) - cnt(a)) || cmp(a, b));
+  const top = core.length ? core[0] : null;
+  let bridge = null;
+  for (const p of [...g.cuts].sort((a, b) => (splits.get(b) - splits.get(a)) || (deg(b) - deg(a)) || cmp(a, b))) {
+    if (p !== top) { bridge = {name: p, splits: splits.get(p), people: deg(p)}; break; }
+  }
+  let pair = null;
+  const heavy = [...g.edges.values()].sort((x, y) => (y[2] - x[2]) || cmp(x[0], y[0]) || cmp(x[1], y[1]));
+  if (heavy.length && heavy[0][2] >= 2) {
+    const [a, b, w] = heavy[0];
+    const wt = (x, y) => g.edges.get(cmp(x, y) < 0 ? x + '\0' + y : y + '\0' + x)[2];
+    const ab = g.adj.get(b);
+    const third = [...g.adj.get(a)].filter(q => ab.has(q)).map(q => [Math.min(wt(a, q), wt(b, q)), q])
+      .sort((x, y) => (y[0] - x[0]) || (cnt(y[1]) - cnt(x[1])) || cmp(x[1], y[1]));
+    const [c, m] = third.length && third[0][0] >= 2 ? [third[0][1], third[0][0]] : ['', 0];
+    pair = {a, b, w, c, m};
+  }
+  let merge = null;
+  const sum = xs => xs.reduce((s, x) => s + x, 0);
+  for (const s of tl.stages) {
+    if (s.merged && s.merged.length && (merge === null || sum(s.merged) > sum(merge.sizes))) {
+      merge = {date: s.date, title: s.title, sizes: [...s.merged]};
+    }
+  }
+  const started = tl.stages.length && tl.stages[0].date ? {date: tl.stages[0].date, title: tl.stages[0].title} : null;
+  let recent = null;
+  if (allYears.length && Math.max(...allYears) - Math.min(...allYears) >= RECENT_YEARS) {
+    const y1 = Math.max(...allYears) - RECENT_YEARS + 1, got = [];
+    for (const [p, ys] of years) {
+      let n = 0;
+      for (const [y, k] of ys) if (y >= y1) n += k;
+      if (ysMin(ys) >= y1 && n >= RECENT_MIN) got.push([p, n]);
+    }
+    got.sort((x, y) => (y[1] - x[1]) || (cnt(y[0]) - cnt(x[0])) || cmp(x[0], y[0]));
+    if (got.length) recent = {from: y1, people: got.slice(0, 3)};
+  }
+  let long = null;
+  const spans = [...years].filter(([p]) => p !== top).map(([p, ys]) => [ysMax(ys) - ysMin(ys) + 1, p])
+    .filter(t => t[0] >= LONG_MIN).sort((x, y) => (y[0] - x[0]) || (cnt(y[1]) - cnt(x[1])) || cmp(x[1], y[1]));
+  if (spans.length) {
+    const p = spans[0][1], ys = years.get(p);
+    long = {name: p, first: ysMin(ys), last: ysMax(ys)};
+  }
+  return {
+    n_core: g.core.length, bundles: comps.map(c => c.length),
+    top: top === null ? null : {name: top, role: isMaker(g, top) ? '作り手' : '出演', works: cnt(top), splits: splits.get(top) || 0},
+    bridge, pair, merge, started, recent, long,
+    mix: {n: g.nodes.length, makers: g.nodes.filter(p => isMaker(g, p)).length},
+  };
+}
+
+const sizes = (xs, sep) => xs.map(s => `${s} 名`).join(sep);
+
+/** people.READ_SCORE ── 何を言うかを決める点数（0 は言わない）。 */
+export function readScore(kind, f) {
+  if (kind === 'bridge' && f.bridge) return 70 + 5 * f.bridge.splits;
+  if (kind === 'pair' && f.pair) return 40 + 10 * Math.min(f.pair.w, 6) + (f.pair.c ? 5 : 0);
+  if (kind === 'merge' && f.merge) return 50 + Math.floor(Math.min(f.merge.sizes.reduce((s, x) => s + x, 0), 40) / 2);
+  if (kind === 'started' && f.started && !f.merge) return 30;
+  if (kind === 'recent' && f.recent) return 45 + 5 * f.recent.people.length;
+  if (kind === 'long' && f.long) return 35 + 5 * Math.min(f.long.last - f.long.first + 1, 8);
+  if (kind === 'mix' && f.mix.n) {
+    const m = f.mix.makers, n = f.mix.n;
+    return 3 * m >= n || 10 * m <= n ? 40 : 20;
+  }
+  return 0;
+}
+
+function sentence(kind, f) {
+  if (kind === 'shape') {
+    const b = f.bundles;
+    if (b.length === 1) return `線を持つ ${f.n_core} 名は、みなひと続きのグループにつながっています。`;
+    const more = b.length > 4 ? ` ほか ${b.length - 4} つ` : '';
+    return `グループは ${b.length} つで、大きい順に ${sizes(b.slice(0, 4), '・')}${more}です。`;
+  }
+  if (kind === 'top') {
+    const t = f.top;
+    let s = `いちばんよく名前が出てくるのは${t.name}さん（${t.role}）で、${t.works} 作品に出ています。`;
+    if (t.splits) s += `外すとつながりが ${t.splits} つに分かれる人でもあります。`;
+    return s;
+  }
+  if (kind === 'bridge') {
+    const b = f.bridge;
+    return `${b.name}さんを外すと、つながりが ${b.splits} つに分かれます。`
+      + `${b.name}さんを通して、別々の顔ぶれがつながっています。`;
+  }
+  if (kind === 'pair') {
+    const p = f.pair;
+    if (p.c) return `${p.a}さん・${p.b}さん・${p.c}さんは、どの 2 人をとっても ${p.m} 本以上で一緒に出ています。`;
+    return `${p.a}さんと${p.b}さんは ${p.w} 本で一緒に出ていて、いちばんよく一緒になる組み合わせです。`;
+  }
+  if (kind === 'merge') {
+    const m = f.merge, what = m.title ? `「${m.title}」` : '公演';
+    return `${fmtDate(m.date)}の${what}で、別々だった ${m.sizes.length} つのグループ`
+      + `（${sizes(m.sizes, '、')}）が 1 つになりました。`;
+  }
+  if (kind === 'started') {
+    const s = f.started, what = s.title ? `「${s.title}」` : '公演';
+    return `つながりは ${fmtDate(s.date)}の${what}から始まりました。`;
+  }
+  if (kind === 'recent') {
+    const r = f.recent, names = r.people.map(([p, n]) => `${p}さん（${n} 本）`).join('、');
+    return `${r.from} 年からの ${RECENT_YEARS} 年で新しくよく名前が出てくるのは、${names}です。`;
+  }
+  if (kind === 'long') {
+    const x = f.long;
+    return `${x.name}さんは ${x.first} 年から ${x.last} 年まで、${x.last - x.first + 1} 年にわたって名前が出てきます。`;
+  }
+  if (kind === 'mix') {
+    const m = f.mix.makers, n = f.mix.n;
+    if (3 * m >= n) return `2 作品以上で出てくる ${n} 名のうち、作り手（演出・脚本ほか）が ${m} 名います。`
+      + '出演者だけでなく、作り手の名前もよく重なっています。';
+    if (!m) return `2 作品以上で出てくる ${n} 名は、みな出演者です。`;
+    if (10 * m <= n) return `2 作品以上で出てくる ${n} 名のうち、作り手（演出・脚本ほか）は ${m} 名で、`
+      + '重なるのはほとんどが出演者です。';
+    return `2 作品以上で出てくる ${n} 名のうち、出演が ${n - m} 名、作り手（演出・脚本ほか）が ${m} 名です。`;
+  }
+  return '';
+}
+
+/** people.reading */
+export function reading(f) {
+  if (!f.top) return [];
+  const scored = READ_ORDER.slice(2).map((k, i) => [readScore(k, f), i + 2, k])
+    .sort((x, y) => (y[0] - x[0]) || (x[1] - y[1]));
+  const pick = new Set(['shape', 'top', ...scored.slice(0, READ_PICK).filter(([s]) => s > 0).map(([, , k]) => k)]);
+  return READ_ORDER.filter(k => pick.has(k)).map(k => sentence(k, f));
+}
+
+/** people.read_block */
+export function readBlock(rated, g, comps, tl) {
+  const lines = reading(readFacts(rated, g, comps, tl));
+  if (!lines.length) return '';
+  return '<div class="pread"><h3>この図から分かること</h3>'
+    + `<p>${E(lines.join(''))}</p>`
+    + '<p class="pnote">この文章は、上のグループの形と数字だけから、決まった手順で'
+    + '作っています。記録が変わると、開くたびに書き直されます。</p></div>';
+}
+
 // ---------------------------------------------------------------- 図
 /** people.panel(rated, owner=False) */
 export function panel(rated) {
@@ -701,7 +867,7 @@ export function panel(rated) {
 
   const data = payload(g, px, py, rad, idx);
   const tl = timeline(rated, g, idx);
-  const readBlock = '';
+  const readHtml = readBlock(rated, g, comps, tl);
   const tdata = scriptSafe(cdumps({stages: tl.stages}));
   const nStages = tl.stages.length - 1;
   const u = tl.unchanged;
@@ -739,7 +905,7 @@ ${g.nodes.length} 名のうち、線を持つ ${ns.length} 名</b>を出して�
 いまは線を持つ ${ns.length} 名が
 <b>${comps.length === 1 ? 'ひと続きのグループです' : `${comps.length} 個のグループに分かれています`}</b>。
 ${cutTxt}</p>
-${readBlock}
+${readHtml}
 ${timeBlock}
 <div class="pcut">${cutBtns}
 <button data-cut="reset" class="rst" hidden>全員を戻す</button></div>

@@ -994,7 +994,6 @@ class Handler(http.server.BaseHTTPRequestHandler):
               "/api/unseen": srv.on_unseen,
               "/api/ticket": srv.on_ticket,
               "/api/chronicle": srv.on_chronicle,
-              "/api/people_read": srv.on_people_read,
               "/api/weight": srv.on_weight,
               "/api/pref_setting": srv.on_pref_setting,
               "/api/hand_credits": srv.on_hand_credits,
@@ -1560,18 +1559,6 @@ class Server(http.server.ThreadingHTTPServer):
         self._owner_only(user_id)
         import chronicle as CR
         r = CR.write(force=True)
-        return {"ok": bool(r.get("ok")), "line": r.get("line") or ""}
-
-    def on_people_read(self, _b: dict, user_id: str) -> dict:
-        """「一緒に出てくる人の網」の読み（LLM の 1 段落）を作り直す（起案者の指示
-        2026-08-27 ──「図から読み取れることを LLM で分析し、文章で記載して」）。
-
-        **`on_chronicle` と同じ形。** 錠は取らず、書く先は `people_read.json` の
-        1 ファイルだけなので、ほかの操作とぶつからない。押されたときだけ走らせる。
-        """
-        self._owner_only(user_id)
-        import people as PE
-        r = PE.write(force=True)
         return {"ok": bool(r.get("ok")), "line": r.get("line") or ""}
 
     def on_ticket(self, b: dict, user_id: str) -> dict:
