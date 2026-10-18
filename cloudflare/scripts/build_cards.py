@@ -76,7 +76,12 @@ def stage_dicts(pool: dict[str, dict], themes: dict, today: datetime.date) -> di
         if str(fields.get("料金（1枚あたり）") or "").strip():
             c["price"] = fields["料金（1枚あたり）"]
         t = themes.get(("candidate", sid)) or {}
-        c["themes"] = [e["word"] for e in (t.get("elements") or []) if e.get("word")]
+        # カードに並べるのは照合に使う言葉。モチーフ（その作品だけの句）は並べず、お気に入りの文字の一致（ws）にだけ使う。
+        # 先頭には見せる用のハッシュタグを 1 つだけ出す（起案者の指示 2026-10-18「カードに 1 つだけ出して」）
+        els = [e for e in (t.get("elements") or []) if e.get("word")]
+        c["themes"] = [e["word"] for e in els if e.get("kind") != "モチーフ"]
+        c["motifs"] = [e["word"] for e in els if e.get("kind") == "モチーフ"]
+        c["hook"] = next((str(x).lstrip("#＃").strip() for x in t.get("tags") or [] if str(x).strip("#＃ ")), "")
         c["themes_by"] = t.get("elements_by") or ""
         if t.get("synopsis"):
             c["synopsis"] = t["synopsis"]
@@ -189,7 +194,7 @@ def row(c: dict) -> dict:
     return {"html": card_template(c), "title": c.get("title") or "", "tour": c["tour_key"],
             "start": RC.period_start(c.get("period") or ""), "end": BI._period_end(c.get("period") or ""),
             "pref": c.get("pref") or "", "gnz": nz(c.get("group", "")), "blob": nz(blob),
-            "ws": "\n".join(sorted({nz(w) for w in c.get("themes") or [] if w})),
+            "ws": "\n".join(sorted({nz(w) for w in [*(c.get("themes") or []), *(c.get("motifs") or [])] if w})),
             "synz": nz(c.get("synopsis") or "")}
 
 

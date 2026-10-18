@@ -1269,6 +1269,10 @@ def syn_block(c: dict) -> str:
     # **並べて見比べるときにいちばん先に目に入ってほしいのがここ**である ──
     # 本文を読まなくても「どんな話か」が分かるのが、この一覧でタグを出す理由である。
     tags = [str(w).strip() for w in (c.get("themes") or []) if str(w).strip()]
+    # 見せる用のハッシュタグ（あらすじの読み取り g5 の tags の 1 つ目）を先頭に 1 つだけ（起案者の指示 2026-10-18）
+    hook = str(c.get("hook") or "").strip()
+    if hook and not by_hand_tags:
+        tags = [hook] + [w for w in tags if w != hook]
     tag_html = ('<div class="tags">'
                 + "".join(f'<span class="tag">#{E(w)}</span>' for w in tags)
                 + (' <span class="tag mine">自分で入れた分</span>' if by_hand_tags else "")

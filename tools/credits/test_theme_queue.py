@@ -147,7 +147,7 @@ class PromptChainTest(unittest.TestCase):
             {"kind": "味わい", "word": "しみじみ", "basis": "定評", "from": "海辺の町"},
             {"kind": "テーマ", "word": "姉妹の確執", "basis": "定評", "from": "三姉妹"},
         ] + [{"kind": "題材", "word": f"題材{i}", "basis": "本文"} for i in range(6)],
-             "tags": ["#三姉妹", "手紙", "#" + "長" * 30]}
+             "tags": ["#三姉妹", "手紙", "#" + "長" * 30, "#結成30周年", "#3日間の巻き戻し", "#父の手紙の謎", "#海辺", "#四つ目"]}
         els = E.g5_elements(g, text, "団体「劇団A」・… 半数以上に付いている言葉: 喜劇、家族")
         words = [e["word"] for e in els]
         self.assertIn("すれ違い", words, "引用が本文にある推定は残す（空白は無視）")
@@ -162,7 +162,7 @@ class PromptChainTest(unittest.TestCase):
         self.assertEqual(sum(1 for e in els if e["kind"] == "題材"), E.G5_KINDS["題材"])
         row = E.to_row({"side": "candidate", "id": "1", "title": "t", "url": "", "text": text, "hint": ""},
                        {**g, "synopsis": ""}, "claude", "g5")
-        self.assertEqual(row["tags"], ["#三姉妹"])
+        self.assertEqual(row["tags"], ["#三姉妹", "#父の手紙の謎", "#海辺"], "数字・宣伝を落とし、よい順に 3 つまで")
         self.assertNotIn("喜劇", [e["word"] for e in row["elements"]], "手がかりが無ければ作風は残らない")
 
 if __name__ == "__main__":
