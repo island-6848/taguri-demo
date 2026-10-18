@@ -33,6 +33,7 @@ import json
 import os
 import shutil
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -134,8 +135,19 @@ def delete_object(account: str, token: str, bucket: str, key: str) -> None:
         r.read()
 
 
+# R2 の一時的な失敗（5xx・接続の切れ）は待ってやり直す。Catalog #12（2026-10-18）は HTTP 500 が 1 回出ただけで、
+# その日の残り 1,800 枚ほどをまるごと見送っていた。4xx（鍵の権限・入れ物が無い）はやり直さずに止める
+RETRY_WAITS = (2, 8)
+
+
+def _transient(e: Exception) -> bool:
+    if isinstance(e, urllib.error.HTTPError):
+        return e.code >= 500
+    return isinstance(e, (urllib.error.URLError, TimeoutError, ConnectionError))
+
+
 def build(data: Path, out: Path, *, bucket: str, limit: int, put=put_object,
-          get=get_object, delete=delete_object, reshrink: int = 0) -> dict:
+          get=get_object, delete=delete_object, reshrink: int = 0, sleep=time.sleep) -> dict:
     account, token = os.environ.get("CLOUDFLARE_ACCOUNT_ID", ""), os.environ.get("CLOUDFLARE_API_TOKEN", "")
     done = load(data)
     files = sorted(f for f in (data / IMG).iterdir() if f.is_file()) if (data / IMG).exists() else []
@@ -170,15 +182,24 @@ def build(data: Path, out: Path, *, bucket: str, limit: int, put=put_object,
                 stop = f"R2 の保存が上限 {FT.CAPS['r2_bytes']:,} バイトに届くので止めた（無料枠 10 GB）"
                 break
             m = FT.month()
-            u["r2"]["class_a"][m] = FT.r2_class_a(u) + 1       # 送る前に数える
-            try:
-                put(account, token, bucket, key, body, ctype)
-            except urllib.error.HTTPError as e:
-                # 401/403: the token has no R2 access; 404: the bucket does not exist.
-                stop = f"R2 への書き込みを止めた（HTTP {e.code}）。鍵に R2 の権限があるか、バケット {bucket} があるかを確かめる"
+            failure = None
+            for wait in (*RETRY_WAITS, None):
+                u["r2"]["class_a"][m] = FT.r2_class_a(u) + 1   # 送る前に数える（やり直しも 1 回ずつ数え、少なく数えない）
+                try:
+                    put(account, token, bucket, key, body, ctype)
+                    failure = None
+                    break
+                except Exception as e:                               # noqa: BLE001
+                    failure = e
+                    if wait is None or not _transient(e):
+                        break
+                    sleep(wait)
+            if isinstance(failure, urllib.error.HTTPError):
+                # 401/403: the token has no R2 access; 404: the bucket does not exist; 5xx: R2 kept failing.
+                stop = f"R2 への書き込みを止めた（HTTP {failure.code}）。鍵に R2 の権限があるか、バケット {bucket} があるかを確かめる"
                 break
-            except Exception as e:                                   # noqa: BLE001
-                stop = f"R2 への書き込みを止めた（{type(e).__name__}）"
+            if failure is not None:
+                stop = f"R2 への書き込みを止めた（{type(failure).__name__}）"
                 break
             u["r2"]["sizes"][key] = size
             got[f.stem] = key
@@ -230,7 +251,8 @@ def build(data: Path, out: Path, *, bucket: str, limit: int, put=put_object,
             "\n".join(s.replace("INSERT INTO", "INSERT OR REPLACE INTO", 1) for s in sql) + "\n", encoding="utf-8")
     (out / "pending.json").write_text(json.dumps({**done, **got}, ensure_ascii=False, sort_keys=True), encoding="utf-8")
     return {"uploaded": len(got) - n_re, "reshrunk": n_re, "already": len(done),
-            "left": len(files) - len(done) - (len(got) - n_re), "stopped": stop,
+            # 残り: 手元にあって、まだ R2 に入っていないもの（入れ終えたものは作業データから外れるので、files から引かない）
+            "left": sum(1 for f in files if f.suffix.lower() in TYPES and f.stem not in done and f.stem not in got), "stopped": stop,
             "r2_bytes": FT.r2_bytes(u), "r2_class_a_month": FT.r2_class_a(u)}
 
 
