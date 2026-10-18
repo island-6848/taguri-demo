@@ -335,15 +335,20 @@ class FavouriteSeedTests(unittest.TestCase):
         self.assertNotIn(("出演", "推し"), values)
         n, v = values[("出演", "共演者")]
         self.assertEqual(n, 0)                       # n counts the user's own ratings only
-        self.assertAlmostEqual(v, UR.SEED_Z / (1 + 3))
+        # お気に入りの種は FAV_SEED_W 倍の重さ（起案者の指示 2026-10-18「お気に入り＞興味あり」）
+        W = UR.FAV_SEED_W
+        self.assertAlmostEqual(v, W * UR.SEED_Z / (W + 3))
         self.assertGreater(values[("#形式", "ミュージカル")][1], 0)
 
     def test_seed_fades_as_ratings_come_in(self):
         other = [{"key": f"r{i}", "verdict": "○", "people": [["出演", f"別人{i}"]]} for i in range(9)]
         early = UR.person_values([], self.seeds, {"推し"})[0][("出演", "共演者")][1]
         later = UR.person_values(other, self.seeds, {"推し"})[0][("出演", "共演者")][1]
-        self.assertAlmostEqual(later, (3 / 12) * UR.SEED_Z / (3 / 12 + 3))
-        self.assertLess(later, early / 3)
+        W = UR.FAV_SEED_W
+        self.assertAlmostEqual(later, (3 / 12) * W * UR.SEED_Z / ((3 / 12) * W + 3))
+        # 評価 9 件で、種の値は (3/12·W + 3) / (3/12·(W + 3)) 分の 1 に薄まる（W = 1 で 3.25、W = 2 で 2.8）
+        self.assertAlmostEqual(early / later, ((3 / 12) * W + 3) / ((3 / 12) * (W + 3)))
+        self.assertLess(later, early / 2.5)
 
     def test_no_seeds_changes_nothing(self):
         rated = [{"key": "a", "verdict": "◎", "people": [["出演", "甲"]]},
