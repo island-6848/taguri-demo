@@ -9,7 +9,7 @@ import {suggest} from './screens/suggest.js';
 import {exportPayload} from './screens/settings.js';
 import {chooseVariant} from './reco-gate.js';
 import {R2_READS_CAP, r2ReadAllowed, d1RoomLeft, d1Bytes, D1_BYTES_CAP, MAX_ACCOUNTS} from './free-tier.js';
-import {rateLimit, checkNewAccount} from './rate-limit.js';
+import {rateLimit, checkNewAccount, guardedUserInsert, countNewAccount, confirmNewAccount} from './rate-limit.js';
 // Writes that only remove a user's rows: allowed even when D1 is at its storage cap.
 // 保存の上限でも通す操作（減らす操作と、既にある行を書き換えるだけの規約の同意 terms.agreeAction）
 const SHRINKING_ACTIONS = new Set(['drop_work', 'purge_work', 'unseen', 'agree']);
@@ -105,12 +105,16 @@ async function currentUser(request, db) {
 }
 // New session for uid; the caller's old session (if any) is revoked so a
 // session fixed before sign-in cannot carry over (session rotation).
+// The session row goes in only when the user row exists: a new account's row is
+// added earlier in the same batch only while the sign-up caps hold
+// (rate-limit.guardedUserInsert, #124), so a refused sign-up leaves no session
+// and keeps the device's old one.
 async function startSession(db, uid, commands, oldRaw) {
   const session = token();
-  if (oldRaw) commands.push(db.prepare('DELETE FROM sessions WHERE hash=?').bind(await hash(oldRaw)));
+  if (oldRaw) commands.push(db.prepare('DELETE FROM sessions WHERE hash=? AND EXISTS (SELECT 1 FROM users WHERE id=?)').bind(await hash(oldRaw),uid));
   // Delete expired sessions and bound the number of devices per account.
   commands.push(db.prepare('DELETE FROM sessions WHERE user_id=? AND (expires_at<=? OR hash NOT IN (SELECT hash FROM sessions WHERE user_id=? ORDER BY expires_at DESC LIMIT 9))').bind(uid,now(),uid));
-  commands.push(db.prepare('INSERT INTO sessions(hash,user_id,expires_at,created_at) VALUES(?,?,?,?)').bind(await hash(session),uid,now()+TTL,now()));
+  commands.push(db.prepare('INSERT INTO sessions(hash,user_id,expires_at,created_at) SELECT ?,id,?,? FROM users WHERE id=?').bind(await hash(session),now()+TTL,now(),uid));
   await db.batch(commands);
   return session;
 }
@@ -167,11 +171,13 @@ async function firebaseSignIn(request, env) {
     if (input.intent === 'login') fail(404,'この Google・メールは、まだ登録されていません。はじめての方は、下の「新規登録」から始めてください。');
     if (env.ALLOW_REGISTRATION !== 'true') fail(503,'新規登録を一時停止しています。');
     requireAgreement(input, fail);
-    await checkNewAccount(db, env, fail, undefined, request);
+    const plan = await checkNewAccount(db, env, fail, undefined, request);
     uid = crypto.randomUUID(); created = true;
-    commands.push(db.prepare('INSERT INTO users(id,recovery_hash,created_at,firebase_uid,terms_version,terms_at) VALUES(?,?,?,?,?,?)').bind(uid,'firebase:'+token(),now(),identity.uid,TERMS_VERSION,now()));
+    commands.push(guardedUserInsert(db, plan, ['id','recovery_hash','created_at','firebase_uid','terms_version','terms_at'], [uid,'firebase:'+token(),now(),identity.uid,TERMS_VERSION,now()]),
+      ...countNewAccount(db, plan, uid));
   }
   const session = await startSession(db, uid, commands, oldRaw);
+  if (created) await confirmNewAccount(db, env, fail, uid, request);
   return json({linked,created},200,{'Set-Cookie':cookie(session)});
 }
 // Account deletion (security rules R7). Irreversible, so it needs a fresh
@@ -339,7 +345,7 @@ async function state(db, uid) {
   const result = await db.batch([db.prepare("SELECT id,title,date,time,venue,rating,note,COALESCE(stage_id,'') AS stage_id,aspects FROM records WHERE user_id=? ORDER BY date DESC,id LIMIT 500").bind(uid),db.prepare('SELECT name,kind FROM favourites WHERE user_id=? ORDER BY kind,name LIMIT 200').bind(uid),db.prepare('SELECT stage_id,status FROM reactions WHERE user_id=? ORDER BY stage_id LIMIT 500').bind(uid)]);
   return {version:2,records:result[0].results,favourites:result[1].results,reactions:result[2].results};
 }
-const passkey = passkeyRoutes({fail, json, token, hash, now, body, cookie, sessionCookie, currentUser, startSession, checkNewAccount, freshSession});
+const passkey = passkeyRoutes({fail, json, token, hash, now, body, cookie, sessionCookie, currentUser, startSession, checkNewAccount, guardedUserInsert, countNewAccount, confirmNewAccount, freshSession});
 // Public Firebase web config. apiKey identifies the project to Google; it is
 // not a secret (access is governed by authorized domains and the sign-in
 // methods enabled in the console). Nothing here is read from user input.
@@ -545,11 +551,11 @@ export default {
       }
       if (method === 'POST' && ['/api/register','/api/recover'].includes(path)) {
         const input = await body(request);
-        let uid; let recovery;
+        let uid; let recovery; let plan;
         if (path === '/api/register') {
           if (env.ALLOW_REGISTRATION !== 'true') fail(503,'新規登録を一時停止しています。');
           requireAgreement(input, fail);
-          await checkNewAccount(env.DB, env, fail, undefined, request);
+          plan = await checkNewAccount(env.DB, env, fail, undefined, request);
           recovery = token(); uid = crypto.randomUUID();
         } else {
           const code = string(input.code, 80, true).replaceAll('-', '').toLowerCase();
@@ -558,9 +564,11 @@ export default {
           if (!uid) fail(401,'復旧コードを確認してください。');
         }
         const commands = [];
-        if (recovery) commands.push(env.DB.prepare('INSERT INTO users(id,recovery_hash,created_at,terms_version,terms_at) VALUES(?,?,?,?,?)').bind(uid,await hash(recovery),now(),TERMS_VERSION,now()));
+        if (recovery) commands.push(guardedUserInsert(env.DB, plan, ['id','recovery_hash','created_at','terms_version','terms_at'], [uid,await hash(recovery),now(),TERMS_VERSION,now()]),
+          ...countNewAccount(env.DB, plan, uid));
         // この端末の古いセッションは消す（firebase・パスキーと同じ。共有の端末で前の人のセッションが残らない）
         const session = await startSession(env.DB, uid, commands, sessionCookie(request));
+        if (recovery) await confirmNewAccount(env.DB, env, fail, uid, request);
         return json({recovery_code:recovery},200,{'Set-Cookie':cookie(session)});
       }
       if (method === 'POST' && path === '/api/auth/firebase') return await firebaseSignIn(request, env);

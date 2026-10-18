@@ -243,3 +243,21 @@ test('deleting a passkey needs a sign-in within 10 minutes, so a stolen cookie a
   assert.equal((await call('auth/passkeys/delete', {id: up.id}, up.cookie)).status, 401);
   assert.equal(sqlite.prepare('SELECT count(*) AS n FROM passkeys').get().n, 1);
 });
+
+// issue #125・#124: 署名の確認で断られた応答は、同じ接続元の新規登録の枠（1 日 3 件）を減らさない
+test('invalid passkey responses do not use up the address\'s sign-up allowance', async () => {
+  const {sqlite, env} = setup();
+  const ip = '203.0.113.50';
+  const post = (path, value) => worker.fetch(new Request(`${ORIGIN}/api/${path}`, {method: 'POST',
+    headers: {origin: ORIGIN, 'content-type': 'application/json', 'cf-connecting-ip': ip}, body: JSON.stringify({agree: TERMS_VERSION, ...value})}), env);
+  const attempt = async opts => {
+    const {challenge_id, options} = await (await post('auth/passkey/register/options', {})).json();
+    return (await post('auth/passkey/register/verify', {challenge_id, response: await new SoftAuthenticator().create(options, opts)})).status;
+  };
+  for (let i = 0; i < 5; i++) assert.equal(await attempt({origin: 'https://evil.example'}), 401);
+  assert.equal(sqlite.prepare("SELECT count(*) AS n FROM usage WHERE k LIKE 'newacct:%'").get().n, 0);
+  for (let i = 0; i < 3; i++) assert.equal(await attempt(), 200);
+  assert.equal(await attempt(), 429);
+  assert.equal(sqlite.prepare('SELECT count(*) AS n FROM users').get().n, 3);
+  assert.equal(sqlite.prepare('SELECT count(*) AS n FROM passkeys').get().n, 3);
+});

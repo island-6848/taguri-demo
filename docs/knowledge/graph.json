@@ -1911,6 +1911,23 @@
    "verifies": []
   },
   {
+   "id": "dec-signup-cap-atomic",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "新規登録の上限（総数・1 日・接続元）は、利用者の行を足す書き込みの中で確かめる。下見は読むだけで、枠は登録が通ったときだけ数える",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/124",
+    "https://github.com/island-6848/taguri-demo/issues/125",
+    "cloudflare/src/rate-limit.js",
+    "cloudflare/src/worker.js",
+    "cloudflare/src/passkey.js",
+    "cloudflare/test/rate-limit.test.js",
+    "cloudflare/test/passkey.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-source-kind-no-price",
    "type": "decision",
    "status": "adopted",
@@ -7616,6 +7633,21 @@
    "from": "dec-signed-out-gate",
    "rel": "affects",
    "to": "comp-cf-worker"
+  },
+  {
+   "from": "dec-signup-cap-atomic",
+   "rel": "supports",
+   "to": "dec-rate-limit"
+  },
+  {
+   "from": "dec-signup-cap-atomic",
+   "rel": "depends_on",
+   "to": "dec-account-cap-counted"
+  },
+  {
+   "from": "dec-signup-cap-atomic",
+   "rel": "supports",
+   "to": "dec-free-tier-only"
   },
   {
    "from": "dec-spread-and-partners",

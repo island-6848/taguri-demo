@@ -100,3 +100,53 @@ test('one address makes at most 3 accounts a day; another address still can, and
   assert.equal((await post('/api/register', '198.51.100.7')).status, 200);
   assert.equal(sqlite.prepare("SELECT count(*) AS n FROM usage WHERE k LIKE 'newacct:2000%'").get().n, 0);
 });
+
+// issue #124: 同時に来た登録が、同じ残り枠を読んでそろって通らない。どの要求も下見を読み終えてから
+// 書き込みに進むように止めておき（いちばん食い違いやすい順）、D1 のように batch を 1 つずつ実行する
+function racing(n, extra = {}) {
+  const s = setup(extra);
+  const batch = s.env.DB.batch;
+  let waiting = 0, release; const all = new Promise(r => { release = r; });
+  let chain = Promise.resolve();
+  s.env.DB.batch = async cs => {
+    if (++waiting >= n) release();
+    await all;
+    const run = chain.then(() => batch(cs)); chain = run.catch(() => {}); return run;
+  };
+  return s;
+}
+const users = sqlite => sqlite.prepare('SELECT count(*) AS n FROM users').get().n;
+
+test('ten sign-ups at once from one address make only 3 accounts, and the counter matches', async () => {
+  const {post, sqlite} = racing(10);
+  const codes = (await Promise.all(Array.from({length: 10}, () => post('/api/register', '198.51.100.9')))).map(r => r.status);
+  assert.equal(codes.filter(c => c === 200).length, 3, String(codes));
+  assert.ok(codes.filter(c => c !== 200).every(c => c === 429), String(codes));
+  assert.equal(users(sqlite), 3);
+  assert.equal(sqlite.prepare("SELECT n FROM usage WHERE k LIKE 'newacct:%'").get().n, 3);
+  // 断られた要求はセッションを残さない
+  assert.equal(sqlite.prepare('SELECT count(*) AS n FROM sessions').get().n, 3);
+});
+
+test('sign-ups at once from many addresses stop at the daily cap and at the total cap', async () => {
+  const day = racing(6, {NEW_ACCOUNTS_PER_DAY: '2'});
+  const a = (await Promise.all(Array.from({length: 6}, (_, i) => day.post('/api/register', `192.0.2.${i}`)))).map(r => r.status);
+  assert.equal(a.filter(c => c === 200).length, 2, String(a));
+  assert.equal(users(day.sqlite), 2);
+  // 断られた接続元の数は増えない
+  assert.equal(day.sqlite.prepare("SELECT count(*) AS n FROM usage WHERE k LIKE 'newacct:%'").get().n, 2);
+  const total = racing(6, {MAX_ACCOUNTS: '4'});
+  total.sqlite.exec("INSERT INTO users(id,recovery_hash,created_at) VALUES('old1','h1',0),('old2','h2',0)");
+  const b = (await Promise.all(Array.from({length: 6}, (_, i) => total.post('/api/register', `192.0.2.${i}`)))).map(r => r.status);
+  assert.equal(b.filter(c => c === 200).length, 2, String(b));
+  assert.ok(b.filter(c => c !== 200).every(c => c === 503), String(b));
+  assert.equal(users(total.sqlite), 4);
+});
+
+test('the sign-up check only reads: nothing is counted until the account is written', async () => {
+  const {env, sqlite} = setup();
+  const request = new Request(ORIGIN + '/api/register', {headers: {'cf-connecting-ip': '198.51.100.3'}});
+  const fail = (status, message) => { throw Object.assign(new Error(message), {status}); };
+  for (let i = 0; i < 5; i++) await checkNewAccount(env.DB, env, fail, undefined, request);
+  assert.equal(sqlite.prepare('SELECT count(*) AS n FROM usage').get().n, 0);
+});
