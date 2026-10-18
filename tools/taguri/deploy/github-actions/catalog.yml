@@ -50,21 +50,21 @@ jobs:
       MODE: ${{ github.event.inputs.mode || (github.event.schedule == '17 19 * * 6' && 'weekly') || 'daily' }}
     steps:
       - name: Check out the public code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: island-6848/taguri-demo
           ref: master
       - name: Check out the previous working data (state branch)
         id: state
         continue-on-error: true
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: state
           path: state
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: '22'
       - name: Install Pillow (posters are shrunk before they go into R2)
@@ -90,6 +90,17 @@ jobs:
         if: steps.plan.outputs.mode != 'index'
         timeout-minutes: ${{ fromJSON(steps.plan.outputs.catalog_minutes) }}
         run: python tools/taguri/publish_catalog.py --mode "${{ steps.plan.outputs.mode }}" --dry-run --out catalog.tar.gz
+      - name: Queue the synopses of new stages (cached pages only, every day)
+        # あらすじの読み取り待ち（data/credits/synopsis_queue.jsonl）を毎日足す（起案者の指摘 2026-10-16
+        # 「あらすじ取れないと興味ありなしの推薦の意味ない」）。これまでは週 1 の取り直しの中だけで作っていたので、
+        # 待ちが一度も出ず、あらすじは 0 件だった。ここは手元に控えたページだけを使い（--no-fetch）、取得も LLM も
+        # 呼ばない（数十秒）。読むのは起案者の Claude の定期実行（docs/knowledge の dec-synopsis-reader-claude）
+        if: steps.plan.outputs.mode == 'daily'
+        continue-on-error: true
+        timeout-minutes: 10
+        env:
+          TAGURI_THEME_READER: 'queue'
+        run: python tools/credits/extract_theme_llm.py --side candidate --no-fetch
       - name: Deliver the catalogue to D1 (changed rows only)
         if: steps.plan.outputs.run == 'true'
         # 公演一覧と、一度だけ読んだあらすじを本番の D1 に入れる（cloudflare/scripts/deliver_catalogue.py）。
@@ -119,20 +130,15 @@ jobs:
           done
           # 入れ終えてから「入れた」と記録する（失敗した分は次回まるごと入れ直す）
           python scripts/deliver_catalogue.py commit --data ../data --out ../d1-out
-      - name: Measure the Worker's recommendation on the real index (CPU and D1 rows)
-        # 本物の索引で、評価 0〜300 件の作り物の利用者のおすすめを Worker と同じ関数で計算し、
-        # JavaScript の CPU 時間と D1 の読み込み行数を出す（cloudflare/scripts/measure_worker.mjs、S20・S21）。
-        # 利用者の記録は使わない。結果を見るだけで、失敗しても先へ進む
-        if: always() && steps.plan.outputs.run == 'true' && steps.plan.outputs.mode != 'index'
+      - name: Fetch posters of past stages (newest first)
+        # 過去の公演（2019 年以降）のポスター（起案者の指示 2026-10-16「過去の公演の全てのポスターデータも欲しい」）。
+        # taguri-demo の tools/taguri/posters.py --past。ページは 1 公演 1 回だけ読み直して画像の URL を控え、
+        # 画像は 1.1 秒に 1 枚（polite_http）。分数は Plan の段が無料枠から決める（0 の日は取らない）。
+        # 取ったものは次の段で R2 に入る（無料枠の控えを見て、入れられる分だけ）。失敗しても先へ進む
+        if: always() && steps.plan.outputs.run == 'true' && steps.plan.outputs.mode != 'index' && steps.plan.outputs.poster_minutes != '0'
         continue-on-error: true
-        working-directory: cloudflare
-        run: |
-          # 新しく作った索引は index-upload-01.sql … に分けてある。前と同じなら index.sql に残っている
-          idx=../d1-out/index.sql
-          if ls ../d1-out/index-upload-*.sql >/dev/null 2>&1; then cat ../d1-out/index-upload-*.sql > ../d1-out/index-measure.sql; idx=../d1-out/index-measure.sql; fi
-          if [ ! -f "$idx" ]; then echo "索引が無いので測らない"; exit 0; fi
-          npm install --no-save --no-package-lock --omit=dev --no-audit --no-fund --silent
-          node scripts/measure_worker.mjs --index "$idx"
+        timeout-minutes: ${{ fromJSON(steps.plan.outputs.poster_timeout) }}
+        run: python tools/taguri/posters.py --past --max-minutes "${{ steps.plan.outputs.poster_minutes }}"
       - name: Upload posters to R2 (new ones only)
         # 取り込んだポスターを R2 に移し、D1 の poster 表に載せる（cloudflare/scripts/deliver_posters.py）。
         # R2 は無料枠を越えると請求が来るので、保存 8 GB・月 30 万回の手前で止まる（free_tier.py）。
@@ -176,10 +182,29 @@ jobs:
             npx --yes wrangler@4 d1 execute taguri-demo --remote --yes --file ../d1-past/past-upload.sql
           fi
           python scripts/deliver_past.py commit --data ../data --out ../d1-past
+      - name: Put the name index of the past stages into R2 (changed files only)
+        # お気に入りのハッシュタグの画面が、名前から過去の公演を引くための索引（taguri-demo の
+        # cloudflare/scripts/deliver_past_index.py、docs/knowledge の dec-past-name-index）。
+        # 名前で 256 個に分けた JSON を R2 に置き、中身が変わったものだけ送る（ふだんは 1 日 256 回まで）。
+        # R2 の保存と書き込み回数は free_tier.py の控えで数え、上限の手前で止まる。失敗しても先へ進む
+        if: always() && steps.plan.outputs.run == 'true' && steps.plan.outputs.mode != 'index'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        working-directory: cloudflare
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "Cloudflare の鍵が無いので R2 には入れない"; exit 0
+          fi
+          if [ ! -f scripts/deliver_past_index.py ]; then
+            echo "taguri-demo にまだ deliver_past_index.py が無い"; exit 0
+          fi
+          python scripts/deliver_past_index.py --data ../data || echo "名前の索引は入れられなかった（画面は D1 の一覧で代わりに探す）"
       - name: Back up the user records (encrypted, 30 days in R2)
         # 利用者の記録の表だけを書き出し、行数を D1 と比べてから gpg（AES-256）で暗号化して R2 の
         # backup/d1/ に置く。30 日より古いものは消す（cloudflare/scripts/backup_d1.py、S31）。
-        # 合言葉 BACKUP_PASSPHRASE が無ければ何もしない。失敗しても取得の結果の保存は続ける
+        # 合言葉 BACKUP_PASSPHRASE が無ければ何もしない。失敗しても取得の結果の保存は続ける。
+        # 雛形（taguri-demo の tools/taguri/deploy/github-actions/catalog.yml）にはあったが、ここに入っていなかった（2026-10-18 に足した）
         if: always() && steps.plan.outputs.run == 'true' && steps.plan.outputs.mode != 'index'
         continue-on-error: true
         env:

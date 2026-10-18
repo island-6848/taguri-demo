@@ -2,6 +2,23 @@
  "version": "taguri-knowledge-v1",
  "nodes": [
   {
+   "id": "actions-node24-versions",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-18",
+   "title": "GitHub の公式アクションで Node.js 24 で動く版は checkout@v5・setup-node@v5・setup-python@v6・upload-artifact@v6・deploy-pages@v5・configure-pages@v6。upload-pages-artifact は v5 から中で upload-artifact@v7 を使う",
+   "sources": [
+    "https://raw.githubusercontent.com/actions/checkout/v5/action.yml",
+    "https://raw.githubusercontent.com/actions/setup-node/v5/action.yml",
+    "https://raw.githubusercontent.com/actions/setup-python/v6/action.yml",
+    "https://raw.githubusercontent.com/actions/upload-artifact/v6/action.yml",
+    "https://raw.githubusercontent.com/actions/deploy-pages/v5/action.yml",
+    "https://raw.githubusercontent.com/actions/configure-pages/v6/action.yml",
+    "https://raw.githubusercontent.com/actions/upload-pages-artifact/v5/action.yml"
+   ],
+   "verifies": []
+  },
+  {
    "id": "auto-link-current-state",
    "type": "finding",
    "status": "confirmed",
@@ -6037,6 +6054,11 @@
   }
  ],
  "edges": [
+  {
+   "from": "actions-node24-versions",
+   "rel": "affects",
+   "to": "q-review-1015"
+  },
   {
    "from": "auto-link-current-state",
    "rel": "raises",

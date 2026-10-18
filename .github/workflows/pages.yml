@@ -27,8 +27,8 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/configure-pages@v5
+      - uses: actions/checkout@v5
+      - uses: actions/configure-pages@v6
       # web/ にプレゼン資料だけを足した公開用フォルダを作る
       # デモ版（/taguri-demo/）とサービス版（/taguri-demo/app/）は同じ画面のファイルを使い、
       # つなぐAPIサーバーだけを変える（web/config.js・docs/editions.md）。サービス版の
@@ -52,8 +52,8 @@ jobs:
           cp _site/index.html _site/404.html
           cp docs/000003-final-presentation-taguri.html _site/docs/
           cp docs/000010-user-guide-taguri.html _site/docs/
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: _site
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
