@@ -12,43 +12,111 @@
 const pad = n => String(n).padStart(2, '0');
 const unescapeText = s => s.replace(/\\([\\;,nN])/g, (_, c) => (c === 'n' || c === 'N' ? '\n' : c));
 
-/** "20251108T190000Z" / "20251108T190000" / "20251108" -> {date, time} in Japan time. */
-export function icsDate(value) {
-  const m = /^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})?(Z)?)?$/.exec(value.trim());
-  if (!m) return null;
-  const [, y, mo, d, h, mi, , z] = m;
-  if (h === undefined) return {date: `${y}-${mo}-${d}`, time: ''};
-  if (z) {
-    // UTC: Japan is UTC+9 all year (no daylight saving).
-    const t = new Date(Date.UTC(+y, +mo - 1, +d, +h, +mi) + 9 * 3600e3);
-    return {date: `${t.getUTCFullYear()}-${pad(t.getUTCMonth() + 1)}-${pad(t.getUTCDate())}`, time: `${pad(t.getUTCHours())}:${pad(t.getUTCMinutes())}`};
+/** A real calendar day "YYYY-MM-DD" (no 2026-02-30), the same check as /api/record (worker.js). */
+export function isDay(s) {
+  if (typeof s !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+  const t = new Date(`${s}T00:00:00Z`);
+  return !Number.isNaN(t.getTime()) && t.toISOString().slice(0, 10) === s;
+}
+/** "HH:MM" between 00:00 and 23:59. */
+export const isTime = s => typeof s === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(s);
+
+const JST = 9 * 3600e3;      // Japan is UTC+9 all year (no daylight saving)
+const jstOf = ms => { const t = new Date(ms + JST); return {date: t.toISOString().slice(0, 10), time: `${pad(t.getUTCHours())}:${pad(t.getUTCMinutes())}`}; };
+const TOKYO = new Set(['Asia/Tokyo', 'Japan', 'Tokyo Standard Time', 'JST']);
+const zones = new Map();
+/** An Intl formatter for an IANA zone name, or null when this browser / Worker does not know it. */
+function zoneFormat(tzid) {
+  if (!zones.has(tzid)) {
+    let f = null;
+    try { f = new Intl.DateTimeFormat('en-US', {timeZone: tzid, hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric'}); } catch { f = null; }
+    zones.set(tzid, f);
   }
-  // Floating or TZID time: read as written (a theatre visit is put in local time).
-  return {date: `${y}-${mo}-${d}`, time: `${h}:${mi}`};
+  return zones.get(tzid);
+}
+/** Wall-clock time in `zone` written as UTC millis, minus the instant: the zone's offset then. */
+function offsetAt(f, ms) {
+  const p = Object.fromEntries(f.formatToParts(new Date(ms)).map(x => [x.type, x.value]));
+  return Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour % 24, +p.minute, +p.second) - ms;
 }
 
-/** VEVENTs of an iCal text: [{summary, date, time, location, recurring}]. A theatre visit is
- * never a repeating event, so repeating ones are marked for the caller to leave out. */
+/**
+ * "20251108T190000Z" / "20251108T190000" / "20251108" -> {date, time} in Japan time, or null
+ * when the day or time cannot be (2026-02-30, 29:60). `tzid` is DTSTART's TZID: a time in another
+ * zone is turned into Japan time; a zone that cannot be told keeps the time as written and is
+ * marked {tz_unknown: true} so the screen can say so (never quietly taken as Japan time).
+ */
+export function icsDate(value, tzid = '') {
+  const m = /^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})?(Z)?)?$/.exec(String(value).trim());
+  if (!m) return null;
+  const [, y, mo, d, h, mi, sec = '00', z] = m;
+  const date = `${y}-${mo}-${d}`;
+  if (!isDay(date)) return null;
+  if (h === undefined) return {date, time: ''};
+  if (!isTime(`${h}:${mi}`) || +sec > 60) return null;
+  const wall = Date.UTC(+y, +mo - 1, +d, +h, +mi);
+  if (z) return jstOf(wall);
+  // Floating time (no zone) is read as written: a theatre visit is put in local time.
+  const zone = String(tzid).replace(/^"|"$/g, '').trim();
+  if (!zone || TOKYO.has(zone)) return {date, time: `${h}:${mi}`};
+  // "/mozilla.org/20050126_1/Asia/Tokyo" and the like: the IANA name is at the end.
+  const f = zoneFormat(zone) || zoneFormat(zone.split('/').slice(-2).join('/'));
+  if (!f) return {date, time: `${h}:${mi}`, tz_unknown: true};
+  // The instant whose wall-clock time in that zone is the one written (twice, for a DST change).
+  let t = wall - offsetAt(f, wall);
+  t = wall - offsetAt(f, t);
+  return jstOf(t);
+}
+
+/**
+ * VEVENTs of an iCal text: [{summary, date, time, location, recurring}] (+ tz_unknown when the
+ * time zone could not be told). A theatre visit is never a repeating event, so repeating ones
+ * are marked for the caller to leave out; cancelled ones are left out here (as the Google API
+ * path does). Only the VEVENT's own lines count: a VALARM's SUMMARY / DESCRIPTION inside it
+ * does not. An event whose start is not a real day or time comes back as {summary, bad} so the
+ * screen can name it.
+ */
 export function parseIcs(text) {
   const lines = String(text).replace(/\r\n?/g, '\n').replace(/\n[ \t]/g, '').split('\n');
   const out = [];
+  const stack = [];
   let ev = null;
-  for (const line of lines) {
-    if (line === 'BEGIN:VEVENT') { ev = {}; continue; }
-    if (line === 'END:VEVENT') {
-      if (ev && ev.summary && ev.start) out.push({summary: ev.summary, date: ev.start.date, time: ev.start.time, location: ev.location || '', recurring: Boolean(ev.rrule)});
-      ev = null;
+  for (const raw of lines) {
+    const line = raw.trimEnd();
+    const begin = /^BEGIN:(.+)$/i.exec(line), end = /^END:(.+)$/i.exec(line);
+    if (begin) {
+      const kind = begin[1].trim().toUpperCase();
+      stack.push(kind);
+      if (kind === 'VEVENT') ev = {};
       continue;
     }
-    if (!ev) continue;
+    if (end) {
+      const kind = end[1].trim().toUpperCase();
+      const at = stack.lastIndexOf(kind);
+      if (at >= 0) stack.length = at;
+      if (kind === 'VEVENT' && ev) {
+        if (ev.summary && !ev.cancelled) {
+          if (ev.start) out.push({summary: ev.summary, date: ev.start.date, time: ev.start.time, location: ev.location || '', recurring: Boolean(ev.rrule), ...(ev.start.tz_unknown ? {tz_unknown: true} : {})});
+          else if (ev.badStart) out.push({summary: ev.summary, date: '', time: '', location: '', recurring: Boolean(ev.rrule), bad: '日付・時刻が正しくありません'});
+        }
+        ev = null;
+      }
+      continue;
+    }
+    if (!ev || stack[stack.length - 1] !== 'VEVENT') continue;
     const colon = line.indexOf(':');
     if (colon < 0) continue;
     const head = line.slice(0, colon), value = line.slice(colon + 1);
-    const semi = head.indexOf(';');
-    const name = (semi < 0 ? head : head.slice(0, semi)).toUpperCase();
+    const [nameRaw, ...params] = head.split(';');
+    const name = nameRaw.toUpperCase();
     if (name === 'SUMMARY') ev.summary = unescapeText(value).trim();
     else if (name === 'LOCATION') ev.location = unescapeText(value).replace(/\s+/g, ' ').trim();
-    else if (name === 'DTSTART') ev.start = icsDate(value);
+    else if (name === 'DTSTART') {
+      const tzid = params.find(p => /^TZID=/i.test(p))?.slice(5) || '';
+      ev.start = icsDate(value, tzid);
+      ev.badStart = !ev.start;
+    }
+    else if (name === 'STATUS') ev.cancelled = value.trim().toUpperCase() === 'CANCELLED';
     else if (name === 'RRULE' || name === 'RECURRENCE-ID') ev.rrule = true;
   }
   return out;
@@ -232,11 +300,41 @@ export function readMail({from = '', subject = '', text = ''}) {
   if (!got.title) return {skip: '公演名を読み取れませんでした'};
   if (!isTheatre(got.title)) return {skip: '演劇ではなさそうです'};
   if (!got.date) return {skip: '公演日を読み取れませんでした', title: got.title};
-  return {title: got.title, date: got.date, time: got.time || '', venue: got.venue || '', site, date_unsure: Boolean(got.date_unsure)};
+  // 2026/2/30 or 25:00 in a mail (a typo, or another date read by mistake) is not used.
+  if (!isDay(got.date)) return {skip: `公演日（${got.date}）が実在しない日付です`, title: got.title};
+  return {title: got.title, date: got.date, time: isTime(got.time || '') ? got.time : '', venue: got.venue || '', site, date_unsure: Boolean(got.date_unsure)};
 }
 
 /** Pasted text with several mails: split where a new "差出人/From:" header or a long rule starts. */
 export function splitPasted(text) {
   const parts = String(text).replace(/\r\n?/g, '\n').split(/\n(?=(?:From|差出人)[:：])|\n[-=─━]{20,}\n/);
   return parts.map(p => p.trim()).filter(p => p.length > 20);
+}
+
+// ---------------------------------------------------------------- sending
+
+export const BODY_MAX = 8192;     // the Worker's request body cap in bytes (screens/index.js readInput)
+export const ITEMS_MAX = 20;      // items a request (screens/import.js MAX_ITEMS)
+const bytes = v => new TextEncoder().encode(JSON.stringify(v)).length;
+/**
+ * Requests for `items`, each body {items: [...]} at most BODY_MAX bytes in UTF-8 and ITEMS_MAX
+ * items (a long Japanese title is 3 bytes a letter, so 20 of them can be over 8 KB).
+ * -> {parts: [[item...]...], tooBig: [item...]}: an item too big alone is set aside for the
+ * screen to name, instead of the whole import stopping at a 413. `send` is what goes in the
+ * body for an item (the parts hold the items themselves).
+ */
+export function chunkItems(items, {max = BODY_MAX, count = ITEMS_MAX, send = x => x} = {}) {
+  const parts = [], tooBig = [];
+  const empty = bytes({items: []});
+  let part = [], size = empty;
+  for (const item of items) {
+    const n = bytes(send(item));
+    if (empty + n > max) { tooBig.push(item); continue; }
+    const add = n + (part.length ? 1 : 0);             // the comma
+    if (part.length >= count || size + add > max) { parts.push(part); part = []; size = empty; }
+    size += n + (part.length ? 1 : 0);
+    part.push(item);
+  }
+  if (part.length) parts.push(part);
+  return {parts, tooBig};
 }

@@ -16,11 +16,12 @@
 import {titleKey} from './works.js';
 import {pickStage, autoLink} from './autolink.js';
 import {ValueError, localNow, slice, strip} from './py.js';
+// The same day / time check as the browser's reader (and /api/record): no 2026-02-30, no 29:60.
+import {isDay, isTime} from '../client/import-parse.js';
 
 const MAX_ITEMS = 20;            // the request body is capped at 8 KB
 const MAX_GUESSES = 4;
 const PER_QUERY = 90;            // D1 binds at most 100 parameters
-const DAY = /^\d{4}-\d{2}-\d{2}$/;
 const STAGE_ID = /^[0-9A-Za-z_\-]{1,40}$/;
 
 const text = (v, n) => slice(strip(typeof v === 'string' ? v : ''), 0, n).replace(/[\u0000-\u001f\u007f]/g, ' ');
@@ -54,7 +55,7 @@ async function stagesByKey(db, keys) {
 /** POST /api/import_match */
 async function matchAction(input, ctx) {
   const items = itemsOf(input).map(i => ({
-    date: DAY.test(i.date) ? i.date : '',
+    date: isDay(i.date) ? i.date : '',
     keys: [...new Set((Array.isArray(i.guesses) ? i.guesses : []).slice(0, MAX_GUESSES)
       .map(g => titleKey(text(g, 200))).filter(k => Array.from(k).length >= 2))],
   }));
@@ -86,13 +87,24 @@ async function matchAction(input, ctx) {
     : {stage_id: ''})}};
 }
 
-/** POST /api/import_works */
+/** Why an item cannot be recorded, or '' (an empty time is fine; a wrong one is not dropped quietly). */
+function whyNot(i) {
+  if (!i.title) return '題名がありません';
+  if (!i.date) return '日付がありません';
+  if (!isDay(i.date)) return `日付（${i.date}）が実在しません`;
+  if (i.time && !isTime(i.time)) return `時刻（${i.time}）は 00:00〜23:59 で書いてください`;
+  return '';
+}
+
+/** POST /api/import_works -> {added, skipped, rejected: [{index, title, reason}]} */
 async function worksAction(input, ctx) {
-  const items = itemsOf(input).map(i => ({
-    title: text(i.title, 200), date: DAY.test(i.date) ? i.date : '', venue: text(i.venue, 80),
-    time: /^\d{2}:\d{2}$/.test(i.time) ? i.time : '', stage_id: STAGE_ID.test(i.stage_id || '') ? i.stage_id : '',
-  })).filter(i => i.title && i.date);
-  if (!items.length) throw new ValueError('題名と日付のあるものがありません');
+  const all = itemsOf(input).map(i => ({
+    title: text(i.title, 200), date: text(i.date, 20), venue: text(i.venue, 80),
+    time: text(i.time, 10), stage_id: STAGE_ID.test(i.stage_id || '') ? i.stage_id : '',
+  }));
+  const rejected = [], items = [];
+  all.forEach((i, index) => { const reason = whyNot(i); if (reason) rejected.push({index, title: i.title, reason}); else items.push(i); });
+  if (!items.length) throw new ValueError(`記録できるものがありません（${rejected.slice(0, 3).map(r => `${r.title || `${r.index + 1} 件目`}：${r.reason}`).join(' / ')}）`);
   // A stage id is kept only if the catalogue has it (never trust the browser's link).
   const ids = [...new Set(items.map(i => i.stage_id).filter(Boolean))];
   const known = new Set();
@@ -119,7 +131,7 @@ async function worksAction(input, ctx) {
     const unlinked = fresh.filter(r => !r.stage_id).map(r => r.key);
     if (unlinked.length) await autoLink(ctx, unlinked);
   }
-  return {body: {ok: true, added: fresh.length, skipped: rows.length - fresh.length}};
+  return {body: {ok: true, added: fresh.length, skipped: rows.length - fresh.length, rejected}};
 }
 
 export const importScreens = {
