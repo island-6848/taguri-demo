@@ -49,7 +49,11 @@ async function readHand(ctx) {
 }
 
 /** rate_performances.save_hand: the side not given is left as it is; an emptied row is removed. */
-async function saveHand(ctx, workKey, {fields = null, poster = null} = {}) {
+async function saveHand(ctx, workKey, opts = {}) {
+  await ctx.db.batch(handStatements(ctx, workKey, opts));
+}
+/** saveHand の文（ほかの書き込みと 1 つの batch にまとめるとき用、#187） */
+function handStatements(ctx, workKey, {fields = null, poster = null} = {}) {
   if (!workKey) throw new ValueError('work_key が要る');
   const t = now(ctx);
   const stmts = [ctx.db.prepare("INSERT INTO hand_credits (user_id, work_key, fields, poster, updated_at)"
@@ -57,7 +61,7 @@ async function saveHand(ctx, workKey, {fields = null, poster = null} = {}) {
   if (fields !== null) stmts.push(ctx.db.prepare('UPDATE hand_credits SET fields = ?, updated_at = ? WHERE user_id = ? AND work_key = ?').bind(dumps(fields), t, ctx.uid, workKey));
   if (poster !== null) stmts.push(ctx.db.prepare('UPDATE hand_credits SET poster = ?, updated_at = ? WHERE user_id = ? AND work_key = ?').bind(poster, t, ctx.uid, workKey));
   stmts.push(ctx.db.prepare("DELETE FROM hand_credits WHERE user_id = ? AND work_key = ? AND poster = '' AND fields IN ('{}', '')").bind(ctx.uid, workKey));
-  await ctx.db.batch(stmts);
+  return stmts;
 }
 
 // ---------------------------------------------------------------- fix_work
@@ -146,15 +150,18 @@ async function mergeWorks(ctx, workKey, otherKey) {
   if (workKey === otherKey) throw new ValueError('同じ記録どうしはまとめられない');
   // Manual records have no mails (shows), so the earlier one is kept.
   const [keep, drop] = (a.first_date || '9999') <= (b.first_date || '9999') ? [a, b] : [b, a];
-  await ctx.db.prepare('INSERT INTO merges (user_id, work_key, into_key, updated_at) VALUES (?,?,?,?)'
-    + ' ON CONFLICT(user_id, work_key) DO UPDATE SET into_key=excluded.into_key, updated_at=excluded.updated_at')
-    .bind(ctx.uid, drop.work_key, keep.work_key, now(ctx)).run();
+  // 先に読むだけ読み、まとめた印・評価と感想の移動・手で入れた出演者の移動は 1 つの batch で書く（#187）。
+  // 前は印を先に書いていたので、後の書き込みが失敗すると印だけが残り、評価の無いまま片方が隠れた。
   const kv = (await savedWork(ctx, keep.work_key)) || {}, dv = (await savedWork(ctx, drop.work_key)) || {};
+  const hand = await readHand(ctx);
+  const stmts = [ctx.db.prepare('INSERT INTO merges (user_id, work_key, into_key, updated_at) VALUES (?,?,?,?)'
+    + ' ON CONFLICT(user_id, work_key) DO UPDATE SET into_key=excluded.into_key, updated_at=excluded.updated_at')
+    .bind(ctx.uid, drop.work_key, keep.work_key, now(ctx))];
   const moved = [];
   if (!(kv.verdict || '') && (dv.verdict || '')) moved.push('評価');
   if (!strip(kv.note_impression || '') && strip(dv.note_impression || '')) moved.push('感想');
   if (moved.length) {
-    await ctx.db.prepare('INSERT INTO works (user_id, work_key, title, first_date, last_date, times,'
+    stmts.push(ctx.db.prepare('INSERT INTO works (user_id, work_key, title, first_date, last_date, times,'
       + ' verdict, chosen, note_impression, note_motive, updated_at, rated_at)'
       + " VALUES (?,?,?,?,?,?,?,?,?,'',?,?)"
       + ' ON CONFLICT(user_id, work_key) DO UPDATE SET verdict=COALESCE(works.verdict,'
@@ -164,17 +171,17 @@ async function mergeWorks(ctx, workKey, otherKey) {
       + ' rated_at=CASE WHEN works.verdict IS NULL THEN excluded.rated_at ELSE works.rated_at END,'
       + ' updated_at=excluded.updated_at')
       .bind(ctx.uid, keep.work_key, keep.title, keep.first_date || '', keep.last_date || '', keep.times || 1,
-        dv.verdict ?? null, kv.chosen ?? null, dv.note_impression || '', now(ctx), dv.verdict ? (dv.rated_at || dv.updated_at || null) : null).run();
+        dv.verdict ?? null, kv.chosen ?? null, dv.note_impression || '', now(ctx), dv.verdict ? (dv.rated_at || dv.updated_at || null) : null));
   }
-  const hand = await readHand(ctx);
   const kh = hand[keep.work_key] || {}, dh = hand[drop.work_key] || {};
   const takeFields = !handCreditCount(kh.fields || {}) && Boolean(handCreditCount(dh.fields || {}));
   const takePoster = !(kh.poster || '') && Boolean(dh.poster || '');
   if (takeFields) moved.push('手で入れた出演者');
   if (takePoster) moved.push('手で入れたポスター');
   if (takeFields || takePoster) {
-    await saveHand(ctx, keep.work_key, {fields: takeFields ? (dh.fields || {}) : null, poster: takePoster ? (dh.poster || '') : null});
+    stmts.push(...handStatements(ctx, keep.work_key, {fields: takeFields ? (dh.fields || {}) : null, poster: takePoster ? (dh.poster || '') : null}));
   }
+  await ctx.db.batch(stmts);
   return {ok: true, kept: keep.work_key, kept_title: keep.title, dropped: drop.work_key, dropped_title: drop.title, moved};
 }
 
