@@ -113,17 +113,24 @@ print(json.dumps({k: APP.default_step(k) for k, _l, _r in APP.ROLE_GROUPS}))`], 
 
 // 題材を語彙表で広げた言葉（「科学」→ ロボット …、PR #210）で当たった公演も、理由には登録した題材の語を書く
 test('a subject widened by the vocabulary is named by the registered subject', async () => {
+  // 語彙表で広げた言葉は stagesByWords（重さつき、PR #211）で引く。広げた言葉で当たった公演も、理由には登録した題材を書く
   const calls = [];
   const access = {
     postingsFor: async () => [],
     peopleFor: async ids => new Map(ids.map(id => [id, [['出演', '俳優' + id]]])),
     stagesMatching: async (groups, works, subjects, exact, labels) => {
-      calls.push({subjects, exact});
-      labels.set('S1', new Set(['ロボット'])); labels.set('S2', new Set(['科学']));
-      return ['S1', 'S2'];
+      calls.push({subjects});
+      labels.set('S2', new Set(['科学']));
+      return ['S2'];
+    },
+    stagesByWords: async (weights, labels) => {
+      calls.push({words: [...weights.keys()]});
+      labels.set('S1', new Set(['ロボット']));
+      return new Map([['S1', 0.3]]);
     },
   };
   const got = await seedsFromFavourites(access, [{name: '科学', kind: '題材'}]);
-  assert.ok(calls[0].exact.includes('ロボット') && calls[0].subjects.includes('科学'));
-  assert.deepEqual(got.seeds.map(s => [s.stage_id, s.fav]), [['S1', ['科学']], ['S2', ['科学']]]);
+  assert.ok(calls[0].subjects.includes('科学'));
+  assert.ok(calls[1].words.includes('ロボット'), JSON.stringify(calls[1].words));
+  assert.deepEqual(got.seeds.map(s => [s.stage_id, s.fav, s.w ?? 1]), [['S2', ['科学'], 1], ['S1', ['科学'], 0.3]]);
 });
