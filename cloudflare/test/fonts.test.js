@@ -17,12 +17,12 @@ test('each @font-face in fonts.css points at a file that is served', () => {
   const css = readFileSync(pub('fonts.css'), 'utf8');
   const urls = [...css.matchAll(/url\((assets\/fonts\/[^)]+)\)/g)].map(m => m[1]);
   const families = new Set([...css.matchAll(/font-family: '([^']+)'/g)].map(m => m[1]));
-  assert.deepEqual([...families].sort(), ['Sawarabi Gothic', 'Zen Kaku Gothic New', 'Zen Maru Gothic']);
-  assert.ok(urls.length > 400, `${urls.length} files`);
+  assert.deepEqual([...families].sort(), ['Sawarabi Gothic', 'Zen Kaku Gothic New']);
+  assert.ok(urls.length > 300, `${urls.length} files`);
   assert.deepEqual(urls.filter(u => !existsSync(pub(u))), []);
 });
 
-test('the round rule comes after the action rule so a round button is Zen Maru', () => {
+test('the round rule comes after the action rule so a round button gets the round font', () => {
   const css = readFileSync(pub('fonts.css'), 'utf8');
   const action = css.indexOf('font-family:var(--font-action)!important');
   const round = css.indexOf('font-family:var(--font-round)!important');

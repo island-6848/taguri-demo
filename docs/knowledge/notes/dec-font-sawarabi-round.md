@@ -3,7 +3,7 @@ id: dec-font-sawarabi-round
 type: decision
 status: adopted
 date: 2026-10-18
-title: 押すものと公演名はさわらびゴシック、丸の中の字（両端が半円の押し口と札・ロゴの丸）は Zen丸ゴシック、ほかは Zen角ゴシック New
+title: 押すもの・公演名・丸の中の字（両端が半円の押し口と札）・ロゴはさわらびゴシック、ほかは Zen角ゴシック New
 sources:
   - https://fonts.google.com/specimen/Sawarabi+Gothic
   - https://fonts.googleapis.com/css2?family=Sawarabi+Gothic&display=swap
@@ -31,3 +31,8 @@ links:
 確かめたこと: e2e-walk 41 段（wrangler dev と Chromium）。画面の写しで、両端が丸い「戻る」「取り消す」「任意」「確認できず」「使い方」・ログインの丸い押し口が丸ゴシック、四角に近い「公式サイト」「回答を直す」「追加」・並べ替えの select がさわらびゴシック、公演名がさわらびゴシック、ロゴが丸ゴシック。test/fonts.test.js（どの頁も fonts.css と round-text.js を読む・@font-face の指すファイルが全部ある・丸の決まりが押すものの決まりより後ろ）。
 
 分かっていないこと: ログインの画面の上の帯の「たぐり」（auth.css の .brand、明朝の文字）は丸の中ではないので変えていない。
+
+追記（2026-10-18）: 起案者「やっぱごめん丸ゴシックはさわらびゴシックでいいや。ロゴのフォントもさわらびゴシックでつくってほしい」。
+- 丸の中の字（--font-round）もさわらびゴシック（400、作り太りなし）。round-text.js の印付けは残す（押すものではない丸い札も、角ゴシックではなくさわらびゴシックになる）。Zen丸ゴシックはどこにも使わなくなったので、字のファイル（122 個）と @font-face を外した
+- ロゴ（紋章と、電話の幅の帯の横組み）の「たぐり」を、さわらびゴシック Regular の字形で作り直した（make_type.py の FONTS['sawarabi']: 濁点は輪郭 0・1、字の墨の真ん中 390、大きさ 49。字のファイルは google/fonts の SawarabiGothic-Regular.ttf を取得元から直接取った）。LOGO_FONT=maru・hina で前の字に戻せる
+- 確かめたこと: JS 389 件、e2e-walk 41 段、画面の写し（ボタン・丸い札・公演名・ロゴがさわらびゴシック）

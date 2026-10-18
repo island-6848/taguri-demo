@@ -1,7 +1,7 @@
 """「たぐり」の字を絵に組み込んだロゴ（起案者 2026-10-18「たぐりの文字、図形の下に明記するんじゃなくて
 うまく図に組み込めない？ひな明朝がいいかも」）。濁点は 2 つの星（スポットライト）に、「り」の払いの先から糸をのばす。
-字は Zen丸ゴシック Medium（起案者 2026-10-18「丸のなかの文字だけ丸ゴシックにできる？」で「ロゴの丸」を選んだ）。
-前のひな明朝に戻すときは LOGO_FONT=hina。"""
+字はさわらびゴシック（起案者 2026-10-18「ロゴのフォントもさわらびゴシックでつくってほしい」。その前は Zen丸ゴシック Medium、
+さらに前はひな明朝）。戻すときは LOGO_FONT=maru・LOGO_FONT=hina。"""
 import math, os, sys
 from pathlib import Path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -13,7 +13,7 @@ from glyphs import ftext
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 # 字の形ごとの寸法（字の単位）。字のファイルは Google Fonts（OFL）のものを gf/ に置く（リポジトリには入れない。.gitignore）
-#   取り方: curl -o gf/ZenMaruGothic-Medium.ttf https://raw.githubusercontent.com/google/fonts/main/ofl/zenmarugothic/ZenMaruGothic-Medium.ttf
+#   取り方: curl -o gf/SawarabiGothic-Regular.ttf https://raw.githubusercontent.com/google/fonts/main/ofl/sawarabigothic/SawarabiGothic-Regular.ttf
 # dakuten: 「ぐ」の濁点の輪郭の番号、stars: 星を置く濁点の 2 つの点、ri_tip: 「り」の払いの先、
 # ink_x: 字の墨の左右の端（「ぐ」は濁点を除く）、mid: 3 字の墨の上下の真ん中、size: 紋章の字の大きさ
 FONTS = {
@@ -21,8 +21,10 @@ FONTS = {
                  ink_x={'た': (141, 849), 'ぐ': (241, 589), 'り': (270, 729)}, mid=381, size=57),
     'maru': dict(file='ZenMaruGothic-Medium.ttf', dakuten={1, 2}, stars=((818, 560), (737, 478)), ri_tip=(500, -44),
                  ink_x={'た': (121, 873), 'ぐ': (284, 691), 'り': (285, 727)}, mid=377, size=54),
+    'sawarabi': dict(file='SawarabiGothic-Regular.ttf', dakuten={0, 1}, stars=((886, 553), (761, 532)), ri_tip=(429, -48),
+                     ink_x={'た': (92, 903), 'ぐ': (215, 735), 'り': (243, 737)}, mid=390, size=49),
 }
-KIND = os.environ.get('LOGO_FONT', 'maru')
+KIND = os.environ.get('LOGO_FONT', 'sawarabi')
 M = FONTS[KIND]
 FONT = os.environ.get('HINA' if KIND == 'hina' else 'LOGO_FONT_FILE', os.path.join(HERE, 'gf', M['file']))
 OUT = os.environ.get('OUT_DIR', os.path.join(HERE, 'type') + '/')
