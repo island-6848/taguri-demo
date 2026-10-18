@@ -90,7 +90,22 @@ def sparkle(cx, cy, r, sw=1.4, fill=False):
 def dakuten_stars(x, base, size):
     """濁点の 2 つの点の位置に、2 つの星（大小）。"""
     a = at(x, base, size, (720, 555)); b = at(x, base, size, (640, 485))
-    return sparkle(a[0] + size * 0.02, a[1] - size * 0.02, size * 0.062, 1.0, fill=True) + sparkle(b[0] + size * 0.03, b[1] - size * 0.01, size * 0.04, 0.9, fill=True)
+    return sparkle(a[0] - size * 0.015, a[1] - size * 0.025, size * 0.062, 1.0, fill=True) + sparkle(b[0] - size * 0.005, b[1] - size * 0.01, size * 0.04, 0.9, fill=True)
+
+# 字の墨の左右の端（字の単位）。「ぐ」の右端は「く」の線（星の濁点は含めない）
+INK_X = {'た': (141, 849), 'ぐ': (241, 589), 'り': (270, 729)}
+
+def spaced(center, size, gap_tg, gap_gr):
+    """「たぐり」を、字と字の墨の隙間で並べる（起案者 2026-10-18「ぐとりの間に、たとぐ以上の隙間あるのが気になる」）。
+    以前は字の左端を等間隔にしていたので、幅の狭い「ぐ」の後ろだけ広く空いた。返り値は各字を置く x（字の箱の左端）。"""
+    k = size / 1000
+    lefts, x = [], 0.0
+    for ch, gap in zip('たぐり', (0, gap_tg, gap_gr)):
+        x += gap
+        lefts.append(x)
+        x += (INK_X[ch][1] - INK_X[ch][0]) * k
+    shift = center - x / 2
+    return [l + shift - INK_X[ch][0] * k for l, ch in zip(lefts, 'たぐり')]
 
 def svg(w, h, body):
     return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w} {h}" width="{w}" height="{h}" role="img" aria-label="たぐり">\n'
@@ -116,12 +131,11 @@ def stage():
     # 起案者 2026-10-18「たぐりちょっと右寄りかも。たぐりの文字もうちょっとだけ下でもいい」: 左へ 5、下へ 5
     size = 57
     base = cy + 381 * size / 1000 + 5
-    xs = (87, 139, 184)                         # 字ごとの左端（字の幅 1000 を詰めて組む）
-    b.append(glyph('た', xs[0] - 141 * size / 1000 + 4, base, size))
-    gx = xs[1] - 241 * size / 1000
+    # 「ぐ」と「り」の間は、星の濁点が入る分だけ少し広く（それでも「た」「ぐ」の間に近く見える幅）
+    tx, gx, rx = spaced(149, size, 10, 16)
+    b.append(glyph('た', tx, base, size))
     b.append(glyph('ぐ', gx, base, size, skip=DAKUTEN['ぐ']))
     b.append(dakuten_stars(gx, base, size))
-    rx = xs[2] - 270 * size / 1000
     b.append(glyph('り', rx, base, size))
     tip = at(rx, base, size, RI_TIP)
     b.append(line(f'M{tip[0]:.1f} {tip[1]:.1f} C{tip[0] - 6:.1f} {tip[1] + 8:.1f} {tip[0] - 14:.1f} {tip[1] + 10:.1f} {tip[0] - 12:.1f} {tip[1] + 18:.1f} '
@@ -217,11 +231,10 @@ def row():
     """横組み: オペラグラスのアイコンと「たぐり」（電話の幅の上の帯に置く）。"""
     inner = icon(True).split('\n', 1)[1].rsplit('</svg>', 1)[0]
     size, base = 44, 32 + 381 * 44 / 1000
-    gap = 41
-    xs = [74 + i * gap - {'た': 141, 'ぐ': 241, 'り': 270}[ch] * size / 1000 for i, ch in enumerate('たぐり')]
+    xs = spaced(118, size, 8, 12.5)      # 紋章と同じ並べ方（字の墨の隙間で揃える）
     b = [f'<g>{inner}</g>', glyph('た', xs[0], base, size), glyph('ぐ', xs[1], base, size, skip=DAKUTEN['ぐ']),
          dakuten_stars(xs[1], base, size), glyph('り', xs[2], base, size)]
-    return svg(200, 64, b)
+    return svg(168, 64, b)
 
 def inline(svg_text, cls, label):
     """HTML に埋め込む形: 色は currentColor（置いた場所の文字の色＝暗い表示でも読める）、読み上げは label。"""
