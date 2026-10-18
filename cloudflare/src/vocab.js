@@ -66,6 +66,58 @@ export function themeExpansion(word) {
   return out;
 }
 
+/** 概念 → 上位の概念と段の数（自分は 0）。別の道で着いたら近いほう。 */
+const above = name => {
+  const out = new Map([[name, 0]]), todo = [name];
+  while (todo.length) {
+    const n = todo.shift();
+    for (const b of CONCEPTS[n]?.broader || []) if (!out.has(b)) { out.set(b, out.get(n) + 1); todo.push(b); }
+  }
+  return out;
+};
+
+// 下から上への積み上げ（起案者の指示 2026-10-18「仕組みの案の 1,2 どっちもやりたい」）。評価から分かった細かい題材の好み
+// （宇宙船・ロボット・タイムスリップ）を、語彙表の上位（SF）へ離れるほど弱く配る。1 つの枝だけで上位を決めると言い過ぎに
+// なるので、上位とその下の **ROLLUP_MIN_BRANCHES 個以上の概念** で同じ向きの好みがあるときだけ上位の好みにする
+// （Ziegler ら 2004・Kanagal ら 2012 の、分類の木で好みを上へ伝える考え方。dec-theme-rollup）
+export const ROLLUP_MIN_BRANCHES = 3;
+
+/**
+ * 題材の言葉 → [件数, 値]（personValues の #題材 の行）から、上位の好みを積み上げ、その下の言葉へ広げる。
+ * 返すのは 言葉 → [上位の概念の名前, 件数, 値]。値は上位の好み × 離れ具合（DEPTH_W）。
+ * **細かい好みが勝つ**: 自分の値を持つ言葉には広げない。上位が二つ以上当たる言葉は、いちばん重いもの（ふつうは近い上位）だけ。
+ */
+export function rolledThemeWords(themeValues) {
+  const agg = new Map();                    // 上位 → 概念 → {d, vs: [値...], n}
+  for (const [w, [n, v]] of themeValues) {
+    if (!v) continue;
+    for (const c of new Set([...(byName.get(w) || []), ...(byWord.get(w) || [])])) {
+      for (const [a, d] of above(c)) {
+        if (!agg.has(a)) agg.set(a, new Map());
+        const m = agg.get(a);
+        if (!m.has(c)) m.set(c, {d, vs: [], n: 0});
+        m.get(c).vs.push(v); m.get(c).n += n;
+      }
+    }
+  }
+  const out = new Map();
+  for (const [a, m] of agg) {
+    const branch = [...m.values()].map(({d, vs, n}) => [depthW(d) * vs.reduce((x, y) => x + y, 0) / vs.length, n]);
+    const pos = branch.filter(([b]) => b > 0).length, neg = branch.filter(([b]) => b < 0).length;
+    if (Math.max(pos, neg) < ROLLUP_MIN_BRANCHES || pos === neg) continue;
+    const va = branch.reduce((x, [b]) => x + b, 0) / branch.length;
+    const n = branch.reduce((x, [, k]) => x + k, 0);
+    if (!va) continue;
+    const ws = new Map([[nz(a), 1], ...[...themeExpansion(a).weights].filter(([w]) => themeExpansion(a).narrow.has(w))]);
+    for (const [w, x] of ws) {
+      if (themeValues.has(w)) continue;
+      const val = va * x;
+      if (!out.has(w) || Math.abs(val) > Math.abs(out.get(w)[2])) out.set(w, [a, n, val]);
+    }
+  }
+  return out;
+}
+
 /** 表の誤り（存在しない上位・関連、上位の輪）を並べる。試験と見直しの道具が使う。 */
 export function vocabProblems() {
   const out = [];

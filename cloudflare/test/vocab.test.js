@@ -78,3 +78,41 @@ test('推薦の種: 「科学」で SF と近未来の公演が拾われ、関�
   const full = personValues([], [{...seeds[0], w: undefined}]);
   assert.ok(full.get(THEME_AXIS + '\u0000sf')[1] > v.get(THEME_AXIS + '\u0000sf')[1]);
 });
+
+// 下から上への積み上げ（起案者の指示 2026-10-18「仕組みの案の 1,2 どっちもやりたい」「それなら SF って出しちゃっていいよ」）
+import {rolledThemeWords, ROLLUP_MIN_BRANCHES} from '../src/vocab.js';
+import {scoreFromIndex} from '../src/recommend.js';
+
+test('細かい好みが 3 つの枝にまたがると上位（SF）の好みになり、下の言葉へ広がる。枝が足りなければ広げない', () => {
+  assert.equal(ROLLUP_MIN_BRANCHES, 3);
+  const three = rolledThemeWords(new Map([['宇宙船', [1, 0.5]], ['ロボット', [1, 0.4]], ['タイムスリップ', [1, 0.3]]]));
+  assert.equal(three.get('宇宙人')[0], 'SF', 'いちばん近い上位の名前');
+  assert.ok(three.get('宇宙人')[2] > 0);
+  assert.equal(three.get('生命科学')[0], '科学', 'SF の外は科学から');
+  assert.ok(three.get('生命科学')[2] < three.get('宇宙人')[2], '遠いほど弱い');
+  assert.ok(!three.has('宇宙船'), '自分の値を持つ言葉には広げない（細かい好みが勝つ）');
+  assert.ok(!three.has('近未来'), '関連には広げない');
+  const two = rolledThemeWords(new Map([['宇宙船', [1, 0.5]], ['ロボット', [1, 0.4]]]));
+  assert.equal(two.size, 0);
+  const oneBranch = rolledThemeWords(new Map([['宇宙船', [1, 0.5]], ['宇宙人', [1, 0.5]], ['火星', [1, 0.5]]]));
+  assert.ok(!oneBranch.has('ロボット'), '同じ枝（宇宙もの）だけなら SF まで上げない');
+  const down = rolledThemeWords(new Map([['宇宙船', [1, -0.5]], ['ロボット', [1, -0.4]], ['タイムスリップ', [1, -0.3]]]));
+  assert.ok(down.get('宇宙人')[2] < 0, '苦手も同じ向きで積み上げる');
+});
+
+test('積み上げた上位の好みで、細かい言葉しか付いていない公演が上がり、理由に上位の名前が出る', async () => {
+  const T = '#題材';
+  const credits = [[T, '宇宙人', 'C1', 1, 'theme'], [T, '家族の秘密', 'C2', 1, 'theme']];
+  const access = {
+    postingsFor: async keys => { const want = new Set(keys.map(k => k.join('\u0000'))); return credits.filter(c => want.has(c[0] + '\u0000' + c[1])); },
+    stagesFor: async ids => new Map(ids.map(id => [id, {start: '2026-12-01', end: '2026-12-10', tour: ''}])),
+  };
+  const rated = [['宇宙船', '◎'], ['ロボット', '◎'], ['タイムスリップ', '◎'], ['家族', '×'], ['恋愛', '×'], ['落語', '×']]
+    .map(([w, v], i) => ({key: 'r' + i, verdict: v, people: [[T, w]], updated_at: String(i)}));
+  const out = await scoreFromIndex({...access, rated, today: '2026-10-18'});
+  const c1 = out.find(c => c.stage_id === 'C1');
+  assert.ok(c1, 'SF の下の「宇宙人」の公演が出る');
+  assert.deepEqual(c1.kinds.map(k => k.slice(1, 3)), [[T, 'SF']]);
+  const off = await scoreFromIndex({...access, rated, today: '2026-10-18', ablate: {rollup: true}});
+  assert.ok(!off.find(c => c.stage_id === 'C1'), '積み上げを外すと出ない');
+});

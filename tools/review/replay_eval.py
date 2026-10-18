@@ -41,7 +41,7 @@ MIGRATIONS = ROOT / "cloudflare" / "migrations"
 BRIDGE = ROOT / "cloudflare" / "scripts" / "replay_rank.js"
 JST = datetime.timezone(datetime.timedelta(hours=9))
 # cloudflare/src/screens/recommend.js の REPLAY_ABLATIONS と同じ（test_replay_eval が突き合わせる）
-ABLATIONS = ("split", "expand", "spread", "gate", "impression")
+ABLATIONS = ("split", "expand", "spread", "gate", "impression", "rollup")
 
 POSITIVE = {1, 2}          # 興味あり・行けない（購入済は owned=1 で別に正例にする）
 MIN_ANSWERS = 3            # 1 人の答えがこれ未満なら、その人の AUC は数えない（§3）

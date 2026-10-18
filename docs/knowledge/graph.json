@@ -2592,6 +2592,19 @@
    "verifies": []
   },
   {
+   "id": "dec-theme-rollup",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "評価から分かった細かい題材の好みを語彙表の上位へ積み上げ、3 つ以上の枝で同じ向きなら上位の好みとして下の言葉へ効かせる",
+   "sources": [
+    "cloudflare/src/vocab.js",
+    "cloudflare/src/recommend.js",
+    "cloudflare/test/vocab.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-theme-user-choice",
    "type": "decision",
    "status": "proposed",
@@ -9513,6 +9526,16 @@
    "from": "dec-theme-knowledge",
    "rel": "affects",
    "to": "eval-g5-trial-1018"
+  },
+  {
+   "from": "dec-theme-rollup",
+   "rel": "affects",
+   "to": "impl-theme-vocab"
+  },
+  {
+   "from": "dec-theme-rollup",
+   "rel": "affects",
+   "to": "dec-theme-kinds-6p2"
   },
   {
    "from": "dec-theme-user-choice",
