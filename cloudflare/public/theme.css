@@ -1057,7 +1057,7 @@ a.pill.buy .go:not(#_){font-size:12px;margin-left:2px}
 /* 段の中が 1 つだけ（開幕リマインドの場所・お気に入りの登録した名前など）なら全幅に */
 .fil2:not(.tabbed)>:only-child{grid-column:1/-1}
 
-/* 公演修正依頼（app.js fixLinks・openFixPopup）。カードの右下にヘルプの印、押すとポップアップ */
+/* 公演修正依頼（app.js fixLinks・openFixPopup）。ヘルプの印を押すとポップアップ（印の位置は末尾の「おすすめのカードの見た目」の塊: 枠の外の右上） */
 .fixq{margin:8px 0 0;text-align:right}
 .fixq-open{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;padding:0;border:0;border-radius:50%;background:none;color:var(--mute);cursor:pointer}
 .fixq-open:hover,.fixq-open:focus-visible{color:var(--acc);background:color-mix(in srgb,var(--acc) 10%,transparent)}
@@ -1418,3 +1418,61 @@ html .dgli .noposter:not(#_):not(#_) span{font-size:9px;letter-spacing:0}
 .btns button:hover::after{bottom:-4px}
 .btns button:active::after{bottom:-2px}
 .btns button.picked::after{bottom:-3px}
+
+/* ---- おすすめのカードの見た目（起案者の指示 2026-10-18 の 3 点。app.js compactTickets・fixLinks・leadSynopsis、schedule.js timetableGrid） */
+/* 発売の札の中で ↗ が 2 行目に落ちないように（「発売済み ↗」を 1 行に） */
+.ticket .sale .pill{white-space:nowrap}
+/* 料金の明細を出さないカードの値段の 1 行（.lprice.lyen）も、明細と同じ形で本文の列に、発売の札の上に */
+.ticket.cmp .main>.lprice.lyen{margin:6px 0 0}
+/* カードの右上のヘルプ（公演修正依頼の「？」）: 枠の外の右上の角に重ねて小さく出す。押せる広さは 44px 四方のまま */
+.ticket>.fixq{position:absolute;top:-12px;right:-10px;margin:0;z-index:3;line-height:0}
+.ticket>.fixq .fixq-open{position:relative;width:24px;height:24px;background:var(--surf);border:1px solid var(--ring);color:var(--mute)}
+.ticket>.fixq .fixq-open:hover,.ticket>.fixq .fixq-open:focus-visible{color:var(--acc);background:var(--surf);border-color:var(--acc)}
+.ticket>.fixq .fixq-open svg{width:16px;height:16px}
+.ticket>.fixq .fixq-open::after{content:"";position:absolute;left:50%;top:50%;width:44px;height:44px;transform:translate(-50%,-50%)}
+/* あらすじのハッシュタグは、その題材の公演の一覧（/recommend/tag）へのリンク */
+a.lsyntag{text-decoration:none;color:inherit;cursor:pointer}
+a.lsyntag:hover,a.lsyntag:focus-visible{text-decoration:underline}
+/* 公演日時の暦の貸切の回「(貸)17:00」: 升の中で折り返さないよう、「(貸)」の括弧と字間を詰める
+   （電話の幅で 1 升 35px ほど。12px の字のまま、時刻の字間も少しだけ詰めて収める） */
+.ttb .tm.kas:not(#_){letter-spacing:-.1em}
+.ttb .tm.kas b{font-weight:600;color:var(--ink2);letter-spacing:-.22em;margin-right:.1em}
+/* 「ほか n 会場」は押すと、ほかの会場の一覧（.mvlist）が会場の行の下に開く（app.js compactTickets） */
+.ticket.cmp .meta .mvmore{display:inline;margin-left:6px;padding:0;border:0;background:none;font:inherit;color:var(--curtain);
+ cursor:pointer;white-space:nowrap;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px;position:relative}
+.ticket.cmp .meta .mvmore::after{content:"";position:absolute;left:50%;top:50%;width:max(100%,44px);height:44px;transform:translate(-50%,-50%)}
+.ticket.cmp .meta .mvmore::before{content:"▸";display:inline-block;margin-right:2px;font-size:.85em;transition:transform .15s}
+.ticket.cmp .meta .mvmore[aria-expanded=true]::before{transform:rotate(90deg)}
+.ticket.cmp .meta .mvlist{list-style:none;margin:2px 0 4px 17px;padding:4px 8px;background:var(--fold-bg);border-radius:6px;font-size:12px;line-height:1.7;color:var(--ink2)}
+.ticket.cmp .meta .mvlist[hidden]{display:none}
+.ticket.cmp .meta .mvlist li{display:flex;flex-wrap:wrap;column-gap:.6em}
+.ticket.cmp .meta .mvlist .mvw{color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap}
+.ticket.cmp .meta .mvlist .mvl{white-space:nowrap}
+/* 料金の箇条書き（app.js priceListHtml・schedule.js priceList。起案者の指示 2026-10-18「料金の書き方を統一。箇条書きにする。
+   できれば各行が改行されないように」）: お金の絵記号を頭に 1 つ、行頭はテーマの差し色の小さな菱形。券種と金額はそれぞれ折り返さない
+   （入りきらないときだけ、券種と金額の間で行を分ける） */
+.pblock{display:flex;align-items:flex-start;font-size:12px;line-height:1.6}
+.pblock .lp-ico{flex:none;margin-top:3px}
+.plist{list-style:none;margin:0;padding:0;min-width:0}
+.plist .lp-row{position:relative;display:flex;flex-wrap:wrap;align-items:baseline;column-gap:.8em;padding-left:11px}
+.plist .lp-row::before{content:"";position:absolute;left:1px;top:.68em;width:4px;height:4px;transform:rotate(45deg);background:color-mix(in srgb,var(--curtain) 75%,transparent)}
+/* 1 行だけの料金（値段の 1 行・会場の料金が 1 つ）は、絵記号のすぐ後ろに書き、行頭の菱形は付けない。畳んだ明細の 1 行目は、
+   開いた続きの行とそろうよう菱形を付ける */
+.plist>li:only-child{padding-left:0}
+.plist>li:only-child::before{display:none}
+details.lprice>summary .plist>li:only-child{padding-left:11px}
+details.lprice>summary .plist>li:only-child::before{display:block}
+.plist .lp-k:not(#_){margin:0;color:var(--ink2);white-space:nowrap}
+.plist .lp-v{color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap}
+.plist .lp-v.lp-all{white-space:normal;overflow-wrap:anywhere}
+.plist .lp-more:not(#_){margin-left:0}
+.ticket.cmp .lp-body:not(#_){margin-left:0;padding-left:8px}
+.tourfull.v2 .tf-price .pblock{flex:1;min-width:0}
+/* 日程の会場ごとの行頭（起案者の指示 2026-10-18「『・』が味気ないので少しデザイン的に…『●』→『→』」）: ふつうの会場は
+   差し色の輪郭の小さな菱形、いま上演中の会場は差し色の「→」。絞り込んだ県の会場の ★ はそのまま */
+.tourfull.v2 .tf-dot:not(.live){top:.62em;left:.25em;width:6px;height:6px;box-sizing:border-box;transform:rotate(45deg);
+ border:1.5px solid color-mix(in srgb,var(--curtain) 70%,transparent);border-radius:1px}
+.tourfull.v2 .tf-dot.live:not(#_){left:0;font-size:1em;font-weight:700;line-height:inherit;color:var(--curtain)}
+/* 日程の行の右の「詳細」の字はやめ、行そのものを押す口に。開くことが分かるよう、行の終わりに小さな三角だけ置く */
+.tourfull.v2 summary.tf-head::after{content:"▸";display:inline-block;margin-left:.5em;color:var(--curtain);font-size:.8em;transition:transform .15s}
+.tourfull.v2 details[open]>summary.tf-head::after{transform:rotate(90deg)}
