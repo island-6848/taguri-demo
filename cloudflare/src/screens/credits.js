@@ -43,6 +43,15 @@ const ROLE_PREFIX = new RegExp(`^(脚色|翻訳|上演台本|原案|原作|作|�
 // `.*$` in Python also stops before a final newline.
 const NOTE = /[※*＊][^\n]*(?=\n?$)/u;
 const LEAD_TAG = new RegExp(`^[【［《][^】］》]{1,20}[】］》][${WS}　]*`, 'u');
+// measure_nets.GUIDE: 名前の代わりに書かれた案内の文と URL（「スタッフ欄をご覧ください。」「詳細は公式サイトにて、https://…」
+// 「下記に掲載」「（後日発表）」「ComingSoon」）。人として読まない（起案者の指示 2026-10-18「出演 スタッフ欄をご覧ください。に
+// なってる箇所があるから直して」、fix-credit-guide-text）。Python と同じ型
+export const GUIDE = new RegExp(`ご覧|ご参照|参照|詳細|公式サイト|公式HP|ホームページ|掲載|記載|後日発表|発表予定|調整中|異なります|`
+  // 「未定」は欄の全体が未定のときだけ（「今井未定」は名前）。ドメインは英数字だけのもの（「演劇ユニットG.com」は団体の名前）
+  + `^[『「]?(?:ゲスト|出演者|キャスト)?未定[』」]?$|comi?n?g${S}*soon|https?:|^[A-Za-z0-9_.-]+\\.(?:jp|com|net|org|info)/?$`, 'iu');
+export const URL_RE = new RegExp(`https?://${NS}+`, 'gu');
+/** measure_nets.is_guide */
+export const isGuide = text => GUIDE.test(String(text || '').normalize('NFKC').trim());
 const HEAD = new RegExp(`^[${WS}　]*([^${WS}　：:]{2,14})[：:][${WS}　]*$`, 'u');
 
 /** measure_nets.ROLE_ALIAS */
@@ -81,7 +90,7 @@ export function cleanRole(role) {
 /** measure_nets._names */
 export function names(text) {
   const out = [];
-  text = String(text || '').replace(NOTE, '');
+  text = String(text || '').replace(NOTE, '').replace(URL_RE, '');
   text = text.replace(PAREN, '');
   for (const part of text.replace(SPLIT, '\n').replace(MIDDOT_KANJI, '\n').split('\n')) {
     let n = norm(part);
@@ -90,7 +99,7 @@ export function names(text) {
     if (n.includes(':')) n = n.slice(n.lastIndexOf(':') + 1);
     n = stripChars(n.replace(ROLE_PREFIX, ''), '　 :：・');
     n = n.replace(new RegExp(`[${WS}　]`, 'gu'), '');
-    if (!n || /[【】［］《》]/u.test(n) || ROLE_VOCAB.has(n)) continue;
+    if (!n || /[【】［］《》]/u.test(n) || ROLE_VOCAB.has(n) || isGuide(n)) continue;
     if (len(n) >= 2 && len(n) <= 20 && !NOT_NAME.test(n)) out.push(n);
   }
   return out;

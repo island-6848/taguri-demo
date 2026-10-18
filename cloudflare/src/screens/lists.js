@@ -56,6 +56,42 @@ export async function loadDeclared(ctx) {
   for (const f of results) if (out[f.kind] && !out[f.kind].includes(f.name)) out[f.kind].push(f.name);
   return out;
 }
+// 人で登録した名前を役職で絞る（起案者の指示 2026-10-18「お気に入りの加藤拓也、同姓同名が2人いるみたいでどっちも拾っちゃう」
+// への答え「Aで。ただし人って選んだあとに、細く指定したい場合のみ任意で選べるように。複数役職やる人もいるので」、q-favourite-homonym）。
+// 控えは app_setting の 'declared_roles'（{名前: [選んだ役職の札]}）。札が無い名前は、これまでどおりどの役職でも当てる
+const ROLES_KEY = 'declared_roles';
+// 札 -> 出演・スタッフ欄の役職（credits.canonRole の後）。「作・演出」のような並びは、・／ で切った 1 つずつでも当てる
+export const FAV_ROLES = [['出演', ['出演']], ['脚本', ['脚本', '作', '潤色', '構成', '脚色']], ['演出', ['演出', '演出・振付']],
+  ['作曲・音楽', ['作曲', '音楽', '音楽監督', '編曲', '作詞']], ['振付', ['振付', '演出・振付']], ['翻訳', ['翻訳', '訳']], ['原作', ['原作']]];
+const FAV_ROLE_OF = new Map(FAV_ROLES);
+/** {名前: [札]} of the 人 names narrowed by role. */
+export async function loadRoles(ctx) {
+  const v = await readJson(ctx, ROLES_KEY);
+  const out = {};
+  if (v && typeof v === 'object') for (const [n, rs] of Object.entries(v)) {
+    const ok = Array.isArray(rs) ? rs.filter(r => FAV_ROLE_OF.has(r)) : [];
+    if (ok.length) out[n] = ok;
+  }
+  return out;
+}
+/** The credit roles one name's labels allow, or null (any role). */
+export function rolesAllowed(labels) {
+  if (!labels || !labels.length) return null;
+  return new Set(labels.flatMap(l => FAV_ROLE_OF.get(l) || []));
+}
+/** Does a credit role (「作・演出」 too) fall in the allowed set? */
+export function roleFits(role, allowed) {
+  if (!allowed) return true;
+  const r = String(role || '');
+  return allowed.has(r) || r.split(/[・／/]/u).some(x => allowed.has(x.trim()));
+}
+/** The optional role boxes under the favourite form (shown only for 人, theme.css「お気に入りの役職」). */
+export function favRoleBox() {
+  return '<fieldset class="fav-roles"><legend>役職で絞る<small class="opt">任意</small></legend>'
+    + FAV_ROLES.map(([l]) => `<label><input type="checkbox" value="${E(l)}"> ${E(l)}</label>`).join('')
+    + '<span class="fr-note">同姓同名の人がいるときなどに。選ばなければ、どの役職でも当てます。複数選べます。</span></fieldset>';
+}
+
 // 出さない語の対象（起案者の指示 2026-10-18「出さない語も、お気に入りと同様どれを対象に（ジャンルや人、団体など）を
 // 選んでから語を指定できるように」）。控えは '対象\t語'。対象の無い語（これまでに入れた語・理由の ✕ で足した語）は「すべて」
 export const DEC_KINDS = [['', 'すべて'], ['題名', '題名'], ['団体', '団体'], ['人', '人'], ['劇場', '劇場'], ['題材', '題材'], ['種類', 'ジャンル・形式']];
@@ -225,13 +261,23 @@ async function wholePersonNames(ctx, hits, declared) {
   if (!persons.length) return;
   const sids = [...hits].filter(([, h]) => h.a.some(x => x.startsWith('人「'))).map(([sid]) => sid);
   if (!sids.length) return;
+  // 役職で絞った名前（loadRoles）は、その役職で欄に書かれているときだけ当てる。欄を読めない公演では役職を確かめられないので外す
+  const roles = await loadRoles(ctx);
+  const allowedOf = new Map(Object.entries(roles).map(([n, ls]) => [nz(n), rolesAllowed(ls)]));
   const info = await stageInfo(ctx.db, sids);
   for (const sid of sids) {
     const people = parseCredits(info.get(sid)?.fields || {});
-    if (!people.length) continue;
-    const names = new Set(people.map(([, n]) => nz(n)));
     const h = hits.get(sid);
-    h.a = h.a.filter(x => !x.startsWith('人「') || names.has(nz(x.slice(2, -1))));
+    if (!people.length) {
+      if (allowedOf.size) h.a = h.a.filter(x => !x.startsWith('人「') || !allowedOf.has(nz(x.slice(2, -1))));
+    } else {
+      const names = new Set(people.map(([, n]) => nz(n)));
+      h.a = h.a.filter(x => {
+        if (!x.startsWith('人「')) return true;
+        const n = nz(x.slice(2, -1)), allowed = allowedOf.get(n);
+        return allowed ? people.some(([r, p]) => nz(p) === n && roleFits(r, allowed)) : names.has(n);
+      });
+    }
     if (!h.a.length) hits.delete(sid);
   }
 }
@@ -431,6 +477,9 @@ export async function buckets(ctx, {catalogue = false} = {}) {
     } else if (r.interest === 1) { seen.add(key); out.tracking.push(row); }
     else if (r.interest === 0) { seen.add(key); out.others.push(row); }
     else if (r.interest === 2) { seen.add(key); out.others.push({...row, cantgo: true}); }   // 行けない
+    // ✕ で候補から消した公演（3: おすすめ・お気に入りなどで、4: 興味ありの画面で）は、どの一覧にも出さない（お気に入りの名前に
+    // 当たっていても。起案者の指示 2026-10-18「お気に入りとか、これいらんなってときがある。その時候補から消したい」）
+    else if (r.interest === 3 || r.interest === 4) { seen.add(key); out.others.push({...row, dismissed: true}); }
     else if (hits.has(m.stage_id)) { seen.add(key); out.favourites.push({...row, stage_id: m.stage_id, a: hits.get(m.stage_id).a}); }
   }
   const byStart = (a, b) => cmp(a.start || '9999', b.start || '9999');
@@ -774,9 +823,11 @@ export async function favouritesScreen(params, ctx) {
   const kinds = KINDS.map(k => `<option value="${E(k)}">${E(k)}</option>`).join('');
   // 登録した名前は、カードの中のハッシュタグ（.ftag）と同じ形で並べる（起案者の指示 2026-10-17「お気に入りに登録したときの
   // 『足す外す』の欄のデザイン、本文カード内のハッシュタグのデザインと合わせて」）。押すとその名前の公演の画面へ
+  const roleOf = await loadRoles(ctx);
   const tags = KINDS.flatMap(k => (dec[k] || []).map(n => `<span class="tag ftag" data-kind="${E(k)}" data-name="${E(n)}">`
     // 札は「#人「人名」」の形（起案者の指示 2026-10-18「『#人名 人』→『#人「人名」』」。団体・作品・題材なども同じ形）
-    + `<a class="tgn" href="/recommend/favourites?t=__TAGURI_TOKEN__&amp;n=${encodeURIComponent(n)}">#${E(k)}「${E(n)}」</a>`
+    // 役職で絞った人は、札の後ろに選んだ役職を添える（q-favourite-homonym）
+    + `<a class="tgn" href="/recommend/favourites?t=__TAGURI_TOKEN__&amp;n=${encodeURIComponent(n)}">#${E(k)}「${E(n)}」${k === '人' && roleOf[n] ? `<small class="frole">${E(roleOf[n].join('・'))}</small>` : ''}</a>`
     + `<button data-fav="remove" aria-label="「${E(n)}」を外す">✕</button></span>`)).join('');
   const keep = !allFavs.length;
   const n = KINDS.reduce((s, k) => s + (dec[k] || []).length, 0);
@@ -787,7 +838,7 @@ export async function favouritesScreen(params, ctx) {
     // 見出しと説明の文は起案者の指示 2026-10-18（「登録した名前」→「要素を登録」、説明は表記ゆれの 1 文だけ）
     + `<summary>${ico('star')}要素を登録 <b>${n}件</b> ── 足す・外す</summary>`
     + '<p class="lead">表記ゆれ（漢字とカタカナ、送り仮名の違いなど）は、自動では見分けられない場合があります。</p>'
-    + `<div class="fav-add"><label class="fld" for="fav-kind"><span class="fl">種類<small class="req">必須</small></span><select id="fav-kind">${kinds}</select></label> <label class="fld" for="fav-name"><span class="fl">名前<small class="req">必須</small></span><input id="fav-name" type="text" placeholder="例：劇団四季・シェイクスピア・家族" size="26"></label> <button data-fav="add">登録する</button>`
+    + `<div class="fav-add"><label class="fld" for="fav-kind"><span class="fl">種類<small class="req">必須</small></span><select id="fav-kind">${kinds}</select></label> <label class="fld" for="fav-name"><span class="fl">名前<small class="req">必須</small></span><input id="fav-name" type="text" placeholder="例：劇団四季・シェイクスピア・家族" size="26"></label> <button data-fav="add">登録する</button>${favRoleBox()}`
     + `<span class="said"></span></div><div class="tags">${tags}</div></details></div>`
     + (allFavs.length ? `<p class="fgh">${ico('search', 15)}<b>表示の絞り込み</b><span>お気に入りの公演の中から、表示する項目を設定できます。</span></p>`
       + `<div class="fil2 narrow">${prefForm(pcounts, prefs, '/recommend/favourites', PAGE_PREF_NOTE, sort !== 'start' ? {s: sort} : {},
@@ -849,7 +900,19 @@ async function favouriteAction(b, ctx) {
   const out = Object.fromEntries(KINDS.map(k => [k, [...new Set(d[k].map(x => String(x).trim().slice(0, 80)).filter(Boolean))].sort(cmp).slice(0, 100)]));
   if (!keep) await writeJson(ctx, DECLARED_KEY, out);
   if (action === 'remove') await ctx.db.prepare('DELETE FROM favourites WHERE user_id=? AND name=? AND kind=?').bind(ctx.uid, name, kind).run();
-  return {body: {ok: true, kind, name, n: cur.length, said: '登録しました。手元にある公演から探して、お気に入りに表示します'}};
+  // 人の役職の絞り（任意、q-favourite-homonym）。足すときに選んだ札で置き換え、選ばなければ絞りを外す。外すときも消す。
+  // 変わらないときは書かない（D1 の書き込みを増やさない）
+  let roles = [];
+  if (kind === '人') {
+    roles = action === 'add' && Array.isArray(b.roles) ? [...new Set(b.roles.map(String).filter(r => FAV_ROLE_OF.has(r)))] : [];
+    roles.sort((x, y) => FAV_ROLES.findIndex(([l]) => l === x) - FAV_ROLES.findIndex(([l]) => l === y));
+    const map = await loadRoles(ctx), was = JSON.stringify(map[name] || []);
+    if (roles.length) map[name] = roles; else delete map[name];
+    if (JSON.stringify(roles) !== was) await writeJson(ctx, ROLES_KEY, map);
+  }
+  return {body: {ok: true, kind, name, n: cur.length, ...(roles.length ? {roles} : {}),
+    said: roles.length ? `登録しました（${roles.join('・')}として出ている公演だけ）。手元にある公演から探して、お気に入りに表示します`
+      : '登録しました。手元にある公演から探して、お気に入りに表示します'}};
 }
 
 /** serve.on_decline (public user) */

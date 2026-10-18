@@ -1530,3 +1530,13 @@ details.lprice:not([open]):not(#_)>summary .plist>li:only-child::before{display:
 /* 「公式サイト」の字と枠線は回答の押し口と同じスミクロ（--btn-ink）に（「「公式サイト」って文字と枠線もスミクロにして」）。字は fonts.css */
 .ticket .sitebtn:not(#_):not(#_),:is(.ticket.cmp,.rec-row.cmp) .sitelink:not(#_):not(#_){color:var(--btn-ink);border-color:var(--btn-ink)}
 .ticket .sitebtn:not(#_):not(#_):hover,:is(.ticket.cmp,.rec-row.cmp) .sitelink:not(#_):not(#_):hover{background:var(--curtain-w);color:var(--ink)}
+
+/* ---- お気に入りの役職（起案者の指示 2026-10-18「人って選んだあとに、細く指定したい場合のみ任意で選べるように。複数役職やる人もいるので」、
+   q-favourite-homonym）。種類で「人」を選んだときだけ出す。選ばなければ、どの役職でも当てる */
+.fav-add .fav-roles{display:none;flex:1 0 100%;flex-wrap:wrap;gap:4px 14px;align-items:center;margin:4px 0 0;padding:8px 10px;border:1px solid var(--ring);border-radius:8px}
+.fav-add:has(#fav-kind option[value="人"]:checked) .fav-roles{display:flex}
+.fav-roles legend{font-size:.85rem;padding:0 4px}
+.fav-roles legend .opt{margin-left:6px;font-size:.75rem;color:var(--mute)}
+.fav-roles label{display:inline-flex;gap:4px;align-items:center;font-size:.9rem;min-height:32px}
+.fav-roles .fr-note{flex:1 0 100%;font-size:.8rem;color:var(--mute)}
+.ftag .frole{margin-left:4px;font-size:.78em;color:var(--mute)}

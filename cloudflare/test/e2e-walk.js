@@ -537,6 +537,7 @@ async function walkA(A) {
     const works = await card.locator('.rs .n').allInnerTexts();
     check(works.every(t => (t.match(/『/g) || []).length <= 2), '理由の作品名が 3 つ以上: ' + works.join(' / '));
     check(!works.some(t => /お気に入り・興味ありの公演から/.test(t)), '「（お気に入り・興味ありの公演から）」が残っている');
+    check(works.length && works.every(t => /[(（].+[)）]/.test(t)), '括弧の説明の無い理由の行: ' + works.join(' / '));
     const font = await card.locator('.rs .net').first().evaluate(n => [getComputedStyle(n).fontFamily, getComputedStyle(n).fontWeight]);
     check(/Zen Maru Gothic/.test(font[0]) && font[1] === '700', '理由の札の字: ' + font.join(' '));
     const order = await card.locator('.main').evaluate(m => [...m.children].map(n => n.className.split(' ')[0]).join(','));
@@ -563,6 +564,10 @@ async function walkA(A) {
     note('行のすき間: ' + gaps.join(',') + ' / 札の位置: ' + JSON.stringify(side) + ' / ' + JSON.stringify(look));
     const price = await card.locator('.lprice').innerText();
     check(!/12,000円\s*[~〜～]\s*12,000円/.test(price) && /12,000円/.test(price), '同じ額の幅が残っている: ' + price.replace(/\s+/g, ' '));
+    // 金額だけの行（幅を 1 つにした「12,000円」）は、同じ額の券種つきの行（S席 12,000円）があれば出さない（起案者の指示 2026-10-18
+    // 「『7,000円\n全席指定 7,000円』ってなってる公演があるけど『全席指定 7,000円』でよい」）
+    const prow = (await card.locator('.lprice .lp-row').allInnerTexts()).map(t => t.replace(/\s+/g, ' ').trim());
+    check(!prow.includes('12,000円') && prow.some(t => /S席 ?12,000円/.test(t)), '同じ額の行が 2 度出る: ' + prow.join(' / '));
     note('料金: ' + price.replace(/\s+/g, ' ') + ' / 並び: ' + order + ' / 枠線: ' + bw.join(','));
     // 写しの間だけ、使い方の案内（.tgt-root）を隠す（カードに重なるため。押さないので次の段には響かない）
     const hideTour = on => page.evaluate(v => document.querySelectorAll('.tgt-root').forEach(n => { n.style.visibility = v ? 'hidden' : ''; }), on);
@@ -674,7 +679,7 @@ async function walkA(A) {
     await hideTour(true);
     for (const [w, h, tag] of [[1280, 900, 'pc'], [390, 844, 'phone']]) {
       await page.setViewportSize({width: w, height: h});
-      // 発売の札（「確認できず ↗」など）は 1 行
+      // 発売の札（「発売日不明 ↗」など）は 1 行
       const pl = await lines(c.locator('.sale .pill').first());
       check(pl[0] === 1, `${tag}: 発売の札が折り返す: ` + pl.join(','));
       // 貸切の回は升の中で 1 行（はみ出さない）
@@ -1244,7 +1249,10 @@ async function walkB(A, B) {
     check(await card.count() === 1, 'お気に入りだけでおすすめ（舞台ひとつめ）が出ない');
     const why = (await card.locator('li.rs').allInnerTexts().catch(() => [])).map(t => t.replace(/\s+/g, ' ').replace(/✕/g, '').trim());
     note('おすすめの理由: ' + why.join(' / '));
-    check(why.some(t => /お気に入りの作家 丁と同じ公演に関わる人/.test(t)), '理由に登録した名前（作家 丁）が出ない');
+    // 理由の形は「登録した名前 その作品での役職『作品名』この人の役職」（起案者の指示 2026-10-18、fix-fav-reason-roles）
+    check(why.some(t => /[(（]作家 丁 脚本『舞台ふたつめ』出演[)）]/.test(t)), '理由に登録した名前・役職・作品（作家 丁 脚本『舞台ふたつめ』出演）が出ない');
+    // 括弧の説明の無い行は出さない（起案者の問い 2026-10-18「括弧でおすすめ理由がついてないもの…」、fix-reason-no-paren）
+    check(why.every(t => /[(（].+[)）]/.test(t)), '括弧の説明の無い理由の行: ' + why.join(' / '));
     check(!why.some(t => /好きな/.test(t)), '登録していない人が「好きな」と出る');
     check(why.every(t => (t.match(/[(（]/g) || []).length === (t.match(/[)）]/g) || []).length), '理由のカッコの数が合わない');
     await card.screenshot({path: join(OUT, 'reasons-favourite-only.png')}).catch(() => {});

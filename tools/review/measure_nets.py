@@ -73,6 +73,25 @@ _NOT_NAME = re.compile(r"(\d{4}年|\d+月|\d+日|[都道府県]\s|劇場|ホー�
 _ROLE_PREFIX = re.compile(r"^(脚色|翻訳|上演台本|原案|原作|作|演出|振付|訳)[\s　:：・=|]+")
 # 「※Wキャスト」「（Wキャスト）」のような注記は名前ではない
 _NOTE = re.compile(r"[※*＊].*$")
+# **案内の文は人名ではない。** 出演欄に名前の代わりに「スタッフ欄をご覧ください。」「詳細は公式サイトにて、https://…」
+# 「下記に掲載」「（後日発表）」「ComingSoon」が書かれた公演が、取得元の実データ（2026-10-18、候補 4,812 件・過去 17,802 件）で
+# 60 件ほどあった。人名として読むと、カードに「出演 スタッフ欄をご覧ください。」と出て、推薦の索引（rec_people）にも
+# 同じ文の「人」が 1 人として入り、その文のある別の公演どうしが同じ人の公演としてつながっていた
+# （起案者の指示 2026-10-18「出演 スタッフ欄をご覧ください。になってる箇所があるから直して」、fix-credit-guide-text）。
+# URL とその切れ端（「https:」「musical-za.co.jp」）も名前ではない。Worker の screens/credits.js GUIDE と同じ
+GUIDE = re.compile(r"ご覧|ご参照|参照|詳細|公式サイト|公式HP|ホームページ|掲載|記載|後日発表|発表予定|調整中|異なります|"
+                   # 「未定」は名前の一部のことがある（実データに「今井未定」が 13 件）ので、欄の全体が未定のときだけ
+                   r"^[『「]?(?:ゲスト|出演者|キャスト)?未定[』」]?$|"
+                   # ドメインは英数字だけのもの（「演劇ユニットG.com」は団体の名前）
+                   r"comi?n?g\s*soon|https?:|^[A-Za-z0-9_.-]+\.(?:jp|com|net|org|info)/?$", re.I)
+_URL = re.compile(r"https?://\S+")
+
+
+def is_guide(text: str) -> bool:
+    """名前の代わりに書かれた案内の文・URL か（NFKC で見る）。"""
+    return bool(GUIDE.search(unicodedata.normalize("NFKC", text or "").strip()))
+
+
 # **行頭の【役職】タグ。** `_BRACKET` はスタッフ欄で「1 行に【役職】名前」が複数並ぶ書式
 # を扱うためのものだが、**出演・脚本・演出の 3 欄は `_names()` を直接呼ぶので通らない。**
 # 「【演出】 笹部博司」のように書くと、`_ROLE_PREFIX` は括弧の付かない役職しか剥がせず、
@@ -125,7 +144,7 @@ def _clean_role(role: str) -> str:
 
 def _names(text: str) -> list[str]:
     out = []
-    text = _NOTE.sub("", text or "")
+    text = _URL.sub("", _NOTE.sub("", text or ""))
     # **括弧は分割より先に外す。** 後にすると、括弧の中の所属が区切り記号で割れる ──
     # 「鎌塚慎平(劇団・木製ボイジャー14号)」が「鎌塚慎平(劇団」と「木製ボイジャー14号)」に、
     # 「正門良規(Aぇ!group、関西ジャニーズJr.)」が 2 つに割れていた（V43）。
@@ -143,7 +162,7 @@ def _names(text: str) -> list[str]:
         # 別人として数えられ、信頼度が 0.73 と 0.40 に割れていた（V15）。
         n = re.sub(r"[\s　]", "", n)
         # 括弧記法の残骸や役職語そのものは人名ではない
-        if not n or re.search(r"[【】［］《》]", n) or n in ROLE_VOCAB:
+        if not n or re.search(r"[【】［］《》]", n) or n in ROLE_VOCAB or is_guide(n):
             continue
         if 2 <= len(n) <= 20 and not _NOT_NAME.search(n):
             out.append(n)

@@ -31,7 +31,9 @@ test('a favourite alone recommends a show of a co-worker, and the reason names t
   const got = await favOnly('人', '作家丁');
   assert.match(got.body_html, /<h1>今週のあなたへのおすすめ 1 件<\/h1>/);
   assert.match(got.body_html, /data-stage="101"/);
-  assert.match(got.body_html, /出演 <b>俳優乙<\/b><span class="n">（お気に入りの作家丁と同じ公演に関わる人：『舞台ふたつめ』）<\/span>/);
+  // 起案者の指示 2026-10-18「『お気に入りの横山拓也と同じ公演に関わる人：『雉はじめて鳴く』』→『横山拓也 演出『雉はじめて鳴く』出演』」で
+  // 理由の形が変わったので、期待を「登録した名前 その作品での役職『作品名』この人のその作品での役職」に直した（fix-fav-reason-roles）
+  assert.match(got.body_html, /出演 <b>俳優乙<\/b><span class="n">（作家丁 脚本『舞台ふたつめ』出演）<\/span>/);
   assert.doesNotMatch(got.body_html, /好きな俳優乙|おすすめを出すためのワンポイント/);
 });
 
@@ -42,7 +44,8 @@ test('a favourite written with a space (作家 丁) still seeds the recommendati
     const got = await favOnly('人', name);
     assert.equal(got.diag.favourite_seeds, 1, name);
     assert.match(got.body_html, /data-stage="101"/, name);
-    assert.match(got.body_html, new RegExp(`お気に入りの${name}と同じ公演に関わる人`), name);
+    // 理由の形は「作家 丁 脚本『舞台ふたつめ』出演」（起案者の指示 2026-10-18、fix-fav-reason-roles で期待を直した）
+    assert.match(got.body_html, new RegExp(`（${name} 脚本『舞台ふたつめ』出演）`), name);
     // 登録した本人（索引では「作家丁」）は理由に出さない
     assert.doesNotMatch(got.body_html, /<b>作家丁<\/b>/, name);
   }
@@ -50,8 +53,10 @@ test('a favourite written with a space (作家 丁) still seeds the recommendati
 
 // 劇団・作品で登録しても、理由に登録した名前を書く
 test('a troupe or a work as the favourite is named in the reason', async () => {
-  assert.match((await favOnly('団体', '劇団乙')).body_html, /（お気に入りの劇団乙と同じ公演に関わる人：『舞台ふたつめ』）/);
-  assert.match((await favOnly('作品', '舞台ふたつめ')).body_html, /（お気に入りの舞台ふたつめと同じ公演に関わる人：『舞台ふたつめ』）/);
+  // 起案者の指示 2026-10-18「『お気に入りの横山拓也と同じ公演に関わる人：『雉はじめて鳴く』』→『横山拓也 演出『雉はじめて鳴く』出演』」で
+  // 理由の形が変わったので、期待を「登録した名前 その作品での役職『作品名』この人のその作品での役職」に直した（fix-fav-reason-roles）。団体は「主催」、作品は役職を付けない
+  assert.match((await favOnly('団体', '劇団乙')).body_html, /（劇団乙の『舞台ふたつめ』出演）/);
+  assert.match((await favOnly('作品', '舞台ふたつめ')).body_html, /（『舞台ふたつめ』出演）/);
 });
 
 // 直せないもの（案内の文の限界）: 登録した人の公演の共演者・作り手に、まだ始まっていない別の公演が無いと 0 件のまま。
@@ -137,4 +142,46 @@ test('a subject widened by the vocabulary is named by the registered subject', a
   assert.ok(calls[0].subjects.includes('科学'));
   assert.ok(calls[1].words.includes('ロボット'), JSON.stringify(calls[1].words));
   assert.deepEqual(got.seeds.map(s => [s.stage_id, s.fav, s.w ?? 1]), [['S2', ['科学'], 1], ['S1', ['科学'], 0.3]]);
+});
+
+// 理由の括弧の形（起案者の指示 2026-10-18「『お気に入りの横山拓也と同じ公演に関わる人：『雉はじめて鳴く』』→
+// 『横山拓也 演出『雉はじめて鳴く』出演』」、fix-fav-reason-roles）: 登録した名前・その作品での役職・作品名・この人の役職
+test('the favourite reason: name, its role in the work, the work, and this person\'s role there', async () => {
+  const {favText, favDetails, reasonRows} = await import('../src/screens/recommend.js');
+  assert.equal(favText('横山拓也', '人', [['演出', '雉はじめて鳴く', '出演']]), '（横山拓也 演出『雉はじめて鳴く』出演）');
+  // 2 つの作品: 役職が同じなら作品をつなぎ、違えば「、」で分ける。3 つ以上は新旧 2 つと「ほか n 本」
+  assert.equal(favText('横山拓也', '人', [['演出', 'A', '出演'], ['演出', 'B', '出演']]), '（横山拓也 演出『A』・『B』出演）');
+  assert.equal(favText('横山拓也', '人', [['演出', 'A', '出演'], ['脚本・演出', 'B', '美術']]), '（横山拓也 演出『A』出演、脚本・演出『B』美術）');
+  assert.equal(favText('横山拓也', '人', [['演出', 'A', '出演'], ['演出', 'M', '出演'], ['演出', 'B', '出演']]), '（横山拓也 演出『A』・『B』出演 ほか 1 本）');
+  // 登録した名前の役職が名簿に無い（本文で当たった）ときは役職を書かない
+  assert.equal(favText('横山拓也', '人', [['', 'A', '出演']]), '（横山拓也『A』出演）');
+  // 団体は主催とは限らないので役職を書かない（起案者の指示 2026-10-18「団体は必ずしも主催じゃない。文言を変えて」）
+  assert.equal(favText('劇団乙', '団体', [['', '舞台ふたつめ', '出演']]), '（劇団乙の『舞台ふたつめ』出演）');
+  assert.equal(favText('舞台ふたつめ', '作品', [['', '舞台ふたつめ', '出演']]), '（『舞台ふたつめ』出演）');
+  assert.equal(favText('科学', '題材', [['', 'ロボットの話', '演出']]), '（題材「科学」の『ロボットの話』演出）');
+  // このカードの公演そのものは作品に数えない。作品を書けないときは登録した名前だけ
+  assert.equal(favText('横山拓也', '人', [['演出', '同じ舞台', '出演'], ['演出', 'B', '出演']], '同じ舞台'), '（横山拓也 演出『B』出演）');
+  assert.equal(favText('横山拓也', '人', [['演出', '同じ舞台', '出演']], '同じ舞台'), '（横山拓也と同じ公演）');
+  // 種から作る: 名前は空白を詰めて名簿と合わせ、新しい初日から並べる
+  const seeds = [{stage_id: 'S1', fav: ['横山 拓也'], people: [['演出', '横山拓也'], ['脚本', '横山拓也'], ['出演', '乙']]},
+    {stage_id: 'S2', fav: ['横山 拓也'], people: [['出演', '乙'], ['演出', '乙']]}];
+  const info = new Map([['S1', {title: '古い', start: '2025-01-01'}], ['S2', {title: '新しい', start: '2026-01-01'}]]);
+  const got = favDetails(seeds, new Map([['出演\t乙', '横山 拓也']]), info, new Map([['横山 拓也', '人']]));
+  assert.deepEqual(got.get('出演\t乙'), ['横山 拓也', '人', [['', '新しい', '出演・演出'], ['演出・脚本', '古い', '出演']]]);
+  // 控え（v35）の形でも、前の形（興味ありに残した [鍵, 名前]）でも書ける
+  const row = reasonRows({parts: [[0.5, '出演', '乙', 0]], kinds: [], fav: [['出演\t乙', ...got.get('出演\t乙')]]}, new Map());
+  assert.match(row, /出演 <b>乙<\/b><span class="n">（横山 拓也『新しい』出演・演出、演出・脚本『古い』出演）<\/span>/);
+  assert.match(reasonRows({parts: [[0.5, '出演', '乙', 0]], kinds: [], fav: [['出演\t乙', '横山拓也']]}, new Map()), /（横山拓也と同じ公演）/);
+});
+
+// 起案者の問い 2026-10-18「括弧でおすすめ理由がついてないものがおすすめ理由に出ちゃってる。なぜ？」（fix-reason-no-paren）:
+// 評価の無い人・形式で、作品名がこのカードの公演そのものしか無い・引けないと、名前だけの行になっていた。いまは出さない
+test('a reason row with nothing to say in brackets is left out, and a guide text is never a person', async () => {
+  const {reasonRows} = await import('../src/screens/recommend.js');
+  const titles = new Map([['出演\t甲', ['舞台A']], ['出演\t乙', []], ['#形式\tミュージカル', []]]);
+  const html = reasonRows({parts: [[0.5, '出演', '甲', 0], [0.4, '出演', '乙', 0], [0.3, '出演', 'スタッフ欄をご覧ください。', 2]],
+    kinds: [[0.2, '#形式', 'ミュージカル', 0], [0.1, '#原作', '漫画原作', 1]]}, titles);
+  assert.match(html, /出演 <b>甲<\/b><span class="n">（『舞台A』）<\/span>/);
+  assert.doesNotMatch(html, /<b>乙<\/b>|ミュージカル|スタッフ欄/);
+  assert.match(html, /<b>漫画原作<\/b><span class="n">（履歴 1 本）<\/span>/);
 });

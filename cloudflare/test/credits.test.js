@@ -18,6 +18,11 @@ const CASES = [
   {'出演': 'ＡＢＣ　ＤＥＦ、ｶﾀｶﾅ', 'スタッフ': '映像オペレーション：映像N\n【】空の括弧\n協力:協力者O/協力者P'},
   // 役名：名前・アンサンブル：名前（q-credit-part-names、2026-10-15）
   {'出演': 'ジャン・バルジャン：福井晶一／吉原光夫\nジャベール:川口竜也\nアンサンブル：田中、高橋次郎\n【出演】 甲野'},
+  // 名前の代わりに書かれた案内の文と URL（取得元の実データにあった型、起案者の指示 2026-10-18、fix-credit-guide-text）
+  {'出演': 'スタッフ欄をご覧ください。', '脚本': '下記スタッフ欄をご参照ください', '演出': 'スタッフ欄をご覧下さい'},
+  {'出演': '詳細は公式サイトにて、https://musical-za.co.jp/', 'スタッフ': '制作：musical-za.co.jp\n宣伝 twitter.com'},
+  {'出演': '日により出演者が異なります、詳細はタイムテーブル欄をご覧ください。'},
+  {'出演': '（後日発表）\n下記に掲載\nComingSoon\ncomigsoon\n未定\n今井未定\n演劇ユニットG.com\n俳優甲'},
   {},
 ];
 
@@ -40,4 +45,13 @@ test('parse_credits matches Python on assorted credit fields', () => {
 test('a part name or the ensemble heading before a colon is not part of the person', () => {
   assert.deepEqual(parseCredits({'出演': 'ジャン・バルジャン：福井晶一／吉原光夫\nジャベール:川口竜也\nアンサンブル：田中、高橋次郎'}).map(p => p[1]),
     ['吉原光夫', '川口竜也', '田中', '福井晶一', '高橋次郎']);
+});
+
+// 案内の文は人として読まない（起案者の指示 2026-10-18「出演 スタッフ欄をご覧ください。になってる箇所があるから直して」）。
+// 「未定」は欄の全体のときだけ（「今井未定」は名前）、ドメインは英数字のものだけ（「演劇ユニットG.com」は団体の名前）
+test('guide texts and URLs written in place of names are not people', () => {
+  assert.deepStrictEqual(parseCredits({'出演': 'スタッフ欄をご覧ください。'}), []);
+  assert.deepStrictEqual(parseCredits({'出演': '詳細は公式サイトにて、https://musical-za.co.jp/'}), []);
+  assert.deepStrictEqual(parseCredits({'出演': '（後日発表）、下記に掲載、ComingSoon、未定、今井未定、演劇ユニットG.com、俳優甲'}),
+    [['出演', '今井未定'], ['出演', '俳優甲'], ['出演', '演劇ユニットG.com']]);
 });

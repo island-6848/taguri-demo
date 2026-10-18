@@ -47,6 +47,8 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools" / "taguri"))
 import icons as IC                                                   # noqa: E402
 import impressions as IM                                             # noqa: E402
+sys.path.insert(0, str(ROOT / "tools" / "review"))
+import measure_nets as MN                                            # noqa: E402
 SRC = ROOT / "data" / "review" / "recommend2.json"
 OUT = ROOT / "data" / "review" / "recommend.html"
 E = lambda s: html.escape(str(s))                                       # noqa: E731
@@ -303,12 +305,12 @@ def venues(c: dict) -> list[dict]:
     out = [{"stage_id": str(c.get("stage_id") or ""), "theater": c.get("theater") or "",
             "pref": c.get("pref") or "", "period": c.get("period") or "",
             "days": c.get("days") or 0, "price": c.get("price") or "",
-            "url": c.get("url") or "", "onsale": c.get("onsale") or "確認できず"}]
+            "url": c.get("url") or "", "onsale": c.get("onsale") or "発売日不明"}]
     for t in (c.get("tours") or []):
         out.append({"stage_id": str(t.get("stage_id") or ""), "theater": t.get("theater") or "",
                     "pref": t.get("pref") or "", "period": t.get("period") or "",
                     "days": t.get("days") or 0, "price": t.get("price") or "",
-                    "url": t.get("url") or "", "onsale": t.get("onsale") or "確認できず"})
+                    "url": t.get("url") or "", "onsale": t.get("onsale") or "発売日不明"})
     return out
 
 
@@ -632,9 +634,12 @@ def split_names(raw: str) -> list[str]:
     **序列（誰が主演か）が消える。** 画面に出すのは事実の並びなので、元の順を保つ。
     """
     out = []
-    for x in NAME_SEP.split(raw or ""):
+    # 名前の代わりに書かれた案内の文（「スタッフ欄をご覧ください。」「詳細は公式サイトにて、https://…」）と URL は並べない。
+    # 出演欄が案内の文だけなら、出演の行ごと出さない（起案者の指示 2026-10-18「出演 スタッフ欄をご覧ください。になってる
+    # 箇所があるから直して」。measure_nets.is_guide、Worker の screens/cast.js splitNames と同じ）
+    for x in NAME_SEP.split(MN._URL.sub("", raw or "")):
         x = x.strip().strip("　")
-        if not x or x in ETC or len(x) > 40:
+        if not x or x in ETC or len(x) > 40 or MN.is_guide(x):
             continue
         if x not in out:
             out.append(x)
@@ -748,9 +753,16 @@ def reason_rows(c: dict) -> str:
         # 読ませる、という以前の注意（本数を書いた理由）は、並ぶ作品の数と「ほか N 本」で満たす。
         # 作品名が引けない人（観ればよかった・古い出力）は本数で書く
         works = (works_of.get(f"{role}\t{person}") or []) if isinstance(works_of, dict) else []
+        # **括弧の説明（作品名・本数）を書けない行は出さない。** 評価の無い人（お気に入り・興味ありの公演だけで上がった人）で
+        # 作品名が引けないと、名前だけの行になっていた（起案者の問い 2026-10-18「括弧でおすすめ理由がついてないものが
+        # おすすめ理由に出ちゃってる。なぜ？」、fix-reason-no-paren）。案内の文（「スタッフ欄をご覧ください。」）も人ではない。
+        # Worker の screens/recommend.js reasonRows と同じ
+        why = works_text(works, n)
+        if not why or MN.is_guide(person):
+            continue
         out.append(f'<li class="rs b"><span class="net">人物</span>'
                    f'{E(role)} <b>{E(person)}</b>'
-                   f'<span class="n">{works_text(works, n)}</span>'
+                   f'<span class="n">{why}</span>'
                    f'<button class="rsx" data-word="{E(person)}"'
                    f' title="この人物を理由に出さない">✕</button></li>')
     # **公演の種類（#形式・#原作・#翻訳・#会場・#値段）の理由も出す**（2026-10-14）。v3 の点は人物に
@@ -762,6 +774,8 @@ def reason_rows(c: dict) -> str:
     for contrib, axis, tag, n in sorted((k for k in c.get("why_kind") or [] if k[0] > 0),
                                         key=lambda k: (k[1] not in content, -k[0], k[1], k[2]))[:2]:
         works = (kind_works.get(f"{axis}\t{tag}") or []) if isinstance(kind_works, dict) else []
+        if not works_text(works, n):
+            continue
         # 札の表示は「形式」（起案者の指示 2026-10-18「『種類』ってよりは形式？」）。札と同じ見出しは重ねない
         out.append(f'<li class="rs c k"><span class="net">形式</span>'
                    f'{(E(label) + " ") if (label := KIND_LABEL.get(axis, axis.lstrip("#"))) and label != "形式" and not tag.endswith(label) else ""}<b>{E(tag)}</b>'
@@ -1269,6 +1283,10 @@ def syn_block(c: dict) -> str:
     # **並べて見比べるときにいちばん先に目に入ってほしいのがここ**である ──
     # 本文を読まなくても「どんな話か」が分かるのが、この一覧でタグを出す理由である。
     tags = [str(w).strip() for w in (c.get("themes") or []) if str(w).strip()]
+    # 見せる用のハッシュタグ（あらすじの読み取り g5 の tags の 1 つ目）を先頭に 1 つだけ（起案者の指示 2026-10-18）
+    hook = str(c.get("hook") or "").strip()
+    if hook and not by_hand_tags:
+        tags = [hook] + [w for w in tags if w != hook]
     tag_html = ('<div class="tags">'
                 + "".join(f'<span class="tag">#{E(w)}</span>' for w in tags)
                 + (' <span class="tag mine">自分で入れた分</span>' if by_hand_tags else "")
@@ -1427,8 +1445,10 @@ def ticket(c: dict, *, rank=None, mode: str = "recommend", note: str = "",
     ) if x)
     t_html = schedule_html(c)
     syn_html = syn_block(c)
-    onsale = c.get("onsale") or "確認できず"
-    cls = "warn" if onsale == "確認できず" else ("soon" if "発売" in onsale and onsale != "発売済み" else "ok")
+    # 札の文言は「発売済」「発売日不明」「10/25 10:00 発売」（起案者の指示 2026-10-18、recommend2.onsale）。
+    # 前の版の文言（発売済み・確認できず）で残った控えも同じ色に読む
+    onsale = {"確認できず": "発売日不明", "発売済み": "発売済"}.get(c.get("onsale") or "", c.get("onsale") or "発売日不明")
+    cls = "warn" if onsale == "発売日不明" else ("soon" if "発売" in onsale and onsale != "発売済" else "ok")
     # **探した結果は「なぜ出てきたか」ではなく「ヒットした箇所」を出す。**（言い方を
     # 起案者の指示で「当たったところ」→「ヒットした箇所：」に変えた・2026-08-26）
     # 探す画面から来た 1 枚は、推薦の理由で出ているのではなく、**打った言葉に当たった

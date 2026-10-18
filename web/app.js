@@ -964,7 +964,13 @@ function priceRowsOf(text) {
     const r = m ? [m[1].trim(), m[2].trim()] : [line];
     if (!out.some(x => x.join("\t") === r.join("\t"))) out.push(r);
   }
-  return out;
+  // 金額だけの行（「7,000円」、幅を 1 つの額にした「12,000円」）は、同じ額が券種つきの行（「全席指定 7,000円」）にもあれば
+  // 出さない（起案者の指示 2026-10-18「『7,000円\n全席指定 7,000円』ってなってる公演があるけど『全席指定 7,000円』でよい」）。
+  // 券種つきの行に無い額を含む幅（「2,750円 ~ 7,150円」で 2,750円の券が明細に無い）は残す
+  const yens = r => (r.join(" ").match(/[\d,]+(?=円)/g) || []).map(a => a.replace(/,/g, ""));
+  const bare = r => r.length === 1 && /^[\d,]+円(?:\s*[~〜～\-－]\s*[\d,]+円)?$/.test(r[0]);
+  const named = out.filter(r => !bare(r));
+  return out.filter(r => !bare(r) || !named.length || !yens(r).every(y => named.some(o => yens(o).includes(y))));
 }
 function firstSentence(t) {
   t = (t || "").replace(/\s+/g, " ").trim();
@@ -1894,9 +1900,12 @@ document.addEventListener("click", ev => {
   } else if (b.dataset.fav === "add") {
     const g = b.closest(".fav-add"), i = g.querySelector("#fav-name");
     if (!i.value.trim()) return;
-    post("/api/favourite", {action: "add", kind: g.querySelector("#fav-kind").value,
-      name: i.value.trim()}, g, "登録しました")
-      .then(d => { if (d) { i.value = ""; waitJob(g, true); } });
+    // 人を選んだときだけ、任意の「役職で絞る」の札も送る（起案者の指示 2026-10-18、q-favourite-homonym）
+    const kind = g.querySelector("#fav-kind").value;
+    const boxes = [...g.querySelectorAll(".fav-roles input:checked")];
+    post("/api/favourite", {action: "add", kind,
+      name: i.value.trim(), ...(kind === "人" && boxes.length ? {roles: boxes.map(x => x.value)} : {})}, g, "登録しました")
+      .then(d => { if (d) { i.value = ""; boxes.forEach(x => { x.checked = false; }); waitJob(g, true); } });
   } else if (b.dataset.fav === "promote") {
     const r = b.closest(".prom");
     post("/api/favourite", {action: "add", kind: b.dataset.kind, name: b.dataset.name}, r,

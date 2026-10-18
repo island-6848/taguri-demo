@@ -11,7 +11,7 @@
 // - Strings compare by code point, as Python does (not UTF-16 units).
 
 import {titleKey} from './stage-search.js';
-import {themeExpansion} from './vocab.js';
+import {themeExpansion, rolledThemeWords} from './vocab.js';
 
 export const CONF_K = 3, TOP_N = 3;
 export const GRADE_VALUE = {'◎': 4, '○': 3, '△': 2, '×': 1};
@@ -181,6 +181,8 @@ export function independentRatings(rows) {
 // 「なぜ気になったか」に名前が好んで書いてあれば（noteNames、打ち消し・比べの文は除く #111）、その人に INTEREST_NOTE_BOOST 倍で配る。
 // z はお気に入りと同じ SEED_Z、重みも SEED_K / (SEED_K + 評価の数) で評価が増えるほど薄まる。値は舞台では未検証。
 export const INTEREST_PEOPLE_SHARE = 0.5, INTEREST_PRIOR_BOOST = 3, INTEREST_NOTE_BOOST = 5;
+// 興味ありの画面の ✕（候補から消す、reaction.interest=4）の負の重さ。興味あり 1 公演と同じ大きさ（起案者 2026-10-18「結構マイナス」）
+export const REJECT_W = 1;
 // 人の中の配り方（役の格、起案者の指示 2026-10-15）。興味の理由は主演とは限らない（「別に主演が気になるから
 // 興味あるわけじゃない」）ので、役の格は弱い歯止めとしてだけ使う（案 B、q-interest-why-unknown）: 主な役と中心の
 // 作り手は同じ 1、アンサンブルとそれ以外のスタッフは LESSER_IMPORTANCE 倍。書かれた順で差は付けない。
@@ -360,13 +362,25 @@ export function personValues(rated, seeds = [], skip = new Set(), liked = [], di
   }
   const values = new Map();
   for (const [k, [cnt, sum, wt]] of tally) values.set(k, [cnt, sum / (wt + CONF_K)]);
-  if (!liked.length) return values;
+  // 興味ありの画面で ✕ を押した公演（disliked のうち strong、reaction.interest=4）は、はっきりした負の手がかり
+  const strong = disliked.filter(s => s.strong);
+  if (!liked.length && !strong.length) return values;
   // 興味あり: 評価とお気に入りから分かった値（values）を (2) の手がかりにして、1 公演ぶんを割って足す。
   const contrast = interestContrast(liked, disliked, skip);
   for (const s of liked) {
     for (const [k, share] of ablate.split ? evenShares(s, skip) : interestShares(s, values, contrast, skip)) {
       const t = tally.get(k) || [0, 0, 0];
       t[1] += w * SEED_Z * share; t[2] += w * share;
+      tally.set(k, t);
+    }
+  }
+  // 起案者の指示 2026-10-18「興味の画面でバツを押された場合は、興味なしか視界にも入れたくないから結構マイナスと判断できる」。
+  // 興味あり 1 公演と同じ重さ（REJECT_W）を、向きだけ逆にして人・種類に割る。好きと分かっている人へ多めに配る (2) は
+  // 使わない（好きな人ほど強く下げることになる）。ふつうの興味なし（interest=0）は、これまでどおり比べ (3) にだけ使う
+  for (const s of strong) {
+    for (const [k, share] of interestShares(s, new Map(), new Map(), skip)) {
+      const t = tally.get(k) || [0, 0, 0];
+      t[1] -= w * SEED_Z * REJECT_W * share; t[2] += w * REJECT_W * share;
       tally.set(k, t);
     }
   }
@@ -403,6 +417,28 @@ export async function scoreFromIndex({postingsFor, stagesFor, rated, multipliers
     if (contrib) {
       if (!byStage.has(sid)) byStage.set(sid, []);
       byStage.get(sid).push([contrib, role, person, n, group]);
+    }
+  }
+  // 細かい題材の好みを語彙表の上位へ積み上げ、上位の下の言葉の公演にも効かせる（src/vocab.js rolledThemeWords）。
+  // 理由には上位の名前を出す（起案者の指示 2026-10-18「それなら SF って出しちゃっていいよ」）。1 公演 1 つの上位につき 1 回
+  if (!ablate.rollup) {
+    const themeValues = new Map();
+    for (const [k, nv] of values) if (k.startsWith(THEME_AXIS + '\u0000')) themeValues.set(k.slice(THEME_AXIS.length + 1), nv);
+    const wider = rolledThemeWords(themeValues);
+    if (wider.size) {
+      const best = new Map();                 // sid + 上位 -> 寄与
+      for (const [, word, sid, roleW, group] of await postingsFor([...wider.keys()].sort(cmp).map(w => [THEME_AXIS, w]))) {
+        const [label, n, value] = wider.get(word);
+        const contrib = round6(value * (roleW * mult(group)));
+        const key = sid + '\u0000' + label;
+        if (contrib && !(Math.abs(best.get(key)?.[0] ?? 0) >= Math.abs(contrib))) best.set(key, [contrib, THEME_AXIS, label, n, group, sid]);
+      }
+      for (const [contrib, role, label, n, group, sid] of [...best.values()].sort((x, y) => cmp(x[5], y[5]) || cmp(x[2], y[2]))) {
+        if (!byStage.has(sid)) byStage.set(sid, []);
+        // 同じ名前の言葉（「SF」）が公演に付いていて自分の値で効いているなら、上位としては足さない
+        if (byStage.get(sid).some(p => p[1] === role && nz(p[2]) === nz(label))) continue;
+        byStage.get(sid).push([contrib, role, label, n, group]);
+      }
     }
   }
   // 1 段だけ広げる: 好きな人（値が正）が出る公演の共演者・作り手
@@ -499,7 +535,10 @@ export async function seedsFromFavourites({postingsFor, peopleFor, stagesMatchin
   const note = (sid, name) => { if (!favOf.has(sid)) favOf.set(sid, new Set()); favOf.get(sid).add(name); };
   const put = (sid, x) => { if (!(sids.get(sid) >= x)) sids.set(sid, x); };
   if (names.length) {
-    const keys = [...lookup.keys()].flatMap(name => SEED_ROLES.map(role => [role, name])).sort(cmpTuple);
+    // 役職で絞った人（f.roles、lists.rolesAllowed。q-favourite-homonym）は、その役職の札だけを引く
+    const allowed = new Map(favourites.filter(f => f.roles).map(f => [f.name, f.roles]));
+    const fits = (name, role) => { const a = allowed.get(name); return !a || a.has(role); };
+    const keys = [...lookup.keys()].flatMap(name => SEED_ROLES.filter(role => fits(lookup.get(name), role)).map(role => [role, name])).sort(cmpTuple);
     for (const r of await postingsFor(keys)) { put(r[2], 1); note(r[2], lookup.get(r[1]) ?? r[1]); }
   }
   // Troupes / producers by the producing company, works by the title

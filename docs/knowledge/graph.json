@@ -864,6 +864,23 @@
    "verifies": []
   },
   {
+   "id": "dec-card-dismiss",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "カードの右上の ✕「候補から消す」: ふつうは reaction.interest=3（どの一覧・おすすめからも外すだけ）、興味ありの画面で押したら 4（外して、興味あり 1 公演と同じ重さの負の手がかり）",
+   "sources": [
+    "cloudflare/src/screens/recommend.js",
+    "cloudflare/src/recommend.js",
+    "cloudflare/src/screens/lists.js",
+    "cloudflare/src/screens/reminder.js",
+    "cloudflare/src/screens/search.js",
+    "cloudflare/src/screens/tagged.js",
+    "cloudflare/test/dismiss.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-change-answer-unified",
    "type": "decision",
    "status": "adopted",
@@ -1193,6 +1210,18 @@
    "verifies": []
   },
   {
+   "id": "dec-fav-troupe-wording-same-production",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "団体で登録したお気に入りの理由は「劇団乙の『舞台ふたつめ』出演」（主催と書かない）。お気に入りの一覧に出る公演と同じ公演（別の番号）はおすすめから外す",
+   "sources": [
+    "cloudflare/src/screens/recommend.js",
+    "cloudflare/test/fav-reco.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-favourite-catalogue-match",
    "type": "decision",
    "status": "adopted",
@@ -1216,6 +1245,23 @@
     "cloudflare/src/screens/lists.js",
     "tools/review/render_recommend.py",
     "cloudflare/scripts/build_cards.py"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-favourite-role-filter",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "お気に入りの人は、任意で役職（出演・脚本・演出・作曲・音楽・振付・翻訳・原作、複数可）に絞れる。絞った名前は、その役職で欄に書かれた公演だけを一覧と推薦の種に使う",
+   "sources": [
+    "cloudflare/src/screens/lists.js",
+    "cloudflare/src/screens/settings.js",
+    "cloudflare/src/screens/recommend.js",
+    "cloudflare/src/recommend.js",
+    "web/app.js",
+    "web/theme.css",
+    "cloudflare/test/fav-roles.test.js"
    ],
    "verifies": []
   },
@@ -1407,6 +1453,20 @@
     "tools/review/render_recommend.py",
     "tools/taguri/impressions.py",
     "web/app.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-hook-tag",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "公演のカードの題材タグの先頭に、見せる用のハッシュタグ（作品の問い・謎・核心）を 1 つだけ出す",
+   "sources": [
+    "tools/credits/extract_theme_llm.py",
+    "cloudflare/scripts/build_cards.py",
+    "tools/review/render_recommend.py",
+    "cloudflare/test/test_build_cards.py"
    ],
    "verifies": []
   },
@@ -1878,6 +1938,18 @@
    "verifies": []
   },
   {
+   "id": "dec-price-same-amount",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "カードの料金で、金額だけの行と同じ額が券種つきの行にもあるときは、券種つきの行だけを出す（「7,000円／全席指定 7,000円」→「全席指定 7,000円」）",
+   "sources": [
+    "web/app.js",
+    "cloudflare/test/e2e-walk.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-rate-limit-fail-open",
    "type": "decision",
    "status": "proposed",
@@ -2341,6 +2413,20 @@
    "verifies": []
   },
   {
+   "id": "dec-sale-label-words",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "発売の札は「発売済」「発売日不明」「10/25 10:00 発売」（時刻は取得元にあるときだけ。取得元で時刻まで書く公演は【発売日】4,697 件のうち 5 件）",
+   "sources": [
+    "tools/review/recommend2.py",
+    "tools/review/render_recommend.py",
+    "tools/review/test_reason_works.py",
+    "cloudflare/src/screens/reminder.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-scale-workers",
    "type": "decision",
    "status": "superseded",
@@ -2586,6 +2672,19 @@
     "tools/credits/extract_theme_llm.py",
     "cloudflare/scripts/build_recommend_index.py",
     "tools/credits/test_theme_queue.py"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-theme-rollup",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "評価から分かった細かい題材の好みを語彙表の上位へ積み上げ、3 つ以上の枝で同じ向きなら上位の好みとして下の言葉へ効かせる",
+   "sources": [
+    "cloudflare/src/vocab.js",
+    "cloudflare/src/recommend.js",
+    "cloudflare/test/vocab.test.js"
    ],
    "verifies": []
   },
@@ -3189,6 +3288,23 @@
    "verifies": []
   },
   {
+   "id": "fix-credit-guide-text",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-18",
+   "title": "出演欄などに名前の代わりに書かれた案内の文（「スタッフ欄をご覧ください。」「詳細は公式サイトにて、https://…」など）を人名として読んでいた。カードの出演の行と推薦の索引（rec_people）の両方に入っていたので、案内の文と URL は名前として読まないようにした",
+   "sources": [
+    "tools/review/measure_nets.py",
+    "cloudflare/src/screens/credits.js",
+    "cloudflare/src/screens/cast.js",
+    "tools/review/render_recommend.py",
+    "cloudflare/test/credits.test.js",
+    "cloudflare/test/cast.test.js",
+    "tools/review/test_measure_nets.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "fix-declined-kind-tags",
    "type": "decision",
    "status": "adopted",
@@ -3228,6 +3344,20 @@
     "cloudflare/src/screens/recommend.js",
     "cloudflare/src/screens/lists.js",
     "cloudflare/test/fav-reco.test.js",
+    "cloudflare/test/e2e-walk.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "fix-fav-reason-roles",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "お気に入りから広げた人の理由は「登録した名前 その作品での役職『作品名』この人のその作品での役職」（例「横山拓也 演出『雉はじめて鳴く』出演」）",
+   "sources": [
+    "cloudflare/src/screens/recommend.js",
+    "cloudflare/test/fav-reco.test.js",
+    "cloudflare/test/recommend-screen.test.js",
     "cloudflare/test/e2e-walk.js"
    ],
    "verifies": []
@@ -3347,6 +3477,21 @@
     "cloudflare/src/recommend.js",
     "tools/review/user_recommender.py",
     "cloudflare/test/reco-gate.test.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "fix-reason-no-paren",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-18",
+   "title": "括弧の説明の無い理由の行は、推薦アルゴリズム（順位）の問題ではなく、理由の文を作る側の問題。評価の無い人・形式（興味あり・お気に入りの公演だけで上がったもの）で、作品名がこのカードの公演そのものしか無い・引けないと、名前だけの行になっていた",
+   "sources": [
+    "cloudflare/src/screens/recommend.js",
+    "tools/review/render_recommend.py",
+    "cloudflare/test/fav-reco.test.js",
+    "cloudflare/test/recommend-screen.test.js",
+    "tools/review/test_reason_works.py"
    ],
    "verifies": []
   },
@@ -5769,6 +5914,29 @@
    "verifies": []
   },
   {
+   "id": "q-fav-same-production",
+   "type": "question",
+   "status": "answered",
+   "date": "2026-10-18",
+   "title": "お気に入りの一覧に出ている公演と同じ公演（別の番号）を、おすすめから外すべきか",
+   "sources": [
+    "cloudflare/src/screens/recommend.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "q-favourite-homonym",
+   "type": "question",
+   "status": "answered",
+   "date": "2026-10-18",
+   "title": "お気に入りの人の名前に同姓同名がいる（加藤拓也）とき、片方だけを拾うにはどうするか。役職で絞る・団体で絞る・公演ごとに ✕ のどれにするか",
+   "sources": [
+    "data/review/candidates.jsonl",
+    "cloudflare/src/screens/lists.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "q-favourite-seed-volume",
    "type": "question",
    "status": "open",
@@ -8033,6 +8201,11 @@
    "to": "dec-free-tier-only"
   },
   {
+   "from": "dec-card-dismiss",
+   "rel": "depends_on",
+   "to": "impl-interest-split"
+  },
+  {
    "from": "dec-change-answer-unified",
    "rel": "depends_on",
    "to": "lit-nielsen-heuristics"
@@ -8383,6 +8556,16 @@
    "to": "impl-favourite-seed"
   },
   {
+   "from": "dec-fav-troupe-wording-same-production",
+   "rel": "answers",
+   "to": "q-fav-same-production"
+  },
+  {
+   "from": "dec-fav-troupe-wording-same-production",
+   "rel": "depends_on",
+   "to": "fix-fav-reason-roles"
+  },
+  {
    "from": "dec-favourite-catalogue-match",
    "rel": "answers",
    "to": "q-name-search-without-corich-search"
@@ -8401,6 +8584,11 @@
    "from": "dec-favourite-owned-button",
    "rel": "affects",
    "to": "comp-frontend"
+  },
+  {
+   "from": "dec-favourite-role-filter",
+   "rel": "answers",
+   "to": "q-favourite-homonym"
   },
   {
    "from": "dec-firebase-auth",
@@ -8576,6 +8764,11 @@
    "from": "dec-hide-own-words",
    "rel": "affects",
    "to": "dec-recommend-compact-poster"
+  },
+  {
+   "from": "dec-hook-tag",
+   "rel": "affects",
+   "to": "dec-theme-kinds-6p2"
   },
   {
    "from": "dec-import-calendar-mail",
@@ -8911,6 +9104,11 @@
    "from": "dec-posters-r2",
    "rel": "answers",
    "to": "q-worker-posters"
+  },
+  {
+   "from": "dec-price-same-amount",
+   "rel": "affects",
+   "to": "dec-ticket-price-filter"
   },
   {
    "from": "dec-rate-limit-fail-open",
@@ -9288,6 +9486,11 @@
    "to": "q-direction"
   },
   {
+   "from": "dec-sale-label-words",
+   "rel": "affects",
+   "to": "fix-price-detail-missing"
+  },
+  {
    "from": "dec-scale-workers",
    "rel": "affects",
    "to": "q-direction"
@@ -9511,6 +9714,16 @@
    "from": "dec-theme-knowledge",
    "rel": "affects",
    "to": "eval-g5-trial-1018"
+  },
+  {
+   "from": "dec-theme-rollup",
+   "rel": "affects",
+   "to": "impl-theme-vocab"
+  },
+  {
+   "from": "dec-theme-rollup",
+   "rel": "affects",
+   "to": "dec-theme-kinds-6p2"
   },
   {
    "from": "dec-theme-user-choice",
@@ -9963,6 +10176,11 @@
    "to": "dec-ui-1018b"
   },
   {
+   "from": "fix-credit-guide-text",
+   "rel": "affects",
+   "to": "dec-credit-part-names"
+  },
+  {
    "from": "fix-declined-kind-tags",
    "rel": "depends_on",
    "to": "impl-kind-reason-off"
@@ -9981,6 +10199,16 @@
    "from": "fix-fav-only-no-reco",
    "rel": "raises",
    "to": "q-fav-reco-running-shows"
+  },
+  {
+   "from": "fix-fav-reason-roles",
+   "rel": "depends_on",
+   "to": "dec-fav-spread-roles"
+  },
+  {
+   "from": "fix-fav-reason-roles",
+   "rel": "affects",
+   "to": "dec-reason-two-works"
   },
   {
    "from": "fix-future-dated-ratings",
@@ -10036,6 +10264,16 @@
    "from": "fix-rated-at",
    "rel": "raises",
    "to": "q-replay-history-restore"
+  },
+  {
+   "from": "fix-reason-no-paren",
+   "rel": "affects",
+   "to": "dec-reason-two-works"
+  },
+  {
+   "from": "fix-reason-no-paren",
+   "rel": "affects",
+   "to": "dec-reason-work-titles"
   },
   {
    "from": "fix-request-mail",
@@ -11671,6 +11909,16 @@
    "from": "q-fav-reco-running-shows",
    "rel": "depends_on",
    "to": "fix-fav-only-no-reco"
+  },
+  {
+   "from": "q-fav-same-production",
+   "rel": "depends_on",
+   "to": "fix-reason-no-paren"
+  },
+  {
+   "from": "q-favourite-homonym",
+   "rel": "depends_on",
+   "to": "dec-card-dismiss"
   },
   {
    "from": "q-favourite-seed-volume",
