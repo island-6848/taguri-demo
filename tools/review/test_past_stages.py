@@ -63,6 +63,16 @@ class PastStagesTest(unittest.TestCase):
         P.run([], limit=10, since="2019-01-01", stop_after=5, max_minutes=0, fetch=lambda sid: (seen.append(sid), pages[sid])[1])
         self.assertEqual(seen, [30, 20])
 
+    def test_daily_run_shares_its_time_with_the_stories_before_the_list_is_done(self):
+        story = "<p>" + "ある家族が、古い家を手放す日の朝に集まり、それぞれの思い出を語り合う物語。" * 12 + "</p>"
+        pages = {30: page("夜の果て", "2024/03/01 〜 2024/03/10") + story, 20: page("名もなき町", "2022/7/1 〜 2022/7/3") + story}
+        seen = []
+        got = P.run([20, 30], limit=10, since="2019-01-01", stop_after=5, max_minutes=60,
+                    fetch=lambda sid: (seen.append(sid), pages[sid])[1])
+        self.assertEqual(got["kept"], 2)                  # 一覧は 6 枚まで（10 の 6 割）なので 2 枚とも読む
+        self.assertEqual(got["stories"]["queued"], 2)     # 残り 4 枚の枠で、いま読んだ公演のあらすじも積む
+        self.assertEqual(seen, [30, 20, 30, 20])
+
     def test_second_pass_waits_while_the_queue_is_full(self):
         P.PAST.mkdir(parents=True)
         P.ROWS.write_text(json.dumps({"stage_id": "30", "title": "夜の果て"}) + "\n", encoding="utf-8")

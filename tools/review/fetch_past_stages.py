@@ -66,6 +66,7 @@ ROWS = PAST / "stages.jsonl"
 PROGRESS = PAST / "progress.json"
 CANDIDATES = ROOT / "data" / "review" / "candidates.jsonl"
 STORY_SIDE = "past"
+STORY_SHARE = 0.4          # 一覧を読み終える前は、その日の時間の 4 割をあらすじに回す（最近の公演のあらすじから先に揃える）
 STORY_QUEUE_MAX = 2_000     # 読み取り待ちの上限（1 件およそ 5〜7 KB。state ブランチを 15 MB ほどまでにする）
 
 # 照合とおすすめに使う欄だけを残す（料金・問い合わせなどは持たない）
@@ -175,6 +176,11 @@ def run(ids: list[int], *, limit: int, since: str, stop_after: int, max_minutes:
         return {"read": 0, "kept": 0, "skipped": 0, "done": True, "cursor": p.get("cursor"), "stories": got}
     if p.get("top") is None and ids:
         p["top"] = max(ids)
+    # 一覧を読み終える前も、時間の上限が決まっている実行（毎日の取得）では、残りの 4 割であらすじも進める
+    share = STORY_SHARE if max_minutes else 0
+    if share:
+        story_minutes, max_minutes = max_minutes * share, max_minutes * (1 - share)
+        story_limit, limit = int(limit * share), limit - int(limit * share)
     todo = plan(ids, p, known_ids(), limit)
     t0 = time.monotonic()
     got = {"read": 0, "kept": 0, "skipped": 0, "old": 0}
@@ -187,8 +193,9 @@ def run(ids: list[int], *, limit: int, since: str, stop_after: int, max_minutes:
             try:
                 html = fetch(sid)
             except PH.Skipped as e:
-                # ホストから手を引いた（robots.txt・429 が続いた等）なら、この実行はここまで
+                # ホストから手を引いた（robots.txt・429 が続いた等）なら、この実行はここまで（あらすじも読まない）
                 print(f"取得をやめる: {e}")
+                share = 0
                 break
             except Exception as e:                    # 消えたページ・一時的な失敗は飛ばす
                 got["skipped"] += 1
@@ -217,6 +224,8 @@ def run(ids: list[int], *, limit: int, since: str, stop_after: int, max_minutes:
                 save_progress(p)
     if not todo:
         p["done"] = True
+    if share:
+        got["stories"] = stories(p, limit=story_limit, max_minutes=story_minutes, fetch=fetch)
     save_progress(p)
     got.update(done=p.get("done", False), cursor=p.get("cursor"))
     return got
