@@ -6,6 +6,7 @@ import sqlite3
 import sys
 import tempfile
 import unittest
+import urllib.error
 from unittest import mock
 from pathlib import Path
 
@@ -44,7 +45,27 @@ class BackupTest(unittest.TestCase):
         export = lambda: (["users", "works"], want or {"users": 2, "works": 1}, sql)
         return B.backup(self.data, export=export, now=now,
                         put=lambda a, t, k, body: self.store.__setitem__(k, body),
-                        delete=lambda a, t, k: self.store.pop(k))
+                        delete=lambda a, t, k: self.store.pop(k), ensure=lambda a, t: {})
+
+    def test_backups_go_to_their_own_bucket_made_on_first_use(self):
+        # 控えはポスターと別の入れ物（Worker の結び付けが無い）。無ければ作り、35 日で消す決まりを付ける
+        self.assertEqual(B.BUCKET, "taguri-backup")
+        wrangler_jsonc = (Path(__file__).resolve().parents[1] / "wrangler.jsonc").read_text(encoding="utf-8")
+        self.assertNotIn(B.BUCKET, wrangler_jsonc)
+        calls = []
+
+        def api(account, token, path, method="GET", payload=None):
+            calls.append((method, path, payload))
+            if method == "GET":
+                raise urllib.error.HTTPError("u", 404, "no", {}, None)
+            return {}
+
+        with mock.patch.object(B, "_api", api):
+            self.assertEqual(B.ensure_bucket("acc", "tok"), {"created": "taguri-backup", "lifecycle_days": 35})
+        self.assertEqual(calls[1], ("POST", "", {"name": "taguri-backup"}))
+        rule = calls[2][2]["rules"][0]
+        self.assertEqual((calls[2][1], rule["conditions"]["prefix"], rule["deleteObjectsTransition"]["condition"]["maxAge"]),
+                         ("/taguri-backup/lifecycle", "backup/d1/", 35 * 86400))
 
     def test_every_user_table_is_backed_up_and_rebuildable_ones_are_not(self):
         got = B.user_tables(schema_tables())

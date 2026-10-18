@@ -13,8 +13,8 @@
   ログインのセッション・パスキーの一時的な問い（戻したあとは入り直してもらう）は書き出さない。
   新しい表は自動で「書き出す側」に入る（入れ忘れで記録が控えから漏れないように）
 - 書き出した SQL を手元の SQLite に読み込んで、表ごとの行数を D1 と比べてから暗号化する
-- 暗号化は gpg の合言葉方式（AES-256）。R2 には暗号化したものだけを置く（ポスターと同じ入れ物の
-  backup/d1/ の下。Worker の /img/ は「/」を含む名前を出さないので、外からは読めない）
+- 暗号化は gpg の合言葉方式（AES-256）。R2 には暗号化したものだけを置く（控え専用の入れ物 taguri-backup の
+  backup/d1/ の下。2026-10-18 まではポスターと同じ入れ物だった。Worker にはこの入れ物の結び付けが無い）
 - 置くのは 30 日分。それより古いものは消す。消した人の記録も、この 30 日のあいだは控えに残る
   （説明と削除の画面に書く）
 - R2 の保存量と書き込み回数は free_tier.py の数えに足す（無料枠の上限の手前で止まるのは取得と同じ）
@@ -41,7 +41,10 @@ sys.path.insert(0, str(HERE))
 import free_tier as FT                                             # noqa: E402
 
 DB_NAME = "taguri-demo"
-BUCKET = "taguri-posters"
+# 控えは専用の入れ物に置く（起案者の指示 2026-10-18「分けましょう」、issue #73）。Worker にはこの入れ物の
+# 結び付け（binding）が無いので、画面の側からは読めも消せもしない。無ければ最初の控えのときに作る（ensure_bucket）
+BUCKET = "taguri-backup"
+LIFECYCLE_DAYS = 35            # 入れ物の決まりでも消す（本体は KEEP_DAYS の 30 日で消す。消し損ねの二重の守り）
 PREFIX = "backup/d1/"
 KEEP_DAYS = 30
 # 毎日作り直せる表と、控えに入れない一時的な表。これ以外はすべて書き出す。
@@ -122,6 +125,35 @@ def _url(account: str, key: str) -> str:
     return f"https://api.cloudflare.com/client/v4/accounts/{account}/r2/buckets/{BUCKET}/objects/" + urllib.parse.quote(key)
 
 
+def _api(account: str, token: str, path: str, method: str = "GET", payload: dict | None = None) -> dict:
+    data = json.dumps(payload).encode() if payload is not None else None
+    req = urllib.request.Request(f"https://api.cloudflare.com/client/v4/accounts/{account}/r2/buckets{path}", data=data, method=method,
+                                 headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=60) as r:
+        return json.loads(r.read() or b"{}")
+
+
+def ensure_bucket(account: str, token: str) -> dict:
+    """控えの入れ物が無ければ作り、LIFECYCLE_DAYS 日で消す決まりを付ける。何をしたかを返す。
+    決まりを付けられなくても控えは続ける（本体が 30 日で消す）。"""
+    done = {}
+    try:
+        _api(account, token, f"/{BUCKET}")
+    except urllib.error.HTTPError as e:
+        if e.code != 404:
+            raise
+        _api(account, token, "", "POST", {"name": BUCKET})
+        done["created"] = BUCKET
+    try:
+        rule = {"id": "expire-backups", "enabled": True, "conditions": {"prefix": PREFIX},
+                "deleteObjectsTransition": {"condition": {"type": "Age", "maxAge": LIFECYCLE_DAYS * 86400}}}
+        _api(account, token, f"/{BUCKET}/lifecycle", "PUT", {"rules": [rule]})
+        done["lifecycle_days"] = LIFECYCLE_DAYS
+    except urllib.error.HTTPError as e:
+        done["lifecycle_error"] = e.code
+    return done
+
+
 def r2_put(account: str, token: str, key: str, body: bytes) -> None:
     req = urllib.request.Request(_url(account, key), data=body, method="PUT",
                                  headers={"Authorization": f"Bearer {token}", "Content-Type": "application/octet-stream"})
@@ -151,7 +183,8 @@ def to_drop(keys: list[str], today: str, keep_days: int = KEEP_DAYS) -> list[str
     return [k for k in keys if k[len(PREFIX):len(PREFIX) + 10] < edge]
 
 
-def backup(data: Path, *, export=None, counts=None, put=r2_put, delete=r2_delete, now: dt.datetime | None = None) -> dict:
+def backup(data: Path, *, export=None, counts=None, put=r2_put, delete=r2_delete, ensure=ensure_bucket,
+           now: dt.datetime | None = None) -> dict:
     account, token = os.environ.get("CLOUDFLARE_ACCOUNT_ID", ""), os.environ.get("CLOUDFLARE_API_TOKEN", "")
     passphrase = os.environ.get("BACKUP_PASSPHRASE", "")
     if not passphrase:
@@ -182,6 +215,7 @@ def backup(data: Path, *, export=None, counts=None, put=r2_put, delete=r2_delete
     key = f"{PREFIX}{FT.today(now)}.sql.gpg"
     m = FT.month(now)
     u["r2"]["class_a"][m] = FT.r2_class_a(u, now) + 1
+    bucket = ensure(account, token)
     try:
         put(account, token, key, body)
         u["r2"]["sizes"][key] = len(body)
@@ -195,7 +229,7 @@ def backup(data: Path, *, export=None, counts=None, put=r2_put, delete=r2_delete
             dropped.append(old)
     finally:
         FT.save(data, u)
-    return {"key": key, "bytes": len(body), "tables": len(tables), "rows": sum(want.values()),
+    return {"key": key, "bucket": BUCKET, **bucket, "bytes": len(body), "tables": len(tables), "rows": sum(want.values()),
             "dropped": len(dropped), "kept": len(backup_keys(u))}
 
 
