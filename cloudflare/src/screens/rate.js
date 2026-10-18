@@ -406,9 +406,16 @@ async function addWorkAction(b, ctx) {
       if (results.length === 1) { stageId = String(results[0].stage_id); if (!venue) venue2 = results[0].venue || ''; }
     } else if (st && !venue) venue2 = st.venue || '';
   }
-  const key = `${titleKey(title)}#${date || 'undated'}`;
-  if (await ctx.db.prepare('SELECT 1 FROM works WHERE user_id=? AND work_key=?').bind(ctx.uid, key).first()) {
-    throw new ValueError('その作品はもう登録してある');
+  let key = `${titleKey(title)}#${date || 'undated'}`;
+  const had = await ctx.db.prepare('SELECT time FROM works WHERE user_id=? AND work_key=?').bind(ctx.uid, key).first();
+  if (had) {
+    // 同じ日に同じ公演を 2 回（昼・夜）観たときは、開演の時刻で別の記録にする（起案者の指摘 2026-10-18
+    // 「連続で何回も同じ公演を追加したい場合に対処して」）。時刻が無い・同じなら、同じ記録とみなして断る
+    if (!time || (had.time || '') === time) throw new ValueError(time ? 'その日・その開演の記録はもうある' : 'その日の記録はもうある。同じ日にもう一度観たときは、開演の時刻を入れる');
+    key = `${key}#${time}`;
+    if (await ctx.db.prepare('SELECT 1 FROM works WHERE user_id=? AND work_key=?').bind(ctx.uid, key).first()) {
+      throw new ValueError('その日・その開演の記録はもうある');
+    }
   }
   await ctx.db.prepare('INSERT INTO works (user_id, work_key, title, first_date, last_date, times, verdict,'
     + ' chosen, note_impression, note_motive, stage_id, venue, time, updated_at)'

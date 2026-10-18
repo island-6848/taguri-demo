@@ -119,3 +119,22 @@ test('a tour seen on a date of another venue is linked to the venue playing that
     assert.equal(sqlite.prepare("SELECT venue FROM works WHERE work_key=?").get(kept.body.work_key).venue, '劇場A');
   } finally { sqlite.close(); }
 });
+
+// 起案者の指摘 2026-10-18「連続で何回も同じ公演を追加したい場合に対処して」
+test('the same past stage can be added again: another day, or the same day at another curtain time', async () => {
+  const {env, sqlite} = setup();
+  sqlite.prepare('INSERT INTO past_stage(stage_id,title,tkey,start,end,venue,grp,pref,people) VALUES(?,?,?,?,?,?,?,?,?)')
+    .run('720001', '何度も観た', '何度も観た', '2023-07-01', '2023-07-10', '劇場A', '劇団甲', '東京都', '[]');
+  const a = await signIn(env);
+  const add = body => step(env, a, {post: '/api/add_work', body: {title: '何度も観た', stage_id: '720001', ...body}});
+  try {
+    assert.equal((await add({date: '2023-07-02', time: '13:00'})).status, 200);
+    assert.equal((await add({date: '2023-07-05', time: '13:00'})).status, 200);                 // another day
+    const evening = await add({date: '2023-07-02', time: '18:00'});                               // same day, evening show
+    assert.equal(evening.status, 200);
+    assert.equal(evening.body.work_key.endsWith('#2023-07-02#18:00'), true);
+    assert.equal((await add({date: '2023-07-02', time: '18:00'})).status, 400);                 // the very same show twice
+    assert.equal((await add({date: '2023-07-05'})).status, 400);                                // same day without a time: ask for it
+    assert.equal(sqlite.prepare("SELECT COUNT(*) n FROM works WHERE title='何度も観た' AND stage_id='720001'").get().n, 3);
+  } finally { sqlite.close(); }
+});

@@ -1815,12 +1815,20 @@ document.addEventListener("click", ev => {
         }
         body.stage_id = opt.value; body.venue = opt.dataset.venue || "";
       }
-      post("/api/add_work", {...body, date: d.value, time: t.value || ""}, li, "観劇記録に追加しました")
+      // **同じ公演を続けて何回でも足せる**（起案者の指摘 2026-10-18「連続で何回も同じ公演を追加したい場合に対処して」）。
+      // 足したあとも欄は開いたまま、日付と時刻だけ空にする。足した回は行の下に並べる。同じ日の昼・夜は開演の時刻で分ける（サーバー）
+      const when = `${+d.value.slice(5, 7)}/${+d.value.slice(8, 10)}${t.value ? " " + t.value : ""}`;
+      post("/api/add_work", {...body, date: d.value, time: t.value || ""}, li, `${when} を観劇記録に追加しました。続けて別の回も追加できます`)
         .then(r => {
           if (!r) return;
-          form.hidden = true;
+          let done = li.querySelector(".past-done");
+          if (!done) { done = document.createElement("p"); done.className = "past-done"; form.after(done); }
+          done.dataset.n = String(+(done.dataset.n || 0) + 1);
+          done.dataset.list = (done.dataset.list ? done.dataset.list + "、" : "") + when;
+          done.textContent = `追加した回（${done.dataset.n}）: ${done.dataset.list}`;
+          d.value = ""; t.value = ""; d.focus();
           const seen = li.querySelector("[data-past=seen]");
-          seen.disabled = true; seen.textContent = "観劇記録に追加しました"; seen.classList.remove("picked");
+          seen.textContent = "観た（もう 1 回追加）";
         });
     } else {
       post("/api/missed", body, li, "観ればよかったに入れました")
