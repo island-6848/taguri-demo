@@ -5542,6 +5542,17 @@
    ]
   },
   {
+   "id": "q-reco-cpu-structure",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-18",
+   "title": "評価が数十件を越える利用者の推薦を Workers Free の 10 ms に収めるには、計算の形をどう変えるか（点数付けを D1 の SQL に移す・点数を付ける人数に上限・書くときに計算・計算を分ける）",
+   "sources": [
+    "cloudflare/src/recommend.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "q-reco-eval-harness",
    "type": "question",
    "status": "open",
@@ -5980,6 +5991,20 @@
    "verifies": [
     "S20"
    ]
+  },
+  {
+   "id": "reco-cpu-real-index-1018",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-18",
+   "title": "本番の大きさの索引で、推薦の計算は Workers Free の 10 ms を大きく越えていた（評価 0 件で 24 ms、50 件で 98 ms、300 件で 483 ms）。理由の作品名の絞り込みなど 4 か所を直して 14／24／110 ms になった。評価が 20 件を越える利用者はまだ越える",
+   "sources": [
+    "cloudflare/scripts/measure_worker_replay.mjs",
+    "cloudflare/scripts/measure_worker.mjs",
+    "cloudflare/src/screens/recommend.js",
+    "cloudflare/src/recommend.js"
+   ],
+   "verifies": []
   },
   {
    "id": "reco-eval-gaps",
@@ -10512,6 +10537,11 @@
    "to": "q-ec2-cost"
   },
   {
+   "from": "q-reco-cpu-structure",
+   "rel": "depends_on",
+   "to": "reco-cpu-real-index-1018"
+  },
+  {
    "from": "q-reco-eval-harness",
    "rel": "depends_on",
    "to": "dec-reco-per-user-eval"
@@ -10905,6 +10935,16 @@
    "from": "reco-computed-per-request",
    "rel": "answers",
    "to": "q-workers-free-viable"
+  },
+  {
+   "from": "reco-cpu-real-index-1018",
+   "rel": "affects",
+   "to": "fix-cpu-same-production"
+  },
+  {
+   "from": "reco-cpu-real-index-1018",
+   "rel": "raises",
+   "to": "q-reco-cpu-structure"
   },
   {
    "from": "reco-eval-gaps",

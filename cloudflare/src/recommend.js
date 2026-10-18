@@ -448,6 +448,12 @@ export function collapseRanked(ranked, top) {
   return [...groups.values()].slice(0, top);
 }
 
+// D1 の .raw() は行を列の並びの配列で返す（列名を毎行持たないので、受け取る JSON が小さく、読むのも速い。#138）。
+// 試験の SQLite の代わり（raw の無いもの）では、all() の行を同じ並びの配列にする
+const rowsOf = async (stmt, cols) => (typeof stmt.raw === 'function'
+  ? stmt.raw()
+  : (await stmt.all()).results.map(r => cols.map(c => r[c])));
+
 /** The same contract over D1 (or SQLite in tests): the queries the Worker issues. */
 export function d1Access(db, ver, counter = {rows: 0, queries: 0}) {
   return {
@@ -458,9 +464,9 @@ export function d1Access(db, ver, counter = {rows: 0, queries: 0}) {
         const chunk = keys.slice(i, i + KEYS_PER_QUERY);
         const sql = 'SELECT role,person,stage_id,role_w,role_group FROM rec_credit WHERE ver=? AND (role,person) IN (VALUES '
           + chunk.map(() => '(?,?)').join(',') + ')';
-        const {results} = await db.prepare(sql).bind(ver, ...chunk.flat()).all();
+        const results = await rowsOf(db.prepare(sql).bind(ver, ...chunk.flat()), ['role', 'person', 'stage_id', 'role_w', 'role_group']);
         counter.rows += results.length; counter.queries += 1;
-        out.push(...results.map(r => [r.role, r.person, r.stage_id, r.role_w, r.role_group]));
+        for (const r of results) out.push(r);
       }
       return out;
     },
@@ -468,10 +474,10 @@ export function d1Access(db, ver, counter = {rows: 0, queries: 0}) {
       const map = new Map();
       for (let i = 0; i < ids.length; i += IDS_PER_QUERY) {
         const chunk = ids.slice(i, i + IDS_PER_QUERY);
-        const {results} = await db.prepare('SELECT stage_id,start,end,tour FROM rec_stage WHERE ver=? AND stage_id IN ('
-          + chunk.map(() => '?').join(',') + ')').bind(ver, ...chunk).all();
+        const results = await rowsOf(db.prepare('SELECT stage_id,start,end,tour FROM rec_stage WHERE ver=? AND stage_id IN ('
+          + chunk.map(() => '?').join(',') + ')').bind(ver, ...chunk), ['stage_id', 'start', 'end', 'tour']);
         counter.rows += results.length; counter.queries += 1;
-        for (const r of results) map.set(r.stage_id, {start: r.start, end: r.end, tour: r.tour});
+        for (const [sid, start, end, tour] of results) map.set(sid, {start, end, tour});
       }
       return map;
     },

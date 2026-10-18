@@ -78,7 +78,7 @@ ${THANKS_ART}
 const KEEP = 400;
 // 再生（H5）で 1 つずつ外す部品: 興味ありの配り分け・1 段広げる・並べ直し（spreadLeads）・裏の答え合わせ（chooseVariant）
 export const REPLAY_ABLATIONS = ['split', 'expand', 'spread', 'gate'];
-const VERSION = 'screen-v28';   // v28: the hidden check leaves out the dropped kinds as the ranking does (#115); v27: a rating of a record dated after today is not learnt from (#116); v26: ratings ordered by when they were rated (works.rated_at), not by the last edit (#112); v25: a name in the 興味あり note counts only when not denied or compared against (#111); v24: a 興味あり copied to the tour's other venues counts once (#110); v23: 興味なし weakens after the split, not before (#109); v22: favourite seeds weigh FAV_SEED_W (お気に入り＞興味あり); v21: credits read only where needed (CPU); v20: a production answered under another stage id stays out; v19: same title + (group / venue / a shared person) is one card; v18: one card per title+group (sameProduction); v17: no 出典 on the reasons; v16: #会場 dropped, 行けない (interest=2) as a liked seed; v15: 出さない語 also hits the kind tags; v14: #ジャンル (a genre turned off hides its stages); v13: no 原作「原作もの」 (DROPPED_KEYS); v12: no #値段 (DROPPED_AXES); v11: reasons of answered stages (answered_why); v2: the user's 効かせ方 (rank_weight) and the per-group counts; v3: 興味あり as seeds; v4: diag; v5: 興味あり split (impl-interest-split); v6: by part importance; v7: tiers + トメ; v8: two tiers only; v9: トメ joins the main roles; v10: spread leads + one-step partners
+const VERSION = 'screen-v29';   // v29: the cache keeps only the reasons the screens show (CPU, #138); v28: the hidden check leaves out the dropped kinds as the ranking does (#115); v27: a rating of a record dated after today is not learnt from (#116); v26: ratings ordered by when they were rated (works.rated_at), not by the last edit (#112); v25: a name in the 興味あり note counts only when not denied or compared against (#111); v24: a 興味あり copied to the tour's other venues counts once (#110); v23: 興味なし weakens after the split, not before (#109); v22: favourite seeds weigh FAV_SEED_W (お気に入り＞興味あり); v21: credits read only where needed (CPU); v20: a production answered under another stage id stays out; v19: same title + (group / venue / a shared person) is one card; v18: one card per title+group (sameProduction); v17: no 出典 on the reasons; v16: #会場 dropped, 行けない (interest=2) as a liked seed; v15: 出さない語 also hits the kind tags; v14: #ジャンル (a genre turned off hides its stages); v13: no 原作「原作もの」 (DROPPED_KEYS); v12: no #値段 (DROPPED_AXES); v11: reasons of answered stages (answered_why); v2: the user's 効かせ方 (rank_weight) and the per-group counts; v3: 興味あり as seeds; v4: diag; v5: 興味あり split (impl-interest-split); v6: by part importance; v7: tiers + トメ; v8: two tiers only; v9: トメ joins the main roles; v10: spread leads + one-step partners
 export {PREFS} from './prefs.js';
 const KIND_LABEL = {'#形式': '形式', '#原作': '原作', '#翻訳': '', '#原作の国': '原作の国', '#会場': '劇場', '#題材': '題材', '#ジャンル': 'ジャンル'};
 const WORKS_SHOWN = 3;
@@ -288,20 +288,20 @@ export async function rankedGroups(ctx) {
   for (const g of kept) for (const t of [g.tour, ...(g.aliases || [])]) if (t && g.tour) primary.set(t, g.tour);
   const tours = [...primary.keys()];
   for (const part of chunks(tours, 90)) {
-    const {results} = await db.prepare(`SELECT stage_id,tour,start,end,entry FROM rec_stage WHERE ver=? AND tour IN (${part.map(() => '?').join(',')})`).bind(ver, ...part).all();
+    const {results} = await db.prepare(`SELECT stage_id,tour,start,end,json_extract(entry,'$.pref') AS pref FROM rec_stage WHERE ver=? AND tour IN (${part.map(() => '?').join(',')})`).bind(ver, ...part).all();
     for (const r of results) {
       if (r.end && r.end < ctx.today) continue;
       const t = primary.get(r.tour) || r.tour;
       if (!venues.has(t)) venues.set(t, []);
-      venues.get(t).push({stage_id: r.stage_id, pref: JSON.parse(r.entry || '{}').pref || '', start: r.start || ''});
+      venues.get(t).push({stage_id: r.stage_id, pref: r.pref || '', start: r.start || ''});
     }
   }
   // 束の鍵の無い公演と、同じ公演としてまとめた束の鍵の無い公演（aliasStages）の会場
   const lone = [...new Set(kept.flatMap(g => [...(g.tour ? [] : [g.stage_id]), ...(g.aliasStages || [])]))];
   const prefOf = new Map();
   for (const part of chunks(lone, 90)) {
-    const {results} = await db.prepare(`SELECT stage_id,start,entry FROM rec_stage WHERE ver=? AND stage_id IN (${part.map(() => '?').join(',')})`).bind(ver, ...part).all();
-    for (const r of results) prefOf.set(r.stage_id, {stage_id: r.stage_id, pref: JSON.parse(r.entry || '{}').pref || '', start: r.start || ''});
+    const {results} = await db.prepare(`SELECT stage_id,start,json_extract(entry,'$.pref') AS pref FROM rec_stage WHERE ver=? AND stage_id IN (${part.map(() => '?').join(',')})`).bind(ver, ...part).all();
+    for (const r of results) prefOf.set(r.stage_id, {stage_id: r.stage_id, pref: r.pref || '', start: r.start || ''});
   }
   for (const g of kept) {
     const vs = [...(g.tour ? (venues.get(g.tour) || []) : [prefOf.get(g.stage_id)]), ...(g.aliasStages || []).map(sid => prefOf.get(sid))]
@@ -318,8 +318,15 @@ export async function rankedGroups(ctx) {
   const diag = {rated: rated.length, rated_linked: rated.filter(r => r.people.length).length,
     interest: nLiked, interest_with_people: liked.length, favourite_seeds: fav.seeds.length,
     ranked: ranked.length, after_answered: groups.length};
+  // 控え（rec_cache）に残す理由は、画面が使う分だけにする: 人は上位 4 人（reasonRows・whyOf）、種類は使う種類の上位 3 つ
+  // （reasonRows は 2 つ、地域の 1 行は人と合わせて 3 つ）。前は全員分を残していて、控えを書くときの JSON.stringify と
+  // 読むたびの JSON.parse が重かった（#138）
+  for (const g of kept) { g.parts = g.parts.slice(0, 4); g.kinds = g.kinds.filter(k => !droppedKind(k[1], k[2])).slice(0, 3); }
+  // 理由に出す人・種類（各束の上位 4 人・2 種類）の鍵を先に集める。前は titles の全件 × 残した束（最大 400）を
+  // 比べていて、本番の大きさの索引でこれだけで数十 ms かかっていた（#138、Workers Free の CPU は 10 ms）
+  const shownKeys = new Set(kept.flatMap(g => [...g.parts.slice(0, 4), ...g.kinds.slice(0, 2)].map(p => p[1] + '\t' + p[2])));
   const body = {ready: true, ver, n_rated: rated.length, n_scored: groups.length, groups: kept, weights, w_counts: wCounts, diag, answered_why: answeredWhy,
-    titles: [...titles].filter(([k]) => kept.some(g => g.parts.slice(0, 4).some(p => p[1] + '\t' + p[2] === k) || g.kinds.slice(0, 2).some(p => p[1] + '\t' + p[2] === k)))};
+    titles: [...titles].filter(([k]) => shownKeys.has(k))};
   if (!ctx.ablate) await db.prepare('INSERT INTO rec_cache(user_id,stamp,body,created_at) VALUES(?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET stamp=excluded.stamp,body=excluded.body,created_at=excluded.created_at')
     .bind(ctx.uid, stamp, JSON.stringify(body), Math.floor(ctx.now / 1000)).run();
   return {...body, titles: new Map(body.titles), cached: false};
