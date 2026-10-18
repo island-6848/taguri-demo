@@ -1049,9 +1049,22 @@
    "verifies": []
   },
   {
-   "id": "dec-diary-collage",
+   "id": "dec-diary-collage-quiet",
    "type": "decision",
    "status": "adopted",
+   "date": "2026-10-18",
+   "title": "日記帳のコラージュは控えめに。色はテーマのパレットだけ、テープは形を 4 種類、「劇」の切手は外す",
+   "sources": [
+    "web/theme.css",
+    "web/app.js",
+    "cloudflare/test/e2e-walk.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-diary-collage",
+   "type": "decision",
+   "status": "superseded",
    "date": "2026-10-18",
    "title": "日記帳はコラージュの見た目にする。日付は yyyy/mm/dd(曜日)、テープはポスターの上辺にかけて 4 柄、感想の欄に地の色",
    "sources": [
@@ -7948,6 +7961,16 @@
    "from": "dec-design-default-ito",
    "rel": "depends_on",
    "to": "simple-design-principles"
+  },
+  {
+   "from": "dec-diary-collage-quiet",
+   "rel": "supersedes",
+   "to": "dec-diary-collage"
+  },
+  {
+   "from": "dec-diary-collage-quiet",
+   "rel": "depends_on",
+   "to": "dec-rec-row-like-card"
   },
   {
    "from": "dec-diary-collage",
