@@ -49,6 +49,13 @@ class ActionsTest(unittest.TestCase):
         if tight['run']:
             self.assertLessEqual(tight['poster_minutes'], tight['past_minutes'] or FT.POSTER_MAX_MINUTES)
 
+    def test_heavy_recent_days_do_not_stop_the_daily_update(self):
+        # Catalog #11（2026-10-17）: 直近 5 日で 682 分。先の週 1 の上乗せまで数えて、毎日の更新まで止まっていた
+        used = [1, 175, 180, 170, 156] + [0] * 26
+        for mode in ('daily', 'weekly'):
+            p = FT.plan(list(used), mode)
+            self.assertTrue(p['run'], (mode, p))
+
     def test_stops_when_the_cap_is_near(self):
         p = FT.plan([60] * 31, 'daily')
         self.assertFalse(p['run'])
