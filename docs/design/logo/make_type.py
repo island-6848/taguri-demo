@@ -263,6 +263,17 @@ def embed(index_html):
     t = re.sub(r'<!--favicon-->.*?<!--/favicon-->', lambda m: fav, t, flags=re.S)
     Path(index_html).write_text(t, encoding='utf-8')
 
+def python_art(path):
+    """古い Python 版（tools/taguri/logo.py）が使う絵を、文字列の定数として書き出す（起案者 2026-10-18「古いPython版のロゴも揃えて」）。"""
+    out = ('"""たぐりのロゴの絵（docs/design/logo/make_type.py --python が書き出す。手で直さない）。"""\n'
+           f'EMBLEM = {inline(stage(), "tgl-full", "たぐり")!r}\n'
+           f'ROW = {inline(row(), "tgl-row", "たぐり")!r}\n'
+           f'FAVICON_HREF = {favicon_href()!r}\n')
+    Path(path).write_text(out, encoding='utf-8')
+
+if len(sys.argv) > 2 and sys.argv[1] == '--python':
+    python_art(sys.argv[2]); print('written'); raise SystemExit
+
 if len(sys.argv) > 2 and sys.argv[1] == '--embed':
     embed(sys.argv[2]); print('embedded'); raise SystemExit
 

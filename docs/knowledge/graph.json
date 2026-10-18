@@ -2018,6 +2018,8 @@
     "docs/design/logo/make_type.py",
     "docs/design/logo/make_tsukimi.py",
     "web/index.html",
+    "tools/taguri/logo.py",
+    "tools/taguri/logo_art.py",
     "web/assets/logo/apple-touch-icon.png"
    ],
    "verifies": []

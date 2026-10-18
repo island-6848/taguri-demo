@@ -17,6 +17,8 @@ sources:
   - docs/design/logo/make_type.py
   - docs/design/logo/make_tsukimi.py
   - web/index.html
+  - tools/taguri/logo.py
+  - tools/taguri/logo_art.py
   - web/assets/logo/apple-touch-icon.png
 links:
   - depends_on: dec-rec-row-like-card
@@ -40,3 +42,5 @@ links:
 - 起案者「毛糸っぽくしなくてよい。線の太さ、縁の下ほど太くて上ほど細くして強弱つけて」「アイコンにするときはぐ、じゃなくてオペラグラスのイラスト」「たぐりの文字が円に対して下よりなので、中央を通るように」「たぐりの上にある星、1個だとアンバランス」→ 撚りの筋をやめ、外の丸は高さで太さが変わる塗りの形に（上 1.6 → 下 5.0、ほどけた先は細くなって終わる。taper_ring）。字の墨の上下の真ん中を丸の中心の高さに合わせ、少し小さくして幕の留め紐に当たらないようにした。字の上の星は 3 つを左右対称に。アイコン（icon.svg・icon-small.svg）は同じ丸の中にオペラグラス
 - 起案者「ヘッダーとアイコンに入れて。たぐりちょっと右寄りかも。たぐりの文字もうちょっとだけ下でもいい」→ 字を左へ 5・下へ 5。サイトに入れた: web/index.html の帯の頭（<!--brand-->〜<!--/brand-->）に、パソコンは丸い紋章、電話の幅（820px 以下）はオペラグラスと字の横組みを、どちらも currentColor のインライン SVG で埋め込む（暗い表示でも帯の文字の色になる）。タブの絵（<!--favicon-->）は 16〜32px 版の data: SVG（暗いタブでは明るい色）、ホーム画面は web/assets/logo/apple-touch-icon.png。埋め込みは make_type.py --embed web/index.html。index.html は 5.9KB → 30KB（座標を小数 1 桁・丸の点を減らして 68KB から縮めた。Cloudflare の静的な配信は無料枠の数に入らない）。分からないこと・残り: 古い Python 版（tools/taguri/logo.py。Render のデモ）の標章は糸の束のまま
 - 起案者「ぐとりの間に、たとぐ以上の隙間あるのが気になる」→ 字の左端を等間隔に並べていたので、幅の狭い「ぐ」の後ろだけ広く空いていた。字の墨の右端と次の字の左端の隙間で並べ直した（spaced。「ぐ」と「り」の間は星の濁点が入る分だけ少し広め）。星は「り」に寄りすぎないよう少し左上へ。紋章・電話の横組みの両方に当て、web/index.html に埋め込み直した
+- 起案者「古いPython版のロゴも揃えて」→ tools/taguri/logo.py を新しいロゴに（絵は tools/taguri/logo_art.py。make_type.py --python tools/taguri/logo_art.py が書き出す）。パソコンは紋章・電話の幅は横組み・タブはオペラグラス、どれもサービス版と同じ。tools/taguri の試験は変更の前後で同じ 2 件の失敗と 9 件のエラー（変更と関係のない、前からのもの）
+- 気づいたこと（試験の走らせ方）: リポジトリの根から `python3 -m unittest discover -s test` を走らせると、根に test/ が無いので Python 本体の test パッケージ（test_support など）が走り、18 件落ちる。CI と同じく cloudflare/ に入ってから走らせる（96 件、すべて通る）。これまでの報告で「Python の試験 18 件の失敗は前から」と書いたのはこの取り違えで、リポジトリの試験の失敗ではなかった
