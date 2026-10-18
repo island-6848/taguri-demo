@@ -431,6 +431,9 @@ export async function buckets(ctx, {catalogue = false} = {}) {
     } else if (r.interest === 1) { seen.add(key); out.tracking.push(row); }
     else if (r.interest === 0) { seen.add(key); out.others.push(row); }
     else if (r.interest === 2) { seen.add(key); out.others.push({...row, cantgo: true}); }   // 行けない
+    // ✕ で候補から消した公演（3: おすすめ・お気に入りなどで、4: 興味ありの画面で）は、どの一覧にも出さない（お気に入りの名前に
+    // 当たっていても。起案者の指示 2026-10-18「お気に入りとか、これいらんなってときがある。その時候補から消したい」）
+    else if (r.interest === 3 || r.interest === 4) { seen.add(key); out.others.push({...row, dismissed: true}); }
     else if (hits.has(m.stage_id)) { seen.add(key); out.favourites.push({...row, stage_id: m.stage_id, a: hits.get(m.stage_id).a}); }
   }
   const byStart = (a, b) => cmp(a.start || '9999', b.start || '9999');

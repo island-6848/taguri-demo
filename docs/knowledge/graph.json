@@ -864,6 +864,23 @@
    "verifies": []
   },
   {
+   "id": "dec-card-dismiss",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "カードの右上の ✕「候補から消す」: ふつうは reaction.interest=3（どの一覧・おすすめからも外すだけ）、興味ありの画面で押したら 4（外して、興味あり 1 公演と同じ重さの負の手がかり）",
+   "sources": [
+    "cloudflare/src/screens/recommend.js",
+    "cloudflare/src/recommend.js",
+    "cloudflare/src/screens/lists.js",
+    "cloudflare/src/screens/reminder.js",
+    "cloudflare/src/screens/search.js",
+    "cloudflare/src/screens/tagged.js",
+    "cloudflare/test/dismiss.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-change-answer-unified",
    "type": "decision",
    "status": "adopted",
@@ -8016,6 +8033,11 @@
    "from": "dec-cap-allows-shrinking",
    "rel": "depends_on",
    "to": "dec-free-tier-only"
+  },
+  {
+   "from": "dec-card-dismiss",
+   "rel": "depends_on",
+   "to": "impl-interest-split"
   },
   {
    "from": "dec-change-answer-unified",

@@ -181,6 +181,8 @@ export function independentRatings(rows) {
 // 「なぜ気になったか」に名前が好んで書いてあれば（noteNames、打ち消し・比べの文は除く #111）、その人に INTEREST_NOTE_BOOST 倍で配る。
 // z はお気に入りと同じ SEED_Z、重みも SEED_K / (SEED_K + 評価の数) で評価が増えるほど薄まる。値は舞台では未検証。
 export const INTEREST_PEOPLE_SHARE = 0.5, INTEREST_PRIOR_BOOST = 3, INTEREST_NOTE_BOOST = 5;
+// 興味ありの画面の ✕（候補から消す、reaction.interest=4）の負の重さ。興味あり 1 公演と同じ大きさ（起案者 2026-10-18「結構マイナス」）
+export const REJECT_W = 1;
 // 人の中の配り方（役の格、起案者の指示 2026-10-15）。興味の理由は主演とは限らない（「別に主演が気になるから
 // 興味あるわけじゃない」）ので、役の格は弱い歯止めとしてだけ使う（案 B、q-interest-why-unknown）: 主な役と中心の
 // 作り手は同じ 1、アンサンブルとそれ以外のスタッフは LESSER_IMPORTANCE 倍。書かれた順で差は付けない。
@@ -360,13 +362,25 @@ export function personValues(rated, seeds = [], skip = new Set(), liked = [], di
   }
   const values = new Map();
   for (const [k, [cnt, sum, wt]] of tally) values.set(k, [cnt, sum / (wt + CONF_K)]);
-  if (!liked.length) return values;
+  // 興味ありの画面で ✕ を押した公演（disliked のうち strong、reaction.interest=4）は、はっきりした負の手がかり
+  const strong = disliked.filter(s => s.strong);
+  if (!liked.length && !strong.length) return values;
   // 興味あり: 評価とお気に入りから分かった値（values）を (2) の手がかりにして、1 公演ぶんを割って足す。
   const contrast = interestContrast(liked, disliked, skip);
   for (const s of liked) {
     for (const [k, share] of ablate.split ? evenShares(s, skip) : interestShares(s, values, contrast, skip)) {
       const t = tally.get(k) || [0, 0, 0];
       t[1] += w * SEED_Z * share; t[2] += w * share;
+      tally.set(k, t);
+    }
+  }
+  // 起案者の指示 2026-10-18「興味の画面でバツを押された場合は、興味なしか視界にも入れたくないから結構マイナスと判断できる」。
+  // 興味あり 1 公演と同じ重さ（REJECT_W）を、向きだけ逆にして人・種類に割る。好きと分かっている人へ多めに配る (2) は
+  // 使わない（好きな人ほど強く下げることになる）。ふつうの興味なし（interest=0）は、これまでどおり比べ (3) にだけ使う
+  for (const s of strong) {
+    for (const [k, share] of interestShares(s, new Map(), new Map(), skip)) {
+      const t = tally.get(k) || [0, 0, 0];
+      t[1] -= w * SEED_Z * REJECT_W * share; t[2] += w * REJECT_W * share;
       tally.set(k, t);
     }
   }

@@ -102,7 +102,7 @@ export async function taggedScreen(params, ctx) {
   const cards = show.filter(r => html.has(r.stage_id)).map(r => {
     const ans = r.sids.map(s => react.get(s)).filter(Boolean);
     const owned = ans.some(a => a.owned === 1), interest = ans.find(a => a.interest !== undefined)?.interest;
-    const st = owned ? STATE[0][1] : interest === 1 ? STATE[1][1] : interest === 0 ? '興味なしと答えました' : interest === 2 ? '行けないと答えました' : '';
+    const st = owned ? STATE[0][1] : interest === 1 ? STATE[1][1] : interest === 0 ? '興味なしと答えました' : interest === 2 ? '行けないと答えました' : interest === 3 || interest === 4 ? '候補から消しました' : '';
     const top = `<li class="rs found"><span class="net">題材</span>#${E(word)}</li>` + (st ? `<li class="rs state">${E(st)}</li>` : '');
     const pic = posters.get(r.stage_id) || r.sids.map(s => posters.get(s)).find(Boolean);
     const card = compose(html.get(r.stage_id), r.stage_id, interest === 1 && !owned ? 'interest' : 'recommend', {top, poster: pic ? posterHtml(pic) : ''});

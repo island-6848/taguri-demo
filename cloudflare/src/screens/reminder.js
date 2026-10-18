@@ -101,6 +101,8 @@ export function weekRows(cands, status, today, offset = 0) {
     if (!s || !valid(s.split('-').map(Number)) || s < lo || s > hi) continue;
     const sid = String(c.stage_id || '');
     const key = status.get(sid) || 'unanswered';
+    // ✕ で候補から消した公演は出さない（起案者の指示 2026-10-18。lists の dismissed）
+    if (key === 'dismissed') continue;
     const [kind, icon, cls] = KIND[key];
     rows.push({...c, start: s, stage_id: sid, kind_key: key, kind, icon, cls});
   }
@@ -290,7 +292,7 @@ export async function openingCandidates(ctx) {
 export function statusOf(b) {
   const out = new Map();
   for (const [key, kind] of [['others', 'declined'], ['favourites', 'favourites'], ['tracking', 'tracking'], ['owned', 'owned']])
-    for (const r of b[key]) for (const sid of r.sids || [r.stage_id]) out.set(sid, r.cantgo ? 'cantgo' : kind);
+    for (const r of b[key]) for (const sid of r.sids || [r.stage_id]) out.set(sid, r.dismissed ? 'dismissed' : r.cantgo ? 'cantgo' : kind);
   return out;
 }
 

@@ -159,9 +159,11 @@ async function interestSeeds(ctx, access) {
   // 会場だけを外すので、あとでその会場を直接押し直した答えは数える
   const newest = (...vs) => [...last].filter(([, [x, src]]) => vs.includes(x) && !src.endsWith('_tour')).map(([s]) => String(s)).reverse().slice(0, MAX_SEED_STAGES);
   // 行けない（2）も、気になった公演として興味ありと同じ向きの手がかりにする
-  const sids = newest(1, 2), noes = newest(0);
-  if (!sids.length) return {seeds: [], disliked: [], n: 0};
-  const all = [...sids, ...noes];
+  // 興味ありの画面で ✕ を押した公演（4、dismiss_strong）は強い負の手がかり（recommend.REJECT_W）。おすすめ・お気に入りなどで
+  // ✕ を押した公演（3、dismiss）は「候補から消す」だけで、好みの手がかりにはしない（起案者の指示 2026-10-18）
+  const sids = newest(1, 2), noes = newest(0), rejects = newest(4);
+  if (!sids.length && !rejects.length) return {seeds: [], disliked: [], n: 0};
+  const all = [...sids, ...noes, ...rejects];
   const [people, info] = await Promise.all([access.peopleFor(all), stageInfo(ctx.db, all)]);
   for (const s of all) {
     if (people.get(s)?.length) continue;
@@ -173,7 +175,8 @@ async function interestSeeds(ctx, access) {
   // 出演欄の文（書かれた順・役名・アンサンブルの見出しが残っている）。役柄の重さに使う（recommend.castImportance）。
   const one = s => ({stage_id: s, title: info.get(s)?.title || '', date: info.get(s)?.start || '', note: notes.get(s)?.note || '',
     cast_text: String(info.get(s)?.fields?.['出演'] || ''), people: people.get(s)});
-  return {n: sids.length, seeds: sids.filter(s => people.get(s)?.length).map(one), disliked: noes.filter(s => people.get(s)?.length).map(one)};
+  return {n: sids.length, seeds: sids.filter(s => people.get(s)?.length).map(one),
+    disliked: [...noes.filter(s => people.get(s)?.length).map(one), ...rejects.filter(s => people.get(s)?.length).map(s => ({...one(s), strong: true}))]};
 }
 
 /**
@@ -758,7 +761,11 @@ ${starting ? '' : `<p class="lede">気になった公演で「興味あり」を
 // ---------------------------------------------------------------- react (serve.on_react)
 // cantgo（行けない）は interest=2: 答えた公演としておすすめから外し、興味ありの一覧には出さず、好みの手がかりには使う
 // 押し間違いをその場で直せるように（起案者の指示 2026-10-17）、購入済み以外を押したら購入済みの印を外す（owned=0）
-const REACT = {owned: {owned: 1}, interest: {interest: 1, owned: 0}, nointerest: {interest: 0, owned: 0}, cantgo: {interest: 2, owned: 0}};
+// dismiss（カードの右上の ✕「候補から消す」）は interest=3: おすすめ・お気に入り・一覧から外すだけで、好みの手がかりにはしない。
+// 興味ありの画面で押した ✕（dismiss_strong）は interest=4: 一覧から外し、強い負の手がかりにする（起案者の指示 2026-10-18
+// 「これいらんなってときがある。その時候補から消したい。興味の画面でバツを押された場合は…結構マイナスと判断できる」）
+const REACT = {owned: {owned: 1}, interest: {interest: 1, owned: 0}, nointerest: {interest: 0, owned: 0}, cantgo: {interest: 2, owned: 0},
+  dismiss: {interest: 3, owned: 0}, dismiss_strong: {interest: 4, owned: 0}};
 const FROM = {reminder: 'reminder', search: 'search', favourites: 'favourites'};
 
 // 答えを 1 行書く文（実行はしない）。押した公演とほかの会場の分を 1 つの batch で書くため（#196）
@@ -821,7 +828,7 @@ export async function reactAction(b, ctx) {
   const given = {};
   for (const k of ['note', 'note_no', 'note_pre']) if (b[k] !== undefined && b[k] !== null) given[k] = String(b[k]).slice(0, 2000);
   if (!stageId || !/^[A-Za-z0-9_-]{1,40}$/.test(stageId) || (!Object.hasOwn(REACT, value) && !Object.keys(given).length))
-    throw new ValueError('stage_id と、value（owned / interest / nointerest / cantgo）か理由が要る');
+    throw new ValueError('stage_id と、value（owned / interest / nointerest / cantgo / dismiss / dismiss_strong）か理由が要る');
   // どの画面で答えたか（起案者の指示 2026-10-15: 開幕リマインドから足した興味ありは、おすすめ理由の欄ではなく
   // 「開幕リマインドからの追加」と出す）。画面（app.js）が from を送る。無ければこれまでどおり 'screen'。
   const source = Object.hasOwn(FROM, String(b.from ?? '')) ? FROM[String(b.from)] : 'screen';
