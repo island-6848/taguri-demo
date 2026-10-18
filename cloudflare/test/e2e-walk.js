@@ -191,6 +191,13 @@ async function walkA(A) {
     const s = await page.locator('#status').innerText();
     check(/同意して始める/.test(s), '同意なしで押したときの案内が出ない: ' + s);
     check(await page.evaluate(() => document.activeElement?.id) === 'agree', '同意のチェックに焦点が移らない');
+    // 状態の文は押したボタンの直下に出る（起案者の指示 2026-10-18「…対応する各ボタンの下に文章が出るようにして。」）
+    // （パソコンの幅ではボタンが横に並ぶので、その列のすぐ下）
+    check(await page.evaluate(() => { const b = document.querySelector('#passkey-signup'); return [b.nextElementSibling?.id, b.parentElement.nextElementSibling?.id].includes('status'); }), '案内が押したボタンの下に出ない');
+    // 電話の幅でも写す（新規登録の欄と、ボタンの下の案内）
+    await page.setViewportSize({width: 390, height: 844});
+    await page.screenshot({path: join(OUT, 'signup-need-agree-phone.png'), fullPage: true});
+    await page.setViewportSize({width: 1280, height: 900});
   });
   await step('新規登録（パスキー・復旧コード）', async () => {
     await page.check('#agree');
@@ -667,6 +674,32 @@ async function walkA(A) {
     check(r.status() === 401, 'ログアウト後に API が ' + r.status());
   });
 
+  // ログイン画面・規約の見た目（起案者の指示 2026-10-18: 色をログイン後にそろえる・復旧コードはメールの下に点線で・
+  // 迷惑メールの案内・「Googleアカウント」・「プライバシーポリシー」）。PC と電話の幅、暗い表示も写す
+  await step('ログイン画面と規約の見た目（PC・電話・暗い表示）', async () => {
+    await go('/login');
+    const bg = await page.evaluate(() => [getComputedStyle(document.body).backgroundColor, getComputedStyle(document.querySelector('.auth-top')).backgroundColor]);
+    check(bg[0] === 'rgb(242, 242, 243)' && bg[1] === 'rgb(255, 255, 255)', 'ログイン後の色（地 #f2f2f3・帯 #fff）でない: ' + bg.join(' / '));
+    check(/Googleアカウントでログイン/.test(await page.locator('#google').innerText()), '「Googleアカウントでログイン」でない');
+    check(/迷惑メールボックス/.test(await page.locator('#email-form').innerText()), 'メールの欄の下に迷惑メールの案内が無い');
+    check(await page.evaluate(() => !!document.querySelector('#login #email-form ~ #recovery-login')), '復旧コードの欄がメールの欄の下（ログインの欄の中）に無い');
+    check(/プライバシーポリシー/.test(await page.locator('#signup').innerText()), '同意の文が「プライバシーポリシー」でない');
+    await page.screenshot({path: join(OUT, 'login-pc.png'), fullPage: true});
+    await page.setViewportSize({width: 390, height: 844});
+    await page.screenshot({path: join(OUT, 'login-phone.png'), fullPage: true});
+    await page.emulateMedia({colorScheme: 'dark'});
+    await page.screenshot({path: join(OUT, 'login-phone-dark.png'), fullPage: true});
+    await page.emulateMedia({colorScheme: 'light'});
+    for (const p of ['terms', 'privacy']) {
+      await go('/' + p);
+      check(/第 1 条/.test(await page.locator('article').innerText()), `/${p} が条の形でない`);
+      await page.screenshot({path: join(OUT, `${p}-phone.png`), fullPage: false});
+    }
+    await page.setViewportSize({width: 1280, height: 900});
+    for (const p of ['terms', 'privacy']) { await go('/' + p); await page.screenshot({path: join(OUT, `${p}-pc.png`), fullPage: false}); }
+    check(/プライバシーポリシー/.test(await page.title()), '/privacy の題が「プライバシーポリシー」でない');
+  });
+
   await step('もう一度ログイン（パスキー）', async () => {
     await go('/login');
     await page.click('#passkey-login');
@@ -687,6 +720,7 @@ async function walkA(A) {
     await page.fill('#recovery-input', '0'.repeat(64));
     await form.locator('button').click();
     await page.locator('#status.bad').waitFor({timeout: 5000});
+    check(await page.evaluate(() => !!document.querySelector('#recovery-login label + #status')), '断られた文が復旧コードの欄の下に出ない');
     note('違うコード: 「' + (await page.locator('#status').innerText()).trim() + '」');
     await page.fill('#recovery-input', A.code);
     await form.locator('button').click();
@@ -804,7 +838,7 @@ async function deleteA(A, B) {
       if (n) left.push(`${t} ${n}`);
     }
     check(!left.length, 'A の行が残る: ' + left.join(', '));
-    check(sql(`SELECT count(*) n FROM works WHERE user_id='${B.uid}'`)[0].n === 1, 'B の記録まで消えた');
+    { const bn = sql(`SELECT count(*) n FROM works WHERE user_id='${B.uid}'`)[0].n; check(bn === 1, 'B の記録まで消えた（B の works ' + bn + ' 件）'); }
     const old = await fetch(BASE + '/api/screen/rate', {headers: {cookie}});
     check(old.status === 401, '前のセッションで ' + old.status);
     const rec = await fetch(BASE + '/migration-api/recover', {method: 'POST', headers: {origin: BASE, 'content-type': 'application/json'}, body: JSON.stringify({code: A.code})});

@@ -4,7 +4,7 @@
 // - 記録が 1 件も無い（RECORD_TABLES のどの表にも行が無い。設定・表示の控えだけは記録に数えない）
 // - EMPTY_ACCOUNT_DAYS 日のあいだログインしていない（いま使っている人を消さない）
 // 消し方はアカウントの削除（worker.js の deleteAccount）と同じ表を消す。Google 側（Firebase Authentication）の
-// ログインの記録はサーバーからは消せないので残る（privacy.html の 6）。
+// ログインの記録はサーバーからは消せないので残る（privacy.html 第 6 条）。
 import {SCREEN_TABLES} from './screens/index.js';
 
 export const EMPTY_ACCOUNT_DAYS = 30;

@@ -1332,6 +1332,21 @@
    "verifies": []
   },
   {
+   "id": "dec-legal-style-no-reagree",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "規約とプライバシーポリシーを条・項の文体に書き直し、「プライバシーの説明」を「プライバシーポリシー」に改める。中身は変えないので同意の版（2026-10-18-2）は上げない",
+   "sources": [
+    "cloudflare/public/terms.html",
+    "cloudflare/public/privacy.html",
+    "cloudflare/src/terms.js",
+    "cloudflare/test/terms-reagree.test.js",
+    "cloudflare/test/worker.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-list-sort",
    "type": "decision",
    "status": "adopted",
@@ -1404,6 +1419,21 @@
     "cloudflare/test/gate.test.js",
     "cloudflare/test/firebase-auth.test.js",
     "cloudflare/test/passkey.test.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-login-look-1018",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "ログイン画面の色をログイン後（theme.css の明るい表示）にそろえ、復旧コードをメールの下に点線で置き、状態の文を押したボタンの直下に出す",
+   "sources": [
+    "cloudflare/public/login.html",
+    "cloudflare/public/auth.css",
+    "cloudflare/src/client/login.js",
+    "cloudflare/test/recovery-login.test.js",
+    "cloudflare/test/e2e-walk.js"
    ],
    "verifies": []
   },
@@ -5689,6 +5719,19 @@
    "verifies": []
   },
   {
+   "id": "q-privacy-ical-url",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-18",
+   "title": "プライバシーポリシーに、Google カレンダーの非公開アドレスがたぐりのサーバーを通ることを書くか",
+   "sources": [
+    "cloudflare/public/privacy.html",
+    "cloudflare/src/screens/settings.js",
+    "cloudflare/test/register-text.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "q-privacy-law",
    "type": "question",
    "status": "open",
@@ -7951,6 +7994,21 @@
    "to": "dec-interest-card-1015"
   },
   {
+   "from": "dec-legal-style-no-reagree",
+   "rel": "depends_on",
+   "to": "impl-terms-reagree"
+  },
+  {
+   "from": "dec-legal-style-no-reagree",
+   "rel": "depends_on",
+   "to": "impl-terms-consent"
+  },
+  {
+   "from": "dec-legal-style-no-reagree",
+   "rel": "raises",
+   "to": "q-privacy-ical-url"
+  },
+  {
    "from": "dec-list-sort",
    "rel": "affects",
    "to": "comp-frontend"
@@ -7979,6 +8037,11 @@
    "from": "dec-login-email-ttl",
    "rel": "affects",
    "to": "comp-firebase-login"
+  },
+  {
+   "from": "dec-login-look-1018",
+   "rel": "depends_on",
+   "to": "dec-about-on-login"
   },
   {
    "from": "dec-logout-all-token-boundary",

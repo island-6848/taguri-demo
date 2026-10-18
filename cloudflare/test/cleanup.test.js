@@ -45,7 +45,7 @@ test('the Worker has the daily scheduled handler and the cron', () => {
 // 利用者の行を持つ表（user_id の列がある表）のうち、記録に数えない表と、その理由。
 // 新しい表を足したら、RECORD_TABLES（記録に数える）かここ（数えない）のどちらかに入れないと落ちる
 const NOT_RECORDS = {
-  app_setting: '設定（privacy.html の 6: 設定だけを変えたアカウントも消す）',
+  app_setting: '設定（privacy.html 第 6 条: 設定だけを変えたアカウントも消す）',
   rank_weight: '推薦の効かせ方の設定（設定と同じ扱い）',
   viewed: '画面を見た控え（旧版の分析用）',
   rec_cache: 'おすすめの作り置き',
@@ -86,7 +86,7 @@ test('an old, signed-out account with a single row in any record table is kept',
   }
 });
 
-test('an account with only settings, a passkey or old caches goes (privacy.html 6), and takes only its own rows', async () => {
+test('an account with only settings, a passkey or old caches goes (privacy.html article 6), and takes only its own rows', async () => {
   const {sqlite, d1} = db();
   user(sqlite, 'settings-only', 90);
   user(sqlite, 'neighbour', 90);

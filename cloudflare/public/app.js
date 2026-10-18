@@ -482,12 +482,12 @@ function agreeAgain(version) {
   const pop = document.createElement("div");
   pop.className = "agreepop";
   pop.innerHTML = '<div class="agreepop-box" role="dialog" aria-modal="true" aria-labelledby="agreepop-h">'
-    + '<h2 id="agreepop-h">利用規約とプライバシーの説明を改定しました</h2>'
+    + '<h2 id="agreepop-h">利用規約とプライバシーポリシーを改定しました</h2>'
     + '<p>文言を読みやすく書き直しました。権利・義務・条件・数値は変えていません。'
     + '引き続きたぐりを使うには、改定後の内容に同意してください。</p>'
     + '<p class="agreepop-links"><a href="/terms" target="_blank" rel="noopener">利用規約を読む</a>'
-    + '<a href="/privacy" target="_blank" rel="noopener">プライバシーの説明を読む</a></p>'
-    + '<label class="agreepop-check"><input type="checkbox"> 改定後の利用規約とプライバシーの説明に同意します</label>'
+    + '<a href="/privacy" target="_blank" rel="noopener">プライバシーポリシーを読む</a></p>'
+    + '<label class="agreepop-check"><input type="checkbox"> 改定後の利用規約とプライバシーポリシーに同意します</label>'
     + '<div class="agreepop-foot"><button type="button" class="agreepop-ok" disabled>同意して続ける</button><span class="said" role="status"></span></div>'
     + '<p class="note">同意しない場合は、<a href="/account">アカウント</a>の画面からログアウトや退会ができます。</p></div>';
   const box = pop.querySelector(".agreepop-box"), ok = pop.querySelector(".agreepop-ok");

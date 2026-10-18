@@ -22,7 +22,12 @@ test('the plain login page shows the recovery-code form and signs in with it', (
   assert.match(body, /signedIn\('ログインしました。'\)/);
   // the bundle served to browsers was rebuilt from it (npm run build:login)
   assert.equal((BUNDLE.match(/\/migration-api\/recover/g) || []).length, 3, 'delete, link and the plain login');
-  assert.match(HTML, /<form id="recovery-login" class="auth-card" hidden><h1>復旧コードでログイン<\/h1><p class="lead-c">/);
+  // 起案者の指示 2026-10-18「ログイン画面の『復旧コードでログイン』は、『メールでログイン』の下に点線を引いて、その下に置いて
+  // （独立した欄を設けないで）。」: 独立した札（auth-card）をやめ、ログインの欄（#login）の中、メールの欄の下に置く
+  assert.match(HTML, /<form id="recovery-login" class="mailrow recov" hidden><label>復旧コードでログイン<span class="mailin"><input id="recovery-input"/);
+  const login = HTML.slice(HTML.indexOf('<section id="login"'), HTML.indexOf('</section>', HTML.indexOf('<section id="login"')));
+  assert.ok(login.indexOf('id="email-form"') > 0 && login.indexOf('id="recovery-login"') > login.indexOf('id="email-form"'), 'メールでログインの下、ログインの欄の中');
+  assert.doesNotMatch(HTML, /id="recovery-login" class="auth-card"/);
 });
 
 test('a recovery code signs in without a session (what the form posts)', async () => {

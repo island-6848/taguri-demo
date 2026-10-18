@@ -1,11 +1,25 @@
 /* Signed-out pages (/login, /about): no app menu, the brand on top and one
    centred column. Colours and type come from the production /style.css. */
+/* 色はログイン後の画面（web/theme.css の明るい表示「たぐる糸」）と同じ値にそろえる
+   （起案者の指示 2026-10-18「ログイン画面のカラーパレットを、たぐりのログイン後のページの色味に統一して。」）。
+   ログインの前の頁（/login・/terms・/privacy・/oauth/calendar）は theme.css を読まないので、色の値だけをここに写す。
+   theme.css の色を変えたら、ここも同じに直す。暗い表示は、ログイン後と同じく style.css のまま */
+@media (prefers-color-scheme:light){:root:where(:not([data-theme=dark])){
+ --plane:#f2f2f3;--surf:#ffffff;--ink:#1d1d1f;--ink2:#5c5f66;--mute:#6b6e75;
+ --grid:#e6e6e8;--base:#d9d9dc;--ring:#d9d9dc;
+ --acc:#9b2335;--curtain:#9b2335;--curtain-w:#f4f4f5;--sel:#f0e6e8}}
+:root[data-theme=light]{
+ --plane:#f2f2f3;--surf:#ffffff;--ink:#1d1d1f;--ink2:#5c5f66;--mute:#6b6e75;
+ --grid:#e6e6e8;--base:#d9d9dc;--ring:#d9d9dc;
+ --acc:#9b2335;--curtain:#9b2335;--curtain-w:#f4f4f5;--sel:#f0e6e8}
 body.auth{margin:0;padding:0;min-height:100vh;display:flex;flex-direction:column;background:var(--plane)}
+/* 上の帯: えんじで塗らず、ログイン後の行き先の帯と同じ紙の地に濃い字。印だけ差し色 */
 .auth-top{display:flex;align-items:center;gap:12px;
- padding:14px 24px;background:var(--curtain);color:var(--curtain-w)}
-.auth-top .brand{display:inline-flex;align-items:center;gap:10px;color:var(--curtain-w);text-decoration:none;
+ padding:14px 24px;background:var(--surf);color:var(--ink);border-bottom:1px solid var(--ring)}
+.auth-top .brand{display:inline-flex;align-items:center;gap:10px;color:var(--ink);text-decoration:none;
  font-family:var(--mincho);font-size:19px;font-weight:600;letter-spacing:.14em}
 .auth-top .brand{white-space:nowrap}
+.auth-top .brand .tgm{color:var(--curtain)}
 .auth-main{flex:1;display:flex;flex-direction:column;align-items:center;padding:40px 16px 56px}
 /* 説明の下に、ログインと（削除・復旧などの）札を縦に並べる箱 */
 .auth-col{width:100%;display:flex;flex-direction:column;align-items:center}
@@ -82,7 +96,7 @@ body.auth{margin:0;padding:0;min-height:100vh;display:flex;flex-direction:column
 .auth-card .agree-box.need{outline:2px solid var(--neg)}
 .auth-card label.agree{display:flex;align-items:center;gap:10px;margin:0;font-size:14px;line-height:1.5;cursor:pointer;min-height:44px}
 .auth-card .agree input{width:20px;height:20px;margin:0;flex:none;accent-color:var(--ink)}
-/* 利用規約・プライバシーの説明（/terms・/privacy） */
+/* 利用規約・プライバシーポリシー（/terms・/privacy） */
 .auth-card.legal{max-width:760px;line-height:1.8;font-size:14.5px;padding:30px 34px 26px}
 @media(max-width:520px){.auth-card.legal{padding:24px 20px 20px}}
 .auth-card.legal h2{font-size:16.5px;margin:26px 0 8px}
@@ -105,3 +119,37 @@ body.auth{margin:0;padding:0;min-height:100vh;display:flex;flex-direction:column
  .auth-main:has(>#about:not([hidden])) .auth-col>#signup{margin-top:12px}
  .auth-main:has(>#about:not([hidden])) #login h1{margin:0 0 2px}
 }
+/* ---- ログイン・規約の画面（起案者の指示 2026-10-18） ---- */
+/* 状態の文（#status）は押したボタン・欄の直下に動かす（src/client/login.js say）。空のときは場所を取らない。
+   成功・途中の文は灰の字、うまくいかなかった文だけ --neg */
+body.auth .status:empty{display:none}
+body.auth .status{color:var(--ink2)}
+body.auth .status.bad{color:var(--neg)}
+.auth-card .status{text-align:left;font-size:13px;line-height:1.6;min-height:0;margin:8px 0 0}
+.auth-card .block>.status{flex:1 0 100%;margin:0}
+.auth-card .mailrow>.status{margin:6px 0 0}
+/* 「Googleアカウントで始める」と文字が長くなり、3 つを 1 行に並べると欄からはみ出す。パソコンの幅では
+   Google を 1 行目いっぱいに、メールとパスキーを 2 行目に並べる */
+@media(min-width:900px){
+ .auth-main:has(>#about:not([hidden])) .block.trio{flex-wrap:wrap}
+ .auth-main:has(>#about:not([hidden])) .block.trio #google-signup{flex:1 0 100%}
+}
+/* パソコンでボタンを横に並べるときは、文はボタンの列の下（.block の後ろ）に出す（login.js say） */
+.auth-card .block+.status{margin:8px 0 0}
+/* 迷惑メールの案内（メールの入力欄の下） */
+.auth-card .mailrow .fine.spam{margin:6px 0 0}
+/* 復旧コードでログイン: 独立した欄にせず、「メールでログイン」の下に点線を引いてその下に置く
+   （起案者の指示 2026-10-18「『メールでログイン』の下に点線を引いて、その下に置いて（独立した欄を設けないで）。」） */
+.auth-card .mailrow.recov{margin:14px 0 0;padding:12px 0 0;border-top:2px dotted var(--ring)}
+.auth-card .mailrow.recov .fine{margin:6px 0 0}
+@media(min-width:900px){
+ .auth-main:has(>#about:not([hidden])) #login .mailrow.recov{margin:10px 0 0;padding:8px 0 0}
+ .auth-main:has(>#about:not([hidden])) #login .mailrow .fine{margin:4px 0 0}
+}
+/* 規約・プライバシーポリシーの条・項・号（起案者の指示 2026-10-18「ちゃんと法的な表現や文章にして」）。
+   項は 1. 2.、号は (1) (2)、号の中の細目はア イ ウ */
+.auth-card.legal ol.go{list-style:none;counter-reset:go;padding-left:2.4em}
+.auth-card.legal ol.go>li{counter-increment:go;position:relative}
+.auth-card.legal ol.go>li::before{content:"(" counter(go) ")";position:absolute;left:-2.4em;width:2.1em;text-align:right}
+.auth-card.legal ol.iroha{list-style-type:katakana;padding-left:2em;margin:6px 0 0}
+.auth-card.legal li>ol{margin:6px 0 0}
