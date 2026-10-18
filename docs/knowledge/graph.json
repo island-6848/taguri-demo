@@ -1946,6 +1946,21 @@
    "verifies": []
   },
   {
+   "id": "dec-ticket-delete-wording",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "「観劇日を追加する」の入れてある日の消す口を「この日時を削除」にし、直し方と、消したあとに言う文（data-done）をサーバーの HTML に持たせる",
+   "sources": [
+    "cloudflare/src/screens/calendar.js",
+    "tools/taguri/stage_calendar.py",
+    "cloudflare/test/calendar.test.js",
+    "cloudflare/src/screens/lists.js",
+    "https://github.com/island-6848/taguri-demo/issues/100"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-ticket-price-filter",
    "type": "decision",
    "status": "adopted",
@@ -7590,6 +7605,11 @@
    "from": "dec-ticker",
    "rel": "affects",
    "to": "comp-frontend"
+  },
+  {
+   "from": "dec-ticket-delete-wording",
+   "rel": "affects",
+   "to": "dec-calendar-worker"
   },
   {
    "from": "dec-timetable-unknown-days",
