@@ -7,7 +7,7 @@
 | | 何が | どこに | どれだけ | 戻せる細かさ |
 | --- | --- | --- | --- | --- |
 | Time Travel | D1 全体 | Cloudflare（自動・無料） | 7 日 | 分単位のどの時点でも |
-| 毎日の書き出し | 利用者の記録の表だけ（`backup_d1.py` の `DERIVED` 以外のすべて） | R2 `taguri-posters` の `backup/d1/YYYY-MM-DD.sql.gpg`（gpg・AES-256 で暗号化） | 30 日 | 1 日に 1 回（取得のジョブの終わり） |
+| 毎日の書き出し | 利用者の記録の表だけ（`backup_d1.py` の `DERIVED` 以外のすべて） | R2 `taguri-backup`（控え専用。Worker からは見えない）の `backup/d1/YYYY-MM-DD.sql.gpg`（gpg・AES-256 で暗号化） | 30 日 | 1 日に 1 回（取得のジョブの終わり） |
 
 公演カタログ・推薦の索引は控えに入れない（毎日の取得で作り直す）。ログインのセッションも入れないので、戻したあとは利用者に入り直してもらう。
 
@@ -35,7 +35,7 @@ npx wrangler d1 time-travel restore taguri-demo --bookmark=<印>
 ```sh
 cd cloudflare
 W=$(mktemp -d)                                          # 平文はリポジトリの外に置く（公開リポジトリに入れない）
-npx wrangler r2 object get taguri-posters/backup/d1/2026-10-01.sql.gpg --remote --file "$W/backup.sql.gpg"
+npx wrangler r2 object get taguri-backup/backup/d1/2026-10-01.sql.gpg --remote --file "$W/backup.sql.gpg"
 gpg --decrypt -o "$W/backup.sql" "$W/backup.sql.gpg"   # 合言葉を聞かれる
 npx wrangler d1 create taguri-restored                 # 新しい D1 に入れて中身を確かめる
 npx wrangler d1 execute taguri-restored --remote --yes --file "$W/backup.sql"
