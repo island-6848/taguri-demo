@@ -262,9 +262,9 @@ ASPECTS = {
 
 # 5 段階と「この作品には無い」（起案者の指示 2026-10-18「評価の詳細、今3段階で設定してるけど適切？最低限5段階
 # くらいほしい。あと作品によっては歌ダンスがないこともあるので、なかったときは✕で要素を消せるようにしてほしい」、
-# dec-aspects-five-levels）: "++code" とても良かった（2）、"+code" 良かった（1）、"code" 気になった（−1）、
-# "--code" とても気になった（−2）、"~code" この作品には無い（推薦には使わない）。前の 3 段階の "+code"・"code" は
-# 同じ言葉の 良かった・気になった として読む（書き換えない）。保存の並びは ASPECT_MARKS の順、その中は ASPECTS の順。
+# 同じ日「評価の詳細を 5 段階（好みではない〜好き）に変えて」、dec-aspects-five-levels）: "++code" 好き（2）、
+# "+code" やや好き（1）、"code" やや好みではない（−1）、"--code" 好みではない（−2）、"~code" この作品には無い
+# （推薦には使わない）。前の 3 段階の "+code"・"code"（良かった・気になった）は やや好き・やや好みではない として読む（書き換えない）。保存の並びは ASPECT_MARKS の順、その中は ASPECTS の順。
 ASPECT_MARKS = (("", -1), ("+", 1), ("--", -2), ("++", 2), ("~", 0))
 
 
@@ -302,20 +302,26 @@ def aspect_codes(value) -> list[str]:
     return parse_aspects(value)[0]
 
 
+# 好き・好みではない（±2）の項目が指す役職には、やや好き・やや好みではない（±1）よりこの倍だけ重く効かせる
+# （起案者の指示 2026-10-18「詳細評価のとてもを推薦の効き方も強めてほしい。該当する人をちょっと重くするとか」、
+# dec-aspects-strong-weight）。±1 だけの記録（前の 3 段階の記録すべて）は前と同じ点。
+ASPECT_STRONG = 1.5
+
+
 def aspect_share(troubles, goods, role: str, positive: bool, levels=None) -> float:
     """How much of a rating lands on `role` (or tag axis): mainly the side the
     rating leans to (goods when positive), less what the other side points at.
 
-    `levels` (aspect_levels): an aspect counts by its strength against the
-    strongest one marked on this record (とても良かった 2 next to 良かった 1 =
-    half), so with all marks the same strength (every 3-level record) the share
-    is as before. How good the production was overall is the rating itself."""
+    `levels` (aspect_levels): a ±2 aspect (好き / 好みではない) points at its
+    roles ASPECT_STRONG times as much as a ±1 one, so its people get a little
+    more of the rating (the share can go above 1); what the other side takes
+    away stays at most all of it. Records with ±1 marks only (every 3-level
+    record) score as before."""
     lv = levels or {}
-    peak = max((abs(lv.get(c, 1)) for c in list(troubles) + list(goods)), default=1)
-    f = {c: abs(lv.get(c, 1)) / peak for c in list(troubles) + list(goods)}
+    g = {c: ASPECT_STRONG if abs(lv.get(c, 1)) == 2 else 1.0 for c in list(troubles) + list(goods)}
     main, other = (goods, troubles) if positive else (troubles, goods)
-    s = max((ASPECTS[c][1].get(role, 0.0) * f[c] for c in main), default=1.0)
-    o = max((ASPECTS[c][1].get(role, 0.0) * f[c] for c in other), default=0.0)
+    s = max((ASPECTS[c][1].get(role, 0.0) * g[c] for c in main), default=1.0)
+    o = min(1.0, max((ASPECTS[c][1].get(role, 0.0) * g[c] for c in other), default=0.0))
     return s * (1.0 - o)
 
 

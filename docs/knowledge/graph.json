@@ -714,6 +714,22 @@
    "verifies": []
   },
   {
+   "id": "dec-aspects-strong-weight",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "詳細の言葉を 好みではない〜好き の 5 段階に替え、好き・好みではない（±2）はその項目の役職の人に 1.5 倍効かせる（±1 だけの記録は前と同じ点）",
+   "sources": [
+    "tools/review/user_recommender.py",
+    "cloudflare/src/recommend.js",
+    "web/app.js",
+    "tools/taguri/test_user_recommendation.py",
+    "cloudflare/test/test_recommend_index.py",
+    "cloudflare/test/e2e-walk.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-auto-link-past",
    "type": "decision",
    "status": "adopted",
@@ -5129,9 +5145,18 @@
   {
    "id": "q-aspect-levels-check",
    "type": "question",
-   "status": "open",
+   "status": "answered",
    "date": "2026-10-18",
    "title": "詳細の 5 段階は使われているか。「とても」を配分の強さだけに使う形でよいか、7 段階が要るか",
+   "sources": [],
+   "verifies": []
+  },
+  {
+   "id": "q-aspect-usage-check",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-18",
+   "title": "詳細の 5 段階と「この作品には無い」はどう使われているか。±2 の倍率 1.5 は当たりを良くするか、7 段階は要るか",
    "sources": [],
    "verifies": []
   },
@@ -7588,6 +7613,31 @@
    "from": "dec-aspects-screen",
    "rel": "answers",
    "to": "q-pr13-aspects-screen"
+  },
+  {
+   "from": "dec-aspects-strong-weight",
+   "rel": "answers",
+   "to": "q-aspect-levels-check"
+  },
+  {
+   "from": "dec-aspects-strong-weight",
+   "rel": "affects",
+   "to": "dec-aspects-five-levels"
+  },
+  {
+   "from": "dec-aspects-strong-weight",
+   "rel": "affects",
+   "to": "impl-rating-aspects"
+  },
+  {
+   "from": "dec-aspects-strong-weight",
+   "rel": "affects",
+   "to": "comp-recommender"
+  },
+  {
+   "from": "dec-aspects-strong-weight",
+   "rel": "raises",
+   "to": "q-aspect-usage-check"
   },
   {
    "from": "dec-auto-link-past",
@@ -10886,6 +10936,21 @@
   },
   {
    "from": "q-aspect-levels-check",
+   "rel": "depends_on",
+   "to": "lit-rating-scale-points"
+  },
+  {
+   "from": "q-aspect-usage-check",
+   "rel": "affects",
+   "to": "dec-aspects-strong-weight"
+  },
+  {
+   "from": "q-aspect-usage-check",
+   "rel": "affects",
+   "to": "dec-aspects-five-levels"
+  },
+  {
+   "from": "q-aspect-usage-check",
    "rel": "depends_on",
    "to": "lit-rating-scale-points"
   },
