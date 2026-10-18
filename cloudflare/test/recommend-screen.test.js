@@ -164,6 +164,22 @@ test('興味あり alone, on a stage only the catalogue has, recommends the same
   } finally { sqlite.close(); }
 });
 
+// #116: a record dated after today (a plan, a typo) is not a rating to learn from yet.
+test('a rating on a record dated after today is not learnt from until the day comes', async () => {
+  const {env, sqlite} = await withIndex();
+  const a = await signIn(env);
+  try {
+    const k1 = await rateSeen(env, a, '終わった舞台', '2026-08-05', '103', '◎');
+    await rateSeen(env, a, '一日だけの舞台', '2026-09-05', '104', '×');
+    const count = async () => (await step(env, a, {get: '/api/screen/recommend'})).body.diag.rated;
+    assert.equal(await count(), 2);
+    sqlite.prepare("UPDATE works SET first_date='2099-01-01', last_date='2099-01-01', updated_at='2099-01-01 00:00:00' WHERE work_key=?").run(k1);
+    assert.equal(await count(), 1);
+    sqlite.prepare("UPDATE works SET first_date=?, last_date=?, updated_at='2099-01-02 00:00:00' WHERE work_key=?").run(env.CLOCK.today, env.CLOCK.today, k1);
+    assert.equal(await count(), 2, 'seen today counts');
+  } finally { sqlite.close(); }
+});
+
 // #119: GET /api/recommend is the screen's ranking (same input, same rules, same cache row), as data.
 test('/api/recommend answers with the 今週のおすすめ ranking and shares its cache; migration-era records do not feed it', async () => {
   const {env, sqlite} = await withIndex();

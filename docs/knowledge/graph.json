@@ -2511,6 +2511,21 @@
    "verifies": []
   },
   {
+   "id": "fix-future-dated-ratings",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "観た日（first_date）が今日より後の記録の評価は、推薦の学習（ratedWorks・裏の答え合わせ）に入れない。日付の無い記録は入れる（#116）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/116",
+    "cloudflare/src/screens/recommend.js",
+    "docs/impression-preferences.md",
+    "tools/taguri/app.py",
+    "cloudflare/test/recommend-screen.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "fix-interest-contrast-after-split",
    "type": "decision",
    "status": "adopted",
@@ -8186,6 +8201,11 @@
    "from": "fix-declined-kind-tags",
    "rel": "depends_on",
    "to": "impl-kind-reason-off"
+  },
+  {
+   "from": "fix-future-dated-ratings",
+   "rel": "affects",
+   "to": "impl-person-ordinal-v3"
   },
   {
    "from": "fix-interest-contrast-after-split",
