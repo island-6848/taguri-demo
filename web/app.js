@@ -557,11 +557,22 @@ function renderScreen(el, activePath, d, exposureSource) {
 // あとから解決した「今週のおすすめ」の結果でDOMが上書きされてしまっていた
 // (実機の実データで確認した不具合)。**呼ぶたびに番号を進め、自分の番号が
 // 最新でなくなっていたら画面には反映しない**(読み込み中の表示は消す)。
-let loadSeq = 0;
+let loadSeq = 0, shownKey = null;
 
-async function loadScreen(path, search) {
+// **リンクの「#」の先へ移る**（#102。検索の月のカレンダーの「#cal」など）。画面を描いたあとに探す。
+// 見つからなければ画面の先頭のまま（navigate で先頭へ戻してある）
+function scrollToHash(hash) {
+  if (!hash || hash.length < 2) return;
+  let id = hash.slice(1);
+  try { id = decodeURIComponent(id); } catch (e) { /* そのままの名前で探す */ }
+  const t = document.getElementById(id);
+  if (t) t.scrollIntoView();
+}
+
+async function loadScreen(path, search, hash) {
   if (window.TaguriExposure) TaguriExposure.stop();
   const seq = ++loadSeq;
+  shownKey = path + "?" + (search || "");
   const name = SCREENS[path];
   const el = contentEl();
   const stale = () => seq !== loadSeq;
@@ -590,6 +601,7 @@ async function loadScreen(path, search) {
   if (cached) {
     if (stale()) return;
     renderScreen(el, activePath, cached, "cache");
+    scrollToHash(hash);
     return;
   }
   const stopLoading = startLoading(el);
@@ -625,18 +637,19 @@ async function loadScreen(path, search) {
   stopLoading();
   if (stale()) return;
   renderScreen(el, activePath, d);
+  scrollToHash(hash);
 }
 
 // --- SPAルーター:内部リンク・GETフォームをその場遷移に変える ----------------
 function stripToken(usp) { usp.delete("t"); return usp; }
 
-function navigate(path, search, push) {
+function navigate(path, search, push, hash) {
   const usp = stripToken(new URLSearchParams(search || ""));
   const qs = usp.toString();
-  const display = REPO_BASE + path + (qs ? "?" + qs : "");
+  const display = REPO_BASE + path + (qs ? "?" + qs : "") + (hash || "");
   if (push !== false) history.pushState(null, "", display);
   window.scrollTo(0, 0);
-  loadScreen(path, qs);
+  loadScreen(path, qs, hash);
 }
 
 function isInternalPath(p) {
@@ -653,12 +666,14 @@ document.addEventListener("click", ev => {
   if (a.hasAttribute("download") || (a.getAttribute("target") || "_self").toLowerCase() !== "_self") return;
   const href = a.getAttribute("href");
   if (!href || /^[a-z]+:/i.test(href) || href.startsWith("#")) return;
-  let path = href.split("#")[0], search = "";
+  // 「#」の先は捨てずに持っていく（#102）。画面を描いたあと、その場所へ移る
+  const hi = href.indexOf("#"), hash = hi >= 0 ? href.slice(hi) : "";
+  let path = hi >= 0 ? href.slice(0, hi) : href, search = "";
   const qi = path.indexOf("?");
   if (qi >= 0) { search = path.slice(qi + 1); path = path.slice(0, qi); }
   if (!path || !isInternalPath(path)) return;
   ev.preventDefault();
-  navigate(path, search);
+  navigate(path, search, true, hash);
 }, true);
 
 document.addEventListener("submit", ev => {
@@ -678,7 +693,10 @@ document.addEventListener("submit", ev => {
 
 window.addEventListener("popstate", () => {
   const path = (location.pathname.slice(REPO_BASE.length) || "/");
-  loadScreen(path, location.search.replace(/^\?/, ""));
+  const search = location.search.replace(/^\?/, "");
+  // 「#」の先だけが変わった戻る・進むは、描き直さない（同じ画面の中で動くだけ。ブラウザが位置を戻す）
+  if (path + "?" + search === shownKey) return;
+  loadScreen(path, search, location.hash);
 });
 
 // **戻ってきたページを、そのまま信じない**（起案者の指摘 2026-10-14「取り消したのに、リロードせずに
@@ -689,7 +707,7 @@ window.addEventListener("pageshow", ev => {
   if (!ev.persisted || !API_BASE) return;
   fragmentCache.clear();
   const path = (location.pathname.slice(REPO_BASE.length) || "/");
-  loadScreen(path, location.search.replace(/^\?/, ""));
+  loadScreen(path, location.search.replace(/^\?/, ""), location.hash);
 });
 // **別のタブで書いたら、このタブの控えも捨てる。** タブごとに 45 秒の控えを持つので、
 // 片方で取り消した記録が、もう片方では控えのまま出ていた
@@ -713,7 +731,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document.querySelector(".side").insertAdjacentHTML("beforeend", renderNav() + renderPNav());
   restoreNavFold();
   const path = (location.pathname.slice(REPO_BASE.length) || "/");
-  loadScreen(path, location.search.replace(/^\?/, ""));
+  loadScreen(path, location.search.replace(/^\?/, ""), location.hash);
   if (!IS_DEMO) loadTicker();
 });
 
