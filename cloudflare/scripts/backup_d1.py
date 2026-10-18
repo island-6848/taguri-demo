@@ -39,6 +39,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import free_tier as FT                                             # noqa: E402
+import wrangler_pin                                                # noqa: E402
 
 DB_NAME = "taguri-demo"
 # 控えは専用の入れ物に置く（起案者の指示 2026-10-18「分けましょう」、issue #73）。Worker にはこの入れ物の
@@ -56,7 +57,7 @@ DRILL_DB = "taguri-restore-drill"
 
 
 def wrangler(*args: str, capture: bool = True) -> str:
-    cmd = ["npx", "--yes", "wrangler@4", *args]
+    cmd = [*wrangler_pin.wrangler_cmd(), *args]      # lockfile の版（issue #131）
     r = subprocess.run(cmd, cwd=HERE.parent, capture_output=capture, text=True, check=False)
     if r.returncode != 0:
         # 中身（SQL や行）は出さない。wrangler のエラーの最後だけ。失敗した SQL 文を wrangler が引用することがあるので、

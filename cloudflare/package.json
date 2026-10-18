@@ -9,6 +9,7 @@
     "build:login": "esbuild src/client/login.js --bundle --minify --format=esm --target=es2020 --legal-comments=external --outfile=public/vendor/firebase-login.js && esbuild src/client/passkeys.js --bundle --minify --format=esm --target=es2020 --legal-comments=external --outfile=public/vendor/passkeys.js && esbuild src/client/import.js --bundle --minify --format=esm --target=es2020 --legal-comments=external --outfile=public/vendor/import.js && esbuild src/client/calendar-callback.js --bundle --minify --format=esm --target=es2020 --outfile=public/vendor/calendar-callback.js && esbuild src/client/import-loader.js --minify --format=esm --target=es2020 --outfile=public/vendor/import-loader.js"
   },
   "devDependencies": {
+    "esbuild": "0.28.2",
     "firebase": "13.0.0",
     "pixelmatch": "^7.1.0",
     "playwright": "^1.56.0",

@@ -31,6 +31,7 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
 sys.path.insert(0, str(ROOT / "cloudflare" / "scripts"))
 import free_tier as FT          # noqa: E402
+import wrangler_pin as WP        # noqa: E402
 import deliver_posters as DP    # noqa: E402
 
 DATA = Path(os.environ.get("TAGURI_ADMIN_DATA", ROOT / "data" / "admin"))
@@ -70,7 +71,8 @@ def wrangler_run(args: list[str]) -> str:
     npx = shutil.which("npx") or shutil.which("npx.cmd")      # Windows は npx.cmd
     if not npx:
         raise AdminError("Node.js（npx）が見つかりません。https://nodejs.org から入れてから、もう一度開いてください")
-    cmd = [npx, "--yes", "wrangler@4", "d1", "execute", DB_NAME, "--remote", *args]
+    # lockfile（cloudflare/package-lock.json）の版の wrangler を使う。その時いちばん新しい版は取らない（issue #131）
+    cmd = [*WP.wrangler_cmd(npx), "d1", "execute", DB_NAME, "--remote", *args]
     try:
         r = subprocess.run(cmd, cwd=ROOT / "cloudflare", capture_output=True, text=True, encoding="utf-8",
                            errors="replace", timeout=300)

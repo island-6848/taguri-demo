@@ -45,7 +45,7 @@
 | S1 | 高 → **対応済み（2026-10-13）** | **アカウントと記録を完全に消す機能が無い**（セキュリティ規約R7）。`/login?purpose=delete` で作った（10分以内に再ログインしたセッションだけ・全表を明示して削除・Firebase側の利用者も削除。詳細は `cloudflare/README.md`）。ログアウトはあるが、D1の記録・パスキー・Firebaseとの結び付けが残る | 本人の求めに応じて消せない。利用規約・個人情報保護法の上で問題になる | 本人確認（ログイン直後・5分以内）のうえで、`users` を消す（外部キーで記録・セッション・パスキーも消える）。Firebase側の利用者も消すよう案内する |
 | S2 | 高 | **PRのブランチが本番として扱われている**。`cloudflare-d1-preview` へのpushだけで、Workers BuildsがD1の移行と本番デプロイを行う。CIはデプロイと並行して走るので、テストに落ちたコードも本番に出る | 書き込める人なら誰でも、レビューなしで本番を変えられる。壊れた移行がそのまま本番のD1に入る | 本番の反映元をmasterにする。masterはPRのレビューと必須チェック（check・feedback-loop）を通したものだけにする。ブランチはプレビュー環境に出す |
 | S3 | 中 | **登録口に回数制限が無い**（`/api/register`・パスキーの新規登録・Firebaseの新規登録）。今は「アカウント100件まで」の上限があるが、上限に達すると誰も登録できなくなる。パスキーのチャレンジは全体で1000件までなので、連打されると5分間、全員がパスキーでログインできなくなる | 登録の妨害、ログインの妨害（DoS）、D1の書き込み枠の消費 | CloudflareのRate Limitingルール（IPごと）を `/api/register`・`/api/auth/*` に掛ける。必要ならTurnstileを足す。チャレンジの上限はIPごとに持つ |
-| S4 | 中 | **依存の版が固定されていない**。`package-lock.json` が無く、間接的な依存（`@peculiar/*` など）は `^` で動く。同梱した部品（`public/vendor/firebase-login.js`・`passkeys.js`）が元のコードから作られたものかを、CIで確かめていない | 依存が乗っ取られたときに、気づかないまま本番に入る | `package-lock.json` をコミットし、CIとWorkers Buildsで `npm ci` を使う。CIで部品を組み立て直し、コミットした物と一致するかを確かめる |
+| S4 | 中 | **依存の版が固定されていない**。`package-lock.json` が無く、間接的な依存（`@peculiar/*` など）は `^` で動く。同梱した部品（`public/vendor/firebase-login.js`・`passkeys.js`）が元のコードから作られたものかを、CIで確かめていない | 依存が乗っ取られたときに、気づかないまま本番に入る | `package-lock.json` をコミットし、CIとWorkers Buildsで `npm ci` を使う。CIで部品を組み立て直し、コミットした物と一致するかを確かめる。**2026-10-18 に対応（issue #131〔impl-lockfile-repro〕）：lockfile をコミットし、CI は `npm ci`・部品の作り直しの一致・`npm audit`。本番の鍵で動く wrangler も lockfile の版にした** |
 | S5 | 中 | **元の画面のCSPが弱い**。`script-src 'self' 'unsafe-inline' 'unsafe-eval'`（元の画面がインラインのスクリプトを使うため）。サーバーが返すHTMLの断片を `innerHTML` で差し込むので、XSSを防ぐのはPython側のエスケープだけになっている。Renderへの橋渡しの応答（`/api/screen/*`・`/img/*`）にはCSPが付かない | Python側のエスケープ漏れが1つあれば、そのままスクリプトが動く | インラインのスクリプトを外部ファイルにし、`unsafe-inline`・`unsafe-eval` を外す（またはnonceを使う）。橋渡しの応答にもCSPを付ける |
 | S6 | 低（要確認） | **FirebaseのAPIキーに制限が付いているか分からない**。キーは公開してよい値だが、制限が無いと他のサイトで使い回され、メールリンクの送信などの枠を消費される | 送信の枠の消費、迷惑メールの踏み台 | Google Cloudでキーに「ウェブサイト（Workerのドメインと `taguri-97959.firebaseapp.com`）」と「Identity Toolkit API・Token Service API だけ」の制限を付ける |
 | S7 | 低 | `/api/logout` のCookieの読み取りが先頭一致になっていない（他の箇所は `sessionCookie()` で厳密に読む）。`/api/register`・`/api/recover` は、それまでのセッションを消さない | 実害は小さい（別名のCookieを置ける相手はいない）が、作りが揃っていない | `sessionCookie()` に揃え、`startSession` に古いCookieを渡す |
@@ -76,7 +76,7 @@
 | ID | 内容 | 合格の基準 |
 |---|---|---|
 | T1 | アカウント削除（**`test/account-delete.test.js` で実装済み**） | 削除後、D1のどの表にもその利用者の行が無い。同じGoogle・パスキー・復旧コードでは戻れない |
-| T2 | 部品の再現（S4） | CIで `npm run build:login` をやり直し、コミットした `public/vendor/*.js` と一致する |
+| T2 | 部品の再現（S4） | CIで `npm run build:login` をやり直し、コミットした `public/vendor/*.js` と一致する（2026-10-18 から cloudflare-preview-check.yml で確かめる） |
 | T3 | 依存の監査 | CIで `npm audit --omit=dev` が0件 |
 | T4 | ログアウトとセッション（S7） | 復旧コード・新規登録のあと、それまでのCookieが401になる |
 | T5 | 元の画面のXSS | 題名・感想・お気に入り名に `<script>`・`"><img onerror=…>` を入れた画面を、ブラウザのテストで開いてもスクリプトが動かない |

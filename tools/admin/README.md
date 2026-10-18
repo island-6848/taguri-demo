@@ -25,6 +25,7 @@
 
 ## 要るもの
 - `cd cloudflare && npx wrangler login`（D1 を読み書きするため）
+- wrangler は `cloudflare/package-lock.json` の版を使います（issue #131）。`cd cloudflare && npm ci` をしてあればその wrangler を、無ければその版を名指しで `npx` が取ってきます（その時いちばん新しい版は取りません）。lockfile が変わったら `npm ci` をし直すと、取り込みを待たずに動きます
 - ポスターを入れるとき: 環境変数 `CLOUDFLARE_ACCOUNT_ID` と `CLOUDFLARE_API_TOKEN`（R2 の書き込み権限）、Pillow
 - 鍵は GitHub やチャットに貼らないでください
 
