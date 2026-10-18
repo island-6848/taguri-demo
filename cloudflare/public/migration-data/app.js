@@ -52,6 +52,7 @@ function renderDiscovery() {
 const changed = () => document.dispatchEvent(new Event('taguri:records-changed'));
 async function refresh(){data=await api('state');await loadNames(data.records).catch(()=>{});render();if(catalogue===null)api('catalogue').then(r=>{catalogue=r.items;renderDiscovery();}).catch(e=>{$('#catalogue-status').textContent=e.message;});}
 $('#register').onclick=()=>run($('#register'),async()=>{const result=await api('register',{});$('#code').textContent=result.recovery_code;$('#recovery').hidden=false;await refresh();status('保存先を作りました。復旧コードを控えてください。');});
+$('#reissue').onclick=()=>run($('#reissue'),async()=>{if(!confirm('いまの復旧コードは使えなくなります。作り直しますか？'))return;const result=await api('recovery/reissue',{});$('#code').textContent=result.recovery_code;$('#recovery').hidden=false;$('#recovery').scrollIntoView();status('復旧コードを作り直しました。新しいコードを控えてください。ほかの端末はログアウトしました。');});
 $('#copy').onclick=()=>run($('#copy'),async()=>{await navigator.clipboard.writeText($('#code').textContent);status('復旧コードをコピーしました。');});
 $('#recover').onsubmit=e=>{e.preventDefault();run(e.submitter,async()=>{await api('recover',Object.fromEntries(new FormData(e.target)));$('#recovery').hidden=true;$('#code').textContent='';await refresh();status('記録を復旧しました。');});};
 $('#add').onsubmit=e=>{e.preventDefault();run(e.submitter,async()=>{const result=await api('record',Object.fromEntries(new FormData(e.target)));data.records.push(result.record);data.records.sort((a,b)=>b.date.localeCompare(a.date));render();e.target.reset();status('追加しました。');});};

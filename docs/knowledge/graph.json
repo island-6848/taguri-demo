@@ -1736,6 +1736,22 @@
    "verifies": []
   },
   {
+   "id": "dec-recovery-reissue",
+   "type": "decision",
+   "status": "proposed",
+   "date": "2026-10-18",
+   "title": "復旧コードは、直近 10 分以内のログインで作り直せる。古いコードは 1 つの UPDATE で使えなくなり、ほかの端末はログアウトする（Google・メールで始めたアカウントには作らない）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/126",
+    "cloudflare/src/worker.js",
+    "cloudflare/public/migration-data/index.html",
+    "cloudflare/public/migration-data/app.js",
+    "cloudflare/src/screens/account.js",
+    "cloudflare/test/recovery-reissue.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-reminder-catalogue-fill",
    "type": "decision",
    "status": "adopted",
@@ -7513,6 +7529,16 @@
    "from": "dec-records-worker",
    "rel": "affects",
    "to": "comp-native-screens"
+  },
+  {
+   "from": "dec-recovery-reissue",
+   "rel": "affects",
+   "to": "dec-account-deletion"
+  },
+  {
+   "from": "dec-recovery-reissue",
+   "rel": "depends_on",
+   "to": "dec-rate-limit"
   },
   {
    "from": "dec-reminder-catalogue-fill",

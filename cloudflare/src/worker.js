@@ -23,7 +23,8 @@ const SHRINKING_WHEN = {
 /** 画面の書き込み（/api/<name>）が、保存の上限でも通してよい減らす操作か */
 export const shrinkingAction = (name, input) => SHRINKING_ACTIONS.has(name) || Boolean(SHRINKING_WHEN[name]?.(input || {}));
 // Worker の API で上限でも通すもの: 消す・外す操作と、ログアウト・アカウントの削除（セッションや行を消すだけ。#88）
-const SHRINKING_PATHS = new Set(['/api/record/delete', '/api/logout', '/api/logout/all', '/api/account/delete']);
+// 復旧コードの作り直し（#126）は既にある行を書き換えるだけで増えない。漏れたコードを止める操作なので上限でも通す
+const SHRINKING_PATHS = new Set(['/api/record/delete', '/api/logout', '/api/logout/all', '/api/account/delete', '/api/recovery/reissue']);
 export const shrinkingPath = (path, input) => SHRINKING_PATHS.has(path)
   || (['/api/favourite', '/api/reaction'].includes(path) && input?.remove === true);
 const STORAGE_FULL = '保存できる量の上限に近づいたので、無料の範囲で動かすために、いまは保存を止めています。見ることと消すことはできます。';
@@ -109,12 +110,15 @@ async function currentUser(request, db) {
 // added earlier in the same batch only while the sign-up caps hold
 // (rate-limit.guardedUserInsert, #124), so a refused sign-up leaves no session
 // and keeps the device's old one.
-async function startSession(db, uid, commands, oldRaw) {
+// guard: [sql, ...args], a further condition on the users row (e.g. that the
+// recovery code used is still the account's, #126).
+async function startSession(db, uid, commands, oldRaw, guard = null) {
   const session = token();
+  const [cond, ...args] = guard ?? ['1'];
   if (oldRaw) commands.push(db.prepare('DELETE FROM sessions WHERE hash=? AND EXISTS (SELECT 1 FROM users WHERE id=?)').bind(await hash(oldRaw),uid));
   // Delete expired sessions and bound the number of devices per account.
   commands.push(db.prepare('DELETE FROM sessions WHERE user_id=? AND (expires_at<=? OR hash NOT IN (SELECT hash FROM sessions WHERE user_id=? ORDER BY expires_at DESC LIMIT 9))').bind(uid,now(),uid));
-  commands.push(db.prepare('INSERT INTO sessions(hash,user_id,expires_at,created_at) SELECT ?,id,?,? FROM users WHERE id=?').bind(await hash(session),now()+TTL,now(),uid));
+  commands.push(db.prepare(`INSERT INTO sessions(hash,user_id,expires_at,created_at) SELECT ?,id,?,? FROM users WHERE id=? AND ${cond}`).bind(await hash(session),now()+TTL,now(),uid,...args));
   await db.batch(commands);
   return session;
 }
@@ -194,6 +198,23 @@ async function deleteAccount(request, env, uid, input) {
   if (linked && input.firebase_ready !== true) fail(409,'このアカウントは Google またはメールと結び付いています。Google 側の記録も消すため、Google かメールのリンクでログインし直してから削除してください。');
   await env.DB.batch(deleteAccountStatements(env.DB, uid));
   return json({deleted:true,firebase_linked:!!linked},200,{'Set-Cookie':`${COOKIE}=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0`});
+}
+// 復旧コードの作り直し（#126）。控えをなくした・人に見られたときに、アカウントと記録はそのままで、
+// 古いコードだけを使えなくする。直近 10 分以内のログインが要る（盗まれた Cookie だけでは作り直せない）。
+// 古いコードは 1 つの UPDATE で新しいコードに置き換わるので、同時に古いコードで入ろうとしても入れない
+// （/api/recover はコードが変わっていないときだけセッションを作る）。この端末以外のセッションはすべて消す
+// （古いコードで入った人を締め出すため）。Google・メールのリンク・パスキーはそのまま。
+// Google・メールで始めたアカウント（復旧コードを持たない）は、新しくコードを作らない。
+async function reissueRecovery(request, env, uid) {
+  const db = env.DB;
+  if (!await freshSession(db, request, uid)) fail(401,'本人確認のため、ログインし直してから10分以内に復旧コードを作り直してください。');
+  const row = await db.prepare('SELECT recovery_hash FROM users WHERE id=?').bind(uid).first();
+  if (!row || String(row.recovery_hash).startsWith('firebase:')) fail(409,'このアカウントには復旧コードがありません（Google・メールのリンクやパスキーでログインしてください）。');
+  const recovery = token(), keep = await hash(sessionCookie(request));
+  await db.batch([
+    db.prepare("UPDATE users SET recovery_hash=? WHERE id=? AND substr(recovery_hash,1,9)<>'firebase:'").bind(await hash(recovery), uid),
+    db.prepare('DELETE FROM sessions WHERE user_id=? AND hash<>?').bind(uid, keep)]);
+  return json({recovery_code: recovery, other_sessions_signed_out: true});
 }
 // ---------------------------------------------------------------- recommendations
 // Person scores from the batch-built index (migrations/0003, scripts/
@@ -551,7 +572,7 @@ export default {
       }
       if (method === 'POST' && ['/api/register','/api/recover'].includes(path)) {
         const input = await body(request);
-        let uid; let recovery; let plan;
+        let uid; let recovery; let plan; let used;
         if (path === '/api/register') {
           if (env.ALLOW_REGISTRATION !== 'true') fail(503,'新規登録を一時停止しています。');
           requireAgreement(input, fail);
@@ -560,15 +581,18 @@ export default {
         } else {
           const code = string(input.code, 80, true).replaceAll('-', '').toLowerCase();
           if (!/^[a-f0-9]{64}$/.test(code)) fail(401,'復旧コードを確認してください。');
-          uid = (await env.DB.prepare('SELECT id FROM users WHERE recovery_hash=?').bind(await hash(code)).first())?.id;
+          used = await hash(code);
+          uid = (await env.DB.prepare('SELECT id FROM users WHERE recovery_hash=?').bind(used).first())?.id;
           if (!uid) fail(401,'復旧コードを確認してください。');
         }
         const commands = [];
         if (recovery) commands.push(guardedUserInsert(env.DB, plan, ['id','recovery_hash','created_at','terms_version','terms_at'], [uid,await hash(recovery),now(),TERMS_VERSION,now()]),
           ...countNewAccount(env.DB, plan, uid));
         // この端末の古いセッションは消す（firebase・パスキーと同じ。共有の端末で前の人のセッションが残らない）
-        const session = await startSession(env.DB, uid, commands, sessionCookie(request));
+        // 復旧コードでのログインは、そのコードがまだ有効なときだけセッションになる（同時に作り直されたら入れない、#126）
+        const session = await startSession(env.DB, uid, commands, sessionCookie(request), used ? ['recovery_hash=?', used] : null);
         if (recovery) await confirmNewAccount(env.DB, env, fail, uid, request);
+        if (used && !(await env.DB.prepare('SELECT 1 AS ok FROM sessions WHERE hash=?').bind(await hash(session)).first())) fail(401,'復旧コードを確認してください。');
         return json({recovery_code:recovery},200,{'Set-Cookie':cookie(session)});
       }
       if (method === 'POST' && path === '/api/auth/firebase') return await firebaseSignIn(request, env);
@@ -641,6 +665,7 @@ export default {
         return new Response(got.body, {headers: {'Content-Type': 'text/calendar; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff'}});
       }
       if (path === '/api/account/delete') return await deleteAccount(request, env, uid, input);
+      if (path === '/api/recovery/reissue') return await reissueRecovery(request, env, uid);
       if (path === '/api/logout/all') {
         // Sign out every device, e.g. after losing a phone.
         await env.DB.prepare('DELETE FROM sessions WHERE user_id=?').bind(uid).run();
