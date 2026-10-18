@@ -52,6 +52,19 @@ class CardTest(unittest.TestCase):
             for mode in ("recommend", "interest"):
                 self.assertEqual(BC.compose(t, sid, mode, top=top), RR.ticket(c, mode=mode, why_html=top))
 
+    def test_the_card_leads_with_one_hook_tag_and_hides_motifs(self):
+        # 起案者の指示（2026-10-18）「カードに 1 つだけ出して」
+        themes = {("candidate", "101"): {"synopsis": "", "tags": ["#犯人はこの中に", "#二つ目"], "elements": [
+            {"kind": "ジャンル", "word": "ミステリー"}, {"kind": "モチーフ", "word": "雪に閉ざされた山荘"}]}}
+        c = BC.stage_dicts(self.pool, themes, TODAY)["101"]
+        self.assertEqual(c["themes"], ["ミステリー"])
+        self.assertEqual(c["hook"], "犯人はこの中に")
+        html = BC.build(self.pool, themes, TODAY)["101"]
+        self.assertIn('<span class="tag">#犯人はこの中に</span><span class="tag">#ミステリー</span>', html["html"])
+        self.assertNotIn("二つ目", html["html"])
+        self.assertNotIn("山荘</span>", html["html"], "モチーフはカードに並べない")
+        self.assertIn("雪に閉ざされた山荘", html["ws"], "お気に入りの文字の一致には使う")
+
     def test_a_tour_lists_every_venue(self):
         pool = dict(self.pool)
         pool["301"] = dict(pool["101"], stage_id="301", theater="劇場Z", pref="大阪府",

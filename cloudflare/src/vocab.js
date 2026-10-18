@@ -102,6 +102,9 @@ export function rolledThemeWords(themeValues) {
   }
   const out = new Map();
   for (const [a, m] of agg) {
+    // 軸の見出し（味わい・語り口）は言葉をまとめる箱で、好みではない。会話劇・群像劇・二人芝居が好きでも
+    // 「語り口が好き」として朗読劇や即興まで上げない（模擬で 116 公演が上がった。dec-theme-rollup）
+    if (CONCEPTS[a]?.group) continue;
     const branch = [...m.values()].map(({d, vs, n}) => [depthW(d) * vs.reduce((x, y) => x + y, 0) / vs.length, n]);
     const pos = branch.filter(([b]) => b > 0).length, neg = branch.filter(([b]) => b < 0).length;
     if (Math.max(pos, neg) < ROLLUP_MIN_BRANCHES || pos === neg) continue;

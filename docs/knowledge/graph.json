@@ -1428,6 +1428,20 @@
    "verifies": []
   },
   {
+   "id": "dec-hook-tag",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "公演のカードの題材タグの先頭に、見せる用のハッシュタグ（作品の問い・謎・核心）を 1 つだけ出す",
+   "sources": [
+    "tools/credits/extract_theme_llm.py",
+    "cloudflare/scripts/build_cards.py",
+    "tools/review/render_recommend.py",
+    "cloudflare/test/test_build_cards.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-import-calendar-mail",
    "type": "decision",
    "status": "adopted",
@@ -8596,6 +8610,11 @@
    "from": "dec-hide-own-words",
    "rel": "affects",
    "to": "dec-recommend-compact-poster"
+  },
+  {
+   "from": "dec-hook-tag",
+   "rel": "affects",
+   "to": "dec-theme-kinds-6p2"
   },
   {
    "from": "dec-import-calendar-mail",

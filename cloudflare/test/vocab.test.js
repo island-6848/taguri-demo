@@ -96,6 +96,8 @@ test('細かい好みが 3 つの枝にまたがると上位（SF）の好みに
   assert.equal(two.size, 0);
   const oneBranch = rolledThemeWords(new Map([['宇宙船', [1, 0.5]], ['宇宙人', [1, 0.5]], ['火星', [1, 0.5]]]));
   assert.ok(!oneBranch.has('ロボット'), '同じ枝（宇宙もの）だけなら SF まで上げない');
+  const talk = rolledThemeWords(new Map([['会話劇', [1, 0.5]], ['群像劇', [1, 0.4]], ['二人芝居', [1, 0.3]]]));
+  assert.ok(!talk.has('朗読劇'), '軸の見出し（語り口）へは積み上げない');
   const down = rolledThemeWords(new Map([['宇宙船', [1, -0.5]], ['ロボット', [1, -0.4]], ['タイムスリップ', [1, -0.3]]]));
   assert.ok(down.get('宇宙人')[2] < 0, '苦手も同じ向きで積み上げる');
 });
