@@ -1963,6 +1963,21 @@
    "verifies": []
   },
   {
+   "id": "dec-ticket-delete-wording",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "「観劇日を追加する」の入れてある日の消す口を「この日時を削除」にし、直し方と、消したあとに言う文（data-done）をサーバーの HTML に持たせる",
+   "sources": [
+    "cloudflare/src/screens/calendar.js",
+    "tools/taguri/stage_calendar.py",
+    "cloudflare/test/calendar.test.js",
+    "cloudflare/src/screens/lists.js",
+    "https://github.com/island-6848/taguri-demo/issues/100"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-ticket-price-filter",
    "type": "decision",
    "status": "adopted",
@@ -1974,6 +1989,20 @@
     "web/app.js",
     "web/theme.css",
     "tools/review/test_reason_works.py"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-timetable-unknown-days",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "公演日時の暦で、タイムテーブルの行を読めなかった日は「休演」ではなく「公式で確認」と出す。「各19:00」の期間の行は日ごとに読む。午前12時は 0 時、0:00〜23:59 の外の時刻は捨てる",
+   "sources": [
+    "cloudflare/src/screens/schedule.js",
+    "cloudflare/test/schedule.test.js",
+    "https://github.com/island-6848/taguri-demo/issues/76",
+    "https://github.com/island-6848/taguri-demo/issues/77"
    ],
    "verifies": []
   },
@@ -7598,6 +7627,16 @@
    "from": "dec-ticker",
    "rel": "affects",
    "to": "comp-frontend"
+  },
+  {
+   "from": "dec-ticket-delete-wording",
+   "rel": "affects",
+   "to": "dec-calendar-worker"
+  },
+  {
+   "from": "dec-timetable-unknown-days",
+   "rel": "affects",
+   "to": "impl-card-schedule"
   },
   {
    "from": "dec-trace-worker",

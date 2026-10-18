@@ -184,16 +184,18 @@ export function panel(d, today, tickets, selKinds = null, selPrefs = null) {
     + `${blocks}${tail}${CALENDAR_JS}`;
 }
 
-/** stage_calendar._ticket_li */
-function ticketLi(t, loc = '') {
+/** stage_calendar._ticket_li: 消す口は「この日時を削除」、data-done に消したあとの文（#100）。left: 残る行く日の数 */
+function ticketLi(t, loc = '', left = 0) {
   const when = `${t.date}` + (t.time ? ` ${t.time}` : '（時刻を入れていません）');
   const ok = Boolean(t.confirmed);
   const src = ok ? '' : '<i>購入確認メールから</i>';
   const sid = E(String(t.sid || ''));
   const lb = loc ? `<b class="tkloc">${E(loc)}</b> ` : '';
-  let btn = `<button data-del="1" data-stage="${sid}" data-date="${E(t.date)}" data-time="${E(t.time)}">取り消す</button>`;
-  if (!ok) btn = `<button class="go-ok" data-ok="1" data-stage="${sid}" data-date="${E(t.date)}" data-time="${E(t.time)}">確定</button>`
-    + `<button data-del="1" data-stage="${sid}" data-date="${E(t.date)}" data-time="${E(t.time)}">違う</button>`;
+  const md = `${Number(t.date.slice(5, 7))}/${Number(t.date.slice(8, 10))}` + (t.time ? ` ${t.time}` : '');
+  const done = `${md} の行く日を削除しました。公演の登録（購入済み・興味あり・お気に入り）は変わりません。` + (left ? `入れてある日は、あと ${left} 件です` : '入れてある日は、もうありません');
+  const tip = `この行く日（${md}）だけを消します。購入済み・興味あり・お気に入りの登録は消えません`;
+  let btn = `<button data-del="1" data-stage="${sid}" data-date="${E(t.date)}" data-time="${E(t.time)}" title="${E(tip)}" data-done="${E(done)}">この日時を削除</button>`;
+  if (!ok) btn = `<button class="go-ok" data-ok="1" data-stage="${sid}" data-date="${E(t.date)}" data-time="${E(t.time)}">確定</button>` + btn;
   return `<li class="${ok ? '' : 'un'}">${lb}<span>${E(when)}${src}</span>${btn}</li>`;
 }
 /** stage_calendar._own_merged */
@@ -220,8 +222,9 @@ export function addTicketButtonHtml(d, today, tickets) {
       sched = '<div class="tourfull">' + r.venues.map(v => `<div class="tf-row${v.end < today ? ' done' : ''}">`
         + `<span class="tf-loc">${E(regionLabel(v.pref, v.venue || '会場未定'))}公演</span><span class="tf-when">${E(runRange(v.period, today) || v.period)}</span></div>`).join('') + '</div>';
     }
-    const li = r.tickets.map(t => ticketLi(t, r.merged ? regionLabel(r.venues.find(v => v.sid === t.sid)?.pref || '') : '')).join('');
-    const have = li ? `<p class="tkihave">入れてある日</p><ul class="tklist">${li}</ul>` : '';
+    const li = r.tickets.map(t => ticketLi(t, r.merged ? regionLabel(r.venues.find(v => v.sid === t.sid)?.pref || '') : '', r.tickets.length - 1)).join('');
+    // 日時を直す口は別に無い ── 消してから下の「行く日」「時刻」で入れ直す（#100）
+    const have = li ? `<p class="tkihave">入れてある日（日時を直すときは「この日時を削除」で消して、下の「行く日」から入れ直してください）</p><ul class="tklist">${li}</ul>` : '';
     infos.push(`<div class="tkinfo" data-for="${E(r.sid)}" hidden>${sched}${have}</div>`);
   }
   return `<button type="button" class="addtk" data-open-dialog="tkdlg">

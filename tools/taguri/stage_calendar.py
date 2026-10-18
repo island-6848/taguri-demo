@@ -438,7 +438,7 @@ def _unplaced_html(left: list[dict]) -> str:
             f'ページの上の「観劇日を追加する」に出てきます。</p><ul>{li}</ul></div>')
 
 
-def _ticket_li(t: dict, loc: str = "") -> str:
+def _ticket_li(t: dict, loc: str = "", left: int = 0) -> str:
     """入れる口に出す 1 枚。**確定前は「確定」を先に出す**（起案者の指示 2026-08-25）。
 
     **読み取ったものを、取り消す形でしか触れないのは向きが逆である** ── 合っている
@@ -452,6 +452,12 @@ def _ticket_li(t: dict, loc: str = "") -> str:
     下に別々の会場の券が並ぶ ── 確定・取り消しは**その券が実際にどの会場に付いたか**
     に効かなければならない。行全体の代表会場（`data-stage`）に頼ると、他の会場の
     券まで代表会場のものとして操作してしまう。
+
+    **消す口は「この日時を削除」と書く**（issue #100）。「取り消す」「違う」では、
+    消えるのが行く日だけなのか、購入済みの登録や興味ありまで消えるのかが分からな
+    かった。消えるのはこの 1 つの日時だけで、購入済み・興味あり・お気に入りの登録はそのまま（`/api/ticket` の del は ticket の 1 行を
+    消すだけ）なので、そう書き、`data-done` に消したあとに言う文（何を消し、何が
+    残るか。`left` はこの公演に残る行く日の数）を持たせる。
     """
     when = (f'{t["date"]}'
             + (f' {t["time"]}' if t["time"] else "（時刻を入れていません）"))
@@ -459,13 +465,17 @@ def _ticket_li(t: dict, loc: str = "") -> str:
     src = "" if ok else "<i>購入確認メールから</i>"
     sid = E(str(t.get("sid") or ""))
     lb = f'<b class="tkloc">{E(loc)}</b> ' if loc else ""
+    md = (f'{int(t["date"][5:7])}/{int(t["date"][8:10])}'
+          + (f' {t["time"]}' if t["time"] else ""))
+    rest = f"入れてある日は、あと {left} 件です" if left else "入れてある日は、もうありません"
+    done = f"{md} の行く日を削除しました。公演の登録（購入済み・興味あり・お気に入り）は変わりません。{rest}"
+    tip = f"この行く日（{md}）だけを消します。購入済み・興味あり・お気に入りの登録は消えません"
     btn = (f'<button data-del="1" data-stage="{sid}" data-date="{E(t["date"])}"'
-           f' data-time="{E(t["time"])}">取り消す</button>')
+           f' data-time="{E(t["time"])}" title="{E(tip)}" data-done="{E(done)}">'
+           'この日時を削除</button>')
     if not ok:
         btn = (f'<button class="go-ok" data-ok="1" data-stage="{sid}"'
-               f' data-date="{E(t["date"])}" data-time="{E(t["time"])}">確定</button>'
-               f'<button data-del="1" data-stage="{sid}" data-date="{E(t["date"])}"'
-               f' data-time="{E(t["time"])}">違う</button>')
+               f' data-date="{E(t["date"])}" data-time="{E(t["time"])}">確定</button>' + btn)
     return f'<li class="{"" if ok else "un"}">{lb}<span>{E(when)}{src}</span>{btn}</li>'
 
 
@@ -558,9 +568,11 @@ def add_ticket_button_html(d: dict, today: dt.date | None = None,
         li = "".join(
             _ticket_li(t, RR.region_label(
                 next((v["pref"] for v in r["venues"] if v["sid"] == t["sid"]), ""))
-                if merged else "")
+                if merged else "", len(r["tickets"]) - 1)
             for t in r["tickets"])
-        have = f'<p class="tkihave">入れてある日</p><ul class="tklist">{li}</ul>' if li else ""
+        # 日時を直す口は別に無い ── 消してから下の「行く日」「時刻」で入れ直す（issue #100）
+        have = ('<p class="tkihave">入れてある日（日時を直すときは「この日時を削除」で消して、'
+                f'下の「行く日」から入れ直してください）</p><ul class="tklist">{li}</ul>' if li else "")
         infos.append(f'<div class="tkinfo" data-for="{E(r["sid"])}" hidden>'
                      f'{sched}{have}</div>')
     return f"""<button type="button" class="addtk" data-open-dialog="tkdlg">
