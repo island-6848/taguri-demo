@@ -92,7 +92,7 @@ def summary(res: dict, counts: dict, mats: dict | None = None) -> str:
                 f"- 人物の名前がある {g('with_names')} 件、種類の言葉（題材・形式など）がある {g('with_kinds')} 件、"
                 f"感想がある {g('with_note')} 件（そのうち種類の言葉もある {g('with_note_and_kinds')} 件）", ""]
     names = {"reminder": "開幕リマインドの答え（主な結果）", "other": "ほかの画面の答え（参考）", "all": "全部"}
-    parts = {"split": "興味ありの配り分け", "expand": "1 段広げる", "spread": "並べ直し", "gate": "裏の答え合わせ", "impression": "感想の好み"}
+    parts = {"split": "興味ありの配り分け", "expand": "1 段広げる", "spread": "並べ直し", "gate": "裏の答え合わせ", "impression": "感想の好み", "rollup": "題材の上位への積み上げ"}
     for key, title in names.items():
         e = res[key]
         out += [f"### {title}", "", f"- 利用者 {e['users']} 人・区切り {e['windows']} 回、AUC の中央値 {fmt(e['median_auc'])}、"
