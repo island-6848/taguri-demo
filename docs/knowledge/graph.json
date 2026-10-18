@@ -1002,6 +1002,22 @@
    "verifies": []
   },
   {
+   "id": "dec-diary-collage",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "日記帳はコラージュの見た目にする。日付は yyyy/mm/dd(曜日)、テープはポスターの上辺にかけて 4 柄、感想の欄に地の色",
+   "sources": [
+    "web/theme.css",
+    "web/app.js",
+    "cloudflare/src/screens/row.js",
+    "cloudflare/src/screens/diary.js",
+    "tools/taguri/app.py",
+    "cloudflare/test/e2e-walk.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-docs-refresh-1017",
    "type": "decision",
    "status": "adopted",
@@ -7654,6 +7670,11 @@
    "from": "dec-design-default-ito",
    "rel": "depends_on",
    "to": "simple-design-principles"
+  },
+  {
+   "from": "dec-diary-collage",
+   "rel": "depends_on",
+   "to": "dec-rec-row-like-card"
   },
   {
    "from": "dec-docs-refresh-1017",

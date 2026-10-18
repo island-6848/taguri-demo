@@ -451,7 +451,7 @@ async function worksScreen(params, ctx) {
   const scale = await scaleOf(ctx);
   const infos = await rowInfos(ctx, show, people);
   const rows = show.map(w => recRow({...w, people: people[w.work_key] || [], synopsis: '', info: infos[w.work_key]},
-    {poster: posterHtml(w, files), editable: true, label: labels[w.stage_id] || '', scale})).join('');
+    {poster: posterHtml(w, files), editable: true, label: labels[w.stage_id] || '', scale, fullDate: true})).join('');
   return {title, body_html: `<h1>日記帳</h1>
 ${recordsLede(d)}
 <p class="lede">1 件ごとに、日付・評価・感想が出ます。<b>感想は各行の「感想」の鉛筆から書けます</b>。書いた感想は欄から離れたときに保存されます。

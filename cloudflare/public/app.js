@@ -3089,6 +3089,16 @@ function setPen(b, editing) {
   b.setAttribute("aria-label", editing ? "書き終える" : "書き直す");
   b.title = editing ? "書き終える" : "書き直す";
 }
+// 日記帳の「感想」の欄は、地の色を付けた所のどこを押しても書き始められる（鉛筆を押したのと同じ）
+// （起案者の指示 2026-10-18「『感想』の右に背景色つけて記入欄がここにありますよってわかりやすくして。」）。
+// 書いている最中・リンク（タグ）・ボタン・文を選んでいるときは何もしない
+document.addEventListener("click", ev => {
+  const box = ev.target.closest && ev.target.closest('[data-route="/records/works"] .inr>.inb');
+  if (!box || ev.target.closest("button, a, [contenteditable]") || box.querySelector("[contenteditable]")) return;
+  if (String(window.getSelection ? getSelection() : "")) return;
+  const pen = box.querySelector("[data-note-open]");
+  if (pen) pen.click();
+});
 
 // **書いてある文を、その場で書き直せる欄にする。** 下に入力欄を開くのではなく、読んでいた文の上で
 // そのまま書く。離れたら（または「書き終える」を押したら）保存し、Esc で元に戻す。保存は今までと

@@ -6807,7 +6807,8 @@ def _synopsis_html(text: str) -> str:
 
 def _rec_row(user_id: str, w: dict, *, poster: str = "", rate_always: bool = False,
              editable: bool = False, extra: str = "", rate_reopen: bool = False,
-             id_suffix: str = "", visit_uid: str = "", visit_note: str = "") -> str:
+             id_suffix: str = "", visit_uid: str = "", visit_note: str = "",
+             full_date: bool = False) -> str:
     """1 公演の記録を 1 件出す。**1 件が 1 日ぶんの帳面になる**（起案者の指示・2026-08-24
     ──「記録を観るページは日記帳っぽいとなおいい」）。
 
@@ -6885,7 +6886,12 @@ def _rec_row(user_id: str, w: dict, *, poster: str = "", rate_always: bool = Fal
     imp_head, imp_box = _impression_parts(w)
     vn_head, vn_box = _visit_note_html(visit_uid, visit_note) if visit_uid else ("", "")
     y, md, wd = _date_parts(w.get("first_date") or "")
-    if md:
+    if md and full_date:
+        # **日記帳の日付は yyyy/mm/dd(曜日) の 1 続きで書く**（起案者の指示 2026-10-18「日記帳の日付の書き方、
+        # yyyy/mm/dd(曜日)で統一して。」）。例: 2026/10/17(土)。評価一覧などの行は今までどおり割って出す
+        mo, dd = md.split(".")
+        dt = f'<span class="dt"><span class="ymd">{y}/{int(mo):02d}/{dd}({wd})</span></span>'
+    elif md:
         dt = (f'<span class="dt"><span class="y">{y}</span>'
               f'<span class="md">{md}</span><span class="wd">{wd}</span></span>')
     else:
@@ -7851,7 +7857,7 @@ def _works_body(user_id: str, year: str = "", page: int = 1, want: str = "", gro
         w = {**w, "people": people_by_key.get(w["work_key"]) or [],
              "synopsis": syn_by_key.get(w["work_key"], "")}
         return _rec_row(user_id, w, poster=p, editable=True, id_suffix=sfx,
-                        visit_uid=uid, visit_note=visit_notes.get(uid, ""))
+                        visit_uid=uid, visit_note=visit_notes.get(uid, ""), full_date=True)
 
     check = [w for w in ws if w.get("suspect")]
     # **「行かなかった」は年の外にも出さない。** 設定の「行かなかった公演」札に

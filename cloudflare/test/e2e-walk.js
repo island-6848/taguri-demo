@@ -722,6 +722,36 @@ async function walkA(A) {
   for (const p of ['/records', '/records/chronicle', '/records/trace', '/records/works', '/rate/notes', '/tickets', '/settings', '/account', '/search']) {
     await step('開く ' + p, async () => { await go(p); check((await content()).trim().length > 0, '中身が空'); check(!/このページはありません|読み込めませんでした/.test(await content()), '画面が出ない'); });
   }
+
+  // 日記帳のコラージュの見た目（起案者の指示 2026-10-18）: 日付は yyyy/mm/dd(曜日)、テープの中心がポスターの上辺に重なる、
+  // テープの柄が行ごとに違う、感想の欄に地の色。パソコンと電話の幅（390px）の両方で確かめ、写しを残す
+  await step('日記帳の見た目（日付・テープ・感想の欄、パソコンと電話の幅）', async () => {
+    for (const [w, h, name] of [[1280, 900, 'works-pc.png'], [390, 844, 'works-phone.png']]) {
+      await page.setViewportSize({width: w, height: h});
+      await go('/records/works');
+      const rows = await page.evaluate(() => [...document.querySelectorAll('[data-route="/records/works"] .idxsheet>.rec-row')].map(r => {
+        const pin = r.querySelector('.pin'), po = pin.firstElementChild, pr = pin.getBoundingClientRect();
+        const t = getComputedStyle(pin, '::before'), pcs = getComputedStyle(po);
+        const tapeMid = pr.top + parseFloat(t.top) + parseFloat(t.height) / 2;
+        // ポスターの上辺（傾ける前）: 枠の上端。傾きは小さいので、外接の箱の上端から上の縁の太さまでの間に入る
+        const top = pin.getBoundingClientRect().top + parseFloat(getComputedStyle(pin).paddingTop);
+        return {date: r.querySelector('.dt')?.textContent || '', gap: Math.abs(tapeMid - top), tape: t.backgroundImage + t.backgroundColor + t.transform,
+          inb: getComputedStyle(r.querySelector('.inr>.inb') || r).backgroundColor, poster: pcs.borderTopWidth,
+          wide: document.documentElement.scrollWidth};
+      }));
+      check(rows.length >= 2, '日記帳の行が足りない');
+      for (const r of rows) {
+        check(/^\d{4}\/\d{2}\/\d{2}\([月火水木金土日]\)$/.test(r.date) || /上演日が/.test(r.date), `日付の形が違う: ${r.date}`);
+        check(r.gap <= 1.5, `テープの中心がポスターの上辺から ${r.gap.toFixed(1)}px ずれている`);
+        check(!/rgba\(0, 0, 0, 0\)|transparent/.test(r.inb), '感想の欄に地の色が無い');
+        check(r.wide <= w, `横にはみ出す（${r.wide}px）`);
+      }
+      check(new Set(rows.slice(0, 4).map(r => r.tape)).size === Math.min(4, rows.length), 'テープの柄が行ごとに替わらない');
+      await page.screenshot({path: join(OUT, name), fullPage: true});
+      note(`${w}px: ${rows.map(r => r.date).join(' / ')}`);
+    }
+    await page.setViewportSize({width: 1280, height: 900});
+  });
 }
 
 // ================================================================ 利用者 B（別の履歴）と分離
