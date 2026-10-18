@@ -84,3 +84,7 @@ export const FIX_STORED_PER_USER = 50;
 export const FIX_STORED_TOTAL = 2000;
 export const FIX_RESOLVED_BODY_DAYS = 30;
 export const FIX_RESOLVED_ROW_DAYS = 180;
+// 1 回の片付け（1 日 1 回の定期実行）で本文を消す数・行を消す数の上限（issue #139）。上限が無いと、2,000 件を
+// 同じ日に片付けた 30 日・180 日あとに、その日だけ最大 約 8,000 行の書き込み（本文 2,000 ＋ 行と索引 2 つで 6,000）が
+// 利用者の操作の分（1 日 10 万行から取得の 8 万行を引いた残り）から出ていく。上限で 1 日 最大 約 2,000 行に抑え、残りは次の日に回す
+export const FIX_PURGE_PER_RUN = 500;

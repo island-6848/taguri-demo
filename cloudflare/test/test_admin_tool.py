@@ -93,6 +93,17 @@ class AdminTest(unittest.TestCase):
             A.save(self.d1, self.data, "101", synopsis="x")
         self.assertEqual(self.fake.files, [])
 
+    def test_the_admin_r2_storage_cap_stops_before_putting(self):
+        # 管理画面の控えは取得の控えと別なので、管理画面の分だけの保存の上限で止まる（issue #139）
+        u = A.FT.load(self.data)
+        u["r2"]["sizes"]["old.webp"] = A.FT.CAPS["admin_r2_bytes"]
+        A.FT.save(self.data, u)
+        put = []
+        with self.assertRaises(A.AdminError):
+            A.add_poster(self.d1, self.data, "101", png(), put=lambda *a: put.append(a))
+        self.assertEqual(put, [])
+        self.assertLess(A.FT.CAPS["admin_r2_bytes"], A.FT.CAPS["r2_bytes"])
+
     def test_poster_is_shrunk_put_under_a_versioned_name_and_logged(self):
         put = []
         r = A.add_poster(self.d1, self.data, "101", png(), put=lambda a, t, b, k, body, ct: put.append((k, ct, len(body))))

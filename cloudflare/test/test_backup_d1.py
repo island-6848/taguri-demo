@@ -102,7 +102,37 @@ class BackupTest(unittest.TestCase):
             B.decrypt(body, "wrong")
         u = FT.load(self.data)
         self.assertEqual(u["r2"]["sizes"][key], len(body))
-        self.assertEqual(FT.r2_class_a(u, NOW), 1)
+        # 控えの PUT 1 回と、入れ物の確かめ（作る・決まりを付ける）の Class A 2 回・GET の Class B 1 回（issue #139）
+        self.assertEqual(FT.r2_class_a(u, NOW), 1 + B.ENSURE_CLASS_A)
+        self.assertEqual(FT.r2_class_b(u, NOW), B.ENSURE_CLASS_B)
+
+    def test_backup_is_not_made_when_the_bucket_check_would_pass_the_class_a_cap(self):
+        u = FT.load(self.data)
+        u["r2"]["class_a"][FT.month(NOW)] = FT.CAPS["r2_class_a_month"] - B.ENSURE_CLASS_A
+        FT.save(self.data, u)
+        self.assertIn("skipped", self.run_backup())
+        self.assertEqual(self.store, {})
+        self.assertEqual(FT.r2_class_a(FT.load(self.data), NOW), FT.CAPS["r2_class_a_month"] - B.ENSURE_CLASS_A)
+
+    def test_drill_writes_count_rows_and_their_indexes(self):
+        # users: 2 行 × (表 1 ＋ 主キー・UNIQUE の索引 2)、works: 1 行 × 1
+        self.assertEqual(B.drill_writes(SQL), 7)
+
+    @unittest.skipUnless(shutil.which("gpg"), "gpg が無い")
+    def test_a_drill_too_big_for_the_d1_day_is_checked_locally_and_not_loaded(self):
+        body = B.encrypt(SQL.encode(), "correct horse")
+        old_cap = FT.CAPS["drill_d1_writes"]
+        FT.CAPS["drill_d1_writes"] = 6
+        self.addCleanup(FT.CAPS.__setitem__, "drill_d1_writes", old_cap)
+        called = []
+        real = B.wrangler
+        B.wrangler = lambda *a, **k: called.append(a)
+        self.addCleanup(setattr, B, "wrangler", real)
+        got = B.drill(self.data, get=lambda a, t, k: body)
+        self.assertEqual(called, [])          # 新しい D1 を作らず、何も書かない
+        self.assertTrue(got["ok"])
+        self.assertIn("d1_skipped", got)
+        self.assertEqual((got["estimated_writes"], got["rows"], got["tables"]), (7, 3, 2))
 
     @unittest.skipUnless(shutil.which("gpg"), "gpg が無い")
     def test_a_backup_missing_rows_is_not_stored(self):

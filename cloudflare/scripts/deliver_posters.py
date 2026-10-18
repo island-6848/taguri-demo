@@ -184,6 +184,10 @@ def build(data: Path, out: Path, *, bucket: str, limit: int, put=put_object,
             m = FT.month()
             failure = None
             for wait in (*RETRY_WAITS, None):
+                # やり直しの 1 回ごとにも上限を見る（最初の 1 回の前だけ見ると、上限の手前 1 回から 3 回まで送れてしまう。issue #139）
+                if FT.r2_class_a(u) + 1 > FT.CAPS["r2_class_a_month"]:
+                    stop = f"今月の R2 の書き込みが上限 {FT.CAPS['r2_class_a_month']:,} 回に届くので止めた（やり直しの途中）"
+                    break
                 u["r2"]["class_a"][m] = FT.r2_class_a(u) + 1   # 送る前に数える（やり直しも 1 回ずつ数え、少なく数えない）
                 try:
                     put(account, token, bucket, key, body, ctype)
@@ -194,6 +198,8 @@ def build(data: Path, out: Path, *, bucket: str, limit: int, put=put_object,
                     if wait is None or not _transient(e):
                         break
                     sleep(wait)
+            if stop:
+                break
             if isinstance(failure, urllib.error.HTTPError):
                 # 401/403: the token has no R2 access; 404: the bucket does not exist; 5xx: R2 kept failing.
                 stop = f"R2 への書き込みを止めた（HTTP {failure.code}）。鍵に R2 の権限があるか、バケット {bucket} があるかを確かめる"
