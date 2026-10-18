@@ -72,10 +72,24 @@ function seed() {
     + '父が昔書き残した献立帳が見つかる。献立帳をたどるうちに、長女は町の人たちと父の知られざる過去に出会っていく。笑って泣ける再生の物語。',
     JSON.stringify(['家族', '再生', '食堂']),
     JSON.stringify({fields: {'料金（1枚あたり）': '12,000円 ～ 12,000円\n【発売日】2026/09/01\nS席：12,000円\nA席：8,000円〜8,000円\nU-25：6,000円',
-      'タイムテーブル': '11月1日(日) 13:00\n11月2日(月) 19:00\n11月3日(火) 13:00/18:00'}}),
+      // 11/3 の 18:00 は貸切の回（暦に「(貸)18:00」。起案者の指示 2026-10-18）
+      'タイムテーブル': '11月1日(日) 13:00\n11月2日(月) 19:00\n11月3日(火) 13:00/18:00貸切'}}),
     '2026-10-18T00:00:00Z'].map(q).join(',')});`;
+  // あらすじのハッシュタグの公演の一覧と、料金の明細を出さないカード（会場ごとに料金が違う 2 会場のツアー）を確かめるため、
+  // 劇場の無い舞台（106）に題材「家族」・料金・貸切の回のある公演日時を重ね、同じツアーの 2 つめの会場（107、料金が違う）を
+  // 索引とカードに足す（起案者の指示 2026-10-18 の写し: 2 会場・2 つ目の会場の暦の上に料金）
+  const ov106 = `INSERT INTO stage_override(stage_id,synopsis,themes,info,updated_at) VALUES(${['106',
+    '小さな町の劇団を舞台に、解散を前にした家族のような仲間たちの最後の一週間を描く喜劇。',
+    JSON.stringify(['家族', '喜劇']),
+    JSON.stringify({venue: '劇場Y', pref: '東京都', fields: {'料金（1枚あたり）': '12,500円(全席指定・税込)',
+      'タイムテーブル': '12月1日(火) 19:00\n12月2日(水) 13:00/17:00貸切\n12月3日(木) 13:00'}}),
+    '2026-10-18T00:00:00Z'].map(q).join(',')});`;
+  const tour107 = [
+    `INSERT INTO rec_card(ver,stage_id,html,title,tour,start,end,pref,gnz,blob,ws,synz) SELECT ver,'107',replace(html,'data-stage="106"','data-stage="107"'),title,tour,'2026-12-10','2026-12-12','大阪府',gnz,blob,ws,synz FROM rec_card WHERE stage_id='106';`,
+    `INSERT INTO rec_stage(ver,stage_id,title,tkey,grp,tour,gkey,start,end,credits,entry) SELECT ver,'107',title,tkey,grp,tour,gkey,'2026-12-10','2026-12-12',credits,`
+      + `json_set(entry,'$.theater','劇場Z','$.pref','大阪府','$.period','2026/12/10~2026/12/12','$.fields',json(${q(JSON.stringify({'料金（1枚あたり）': '9,800円(全席指定・税込)', 'タイムテーブル': '12月10日(木) 18:00\n12月11日(金) (貸切)13:00/18:00\n12月12日(土) 13:00'}))})) FROM rec_stage WHERE stage_id='106';`];
   const file = join(STATE, 'seed.sql');
-  writeFileSync(file, [...cat.sql, ...rec.sql, ...past, soon, ov, "INSERT INTO venue_pref(venue,pref) VALUES('劇場F','東京都');"].join('\n'));
+  writeFileSync(file, [...cat.sql, ...rec.sql, ...past, soon, ov, ov106, ...tour107, "INSERT INTO venue_pref(venue,pref) VALUES('劇場F','東京都');"].join('\n'));
   wrangler('d1', 'execute', 'taguri-demo', '--local', '--persist-to', STATE, '--file', file);
 }
 
@@ -113,6 +127,16 @@ async function settle() {
 async function go(path) { await page.goto(BASE + path); await settle(); }
 const content = () => page.locator('#content').innerText();
 // 調べるための控え（画面の文と HTML）
+// 写しを PC と電話の幅で撮る（見出し・説明・空のときの案内を目で確かめるため）
+async function shotsBoth(name) {
+  await page.screenshot({path: join(OUT, `${name}-pc.png`), fullPage: true});
+  await page.setViewportSize({width: 390, height: 844});
+  await sleep(300);
+  await page.screenshot({path: join(OUT, `${name}-phone.png`), fullPage: true});
+  await page.setViewportSize({width: 1280, height: 900});
+  await sleep(200);
+}
+
 async function dump(name) {
   try { writeFileSync(join(OUT, `dump-${name}.txt`), await content()); writeFileSync(join(OUT, `dump-${name}.html`), await page.locator('#content').innerHTML()); } catch {}
 }
@@ -218,7 +242,7 @@ async function walkA(A) {
     await page.click('#recovery-done');
     await page.waitForURL(BASE + '/');
     await settle();
-    check(/今週のおすすめ/.test(await content()), '登録後におすすめの画面が出ない');
+    check(/今週のあなたへのおすすめ/.test(await content()), '登録後におすすめの画面が出ない');   // 見出しは 2026-10-18 から「今週のあなたへのおすすめ…」
   });
   A.code = code;
   A.uid = sql('SELECT id FROM users')[0]?.id;
@@ -265,6 +289,23 @@ async function walkA(A) {
     await page.screenshot({path: join(OUT, 'recommend-start-phone.png'), fullPage: true});
     await page.setViewportSize({width: 1280, height: 900});
     await sleep(200);
+  });
+
+  // 興味あり・購入済の公演が 0 件のときは、ワンポイントと同じ形の絵の付いた案内（起案者の指示 2026-10-18）
+  await step('空の一覧: 興味あり・購入済の公演は絵の付いた案内（PC・電話の幅）', async () => {
+    await go('/recommend/interest');
+    let t = await content();
+    check(/「興味あり」の公演/.test(t) && !/追いかけている/.test(t), '興味ありの見出しが違う');
+    check(/「おすすめ」または「開幕リマインド」、「探す」で「興味あり」と回答してください。/.test(t), '興味ありの案内の文が違う');
+    check(await page.locator('section.eguide svg.tip-art').count() === 1, '興味ありの案内に絵が無い');
+    check(await page.locator('section.eguide a[href^="/recommend/reminder"]').count() === 1, '案内の「開幕リマインド」がリンクでない');
+    await shotsBoth('interest-empty');
+    await go('/tickets');
+    t = await content();
+    check(/購入済の公演/.test(t) && !/購入済み公演 ──/.test(t), '購入済の公演の見出しが違う');
+    check(/で「購入済」と回答してください。/.test(t) && /「観劇記録を追加」で購入済の公演を追加してください。/.test(t), '購入済の案内の文が違う');
+    check(await page.locator('section.eguide a[href^="/register"]').count() === 1, '案内の「観劇記録を追加」がリンクでない');
+    await shotsBoth('tickets-empty');
   });
 
   await step('観劇記録を手で 1 件足す', async () => {
@@ -528,6 +569,84 @@ async function walkA(A) {
     await hideTour(false);
   });
 
+  // 起案者の指示 2026-10-18: あらすじのハッシュタグ → その題材の公演の一覧／暦の貸切は「(貸)17:00」で升の中で折り返さない／
+  // 値段と発売の札は本文の列（料金の明細の無いカードも）・札の ↗ は折り返さない／ヘルプはカードの枠の外の右上に小さく
+  await step('あらすじのハッシュタグ → 題材の公演の一覧（2 会場で料金の明細の無いカード・暦の貸切・右上のヘルプ。PC・電話の幅）', async () => {
+    await go('/');
+    const card = page.locator('.ticket.recommend[data-stage="101"]');
+    await card.waitFor({timeout: 10000});
+    const kas = await card.locator('.ttb .tm.kas').allInnerTexts();
+    check(kas.map(t => t.trim()).join(',') === '(貸)18:00', '暦の貸切の回: ' + kas.join(','));
+    // ヘルプ（？）は枠の外の右上の角: 右端・上端が枠の外に出て、見た目は 24px ほど、押せる広さは 44px
+    const helpAt = () => card.evaluate(t => {
+      const a = t.getBoundingClientRect(), btn = t.querySelector(':scope > .fixq .fixq-open');
+      if (!btn) return null;
+      const b = btn.getBoundingClientRect(), hit = getComputedStyle(btn, '::after');
+      return {right: Math.round(b.right - a.right), top: Math.round(b.top - a.top), w: Math.round(b.width), hit: hit.width};
+    });
+    const hp = await helpAt();
+    check(hp && hp.right > 0 && hp.top < 0 && hp.w <= 26 && hp.hit === '44px', 'ヘルプの位置: ' + JSON.stringify(hp));
+    note('ヘルプ: ' + JSON.stringify(hp));
+    const hideTour = on => page.evaluate(v => document.querySelectorAll('.tgt-root').forEach(n => { n.style.visibility = v ? 'hidden' : ''; }), on);
+    // カードの写しは、枠の外のヘルプが入るように周りを 16px 広げて撮る
+    const around = async (loc, path) => { await loc.scrollIntoViewIfNeeded(); const b = await loc.boundingBox(); if (b) await page.screenshot({path, clip: {x: Math.max(0, b.x - 16), y: Math.max(0, b.y - 16), width: b.width + 32, height: b.height + 24}}).catch(() => {}); };
+    await card.locator('details.lsynmore > summary').click();
+    const link = card.locator('.lsynmore a.lsyntag', {hasText: '#家族'});
+    check(await link.count() === 1, 'ハッシュタグがリンクになっていない');
+    await link.click();
+    await page.waitForURL(/\/recommend\/tag\?w=/, {timeout: 10000});
+    await settle();
+    check(/#家族\s*の公演/.test(await content()), '題材の公演の画面が出ない: ' + (await content()).slice(0, 80));
+    const sids = await page.locator('#content article.ticket').evaluateAll(as => as.map(a => a.dataset.stage));
+    check(sids.includes('101') && sids.includes('106') && !sids.includes('107'), '一覧の公演: ' + sids.join(','));
+    note('#家族 の一覧: ' + sids.join(','));
+    // 2 会場で料金の違うカード（料金の明細なし）: 値段の 1 行と発売の札は本文の列に、札はその下に。ポスターの下の列には無い
+    const c = page.locator('#content .ticket[data-stage="106"]');
+    const order = await c.locator('.main').evaluate(m => [...m.children].map(n => n.className.split(' ')[0]).join(','));
+    check(/lprice,sale/.test(order), '値段と発売の札の並び: ' + order);
+    check(await c.locator('.pcol .sale, .pcol .lprice, .pcol .yen').count() === 0, '値段・発売の札がポスターの下の列に残る');
+    const yen = (await c.locator('.main > .lprice.lyen').innerText()).trim();
+    check(/12,500円|9,800円/.test(yen), '値段の行: ' + yen);
+    check(await c.locator('.tourfull .tf-row').count() === 2, '日程の会場が 2 つでない');
+    note('106 の並び: ' + order + ' / 値段: ' + yen.replace(/\s+/g, ' '));
+    // 「ほか 1 会場」を押すと、ほかの会場（劇場Z・12/10〜12/12）が開く。日程の行に「詳細」の字は無い（起案者の指示 2026-10-18）
+    const more = c.locator('.meta .mvmore');
+    check(await more.count() === 1 && !(await c.locator('.meta .mvlist').isVisible()), '「ほか n 会場」の押し口が無いか、最初から開いている');
+    await more.click();
+    const mv = (await c.locator('.meta .mvlist').innerText()).replace(/\s+/g, ' ').trim();
+    check(/劇場Z/.test(mv) && /12\/10〜12\/12/.test(mv) && !/劇場Y/.test(mv), 'ほかの会場の一覧: ' + mv);
+    check(await more.getAttribute('aria-expanded') === 'true', 'aria-expanded が true にならない');
+    check(await c.locator('.tf-more').count() === 0 && !/詳細/.test(await c.locator('.tourfull').innerText()), '日程の行に「詳細」が残る');
+    // 料金はどこでも同じ箇条書き（.pblock .plist li）。表（.ptb）は使わない
+    check(await c.locator('.ptb').count() === 0 && await c.locator('.tf-price .plist li').count() >= 1 && await c.locator('.main > .lprice .plist li').count() === 1, '料金が箇条書きでない');
+    note('ほかの会場: ' + mv);
+    const lines = el => el.evaluate(n => { const r = n.getClientRects(); return [r.length, Math.round(n.getBoundingClientRect().height), parseFloat(getComputedStyle(n).lineHeight) || 0]; });
+    await hideTour(true);
+    for (const [w, h, tag] of [[1280, 900, 'pc'], [390, 844, 'phone']]) {
+      await page.setViewportSize({width: w, height: h});
+      // 発売の札（「確認できず ↗」など）は 1 行
+      const pl = await lines(c.locator('.sale .pill').first());
+      check(pl[0] === 1, `${tag}: 発売の札が折り返す: ` + pl.join(','));
+      // 貸切の回は升の中で 1 行（はみ出さない）
+      const cells = await c.locator('.ttb .tm.kas').evaluateAll(ns => ns.map(n => { const td = n.closest('td'); return {t: n.textContent, rects: n.getClientRects().length, w: Math.round(n.scrollWidth), cw: Math.round(td.clientWidth)}; }));
+      check(cells.length && cells.every(x => x.rects === 1 && x.w <= x.cw), `${tag}: 暦の貸切の回: ` + JSON.stringify(cells));
+      note(`${tag}: 貸切の升 ` + cells.map(x => `${x.t} ${x.w}/${x.cw}px`).join(' '));
+      // 料金の箇条書きの各行は 1 行（券種・金額が折り返さない）。おすすめのカード（101）の明細も同じ形
+      const pls = await page.locator('#content .plist li:visible').evaluateAll(ns => ns.map(n => { const lh = parseFloat(getComputedStyle(n).lineHeight) || 19; return {t: n.textContent.trim(), one: n.getBoundingClientRect().height < lh * 1.6}; }));
+      check(pls.length && pls.every(x => x.one), `${tag}: 料金の行が折り返す: ` + JSON.stringify(pls.filter(x => !x.one)));
+      await page.screenshot({path: join(OUT, `tag-list-${tag}.png`), fullPage: true}).catch(() => {});
+      await around(c, join(OUT, `card-tag-tour-${tag}.png`));
+    }
+    await page.setViewportSize({width: 1280, height: 900});
+    await go('/');
+    await hideTour(true);   // 開き直すと使い方の案内がまた出るので、写しの間だけ隠し直す
+    await around(page.locator('.ticket.recommend[data-stage="101"]'), join(OUT, 'card-recommend-help-pc.png'));
+    await page.setViewportSize({width: 390, height: 844});
+    await around(page.locator('.ticket.recommend[data-stage="101"]'), join(OUT, 'card-recommend-help-phone.png'));
+    await page.setViewportSize({width: 1280, height: 900});
+    await hideTour(false);
+  });
+
   await step('今週のおすすめ: 興味なし → 押し直して興味あり', async () => {
     await go('/');
     const card = page.locator('.ticket.recommend[data-stage="101"]');
@@ -573,7 +692,18 @@ async function walkA(A) {
     const t = await content();
     check(/俳優乙/.test(t) && /劇団ナシ/.test(t), '足した名前が出ない');
     check(/舞台ふたつめ/.test(t), '俳優乙の公演（舞台ふたつめ）がお気に入りに出ない');
-    check(await page.locator('details#names').getAttribute('open') !== null, '足したあと「登録した名前」が畳まれる');
+    check(await page.locator('details#names').getAttribute('open') !== null, '足したあと「要素を登録」が畳まれる');
+    // 見出し・説明・札の形・並べ替えの位置（起案者の指示 2026-10-18）
+    check(/^お気に入り$/.test((await page.locator('h1').first().innerText()).trim()), 'お気に入りの見出しが「お気に入り」だけでない');
+    check(/お気に入りに追加することで情報の追跡ができます。/.test(t) && !/観ると決めたら、公式サイトで券を買って|すべてを表示しています/.test(t), 'お気に入りの説明の文が違う');
+    check((await page.locator('details#names .tag[data-name="俳優乙"] .tgn').innerText()).trim() === '#人「俳優乙」', '札が「#人「俳優乙」」の形でない');
+    check(/要素を登録/.test(await page.locator('details#names > summary').innerText()), '箱の名前が「要素を登録」でない');
+    const below = await page.evaluate(() => {
+      const nav = document.querySelector('nav.idx[aria-label="月で切り替える"]'), f = document.querySelector('form.sortf');
+      return Boolean(nav && f && (nav.compareDocumentPosition(f) & Node.DOCUMENT_POSITION_FOLLOWING));
+    });
+    check(below, '並べ替えが月のタブより下にない');
+    await shotsBoth('favourites');
     const tag = page.locator('.tag[data-name="劇団ナシ"]');
     const reload = page.waitForEvent('load', {timeout: 15000});
     await tag.locator('button[data-fav="remove"]').click();
@@ -620,6 +750,11 @@ async function walkA(A) {
     const card = page.locator(`li.dgli[data-stage="${SOON.id}"]`);
     check(await card.locator('button[data-btns-open]').isVisible(), '「回答を直す」が無い');
     await page.screenshot({path: join(OUT, 'reminder-pc.png'), fullPage: true});
+    // 見出し・前置きの 1 文・件数の 1 行（週のタブの下）・「直近の観劇予定」の枠なし（起案者の指示 2026-10-18）
+    const rt = await content();
+    check(/開幕リマインドでは、おすすめやお気に入りにかかわらず、今週・来週開幕予定の公演を全件掲載しています。/.test(rt) && !/見逃していませんか|直近の観劇予定|好みに関係なく/.test(rt), '開幕リマインドの文が違う');
+    check(/に開幕する公演 ︰ \d+ 件/.test(rt), '「〇〜〇に開幕する公演 ︰ N 件」の形でない');
+    check(await page.evaluate(() => document.querySelector('nav.idx[aria-label="週で切り替える"]')?.nextElementSibling?.classList.contains('rcount')), '件数の 1 行が週のタブの下にない');
     check(!(await card.locator('button[data-v="interest"]').isVisible()), '押す前から三択が見えている');
     await card.locator('button[data-btns-open]').click();
     check(await card.locator('button[data-v="interest"]').isVisible(), '押しても興味ありが出ない');
@@ -677,10 +812,13 @@ async function walkA(A) {
     t = sql("SELECT date, time FROM ticket WHERE stage_id='102'");
     check(t.length === 1 && t[0].date === '2026-10-20' && t[0].time === '18:30', 'D1 に残った行く日が違う: ' + JSON.stringify(t));
     check(sql("SELECT owned FROM reaction WHERE stage_id='102'")[0]?.owned === 1, '行く日を消したら購入済みまで消えた');
+    // 開幕リマインドの「直近の観劇予定」の枠は外した（起案者の指示 2026-10-18）。残った行く日は購入済の公演の画面で確かめる
     await go('/recommend/reminder');
-    const plan = await page.locator('section.dgcard').filter({hasText: '直近の観劇予定'}).innerText();
-    note('開幕リマインドの直近の観劇予定: ' + plan.replace(/\s+/g, ' ').slice(0, 160));
-    check(/舞台ふたつめ/.test(plan) && /10\/20|10月20日/.test(plan) && !/10\/19|10月19日/.test(plan), '直近の観劇予定が残った日（10/20）だけになっていない');
+    check(!/直近の観劇予定/.test(await content()), '開幕リマインドに「直近の観劇予定」の枠が残っている');
+    await go('/tickets');
+    const plan = await page.locator('article.ticket[data-stage="102"] .mytix').first().innerText();
+    note('購入済の公演の行く日: ' + plan.replace(/\s+/g, ' ').slice(0, 160));
+    check(/10\/20|10月20日/.test(plan) && !/10\/19|10月19日/.test(plan), '購入済の公演の行く日が残った日（10/20）だけになっていない');
   });
 
   await step('観察: 行く日が過ぎた券（昨日）は評価待ちになるか', async () => {
@@ -976,7 +1114,7 @@ async function walkB(A, B) {
       const t = await content();
       for (const w of ['手で足した芝居', '最初に書いた感想', '冬の物語', '俳優乙', '近く開く芝居', '舞台ふたつめ'])
         if (t.includes(w) && !(p.startsWith('/search') || p === '/recommend/reminder') ) leaks.push(`${p}: ${w}`);
-      if (p === '/recommend/reminder' && /舞台ふたつめ/.test(await page.locator('section.dgcard').filter({hasText: '直近の観劇予定'}).innerText())) leaks.push('reminder: A の行く日');
+      // 開幕リマインドの「直近の観劇予定」（A の行く日が出うる枠）は 2026-10-18 に外した。行く日は /tickets で見ている
       if (p.startsWith('/search') && await page.locator('.pastrow .past-done, [data-past=missed][disabled]').count()) leaks.push('search: A の「観た」');
     }
     check(!leaks.length, '見えた: ' + leaks.join(' / '));

@@ -19,11 +19,15 @@ test('a new account has empty lists', async () => {
   const {env, sqlite} = withIndex();
   const a = await signIn(env);
   try {
-    assert.match((await screen(env, a, 'interest')).body_html, /<h1>追いかけている 0 件<\/h1>[\s\S]*追いかけている公演はありません/);
+    // 見出し・説明・空のときの案内は起案者の指示 2026-10-18 の仕様変更（件数は見出しに入れない。空のときは絵の付いた案内）
+    assert.match((await screen(env, a, 'interest')).body_html, /<h1>「興味あり」の公演<\/h1>[\s\S]*<section class="card tips eguide">[\s\S]*<a href="\/recommend\?t=__TAGURI_TOKEN__">おすすめ<\/a>」または「<a href="\/recommend\/reminder\?t=__TAGURI_TOKEN__">開幕リマインド<\/a>」、「<a href="\/search\?t=__TAGURI_TOKEN__">探す<\/a>」で「興味あり」と回答してください。[\s\S]*<svg class="tip-art"/);
     const fav = (await screen(env, a, 'favourites')).body_html;
-    assert.match(fav, /<h1>お気に入り ── 新着 0 件<\/h1>/);
+    assert.match(fav, /<h1>お気に入り<\/h1>\n<p class="hsub">おすすめにかかわらず新着情報を知りたい題材や作り手がいるときは、お気に入りに追加することで情報の追跡ができます。<\/p>/);
+    assert.match(fav, /<summary>[^]*要素を登録 <b>0件<\/b>/);
+    assert.match(fav, /<p class="lead">表記ゆれ（漢字とカタカナ、送り仮名の違いなど）は、自動では見分けられない場合があります。<\/p>/);
+    assert.doesNotMatch(fav, /観た記録に無い名前も登録できます|件を表示中/);
     assert.match(fav, /<details class="pbox" id="names" open>/);
-    assert.match((await screen(env, a, 'tickets')).body_html, /<h1>購入済み公演 ── 0 件<\/h1>/);
+    assert.match((await screen(env, a, 'tickets')).body_html, /<h1>購入済の公演<\/h1>[\s\S]*<section class="card tips eguide">[\s\S]*」で「購入済」と回答してください。<br>また「<a href="\/register\?t=__TAGURI_TOKEN__">観劇記録を追加<\/a>」で購入済の公演を追加してください。/);
   } finally { sqlite.close(); }
 });
 
@@ -34,17 +38,18 @@ test('興味あり lists what was answered "interest", with the note; other user
     assert.equal((await step(env, a, {post: '/api/react', body: {stage_id: '101', value: 'interest', nofill: true}})).status, 200);
     assert.equal((await step(env, a, {post: '/api/react', body: {stage_id: '101', note: '俳優甲 & 乙'}})).status, 200);
     const html = (await screen(env, a, 'interest')).body_html;
-    assert.match(html, /<h1>追いかけている 1 件<\/h1>/);
+    assert.match(html, /<h1>「興味あり」の公演<\/h1>/);   // 見出しに件数は入れない（起案者の指示 2026-10-18）
+    assert.equal((html.match(/<article class="ticket interest"/g) || []).length, 1);
     assert.match(html, /<article class="ticket interest" data-stage="101"/);
     assert.match(html, /<span class="wnt">俳優甲 &amp; 乙<\/span>/);
     // 興味ありの一覧は 興味なし・購入済・行けない を畳まずに（起案者 2026-10-17）。「興味あり」は出さない
     assert.match(html, /<span class="btns" data-stage="101"><button data-v="nointerest">興味なし<\/button><button data-v="owned">購入済<\/button><button data-v="cantgo">行けない<\/button>/);
     assert.doesNotMatch(html.slice(html.indexOf('data-stage="101"')), /data-v="interest"/);
     assert.match(html, /<nav class="idx" aria-label="月で切り替える">/);
-    assert.match((await screen(env, b, 'interest')).body_html, /追いかけている 0 件/);
+    assert.match((await screen(env, b, 'interest')).body_html, /「興味あり」の公演はまだありません/);
     // Not interested: out of 興味あり.
     await step(env, a, {post: '/api/react', body: {stage_id: '101', value: 'nointerest', nofill: true}});
-    assert.match((await screen(env, a, 'interest')).body_html, /追いかけている 0 件/);
+    assert.match((await screen(env, a, 'interest')).body_html, /「興味あり」の公演はまだありません/);
   } finally { sqlite.close(); }
 });
 
@@ -56,7 +61,12 @@ test('a registered name brings its stages to お気に入り and out of おす�
     assert.equal(add.status, 200);
     assert.equal(add.body.n, 1);
     const fav = (await screen(env, a, 'favourites')).body_html;
-    assert.match(fav, /<h1>お気に入り ── 新着 1 件<\/h1>/);
+    // 見出しは「お気に入り」だけ。件数は表示中の 1 行で。並べ替えは月のタブより下。並び方の説明の段落と
+    // 「すべてを表示しています」の 1 行は出さない（起案者の指示 2026-10-18 の仕様変更）
+    assert.match(fav, /<h1>お気に入り<\/h1>/);
+    assert.match(fav, /全 1 件中 1 件を表示中/);
+    assert.match(fav, /<nav class="idx" aria-label="月で切り替える">[\s\S]*<form class="sortf"[\s\S]*<div class="tickets">/);
+    assert.doesNotMatch(fav, /すべてを表示しています|に並んでいます。順位は付けていません。観ると決めたら/);
     assert.match(fav, /<article class="ticket favourite" data-stage="101"/);
     // 場所はこのページだけの絞り込み（保存しない）。当たらない県では 0 件と、全国に戻す案内
     const pin = /<span class="pl">([^<]+)<\/span><span class="pn">1件<\/span>/.exec(fav);
@@ -71,15 +81,15 @@ test('a registered name brings its stages to お気に入り and out of おす�
     // 理由の欄は出さず、当たった名前をハッシュタグで並べる（起案者 2026-10-15）
     assert.match(fav, /<div class="favtags"><a class="ftag" href="\/recommend\/favourites\?t=__TAGURI_TOKEN__&amp;n=%E4%BF%B3%E5%84%AA%E7%94%B2">#俳優甲<\/a><\/div>/);
     assert.doesNotMatch(fav, /なぜお知らせしているか/);
-    // 登録した名前も、カードのハッシュタグと同じ形（起案者 2026-10-17）
-    assert.match(fav, /<span class="tag ftag" data-kind="人" data-name="俳優甲"><a class="tgn" href="\/recommend\/favourites\?t=__TAGURI_TOKEN__&amp;n=%E4%BF%B3%E5%84%AA%E7%94%B2">#俳優甲<\/a><span class="tgk">人<\/span><button data-fav="remove" aria-label="「俳優甲」を外す">✕<\/button><\/span>/);
+    // 登録した名前も、カードのハッシュタグと同じ形（起案者 2026-10-17）。札は「#人「俳優甲」」の形（起案者の指示 2026-10-18）
+    assert.match(fav, /<span class="tag ftag" data-kind="人" data-name="俳優甲"><a class="tgn" href="\/recommend\/favourites\?t=__TAGURI_TOKEN__&amp;n=%E4%BF%B3%E5%84%AA%E7%94%B2">#人「俳優甲」<\/a><button data-fav="remove" aria-label="「俳優甲」を外す">✕<\/button><\/span>/);
     assert.doesNotMatch(fav, /data-v="interest"/);                 // no 興味あり here, only 購入済み
     assert.match(fav, /<span class="btns" data-stage="101"><button data-v="owned">購入済みにする<\/button>/);
     // Group names match the producing company only.
     await step(env, a, {post: '/api/favourite', body: {action: 'add', kind: '団体', name: '劇団乙'}});
-    assert.match((await screen(env, a, 'favourites')).body_html, /新着 2 件[\s\S]*data-stage="102"/);
+    assert.match((await screen(env, a, 'favourites')).body_html, /全 2 件中 2 件を表示中[\s\S]*data-stage="102"/);
     await step(env, a, {post: '/api/favourite', body: {action: 'remove', kind: '団体', name: '劇団乙'}});
-    assert.match((await screen(env, a, 'favourites')).body_html, /新着 1 件/);
+    assert.match((await screen(env, a, 'favourites')).body_html, /全 1 件中 1 件を表示中/);
     // おすすめ leaves it out even when the ratings would raise it.
     for (const [t, d, sid, v] of [['終わった舞台', '2026-08-05', '103', '◎'], ['一日だけの舞台', '2026-09-05', '104', '×']]) {
       const key = (await step(env, a, {post: '/api/add_work', body: {title: t, date: d}})).body.work_key;
@@ -106,7 +116,8 @@ test('購入済み shows owned stages with their tickets; an ended one moves to 
     assert.equal((await step(env, a, {post: '/api/ticket', body: {stage_id: '101', date: '2026-11-03', time: '14:00'}})).status, 200);
     assert.equal((await step(env, a, {post: '/api/ticket', body: {stage_id: '101', date: '2027-01-01'}})).status, 400);
     const html = (await screen(env, a, 'tickets')).body_html;
-    assert.match(html, /<h1>購入済み公演 ── 1 件<\/h1>/);
+    assert.match(html, /<h1>購入済の公演<\/h1>/);   // 見出しに件数は入れない（起案者の指示 2026-10-18）
+    assert.equal((html.match(/<article class="ticket owned"/g) || []).length, 1);
     assert.match(html, /<article class="ticket owned" data-stage="101"/);
     assert.match(html, /<span class="mt-row">11月3日 14:00 <button data-mt-del="101" data-date="2026-11-03" data-time="14:00">取り消す<\/button><\/span>/);
     assert.match(html, /min="2026-11-01" max="2026-11-10"/);
@@ -118,7 +129,7 @@ test('購入済み shows owned stages with their tickets; an ended one moves to 
     assert.doesNotMatch((await screen(env, a, 'recommend')).body_html, /data-prenote/);
     // After the ticket's date the stage leaves 購入済み and waits for a rating.
     env.CLOCK = {today: '2026-11-04', now: Date.parse('2026-11-04T03:00:00Z')};
-    assert.match((await screen(env, a, 'tickets')).body_html, /購入済み公演 ── 0 件/);
+    assert.match((await screen(env, a, 'tickets')).body_html, /購入済の公演はまだありません/);
     assert.match((await screen(env, a, 'unrated')).body_html, /舞台ひとつめ/);
     assert.equal(sqlite.prepare("SELECT count(*) AS n FROM works WHERE stage_id='101'").get().n, 1);
     assert.equal(sqlite.prepare("SELECT note_motive FROM works WHERE stage_id='101'").get().note_motive, '原作を読んで楽しみ');
@@ -133,8 +144,11 @@ test('開幕リマインド: every stage opening this week, with a prefecture fi
   try {
     env.CLOCK = {today: '2026-10-20', now: Date.parse('2026-10-20T03:00:00Z')};
     const html = (await screen(env, a, 'reminder')).body_html;
-    assert.match(html, /<h1>開幕リマインド ── 見逃していませんか<\/h1>/);
-    assert.match(html, /<nav class="idx" aria-label="週で切り替える">/);
+    // 見出し・前置きの 1 文・件数の 1 行の位置（週のタブの下）、「直近の観劇予定」の枠を外したことは
+    // 起案者の指示 2026-10-18 の仕様変更
+    assert.match(html, /<h1>開幕リマインド<\/h1>\n<p class="hsub">開幕リマインドでは、おすすめやお気に入りにかかわらず、今週・来週開幕予定の公演を全件掲載しています。<\/p>/);
+    assert.match(html, /<nav class="idx" aria-label="週で切り替える">[\s\S]*<\/nav>\n<p class="rcount"><b>全国<\/b>／今週開幕する公演 0 件を表示中<\/p>\n<section class="dgcard dgmain">/);
+    assert.doesNotMatch(html, /直近の観劇予定|見逃していませんか|好みに関係なく/);
     assert.match(html, /今週<span class="mn">0<\/span>/);
     assert.match(html, /来週<span class="mn">1<\/span>/);
     const next = (await screen(env, a, 'reminder', '?w=next')).body_html;
@@ -193,7 +207,8 @@ test('開幕リマインド: a catalogue-only stage keeps its answer, shows in �
     await step(env, a, {post: '/api/react', body: {stage_id: '777', value: 'interest', nofill: true}});
     assert.match((await screen(env, a, 'reminder')).body_html, /<li class="dgli dgfold trk" data-stage="777">/);
     const it = (await screen(env, a, 'interest')).body_html;
-    assert.match(it, /<h1>追いかけている 1 件<\/h1>/);
+    assert.match(it, /<h1>「興味あり」の公演<\/h1>/);   // 見出しに件数は入れない（起案者の指示 2026-10-18）
+    assert.equal((it.match(/<article class="ticket interest"/g) || []).length, 1);
     assert.match(it, /<article class="ticket interest" data-stage="777"[\s\S]*?索引に無い新作[\s\S]*?山田太郎/);
   } finally { sqlite.close(); }
 });
@@ -353,7 +368,8 @@ test('公演カレンダー shows an owned stage that only the catalogue has', a
     assert.match(tokyo, /都道府県が分からない公演が 1 件あり、場所で絞ると表示できません/);
     // 開幕リマインド keeps them, below the chosen prefecture's list (it is there so nothing opens unnoticed).
     const rem = (await screen(env, a, 'reminder', '?f=1&pref=' + encodeURIComponent('東京都'))).body_html;
-    assert.match(rem, /<summary>都道府県が分からない公演　1 件<\/summary>[\s\S]*一覧だけの舞台[\s\S]*<\/section>\n<section class="dgcard">/);
+    // 「直近の観劇予定」の枠を外したので（起案者の指示 2026-10-18）、開幕する公演の枠の最後に入る
+    assert.match(rem, /<summary>都道府県が分からない公演　1 件<\/summary>[\s\S]*一覧だけの舞台[\s\S]*<\/details><\/section>\n*$/);
   } finally { sqlite.close(); }
 });
 
@@ -372,7 +388,7 @@ test('a catalogue stage takes its prefecture from venue_pref', async () => {
     assert.match(cal, /劇場の分かる舞台/);
     assert.doesNotMatch(cal, /都道府県が分からない公演/);
     const rem = (await screen(env, a, 'reminder', '?f=1&pref=' + encodeURIComponent('大阪府'))).body_html;
-    assert.match(rem, /<b>大阪府<\/b>で観られる、[^<]*に開幕する公演が <b>1 件<\/b>/);
+    assert.match(rem, /<b>大阪府<\/b>で [^<]*に開幕する公演 ︰ <b>1 件<\/b>/);   // 文の形は起案者の指示 2026-10-18
     assert.doesNotMatch(rem, /都道府県が分からない公演/);
   } finally { sqlite.close(); }
 });
@@ -403,15 +419,16 @@ test('購入済みにする on お気に入り adds the stage to 購入済み公
   const a = await signIn(env);
   try {
     await step(env, a, {post: '/api/favourite', body: {action: 'add', kind: '人', name: '俳優甲'}});
-    assert.match((await screen(env, a, 'favourites')).body_html, /新着 1 件/);
+    assert.match((await screen(env, a, 'favourites')).body_html, /全 1 件中 1 件を表示中/);
     assert.equal((await step(env, a, {post: '/api/react', body: {stage_id: '101', value: 'owned', nofill: true}})).status, 200);
     // お気に入りには残し、ボタンの代わりに「購入済み」の印を出す（起案者 2026-10-15「購入済み押してもお気に入りから消さないで」）
     const fav = (await screen(env, a, 'favourites')).body_html;
-    assert.match(fav, /新着 1 件/);
+    assert.match(fav, /全 1 件中 1 件を表示中/);
     assert.match(fav, /<article class="ticket favourite" data-stage="101"[\s\S]*<span class="owned-mark">購入済み/);
     assert.doesNotMatch(fav, /data-v="owned"/);
     const t = (await screen(env, a, 'tickets')).body_html;
-    assert.match(t, /<h1>購入済み公演 ── 1 件<\/h1>/);
+    assert.match(t, /<h1>購入済の公演<\/h1>/);   // 見出しに件数は入れない（起案者の指示 2026-10-18）
+    assert.equal((t.match(/<article class="ticket owned"/g) || []).length, 1);
     assert.match(t, /<article class="ticket owned" data-stage="101"/);
   } finally { sqlite.close(); }
 });
@@ -429,10 +446,10 @@ test('人 matches the whole name: 上村聡 does not pick up 上村聡史 (起�
     const fav = (await screen(env, a, 'favourites')).body_html;
     assert.match(fav, /data-stage="961"/);
     assert.doesNotMatch(fav, /data-stage="962"/);
-    assert.match(fav, /新着 1 件/);
+    assert.match(fav, /全 1 件中 1 件を表示中/);
     // 名前全体なら当たる
     await step(env, a, {post: '/api/favourite', body: {action: 'add', kind: '人', name: '上村聡史'}});
-    assert.match((await screen(env, a, 'favourites')).body_html, /新着 2 件[\s\S]*data-stage="962"/);
+    assert.match((await screen(env, a, 'favourites')).body_html, /全 2 件中 2 件を表示中[\s\S]*data-stage="962"/);
   } finally { sqlite.close(); }
 });
 

@@ -1497,6 +1497,26 @@
    "verifies": []
   },
   {
+   "id": "dec-list-headings-2026-10-18",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "一覧の画面（お気に入り・興味あり・購入済の公演・開幕リマインド・おすすめ）の見出しと説明を短くし、空のときは絵の付いた案内にし、開幕リマインドの「直近の観劇予定」の枠を外す",
+   "sources": [
+    "cloudflare/src/screens/lists.js",
+    "cloudflare/src/screens/guide.js",
+    "cloudflare/src/screens/reminder.js",
+    "cloudflare/src/screens/recommend.js",
+    "tools/taguri/digest.py",
+    "web/theme.css",
+    "web/app.js",
+    "cloudflare/test/lists-screen.test.js",
+    "cloudflare/test/reminder.test.js",
+    "cloudflare/test/e2e-walk.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-list-sort",
    "type": "decision",
    "status": "adopted",
@@ -1916,6 +1936,37 @@
     "tools/review/user_recommender.py",
     "tools/review/render_recommend.py",
     "tools/review/test_reason_works.py"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-rec-card-1018-layout-b",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "おすすめのカード: 値段と発売の札はどのカードでも本文の列に、札の ↗ は折り返さない、ヘルプ（？）は枠の外の右上に小さく、暦の貸切の回は「(貸)17:00」",
+   "sources": [
+    "web/app.js",
+    "web/theme.css",
+    "cloudflare/src/screens/schedule.js",
+    "cloudflare/test/schedule.test.js",
+    "cloudflare/test/e2e-walk.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-rec-card-1018-layout-c",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "おすすめのカード: 「ほか n 会場」を押すとほかの会場が開く、日程の行の「詳細」の字はやめて三角だけ、料金はどこでも同じ箇条書き、日程の行頭は菱形・上演中は「→」",
+   "sources": [
+    "web/app.js",
+    "web/theme.css",
+    "cloudflare/src/screens/schedule.js",
+    "cloudflare/test/schedule.test.js",
+    "cloudflare/test/cantgo.test.js",
+    "cloudflare/test/e2e-walk.js"
    ],
    "verifies": []
   },
@@ -3632,6 +3683,21 @@
     "cloudflare/src/screens/cards.js",
     "cloudflare/src/screens/recommend.js",
     "cloudflare/test/cantgo.test.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "impl-hashtag-list",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "あらすじのハッシュタグを押すと、その題材の付いたこれから観られる公演の一覧（/recommend/tag）へ。1 回開くごとの D1 の読み取りは 2,000 行ほど",
+   "sources": [
+    "cloudflare/src/screens/tagged.js",
+    "cloudflare/test/tagged.test.js",
+    "web/app.js",
+    "cloudflare/test/e2e-walk.js",
+    "cloudflare/migrations/0018.sql"
    ],
    "verifies": []
   },
@@ -6541,6 +6607,18 @@
    "verifies": []
   },
   {
+   "id": "q-ttb-kas-phone-fonts",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-18",
+   "title": "暦の貸切の回「(貸)17:00」は、実際の電話（iPhone・Android の字）でも升の中で 1 行に収まるか",
+   "sources": [
+    "cloudflare/test/e2e-walk.js",
+    "web/theme.css"
+   ],
+   "verifies": []
+  },
+  {
    "id": "q-user-chosen-scale",
    "type": "question",
    "status": "answered",
@@ -8513,6 +8591,16 @@
    "to": "q-privacy-ical-url"
   },
   {
+   "from": "dec-list-headings-2026-10-18",
+   "rel": "affects",
+   "to": "dec-reco-start-tips"
+  },
+  {
+   "from": "dec-list-headings-2026-10-18",
+   "rel": "affects",
+   "to": "dec-list-sort"
+  },
+  {
    "from": "dec-list-sort",
    "rel": "affects",
    "to": "comp-frontend"
@@ -8826,6 +8914,26 @@
    "from": "dec-reason-two-works",
    "rel": "supersedes",
    "to": "dec-reason-work-titles"
+  },
+  {
+   "from": "dec-rec-card-1018-layout-b",
+   "rel": "affects",
+   "to": "dec-rec-card-1018-layout"
+  },
+  {
+   "from": "dec-rec-card-1018-layout-b",
+   "rel": "raises",
+   "to": "q-ttb-kas-phone-fonts"
+  },
+  {
+   "from": "dec-rec-card-1018-layout-c",
+   "rel": "affects",
+   "to": "dec-rec-card-1018-layout-b"
+  },
+  {
+   "from": "dec-rec-card-1018-layout-c",
+   "rel": "affects",
+   "to": "dec-rec-card-1018-layout"
   },
   {
    "from": "dec-rec-card-1018-layout",
@@ -10086,6 +10194,26 @@
    "from": "impl-four-answers",
    "rel": "affects",
    "to": "impl-recommend-find"
+  },
+  {
+   "from": "impl-hashtag-list",
+   "rel": "depends_on",
+   "to": "dec-recommend-worker-cards"
+  },
+  {
+   "from": "impl-hashtag-list",
+   "rel": "depends_on",
+   "to": "d1-free-limits"
+  },
+  {
+   "from": "impl-hashtag-list",
+   "rel": "affects",
+   "to": "q-d1-reads-real"
+  },
+  {
+   "from": "impl-hashtag-list",
+   "rel": "affects",
+   "to": "dec-rec-card-1018-layout"
   },
   {
    "from": "impl-hidden-gate",
@@ -12066,6 +12194,11 @@
    "from": "q-ticket-to-rating",
    "rel": "affects",
    "to": "dec-native-cutover-now"
+  },
+  {
+   "from": "q-ttb-kas-phone-fonts",
+   "rel": "affects",
+   "to": "dec-rec-card-1018-layout-b"
   },
   {
    "from": "q-user-chosen-scale",

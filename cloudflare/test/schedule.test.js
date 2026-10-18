@@ -3,7 +3,8 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {parseTimetable, timetableGrid, priceRows, tourBlock} from '../src/screens/schedule.js';
 
-const flat = m => Object.fromEntries([...m].map(([d, ps]) => [d, ps.map(p => (p.m || '') + p.t)]));
+// 貸切の回は「(貸)」を頭に付けて比べる（起案者の指示 2026-10-18）
+const flat = m => Object.fromEntries([...m].map(([d, ps]) => [d, ps.map(p => (p.k ? '(貸)' : '') + (p.m || '') + p.t)]));
 
 test('timetable lines as the crawled pages write them', () => {
   // 丘の家（歩・印は出演者の組）
@@ -50,8 +51,10 @@ test('the tour block: a bulleted row per venue in date order, ★ on the filtere
   const v = (sid, start, end, venue, pref, price, tt = '') => ({stage_id: sid, start, end, venue, pref, fields: {'料金（1枚あたり）': price, 'タイムテーブル': tt}});
   const same = tourBlock([v('2', '2026-11-06', '2026-11-08', 'ささしまスタジオ', '愛知県', '一般：5,000円'), v('1', '2026-10-28', '2026-11-01', '恵比寿・エコー劇場', '東京都', '一般：5,000円', '10月28日(水) 19:00')], '2', '2026-10-20');
   assert.equal(same.perVenuePrice, false);
-  assert.match(same.html, /<details class="tf-row"><summary class="tf-head"><span class="tf-when"><span class="tf-dot" aria-hidden="true">・<\/span>10\/28〜11\/1<span class="tf-cnt">（1 回）<\/span><\/span><span class="tf-loc">恵比寿・エコー劇場（東京都）<\/span><span class="tf-more">詳細<\/span><\/summary><div class="tf-body"><table class="ttb"/);
-  assert.match(same.html, /<div class="tf-row"><div class="tf-head"><span class="tf-when"><span class="tf-dot" aria-hidden="true">・<\/span>11\/6〜11\/8<\/span><span class="tf-loc">ささしまスタジオ（愛知県）<\/span><\/div><\/div>/);
+  // 行頭の印は「・」の字ではなく theme.css で描く菱形、行の右の「詳細」の字は無し（起案者の指示 2026-10-18 で変えた）
+  assert.match(same.html, /<details class="tf-row"><summary class="tf-head"><span class="tf-when"><span class="tf-dot" aria-hidden="true"><\/span>10\/28〜11\/1<span class="tf-cnt">（1 回）<\/span><\/span><span class="tf-loc">恵比寿・エコー劇場（東京都）<\/span><\/summary><div class="tf-body"><table class="ttb"/);
+  assert.doesNotMatch(same.html, /tf-more|詳細|・<\/span>|●/);
+  assert.match(same.html, /<div class="tf-row"><div class="tf-head"><span class="tf-when"><span class="tf-dot" aria-hidden="true"><\/span>11\/6〜11\/8<\/span><span class="tf-loc">ささしまスタジオ（愛知県）<\/span><\/div><\/div>/);
   assert.doesNotMatch(same.html, /tf-n|★/);
   // 都道府県で絞っているときは、その県の会場の行頭が ★
   const filtered = tourBlock([v('2', '2026-11-06', '2026-11-08', 'ささしまスタジオ', '愛知県', '一般：5,000円'), v('1', '2026-10-28', '2026-11-01', '恵比寿・エコー劇場', '東京都', '一般：5,000円', '10月28日(水) 19:00')], '1', '2026-10-20', ['愛知県']);
@@ -64,7 +67,20 @@ test('the tour block: a bulleted row per venue in date order, ★ on the filtere
   assert.doesNotMatch(one.html, /tf-loc/);   // 1 か所なら会場の名前は出さない
   const diff = tourBlock([v('1', '2026-10-28', '2026-11-01', 'A', '東京都', 'S席：12,000円\nA席：9,500円'), v('2', '2026-11-06', '2026-11-08', 'B', '愛知県', '全席：8,000円')], '1', '2026-10-20');
   assert.equal(diff.perVenuePrice, true);
-  assert.match(diff.html, /<table class="ptb"><tr><th>S席<\/th><td>12,000円<\/td><\/tr><tr><th>A席<\/th><td>9,500円<\/td><\/tr><\/table>/);
+  // 料金は箇条書き（起案者の指示 2026-10-18「料金の書き方を統一。箇条書きにする」。前は表）
+  assert.match(diff.html, /<div class="pblock"><span class="lp-ico"><svg[^>]*>[\s\S]*?<\/svg><\/span><ul class="plist"><li class="lp-row"><span class="lp-k">S席<\/span><span class="lp-v">12,000円<\/span><\/li><li class="lp-row"><span class="lp-k">A席<\/span><span class="lp-v">9,500円<\/span><\/li><\/ul><\/div>/);
+  assert.doesNotMatch(diff.html, /class="ptb"/);
+  // 料金の読めない会場も同じ形で「料金 不明」
+  const unk = tourBlock([v('1', '2026-10-28', '2026-11-01', 'A', '東京都', '全席：5,000円'), v('2', '2026-11-06', '2026-11-08', 'B', '愛知県', '')], '1', '2026-10-20');
+  assert.match(unk.html, /<ul class="plist"><li class="lp-row"><span class="lp-k">料金<\/span><span class="lp-v">不明<\/span><\/li><\/ul>/);
+});
+
+test('the venue playing today is marked with →, not ●', () => {
+  const v = (sid, start, end, venue) => ({stage_id: sid, start, end, venue, pref: '東京都', fields: {}});
+  const t = tourBlock([v('1', '2026-10-10', '2026-10-25', 'A'), v('2', '2026-11-06', '2026-11-08', 'B')], '1', '2026-10-20');
+  assert.match(t.html, /<span class="tf-dot live" title="いま上演中">→<\/span>10\/10〜10\/25/);
+  assert.match(t.html, /<span class="tf-dot" aria-hidden="true"><\/span>11\/6〜11\/8/);
+  assert.doesNotMatch(t.html, /●/);
 });
 
 test('mark legends from the stage page, and an honest line for marks it does not explain', async () => {
@@ -82,7 +98,22 @@ test('mark legends from the stage page, and an honest line for marks it does not
 test('times on the line after the date (三婆), 「- -」 as no performance, 貸切 as a performance', () => {
   const tt = '11月03日( 火 )\n13:00 -\n\n11月04日( 水 )\n11:00 貸切\n\n11月05日( 木 )\n- -\n\n11月06日( 金 )\n11:00 15:30\n※開場は開演の30分前';
   assert.deepEqual(flat(parseTimetable(tt, '2026-11-03', '2026-11-25')),
-    {'2026-11-03': ['13:00'], '2026-11-04': ['11:00', '貸切'], '2026-11-06': ['11:00', '15:30']});
+    // 貸切は、その回の時刻に付ける（起案者の指示 2026-10-18「(貸)17:00」。前は時刻と別に「貸切」の回を足していた）
+    {'2026-11-03': ['13:00'], '2026-11-04': ['(貸)11:00'], '2026-11-06': ['11:00', '15:30']});
+});
+
+test('貸切 on the time it belongs to: after (17:00貸切・(貸切)・貸切公演), before (貸切17:00・【貸切】), or alone', () => {
+  const tt = '11月1日(日) 13:00／17:00貸切\n11月2日(月) 【貸切】13:00／18:00\n11月3日(火) 12:00 / 16:00（貸切）\n'
+    + '11月4日(水) 貸切 14:00\n11月5日(木) 貸切\n11月6日(金) ★13:00 / 18:00 貸切公演';
+  const perf = parseTimetable(tt, '2026-11-01', '2026-11-06');
+  assert.deepEqual(flat(perf), {'2026-11-01': ['13:00', '(貸)17:00'], '2026-11-02': ['(貸)13:00', '18:00'],
+    '2026-11-03': ['12:00', '(貸)16:00'], '2026-11-04': ['(貸)14:00'], '2026-11-05': ['(貸)'], '2026-11-06': ['★13:00', '(貸)18:00']});
+  const html = timetableGrid(perf, '2026-11-01', '2026-11-06', '2026-10-18');
+  // 暦の升: 「(貸)」は時刻のすぐ前、★などの印はそのまま時刻の後ろ。時刻の無い貸切は「(貸)」だけ
+  assert.match(html, /<span class="tm">13:00<\/span><span class="tm kas"><b>\(貸\)<\/b>17:00<\/span>/);
+  assert.match(html, /<span class="tm">13:00<i>★<\/i><\/span><span class="tm kas"><b>\(貸\)<\/b>18:00<\/span>/);
+  assert.match(html, /<span class="d">5<\/span><span class="tm kas"><b>\(貸\)<\/b><\/span>/);
+  assert.doesNotMatch(html, />貸切</);
 });
 
 test('「19時」「14時半」「午後7時」「1830開演」, 開場/終演/上演時間 dropped, 開演 on the next line', () => {

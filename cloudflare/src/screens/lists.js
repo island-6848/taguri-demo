@@ -23,6 +23,7 @@ import {PREFS, prefsFor, prefForm, prefQs, prefHidden, regionCounts, PAGE_PREF_N
 import {CONTENT_AXES} from '../recommend.js';
 import {rankedGroups, reasonRows, withTour} from './recommend.js';
 import {tourBlock} from './schedule.js';
+import {emptyGuide} from './guide.js';
 
 export const KINDS = ['団体', '人', '主催', '作品', '原作者', '題材'];
 const DECLARED_KEY = 'declared', DECLINED_KEY = 'declined';
@@ -465,7 +466,7 @@ function sortForm(action, sort, keys, keep = '') {
 const monthKey = r => (r.start || '').slice(0, 7);
 const monthLabel = m => { const [y, mo] = m.split('-'); return mo ? `${y} 年 ${Number(mo)} 月` : '上演日が分からない公演'; };
 /** render_recommend.month_pick */
-export function monthPick(rows, sel, page, action, sort = 'start', keep = '') {
+export function monthPick(rows, sel, page, action, sort = 'start', keep = '', {allLine = true} = {}) {
   const counts = {};
   for (const c of rows) { const k = monthKey(c) || 'none'; counts[k] = (counts[k] || 0) + 1; }
   const months = Object.keys(counts).filter(k => k !== 'none').sort();
@@ -483,7 +484,9 @@ export function monthPick(rows, sel, page, action, sort = 'start', keep = '') {
   const first = (page - 1) * LIST_TOP + 1;
   const now = hit.length <= LIST_TOP ? `${where}で、${hit.length} 件すべてを表示しています。`
     : `${where}の <b>${first}〜${first + show.length - 1} 件目</b>を表示しています（全 ${hit.length} 件）。<b>残りは下の「次の ${LIST_TOP} 件」か、上の月のタブから見られます。</b>`;
-  const head = `${tabs}<div class="idxsheet loose"><p class="mnow">${now}</p>`;
+  // お気に入りでは、全部が 1 ページに収まるときの 1 行（「上演日の近い順で、1 件すべてを表示しています。」）を出さない
+  // （起案者の指示 2026-10-18「削除」）。ページに分かれるときの案内は残す
+  const head = `${tabs}<div class="idxsheet loose">${allLine || hit.length > LIST_TOP ? `<p class="mnow">${now}</p>` : ''}`;
   if (last <= 1) return [show, head, '</div>'];
   const prev = page > 1 ? `<a class="mpage" href="${url(sel, page - 1)}">← 前の ${LIST_TOP} 件</a>` : '<span class="mpage off">最初のページです</span>';
   const nxt = page < last ? `<a class="mpage" href="${url(sel, page + 1)}">次の ${Math.min(LIST_TOP, hit.length - page * LIST_TOP)} 件 →</a>` : '<span class="mpage off">これで最後です</span>';
@@ -549,14 +552,18 @@ export async function interestScreen(params, ctx) {
   const list = rows.length
     ? `<p class="lead"><b>${E(SORTS[sort])}</b>に並んでいます。順位は付けていません。</p><div class="tickets">`
       + (await cards(ctx, show, 'interest', r => ({note: r.note, origin: ORIGIN[r.src] || '', why: whys.get(r.stage_id) || ''}))).join('') + '</div>'
-    : '<p class="empty">追いかけている公演はありません。「おすすめ」の画面で「興味あり」を押すと、ここに並びます。おすすめに出てこない公演は、「探す」で題名や人名から探して「興味あり」を押せます。</p>';
-  const body = `<h1>追いかけている ${rows.length} 件</h1>
+    // 0 件のときは、おすすめの初めてのワンポイントと同じ形の、絵の付いた案内（起案者の指示 2026-10-18 の文面）
+    : emptyGuide('interest', '「興味あり」の公演はまだありません', '<p>「<a href="/recommend?t=__TAGURI_TOKEN__">おすすめ</a>」または「<a href="/recommend/reminder?t=__TAGURI_TOKEN__">開幕リマインド</a>」、'
+      + '「<a href="/search?t=__TAGURI_TOKEN__">探す</a>」で「興味あり」と回答してください。</p>');
+  // 見出しは「「興味あり」の公演」（起案者の指示 2026-10-18。以前は「追いかけている N 件」）。
+  // 0 件のときは月のタブと「0 件すべてを表示しています」を出さず、案内だけにする
+  const body = `<h1>「興味あり」の公演</h1>
 <p class="lede">「興味あり」を押した公演を並べています。順位は付けていません。並べ替えは下の「並べ替え」で選べます。チケットが取れたら「すでに持っている」を押してください。購入済み公演に移り、上演日を過ぎると評価待ちに並びます。<br>
 「なぜ気になったか」に書いた名前は、<a href="/recommend/favourites?t=__TAGURI_TOKEN__">お気に入り</a>に加える候補として並びます。</p>
 ${rows.length ? sortForm('/recommend/interest', sort, keys) : ''}
-${mfil}
+${rows.length ? mfil : ''}
 ${list}
-${mfoot}`;
+${rows.length ? mfoot : ''}`;
   return {title: '興味あり', body_html: body};
 }
 
@@ -762,12 +769,13 @@ export async function favouritesScreen(params, ctx) {
   const pcounts = {};
   for (const r of allFavs) for (const p of new Set(prefsOf(r))) pcounts[p] = (pcounts[p] || 0) + 1;
   const favs = prefs.length ? allFavs.filter(r => prefsOf(r).some(p => prefs.includes(p))) : allFavs;
-  const [show, mfil, mfoot] = monthPick(favs, params.get('m') || '', qInt(params, 'p'), '/recommend/favourites', sort, prefQs(params));
+  const [show, mfil, mfoot] = monthPick(favs, params.get('m') || '', qInt(params, 'p'), '/recommend/favourites', sort, prefQs(params), {allLine: false});
   const kinds = KINDS.map(k => `<option value="${E(k)}">${E(k)}</option>`).join('');
   // 登録した名前は、カードの中のハッシュタグ（.ftag）と同じ形で並べる（起案者の指示 2026-10-17「お気に入りに登録したときの
   // 『足す外す』の欄のデザイン、本文カード内のハッシュタグのデザインと合わせて」）。押すとその名前の公演の画面へ
   const tags = KINDS.flatMap(k => (dec[k] || []).map(n => `<span class="tag ftag" data-kind="${E(k)}" data-name="${E(n)}">`
-    + `<a class="tgn" href="/recommend/favourites?t=__TAGURI_TOKEN__&amp;n=${encodeURIComponent(n)}">#${E(n)}</a><span class="tgk">${E(k)}</span>`
+    // 札は「#人「人名」」の形（起案者の指示 2026-10-18「『#人名 人』→『#人「人名」』」。団体・作品・題材なども同じ形）
+    + `<a class="tgn" href="/recommend/favourites?t=__TAGURI_TOKEN__&amp;n=${encodeURIComponent(n)}">#${E(k)}「${E(n)}」</a>`
     + `<button data-fav="remove" aria-label="「${E(n)}」を外す">✕</button></span>`)).join('');
   const keep = !allFavs.length;
   const n = KINDS.reduce((s, k) => s + (dec[k] || []).length, 0);
@@ -775,9 +783,9 @@ export async function favouritesScreen(params, ctx) {
   // （起案者の指示 2026-10-17。出さない語・使わない理由はおすすめの設定なので、おすすめの画面に置く）
   const tools = `<p class="fgh">${ico('star', 15)}<b>お気に入りに出す名前</b><span>お気に入りに表示される結果自体が変わります。</span></p>`
     + `<div class="fil2 tune"><details class="pbox" id="names"${keep ? ' open' : ''}>`
-    + `<summary>${ico('star')}登録した名前 <b>${n}件</b> ── 足す・外す</summary>`
-    + '<p class="lead">観た記録に無い名前も登録できます。おすすめは ◎ を付けた公演の作り手からしか作れないので、まだ観たことのない劇団や、人から聞いただけの名前は、ここから登録してください。'
-    + '<b>表記ゆれ（漢字とカタカナ、送り仮名の違いなど）は、自動では見分けられません。</b>表記ゆれがありそうなときは、両方の書き方をそれぞれ登録してください。</p>'
+    // 見出しと説明の文は起案者の指示 2026-10-18（「登録した名前」→「要素を登録」、説明は表記ゆれの 1 文だけ）
+    + `<summary>${ico('star')}要素を登録 <b>${n}件</b> ── 足す・外す</summary>`
+    + '<p class="lead">表記ゆれ（漢字とカタカナ、送り仮名の違いなど）は、自動では見分けられない場合があります。</p>'
     + `<div class="fav-add"><label class="fld" for="fav-kind"><span class="fl">種類<small class="req">必須</small></span><select id="fav-kind">${kinds}</select></label> <label class="fld" for="fav-name"><span class="fl">名前<small class="req">必須</small></span><input id="fav-name" type="text" placeholder="例：劇団四季・シェイクスピア・家族" size="26"></label> <button data-fav="add">登録する</button>`
     + `<span class="said"></span></div><div class="tags">${tags}</div></details></div>`
     + (allFavs.length ? `<p class="fgh">${ico('search', 15)}<b>表示の絞り込み</b><span>お気に入りの公演の中から、表示する項目を設定できます。</span></p>`
@@ -789,17 +797,19 @@ export async function favouritesScreen(params, ctx) {
   const list = !favs.length && allFavs.length
     ? `<p class="empty"><b>${E(where)}</b>で観られるお気に入りの公演はありません（全国では ${allFavs.length} 件）。ほかの都道府県を選ぶか、全国に戻してください。</p>`
     : favs.length
-    ? `<p class="lead"><b>${E(SORTS[sort])}</b>に並んでいます。順位は付けていません。観ると決めたら、公式サイトで券を買ってください。<b>券を取ったら「購入済みにする」を押してください。</b>押した公演はこの一覧に「購入済み」の印を付けて残り、<a href="/tickets?t=__TAGURI_TOKEN__">購入済み公演</a>にも入ります。行く日は購入済み公演で入れられます。</p>`
-      + `<div class="tickets">${(await cards(ctx, show, 'favourite', why)).join('')}</div>`
+    // 並び方と「購入済みにする」の説明の段落は外した（起案者の指示 2026-10-18「削除」）
+    ? `<div class="tickets">${(await cards(ctx, show, 'favourite', why)).join('')}</div>`
     : `<p class="empty">登録した名前に当たる公演は、いまたぐりが集めている公演${nCat ? `（CoRich・ステイジーズカレンダーから毎日集めている、これからの公演 ${nCat} 件）` : ''}の中にはありません。<b>当たる公演が新しく集まると、毎日の更新のあとにここに出ます。</b>表記ゆれ（漢字とカタカナなど）があるときは、別の書き方も登録してみてください。</p>`;
   // 件数の 1 行は、おすすめと同じく枠に入れず、表示の絞り込みの下に地の文で（起案者の指示 2026-10-18「他ページにも反映して」）
   const rcount = allFavs.length ? `<p class="rcount"><b>${prefs.length ? E(where) : '全国'}</b>／全 ${allFavs.length} 件中 ${favs.length} 件を表示中</p>` : '';
-  const body = `<h1>お気に入り ── 新着 ${favs.length} 件</h1>
-<p class="lede">登録した名前の公演を、件数の制限なしにすべて表示します。順位は付けていません。件数が多いので、上演月ごとに分けています。</p>
+  // 見出しは「お気に入り」だけにし、下に何をする画面かを 1 文で（起案者の指示 2026-10-18 の文面）。
+  // 「並べ替え」は年月で絞り込むタブより下に置く（同じ指示）。1 文は見出しの下に見えるよう、ⓘ に移る p.lede ではなく p.hsub
+  const body = `<h1>お気に入り</h1>
+<p class="hsub">おすすめにかかわらず新着情報を知りたい題材や作り手がいるときは、お気に入りに追加することで情報の追跡ができます。</p>
 ${tools}
 ${rcount}
-${favs.length ? sortForm('/recommend/favourites', sort, keys, prefHidden(params)) : ''}
 ${mfil}
+${favs.length ? sortForm('/recommend/favourites', sort, keys, prefHidden(params)) : ''}
 ${list}
 ${mfoot}`;
   return {title: 'お気に入り', body_html: body};
@@ -812,10 +822,12 @@ export async function ticketsScreen(params, ctx) {
   const mine = r => r.sids.flatMap(s => (b.tickets.get(s) || []).map(t => ({...t, sid: s})))
     .sort((p, q) => cmp(p.date, q.date) || cmp(p.time || '', q.time || ''));
   const html = (await cards(ctx, owned, 'owned', r => ({mytix: mytixHtml(r.stage_id, r.start, r.end, mine(r)) + preNote(r.stage_id, r.note_pre)}))).join('');
-  const body = `<h1>購入済み公演 ── ${owned.length} 件</h1>
+  // 見出しは「購入済の公演」（起案者の指示 2026-10-18。以前は「購入済み公演 ── N 件」）
+  const body = `<h1>購入済の公演</h1>
 <p class="lede">「すでに持っている」と答えた公演と、購入確認メールから見つかった公演を並べています。<b>この一覧に入っても、次のおすすめは変わりません。</b>上演日を過ぎると一覧から外れ、<a href="/rate?t=__TAGURI_TOKEN__">評価一覧</a>の評価待ちに移ります。行く日は、各公演の「行く日」の欄から入れられます。</p>
 ${owned.length ? sortForm('/tickets', sort, keys) : ''}
-${html || '<p class="empty">チケットを持っている公演はまだありません。推薦の画面で「すでに持っている」を押した公演が、ここに並びます。</p>'}
+${html || emptyGuide('owned', '購入済の公演はまだありません', '<p>「<a href="/recommend?t=__TAGURI_TOKEN__">おすすめ</a>」または「<a href="/recommend/reminder?t=__TAGURI_TOKEN__">開幕リマインド</a>」、'
+  + '「<a href="/search?t=__TAGURI_TOKEN__">探す</a>」で「購入済」と回答してください。<br>また「<a href="/register?t=__TAGURI_TOKEN__">観劇記録を追加</a>」で購入済の公演を追加してください。</p>')}
 `;
   return {title: '購入済み公演', body_html: body};
 }

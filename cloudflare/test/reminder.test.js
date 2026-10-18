@@ -9,8 +9,8 @@ const fx = JSON.parse(execFileSync('python3', [here('./screens/reminder_fixture.
 
 test('開幕リマインド matches digest.panel', () => {
   for (const c of fx.cases) {
-    const got = panel({cands: fx.cands, status: new Map(Object.entries(fx.status)), owned: fx.owned,
-      tickets: new Map(c.no_tickets ? [] : Object.entries(fx.tickets)), today: fx.today, prefs: c.prefs, week: c.week});
+    // 券（owned・tickets）は渡さない: 「直近の観劇予定」の枠は外した（起案者の指示 2026-10-18）
+    const got = panel({cands: fx.cands, status: new Map(Object.entries(fx.status)), today: fx.today, prefs: c.prefs, week: c.week});
     if (got !== c.html) {
       let k = 0; while (k < got.length && got[k] === c.html[k]) k++;
       assert.fail(`${JSON.stringify(c.prefs)} ${c.week}: differs at ${k}\n js: ${got.slice(Math.max(0, k - 80), k + 120)}\n py: ${c.html.slice(Math.max(0, k - 80), k + 120)}`);

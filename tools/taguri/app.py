@@ -4181,10 +4181,11 @@ def _reminder_body(user_id: str, prefs=(), week: str = "this") -> str:
             'ツアーで来る公演は、その会場のある県として数えます。<br>'
             '<b>「今週のおすすめ」と同じ絞り込みです。</b>'
             'どちらの画面で選んでも、両方に反映されます。')
-    return f"""<h1>開幕リマインド ── 見逃していませんか</h1>
-<p class="lede"><b>初日が近い公演を、答えたかどうかに関わらず全部出します。</b>「興味あり」も「興味なし」も押さないうちに開幕してしまうのが、いちばんの見逃しだからです。未回答の行はその場で答えられます。</p>
+    # 見出しと前置きの 1 文は起案者の指示（2026-10-18）。「直近の観劇予定」の枠は外した（`digest.panel`）
+    return f"""<h1>開幕リマインド</h1>
+<p class="lede">開幕リマインドでは、おすすめやお気に入りにかかわらず、今週・来週開幕予定の公演を全件掲載しています。</p>
 {RR.pref_form(pc, prefs, action="/recommend/reminder", note=note, hidden={"w": week})}
-{DG.panel(d, today, ticket_map(user_id), prefs, week)}"""
+{DG.panel(d, today, prefs, week)}"""
 
 
 # ---------------------------------------------------------------- おすすめ ▸ お気に入り

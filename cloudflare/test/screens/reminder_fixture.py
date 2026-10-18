@@ -62,8 +62,8 @@ def main():
     for prefs in ([], ["大阪府"], ["東京都", "神奈川県", "大阪府", "北海道"], ["沖縄県"]):
         for week in ("this", "next"):
             cases.append({"prefs": prefs, "week": week,
-                          "html": DG.panel(d, TODAY, TICKETS, prefs, week)})
-    cases.append({"prefs": [], "week": "this", "no_tickets": True, "html": DG.panel(d, TODAY, {}, [], "this")})
+                          "html": DG.panel(d, TODAY, prefs, week)})
+    # 券の有る無しで違う「直近の観劇予定」の枠は外した（起案者の指示 2026-10-18）。券の有る無しの 2 通りは比べない
     print(json.dumps({"today": TODAY.isoformat(), "cands": CANDS, "status": STATUS, "owned": d["owned"],
                       "tickets": TICKETS, "cases": cases}, ensure_ascii=False))
 
