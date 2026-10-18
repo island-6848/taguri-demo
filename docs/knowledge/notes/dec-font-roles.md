@@ -1,7 +1,7 @@
 ---
 id: dec-font-roles
 type: decision
-status: adopted
+status: superseded
 date: 2026-10-18
 title: 書体の役割を決める。見出しは Zen丸ゴシック、本文・ボタン・入れ口・表・札・数字・公演名は Zen角ゴシック New。指定は web/fonts.css だけに置く
 sources:

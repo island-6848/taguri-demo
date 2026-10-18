@@ -1122,9 +1122,22 @@
    "verifies": []
   },
   {
-   "id": "dec-font-roles",
+   "id": "dec-font-action-maru",
    "type": "decision",
    "status": "adopted",
+   "date": "2026-10-18",
+   "title": "書体は基本すべて Zen角ゴシック New、利用者が起こすアクション（ボタン・ボタン形のリンク・タブ・選ぶ欄）だけ Zen丸ゴシック",
+   "sources": [
+    "web/fonts.css",
+    "web/app.js",
+    "web/theme.css"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-font-roles",
+   "type": "decision",
+   "status": "superseded",
    "date": "2026-10-18",
    "title": "書体の役割を決める。見出しは Zen丸ゴシック、本文・ボタン・入れ口・表・札・数字・公演名は Zen角ゴシック New。指定は web/fonts.css だけに置く",
    "sources": [
@@ -7688,6 +7701,11 @@
    "from": "dec-fix-request-retention",
    "rel": "affects",
    "to": "comp-d1"
+  },
+  {
+   "from": "dec-font-action-maru",
+   "rel": "supersedes",
+   "to": "dec-font-roles"
   },
   {
    "from": "dec-font-roles",

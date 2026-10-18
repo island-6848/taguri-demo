@@ -36,7 +36,7 @@
 @font-face{font-family:"Taguri Title";src:url("assets/fonts/zkga-title.woff2") format("woff2");
  font-weight:700;font-style:normal;font-display:swap}
 
-/* ---- 文字の形は fonts.css にまとめた（見出しは Zen丸ゴシック、本文・ボタン・入れ口・表・札・数字は Zen角ゴシック New）。
+/* ---- 文字の形は fonts.css にまとめた（基本はすべて Zen角ゴシック New、押して何かを起こすものだけ Zen丸ゴシック）。
    ここには「規定の文字」（設定で選べる、これまでの文字）の並びと題字の Taguri Title だけを残す */
 :root{--font-body-default:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",YuGothic,system-ui,sans-serif}
 body{font-family:var(--font-body-default)}
@@ -1251,7 +1251,7 @@ details.pbox>summary[data-fold] .fv,.ftab .fv{margin-left:auto;text-align:right;
 :is(.ticket.cmp,.rec-row.cmp) .leadbox .lsyn>.cl{display:inline-block;margin:0 0 3px}
 :is(.ticket.cmp,.rec-row.cmp) .leadbox .lsyn>.lv{display:block}
 
-/* ---- おすすめ理由の「人物」「種類」の札。字は札・ラベルの決まりで Zen角ゴシック（fonts.css。前は丸ゴシック、2026-10-18） */
+/* ---- おすすめ理由の「人物」「種類」の札。字は基本の Zen角ゴシック（fonts.css。押すものではないため。前は丸ゴシック、2026-10-18） */
 .rs .net{font-weight:700;letter-spacing:.04em}
 
 /* ---- 暦の日・土はマスの地も赤・青に（起案者の指示 2026-10-18）。折りたたみの地は一度薄めたが、元の色に戻した（同日） */
