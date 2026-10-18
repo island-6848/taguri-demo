@@ -127,7 +127,7 @@ export function independentRatings(rows) {
 //     人の中は役の格（castImportance・CORE_CREATORS、2 段だけ）の割合で割る
 // (2) 評価・お気に入りで好きと分かっている人には 1 + INTEREST_PRIOR_BOOST × その値 の割合で多めに配る
 // (3) 興味なしの公演にもいる人・種類は、割ったあとの分を 興味ありの件数 /（興味あり＋興味なし）倍に弱める（#109）
-// 「なぜ気になったか」に名前が書いてあれば、その人に INTEREST_NOTE_BOOST 倍で配る。
+// 「なぜ気になったか」に名前が好んで書いてあれば（noteNames、打ち消し・比べの文は除く #111）、その人に INTEREST_NOTE_BOOST 倍で配る。
 // z はお気に入りと同じ SEED_Z、重みも SEED_K / (SEED_K + 評価の数) で評価が増えるほど薄まる。値は舞台では未検証。
 export const INTEREST_PEOPLE_SHARE = 0.5, INTEREST_PRIOR_BOOST = 3, INTEREST_NOTE_BOOST = 5;
 // 人の中の配り方（役の格、起案者の指示 2026-10-15）。興味の理由は主演とは限らない（「別に主演が気になるから
@@ -170,16 +170,44 @@ export function castImportance(text, names) {
 const importanceOf = (role, person, cast) => (role === '出演' ? (cast?.get(person) ?? 1)
   : CORE_CREATORS.has(role) ? 1 : LESSER_IMPORTANCE);
 const keyOf = (role, person) => role + '\u0000' + person;
+// 「なぜ気になったか」の文に名前があっても、好んで挙げたとは限らない（#111「俳優Aが理由ではない」「AよりBが気になる」）。
+// 文を句点・読点・逆接（けど・のに・でも…）で区切り、名前のある区切りに打ち消し・苦手の語が無く、名前のすぐ後ろが
+// 「より」「と比べ」でないときだけ多めに配る。分からないときは配らない（等分のまま）。別の呼び出し（LLM）は使わない。
+// 長い名前に含まれる短い名前（「山田」と「山田花子」）は、長い名前の所では数えない
+const NOTE_SPLIT = /[。．.!！?？\n、,，;；]|けれども|けれど|けど|のに|ものの|しかし|でも|だが/u;
+const NOTE_NEG = /ない|無い|なく|ません|ではな|じゃな|苦手|嫌|きらい|キライ|微妙|いまいち|イマイチ|以外|抜き/u;
+const NOTE_LESS = /^(?:さん|くん|君|ちゃん|様|さま|氏)?(?:より|と比べ|と比較|に比べ)/u;
+/** The names (of `names`) the note brings up as a reason to be interested; empty when unsure. */
+export function noteNames(note, names) {
+  const out = new Set();
+  const text = nfkc(note);
+  if (!text.trim()) return out;
+  const cands = [...new Set(names)].filter(n => Array.from(n).length >= 2).map(n => [n, nfkc(n)]).sort((a, b) => b[1].length - a[1].length || cmp(a[0], b[0]));
+  for (let clause of text.split(NOTE_SPLIT)) {
+    if (!clause || NOTE_NEG.test(clause)) continue;
+    for (const [name, n] of cands) {
+      let at = clause.indexOf(n), liked = false;
+      while (at >= 0) {
+        if (!NOTE_LESS.test(clause.slice(at + n.length))) liked = true;
+        at = clause.indexOf(n, at + n.length);
+      }
+      if (liked) out.add(name);
+      // 長い名前の所を伏せてから短い名前を探す
+      if (clause.includes(n)) clause = clause.split(n).join('\u0000'.repeat(n.length));
+    }
+  }
+  return out;
+}
 /** One interest stage's share per key ("role\0person"), summing to 1 (less when some keys are also in 興味なし). */
 export function interestShares(stage, prior, contrast = new Map(), skip = new Set()) {
   const keys = [...new Set((stage.people || []).filter(([, person]) => !skip.has(person)).map(([role, person]) => keyOf(role, person)))].sort(cmp);
-  const note = String(stage.note || '');
+  const named = noteNames(String(stage.note || ''), (stage.people || []).filter(([role]) => !role.startsWith('#')).map(([, p]) => p));
   const castNames = [...new Set((stage.people || []).filter(([role]) => role === '出演').map(([, p]) => p))];
   const cast = stage.cast_text ? castImportance(stage.cast_text, castNames) : null;
   const factor = k => {
     const role = k.slice(0, k.indexOf('\u0000')), person = k.slice(k.indexOf('\u0000') + 1);
     let f = (role.startsWith('#') ? 1 : importanceOf(role, person, cast)) * (1 + INTEREST_PRIOR_BOOST * Math.max(prior.get(k)?.[1] || 0, 0));
-    if (!role.startsWith('#') && Array.from(person).length >= 2 && note.includes(person)) f *= INTEREST_NOTE_BOOST;
+    if (!role.startsWith('#') && named.has(person)) f *= INTEREST_NOTE_BOOST;
     return f;
   };
   // (3) 興味なしとの比べは、割ったあとで掛ける（#109）。割る前に掛けると、興味なしにも同じ割合でいる人・種類

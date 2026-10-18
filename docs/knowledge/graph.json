@@ -2507,6 +2507,19 @@
    "verifies": []
   },
   {
+   "id": "fix-interest-note-names",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "興味ありの「なぜ気になったか」に名前があっても、打ち消し・苦手の語がある区切り、「○○より」「○○と比べ」の名前、長い名前の一部は多めに配らない（分からないときは等分のまま）。LLM は使わない（#111）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/111",
+    "cloudflare/src/recommend.js",
+    "cloudflare/test/recommend-interest.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "fix-interest-tour-copies",
    "type": "decision",
    "status": "adopted",
@@ -8108,6 +8121,16 @@
    "from": "fix-interest-contrast-after-split",
    "rel": "affects",
    "to": "impl-interest-split"
+  },
+  {
+   "from": "fix-interest-note-names",
+   "rel": "affects",
+   "to": "impl-interest-split"
+  },
+  {
+   "from": "fix-interest-note-names",
+   "rel": "depends_on",
+   "to": "q-interest-why-unknown"
   },
   {
    "from": "fix-interest-tour-copies",

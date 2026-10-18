@@ -71,6 +71,28 @@ test('the optional note naming a person gives that person more', () => {
   close(m.get(K('出演', '山田花子')), 5 / 7);
 });
 
+// #111: a name in the note is not always why: denied, compared against, or a part of a longer name.
+import {noteNames} from '../src/recommend.js';
+test('the note gives more only to a name brought up as the reason; denied, compared or unsure names get the even split', () => {
+  const people = [['出演', '俳優A'], ['出演', '俳優B'], ['出演', '他の人']];
+  const share = note => interestShares({note, people}, new Map()).get(K('出演', '俳優A'));
+  close(share('俳優Aが好き'), 5 / 7);
+  close(share('俳優Aが理由ではない'), 1 / 3);
+  close(share('俳優Aは苦手だけど話が気になる'), 1 / 3);
+  close(share('俳優Aじゃなくて演出が気になる'), 1 / 3);
+  close(share(''), 1 / 3);
+  // Compared against: the other one is the reason.
+  assert.deepEqual([...noteNames('俳優Aより俳優Bが気になる', ['俳優A', '俳優B'])], ['俳優B']);
+  assert.deepEqual([...noteNames('俳優Aさんと比べて俳優Bさんが見たい', ['俳優A', '俳優B'])], ['俳優B']);
+  // Clauses are read one by one.
+  assert.deepEqual([...noteNames('俳優Aは好きじゃないけど、俳優Bが出るから', ['俳優A', '俳優B'])], ['俳優B']);
+  // A shorter name inside a longer one is not named by it.
+  assert.deepEqual([...noteNames('山田花子さんが出るから', ['山田', '山田花子'])], ['山田花子']);
+  assert.deepEqual([...noteNames('山田花子と山田さん', ['山田', '山田花子'])].sort(), ['山田', '山田花子']);
+  // One-character names never count (as before).
+  assert.equal(noteNames('甲が好き', ['甲']).size, 0);
+});
+
 test('favourites are skipped, and seeds fade with ratings as before', () => {
   const s = {people: [['出演', 'お気に入り'], ['出演', '他']]};
   const m = interestShares(s, new Map(), new Map(), new Set(['お気に入り']));
