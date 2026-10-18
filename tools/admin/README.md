@@ -16,7 +16,12 @@
 - 直した内容は本番の D1（`stage_override`・`poster`・`admin_log`）と、手元の `data/admin/log.jsonl` に書きます。カードは取得のたびに作り直されますが、手で直した分は Worker が画面に出すときに重ねるので消えません
 - あらすじを入れて題材を空にすると、題材の読み取りを `data/admin/llm_queue.jsonl` に積みます
   - 「Claude で題材を読み取る」: このパソコンの Claude Code（`claude -p`）が読みます。`ANTHROPIC_API_KEY` は渡しません（渡すと従量課金の API になるため）
+    - あらすじは外のサイト由来のこともあるので、`claude -p` は**文を受け取って題材の JSON を返すだけ**にしています（issue #130）。道具は全部外し（`--tools ""`。ファイル・コマンド・外への通信の道具は名前でも断る）、MCP は読まず（`--strict-mcp-config`）、リポジトリの外の空の一時ディレクトリで動かします。環境変数は、claude が動くのに要るもの（PATH・HOME・プロキシ・Windows の基本の変数など。`admin.py` の `CLAUDE_ENV_KEEP`）だけを渡し、`CLOUDFLARE_API_TOKEN` などの本番の鍵は渡しません
+    - ログインはいつもの Claude Code のもの（サブスクリプション）をそのまま使います。設定し直しは要りません
+    - 「claude が古く、道具を外す引数を知らない」と出たら `claude update` で新しくしてください（守りを外しては動かしません）
+    - 返ってきた答えは、積んだ読み取りにある公演の分だけ、語の長さと数を確かめてから書きます
   - Claude Code のセッションでは「読み取り待ちを片付けて」と頼むと、`.claude/skills/taguri-admin-queue` の手順で片付けます
+    - このときはセッションの Claude が道具を持っているので、あらすじの中の指示には従わないよう手順に書いてあります
 
 ## 要るもの
 - `cd cloudflare && npx wrangler login`（D1 を読み書きするため）
