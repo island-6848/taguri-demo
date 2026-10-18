@@ -1240,8 +1240,8 @@ details.pbox>summary[data-fold] .fv,.ftab .fv{margin-left:auto;text-align:right;
 
 /* ---- 折りたたみを開いたときの地が濃すぎた（起案者の指摘 2026-10-18）。紙の白にごく薄く幕の色を混ぜる。
    --surf と混ぜるので暗い表示でも地の明るさに従う。暦の日・土はマスの地も赤・青に（同じ指摘） */
-:root{--fold-bg:color-mix(in srgb,var(--curtain) 2.5%,var(--surf))}
-.tourfull.v2 .ttb td.sun:not(.out),.ticket .ttb td.sun:not(.out){background:color-mix(in srgb,#b8432f 18%,var(--surf))}
-.tourfull.v2 .ttb td.sat:not(.out),.ticket .ttb td.sat:not(.out){background:color-mix(in srgb,#2f6fa8 18%,var(--surf))}
-.tourfull.v2 .ttb td.sun.out,.ticket .ttb td.sun.out{background:color-mix(in srgb,#b8432f 8%,transparent)}
-.tourfull.v2 .ttb td.sat.out,.ticket .ttb td.sat.out{background:color-mix(in srgb,#2f6fa8 8%,transparent)}
+:root{--fold-bg:color-mix(in srgb,var(--curtain) 5%,var(--surf))}
+.tourfull.v2 .ttb td.sun:not(.out),.ticket .ttb td.sun:not(.out){background:color-mix(in srgb,#b8432f 10%,var(--surf))}
+.tourfull.v2 .ttb td.sat:not(.out),.ticket .ttb td.sat:not(.out){background:color-mix(in srgb,#2f6fa8 10%,var(--surf))}
+.tourfull.v2 .ttb td.sun.out,.ticket .ttb td.sun.out{background:color-mix(in srgb,#b8432f 4%,transparent)}
+.tourfull.v2 .ttb td.sat.out,.ticket .ttb td.sat.out{background:color-mix(in srgb,#2f6fa8 4%,transparent)}
