@@ -6,6 +6,7 @@
    - Zen丸ゴシック（--font-maru）: 利用者が押して何かを起こすものだけ。ボタン、ボタンの形のリンク（.btn・
      .sitebtn・.loadbtn）、絞り込みのタブ（.ftab）、選ぶ欄（select）、送信の入れ口（type=button/submit/reset）、
      role="button"。中の字（アイコンの横の文など）もそれに従う
+   - 公演名（--font-title）: Zen角ゴシック New を続ける。本文の字を変えるときも公演名は変えない
    - 決まりの外に残すもの: ロゴの「たぐり」（「ロゴの文字は今のフォントがいい」）、評価 ◎○△× の判子と封蝋
      （「評価はハンコのまま」。押せる判子も判子の字）、☆ の段階（記号の字）、コードの等幅
    - 太さ: 角ゴシックは 400 と 700、丸ゴシックは 700 だけを置く（押し口は太字の 1 種類だけ）。500・600 を
@@ -19,7 +20,10 @@
    ライセンスは SIL OFL 1.1（assets/fonts/OFL-ZenKakuGothicNew.txt・OFL-ZenMaruGothic.txt） */
 
 :root{--font-sans:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",YuGothic,system-ui,sans-serif;
- --font-maru:"Zen Maru Gothic",var(--font-sans)}
+ --font-maru:"Zen Maru Gothic",var(--font-sans);
+ /* 公演名の字。10/13 から公演名に使ってきた Zen角ゴシック New をそのまま続ける（起案者の指示 2026-10-18
+    「公演タイトルだけはそのフォント継続で使ってほしい」）。本文の字（--font-sans）を変えても、ここは変えない */
+ --font-title:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",YuGothic,system-ui,sans-serif}
 
 /* 入れ口は、ブラウザの既定の字（Arial など）にせず角ゴシック（「規定の文字」でも同じ）。
    :where で詳細度を 0 にして、判子など個別に字を決めた所（.rb button）はそちらを残す */
@@ -37,6 +41,9 @@ html:not([data-font="default"]) :is(h1,h2,h3,h4,h5,h6) small,
 html:not([data-font="default"]) :is(.wnt,.int,.nnv,.wnw textarea,.inote textarea,.nn textarea), /* 本人が書いた文 */
 html:not([data-font="default"]) .mgrid.tl .mh b,                        /* 公演カレンダーの月 */
 html:not([data-font="default"]) .chyear .chy b{font-family:var(--font-sans)}  /* 年表の年 */
+
+/* 公演名は --font-title（半券・評価の行・未評価・公演カレンダー・開幕リマインド・探す・たどる・名前で引いた一覧） */
+html:not([data-font="default"]) :is(.ticket h3,.rec-row .ttl,.wt,.mgrid .nm b,.dgt,.past-t b,.ti,.nmlist .t){font-family:var(--font-title)}
 
 /* 利用者が起こすアクションだけ丸ゴシック。押し口ごとに font:inherit と書いた所が多いので !important で上書きする。
    評価の判子（.rb の中）は判子の字のまま */
