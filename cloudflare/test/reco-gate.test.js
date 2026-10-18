@@ -75,6 +75,16 @@ test('the replay only uses ratings made before each one (predict, then check)', 
   assert.notDeepEqual(chooseVariant(rows).checked, chooseVariant(reversed).checked);
 });
 
+// #112: editing only the 感想 moves works.updated_at; the order of ratings is when they were rated (rated_at).
+test('a later edit that is not a rating (updated_at only) does not change the replay order or the choice', () => {
+  const rows = user(60, 'dir', 2).map(r => ({...r, rated_at: r.updated_at}));
+  const edited = rows.map((r, i) => (i === 9 ? {...r, updated_at: '2026-12-31T00:00:00.000Z'} : r));
+  assert.deepEqual(chooseVariant(edited), chooseVariant(rows));
+  // Without rated_at (rows written before migration 0033) the last change still orders them, as before.
+  const legacy = user(60, 'dir', 2), legacyEdited = legacy.map((r, i) => (i === 9 ? {...r, updated_at: '2026-12-31T00:00:00.000Z'} : r));
+  assert.notDeepEqual(chooseVariant(legacyEdited).checked, chooseVariant(legacy).checked);
+});
+
 test('stage scores follow person-ordinal-v3 (people top 3 up and down, plus the mean of kind tags)', () => {
   const rated = [
     {key: 'a', verdict: '◎', people: [['出演', '甲'], ['#形式', 'ミュージカル']]},

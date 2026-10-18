@@ -104,9 +104,13 @@ export function cmp(a, b) {
 }
 const cmpTuple = (a, b) => { for (let i = 0; i < a.length; i++) { const c = typeof a[i] === 'number' ? (a[i] < b[i] ? -1 : a[i] > b[i] ? 1 : 0) : cmp(a[i], b[i]); if (c) return c; } return 0; };
 
-/** One rating per linked stage (latest), unlinked records by their own key. */
+/**
+ * One rating per linked stage (latest), unlinked records by their own key. Ordered by when the
+ * rating was made (rated_at, #112), else the row's last change (updated_at), else the date seen.
+ */
+export const ratedTime = r => r.rated_at || r.updated_at || r.date || '';
 export function independentRatings(rows) {
-  const sorted = [...rows].sort((r, s) => cmpTuple([r.updated_at || r.date || '', r.key || ''], [s.updated_at || s.date || '', s.key || '']));
+  const sorted = [...rows].sort((r, s) => cmpTuple([ratedTime(r), r.key || ''], [ratedTime(s), s.key || '']));
   const grouped = new Map();
   for (const row of sorted) {
     if (!gradeOf(row.verdict)) continue;

@@ -51,6 +51,25 @@ test('only the latest rating per linked stage counts; unlinked records stay sepa
   assert.deepEqual(independentRatings(rows).map(r => r.key), ['c', 'b']);
 });
 
+// #112: the time a rating was made (rated_at) orders them before the row's last edit, in Python too.
+test('ratings are ordered by rated_at, then updated_at, then the date, the same as Python', () => {
+  const rows = [
+    {key: 'a', stage_id: 's1', verdict: '○', rated_at: '2026-09-01 10:00:00', updated_at: '2026-09-20 10:00:00'},
+    {key: 'b', stage_id: 's1', verdict: '◎', rated_at: '2026-09-05 10:00:00', updated_at: '2026-09-06 10:00:00'},
+    {key: 'c', stage_id: 's2', verdict: '×', updated_at: '2026-09-03 10:00:00'},
+    {key: 'd', stage_id: '', verdict: '△', date: '2026-08-01'},
+  ];
+  const js = independentRatings(rows).map(r => r.key);
+  // s1 keeps its first slot (a, rated before c) with its latest rating (b), though a was edited last.
+  assert.deepEqual(js, ['d', 'b', 'c']);
+  const py = JSON.parse(execFileSync('python3', ['-c', `
+import json, sys
+sys.path[:0] = ['../tools/review', '../tools/taguri']
+import user_recommender as UR
+print(json.dumps([r["key"] for r in UR.independent_ratings(json.loads(sys.stdin.read()))]))`], {input: JSON.stringify(rows), encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore']}));
+  assert.deepEqual(js, py);
+});
+
 // ---------------------------------------------------------------- through the Worker
 import worker, {recommendFor, onboardingFor} from '../src/worker.js';
 import {TERMS_VERSION} from '../src/terms.js';

@@ -73,7 +73,9 @@ def independent_ratings(rows: list[dict]) -> list[dict]:
     own keys; titles alone cannot establish that two productions are identical.
     """
     grouped = {}
-    for row in sorted(rows, key=lambda r: (r.get("updated_at") or r.get("date") or "",
+    # Ordered by when the rating was made (rated_at, issue #112: editing only the 感想 moves
+    # updated_at), else the row's last change, else the date seen (recommend.ratedTime).
+    for row in sorted(rows, key=lambda r: (r.get("rated_at") or r.get("updated_at") or r.get("date") or "",
                                             r.get("key") or "")):
         if grade_of(row.get("verdict")) is None:
             continue

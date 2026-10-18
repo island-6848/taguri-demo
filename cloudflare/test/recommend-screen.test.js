@@ -164,6 +164,33 @@ test('興味あり alone, on a stage only the catalogue has, recommends the same
   } finally { sqlite.close(); }
 });
 
+// #112: the time a rating was made is kept apart from later edits of the 感想.
+test('editing only the 感想 keeps the time the rating was made; a new rating or 詳細 moves it', async () => {
+  const {env, sqlite} = await withIndex();
+  const a = await signIn(env);
+  try {
+    const key = await rateSeen(env, a, '終わった舞台', '2026-08-05', '103', '◎');
+    const at = () => sqlite.prepare('SELECT rated_at, updated_at FROM works WHERE work_key=?').get(key);
+    const first = at();
+    assert.ok(first.rated_at);
+    const later = () => { env.CLOCK = {today: env.CLOCK.today, now: env.CLOCK.now + 3600e3}; };
+    later();
+    assert.equal((await step(env, a, {post: '/api/note', body: {work_key: key, note_impression: '家族の描写がよかった'}})).status, 200);
+    assert.equal(at().rated_at, first.rated_at);
+    assert.notEqual(at().updated_at, first.updated_at);
+    later();
+    assert.equal((await step(env, a, {post: '/api/rate', body: {work_key: key, verdict: '◎'}})).status, 200);
+    assert.equal(at().rated_at, first.rated_at, 'the same rating again is not a new one');
+    later();
+    assert.equal((await step(env, a, {post: '/api/rate', body: {work_key: key, aspects: '+acting'}})).status, 200);
+    const third = at().rated_at;
+    assert.ok(third > first.rated_at, '詳細 is part of the rating');
+    later();
+    assert.equal((await step(env, a, {post: '/api/rate', body: {work_key: key, verdict: '○'}})).status, 200);
+    assert.ok(at().rated_at > third);
+  } finally { sqlite.close(); }
+});
+
 // #110: the answer copied to the tour's other venues is the same one press, not more interest.
 test('興味あり copied to the tour\'s other venues counts once as a hint; a venue pressed again directly counts', async () => {
   const {env, sqlite} = await withIndex();

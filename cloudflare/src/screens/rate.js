@@ -343,8 +343,12 @@ async function saveWorkField(ctx, workKey, col, value) {
   const have = await ctx.db.prepare('SELECT 1 FROM works WHERE user_id=? AND work_key=?').bind(ctx.uid, workKey).first();
   if (!have) throw new ValueError('その作品は記録に無い');
   const source = col === 'verdict' ? 'verdict_source' : 'note_source';
-  await ctx.db.prepare(`UPDATE works SET ${col}=?, ${source}='user', updated_at=? WHERE user_id=? AND work_key=?`)
-    .bind(value, localNow(ctx.now), ctx.uid, workKey).run();
+  const at = localNow(ctx.now);
+  // 評価した時刻（rated_at、#112）は評価が変わったときだけ進める。感想だけの編集では進めない
+  // （SET の右辺は書き換える前の値を読む）
+  const rated = col === 'verdict' ? ', rated_at=CASE WHEN verdict IS ? AND rated_at IS NOT NULL THEN rated_at ELSE ? END' : '';
+  await ctx.db.prepare(`UPDATE works SET ${col}=?, ${source}='user', updated_at=?${rated} WHERE user_id=? AND work_key=?`)
+    .bind(value, at, ...(rated ? [value, at] : []), ctx.uid, workKey).run();
 }
 
 /** rate_performances.ASPECT_CODES / clean_aspects (same errors as Python) */
@@ -367,8 +371,10 @@ async function rateAction(b, ctx) {
     const aspects = cleanAspectsPy(b.aspects);
     const have = await ctx.db.prepare('SELECT 1 FROM works WHERE user_id=? AND work_key=?').bind(ctx.uid, workKey).first();
     if (!have) throw new ValueError('その作品は記録に無い');
-    await ctx.db.prepare('UPDATE works SET aspects=?, updated_at=? WHERE user_id=? AND work_key=?')
-      .bind(aspects, localNow(ctx.now), ctx.uid, workKey).run();
+    const at = localNow(ctx.now);
+    // 詳細も評価の一部なので、変わったときは評価した時刻（rated_at、#112）を進める
+    await ctx.db.prepare("UPDATE works SET aspects=?, updated_at=?, rated_at=CASE WHEN COALESCE(aspects,'')=? AND rated_at IS NOT NULL THEN rated_at ELSE ? END WHERE user_id=? AND work_key=?")
+      .bind(aspects, at, aspects, at, ctx.uid, workKey).run();
     return {body: {ok: true, work_key: workKey, aspects}};
   }
   if (!VERDICTS.includes(verdict) && !isScaled(verdict)) throw new ValueError(`verdict が候補にない: ${strRepr(verdict)}`);

@@ -78,7 +78,7 @@ ${THANKS_ART}
 const KEEP = 400;
 // 再生（H5）で 1 つずつ外す部品: 興味ありの配り分け・1 段広げる・並べ直し（spreadLeads）・裏の答え合わせ（chooseVariant）
 export const REPLAY_ABLATIONS = ['split', 'expand', 'spread', 'gate'];
-const VERSION = 'screen-v25';   // v25: a name in the 興味あり note counts only when not denied or compared against (#111); v24: a 興味あり copied to the tour's other venues counts once (#110); v23: 興味なし weakens after the split, not before (#109); v22: favourite seeds weigh FAV_SEED_W (お気に入り＞興味あり); v21: credits read only where needed (CPU); v20: a production answered under another stage id stays out; v19: same title + (group / venue / a shared person) is one card; v18: one card per title+group (sameProduction); v17: no 出典 on the reasons; v16: #会場 dropped, 行けない (interest=2) as a liked seed; v15: 出さない語 also hits the kind tags; v14: #ジャンル (a genre turned off hides its stages); v13: no 原作「原作もの」 (DROPPED_KEYS); v12: no #値段 (DROPPED_AXES); v11: reasons of answered stages (answered_why); v2: the user's 効かせ方 (rank_weight) and the per-group counts; v3: 興味あり as seeds; v4: diag; v5: 興味あり split (impl-interest-split); v6: by part importance; v7: tiers + トメ; v8: two tiers only; v9: トメ joins the main roles; v10: spread leads + one-step partners
+const VERSION = 'screen-v26';   // v26: ratings ordered by when they were rated (works.rated_at), not by the last edit (#112); v25: a name in the 興味あり note counts only when not denied or compared against (#111); v24: a 興味あり copied to the tour's other venues counts once (#110); v23: 興味なし weakens after the split, not before (#109); v22: favourite seeds weigh FAV_SEED_W (お気に入り＞興味あり); v21: credits read only where needed (CPU); v20: a production answered under another stage id stays out; v19: same title + (group / venue / a shared person) is one card; v18: one card per title+group (sameProduction); v17: no 出典 on the reasons; v16: #会場 dropped, 行けない (interest=2) as a liked seed; v15: 出さない語 also hits the kind tags; v14: #ジャンル (a genre turned off hides its stages); v13: no 原作「原作もの」 (DROPPED_KEYS); v12: no #値段 (DROPPED_AXES); v11: reasons of answered stages (answered_why); v2: the user's 効かせ方 (rank_weight) and the per-group counts; v3: 興味あり as seeds; v4: diag; v5: 興味あり split (impl-interest-split); v6: by part importance; v7: tiers + トメ; v8: two tiers only; v9: トメ joins the main roles; v10: spread leads + one-step partners
 export {PREFS} from './prefs.js';
 const KIND_LABEL = {'#形式': '形式', '#原作': '原作', '#翻訳': '', '#原作の国': '原作の国', '#会場': '劇場', '#題材': '題材', '#ジャンル': 'ジャンル'};
 const WORKS_SHOWN = 3;
@@ -93,14 +93,16 @@ const chunks = (xs, n) => Array.from({length: Math.ceil(xs.length / n)}, (_, i) 
 /** The user's rated works as the recommender reads them, with their linked stage's credits. */
 async function ratedWorks(ctx, access) {
   const works = (await loadWorks(ctx)).filter(w => !w.unseen && w.stage_id && gradeOf(w.verdict));
-  const {results} = await ctx.db.prepare("SELECT work_key, updated_at FROM works WHERE user_id=? AND verdict IS NOT NULL AND verdict<>''").bind(ctx.uid).all();
-  const updated = new Map(results.map(r => [r.work_key, r.updated_at]));
+  // 評価した順は、評価を付けた（直した）時刻（rated_at、#112）。updated_at は感想・日付の編集でも進むので、
+  // rated_at の無い行（移行の前に書いた行）だけ updated_at で代える
+  const {results} = await ctx.db.prepare("SELECT work_key, COALESCE(rated_at, updated_at) AS rated_at FROM works WHERE user_id=? AND verdict IS NOT NULL AND verdict<>''").bind(ctx.uid).all();
+  const updated = new Map(results.map(r => [r.work_key, r.rated_at]));
   const people = await access.peopleFor([...new Set(works.map(w => w.stage_id))]);
   // 観た回に出ていなかった出演者（Wキャスト・休演、works.cast_off）は、この記録の材料から外す。
   return works.map(w => {
     const off = new Set(castOffOf(w));
     return {key: w.work_key, title: w.title, stage_id: w.stage_id, verdict: w.verdict, cast_off: [...off],
-      date: w.last_date || w.first_date || '', aspects: w.aspects || '', updated_at: updated.get(w.work_key) || '',
+      date: w.last_date || w.first_date || '', aspects: w.aspects || '', rated_at: updated.get(w.work_key) || '',
       people: (people.get(w.stage_id) || []).filter(([role, person]) => !(role === '出演' && off.has(person)))};
   });
 }

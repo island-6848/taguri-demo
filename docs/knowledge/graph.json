@@ -2534,6 +2534,24 @@
    "verifies": []
   },
   {
+   "id": "fix-rated-at",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "評価した順は works.rated_at（評価・詳細が変わったときだけ進む、migrations/0033）で決める。感想・日付などの編集で進む updated_at は使わない（無い行だけ代わりに使う）（#112）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/112",
+    "cloudflare/migrations/0033.sql",
+    "cloudflare/src/screens/rate.js",
+    "cloudflare/src/screens/diary.js",
+    "cloudflare/src/screens/recommend.js",
+    "cloudflare/src/recommend.js",
+    "tools/review/user_recommender.py",
+    "cloudflare/test/reco-gate.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "fix-request-mail",
    "type": "finding",
    "status": "unverified",
@@ -5273,6 +5291,18 @@
    "date": "2026-10-13",
    "title": "Render のデモ版は、起動し直すと動かなくなるのではないか",
    "sources": [],
+   "verifies": []
+  },
+  {
+   "id": "q-replay-history-restore",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-18",
+   "title": "手元の再生（replay_eval の cut_copy）は、時点 t より後に編集した行を丸ごと消すので、当時あった評価が消える。当時の値をどう戻すか（履歴の行・時点別の控え）、戻せない期間をどう結果から外すか（#113）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/113",
+    "tools/review/replay_eval.py"
+   ],
    "verifies": []
   },
   {
@@ -8143,6 +8173,16 @@
    "to": "impl-replay-eval"
   },
   {
+   "from": "fix-rated-at",
+   "rel": "affects",
+   "to": "impl-hidden-gate"
+  },
+  {
+   "from": "fix-rated-at",
+   "rel": "raises",
+   "to": "q-replay-history-restore"
+  },
+  {
    "from": "fix-request-mail",
    "rel": "affects",
    "to": "impl-fix-request"
@@ -9951,6 +9991,11 @@
    "from": "q-render-s3-dependency",
    "rel": "affects",
    "to": "q-demo-trial-design"
+  },
+  {
+   "from": "q-replay-history-restore",
+   "rel": "affects",
+   "to": "impl-replay-eval"
   },
   {
    "from": "q-restore-redelete",
