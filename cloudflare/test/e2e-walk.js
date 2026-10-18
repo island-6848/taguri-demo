@@ -318,6 +318,75 @@ async function walkA(A) {
     check((await row().locator('button.star.on').count()) === 4, '開き直すと星が 4 つでない');
   });
 
+  // 星の右端の ✕ と、詳細の 5 段階・項目を外す ✕（起案者の指示 2026-10-18「『評価しない』のボタンじゃなくて、星の右端に✕ボタンを
+  // つけることでnullにできるようにして」「最低限5段階くらいほしい」「なかったときは✕で要素を消せるようにしてほしい」）
+  await step('詳細を 5 段階で付け、無い項目を ✕ で外して戻す', async () => {
+    await go('/rate');
+    const r = row();
+    const box = r.locator('details.asp');
+    check(await box.isVisible(), '評価を付けた行に詳細が出ない');
+    if (!(await box.evaluate(b => b.open))) await box.locator('summary').click();
+    const asp = () => sql(`SELECT aspects FROM works WHERE work_key='${KEY}'`)[0]?.aspects;
+    // 押して、/api/rate の返事を待ってから D1 を読む
+    const act = async (fn, want, what) => {
+      const res = page.waitForResponse(x => x.url().endsWith('/api/rate') && x.request().method() === 'POST', {timeout: 10000});
+      await fn();
+      check((await res).ok(), what + ': 保存に失敗した');
+      const got = asp();
+      check(got === want, `${what}: D1 の詳細が「${got}」`);
+    };
+    check((await box.locator('.aspsl').first().getAttribute('max')) === '2' && (await box.locator('.aspsl').first().getAttribute('min')) === '-2', 'つまみが 5 段階でない');
+    await act(() => box.locator('.aspsl[data-a="acting"]').fill('2'), '++acting', 'とても良かった');
+    check((await box.locator('.aspr[data-a="acting"] .aspv').innerText()) === 'とても良かった', '段階の言葉が出ない');
+    await act(() => box.locator('.aspsl[data-a="price"]').fill('-1'), 'price,++acting', '気になった');
+    await act(() => box.locator('button.aspx[data-na="music"]').click(), 'price,++acting,~music', '歌・音楽を外す');
+    await act(() => box.locator('button.aspx[data-na="dance"]').click(), 'price,++acting,~music,~dance', 'ダンスを外す');
+    check(!(await box.locator('.aspr[data-a="music"]').isVisible()), '外した項目が残っている');
+    check(/良かった: 演技・出演（とても）／気になった: 値段/.test(await box.locator('.asps').innerText()), '要約が違う: ' + (await box.locator('.asps').innerText()));
+    await r.screenshot({path: join(OUT, 'row-aspects-5.png')}).catch(() => {});
+    // 電話の幅（375px）でも、項目名・つまみ・言葉・✕ が横にはみ出さない
+    const wide = page.viewportSize();
+    await page.setViewportSize({width: 375, height: 800});
+    await sleep(300);
+    await r.screenshot({path: join(OUT, 'row-aspects-5-phone.png')}).catch(() => {});
+    const over = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    check(over <= 0, `電話の幅で横にはみ出す: ${over}px`);
+    await page.setViewportSize(wide);
+    await go('/rate');
+    const box2 = row().locator('details.asp');
+    if (!(await box2.evaluate(b => b.open))) await box2.locator('summary').click();
+    check(!(await box2.locator('.aspr[data-a="dance"]').isVisible()), '開き直すと外した項目が戻っている');
+    check((await box2.locator('.aspsl[data-a="acting"]').inputValue()) === '2', '開き直すと とても良かった が残っていない');
+    await act(() => box2.locator('button.aspadd[data-add="dance"]').click(), 'price,++acting,~music', 'ダンスを戻す');
+    check(await box2.locator('.aspr[data-a="dance"]').isVisible(), '戻した項目が出ない');
+    note('D1: ' + asp());
+  });
+
+  await step('星の右端の ✕ で評価を消し、付け直す', async () => {
+    await go('/rate');
+    const r = row();
+    const x = r.locator('button.gclr');
+    check(await x.isVisible(), '評価を付けた行に ✕ が無い');
+    check((await x.getAttribute('aria-label')) === '評価を消す（未評価に戻す）', '✕ に aria-label が無い');
+    await r.locator('.rb').screenshot({path: join(OUT, 'row-stars-x.png')}).catch(() => {});
+    await x.click();
+    await waitSaid(r, /評価を消しました/);
+    check((await r.locator('button.star.on').count()) === 0, '✕ で星が消えない');
+    check(!(await x.isVisible()), '消したあとも ✕ が出ている');
+    const v = sql(`SELECT verdict, aspects FROM works WHERE work_key='${KEY}'`)[0];
+    check(v.verdict === null, 'D1 の評価が消えない: ' + v.verdict);
+    check(v.aspects === 'price,++acting,~music', '評価を消すと詳細まで消えた: ' + v.aspects);
+    await sleep(700);
+    check(!(await r.locator('details.asp').isVisible()), '評価を消しても詳細が出ている');
+    await go('/rate/unrated');
+    check(await row().isVisible(), '消した記録が未評価に出ない');
+    check(!(await row().locator('button.gclr').isVisible()), '未評価の行に ✕ が出ている');
+    await row().locator('button.star[data-v="4/5"]').click();
+    await waitSaid(row(), /記録しました/);
+    check(await row().locator('button.gclr').isVisible(), '付け直しても ✕ が出ない');
+    check(sql(`SELECT verdict FROM works WHERE work_key='${KEY}'`)[0]?.verdict === '4/5', '付け直した評価が D1 に無い');
+  });
+
   await step('感想を書く → 開き直して残っている', async () => {
     await go('/rate');
     const r = row();

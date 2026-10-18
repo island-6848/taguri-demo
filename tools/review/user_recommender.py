@@ -260,11 +260,41 @@ ASPECTS = {
 }
 
 
+# 5 段階と「この作品には無い」（起案者の指示 2026-10-18「評価の詳細、今3段階で設定してるけど適切？最低限5段階
+# くらいほしい。あと作品によっては歌ダンスがないこともあるので、なかったときは✕で要素を消せるようにしてほしい」、
+# dec-aspects-five-levels）: "++code" とても良かった（2）、"+code" 良かった（1）、"code" 気になった（−1）、
+# "--code" とても気になった（−2）、"~code" この作品には無い（推薦には使わない）。前の 3 段階の "+code"・"code" は
+# 同じ言葉の 良かった・気になった として読む（書き換えない）。保存の並びは ASPECT_MARKS の順、その中は ASPECTS の順。
+ASPECT_MARKS = (("", -1), ("+", 1), ("--", -2), ("++", 2), ("~", 0))
+
+
+def aspect_token(g: str) -> tuple[str, str]:
+    """(印, コード): "++acting" -> ("++", "acting")."""
+    for mark in ("++", "--", "+", "~"):
+        if g.startswith(mark):
+            return mark, g[len(mark):]
+    return "", g
+
+
+def aspect_levels(value) -> dict:
+    """code -> 段階（−2〜2、0 = この作品には無い）。知らないコードは読まない。1 つの項目に印が
+    2 つあれば ASPECT_MARKS の先のほう。"""
+    given = set(value.split(",") if isinstance(value, str) else value or ())
+    marks = dict(ASPECT_MARKS)
+    out: dict = {}
+    for g in sorted(given, key=lambda g: [m for m, _ in ASPECT_MARKS].index(aspect_token(g)[0])):
+        mark, code = aspect_token(g)
+        if code in ASPECTS and code not in out:
+            out[code] = marks[mark]
+    return out
+
+
 def parse_aspects(value) -> tuple[list[str], list[str]]:
     """(troubles, goods): known codes of a record's aspects (list or comma-separated
-    text; "+code" = good), each in ASPECTS order."""
-    given = set(value.split(",") if isinstance(value, str) else value or ())
-    return ([c for c in ASPECTS if c in given], [c for c in ASPECTS if "+" + c in given])
+    text; "+code" / "++code" = good, "code" / "--code" = a trouble, "~code" = not in
+    this production, read as neither), each in ASPECTS order."""
+    lv = aspect_levels(value)
+    return ([c for c in ASPECTS if lv.get(c, 0) < 0], [c for c in ASPECTS if lv.get(c, 0) > 0])
 
 
 def aspect_codes(value) -> list[str]:
@@ -272,12 +302,20 @@ def aspect_codes(value) -> list[str]:
     return parse_aspects(value)[0]
 
 
-def aspect_share(troubles, goods, role: str, positive: bool) -> float:
+def aspect_share(troubles, goods, role: str, positive: bool, levels=None) -> float:
     """How much of a rating lands on `role` (or tag axis): mainly the side the
-    rating leans to (goods when positive), less what the other side points at."""
+    rating leans to (goods when positive), less what the other side points at.
+
+    `levels` (aspect_levels): an aspect counts by its strength against the
+    strongest one marked on this record (とても良かった 2 next to 良かった 1 =
+    half), so with all marks the same strength (every 3-level record) the share
+    is as before. How good the production was overall is the rating itself."""
+    lv = levels or {}
+    peak = max((abs(lv.get(c, 1)) for c in list(troubles) + list(goods)), default=1)
+    f = {c: abs(lv.get(c, 1)) / peak for c in list(troubles) + list(goods)}
     main, other = (goods, troubles) if positive else (troubles, goods)
-    s = max((ASPECTS[c][1].get(role, 0.0) for c in main), default=1.0)
-    o = max((ASPECTS[c][1].get(role, 0.0) for c in other), default=0.0)
+    s = max((ASPECTS[c][1].get(role, 0.0) * f[c] for c in main), default=1.0)
+    o = max((ASPECTS[c][1].get(role, 0.0) * f[c] for c in other), default=0.0)
     return s * (1.0 - o)
 
 
@@ -319,10 +357,11 @@ def person_values(rated: list[dict], seeds: list[dict] = (), skip: set = frozens
         below = sum(1 for v in vals if v < value)
         same = sum(1 for v in vals if v == value)
         z = ((below + 0.5 * same) / len(vals) - 0.5) * SQRT12
+        levels = aspect_levels(r.get("aspects")) if z else {}
         troubles, goods = parse_aspects(r.get("aspects")) if z else ([], [])
         for key in rated_keys(r):
             tally[key][0] += 1
-            tally[key][1] += z * aspect_share(troubles, goods, key[0], z > 0) if troubles or goods else z
+            tally[key][1] += z * aspect_share(troubles, goods, key[0], z > 0, levels) if troubles or goods else z
             tally[key][2] += 1.0
     w = SEED_K / (SEED_K + len(rated))
     for r in seeds:

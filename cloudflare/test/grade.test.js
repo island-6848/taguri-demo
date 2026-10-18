@@ -62,10 +62,17 @@ test('scale helpers: ○× and ○△× show as shapes, 0.5 steps as ★n.5, sid
   assert.ok(isTop('2/2') && isTop('3/3') && isTop('11/11') && !isTop('10/11'));
   assert.equal(gradeButtons('marks2'), '<button data-v="2/2">○</button><button data-v="1/2">×</button>');
   assert.match(gradeButtons('stars11', '8/11'), /^(<span class="hs on">.*?<\/span>){3}<span class="hs h">/);
-  // 星 0 の押し口はやめ、「評価しない」にした（起案者の指示 2026-10-16）
-  assert.doesNotMatch(gradeButtons('stars11'), /star0|data-v="1\/11"/);
-  assert.match(gradeButtons('stars11'), /<button class="nograde" data-v="まだ判断できない">評価しない<\/button>$/);
-  assert.match(gradeButtons('stars5', 'まだ判断できない'), /<button class="nograde on" data-v="まだ判断できない">評価しない<\/button>$/);
+  // 星 0 の押し口はやめた（起案者の指示 2026-10-16）。そのあと置いた「評価しない」も、星の右端の ✕（評価を消して未評価に戻す）に
+  // 替えた（起案者の指示 2026-10-18「『評価しない』のボタンじゃなくて、星の右端に✕ボタンをつけることでnullにできるようにして」）。
+  // ✕ は評価が付いているときだけ出す（前の「評価しない」＝まだ判断できない を付けた行にも出す）
+  assert.doesNotMatch(gradeButtons('stars11'), /star0|data-v="1\/11"|nograde|評価しない/);
+  const X = /<button type="button" class="gclr" data-clear="1" aria-label="評価を消す（未評価に戻す）" title="評価を消す"( hidden)?>✕<\/button>$/;
+  assert.equal(X.exec(gradeButtons('stars11'))?.[1], ' hidden');
+  assert.equal(X.exec(gradeButtons('stars5'))?.[1], ' hidden');
+  assert.equal(X.exec(gradeButtons('stars5', '4/5'))?.[1], undefined);
+  assert.equal(X.exec(gradeButtons('stars11', '8/11'))?.[1], undefined);
+  assert.equal(X.exec(gradeButtons('stars5', 'まだ判断できない'))?.[1], undefined);
+  assert.doesNotMatch(gradeButtons('marks4', '◎'), /gclr/);
   assert.deepEqual(gradeOf('8/11'), [8, 11]);
 });
 
@@ -90,6 +97,38 @@ test('the scale is chosen on 設定; old ratings keep their own scale', async ()
     assert.match(rate, /data-stamp="1"[^>]*>△<\/span>/);
     assert.match(rate, /<tr data-v="2\/3"><td>△<\/td>/);
     await step(env, a, {post: '/api/rating_scale', body: {scale: 'stars11'}});
-    assert.match((await step(env, a, {get: '/api/screen/rate?v=all'})).body.body_html, /class="nograde/);
+    assert.match((await step(env, a, {get: '/api/screen/rate?v=all'})).body.body_html, /class="gclr"/);
+  } finally { sqlite.close(); }
+});
+
+// 星の右端の ✕ で評価を消す（起案者の指示 2026-10-18「『評価しない』のボタンじゃなくて、星の右端に✕ボタンをつけることで
+// nullにできるようにして」）。POST /api/rate {work_key, clear: true} で verdict は NULL（未評価）に戻り、詳細は残る
+test('the ✕ after the stars clears a rating back to unrated and keeps the 詳細', async () => {
+  const {env, sqlite} = setup();
+  const a = await signIn(env);
+  try {
+    const k = (await step(env, a, {post: '/api/add_work', body: {title: '消す舞台', date: '2026-08-01'}})).body.work_key;
+    await step(env, a, {post: '/api/rate', body: {work_key: k, verdict: '4/5'}});
+    await step(env, a, {post: '/api/rate', body: {work_key: k, aspects: ['++acting', '~music']}});
+    const row = () => sqlite.prepare('SELECT verdict, aspects, rated_at FROM works WHERE work_key=?').get(k);
+    assert.ok(row().rated_at);
+    assert.match((await step(env, a, {get: '/api/screen/rate?v=all'})).body.body_html, /<button class="star on" data-v="4\/5"[^>]*><\/button><button class="star" data-v="5\/5"[^>]*><\/button><button type="button" class="gclr" data-clear="1"[^>]*title="評価を消す">✕<\/button>/);
+    const r = await step(env, a, {post: '/api/rate', body: {work_key: k, clear: true}});
+    assert.equal(r.status, 200);
+    assert.equal(r.body.verdict, null);
+    assert.equal(row().verdict, null);
+    assert.equal(row().aspects, '++acting,~music');
+    const unrated = (await step(env, a, {get: '/api/screen/unrated'})).body.body_html;
+    assert.match(unrated, /未評価 ── 1 件/);
+    assert.match(unrated, /<button type="button" class="gclr" data-clear="1"[^>]*hidden>✕<\/button>/);
+    assert.doesNotMatch(unrated, /class="star on"/);
+    // 前に付けた「評価しない」（まだ判断できない）も読めて、✕ で消せる
+    await step(env, a, {post: '/api/rate', body: {work_key: k, verdict: 'まだ判断できない'}});
+    assert.match((await step(env, a, {get: '/api/screen/rate?v=all'})).body.body_html, /class="gclr" data-clear="1"[^>]*title="評価を消す">✕/);
+    assert.equal((await step(env, a, {post: '/api/rate', body: {work_key: k, clear: true}})).status, 200);
+    assert.equal(row().verdict, null);
+    // clear は true だけ。ほかの値や無い作品は断る
+    assert.equal((await step(env, a, {post: '/api/rate', body: {work_key: k, clear: 1}})).status, 400);
+    assert.equal((await step(env, a, {post: '/api/rate', body: {work_key: '無い#2026-01-01', clear: true}})).status, 400);
   } finally { sqlite.close(); }
 });

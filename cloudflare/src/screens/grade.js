@@ -80,15 +80,22 @@ export async function scaleOf(ctx) {
  * そこまで星の色がつく」): stars5 has one button per star; stars11 a 0 button and two halves per star
  * (left = .5, right = whole), the star filled half or whole (.h / .on). app.js fills at once on a press.
  */
-/** 「評価しない」の値（rate.VERDICTS の「まだ判断できない」。評価には数えない） */
+/** 前の「評価しない」の値（rate.VERDICTS の「まだ判断できない」。評価には数えない）。押し口はやめたが、付けた記録はそのまま読む */
 export const HOLD = 'まだ判断できない';
+/**
+ * 星の右端の ✕: 押すと評価を消して未評価に戻す（POST /api/rate {work_key, clear: true}）。起案者の指示 2026-10-18
+ * 「『評価しない』のボタンじゃなくて、星の右端に✕ボタンをつけることでnullにできるようにして」（dec-star-clear-x）。
+ * 評価が付いているときだけ出す（hidden を app.js の fillStars が外す・付ける）: 付いていない行で押しても何も起きない
+ * 押し口が並ぶと「押すと何かが消える」と迷わせ、未評価の一覧では全部の行に ✕ が並んでしまう。✕ は星の後ろ（★n の右）なので、
+ * 出たり消えたりしても星の位置は動かない。前の「評価しない」（まだ判断できない）を付けた行にも出し、押せば未評価に戻せる
+ */
+export const clearButton = current => `<button type="button" class="gclr" data-clear="1" aria-label="評価を消す（未評価に戻す）" title="評価を消す"${current ? '' : ' hidden'}>✕</button>`;
 export function gradeButtons(scale, current = '') {
   const btn = (v, text) => `<button data-v="${v}">${text}</button>`;
   if (scale === 'marks2') return btn('2/2', '○') + btn('1/2', '×');
   if (scale === 'marks3') return btn('3/3', '○') + btn('2/3', '△') + btn('1/3', '×');
-  // 星のあとに「評価しない」（まだ判断できない）。星 0 の押し口はやめた（起案者の指示 2026-10-16
-  // 「星0は不要。評価しない、のボタンにして」）。前に付けた 1/11（★0）はそのまま読める
-  const none = `<button class="nograde${current === HOLD ? ' on' : ''}" data-v="${HOLD}">評価しない</button>`;
+  // 星のあとに ✕（評価を消す）。星 0 の押し口はやめた（起案者の指示 2026-10-16「星0は不要」）。前に付けた 1/11（★0）はそのまま読める
+  const none = clearButton(current);
   if (scale === 'stars5') {
     const now = parts(current)?.[1] === 5 ? parts(current)[0] : 0;
     return [1, 2, 3, 4, 5].map(n => `<button class="star${n <= now ? ' on' : ''}" data-v="${n}/5" aria-label="星 ${n}"></button>`).join('') + none;

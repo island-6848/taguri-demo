@@ -144,7 +144,7 @@ export function recRow(w, {poster = '', rateAlways = false, editable = false, ra
   // 付けた星と今の段階が違う（★4 のあと ○△× に変えた等）ときは、星の列に出ないので判子で見せる。
   const L = parts(v)?.[1];
   const stars = scale === 'stars5' || scale === 'stars11';
-  // 「評価しない」（まだ判断できない）を押した行も星の行のまま（「評価しない」に印が付く）
+  // 前の「評価しない」（まだ判断できない）を押した行も星の行のまま（星は空で、右端の ✕ で未評価に戻せる）
   const starRow = !unseen && (v ? (L === 5 && scale === 'stars5') || (L === 11 && scale === 'stars11') || (v === 'まだ判断できない' && stars) : stars);
   if (starRow) rateAlways = true;
   let rate;

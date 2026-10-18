@@ -4,6 +4,7 @@
 // call in charts.py, render_recommend.py and impressions.py.
 import {ALL_GRADES, isScaled, isStar, isTop, gradeText, markOf, scaleOf, scaleAction} from './grade.js';
 import {autoLink} from './autolink.js';
+import {ASPECT_MARKS, aspectToken} from '../recommend.js';
 import {E, quote, sortBy, cmp, fmtF, strip, slice, field, qsFirst, qsAll, digitsInt, isdigit, strRepr, localNow, ValueError} from './py.js';
 import {loadWorks, similarWorks, titleKey} from './works.js';
 import {recRow, venueOf, venueKey, ico, h2, stageLabels} from './row.js';
@@ -351,16 +352,19 @@ async function saveWorkField(ctx, workKey, col, value) {
     .bind(value, at, ...(rated ? [value, at] : []), ctx.uid, workKey).run();
 }
 
-/** rate_performances.ASPECT_CODES / clean_aspects (same errors as Python) */
+/** rate_performances.ASPECT_CODES / clean_aspects (same errors as Python). 印は recommend.ASPECT_MARKS
+ * （とても良かった ++・良かった +・気になった 印なし・とても気になった --・この作品には無い ~。起案者の指示 2026-10-18） */
 const ASPECT_CODES = ['story', 'direction', 'acting', 'music', 'dance', 'design', 'price', 'venue'];
 function cleanAspectsPy(value) {
   const list = Array.isArray(value) ? value : String(value ?? '').split(',');
   const given = new Set(list.map(g => String(g).trim()).filter(Boolean));
-  const unknown = [...given].filter(g => !ASPECT_CODES.includes(g.replace(/^\+/, ''))).sort();
+  const unknown = [...given].filter(g => !ASPECT_CODES.includes(aspectToken(g)[1])).sort();
   if (unknown.length) throw new ValueError(`詳細の項目が候補にない: ${strRepr(unknown[0])}`);
-  const both = ASPECT_CODES.filter(c => given.has(c) && given.has('+' + c));
-  if (both.length) throw new ValueError(`良かった所と気になった所の両方になっている: ${strRepr(both[0])}`);
-  return [...ASPECT_CODES.filter(c => given.has(c)), ...ASPECT_CODES.filter(c => given.has('+' + c)).map(c => '+' + c)].join(',');
+  const marks = {};
+  for (const g of given) { const [m, c] = aspectToken(g); (marks[c] ||= new Set()).add(m); }
+  const both = ASPECT_CODES.filter(c => marks[c] && marks[c].size > 1);
+  if (both.length) throw new ValueError(`1 つの項目に印が 2 つ付いている: ${strRepr(both[0])}`);
+  return ASPECT_MARKS.flatMap(([m]) => ASPECT_CODES.filter(c => marks[c]?.has(m)).map(c => m + c)).join(',');
 }
 
 /** serve.on_rate (POST /api/rate) */
@@ -376,6 +380,12 @@ async function rateAction(b, ctx) {
     await ctx.db.prepare("UPDATE works SET aspects=?, updated_at=?, rated_at=CASE WHEN COALESCE(aspects,'')=? AND rated_at IS NOT NULL THEN rated_at ELSE ? END WHERE user_id=? AND work_key=?")
       .bind(aspects, at, aspects, at, ctx.uid, workKey).run();
     return {body: {ok: true, work_key: workKey, aspects}};
+  }
+  // 評価を消して未評価に戻す（星の右端の ✕。起案者の指示 2026-10-18「『評価しない』のボタンじゃなくて、星の右端に✕ボタンを
+  // つけることでnullにできるようにして」）。serve.on_rate と同じ。詳細（aspects）は消さずに残す（もう一度付ければ戻る）
+  if (!verdict && b && b.clear === true) {
+    await saveWorkField(ctx, workKey, 'verdict', null);
+    return {body: {ok: true, work_key: workKey, verdict: null, recommendation: {status: 'on_next_read'}}};
   }
   if (!VERDICTS.includes(verdict) && !isScaled(verdict)) throw new ValueError(`verdict が候補にない: ${strRepr(verdict)}`);
   await saveWorkField(ctx, workKey, 'verdict', verdict);

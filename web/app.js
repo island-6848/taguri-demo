@@ -1544,13 +1544,14 @@ const gradeText = v => {
 const isTopGrade = v => v === "◎" || (gradeParts(v) || [0, -1])[0] === (gradeParts(v) || [0, -1])[1];
 // 星を押した所まで塗る（5 段階は 1 つずつ、0.5 きざみは半分ずつ）。戻すための前の状態を返す
 function fillStars(g, b) {
-  const items = [...g.querySelectorAll("button.star, button.star0, .hs, button.nograde")];
+  const items = [...g.querySelectorAll("button.star, button.star0, .hs")];
   const was = items.map(x => x.className);
   const p = gradeParts(b.dataset.v);
-  // 「評価しない」を押したら星を消し、星を押したら「評価しない」の印を外す
-  const ng = g.querySelector("button.nograde");
-  if (ng) ng.classList.toggle("on", b === ng);
-  if (b === ng) g.querySelectorAll("button.star, button.star0, .hs").forEach(x => x.classList.remove("on", "h"));
+  // 星の右端の ✕（評価を消す。screens/grade.js の clearButton）: 押したら星を消して ✕ を隠し、星を押したら ✕ を出す
+  const clr = g.querySelector("button.gclr");
+  const clrWas = clr ? clr.hidden : null;
+  if (clr) clr.hidden = b === clr;
+  if (b === clr) g.querySelectorAll("button.star, button.star0, .hs").forEach(x => x.classList.remove("on", "h"));
   if (p && p[1] === 5) g.querySelectorAll("button.star").forEach((x, i) => x.classList.toggle("on", i < p[0]));
   if (p && p[1] === 11) {
     const v = (p[0] - 1) / 2;
@@ -1558,7 +1559,7 @@ function fillStars(g, b) {
     if (z) z.classList.toggle("on", v === 0);
     g.querySelectorAll(".hs").forEach((x, i) => { x.classList.toggle("on", v >= i + 1); x.classList.toggle("h", v === i + 0.5); });
   }
-  const undo = () => { items.forEach((x, i) => { x.className = was[i]; }); starValue(g); };
+  const undo = () => { items.forEach((x, i) => { x.className = was[i]; }); if (clr) clr.hidden = clrWas; starValue(g); };
   starValue(g);
   return undo;
 }
@@ -1578,12 +1579,29 @@ function starValue(g) {
   if (!out) {
     out = document.createElement("span");
     out.className = "stv";
-    // 星のすぐ右（「評価しない」より前）
+    // 星のすぐ右（✕ より前）
     const last = [...g.querySelectorAll(":scope > button.star, :scope > .hs")].pop();
     last.after(out);
   }
   out.textContent = v === null ? "" : "★" + v;
 }
+// 星の右端の ✕: 評価を消して未評価に戻す（起案者の指示 2026-10-18「『評価しない』のボタンじゃなくて、星の右端に✕ボタンを
+// つけることでnullにできるようにして」）。POST /api/rate {work_key, clear: true}。記録できなかったら星を戻す
+document.addEventListener("click", ev => {
+  if (!live) return;
+  const b = ev.target.closest("button.gclr[data-clear]");
+  if (!b) return;
+  const g = b.closest(".rb[data-work]");
+  if (!g) return;
+  g.querySelectorAll("button[data-v]").forEach(x => x.classList.remove("picked"));
+  const unfill = fillStars(g, b);
+  post("/api/rate", {work_key: g.dataset.work, clear: true}, g, "評価を消しました（未評価に戻りました）").then(d => {
+    if (!d) { unfill(); return; }
+    const rr = g.closest(".rec-row");
+    const asp = rr && rr.querySelector(".asp");
+    if (asp) asp.hidden = true;      // 評価が無い記録には詳細を出さない（付け直せば、前の詳細のまま出る）
+  });
+});
 document.addEventListener("click", ev => {
   if (!live) return;
   const b = ev.target.closest("button");
@@ -2816,23 +2834,31 @@ function divergeVerdicts(root) {
 // 判子を押すと、その横に ◎○△× の小さな札が開く。押すと今までどおり記録し（同じ押し口 data-v）、判子が
 // 押し直され、札は閉じる。札の外を押すか Esc で閉じる
 // ---- 評価の「詳細」（起案者の指示 2026-10-14「詳細の画面を作って」・q-pr13-aspects-screen）。
-// 評価を付けた記録に「詳細」を出し、8 項目それぞれに 良かった／ふつう／気になった を選ぶ。保存の形は
-// works.aspects（気になった項目はコード、良かった項目は先頭に +、カンマ区切り。「ふつう」は書かない）で、
-// POST /api/rate {work_key, aspects}。推薦は付いた印だけを見る（user_recommender.ASPECTS）。
+// 評価を付けた記録に「詳細」を出し、8 項目それぞれを 5 段階（とても気になった／気になった／ふつう／良かった／とても良かった）で
+// 選ぶ。項目ごとの ✕ で「この作品には無い」（歌・ダンスの無い作品など）にでき、外した項目は下の「＋」でもう一度足せる
+// （起案者の指示 2026-10-18「評価の詳細、今3段階で設定してるけど適切？最低限5段階くらいほしい。あと作品によっては歌ダンスが
+// ないこともあるので、なかったときは✕で要素を消せるようにしてほしい」、dec-aspects-five-levels）。
+// 保存の形は works.aspects（カンマ区切り。気になった＝コード、良かった＝+コード、とても気になった＝--コード、とても良かった＝
+// ++コード、この作品には無い＝~コード。「ふつう」は書かない。recommend.ASPECT_MARKS）で、POST /api/rate {work_key, aspects}。
+// 前の 3 段階の「良かった」「気になった」は、同じ言葉の段階としてそのまま読む。推薦は付いた印だけを見て、無い項目は使わない。
 // 出し方は人ごとに選べる: 「あっさり」（既定。詳細は閉じておく）と「詳しく」（開いた状態で出す）。画面だけの設定
 const ASPECTS = [["story", "話・脚本・構成"], ["direction", "演出・見せ方"], ["acting", "演技・出演"], ["music", "歌・音楽"],
   ["dance", "ダンス"], ["design", "美術・衣裳"], ["price", "値段"], ["venue", "会場・座席"]];
+// 印と段階（recommend.ASPECT_MARKS と同じ。並びは保存の順）。"na" = この作品には無い
+const ASPECT_MARK = [["", -1], ["+", 1], ["--", -2], ["++", 2], ["~", "na"]];
+const ASPECT_WORD = {"-2": "とても気になった", "-1": "気になった", "0": "ふつう", "1": "良かった", "2": "とても良かった"};
 const ASPECT_MODE_KEY = "taguri.aspectsMode";       // "plain"（あっさり・既定）か "full"（詳しく）
 function aspectsMode() { try { return localStorage.getItem(ASPECT_MODE_KEY) === "full" ? "full" : "plain"; } catch (e) { return "plain"; } }
+function aspectToken(x) { for (const m of ["++", "--", "+", "~"]) if (x.startsWith(m)) return [m, x.slice(m.length)]; return ["", x]; }
 function aspectsSummary(state) {
-  const good = ASPECTS.filter(([c]) => state[c] === "+").map(x => x[1]), bad = ASPECTS.filter(([c]) => state[c] === "-").map(x => x[1]);
+  const pick = (test) => ASPECTS.filter(([c]) => typeof state[c] === "number" && test(state[c]))
+    .map(([c, l]) => l + (Math.abs(state[c]) === 2 ? "（とても）" : ""));
+  const good = pick(v => v > 0), bad = pick(v => v < 0);
   return [good.length ? "良かった: " + good.join("・") : "", bad.length ? "気になった: " + bad.join("・") : ""].filter(Boolean).join("／") || "まだ選んでいません";
 }
 function aspectsPanel(root) {
-  // 項目ごとのつまみ: 左＝気になった、まん中＝ふつう、右＝良かった（起案者の指示 2026-10-14「よかったはボタンじゃなくて
-  // スライダーで」）。離したときに保存する（動かしている途中では送らない）
-  const STEP = {"-": -1, "": 0, "+": 1}, MARK = {"-1": "-", "0": "", "1": "+"};
-  const WORD = {"-": "気になった", "": "ふつう", "+": "良かった"};
+  // 項目ごとのつまみ: 左端＝とても気になった、まん中＝ふつう、右端＝とても良かった（起案者の指示 2026-10-14「よかったはボタンじゃなくて
+  // スライダーで」、2026-10-18 に 5 段階）。離したときに保存する（動かしている途中では送らない）
   root.querySelectorAll(".rec-row[data-aspects]").forEach(row => {
     if (row.querySelector(".asp")) return;
     const rb = row.querySelector(".rb[data-work]"), st = row.querySelector("[data-stamp]");
@@ -2843,51 +2869,79 @@ function aspectsPanel(root) {
       const t = st.textContent.trim(); return t !== "" && ("◎○△×".includes(t) || /^★\d(\.5)?$/.test(t));
     };
     const state = {};
-    (row.dataset.aspects || "").split(",").filter(Boolean).forEach(x => { state[x.replace(/^\+/, "")] = x.startsWith("+") ? "+" : "-"; });
+    const read = text => {
+      Object.keys(state).forEach(k => delete state[k]);
+      (text || "").split(",").filter(Boolean).forEach(x => {
+        const [m, c] = aspectToken(x), hit = ASPECT_MARK.find(([k]) => k === m);
+        if (hit && !(c in state)) state[c] = hit[1];
+      });
+    };
+    read(row.dataset.aspects);
     const box = document.createElement("details");
     box.className = "asp";
     if (aspectsMode() === "full") box.open = true;
-    const items = ASPECTS.map(([c, label]) => '<div class="aspr"><label class="aspl" for="asp-' + c + "-" + E(rb.dataset.work) + '">' + E(label) + "</label>"
-      + '<input class="aspsl" type="range" min="-1" max="1" step="1" id="asp-' + c + "-" + E(rb.dataset.work) + '" data-a="' + c + '" value="'
-      + STEP[state[c] || ""] + '"><span class="aspv"></span></div>').join("");
+    const id = c => "asp-" + c + "-" + E(rb.dataset.work);
+    const items = ASPECTS.map(([c, label]) => '<div class="aspr" data-a="' + c + '"><label class="aspl" for="' + id(c) + '">' + E(label) + "</label>"
+      + '<input class="aspsl" type="range" min="-2" max="2" step="1" id="' + id(c) + '" data-a="' + c + '" value="0"><span class="aspv"></span>'
+      + '<button type="button" class="aspx" data-na="' + c + '" aria-label="「' + E(label) + '」はこの作品に無い（項目を外す）" title="この作品には無い">✕</button></div>').join("");
     box.innerHTML = '<summary><span class="aspt">詳細</span><span class="asps"></span></summary>'
-      + '<p class="asph">項目ごとに、つまみを 左（気になった）・まん中（ふつう）・右（良かった）に動かします（任意）。'
-      + '選んだ印は次のおすすめで「どの人のおかげ・せいだったか」を分けるのに使います。</p>'
-      + '<div class="aspscale" aria-hidden="true"><span></span><span class="asc"><span>← 気になった</span><span>ふつう</span><span>良かった →</span></span><span></span></div>'
-      + '<div class="aspg">' + items + '</div><p class="said" role="status"></p>';
+      + '<p class="asph">項目ごとに、つまみを 5 段階（左端 とても気になった ～ まん中 ふつう ～ 右端 とても良かった）で動かします（任意）。'
+      + 'その作品に無い項目（歌・ダンスの無い芝居など）は右の ✕ で外せます。'
+      + '選んだ印は次のおすすめで「どの人のおかげ・せいだったか」を分けるのに使います。外した項目は使いません。</p>'
+      + '<div class="aspscale" aria-hidden="true"><span></span><span class="asc"><span>← 気になった</span><span>ふつう</span><span>良かった →</span></span><span></span><span></span></div>'
+      + '<div class="aspg">' + items + '</div>'
+      + '<p class="aspna" hidden><span class="aspnl">この作品に無い項目（押すと戻します）:</span></p>'
+      + '<p class="said" role="status"></p>';
+    const mark = sl => { const v = +sl.value; sl.dataset.m = v > 0 ? "good" : v < 0 ? "bad" : "mid"; sl.dataset.lv = String(v); };
     const paint = () => {
       box.querySelector(".asps").textContent = aspectsSummary(state);
-      box.querySelectorAll(".aspsl").forEach(sl => {
-        const m = state[sl.dataset.a] || "";
-        sl.value = STEP[m];
-        sl.dataset.m = m === "+" ? "good" : m === "-" ? "bad" : "mid";
-        sl.setAttribute("aria-valuetext", WORD[m]);
-        sl.nextElementSibling.textContent = WORD[m];
+      box.querySelectorAll(".aspr").forEach(r => {
+        const c = r.dataset.a, na = state[c] === "na", sl = r.querySelector(".aspsl");
+        r.hidden = na;
+        const v = typeof state[c] === "number" ? state[c] : 0;
+        sl.value = v;
+        mark(sl);
+        sl.setAttribute("aria-valuetext", ASPECT_WORD[v]);
+        r.querySelector(".aspv").textContent = ASPECT_WORD[v];
       });
+      const na = box.querySelector(".aspna");
+      na.querySelectorAll(".aspadd").forEach(x => x.remove());
+      const gone = ASPECTS.filter(([c]) => state[c] === "na");
+      gone.forEach(([c, label]) => na.insertAdjacentHTML("beforeend", '<button type="button" class="aspadd" data-add="' + c + '" aria-label="「' + E(label) + '」を戻す">＋ ' + E(label) + "</button>"));
+      na.hidden = !gone.length;
+    };
+    const save = async (before, focus) => {
+      paint();
+      const aspects = ASPECT_MARK.flatMap(([m, lv]) => ASPECTS.filter(([c]) => state[c] === lv).map(([c]) => m + c));
+      const d = await post("/api/rate", {work_key: rb.dataset.work, aspects}, box, "詳細を保存しました");
+      if (!d) { Object.keys(state).forEach(k => delete state[k]); Object.assign(state, before); paint(); }
+      else row.dataset.aspects = d.aspects ?? aspects.join(",");
+      if (focus) { const f = box.querySelector(focus); if (f && !f.closest("[hidden]")) f.focus(); }
     };
     box.addEventListener("input", ev => {
       const sl = ev.target.closest(".aspsl");
       if (!sl) return;
-      const m = MARK[sl.value];
-      sl.nextElementSibling.textContent = WORD[m];
-      sl.dataset.m = m === "+" ? "good" : m === "-" ? "bad" : "mid";
+      sl.nextElementSibling.textContent = ASPECT_WORD[+sl.value];
+      mark(sl);
     });
-    box.addEventListener("change", async ev => {
+    box.addEventListener("change", ev => {
       const sl = ev.target.closest(".aspsl");
       if (!sl) return;
       const before = {...state};
-      const m = MARK[sl.value];
-      if (m) state[sl.dataset.a] = m; else delete state[sl.dataset.a];
-      paint();
-      const aspects = ASPECTS.filter(([c]) => state[c] === "-").map(([c]) => c)
-        .concat(ASPECTS.filter(([c]) => state[c] === "+").map(([c]) => "+" + c));
-      const d = await post("/api/rate", {work_key: rb.dataset.work, aspects}, box, "詳細を保存しました");
-      if (!d) { Object.keys(state).forEach(k => delete state[k]); Object.assign(state, before); paint(); }
-      else row.dataset.aspects = d.aspects ?? aspects.join(",");
+      const v = +sl.value;
+      if (v) state[sl.dataset.a] = v; else delete state[sl.dataset.a];
+      save(before);
+    });
+    box.addEventListener("click", ev => {
+      const x = ev.target.closest("button.aspx, button.aspadd");
+      if (!x) return;
+      const before = {...state};
+      if (x.dataset.na) { state[x.dataset.na] = "na"; save(before, ".aspadd[data-add='" + x.dataset.na + "']"); }
+      else { delete state[x.dataset.add]; save(before, ".aspr[data-a='" + x.dataset.add + "'] .aspsl"); }
     });
     paint();
     box.hidden = !rated();
-    // 評価を付けた（押し直した）あとに出す
+    // 評価を付けた（押し直した・✕ で消した）あとに出す・隠す
     rb.addEventListener("click", () => setTimeout(() => { box.hidden = !rated(); }, 600));
     (row.querySelector(".page") || row).appendChild(box);
   });
@@ -2900,7 +2954,7 @@ function aspectsSetting(el) {
   const cur = aspectsMode();
   const sec = document.createElement("section");
   sec.className = "aspset pbox";
-  sec.innerHTML = '<h2>評価の詳細の出し方</h2><p class="lead">評価を付けた記録の「詳細」（話・演出・演技などの 良かった／気になった）を、'
+  sec.innerHTML = '<h2>評価の詳細の出し方</h2><p class="lead">評価を付けた記録の「詳細」（話・演出・演技などを 5 段階で 良かった／気になった）を、'
     + 'ふだん閉じておくか、開いて出すかを選べます。表示だけの設定で、おすすめの計算は変わりません。</p>'
     + '<div class="aspmode" role="radiogroup" aria-label="評価の詳細の出し方">'
     + [["plain", "あっさり", "詳細は閉じておく（押すと開く）"], ["full", "詳しく", "詳細を開いた状態で出す"]].map(([v, t, d]) =>
