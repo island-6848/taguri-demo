@@ -11,6 +11,7 @@
 // - Strings compare by code point, as Python does (not UTF-16 units).
 
 import {titleKey} from './stage-search.js';
+import {themeExpansion} from './vocab.js';
 
 export const CONF_K = 3, TOP_N = 3;
 export const GRADE_VALUE = {'◎': 4, '○': 3, '△': 2, '×': 1};
@@ -477,8 +478,10 @@ export async function seedsFromFavourites({postingsFor, peopleFor, stagesMatchin
   // (recommend2.declared_hits' rules on normalised text).
   const pick = (kinds, norm) => [...new Set(favourites.filter(f => kinds.includes(f.kind)).map(f => norm(f.name)).filter(x => x.length >= 2))].sort(cmp).slice(0, MAX_SEED_FAVS);
   const groups = pick(SEED_GROUP_KINDS, nz), works = pick(SEED_WORK_KINDS, titleKey), subjects = pick(SEED_THEME_KINDS, nz);
+  // 題材は語彙表で下位と関連にも広げ、#題材 の言葉と丸ごと一致で当てる（src/vocab.js。「科学」→ SF・近未来…）
+  const wider = [...new Set(subjects.flatMap(t => { const x = themeExpansion(t); return [...x.narrow, ...x.related]; }))].sort(cmp);
   if ((groups.length || works.length || subjects.length) && stagesMatching)
-    for (const sid of await stagesMatching(groups, works, subjects)) sids.add(sid);
+    for (const sid of await stagesMatching(groups, works, subjects, wider)) sids.add(sid);
   const chosen = [...sids].sort(cmp).slice(0, MAX_SEED_STAGES);
   if (!chosen.length) return {seeds: [], skip: new Set(names)};
   const people = await peopleFor(chosen);
@@ -533,7 +536,7 @@ export function d1Access(db, ver, counter = {rows: 0, queries: 0}) {
       }
       return map;
     },
-    async stagesMatching(groups, works, subjects = []) {
+    async stagesMatching(groups, works, subjects = [], exact = []) {
       const out = new Set();
       // Troupes / works: one pass over this version's stages (no index on these).
       const conds = [...groups.map(() => 'instr(gkey,?)>0'), ...works.map(() => 'instr(tkey,?)>0')];
@@ -547,6 +550,13 @@ export function d1Access(db, ver, counter = {rows: 0, queries: 0}) {
         const cond = subjects.map(() => '(instr(person,?)>0 OR (length(person)>=2 AND instr(?,person)>0))').join(' OR ');
         const {results} = await db.prepare(`SELECT DISTINCT stage_id FROM rec_credit WHERE ver=? AND role=? AND (${cond})`)
           .bind(ver, THEME_AXIS, ...subjects.flatMap(t => [t, t])).all();
+        counter.rows += results.length; counter.queries += 1;
+        for (const r of results) out.add(r.stage_id);
+      }
+      for (let i = 0; i < exact.length; i += IDS_PER_QUERY) {
+        const chunk = exact.slice(i, i + IDS_PER_QUERY);
+        const {results} = await db.prepare(`SELECT DISTINCT stage_id FROM rec_credit WHERE ver=? AND role=? AND person IN (${chunk.map(() => '?').join(',')})`)
+          .bind(ver, THEME_AXIS, ...chunk).all();
         counter.rows += results.length; counter.queries += 1;
         for (const r of results) out.add(r.stage_id);
       }
