@@ -79,6 +79,19 @@ class QueueTest(unittest.TestCase):
         self.assertIn("### id: 1\nside: candidate\n題名: 公演1", out)
         self.assertNotIn("### id: 2", out)
 
+    def test_short_pages_are_settled_by_rule_and_not_queued(self):
+        # 本文が MIN_STORY_TEXT 字に満たないページは、Claude に回さず規則で空にする（起案者 2026-10-18）
+        long = dict(cand("1"), text=TEXT * 10)
+        short = dict(cand("2"), text=TEXT)
+        self.assertLess(len(short["text"]), E.MIN_STORY_TEXT)
+        with patch.object(E, "READER", "queue"), patch.object(E, "targets", return_value=[long, short]), \
+                patch.object(sys, "argv", ["x", "--side", "candidate", "--no-fetch"]):
+            self.assertEqual(E.main(), 0)
+        queued = [json.loads(l) for l in E.QUEUE.read_text(encoding="utf-8").split("\n") if l.strip()]
+        self.assertEqual([q["id"] for q in queued], ["1"])
+        row = json.loads(E.OUT.read_text(encoding="utf-8").strip())
+        self.assertEqual((row["id"], row["model"], row["reason"], row["synopsis"]), ("2", "rule", "本文が短い", ""))
+
     def test_rated_side_without_credits_is_skipped(self):
         with patch.object(E, "CREDITS", self.tmp / "missing.jsonl"), \
              patch.object(E.HT, "load", return_value={}):
@@ -98,6 +111,14 @@ class PromptChainTest(unittest.TestCase):
         self.assertIn(self_check, g3)
         self.assertIn(concrete, g3)
         self.assertEqual(E.MAX_ELEMENTS["g3"], E.MAX_ELEMENTS["g2"])
+
+    def test_g4_is_g3_plus_the_festival_exception_and_is_in_use(self):
+        # 起案者の判断（2026-10-18）「フェスの場合に限る。g3 に切り替えてよい」
+        g3, g4 = E.PROMPTS["g3"], E.PROMPTS["g4"]
+        self.assertTrue(g4.startswith(g3.split("空文字を避けようとして")[0]))
+        self.assertIn("フェスティバル", g4)
+        self.assertNotIn("フェスティバル（", g3)
+        self.assertEqual(E.PROMPT_VERSION, "g4")
 
 if __name__ == "__main__":
     unittest.main()
