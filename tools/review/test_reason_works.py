@@ -41,6 +41,19 @@ class ReasonWorksTest(unittest.TestCase):
         self.assertIn("（履歴 2 本）", html)        # 作品名が引けない人は本数で書く
 
 
+    def test_row_without_an_explanation_is_left_out(self):
+        # 起案者の問い 2026-10-18「括弧でおすすめ理由がついてないものがおすすめ理由に出ちゃってる。なぜ？」（fix-reason-no-paren）
+        c = {"stage_id": "1", "why_b": [[0.1, "出演", "山田太郎", 0], [0.08, "出演", "スタッフ欄をご覧ください。", 3],
+                                        [0.05, "演出", "佐藤", 2]],
+             "why_kind": [[0.2, "#形式", "ミュージカル", 0]]}
+        with patch.object(RR, "synopsis_source", return_value=("公演情報", False)):
+            html = RR.reason_rows(c)
+        self.assertNotIn("山田太郎", html)
+        self.assertNotIn("スタッフ欄", html)
+        self.assertNotIn("ミュージカル", html)
+        self.assertIn("演出 <b>佐藤</b><span class=\"n\">（履歴 2 本）", html)
+
+
 class KindReasonTest(unittest.TestCase):
     """種類だけで上がった公演に「理由を出せていません」を出さない（2026-10-14 の指摘）。"""
 
@@ -124,8 +137,23 @@ class TicketDetailsTest(unittest.TestCase):
                          "https://o.jp/show#tickets:~:text=%E3%83%81%E3%82%B1%E3%83%83%E3%83%88")
         self.assertEqual(RR.ticket_url({"url": "https://o.jp/show#ticket"}), "https://o.jp/show#ticket")
         self.assertEqual(RR.ticket_url({"stage_id": "512400"}), "https://stage.corich.jp/stage/512400")
-        self.assertIn('rel="noopener noreferrer"', RR.sale_pill({"url": "https://o.jp"}, "発売済み", "ok"))
-        self.assertEqual(RR.sale_pill({"url": "javascript:x"}, "発売済み", "ok"), '<span class="pill ok">発売済み</span>')
+        self.assertIn('rel="noopener noreferrer"', RR.sale_pill({"url": "https://o.jp"}, "発売済", "ok"))
+        self.assertEqual(RR.sale_pill({"url": "javascript:x"}, "発売済", "ok"), '<span class="pill ok">発売済</span>')
+
+    def test_sale_label_words(self):
+        # 起案者の指示 2026-10-18「『発売済』『発売日不明』『〇/〇 （取得できれば何時からかも）発売』にして」
+        import recommend2 as RC
+        import datetime
+        t = datetime.date(2026, 10, 18)
+        self.assertEqual(RC.onsale({}, t), "発売日不明")
+        self.assertEqual(RC.onsale({"料金": "【発売日】2026/09/01"}, t), "発売済")
+        self.assertEqual(RC.onsale({"料金": "【発売日】2026/10/25"}, t), "10/25 発売")
+        self.assertEqual(RC.onsale({"料金": "【発売日】2026/10/25(土)10:00"}, t), "10/25 10:00 発売")
+        # 前の版の文言で残った値も、新しい文言と色で出す
+        html = RR.ticket({"stage_id": "1", "title": "t", "onsale": "確認できず"})
+        self.assertIn('class="pill warn', html)
+        self.assertIn("発売日不明", html)
+        self.assertNotIn("確認できず", html)
 
     def test_limits_note_goes_to_info(self):
         html = RR.limits_html({"recommend": [{"synopsis": ""}]})

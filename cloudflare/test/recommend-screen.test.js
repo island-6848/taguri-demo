@@ -323,8 +323,11 @@ test('an answer and its copies to the other venues are saved together or not at 
 // 作品名の引けない人は何も添えない（前は「（お気に入り・興味ありの公演から）」と書いていた）
 test('a person raised only by pseudo ratings is not shown as 履歴 0 本, nor as （お気に入り・興味ありの公演から）', async () => {
   const {reasonRows} = await import('../src/screens/recommend.js');
+  // 括弧の説明を書けない行は出さない（起案者の問い 2026-10-18「括弧でおすすめ理由がついてないものがおすすめ理由に出ちゃってる。
+  // なぜ？」で仕様が変わった。前は名前だけの行「脚本 家丁」を出すのが期待だった。fix-reason-no-paren）
   const html = reasonRows({parts: [[0.5, '脚本', '家丁', 0]], kinds: []}, new Map());
-  assert.match(html, /脚本 <b>家丁<\/b><span class="n"><\/span>/);
+  assert.doesNotMatch(html, /家丁/);
+  assert.match(html, /理由を出せていません/);
   assert.doesNotMatch(html, /お気に入り・興味ありの公演から|履歴 0 本/);
 });
 
@@ -352,7 +355,9 @@ test('a co-worker of a favourite is named with the favourite\'s work', async () 
     assert.match(html, /data-stage="101"/);
     // 評価の履歴の無い人は、登録した名前と、その公演の題名で書く（起案者の指示 2026-10-18「理由の文は、登録した名前を書く」。
     // 前は「（『舞台ふたつめ』）」だけで、だれのお気に入りから来たのか分からなかった）
-    assert.match(html, /出演 <b>俳優乙<\/b><span class="n">（お気に入りの作家丁と同じ公演に関わる人：『舞台ふたつめ』）<\/span>/);
+    // 起案者の指示 2026-10-18「『お気に入りの横山拓也と同じ公演に関わる人：『雉はじめて鳴く』』→『横山拓也 演出『雉はじめて鳴く』出演』」で
+    // 理由の形が変わったので、期待を「登録した名前 その作品での役職『作品名』この人のその作品での役職」に直した（fix-fav-reason-roles）
+    assert.match(html, /出演 <b>俳優乙<\/b><span class="n">（作家丁 脚本『舞台ふたつめ』出演）<\/span>/);
     // 種類の理由も、新しい公演（初日 10/01）→ 古い公演（観た日 08/05）の順
     assert.match(html, /<span class="net">形式<\/span>原作 <b>オリジナル<\/b><span class="n">（『舞台ふたつめ』・『終わった舞台』）<\/span>/);
     assert.doesNotMatch(html, /お気に入り・興味ありの公演から/);
