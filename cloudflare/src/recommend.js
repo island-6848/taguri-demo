@@ -11,7 +11,7 @@
 // - Strings compare by code point, as Python does (not UTF-16 units).
 
 import {titleKey} from './stage-search.js';
-import {themeExpansion} from './vocab.js';
+import {themeExpansion, rolledThemeWords} from './vocab.js';
 
 export const CONF_K = 3, TOP_N = 3;
 export const GRADE_VALUE = {'◎': 4, '○': 3, '△': 2, '×': 1};
@@ -417,6 +417,28 @@ export async function scoreFromIndex({postingsFor, stagesFor, rated, multipliers
     if (contrib) {
       if (!byStage.has(sid)) byStage.set(sid, []);
       byStage.get(sid).push([contrib, role, person, n, group]);
+    }
+  }
+  // 細かい題材の好みを語彙表の上位へ積み上げ、上位の下の言葉の公演にも効かせる（src/vocab.js rolledThemeWords）。
+  // 理由には上位の名前を出す（起案者の指示 2026-10-18「それなら SF って出しちゃっていいよ」）。1 公演 1 つの上位につき 1 回
+  if (!ablate.rollup) {
+    const themeValues = new Map();
+    for (const [k, nv] of values) if (k.startsWith(THEME_AXIS + '\u0000')) themeValues.set(k.slice(THEME_AXIS.length + 1), nv);
+    const wider = rolledThemeWords(themeValues);
+    if (wider.size) {
+      const best = new Map();                 // sid + 上位 -> 寄与
+      for (const [, word, sid, roleW, group] of await postingsFor([...wider.keys()].sort(cmp).map(w => [THEME_AXIS, w]))) {
+        const [label, n, value] = wider.get(word);
+        const contrib = round6(value * (roleW * mult(group)));
+        const key = sid + '\u0000' + label;
+        if (contrib && !(Math.abs(best.get(key)?.[0] ?? 0) >= Math.abs(contrib))) best.set(key, [contrib, THEME_AXIS, label, n, group, sid]);
+      }
+      for (const [contrib, role, label, n, group, sid] of [...best.values()].sort((x, y) => cmp(x[5], y[5]) || cmp(x[2], y[2]))) {
+        if (!byStage.has(sid)) byStage.set(sid, []);
+        // 同じ名前の言葉（「SF」）が公演に付いていて自分の値で効いているなら、上位としては足さない
+        if (byStage.get(sid).some(p => p[1] === role && nz(p[2]) === nz(label))) continue;
+        byStage.get(sid).push([contrib, role, label, n, group]);
+      }
     }
   }
   // 1 段だけ広げる: 好きな人（値が正）が出る公演の共演者・作り手
