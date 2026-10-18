@@ -1,0 +1,64 @@
+# 非公開リポジトリ（island-6848/taguri-crawler）の .github/workflows/replay.yml に置く。
+# 推薦の再生（docs/research/real-data-eval-plan.md の §3・H5）を、パソコン無しで動かす
+# （起案者の指示 2026-10-18「パソコン環境じゃなくても動かせるようにして」）。
+# スマートフォンの GitHub アプリかブラウザで Actions → Replay → Run workflow。結果はその実行の Summary に表で出る。
+#
+# 非公開リポジトリで動かすのは、利用者の記録を扱うため（ログは集計だけを出すが、念のため外から見えない場所で）。
+# **無料枠の中だけで動かす**: 最初の段が Actions の分数を数え、毎日の取得の分を取っておいて 20 分が残るときだけ動かす
+# （cloudflare/scripts/free_tier.py の plan --mode replay）。D1 は利用者の記録の表を読むだけ（書かない）。
+name: Replay
+
+on:
+  workflow_dispatch:
+    inputs:
+      owner:
+        description: '持ち主の user_id（任意。入れると、その人を除いて別の行に出す）'
+        required: false
+        default: ''
+      step_days:
+        description: '区切りの長さ（日）'
+        required: false
+        default: '7'
+
+concurrency:
+  group: replay
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: read     # 無料枠の点検で、このリポジトリのジョブの分数を読む
+
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out the public code
+        uses: actions/checkout@v4
+        with:
+          repository: island-6848/taguri-demo
+          ref: master
+      - name: Check out the working data (state branch)
+        uses: actions/checkout@v4
+        with:
+          ref: state
+          path: state
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Restore the working data
+        run: python tools/taguri/crawler_state.py restore --from state
+      - name: Plan within the free tier
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python cloudflare/scripts/free_tier.py plan --data data --mode replay
+      - name: Replay the recommendations
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          OWNER: ${{ github.event.inputs.owner }}
+          STEP_DAYS: ${{ github.event.inputs.step_days || '7' }}
+        run: python cloudflare/scripts/replay_job.py --data data --owner "$OWNER" --step-days "$STEP_DAYS"
