@@ -68,7 +68,7 @@ test('past stages (2019-) show on 探す by title prefix, with 観た and 観れ
     assert.match(html, /2023\/7\/1〜2023\/8\/3・劇場A ほか 1 会場/);
     assert.match(html, /<button type="button" data-past="seen">観た<\/button><button type="button" data-past="missed">観ればよかった<\/button>/);
     // 観た: the date (within the run) and the curtain time, then 観劇記録に追加
-    assert.match(html, /<div class="past-seen" hidden><label>観た日 <input type="date" name="date" value="" min="2023-07-01" max="2023-08-03" required><\/label><label>開演 <input type="time" name="time" step="60"><\/label><button type="button" data-past="seen-save">観劇記録に追加<\/button><\/div>/);
+    assert.match(html, /<div class="past-seen" hidden><label>観た日 <input type="date" name="date" value="" min="2023-07-01" max="2023-08-03" required><\/label><label>劇場 <select name="stage"><option value="700001" data-start="2023-07-01" data-end="2023-07-10" data-venue="劇場A">劇場A（2023\/7\/1〜2023\/7\/10）<\/option><option value="700002" data-start="2023-08-01" data-end="2023-08-03" data-venue="劇場B">劇場B（2023\/8\/1〜2023\/8\/3）<\/option><\/select><\/label><label>開演 <input type="time" name="time" step="60"><\/label><button type="button" data-past="seen-save">観劇記録に追加<\/button><\/div>/);
     assert.doesNotMatch(html, /冬物語/);
     // 観た: into the diary, linked to that stage; it then leaves this list.
     const added = await step(env, a, {post: '/api/add_work', body: {title: '夏の夜の夢', stage_id: '700001', date: '2023-07-08', time: '18:30'}});
@@ -96,5 +96,26 @@ test('past stages are found by a person name through the R2 name index (one shar
     assert.match(html, /data-stage="800001" data-title="ある舞台"/);
     assert.match(html, /ヒットした箇所：出演・作り手・団体/);
     assert.deepEqual([...new Set(gets)], [file]);
+  } finally { sqlite.close(); }
+});
+
+// 起案者の指摘 2026-10-18「複数日程ツアーのあるような公演で、適切な観劇日を入れても観劇した劇場がその日と対応しない」
+test('a tour seen on a date of another venue is linked to the venue playing that day', async () => {
+  const {env, sqlite} = setup();
+  const ins = sqlite.prepare('INSERT INTO past_stage(stage_id,title,tkey,start,end,venue,grp,pref,people) VALUES(?,?,?,?,?,?,?,?,?)');
+  ins.run('710001', '旅の芝居', '旅の芝居', '2023-07-01', '2023-07-10', '劇場A', '劇団甲', '東京都', '[]');
+  ins.run('710002', '旅の芝居', '旅の芝居', '2023-08-01', '2023-08-03', '劇場B', '劇団甲', '大阪府', '[]');
+  ins.run('710003', '旅の芝居', '旅の芝居', '2023-08-02', '2023-08-02', '劇場X', '劇団乙', '大阪府', '[]');   // another troupe, same title
+  const a = await signIn(env);
+  try {
+    // the row carries the first venue's id, but the date is in 劇場B's run → 劇場B
+    const added = await step(env, a, {post: '/api/add_work', body: {title: '旅の芝居', stage_id: '710001', date: '2023-08-02'}});
+    assert.equal(added.status, 200);
+    assert.equal(added.body.stage_id, '710002');
+    assert.deepEqual({...sqlite.prepare("SELECT stage_id, venue FROM works WHERE title='旅の芝居'").get()}, {stage_id: '710002', venue: '劇場B'});
+    // a date inside the given venue's run keeps it, and the venue is filled in
+    const kept = await step(env, a, {post: '/api/add_work', body: {title: '旅の芝居', stage_id: '710001', date: '2023-07-05'}});
+    assert.equal(kept.body.stage_id, '710001');
+    assert.equal(sqlite.prepare("SELECT venue FROM works WHERE work_key=?").get(kept.body.work_key).venue, '劇場A');
   } finally { sqlite.close(); }
 });

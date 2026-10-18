@@ -2494,6 +2494,19 @@
    "verifies": []
   },
   {
+   "id": "fix-past-tour-venue-by-date",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "探す画面の過去の公演（ツアー）で「観た」を記録するとき、観た日にその日上演していた劇場の公演（stage_id）に結び付ける。画面では劇場を選べ、サーバーも日付から選び直す",
+   "sources": [
+    "cloudflare/src/screens/search.js",
+    "cloudflare/src/screens/rate.js",
+    "web/app.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "fix-request-mail",
    "type": "finding",
    "status": "unverified",
@@ -8076,6 +8089,11 @@
    "from": "fix-declined-kind-tags",
    "rel": "depends_on",
    "to": "impl-kind-reason-off"
+  },
+  {
+   "from": "fix-past-tour-venue-by-date",
+   "rel": "affects",
+   "to": "impl-admin-tool"
   },
   {
    "from": "fix-request-mail",

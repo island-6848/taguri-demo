@@ -1415,6 +1415,21 @@ document.addEventListener("change", ev => {
   });
 });
 
+// **探す画面の過去の公演（ツアー）: 観た日を入れたら、その日に上演していた劇場を選び直す**（起案者の指摘 2026-10-18
+// 「適切な観劇日を入れても観劇した劇場がその日と対応しない」）。日が重なる劇場が複数あるときは最初のものを選び、
+// 劇場の欄で選び直せる。どの劇場の期間にも入らない日（ツアーの合間）は、そう書く
+document.addEventListener("change", ev => {
+  const d = ev.target.closest && ev.target.closest(".past-seen input[name=date]");
+  if (!d) return;
+  const form = d.closest(".past-seen"), sel = form.querySelector("select[name=stage]");
+  if (!sel || !d.value) return;
+  const hit = [...sel.options].filter(o => o.dataset.start <= d.value && d.value <= o.dataset.end);
+  const said = form.closest(".pastrow").querySelector(":scope > .said");
+  if (hit.length) sel.value = hit[0].value;
+  if (said) said.textContent = !hit.length ? "その日はどの劇場でも上演していません。観た日を確かめてください"
+    : hit.length > 1 ? "その日は複数の劇場で上演しています。劇場を選んでください" : "";
+});
+
 // **前におすすめを開いた日から今日までに終わった公演があり、未評価が残っていたら知らせる**
 // （起案者の指示 2026-10-14「以前開いたときから今日開くまでに終わった公演があって未評価があるときは、
 // おすすめを開いた際にポップアップで『未評価が◯件あります』などで促すように」）。
@@ -1791,6 +1806,15 @@ document.addEventListener("click", ev => {
       const d = form.querySelector("input[name=date]"), t = form.querySelector("input[name=time]");
       if (!d.value) { if (said) said.textContent = "観た日を入れてください"; d.focus(); return; }
       if (!d.checkValidity()) { if (said) said.textContent = "観た日は上演期間の中から選んでください"; d.focus(); return; }
+      // ツアーは選んだ劇場（観た日から選び直してある）の公演に結び付ける
+      const sel = form.querySelector("select[name=stage]"), opt = sel && sel.selectedOptions[0];
+      if (opt) {
+        if (!(opt.dataset.start <= d.value && d.value <= opt.dataset.end)) {
+          if (said) said.textContent = `${opt.dataset.venue || "選んだ劇場"}はその日に上演していません。劇場か観た日を選び直してください`;
+          sel.focus(); return;
+        }
+        body.stage_id = opt.value; body.venue = opt.dataset.venue || "";
+      }
       post("/api/add_work", {...body, date: d.value, time: t.value || ""}, li, "観劇記録に追加しました")
         .then(r => {
           if (!r) return;
