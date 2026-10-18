@@ -82,7 +82,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import charts as CH                                                  # noqa: E402
 import icons as IC                                                   # noqa: E402
-import llm_gemini as LLM                                             # noqa: E402
 
 E = lambda s: html.escape(str(s))                                   # noqa: E731
 
@@ -286,8 +285,8 @@ def timeline(rated: list[dict], g: dict, idx: dict) -> dict:
             "n": [idx[p] for p in added_nodes if p in idx],
             "e": [[idx[a], idx[b]] for a, b in added_edges if a in idx and b in idx],
             "note": note,
-            # **`facts()` の材料。** 画面（JS）はこの下の 3 つを読まない ──
-            # LLM に渡す構造化した事実だけを、文（`note`）と別に持たせるためである
+            # **`read_facts()` の材料。** 画面（JS）はこの下の 3 つを読まない ──
+            # 読みの規則に渡す構造化した事実だけを、文（`note`）と別に持たせるためである
             "date": r["date"], "title": r.get("title") or "",
             "merged": [len(o) for o in merged] if merged else [],
         })
@@ -309,24 +308,195 @@ def _time_payload(tl: dict) -> str:
     return raw.replace("<", "\\u003c").replace("&", "\\u0026")
 
 
-# ---------------------------------------------------------------- 読み（LLM）
+# ---------------------------------------------------------------- 読み（規則）
 #
-# 起案者の指示（2026-08-27）── 「図から読み取れることを LLM で分析し、実際に
-# 文章で記載してユーザーを支援して」。**やり方は `chronicle.py` と同じにする**
-# （事実は規則で作り、読みだけを LLM に書かせる。渡すのは集計だけで、記録の本文は
-# 渡さない。LLM が挙げた名前が事実に無ければその行を落とす）。
+# 起案者の指示（2026-08-27）── 「図から読み取れることを分析し、実際に文章で記載して
+# ユーザーを支援して」。最初は集計を LLM に渡して 1 段落を書かせていた。
 #
-# **束の数・関節点・段ごとに何が起きたかは、この図では既にすべて文で言い切って
-# ある**（`cut_txt`・`_stage_note`）。LLM に書かせるのは、**それらの事実を
-# 1 つの読み物としてつなぐ段落だけ**である ── 個々の事実の発見や、関係の種類の
-# 推測はさせない（データに無く、書けば作り話になる）。
-MODEL = LLM.MODEL
-PROMPT_VERSION = "p1"
-NET_OUT = Path(__file__).resolve().parents[2] / "data" / "review" / "people_read.json"
+# **持ち主の指示（2026-10-18）で LLM をやめ、規則で書く。** 「利用者は大きく増えうるので、
+# 利用者ごとに LLM を呼ばない。規則で LLM の質にできるだけ近づける」。だから
+#
+# - **事実（`read_facts`）は網から数えるだけ**で作り、**文（`reading`）は決まった文型に
+#   その事実を差し込むだけ**にする。名前は網の点（`g["nodes"]`）からしか取らない ──
+#   LLM の頃の「事実に無い名前を挙げたら落とす」照合が、作りの側で要らなくなる。
+# - **何を言うかは点数で選ぶ**（`READ_SCORE` の式）。構造の 1 文と、いちばんよく出てくる人の
+#   1 文はいつも書き、残りは点数の高い順に `READ_PICK` 文まで。並べる順は種類の順で固定する。
+# - **言い方は LLM の頃の約束のまま。** ですます・短い文・「グループ」「外すと分かれる」と
+#   画面と同じ言葉。関係の種類（同僚・友人など）と人物の評価は書かない（データに無い）。
+# - **同点は名前の順**（Python の str の順＝符号位置の順）。Worker（`people.js` の
+#   `readFacts`・`reading`）も同じ規則で、同じ記録から一字一句同じ文を出す（people.test.js）。
+#
+# 計算は記録を 1 回なめる足し算と、網の点・線の並べ替えだけで、D1 も外部も読まない。
+READ_PICK = 3            # 構造の文といちばんよく出てくる人の文のほかに選ぶ文の数
+RECENT_YEARS = 2         # 「新しくよく出てくる」と言う、最後の年から数えた年数
+RECENT_MIN = 2           # その間に出てきた作品数の下限
+LONG_MIN = 3             # 「長く出てくる」と言う、初めと終わりの年の幅（年数）の下限
+READ_ORDER = ("shape", "top", "bridge", "pair", "merge", "started", "recent", "long", "mix")
+
+
+def _year(d: str) -> int | None:
+    return int(d[:4]) if len(d) >= 4 and all("0" <= c <= "9" for c in d[:4]) else None
+
+
+def read_facts(rated: list[dict], g: dict, comps: list[list[str]], tl: dict) -> dict:
+    """読みの材料。**網（`g`）・束（`comps`）・時間の段（`tl`）と、記録の年だけ**から数える。"""
+    nodes = set(g["nodes"])
+    years: dict[str, collections.Counter] = {}
+    all_years = []
+    for r in rated:
+        y = _year(r.get("date") or "")
+        if y is None:
+            continue
+        ps = {p for role, p in r.get("people") or [] if role in KEEP_ROLES}
+        if not ps:
+            continue
+        all_years.append(y)
+        for p in ps:
+            if p in nodes:
+                years.setdefault(p, collections.Counter())[y] += 1
+    role = lambda p: "作り手" if _is_maker(g, p) else "出演"                # noqa: E731
+    splits = {p: len(components(g, {p})) for p in g["cuts"]}
+    core = sorted(g["core"], key=lambda q: (-g["cnt"][q], q))
+    top = core[0] if core else None
+    bridge = None
+    for p in sorted(g["cuts"], key=lambda q: (-splits[q], -len(g["adj"][q]), q)):
+        if p != top:
+            bridge = {"name": p, "splits": splits[p], "people": len(g["adj"][p])}
+            break
+    pair = None
+    heavy = sorted(g["edges"].items(), key=lambda kv: (-kv[1], kv[0][0], kv[0][1]))
+    if heavy and heavy[0][1] >= 2:
+        (a, b), w = heavy[0]
+        wt = lambda x, y: g["edges"][(x, y) if x < y else (y, x)]       # noqa: E731
+        third = sorted(((min(wt(a, q), wt(b, q)), q) for q in g["adj"][a] & g["adj"][b]),
+                       key=lambda t: (-t[0], -g["cnt"][t[1]], t[1]))
+        c, m = (third[0][1], third[0][0]) if third and third[0][0] >= 2 else ("", 0)
+        pair = {"a": a, "b": b, "w": w, "c": c, "m": m}
+    merge = None
+    for s in tl["stages"]:
+        if s.get("merged") and (merge is None or sum(s["merged"]) > sum(merge["sizes"])):
+            merge = {"date": s["date"], "title": s["title"], "sizes": list(s["merged"])}
+    started = ({"date": tl["stages"][0]["date"], "title": tl["stages"][0]["title"]}
+               if tl["stages"] and tl["stages"][0].get("date") else None)
+    recent = None
+    if all_years and max(all_years) - min(all_years) >= RECENT_YEARS:
+        y1 = max(all_years) - RECENT_YEARS + 1
+        got = []
+        for p, ys in years.items():
+            n = sum(k for y, k in ys.items() if y >= y1)
+            if min(ys) >= y1 and n >= RECENT_MIN:
+                got.append((p, n))
+        got.sort(key=lambda t: (-t[1], -g["cnt"][t[0]], t[0]))
+        if got:
+            recent = {"from": y1, "people": [list(t) for t in got[:3]]}
+    long_ = None
+    spans = [(max(ys) - min(ys) + 1, p) for p, ys in years.items() if p != top]
+    spans = sorted((t for t in spans if t[0] >= LONG_MIN),
+                   key=lambda t: (-t[0], -g["cnt"][t[1]], t[1]))
+    if spans:
+        p = spans[0][1]
+        long_ = {"name": p, "first": min(years[p]), "last": max(years[p])}
+    return {
+        "n_core": len(g["core"]), "bundles": [len(c) for c in comps],
+        "top": ({"name": top, "role": role(top), "works": g["cnt"][top],
+                 "splits": splits.get(top, 0)} if top else None),
+        "bridge": bridge, "pair": pair, "merge": merge, "started": started,
+        "recent": recent, "long": long_,
+        "mix": {"n": len(g["nodes"]), "makers": sum(1 for p in g["nodes"] if _is_maker(g, p))},
+    }
+
+
+def _sizes(xs: list[int], sep: str) -> str:
+    return sep.join(f"{s} 名" for s in xs)
+
+
+def READ_SCORE(kind: str, f: dict) -> int:
+    """**何を言うかを決める点数。** 0 は「言わない」。式はここにしか書かない。"""
+    if kind == "bridge" and f["bridge"]:
+        return 70 + 5 * f["bridge"]["splits"]                 # 2 つに割れる人で 80
+    if kind == "pair" and f["pair"]:
+        return 40 + 10 * min(f["pair"]["w"], 6) + (5 if f["pair"]["c"] else 0)
+    if kind == "merge" and f["merge"]:
+        return 50 + min(sum(f["merge"]["sizes"]), 40) // 2
+    if kind == "started" and f["started"] and not f["merge"]:
+        return 30
+    if kind == "recent" and f["recent"]:
+        return 45 + 5 * len(f["recent"]["people"])
+    if kind == "long" and f["long"]:
+        return 35 + 5 * min(f["long"]["last"] - f["long"]["first"] + 1, 8)
+    if kind == "mix" and f["mix"]["n"]:
+        m, n = f["mix"]["makers"], f["mix"]["n"]
+        return 40 if 3 * m >= n or 10 * m <= n else 20
+    return 0
+
+
+def _sentence(kind: str, f: dict) -> str:
+    if kind == "shape":
+        b = f["bundles"]
+        if len(b) == 1:
+            return f"線を持つ {f['n_core']} 名は、みなひと続きのグループにつながっています。"
+        more = f" ほか {len(b) - 4} つ" if len(b) > 4 else ""
+        return f"グループは {len(b)} つで、大きい順に {_sizes(b[:4], '・')}{more}です。"
+    if kind == "top":
+        t = f["top"]
+        s = f"いちばんよく名前が出てくるのは{t['name']}さん（{t['role']}）で、{t['works']} 作品に出ています。"
+        if t["splits"]:
+            s += f"外すとつながりが {t['splits']} つに分かれる人でもあります。"
+        return s
+    if kind == "bridge":
+        b = f["bridge"]
+        return (f"{b['name']}さんを外すと、つながりが {b['splits']} つに分かれます。"
+                f"{b['name']}さんを通して、別々の顔ぶれがつながっています。")
+    if kind == "pair":
+        p = f["pair"]
+        if p["c"]:
+            return (f"{p['a']}さん・{p['b']}さん・{p['c']}さんは、どの 2 人をとっても "
+                    f"{p['m']} 本以上で一緒に出ています。")
+        return f"{p['a']}さんと{p['b']}さんは {p['w']} 本で一緒に出ていて、いちばんよく一緒になる組み合わせです。"
+    if kind == "merge":
+        m = f["merge"]
+        what = f"「{m['title']}」" if m["title"] else "公演"
+        return (f"{_fmt_date(m['date'])}の{what}で、別々だった {len(m['sizes'])} つのグループ"
+                f"（{_sizes(m['sizes'], '、')}）が 1 つになりました。")
+    if kind == "started":
+        s = f["started"]
+        what = f"「{s['title']}」" if s["title"] else "公演"
+        return f"つながりは {_fmt_date(s['date'])}の{what}から始まりました。"
+    if kind == "recent":
+        r = f["recent"]
+        names = "、".join(f"{p}さん（{n} 本）" for p, n in r["people"])
+        return f"{r['from']} 年からの {RECENT_YEARS} 年で新しくよく名前が出てくるのは、{names}です。"
+    if kind == "long":
+        x = f["long"]
+        return (f"{x['name']}さんは {x['first']} 年から {x['last']} 年まで、"
+                f"{x['last'] - x['first'] + 1} 年にわたって名前が出てきます。")
+    if kind == "mix":
+        m, n = f["mix"]["makers"], f["mix"]["n"]
+        if 3 * m >= n:
+            return (f"2 作品以上で出てくる {n} 名のうち、作り手（演出・脚本ほか）が {m} 名います。"
+                    "出演者だけでなく、作り手の名前もよく重なっています。")
+        if not m:
+            return f"2 作品以上で出てくる {n} 名は、みな出演者です。"
+        if 10 * m <= n:
+            return (f"2 作品以上で出てくる {n} 名のうち、作り手（演出・脚本ほか）は {m} 名で、"
+                    "重なるのはほとんどが出演者です。")
+        return f"2 作品以上で出てくる {n} 名のうち、出演が {n - m} 名、作り手（演出・脚本ほか）が {m} 名です。"
+    return ""
+
+
+def reading(f: dict) -> list[str]:
+    """**この図から分かること**の文。構造の文といちばんよく出てくる人の文に、
+    点数の高い順に `READ_PICK` 文を足し、種類の順（`READ_ORDER`）に並べる。"""
+    if not f["top"]:
+        return []
+    scored = sorted(((READ_SCORE(k, f), i, k) for i, k in enumerate(READ_ORDER[2:], 2)),
+                    key=lambda t: (-t[0], t[1]))
+    pick = {"shape", "top"} | {k for s, _i, k in scored[:READ_PICK] if s > 0}
+    return [_sentence(k, f) for k in READ_ORDER if k in pick]
 
 
 def facts(g: dict, comps: list[list[str]], tl: dict) -> dict:
-    """この網の集計。**LLM に渡すのはこれだけである**（`chronicle.facts` と同じ役目）。"""
+    """この網の集計（CLI の `--facts` で見る）。"""
     bridges = [{"name": p, "role": "作り手" if _is_maker(g, p) else "出演",
                "works": g["cnt"][p], "people": len(g["adj"][p]),
                "splits": len(components(g, {p}))}
@@ -348,137 +518,14 @@ def facts(g: dict, comps: list[list[str]], tl: dict) -> dict:
     }
 
 
-def fingerprint(f: dict) -> str:
-    """網が変わったかどうかの印。**変わっていなければ LLM を呼ばない**（`minimize-llm-calls`）。"""
-    return json.dumps([f["bundles"], f["bridges"], f["merges"], f["n_people"],
-                       PROMPT_VERSION], ensure_ascii=False)
-
-
-PROMPT = """あなたは、ある人の観劇記録から組んだ「一緒に出てくる人のつながり」を読み解く部品である。
-
-入力は JSON で、**集計した事実だけ**が入っている（本文や記録そのものは渡していない）。
-
-n_people=2 作品以上に出てくる人の総数、n_core=そのうち誰かと共演がありつながりに出ている人数、
-n_isolated=2 作品以上出ているが誰とも共演していない人数、n_works=作品数、
-bundles=いまのグループ（共演のつながりで分かれたかたまり）の人数を大きい順に並べたもの、
-bridges=外すとグループが分かれる人（関節点）。name・role（作り手／出演）・works（観た作品数）・
-people（共演した人数）・splits（外したらいくつのグループに分かれるか）、
-top_people=いちばんよく名前が出てくる人（上位 6 名。bridges と重なることがある）、
-merges=別々だったグループが 1 つになった出来事。date・title（公演名）・sizes（合流したグループの
-それぞれの人数）、started=つながりが最初にできたきっかけの公演（date・title）、
-n_stage_changes=観た日のうちつながりが変わった件数、n_unchanged=変わらなかった件数。
-
-次の 1 つだけを JSON で返す。**説明や前置きを書かず、JSON だけを返すこと。**
-
-{"read": {"body": "…", "evidence": ["…", "…"]}}
-
-- body ── **120〜220 字、1 段落。** データの可視化やネットワーク図に詳しくない人が
-  読む前提で、このつながりから何が言えるかを **語って** 聞かせる。含めること ──
-  ① グループがいくつあり、どのくらいの大きさに分かれているか（数字は input の値をそのまま
-  使う）。② bridges・top_people の中から**もっとも重要な 1〜2 名**を選び、
-  その人がどういう位置にいるか（例:「○○さんを通してこの2つの輪がつながっています」）。
-  ③ merges・started に手がかりがあれば、**いつ・どの公演をきっかけに輪が広がった／
-  つながったか**に 1 文だけ触れる（無理に全部の出来事を挙げない。いちばん大きな
-  合流か、最初のきっかけのどちらかを選ぶ）。
-- evidence ── body の根拠にした、**input に実在する**人名・公演名を 2〜5 個。
-
-守ること。
-
-- **入力に無い名前・公演名を書かない。** 「おそらく」「〜かもしれません」で補わない。
-- **関係の種類を書かない**（同僚・友人・上司など）。入力に無いので作り話になる。
-  分かるのは「同じグループにいる／グループをつないでいる」という構造だけである。
-- **人物の評価・優劣を書かない**（「この人が重要」であって「この人が良い」ではない）。
-- 用語は画面と同じ言葉を使う ──「グループ」「外すと分かれる人」。「クラスタ」「ノード」
-  「エッジ」のような分析の言葉は使わない。
-- **「ですます」で書く。** 読み手は記録の本人である。
-
-入力:
-"""
-
-
-READ_SCHEMA = {
-    "type": "OBJECT",
-    "properties": {
-        "read": {
-            "type": "OBJECT",
-            "properties": {
-                "body": {"type": "STRING"},
-                "evidence": {"type": "ARRAY", "items": {"type": "STRING"}},
-            },
-            "required": ["body", "evidence"],
-        },
-    },
-    "required": ["read"],
-}
-
-
-def ask(f: dict, model: str = MODEL, timeout: int = 300) -> dict:
-    """LLM に読みを書かせる。**返らなかったときは空を返す**（事実の図はそのまま出る）。"""
-    body = json.dumps(f, ensure_ascii=False)
-    try:
-        got, _meta = LLM.ask(PROMPT + body, schema=READ_SCHEMA, model=model, timeout=timeout)
-    except (LLM.LLMError, LLM.SafetyBlocked):
-        return {}
-    return got if isinstance(got, dict) else {}
-
-
-def _have_names(f: dict) -> set:
-    """事実に実在する固有名の一覧。**照合はこれとしか行わない。**"""
-    out = {b["name"] for b in f["bridges"]} | {p["name"] for p in f["top_people"]}
-    out |= {m["title"] for m in f["merges"] if m["title"]}
-    if f["started"] and f["started"]["title"]:
-        out.add(f["started"]["title"])
-    return out
-
-
-def _check(got: dict, f: dict) -> tuple[str, bool]:
-    """**事実に無い固有名を挙げていたら、丸ごと落とす。**"""
-    read = got.get("read") or {}
-    body = read.get("body") if isinstance(read, dict) else None
-    ev = ([x for x in (read.get("evidence") or []) if isinstance(x, str)]
-         if isinstance(read, dict) else [])
-    if not isinstance(body, str) or not body.strip():
-        return "", bool(read)
-    have = _have_names(f)
-    if [x for x in ev if x not in have]:
-        return "", True
-    return body.strip()[:400], False
-
-
-def write(model: str = MODEL, force: bool = False) -> dict:
-    """読みを作って保存する。**網が変わっていなければ何もしない。**"""
-    sys.path.insert(0, str(Path(__file__).resolve().parent))
-    import app                                                        # noqa: PLC0415
-    import auth as AU                                                 # noqa: PLC0415
-    rated = app._records_base(AU.LOCAL_USER_ID)["rated_rows"]   # 持ち主の記録だけ（E3）
-    g = build(rated)
-    if len(g["core"]) < 3:
-        return {"ok": False, "line": "この図には、まだ文章にできるだけのつながりがありません"}
-    idx = {p: i for i, p in enumerate(g["core"])}
-    f = facts(g, components(g), timeline(rated, g, idx))
-    fp = fingerprint(f)
-    old = load()
-    if not force and old.get("fingerprint") == fp and old.get("body"):
-        return {"ok": True, "skipped": True, "line": "つながりは変わっていません"}
-    body, dropped = _check(ask(f, model), f)
-    if not body:
-        return {"ok": False, "line": "読みを作れませんでした（LLM から返りませんでした）"}
-    NET_OUT.parent.mkdir(parents=True, exist_ok=True)
-    NET_OUT.write_text(json.dumps(
-        {"body": body, "fingerprint": fp, "dropped": dropped, "model": model,
-         "prompt_version": PROMPT_VERSION, "at": dt.date.today().isoformat()},
-        ensure_ascii=False, indent=1), encoding="utf-8")
-    return {"ok": True, "line": "この図から分かる文章を作りました"}
-
-
-def load() -> dict:
-    if not NET_OUT.exists():
-        return {}
-    try:
-        return json.loads(NET_OUT.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
-        return {}
-
+def read_block(rated: list[dict], g: dict, comps: list[list[str]], tl: dict) -> str:
+    lines = reading(read_facts(rated, g, comps, tl))
+    if not lines:
+        return ""
+    return ('<div class="pread"><h3>この図から分かること</h3>'
+            f'<p>{E("".join(lines))}</p>'
+            '<p class="pnote">この文章は、上のグループの形と数字だけから、決まった手順で'
+            '作っています。記録が変わると、開くたびに書き直されます。</p></div>')
 
 # ---------------------------------------------------------------- 配置
 def layout(g: dict, *, iters: int = 460) -> dict[str, tuple[float, float]]:
@@ -648,9 +695,10 @@ def _is_maker(g: dict, p: str) -> bool:
 def panel(rated: list[dict], *, owner: bool = True) -> str:
     """1 枚のパネル。**答えを文で先に書き、図はそれを確かめるために置く。**
 
-    **`owner=False`（公開デモの訪問者）には LLM の読みを出さず、作り直す口も置かない**
-    （E3。`chronicle.panel` と同じ理由 ── `people_read.json` は持ち主の網から作った
-    1 ファイルしか無い）。
+    **「この図から分かること」は、持ち主にも訪問者にも同じ規則で出す**（`read_block`）。
+    LLM の頃は持ち主の網から作った `people_read.json` 1 ファイルしか無かったので訪問者には
+    出さなかった（E3）が、いまは見ている人自身の記録からその場で数えるので、その心配が無い。
+    `owner` は呼び出し側との互換のために残してある（中身は変わらない）。
 
     ## 動かす理由 ── 答えを確かめる操作が要るから（2026-08-24・起案者の指示）
 
@@ -775,28 +823,7 @@ def panel(rated: list[dict], *, owner: bool = True) -> str:
 
     data = _payload(g, pos, rad, idx)
     tl = timeline(rated, g, idx)
-    net_facts = facts(g, comps, tl)
-    read = load() if owner else {}
-    if not owner:
-        read_block = ""
-    elif read.get("body"):
-        stale = read.get("fingerprint") != fingerprint(net_facts)
-        read_block = (
-            '<div class="pread"><h3>この図から分かること</h3>'
-            f'<p>{E(read["body"])}</p>'
-            f'<p class="pnote">この文章は、上のグループの形と数字だけを材料に、'
-            f'{E(read.get("at") or "")} に作りました。'
-            + ("<b>そのあとでつながりが変わっていますので、作り直せます。</b>" if stale
-               else "つながりが変わったら作り直せます。") + "</p>"
-            '<button data-pread="1">この図から分かる文章を作り直す</button>'
-            '<span class="said"></span></div>')
-    else:
-        read_block = (
-            '<div class="pread"><p class="pnote"><b>この図から分かる文章はまだ'
-            '作っていません。</b>押すと、上のグループの形と数字だけを材料に、'
-            'この図で言えることを 1 段落にまとめます（1 分ほどかかります）。</p>'
-            '<button data-pread="1">この図から分かる文章を作る</button>'
-            '<span class="said"></span></div>')
+    read_html = read_block(rated, g, comps, tl)
     tdata = _time_payload(tl)
     n_stages = len(tl["stages"]) - 1          # 「いま」を除いた、実際に網が変わった段の数
     u = tl["unchanged"]
@@ -838,7 +865,7 @@ def panel(rated: list[dict], *, owner: bool = True) -> str:
 いまは線を持つ {len(ns)} 名が
 <b>{"ひと続きのグループです" if len(comps) == 1 else f"{len(comps)} 個のグループに分かれています"}</b>。
 {cut_txt}</p>
-{read_block}
+{read_html}
 {time_block}
 <div class="pcut">{cut_btns}
 <button data-cut="reset" class="rst" hidden>全員を戻す</button></div>
@@ -952,7 +979,7 @@ CSS = """
 .pnstage{margin:0 0 6px;font-size:13px;color:var(--ink2);max-width:74em}
 .pnstage b{color:var(--ink)}
 .pnstage a{color:var(--ink);text-decoration:underline;text-decoration-color:var(--ring)}
-/* ---- この図から分かること（LLM の読み。`chronicle.py` の `.chprofile` と同じ形） -------- */
+/* ---- この図から分かること（規則の読み。`chronicle.py` の `.chprofile` と同じ形） -------- */
 .pread{background:var(--surf);border:1px solid var(--grid);border-left:3px solid var(--curtain);
  border-radius:0 8px 8px 0;padding:14px 16px;margin:2px 0 14px}
 .pread h3{font-size:12.5px;margin:0 0 6px;color:var(--curtain);font-weight:600}
@@ -1618,18 +1645,6 @@ JS = r"""
     }
   }
 })();
-
-// **この図から分かる文章を作る／作り直す。**（`chronicle.py` の「年表の文を作る」と同じ形）
-document.addEventListener("click", ev => {
-  const b = ev.target.closest && ev.target.closest("[data-pread]");
-  if (!b) return;
-  const box = b.closest(".pread");
-  box.querySelector(".said").textContent = "書いています…（1 分ほどかかります）";
-  post("/api/people_read", {}, box, null).then(r => {
-    box.querySelector(".said").textContent =
-      r ? (r.line || "作りました") + "　画面を読み込み直すと出ます" : "";
-  });
-});
 """
 
 
@@ -1637,22 +1652,20 @@ def main() -> int:
     import argparse                                                   # noqa: PLC0415
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--write", action="store_true", help="この図から分かる文章を作って保存する")
-    ap.add_argument("--force", action="store_true", help="つながりが変わっていなくても作り直す")
-    ap.add_argument("--model", default=MODEL)
+    ap.add_argument("--facts", action="store_true", help="読みの材料（集計）を JSON で出す")
     a = ap.parse_args()
-    if a.write:
-        r = write(a.model, a.force)
-        print(r.get("line", ""))
-        return 0 if r.get("ok") else 1
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     import app                                                         # noqa: PLC0415
     import auth as AU                                                  # noqa: PLC0415
     rated = app._records_base(AU.LOCAL_USER_ID)["rated_rows"]
     g = build(rated)
     idx = {p: i for i, p in enumerate(g["core"])}
-    print(json.dumps(facts(g, components(g), timeline(rated, g, idx)),
-                     ensure_ascii=False, indent=1))
+    comps, tl = components(g), timeline(rated, g, idx)
+    if a.facts:
+        print(json.dumps({"facts": facts(g, comps, tl), "read": read_facts(rated, g, comps, tl)},
+                         ensure_ascii=False, indent=1))
+    else:
+        print("".join(reading(read_facts(rated, g, comps, tl))))
     return 0
 
 

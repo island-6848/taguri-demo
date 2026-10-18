@@ -309,3 +309,29 @@ test('a genre turned off with ✕ takes its stages out of the recommendations', 
     assert.match((await step(env, a, {get: '/api/screen/recommend'})).body.body_html, /data-stage="101"/);
   } finally { sqlite.close(); }
 });
+
+// #138: 裏の答え合わせ（chooseVariant）は評価だけで決まるので、評価が変わらないまま控えが捨てられたとき
+// （お気に入り・興味ありを足した）は前の結果を使い直す。使い直しても、計算し直しても、同じ一覧になる
+test('the hidden check is reused while the ratings are unchanged, with the same ranking as a fresh run', async () => {
+  const {env, sqlite} = await withIndex();
+  const a = await signIn(env);
+  try {
+    const uid = sqlite.prepare('SELECT id FROM users ORDER BY created_at DESC LIMIT 1').get().id;
+    const sids = sqlite.prepare("SELECT stage_id FROM rec_people WHERE ver=(SELECT v FROM rec_meta WHERE k='current') ORDER BY stage_id").all().map(r => r.stage_id);
+    const ins = sqlite.prepare('INSERT INTO works(user_id,work_key,title,first_date,last_date,times,verdict,stage_id,updated_at,rated_at) VALUES(?,?,?,?,?,1,?,?,?,?)');
+    for (let i = 0; i < 36; i++) ins.run(uid, `g${i}`, `作品${i}`, '2025-01-01', '2025-01-01', `${1 + (i * 7) % 5}/5`, sids[i % sids.length], `2025-01-01 00:00:${String(i).padStart(2, '0')}`, `2025-01-01 00:00:${String(i).padStart(2, '0')}`);
+    const html = async () => (await step(env, a, {get: '/api/screen/recommend'})).body.body_html;
+    await html();
+    const first = JSON.parse(sqlite.prepare('SELECT body FROM rec_cache WHERE user_id=?').get(uid).body).gate;
+    assert.ok(first && first.key && first.choice && first.choice.multipliers);
+    sqlite.prepare("INSERT INTO favourites(user_id,name,kind) VALUES(?,?,?)").run(uid, '架空の人', '人');   // 控えは捨てられるが評価は同じ
+    const reused = await html();
+    assert.equal(JSON.parse(sqlite.prepare('SELECT body FROM rec_cache WHERE user_id=?').get(uid).body).gate.key, first.key);
+    sqlite.prepare('DELETE FROM rec_cache WHERE user_id=?').run(uid);
+    assert.equal(await html(), reused);
+    // 評価が変われば計算し直す（鍵が変わる）
+    sqlite.prepare("UPDATE works SET verdict='5/5', updated_at='2025-02-01 00:00:00' WHERE user_id=? AND work_key='g0'").run(uid);
+    await html();
+    assert.notEqual(JSON.parse(sqlite.prepare('SELECT body FROM rec_cache WHERE user_id=?').get(uid).body).gate.key, first.key);
+  } finally { sqlite.close(); }
+});

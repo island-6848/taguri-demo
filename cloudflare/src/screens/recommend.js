@@ -76,9 +76,11 @@ ${THANKS_ART}
 `;
 // Groups kept per user between requests: enough to fill 15 cards in any one prefecture.
 const KEEP = 400;
+// 評価がこれより少ないと答え合わせは 1 ms もかからないので、前の控え（数十 KB）を読み解くほうが重い
+const GATE_REUSE_MIN = 30;
 // 再生（H5）で 1 つずつ外す部品: 興味ありの配り分け・1 段広げる・並べ直し（spreadLeads）・裏の答え合わせ（chooseVariant）
 export const REPLAY_ABLATIONS = ['split', 'expand', 'spread', 'gate'];
-const VERSION = 'screen-v29';   // v29: the cache keeps only the reasons the screens show (CPU, #138); v28: the hidden check leaves out the dropped kinds as the ranking does (#115); v27: a rating of a record dated after today is not learnt from (#116); v26: ratings ordered by when they were rated (works.rated_at), not by the last edit (#112); v25: a name in the 興味あり note counts only when not denied or compared against (#111); v24: a 興味あり copied to the tour's other venues counts once (#110); v23: 興味なし weakens after the split, not before (#109); v22: favourite seeds weigh FAV_SEED_W (お気に入り＞興味あり); v21: credits read only where needed (CPU); v20: a production answered under another stage id stays out; v19: same title + (group / venue / a shared person) is one card; v18: one card per title+group (sameProduction); v17: no 出典 on the reasons; v16: #会場 dropped, 行けない (interest=2) as a liked seed; v15: 出さない語 also hits the kind tags; v14: #ジャンル (a genre turned off hides its stages); v13: no 原作「原作もの」 (DROPPED_KEYS); v12: no #値段 (DROPPED_AXES); v11: reasons of answered stages (answered_why); v2: the user's 効かせ方 (rank_weight) and the per-group counts; v3: 興味あり as seeds; v4: diag; v5: 興味あり split (impl-interest-split); v6: by part importance; v7: tiers + トメ; v8: two tiers only; v9: トメ joins the main roles; v10: spread leads + one-step partners
+const VERSION = 'screen-v30';   // v30: the hidden check's choice is reused while the ratings are unchanged (CPU, #138); v29: the cache keeps only the reasons the screens show (CPU, #138); v28: the hidden check leaves out the dropped kinds as the ranking does (#115); v27: a rating of a record dated after today is not learnt from (#116); v26: ratings ordered by when they were rated (works.rated_at), not by the last edit (#112); v25: a name in the 興味あり note counts only when not denied or compared against (#111); v24: a 興味あり copied to the tour's other venues counts once (#110); v23: 興味なし weakens after the split, not before (#109); v22: favourite seeds weigh FAV_SEED_W (お気に入り＞興味あり); v21: credits read only where needed (CPU); v20: a production answered under another stage id stays out; v19: same title + (group / venue / a shared person) is one card; v18: one card per title+group (sameProduction); v17: no 出典 on the reasons; v16: #会場 dropped, 行けない (interest=2) as a liked seed; v15: 出さない語 also hits the kind tags; v14: #ジャンル (a genre turned off hides its stages); v13: no 原作「原作もの」 (DROPPED_KEYS); v12: no #値段 (DROPPED_AXES); v11: reasons of answered stages (answered_why); v2: the user's 効かせ方 (rank_weight) and the per-group counts; v3: 興味あり as seeds; v4: diag; v5: 興味あり split (impl-interest-split); v6: by part importance; v7: tiers + トメ; v8: two tiers only; v9: トメ joins the main roles; v10: spread leads + one-step partners
 export {PREFS} from './prefs.js';
 const KIND_LABEL = {'#形式': '形式', '#原作': '原作', '#翻訳': '', '#原作の国': '原作の国', '#会場': '劇場', '#題材': '題材', '#ジャンル': 'ジャンル'};
 const WORKS_SHOWN = 3;
@@ -235,16 +237,24 @@ export async function rankedGroups(ctx) {
     [...words].sort().join('\n')].join('|');
   const access = d1Access(db, ver);
   // 部品を外した計算（ctx.ablate）は控えと印が同じなので、控えを読まず、書かない
-  const cached = ctx.ablate ? null : await db.prepare('SELECT body FROM rec_cache WHERE user_id=? AND stamp=?').bind(ctx.uid, stamp).first();
-  if (cached) {
-    const body = JSON.parse(cached.body);
+  // 控えは印に関係なく 1 行読む（印が違っても、裏の答え合わせの結果だけは使えることがある。下の gateKey）
+  const prev = ctx.ablate ? null : await db.prepare('SELECT stamp,body FROM rec_cache WHERE user_id=?').bind(ctx.uid).first();
+  if (prev && prev.stamp === stamp) {
+    const body = JSON.parse(prev.body);
     return {...body, titles: new Map(body.titles), cached: true};
   }
   // 「使わない」にした種類の理由（q-kind-reason-off）は、評価・興味あり・お気に入りのどこからも値を持たせない
   const rated = withoutKinds(await ratedWorks(ctx, access), off);
   // 部品を外した計算（手元の再生 replay_eval.py の H5 だけが ctx.ablate を渡す。本番は渡さないので動きは変わらない）
   const ablate = ctx.ablate || {};
-  const gate = ablate.gate ? {multipliers: VARIANTS.base, aspects: true} : chooseVariant(rated);
+  // 裏の答え合わせ（chooseVariant）は評価だけで決まる（評価の数・最後の更新・今日・使わない種類）。興味ありを押しただけで
+  // 控えが捨てられたときは、前の控えに残した結果をそのまま使う。評価が多いと計算の 2〜4 割をここで使っていた（#138）
+  const gateKey = [VERSION, ctx.today, st.wn, st.wm, [...off].sort().join(',')].join('|');
+  let gate = null;
+  if (!ablate.gate && prev && rated.length >= GATE_REUSE_MIN) {
+    try { const g = JSON.parse(prev.body).gate; if (g && g.key === gateKey) gate = g.choice; } catch { /* recompute */ }
+  }
+  if (!gate) gate = ablate.gate ? {multipliers: VARIANTS.base, aspects: true} : chooseVariant(rated);
   // 効かせ方（本人が決めた段）は、裏の答え合わせが選んだ倍率に掛け合わせる。
   // 「効かせない」（0）にした項目は、順位からも理由からも消える（scoreFromIndex は 0 の寄与を捨てる）
   const weights = await readWeights(ctx), own = multipliersOf(weights);
@@ -325,7 +335,7 @@ export async function rankedGroups(ctx) {
   // 理由に出す人・種類（各束の上位 4 人・2 種類）の鍵を先に集める。前は titles の全件 × 残した束（最大 400）を
   // 比べていて、本番の大きさの索引でこれだけで数十 ms かかっていた（#138、Workers Free の CPU は 10 ms）
   const shownKeys = new Set(kept.flatMap(g => [...g.parts.slice(0, 4), ...g.kinds.slice(0, 2)].map(p => p[1] + '\t' + p[2])));
-  const body = {ready: true, ver, n_rated: rated.length, n_scored: groups.length, groups: kept, weights, w_counts: wCounts, diag, answered_why: answeredWhy,
+  const body = {ready: true, gate: ablate.gate ? null : {key: gateKey, choice: gate}, ver, n_rated: rated.length, n_scored: groups.length, groups: kept, weights, w_counts: wCounts, diag, answered_why: answeredWhy,
     titles: [...titles].filter(([k]) => shownKeys.has(k))};
   if (!ctx.ablate) await db.prepare('INSERT INTO rec_cache(user_id,stamp,body,created_at) VALUES(?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET stamp=excluded.stamp,body=excluded.body,created_at=excluded.created_at')
     .bind(ctx.uid, stamp, JSON.stringify(body), Math.floor(ctx.now / 1000)).run();
