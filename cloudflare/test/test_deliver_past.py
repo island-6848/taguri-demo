@@ -52,6 +52,38 @@ class DeliverPastTest(unittest.TestCase):
             self.assertIn('stage_off', cols)
 
 
+    def test_kind_tags_and_resend_of_rows_sent_before(self):
+        # 前の形（rev 1、名前だけ）で 2 行とも送ってあった。新しい形では種類の言葉も入り、送り直しは people だけの UPDATE
+        rows = ROWS + [{"stage_id": "40", "title": "ミュージカル 春の歌", "start": "2023-04-01", "end": "2023-04-02",
+                        "fields": {"出演": "田中一", "原作": "山本二『春の歌』（小説）"}}]
+        with tempfile.TemporaryDirectory() as t:
+            d = Path(t)
+            (d / 'past').mkdir()
+            (d / 'd1').mkdir()
+            (d / 'past' / 'stages.jsonl').write_text('\n'.join(json.dumps(r, ensure_ascii=False) for r in rows) + '\n', encoding='utf-8')
+            (d / 'd1' / 'past_delivered.json').write_text('{"lines": 3}', encoding='utf-8')
+            con = sqlite3.connect(d / 'd1.db')
+            con.executescript('CREATE TABLE works(user_id TEXT, work_key TEXT, title TEXT, first_date TEXT, stage_id TEXT);')
+            con.executescript(MIGRATION.read_text(encoding='utf-8'))
+            for r in rows:
+                con.execute("INSERT INTO past_stage(stage_id,title,tkey,people) VALUES(?,?,?,'[]')", (r["stage_id"], r["title"], r["title"]))
+            first = run('build', '--data', t, '--out', str(d / 'out'), '--budget', '4')     # 2 行分の UPDATE（1 行 2 と見る）
+            self.assertEqual((first['updated'], first['rows'], first['to_refresh']), (2, 0, 1))
+            con.executescript((d / 'out' / 'past-upload.sql').read_text(encoding='utf-8'))
+            run('commit', '--data', t, '--out', str(d / 'out'))
+            second = run('build', '--data', t, '--out', str(d / 'out'))
+            self.assertEqual((second['updated'], second['rows'], second['to_refresh']), (1, 0, 0))
+            con.executescript((d / 'out' / 'past-upload.sql').read_text(encoding='utf-8'))
+            run('commit', '--data', t, '--out', str(d / 'out'))
+            self.assertEqual(run('build', '--data', t, '--out', str(d / 'out'))['updated'], 0)
+            people = {sid: json.loads(p) for sid, p in con.execute('SELECT stage_id, people FROM past_stage')}
+            self.assertIn(['出演', '山田太郎'], people['30'])
+            self.assertIn(['#形式', 'ミュージカル'], people['40'])
+            self.assertIn(['#原作', '小説原作'], people['40'])
+            # 題名・tkey は送り直しで変えない
+            self.assertEqual(con.execute("SELECT title FROM past_stage WHERE stage_id='40'").fetchone()[0], 'ミュージカル 春の歌')
+
+
 class StatementSizeTest(unittest.TestCase):
     def test_statements_fit_d1_in_bytes(self):
         # 2026-10-14: 文字数で数えていたので、日本語の多い 7,016 行が SQLITE_TOOBIG で断られた
