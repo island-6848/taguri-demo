@@ -54,7 +54,7 @@
 ## はじめて設定するとき（EC2）
 
 1. **S3 への書き込み権限。** `stage-catalog/` の下に `GetObject`・`PutObject`・`DeleteObject`・`ListBucket`（prefix 限定）を許すロールを EC2 に付ける。公開サーバーが使う読み取り専用の `taguri-catalog-reader` とは分ける。
-2. **設定ファイル。** `tools/taguri/deploy/catalog.env.example` を `/etc/taguri/catalog.env` にコピーし、`GEMINI_API_KEY` と `OWNER_USER_ID` を入れる（`chmod 600`）。
+2. **設定ファイル。** `tools/taguri/deploy/catalog.env.example` を `/etc/taguri/catalog.env` にコピーし、`OWNER_USER_ID` を入れる（`chmod 600`）。
 3. **まず手で試す。**
    ```bash
    python3 tools/taguri/publish_catalog.py --no-update --dry-run --out /tmp/catalog.tar.gz
