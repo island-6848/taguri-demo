@@ -572,6 +572,7 @@ function renderScreen(el, activePath, d, exposureSource) {
   fixupConquest(el);
   fixupWeightHash(el);
   bindNotes(el);
+  if (live) sugWatch();
   el.querySelectorAll('img[src^="/img/"]').forEach(img => {
     img.src = API_BASE + img.getAttribute("src");
   });
@@ -2469,9 +2470,13 @@ function lkRender(box, rows) {
 
 // **手で足す欄の候補。** すでにある情報を、打っている最中に出す
 let sugTimer = null;
+// **画面を差し込むたびに呼ぶ**（renderScreen）。画面の中身は読み込んだあとに fetch で入るので、
+// 読み込みのときに 1 度だけ呼んでいた頃は欄がまだ無く、打っても候補が出なかった（#134 の通し検証）。
+// 2 度結ばないように印を付ける
 function sugWatch() {
   const t = document.getElementById("w-title"), box = document.getElementById("sug");
-  if (!t || !box) return;
+  if (!t || !box || t.dataset.sugBound) return;
+  t.dataset.sugBound = "1";
   t.addEventListener("input", () => {
     document.getElementById("w-stage").value = "";   // 打ち直したら結び付きを外す
     clearTimeout(sugTimer);
