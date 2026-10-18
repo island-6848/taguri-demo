@@ -393,8 +393,19 @@ async function addWorkAction(b, ctx) {
   if (!title) throw new ValueError('題名が要る');
   if (date && !/^\p{Nd}{4}-\p{Nd}{2}-\p{Nd}{2}$/u.test(date)) throw new ValueError('日付は YYYY-MM-DD で入れる');
   if (time && !/^\p{Nd}{2}:\p{Nd}{2}$/u.test(time)) throw new ValueError('開演時刻は HH:MM で入れる');
-  const stageId = slice(strip(field(b, 'stage_id')), 0, 16);
+  let stageId = slice(strip(field(b, 'stage_id')), 0, 16);
   if (stageId && !/^\p{Nd}{1,12}$/u.test(stageId)) throw new ValueError('公演の id が数字ではない');
+  // 過去の公演のツアーは劇場ごとに stage_id が違う。観た日がその劇場の期間に入らなければ、同じ題名・団体で
+  // その日に上演していた劇場（1 つに決まるときだけ）に結び付け直す（起案者の指摘 2026-10-18）
+  let venue2 = venue;
+  if (stageId && date) {
+    const st = await ctx.db.prepare('SELECT tkey, grp, start, end, venue FROM past_stage WHERE stage_id=?').bind(stageId).first();
+    if (st && !(st.start <= date && date <= st.end)) {
+      const {results} = await ctx.db.prepare('SELECT stage_id, venue FROM past_stage WHERE tkey=? AND grp IS ? AND start<=? AND end>=? LIMIT 2')
+        .bind(st.tkey, st.grp, date, date).all();
+      if (results.length === 1) { stageId = String(results[0].stage_id); if (!venue) venue2 = results[0].venue || ''; }
+    } else if (st && !venue) venue2 = st.venue || '';
+  }
   const key = `${titleKey(title)}#${date || 'undated'}`;
   if (await ctx.db.prepare('SELECT 1 FROM works WHERE user_id=? AND work_key=?').bind(ctx.uid, key).first()) {
     throw new ValueError('その作品はもう登録してある');
@@ -402,7 +413,7 @@ async function addWorkAction(b, ctx) {
   await ctx.db.prepare('INSERT INTO works (user_id, work_key, title, first_date, last_date, times, verdict,'
     + ' chosen, note_impression, note_motive, stage_id, venue, time, updated_at)'
     + " VALUES (?,?,?,?,?,1,NULL,NULL,'','',?,?,?,?)")
-    .bind(ctx.uid, key, title, date, date, stageId || null, venue, time, localNow(ctx.now)).run();
+    .bind(ctx.uid, key, title, date, date, stageId || null, venue2, time, localNow(ctx.now)).run();
   // stage_search.adopt runs only for the owner, and serve._enrich (fetching
   // the stage's material) is skipped on the public service. Instead, a record
   // with a date is linked to the one stage running that day under the same title.

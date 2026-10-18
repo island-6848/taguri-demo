@@ -1,0 +1,21 @@
+---
+id: fix-past-tour-venue-by-date
+type: decision
+status: adopted
+date: 2026-10-18
+title: 探す画面の過去の公演（ツアー）で「観た」を記録するとき、観た日にその日上演していた劇場の公演（stage_id）に結び付ける。画面では劇場を選べ、サーバーも日付から選び直す
+sources:
+  - cloudflare/src/screens/search.js
+  - cloudflare/src/screens/rate.js
+  - web/app.js
+links:
+  - affects: impl-admin-tool
+---
+起案者の指摘（2026-10-18）「検索から観劇記録を追加するとき、複数日程ツアーのあるような公演で、適切な観劇日を入れても観劇した劇場がその日と対応しない」。
+
+原因: pastHits は同じ題名の鍵・団体の行（ツアーの各劇場）を 1 行にまとめ、行の data-stage に**最初の劇場**の stage_id だけを持たせていた。観た日に関係なく、記録はいつも最初の劇場に結び付いていた（works.venue も空）。
+
+直し方（2026-10-18）:
+- 画面: ツアー（劇場が 2 つ以上）は「劇場」の選択欄を出す（各劇場の期間付き）。観た日を入れると、その日に上演していた劇場を自動で選ぶ。重なる劇場が複数なら選ぶよう促し、どの劇場の期間にも入らない日（合間）はそう書く。追加は選んだ劇場の stage_id と劇場名で送る
+- サーバー（add_work）: 渡された stage_id の期間に観た日が入らなければ、past_stage で同じ tkey・同じ団体のうち、その日に上演していた劇場が 1 つに決まるときだけ、そちらに結び付け直す。劇場名（venue）が空なら公演の劇場名で埋める。読むのは主キーと tkey の索引で 2 行まで（無料枠への影響はほぼ無い）
+- 試験: cloudflare/test/search-uncarded.test.js。画面の自動選択は Playwright（スタブ）で確かめた
