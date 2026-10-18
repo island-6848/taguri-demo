@@ -88,6 +88,21 @@ class ActionsTest(unittest.TestCase):
         self.assertFalse(FT.plan([tight] + [0] * 30, 'replay')['run'])
         self.assertTrue(FT.plan([tight - 1] + [0] * 30, 'replay')['run'])
 
+    def test_restore_drill_runs_only_with_its_20_minutes_left(self):
+        # 控えから戻す予行（restore-drill.yml）も、毎日の更新の分を取っておいて DRILL_MINUTES が残るときだけ（issue #139）
+        self.assertTrue(FT.plan([0] * 31, 'drill')['run'])
+        self.assertFalse(FT.plan(None, 'drill')['run'])
+        tight = FT.CAPS['actions_minutes_31d'] - FT.future_catalog(30) - FT.CATALOG_MINUTES['daily'] - FT.DRILL_MINUTES + 1
+        self.assertFalse(FT.plan([tight] + [0] * 30, 'drill')['run'])
+        self.assertTrue(FT.plan([tight - 1] + [0] * 30, 'drill')['run'])
+
+    def test_separate_caps_keep_the_sum_under_the_free_tier(self):
+        # 取得と管理画面の控えは別のファイル。足しても無料枠の 9 割に届かないこと（issue #139）
+        self.assertLessEqual(FT.CAPS['r2_bytes'] + FT.CAPS['admin_r2_bytes'], 0.9 * FT.FREE['r2_bytes'])
+        self.assertLessEqual(FT.CAPS['r2_class_a_month'] + FT.CAPS['admin_posters_month'] + 1, 0.9 * FT.FREE['r2_class_a_month'])
+        self.assertLessEqual(FT.CAPS['d1_writes_day'] + FT.CAPS['admin_d1_writes_day'] + FT.CAPS['drill_d1_writes'],
+                             0.95 * FT.FREE['d1_writes_day'])
+
 class LedgerTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()

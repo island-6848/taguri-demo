@@ -3,7 +3,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
 import {setup, step, signIn} from './screens/harness.js';
-import {FIX_REQUESTS_PER_USER_DAY, FIX_OPEN_PER_USER, FIX_STORED_PER_USER, FIX_STORED_TOTAL} from '../src/free-tier.js';
+import {FIX_REQUESTS_PER_USER_DAY, FIX_OPEN_PER_USER, FIX_STORED_PER_USER, FIX_STORED_TOTAL, FIX_PURGE_PER_RUN} from '../src/free-tier.js';
 import {purgeFixRequests, PURGED} from '../src/screens/fixrequest.js';
 
 const here = p => new URL(p, import.meta.url).pathname;
@@ -120,6 +120,24 @@ test('resolved requests lose their text after 30 days and the row after 180; ope
     assert.deepEqual(sqlite.prepare('SELECT status, message FROM fix_request ORDER BY id').all().map(r => [r.status, r.message]),
       [['open', '本文'], ['done', '本文'], ['done', PURGED], ['dropped', PURGED]]);
     assert.deepEqual(await purgeFixRequests(env.DB, now), {cleared: 0, removed: 0});   // nothing left to change
+  } finally { sqlite.close(); }
+});
+
+test('one purge changes at most FIX_PURGE_PER_RUN rows each way; the rest waits for the next day (#139)', async () => {
+  const {env, sqlite} = setup();
+  const now = Date.parse('2026-10-18T00:00:00Z');
+  const ago = d => new Date(now - d * 86400_000).toISOString().replace('.000Z', 'Z');
+  const add = (n, resolved) => sqlite.prepare(`WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i+1 FROM n WHERE i<?)
+    INSERT INTO fix_request(stage_id,user_id,kind,message,created_at,status,resolved_at) SELECT '1','u'||i,'その他','本文','2025-01-01T00:00:00.000Z','done',? FROM n`).run(n, resolved);
+  try {
+    add(5, ago(40)); add(4, ago(200));
+    assert.deepEqual(await purgeFixRequests(env.DB, now, 3), {cleared: 3, removed: 3});
+    assert.equal(sqlite.prepare('SELECT count(*) AS n FROM fix_request').get().n, 6);
+    assert.deepEqual(await purgeFixRequests(env.DB, now, 3), {cleared: 3, removed: 1});
+    assert.deepEqual(await purgeFixRequests(env.DB, now, 3), {cleared: 3, removed: 0});
+    assert.deepEqual(await purgeFixRequests(env.DB, now, 3), {cleared: 0, removed: 0});
+    assert.equal(sqlite.prepare(`SELECT count(*) AS n FROM fix_request WHERE message='本文'`).get().n, 0);
+    assert.equal(FIX_PURGE_PER_RUN, 500);
   } finally { sqlite.close(); }
 });
 

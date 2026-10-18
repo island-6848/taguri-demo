@@ -78,6 +78,18 @@ jobs:
       - name: Restore the previous working data
         run: |
           if [ "${{ steps.state.outcome }}" != "success" ]; then
+            # 取り出しに失敗しただけで state ブランチはある（または有るか分からない）ときは、ここで止める（issue #139）。
+            # 初回として続けると、無料枠の控え（data/free_tier/usage.json）が空から始まり、R2 にすでにある分を数えずに
+            # 入れてしまう（R2 は越えると請求される）。さらに最後の段が空の控えで state を上書きする。
+            # 初回として続けるのは、ブランチが無いと確かに分かったとき（ls-remote の終了コード 2）だけ
+            set +e
+            git ls-remote --exit-code --heads "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" state > /dev/null
+            code=$?
+            set -e
+            if [ "$code" != "2" ]; then
+              echo "::error::state ブランチを取り出せなかった（ブランチの有無の確かめ: 終了コード $code）。無料枠の控えが無いので、今日は何もしない"
+              exit 1
+            fi
             echo "state ブランチがまだ無い。初回なので週 1 の取り直しで始める"
             echo "MODE=weekly" >> "$GITHUB_ENV"
             rm -rf state

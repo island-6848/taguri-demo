@@ -250,23 +250,42 @@ function evenShares(stage, skip = new Set()) {
 // 並べ直し（式 13）と裏の答え合わせ（式 14–16）は画面の側（spreadLeads・chooseVariant）なので、再生の側で外す
 export const ABLATIONS = ['split', 'expand'];
 
+// 1 件の評価の人の鍵（重複なし・並べ替え済み）。裏の答え合わせ（reco-gate.chooseVariant）は同じ評価の行で
+// personValues を何十回も呼ぶので、行ごとに 1 回だけ作って覚えておく（#138、CPU）。行の people は作り直さない約束
+const KEYS_OF = new WeakMap();
+const peopleKeys = r => {
+  let keys = KEYS_OF.get(r);
+  if (!keys) { keys = [...new Set((r.people || []).map(([role, person]) => role + '\u0000' + person))].sort(cmp); KEYS_OF.set(r, keys); }
+  return keys;
+};
+
 export function personValues(rated, seeds = [], skip = new Set(), liked = [], disliked = [], ablate = {}) {
   // person-ordinal-v3: a rating's place among the user's own ratings on the
   // same scale, ((lower) + ½ (equal)) / n − ½, times √12.
+  // 同じ尺度の中の「下の数」と「同じ数」は、値ごとの数から出す（前は 1 件ごとに全件と比べていた。結果は同じ。#138）
   const byScale = new Map();
   for (const r of rated) {
     const [value, levels] = gradeOf(r.verdict);
-    if (!byScale.has(levels)) byScale.set(levels, []);
-    byScale.get(levels).push(value);
+    if (!byScale.has(levels)) byScale.set(levels, {n: 0, count: new Map()});
+    const sc = byScale.get(levels);
+    sc.n += 1; sc.count.set(value, (sc.count.get(value) || 0) + 1);
+  }
+  const rankOf = new Map();                    // levels -> value -> [below, same]
+  for (const [levels, {count}] of byScale) {
+    const m = new Map();
+    for (const v of count.keys()) {
+      let below = 0;
+      for (const [w, c] of count) if (w < v) below += c;
+      m.set(v, [below, count.get(v)]);
+    }
+    rankOf.set(levels, m);
   }
   const tally = new Map();
   for (const r of rated) {
     const [value, levels] = gradeOf(r.verdict);
-    const vals = byScale.get(levels);
-    let below = 0, same = 0;
-    for (const v of vals) { if (v < value) below += 1; else if (v === value) same += 1; }
-    const z = ((below + 0.5 * same) / vals.length - 0.5) * SQRT12;
-    const keys = [...new Set((r.people || []).map(([role, person]) => role + '\u0000' + person))].sort(cmp);
+    const [below, same] = rankOf.get(levels).get(value);
+    const z = ((below + 0.5 * same) / byScale.get(levels).n - 0.5) * SQRT12;
+    const keys = peopleKeys(r);
     // 詳細: a rating lands mainly on what was good (above the middle) or a
     // trouble (below it), less on what the other side points at.
     const [troubles, goods] = z ? parseAspects(r.aspects) : [[], []];

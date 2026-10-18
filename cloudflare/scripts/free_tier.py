@@ -39,7 +39,14 @@ FREE = {"actions_minutes_month": 2_000, "d1_writes_day": 100_000, "r2_bytes": 10
 CAPS = {"actions_minutes_31d": 1_500, "d1_writes_day": 80_000, "r2_bytes": 8 * 10**9,
         "r2_class_a_month": 300_000, "r2_class_b_month": 3_000_000,
         # 手元の管理画面（tools/admin）の分。取得の分と同じ上限の中で、さらにこれだけに抑える
-        "admin_d1_writes_day": 1_000, "admin_posters_month": 300}
+        "admin_d1_writes_day": 1_000, "admin_posters_month": 300,
+        # 管理画面の控え（data/admin/free_tier/usage.json）は取得の控えと別のファイルで、互いの R2 の保存を知らない。
+        # だから管理画面が R2 に置く量（ポスター・お試しの文字）に別に上限を置き、取得の 8 GB と足しても 8.5 GB（無料 10 GB の 85%）に収める（issue #139）
+        "admin_r2_bytes": 500_000_000,
+        # 控えから戻す予行（backup_d1.py drill）が新しい D1 に書く行の上限。D1 の 1 日 10 万行は口座全体なので、
+        # 予行の書き込みも同じ日の取得（8 万行）・管理画面（1,000 行）・利用者の操作と同じ枠から出る。
+        # 越える大きさの控えは、D1 には入れずに手元の SQLite で開けるかだけを確かめる（issue #139）
+        "drill_d1_writes": 10_000}
 WARN = 0.8                       # 上限のこの割合を越えたら check が失敗する（通知のため）
 
 # Catalog のジョブ 1 回の分数の見積もり（過去の公演の読み取りを除く）。多めに取る
@@ -54,6 +61,8 @@ POSTER_AFTER_MINUTES = 5
 AFTER_PAST_MINUTES = 15          # 読み取りの段の時間の上限の余り（5 分）と、そのあとの D1・書き戻し
 # 推薦の再生（replay.yml、replay_job.py）を手で動かすときに取っておく分。準備と計算で 10 分ほど、多めに取る
 REPLAY_MINUTES = 20
+# 控えから戻す予行（restore-drill.yml、月 1 回と手動）。ジョブの上限 20 分をまるごと取っておく（issue #139）
+DRILL_MINUTES = 20
 
 LEDGER = Path("free_tier") / "usage.json"
 
@@ -204,10 +213,10 @@ def plan(by_day: list[int] | None, mode: str) -> dict:
     """今日の Catalog を動かしてよいか、どの mode で、過去の公演を何分読むか。
     分数が読めなかったとき（by_day が None）は、過去の公演は読まず、毎日の更新だけにする。"""
     cap = CAPS["actions_minutes_31d"]
-    if by_day is None and mode in ("index", "replay"):
+    if by_day is None and mode in ("index", "replay", "drill"):
         # 索引だけの手動実行は急がない。分数が読めないなら動かさない（毎日の実行に任せる）
         return {"run": False, "mode": mode, "catalog_minutes": 1, "past_minutes": 0, "past_limit": 0,
-                "past_timeout": 1, "used_31d": None, "note": "Actions の分数が読めなかったので、索引だけ・再生の実行はしない"}
+                "past_timeout": 1, "used_31d": None, "note": "Actions の分数が読めなかったので、索引だけ・再生・戻す予行の実行はしない"}
     if by_day is None:
         return {"run": True, "mode": "daily", "catalog_minutes": 45, "past_minutes": 0, "past_limit": 0,
                 "past_timeout": 5,
@@ -217,12 +226,14 @@ def plan(by_day: list[int] | None, mode: str) -> dict:
     # 今日のこの実行の Catalog の分（週 1 なら上乗せも）は、ここで別に取っておく
     room = cap - worst - CATALOG_MINUTES["daily"]
     note = ""
-    if mode == "replay":
-        # 推薦の再生の手動実行。これからの毎日の更新と今日の分を取っておいたうえで、REPLAY_MINUTES が残るときだけ
-        ok = room >= REPLAY_MINUTES
+    if mode in ("replay", "drill"):
+        # 推薦の再生・控えから戻す予行。これからの毎日の更新と今日の分を取っておいたうえで、その分が残るときだけ
+        need = REPLAY_MINUTES if mode == "replay" else DRILL_MINUTES
+        ok = room >= need
+        what = "再生" if mode == "replay" else "戻す予行"
         return {"run": ok, "mode": mode, "catalog_minutes": 1, "past_minutes": 0, "past_limit": 0,
                 "past_timeout": 1, "used_31d": sum(by_day), "worst_31d": worst,
-                "note": "" if ok else f"Actions の分数が上限 {cap} 分に届く見込みなので、再生はしない"}
+                "note": "" if ok else f"Actions の分数が上限 {cap} 分に届く見込みなので、{what}はしない"}
     if mode == "index":
         # 索引だけの手動実行（q-index-load-now）。取り直しも過去の公演も読まない。数分で終わるが、
         # 毎日の分（CATALOG_MINUTES["daily"]）をまるごと取っておく
@@ -296,7 +307,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("action", choices=["plan", "check"])
     ap.add_argument("--data", type=Path, default=Path(__file__).resolve().parents[2] / "data")
-    ap.add_argument("--mode", default="daily", choices=["daily", "weekly", "index", "replay"])
+    ap.add_argument("--mode", default="daily", choices=["daily", "weekly", "index", "replay", "drill"])
     ap.add_argument("--d1-usage", type=Path, help="wrangler d1 execute --json の出力（usage 表）")
     a = ap.parse_args()
     now = utc_now()

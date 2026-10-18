@@ -4107,18 +4107,6 @@ function fixupPeopleNet(root) {
   }
 }
 
-// **この図から分かる文章を作る／作り直す。**（`chronicle.py` の「年表の文を作る」と同じ形）
-document.addEventListener("click", ev => {
-  const b = ev.target.closest && ev.target.closest("[data-pread]");
-  if (!b) return;
-  const box = b.closest(".pread");
-  box.querySelector(".said").textContent = "書いています…（1 分ほどかかります）";
-  post("/api/people_read", {}, box, null).then(r => {
-    box.querySelector(".said").textContent =
-      r ? (r.line || "作りました") + "　画面を読み込み直すと出ます" : "";
-  });
-});
-
 // === 劇場制覇マップ(cloudflare/src/screens/conquest.js) ===
 // マスを押すと、その県で行った劇場を地図の下に出す(起案者の指示 2026-10-16「地方のマス押したら行った劇場の
 // 名前が出るようにデモと同じようにして」)。一覧はサーバーが県ごとに隠して描いてあり、ここでは出し分けるだけ

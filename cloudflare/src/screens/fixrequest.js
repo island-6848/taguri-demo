@@ -8,7 +8,7 @@
 // 設定が無い・送れないときも依頼は保存する（管理画面で見られる）。
 import {ValueError} from './py.js';
 import {FIX_REQUESTS_PER_USER_DAY, FIX_MAILS_PER_DAY, FIX_OPEN_PER_USER, FIX_STORED_PER_USER, FIX_STORED_TOTAL,
-  FIX_RESOLVED_BODY_DAYS, FIX_RESOLVED_ROW_DAYS} from '../free-tier.js';
+  FIX_RESOLVED_BODY_DAYS, FIX_RESOLVED_ROW_DAYS, FIX_PURGE_PER_RUN} from '../free-tier.js';
 
 export const KINDS = ['日程', '料金', '会場', 'あらすじ', '出演・スタッフ', 'ポスター', 'その他'];
 const MAX_MESSAGE = 1000;
@@ -125,13 +125,14 @@ async function refusal(ctx, since) {
  * 対応済みの依頼を片付ける（Worker の定期実行が 1 日 1 回呼ぶ。issue #129）。
  * 直してから FIX_RESOLVED_BODY_DAYS 日たった依頼は本文を消し、FIX_RESOLVED_ROW_DAYS 日たった依頼は行ごと消す。
  * 未対応の依頼は消さない（数は FIX_OPEN_PER_USER・FIX_STORED_TOTAL で抑える）。D1 の書き込みは 1 日 2 文と、変えた行の数。
+ * 1 回に変える行はそれぞれ FIX_PURGE_PER_RUN 件まで（残りは次の日。issue #139）。
  */
-export async function purgeFixRequests(db, nowMs = Date.now()) {
+export async function purgeFixRequests(db, nowMs = Date.now(), per = FIX_PURGE_PER_RUN) {
   const before = days => new Date(nowMs - days * 86400_000).toISOString();
-  const cleared = await db.prepare(`UPDATE fix_request SET message=?1 WHERE status!='open' AND resolved_at IS NOT NULL
-    AND resolved_at<?2 AND message!=?1`).bind(PURGED, before(FIX_RESOLVED_BODY_DAYS)).run();
-  const removed = await db.prepare(`DELETE FROM fix_request WHERE status!='open' AND resolved_at IS NOT NULL AND resolved_at<?`)
-    .bind(before(FIX_RESOLVED_ROW_DAYS)).run();
+  const cleared = await db.prepare(`UPDATE fix_request SET message=?1 WHERE id IN (SELECT id FROM fix_request WHERE status!='open'
+    AND resolved_at IS NOT NULL AND resolved_at<?2 AND message!=?1 ORDER BY resolved_at LIMIT ?3)`).bind(PURGED, before(FIX_RESOLVED_BODY_DAYS), per).run();
+  const removed = await db.prepare(`DELETE FROM fix_request WHERE id IN (SELECT id FROM fix_request WHERE status!='open'
+    AND resolved_at IS NOT NULL AND resolved_at<? ORDER BY resolved_at LIMIT ?)`).bind(before(FIX_RESOLVED_ROW_DAYS), per).run();
   return {cleared: cleared?.meta?.changes ?? cleared?.changes ?? 0, removed: removed?.meta?.changes ?? removed?.changes ?? 0};
 }
 
