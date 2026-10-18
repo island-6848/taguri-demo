@@ -937,24 +937,48 @@ function priceFilter(el) {
   }
   fil.appendChild(box);
   const sl = box.querySelector(".ysl");
+  // **隠しているときは、一覧の場所にも言う**（#97）。上限はこの端末に覚えるので、別の画面でも効いたままになる ──
+  // 畳んだ箱の中だけで言うと、全件が隠れたとき「公演が無い」としか見えない。外す押し口もここに置く
+  const bar = document.createElement("p");
+  bar.className = "yall";
+  bar.setAttribute("role", "status");
+  bar.hidden = true;
+  const first = el.querySelector("article.ticket");
+  (first.closest(".tickets") || first).before(bar);
   const apply = () => {
     const max = YEN_STEPS[Number(sl.value)] || 0;
-    let hidden = 0;
+    let hidden = 0, total = 0;
     el.querySelectorAll("article.ticket").forEach(t => {
       const y = yenOf(t);
       const hide = Boolean(max && y && y[0] > max);
       t.classList.toggle("yenout", hide);
+      total++;
       if (hide) hidden++;
     });
-    box.querySelector(".yv").textContent = yenStepLabel(max);
-    box.querySelector(".ynow").textContent = yenStepLabel(max);
-    sl.setAttribute("aria-valuetext", yenStepLabel(max));
+    const label = yenStepLabel(max);
+    box.querySelector(".yv").textContent = label;
+    // 見出しは filterRow が「▶料金 … いまの値」の形に作り直すので、どちらの形でも書く
+    const now = box.querySelector(".ynow") || box.querySelector("summary .fv");
+    if (now) now.textContent = label;
+    sl.setAttribute("aria-valuetext", label);
     box.querySelector(".yenn").textContent = hidden ? hidden + " 件を隠しています" : "";
+    bar.hidden = !hidden;
+    bar.innerHTML = !hidden ? "" : (hidden === total ? "<b>料金の条件（" + E(label) + "）で全件が非表示です。</b>"
+      : "料金の条件（" + E(label) + "）で " + hidden + " 件を隠しています。")
+      + '<button type="button" class="yclear">料金の上限を外す</button>';
     const tab = el.querySelector('.ftab[data-for="ybox"] .fv');
     if (tab) tab.textContent = yenStepLabel(max);
     try { localStorage.setItem(YEN_KEY, String(max)); } catch (e) { /* 覚えられなくても絞り込みは効く */ }
   };
   sl.addEventListener("input", apply);
+  bar.addEventListener("click", ev => {
+    if (!ev.target.closest(".yclear")) return;
+    sl.value = String(YEN_STEPS.length - 1);   // いちばん右が「上限なし」
+    apply();
+    // 押した押し口は消えるので、焦点は料金の札（無ければ箱の見出し）へ移す
+    const to = el.querySelector('.ftab[data-for="ybox"]') || box.querySelector("summary");
+    if (to) to.focus({preventScroll: true});
+  });
   apply();
 }
 

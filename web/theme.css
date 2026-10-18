@@ -567,6 +567,11 @@ html[data-font="trial"] :is(button,.sitebtn,.pill,.ftab,.btns button,select,[rol
 @media(max-width:560px){.ftab{flex-direction:column;align-items:flex-start;gap:0;padding:6px 8px}
  .ftab svg.ico{display:none}.ftab .fv{max-width:100%;font-size:11.5px}}
 .ticket.yenout{display:none}
+/* 料金の条件で隠しているとき、一覧の場所に出す知らせ（#97） */
+.yall{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:8px 0 12px;padding:10px 12px;border:1px solid var(--grid);border-radius:8px;background:var(--surf);font-size:14px}
+.yall[hidden]{display:none}
+.yclear{min-height:44px;padding:4px 14px;border:1px solid var(--acc);border-radius:8px;background:var(--surf);color:var(--acc);font:inherit;font-weight:600;cursor:pointer}
+.yclear:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
 
 /* ---- 「書き込み中…」（app.js の post）。返事を待つあいだ、文字をゆっくり明滅させる */
 .said.saving{color:var(--mute);animation:tg-saving 1s ease-in-out infinite alternate}
