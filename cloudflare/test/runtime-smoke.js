@@ -2,6 +2,7 @@
 import {spawn} from 'node:child_process';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {TERMS_VERSION} from '../src/terms.js';
 const base='http://127.0.0.1:8787';
 const server=spawn('npx',['wrangler','dev','--ip','127.0.0.1','--port','8787'],{detached:true,stdio:['ignore','pipe','pipe'],env:{...process.env,WRANGLER_SEND_METRICS:'false'}});
 let logs='';for(const stream of [server.stdout,server.stderr])stream.on('data',data=>{logs=(logs+data.toString()).slice(-6000);});
@@ -16,7 +17,7 @@ try {
   await new Promise(resolve=>setTimeout(resolve,1000));
  }
  assert.ok(ready,`Local worker did not start: ${logs}`);
- const registered=await request('register',{});assert.equal(registered.status,200);
+ const registered=await request('register',{agree:TERMS_VERSION});assert.equal(registered.status,200);
  const cookie=registered.headers.get('set-cookie').split(';')[0];assert.match(registered.headers.get('set-cookie'),/HttpOnly; Secure; SameSite=Lax/);
  const {recovery_code}=await registered.json();
  const fixture=JSON.parse(readFileSync(new URL('../../tools/taguri/demo_purchase_works.json',import.meta.url)));
@@ -31,7 +32,7 @@ try {
  const recovered=await request('recover',{code:recovery_code});assert.equal(recovered.status,200);
  const restored=await (await request('state',undefined,recovered.headers.get('set-cookie').split(';')[0])).json();
  assert.equal(restored.records[0].rating,'◎');assert.equal(restored.records[0].note,'local persistence check');assert.equal(restored.favourites[0].name,'作者');assert.equal(restored.reactions[0].status,'interest');
- const other=await request('register',{});assert.equal(other.status,200);
+ const other=await request('register',{agree:TERMS_VERSION});assert.equal(other.status,200);
  const otherState=await (await request('state',undefined,other.headers.get('set-cookie').split(';')[0])).json();assert.equal(otherState.records.length,0);assert.equal(otherState.reactions.length,0);
  assert.equal((await request('record',{title:'bad',date:'2026-01-01'})).status,401);
  console.log('Local workerd/D1: 96-record import, rating, note, favourites, reactions, recovery and account isolation passed.');
