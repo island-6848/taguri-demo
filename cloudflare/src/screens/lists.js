@@ -286,6 +286,7 @@ function doneDate(sids, end, tickets) {
  */
 export async function promoteOwned(ctx) {
   const react = await reactionsOf(ctx);
+  await promoteTickets(ctx, react);
   const owned = [...react].filter(([, r]) => r.owned === 1).map(([sid]) => sid);
   if (!owned.length) return;
   const have = new Set((await ctx.db.prepare('SELECT stage_id FROM works WHERE user_id=? AND stage_id IS NOT NULL').bind(ctx.uid).all()).results.map(r => r.stage_id));
@@ -309,6 +310,55 @@ export async function promoteOwned(ctx) {
     // The memo written before seeing it (購入済み公演「観る前のメモ」) goes with the work.
     await ctx.db.prepare(`INSERT INTO works(user_id,work_key,title,first_date,last_date,times,verdict,chosen,note_impression,note_motive,stage_id,updated_at)
       VALUES(?,?,?,?,?,1,NULL,NULL,'',?,?,?) ON CONFLICT(user_id,work_key) DO NOTHING`).bind(ctx.uid, key, m.title, done, done, react.get(sid)?.note_pre || '', sid, nowIso(ctx)).run();
+  }
+}
+
+/** 公演の題名と会期（カード → 索引 → 過去の公演の順に引く）。 */
+async function titlesOf(ctx, sids) {
+  const meta = await cardMeta(ctx, sids);
+  const missing = sids.filter(s => !meta.has(s));
+  for (const part of chunks(missing, 90)) {
+    const qs = part.map(() => '?').join(',');
+    const [cur, past] = await Promise.all([
+      ctx.db.prepare(`SELECT stage_id,title,end FROM rec_stage WHERE ver=(SELECT v FROM rec_meta WHERE k='current') AND stage_id IN (${qs})`).bind(...part).all(),
+      ctx.db.prepare(`SELECT stage_id,title,end FROM past_stage WHERE stage_id IN (${qs})`).bind(...part).all()]);
+    for (const r of [...past.results, ...cur.results]) meta.set(r.stage_id, {...r, end: String(r.end || '').replaceAll('/', '-')});
+  }
+  return meta;
+}
+
+/**
+ * 行く日が過ぎた券は、その回の記録（未評価）にする（起案者の指示 2026-10-18「購入済みの公演で、行く日に過去の日を入れても
+ * 『評価する記録』にするために、行く日が過ぎたら自動で未評価に入れるようにして」）。前は購入済みの公演が千穐楽を過ぎるまで
+ * 何も起きず、会期の途中の回は手で足し直すしかなかった。
+ * - 過ぎた: 行く日が今日より前、または今日で開演の時刻を過ぎた（日本時間）
+ * - 同じ公演・同じ日の記録がもうあれば作らない（開演の時刻がどちらかに無いか、同じとき）。同じ日の別の回は時刻で分ける
+ * - 本人が記録を消すと、その回の券も消える（works.deleteWork）ので、作り直さない
+ * 開く画面（未評価・評価一覧・お気に入り・開幕リマインド）ごとに、この人の券と記録を数行読むだけ。書くのは新しい回の分だけ
+ */
+async function promoteTickets(ctx, react) {
+  const tickets = await ticketsOf(ctx);
+  const hhmm = new Date((ctx.now ?? Date.now()) + 9 * 3600e3).toISOString().slice(11, 16);
+  const due = [];
+  for (const [sid, ts] of tickets) for (const t of ts) if (t.date < ctx.today || (t.date === ctx.today && t.time && t.time <= hhmm)) due.push({sid, ...t});
+  if (!due.length) return;
+  const {results} = await ctx.db.prepare('SELECT work_key,stage_id,first_date,time FROM works WHERE user_id=? AND stage_id IS NOT NULL').bind(ctx.uid).all();
+  const keys = new Set(results.map(r => r.work_key));
+  const same = t => results.some(r => String(r.stage_id) === String(t.sid) && r.first_date === t.date && (!r.time || !t.time || r.time === t.time));
+  const todo = due.filter(t => !same(t));
+  if (!todo.length) return;
+  const meta = await titlesOf(ctx, [...new Set(todo.map(t => t.sid))]);
+  for (const t of todo) {
+    const m = meta.get(t.sid);
+    if (!m?.title) continue;
+    let key = `${titleKey(m.title)}#${t.date}`;
+    if (keys.has(key)) { if (!t.time) continue; key = `${key}#${t.time}`; }
+    if (keys.has(key)) continue;
+    keys.add(key);
+    // 観る前のメモ（購入済みの公演の「観る前のメモ」）は記録に持っていく
+    await ctx.db.prepare(`INSERT INTO works(user_id,work_key,title,first_date,last_date,times,verdict,chosen,note_impression,note_motive,stage_id,time,updated_at)
+      VALUES(?,?,?,?,?,1,NULL,NULL,'',?,?,?,?) ON CONFLICT(user_id,work_key) DO NOTHING`)
+      .bind(ctx.uid, key, m.title, t.date, t.date, react.get(t.sid)?.note_pre || '', t.sid, t.time || '', nowIso(ctx)).run();
   }
 }
 

@@ -1,7 +1,7 @@
 ---
 id: q-ticket-to-rating
 type: question
-status: open
+status: answered
 date: 2026-10-18
 title: 行く日が過ぎた券（購入済み）から、観劇後の評価へどう進ませるか
 sources:

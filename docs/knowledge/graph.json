@@ -2194,6 +2194,19 @@
    "verifies": []
   },
   {
+   "id": "dec-ticket-to-unrated",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "行く日（開演の時刻）が過ぎた券は、その回の記録（未評価）を自動で作る。消した回は券も消して作り直さない",
+   "sources": [
+    "cloudflare/src/screens/lists.js",
+    "cloudflare/src/screens/works.js",
+    "cloudflare/test/lists-screen.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-timetable-unknown-days",
    "type": "decision",
    "status": "adopted",
@@ -5997,7 +6010,7 @@
   {
    "id": "q-ticket-to-rating",
    "type": "question",
-   "status": "open",
+   "status": "answered",
    "date": "2026-10-18",
    "title": "行く日が過ぎた券（購入済み）から、観劇後の評価へどう進ませるか",
    "sources": [
@@ -8587,6 +8600,16 @@
    "from": "dec-ticket-delete-wording",
    "rel": "affects",
    "to": "dec-calendar-worker"
+  },
+  {
+   "from": "dec-ticket-to-unrated",
+   "rel": "answers",
+   "to": "q-ticket-to-rating"
+  },
+  {
+   "from": "dec-ticket-to-unrated",
+   "rel": "affects",
+   "to": "dec-native-cutover-now"
   },
   {
    "from": "dec-timetable-unknown-days",

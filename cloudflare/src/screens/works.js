@@ -39,7 +39,14 @@ async function readHand(ctx) {
 // 前の版で「完全に取り消す」（purged:<key>）を押したものも、ここで消す。記録を読むたびに、この人の印だけを見る（数行）。
 export const DROP_KEEP_DAYS = 30;
 export async function deleteWork(ctx, key) {
+  // 行く日が過ぎた券から作った記録（lists.promoteTickets）を消したときは、その回の券も消す（行かなかった回は作り直さない）
+  const w = await ctx.db.prepare('SELECT stage_id,first_date,time FROM works WHERE user_id=? AND work_key=?').bind(ctx.uid, key).first();
+  const today = ctx.today || new Date((ctx.now ?? Date.now()) + 9 * 3600e3).toISOString().slice(0, 10);
+  const pastTicket = w?.stage_id && w.first_date && w.first_date <= today
+    ? [ctx.db.prepare("DELETE FROM ticket WHERE user_id=? AND stage_id=? AND date=? AND (?='' OR time='' OR time=?)").bind(ctx.uid, String(w.stage_id), w.first_date, w.time || '', w.time || '')]
+    : [];
   await ctx.db.batch([
+    ...pastTicket,
     ctx.db.prepare('DELETE FROM works WHERE user_id=? AND work_key=?').bind(ctx.uid, key),
     ctx.db.prepare('DELETE FROM hand_credits WHERE user_id=? AND work_key=?').bind(ctx.uid, key),
     ctx.db.prepare('DELETE FROM merges WHERE user_id=? AND (work_key=? OR into_key=?)').bind(ctx.uid, key, key),

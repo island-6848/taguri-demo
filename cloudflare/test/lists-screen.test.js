@@ -576,3 +576,35 @@ test('過去の公演は名前の索引（R2）から読み、D1 の一覧は読
     assert.match((await screen(env, a, 'favourites', '?n=' + encodeURIComponent('上村聡'))).body_html, /一覧だけの舞台/);
   } finally { sqlite.close(); }
 });
+
+test('行く日が過ぎた券は、その回の記録（未評価）になる。千穐楽を待たない・二重に作らない・消した回は作り直さない', async () => {
+  const {env, sqlite} = withIndex();
+  const a = await signIn(env);
+  const works = () => sqlite.prepare("SELECT work_key,first_date,time,verdict,note_motive FROM works WHERE stage_id='101' ORDER BY work_key").all();
+  try {
+    await step(env, a, {post: '/api/react', body: {stage_id: '101', value: 'owned', nofill: true}});
+    await step(env, a, {post: '/api/react', body: {stage_id: '101', note_pre: '楽しみ'}});
+    for (const t of [{date: '2026-11-03', time: '14:00'}, {date: '2026-11-03', time: '18:00'}, {date: '2026-11-05'}])
+      assert.equal((await step(env, a, {post: '/api/ticket', body: {stage_id: '101', ...t}})).status, 200);
+    // 11/3 の 17:00（日本時間）: 昼の回だけ過ぎた。会期（〜11/10）の途中でも未評価に出る
+    env.CLOCK = {today: '2026-11-03', now: Date.parse('2026-11-03T08:00:00Z')};
+    assert.match((await screen(env, a, 'unrated')).body_html, /舞台ひとつめ/);
+    assert.deepEqual(works().map(w => [w.first_date, w.time, w.verdict, w.note_motive]), [['2026-11-03', '14:00', null, '楽しみ']]);
+    // 翌日: 夜の回も別の記録に。何度開いても増えない。11/5 はまだ
+    env.CLOCK = {today: '2026-11-04', now: Date.parse('2026-11-04T03:00:00Z')};
+    await screen(env, a, 'unrated');
+    await screen(env, a, 'unrated');
+    assert.deepEqual(works().map(w => [w.first_date, w.time]), [['2026-11-03', '14:00'], ['2026-11-03', '18:00']]);
+    // 行かなかった回を消す（外す → 完全に取り消す）と、その回の券も消え、作り直さない
+    const night = works().find(w => w.time === '18:00').work_key;
+    assert.equal((await step(env, a, {post: '/api/drop_work', body: {work_key: night}})).status, 200);
+    assert.equal((await step(env, a, {post: '/api/purge_work', body: {key: night}})).status, 200);
+    await screen(env, a, 'unrated');
+    assert.deepEqual(works().map(w => w.time), ['14:00']);
+    assert.equal(sqlite.prepare("SELECT count(*) AS n FROM ticket WHERE stage_id='101' AND date='2026-11-03'").get().n, 1);
+    // 11/5 が過ぎると、その回も
+    env.CLOCK = {today: '2026-11-06', now: Date.parse('2026-11-06T03:00:00Z')};
+    await screen(env, a, 'unrated');
+    assert.deepEqual(works().map(w => [w.first_date, w.time]), [['2026-11-03', '14:00'], ['2026-11-05', '']]);
+  } finally { sqlite.close(); }
+});
