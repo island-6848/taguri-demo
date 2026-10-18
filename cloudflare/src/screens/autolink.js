@@ -100,7 +100,7 @@ export async function pastStages(db, ids) {
     const part = want.slice(i, i + PER_QUERY);
     let results;
     try {
-      ({results} = await db.prepare(`SELECT stage_id, title, venue, start, end, people, grp, pref FROM past_stage WHERE stage_id IN (${part.map(() => '?').join(',')})`)
+      ({results} = await db.prepare(`SELECT stage_id, title, venue, start, end, people, grp, pref, synopsis FROM past_stage WHERE stage_id IN (${part.map(() => '?').join(',')})`)
         .bind(...part).all());
     } catch {
       return out;
@@ -110,7 +110,7 @@ export async function pastStages(db, ids) {
       try { people = JSON.parse(r.people || '[]'); } catch { people = []; }
       // 種類の言葉（'#形式' など、deliver_past の PEOPLE_REV 2）は推薦だけが使う。出演者・作り手の表示には出さない
       people = people.filter(p => Array.isArray(p) && !String(p[0]).startsWith('#'));
-      out[r.stage_id] = {title: r.title, venue: r.venue || '', start: r.start || '', end: r.end || '', people, grp: r.grp || '', pref: r.pref || ''};
+      out[r.stage_id] = {title: r.title, venue: r.venue || '', start: r.start || '', end: r.end || '', people, grp: r.grp || '', pref: r.pref || '', synopsis: r.synopsis || ''};
     }
   }
   return out;

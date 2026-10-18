@@ -41,10 +41,10 @@ REPLAY_MAX_ROWS = 300_000      # 利用者の記録の行数の上限（D1 の 1
 def past_sql(data: Path, path: Path) -> int:
     """data/past/stages.jsonl の全部を past_stage の INSERT に（deliver_past.row_values と同じ列）。"""
     text = (data / DP.ROWS).read_text(encoding="utf-8") if (data / DP.ROWS).exists() else ""
-    themes = DP.load_themes(data)
-    rows = [DP.row_values(r, themes) for r in (json.loads(x) for x in text.split("\n") if x.strip()) if r.get("stage_id") and r.get("title")]
+    themes, synopses = DP.load_themes(data), DP.load_synopses(data)
+    rows = [DP.row_values(r, themes, synopses) for r in (json.loads(x) for x in text.split("\n") if x.strip()) if r.get("stage_id") and r.get("title")]
     stmts = [s.replace("INSERT INTO", "INSERT OR REPLACE INTO", 1) for s in
-             _inserts("past_stage", "stage_id,title,tkey,start,end,venue,grp,pref,people", rows)]
+             _inserts("past_stage", DP.COLUMNS, rows)]
     path.write_text("\n".join(stmts) + "\n", encoding="utf-8")
     return len(rows)
 

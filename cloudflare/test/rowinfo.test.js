@@ -38,3 +38,20 @@ test('a linked record shows the group, venue, credits and synopsis on 評価一�
     assert.doesNotMatch(row, /class="rinfo"/);
   } finally { sqlite.close(); }
 });
+
+test('a record linked to a past stage shows the synopsis read for that stage (past_stage.synopsis)', async () => {
+  const {env, sqlite} = setup();
+  for (const s of FIXTURE.sql) sqlite.exec(s);
+  sqlite.prepare("INSERT INTO past_stage(stage_id,title,tkey,start,end,venue,people,synopsis) VALUES('90001','昔の舞台','昔の舞台','2024-05-01','2024-05-05','劇場Z','[[\"出演\",\"俳優戊\"],[\"#題材\",\"家族\"]]','祖母の家に集まった三姉妹の、ひと夏の物語。')").run();
+  const a = await signIn(env);
+  try {
+    const key = (await step(env, a, {post: '/api/add_work', body: {title: '昔の舞台', date: '2024-05-03'}})).body.work_key;
+    await step(env, a, {post: '/api/link_stage', body: {work_key: key, stage_id: '90001'}});
+    await step(env, a, {post: '/api/rate', body: {work_key: key, verdict: '○'}});
+    const h = (await step(env, a, {get: '/api/screen/works'})).body.body_html;
+    const m = /<div class="rinfo"[^>]*>([\s\S]*?)<!--\/rinfo--><\/div>/.exec(h);
+    assert.ok(m);
+    assert.match(m[1], /<p class="txt">祖母の家に集まった三姉妹の、ひと夏の物語。<\/p>/);
+    assert.doesNotMatch(m[1], /#題材/);                          // 種類の言葉は作り手の欄に出さない
+  } finally { sqlite.close(); }
+});
