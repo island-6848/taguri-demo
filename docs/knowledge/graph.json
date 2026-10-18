@@ -4877,6 +4877,17 @@
    "verifies": []
   },
   {
+   "id": "q-prompt-g2-base",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-18",
+   "title": "あらすじの読み取りの今の版 g2 は c6 から作られていて、g1 で足した「題名の公演自身の物語か」の自問が入っていない。意図どおりか、g1 の上に g2 を重ねるべきか",
+   "sources": [
+    "tools/credits/extract_theme_llm.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "q-public-reputation-signal",
    "type": "question",
    "status": "open",
@@ -9442,6 +9453,16 @@
    "from": "q-pr14-free-tier",
    "rel": "affects",
    "to": "crawler-actions-minutes"
+  },
+  {
+   "from": "q-prompt-g2-base",
+   "rel": "affects",
+   "to": "synopsis-llm-history"
+  },
+  {
+   "from": "q-prompt-g2-base",
+   "rel": "affects",
+   "to": "dec-synopsis-reader-claude"
   },
   {
    "from": "q-public-reputation-signal",
