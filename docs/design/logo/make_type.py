@@ -15,14 +15,14 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 # 字の形ごとの寸法（字の単位）。字のファイルは Google Fonts（OFL）のものを gf/ に置く（リポジトリには入れない。.gitignore）
 #   取り方: curl -o gf/SawarabiGothic-Regular.ttf https://raw.githubusercontent.com/google/fonts/main/ofl/sawarabigothic/SawarabiGothic-Regular.ttf
 # dakuten: 「ぐ」の濁点の輪郭の番号、stars: 星を置く濁点の 2 つの点、ri_tip: 「り」の払いの先（切り口の真ん中）、
-# ri_w: 「り」の払いの線の太さ（糸はこの太さから細くなる。無い字は糸を細い線のまま引く）、ri_in: 払いの先から線の中へ戻る向き、
+# ri_w: 「り」の払いの線の太さ（測ると 82。外の縁が少し曲がっているので、段が出ないよう少し太めに取る。糸はこの太さから細くなる。無い字は糸を細い線のまま引く）、ri_in: 払いの先から線の中へ戻る向き（払いの線の向きの逆。糸はこの向きを引き継いで出る）、
 # ink_x: 字の墨の左右の端（「ぐ」は濁点を除く）、mid: 3 字の墨の上下の真ん中、size: 紋章の字の大きさ
 FONTS = {
     'hina': dict(file='Hina_Mincho.ttf', dakuten={1, 2}, stars=((720, 555), (640, 485)), ri_tip=(350, -50),
                  ink_x={'た': (141, 849), 'ぐ': (241, 589), 'り': (270, 729)}, mid=381, size=57),
     'maru': dict(file='ZenMaruGothic-Medium.ttf', dakuten={1, 2}, stars=((818, 560), (737, 478)), ri_tip=(500, -44),
                  ink_x={'た': (121, 873), 'ぐ': (284, 691), 'り': (285, 727)}, mid=377, size=54),
-    'sawarabi': dict(file='SawarabiGothic-Regular.ttf', dakuten={0, 1}, stars=((886, 553), (761, 532)), ri_tip=(403, -17), ri_w=77, ri_in=(277, 107),
+    'sawarabi': dict(file='SawarabiGothic-Regular.ttf', dakuten={0, 1}, stars=((886, 553), (761, 532)), ri_tip=(403, -17), ri_w=86, ri_in=(280, 118),
                      ink_x={'た': (92, 903), 'ぐ': (215, 735), 'り': (243, 737)}, mid=390, size=49),
 }
 KIND = os.environ.get('LOGO_FONT', 'sawarabi')
@@ -181,15 +181,23 @@ def stage():
     b.append(glyph('り', rx, base, size))
     tip = at(rx, base, size, RI_TIP)
     X, Y = tip
-    thread = [((X - 6, Y + 8), (X - 14, Y + 10), (X - 12, Y + 18)),
+    # 糸の出だしは、払いの線の向きをそのまま引き継ぐ（起案者 2026-10-18「繋ぎ目がたがたしてる。平滑化して曲線でつなぎ」）。
+    # 曲線どうしの継ぎ目も、前の曲線の終わりの向きと次の曲線の始まりの向きをそろえてある
+    if 'ri_in' in M:
+        ix, iy = M['ri_in']; l = math.hypot(ix, iy)
+        ox, oy = -ix / l, iy / l                # 払いの先から外へ向かう向き（画面の座標）
+        first = ((X + ox * 7, Y + oy * 7), (X - 14, Y + 10), (X - 12, Y + 18))
+    else:
+        first = ((X - 6, Y + 8), (X - 14, Y + 10), (X - 12, Y + 18))
+    thread = [first,
               ((X - 10, Y + 24), (X + 2, Y + 22), (X, Y + 16)),
               ((X - 2, Y + 10), (X - 24, 220), (X - 40, 220))]
     if 'ri_w' in M:
         # 「り」の線の太さから、床の線（1.4）に繋がるところまでだんだん細く。床の線はそこから左へ同じ太さで
-        # 始まりを字の線の中へ 1.5 だけ差し込んで、字と糸の継ぎ目に隙間が見えないようにする
-        ix, iy = M['ri_in']; l = math.hypot(ix, iy)
-        start = (X + 1.5 * ix / l, Y - 1.5 * iy / l)
-        b.append(taper_curve(start, [((X, Y), (X, Y), (X, Y))] + thread, M['ri_w'] * size / 1000, 1.4))
+        # 始まりを字の線の中へ、線と同じ太さ・同じ向きで 2 だけ差し込む（切り口の角も糸の帯の中に入り、隙間も段も出ない）
+        start = (X - 2 * ox, Y - 2 * oy)
+        lead = ((start[0] + (X - start[0]) / 3, start[1] + (Y - start[1]) / 3), (start[0] + 2 * (X - start[0]) / 3, start[1] + 2 * (Y - start[1]) / 3), (X, Y))
+        b.append(taper_curve(start, [lead] + thread, M['ri_w'] * size / 1000, 1.4))
         b.append(line(f'M{X - 40:.1f} 220 L66 220', 1.4))
     else:
         b.append(line(f'M{X:.1f} {Y:.1f} ' + ' '.join(f'C{a[0]:.1f} {a[1]:.1f} {c[0]:.1f} {c[1]:.1f} {e[0]:.1f} {e[1]:.1f}' for a, c, e in thread) + ' L66 220', 1.4))
