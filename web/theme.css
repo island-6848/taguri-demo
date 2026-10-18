@@ -1289,14 +1289,16 @@ details.pbox>summary[data-fold] .fv,.ftab .fv{margin-left:auto;text-align:right;
 html .noposter:not(#_):not(#_) span{color:#fff;font-size:10.5px;line-height:1.3;letter-spacing:.04em;white-space:normal;overflow-wrap:anywhere}
 html .dgli .noposter:not(#_):not(#_) span{font-size:9px;letter-spacing:0}
 
-/* ---- おすすめを出すためのワンポイント（初めて使ったとき。起案者の指示 2026-10-18）。番号・小さな絵（使い方ガイドの
-   ような線の絵）・文の順に並べ、「または」で区切る。番号は左端にそろえ、番号と絵は文の高さの真ん中に置く */
+/* ---- おすすめを出すためのワンポイント（初めて使ったとき。起案者の指示 2026-10-18）。番号は見出しの頭に置き、文は上の
+   見出しと同じ左端から書き始める。小さな絵（使い方ガイドのような線の絵）は右に、文の高さの真ん中に置く。「または」で区切る。
+   見出し「おすすめを出すためのワンポイント」は電話の幅でも 1 行に収める */
+.card.tips>h2{white-space:nowrap;font-size:clamp(14px,4.4vw,18.5px)}
 .card.tips .tip{display:flex;gap:14px;align-items:center}
-.card.tips .tip-art{flex:none;width:64px;height:64px}
-.card.tips .tip-t{min-width:0}
-.card.tips .tip-h{margin:0 0 4px}
+.card.tips .tip-art{flex:none;width:64px;height:64px;margin-left:auto}
+.card.tips .tip-t{min-width:0;flex:1 1 auto}
+.card.tips .tip-h{display:flex;align-items:baseline;gap:8px;margin:0 0 4px}
 .card.tips .tip-n{flex:none;display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;
- background:var(--curtain);color:var(--surf);font-size:12.5px;font-weight:700;line-height:1}
+ background:var(--curtain);color:var(--surf);font-size:12.5px;font-weight:700;line-height:1;align-self:center}
 .card.tips .tip-t p:not(.tip-h){margin:0;color:var(--ink2);font-size:13.5px;line-height:1.75}
 .card.tips .tip-or{display:flex;align-items:center;gap:10px;margin:12px 0;color:var(--mute);font-size:12.5px}
 .card.tips .tip-or::before,.card.tips .tip-or::after{content:"";flex:1;border-top:1px dashed var(--ring)}
