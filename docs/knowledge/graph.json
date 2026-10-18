@@ -1062,6 +1062,22 @@
    "verifies": []
   },
   {
+   "id": "dec-firebase-delete-pending",
+   "type": "decision",
+   "status": "proposed",
+   "date": "2026-10-18",
+   "title": "結び付いたアカウントを消すときは、Firebase UID のハッシュだけを 30 日残し、その間に同じ Google・メールでログインしたら、セッションを作らずにブラウザーに Google 側を消し直させる",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/128",
+    "cloudflare/src/worker.js",
+    "cloudflare/src/client/login.js",
+    "cloudflare/public/privacy.html",
+    "cloudflare/test/firebase-auth.test.js",
+    "cloudflare/test/account-delete.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-free-tier-only",
    "type": "decision",
    "status": "adopted",
@@ -6939,6 +6955,21 @@
    "from": "dec-firebase-auth",
    "rel": "raises",
    "to": "q-firebase-free-tier"
+  },
+  {
+   "from": "dec-firebase-delete-pending",
+   "rel": "affects",
+   "to": "dec-account-deletion"
+  },
+  {
+   "from": "dec-firebase-delete-pending",
+   "rel": "affects",
+   "to": "q-firebase-user-deletion"
+  },
+  {
+   "from": "dec-firebase-delete-pending",
+   "rel": "depends_on",
+   "to": "dec-firebase-auth"
   },
   {
    "from": "dec-free-tier-only",

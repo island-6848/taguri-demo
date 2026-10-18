@@ -174,6 +174,11 @@ async function firebaseSignIn(request, env) {
   } else if (!uid && current && !current.firebase_uid) {
     fail(409,'いまログインしているアカウントの記録を引き継ぐには、アカウントのページの「Google・メールを結び付ける」から進んでください。別のアカウントとして始めるなら、ログアウトしてからログインしてください。');
   }
+  if (!uid && input.link !== true && await firebaseDeletePending(db, identity.uid)) {
+    // 前にたぐりのアカウントを削除したが、Google 側（Firebase）の利用者を消せなかった人（#128）。
+    // セッションは作らない。ブラウザーはいまログインしたばかりなので、Firebase の利用者を消せる
+    return json({firebase_delete_pending: true});
+  }
   if (!uid) {
     // ログインの欄（intent: 'login'）から来たときは、新しいアカウントを作らない（起案者の指示 2026-10-17
     // 「ログイン（上）または新規登録（下）にレイアウトし直して」）。新規登録の欄は intent: 'signup'
@@ -189,6 +194,20 @@ async function firebaseSignIn(request, env) {
   if (created) await confirmNewAccount(db, env, fail, uid, request);
   return json({linked,created},200,{'Set-Cookie':cookie(session)});
 }
+// Firebase 側の削除の保留（#128）。たぐりの記録を消したあと、Google 側（Firebase Authentication）の
+// 利用者はブラウザーが消すが、失敗・離脱してもサーバーには分からない。そこで、結び付いていたアカウントを消すときに
+// Firebase UID のハッシュだけを FIREBASE_DELETE_DAYS 日のあいだ usage に残す（UID そのもの・メールは残さない）。
+// その間に同じ Google・メールでログインすると、セッションを作らずに「Google 側を消す」ようブラウザーに返す。
+// ブラウザーの「消せた」という申告では消さない（サーバーでは確かめられないので、期限で消えるまで残す）。
+export const FIREBASE_DELETE_DAYS = 30;
+const firebaseDeleteKey = async firebaseUid => `fbdel:${await hash('firebase-uid|' + firebaseUid)}`;
+async function firebaseDeletePending(db, firebaseUid) {
+  return Boolean((await db.prepare('SELECT n FROM usage WHERE k=? AND n>?').bind(await firebaseDeleteKey(firebaseUid), now()).first())?.n);
+}
+async function firebaseDeleteStatements(db, firebaseUid) {
+  return [db.prepare("DELETE FROM usage WHERE k LIKE 'fbdel:%' AND n<=?").bind(now()),
+    db.prepare('INSERT INTO usage(k,n) VALUES(?,?) ON CONFLICT(k) DO UPDATE SET n=excluded.n').bind(await firebaseDeleteKey(firebaseUid), now() + FIREBASE_DELETE_DAYS * 86400)];
+}
 // Account deletion (security rules R7). Irreversible, so it needs a fresh
 // sign-in (freshSession). Every table is cleared explicitly rather than
 // relying on foreign-key cascades. The Firebase user (Google side) is deleted
@@ -201,8 +220,9 @@ async function deleteAccount(request, env, uid, input) {
   // Firebase sign-in, so a linked account must be deleted after signing in
   // with Google or the email link (otherwise the email would stay at Google).
   if (linked && input.firebase_ready !== true) fail(409,'このアカウントは Google またはメールと結び付いています。Google 側の記録も消すため、Google かメールのリンクでログインし直してから削除してください。');
-  await env.DB.batch(deleteAccountStatements(env.DB, uid));
-  return json({deleted:true,firebase_linked:!!linked},200,{'Set-Cookie':`${COOKIE}=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0`});
+  await env.DB.batch([...deleteAccountStatements(env.DB, uid), ...(linked ? await firebaseDeleteStatements(env.DB, linked) : [])]);
+  // firebase_pending: Google 側はまだ消えていない（ブラウザーが消す。消せなければ、次のログインでもう一度）
+  return json(linked ? {deleted:true,firebase_linked:true,firebase_pending:true} : {deleted:true,firebase_linked:false},200,{'Set-Cookie':`${COOKIE}=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0`});
 }
 // 復旧コードの作り直し（#126）。控えをなくした・人に見られたときに、アカウントと記録はそのままで、
 // 古いコードだけを使えなくする。直近 10 分以内のログインが要る（盗まれた Cookie だけでは作り直せない）。

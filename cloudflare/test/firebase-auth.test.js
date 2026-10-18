@@ -269,3 +269,25 @@ test('the login box never makes an account; the sign-up box does, and signs in a
   assert.equal((await signIn(call, await idToken(), '', {intent: 'signup', agree: undefined})).status, 200);
   assert.equal(sqlite.prepare('SELECT count(*) AS n FROM users').get().n, 1);
 });
+
+// issue #128: たぐりの記録を消したあと Google 側（Firebase）を消せなかったら、次に同じ Google・メールで
+// ログインしたときに、セッションを作らずに「Google 側を消す」ようブラウザーに返す。期限（30 日）で忘れる
+test('after deleting a linked account, signing in with the same Google account asks the browser to finish the Google-side deletion', async () => {
+  const {call, sqlite} = setup();
+  const first = await signIn(call, await idToken());
+  assert.equal((await call('account/delete', {confirm: '削除', firebase_ready: true}, first.cookie)).status, 200);
+  for (const intent of ['login', 'signup']) {
+    const r = await call('auth/firebase', {id_token: await idToken(), intent});
+    assert.equal(r.status, 200, intent);
+    assert.deepEqual(await r.json(), {firebase_delete_pending: true});
+    assert.equal(r.headers.get('set-cookie'), null);
+  }
+  assert.equal(sqlite.prepare('SELECT count(*) AS n FROM users').get().n, 0);
+  assert.equal(sqlite.prepare('SELECT count(*) AS n FROM sessions').get().n, 0);
+  // ほかの Google アカウントには関係しない
+  assert.equal((await signIn(call, await idToken({sub: 'someone-else'}), '', {intent: 'signup'})).status, 200);
+  // 期限が過ぎたら、ふつうの未登録の扱い
+  sqlite.exec("UPDATE usage SET n=0 WHERE k LIKE 'fbdel:%'");
+  assert.equal((await call('auth/firebase', {id_token: await idToken(), intent: 'login'})).status, 404);
+  assert.equal((await signIn(call, await idToken(), '', {intent: 'signup'})).body.created, true);
+});

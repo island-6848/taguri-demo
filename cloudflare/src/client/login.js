@@ -73,12 +73,28 @@ async function exchange(auth, credential, intent, agree) {
   const idToken = await credential.user.getIdToken();
   const res = await fetch('/api/auth/firebase', {method: 'POST', credentials: 'same-origin',
     headers: {'content-type': 'application/json'}, body: JSON.stringify({id_token: idToken, link: LINK_MODE, intent, agree})});
+  const data = await res.json().catch(() => ({}));
+  // 前にアカウントを削除したとき、Google 側の記録を消せなかった（#128）。いまログインしたばかりなので消せる
+  if (res.ok && data.firebase_delete_pending) return finishFirebaseDelete(auth, credential.user);
   if (DELETE_MODE) firebaseUser = credential.user;
   else await signOut(auth).catch(() => {});
-  const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || 'ログインできませんでした。');
   if (LINK_MODE) { say(data.linked ? '結び付けました。次からは Google かメールでログインできます。' : 'すでに結び付いています。'); location.replace(NEXT === '/' ? '/account' : NEXT); return; }
   signedIn('ログインしました。');
+}
+
+// The server keeps only a hash of the Firebase UID for 30 days after the
+// deletion and never takes this browser's word that it is gone (#128).
+async function finishFirebaseDelete(auth, user) {
+  busy(false);
+  $('#delete-confirm').hidden = true;
+  try {
+    await deleteUser(user);
+    say('前に削除したアカウントの、Google 側のログイン記録を消しました。これで削除は終わりです。新しく使うときは「新規登録」から始めてください。');
+  } catch {
+    await signOut(auth).catch(() => {});
+    say('前に削除したアカウントの、Google 側のログイン記録を消せませんでした。少し待ってから、もう一度同じ方法でログインすると、また消します。', true);
+  }
 }
 
 // After any sign-in: go to the records, or (delete mode) ask for confirmation.
@@ -242,7 +258,7 @@ function setupDelete() {
     let note = '';
     if (firebaseUser) {
       try { await deleteUser(firebaseUser); }
-      catch { note = 'Google 側のログイン記録は消せませんでした。もう一度このページからログインして削除すると消えます。'; }
+      catch { note = 'Google 側のログイン記録は消せませんでした。30日以内に、同じ Google・メールでもう一度ログインすると消します（ログインの欄からで大丈夫です）。'; }
     }
     firebaseUser = null;
     $('#delete-confirm').hidden = true;
