@@ -8,6 +8,7 @@
 - 未ログインで開ける画面（`/about`・`/login`）が 200
 - それぞれ `--slow` 秒より遅くない
 - 無料枠の数え（health の `free_tier`）が上限の 8 割を越えていない
+- 回数制限（health の `rate_limit`）の結び付けがあり、最近失敗していない（止まっても要求は通るので、ここで見る）
 
 問題があれば終了コード 1。GitHub Actions（`.github/workflows/service-watch.yml`）が 1 時間ごとに流し、
 失敗したらリポジトリの持ち主に GitHub から通知が届く。一度だけの通信の失敗で鳴らないよう、2 回まで
@@ -54,6 +55,14 @@ def check_once(base: str, slow: float, fetch=get) -> list[str]:
         reads, cap = ft.get("r2_reads_month"), ft.get("r2_reads_cap")
         if isinstance(reads, int) and isinstance(cap, int) and cap > 0 and reads >= 0.8 * cap:
             problems.append(f"R2 の読み出しが今月 {reads:,} 回（上限 {cap:,} の 8 割を越えた）")
+        # 回数制限（Rate Limiting の結び付け）が無い・失敗している（issue #133）。止まっても要求は通るので、
+        # ここで見ないと気付けない。古い Worker（rate_limit が無い）は見ない
+        for kind, st in (health.get("rate_limit") or {}).items():
+            state = st.get("state") if isinstance(st, dict) else None
+            if state == "missing":
+                problems.append(f"回数制限（{kind}）の結び付けが無い（制限なしで通している）")
+            elif state == "failing":
+                problems.append(f"回数制限（{kind}）が失敗している（制限なしで通している。失敗 {st.get('errors', '?')} 回）")
         if sec > slow:
             problems.append(f"/api/health が遅い（{sec:.1f} 秒）")
     for page in PAGES:

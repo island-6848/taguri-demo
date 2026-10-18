@@ -10,7 +10,7 @@ import {suggest} from './screens/suggest.js';
 import {exportPayload} from './screens/settings.js';
 import {chooseVariant} from './reco-gate.js';
 import {R2_READS_CAP, r2ReadAllowed, d1RoomLeft, d1Bytes, D1_BYTES_CAP, MAX_ACCOUNTS} from './free-tier.js';
-import {rateLimit, checkNewAccount} from './rate-limit.js';
+import {rateLimit, checkNewAccount, rateLimitHealth} from './rate-limit.js';
 // Writes that only remove a user's rows: allowed even when D1 is at its storage cap.
 // 保存の上限でも通す操作（減らす操作と、既にある行を書き換えるだけの規約の同意 terms.agreeAction）
 const SHRINKING_ACTIONS = new Set(['drop_work', 'purge_work', 'unseen', 'agree']);
@@ -259,7 +259,7 @@ async function computeRecommendations(db, uid, ver, today) {
 }
 // How old the delivered catalogue is: dates and counts only, written by
 // scripts/deliver_catalogue.py (tools/taguri/check_catalog_age.py reads it).
-export async function health(db) {
+export async function health(db, env = {}) {
   const rows = (await db.prepare("SELECT k,v FROM rec_meta WHERE k IN ('catalogue_scan','catalogue_delivered','catalogue_upcoming')").all()).results;
   const m = Object.fromEntries(rows.map(r => [r.k, r.v]));
   const catalog = {present: Boolean(m.catalogue_delivered)};
@@ -285,7 +285,7 @@ export async function health(db) {
   } catch { /* migration 0014 not applied yet */ }
   let accounts = null;
   try { accounts = (await db.prepare('SELECT count(*) AS n FROM users').first())?.n ?? null; } catch { /* no table */ }
-  return {ok: true, catalog, free_tier: {r2_reads_month: r2Reads, r2_reads_cap: R2_READS_CAP,
+  return {ok: true, catalog, rate_limit: rateLimitHealth(env), free_tier: {r2_reads_month: r2Reads, r2_reads_cap: R2_READS_CAP,
     d1_bytes: await d1Bytes(db), d1_bytes_cap: D1_BYTES_CAP, accounts, accounts_cap: MAX_ACCOUNTS}};
 }
 // Stages for linking a record: ?q=title[&date=YYYY-MM-DD] searches by title,
@@ -524,7 +524,7 @@ export default {
     if (poster) return poster;
     // The Worker's own health (catalogue date, free-tier counters) even while the
     // Render bridge serves the other /api/ paths: catalog-age.yml and the crawler watch it.
-    if (url.pathname === '/api/health' && request.method === 'GET') return json(await health(env.DB),200,{'Cache-Control':'public, max-age=300'});
+    if (url.pathname === '/api/health' && request.method === 'GET') return json(await health(env.DB, env),200,{'Cache-Control':'public, max-age=300'});
     const migrationAPI=url.pathname.startsWith('/migration-api/');
     const native = await nativeRoute(request, env, url);
     if (native) return native;
@@ -537,7 +537,7 @@ export default {
       const path = url.pathname; const method = request.method;
       if (method !== 'GET' && method !== 'POST') fail(405,'対応していない操作です。');
       if (method === 'POST' && request.headers.get('origin') !== url.origin) fail(403,'同じサイトから操作してください。');
-      if (method === 'GET' && path === '/api/health') return json(await health(env.DB),200,{'Cache-Control':'public, max-age=300'});
+      if (method === 'GET' && path === '/api/health') return json(await health(env.DB, env),200,{'Cache-Control':'public, max-age=300'});
       if (method === 'GET' && path === '/api/catalogue') {
         // Public catalogue only: never include an owner's ranking or private reasons.
         const rows = await env.DB.prepare('SELECT id,title,date,venue,url,metadata FROM catalogue WHERE date>=? ORDER BY date,id LIMIT 1000').bind(new Date(Date.now()-30*86400000).toISOString().slice(0,10)).all();

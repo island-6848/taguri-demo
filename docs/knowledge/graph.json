@@ -1510,6 +1510,22 @@
    "verifies": []
   },
   {
+   "id": "dec-rate-limit-fail-open",
+   "type": "decision",
+   "status": "proposed",
+   "date": "2026-10-18",
+   "title": "回数制限が無い・壊れたときも要求は通す（認証口も）。代わりに /api/health の rate_limit に出し、1 時間ごとの見張りで持ち主に知らせる",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/133",
+    "cloudflare/src/rate-limit.js",
+    "cloudflare/src/worker.js",
+    "cloudflare/test/rate-limit.test.js",
+    "tools/taguri/check_service.py",
+    "tools/taguri/test_check_service.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-rate-limit",
    "type": "decision",
    "status": "adopted",
@@ -7348,6 +7364,16 @@
    "from": "dec-posters-r2",
    "rel": "answers",
    "to": "q-worker-posters"
+  },
+  {
+   "from": "dec-rate-limit-fail-open",
+   "rel": "depends_on",
+   "to": "dec-rate-limit"
+  },
+  {
+   "from": "dec-rate-limit-fail-open",
+   "rel": "affects",
+   "to": "comp-auth-throttle"
   },
   {
    "from": "dec-rate-limit",

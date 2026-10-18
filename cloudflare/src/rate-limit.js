@@ -32,16 +32,55 @@ export const limitKind = (method, path) => (method === 'POST' && AUTH_PATHS.test
 
 const visitor = request => request.headers.get('cf-connecting-ip') || 'unknown';
 
-async function allowed(binding, key) {
-  if (!binding?.limit) return true;
-  try { return (await binding.limit({key})).success !== false; }
-  catch { return true; }
+// 回数制限が働いているかの様子（issue #133）。止まっても要求は通す（無料枠を守るための制限で、サービスを
+// 止めるためのものではない）が、止まったことは分かるようにする:
+// - /api/health の rate_limit に、結び付け（binding）があるか・この isolate で最近失敗したかを出す。
+//   外の見張り（service-watch.yml の check_service.py）が 1 時間ごとに見て、無い・失敗中なら持ち主に知らせる
+// - 失敗したときはログに 1 分に 1 行だけ出す（種類とエラーの名前だけ。接続元の住所や鍵は出さない）
+// 数はこの isolate の中だけ（D1 には書かないので、使う量は増えない）。
+// 認証口も同じく通す（障害時の方針、dec-rate-limit-fail-open）。復旧コードは 256 ビットの乱数、Firebase の
+// トークンは署名を確かめ、パスキーは本人確認つきなので、制限が外れても当て推量では入れない。新規登録は D1 の
+// 正確な上限（1 日・接続元ごと・全体）が別にあり、パスキーの未処理チャレンジも接続元ごとに数える
+export const FAILING_MS = 10 * 60_000;          // 最後の失敗からこの間は failing と出す
+const fresh = () => ({checked: 0, limited: 0, errors: 0, lastErrorAt: 0, loggedAt: 0, missingLogged: false});
+export const rlStatus = {any: fresh(), auth: fresh()};
+export function resetRateLimitStatus() { rlStatus.any = fresh(); rlStatus.auth = fresh(); }
+
+async function allowed(binding, kind, key, nowMs = Date.now()) {
+  const s = rlStatus[kind];
+  if (!binding?.limit) {
+    if (!s.missingLogged) { s.missingLogged = true; console.log(`rate limit ${kind}: no binding (requests pass unlimited)`); }
+    return true;
+  }
+  try {
+    const ok = (await binding.limit({key})).success !== false;
+    s.checked++;
+    if (!ok) s.limited++;
+    return ok;
+  } catch (e) {
+    s.errors++; s.lastErrorAt = nowMs;
+    if (nowMs - s.loggedAt >= 60_000) {
+      s.loggedAt = nowMs;
+      console.log(`rate limit ${kind}: binding failed (${String(e?.name || 'Error').slice(0, 40)}); requests pass unlimited`);
+    }
+    return true;
+  }
+}
+
+/** /api/health の rate_limit。missing（結び付けが無い）・failing（最近失敗した）・ok のどれか。数だけで、住所は無い */
+export function rateLimitHealth(env, nowMs = Date.now()) {
+  const one = (kind, binding) => {
+    const s = rlStatus[kind];
+    const state = !binding?.limit ? 'missing' : (s.lastErrorAt && nowMs - s.lastErrorAt < FAILING_MS ? 'failing' : 'ok');
+    return {state, checked: s.checked, limited: s.limited, errors: s.errors};
+  };
+  return {any: one('any', env?.RL_ANY), auth: one('auth', env?.RL_AUTH)};
 }
 
 /** A 429 response when this visitor is over the limit, else null. */
 export async function rateLimit(request, env, url) {
   const kind = limitKind(request.method, url.pathname), ip = visitor(request);
-  const ok = await allowed(env.RL_ANY, `any:${ip}`) && (kind !== 'auth' || await allowed(env.RL_AUTH, `auth:${ip}`));
+  const ok = await allowed(env.RL_ANY, 'any', `any:${ip}`) && (kind !== 'auth' || await allowed(env.RL_AUTH, 'auth', `auth:${ip}`));
   if (ok) return null;
   const message = '操作が続いたので少し止めています。1分ほど待ってから試してください。';
   const headers = {'Retry-After': '60', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff'};
