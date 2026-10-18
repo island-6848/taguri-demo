@@ -3,13 +3,14 @@
 
     python3 tools/taguri/test_chronicle.py
 
-**LLM は呼ばない。** 呼ぶ部分（`ask`）は外との通信で、返る文も毎回違う ── 検査する
-のは**事実の作り方**（数え方・初出の判定・並び）と、**返ってきた文の受け取り方**
-（記録に無い名前を挙げた行を落とすか）である。**この 2 つが年表の正しさを決めている。**
+検査するのは**事実の作り方**（数え方・初出の判定・並び）と、**事実から書く読みの規則**
+（期の区切り・年ごとの 1 行・締め）、**記録に無い名前を通さないか**（`_check`）である。
+読みは LLM を呼ばずに規則で書くので、文そのものを決め打ちで確かめられる。
 """
 
 from __future__ import annotations
 
+import json
 import re
 import sys
 from pathlib import Path
@@ -253,17 +254,17 @@ check("2 カラムに割らず 1 列いっぱいに描く（.figs>.wide）", 'wi
 check("年が縦に並ぶ", html.count('class="chyear"') == 3, html.count('class="chyear"'))
 check("題名から日記帳へ飛べる", 'href="/records/works' in html)
 check("載せなかった件数を画面に書く", "1 件は" in html or "1 件" in html)
-check("読みを作る押し口がある", 'data-chron="1"' in html)
+check("作り直す押し口は置かない（読みは表示のたびに書く）", 'data-chron="1"' not in html)
+check("年ごとの 1 行が出る", html.count("class='chread'") == 3, html.count("class='chread'"))
+check("期が出る", 'class="chera"' in html)
+check("締めが出る", 'class="chclose"' in html)
+check("訪問者にも同じ年表を出す（読みはその人の事実から書く）",
+      CR.panel(WORKS, RATED, owner=False) == html)
 check("観た本数を出す", "6 作品" in html)
 
-# profile が無い状態（load() が空）では、傾向の帯を出さない。
-# **`load()` は本物の `data/review/chronicle.json` を読む**ので、ここだけ差し替える
-# ── 実データの読みが既に保存されていると、この検査は本物の状態に引かれてしまう
-_load_real = CR.load
-CR.load = lambda: {}
+# 言えることが 2 つに満たない記録では、傾向の帯を出さない
 check("profile が無ければ「この記録から見えること」を出さない",
-      "この記録から見えること" not in CR.panel(WORKS, RATED))
-CR.load = _load_real
+      "この記録から見えること" not in CR.panel(WORKS[:2], RATED[:2]))
 
 # **1 本しか行っていない劇場を「いちばん通った」と書かない**
 one = CR.panel([w("z#2025", "ゼータ", "2025-01-01", "○")],
@@ -271,6 +272,61 @@ one = CR.panel([w("z#2025", "ゼータ", "2025-01-01", "○")],
 check("1 本の年に「いちばん通った劇場」を書かない", "いちばん通った劇場" not in one, one[:200])
 
 check("記録が空でも落ちない", CR.panel([], []) == "")
+
+# ---------------------------------------------------------------- 読み（規則）
+#
+# 起案者の指示（2026-10-18）── 利用者ごとに LLM を呼ばない。読みは事実だけから規則で書く。
+# **期が分かれる記録**: 帝国劇場の 2 年 → 3 年あいて本多劇場の 2 年（劇場・本数・出会い・
+# 題材が同じ年に入れ替わる）。Worker の検査（`cloudflare/test/chronicle.test.js`）と同じ標本。
+sys.path.insert(0, str(ROOT / "cloudflare" / "test" / "screens"))
+import chronicle_fixture as FX                                     # noqa: E402
+
+_themes_real = CR._themes
+CR._themes = lambda: FX.THEMES_ERAS
+FE = CR.facts(FX.ERAS_WORKS, FX.ERAS_RATED)
+CR._themes = _themes_real
+RE = CR.reading(FE)
+check("LLM を読み込まない", "llm_gemini" not in sys.modules)
+check("同じ事実からは同じ読み", CR.reading(FE) == RE)
+check("2 つ以上が同じ年に入れ替わったところで期を切る",
+      [(e["from"], e["to"]) for e in RE["eras"]] == [("2018", "2019"), ("2022", "2023")],
+      RE["eras"])
+check("期の名前は通った劇場から", [e["name"] for e in RE["eras"]]
+      == ["帝国劇場に通っていた 2 年", "本多劇場に通う 2 年"], [e["name"] for e in RE["eras"]])
+check("期の説明に、前の期からの劇場の移り", "通う先は帝国劇場から本多劇場へ移りました。"
+      in RE["eras"][1]["body"], RE["eras"][1]["body"])
+check("期の説明に、題材の移り（題材があるとき）", "題材は家族から法廷へ移っています。"
+      in RE["eras"][1]["body"], RE["eras"][1]["body"])
+check("期の説明は 140 字まで", all(len(e["body"]) <= CR.ERA_MAX for e in RE["eras"]))
+check("すべての年に 1 行", sorted(RE["years"]) == ["2018", "2019", "2022", "2023"], RE["years"])
+check("1 行は 70 字まで", all(len(x) <= CR.YEAR_MAX for x in RE["years"].values()), RE["years"])
+check("記録の始まりの年", RE["years"]["2018"].startswith("記録はこの年から始まります。"),
+      RE["years"]["2018"])
+check("間が空いた年は、そのことから書く",
+      RE["years"]["2022"].startswith("2019 年以来、3 年ぶりに観た年です。"), RE["years"]["2022"])
+check("「出会い」は ◎ の作品に出ていて、後の年も観ている人", "丙と出会い、その後の年も観ています。"
+      in RE["years"]["2022"], RE["years"]["2022"])
+check("締めは最初の期と最後の期を比べる", RE["closing"] ==
+      "通う先は帝国劇場から本多劇場へ移り、観る本数は年を追って増えています。"
+      "題材は家族から法廷へ移っています。", RE["closing"])
+check("ですます", all(x.endswith("。") for x in [RE["closing"], *RE["years"].values()]))
+flat = CR.facts([w(f"f{i}", f"作{i}", f"202{i}-01-01", "○") for i in (1, 2, 3)],
+                [r(f"f{i}", ["同じ劇場"], []) for i in (1, 2, 3)])
+check("何も入れ替わらなければ期は 1 つ", len(CR.reading(flat)["eras"]) == 1,
+      CR.reading(flat)["eras"])
+busy = CR.facts(*FX.busy(1))
+check("期は 4 つまで", 1 <= len(CR.reading(busy)["eras"]) <= 4, CR.reading(busy)["eras"])
+check("年が 4 つ以上なら 1 年だけの期を作らない",
+      all(e["from"] != e["to"] for e in CR.reading(busy)["eras"]), CR.reading(busy)["eras"])
+check("記録が空なら読みも空", CR.reading(CR.facts([], []))["eras"] == [])
+for nm, ff in (("期の標本", FE), ("最初の標本", F), ("多くの規則を通る標本", busy),
+               ("小さい標本", CR.facts(WORKS[:2], RATED[:2]))):
+    got, dropped = CR._check(CR.reading(ff), ff)
+    check(f"規則の読みは _check で何も落ちない（{nm}）", dropped == 0
+          and len(got["eras"]) == len(CR.reading(ff)["eras"]), dropped)
+    have = CR._names(ff)
+    quoted = re.findall(r"「([^」]+)」", json.dumps(CR.reading(ff), ensure_ascii=False))
+    check(f"「」で挙げた題名はすべて記録にある（{nm}）", all(q in have for q in quoted), quoted)
 
 print(f"{ok} 件通過・{fail} 件失敗")
 sys.exit(1 if fail else 0)
