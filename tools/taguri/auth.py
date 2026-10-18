@@ -92,6 +92,11 @@ REGISTER_MAX_ATTEMPTS = 20
 REGISTER_WINDOW_SEC = 10 * 60
 
 SCRYPT_N, SCRYPT_R, SCRYPT_P = 2**14, 8, 1
+# **`sessions.session_token` に入っているものの版**（SQLite の `user_version` に控える）。
+# 1 からは Cookie の生の値ではなく、その SHA-256（16 進）を入れる。0 の DB は生の値を
+# 入れていた頃のもので、開いたときに残っているセッションを全部消す（利用者は復旧コードか
+# 連携コードで入り直す。生の値を DB に残したままにしないことを優先した）
+SESSION_SCHEMA_VERSION = 1
 
 
 class AuthError(Exception):
@@ -190,9 +195,20 @@ def _db() -> sqlite3.Connection:
         """
     )
     conn.commit()
+    if conn.execute("PRAGMA user_version").fetchone()[0] < SESSION_SCHEMA_VERSION:
+        with conn:
+            conn.execute("DELETE FROM sessions")
+            conn.execute(f"PRAGMA user_version = {SESSION_SCHEMA_VERSION}")
     if is_new:
         DB_PATH.chmod(0o600)
     return conn
+
+
+def _session_key(session_token: str) -> str:
+    """DB に置くのはこちら。**Cookie の生の値は DB に書かない。** DB や控えが漏れても、
+    中の値を Cookie に入れるだけでは入れないようにする（Worker 版と同じ守り方）。
+    トークンは 256bit の乱数なので、遅いハッシュは要らない。"""
+    return hashlib.sha256(session_token.encode("utf-8")).hexdigest()
 
 
 def access_or_register(code: str) -> tuple[str, bool]:
@@ -217,7 +233,7 @@ def access_or_register(code: str) -> tuple[str, bool]:
 
 
 def create_session(user_id: str) -> str:
-    """日常用のセッショントークンを発行する（Cookieに載せる値）。"""
+    """日常用のセッショントークンを発行する（Cookieに載せる値）。DBにはそのハッシュだけを置く。"""
     token = secrets.token_urlsafe(32)
     conn = _db()
     try:
@@ -225,7 +241,7 @@ def create_session(user_id: str) -> str:
         conn.execute(
             "INSERT INTO sessions (session_token, user_id, created_at, last_seen_at) "
             "VALUES (?, ?, ?, ?)",
-            (token, user_id, now, now),
+            (_session_key(token), user_id, now, now),
         )
         conn.commit()
     finally:
@@ -237,23 +253,24 @@ def resolve_session(session_token: str) -> str | None:
     """セッショントークンから利用者IDを引く。期限切れ・存在しなければNone。"""
     if not session_token:
         return None
+    key = _session_key(session_token)
     conn = _db()
     try:
         cur = conn.execute(
             "SELECT user_id, created_at FROM sessions WHERE session_token = ?",
-            (session_token,),
+            (key,),
         )
         row = cur.fetchone()
         if row is None:
             return None
         user_id, created_at = row
         if time.time() - created_at > SESSION_TTL_SEC:
-            conn.execute("DELETE FROM sessions WHERE session_token = ?", (session_token,))
+            conn.execute("DELETE FROM sessions WHERE session_token = ?", (key,))
             conn.commit()
             return None
         conn.execute(
             "UPDATE sessions SET last_seen_at = ? WHERE session_token = ?",
-            (time.time(), session_token),
+            (time.time(), key),
         )
         conn.commit()
         return user_id
@@ -264,7 +281,7 @@ def resolve_session(session_token: str) -> str | None:
 def revoke_session(session_token: str) -> None:
     conn = _db()
     try:
-        conn.execute("DELETE FROM sessions WHERE session_token = ?", (session_token,))
+        conn.execute("DELETE FROM sessions WHERE session_token = ?", (_session_key(session_token),))
         conn.commit()
     finally:
         conn.close()

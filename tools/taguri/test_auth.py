@@ -66,6 +66,33 @@ AU.revoke_session(token)
 check("失効させたセッションは解決できない", AU.resolve_session(token) is None)
 check("存在しないトークンはNone", AU.resolve_session("no-such-token") is None)
 
+# --- issue #183: DB にはセッショントークンの生の値を置かない ---
+token = AU.create_session(uid1)
+conn = AU._db()
+stored = [r[0] for r in conn.execute("SELECT session_token FROM sessions WHERE user_id = ?", (uid1,))]
+conn.close()
+check("DB に生のトークンが無い（#183）", token not in stored and len(stored) == 1, stored)
+check("DB の値を Cookie に入れても入れない（#183）", AU.resolve_session(stored[0]) is None)
+check("生のトークンなら今までどおり解決できる", AU.resolve_session(token) == uid1)
+AU.revoke_session(token)
+check("生のトークンで失効させられる", AU.resolve_session(token) is None)
+
+# 生の値を入れていた頃の DB（user_version 0）は、開いたときに残りのセッションを消す
+old_token = "old-plain-token"
+conn = AU._db()
+conn.execute("INSERT INTO sessions (session_token, user_id, created_at, last_seen_at) VALUES (?, ?, ?, ?)",
+             (old_token, uid1, time.time(), time.time()))
+conn.execute("PRAGMA user_version = 0")
+conn.commit()
+conn.close()
+check("古い形の DB に残った生のトークンは使えない", AU.resolve_session(old_token) is None)
+conn = AU._db()
+left = conn.execute("SELECT COUNT(*) FROM sessions").fetchone()[0]
+version = conn.execute("PRAGMA user_version").fetchone()[0]
+conn.close()
+check("古い形の DB は開いたときにセッションを消し、版を上げる", left == 0 and version == AU.SESSION_SCHEMA_VERSION,
+      (left, version))
+
 # --- /recover ---
 recovered_uid = AU.recover(code1, ip="127.0.0.1")
 check("正しいコードでrecoverできる", recovered_uid == uid1)
