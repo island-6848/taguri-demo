@@ -31,3 +31,28 @@ test('#92: manual entry searches the saved catalogue, not CoRich on the spot', a
   assert.match(html, /その場で外のサイト（CoRich など）は探しません/);
   assert.match(html, /次の更新で探してもらう/);
 });
+
+// #95: 入力欄には常に見える名前（label）を付け、必須か任意かを書く。placeholder は例だけ
+test('#95: inputs have visible labels with required/optional, placeholders are examples', async () => {
+  const {env, sqlite} = setup();
+  try {
+    const cookie = await signIn(env);
+    const html = async path => (await step(env, cookie, {get: path})).body.body_html;
+    const reg = await html('/api/screen/register');
+    const label = (id, name, req) => new RegExp(`<label class="fld" for="${id}"><span class="fl">${name}<small class="${req ? 'req">必須' : 'opt">任意'}</small></span><(?:input|select) id="${id}"`);
+    assert.match(reg, label('w-title', '公演の題名', true));
+    assert.match(reg, label('w-date', '観た日', false));
+    assert.match(reg, label('w-time', '開演時刻', false));
+    assert.match(reg, label('w-venue', '劇場', false));
+    assert.match(reg, /id="w-title" type="text" placeholder="例：/);
+    assert.match(reg, /id="w-venue" type="text" placeholder="例：/);
+    for (const path of ['/api/screen/start', '/api/screen/favourites']) {
+      const h = await html(path);
+      assert.match(h, label('fav-kind', '種類', true), path);
+      assert.match(h, label('fav-name', '名前', true), path);
+      assert.match(h, /id="fav-name" type="text" placeholder="例：/, path);
+    }
+    const search = await html('/api/screen/search');
+    assert.match(search, /<label class="fld" for="search-q"><span class="fl">人名・団体・題材・題名<small class="req">必須<\/small><\/span><input type="text" id="search-q" name="q"/);
+  } finally { sqlite.close(); }
+});

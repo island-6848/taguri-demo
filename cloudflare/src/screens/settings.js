@@ -151,7 +151,7 @@ export async function startScreen(_params, ctx) {
   const nWorks = (await loadWorks(ctx)).length;
   const kinds = KINDS.map(k => `<option value="${E(k)}">${E(k)}</option>`).join('');
   const tags = KINDS.flatMap(k => (dec[k] || []).map(n => `<span class="tag" data-kind="${E(k)}" data-name="${E(n)}">${E(k)}「${E(n)}」<button data-fav="remove">✕</button></span>`)).join('');
-  const form = `<div class="fav-add"><select id="fav-kind">${kinds}</select> <input id="fav-name" type="text" placeholder="劇団名・俳優名・作品名・題材" size="26">`
+  const form = `<div class="fav-add"><label class="fld" for="fav-kind"><span class="fl">種類<small class="req">必須</small></span><select id="fav-kind">${kinds}</select></label> <label class="fld" for="fav-name"><span class="fl">名前<small class="req">必須</small></span><input id="fav-name" type="text" placeholder="例：劇団四季・シェイクスピア・家族" size="26"></label>`
     + ` <button data-fav="add">${ico('star')}登録する</button><span class="said"></span></div>` + (tags ? `<div class="tags">${tags}</div>` : '');
   const step1 = stepCard(1, `見逃したくない名前を登録する（いま ${nDec} 件）`, nDec > 0,
     '劇団・俳優・演出家・作品・原作者・題材のどれでも登録できます。<b>登録した名前の公演は、内容を問わず、件数の制限も付けずに出します。</b>1 件登録するだけで動き始めます。<br>あとから「おすすめ ▸ お気に入り」で足すことも外すこともできます。', form);
@@ -266,10 +266,11 @@ export async function registerScreen(_params, ctx) {
 <div class="card">${h2('plus', '② メールに残らない分を手で 1 件足す')}
 <p class="lead">招待・当日窓口・人に取ってもらった分は購入確認メールに残らないので、
 ここから足してください。</p>
-<div class="add-work"><input id="w-title" type="text" placeholder="公演の題名" size="26"
-  autocomplete="off"><input id="w-stage" type="hidden" value="">
- <input id="w-date" type="date"> <input id="w-time" type="time" aria-label="開演時刻（任意）">
- <input id="w-venue" type="text" placeholder="劇場（任意）" size="14">
+<div class="add-work"><label class="fld" for="w-title"><span class="fl">公演の題名<small class="req">必須</small></span><input id="w-title" type="text" placeholder="例：夜の果て" size="26"
+  autocomplete="off"></label><input id="w-stage" type="hidden" value="">
+ <label class="fld" for="w-date"><span class="fl">観た日<small class="opt">任意</small></span><input id="w-date" type="date"></label>
+ <label class="fld" for="w-time"><span class="fl">開演時刻<small class="opt">任意</small></span><input id="w-time" type="time"></label>
+ <label class="fld" for="w-venue"><span class="fl">劇場<small class="opt">任意</small></span><input id="w-venue" type="text" placeholder="例：本多劇場" size="14"></label>
  <button data-add-work="1">${ico('plus')}登録する</button>
  <button data-sug-web="1">${ico('search')}公演一覧から探す</button><span class="said"></span></div>
 <div id="sug" class="sug"></div>
@@ -290,7 +291,7 @@ export async function registerScreen(_params, ctx) {
 <b>①② と違って、これは観ていない公演です。</b>観た本数にも、図にも、評価待ちにも入らず、
 評価（◎）の材料にもなりません。再演や別会場での上演を次は見逃したくないときは、
 下の一覧から「お気に入りに入れる」を押してください。</p>
-<div class="miss-add"><input id="miss-title" type="text" placeholder="公演の題名" size="30">
+<div class="miss-add"><label class="fld" for="miss-title"><span class="fl">公演の題名<small class="req">必須</small></span><input id="miss-title" type="text" placeholder="例：夜の果て" size="30"></label>
  <button data-miss="1">${ico('flag')}登録する</button><span class="said"></span></div>
 ${missedHtml(missed)}</div>
 

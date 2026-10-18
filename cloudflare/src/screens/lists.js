@@ -700,7 +700,7 @@ export async function favouritesScreen(params, ctx) {
     + `<summary>${ico('star')}登録した名前 <b>${n}件</b> ── 足す・外す</summary>`
     + '<p class="lead">観た記録に無い名前も登録できます。おすすめは ◎ を付けた公演の作り手からしか作れないので、まだ観たことのない劇団や、人から聞いただけの名前は、ここから登録してください。'
     + '<b>表記ゆれ（漢字とカタカナ、送り仮名の違いなど）は、自動では見分けられません。</b>表記ゆれがありそうなときは、両方の書き方をそれぞれ登録してください。</p>'
-    + `<div class="fav-add"><select id="fav-kind">${kinds}</select> <input id="fav-name" type="text" placeholder="団体名・人名・作品名・題材" size="26"> <button data-fav="add">登録する</button>`
+    + `<div class="fav-add"><label class="fld" for="fav-kind"><span class="fl">種類<small class="req">必須</small></span><select id="fav-kind">${kinds}</select></label> <label class="fld" for="fav-name"><span class="fl">名前<small class="req">必須</small></span><input id="fav-name" type="text" placeholder="例：劇団四季・シェイクスピア・家族" size="26"></label> <button data-fav="add">登録する</button>`
     + `<span class="said"></span></div><div class="tags">${tags}</div></details></div>`
     + (allFavs.length ? `<p class="fgh">${ico('search', 15)}<b>表示の絞り込み</b><span>お気に入りの公演の中から、表示する項目を設定できます。</span></p>`
       + `<div class="fil2 narrow">${prefForm(pcounts, prefs, '/recommend/favourites', PAGE_PREF_NOTE, sort !== 'start' ? {s: sort} : {},

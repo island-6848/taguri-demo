@@ -363,7 +363,7 @@ export async function searchScreen(params, ctx) {
   const note = `<p class="note"><b>出演者や題材で探せるのは、公演ページを見つけられた記録だけです</b>（観た記録 ${ws.length} 作品のうち ${nPeople} 作品）。ほかの記録は題名で探せます。</p>`;
   const form = `<form class="fav-add" method="get" action="/search">
 <input type="hidden" name="t" value="__TAGURI_TOKEN__">
-<input type="text" name="q" value="${E(q)}" size="28" placeholder="人名・団体・題材・題名">
+<label class="fld" for="search-q"><span class="fl">人名・団体・題材・題名<small class="req">必須</small></span><input type="text" id="search-q" name="q" value="${E(q)}" size="28" placeholder="例：シェイクスピア・劇団四季・家族"></label>
 <button type="submit">${ico('search')}探す</button></form>`;
   const head = `<h1>探す</h1>
 <p class="lede">人名・団体・題材・題名で、<b>これから観られる公演 ${months.n} 件と観た記録の両方から探します。</b>見つけたものには、この画面から直接答えられます。これから観られる公演には「興味あり」を押せて、観た記録には評価と感想を付けられます。</p>${form}${note}`;
