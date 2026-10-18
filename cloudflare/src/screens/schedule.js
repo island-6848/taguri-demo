@@ -198,7 +198,11 @@ export function tourBlock(venues, shown, today, prefs = []) {
     const price = perVenuePrice ? (priceTable(priceOf(v)) || `<p class="lp-none"><span class="lp-ico">${YEN_ICON}</span>料金 不明</p>`) : '';
     // 会場の名前はツアーのときだけ（1 か所なら上の劇場の行と同じなので出さない。起案者の指示 2026-10-17）
     // 公演の回数は、開く前の日程の横に「（N 回）」（起案者の指示 2026-10-18。開いた中の「公演日時（N 回）」の見出しはやめた）
-    const head = `<span class="tf-when">${tour ? (isHere ? '<span class="tf-star" title="絞り込んだ都道府県の会場">★</span>' : '<span class="tf-dot" aria-hidden="true">・</span>') : ''}${E(when)}`
+    // いま上演中の会場（初日から千穐楽までに今日が入る）は「・」を「●」に（起案者の指示 2026-10-18）。絞り込んだ県の会場は「★」のまま
+    const live = v.start <= today && today <= end;
+    const mark = isHere ? '<span class="tf-star" title="絞り込んだ都道府県の会場">★</span>'
+      : live ? '<span class="tf-dot live" title="いま上演中">●</span>' : '<span class="tf-dot" aria-hidden="true">・</span>';
+    const head = `<span class="tf-when">${tour ? mark : ''}${E(when)}`
       + (grid && n ? `<span class="tf-cnt">（${n} 回）</span>` : '') + '</span>'
       + (tour ? `<span class="tf-loc">${E(where)}</span>` : '');
     const body = (price ? `<div class="tf-price">${price}</div>` : '') + (grid || '');

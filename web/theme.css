@@ -1220,3 +1220,6 @@ details.pbox>summary[data-fold] .fv,.ftab .fv{margin-left:auto;text-align:right;
 :is(.leadbox .cl,.ltour .cl,.rec-row .cast .cl,.inr .inl,.cast .cr .cl),.rec-row .syn::before{
  text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:4px;
  text-decoration-color:color-mix(in srgb,var(--mute) 55%,transparent);align-self:start}
+
+/* ツアーの日程で、いま上演中の会場の行頭（●）は差し色で（起案者の指示 2026-10-18） */
+.tourfull.v2 .tf-dot.live{color:var(--curtain);font-size:.8em}

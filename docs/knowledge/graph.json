@@ -971,6 +971,19 @@
    ]
   },
   {
+   "id": "dec-fav-over-interest",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "推薦の強さは お気に入り ＞ 興味あり。お気に入りから作る種の重さを 2 倍（FAV_SEED_W = 2）",
+   "sources": [
+    "cloudflare/src/recommend.js",
+    "tools/review/user_recommender.py",
+    "cloudflare/test/fav-over-interest.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-favourite-catalogue-match",
    "type": "decision",
    "status": "adopted",
@@ -6564,6 +6577,11 @@
    "from": "dec-edition-split",
    "rel": "affects",
    "to": "comp-frontend"
+  },
+  {
+   "from": "dec-fav-over-interest",
+   "rel": "depends_on",
+   "to": "impl-interest-split"
   },
   {
    "from": "dec-favourite-catalogue-match",

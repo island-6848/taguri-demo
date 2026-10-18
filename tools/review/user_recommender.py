@@ -43,6 +43,8 @@ SQRT12 = math.sqrt(12)  # standardises a mid-rank position (uniform on −0.5..0
 # user's top fifth, weighted SEED_K / (SEED_K + real ratings).
 SEED_Z = 0.4 * SQRT12
 SEED_K = 3
+# お気に入りから作る種の重さ（起案者の指示 2026-10-18「推薦の強さ、お気に入り＞興味ありにしてほしい」。Worker の FAV_SEED_W と同じ）
+FAV_SEED_W = 2
 GRADE_VALUE = {"◎": 4, "○": 3, "△": 2, "×": 1}
 # Users may choose their own scale (2–11 levels, 5 by default; dec-user-scale-range).
 # Such a rating is stored as "value/levels", e.g. "4/5"; ◎○△× are a 4-level scale.
@@ -325,8 +327,8 @@ def person_values(rated: list[dict], seeds: list[dict] = (), skip: set = frozens
         for key in rated_keys(r):
             if key[1] in skip:
                 continue
-            tally[key][1] += w * SEED_Z
-            tally[key][2] += w
+            tally[key][1] += w * FAV_SEED_W * SEED_Z
+            tally[key][2] += w * FAV_SEED_W
     values = {k: (n, s / (wt + M.CONF_K)) for k, (n, s, wt) in tally.items()}
     return values, {str(k): len(v) for k, v in sorted(by_scale.items())}
 

@@ -19,6 +19,9 @@ const SQRT12 = Math.sqrt(12);
 // Favourites as pseudo ratings (user_recommender.SEED_Z / SEED_K and
 // build_recommend_index.seeds_from_favourites).
 export const SEED_Z = 0.4 * SQRT12, SEED_K = 3;
+// お気に入りから作る種の重さは、興味あり（1 公演ぶんの重さを人・種類に割って配る）より強くする（起案者の指示 2026-10-18
+// 「推薦の強さ、お気に入り＞興味ありにしてほしい」）。お気に入りの種は 1 公演ごとに、そこにいる人それぞれへ w × FAV_SEED_W を足す
+export const FAV_SEED_W = 2;
 export const SEED_ROLES = ['出演', '演出', '脚本', '作', '原作', '翻訳', '潤色', '構成', '振付', '作曲', '音楽'];
 export const SEED_KINDS = ['人', '原作者'], MAX_SEED_FAVS = 20, MAX_SEED_STAGES = 60;
 export const SEED_GROUP_KINDS = ['団体', '主催'], SEED_WORK_KINDS = ['作品'], SEED_THEME_KINDS = ['題材'];
@@ -245,7 +248,7 @@ export function personValues(rated, seeds = [], skip = new Set(), liked = [], di
     const keys = [...new Set((r.people || []).filter(([, person]) => !skip.has(person)).map(([role, person]) => role + '\u0000' + person))].sort(cmp);
     for (const k of keys) {
       const t = tally.get(k) || [0, 0, 0];
-      t[1] += w * SEED_Z; t[2] += w;
+      t[1] += w * FAV_SEED_W * SEED_Z; t[2] += w * FAV_SEED_W;
       tally.set(k, t);
     }
   }
