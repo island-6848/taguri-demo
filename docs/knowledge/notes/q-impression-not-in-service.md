@@ -1,7 +1,7 @@
 ---
 id: q-impression-not-in-service
 type: question
-status: open
+status: answered
 date: 2026-10-18
 title: 感想の本文による好みの補正（impression preferences）は、サービス版の推薦（Worker）に届いていない。つなぐか、未対応と書くか（#104、起案者の判断）
 sources:

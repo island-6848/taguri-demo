@@ -3155,6 +3155,23 @@
    "verifies": []
   },
   {
+   "id": "impl-impression-worker",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "感想で書いた特徴への好みを、サービス版（Worker）の推薦の順位と理由に効かせた（規則だけ、LLM なし、#104）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/104",
+    "cloudflare/src/impression.js",
+    "cloudflare/src/screens/recommend.js",
+    "cloudflare/test/impression.test.js",
+    "cloudflare/test/impression-recommend.test.js",
+    "cloudflare/scripts/measure_worker_replay.mjs",
+    "docs/impression-preferences.md"
+   ],
+   "verifies": []
+  },
+  {
    "id": "impl-interest-seed",
    "type": "decision",
    "status": "superseded",
@@ -5155,7 +5172,7 @@
   {
    "id": "q-impression-not-in-service",
    "type": "question",
-   "status": "open",
+   "status": "answered",
    "date": "2026-10-18",
    "title": "感想の本文による好みの補正（impression preferences）は、サービス版の推薦（Worker）に届いていない。つなぐか、未対応と書くか（#104、起案者の判断）",
    "sources": [
@@ -9060,6 +9077,16 @@
    "from": "impl-hidden-gate",
    "rel": "affects",
    "to": "comp-recommender"
+  },
+  {
+   "from": "impl-impression-worker",
+   "rel": "answers",
+   "to": "q-impression-not-in-service"
+  },
+  {
+   "from": "impl-impression-worker",
+   "rel": "affects",
+   "to": "dec-reco-on-worker"
   },
   {
    "from": "impl-interest-seed",
