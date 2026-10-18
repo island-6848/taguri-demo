@@ -67,7 +67,7 @@ PROGRESS = PAST / "progress.json"
 CANDIDATES = ROOT / "data" / "review" / "candidates.jsonl"
 STORY_SIDE = "past"
 STORY_SHARE = 0.4          # 一覧を読み終える前は、その日の時間の 4 割をあらすじに回す（最近の公演のあらすじから先に揃える）
-STORY_QUEUE_MAX = 2_000     # 読み取り待ちの上限（1 件およそ 5〜7 KB。state ブランチを 15 MB ほどまでにする）
+STORY_QUEUE_MAX = 6_000     # 読み取り待ちの上限（1 件およそ 5〜7 KB。state ブランチを 40 MB ほどまでにする。起案者のセッションが続けて読む）
 
 # 照合とおすすめに使う欄だけを残す（料金・問い合わせなどは持たない）
 KEEP_FIELDS = set(FC.ROLE_KEYS) | {"劇場", "スタッフ"}
@@ -304,9 +304,18 @@ def main() -> int:
                     help="--since より前の公演がこの枚数続いたら読み終わりとする")
     ap.add_argument("--max-minutes", type=float, default=0, help="この分数を過ぎたら止める（0 は無制限）")
     ap.add_argument("--report", action="store_true", help="今どこまで読んだかを出す")
+    ap.add_argument("--stories-only", action="store_true",
+                    help="一覧は読まず、あらすじの本文だけを読み取り待ちに積む（stories.yml）")
     a = ap.parse_args()
     if a.report:
         report()
+        return 0
+    if a.stories_only:
+        p = load_progress()
+        got = stories(p, limit=a.limit, max_minutes=a.max_minutes,
+                      fetch=lambda sid: PH.fetch(f"{FC.BASE}/stage/{sid}", timeout=45).decode("utf-8", "replace"))
+        save_progress(p)
+        print(json.dumps(got, ensure_ascii=False))
         return 0
     import fetch_candidates as FCand
     ids = FCand.sitemap_stage_ids()

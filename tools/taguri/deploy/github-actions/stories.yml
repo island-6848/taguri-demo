@@ -1,0 +1,65 @@
+# 非公開リポジトリ（island-6848/taguri-crawler）の .github/workflows/stories.yml に置く。
+# 過去の公演のあらすじの本文だけを取って、読み取り待ち（data/credits/synopsis_queue.jsonl、side past）に積む
+# （起案者の指示 2026-10-18「ページを取る時間を増やして」。fetch_past_stages.py --stories-only）。
+# 読むのは起案者の Claude（dec-synopsis-reader-claude）。CoRich へは 1.1 秒に 1 枚（polite_http）。
+# **無料枠の中だけで動かす**: Plan の段が毎日の更新の分を取っておき、残りから 1 回 300 分までにする（free_tier.py --mode stories）。
+# Catalog と同じ concurrency の組なので、同時には動かない（state ブランチを互いに上書きしない）。
+name: Stories
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: catalog
+  cancel-in-progress: false
+
+permissions:
+  contents: write   # state ブランチへの書き戻し
+  actions: read     # 無料枠の点検で、このリポジトリのジョブの分数を読む
+
+jobs:
+  stories:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    env:
+      TAGURI_THEME_READER: 'queue'
+      TAGURI_CORICH_SEARCH: 'off'
+    steps:
+      - name: Check out the public code
+        uses: actions/checkout@v5
+        with:
+          repository: island-6848/taguri-demo
+          ref: master
+      - name: Check out the working data (state branch)
+        uses: actions/checkout@v5
+        with:
+          ref: state
+          path: state
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Restore the working data
+        run: python tools/taguri/crawler_state.py restore --from state
+      - name: Plan within the free tier
+        id: plan
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python cloudflare/scripts/free_tier.py plan --data data --mode stories
+      - name: Queue the synopses of past stages
+        timeout-minutes: ${{ fromJSON(steps.plan.outputs.past_timeout) }}
+        run: |
+          python tools/review/fetch_past_stages.py --stories-only --limit "${{ steps.plan.outputs.past_limit }}" \
+            --max-minutes "${{ steps.plan.outputs.past_minutes }}"
+      - name: Save the working data to the state branch
+        if: always() && steps.plan.outputs.run == 'true'
+        run: |
+          rm -rf state && mkdir state && cd state
+          git init -q -b state
+          cd ..
+          python tools/taguri/crawler_state.py save --to state
+          cd state
+          git config user.name "taguri-crawler"
+          git config user.email "taguri-crawler@users.noreply.github.com"
+          git add -A
+          git commit -q -m "作業データ $(date -u +%Y-%m-%dT%H:%MZ) (stories)"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" state:state
