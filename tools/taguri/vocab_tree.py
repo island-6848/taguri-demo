@@ -26,7 +26,8 @@ def load(path: pathlib.Path = VOCAB) -> dict[str, dict]:
 
 
 def words_of(concepts: dict[str, dict], name: str) -> set[str]:
-    return {nz(w) for w in [name, *concepts[name].get("words", [])]}
+    c = concepts[name]
+    return {nz(w) for w in [name, *c.get("same", []), *c.get("words", [])]}
 
 
 def tree(concepts: dict[str, dict], counts: dict[str, int] | None = None) -> list[str]:
@@ -36,14 +37,17 @@ def tree(concepts: dict[str, dict], counts: dict[str, int] | None = None) -> lis
             children[b].append(name)
     lines = []
 
-    def walk(name: str, depth: int) -> None:
+    def walk(name: str, depth: int, parent: str = "") -> None:
         c = concepts[name]
         rel = "".join(f"〔関連〕{r}" for r in c.get("related", []))
+        # 上位が複数ある概念は、それぞれの上位の下に出し、ほかの上位を添える
+        also = "".join(f"〔上位にも〕{b}" for b in c.get("broader", []) if b != parent)
         n = f"（{counts[name]} 公演）" if counts is not None else ""
+        same = "".join(f"＝{w}" for w in c.get("same", []))
         words = "／".join(c.get("words", []))
-        lines.append(f"{'  ' * depth}- **{name}**（{c.get('axis', '')}）{n} {rel} {words}".rstrip())
+        lines.append(f"{'  ' * depth}- **{name}**{same}（{c.get('axis', '')}）{n} {rel}{also} {words}".rstrip())
         for ch in children[name]:
-            walk(ch, depth + 1)
+            walk(ch, depth + 1, name)
 
     for name, c in concepts.items():
         if not c.get("broader"):

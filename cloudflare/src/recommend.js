@@ -336,7 +336,9 @@ export function personValues(rated, seeds = [], skip = new Set(), liked = [], di
     const keys = [...new Set((r.people || []).filter(([, person]) => !skip.has(person)).map(([role, person]) => role + '\u0000' + person))].sort(cmp);
     for (const k of keys) {
       const t = tally.get(k) || [0, 0, 0];
-      t[1] += w * FAV_SEED_W * SEED_Z; t[2] += w * FAV_SEED_W;
+      // 語彙表で広げた題材から拾った公演は、離れるほど弱い（r.w。src/vocab.js）
+      const sw = r.w ?? 1;
+      t[1] += w * FAV_SEED_W * SEED_Z * sw; t[2] += w * FAV_SEED_W * sw;
       tally.set(k, t);
     }
   }
@@ -467,25 +469,30 @@ export async function scoreFromIndex({postingsFor, stagesFor, rated, multipliers
  * build_recommend_index.seeds_from_favourites: candidate stages crediting a
  * favourite person / original author, with their people. Returns {seeds, skip}.
  */
-export async function seedsFromFavourites({postingsFor, peopleFor, stagesMatching}, favourites) {
+export async function seedsFromFavourites({postingsFor, peopleFor, stagesMatching, stagesByWords}, favourites) {
   const names = [...new Set(favourites.filter(f => SEED_KINDS.includes(f.kind)).map(f => f.name))].sort(cmp).slice(0, MAX_SEED_FAVS);
-  const sids = new Set();
+  const sids = new Map();                     // stage_id -> 種の重さ（名前で当たったものは 1）
   if (names.length) {
     const keys = names.flatMap(name => SEED_ROLES.map(role => [role, name])).sort(cmpTuple);
-    for (const r of await postingsFor(keys)) sids.add(r[2]);
+    for (const r of await postingsFor(keys)) sids.set(r[2], 1);
   }
   // Troupes / producers by the producing company, works by the title
   // (recommend2.declared_hits' rules on normalised text).
   const pick = (kinds, norm) => [...new Set(favourites.filter(f => kinds.includes(f.kind)).map(f => norm(f.name)).filter(x => x.length >= 2))].sort(cmp).slice(0, MAX_SEED_FAVS);
   const groups = pick(SEED_GROUP_KINDS, nz), works = pick(SEED_WORK_KINDS, titleKey), subjects = pick(SEED_THEME_KINDS, nz);
-  // 題材は語彙表で下位と関連にも広げ、#題材 の言葉と丸ごと一致で当てる（src/vocab.js。「科学」→ SF・近未来…）
-  const wider = [...new Set(subjects.flatMap(t => { const x = themeExpansion(t); return [...x.narrow, ...x.related]; }))].sort(cmp);
   if ((groups.length || works.length || subjects.length) && stagesMatching)
-    for (const sid of await stagesMatching(groups, works, subjects, wider)) sids.add(sid);
-  const chosen = [...sids].sort(cmp).slice(0, MAX_SEED_STAGES);
+    for (const sid of await stagesMatching(groups, works, subjects)) sids.set(sid, 1);
+  // 題材は語彙表で下位と関連にも広げ、#題材 の言葉と丸ごと一致で当てる。重さは離れるほど弱い（src/vocab.js。
+  // 「科学」→ SF 0.6・宇宙 0.35・近未来 0.18…）。種の数に上限があるので、重い公演から取る
+  const wider = new Map();
+  for (const t of subjects) for (const [w, x] of themeExpansion(t).weights) if (!(wider.get(w) >= x)) wider.set(w, x);
+  if (wider.size && stagesByWords)
+    for (const [sid, x] of await stagesByWords(wider)) if (!(sids.get(sid) >= x)) sids.set(sid, x);
+  const chosen = [...sids].sort((a, b) => (b[1] - a[1]) || cmp(a[0], b[0])).slice(0, MAX_SEED_STAGES);
   if (!chosen.length) return {seeds: [], skip: new Set(names)};
-  const people = await peopleFor(chosen);
-  return {seeds: chosen.filter(sid => people.get(sid)?.length).map(sid => ({stage_id: sid, people: people.get(sid)})), skip: new Set(names)};
+  const people = await peopleFor(chosen.map(([sid]) => sid));
+  return {seeds: chosen.filter(([sid]) => people.get(sid)?.length)
+    .map(([sid, x]) => ({stage_id: sid, people: people.get(sid), ...(x < 1 ? {w: x} : {})})), skip: new Set(names)};
 }
 
 /**
@@ -536,7 +543,7 @@ export function d1Access(db, ver, counter = {rows: 0, queries: 0}) {
       }
       return map;
     },
-    async stagesMatching(groups, works, subjects = [], exact = []) {
+    async stagesMatching(groups, works, subjects = []) {
       const out = new Set();
       // Troupes / works: one pass over this version's stages (no index on these).
       const conds = [...groups.map(() => 'instr(gkey,?)>0'), ...works.map(() => 'instr(tkey,?)>0')];
@@ -553,14 +560,19 @@ export function d1Access(db, ver, counter = {rows: 0, queries: 0}) {
         counter.rows += results.length; counter.queries += 1;
         for (const r of results) out.add(r.stage_id);
       }
-      for (let i = 0; i < exact.length; i += IDS_PER_QUERY) {
-        const chunk = exact.slice(i, i + IDS_PER_QUERY);
-        const {results} = await db.prepare(`SELECT DISTINCT stage_id FROM rec_credit WHERE ver=? AND role=? AND person IN (${chunk.map(() => '?').join(',')})`)
+      return [...out];
+    },
+    /** #題材 の言葉（丸ごと一致）→ 重さ の Map から、stage_id → 当たった言葉のいちばん重い値。 */
+    async stagesByWords(weights) {
+      const out = new Map(), words = [...weights.keys()].sort(cmp);
+      for (let i = 0; i < words.length; i += IDS_PER_QUERY) {
+        const chunk = words.slice(i, i + IDS_PER_QUERY);
+        const {results} = await db.prepare(`SELECT stage_id,person FROM rec_credit WHERE ver=? AND role=? AND person IN (${chunk.map(() => '?').join(',')})`)
           .bind(ver, THEME_AXIS, ...chunk).all();
         counter.rows += results.length; counter.queries += 1;
-        for (const r of results) out.add(r.stage_id);
+        for (const r of results) { const x = weights.get(r.person); if (!(out.get(r.stage_id) >= x)) out.set(r.stage_id, x); }
       }
-      return [...out];
+      return out;
     },
     async peopleFor(ids) {
       const map = new Map();

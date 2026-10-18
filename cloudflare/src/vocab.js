@@ -2,59 +2,65 @@
 // 起案者の指摘（2026-10-18）「科学って幅広くて結構粗い粒度だよね。近未来とか、SF とかも「科学」で
 // 引っかかってほしい」。作品側の #題材 は読み取りのままにし、お気に入りの側で広げる（D1 の書き込みが
 // 増えず、語彙表を直せば索引を作り直さずに効く）。
-//   narrow: その概念と下位すべての言い換え（「科学」→ SF・宇宙・ロボット…）。一種なので、お気に入り一覧にも出す
-//   related: 関連の概念とその下位（「科学」→ 近未来）。一種ではないので推薦の種にだけ使う
+//   概念の名前と同義語（same）を登録したとき: その概念と下位すべての言葉に広げる（「科学」→ SF・宇宙・ロボット…）
+//   概念の言葉（words）を登録したとき: 同じ概念の言葉どうしは仲間で、一種ではないので関連として扱う（「宇宙人」→ 宇宙船）
+//   narrow: 下位の言葉。一種なので、お気に入り一覧にも出す
+//   related: 関連の概念とその下位・仲間の言葉。一種ではないので推薦の種にだけ使う
+//   weights: 言葉 → 推薦の種の重さ。離れるほど弱い（起案者の指示 2026-10-18「子 0.6、孫 0.35 のような強弱は入れたい」）
 // 広げた言葉は #題材 の言葉と丸ごと一致したときだけ当てる。部分一致にすると「ループ」が「コーラスグループ」に当たる。
 import VOCAB from './vocab/concepts.json' with {type: 'json'};
 
 const nz = s => String(s ?? '').normalize('NFKC').replaceAll(' ', '').replaceAll('　', '').toLowerCase();
 
+// 下位へ 1 段ごとの重さ（4 段目より下は最後の値）と、関連に掛ける重さ
+export const DEPTH_W = [1, 0.6, 0.35, 0.2], RELATED_W = 0.3;
+const depthW = d => DEPTH_W[Math.min(d, DEPTH_W.length - 1)];
+
 const CONCEPTS = VOCAB.concepts;
-const byWord = new Map();                 // 正規化した言葉 → それを言い換えに持つ概念
+const byName = new Map(), byWord = new Map();   // 正規化した名前・同義語 → 概念／正規化した言葉 → それを持つ概念
 const children = new Map(), related = new Map();
+const add = (m, k, v) => { if (!m.has(k)) m.set(k, []); m.get(k).push(v); };
 for (const [name, c] of Object.entries(CONCEPTS)) {
-  for (const w of [name, ...(c.words || [])]) {
-    const k = nz(w);
-    if (!byWord.has(k)) byWord.set(k, []);
-    byWord.get(k).push(name);
-  }
-  for (const b of c.broader || []) {
-    if (!children.has(b)) children.set(b, []);
-    children.get(b).push(name);
-  }
-  for (const r of c.related || []) {     // 関連は向きを持たない
-    for (const [x, y] of [[name, r], [r, name]]) {
-      if (!related.has(x)) related.set(x, []);
-      related.get(x).push(y);
-    }
-  }
+  for (const w of [name, ...(c.same || [])]) add(byName, nz(w), name);
+  for (const w of c.words || []) add(byWord, nz(w), name);
+  for (const b of c.broader || []) add(children, b, name);
+  for (const r of c.related || []) { add(related, name, r); add(related, r, name); }   // 関連は向きを持たない
 }
 
-const below = name => {
-  const out = new Set(), todo = [name];
+/** 概念 → 段の数。下位をたどり、同じ概念に別の道で着いたら近いほうを取る。 */
+const below = (name, d0 = 0) => {
+  const out = new Map([[name, d0]]), todo = [name];
   while (todo.length) {
-    const n = todo.pop();
-    if (out.has(n)) continue;
-    out.add(n);
-    todo.push(...(children.get(n) || []));
+    const n = todo.shift();
+    for (const ch of children.get(n) || []) if (!out.has(ch)) { out.set(ch, out.get(n) + 1); todo.push(ch); }
   }
   return out;
 };
-const wordsOf = names => new Set([...names].flatMap(n => [n, ...(CONCEPTS[n]?.words || [])]).map(nz));
+const wordsOf = n => [n, ...(CONCEPTS[n]?.same || []), ...(CONCEPTS[n]?.words || [])].map(nz);
 
 const memo = new Map();
-/** 登録した題材の言葉 → {narrow, related}: 正規化した言葉の Set（登録した言葉そのものは含めない）。表に無ければ空。 */
+/** 登録した題材の言葉 → {narrow, related, weights}（正規化した言葉。登録した言葉そのものは含めない）。表に無ければ空。 */
 export function themeExpansion(word) {
   const d = nz(word);
   if (memo.has(d)) return memo.get(d);
-  const own = new Set((byWord.get(d) || []).flatMap(n => [...below(n)]));
-  const rel = new Set();
-  for (const n of own) for (const r of related.get(n) || []) for (const x of below(r)) if (!own.has(x)) rel.add(x);
-  const narrow = wordsOf(own), relWords = wordsOf(rel);
-  narrow.delete(d);
-  for (const w of narrow) relWords.delete(w);
-  relWords.delete(d);
-  const out = {narrow, related: relWords};
+  const weights = new Map(), narrow = new Set(), rel = new Set();
+  const put = (w, x, isNarrow) => {
+    if (w === d) return;
+    if (!(weights.get(w) >= x)) weights.set(w, x);
+    if (isNarrow) narrow.add(w);
+  };
+  const own = new Map();                                   // 概念 → 段
+  for (const n of byName.get(d) || []) for (const [c, k] of below(n)) if (!(own.get(c) <= k)) own.set(c, k);
+  for (const [c, k] of own) for (const w of wordsOf(c)) put(w, depthW(k), true);
+  // 関連: 広げた概念（と、言葉として持つ概念）の関連先とその下位
+  const from = new Set([...own.keys(), ...(byWord.get(d) || [])]);
+  for (const n of from) for (const r of related.get(n) || []) for (const [c, k] of below(r))
+    if (!own.has(c)) for (const w of wordsOf(c)) if (!narrow.has(w)) { rel.add(w); put(w, RELATED_W * depthW(k), false); }
+  // 仲間: 言葉として登録した概念の、ほかの言葉
+  for (const n of byWord.get(d) || []) if (!own.has(n))
+    for (const w of wordsOf(n)) if (!narrow.has(w) && w !== d) { rel.add(w); put(w, RELATED_W, false); }
+  for (const w of narrow) rel.delete(w);
+  const out = {narrow, related: rel, weights};
   memo.set(d, out);
   return out;
 }
