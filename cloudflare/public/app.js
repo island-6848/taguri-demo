@@ -703,9 +703,14 @@ function navigate(path, search, push, hash) {
   loadScreen(path, qs, hash);
 }
 
+// 画面の中で描かない、サーバーの別のページ（ログイン・規約・説明・記録の保存先・カレンダーの戻り先）。
+// ここへのリンクを画面の中で開くと「見つかりません」になっていた（#134 の通し検証。アカウントの画面の
+// 「アカウントを削除する」「Google・メールを結び付ける」「パスキーを追加・削除する」、設定の利用規約へのリンク）
+const PAGE_PATHS = /^\/(login|terms|privacy|about|migration-data|oauth)(\/|$)/;
 function isInternalPath(p) {
   return p.startsWith("/") && !p.startsWith("/img/") && !p.startsWith("/vendor")
-    && !p.startsWith("/api/") && !p.startsWith("/export.json") && !p.startsWith("/data.zip");
+    && !p.startsWith("/api/") && !p.startsWith("/export.json") && !p.startsWith("/data.zip")
+    && !PAGE_PATHS.test(p);
 }
 
 document.addEventListener("click", ev => {
