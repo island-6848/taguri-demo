@@ -5,6 +5,7 @@
 import {E, ValueError} from './py.js';
 import {loadWorks} from './works.js';
 import {venueOf} from './row.js';
+import {loadDeclared, KINDS} from './lists.js';
 
 // The few icons this page uses (same paths as tools/taguri/icons.py and web/app.js ICON_P).
 const ICONS = {
@@ -78,10 +79,13 @@ async function accountScreen(_params, ctx) {
     db.prepare('SELECT value FROM app_setting WHERE user_id=? AND key=?').bind(uid, AVATAR_KEY).first(),
     db.prepare('SELECT count(*) AS n FROM passkeys WHERE user_id=?').bind(uid).first(),
     db.prepare('SELECT count(*) AS n FROM sessions WHERE user_id=? AND expires_at>?').bind(uid, Math.floor(ctx.now / 1000)).first(),
-    db.prepare('SELECT count(*) AS n FROM favourites WHERE user_id=?').bind(uid).first(),
+    // お気に入りは、いまは本人の設定（app_setting の declared、lists.loadDeclared）に入る。前は古い表（favourites）だけを
+    // 数えていて、いつも 0 件だった（起案者の指摘 2026-10-18「『お気に入り』が常に0件なのなぜ？」）
+    loadDeclared(ctx),
     db.prepare('SELECT count(*) AS n FROM reaction WHERE user_id=? AND interest=1').bind(uid).first(),
     loadWorks(ctx)]);
   const seen = works.filter(w => !w.unseen);
+  // 観た回数: 作品でまとめず、劇場に行った回数（同じ作品を 2 回観たら 2。記録の times と、まとめた別の回の記録 merged）。起案者の指示 2026-10-18
   const rated = seen.filter(w => w.verdict && w.verdict !== 'まだ判断できない');
   const noted = seen.filter(w => (w.note_impression || '').trim());
   const groups = top(await groupsOf(ctx, seen.map(w => w.stage_id || '')));
@@ -108,7 +112,7 @@ ${since ? `<p class="acsince">${since}から使っています</p>` : ''}</div>
 <button type="submit">保存</button></div><p class="said" role="status" aria-live="polite"></p></form>
 </section>
 <section class="acct-card">${h2('book', 'これまでの記録')}
-<div class="acstats">${stat(seen.length, '観た作品', '/records/works')}${stat(rated.length, '評価した作品', '/rate')}${stat(noted.length, '感想', '/rate/notes')}${stat(favs.n, 'お気に入り', '/recommend/favourites')}${stat(reacts?.n || 0, '興味あり', '/recommend/interest')}</div>
+<div class="acstats">${stat(seen.length, '観た作品', '/records/works')}${stat(seen.reduce((n, w) => n + (Number(w.times) || 1) + (w.merged || []).length, 0), '観た回数', '/records/works')}${stat(rated.length, '評価した作品', '/rate')}${stat(noted.length, '感想', '/rate/notes')}${stat(KINDS.reduce((n, k) => n + (favs[k] || []).length, 0), 'お気に入り', '/recommend/favourites')}${stat(reacts?.n || 0, '興味あり', '/recommend/interest')}</div>
 ${groups.length || venues.length ? `<div class="acranks">${ranked('よく観ている団体', groups, '作品')}${ranked('よく行く劇場', venues, '作品')}</div>`
     : '<p class="note">観た公演を記録すると、よく観ている団体や劇場がここに出ます。</p>'}
 </section>

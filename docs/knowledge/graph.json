@@ -3227,6 +3227,23 @@
    "verifies": []
   },
   {
+   "id": "fix-account-diary-owned-1018",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-18",
+   "title": "アカウントの「お気に入り」がいつも 0 件だったのは古い表（favourites）だけを数えていたため。アイコン画像が選べなかったのは CSP が blob: を許していなかったため。購入済みは行く日の 0 時に消え、開演まではどこにも出なかった",
+   "sources": [
+    "cloudflare/src/screens/account.js",
+    "public/_headers",
+    "web/app.js",
+    "cloudflare/src/screens/lists.js",
+    "cloudflare/test/account-stats.test.js",
+    "cloudflare/test/lists-screen.test.js",
+    "cloudflare/test/e2e-walk.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "fix-api-recommend-delegates",
    "type": "decision",
    "status": "adopted",
@@ -10129,6 +10146,11 @@
    "from": "firebase-apikey-public",
    "rel": "raises",
    "to": "q-firebase-key-restriction"
+  },
+  {
+   "from": "fix-account-diary-owned-1018",
+   "rel": "depends_on",
+   "to": "dec-favourite-role-filter"
   },
   {
    "from": "fix-api-recommend-delegates",

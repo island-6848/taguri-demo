@@ -1497,3 +1497,19 @@ details.lprice>summary .plist>li:only-child::before{display:block}
 .fav-roles label{display:inline-flex;gap:4px;align-items:center;font-size:.9rem;min-height:32px}
 .fav-roles .fr-note{flex:1 0 100%;font-size:.8rem;color:var(--mute)}
 .ftag .frole{margin-left:4px;font-size:.78em;color:var(--mute)}
+
+/* ---- 日記帳・評価の行の星と ✕（評価を消す）を、電話の幅でも同じ列に収める（起案者の指示 2026-10-18「スマホで見るとnullにする✕が
+   改行されてるから、★と同じ列に収めて」）。ポスターの右の欄は 390px の幅で 160px ほどしかなく、星 30px×5 と「★4」と ✕ が入らずに
+   ✕ が次の行に落ちていた。420px 以下では星を 25px に詰め、✕ を星のすぐ後ろに置き、「★4」はその下の行に回す */
+@media(max-width:420px){
+ .rec-row:not(:has(.stamp)) .rb:not(.rbpop){flex-wrap:wrap;row-gap:0}
+ .rec-row:not(:has(.stamp)) .rb button.star{width:25px;min-width:25px;font-size:23px}
+ .rec-row:not(:has(.stamp)) .rb button.gclr{order:1;width:28px;min-width:28px;height:28px;margin-left:2px;align-self:center}
+ .rec-row:not(:has(.stamp)) .rb .stv{order:2;flex-basis:100%;margin-left:2px;font-size:12px}
+ .rec-row:not(:has(.stamp)) .rb .said{order:3}
+}
+
+/* 日記帳の出演の「ほか N 名」（app.js foldCastLines。起案者の指示 2026-10-18）: 文字のような小さな押し口。開くと残りの名前を同じ行に続ける */
+.rec-row .lcast .lcmore{display:inline;margin:0 0 0 6px;padding:0;min-height:0;border:0;background:none;box-shadow:none;color:var(--mute);font:inherit;font-size:11.5px;text-decoration:underline;cursor:pointer}
+.rec-row .lcast .lcmore:hover{color:var(--ink)}
+.rec-row .lcast.open .lrest{display:inline}

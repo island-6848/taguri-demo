@@ -1017,6 +1017,20 @@ async function walkA(A) {
     check(/手で足した芝居/.test(t) && /最初に書いた感想。書き足した。/.test(t), 'ログインし直すと記録・感想が無い');
   });
 
+  // 起案者の指摘 2026-10-18「どのアイコン画像選んでも選べない」（CSP が blob: を許していなかった）・「観た回数」・「お気に入りが常に 0 件」
+  await step('アカウント: アイコン画像を選べて、観た回数とお気に入りの数が出る', async () => {
+    await go('/account');
+    const png = await page.screenshot({clip: {x: 0, y: 0, width: 120, height: 90}});
+    await page.locator('input[data-account-avatar]').setInputFiles({name: 'icon.png', mimeType: 'image/png', buffer: png});
+    const said = await waitSaid(page.locator('.acpic'), /保存しました|読めませんでした|使えません/);
+    note('アイコン: 「' + said + '」');
+    check(/保存しました/.test(said) && await page.locator('.acav img').count() === 1, 'アイコン画像を選んでも出ない');
+    const t = await content();
+    note((t.match(/\d+\s*観た回数/) || ['観た回数なし'])[0].replace(/\s+/g, ' ') + '・' + (t.match(/\d+\s*お気に入り/) || ['お気に入りなし'])[0].replace(/\s+/g, ' '));
+    check(/観た回数/.test(t), '観た回数が無い');
+    await shotsBoth('account-stats');
+  });
+
   await step('復旧コードでログイン', async () => {
     await go('/account');
     await page.locator('button[data-account-logout]:not([data-account-logout="all"])').click();

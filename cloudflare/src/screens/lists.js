@@ -337,10 +337,21 @@ async function kindTagged(ctx, words) {
   return out;
 }
 
-/** app._owned_done_date over the production's stages. */
+/** app._owned_done_date over the production's stages: the last confirmed ticket ({date, time}) or the run's end ({date}). */
 function doneDate(sids, end, tickets) {
-  const confirmed = sids.flatMap(s => (tickets.get(s) || []).filter(t => t.confirmed).map(t => t.date));
-  return confirmed.length ? confirmed.sort().at(-1) : (end || '');
+  const confirmed = sids.flatMap(s => (tickets.get(s) || []).filter(t => t.confirmed)).sort((a, b) => cmp(a.date + (a.time || ''), b.date + (b.time || '')));
+  return confirmed.length ? {date: confirmed.at(-1).date, time: confirmed.at(-1).time || ''} : {date: end || '', time: ''};
+}
+/**
+ * 観に行く回の開演を過ぎたか（日本時間）。起案者の指示 2026-10-18「購入済み公演は、観に行く日の公演開始時間過ぎてから未評価に移して」。
+ * 前は行く日（または千穐楽）の 0 時に購入済の公演から消え、未評価には開演を過ぎてから入るので、その日の開演まではどちらにも出なかった。
+ * 開演の時刻が分からない回は、その日のうちは購入済に残し、次の日に移す
+ */
+export function startPassed(date, time, ctx) {
+  if (!date) return false;
+  if (date < ctx.today) return true;
+  if (date > ctx.today || !time) return false;
+  return time <= new Date((ctx.now ?? Date.now()) + 9 * 3600e3).toISOString().slice(11, 16);
 }
 
 /**
@@ -368,8 +379,8 @@ export async function promoteOwned(ctx) {
   }
   for (const sid of todo) {
     const m = meta.get(sid);
-    const done = doneDate([sid], m?.end || '', tickets);
-    if (!m?.title || !done || done > ctx.today) continue;
+    const {date: done, time} = doneDate([sid], m?.end || '', tickets);
+    if (!m?.title || !startPassed(done, time, ctx)) continue;
     const key = `${titleKey(m.title)}#${done}`;
     // The memo written before seeing it (購入済み公演「観る前のメモ」) goes with the work.
     await ctx.db.prepare(`INSERT INTO works(user_id,work_key,title,first_date,last_date,times,verdict,chosen,note_impression,note_motive,stage_id,updated_at)
@@ -402,9 +413,8 @@ async function titlesOf(ctx, sids) {
  */
 async function promoteTickets(ctx, react) {
   const tickets = await ticketsOf(ctx);
-  const hhmm = new Date((ctx.now ?? Date.now()) + 9 * 3600e3).toISOString().slice(11, 16);
   const due = [];
-  for (const [sid, ts] of tickets) for (const t of ts) if (t.date < ctx.today || (t.date === ctx.today && t.time && t.time <= hhmm)) due.push({sid, ...t});
+  for (const [sid, ts] of tickets) for (const t of ts) if (startPassed(t.date, t.time, ctx)) due.push({sid, ...t});
   if (!due.length) return;
   const {results} = await ctx.db.prepare('SELECT work_key,stage_id,first_date,time FROM works WHERE user_id=? AND stage_id IS NOT NULL').bind(ctx.uid).all();
   const keys = new Set(results.map(r => r.work_key));
@@ -467,7 +477,7 @@ export async function buckets(ctx, {catalogue = false} = {}) {
     if (r.owned === 1) {
       seen.add(key);
       const done = doneDate(sids, row.end, tickets);
-      if (done && done <= ctx.today) continue;
+      if (startPassed(done.date, done.time, ctx)) continue;
       out.owned.push(row);
       // お気に入りの名前に当たる公演は、購入済みにしてもお気に入りの画面に残す（印を付けて。favOwned）。
       // 起案者の指示（2026-10-15）「購入済み押してもお気に入りから消さないで」。カレンダー・開幕リマインドは

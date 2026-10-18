@@ -625,3 +625,23 @@ test('行く日が過ぎた券は、その回の記録（未評価）になる�
     assert.deepEqual(works().map(w => [w.first_date, w.time]), [['2026-11-03', '14:00'], ['2026-11-05', '']]);
   } finally { sqlite.close(); }
 });
+
+// 起案者の指示 2026-10-18「購入済み公演は、観に行く日の公演開始時間過ぎてから未評価に移して」。前は行く日の 0 時に購入済の公演から消え、
+// 未評価には開演を過ぎてから入るので、その日の開演まではどちらにも出なかった
+test('購入済の公演は、行く日の開演を過ぎるまで購入済に残り、過ぎたら未評価に移る', async () => {
+  const {env, sqlite} = withIndex();
+  const a = await signIn(env);
+  try {
+    await step(env, a, {post: '/api/react', body: {stage_id: '101', value: 'owned', nofill: true}});
+    assert.equal((await step(env, a, {post: '/api/ticket', body: {stage_id: '101', date: '2026-11-03', time: '14:00'}})).status, 200);
+    sqlite.prepare("UPDATE ticket SET confirmed=1 WHERE stage_id='101'").run();
+    // 11/3 の 13:00（日本時間）: まだ購入済
+    env.CLOCK = {today: '2026-11-03', now: Date.parse('2026-11-03T04:00:00Z')};
+    assert.match((await screen(env, a, 'tickets')).body_html, /data-stage="101"/);
+    assert.doesNotMatch((await screen(env, a, 'unrated')).body_html, /舞台ひとつめ/);
+    // 14:30: 未評価へ
+    env.CLOCK = {today: '2026-11-03', now: Date.parse('2026-11-03T05:30:00Z')};
+    assert.doesNotMatch((await screen(env, a, 'tickets')).body_html, /data-stage="101"/);
+    assert.match((await screen(env, a, 'unrated')).body_html, /舞台ひとつめ/);
+  } finally { sqlite.close(); }
+});

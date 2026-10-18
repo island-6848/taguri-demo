@@ -1094,6 +1094,37 @@ function creditRank(x) {
   return Math.min(...creditParts(x.label).map(p => CREDIT_BASE.indexOf(p)).filter(i => i >= 0));
 }
 
+// 日記帳などの行の出演が 3 行を越えるときは、3 行に収まる人までを出し、残りは「ほか N 名」で開く（起案者の指示 2026-10-18
+// 「日記帳ページ、出演者が3行以上になりそうなら折りたたんでほかN名表記で構わない」）。行の数は画面の幅で変わるので、出したあとに測る
+const CAST_LINES = 3;
+function foldCastLines(lead) {
+  const p = [...lead.querySelectorAll(".lcast")].find(x => (x.querySelector(".cl")?.textContent || "").trim() === "出演");
+  const lv = p && p.querySelector(".lv");
+  if (!lv) return;
+  const lh = parseFloat(getComputedStyle(lv).lineHeight) || 20;
+  const fits = () => lv.getBoundingClientRect().height <= lh * CAST_LINES + 2;
+  if (!lv.getBoundingClientRect().height || fits()) return;
+  const names = lv.textContent.split("、").map(x => x.trim()).filter(Boolean);
+  const tail = k => "　ほか " + (names.length - k) + " 名";
+  let lo = 1, hi = names.length - 1, best = 1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    lv.textContent = names.slice(0, mid).join("、") + tail(mid);
+    if (fits()) { best = mid; lo = mid + 1; } else hi = mid - 1;
+  }
+  lv.innerHTML = E(names.slice(0, best).join("、")) + '<span class="lrest">、' + E(names.slice(best).join("、")) + "</span>"
+    + '<button type="button" class="lcmore" aria-expanded="false">' + E(tail(best).trim()) + "</button>";
+}
+document.addEventListener("click", ev => {
+  const b = ev.target.closest(".lcast .lcmore");
+  if (!b) return;
+  const p = b.closest(".lcast"), open = !p.classList.contains("open");
+  p.classList.toggle("open", open);
+  b.setAttribute("aria-expanded", String(open));
+  if (!b.dataset.less) b.dataset.less = b.textContent;
+  b.textContent = open ? "閉じる" : b.dataset.less;
+});
+
 // 作り手の名前の行（compactTickets・compactRows）。作・原作・脚本・演出はいつも出し、ほかは設定で選んだ役職だけ
 function leadCredits(t, lead, noMore) {
     const choice = creditChoice();
@@ -1213,6 +1244,7 @@ function compactRows(root) {
     // 作り手の行に出なかった役職（設定で選んでいないもの）は、カードと同じく出さない
     info.replaceWith(lead);
     if (!lead.children.length) lead.remove();
+    else foldCastLines(lead);
   });
 }
 
@@ -4424,21 +4456,25 @@ document.addEventListener("submit", async ev => {
 // アイコン画像（起案者の指示 2026-10-14）。**ブラウザで小さくしてから送る**: まん中を正方形に
 // 切り抜いて 160×160 にし、WebP（書けない端末では JPEG）にする。元の写真は送らない（数 MB の写真を
 // そのまま保存すると D1 の無料枠を食う。上限はサーバーが 60,000 文字で確かめる）
+// 選んだ画像は FileReader で data: URL にしてから読む（起案者の指摘 2026-10-18「どのアイコン画像選んでも選べない」）。
+// 前は URL.createObjectURL の blob: URL で読んでいたが、サイトの CSP（public/_headers の img-src 'self' data:）が
+// blob: を許していないため、どの画像も読み込みに失敗していた。CSP は緩めず、許されている data: で読む
 function avatarDataUrl(file) {
   return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file), img = new Image();
+    const fr = new FileReader(), img = new Image();
     img.onload = () => {
       const side = Math.min(img.naturalWidth, img.naturalHeight), S = 160;
       const c = document.createElement("canvas");
       c.width = S; c.height = S;
       c.getContext("2d").drawImage(img, (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, S, S);
-      URL.revokeObjectURL(url);
       let out = c.toDataURL("image/webp", 0.82);
       if (!out.startsWith("data:image/webp")) out = c.toDataURL("image/jpeg", 0.85);
       resolve(out);
     };
-    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("画像を読めませんでした")); };
-    img.src = url;
+    img.onerror = () => reject(new Error("画像を読めませんでした"));
+    fr.onload = () => { img.src = String(fr.result || ""); };
+    fr.onerror = () => reject(new Error("画像を読めませんでした"));
+    fr.readAsDataURL(file);
   });
 }
 function showAvatar(src) {
