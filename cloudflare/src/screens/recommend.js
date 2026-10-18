@@ -692,17 +692,18 @@ ${starting ? '' : `<p class="lede">気になった公演で「興味あり」を
 const REACT = {owned: {owned: 1}, interest: {interest: 1, owned: 0}, nointerest: {interest: 0, owned: 0}, cantgo: {interest: 2, owned: 0}};
 const FROM = {reminder: 'reminder', search: 'search', favourites: 'favourites'};
 
-async function reactRow(ctx, stageId, cols, source) {
+// 答えを 1 行書く文（実行はしない）。押した公演とほかの会場の分を 1 つの batch で書くため（#196）
+function reactRow(ctx, stageId, cols, source) {
   const label = ctx.today;
   const v = {interest: null, owned: null, note: null, note_no: null, note_pre: null, why: null, rank: null, score: null, ver: null, arm: null, ...cols};
-  await ctx.db.prepare(`INSERT INTO reaction(user_id,label,stage_id,interest,owned,note,note_no,note_pre,why,source,updated_at,rank,score,ver,arm) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+  return ctx.db.prepare(`INSERT INTO reaction(user_id,label,stage_id,interest,owned,note,note_no,note_pre,why,source,updated_at,rank,score,ver,arm) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     ON CONFLICT(user_id,label,stage_id) DO UPDATE SET interest=COALESCE(excluded.interest,reaction.interest), owned=COALESCE(excluded.owned,reaction.owned),
     note=COALESCE(excluded.note,reaction.note), note_no=COALESCE(excluded.note_no,reaction.note_no), note_pre=COALESCE(excluded.note_pre,reaction.note_pre),
     why=COALESCE(excluded.why,reaction.why),
     rank=CASE WHEN excluded.ver IS NOT NULL THEN excluded.rank ELSE reaction.rank END, score=CASE WHEN excluded.ver IS NOT NULL THEN excluded.score ELSE reaction.score END,
     ver=COALESCE(excluded.ver,reaction.ver), arm=COALESCE(excluded.arm,reaction.arm),
     source=CASE WHEN excluded.interest IS NOT NULL OR excluded.owned IS NOT NULL THEN excluded.source ELSE reaction.source END, updated_at=excluded.updated_at`)
-    .bind(ctx.uid, label, stageId, v.interest, v.owned, v.note, v.note_no, v.note_pre, v.why, source, new Date(ctx.now).toISOString(), v.rank, v.score, v.ver, v.arm).run();
+    .bind(ctx.uid, label, stageId, v.interest, v.owned, v.note, v.note_no, v.note_pre, v.why, source, new Date(ctx.now).toISOString(), v.rank, v.score, v.ver, v.arm);
 }
 
 /** The reasons of one ranked production, small enough to keep (the 4 people and 2 kinds reasonRows shows, and their titles). */
@@ -762,16 +763,22 @@ export async function reactAction(b, ctx) {
   const snap = Object.hasOwn(REACT, value) ? await answerSnapshot(ctx, stageId, VERSION) : {body: null, eval: null};
   const ev = snap.eval || {};
   const why = value === 'interest' && source === 'screen' ? whySnapshot(snap.body, stageId) : null;
-  await reactRow(ctx, stageId, {...(REACT[value] || {}), ...given, ...(why ? {why} : {}), ...ev}, source);
+  const writes = [reactRow(ctx, stageId, {...(REACT[value] || {}), ...given, ...(why ? {why} : {}), ...ev}, source)];
   if (Object.hasOwn(REACT, value) && Array.isArray(b.siblings)) {
     // The same answer for the production's other venues (the card's data-tours); notes stay on the pressed one.
     for (const sid of b.siblings.slice(0, 40).map(String).filter(s => /^\d+$/.test(s) && s !== stageId))
-      await reactRow(ctx, sid, {...REACT[value], ...(why ? {why} : {}), ...ev}, source + '_tour');
+      writes.push(reactRow(ctx, sid, {...REACT[value], ...(why ? {why} : {}), ...ev}, source + '_tour'));
   }
-  const out = {ok: true, stage_id: stageId, value, note: 'note' in given, note_no: 'note_no' in given};
+  // 押した公演とほかの会場の答えは 1 つの batch で書く（#196）。途中の会場で失敗すると、前は先に書いた分が
+  // 残ったまま要求全体が失敗し、画面からは保存できたか分からなかった。いまは全部書けるか、どれも書かないか
+  await ctx.db.batch(writes);
+  const out = {ok: true, saved: true, stage_id: stageId, value, note: 'note' in given, note_no: 'note_no' in given};
   if (Object.hasOwn(REACT, value) && !b.nofill) {
+    // 入れ替わりの 1 枚は保存のあとの別の処理。作れなくても答えは保存できているので、失敗にはしない。
+    // fill: null と fill_status: 'retry_available' を返し、画面は fill_only で取り直せる（app.js は fill が無ければ足さない）
     const shown = (Array.isArray(b.shown) ? b.shown : []).slice(0, 120).map(x => String(x).slice(0, 20));
-    out.fill = await fillSlot(ctx, shown, stageId);
+    try { out.fill = await fillSlot(ctx, shown, stageId); }
+    catch (e) { console.log('react fill failed after save:', String(e && e.message || e)); out.fill = null; out.fill_status = 'retry_available'; }
   }
   return {body: out};
 }
