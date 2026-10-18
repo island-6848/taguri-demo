@@ -1257,6 +1257,21 @@
    "verifies": []
   },
   {
+   "id": "dec-logout-all-token-boundary",
+   "type": "decision",
+   "status": "proposed",
+   "date": "2026-10-18",
+   "title": "「すべての端末でログアウト」は、全セッションを消し、その時刻より前のログインで得た Firebase の ID トークンも受け付けなくする（users.tokens_valid_after、migration 0033）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/127",
+    "cloudflare/migrations/0033.sql",
+    "cloudflare/src/worker.js",
+    "cloudflare/src/firebase-auth.js",
+    "cloudflare/test/firebase-auth.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-migration-branch-wip",
    "type": "decision",
    "status": "adopted",
@@ -7074,6 +7089,16 @@
    "from": "dec-loading-yarn",
    "rel": "affects",
    "to": "dec-design-adopted"
+  },
+  {
+   "from": "dec-logout-all-token-boundary",
+   "rel": "depends_on",
+   "to": "dec-firebase-auth"
+  },
+  {
+   "from": "dec-logout-all-token-boundary",
+   "rel": "affects",
+   "to": "comp-firebase-login"
   },
   {
    "from": "dec-migration-branch-wip",

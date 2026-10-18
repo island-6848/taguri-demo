@@ -153,7 +153,12 @@ async function firebaseSignIn(request, env) {
     throw e;
   }
   const db = env.DB, oldRaw = sessionCookie(request);
-  let uid = (await db.prepare('SELECT id FROM users WHERE firebase_uid=?').bind(identity.uid).first())?.id;
+  const known = await db.prepare('SELECT id,tokens_valid_after FROM users WHERE firebase_uid=?').bind(identity.uid).first();
+  // すべての端末でログアウトしたあとは、それより前のログインで得たトークンを受け付けない（#127）。
+  // 新しく Google・メールでログインし直せば（auth_time が新しくなる）入れる
+  if (known?.tokens_valid_after && identity.authTime <= known.tokens_valid_after)
+    fail(401,'すべての端末でログアウトしたあとです。もう一度 Google かメールでログインしてください。');
+  let uid = known?.id;
   let linked = false, created = false;
   const commands = [];
   const current = oldRaw ? await db.prepare('SELECT u.id,u.firebase_uid,s.created_at FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.hash=? AND s.expires_at>?').bind(await hash(oldRaw),now()).first() : null;
@@ -667,8 +672,11 @@ export default {
       if (path === '/api/account/delete') return await deleteAccount(request, env, uid, input);
       if (path === '/api/recovery/reissue') return await reissueRecovery(request, env, uid);
       if (path === '/api/logout/all') {
-        // Sign out every device, e.g. after losing a phone.
-        await env.DB.prepare('DELETE FROM sessions WHERE user_id=?').bind(uid).run();
+        // Sign out every device, e.g. after losing a phone. Firebase ID tokens from
+        // sign-ins before this moment are refused from now on (tokens_valid_after, #127):
+        // within their 5 minutes they could otherwise be exchanged for a new session.
+        await env.DB.batch([env.DB.prepare('UPDATE users SET tokens_valid_after=? WHERE id=?').bind(now(),uid),
+          env.DB.prepare('DELETE FROM sessions WHERE user_id=?').bind(uid)]);
         return json({ok:true},200,{'Set-Cookie':`${COOKIE}=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0`});
       }
       if (path === '/api/logout') {

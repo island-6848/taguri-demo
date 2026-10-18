@@ -190,6 +190,27 @@ test('sign out of all devices revokes every session of the account only', async 
   assert.equal((await call('state', undefined, other.cookie)).status, 200);
 });
 
+// issue #127: 全端末のログアウトより前のログインで得たトークン（5 分以内でまだ有効）は、新しいセッションに換えない
+test('after signing out everywhere, an ID token from an earlier sign-in is refused; a new sign-in works', async () => {
+  const {call, sqlite} = setup();
+  const t = nowSec();
+  const before = await idToken({auth_time: t - 30, iat: t - 30});
+  const one = await signIn(call, await idToken({auth_time: t - 30, iat: t - 30}));
+  assert.equal((await call("register", {})).status, 200);   // 別のアカウント（触れない）
+  assert.equal((await call('logout/all', {}, one.cookie)).status, 200);
+  const stolen = await signIn(call, before);
+  assert.equal(stolen.status, 401);
+  assert.match(stolen.body.error, /もう一度/);
+  assert.equal(sqlite.prepare('SELECT count(*) AS n FROM sessions WHERE user_id=(SELECT id FROM users WHERE firebase_uid=?)').get('firebase-user-1').n, 0);
+  // ログアウトしたあとの、新しいログイン（auth_time が新しい）は入れる。記録は同じアカウント
+  const fresh = await signIn(call, await idToken({auth_time: t + 5, iat: t + 5}));
+  assert.equal(fresh.status, 200);
+  assert.deepEqual(fresh.body, {linked: false, created: false});
+  assert.equal(sqlite.prepare('SELECT count(*) AS n FROM users WHERE firebase_uid IS NOT NULL').get().n, 1);
+  // ほかのアカウントには境界が付かない
+  assert.equal(sqlite.prepare('SELECT count(*) AS n FROM users WHERE tokens_valid_after IS NOT NULL').get().n, 1);
+});
+
 test('signing in with a different Google account while signed in never lands in the current account', async () => {
   const {call, sqlite} = setup();
   const x = await signIn(call, await idToken({sub: 'google-x'}));
