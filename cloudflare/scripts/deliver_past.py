@@ -36,11 +36,12 @@ sys.path.insert(0, str(HERE))
 
 import measure_nets as M                                           # noqa: E402
 import user_recommender as UR                                      # noqa: E402
-from build_recommend_index import _inserts                         # noqa: E402
+from build_recommend_index import _inserts, theme_words, THEME_AXIS  # noqa: E402
 import free_tier as FT                                             # noqa: E402
 
 STATE = Path("d1") / "past_delivered.json"
 ROWS = Path("past") / "stages.jsonl"
+THEMES = Path("credits") / "themes.jsonl"    # あらすじの読み取り（extract_theme_llm）。題材の言葉 → #題材
 WRITES_PER_ROW = 3             # the row, its primary-key index and past_stage_tkey (measured: 30,000 rows_written for 10,001 rows)
 # 送り直しの UPDATE は people の列だけ（索引の無い列）なので 1 行 1 書き込みのはず。測るまでは 2 と見て抑える
 WRITES_PER_UPDATE = 2
@@ -55,20 +56,37 @@ def people_of(fields: dict) -> list:
     return [list(c) for c in sorted(set(M.parse_credits(fields or {})))]
 
 
-def people_and_tags(r: dict) -> list:
-    """build_recommend_index.build_index の rec_people と同じ: クレジットと種類の言葉（stage_tags）。"""
+def load_themes(data: Path) -> dict[str, list[str]]:
+    """公演ごとの題材の言葉（あらすじの読み取りの行。過去の公演として読んだ分も、これからの公演だったときに読んだ分も）。"""
+    out: dict[str, list[str]] = {}
+    path = data / THEMES
+    if not path.exists():
+        return out
+    for line in path.read_text(encoding="utf-8").split("\n"):
+        if line.strip():
+            row = json.loads(line)
+            if row.get("side") in ("past", "candidate") and row.get("id"):
+                words = theme_words(row)
+                if words or str(row["id"]) not in out:
+                    out[str(row["id"])] = words
+    return {k: v for k, v in out.items() if v}
+
+
+def people_and_tags(r: dict, themes: dict[str, list[str]] | None = None) -> list:
+    """build_recommend_index.build_index の rec_people と同じ: クレジット・種類の言葉（stage_tags）・題材（#題材）。"""
     fields = r.get("fields") or {}
     credits = sorted(set(M.parse_credits(fields)))
     tags = UR.stage_tags(r.get("title") or "", [fields.get("劇場", "")], credits,
                          source=UR.source_text(fields), group=r.get("group") or "")
+    tags += [(THEME_AXIS, w) for w in (themes or {}).get(str(r.get("stage_id")), [])]
     return [list(c) for c in sorted(set(credits) | set(tags))]
 
 
-def row_values(r: dict) -> tuple:
+def row_values(r: dict, themes: dict[str, list[str]] | None = None) -> tuple:
     return (str(r["stage_id"]), r.get("title") or "", M.R.title_key(r.get("title") or ""),
             r.get("start") or "", r.get("end") or "", r.get("theater") or "",
             r.get("group") or "", r.get("pref") or "",
-            json.dumps(people_and_tags(r), ensure_ascii=False, sort_keys=True))
+            json.dumps(people_and_tags(r, themes), ensure_ascii=False, sort_keys=True))
 
 
 def _people_updates(rows: list[tuple[str, str]]) -> list[str]:
@@ -90,20 +108,41 @@ def build(data: Path, out: Path, budget: int) -> dict:
     # 改行は "\n" だけで区切る（splitlines は題名の中の U+2028 などでも切ってしまう）
     text = (data / ROWS).read_text(encoding="utf-8") if (data / ROWS).exists() else ""
     lines = [line for line in text.split("\n") if line.strip()]
+    themes = load_themes(data)
+    # 題材を送った公演（あらすじはあとから読むので、送り済みの行にも、読めたものから UPDATE で足す）
+    sent = set(prev.get("themes_sent") or [])
     redo = lines[refreshed:min(refresh_to, refreshed + max(0, budget // WRITES_PER_UPDATE))]
     updates = []
     for line in redo:
         r = json.loads(line)
         if r.get("stage_id") and r.get("title"):
-            updates.append((str(r["stage_id"]), row_values(r)[-1]))
+            updates.append((str(r["stage_id"]), row_values(r, themes)[-1]))
+            if str(r["stage_id"]) in themes:
+                sent.add(str(r["stage_id"]))
     budget -= WRITES_PER_UPDATE * len(updates)
+    # 送り直しが済んだ範囲（refreshed より前と、前から送り済みの rev 2 の行）で、新しく題材が読めた公演
+    fresh_from = refreshed + len(redo)
+    for idx, line in enumerate(lines[:done]):
+        if budget < WRITES_PER_UPDATE:
+            break
+        if refresh_to and fresh_from <= idx < refresh_to:
+            continue                                # まだ送り直していない行は、送り直しのときに題材も入る
+        sid = str(json.loads(line).get("stage_id") or "")
+        if sid in themes and sid not in sent:
+            r = json.loads(line)
+            if r.get("title"):
+                updates.append((sid, row_values(r, themes)[-1]))
+                sent.add(sid)
+                budget -= WRITES_PER_UPDATE
     take = max(0, budget // WRITES_PER_ROW)
     new = lines[done:done + take]
     rows = []
     for line in new:
         r = json.loads(line)
         if r.get("stage_id") and r.get("title"):
-            rows.append(row_values(r))
+            rows.append(row_values(r, themes))
+            if str(r["stage_id"]) in themes:
+                sent.add(str(r["stage_id"]))
     if out.exists():
         shutil.rmtree(out)
     out.mkdir(parents=True)
@@ -112,10 +151,11 @@ def build(data: Path, out: Path, budget: int) -> dict:
     if stmts:
         (out / "past-upload.sql").write_text("\n".join(stmts) + "\n", encoding="utf-8")
     (out / "pending.json").write_text(json.dumps({"lines": done + len(new), "rev": PEOPLE_REV,
-                                                  "refreshed": refreshed + len(redo), "refresh_to": refresh_to}), encoding="utf-8")
+                                                  "refreshed": refreshed + len(redo), "refresh_to": refresh_to,
+                                                  "themes_sent": sorted(sent)}), encoding="utf-8")
     return {"rows": len(rows), "updated": len(updates), "writes": WRITES_PER_ROW * len(rows) + WRITES_PER_UPDATE * len(updates),
             "delivered_before": done, "left": max(0, len(lines) - done - len(new)),
-            "to_refresh": max(0, refresh_to - refreshed - len(redo))}
+            "to_refresh": max(0, refresh_to - refreshed - len(redo)), "with_themes": len(sent)}
 
 
 def commit(data: Path, out: Path) -> None:

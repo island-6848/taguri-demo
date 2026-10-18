@@ -84,6 +84,32 @@ class DeliverPastTest(unittest.TestCase):
             self.assertEqual(con.execute("SELECT title FROM past_stage WHERE stage_id='40'").fetchone()[0], 'ミュージカル 春の歌')
 
 
+    def test_themes_read_later_are_added_to_rows_sent_before(self):
+        with tempfile.TemporaryDirectory() as t:
+            d = Path(t)
+            for sub in ('past', 'd1', 'credits'):
+                (d / sub).mkdir()
+            (d / 'past' / 'stages.jsonl').write_text('\n'.join(json.dumps(r, ensure_ascii=False) for r in ROWS) + '\n', encoding='utf-8')
+            con = sqlite3.connect(d / 'd1.db')
+            con.executescript('CREATE TABLE works(user_id TEXT, work_key TEXT, title TEXT, first_date TEXT, stage_id TEXT);')
+            con.executescript(MIGRATION.read_text(encoding='utf-8'))
+            run('build', '--data', t, '--out', str(d / 'out'))
+            con.executescript((d / 'out' / 'past-upload.sql').read_text(encoding='utf-8'))
+            run('commit', '--data', t, '--out', str(d / 'out'))
+            self.assertEqual(run('build', '--data', t, '--out', str(d / 'out'))['updated'], 0)
+            # あとから 30 のあらすじが読めた
+            (d / 'credits' / 'themes.jsonl').write_text(json.dumps({"side": "past", "id": "30", "synopsis": "家族の話",
+                "elements": [{"word": "家族"}, {"word": "喪失"}]}, ensure_ascii=False) + '\n', encoding='utf-8')
+            got = run('build', '--data', t, '--out', str(d / 'out'))
+            self.assertEqual((got['updated'], got['rows'], got['with_themes']), (1, 0, 1))
+            con.executescript((d / 'out' / 'past-upload.sql').read_text(encoding='utf-8'))
+            run('commit', '--data', t, '--out', str(d / 'out'))
+            self.assertEqual(run('build', '--data', t, '--out', str(d / 'out'))['updated'], 0)      # 1 度だけ
+            people = json.loads(con.execute("SELECT people FROM past_stage WHERE stage_id='30'").fetchone()[0])
+            self.assertIn(['#題材', '家族'], people)
+            self.assertIn(['出演', '山田太郎'], people)
+
+
 class StatementSizeTest(unittest.TestCase):
     def test_statements_fit_d1_in_bytes(self):
         # 2026-10-14: 文字数で数えていたので、日本語の多い 7,016 行が SQLITE_TOOBIG で断られた
