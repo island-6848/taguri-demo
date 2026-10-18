@@ -1,7 +1,8 @@
 // おすすめのカードの日程（起案者の指示 2026-10-17）:
 // - 会場ごとに 1 行「10/28〜11/1　恵比寿・エコー劇場（東京都）」。ツアーのときは、おすすめに出ている会場の
 //   日付の前に ★ を付ける（「このおすすめの日程」の札も、行の帯もやめた）
-// - 各行の下に、公演日時の暦（月〜日の週ごと。開演の時刻を日に並べ、上演期間の中で公演の無い日は「休演」）。
+// - 各行の下に、公演日時の暦（日〜土の週ごと。開演の時刻を日に並べ、上演期間の中で公演の無い日は「休演」。
+//   読めなかった行の日は「休演」と言い切らず「公式で確認」。#76）。
 //   公演ページの「タイムテーブル」の文（「10月23日(金) 歩13:00／印18:00」のような行）から読む
 // - 料金が会場によって違うときは、各行に料金の表（券種と金額）を付ける
 import {E} from './py.js';
@@ -14,17 +15,63 @@ const iso = ms => new Date(ms).toISOString().slice(0, 10);
 const ms = d => Date.parse(d + 'T00:00:00Z');
 const md = d => `${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}`;
 // 回の印（Wキャストの「歩」「印」など）にしない字
-const NOT_MARK = /[\d\s:：/／、,，.。()（）\[\]［］「」『』【】~〜～\-ー・開演場時分午前後休夜昼※とや回]/u;
+const NOT_MARK = /[\d\s:：/／、,，.。()（）\[\]［］「」『』【】~〜～\-ー・開演場時分午前後休夜昼※とや回各日]/u;
+
+// 「10月22日(木)〜23日(金) 各19:00」「10/30(金)〜11/1(日)」のような期間の行（起案者の指摘 #76: 読めない期間の日を
+// 「休演」と出していた）。1: 前の字、2-5: 初めの日（月・日 か 月/日）、6-9: 終わりの日、10: 残り
+const PAREN = String.raw`\s*(?:[(（][^)）]*[)）])?\s*`;
+const DT = String.raw`(?:(?:(\d{1,2})月)?(\d{1,2})日|(?<![\d/])(\d{1,2})\/(\d{1,2}))`;
+const RANGE_LINE = new RegExp(`^(.*?)${DT}${PAREN}[~〜～]${PAREN}${DT}${PAREN}(.*)$`, 'u');
+const MAX_RANGE = 62;            // これより長い期間の行は、日ごとの公演の行とみなさない
+// 午前 12 時は 0 時、午後 12 時は 12 時（#77: 「午前12時30分」を 12:30 と読んでいた）
+const hour = (ap, h) => (ap === '午後' && h < 12 ? h + 12 : ap === '午前' && h === 12 ? 0 : h);
+
+/** One day's text -> {list: [{t, m}], found, dash}: the performances it names (開場・終演の時刻は落とす). */
+function slots(raw) {
+  // 「19時」「14時半」「1830開演」も時刻に直す。開場・受付・終演の時刻は公演の回ではないので落とす
+  const after = raw
+    .replace(/(午前|午後)?\s*(?<!\d)(\d{1,2})時(?!間)(?:(\d{1,2})分|(半))?/g, (_, ap, h, mi, half) => `${hour(ap, +h)}:${half ? '30' : String(mi || 0).padStart(2, '0')}`)
+    .replace(/(午前|午後)\s*(\d{1,2}):(\d{2})/g, (_, ap, h, mi) => `${hour(ap, +h)}:${mi}`)
+    .replace(/(?<!\d)([012]\d)([0-5]\d)(?=\s*開演)/g, '$1:$2')
+    .replace(/(?:開場|受付(?:開始)?|終演)(?:・開場)?\s*[:：]?\s*\d{1,2}:\d{2}|\d{1,2}:\d{2}\s*(?:終演|開場)/g, '');
+  const list = [];
+  // 印は時刻の前（「歩13:00」）か後ろ（「19:00 A」）の 1 字。0:00〜23:59 の外の時刻（「29:99」）は時刻にしない
+  for (const m of after.matchAll(/(?:([^\s\d])\s*)?(?<!\d)(\d{1,2}):(\d{2})(?:\s?([A-Za-z]|[^\x00-\x7F])(?=$|[\s/／、,]))?/gu)) {
+    if (Number(m[2]) > 23 || Number(m[3]) > 59) continue;
+    const pre = m[1] && !NOT_MARK.test(m[1]) ? m[1] : '';
+    const post = m[4] && !NOT_MARK.test(m[4]) && m[4] !== '貸' ? m[4] : '';
+    list.push({t: `${Number(m[2])}:${m[3]}`, m: pre || post});
+  }
+  // 貸切の回（一般には売らない回）も、その日の公演として出す
+  for (const _ of after.match(/貸切/g) || []) list.push({t: '貸切', m: ''});
+  if (!list.length) for (const w of after.match(/マチネ|ソワレ|昼|夜/g) || []) list.push({t: w, m: ''});
+  return {list, found: list.length > 0, dash: /[-ー‐－―]/.test(after.replace(/[(（][^)）]*[)）]/g, ''))};
+}
 
 /**
  * The performances read from a timetable text: Map 'YYYY-MM-DD' -> [{t: '13:00' | 'マチネ' | '', m: '歩' | ''}].
- * Only lines with exactly one date; the year is the one that puts the date near the run (start..end).
+ * Lines with one date, and ranges whose days all have the same times (「22日(木)〜23日(金) 各19:00」);
+ * the year is the one that puts the date near the run (start..end).
+ * The Map also carries `closed` (days the text says have no performance: 「休演」「- -」) and `unknown`
+ * (days of lines it could not read: ranges without 「各」, lines with several dates). timetableGrid writes
+ * 「休演」 only on days it knows, and 「公式で確認」 on the unknown ones (#76).
  */
 export function parseTimetable(text, start, end) {
   const out = new Map();
+  out.closed = new Set();
+  out.unknown = new Set();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(start || '')) return out;
-  const lo = ms(start) - 14 * DAY, hi = ms(/^\d{4}-\d{2}-\d{2}$/.test(end || '') ? end : start) + 14 * DAY;
+  const last = /^\d{4}-\d{2}-\d{2}$/.test(end || '') ? end : start;
+  const lo = ms(start) - 14 * DAY, hi = ms(last) + 14 * DAY;
   const y0 = Number(start.slice(0, 4));
+  const dateOf = (M, D) => {
+    for (const y of [y0, y0 + 1, y0 - 1]) {
+      const d = `${y}-${String(M).padStart(2, '0')}-${String(D).padStart(2, '0')}`;
+      const t = ms(d);
+      if (!Number.isNaN(t) && iso(t) === d && t >= lo && t <= hi) return d;
+    }
+    return '';
+  };
   let month = 0;          // 「10月」「2026年11月」だけの見出しの行の月（その下の「27日（火）…」に使う）
   // 日付の行と、その下に続く時刻だけの行（「11月03日( 火 )」の次の行に「13:00 -」。起案者の指摘 2026-10-17 の
   // 「三婆」）をまとめて 1 日分の文にする。続きの行は時刻・「-」・貸切・休演などで始まる短い行だけ
@@ -36,52 +83,49 @@ export function parseTimetable(text, start, end) {
     if (!line) continue;
     const head = /^(?:\d{4}年)?\s*(\d{1,2})月\s*$/.exec(line);
     if (head) { month = Number(head[1]); open = null; continue; }
+    // 期間の行: その期間の毎日を 1 つの行として読む（中身は下の 2 つめの繰り返しで）
+    const r = RANGE_LINE.exec(line);
+    if (r && !/\d\s*(?:月|日|\/)/.test(r[1])) {
+      const M1 = Number(r[2] || r[4] || month), D1 = Number(r[3] || r[5]);
+      const M2 = Number(r[6] || r[8] || M1), D2 = Number(r[7] || r[9]);
+      const a = M1 && dateOf(M1, D1), b = M1 && dateOf(M2, D2);
+      if (a && b && a <= b && (ms(b) - ms(a)) / DAY < MAX_RANGE) {
+        const span = [];
+        for (let t = ms(a); t <= ms(b); t += DAY) span.push(iso(t));
+        // 上演期間そのものを書いた見出しの行（時刻が無い）は、日ごとの公演の行ではない
+        const whole = a <= start && b >= last && !/\d:\d{2}|\d時(?!間)|休演|各/.test(r[10]);
+        open = whole ? null : {dates: span, text: r[10], timed: /\d:\d{2}|\d時(?!間)/.test(r[10]), range: true};
+        if (open) days.push(open);
+        continue;
+      }
+    }
     let dates = [...line.matchAll(/(\d{1,2})月(\d{1,2})日|(?:^|[^\d/])(\d{1,2})\/(\d{1,2})(?=\s*[(（])/g)];
     if (!dates.length && month) dates = [...line.matchAll(/^()()()()(\d{1,2})日/g)];
     if (dates.length !== 1) {
       if (!dates.length && open && !open.timed && line.length <= 40 && CONT.test(line)) open.text += ' ' + line;
       else open = null;
+      // 日付が 2 つ以上ある行は読まない。その日は「休演」ではなく「公式で確認」にする
+      for (const dm of dates) { const d = dateOf(Number(dm[1] || dm[3]), Number(dm[2] || dm[4])); if (d) out.unknown.add(d); }
       continue;
     }
     const dm = dates[0], M = Number(dm[1] || dm[3] || month), D = Number(dm[2] || dm[4] || dm[5]);
-    // 「10月21日(水)〜25日」のような期間の行は 1 日の行ではない
-    if (/^\s*(?:[(（][^)）]*[)）])?\s*[~〜～]\s*\d/.test(line.slice(dm.index + dm[0].length))) { open = null; continue; }
-    let date = '';
-    for (const y of [y0, y0 + 1, y0 - 1]) {
-      const d = `${y}-${String(M).padStart(2, '0')}-${String(D).padStart(2, '0')}`;
-      const t = ms(d);
-      if (!Number.isNaN(t) && iso(t) === d && t >= lo && t <= hi) { date = d; break; }
-    }
-    if (!date) { open = null; continue; }
     const rest = line.slice(dm.index + dm[0].length);
+    // 上の RANGE_LINE で読めなかった期間の行（「10月21日(水)〜25日」で終わりが分からない など）は 1 日の行ではない
+    if (/^\s*(?:[(（][^)）]*[)）])?\s*[~〜～]\s*\d/.test(rest)) { open = null; const d = dateOf(M, D); if (d) out.unknown.add(d); continue; }
+    const date = dateOf(M, D);
+    if (!date) { open = null; continue; }
     // 日付の行に時刻があれば、その下の行（「●13:15開場」のような注意書き）は続きにしない
-    open = {date, text: rest, timed: /\d:\d{2}|\d時(?!間)/.test(rest)};
+    open = {dates: [date], text: rest, timed: /\d:\d{2}|\d時(?!間)/.test(rest)};
     days.push(open);
   }
-  for (const {date, text: raw} of days) {
-    if (/休演/.test(raw)) continue;
-    // 「19時」「14時半」「1830開演」も時刻に直す。開場・受付・終演の時刻は公演の回ではないので落とす
-    const after = raw
-      .replace(/(午前|午後)?\s*(?<!\d)(\d{1,2})時(?!間)(?:(\d{1,2})分|(半))?/g, (_, ap, h, mi, half) => `${ap === '午後' && +h < 12 ? +h + 12 : h}:${half ? '30' : String(mi || 0).padStart(2, '0')}`)
-      .replace(/午後\s*(\d{1,2}):(\d{2})/g, (_, h, mi) => `${+h < 12 ? +h + 12 : h}:${mi}`)
-      .replace(/(?<!\d)([012]\d)([0-5]\d)(?=\s*開演)/g, '$1:$2')
-      .replace(/(?:開場|受付(?:開始)?|終演)(?:・開場)?\s*[:：]?\s*\d{1,2}:\d{2}|\d{1,2}:\d{2}\s*(?:終演|開場)/g, '');
-    const list = out.get(date) || [];
-    let found = false;
-    // 印は時刻の前（「歩13:00」）か後ろ（「19:00 A」）の 1 字
-    for (const m of after.matchAll(/(?:([^\s\d])\s*)?(?<!\d)(\d{1,2}):(\d{2})(?:\s?([A-Za-z]|[^\x00-\x7F])(?=$|[\s/／、,]))?/gu)) {
-      const pre = m[1] && !NOT_MARK.test(m[1]) ? m[1] : '';
-      const post = m[4] && !NOT_MARK.test(m[4]) && m[4] !== '貸' ? m[4] : '';
-      list.push({t: `${Number(m[2])}:${m[3]}`, m: pre || post});
-      found = true;
-    }
-    // 貸切の回（一般には売らない回）も、その日の公演として出す
-    for (const _ of after.match(/貸切/g) || []) { list.push({t: '貸切', m: ''}); found = true; }
-    if (!found) for (const w of after.match(/マチネ|ソワレ|昼|夜/g) || []) { list.push({t: w, m: ''}); found = true; }
+  for (const {dates, text: raw, range} of days) {
+    if (/休演/.test(raw)) { for (const d of dates) out.closed.add(d); continue; }
+    const {list, found, dash} = slots(raw);
+    // 期間の行は「各19:00」のように毎日同じと書いてあるときだけ読む。そうでなければ、その日は「公式で確認」
+    if (range && !(found && /各/.test(raw))) { for (const d of dates) out.unknown.add(d); continue; }
     // 時刻の欄が「- -」だけの日は公演が無い（休演）。何も書いていない日は、時刻の分からない公演
-    if (!found && /[-ー‐－―]/.test(after.replace(/[(（][^)）]*[)）]/g, ''))) continue;
-    if (!found) list.push({t: '', m: ''});
-    out.set(date, list);
+    if (!found && dash) { for (const d of dates) out.closed.add(d); continue; }
+    for (const d of dates) out.set(d, [...(out.get(d) || []), ...(found ? list : [{t: '', m: ''}])]);
   }
   return out;
 }
@@ -109,6 +153,11 @@ export function markLegend(marks, texts) {
   return out;
 }
 
+// 公演が分からない日（読めなかった行の日で、公演の日でも休演と書かれた日でもない）
+const unsure = (perf, d) => !perf.has(d) && !perf.closed?.has(d) && Boolean(perf.unknown?.has(d));
+/** Whether the run (from..to) has a day of unsure(): the count of performances is then a lower bound. */
+export const unsureIn = (perf, from, to) => [...(perf.unknown || [])].some(d => d >= from && d <= to && unsure(perf, d));
+
 /** The weekly calendar of one venue ('' when there is nothing to draw). `texts`: the stage page's texts for the legend. */
 export function timetableGrid(perf, start, end, today, texts = []) {
   if (!perf.size || !start) return '';
@@ -128,15 +177,17 @@ export function timetableGrid(perf, start, end, today, texts = []) {
       const label = (w === 0 && i === 0) || d.slice(8) === '01' || d === from ? md(d) : String(Number(d.slice(8)));
       const ps = perf.get(d) || [];
       const cls = [i === 6 ? 'sat' : i === 0 ? 'sun' : '', d < today ? 'past' : '', !inRun ? 'out' : ''].filter(Boolean).join(' ');
+      // 公演の無い日のうち、タイムテーブルの行を読めなかった日（期間の行など）は「休演」と言い切らない（#76）
       const body = !inRun ? '' : ps.length
         // 印は時刻のすぐ後ろに（起案者の指示 2026-10-18「今図形（改行）時刻、になってるけど時刻のすぐ後ろに図形つけて」）
         ? ps.map(p => `<span class="tm">${E(p.t || '公演')}${p.m ? `<i>${E(p.m)}</i>` : ''}</span>`).join('')
-        : '<span class="off">休演</span>';
+        : unsure(perf, d) ? '<span class="unk">公式で確認</span>' : '<span class="off">休演</span>';
       cells.push(`<td${cls ? ` class="${cls}"` : ''}><span class="d">${E(label)}</span>${body}</td>`);
     }
     rows.push(`<tr>${cells.join('')}</tr>`);
   }
   const n = [...perf.values()].reduce((a, ps) => a + ps.length, 0);
+  const more = unsureIn(perf, from, to);
   const marks = [...new Set([...perf.values()].flat().map(p => p.m).filter(Boolean))];
   // 印（★・◆・A/B など）の意味は公演ごとに違うので、その公演のページの説明を書く。説明が無い印はそう書く
   const legend = markLegend(marks, texts);
@@ -144,7 +195,8 @@ export function timetableGrid(perf, start, end, today, texts = []) {
   const note = !marks.length ? '' : '<ul class="ttb-legend">'
     + [...legend].map(([m, d]) => `<li><b>${E(m)}</b>${E(d)}</li>`).join('')
     + (missing.length ? `<li class="miss"><b>${missing.map(E).join('・')}</b>公演ページに印の説明がありません</li>` : '') + '</ul>';
-  return `<table class="ttb" aria-label="公演日時（${n} 回）"><thead><tr>${head}</tr></thead><tbody>${rows.join('')}</tbody></table>${note}`;
+  const why = more ? '<p class="ttb-note">「公式で確認」の日は、タイムテーブルの書き方を読み取れなかった日です。公演の有無と時刻は公演ページで確かめてください。</p>' : '';
+  return `<table class="ttb" aria-label="公演日時（${n} 回${more ? '以上' : ''}）"><thead><tr>${head}</tr></thead><tbody>${rows.join('')}</tbody></table>${why}${note}`;
 }
 
 // 値段の幅だけの行（「2,750円 ~ 7,150円」）
@@ -204,7 +256,7 @@ export function tourBlock(venues, shown, today, prefs = []) {
     const mark = isHere ? '<span class="tf-star" title="絞り込んだ都道府県の会場">★</span>'
       : live ? '<span class="tf-dot live" title="いま上演中">●</span>' : '<span class="tf-dot" aria-hidden="true">・</span>';
     const head = `<span class="tf-when">${tour ? mark : ''}${E(when)}`
-      + (grid && n ? `<span class="tf-cnt">（${n} 回）</span>` : '') + '</span>'
+      + (grid && n ? `<span class="tf-cnt">（${n} 回${unsureIn(perf, v.start, end) ? '以上' : ''}）</span>` : '') + '</span>'
       + (tour ? `<span class="tf-loc">${E(where)}</span>` : '');
     const body = (price ? `<div class="tf-price">${price}</div>` : '') + (grid || '');
     const cls = `tf-row${isHere ? ' here' : ''}${end < today ? ' done' : ''}`;

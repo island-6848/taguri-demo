@@ -1961,6 +1961,20 @@
    "verifies": []
   },
   {
+   "id": "dec-timetable-unknown-days",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "公演日時の暦で、タイムテーブルの行を読めなかった日は「休演」ではなく「公式で確認」と出す。「各19:00」の期間の行は日ごとに読む。午前12時は 0 時、0:00〜23:59 の外の時刻は捨てる",
+   "sources": [
+    "cloudflare/src/screens/schedule.js",
+    "cloudflare/test/schedule.test.js",
+    "https://github.com/island-6848/taguri-demo/issues/76",
+    "https://github.com/island-6848/taguri-demo/issues/77"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-trace-worker",
    "type": "decision",
    "status": "adopted",
@@ -7576,6 +7590,11 @@
    "from": "dec-ticker",
    "rel": "affects",
    "to": "comp-frontend"
+  },
+  {
+   "from": "dec-timetable-unknown-days",
+   "rel": "affects",
+   "to": "impl-card-schedule"
   },
   {
    "from": "dec-trace-worker",
