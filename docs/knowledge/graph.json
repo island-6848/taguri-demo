@@ -1877,6 +1877,21 @@
    "verifies": []
   },
   {
+   "id": "dec-rec-card-1018-layout-b",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "おすすめのカード: 値段と発売の札はどのカードでも本文の列に、札の ↗ は折り返さない、ヘルプ（？）は枠の外の右上に小さく、暦の貸切の回は「(貸)17:00」",
+   "sources": [
+    "web/app.js",
+    "web/theme.css",
+    "cloudflare/src/screens/schedule.js",
+    "cloudflare/test/schedule.test.js",
+    "cloudflare/test/e2e-walk.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-rec-card-1018-layout",
    "type": "decision",
    "status": "adopted",
@@ -3504,6 +3519,21 @@
     "cloudflare/src/screens/cards.js",
     "cloudflare/src/screens/recommend.js",
     "cloudflare/test/cantgo.test.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "impl-hashtag-list",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "あらすじのハッシュタグを押すと、その題材の付いたこれから観られる公演の一覧（/recommend/tag）へ。1 回開くごとの D1 の読み取りは 2,000 行ほど",
+   "sources": [
+    "cloudflare/src/screens/tagged.js",
+    "cloudflare/test/tagged.test.js",
+    "web/app.js",
+    "cloudflare/test/e2e-walk.js",
+    "cloudflare/migrations/0018.sql"
    ],
    "verifies": []
   },
@@ -6366,6 +6396,18 @@
    "verifies": []
   },
   {
+   "id": "q-ttb-kas-phone-fonts",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-18",
+   "title": "暦の貸切の回「(貸)17:00」は、実際の電話（iPhone・Android の字）でも升の中で 1 行に収まるか",
+   "sources": [
+    "cloudflare/test/e2e-walk.js",
+    "web/theme.css"
+   ],
+   "verifies": []
+  },
+  {
    "id": "q-user-chosen-scale",
    "type": "question",
    "status": "answered",
@@ -8613,6 +8655,16 @@
    "to": "dec-reason-work-titles"
   },
   {
+   "from": "dec-rec-card-1018-layout-b",
+   "rel": "affects",
+   "to": "dec-rec-card-1018-layout"
+  },
+  {
+   "from": "dec-rec-card-1018-layout-b",
+   "rel": "raises",
+   "to": "q-ttb-kas-phone-fonts"
+  },
+  {
    "from": "dec-rec-card-1018-layout",
    "rel": "affects",
    "to": "dec-ticket-price-filter"
@@ -9806,6 +9858,26 @@
    "from": "impl-four-answers",
    "rel": "affects",
    "to": "impl-recommend-find"
+  },
+  {
+   "from": "impl-hashtag-list",
+   "rel": "depends_on",
+   "to": "dec-recommend-worker-cards"
+  },
+  {
+   "from": "impl-hashtag-list",
+   "rel": "depends_on",
+   "to": "d1-free-limits"
+  },
+  {
+   "from": "impl-hashtag-list",
+   "rel": "affects",
+   "to": "q-d1-reads-real"
+  },
+  {
+   "from": "impl-hashtag-list",
+   "rel": "affects",
+   "to": "dec-rec-card-1018-layout"
   },
   {
    "from": "impl-hidden-gate",
@@ -11771,6 +11843,11 @@
    "from": "q-ticket-to-rating",
    "rel": "affects",
    "to": "dec-native-cutover-now"
+  },
+  {
+   "from": "q-ttb-kas-phone-fonts",
+   "rel": "affects",
+   "to": "dec-rec-card-1018-layout-b"
   },
   {
    "from": "q-user-chosen-scale",

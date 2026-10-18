@@ -86,9 +86,8 @@ const STATE = [['owned', '観る予定です（すでに持っていると答え
 export async function taggedScreen(params, ctx) {
   const word = tagWord(params.get('w'));
   const page = Math.max(1, Number.parseInt(params.get('p') || '1', 10) || 1);
-  const back = '<p class="lede"><a href="/recommend?t=__TAGURI_TOKEN__">← 今週のおすすめに戻る</a></p>';
   if (!word) {
-    return {title: '題材の公演', body_html: `<h1>題材の公演</h1>${back}<p class="empty">題材の語がありません。カードのあらすじの下のハッシュタグを押すと、その題材の公演がここに並びます。</p>`};
+    return {title: '題材の公演', body_html: `<h1>題材の公演</h1><p class="empty">題材の語がありません。カードのあらすじの下のハッシュタグを押すと、その題材の公演がここに並びます。</p>`};
   }
   const prods = byProduction((await taggedStages(ctx, word)).slice(0, TAG_ROWS));
   const last = Math.max(1, Math.ceil(prods.length / TAG_SHOW));
@@ -114,8 +113,7 @@ export async function taggedScreen(params, ctx) {
     + `<span class="mp">${p} / ${last} ページ</span>`
     + `${p < last ? `<a class="mpage" href="/recommend/tag?${q}&amp;p=${p + 1}">次の ${Math.min(TAG_SHOW, prods.length - p * TAG_SHOW)} 件 →</a>` : '<span class="mpage off">これで最後です</span>'}</div>`;
   const body = `<h1><span class="ftag big">#${E(word)}</span> の公演</h1>
-${back}
-<p class="lead">あらすじから読み取った題材に <b>#${E(word)}</b> が付いている、これから観られる公演です。上演日の近い順に並べています。順位は付けていません。<b>ここから「興味あり」を押すと、「興味あり」の一覧に入ります。</b>
+<p class="lede">あらすじから読み取った題材に <b>#${E(word)}</b> が付いている、これから観られる公演です。上演日の近い順に並べています。順位は付けていません。<b>ここから「興味あり」を押すと、「興味あり」の一覧に入ります。</b>
 題材は、あらすじが読めた公演にだけ付いています。人名・団体・題名でも探したいときは<a href="/search?t=__TAGURI_TOKEN__&amp;q=${encodeURIComponent(word)}">探す</a>を使ってください。</p>
 ${prods.length ? `<p class="rcount">全 ${prods.length} 件${last > 1 ? `中 ${(p - 1) * TAG_SHOW + 1}〜${(p - 1) * TAG_SHOW + show.length} 件目を表示中` : ''}</p>` : ''}
 ${cards.length ? `<div class="tickets">${cards.join('')}</div>` : `<p class="empty">いま、題材に「${E(word)}」が付いている、これから観られる公演はありません。</p>`}

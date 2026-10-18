@@ -1057,7 +1057,7 @@ a.pill.buy .go:not(#_){font-size:12px;margin-left:2px}
 /* 段の中が 1 つだけ（開幕リマインドの場所・お気に入りの登録した名前など）なら全幅に */
 .fil2:not(.tabbed)>:only-child{grid-column:1/-1}
 
-/* 公演修正依頼（app.js fixLinks・openFixPopup）。カードの右下にヘルプの印、押すとポップアップ */
+/* 公演修正依頼（app.js fixLinks・openFixPopup）。ヘルプの印を押すとポップアップ（印の位置は末尾の「おすすめのカードの見た目」の塊: 枠の外の右上） */
 .fixq{margin:8px 0 0;text-align:right}
 .fixq-open{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;padding:0;border:0;border-radius:50%;background:none;color:var(--mute);cursor:pointer}
 .fixq-open:hover,.fixq-open:focus-visible{color:var(--acc);background:color-mix(in srgb,var(--acc) 10%,transparent)}
@@ -1433,5 +1433,7 @@ html .dgli .noposter:not(#_):not(#_) span{font-size:9px;letter-spacing:0}
 /* あらすじのハッシュタグは、その題材の公演の一覧（/recommend/tag）へのリンク */
 a.lsyntag{text-decoration:none;color:inherit;cursor:pointer}
 a.lsyntag:hover,a.lsyntag:focus-visible{text-decoration:underline}
-/* 公演日時の暦の貸切の回「(貸)17:00」: 升の中で折り返さないよう、「(貸)」の括弧と字間を詰める */
-.ttb .tm.kas b{font-weight:600;color:var(--ink2);letter-spacing:-.18em;margin-right:.12em}
+/* 公演日時の暦の貸切の回「(貸)17:00」: 升の中で折り返さないよう、「(貸)」の括弧と字間を詰める
+   （電話の幅で 1 升 35px ほど。12px の字のまま、時刻の字間も少しだけ詰めて収める） */
+.ttb .tm.kas:not(#_){letter-spacing:-.1em}
+.ttb .tm.kas b{font-weight:600;color:var(--ink2);letter-spacing:-.22em;margin-right:.1em}
