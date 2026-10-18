@@ -78,6 +78,8 @@ def summary(res: dict, counts: dict) -> str:
            f"- 後で答えた公演のうち、その時点のおすすめ（400 枠）に入っていた割合: {fmt(res['answers_ranked_share'])}",
            f"- たまった数: 利用者 {counts['users']} 人（答え 10 件以上 {counts['users_10_answers']} 人）、答え {counts['answers']} 件"
            f"（開幕リマインド {counts['answers_reminder']} 件）、分析から外れた人 {counts['opted_out']} 人",
+           *[f"- 日 {o['t']} まで → その後 {res['step_days']} 日: 答えた人 {o['users']} 人・答え {o['answers']} 件、"
+             f"評価が残っていた人 {o['with_ratings']} 人、おすすめが出た人 {o['with_recommendations']} 人" for o in res.get("per_origin", [])],
            "", "AUC は 0.5 が当てずっぽう、1.0 が全部当たり。人数が少ないうちの p 値は偶然の差を拾いやすい。", ""]
     names = {"reminder": "開幕リマインドの答え（主な結果）", "other": "ほかの画面の答え（参考）", "all": "全部"}
     parts = {"split": "興味ありの配り分け", "expand": "1 段広げる", "spread": "並べ直し", "gate": "裏の答え合わせ"}
