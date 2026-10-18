@@ -534,14 +534,25 @@ ${words.length ? tags : '<p class="empty">まだ 1 つも外していません�
  * - 過去の公演（2019 年以降の一覧 past_stage）: 一覧を全部読むので（D1 の読み取り行数）、押したときだけ探す。
  */
 const PAST_SCANS_PER_DAY = 150;           // 150 × 2 万行 = 300 万行（1 日 500 万行の 6 割）
-/** 今日の過去の公演の検索が上限の内なら数えて true（rec_meta 'past_scan' = "YYYY-MM-DD n"）。 */
-async function takePastScan(ctx) {
+// 1 人が 1 日に使える分（issue #73「1 人で使い切れる」）。全体の 150 回を、ほかの人にも残す
+export const PAST_SCANS_PER_USER_DAY = 20;
+/**
+ * 今日の過去の公演の検索が上限の内なら数えて true（rec_meta 'past_scan' = "YYYY-MM-DD n"）。
+ * 1 人ずつの数は usage の 'pastscan:<日>:<日と利用者のハッシュ>'（利用者の ID そのものは書かない）。前の日の行は消す。
+ */
+export async function takePastScan(ctx) {
   const row = await ctx.db.prepare("SELECT v FROM rec_meta WHERE k='past_scan'").first().catch(() => null);
   const [day, n] = String(row?.v || '').split(' ');
   const used = day === ctx.today ? Number(n) || 0 : 0;
   if (used >= PAST_SCANS_PER_DAY) return false;
-  await ctx.db.prepare("INSERT INTO rec_meta(k,v) VALUES('past_scan',?) ON CONFLICT(k) DO UPDATE SET v=excluded.v")
-    .bind(`${ctx.today} ${used + 1}`).run();
+  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${ctx.today}|${ctx.uid}`)));
+  const mine = `pastscan:${ctx.today}:${[...digest.slice(0, 12)].map(b => b.toString(16).padStart(2, '0')).join('')}`;
+  const own = (await ctx.db.prepare('SELECT n FROM usage WHERE k=?').bind(mine).first().catch(() => null))?.n || 0;
+  if (own >= PAST_SCANS_PER_USER_DAY) return false;
+  await ctx.db.batch([
+    ctx.db.prepare("INSERT INTO rec_meta(k,v) VALUES('past_scan',?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").bind(`${ctx.today} ${used + 1}`),
+    ctx.db.prepare("DELETE FROM usage WHERE k LIKE 'pastscan:%' AND k<?").bind(`pastscan:${ctx.today}`),
+    ctx.db.prepare('INSERT INTO usage(k,n) VALUES(?,1) ON CONFLICT(k) DO UPDATE SET n=n+1').bind(mine)]);
   return true;
 }
 const slash = d => String(d || '').replaceAll('-', '/');

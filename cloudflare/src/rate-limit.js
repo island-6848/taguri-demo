@@ -67,10 +67,16 @@ export async function checkNewAccount(db, env, fail, nowSec = Math.floor(Date.no
   if (request?.headers.get('cf-connecting-ip')) await countPerAddress(db, env, fail, request, dayStart);
 }
 
+/** 接続元の住所の代わり（日と住所のハッシュの先頭 12 バイト）。住所そのものは保存しない。接続元が分からなければ null */
+export async function addressKey(request, day) {
+  if (!request?.headers.get('cf-connecting-ip')) return null;
+  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${day}|${visitor(request)}`)));
+  return [...digest.slice(0, 12)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 async function countPerAddress(db, env, fail, request, dayStart) {
   const day = new Date((dayStart + 9 * 3600) * 1000).toISOString().slice(0, 10);
-  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${day}|${visitor(request)}`)));
-  const key = `newacct:${day}:${[...digest.slice(0, 12)].map(b => b.toString(16).padStart(2, '0')).join('')}`;
+  const key = `newacct:${day}:${await addressKey(request, day)}`;
   const per = Number(env.NEW_ACCOUNTS_PER_IP_DAY) || NEW_ACCOUNTS_PER_IP_DAY;
   const seen = (await db.prepare('SELECT n FROM usage WHERE k=?').bind(key).first())?.n || 0;
   if (seen >= per) fail(429, '同じ場所からの新規登録が続いています。明日もう一度お試しください。');
