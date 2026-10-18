@@ -153,3 +153,28 @@ class Replay(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class Materials(unittest.TestCase):
+    def test_counts_what_the_ratings_can_learn_from(self):
+        # 索引の公演 2 件（◎・×）に、つながっていない評価・過去の公演（名前だけ）・評価なし・観た日が先を足す
+        with tempfile.TemporaryDirectory() as tmp:
+            idx, bk, past = Path(tmp) / "index.sql", Path(tmp) / "backup.sql", Path(tmp) / "past.sql"
+            index_sql(idx)
+            backup_sql(bk, Replay.ANSWERS)
+            extra = sqlite3.connect(":memory:")
+            extra.executescript(bk.read_text(encoding="utf-8"))
+            for key, sid, verdict, first, note in (("w3", "", "○", "2026-07-01", ""), ("w4", "901", "4/5", "2026-07-02", "家族の話が好きだった"),
+                                                   ("w5", "301", "", "2026-07-03", ""), ("w6", "301", "◎", "2099-01-01", "")):
+                extra.execute("INSERT INTO works(user_id,work_key,title,first_date,last_date,verdict,updated_at,stage_id,note_impression) "
+                              "VALUES('u',?,?,?,?,?,'2026-09-01 10:00:00',?,?)", (key, key, first, first, verdict, sid, note))
+            bk.write_text("\n".join(extra.iterdump()) + "\n", encoding="utf-8")
+            extra.close()
+            past.write_text("INSERT INTO past_stage(stage_id,title,tkey,people) VALUES('901','昔の舞台','昔の舞台','[[\"出演\", \"俳優戊\"]]');\n", encoding="utf-8")
+            m = replay_eval.materials(str(bk), idx, [past], "2026-10-18")
+        self.assertEqual(m["records"], 6)
+        self.assertEqual(m["rated"], 5)
+        self.assertEqual((m["rated_future"], m["rated_unlinked"]), (1, 1))
+        self.assertEqual((m["linked_index"], m["linked_past"], m.get("linked_missing", 0)), (2, 1, 0))
+        # 種類の言葉は索引の公演（301・302）だけ。過去の公演は名前だけなので、感想はあっても好みの材料にならない
+        self.assertEqual((m["with_names"], m.get("with_kinds", 0), m["with_note"], m.get("with_note_and_kinds", 0)), (3, 2, 1, 0))

@@ -18,6 +18,7 @@ Replay のワークフロー（tools/taguri/deploy/github-actions/replay.yml）�
 from __future__ import annotations
 
 import argparse
+import datetime
 import json
 import os
 import subprocess
@@ -69,7 +70,7 @@ def fmt(v) -> str:
     return f"{v:.3f}" if isinstance(v, float) else str(v)
 
 
-def summary(res: dict, counts: dict) -> str:
+def summary(res: dict, counts: dict, mats: dict | None = None) -> str:
     """集計だけの表（Markdown）。"""
     if "error" in res:
         return f"## 推薦の再生\n\n{res['error']}\n"
@@ -81,6 +82,14 @@ def summary(res: dict, counts: dict) -> str:
            *[f"- 日 {o['t']} まで → その後 {res['step_days']} 日: 答えた人 {o['users']} 人・答え {o['answers']} 件、"
              f"評価が残っていた人 {o['with_ratings']} 人、おすすめが出た人 {o['with_recommendations']} 人" for o in res.get("per_origin", [])],
            "", "AUC は 0.5 が当てずっぽう、1.0 が全部当たり。人数が少ないうちの p 値は偶然の差を拾いやすい。", ""]
+    if mats:
+        g = lambda k: mats.get(k, 0)
+        out += ["### 今の記録のうち、推薦の材料になれている数", "",
+                f"- 記録 {g('records')} 件、そのうち評価あり {g('rated')} 件",
+                f"- 評価ありのうち: 観た日が今日より先 {g('rated_future')} 件（学ばない）、公演につながっていない {g('rated_unlinked')} 件（学べない）",
+                f"- 公演につながっている: これからの索引の公演 {g('linked_index')} 件、過去の公演 {g('linked_past')} 件、公演が見つからない {g('linked_missing')} 件",
+                f"- 人物の名前がある {g('with_names')} 件、種類の言葉（題材・形式など）がある {g('with_kinds')} 件、"
+                f"感想がある {g('with_note')} 件（そのうち種類の言葉もある {g('with_note_and_kinds')} 件）", ""]
     names = {"reminder": "開幕リマインドの答え（主な結果）", "other": "ほかの画面の答え（参考）", "all": "全部"}
     parts = {"split": "興味ありの配り分け", "expand": "1 段広げる", "spread": "並べ直し", "gate": "裏の答え合わせ", "impression": "感想の好み"}
     for key, title in names.items():
@@ -112,7 +121,8 @@ def main(argv: list[str] | None = None) -> int:
         db = RE.load(str(records))
         counts = RE.counts(db, a.owner or None)
         db.close()
-    text = summary(res, counts)
+        mats = RE.materials(str(records), index, [past], RE.jst_day(datetime.datetime.now(datetime.timezone.utc).isoformat()))
+    text = summary(res, counts, mats)
     print(text)
     if os.environ.get("GITHUB_STEP_SUMMARY"):
         with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as f:
