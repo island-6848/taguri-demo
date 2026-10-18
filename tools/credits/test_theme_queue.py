@@ -118,7 +118,41 @@ class PromptChainTest(unittest.TestCase):
         self.assertTrue(g4.startswith(g3.split("空文字を避けようとして")[0]))
         self.assertIn("フェスティバル", g4)
         self.assertNotIn("フェスティバル（", g3)
-        self.assertEqual(E.PROMPT_VERSION, "g4")
+
+    def test_g5_keeps_g4_synopsis_rules_and_is_in_use(self):
+        # 起案者の判断（2026-10-18）「まずそれでやってみる」（eval-g5-trial-1018）
+        g4, g5 = E.PROMPTS["g4"], E.PROMPTS["g5"]
+        self.assertTrue(g5.split("2. elements")[0].replace("3 つ", "2 つ").startswith(
+            g4.split("2. elements")[0].split("その次から")[0]))
+        self.assertIn("フェスティバル", g5)
+        for kind in E.G5_KINDS:
+            self.assertIn(f"「{kind}」", g5)
+        self.assertIn("SF＝サイエンスフィクション", g5, "語彙表を付ける")
+        self.assertEqual(E.PROMPT_VERSION, "g5")
+        self.assertEqual(E.DIRECT_VERSION, "g4", "Gemini で直接読む経路は g4 のまま")
+
+    def test_g5_checks_basis_quotes_and_caps(self):
+        text = "海辺の町で暮らす三姉妹が、父の残した古い手紙をきっかけに、それぞれの秘密と向き合っていく会話劇です。"
+        g = {"elements": [
+            {"kind": "関係・感情", "word": "姉妹", "basis": "本文"},
+            {"kind": "関係・感情", "word": "すれ違い", "basis": "推定", "from": "それぞれの 秘密と向き合っていく"},
+            {"kind": "時代", "word": "昭和", "basis": "推定", "from": "昭和の町"},
+            {"kind": "舞台設定", "word": "昭和", "basis": "推定", "from": "昭和の町"},
+            {"kind": "味わい", "word": "人情", "basis": "作風", "from": "人情"},
+            {"kind": "ジャンル", "word": "喜劇", "basis": "作風", "from": "喜劇"},
+        ] + [{"kind": "題材", "word": f"題材{i}", "basis": "本文"} for i in range(6)],
+             "tags": ["#三姉妹", "手紙", "#" + "長" * 30]}
+        els = E.g5_elements(g, text, "団体「劇団A」・… 半数以上に付いている言葉: 喜劇、家族")
+        words = [e["word"] for e in els]
+        self.assertIn("すれ違い", words, "引用が本文にある推定は残す（空白は無視）")
+        self.assertNotIn("昭和", words, "引用が本文に無い推定と、知らない種類は落とす")
+        self.assertNotIn("人情", words, "手がかりに無い作風は落とす")
+        self.assertIn("喜劇", words)
+        self.assertEqual(sum(1 for e in els if e["kind"] == "題材"), E.G5_KINDS["題材"])
+        row = E.to_row({"side": "candidate", "id": "1", "title": "t", "url": "", "text": text, "hint": ""},
+                       {**g, "synopsis": ""}, "claude", "g5")
+        self.assertEqual(row["tags"], ["#三姉妹"])
+        self.assertNotIn("喜劇", [e["word"] for e in row["elements"]], "手がかりが無ければ作風は残らない")
 
 if __name__ == "__main__":
     unittest.main()

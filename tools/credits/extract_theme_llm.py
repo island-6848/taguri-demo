@@ -69,7 +69,10 @@ OUT = ROOT / "data" / "credits" / "themes.jsonl"
 QUEUE = ROOT / "data" / "credits" / "synopsis_queue.jsonl"
 QUEUE_PROMPT = ROOT / "data" / "credits" / "synopsis_prompt.txt"
 
-PROMPT_VERSION = "g4"   # 2026-10-18 に g2 から上げた（起案者の判断。eval-synopsis-blind-1018）
+PROMPT_VERSION = "g5"   # 2026-10-18 に g4 から上げた（起案者の判断「まずそれでやってみる」。eval-g5-trial-1018）
+# g5 は運営者の Claude が待ちを読む経路（--print-queue / --import-answers）だけの版。根拠の印・引用・作風の手がかりを
+# 検査するのは import_answers なので、Gemini で直接読む経路（ask・enrich_one）は g4 のまま
+DIRECT_VERSION = "g4"
 MODEL = LLM.MODEL
 READER = os.environ.get("TAGURI_THEME_READER", "gemini").lower()
 CLAUDE_MODEL = "claude-routine"
@@ -264,13 +267,76 @@ PROMPT_G4 = _sub(
     "フェスティバルでない公演で、紹介文・企画意図しか無いときは、これまでどおり空文字にする。",
 )
 
+# g5 ── **言葉を種類ごとに役割を分けて拾い、語彙表の言葉を使い、根拠の強さを付ける。**
+# 起案者の指摘（2026-10-18「あなたのあらすじ抽出は正直正しくない」: 感情のドラマ・対立の軸・味わい・作品だけの
+# モチーフが抜け、言葉の上下関係も無い）と判断「abc いいよ」「まずそれでやってみる」（種類ごとの役割と重さ、
+# eval-g5-trial-1018）。あらすじ（synopsis）の決まりは g4 のまま。上位の言葉は語彙表がたどるので書かせない。
+# 推定には本文の引用を必須にした（試しの 1 回目で、本文に無い「昭和」が推定として付いた）。
+G5_KINDS = {   # 種類 → 1 公演の上限（索引の重さは build_recommend_index.THEME_KIND_W）
+    "題材": 4, "関係・感情": 3, "ジャンル": 2, "味わい": 2, "構造": 2, "舞台設定": 2, "モチーフ": 3, "原作": 2}
+G5_BASIS = ("本文", "推定", "作風")
+VOCAB = ROOT / "cloudflare" / "src" / "vocab" / "concepts.json"
+
+
+def _vocab_lines() -> str:
+    """語彙表を軸ごとに 1 行で（概念＝同義語：言葉）。指示文の末尾に付ける。"""
+    if not VOCAB.exists():
+        return ""
+    by: dict[str, list[str]] = {}
+    for name, c in json.loads(VOCAB.read_text(encoding="utf-8"))["concepts"].items():
+        same = "".join("＝" + w for w in c.get("same", []))
+        words = ("：" + "、".join(c["words"])) if c.get("words") else ""
+        by.setdefault(c.get("axis", ""), []).append(name + same + words)
+    return "".join(f"［{axis}］" + " ／ ".join(v) + "\n" for axis, v in by.items())
+
+
+PROMPT_G5 = PROMPT_G4.split("2. elements ──", 1)[0].replace(
+    "各公演について次の 2 つを判定する。", "各公演について次の 3 つを判定する。").replace(
+    "その次から「###」までがその公演の本文である。",
+    "その次が「作風の手がかり: ...」、その次から「###」までがその公演の本文である。") + """2. elements ── 照合と推薦に使う言葉。各要素は {"kind": "...", "word": "...", "basis": "..."} の形にする。
+   - kind は次のいずれか。**物語の筋だけでなく、観客がその作品を選ぶ理由になる面を、種類ごとに拾う。** かっこ内は 1 公演の上限。
+     - 「題材」（4）: 何を扱うか（家族、戦争、ロボット・AI、貧困、医療 など）
+     - 「関係・感情」（3）: 人物どうしの関係と、そこに生まれる感情のドラマ（すれ違い、片思い、確執、師弟の絆、喪失 など）。恋愛に限らない
+     - 「ジャンル」（2）: 作品の型（SF、喜劇、ミステリー、ミュージカル、時代劇、音楽劇 など）
+     - 「味わい」（2）: 観たときの手触り（不条理、詩的、ダーク、人情、ほろ苦い、軽やか など）
+     - 「構造」（2）: 対立の軸や話の組み立て（自由と束縛、理想と現実、復讐の連鎖、群像劇、会話劇、劇中劇 など）
+     - 「舞台設定」（2）: 時代と場所（近未来、江戸、終末世界、アパート など）
+     - 「モチーフ」（3）: **その作品にしか無い具体的な設定や状況**（閉店間際の銭湯、三十年ぶりの同窓会、雪に閉ざされた山荘 など）。ここだけは短い句でよい
+     - 「原作」（2）: 原作・下敷きにした作品や作家（固有名詞でよい）
+   - word は、**下の語彙表に合う言葉があれば、その言葉（概念の名前・＝の同義語・言葉）をそのまま使う。** 合うものが無ければ新しい一般名詞でよい。モチーフと原作は語彙表に無くてよい。
+   - **上位の言葉を足すために言葉を使わない。いちばん具体的な言葉を書く。** 「宇宙船」と書けば、語彙表が「SF」「科学」へ自動でたどる。ただし本文がジャンルそのものを言っているとき（「本格ミステリー」など）は、そのジャンルも書く。
+   - 人物の関係や葛藤は「人間関係」のような曖昧な語に丸めず、具体的に書く。倫理的・社会的な論点はその論点自体を書く。人名・地名は word にしない（原作を除く）。
+   - basis は根拠の強さで、次のいずれか。
+     - 「本文」: 本文にそう書いてある
+     - 「推定」: 本文の記述から無理なく言える（例: 「二人は互いの本心を知らないまま」→ 関係・感情「すれ違い」）
+     - 「作風」: 本文からは言えないが、入力の「作風の手がかり」（同じ団体のほかの作品の半数以上に付いている言葉。手元のデータから数えたもの）から言える。**手がかりが無ければ作風は使わない。**
+   - **推定と作風の言葉には from を付ける。** 推定は、根拠にした本文の一節を 40 字以内で**本文のまま**写す。作風は、根拠にした手がかりの言葉を写す。示せないなら、その言葉は書かない。
+   - **題名や知名度から連想しただけの言葉を書かない。** あなたが作品や作家について知っていることは根拠にならない。本文に無い時代・場所・ジャンルを補わない。
+   - 「感動」「衝撃」「話題」「必見」「圧巻」のような宣伝の語は出さない。
+   - **synopsis が空でも、本文にその公演の内容が書かれていれば elements は取る。** elements を空にするのは、本文にその公演の内容が何も書かれていないときと、別公演の内容しか無いときだけである。
+
+3. tags ── 公演のカードに見せるハッシュタグを 3〜6 個。照合には使わない。
+   - 「#」で始める。その公演の魅力が一目で伝わる短い言葉にする。造語や組み合わせでよい（#銭湯ラストナイト、#師弟の絆、#雪山の密室）。
+   - elements に根拠があるものだけにする。宣伝の語は使わない。
+
+出力は JSON 配列だけを返す。前後に説明や```を書かない。
+
+[{"id":"<id>","synopsis":"...","elements":[{"kind":"題材","word":"...","basis":"本文"},{"kind":"関係・感情","word":"...","basis":"推定","from":"..."}],"tags":["#..."]}]
+
+語彙表（照合用。「概念＝同義語：言葉」。合う言葉があればこの表の言葉を使う）
+""" + _vocab_lines() + """
+入力:
+
+"""
+
 PROMPTS = {"c2": PROMPT_C2, "c3": PROMPT_C3, "c4": PROMPT_C4,
            "c5": PROMPT_C5, "c6": PROMPT_C6, "g1": PROMPT_G1, "g2": PROMPT_G2,
-           "g3": PROMPT_G3, "g4": PROMPT_G4}
+           "g3": PROMPT_G3, "g4": PROMPT_G4, "g5": PROMPT_G5}
 
 # **要素の上限は版ごとに違う。** 版だけ上げてコード側の切り詰めが 5 のままだと、
 # 指示は 8 個を許しているのに書き出しで 5 個に落ちる（版の比較が成立しない）。
-MAX_ELEMENTS = {"c2": 5, "c3": 5, "c4": 5, "c5": 8, "c6": 8, "g1": 8, "g2": 8, "g3": 8, "g4": 8}
+MAX_ELEMENTS = {"c2": 5, "c3": 5, "c4": 5, "c5": 8, "c6": 8, "g1": 8, "g2": 8, "g3": 8, "g4": 8,
+                "g5": sum(G5_KINDS.values())}
 
 
 _lock = threading.Lock()
@@ -357,6 +423,44 @@ def corich_text(stage_id: str, limit: int = 2500) -> str:
 def cached(url: str) -> str:
     key = CACHE / (re.sub(r"[^A-Za-z0-9]", "_", url)[-120:] + ".html")
     return key.read_text(encoding="utf-8") if key.exists() else ""
+
+
+_TROUPES: dict | None = None
+
+
+def troupe_hint(stage_id: str, title: str) -> str:
+    """g5 の「作風の手がかり」。取得済みの CoRich ページから団体を引き、同じ団体のほかの作品（題名違い）が
+    3 本以上あるときだけ、その**半数以上に付いている言葉**を返す。大きな制作会社の言葉は作風と言えないので
+    多い順ではなく半数で切る（試しで東宝の「恋愛」が作風として付いた。eval-g5-trial-1018）。無ければ「手がかりなし」。"""
+    global _TROUPES
+    if _TROUPES is None:
+        of, members = {}, {}
+        if CORICH.exists():
+            for f in CORICH.glob("https___stage_corich_jp_stage_*.html"):
+                m = re.search(r'<p class="group"><a href="/troupe/(\d+)">([^<]+)</a>', f.read_text(encoding="utf-8", errors="ignore"))
+                if m:
+                    sid = f.stem.rsplit("_", 1)[-1]
+                    of[sid] = (m.group(1), m.group(2))
+                    members.setdefault(m.group(1), []).append(sid)
+        rows = {}
+        for r in _read_jsonl(OUT):
+            rows[str(r.get("id"))] = r
+        _TROUPES = {"of": of, "members": members, "rows": rows}
+    t = _TROUPES["of"].get(str(stage_id))
+    if not t:
+        return "手がかりなし"
+    seen, counts = set(), {}
+    for o in _TROUPES["members"].get(t[0], []):
+        r = _TROUPES["rows"].get(o)
+        if not r or r.get("title") in seen or r.get("title") == title:
+            continue
+        seen.add(r.get("title"))
+        for w in {e.get("word") for e in r.get("elements") or [] if e.get("kind") != "モチーフ" and e.get("word")}:
+            counts[w] = counts.get(w, 0) + 1
+    words = [w for w, k in sorted(counts.items(), key=lambda x: (-x[1], x[0])) if k * 2 >= len(seen)][:10]
+    if len(seen) < 3 or not words:
+        return f"団体「{t[1]}」・手がかりなし"
+    return f"団体「{t[1]}」・手元のほかの作品 {len(seen)} 本の半数以上に付いている言葉: " + "、".join(words)
 
 
 def targets(side: str, fetch: bool) -> list[dict]:
@@ -473,7 +577,7 @@ THEME_SCHEMA = {
 }
 
 
-def ask(batch: list[dict], model: str, version: str = PROMPT_VERSION) -> list[dict]:
+def ask(batch: list[dict], model: str, version: str = DIRECT_VERSION) -> list[dict]:
     body = body_of(batch, version)
     try:
         got, _meta = LLM.ask(PROMPTS[version] + body, schema=THEME_SCHEMA,
@@ -574,7 +678,7 @@ def enrich_one(stage_id: str, work_key: str, title: str) -> str:
             syn = raw_syn if vb else ""
             elements = ([e for e in ((g or {}).get("elements") or [])
                         if isinstance(e, dict) and e.get("word")]
-                       [:MAX_ELEMENTS.get(PROMPT_VERSION, 8)] if vb else [])
+                       [:MAX_ELEMENTS.get(DIRECT_VERSION, 8)] if vb else [])
             reason = "" if (vb or not raw_syn) else "本文に無い"
     url = f"https://stage.corich.jp/stage/{stage_id}"
     ids = {"rated": str(work_key), "candidate": str(stage_id)}
@@ -583,7 +687,7 @@ def enrich_one(stage_id: str, work_key: str, title: str) -> str:
         lines.append(json.dumps({"side": side, "id": ids[side], "title": title[:60],
                                  "url": url, "synopsis": syn, "elements": elements,
                                  "reason": reason, "model": MODEL,
-                                 "prompt_version": PROMPT_VERSION,
+                                 "prompt_version": DIRECT_VERSION,
                                  "at": datetime.date.today().isoformat()},
                                 ensure_ascii=False))
     with _lock:
@@ -593,17 +697,50 @@ def enrich_one(stage_id: str, work_key: str, title: str) -> str:
             else "あらすじは公演ページに見つかりませんでした")
 
 
+def _squash(s: str) -> str:
+    return re.sub(r"\s+", "", s or "")
+
+
+def g5_elements(g: dict, text: str, hint: str) -> list[dict]:
+    """g5 の答えの言葉を検査する。種類ごとの上限で切り、**推定は引用が本文に無ければ落とし、作風は手がかりに
+    無ければ落とす**（試しの 1 回目で、本文に無い「昭和」が推定として付いた。eval-g5-trial-1018）。"""
+    out, per = [], {}
+    for e in g.get("elements") or []:
+        if not isinstance(e, dict) or not str(e.get("word") or "").strip():
+            continue
+        kind, word = str(e.get("kind") or ""), str(e["word"]).strip()[:40]
+        basis = str(e.get("basis") or "本文")
+        if kind not in G5_KINDS or basis not in G5_BASIS or per.get(kind, 0) >= G5_KINDS[kind]:
+            continue
+        src = str(e.get("from") or "")
+        if basis == "推定" and not (src and _squash(src) in _squash(text)):
+            continue
+        if basis == "作風" and not (src and hint and src in hint):
+            continue
+        per[kind] = per.get(kind, 0) + 1
+        out.append({"kind": kind, "word": word, "basis": basis, **({"from": src[:60]} if basis != "本文" else {})})
+    return out
+
+
+def g5_tags(g: dict) -> list[str]:
+    tags = [str(t).strip() for t in (g.get("tags") or []) if isinstance(t, str)]
+    return [t for t in tags if t.startswith("#") and 2 <= len(t) <= 24][:6]
+
+
 def to_row(r: dict, g: dict, model: str, version: str) -> dict:
     """答え 1 件を、themes.jsonl の 1 行にする。**本文に無いあらすじは落とす**（出典が付けられない）。"""
-    els = [{"kind": str(e.get("kind", "")), "word": str(e["word"])}
-           for e in (g.get("elements") or [])
-           if isinstance(e, dict) and e.get("word")][:MAX_ELEMENTS.get(version, 5)]
+    if version == "g5":
+        els = g5_elements(g, r["text"], r.get("hint") or "")
+    else:
+        els = [{"kind": str(e.get("kind", "")), "word": str(e["word"])}
+               for e in (g.get("elements") or [])
+               if isinstance(e, dict) and e.get("word")][:MAX_ELEMENTS.get(version, 5)]
     syn = str(g.get("synopsis") or "")[:400]
     vb = verbatim(syn, r["text"]) if syn else False
     if syn and not vb:
         syn, els = "", []
     return {"side": r["side"], "id": r["id"], "title": r["title"], "url": r["url"],
-            "synopsis": syn, "elements": els,
+            "synopsis": syn, "elements": els, **({"tags": g5_tags(g)} if version == "g5" and els else {}),
             "reason": "" if (vb or not g.get("synopsis")) else "本文に無い",
             "model": model, "prompt_version": version,
             "at": datetime.date.today().isoformat()}
@@ -639,7 +776,8 @@ def queue_prompt(n: int) -> str:
     batch = [q for q in queue if (q.get("prompt_version") or PROMPT_VERSION) == version][:n]
     note = ("（前置き）各公演の見出しの次の行に side がある。答えの各要素に side もそのまま入れる: "
             '{"side":"candidate","id":"<id>","synopsis":"...","elements":[...]}\n\n')
-    head = "".join(f"### id: {q['id']}\nside: {q['side']}\n題名: {q['title']}\n{q['text']}\n\n"
+    hint = (lambda q: f"作風の手がかり: {troupe_hint(q['id'], q['title'])}\n") if version == "g5" else (lambda q: "")
+    head = "".join(f"### id: {q['id']}\nside: {q['side']}\n題名: {q['title']}\n{hint(q)}{q['text']}\n\n"
                    for q in batch)
     return note + PROMPTS[version] + head
 
@@ -670,7 +808,9 @@ def import_answers(path: Path, model: str) -> tuple[int, int, int]:
             dropped += 1
             continue
         used.add((side, sid))
-        added.append(to_row(q, g, model, q.get("prompt_version") or PROMPT_VERSION))
+        version = q.get("prompt_version") or PROMPT_VERSION
+        added.append(to_row({**q, "hint": troupe_hint(q["id"], q["title"]) if version == "g5" else ""},
+                            g, model, version))
     with _lock:
         with OUT.open("a", encoding="utf-8") as fp:
             fp.write("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in added))
