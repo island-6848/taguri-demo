@@ -58,7 +58,8 @@ def wrangler(*args: str, capture: bool = True) -> str:
     if r.returncode != 0:
         # 中身（SQL や行）は出さない。wrangler のエラーの最後だけ。失敗した SQL 文を wrangler が引用することがあるので、
         # SQL の文らしい行は落とす（Actions のログに利用者の記録が残らないように）
-        tail = "\n".join(l for l in (r.stderr or "").splitlines()
+        # --json のときの wrangler は、失敗の説明を stdout に出す
+        tail = "\n".join(l for l in ((r.stderr or "") + "\n" + (r.stdout or "")).splitlines()
                          if not re.search(r"\b(INSERT|UPDATE|DELETE|CREATE|VALUES)\b", l, re.I))
         raise RuntimeError(f"wrangler {args[0]} {args[1] if len(args) > 1 else ''} が失敗した: {tail[-400:]}")
     return r.stdout or ""
@@ -70,7 +71,8 @@ def remote_json(db: str, sql: str) -> list[dict]:
 
 
 def user_tables(names: list[str]) -> list[str]:
-    return sorted(n for n in names if n not in DERIVED and not n.startswith("sqlite_"))
+    # _cf_ で始まる表は D1 自身のもので、読めない（_cf_KV・_cf_METADATA のほかにも増えることがある）
+    return sorted(n for n in names if n not in DERIVED and not n.startswith(("sqlite_", "_cf_")))
 
 
 def remote_tables(db: str) -> list[str]:
