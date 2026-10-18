@@ -1132,6 +1132,22 @@
    ]
   },
   {
+   "id": "dec-fav-only-reco",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "お気に入りだけでもおすすめが出るようにする: 名前は空白を詰めても引く、一覧に出る公演も種にする、広げる元は本人が評価・興味ありにした公演の人だけ、お気に入りから来た人の理由には登録した名前を書く",
+   "sources": [
+    "cloudflare/src/recommend.js",
+    "cloudflare/src/screens/recommend.js",
+    "cloudflare/src/screens/lists.js",
+    "cloudflare/scripts/build_recommend_index.py",
+    "cloudflare/test/fav-reco.test.js",
+    "cloudflare/test/recommend-screen.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-fav-over-interest",
    "type": "decision",
    "status": "adopted",
@@ -1141,6 +1157,19 @@
     "cloudflare/src/recommend.js",
     "tools/review/user_recommender.py",
     "cloudflare/test/fav-over-interest.test.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-fav-spread-roles",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "お気に入りの公演から広げる「関わりのある人」は役職で重み付け: 出演 1.0 ＞ 演出 0.7 ＞ 脚本 0.5 ＞＞＞ 翻訳 0.2 ＞ 主催 0.15 ＞ 美術・照明・音響・映像・衣裳・振付 0.1。制作・宣伝・進行・その他からは広げない",
+   "sources": [
+    "cloudflare/src/recommend.js",
+    "tools/review/user_recommender.py",
+    "cloudflare/test/fav-reco.test.js"
    ],
    "verifies": []
   },
@@ -2653,6 +2682,23 @@
    ]
   },
   {
+   "id": "dec-weight-defaults",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "効かせ方の初めの設定を群ごとに: 出演者・作品の内容は「少し強く」、制作・宣伝・その他の役職は「あまり効かせない」、ほかは「ふつう」。保存してある人の値は変えない",
+   "sources": [
+    "cloudflare/src/screens/weights.js",
+    "cloudflare/src/screens/recommend.js",
+    "web/app.js",
+    "tools/taguri/app.py",
+    "cloudflare/test/fav-reco.test.js",
+    "cloudflare/test/recommend-screen.test.js",
+    "cloudflare/test/e2e-walk.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-workers-d1",
    "type": "decision",
    "status": "adopted",
@@ -2935,6 +2981,20 @@
    "verifies": []
   },
   {
+   "id": "fav-reason-two-step",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-18",
+   "title": "「堂本光一」を登録したのに理由に「好きな諸鍛冶裕太と同じ公演に関わる人」と出たのは、お気に入りの公演の共演者を「好きな人」として、さらに 1 段広げていたから（2 段先）。カッコは開きと閉じがそろっていて余分ではない",
+   "sources": [
+    "cloudflare/src/recommend.js",
+    "cloudflare/src/screens/recommend.js",
+    "web/halfwidth.js",
+    "cloudflare/test/fav-reco.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "firebase-apikey-public",
    "type": "finding",
    "status": "unverified",
@@ -3017,6 +3077,21 @@
     "tools/taguri/test_impressions.py",
     "tools/taguri/test_state_backup.py",
     ".github/workflows/recommendation-loop.yml"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "fix-fav-only-no-reco",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-18",
+   "title": "お気に入りだけを登録した人におすすめが 0 件になる条件は 3 つ。(1) 空白入りの名前で索引を引けない (2) 一覧に出る公演が種にならない (3) 共演者などの別の公演が無い・始まっている・終わっている。(1)(2) は直した、(3) はデータの限り",
+   "sources": [
+    "cloudflare/src/recommend.js",
+    "cloudflare/src/screens/recommend.js",
+    "cloudflare/src/screens/lists.js",
+    "cloudflare/test/fav-reco.test.js",
+    "cloudflare/test/e2e-walk.js"
    ],
    "verifies": []
   },
@@ -5511,6 +5586,19 @@
    "verifies": [
     "S12"
    ]
+  },
+  {
+   "id": "q-fav-reco-running-shows",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-18",
+   "title": "お気に入りの共演者などの別の公演が、終わった・もう始まっている・本人の公演だけのとき、おすすめは 0 件のまま。始まっている公演も出すか、案内の文を実際に合わせるか",
+   "sources": [
+    "cloudflare/src/recommend.js",
+    "cloudflare/src/screens/recommend.js",
+    "cloudflare/test/fav-reco.test.js"
+   ],
+   "verifies": []
   },
   {
    "id": "q-favourite-seed-volume",
@@ -8047,9 +8135,39 @@
    "to": "comp-frontend"
   },
   {
+   "from": "dec-fav-only-reco",
+   "rel": "depends_on",
+   "to": "fix-fav-only-no-reco"
+  },
+  {
+   "from": "dec-fav-only-reco",
+   "rel": "depends_on",
+   "to": "fav-reason-two-step"
+  },
+  {
+   "from": "dec-fav-only-reco",
+   "rel": "depends_on",
+   "to": "impl-favourite-seed"
+  },
+  {
+   "from": "dec-fav-only-reco",
+   "rel": "affects",
+   "to": "dec-spread-and-partners"
+  },
+  {
    "from": "dec-fav-over-interest",
    "rel": "depends_on",
    "to": "impl-interest-split"
+  },
+  {
+   "from": "dec-fav-spread-roles",
+   "rel": "depends_on",
+   "to": "dec-fav-over-interest"
+  },
+  {
+   "from": "dec-fav-spread-roles",
+   "rel": "depends_on",
+   "to": "impl-favourite-seed"
   },
   {
    "from": "dec-favourite-catalogue-match",
@@ -9247,6 +9365,11 @@
    "to": "comp-vm-host"
   },
   {
+   "from": "dec-weight-defaults",
+   "rel": "depends_on",
+   "to": "dec-recommend-weights-worker"
+  },
+  {
    "from": "dec-workers-d1",
    "rel": "answers",
    "to": "q-direction"
@@ -9507,6 +9630,16 @@
    "to": "q-aspect-attribution-check"
   },
   {
+   "from": "fav-reason-two-step",
+   "rel": "affects",
+   "to": "dec-spread-and-partners"
+  },
+  {
+   "from": "fav-reason-two-step",
+   "rel": "supports",
+   "to": "dec-fav-only-reco"
+  },
+  {
    "from": "firebase-apikey-public",
    "rel": "raises",
    "to": "q-firebase-key-restriction"
@@ -9540,6 +9673,21 @@
    "from": "fix-declined-kind-tags",
    "rel": "depends_on",
    "to": "impl-kind-reason-off"
+  },
+  {
+   "from": "fix-fav-only-no-reco",
+   "rel": "affects",
+   "to": "new-user-reco-threshold"
+  },
+  {
+   "from": "fix-fav-only-no-reco",
+   "rel": "affects",
+   "to": "impl-favourite-seed"
+  },
+  {
+   "from": "fix-fav-only-no-reco",
+   "rel": "raises",
+   "to": "q-fav-reco-running-shows"
   },
   {
    "from": "fix-future-dated-ratings",
@@ -11200,6 +11348,11 @@
    "from": "q-domain",
    "rel": "depends_on",
    "to": "q-direction"
+  },
+  {
+   "from": "q-fav-reco-running-shows",
+   "rel": "depends_on",
+   "to": "fix-fav-only-no-reco"
   },
   {
    "from": "q-favourite-seed-volume",

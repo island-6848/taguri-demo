@@ -507,7 +507,8 @@ export async function seedsFromFavourites({postingsFor, peopleFor, stagesMatchin
   const groups = pick(SEED_GROUP_KINDS, nz), works = pick(SEED_WORK_KINDS, titleKey), subjects = pick(SEED_THEME_KINDS, nz);
   if ((groups.length || works.length || subjects.length) && stagesMatching) {
     const labels = new Map();
-    for (const sid of await stagesMatching(groups, works, subjects, labels)) {
+    // 4 つ目の引数（exact: 語彙表で広げた #題材 の言葉）は PR #210 が使う枠。ここでは空で渡し、labels は 5 つ目
+    for (const sid of await stagesMatching(groups, works, subjects, [], labels)) {
       sids.add(sid);
       for (const x of labels.get(sid) || []) note(sid, back.get(x) ?? x);
     }
@@ -568,8 +569,8 @@ export function d1Access(db, ver, counter = {rows: 0, queries: 0}) {
       return map;
     },
     // labels（任意の Map）: stage_id -> 当たった語（groups・works・subjects の値）。理由に登録した名前を書くため。
-    // 読む行は前と同じ（列を 2〜3 つ足すだけ）
-    async stagesMatching(groups, works, subjects = [], labels = null) {
+    // 読む行は前と同じ（列を 2〜3 つ足すだけ）。exact は PR #210（語彙表で広げた #題材 の言葉を丸ごと一致で当てる）の枠
+    async stagesMatching(groups, works, subjects = [], exact = [], labels = null) {
       const out = new Set();
       const label = (sid, x) => { if (!labels) return; if (!labels.has(sid)) labels.set(sid, new Set()); labels.get(sid).add(x); };
       // Troupes / works: one pass over this version's stages (no index on these).
