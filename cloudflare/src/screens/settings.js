@@ -363,7 +363,7 @@ async function missedAction(b, ctx) {
     const past = await ctx.db.prepare('SELECT stage_id, people FROM past_stage WHERE stage_id=?').bind(want).first();
     if (past) {
       sid = past.stage_id;
-      try { for (const [role, person] of JSON.parse(past.people || '[]')) fields[role] = fields[role] ? `${fields[role]}、${person}` : person; } catch { fields = {}; }
+      try { for (const [role, person] of JSON.parse(past.people || '[]')) if (!String(role).startsWith('#')) fields[role] = fields[role] ? `${fields[role]}、${person}` : person; } catch { fields = {}; }
       note = '過去の公演の一覧から、出演者と作り手だけを拾いました。';
     }
   }
@@ -374,7 +374,7 @@ async function missedAction(b, ctx) {
       const past = await ctx.db.prepare('SELECT stage_id, people FROM past_stage WHERE tkey=? ORDER BY start DESC LIMIT 1').bind(k).first();
       if (past) {
         sid = past.stage_id;
-        try { for (const [role, person] of JSON.parse(past.people || '[]')) fields[role] = fields[role] ? `${fields[role]}、${person}` : person; } catch { fields = {}; }
+        try { for (const [role, person] of JSON.parse(past.people || '[]')) if (!String(role).startsWith('#')) fields[role] = fields[role] ? `${fields[role]}、${person}` : person; } catch { fields = {}; }
         note = '過去の公演の一覧から、出演者と作り手だけを拾いました。';
       }
     }
