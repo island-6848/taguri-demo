@@ -275,10 +275,26 @@ function setupLink() {
   });
 }
 
+// ふつうのログインでも復旧コードを使えるようにする。パスキーで始めた人には「パスキーを入れた端末をなくしたとき、
+// このコードで記録に戻れます」と渡しているのに、入れる欄が削除と結び付けの画面（?purpose=delete・?link=1）にしか
+// 無く、記録の画面（/migration-data/ の欄）もログインしないと開けなかった（#134 の通し検証）
+function setupRecovery() {
+  if (DELETE_MODE || LINK_MODE) return;
+  $('#recovery-login').hidden = false;
+  $('#recovery-login').addEventListener('submit', async ev => {
+    ev.preventDefault();
+    store.clear();   // 別の方法を始めたら、メールの控えは消す（#132）
+    busy(true);
+    try { await postJSON('/migration-api/recover', {code: $('#recovery-input').value.trim()}); signedIn('ログインしました。'); }
+    catch (e) { busy(false); say(e.server ? e.message : 'ログインできませんでした。', true); }
+  });
+}
+
 store.expire();
 // チェックを入れたら、目立たせた枠を戻す
 $('#agree')?.addEventListener('change', () => $('#agree-box')?.classList.remove('need'));
 setupDelete();
 setupLink();
+setupRecovery();
 setupPasskeys();
 main().catch(e => say(explain(e), true));
