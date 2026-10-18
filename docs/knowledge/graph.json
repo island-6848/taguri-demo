@@ -1292,6 +1292,21 @@
    "verifies": []
   },
   {
+   "id": "dec-halfwidth-parens",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "画面に出す全角のカッコ（ ）は、表示する直前に半角の ( ) にそろえる（web/halfwidth.js。どの頁も読む）",
+   "sources": [
+    "web/halfwidth.js",
+    "cloudflare/src/stage-search.js",
+    "cloudflare/src/client/import-parse.js",
+    "cloudflare/test/fonts.test.js",
+    "cloudflare/test/e2e-walk.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-hide-own-words",
    "type": "decision",
    "status": "adopted",
@@ -8123,6 +8138,11 @@
    "from": "dec-genre-axis",
    "rel": "affects",
    "to": "comp-recommender"
+  },
+  {
+   "from": "dec-halfwidth-parens",
+   "rel": "affects",
+   "to": "dec-font-accent-five"
   },
   {
    "from": "dec-hide-own-words",

@@ -358,7 +358,7 @@ async function walkA(A) {
     await act(() => box.locator('button.aspx[data-na="music"]').click(), 'price,++acting,~music', '歌・音楽を外す');
     await act(() => box.locator('button.aspx[data-na="dance"]').click(), 'price,++acting,~music,~dance', 'ダンスを外す');
     check(!(await box.locator('.aspr[data-a="music"]').isVisible()), '外した項目が残っている');
-    check(/良かった: 演技・出演（とても）／気になった: 値段/.test(await box.locator('.asps').innerText()), '要約が違う: ' + (await box.locator('.asps').innerText()));
+    check(/良かった: 演技・出演\(とても\)／気になった: 値段/.test(await box.locator('.asps').innerText()), '要約が違う: ' + (await box.locator('.asps').innerText()));
     await r.screenshot({path: join(OUT, 'row-aspects-5.png')}).catch(() => {});
     // 電話の幅（375px）でも、項目名・つまみ・言葉・✕ が横にはみ出さない
     const wide = page.viewportSize();
@@ -383,7 +383,7 @@ async function walkA(A) {
     const r = row();
     const x = r.locator('button.gclr');
     check(await x.isVisible(), '評価を付けた行に ✕ が無い');
-    check((await x.getAttribute('aria-label')) === '評価を消す（未評価に戻す）', '✕ に aria-label が無い');
+    check((await x.getAttribute('aria-label')) === '評価を消す(未評価に戻す)', '✕ に aria-label が無い');
     await r.locator('.rb').screenshot({path: join(OUT, 'row-stars-x.png')}).catch(() => {});
     await x.click();
     await waitSaid(r, /評価を消しました/);
@@ -793,6 +793,21 @@ async function walkA(A) {
     for (const want of ['手で足した芝居', '最初に書いた感想。書き足した。', '4/5', '旅の芝居', '冬の物語', '俳優乙'])
       check(text.includes(want), `書き出しに「${want}」が無い`);
     check(!text.includes(A.code), '書き出しに復旧コードが入っている');
+  });
+
+  // 画面に出る全角のカッコは半角にそろえる（起案者の指示 2026-10-18、web/halfwidth.js）。本人の感想・メモは除く
+  await step('全角のカッコが画面に残らない（主な画面）', async () => {
+    for (const path of ['/recommend', '/recommend/reminder', '/rate', '/records/works', '/tickets', '/settings', '/account']) {
+      await go(path);
+      const left = await page.evaluate(() => {
+        const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT), out = [];
+        for (let n = w.nextNode(); n; n = w.nextNode()) {
+          if (/[（）]/.test(n.nodeValue) && !n.parentElement.closest('script,style,code,pre,textarea,input,.int,.wnt,.nnv')) out.push(n.nodeValue.trim().slice(0, 30));
+        }
+        return out;
+      });
+      check(!left.length, `${path} に全角のカッコ: ${left.slice(0, 3).join(' / ')}`);
+    }
   });
 
   await step('ログアウト → 開くとログインの画面', async () => {

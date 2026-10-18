@@ -16,7 +16,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 WEB, PUBLIC = ROOT / "web", ROOT / "cloudflare" / "public"
-COPIED = ("tour.js", "style.css", "tour.css", "theme.css", "fonts.css", "recommendation-exposure.js",
+COPIED = ("tour.js", "style.css", "tour.css", "theme.css", "fonts.css", "halfwidth.js", "recommendation-exposure.js",
           "assets/fonts/OFL-ZenKakuGothicAntique.txt", "assets/fonts/OFL-SawarabiGothic.txt", "assets/fonts/OFL-ZenMaruGothic.txt",
           "assets/fonts/OFL-ZenKakuGothicNew.txt")
 # Self-hosted title font (SIL OFL, subset to the page titles). Copied byte for byte.

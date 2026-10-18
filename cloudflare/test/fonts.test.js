@@ -9,6 +9,8 @@ test('every page loads fonts.css', () => {
   for (const page of ['index.html', 'login.html', 'terms.html', 'privacy.html', 'oauth-calendar.html']) {
     const html = readFileSync(pub(page), 'utf8');
     assert.match(html, /<link rel="stylesheet" href="\/fonts\.css">/, page);
+    // 全角のカッコを表示の直前に半角にする（起案者の指示 2026-10-18）。どの頁も読む
+    assert.match(html, /<script src="\/halfwidth\.js"><\/script>/, page);
   }
 });
 
