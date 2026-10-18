@@ -205,6 +205,51 @@ class AdminTest(unittest.TestCase):
         with self.assertRaises(A.AdminError):
             A.upload_font(self.data, bad, put=lambda *a: None)
 
+    def test_api_errors_return_a_reference_not_the_details(self):
+        """issue #184: exception text and wrangler output stay in the local log only."""
+        import http.client
+        import threading
+        from http.server import ThreadingHTTPServer
+        import serve_admin as S
+
+        class Broken:
+            def query(self, sql):
+                raise RuntimeError("AUDIT_INTERNAL_SQL_DETAIL")
+        srv = ThreadingHTTPServer(("127.0.0.1", 0), S.make_handler("k" * 32, Broken(), self.data))
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        try:
+            c = http.client.HTTPConnection("127.0.0.1", srv.server_address[1], timeout=10)
+            c.request("GET", "/api/search?q=x", headers={"X-Admin-Token": "k" * 32})
+            r = c.getresponse()
+            status, body = r.status, r.read().decode("utf-8")
+            c.close()
+        finally:
+            srv.shutdown()
+            srv.server_close()
+        self.assertEqual(status, 500)
+        self.assertNotIn("AUDIT_INTERNAL_SQL_DETAIL", body)
+        self.assertNotIn("RuntimeError", body)
+        ref = json.loads(body)["reference"]
+        self.assertRegex(ref, r"^[0-9a-f]{16}$")
+        self.assertIn(ref, json.loads(body)["error"])
+        diag = [json.loads(x) for x in (self.data / A.DIAG).read_text(encoding="utf-8").splitlines()]
+        self.assertEqual(diag[-1]["ref"], ref)
+        self.assertIn("AUDIT_INTERNAL_SQL_DETAIL", diag[-1]["detail"])
+
+        class Failed:
+            returncode, stdout, stderr = 1, "", "WRANGLER_INTERNAL_DETAIL /home/someone/.wrangler"
+        real = (A.subprocess.run, A.shutil.which, A.DATA)
+        A.subprocess.run, A.shutil.which, A.DATA = (lambda *a, **k: Failed()), (lambda n: "/usr/bin/npx"), self.data
+        try:
+            with self.assertRaises(A.AdminError) as cm:
+                A.wrangler_run(["--json", "--command", "SELECT 1"])
+        finally:
+            A.subprocess.run, A.shutil.which, A.DATA = real
+        self.assertNotIn("WRANGLER_INTERNAL_DETAIL", str(cm.exception))
+        diag = [json.loads(x) for x in (self.data / A.DIAG).read_text(encoding="utf-8").splitlines()]
+        self.assertIn(diag[-1]["ref"], str(cm.exception))
+        self.assertIn("WRANGLER_INTERNAL_DETAIL", diag[-1]["detail"])
+
     def test_sql_values_are_quoted(self):
         A.save(self.d1, self.data, "101", synopsis="it's 「引用」'); DROP TABLE poster; --")
         self.assertEqual(self.fake.db.execute("SELECT synopsis FROM stage_override").fetchone()[0], "it's 「引用」'); DROP TABLE poster; --")
