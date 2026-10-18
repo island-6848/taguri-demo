@@ -76,15 +76,16 @@ const EXPORT_LABEL = {works: '観た公演の記録（作品ごと）', ratings:
   splits: '1 通のメールを複数の公演に分けた指定', excluded: '取り込みから外した公演', missed: '「観ればよかった」の登録', declared: 'お気に入りに登録した名前と題材',
   hand_credits: '手で入れた出演・スタッフとポスター', merges: '1 つにまとめた記録', visit_note: '観た回ごとのメモ',
   rank_weight: 'おすすめの選び方（効かせ方）', favourites: 'お気に入り（以前の登録）', settings: '設定（評価の付け方・都道府県・表示名など）',
-  search_request: '探した言葉', fix_request: '公演情報の誤りの知らせ', records: '以前の形式の観劇記録', reactions: '以前の形式のおすすめへの答え',
-  rec_shown: 'おすすめに出した公演の控え', viewed: '開いた公演の控え'};
+  search_request: '探した言葉', fix_request: '公演情報の誤りの知らせ', records: '以前の形式の観劇記録', reactions: '以前の形式のおすすめへの答え'};
 // 書き出しの形の版（#192）。鍵を足す・意味を変えるときに上げる。1: 本人の私的な表をすべて入れた最初の版
 export const EXPORT_SCHEMA_VERSION = 1;
 // 本人の行を user_id でそのまま持ち出す表（Python 版と同じ鍵の表と、サービス版で足した表）。
 // 入れないもの: sessions・passkeys・webauthn_challenges・users（ログインの秘密: セッション・復旧コード・パスキー・
-// Firebase UID）と rec_cache（ほかの表から作り直せる計算の控え）。fix_request は運用者のメモ（note・mailed）を除く
+// Firebase UID）と rec_cache（ほかの表から作り直せる計算の控え）。fix_request は運用者のメモ（note・mailed）を除く。
+// rec_shown・viewed（おすすめに出した・開いた公演の計測の控え）も入れない。issue #192 は計測用の表の扱いを
+// 別に決めるとしているので、本人が付けた記録だけにした
 const EXPORT_TABLES = ['works', 'reaction', 'ticket', 'excluded', 'missed', 'hand_credits', 'merges', 'visit_note', 'rank_weight',
-  'favourites', 'search_request', 'records', 'reactions', 'rec_shown', 'viewed'];
+  'favourites', 'search_request', 'records', 'reactions'];
 const EXPORT_SQL = {settings: 'SELECT key, value, updated_at FROM app_setting WHERE user_id=?',
   fix_request: 'SELECT id, stage_id, kind, message, created_at, status, resolved_at FROM fix_request WHERE user_id=?'};
 
@@ -107,11 +108,35 @@ export async function exportPayload(ctx) {
   return out;
 }
 
+/** 書き出しの件数だけ（設定の画面を開くたびに全部の行を読み解かない。1 回の問い合わせで数える） */
+async function exportCounts(ctx) {
+  const tables = ['works', 'reaction', 'ticket', 'excluded', 'missed', ...EXPORT_TABLES.slice(5)];
+  const cols = [...tables, 'app_setting', 'fix_request'].map(t => `(SELECT count(*) FROM ${t} WHERE user_id=?1) AS ${t}`).join(', ');
+  const n = await ctx.db.prepare(`SELECT ${cols}`).bind(ctx.uid).first() || {};
+  const d = await exportPayloadDeclared(ctx);
+  const out = {};
+  for (const t of ['works', 'ratings', 'attendance', 'reaction', 'ticket', 'presented', 'splits', 'excluded', 'missed']) out[t] = Number(n[t] || 0);
+  for (const t of EXPORT_TABLES.slice(5)) out[t] = Number(n[t] || 0);
+  out.settings = Number(n.app_setting || 0);
+  out.fix_request = Number(n.fix_request || 0);
+  out.declared = Object.values(d).reduce((s, x) => s + x.length, 0);
+  return out;
+}
+
+/** declared だけ（exportPayload と同じ合わせ方） */
+async function exportPayloadDeclared(ctx) {
+  const row = await ctx.db.prepare("SELECT value FROM app_setting WHERE user_id=? AND key='declared'").bind(ctx.uid).first();
+  let dec = {};
+  try { dec = JSON.parse(row?.value || '{}') || {}; } catch { dec = {}; }
+  const out = Object.fromEntries(KINDS.map(k => [k, (Array.isArray(dec[k]) ? dec[k] : []).filter(x => typeof x === 'string')]));
+  const {results} = await ctx.db.prepare('SELECT name, kind FROM favourites WHERE user_id=?').bind(ctx.uid).all();
+  for (const f of results) if (out[f.kind] && !out[f.kind].includes(f.name)) out[f.kind].push(f.name);
+  return out;
+}
+
 async function exportCardHtml(ctx) {
-  const d = await exportPayload(ctx);
-  // 数えるのは中身の並びだけ（schema_version・exported_at は数えない）
-  const li = Object.entries(d).filter(([, v]) => v && typeof v === 'object').map(([k, v]) => `<li>${E(EXPORT_LABEL[k] || k)} <b>`
-    + `${Array.isArray(v) ? v.length : Object.values(v).reduce((s, x) => s + x.length, 0)} 件</b><span class="xk">${E(k)}</span></li>`).join('');
+  const d = await exportCounts(ctx);
+  const li = Object.entries(d).map(([k, n]) => `<li>${E(EXPORT_LABEL[k] || k)} <b>${n} 件</b><span class="xk">${E(k)}</span></li>`).join('');
   return `<details class="card">${cardH2('download', '書き出す')}
 <p class="lead">記録・評価・感想・お気に入りを、1 つのファイルにまとめて保存できます。
 中身は下のとおりで、ほかのアプリでも読める形式（JSON）です。</p>

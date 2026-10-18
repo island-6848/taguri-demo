@@ -37,6 +37,7 @@ test('the export holds every private table of the user, with a schema version, a
     assert.match(out.exported_at, /^\d{4}-\d{2}-\d{2}T/);
     // これまでの鍵はそのまま（ほかの道具で読んでいる人の書き出しを壊さない）
     for (const k of ['works', 'ratings', 'attendance', 'reaction', 'ticket', 'presented', 'splits', 'excluded', 'missed', 'declared']) assert.ok(k in out, k);
+    assert.ok(!('rec_shown' in out) && !('viewed' in out), 'measurement logs are not exported');
     assert.equal(out.hand_credits[0].work_key, 'wA');
     assert.deepEqual(out.merges.map(r => r.into_key), ['まとめ先A']);
     assert.deepEqual(out.visit_note.map(r => r.note), ['観た回のメモA']);
