@@ -27,7 +27,7 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: actions/configure-pages@v5
       # web/ にプレゼン資料だけを足した公開用フォルダを作る
       # デモ版（/taguri-demo/）とサービス版（/taguri-demo/app/）は同じ画面のファイルを使い、
