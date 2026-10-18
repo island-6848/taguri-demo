@@ -352,13 +352,13 @@ async function walkA(A) {
       check(got === want, `${what}: D1 の詳細が「${got}」`);
     };
     check((await box.locator('.aspsl').first().getAttribute('max')) === '2' && (await box.locator('.aspsl').first().getAttribute('min')) === '-2', 'つまみが 5 段階でない');
-    await act(() => box.locator('.aspsl[data-a="acting"]').fill('2'), '++acting', 'とても良かった');
-    check((await box.locator('.aspr[data-a="acting"] .aspv').innerText()) === 'とても良かった', '段階の言葉が出ない');
-    await act(() => box.locator('.aspsl[data-a="price"]').fill('-1'), 'price,++acting', '気になった');
+    await act(() => box.locator('.aspsl[data-a="acting"]').fill('2'), '++acting', '好き');
+    check((await box.locator('.aspr[data-a="acting"] .aspv').innerText()) === '好き', '段階の言葉が出ない');
+    await act(() => box.locator('.aspsl[data-a="price"]').fill('-1'), 'price,++acting', 'やや好みではない');
     await act(() => box.locator('button.aspx[data-na="music"]').click(), 'price,++acting,~music', '歌・音楽を外す');
     await act(() => box.locator('button.aspx[data-na="dance"]').click(), 'price,++acting,~music,~dance', 'ダンスを外す');
     check(!(await box.locator('.aspr[data-a="music"]').isVisible()), '外した項目が残っている');
-    check(/良かった: 演技・出演\(とても\)／気になった: 値段/.test(await box.locator('.asps').innerText()), '要約が違う: ' + (await box.locator('.asps').innerText()));
+    check(/好き: 演技・出演／やや好みではない: 値段/.test(await box.locator('.asps').innerText()), '要約が違う: ' + (await box.locator('.asps').innerText()));
     await r.screenshot({path: join(OUT, 'row-aspects-5.png')}).catch(() => {});
     // 電話の幅（375px）でも、項目名・つまみ・言葉・✕ が横にはみ出さない
     const wide = page.viewportSize();
@@ -372,7 +372,7 @@ async function walkA(A) {
     const box2 = row().locator('details.asp');
     if (!(await box2.evaluate(b => b.open))) await box2.locator('summary').click();
     check(!(await box2.locator('.aspr[data-a="dance"]').isVisible()), '開き直すと外した項目が戻っている');
-    check((await box2.locator('.aspsl[data-a="acting"]').inputValue()) === '2', '開き直すと とても良かった が残っていない');
+    check((await box2.locator('.aspsl[data-a="acting"]').inputValue()) === '2', '開き直すと 好き が残っていない');
     await act(() => box2.locator('button.aspadd[data-add="dance"]').click(), 'price,++acting,~music', 'ダンスを戻す');
     check(await box2.locator('.aspr[data-a="dance"]').isVisible(), '戻した項目が出ない');
     note('D1: ' + asp());

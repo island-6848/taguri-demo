@@ -425,20 +425,41 @@ class AspectTests(unittest.TestCase):
         self.assertEqual(UR.aspect_levels("++acting,+story,price,--venue,~music,xx,~xx"),
                          {"acting": 2, "story": 1, "price": -1, "venue": -2, "music": 0})
         self.assertEqual(UR.parse_aspects("++acting,--story,~music"), (["story"], ["acting"]))
-        # the 3-level text reads as the same words (良かった 1, 気になった −1)
+        # the 3-level text (良かった・気になった) reads as やや好き 1・やや好みではない −1
         self.assertEqual(UR.aspect_levels("price,+acting"), {"price": -1, "acting": 1})
 
     def test_not_in_this_production_is_left_out(self):
         self.assertEqual(self.rated(["~music", "~dance"]), self.rated([]))
         self.assertEqual(self.rated(["acting", "~music"]), self.rated(["acting"]))
 
-    def test_a_strong_mark_takes_more_than_a_plain_one_beside_it(self):
+    # 好き・好みではない（±2）は、その項目の役職の人に ASPECT_STRONG（1.5）倍効く（起案者の指示 2026-10-18「詳細評価の
+    # とてもを推薦の効き方も強めてほしい。該当する人をちょっと重くするとか」）。±1 だけの記録は前と同じ
+    def test_a_strong_mark_weighs_its_people_a_little_more(self):
+        self.assertEqual(UR.ASPECT_STRONG, 1.5)
+        plain, strong = self.rated(["acting"]), self.rated(["--acting"])
+        self.assertAlmostEqual(strong[("出演", "役者")][1], 1.5 * plain[("出演", "役者")][1])
+        self.assertAlmostEqual(strong[("演出", "演出家")][1], 1.5 * plain[("演出", "演出家")][1])
+        self.assertEqual(strong[("脚本", "作家")][1], 0)
+        hi_plain, hi_strong = self.rated_high(["+acting"]), self.rated_high(["++acting"])
+        self.assertAlmostEqual(hi_strong[("出演", "役者")][1], 1.5 * hi_plain[("出演", "役者")][1])
+        # beside a ±1 mark, the ±2 one's people get more
         v = self.rated(["--story", "acting"])
-        writer, cast = v[("脚本", "作家")][1], v[("出演", "役者")][1]
-        self.assertAlmostEqual(cast, 0.5 * writer)
-        # one strength everywhere (every 3-level record) is as before
-        self.assertEqual(self.rated(["--story", "--acting"]), self.rated(["story", "acting"]))
-        self.assertEqual(self.rated_high(["++acting"]), self.rated_high(["+acting"]))
+        self.assertAlmostEqual(v[("出演", "役者")][1] * 1.5, v[("脚本", "作家")][1])
+
+    def test_a_strong_mark_on_the_other_side_takes_away_more_but_never_flips(self):
+        v = self.rated_high(["+acting", "--story"])
+        cast, director = v[("出演", "役者")][1], v[("演出", "演出家")][1]
+        self.assertAlmostEqual(director, cast * 0.2 * (1 - 0.5 * 1.5))
+        # 演出・振付: 1.0 from direction (main) and 1.5 from a strong dance mark (other) -> nothing, not below 0
+        self.assertEqual(UR.aspect_share(["direction"], ["dance"], "演出・振付", False, {"direction": -1, "dance": 2}), 0.0)
+
+    def test_plus_minus_one_records_score_as_before(self):
+        # the share of every ±1 record is the share without levels (the 3-level rule)
+        for t, g in ((["story"], ["acting"]), (["price", "venue"], []), ([], ["music", "dance"])):
+            lv = {**{c: -1 for c in t}, **{c: 1 for c in g}}
+            for role in ("出演", "演出", "脚本", "振付", "#値段"):
+                for pos in (True, False):
+                    self.assertEqual(UR.aspect_share(t, g, role, pos, lv), UR.aspect_share(t, g, role, pos))
 
     def test_saved_codes_match_the_recommender(self):
         import rate_performances as R

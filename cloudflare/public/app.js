@@ -2848,30 +2848,32 @@ function divergeVerdicts(root) {
 // 判子を押すと、その横に ◎○△× の小さな札が開く。押すと今までどおり記録し（同じ押し口 data-v）、判子が
 // 押し直され、札は閉じる。札の外を押すか Esc で閉じる
 // ---- 評価の「詳細」（起案者の指示 2026-10-14「詳細の画面を作って」・q-pr13-aspects-screen）。
-// 評価を付けた記録に「詳細」を出し、8 項目それぞれを 5 段階（とても気になった／気になった／ふつう／良かった／とても良かった）で
-// 選ぶ。項目ごとの ✕ で「この作品には無い」（歌・ダンスの無い作品など）にでき、外した項目は下の「＋」でもう一度足せる
+// 評価を付けた記録に「詳細」を出し、8 項目それぞれを 5 段階（好みではない／やや好みではない／ふつう／やや好き／好き）で
+// 選ぶ（起案者の指示 2026-10-18「評価の詳細を 5 段階（好みではない〜好き）に変えて」）。項目ごとの ✕ で「この作品には無い」（歌・ダンスの無い作品など）にでき、外した項目は下の「＋」でもう一度足せる
 // （起案者の指示 2026-10-18「評価の詳細、今3段階で設定してるけど適切？最低限5段階くらいほしい。あと作品によっては歌ダンスが
 // ないこともあるので、なかったときは✕で要素を消せるようにしてほしい」、dec-aspects-five-levels）。
-// 保存の形は works.aspects（カンマ区切り。気になった＝コード、良かった＝+コード、とても気になった＝--コード、とても良かった＝
+// 保存の形は works.aspects（カンマ区切り。やや好みではない＝コード、やや好き＝+コード、好みではない＝--コード、好き＝
 // ++コード、この作品には無い＝~コード。「ふつう」は書かない。recommend.ASPECT_MARKS）で、POST /api/rate {work_key, aspects}。
-// 前の 3 段階の「良かった」「気になった」は、同じ言葉の段階としてそのまま読む。推薦は付いた印だけを見て、無い項目は使わない。
+// 前の 3 段階の「良かった」「気になった」は やや好き・やや好みではない として読む。推薦は付いた印だけを見て、好き・好みではない は
+// その項目の人に少し重く効かせ（recommend.ASPECT_STRONG）、無い項目は使わない。
 // 出し方は人ごとに選べる: 「あっさり」（既定。詳細は閉じておく）と「詳しく」（開いた状態で出す）。画面だけの設定
 const ASPECTS = [["story", "話・脚本・構成"], ["direction", "演出・見せ方"], ["acting", "演技・出演"], ["music", "歌・音楽"],
   ["dance", "ダンス"], ["design", "美術・衣裳"], ["price", "値段"], ["venue", "会場・座席"]];
 // 印と段階（recommend.ASPECT_MARKS と同じ。並びは保存の順）。"na" = この作品には無い
 const ASPECT_MARK = [["", -1], ["+", 1], ["--", -2], ["++", 2], ["~", "na"]];
-const ASPECT_WORD = {"-2": "とても気になった", "-1": "気になった", "0": "ふつう", "1": "良かった", "2": "とても良かった"};
+const ASPECT_WORD = {"-2": "好みではない", "-1": "やや好みではない", "0": "ふつう", "1": "やや好き", "2": "好き"};
 const ASPECT_MODE_KEY = "taguri.aspectsMode";       // "plain"（あっさり・既定）か "full"（詳しく）
 function aspectsMode() { try { return localStorage.getItem(ASPECT_MODE_KEY) === "full" ? "full" : "plain"; } catch (e) { return "plain"; } }
 function aspectToken(x) { for (const m of ["++", "--", "+", "~"]) if (x.startsWith(m)) return [m, x.slice(m.length)]; return ["", x]; }
+// 見出しの横の要約: 「好き: 演技・出演／やや好みではない: 値段」（好き → 好みではない の順。ふつう・無い項目は出さない）
 function aspectsSummary(state) {
-  const pick = (test) => ASPECTS.filter(([c]) => typeof state[c] === "number" && test(state[c]))
-    .map(([c, l]) => l + (Math.abs(state[c]) === 2 ? "（とても）" : ""));
-  const good = pick(v => v > 0), bad = pick(v => v < 0);
-  return [good.length ? "良かった: " + good.join("・") : "", bad.length ? "気になった: " + bad.join("・") : ""].filter(Boolean).join("／") || "まだ選んでいません";
+  return [2, 1, -1, -2].map(v => {
+    const ls = ASPECTS.filter(([c]) => state[c] === v).map(x => x[1]);
+    return ls.length ? ASPECT_WORD[v] + ": " + ls.join("・") : "";
+  }).filter(Boolean).join("／") || "まだ選んでいません";
 }
 function aspectsPanel(root) {
-  // 項目ごとのつまみ: 左端＝とても気になった、まん中＝ふつう、右端＝とても良かった（起案者の指示 2026-10-14「よかったはボタンじゃなくて
+  // 項目ごとのつまみ: 左端＝好みではない、まん中＝ふつう、右端＝好き（起案者の指示 2026-10-14「よかったはボタンじゃなくて
   // スライダーで」、2026-10-18 に 5 段階）。離したときに保存する（動かしている途中では送らない）
   root.querySelectorAll(".rec-row[data-aspects]").forEach(row => {
     if (row.querySelector(".asp")) return;
@@ -2899,10 +2901,10 @@ function aspectsPanel(root) {
       + '<input class="aspsl" type="range" min="-2" max="2" step="1" id="' + id(c) + '" data-a="' + c + '" value="0"><span class="aspv"></span>'
       + '<button type="button" class="aspx" data-na="' + c + '" aria-label="「' + E(label) + '」はこの作品に無い（項目を外す）" title="この作品には無い">✕</button></div>').join("");
     box.innerHTML = '<summary><span class="aspt">詳細</span><span class="asps"></span></summary>'
-      + '<p class="asph">項目ごとに、つまみを 5 段階（左端 とても気になった ～ まん中 ふつう ～ 右端 とても良かった）で動かします（任意）。'
+      + '<p class="asph">項目ごとに、つまみを 5 段階（左端 好みではない ～ まん中 ふつう ～ 右端 好き）で動かします（任意）。'
       + 'その作品に無い項目（歌・ダンスの無い芝居など）は右の ✕ で外せます。'
       + '選んだ印は次のおすすめで「どの人のおかげ・せいだったか」を分けるのに使います。外した項目は使いません。</p>'
-      + '<div class="aspscale" aria-hidden="true"><span></span><span class="asc"><span>← 気になった</span><span>ふつう</span><span>良かった →</span></span><span></span><span></span></div>'
+      + '<div class="aspscale" aria-hidden="true"><span></span><span class="asc"><span>← 好みではない</span><span>ふつう</span><span>好き →</span></span><span></span><span></span></div>'
       + '<div class="aspg">' + items + '</div>'
       + '<p class="aspna" hidden><span class="aspnl">この作品に無い項目（押すと戻します）:</span></p>'
       + '<p class="said" role="status"></p>';
@@ -2968,7 +2970,7 @@ function aspectsSetting(el) {
   const cur = aspectsMode();
   const sec = document.createElement("section");
   sec.className = "aspset pbox";
-  sec.innerHTML = '<h2>評価の詳細の出し方</h2><p class="lead">評価を付けた記録の「詳細」（話・演出・演技などを 5 段階で 良かった／気になった）を、'
+  sec.innerHTML = '<h2>評価の詳細の出し方</h2><p class="lead">評価を付けた記録の「詳細」（話・演出・演技などを 好き〜好みではない の 5 段階で）を、'
     + 'ふだん閉じておくか、開いて出すかを選べます。表示だけの設定で、おすすめの計算は変わりません。</p>'
     + '<div class="aspmode" role="radiogroup" aria-label="評価の詳細の出し方">'
     + [["plain", "あっさり", "詳細は閉じておく（押すと開く）"], ["full", "詳しく", "詳細を開いた状態で出す"]].map(([v, t, d]) =>

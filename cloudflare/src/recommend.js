@@ -50,8 +50,9 @@ export const ASPECTS = {
   venue: ['会場・座席', {'#会場': 1.0}],
 };
 // 詳細の印（user_recommender.ASPECT_MARKS。起案者の指示 2026-10-18「最低限5段階くらいほしい」「なかったときは✕で
-// 要素を消せるように」、dec-aspects-five-levels）: "++code" とても良かった 2、"+code" 良かった 1、"code" 気になった −1、
-// "--code" とても気になった −2、"~code" この作品には無い（推薦に使わない）。前の 3 段階の形はそのまま読む。
+// 要素を消せるように」、dec-aspects-five-levels）: "++code" 好き 2、"+code" やや好き 1、"code" やや好みではない −1、
+// "--code" 好みではない −2、"~code" この作品には無い（推薦に使わない）。前の 3 段階の形はそのまま読む（同じ日「評価の詳細を
+// 5 段階（好みではない〜好き）に変えて」）。
 export const ASPECT_MARKS = [['', -1], ['+', 1], ['--', -2], ['++', 2], ['~', 0]];
 const MARK_ORDER = ASPECT_MARKS.map(([m]) => m);
 /** user_recommender.aspect_token: [mark, code] */
@@ -88,16 +89,16 @@ export function cleanAspects(value) {
   if (Object.values(marks).some(x => x.size > 1)) return null;
   return MARK_ORDER.flatMap(m => Object.keys(ASPECTS).filter(c => marks[c]?.has(m)).map(c => m + c)).join(',');
 }
-// user_recommender.aspect_share: an aspect counts by its strength against the strongest one marked on the record
-// (とても良かった 2 の横の 良かった 1 は半分)。印の強さがそろっていれば（3 段階の記録はすべて）前と同じ
+// 好き・好みではない（±2）の項目が指す役職には、±1 よりこの倍だけ重く効かせる（user_recommender.ASPECT_STRONG。
+// 起案者の指示 2026-10-18「詳細評価のとてもを推薦の効き方も強めてほしい。該当する人をちょっと重くするとか」）
+export const ASPECT_STRONG = 1.5;
+// user_recommender.aspect_share: ±2 の項目の役職は ASPECT_STRONG 倍（1 を越えてよい）、反対側が引く分は多くて全部。
+// ±1 だけの記録（3 段階の記録はすべて）は前と同じ
 function aspectShare(troubles, goods, role, positive, lv = {}) {
-  const all = [...troubles, ...goods];
-  let peak = 1;
-  if (all.length) { peak = -Infinity; for (const c of all) { const a = Math.abs(lv[c] ?? 1); if (a > peak) peak = a; } }
-  const f = c => Math.abs(lv[c] ?? 1) / peak;
+  const g = c => (Math.abs(lv[c] ?? 1) === 2 ? ASPECT_STRONG : 1.0);
   const [main, other] = positive ? [goods, troubles] : [troubles, goods];
-  const top = (codes, dflt) => { let m = -Infinity; for (const c of codes) { const v = (Object.hasOwn(ASPECTS[c][1], role) ? ASPECTS[c][1][role] : 0.0) * f(c); if (v > m) m = v; } return codes.length ? m : dflt; };
-  return top(main, 1.0) * (1.0 - top(other, 0.0));
+  const top = (codes, dflt) => { let m = -Infinity; for (const c of codes) { const v = (Object.hasOwn(ASPECTS[c][1], role) ? ASPECTS[c][1][role] : 0.0) * g(c); if (v > m) m = v; } return codes.length ? m : dflt; };
+  return top(main, 1.0) * (1.0 - Math.min(1.0, top(other, 0.0)));
 }
 
 /** user_recommender.grade_of: [value, levels] of a saved rating ("◎" or "4/5"), or null. */
