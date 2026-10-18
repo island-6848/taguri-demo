@@ -150,8 +150,11 @@ check("反応の種類を正しく振り分ける",
                  "持っている・5日後": "owned"}, kind_of)
 
 # ---------------------------------------------------------------- 帯そのもの（HTML）
-h = DG.panel(D, TODAY, {})
-check("見出しが 2 つ出る", "今週開幕するすべての公演" in h and "直近の観劇予定" in h)
+h = DG.panel(D, TODAY)
+# 「直近の観劇予定」の枠は外した（起案者の指示 2026-10-18「下にある『直近の観劇予定』の枠は消す」）
+check("見出しは開幕する公演の 1 つだけ", "今週開幕するすべての公演" in h and "直近の観劇予定" not in h)
+check("件数の 1 行は「〇〜〇に開幕する公演 ︰ N 件」の形（2026-10-18）",
+      re.search(r"\d+/\d+〜\d+/\d+ に開幕する公演 ︰ \d+ 件", h) is not None and "好みに関係なく" not in h)
 # 見出しは h3 から、たためる <details class="dgday"> の summary に変えた（digest.py、起案者の指摘 2026-08-26）
 check("日付の見出しが並ぶ", h.count('<details class="dgday"') == 5, h.count('<details class="dgday"'))
 # **三択がそのまま付くのは「未回答」だけ。** 答えた公演は「回答を直す」を押すまで三択を隠す（起案者の指示 2026-10-14）。（起案者の指摘・2026-08-26 ──「すでに興味ありとか
@@ -178,24 +181,14 @@ check("開幕までの日数（本日開幕・あと N 日）は出さない（�
 check("劇場名は「〇〇（東京都）」の形（2026-10-18）",
       DG._where({"venue": "劇場C", "pref": "東京都"}) == "劇場C（東京都）" and DG._where({"venue": "劇場C"}) == "劇場C"
       and '<span class="dgw">劇場C</span>' in h)
+# 以前は「直近の観劇予定」の枠の「券はまだありません」でも通っていた。枠を外したので（2026-10-18）、
+# 候補が本当に 0 件のときの帯で確かめる
+DG.all_candidates = lambda: []
 check("空のときは「ありません」と言い切る（0 件の帯）",
-      "ありません" in DG.panel({}, TODAY, {}))
-check("券が無いときは入れる先を案内する",
-      "/tickets?t=__TAGURI_TOKEN__" in DG.panel({}, TODAY, {}))
+      "開幕する公演はありません" in DG.panel({}, TODAY))
+DG.all_candidates = fake_all
+# 直近予定（券だけ）の試験は、枠ごと外したので消した（起案者の指示 2026-10-18「『直近の観劇予定』の枠は消す」）
 
-
-# ---------------------------------------------------------------- 直近予定（券だけ）── 未変更の確認
-TICKETS = {"10": [{"date": "2026-09-01", "time": "18:00", "confirmed": 1}],
-           "11": [{"date": "2026-09-15", "time": "", "confirmed": 0}],
-           "12": [{"date": "2026-08-20", "time": "", "confirmed": 1}]}
-OWNED = [{"title": "券あり公演", "venue": "劇場E", "stage_id": "10"},
-         {"title": "券あり・確定前", "venue": "劇場F", "stage_id": "11"},
-         {"title": "券は今日より前", "venue": "劇場G", "stage_id": "12"}]
-tk = DG.near_tickets(OWNED, TICKETS, TODAY)
-tk_titles = [r["title"] for r in tk["rows"]]
-check("今日以降の券だけが出る", tk_titles == ["券あり公演", "券あり・確定前"], tk_titles)
-check("確定前の券にも印が付く",
-      any(not r["confirmed"] for r in tk["rows"] if r["title"] == "券あり・確定前"))
 
 # ---------------------------------------------------------------- お気に入りだけ色を持つ
 #

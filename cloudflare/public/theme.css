@@ -1479,3 +1479,11 @@ details.lprice>summary .plist>li:only-child::before{display:block}
 /* 日程の行の右の「詳細」の字はやめ、行そのものを押す口に。開くことが分かるよう、行の終わりに小さな三角だけ置く */
 .tourfull.v2 summary.tf-head::after{content:"▸";display:inline-block;margin-left:.5em;color:var(--curtain);font-size:.8em;transition:transform .15s}
 .tourfull.v2 details[open]>summary.tf-head::after{transform:rotate(90deg)}
+
+/* ---- 一覧の見出しの下の 1 文と、空のときの案内（担当: 一覧の見出し。起案者の指示 2026-10-18）
+   .hsub は見出しのすぐ下に見せる 1 文（p.lede は ⓘ の説明に移るので別の名前にする。お気に入り・開幕リマインド）。
+   .eguide は興味あり・購入済の公演が 0 件のときの案内。作りはおすすめのワンポイント（.card.tips）のまま使う */
+.hsub{color:var(--ink2);margin:0 0 18px;font-size:14px;line-height:1.75;max-width:70em}
+.card.tips.eguide{margin:8px 0 20px}
+.card.tips.eguide .tip-h b{font-size:15.5px}
+@media(max-width:560px){.card.tips.eguide .tip-h b{font-size:14.5px}}
