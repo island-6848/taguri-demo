@@ -2895,6 +2895,21 @@
    "verifies": []
   },
   {
+   "id": "impl-replay-eval",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "推薦の再生（replay）を作った。日 t までの記録だけに切った写しで Worker と同じ rankedGroups を node で動かし、t より後 1 週間の答えを利用者ごとの AUC で当てる。部品 4 つを外した計算とも比べる（H5）。利用者 1 人から判定を出す",
+   "sources": [
+    "tools/review/replay_eval.py",
+    "cloudflare/scripts/replay_rank.js",
+    "cloudflare/src/screens/recommend.js",
+    "cloudflare/test/test_replay_eval.py",
+    "docs/research/real-data-eval-plan.md"
+   ],
+   "verifies": []
+  },
+  {
    "id": "impl-search-past-stages",
    "type": "decision",
    "status": "adopted",
@@ -8162,6 +8177,16 @@
    "from": "impl-recommend-thanks",
    "rel": "depends_on",
    "to": "impl-recommend-find"
+  },
+  {
+   "from": "impl-replay-eval",
+   "rel": "depends_on",
+   "to": "plan-real-data-eval"
+  },
+  {
+   "from": "impl-replay-eval",
+   "rel": "depends_on",
+   "to": "impl-eval-logging"
   },
   {
    "from": "impl-search-past-stages",
