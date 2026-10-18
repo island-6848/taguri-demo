@@ -1243,3 +1243,7 @@ details.pbox>summary[data-fold] .fv,.ftab .fv{margin-left:auto;text-align:right;
 .tourfull.v2 .ttb td.sat:not(.out),.ticket .ttb td.sat:not(.out){background:color-mix(in srgb,#2f6fa8 10%,var(--surf))}
 .tourfull.v2 .ttb td.sun.out,.ticket .ttb td.sun.out{background:color-mix(in srgb,#b8432f 4%,transparent)}
 .tourfull.v2 .ttb td.sat.out,.ticket .ttb td.sat.out{background:color-mix(in srgb,#2f6fa8 4%,transparent)}
+/* 読み込めなかったときの「再試行」「ログインし直す」（#96） */
+.loadfail{margin:12px 0 0}
+.loadbtn{display:inline-flex;align-items:center;min-height:44px;padding:6px 20px;border:1px solid var(--acc);border-radius:8px;background:var(--acc);color:#fff;font:inherit;font-weight:600;text-decoration:none;cursor:pointer}
+.loadbtn:focus-visible{outline:2px solid var(--acc);outline-offset:2px}

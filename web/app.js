@@ -619,17 +619,17 @@ async function loadScreen(path, search, hash) {
     // 先に飛ばした分が読めなかったときは、もう 1 回だけ取り直す
     if (!d || !d.ok) {
       const url = API_BASE + "/api/screen/" + name + (search ? "?" + search : "");
-      const r = await fetch(url, {credentials: "include"});
+      const r = await fetch(url, {credentials: "include"}).catch(() => null);
+      if (!r) throw {status: 0};
       // サーバーが途中で止まると（処理の上限を越えたときなど）、JSON ではなく Cloudflare のエラーのページが返る。
       // そのまま JSON として読むと「SyntaxError: Unexpected token '<'」としか出ず、何が起きたか分からない（起案者の報告 2026-10-18）
       d = await r.json().catch(() => null);
-      if (!d) throw new Error("サーバーの処理が途中で止まりました（" + r.status + "）。少し待ってから、ページを読み込み直してください。");
-      if (!r.ok || !d.ok) throw new Error(d.error || r.status);
+      if (!r.ok || !d || !d.ok) throw {status: r.ok && d ? 500 : r.status, error: d && d.error};
     }
   } catch (e) {
     stopLoading();
     if (stale()) return;
-    el.innerHTML = "<h1>読み込めませんでした</h1><p>" + E(e && e.message ? e.message : String(e)) + "</p>";
+    loadFailed(el, e, () => loadScreen(path, search, hash));
     return;
   }
   showWelcomeCode(d.welcome_code);
@@ -638,6 +638,27 @@ async function loadScreen(path, search, hash) {
   if (stale()) return;
   renderScreen(el, activePath, d);
   scrollToHash(hash);
+}
+
+// **読み込めなかったわけを、使う人の言葉で言う**（#96）。通信できない・ログインの期限切れ・一時的に止めている
+// （503）を分け、生の例外（SyntaxError など）は出さない。「再試行」は同じ画面（同じ条件）をもう 1 度取りに行く。
+// 画面の取得は読むだけなので取り直してよい。保存（post）は、届いたか分からないときに勝手に送り直さない
+const LOGIN_URL = (API_BASE || "") + "/login";   // 「http…」で始めて、SPA の切り替えに取られないようにする
+function failWords(status, error) {
+  if (!status) return ["通信できませんでした", "インターネットにつながっているか確かめて、もう一度試してください。"];
+  if (status === 401) return ["ログインの期限が切れました", "もう一度ログインしてください。"];
+  if (status === 503) return ["いまは一時的に止めています", error ? String(error) : "少し時間をおいてから、もう一度試してください。"];
+  if (error) return ["うまくいきませんでした", String(error)];
+  return ["サーバーの処理が途中で止まりました", "少し待ってから、もう一度試してください（" + status + "）。"];
+}
+function loadFailed(el, e, retry) {
+  const status = e && typeof e.status === "number" ? e.status : 0;
+  const [head, body] = failWords(status, e && e.error);
+  el.innerHTML = "<h1>読み込めませんでした</h1><p><b>" + E(head) + "</b>。" + E(body) + "</p>"
+    + '<p class="loadfail">' + (status === 401 ? '<a class="loadbtn" href="' + E(LOGIN_URL) + '">ログインし直す</a>'
+      : '<button type="button" class="loadbtn" data-reload-screen>再試行</button>') + "</p>";
+  const b = el.querySelector("[data-reload-screen]");
+  if (b) b.addEventListener("click", retry);
 }
 
 // --- SPAルーター:内部リンク・GETフォームをその場遷移に変える ----------------
@@ -1273,18 +1294,30 @@ async function post(path, body, group, done) {
   // （起案者の指摘 2026-10-14「『記録しました。』までの文言が出る時間が長い…『書き込み中…』など表示するかにして」）
   if (said && done !== null) { said.textContent = "書き込み中…"; said.classList.add("saving"); }
   const settle = () => { if (said) said.classList.remove("saving"); };
+  // 失敗は使う人の言葉で出す（#96）。届いたか分からない失敗（通信が切れた・途中で止まった）は、そう言う ──
+  // 送り直しは押した人に任せ、ここでは勝手に送り直さない
+  const fail = (status, error) => {
+    settle();
+    if (!said) return null;
+    const [head, body] = failWords(status, error);
+    const unknown = !status || (status >= 500 && status !== 503 && !error);
+    said.textContent = "できませんでした: " + head + "。" + (unknown ? "記録できたかは確かめられていません。" : "") + body;
+    if (status === 401) said.insertAdjacentHTML("beforeend", ' <a href="' + E(LOGIN_URL) + '">ログインし直す</a>');
+    return null;
+  };
+  let r;
   try {
-    const r = await fetch(API_BASE + path, {method: "POST", credentials: "include",
+    r = await fetch(API_BASE + path, {method: "POST", credentials: "include",
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify(body)});
-    const d = await r.json();
-    settle();
-    if (!r.ok) { if (said) said.textContent = "できませんでした: " + (d.error || r.status); return null; }
-    showWelcomeCode(d.welcome_code);
-    if (d.ok !== false && path !== "/api/hand_theme_refresh" && !path.startsWith("/api/recommendation/")) markMutated();
-    if (said && done !== null) said.textContent = done || "記録しました";
-    return d;
-  } catch (e) { settle(); if (said) said.textContent = "できませんでした: " + e; return null; }
+  } catch (e) { return fail(0); }
+  const d = await r.json().catch(() => null);
+  if (!r.ok || !d) return fail(r.ok ? 500 : r.status, d && d.error);
+  settle();
+  showWelcomeCode(d.welcome_code);
+  if (d.ok !== false && path !== "/api/hand_theme_refresh" && !path.startsWith("/api/recommendation/")) markMutated();
+  if (said && done !== null) said.textContent = done || "記録しました";
+  return d;
 }
 
 // 段の名前と札。**画面に出す言葉は 1 か所（WEIGHT_STEPS）から取る** ──
