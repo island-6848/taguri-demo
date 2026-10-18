@@ -67,6 +67,10 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
+      - name: Pin wrangler to the version in cloudflare/package-lock.json
+        # 本番の鍵を持って動く wrangler を、その時いちばん新しい 4 系ではなく lockfile の版にする（taguri-demo の issue #131）。
+        # 取ってくるのは wrangler 自身の版を名指しで（npm ci はしない。毎日 30 秒ほど増えるため）
+        run: echo "WRANGLER=wrangler@$(node -p "require('./cloudflare/package-lock.json').packages['node_modules/wrangler'].version")" >> "$GITHUB_ENV"
       - name: Install Pillow (posters are shrunk before they go into R2)
         # ポスターを縮めてから R2 に入れる（起案者の指示 2026-10-14「ポスターはちょっと画質落としてから入れて」）。
         # 無いと縮めずに入れてしまい、R2 の無料枠を早く使う（2026-10-14 まで 1 枚 約 440 KB で入っていた）
@@ -120,12 +124,12 @@ jobs:
           only=""; [ "${{ steps.plan.outputs.mode }}" = "index" ] && only="--index-only"
           python scripts/deliver_catalogue.py build --data ../data --out ../d1-out --index $only
           if [ -s ../d1-out/catalogue.sql ]; then
-            npx --yes wrangler@4 d1 execute taguri-demo --remote --yes --file ../d1-out/catalogue.sql 2>&1 | tee ../d1-out/catalogue.sql.log
+            npx --yes "$WRANGLER" d1 execute taguri-demo --remote --yes --file ../d1-out/catalogue.sql 2>&1 | tee ../d1-out/catalogue.sql.log
           fi
           # 索引は 1 MB ずつに分けてある（index-upload-01.sql …、7009 で止まらないように）。名前の順に送る
           for f in $(cd ../d1-out && ls index-upload-*.sql 2>/dev/null) labels-upload.sql cards-upload.sql; do
             if [ -f "../d1-out/$f" ]; then
-              npx --yes wrangler@4 d1 execute taguri-demo --remote --yes --file "../d1-out/$f" 2>&1 | tee "../d1-out/$f.log"
+              npx --yes "$WRANGLER" d1 execute taguri-demo --remote --yes --file "../d1-out/$f" 2>&1 | tee "../d1-out/$f.log"
             fi
           done
           # 入れ終えてから「入れた」と記録する（失敗した分は次回まるごと入れ直す）
@@ -155,7 +159,7 @@ jobs:
           fi
           python scripts/deliver_posters.py build --data ../data --out ../d1-posters
           if [ -f ../d1-posters/posters-upload.sql ]; then
-            npx --yes wrangler@4 d1 execute taguri-demo --remote --yes --file ../d1-posters/posters-upload.sql
+            npx --yes "$WRANGLER" d1 execute taguri-demo --remote --yes --file ../d1-posters/posters-upload.sql
           fi
           python scripts/deliver_posters.py commit --data ../data --out ../d1-posters
       - name: Read past stage pages (2019 onwards, newest first)
@@ -179,7 +183,7 @@ jobs:
           fi
           python scripts/deliver_past.py build --data ../data --out ../d1-past
           if [ -f ../d1-past/past-upload.sql ]; then
-            npx --yes wrangler@4 d1 execute taguri-demo --remote --yes --file ../d1-past/past-upload.sql
+            npx --yes "$WRANGLER" d1 execute taguri-demo --remote --yes --file ../d1-past/past-upload.sql
           fi
           python scripts/deliver_past.py commit --data ../data --out ../d1-past
       - name: Put the name index of the past stages into R2 (changed files only)
@@ -222,7 +226,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           if [ -n "$CLOUDFLARE_API_TOKEN" ] && [ -n "$CLOUDFLARE_ACCOUNT_ID" ]; then
-            (cd cloudflare && npx --yes wrangler@4 d1 execute taguri-demo --remote --json \
+            (cd cloudflare && npx --yes "$WRANGLER" d1 execute taguri-demo --remote --json \
               --command "SELECT k, n FROM usage" > ../worker-usage.json) || echo "Worker の数えが読めなかった"
           fi
           python cloudflare/scripts/free_tier.py check --data data --d1-usage worker-usage.json

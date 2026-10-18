@@ -48,7 +48,9 @@ links:
 
 ## 起案者に決めてもらうもの
 - **公開リポジトリに、持ち主の実際の購入記録が入っている。** `tools/taguri/demo_purchase_works.json` の 96 件で、これからの観劇の日時と劇場もある。コミットの作者のメールと合わせると、本人の居場所が分かる。今の版から消すか、日付をずらすか、さらに履歴から消すか（force push が要る）。
+  - 2026-10-18：今の版は架空の 96 件に入れ替えた（issue #122〔dec-demo-seed-fictional〕）。履歴は〔q-pii-git-history〕。
 - **第三者の実在のメールアドレスが入っている。** `tools/mail/send_daily_report.py` の宛先が直接書いてある。設定ファイルへ移すか。
+  - 2026-10-18：`~/.config/nau-mail/report.json` から読むようにした（〔dec-demo-seed-fictional〕）。
 
 ## あとで直すもの
 - **CSP：** `'unsafe-inline' 'unsafe-eval'` を外すには、インラインのハンドラを委譲に移す必要がある（q-original-ui-csp）。

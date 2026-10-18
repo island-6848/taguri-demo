@@ -75,3 +75,12 @@ export async function d1RoomLeft(db, env, nowMs = Date.now()) {
 // 上限を越えた日の依頼は保存だけして、管理画面で見る
 export const FIX_REQUESTS_PER_USER_DAY = 5;
 export const FIX_MAILS_PER_DAY = 30;
+// 保存の上限（issue #129）。日をまたいで送り続けても行と本文が増え続けないようにする。
+// 1 人の未対応 10 件・1 人の保存 50 件・全体 2,000 件。本文は 1,000 字（UTF-8 で 3 KB）までなので、
+// 全体でも 2,000 × 約 3 KB ≈ 6 MB（D1 の上限 D1_BYTES_CAP の 0.2 % 足らず）。
+// 対応済み（done / dropped）の本文は 30 日で消し、行は 180 日で消す（毎日の定期実行、src/screens/fixrequest.js）
+export const FIX_OPEN_PER_USER = 10;
+export const FIX_STORED_PER_USER = 50;
+export const FIX_STORED_TOTAL = 2000;
+export const FIX_RESOLVED_BODY_DAYS = 30;
+export const FIX_RESOLVED_ROW_DAYS = 180;

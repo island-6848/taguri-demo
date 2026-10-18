@@ -5,7 +5,7 @@ import {readFileSync, readdirSync} from 'node:fs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import worker from '../src/worker.js';
-import {limitKind, checkNewAccount} from '../src/rate-limit.js';
+import {limitKind, checkNewAccount, rateLimitHealth, resetRateLimitStatus, rlStatus, FAILING_MS} from '../src/rate-limit.js';
 import {TERMS_VERSION} from '../src/terms.js';
 
 const ORIGIN = 'https://taguri.example';
@@ -149,4 +149,54 @@ test('the sign-up check only reads: nothing is counted until the account is writ
   const fail = (status, message) => { throw Object.assign(new Error(message), {status}); };
   for (let i = 0; i < 5; i++) await checkNewAccount(env.DB, env, fail, undefined, request);
   assert.equal(sqlite.prepare('SELECT count(*) AS n FROM usage').get().n, 0);
+});
+
+// issue #133: missing binding, a failing binding and a normal 429 are told apart in /api/health,
+// and the log says which kind failed without the address or the key.
+test('health tells a missing binding, a failing one and normal limiting apart, and logs no address', async () => {
+  const logs = [];
+  const real = console.log; console.log = (...a) => logs.push(a.join(' '));
+  try {
+    resetRateLimitStatus();
+    const missing = setup();
+    assert.equal((await missing.post('/api/register', '198.51.100.21')).status, 200);
+    let h = await (await missing.get('/api/health', '198.51.100.21')).json();
+    assert.deepEqual([h.rate_limit.any.state, h.rate_limit.auth.state], ['missing', 'missing']);
+
+    resetRateLimitStatus();
+    const broken = {async limit() { throw new TypeError('down 198.51.100.22'); }};
+    const failing = setup({RL_ANY: limiter(1000), RL_AUTH: broken});
+    assert.equal((await failing.post('/api/register', '198.51.100.22')).status, 200);   // still passes
+    assert.equal((await failing.post('/api/register', '198.51.100.22')).status, 200);
+    h = await (await failing.get('/api/health', '198.51.100.22')).json();
+    assert.equal(h.rate_limit.any.state, 'ok');
+    assert.equal(h.rate_limit.auth.state, 'failing');
+    assert.equal(h.rate_limit.auth.errors, 2);
+
+    resetRateLimitStatus();
+    const working = setup({RL_ANY: limiter(1000), RL_AUTH: limiter(1)});
+    assert.equal((await working.post('/api/register', '198.51.100.23')).status, 200);
+    assert.equal((await working.post('/api/register', '198.51.100.23')).status, 429);
+    h = await (await working.get('/api/health', '198.51.100.23')).json();
+    assert.equal(h.rate_limit.auth.state, 'ok');
+    assert.equal(h.rate_limit.auth.limited, 1);
+    assert.equal(h.rate_limit.auth.errors, 0);
+
+    const said = logs.filter(l => l.startsWith('rate limit'));
+    assert.ok(said.some(l => /auth: binding failed \(TypeError\)/.test(l)), said.join('\n'));
+    assert.ok(said.some(l => /any: no binding/.test(l)), said.join('\n'));
+    assert.equal(said.filter(l => /binding failed/.test(l)).length, 1);           // once a minute, not per request
+    for (const l of said) assert.doesNotMatch(l, /198\.51\.100|down/);
+    assert.doesNotMatch(JSON.stringify(h.rate_limit), /198\.51\.100/);
+  } finally { console.log = real; resetRateLimitStatus(); }
+});
+
+test('a failure shows as failing for ten minutes, then ok again', () => {
+  resetRateLimitStatus();
+  const env = {RL_ANY: {limit() {}}, RL_AUTH: {limit() {}}};
+  rlStatus.auth.lastErrorAt = 1_000_000;
+  assert.equal(rateLimitHealth(env, 1_000_000 + FAILING_MS - 1).auth.state, 'failing');
+  assert.equal(rateLimitHealth(env, 1_000_000 + FAILING_MS).auth.state, 'ok');
+  assert.equal(rateLimitHealth({}, 0).any.state, 'missing');
+  resetRateLimitStatus();
 });

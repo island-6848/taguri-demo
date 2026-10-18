@@ -25,10 +25,24 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: '24'
+          # lockfile で npm の取り込みを控える（2 回目からは取り込みが速くなるので、下の検査を足しても分はほぼ増えない）
+          cache: npm
+          cache-dependency-path: cloudflare/package-lock.json
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
-      - run: npm install --no-audit --no-fund
+      # lockfile のとおりに入れる（同じコミットなら同じ部品。issue #131）
+      - run: npm ci --no-audit --no-fund
+      # 配信している画面用の束（public/vendor）が、このソースと lockfile から作り直したものと 1 バイトも違わないこと
+      - name: Vendored bundles match a rebuild from source
+        run: |
+          npm run -s build:login
+          git diff --exit-code --stat -- public/vendor
+          test -z "$(git status --porcelain -- public/vendor)"
+      # 利用者の画面と Worker に入る部品（dependencies）に、高い以上の既知の弱点が無いこと。
+      # 開発だけで使う部品（wrangler・playwright など）は表に出すだけで止めない
+      - run: npm audit --omit=dev --audit-level=high
+      - run: npm audit --audit-level=high || echo "::warning::devDependencies に既知の弱点がある（上の表）"
       - run: npm test
       # 管理の道具の試験はポスターを縮める（Pillow。取得のジョブと同じ）
       - run: python3 -m pip install --quiet pillow

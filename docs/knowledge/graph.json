@@ -929,6 +929,20 @@
    "verifies": []
   },
   {
+   "id": "dec-demo-seed-fictional",
+   "type": "decision",
+   "status": "proposed",
+   "date": "2026-10-18",
+   "title": "公開デモの見本 96 件を架空の題名・日付・会場に入れ替え、日報メールの宛先と差出人を手元の設定へ移す（今の版だけ。履歴は起案者が決める）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/122",
+    "tools/taguri/demo_purchase_works.json",
+    "tools/mail/send_daily_report.py",
+    "docs/demo-seed-ratings.md"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-demo-stays-render-free",
    "type": "decision",
    "status": "superseded",
@@ -1074,6 +1088,21 @@
     "cloudflare/public/privacy.html",
     "cloudflare/test/firebase-auth.test.js",
     "cloudflare/test/account-delete.test.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-fix-request-retention",
+   "type": "decision",
+   "status": "proposed",
+   "date": "2026-10-18",
+   "title": "公演修正依頼の保存に上限と期限を付ける（1 人の未対応 10 件・1 人 50 件・全体 2,000 件。対応済みは 30 日で本文、180 日で行を消す）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/129",
+    "cloudflare/src/screens/fixrequest.js",
+    "cloudflare/src/free-tier.js",
+    "cloudflare/test/fixrequest.test.js",
+    "cloudflare/public/privacy.html"
    ],
    "verifies": []
   },
@@ -1524,6 +1553,22 @@
     "tools/taguri/posters.py",
     "tools/taguri/crawler_state.py",
     "tools/taguri/deploy/github-actions/catalog.yml"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-rate-limit-fail-open",
+   "type": "decision",
+   "status": "proposed",
+   "date": "2026-10-18",
+   "title": "回数制限が無い・壊れたときも要求は通す（認証口も）。代わりに /api/health の rate_limit に出し、1 時間ごとの見張りで持ち主に知らせる",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/133",
+    "cloudflare/src/rate-limit.js",
+    "cloudflare/src/worker.js",
+    "cloudflare/test/rate-limit.test.js",
+    "tools/taguri/check_service.py",
+    "tools/taguri/test_check_service.py"
    ],
    "verifies": []
   },
@@ -2274,7 +2319,7 @@
   {
    "id": "demo-seed-link-rate",
    "type": "finding",
-   "status": "unverified",
+   "status": "outdated",
    "date": "2026-10-12",
    "title": "見本の記録のうち推薦の材料になるのは 6 割ほど（見積もり）",
    "sources": [
@@ -2800,6 +2845,21 @@
    "verifies": []
   },
   {
+   "id": "impl-admin-claude-isolation",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-18",
+   "title": "管理画面のあらすじ読み取り（claude -p）を、道具なし・リポジトリの外・決めた環境変数だけで動かすようにした。本物の claude での注入の確かめは起案者の手元で要る",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/130",
+    "tools/admin/admin.py",
+    "tools/admin/README.md",
+    "cloudflare/test/test_admin_tool.py",
+    ".claude/skills/taguri-admin-queue/SKILL.md"
+   ],
+   "verifies": []
+  },
+  {
    "id": "impl-admin-tool",
    "type": "decision",
    "status": "adopted",
@@ -2814,6 +2874,21 @@
     "cloudflare/test/override.test.js",
     "cloudflare/test/test_admin_tool.py",
     ".claude/skills/taguri-admin-queue/SKILL.md"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "impl-body-stream-cap",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-18",
+   "title": "Native 画面の本文（readInput）は全部読んでから大きさを見ていた。読みながら上限で止める共通の関数（src/body-limit.js）にした",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/123",
+    "cloudflare/src/body-limit.js",
+    "cloudflare/src/screens/index.js",
+    "cloudflare/src/worker.js",
+    "cloudflare/test/body-limit.test.js"
    ],
    "verifies": []
   },
@@ -2975,6 +3050,23 @@
     "cloudflare/src/screens/lists.js",
     "web/app.js",
     "cloudflare/test/kind-off.test.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "impl-lockfile-repro",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-18",
+   "title": "cloudflare に package-lock.json を入れ、CI を npm ci・配信の束の作り直しの一致・npm audit にした。本番の鍵で動く wrangler も lockfile の版にそろえた",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/131",
+    "cloudflare/package-lock.json",
+    "cloudflare/package.json",
+    ".github/workflows/cloudflare-preview-check.yml",
+    "cloudflare/scripts/wrangler_pin.py",
+    "tools/taguri/deploy/github-actions/catalog.yml",
+    "docs/cloudflare-security-review.md"
    ],
    "verifies": []
   },
@@ -5093,6 +5185,17 @@
    "verifies": []
   },
   {
+   "id": "q-pii-git-history",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-18",
+   "title": "公開リポジトリの過去の履歴に残る観劇記録と第三者の連絡先を、履歴から消すか（force push と、複製・フォークへの影響を含めて起案者が決める）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/122"
+   ],
+   "verifies": []
+  },
+  {
    "id": "q-plainwalk-ui",
    "type": "question",
    "status": "open",
@@ -6851,6 +6954,21 @@
    "to": "q-direction"
   },
   {
+   "from": "dec-demo-seed-fictional",
+   "rel": "depends_on",
+   "to": "sec-audit-1017"
+  },
+  {
+   "from": "dec-demo-seed-fictional",
+   "rel": "affects",
+   "to": "demo-seed-link-rate"
+  },
+  {
+   "from": "dec-demo-seed-fictional",
+   "rel": "raises",
+   "to": "q-pii-git-history"
+  },
+  {
    "from": "dec-demo-stays-render-free",
    "rel": "depends_on",
    "to": "dec-edition-split"
@@ -6999,6 +7117,16 @@
    "from": "dec-firebase-delete-pending",
    "rel": "depends_on",
    "to": "dec-firebase-auth"
+  },
+  {
+   "from": "dec-fix-request-retention",
+   "rel": "depends_on",
+   "to": "impl-fix-request"
+  },
+  {
+   "from": "dec-fix-request-retention",
+   "rel": "affects",
+   "to": "comp-d1"
   },
   {
    "from": "dec-free-tier-only",
@@ -7364,6 +7492,16 @@
    "from": "dec-posters-r2",
    "rel": "answers",
    "to": "q-worker-posters"
+  },
+  {
+   "from": "dec-rate-limit-fail-open",
+   "rel": "depends_on",
+   "to": "dec-rate-limit"
+  },
+  {
+   "from": "dec-rate-limit-fail-open",
+   "rel": "affects",
+   "to": "comp-auth-throttle"
   },
   {
    "from": "dec-rate-limit",
@@ -8351,6 +8489,11 @@
    "to": "q-crawler-host"
   },
   {
+   "from": "impl-admin-claude-isolation",
+   "rel": "depends_on",
+   "to": "impl-admin-tool"
+  },
+  {
    "from": "impl-admin-tool",
    "rel": "depends_on",
    "to": "dec-synopsis-reader-claude"
@@ -8359,6 +8502,11 @@
    "from": "impl-admin-tool",
    "rel": "raises",
    "to": "q-admin-override-in-index"
+  },
+  {
+   "from": "impl-body-stream-cap",
+   "rel": "depends_on",
+   "to": "sec-audit-1017"
   },
   {
    "from": "impl-card-schedule",
@@ -8504,6 +8652,11 @@
    "from": "impl-kind-reason-off",
    "rel": "answers",
    "to": "q-kind-reason-off"
+  },
+  {
+   "from": "impl-lockfile-repro",
+   "rel": "depends_on",
+   "to": "sec-audit-1017"
   },
   {
    "from": "impl-onboarding-list",
@@ -9889,6 +10042,11 @@
    "from": "q-past-stage-catalogue",
    "rel": "depends_on",
    "to": "catalog-terms-no-redistribution"
+  },
+  {
+   "from": "q-pii-git-history",
+   "rel": "depends_on",
+   "to": "dec-demo-seed-fictional"
   },
   {
    "from": "q-plainwalk-ui",

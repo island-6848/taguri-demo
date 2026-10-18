@@ -32,6 +32,19 @@ class CheckServiceTest(unittest.TestCase):
         got = CS.check(BASE, fetch=server(**{"/api/health": (200, b'{"ok": false}', 12.0)}), sleep=lambda s: None)
         self.assertEqual(got, ["/api/health が ok を返さない", "/api/health が遅い（12.0 秒）"])
 
+    def test_rate_limit_missing_or_failing_is_reported(self):
+        """issue #133: the limits pass requests when they break, so only the watch can tell."""
+        def health(any_state, auth_state):
+            return json.dumps({"ok": True, "rate_limit": {"any": {"state": any_state, "errors": 0},
+                                                          "auth": {"state": auth_state, "errors": 4}}}).encode()
+        ok = CS.check(BASE, fetch=server(**{"/api/health": (200, health("ok", "ok"), 0.2)}), sleep=lambda s: None)
+        self.assertEqual(ok, [])
+        got = CS.check(BASE, fetch=server(**{"/api/health": (200, health("missing", "failing"), 0.2)}), sleep=lambda s: None)
+        self.assertEqual(len(got), 2)
+        self.assertIn("any", got[0])
+        self.assertIn("結び付けが無い", got[0])
+        self.assertIn("失敗 4 回", got[1])
+
     def test_free_tier_over_eighty_percent(self):
         body = json.dumps({"ok": True, "free_tier": {"r2_reads_month": 80, "r2_reads_cap": 100}}).encode()
         got = CS.check(BASE, fetch=server(**{"/api/health": (200, body, 0.2)}), sleep=lambda s: None)
