@@ -138,7 +138,11 @@ test('詳細 are saved as known codes (troubles, then "+goods") in a fixed order
   // The text form /api/state returns is accepted back.
   assert.equal((await call(env, 'record', {...base, aspects: '+acting,price'}, cookie)).status, 200);
   assert.equal(saved(), 'price,+acting');
-  for (const bad of [['もやもや'], ['+もやもや'], ['acting', '+acting'], 7, [7]])
+  // 5 段階と「この作品には無い」（起案者の指示 2026-10-18）: ++ とても良かった・-- とても気になった・~ 無い。並びは
+  // recommend.ASPECT_MARKS（気になった・良かった・とても気になった・とても良かった・無い）
+  assert.equal((await call(env, 'record', {...base, aspects: ['~dance', '++acting', 'price', '--story', '+venue', '~music']}, cookie)).status, 200);
+  assert.equal(saved(), 'price,+venue,--story,++acting,~music,~dance');
+  for (const bad of [['もやもや'], ['+もやもや'], ['acting', '+acting'], ['++acting', '~acting'], ['---acting'], ['+++acting'], 7, [7]])
     assert.equal((await call(env, 'record', {...base, aspects: bad}, cookie)).status, 400, JSON.stringify(bad));
   assert.equal((await call(env, 'record', base, cookie)).status, 200);
   assert.equal(saved(), '');

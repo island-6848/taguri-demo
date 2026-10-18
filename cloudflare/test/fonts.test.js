@@ -21,10 +21,13 @@ test('each @font-face in fonts.css points at a file that is served', () => {
   assert.deepEqual(urls.filter(u => !existsSync(pub(u))), []);
 });
 
-test('only the five named parts use the accent font', () => {
+// 指定は 5 か所だったが、「評価しない」（.rb button.nograde）は星の右端の ✕（.rb .gclr、記号なので書体を決めない）に替わった
+// （起案者の指示 2026-10-18「『評価しない』のボタンじゃなくて、星の右端に✕ボタンをつけることでnullにできるようにして」）
+test('only the four named parts use the accent font', () => {
   const css = readFileSync(pub('fonts.css'), 'utf8');
   const uses = [...css.matchAll(/([^{}]+)\{[^}]*font-family:var\(--font-accent\)/g)].map(m => m[1]);
   assert.equal(uses.length, 1);
-  for (const sel of ['.sitebtn', '.sale .pill', '.ftag', '.rs .net', '.rb button.nograde']) assert.ok(uses[0].includes(sel), sel);
+  for (const sel of ['.sitebtn', '.sale .pill', '.ftag', '.rs .net']) assert.ok(uses[0].includes(sel), sel);
+  assert.doesNotMatch(uses[0], /nograde|gclr/);
   assert.doesNotMatch(css, /--font-(action|round)/);
 });

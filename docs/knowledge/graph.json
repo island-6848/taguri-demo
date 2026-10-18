@@ -677,6 +677,26 @@
    "verifies": []
   },
   {
+   "id": "dec-aspects-five-levels",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "評価の詳細を 5 段階にし、項目ごとの ✕ で「この作品には無い」にできる（無い項目は表示と推薦から外す）。前の 3 段階はそのまま読み、移行は要らない",
+   "sources": [
+    "cloudflare/src/recommend.js",
+    "cloudflare/src/screens/rate.js",
+    "tools/review/user_recommender.py",
+    "tools/review/rate_performances.py",
+    "web/app.js",
+    "web/theme.css",
+    "cloudflare/test/screens/scenarios.json",
+    "cloudflare/test/test_recommend_index.py",
+    "tools/taguri/test_user_recommendation.py",
+    "cloudflare/test/e2e-walk.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-aspects-screen",
    "type": "decision",
    "status": "adopted",
@@ -2209,6 +2229,26 @@
     "cloudflare/src/recommend.js",
     "cloudflare/src/screens/recommend.js",
     "cloudflare/test/recommend-spread.test.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-star-clear-x",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "星の後ろの「評価しない」をやめ、星の右端の ✕ で評価を消して未評価（null）に戻す。✕ は評価が付いているときだけ出す",
+   "sources": [
+    "cloudflare/src/screens/grade.js",
+    "cloudflare/src/screens/rate.js",
+    "tools/taguri/serve.py",
+    "web/app.js",
+    "web/theme.css",
+    "web/fonts.css",
+    "cloudflare/test/grade.test.js",
+    "cloudflare/test/fonts.test.js",
+    "cloudflare/test/screens/scenarios.json",
+    "cloudflare/test/e2e-walk.js"
    ],
    "verifies": []
   },
@@ -4276,6 +4316,20 @@
    "verifies": []
   },
   {
+   "id": "lit-rating-scale-points",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-18",
+   "title": "評価尺度の段階の数は、2〜4 段階より 5〜7 段階のほうが信頼性・妥当性が高いと報告されている（Preston & Colman 2000 ほか。原典は未確認）",
+   "sources": [
+    "https://arxiv.org/pdf/2502.02846",
+    "https://www.sociometricresearchfoundation.com/response-scales-length.html",
+    "https://www.koji.so/docs/unipolar-vs-bipolar-scales",
+    "https://web.stanford.edu/dept/communication/faculty/krosnick/docs/2010/2010 Handbook of Survey Research.pdf"
+   ],
+   "verifies": []
+  },
+  {
    "id": "lit-response-style-culture",
    "type": "finding",
    "status": "confirmed",
@@ -4947,6 +5001,15 @@
    "status": "open",
    "date": "2026-10-13",
    "title": "観点（値段・脚本・演出など）ごとに下げる相手を変える案を、どう確かめるか",
+   "sources": [],
+   "verifies": []
+  },
+  {
+   "id": "q-aspect-levels-check",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-18",
+   "title": "詳細の 5 段階は使われているか。「とても」を配分の強さだけに使う形でよいか、7 段階が要るか",
    "sources": [],
    "verifies": []
   },
@@ -7362,6 +7425,31 @@
    "to": "comp-frontend"
   },
   {
+   "from": "dec-aspects-five-levels",
+   "rel": "affects",
+   "to": "dec-aspects-screen"
+  },
+  {
+   "from": "dec-aspects-five-levels",
+   "rel": "affects",
+   "to": "impl-rating-aspects"
+  },
+  {
+   "from": "dec-aspects-five-levels",
+   "rel": "affects",
+   "to": "comp-recommender"
+  },
+  {
+   "from": "dec-aspects-five-levels",
+   "rel": "depends_on",
+   "to": "lit-rating-scale-points"
+  },
+  {
+   "from": "dec-aspects-five-levels",
+   "rel": "raises",
+   "to": "q-aspect-levels-check"
+  },
+  {
    "from": "dec-aspects-screen",
    "rel": "answers",
    "to": "q-pr13-aspects-screen"
@@ -8670,6 +8758,16 @@
    "from": "dec-spread-and-partners",
    "rel": "affects",
    "to": "q-review-1015"
+  },
+  {
+   "from": "dec-star-clear-x",
+   "rel": "depends_on",
+   "to": "dec-star-default"
+  },
+  {
+   "from": "dec-star-clear-x",
+   "rel": "affects",
+   "to": "dec-font-accent-five"
   },
   {
    "from": "dec-star-default",
@@ -10082,6 +10180,11 @@
    "to": "q-rating-scale"
   },
   {
+   "from": "lit-rating-scale-points",
+   "rel": "supports",
+   "to": "dec-aspects-five-levels"
+  },
+  {
    "from": "lit-response-style-culture",
    "rel": "affects",
    "to": "q-rating-scale"
@@ -10595,6 +10698,16 @@
    "from": "q-aspect-attribution-check",
    "rel": "depends_on",
    "to": "dec-reco-per-user-eval"
+  },
+  {
+   "from": "q-aspect-levels-check",
+   "rel": "affects",
+   "to": "dec-aspects-five-levels"
+  },
+  {
+   "from": "q-aspect-levels-check",
+   "rel": "depends_on",
+   "to": "lit-rating-scale-points"
   },
   {
    "from": "q-aspects-ui",

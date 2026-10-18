@@ -420,12 +420,34 @@ class AspectTests(unittest.TestCase):
         self.assertEqual(UR.parse_aspects("price,+acting,+xx"), (["price"], ["acting"]))
         self.assertEqual(UR.aspect_codes(["+price"]), [])
 
+    # 5 段階と「この作品には無い」（起案者の指示 2026-10-18「最低限5段階くらいほしい」「なかったときは✕で要素を消せるように」）
+    def test_five_levels_and_not_in_this_production_are_read(self):
+        self.assertEqual(UR.aspect_levels("++acting,+story,price,--venue,~music,xx,~xx"),
+                         {"acting": 2, "story": 1, "price": -1, "venue": -2, "music": 0})
+        self.assertEqual(UR.parse_aspects("++acting,--story,~music"), (["story"], ["acting"]))
+        # the 3-level text reads as the same words (良かった 1, 気になった −1)
+        self.assertEqual(UR.aspect_levels("price,+acting"), {"price": -1, "acting": 1})
+
+    def test_not_in_this_production_is_left_out(self):
+        self.assertEqual(self.rated(["~music", "~dance"]), self.rated([]))
+        self.assertEqual(self.rated(["acting", "~music"]), self.rated(["acting"]))
+
+    def test_a_strong_mark_takes_more_than_a_plain_one_beside_it(self):
+        v = self.rated(["--story", "acting"])
+        writer, cast = v[("脚本", "作家")][1], v[("出演", "役者")][1]
+        self.assertAlmostEqual(cast, 0.5 * writer)
+        # one strength everywhere (every 3-level record) is as before
+        self.assertEqual(self.rated(["--story", "--acting"]), self.rated(["story", "acting"]))
+        self.assertEqual(self.rated_high(["++acting"]), self.rated_high(["+acting"]))
+
     def test_saved_codes_match_the_recommender(self):
         import rate_performances as R
         self.assertEqual(list(R.ASPECT_CODES), list(UR.ASPECTS))
         self.assertEqual(R.clean_aspects(["venue", "price"]), "price,venue")
         self.assertEqual(R.clean_aspects("+acting,venue"), "venue,+acting")
-        for bad in (["もやもや"], ["+もやもや"], ["acting", "+acting"]):
+        self.assertEqual(R.clean_aspects(["~dance", "++acting", "price", "--story", "+venue"]),
+                         "price,+venue,--story,++acting,~dance")
+        for bad in (["もやもや"], ["+もやもや"], ["acting", "+acting"], ["++acting", "~acting"], ["---acting"], ["+++acting"]):
             with self.assertRaises(ValueError):
                 R.clean_aspects(bad)
 

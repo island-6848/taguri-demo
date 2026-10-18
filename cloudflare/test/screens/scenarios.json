@@ -1171,6 +1171,119 @@
     }
    },
    {
+    "post": "/api/rate",
+    "body": {
+     "work_key": "詳細の舞台#2026-08-01",
+     "aspects": [
+      "~dance",
+      "++acting",
+      "price",
+      "--story",
+      "+venue",
+      "~music"
+     ]
+    }
+   },
+   {
+    "get": "/api/screen/rate"
+   },
+   {
+    "post": "/api/rate",
+    "body": {
+     "work_key": "詳細の舞台#2026-08-01",
+     "aspects": "++acting,~acting"
+    }
+   },
+   {
+    "post": "/api/rate",
+    "body": {
+     "work_key": "詳細の舞台#2026-08-01",
+     "aspects": [
+      "+++acting"
+     ]
+    }
+   },
+   {
+    "get": "/api/screen/rate"
+   }
+  ]
+ },
+ {
+  "name": "clear a rating (星の右端の ✕)",
+  "steps": [
+   {
+    "post": "/api/add_work",
+    "body": {
+     "title": "消す舞台",
+     "date": "2026-08-02"
+    }
+   },
+   {
+    "post": "/api/rate",
+    "body": {
+     "work_key": "消す舞台#2026-08-02",
+     "verdict": "○"
+    }
+   },
+   {
+    "post": "/api/rate",
+    "body": {
+     "work_key": "消す舞台#2026-08-02",
+     "aspects": [
+      "+acting",
+      "~music"
+     ]
+    }
+   },
+   {
+    "post": "/api/rate",
+    "body": {
+     "work_key": "消す舞台#2026-08-02",
+     "clear": true
+    }
+   },
+   {
+    "get": "/api/screen/rate"
+   },
+   {
+    "get": "/api/screen/unrated"
+   },
+   {
+    "post": "/api/rate",
+    "body": {
+     "work_key": "消す舞台#2026-08-02",
+     "clear": "yes"
+    }
+   },
+   {
+    "post": "/api/rate",
+    "body": {
+     "work_key": "無い作品#2026-01-01",
+     "clear": true
+    }
+   },
+   {
+    "post": "/api/rate",
+    "body": {
+     "work_key": "消す舞台#2026-08-02",
+     "verdict": "まだ判断できない"
+    }
+   },
+   {
+    "post": "/api/rate",
+    "body": {
+     "work_key": "消す舞台#2026-08-02",
+     "clear": true
+    }
+   },
+   {
+    "post": "/api/rate",
+    "body": {
+     "work_key": "消す舞台#2026-08-02",
+     "verdict": "△"
+    }
+   },
+   {
     "get": "/api/screen/rate"
    }
   ]

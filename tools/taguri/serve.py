@@ -1583,6 +1583,14 @@ class Server(http.server.ThreadingHTTPServer):
                 APP.save_work_field(user_id, work_key, aspects=aspects)
                 self.n["rate"] += 1
             return {"ok": True, "work_key": work_key, "aspects": aspects}
+        # 評価を消して未評価に戻す（星の右端の ✕。起案者の指示 2026-10-18「『評価しない』のボタンじゃなくて、
+        # 星の右端に✕ボタンをつけることでnullにできるようにして」）。詳細（aspects）は消さずに残す
+        if not verdict and b.get("clear") is True:
+            with self.lock:
+                APP.save_work_field(user_id, work_key, verdict="")
+                self.n["rate"] += 1
+            return {"ok": True, "work_key": work_key, "verdict": None,
+                    "recommendation": {"status": "on_next_read"}}
         if verdict not in VERDICTS:
             raise ValueError(f"verdict が候補にない: {verdict!r}")
         with self.lock:

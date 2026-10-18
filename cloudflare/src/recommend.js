@@ -49,23 +49,54 @@ export const ASPECTS = {
   price: ['値段', {'#値段': 1.0}],
   venue: ['会場・座席', {'#会場': 1.0}],
 };
-/** user_recommender.parse_aspects: [troubles, goods] ("+code" = good), each in ASPECTS order. */
-export function parseAspects(value) {
-  const given = new Set(Array.isArray(value) ? value : String(value ?? '').split(','));
-  const codes = Object.keys(ASPECTS);
-  return [codes.filter(c => given.has(c)), codes.filter(c => given.has('+' + c))];
+// 詳細の印（user_recommender.ASPECT_MARKS。起案者の指示 2026-10-18「最低限5段階くらいほしい」「なかったときは✕で
+// 要素を消せるように」、dec-aspects-five-levels）: "++code" とても良かった 2、"+code" 良かった 1、"code" 気になった −1、
+// "--code" とても気になった −2、"~code" この作品には無い（推薦に使わない）。前の 3 段階の形はそのまま読む。
+export const ASPECT_MARKS = [['', -1], ['+', 1], ['--', -2], ['++', 2], ['~', 0]];
+const MARK_ORDER = ASPECT_MARKS.map(([m]) => m);
+/** user_recommender.aspect_token: [mark, code] */
+export function aspectToken(g) {
+  for (const m of ['++', '--', '+', '~']) if (g.startsWith(m)) return [m, g.slice(m.length)];
+  return ['', g];
 }
-/** Canonical text of a record's aspects (troubles, then "+goods"), or null if invalid. */
+/** user_recommender.aspect_levels: {code: −2..2 (0 = この作品には無い)}, known codes only. */
+export function aspectLevels(value) {
+  const given = [...new Set((Array.isArray(value) ? value : String(value ?? '').split(',')).map(String))];
+  given.sort((x, y) => MARK_ORDER.indexOf(aspectToken(x)[0]) - MARK_ORDER.indexOf(aspectToken(y)[0]));
+  const marks = Object.fromEntries(ASPECT_MARKS), out = {};
+  for (const g of given) {
+    const [m, c] = aspectToken(g);
+    if (Object.hasOwn(ASPECTS, c) && !Object.hasOwn(out, c)) out[c] = marks[m];
+  }
+  return out;
+}
+/** user_recommender.parse_aspects: [troubles, goods] (good = "+" / "++"), each in ASPECTS order. */
+export function parseAspects(value) {
+  const lv = aspectLevels(value);
+  const codes = Object.keys(ASPECTS);
+  return [codes.filter(c => (lv[c] || 0) < 0), codes.filter(c => (lv[c] || 0) > 0)];
+}
+/** Canonical text of a record's aspects (rate_performances.clean_aspects), or null if invalid. */
 export function cleanAspects(value) {
   const given = new Set((Array.isArray(value) ? value : String(value ?? '').split(',')).map(String).map(x => x.trim()).filter(Boolean));
-  if ([...given].some(g => !Object.hasOwn(ASPECTS, g.replace(/^\+/, '')))) return null;
-  const [troubles, goods] = parseAspects([...given]);
-  if (troubles.some(c => goods.includes(c))) return null;
-  return [...troubles, ...goods.map(c => '+' + c)].join(',');
+  const marks = {};
+  for (const g of given) {
+    const [m, c] = aspectToken(g);
+    if (!Object.hasOwn(ASPECTS, c)) return null;
+    (marks[c] ||= new Set()).add(m);
+  }
+  if (Object.values(marks).some(x => x.size > 1)) return null;
+  return MARK_ORDER.flatMap(m => Object.keys(ASPECTS).filter(c => marks[c]?.has(m)).map(c => m + c)).join(',');
 }
-function aspectShare(troubles, goods, role, positive) {
+// user_recommender.aspect_share: an aspect counts by its strength against the strongest one marked on the record
+// (とても良かった 2 の横の 良かった 1 は半分)。印の強さがそろっていれば（3 段階の記録はすべて）前と同じ
+function aspectShare(troubles, goods, role, positive, lv = {}) {
+  const all = [...troubles, ...goods];
+  let peak = 1;
+  if (all.length) { peak = -Infinity; for (const c of all) { const a = Math.abs(lv[c] ?? 1); if (a > peak) peak = a; } }
+  const f = c => Math.abs(lv[c] ?? 1) / peak;
   const [main, other] = positive ? [goods, troubles] : [troubles, goods];
-  const top = (codes, dflt) => { let m = -Infinity; for (const c of codes) { const v = Object.hasOwn(ASPECTS[c][1], role) ? ASPECTS[c][1][role] : 0.0; if (v > m) m = v; } return codes.length ? m : dflt; };
+  const top = (codes, dflt) => { let m = -Infinity; for (const c of codes) { const v = (Object.hasOwn(ASPECTS[c][1], role) ? ASPECTS[c][1][role] : 0.0) * f(c); if (v > m) m = v; } return codes.length ? m : dflt; };
   return top(main, 1.0) * (1.0 - top(other, 0.0));
 }
 
@@ -288,11 +319,12 @@ export function personValues(rated, seeds = [], skip = new Set(), liked = [], di
     const keys = peopleKeys(r);
     // 詳細: a rating lands mainly on what was good (above the middle) or a
     // trouble (below it), less on what the other side points at.
+    const lv = z ? aspectLevels(r.aspects) : {};
     const [troubles, goods] = z ? parseAspects(r.aspects) : [[], []];
     const marked = troubles.length || goods.length;
     for (const k of keys) {
       const t = tally.get(k) || [0, 0, 0];
-      t[0] += 1; t[1] += marked ? z * aspectShare(troubles, goods, k.slice(0, k.indexOf('\u0000')), z > 0) : z; t[2] += 1.0;
+      t[0] += 1; t[1] += marked ? z * aspectShare(troubles, goods, k.slice(0, k.indexOf('\u0000')), z > 0, lv) : z; t[2] += 1.0;
       tally.set(k, t);
     }
   }

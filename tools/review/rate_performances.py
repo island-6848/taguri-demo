@@ -700,19 +700,25 @@ def _add_aspects(con: sqlite3.Connection) -> None:
 
 
 def clean_aspects(value) -> str:
-    """Known codes only ("code" = a trouble, "+code" = good), troubles then goods,
-    each in ASPECT_CODES order, comma-separated; unknown codes, or one aspect
-    marked both ways, are refused."""
+    """Known codes only, each with one mark (user_recommender.ASPECT_MARKS: "++code"
+    とても良かった, "+code" 良かった, "code" 気になった, "--code" とても気になった,
+    "~code" この作品には無い), in ASPECT_MARKS order then ASPECT_CODES order,
+    comma-separated; unknown codes, or one aspect given two marks, are refused.
+    A 3-level text ("code", "+code") comes back as it was."""
+    import user_recommender as UR
     given = value.split(",") if isinstance(value, str) else list(value or ())
     given = {str(g).strip() for g in given if str(g).strip()}
-    unknown = [g for g in sorted(given) if g.lstrip("+") not in ASPECT_CODES]
+    unknown = [g for g in sorted(given) if UR.aspect_token(g)[1] not in ASPECT_CODES]
     if unknown:
         raise ValueError(f"詳細の項目が候補にない: {unknown[0]!r}")
-    both = [c for c in ASPECT_CODES if c in given and "+" + c in given]
+    marks: dict = {}
+    for g in given:
+        mark, code = UR.aspect_token(g)
+        marks.setdefault(code, set()).add(mark)
+    both = [c for c in ASPECT_CODES if len(marks.get(c, ())) > 1]
     if both:
-        raise ValueError(f"良かった所と気になった所の両方になっている: {both[0]!r}")
-    return ",".join([c for c in ASPECT_CODES if c in given]
-                    + ["+" + c for c in ASPECT_CODES if "+" + c in given])
+        raise ValueError(f"1 つの項目に印が 2 つ付いている: {both[0]!r}")
+    return ",".join(m + c for m, _ in UR.ASPECT_MARKS for c in ASPECT_CODES if m in marks.get(c, ()))
 
 
 def _add_input_sources(con: sqlite3.Connection) -> None:
