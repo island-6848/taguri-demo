@@ -12,5 +12,7 @@
   "r2_buckets": [{ "binding": "POSTERS", "bucket_name": "taguri-posters" }],
   "d1_databases": [{ "binding": "DB", "database_name": "taguri-demo", "database_id": "c0b5cd2c-28be-49d0-86cc-70edfa243bf0", "migrations_dir": "migrations" }],
   "vars": { "ALLOW_REGISTRATION": "true", "ORIGINAL_UI_BRIDGE": "true", "NATIVE_UI": "all", "FIREBASE_PROJECT_ID": "taguri-97959", "FIREBASE_API_KEY": "AIzaSyDRsGE41bbB3MUEncNk9EkTDtTNtvKKA0M", "GOOGLE_CALENDAR_CLIENT_ID": "" },
+  // 1 日 1 回、日本時間 3:41（src/cleanup.js: 記録の無いアカウントを 1 か月で片付ける）。定期実行は無料の範囲
+  "triggers": { "crons": ["41 18 * * *"] },
   "workers_dev": true
 }

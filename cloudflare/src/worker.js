@@ -1,3 +1,4 @@
+import {deleteAccountStatements, sweepEmptyAccounts} from './cleanup.js';
 import {isOriginalRoute, originalUI, ORIGINAL_SCREENS, ORIGINAL_WRITES} from './original-ui.js';
 import {verifyIdToken, isAuthError} from './firebase-auth.js';
 import {passkeyRoutes} from './passkey.js';
@@ -27,7 +28,7 @@ export const shrinkingPath = (path, input) => SHRINKING_PATHS.has(path)
   || (['/api/favourite', '/api/reaction'].includes(path) && input?.remove === true);
 const STORAGE_FULL = '保存できる量の上限に近づいたので、無料の範囲で動かすために、いまは保存を止めています。見ることと消すことはできます。';
 import {fetchCalendar} from './screens/import.js';
-import {SCREEN_TABLES, nativeScreen, nativeAction, allNative, movingScreen, movingAction, screen as nativeScreenBody, action as nativeActionBody, readInput as nativeInput} from './screens/index.js';
+import {nativeScreen, nativeAction, allNative, movingScreen, movingAction, screen as nativeScreenBody, action as nativeActionBody, readInput as nativeInput} from './screens/index.js';
 const MAX_BODY = 262144;
 const COOKIE = 'taguri_session';
 const TTL = 60 * 60 * 24 * 30;
@@ -185,9 +186,7 @@ async function deleteAccount(request, env, uid, input) {
   // Firebase sign-in, so a linked account must be deleted after signing in
   // with Google or the email link (otherwise the email would stay at Google).
   if (linked && input.firebase_ready !== true) fail(409,'このアカウントは Google またはメールと結び付いています。Google 側の記録も消すため、Google かメールのリンクでログインし直してから削除してください。');
-  await env.DB.batch(['records','favourites','reactions','passkeys','webauthn_challenges','rec_cache','rec_shown',...SCREEN_TABLES,'sessions']
-    .map(t => env.DB.prepare(`DELETE FROM ${t} WHERE user_id=?`).bind(uid))
-    .concat(env.DB.prepare('DELETE FROM users WHERE id=?').bind(uid)));
+  await env.DB.batch(deleteAccountStatements(env.DB, uid));
   return json({deleted:true,firebase_linked:!!linked},200,{'Set-Cookie':`${COOKIE}=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0`});
 }
 // ---------------------------------------------------------------- recommendations
@@ -506,6 +505,10 @@ async function posterFromR2(request, env, url) {
 }
 
 export default {
+  // 1 日 1 回（wrangler.jsonc の triggers.crons）: 記録の無いアカウントを片付ける（cleanup.js）
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(sweepEmptyAccounts(env.DB).then(n => { if (n) console.log(`empty accounts removed: ${n}`); }));
+  },
   async fetch(request, env) {
     const url = new URL(request.url);
     const limited = await rateLimit(request, env, url);
