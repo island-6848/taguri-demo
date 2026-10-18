@@ -164,6 +164,25 @@ test('興味あり alone, on a stage only the catalogue has, recommends the same
   } finally { sqlite.close(); }
 });
 
+// #110: the answer copied to the tour's other venues is the same one press, not more interest.
+test('興味あり copied to the tour\'s other venues counts once as a hint; a venue pressed again directly counts', async () => {
+  const {env, sqlite} = await withIndex();
+  const a = await signIn(env);
+  try {
+    const ins = sqlite.prepare("INSERT INTO catalogue(id,title,date,venue,url,metadata) VALUES(?,'気になるツアー','2026-12-01',?,'',?)");
+    for (const [id, v] of [['781', '劇場A'], ['782', '劇場B'], ['783', '劇場C']]) ins.run(id, v, JSON.stringify({end_date: '2026-12-05', fields: {出演: '俳優甲'}}));
+    assert.equal((await step(env, a, {post: '/api/react', body: {stage_id: '781', value: 'interest', nofill: true, siblings: ['782', '783']}})).status, 200);
+    assert.equal(sqlite.prepare("SELECT count(*) AS n FROM reaction WHERE source='screen_tour'").get().n, 2, 'the venues keep their copy');
+    const diag = (await step(env, a, {get: '/api/screen/recommend'})).body.diag;
+    assert.deepEqual({i: diag.interest, p: diag.interest_with_people}, {i: 1, p: 1});
+    // Pressed again on another venue by the user themself: that one is an answer of its own.
+    env.CLOCK = {today: env.CLOCK.today, now: env.CLOCK.now + 864e5 + 1000};
+    sqlite.exec("UPDATE reaction SET label='2000-01-01'");
+    assert.equal((await step(env, a, {post: '/api/react', body: {stage_id: '782', value: 'interest', nofill: true}})).status, 200);
+    assert.equal((await step(env, a, {get: '/api/screen/recommend'})).body.diag.interest, 2);
+  } finally { sqlite.close(); }
+});
+
 test('a person raised only by pseudo ratings is not shown as 履歴 0 本', async () => {
   const {reasonRows} = await import('../src/screens/recommend.js');
   const html = reasonRows({parts: [[0.5, '脚本', '家丁', 0]], kinds: []}, new Map());
