@@ -13,12 +13,8 @@ import {
   isSignInWithEmailLink, signInWithEmailLink, signOut, deleteUser,
 } from 'firebase/auth';
 import {startAuthentication, startRegistration, browserSupportsWebAuthn} from '@simplewebauthn/browser';
+import {loginStore} from './login-store.js';
 
-const EMAIL_KEY = 'taguri_login_email';
-// 利用規約への同意（新規登録のときだけ要る。src/terms.js）。メールのリンクで戻ってきたときのために、メールアドレスと一緒に控える
-const AGREE_KEY = 'taguri_login_agree';
-// どちらの欄から送ったか（'login' ならアカウントを作らない。起案者の指示 2026-10-17「ログイン（上）または新規登録（下）」）
-const INTENT_KEY = 'taguri_login_intent';
 // /login?purpose=delete: sign in again, then delete the account (R7).
 const PARAMS = new URLSearchParams(location.search);
 const DELETE_MODE = PARAMS.get('purpose') === 'delete';
@@ -48,15 +44,8 @@ let firebaseUser = null;   // kept only in delete mode, to delete the Google-sid
 const $ = s => document.querySelector(s);
 const say = (text, bad = false) => { const s = $('#status'); s.textContent = text; s.classList.toggle('bad', bad); };
 const busy = on => document.querySelectorAll('button, input').forEach(el => { el.disabled = on; });
-const store = {
-  get: () => { try { return localStorage.getItem(EMAIL_KEY) || ''; } catch { return ''; } },
-  set: v => { try { localStorage.setItem(EMAIL_KEY, v); } catch {} },
-  clear: () => { try { for (const k of [EMAIL_KEY, AGREE_KEY, INTENT_KEY]) localStorage.removeItem(k); } catch {} },
-  intent: () => { try { return localStorage.getItem(INTENT_KEY) || 'login'; } catch { return 'login'; } },
-  setIntent: v => { try { localStorage.setItem(INTENT_KEY, v); } catch {} },
-  agree: () => { try { return localStorage.getItem(AGREE_KEY) || undefined; } catch { return undefined; } },
-  setAgree: v => { try { if (v) localStorage.setItem(AGREE_KEY, v); else localStorage.removeItem(AGREE_KEY); } catch {} },
-};
+// メールのリンク用の控え（アドレス・どちらの欄か・同意の版）。期限は login-store.js（#132）
+const store = loginStore(() => localStorage);
 // チェックが入っていれば、その版（login.html の value）。入っていなければ送らない
 const agreed = () => ($('#agree')?.checked ? $('#agree').value : undefined);
 // 同意が要ると言われたら、チェックの場所を目立たせる
@@ -152,6 +141,7 @@ async function main() {
   }
 
   const google = async (intent, agree) => {
+    store.clear();   // 別の方法を始めたら、メールの控えは消す（#132）
     busy(true); say('Google の画面でログインしてください…');
     try { await exchange(auth, await signInWithPopup(auth, new GoogleAuthProvider()), intent, agree); }
     catch (e) { busy(false); say(explain(e), true); askAgree(e); }
@@ -164,7 +154,7 @@ async function main() {
     try {
       await sendSignInLinkToEmail(auth, email, {url: location.origin + loginUrl(), handleCodeInApp: true});
       store.set(email); store.setIntent(intent); store.setAgree(intent === 'signup' ? agreed() : undefined);
-      say(`${intent === 'signup' ? '登録' : 'ログイン'}用のリンクを送りました。このブラウザでメールのリンクを開いてください。`);
+      say(`${intent === 'signup' ? '登録' : 'ログイン'}用のリンクを送りました。このブラウザで、1時間以内にメールのリンクを開いてください。`);
     } catch (e) { say(explain(e), true); }
     busy(false);
   };
@@ -209,6 +199,7 @@ function setupPasskeys() {
   // ブラウザで開き直せば使えると書く（起案者の質問 2026-10-16「ログイン画面のパスキーのやつ消したの？」）
   if (!browserSupportsWebAuthn()) { $('#passkey-signup').hidden = true; $('#passkey-login').hidden = true; $('#passkey-none').hidden = false; return; }
   $('#passkey-login').addEventListener('click', async () => {
+    store.clear();   // 別の方法を始めたら、メールの控えは消す（#132）
     busy(true); say('端末の画面でパスキーを選んでください…');
     try {
       const {challenge_id, options} = await postJSON('/api/auth/passkey/login/options', {});
@@ -221,6 +212,7 @@ function setupPasskeys() {
     // パスキーで始めるのは、いつも新しいアカウント。端末に作らせる前に同意を確かめる
     if (needAgree()) return;
     const agree = agreed();
+    store.clear();
     busy(true); say('端末の画面でパスキーを作ってください…');
     try {
       const {challenge_id, options} = await postJSON('/api/auth/passkey/register/options', {agree});
@@ -283,6 +275,7 @@ function setupLink() {
   });
 }
 
+store.expire();
 // チェックを入れたら、目立たせた枠を戻す
 $('#agree')?.addEventListener('change', () => $('#agree-box')?.classList.remove('need'));
 setupDelete();

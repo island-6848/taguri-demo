@@ -1254,6 +1254,22 @@
    "verifies": []
   },
   {
+   "id": "dec-login-email-ttl",
+   "type": "decision",
+   "status": "proposed",
+   "date": "2026-10-18",
+   "title": "メールのリンクでのログインのために端末に控えるアドレス・どちらの欄か・同意の版は、1 時間で消す（Google・パスキーを始めたとき・ログアウトしたときも消す）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/132",
+    "cloudflare/src/client/login-store.js",
+    "cloudflare/src/client/login.js",
+    "web/app.js",
+    "cloudflare/test/login-store.test.js",
+    "docs/cloudflare-security-review.md"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-login-hardening",
    "type": "decision",
    "status": "adopted",
@@ -7120,6 +7136,16 @@
    "from": "dec-loading-yarn",
    "rel": "affects",
    "to": "dec-design-adopted"
+  },
+  {
+   "from": "dec-login-email-ttl",
+   "rel": "affects",
+   "to": "q-login-email-storage"
+  },
+  {
+   "from": "dec-login-email-ttl",
+   "rel": "affects",
+   "to": "comp-firebase-login"
   },
   {
    "from": "dec-logout-all-token-boundary",
