@@ -5,7 +5,8 @@
 // the Python text speaks of the Render server: the アカウント card (recovery codes on Render)
 // points to the account page, the mail import is the owner's only, and 「観ればよかった」 is
 // looked up in the stages already in D1 instead of fetching the web.
-import {scaleOf, scaleCardHtml, SCALE_LABEL} from './grade.js';
+import {scaleOf, scaleCardHtml, SCALE_LABEL, frac} from './grade.js';
+import {FAV_SEED_W} from '../recommend.js';
 import {E, ValueError} from './py.js';
 import {ico, h2} from './icons.js';
 import {PREFS, readPrefSetting, regionsHtml, regionCounts, prefSettingAction} from './prefs.js';
@@ -144,29 +145,77 @@ const stepCard = (n, title, done, lead, inner = '') => `<div class="card start-s
   + `${h2(done ? 'check' : 'plus', `${n} ${title}`, done ? '<span class="badge part">済んでいます</span>' : '<span class="badge">これからです</span>')}`
   + `<p class="lead">${lead}</p>${inner}</div>`;
 
+// 評価の段階ごとの書き方（例は本人がいま使っている段階で出す。#93）
+const SCALE_WORDS = {
+  marks2: {marks: '○×', top: '○', low: '×'}, marks3: {marks: '○△×', top: '○', low: '×'},
+  marks4: {marks: '◎○△×', top: '◎', low: '×'}, stars5: {marks: '★1〜★5', top: '★5', low: '★1'},
+  stars11: {marks: '★0.5〜★5（0.5 きざみ）', top: '★5', low: '★0.5'},
+};
+/**
+ * おすすめの材料の説明（いまの決まり: recommend.js）。評価は本人の中での高い・低い（gradeOf）、
+ * お気に入りは評価の代わりの種で、興味ありより強い（FAV_SEED_W）。どちらの種も評価が増えるほど薄まる（SEED_K）
+ */
+function recoInputs(w) {
+  const fav = FAV_SEED_W > 1 ? '<b>興味ありより強く効きます</b>' : '興味ありと同じくらい効きます';
+  return `<b>おすすめの材料は 3 つです。</b>`
+    + `① 観た公演に付けた評価：あなたが付けた評価の中で高いか低いかを見ます（${E(w.top)} を付けた公演の出演者・作り手は上がり、${E(w.low)} の公演の人は下がります）。`
+    + `② お気に入りに登録した名前：観たことが無くても材料になり、${fav}。`
+    + `③ 「興味あり」を押した公演：その公演の人・種類に少しずつ効きます。`
+    + `評価が増えるほど、②③ の効き方は控えめになります。`;
+}
+
 export async function startScreen(_params, ctx) {
   const dec = await loadDeclared(ctx);
   const nDec = KINDS.reduce((s, k) => s + (dec[k] || []).length, 0);
   const nCand = Number((await ctx.db.prepare("SELECT v FROM rec_meta WHERE k='catalogue_upcoming'").first())?.v || 0);
-  const nWorks = (await loadWorks(ctx)).length;
+  const works = await loadWorks(ctx);
+  const nWorks = works.length;
+  const nRated = works.filter(w => !w.unseen && frac(w.verdict) !== null).length;
+  const nWait = works.filter(w => !w.unseen && !w.verdict && w.last_date && w.last_date <= ctx.today).length;
+  const words = SCALE_WORDS[await scaleOf(ctx)] || SCALE_WORDS.stars5;
   const kinds = KINDS.map(k => `<option value="${E(k)}">${E(k)}</option>`).join('');
   const tags = KINDS.flatMap(k => (dec[k] || []).map(n => `<span class="tag" data-kind="${E(k)}" data-name="${E(n)}">${E(k)}「${E(n)}」<button data-fav="remove">✕</button></span>`)).join('');
   const form = `<div class="fav-add"><label class="fld" for="fav-kind"><span class="fl">種類<small class="req">必須</small></span><select id="fav-kind">${kinds}</select></label> <label class="fld" for="fav-name"><span class="fl">名前<small class="req">必須</small></span><input id="fav-name" type="text" placeholder="例：劇団四季・シェイクスピア・家族" size="26"></label>`
     + ` <button data-fav="add">${ico('star')}登録する</button><span class="said"></span></div>` + (tags ? `<div class="tags">${tags}</div>` : '');
   const step1 = stepCard(1, `見逃したくない名前を登録する（いま ${nDec} 件）`, nDec > 0,
-    '劇団・俳優・演出家・作品・原作者・題材のどれでも登録できます。<b>登録した名前の公演は、内容を問わず、件数の制限も付けずに出します。</b>1 件登録するだけで動き始めます。<br>あとから「おすすめ ▸ お気に入り」で足すことも外すこともできます。', form);
+    '劇団・俳優・演出家・作品・原作者・題材のどれでも登録できます。<b>登録した名前の公演は、内容を問わず、件数の制限も付けずに「お気に入り」に出します。</b>1 件登録するだけで動き始めます。<br>あとから「おすすめ ▸ お気に入り」で足すことも外すこともできます。', form);
   const step2 = stepCard(2, '公演の情報を取り寄せる', nCand > 0, nCand > 0
     ? `手元にこれから観られる公演を ${nCand} 件持っています。毎日取り直しています。`
     : 'まだ公演の情報が届いていません。毎日の取得のあとに、ここに件数が出ます。');
-  const step3 = stepCard(3, `観た公演を入れる（いま ${nWorks} 件・任意です）`, nWorks > 0,
-    '<b>観た記録が 1 件もないうちは、好みに合わせたおすすめは出ません。</b>おすすめは ◎ を付けた公演の作り手をもとに作るためです。<b>1 段目で登録した名前の公演は、記録が無くても出ます。</b>'
-    + '<br><a href="/register?t=__TAGURI_TOKEN__">観劇記録を追加</a> から、手で追加できます。観た公演には <a href="/rate?t=__TAGURI_TOKEN__">観た公演の評価</a> で ◎○△× を付けてください。');
-  const body = `<h1>はじめに、見逃したくない名前を 1 つ登録してください</h1>
-<p class="lede">たぐりは<b>これから観られる公演の中から、見逃したくない舞台を毎週届けるアプリ</b>です。まだ登録も記録もないので、届けられるものがありません。<b>下の3つのうち、1つ目だけで始められます。</b></p>
+  const rateLink = nWait
+    ? `<a href="/rate/unrated?t=__TAGURI_TOKEN__">未評価の記録（いま ${nWait} 件）</a>で ${E(words.marks)} を付けてください`
+    : `観た公演には <a href="/rate?t=__TAGURI_TOKEN__">観た公演の評価</a> で ${E(words.marks)} を付けてください`;
+  const step3 = stepCard(3, `観た公演を入れて評価する（いま記録 ${nWorks} 件・評価 ${nRated} 件・任意です）`, nRated > 0,
+    (nRated ? '' : '<b>評価が 1 件もないうちは、観た記録から好みを読み取ったおすすめは出ません。</b><b>1 段目で登録した名前の公演は、記録が無くても出ます。</b><br>')
+    + recoInputs(words)
+    + `<br><a href="/register?t=__TAGURI_TOKEN__">観劇記録を追加</a> から、手で追加できます。${rateLink}（評価の形は「設定」の「評価の付け方」で変えられます）。`);
+  // いまの状態で見出しと次の一歩を変える（#93）: 何も無い／名前か記録だけ（評価なし）／評価した記録がある
+  const done = [nDec > 0 && `名前の登録（${nDec} 件）`, nCand > 0 && '公演の情報', nWorks > 0 && `観た記録（${nWorks} 件）`, nRated > 0 && `評価（${nRated} 件）`].filter(Boolean);
+  const doneLine = done.length ? `<p class="lede">済んでいること：${done.map(E).join('・')}</p>` : '';
+  let h1, lede, foot;
+  if (nRated > 0) {
+    h1 = '準備はできています';
+    lede = `評価した記録 ${nRated} 件${nDec ? `と、登録した名前 ${nDec} 件` : ''}をもとに、おすすめを作っています。<b>次は「今週のおすすめ」を見て、気になる公演に「興味あり」を押してください。</b>評価や名前を足すほど、おすすめが合っていきます。`;
+    foot = '<p class="lede"><a href="/recommend?t=__TAGURI_TOKEN__">今週のおすすめを見る</a></p>';
+  } else if (nDec > 0 || nWorks > 0) {
+    h1 = nDec > 0 ? '名前を登録しました。次は観た公演を評価してください' : '記録を入れました。次は評価して、見逃したくない名前も登録してください';
+    const next = nWait ? `<b>次は、未評価の記録 ${nWait} 件に ${E(words.marks)} を付けてください。</b>`
+      : nWorks ? '<b>記録した公演は、上演が終わると評価できるようになります。</b>' : '<b>次は、観た公演を記録して評価してください（3 段目）。</b>';
+    lede = (nDec ? `登録した名前 ${nDec} 件の公演は、もう「お気に入り」に出ています。` : 'まだ名前が無いので、1 段目で見逃したくない名前を 1 つ登録すると、その公演がすぐ「お気に入り」に出ます。')
+      + `${next}評価が付くと、好みに合わせたおすすめも出るようになります。`;
+    foot = nDec ? '<p class="lede"><a href="/recommend/favourites?t=__TAGURI_TOKEN__">お気に入りの公演を見る</a></p>' : '';
+  } else {
+    h1 = 'はじめに、見逃したくない名前を 1 つ登録してください';
+    lede = 'まだ登録も記録もないので、届けられるものがありません。<b>下の3つのうち、1つ目だけで始められます。</b>';
+    foot = '<p class="lede">ナビゲーションから、各画面を先に見ることもできます。<b>どの画面もまだ0件です。</b></p>';
+  }
+  const body = `<h1>${h1}</h1>
+<p class="lede">たぐりは<b>これから観られる公演の中から、見逃したくない舞台を毎週届けるアプリ</b>です。${lede}</p>
+${doneLine}
 ${step1}
 ${step2}
 ${step3}
-<p class="lede">ナビゲーションから、各画面を先に見ることもできます。<b>どの画面もまだ0件です。</b></p>`;
+${foot}`;
   return {title: 'はじめる', body_html: body};
 }
 
