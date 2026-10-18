@@ -26,6 +26,17 @@ auto-link-current-state）。CoRich の検索ページはデータセンター�
   （catalog-terms-no-redistribution）
 - 1 回で読み切れなくても、読んだところまでは `progress.json` に残る（途中で止まっても続きから読む）
 
+## あらすじ（2 周目、起案者の指示 2026-10-18「サービス化するなら全件読み直さないとだめだよね？」「claude でやろう」）
+
+一覧を読み終えたら（`done`）、同じ段・同じ時間の枠で、**一覧の公演ページを新しい順にもう一度 1 枚ずつ読み**、
+本文（`extract_theme_llm.corich_text` と同じ切り出し）を**あらすじの読み取り待ち**（`synopsis_queue.jsonl`、
+side `past`）に積む。読むのは起案者の Claude（`--print-queue`→`--import-answers`、本文に実在するかを検査）。
+- **ページも本文も手元に溜めない。** 待ちに積むだけで、読んだら待ちから消える。待ちが `STORY_QUEUE_MAX` 件を
+  越えたら、その日は積まない（読む速さより速く積まない。state ブランチを膨らませない）
+- 本文が `MIN_STORY_TEXT` 字未満の公演は、読まずに「本文が短い」（model `rule`）として題材の表に残す
+- すでに題材の表にある公演（これからの公演だったときに読んだもの）は読み直さない
+- 進み具合は `progress.json` の `story_line`（一覧の何行目まで済んだか）。一覧は新しい順に足されるので、新しい公演から進む
+
 ## 作るもの
 
 - `data/past/stages.jsonl` ── 1 公演 1 行（追記）。`{stage_id, title, period, start, end, group,
@@ -54,6 +65,9 @@ PAST = ROOT / "data" / "past"
 ROWS = PAST / "stages.jsonl"
 PROGRESS = PAST / "progress.json"
 CANDIDATES = ROOT / "data" / "review" / "candidates.jsonl"
+STORY_SIDE = "past"
+STORY_SHARE = 0.4          # 一覧を読み終える前は、その日の時間の 4 割をあらすじに回す（最近の公演のあらすじから先に揃える）
+STORY_QUEUE_MAX = 2_000     # 読み取り待ちの上限（1 件およそ 5〜7 KB。state ブランチを 15 MB ほどまでにする）
 
 # 照合とおすすめに使う欄だけを残す（料金・問い合わせなどは持たない）
 KEEP_FIELDS = set(FC.ROLE_KEYS) | {"劇場", "スタッフ"}
@@ -157,9 +171,16 @@ def run(ids: list[int], *, limit: int, since: str, stop_after: int, max_minutes:
     fetch = fetch or (lambda sid: PH.fetch(f"{FC.BASE}/stage/{sid}", timeout=45).decode("utf-8", "replace"))
     p = load_progress()
     if p.get("done"):
-        return {"read": 0, "kept": 0, "skipped": 0, "done": True, "cursor": p.get("cursor")}
+        got = stories(p, limit=limit, max_minutes=max_minutes, fetch=fetch)
+        save_progress(p)
+        return {"read": 0, "kept": 0, "skipped": 0, "done": True, "cursor": p.get("cursor"), "stories": got}
     if p.get("top") is None and ids:
         p["top"] = max(ids)
+    # 一覧を読み終える前も、時間の上限が決まっている実行（毎日の取得）では、残りの 4 割であらすじも進める
+    share = STORY_SHARE if max_minutes else 0
+    if share:
+        story_minutes, max_minutes = max_minutes * share, max_minutes * (1 - share)
+        story_limit, limit = int(limit * share), limit - int(limit * share)
     todo = plan(ids, p, known_ids(), limit)
     t0 = time.monotonic()
     got = {"read": 0, "kept": 0, "skipped": 0, "old": 0}
@@ -172,8 +193,9 @@ def run(ids: list[int], *, limit: int, since: str, stop_after: int, max_minutes:
             try:
                 html = fetch(sid)
             except PH.Skipped as e:
-                # ホストから手を引いた（robots.txt・429 が続いた等）なら、この実行はここまで
+                # ホストから手を引いた（robots.txt・429 が続いた等）なら、この実行はここまで（あらすじも読まない）
                 print(f"取得をやめる: {e}")
+                share = 0
                 break
             except Exception as e:                    # 消えたページ・一時的な失敗は飛ばす
                 got["skipped"] += 1
@@ -202,8 +224,69 @@ def run(ids: list[int], *, limit: int, since: str, stop_after: int, max_minutes:
                 save_progress(p)
     if not todo:
         p["done"] = True
+    if share:
+        got["stories"] = stories(p, limit=story_limit, max_minutes=story_minutes, fetch=fetch)
     save_progress(p)
     got.update(done=p.get("done", False), cursor=p.get("cursor"))
+    return got
+
+
+def stories(p: dict, *, limit: int, max_minutes: float, fetch) -> dict:
+    """2 周目: 一覧の公演ページの本文を、あらすじの読み取り待ちに積む（題材は起案者の Claude が読む）。"""
+    import extract_theme_llm as EX
+    lines = [l for l in ROWS.read_text(encoding="utf-8").split("\n") if l.strip()] if ROWS.exists() else []
+    seen = set()
+    for path in (EX.OUT, EX.QUEUE):
+        for row in EX._read_jsonl(path):
+            seen.add(str(row.get("id")))
+    queue = EX._read_jsonl(EX.QUEUE)
+    room = STORY_QUEUE_MAX - sum(1 for q in queue if q.get("side") == STORY_SIDE)
+    got = {"queued": 0, "short": 0, "skipped": 0, "left": 0, "room": max(0, room)}
+    if room <= 0:
+        got["left"] = len(lines) - int(p.get("story_line") or 0)
+        print(f"あらすじの読み取り待ちが {STORY_QUEUE_MAX} 件あるので、今日は積まない")
+        return got
+    t0 = time.monotonic()
+    i = int(p.get("story_line") or 0)
+    add, short = [], []
+    while i < len(lines) and len(add) < min(room, limit):
+        if max_minutes and (time.monotonic() - t0) / 60 > max_minutes:
+            print(f"時間の上限（{max_minutes} 分）に来たので、ここまでにする")
+            break
+        r = json.loads(lines[i])
+        sid = str(r.get("stage_id") or "")
+        if not sid or sid in seen:
+            i += 1
+            continue
+        try:
+            html = fetch(int(sid))
+        except PH.Skipped as e:
+            print(f"取得をやめる: {e}")
+            break
+        except Exception as e:                    # 消えたページ・一時的な失敗は飛ばす（次の周で読み直さない）
+            got["skipped"] += 1
+            print(f"{sid}: 読めなかった（{type(e).__name__}）")
+            i += 1
+            continue
+        text = EX.prep(EX.strip_reviews(html), 2500)
+        row = {"side": STORY_SIDE, "id": sid, "title": (r.get("title") or "")[:60], "url": "", "text": text}
+        (add if len(text) >= EX.MIN_STORY_TEXT else short).append(row)
+        seen.add(sid)
+        i += 1
+    if add:
+        with EX.QUEUE.open("a", encoding="utf-8") as fp:
+            fp.write("".join(json.dumps({**q, "prompt_version": EX.PROMPT_VERSION}, ensure_ascii=False) + "\n" for q in add))
+        EX.QUEUE_PROMPT.write_text(EX.PROMPTS[EX.PROMPT_VERSION], encoding="utf-8")
+    if short:
+        today = date.today().isoformat()
+        with EX.OUT.open("a", encoding="utf-8") as fp:
+            fp.write("".join(json.dumps({"side": STORY_SIDE, "id": q["id"], "title": q["title"], "url": "", "synopsis": "",
+                                         "elements": [], "reason": "本文が短い", "model": "rule",
+                                         "prompt_version": EX.PROMPT_VERSION, "at": today}, ensure_ascii=False) + "\n"
+                              for q in short))
+    p["story_line"] = i
+    got.update(queued=len(add), short=len(short), left=len(lines) - i)
+    print(f"あらすじ: 待ちに {len(add)} 件積んだ／本文が短い {len(short)} 件／読めなかった {got['skipped']} 件／残り {got['left']} 行")
     return got
 
 
