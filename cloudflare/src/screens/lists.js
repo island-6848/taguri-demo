@@ -711,7 +711,7 @@ export async function favouritesScreen(params, ctx) {
     + `<summary>${ico('star')}登録した名前 <b>${n}件</b> ── 足す・外す</summary>`
     + '<p class="lead">観た記録に無い名前も登録できます。おすすめは ◎ を付けた公演の作り手からしか作れないので、まだ観たことのない劇団や、人から聞いただけの名前は、ここから登録してください。'
     + '<b>表記ゆれ（漢字とカタカナ、送り仮名の違いなど）は、自動では見分けられません。</b>表記ゆれがありそうなときは、両方の書き方をそれぞれ登録してください。</p>'
-    + `<div class="fav-add"><select id="fav-kind">${kinds}</select> <input id="fav-name" type="text" placeholder="団体名・人名・作品名・題材" size="26"> <button data-fav="add">登録する</button>`
+    + `<div class="fav-add"><label class="fld" for="fav-kind"><span class="fl">種類<small class="req">必須</small></span><select id="fav-kind">${kinds}</select></label> <label class="fld" for="fav-name"><span class="fl">名前<small class="req">必須</small></span><input id="fav-name" type="text" placeholder="例：劇団四季・シェイクスピア・家族" size="26"></label> <button data-fav="add">登録する</button>`
     + `<span class="said"></span></div><div class="tags">${tags}</div></details></div>`
     + (allFavs.length ? `<p class="fgh">${ico('search', 15)}<b>表示の絞り込み</b><span>お気に入りの公演の中から、表示する項目を設定できます。</span></p>`
       + `<div class="fil2 narrow">${prefForm(pcounts, prefs, '/recommend/favourites', PAGE_PREF_NOTE, sort !== 'start' ? {s: sort} : {},
@@ -761,11 +761,13 @@ async function favouriteAction(b, ctx) {
   const v = await readJson(ctx, DECLARED_KEY);
   const d = Object.fromEntries(KINDS.map(k => [k, (v && Array.isArray(v[k]) ? v[k] : []).filter(x => typeof x === 'string')]));
   let cur = d[kind];
+  // 外すときに無い名前なら書かない（保存の上限でも外す操作は通すので、行を増やさない。#88）
+  const keep = action === 'remove' && !cur.includes(name);
   if (action === 'add') { if (!cur.includes(name)) cur.push(name); } else cur = cur.filter(x => x !== name);
   d[kind] = cur;
   // app.save_declared: trimmed, de-duplicated, sorted, at most 100 per kind.
   const out = Object.fromEntries(KINDS.map(k => [k, [...new Set(d[k].map(x => String(x).trim().slice(0, 80)).filter(Boolean))].sort(cmp).slice(0, 100)]));
-  await writeJson(ctx, DECLARED_KEY, out);
+  if (!keep) await writeJson(ctx, DECLARED_KEY, out);
   if (action === 'remove') await ctx.db.prepare('DELETE FROM favourites WHERE user_id=? AND name=? AND kind=?').bind(ctx.uid, name, kind).run();
   return {body: {ok: true, kind, name, n: cur.length, said: '登録しました。手元にある公演から探して、お気に入りに表示します'}};
 }
@@ -781,9 +783,10 @@ async function declineAction(b, ctx) {
   if (!DEC_KIND_SET.has(kind)) throw new ValueError('対象がおかしい');
   const entry = (k0 || kind) ? `${k0 || kind}\t${word}` : word;
   let cur = await loadDeclined(ctx);
+  const keep = action === 'remove' && !cur.includes(entry);   // 無いものを外すときは書かない（#88）
   if (action === 'add') { if (!cur.includes(entry)) cur.push(entry); } else cur = cur.filter(w => w !== entry);
   cur = [...new Set(cur.map(w => w.trim().slice(0, 60)).filter(Boolean))].slice(0, 200);
-  await writeJson(ctx, DECLINED_KEY, cur);
+  if (!keep) await writeJson(ctx, DECLINED_KEY, cur);
   return {body: {ok: true, word, kind: k0 || kind, n: cur.length}};
 }
 
@@ -792,9 +795,10 @@ async function kindOffAction(b, ctx) {
   const action = String(b.action ?? ''), key = String(b.key ?? '').trim().slice(0, 80);
   if (!['add', 'remove'].includes(action) || !/^#[^\t]+\t[^\t]+$/.test(key)) throw new ValueError('action（add / remove）と key（#種類 と 中身）が要る');
   let cur = await loadKindOff(ctx);
+  const keep = action === 'remove' && !cur.includes(key);     // 無いものを外すときは書かない（#88）
   if (action === 'add') { if (!cur.includes(key)) cur.push(key); } else cur = cur.filter(k => k !== key);
   cur = [...new Set(cur)].slice(0, KIND_OFF_MAX);
-  await writeJson(ctx, KIND_OFF_KEY, cur);
+  if (!keep) await writeJson(ctx, KIND_OFF_KEY, cur);
   return {body: {ok: true, key, n: cur.length}};
 }
 

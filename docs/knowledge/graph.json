@@ -775,6 +775,19 @@
    "verifies": []
   },
   {
+   "id": "dec-cap-allows-shrinking",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "D1 が保存の上限（4 GB）に達しても、外す・消す・空にする操作と、ログアウト・アカウントの削除は通す。足す操作は止めたまま（#88）",
+   "sources": [
+    "cloudflare/src/worker.js",
+    "cloudflare/src/screens/lists.js",
+    "cloudflare/test/free-tier-d1.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-change-answer-unified",
    "type": "decision",
    "status": "adopted",
@@ -3082,6 +3095,20 @@
     "cloudflare/src/recommend.js",
     "cloudflare/src/worker.js",
     "cloudflare/migrations/0016.sql"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "import-data-flow",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-18",
+   "title": "取り込みの読み方ごとに、端末で読むもの・サーバーを通るもの・保存するものが違う。非公開アドレスはサーバーを通る（#91）",
+   "sources": [
+    "cloudflare/src/client/import.js",
+    "cloudflare/src/client/calendar-callback.js",
+    "cloudflare/src/screens/import.js",
+    "cloudflare/src/screens/settings.js"
    ],
    "verifies": []
   },
@@ -5647,6 +5674,23 @@
    ]
   },
   {
+   "id": "search-request-not-read",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-18",
+   "title": "「次の更新で探してもらう」の依頼は D1 に控えるだけで、毎日の更新はまだ読んでいない。画面は探すと約束せず、更新の日時は crawl-time.js の 1 つの決まりから出す（#101）",
+   "sources": [
+    "cloudflare/src/crawl-time.js",
+    "cloudflare/src/screens/search.js",
+    "cloudflare/src/screens/settings.js",
+    "tools/taguri/fetch_requests.py",
+    "tools/taguri/run.py",
+    "tools/taguri/deploy/github-actions/catalog.yml",
+    "https://github.com/island-6848/taguri-crawler/blob/17cf15f9bbf7ca2c456de1935e34d2e244cbb83b/.github/workflows/catalog.yml"
+   ],
+   "verifies": []
+  },
+  {
    "id": "sec-audit-1017",
    "type": "finding",
    "status": "confirmed",
@@ -6527,6 +6571,16 @@
    "from": "dec-calendar-worker",
    "rel": "affects",
    "to": "comp-native-screens"
+  },
+  {
+   "from": "dec-cap-allows-shrinking",
+   "rel": "depends_on",
+   "to": "dec-account-cap-counted"
+  },
+  {
+   "from": "dec-cap-allows-shrinking",
+   "rel": "depends_on",
+   "to": "dec-free-tier-only"
   },
   {
    "from": "dec-change-answer-unified",
@@ -8484,6 +8538,11 @@
    "to": "comp-recommender"
   },
   {
+   "from": "import-data-flow",
+   "rel": "affects",
+   "to": "dec-import-calendar-mail"
+  },
+  {
    "from": "index-never-delivered",
    "rel": "answers",
    "to": "q-interest-no-reco-prod"
@@ -10217,6 +10276,16 @@
    "from": "scale-1000-estimate",
    "rel": "depends_on",
    "to": "q-real-catalog-stats"
+  },
+  {
+   "from": "search-request-not-read",
+   "rel": "affects",
+   "to": "q-search-request-crawl"
+  },
+  {
+   "from": "search-request-not-read",
+   "rel": "affects",
+   "to": "dec-search-worker"
   },
   {
    "from": "sec-audit-1017",

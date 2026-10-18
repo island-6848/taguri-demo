@@ -292,6 +292,12 @@ body{padding:0}
 .tag button{font:inherit;font-size:11px;border:0;background:transparent;color:var(--mute);cursor:pointer}
 .tag button:hover{color:#e34948}
 .fav-add,.miss-add,.imp,.add-work{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0 0}
+/* 入力欄の名前は、打ち始めても消えないように欄の上に常に出す（placeholder は例だけ。#95） */
+.fav-add:has(.fld),.miss-add:has(.fld),.add-work:has(.fld){align-items:flex-end}
+.fld{display:inline-flex;flex-direction:column;gap:3px;font-size:12px;color:var(--ink2)}
+.fld .fl{display:inline-flex;gap:6px;align-items:baseline;font-weight:600}
+.fld .fl small{font-weight:400;font-size:11px;color:var(--mute)}
+.fld .fl small.req{color:var(--ink2)}
 /* ---- 公演詳細を直す欄 -----------------------------------------------------
    **読む画面の中に置く入力なので、畳んだ状態を既定にする。** 開いた行だけが
    入力の場になり、読んでいる最中の行は読むための形のまま残る。 */

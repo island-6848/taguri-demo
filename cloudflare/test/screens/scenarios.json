@@ -10,6 +10,16 @@
    },
    {
     "get": "/api/screen/notes"
+   },
+   {
+    "post": "/api/add_work",
+    "body": {
+     "title": "まだ評価していない舞台",
+     "date": "2026-09-01"
+    }
+   },
+   {
+    "get": "/api/screen/rate"
    }
   ]
  },

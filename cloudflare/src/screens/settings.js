@@ -5,7 +5,9 @@
 // the Python text speaks of the Render server: the アカウント card (recovery codes on Render)
 // points to the account page, the mail import is the owner's only, and 「観ればよかった」 is
 // looked up in the stages already in D1 instead of fetching the web.
-import {scaleOf, scaleCardHtml, SCALE_LABEL} from './grade.js';
+import {scaleOf, scaleCardHtml, SCALE_LABEL, frac} from './grade.js';
+import {FAV_SEED_W} from '../recommend.js';
+import {nextCrawl, crawlLabel, crawlSearch} from '../crawl-time.js';
 import {E, ValueError} from './py.js';
 import {ico, h2} from './icons.js';
 import {PREFS, readPrefSetting, regionsHtml, regionCounts, prefSettingAction} from './prefs.js';
@@ -144,29 +146,77 @@ const stepCard = (n, title, done, lead, inner = '') => `<div class="card start-s
   + `${h2(done ? 'check' : 'plus', `${n} ${title}`, done ? '<span class="badge part">済んでいます</span>' : '<span class="badge">これからです</span>')}`
   + `<p class="lead">${lead}</p>${inner}</div>`;
 
+// 評価の段階ごとの書き方（例は本人がいま使っている段階で出す。#93）
+const SCALE_WORDS = {
+  marks2: {marks: '○×', top: '○', low: '×'}, marks3: {marks: '○△×', top: '○', low: '×'},
+  marks4: {marks: '◎○△×', top: '◎', low: '×'}, stars5: {marks: '★1〜★5', top: '★5', low: '★1'},
+  stars11: {marks: '★0.5〜★5（0.5 きざみ）', top: '★5', low: '★0.5'},
+};
+/**
+ * おすすめの材料の説明（いまの決まり: recommend.js）。評価は本人の中での高い・低い（gradeOf）、
+ * お気に入りは評価の代わりの種で、興味ありより強い（FAV_SEED_W）。どちらの種も評価が増えるほど薄まる（SEED_K）
+ */
+function recoInputs(w) {
+  const fav = FAV_SEED_W > 1 ? '<b>興味ありより強く効きます</b>' : '興味ありと同じくらい効きます';
+  return `<b>おすすめの材料は 3 つです。</b>`
+    + `① 観た公演に付けた評価：あなたが付けた評価の中で高いか低いかを見ます（${E(w.top)} を付けた公演の出演者・作り手は上がり、${E(w.low)} の公演の人は下がります）。`
+    + `② お気に入りに登録した名前：観たことが無くても材料になり、${fav}。`
+    + `③ 「興味あり」を押した公演：その公演の人・種類に少しずつ効きます。`
+    + `評価が増えるほど、②③ の効き方は控えめになります。`;
+}
+
 export async function startScreen(_params, ctx) {
   const dec = await loadDeclared(ctx);
   const nDec = KINDS.reduce((s, k) => s + (dec[k] || []).length, 0);
   const nCand = Number((await ctx.db.prepare("SELECT v FROM rec_meta WHERE k='catalogue_upcoming'").first())?.v || 0);
-  const nWorks = (await loadWorks(ctx)).length;
+  const works = await loadWorks(ctx);
+  const nWorks = works.length;
+  const nRated = works.filter(w => !w.unseen && frac(w.verdict) !== null).length;
+  const nWait = works.filter(w => !w.unseen && !w.verdict && w.last_date && w.last_date <= ctx.today).length;
+  const words = SCALE_WORDS[await scaleOf(ctx)] || SCALE_WORDS.stars5;
   const kinds = KINDS.map(k => `<option value="${E(k)}">${E(k)}</option>`).join('');
   const tags = KINDS.flatMap(k => (dec[k] || []).map(n => `<span class="tag" data-kind="${E(k)}" data-name="${E(n)}">${E(k)}「${E(n)}」<button data-fav="remove">✕</button></span>`)).join('');
-  const form = `<div class="fav-add"><select id="fav-kind">${kinds}</select> <input id="fav-name" type="text" placeholder="劇団名・俳優名・作品名・題材" size="26">`
+  const form = `<div class="fav-add"><label class="fld" for="fav-kind"><span class="fl">種類<small class="req">必須</small></span><select id="fav-kind">${kinds}</select></label> <label class="fld" for="fav-name"><span class="fl">名前<small class="req">必須</small></span><input id="fav-name" type="text" placeholder="例：劇団四季・シェイクスピア・家族" size="26"></label>`
     + ` <button data-fav="add">${ico('star')}登録する</button><span class="said"></span></div>` + (tags ? `<div class="tags">${tags}</div>` : '');
   const step1 = stepCard(1, `見逃したくない名前を登録する（いま ${nDec} 件）`, nDec > 0,
-    '劇団・俳優・演出家・作品・原作者・題材のどれでも登録できます。<b>登録した名前の公演は、内容を問わず、件数の制限も付けずに出します。</b>1 件登録するだけで動き始めます。<br>あとから「おすすめ ▸ お気に入り」で足すことも外すこともできます。', form);
+    '劇団・俳優・演出家・作品・原作者・題材のどれでも登録できます。<b>登録した名前の公演は、内容を問わず、件数の制限も付けずに「お気に入り」に出します。</b>1 件登録するだけで動き始めます。<br>あとから「おすすめ ▸ お気に入り」で足すことも外すこともできます。', form);
   const step2 = stepCard(2, '公演の情報を取り寄せる', nCand > 0, nCand > 0
     ? `手元にこれから観られる公演を ${nCand} 件持っています。毎日取り直しています。`
     : 'まだ公演の情報が届いていません。毎日の取得のあとに、ここに件数が出ます。');
-  const step3 = stepCard(3, `観た公演を入れる（いま ${nWorks} 件・任意です）`, nWorks > 0,
-    '<b>観た記録が 1 件もないうちは、好みに合わせたおすすめは出ません。</b>おすすめは ◎ を付けた公演の作り手をもとに作るためです。<b>1 段目で登録した名前の公演は、記録が無くても出ます。</b>'
-    + '<br><a href="/register?t=__TAGURI_TOKEN__">観劇記録を追加</a> から、手で追加できます。観た公演には <a href="/rate?t=__TAGURI_TOKEN__">観た公演の評価</a> で ◎○△× を付けてください。');
-  const body = `<h1>はじめに、見逃したくない名前を 1 つ登録してください</h1>
-<p class="lede">たぐりは<b>これから観られる公演の中から、見逃したくない舞台を毎週届けるアプリ</b>です。まだ登録も記録もないので、届けられるものがありません。<b>下の3つのうち、1つ目だけで始められます。</b></p>
+  const rateLink = nWait
+    ? `<a href="/rate/unrated?t=__TAGURI_TOKEN__">未評価の記録（いま ${nWait} 件）</a>で ${E(words.marks)} を付けてください`
+    : `観た公演には <a href="/rate?t=__TAGURI_TOKEN__">観た公演の評価</a> で ${E(words.marks)} を付けてください`;
+  const step3 = stepCard(3, `観た公演を入れて評価する（いま記録 ${nWorks} 件・評価 ${nRated} 件・任意です）`, nRated > 0,
+    (nRated ? '' : '<b>評価が 1 件もないうちは、観た記録から好みを読み取ったおすすめは出ません。</b><b>1 段目で登録した名前の公演は、記録が無くても出ます。</b><br>')
+    + recoInputs(words)
+    + `<br><a href="/register?t=__TAGURI_TOKEN__">観劇記録を追加</a> から、手で追加できます。${rateLink}（評価の形は「設定」の「評価の付け方」で変えられます）。`);
+  // いまの状態で見出しと次の一歩を変える（#93）: 何も無い／名前か記録だけ（評価なし）／評価した記録がある
+  const done = [nDec > 0 && `名前の登録（${nDec} 件）`, nCand > 0 && '公演の情報', nWorks > 0 && `観た記録（${nWorks} 件）`, nRated > 0 && `評価（${nRated} 件）`].filter(Boolean);
+  const doneLine = done.length ? `<p class="lede">済んでいること：${done.map(E).join('・')}</p>` : '';
+  let h1, lede, foot;
+  if (nRated > 0) {
+    h1 = '準備はできています';
+    lede = `評価した記録 ${nRated} 件${nDec ? `と、登録した名前 ${nDec} 件` : ''}をもとに、おすすめを作っています。<b>次は「今週のおすすめ」を見て、気になる公演に「興味あり」を押してください。</b>評価や名前を足すほど、おすすめが合っていきます。`;
+    foot = '<p class="lede"><a href="/recommend?t=__TAGURI_TOKEN__">今週のおすすめを見る</a></p>';
+  } else if (nDec > 0 || nWorks > 0) {
+    h1 = nDec > 0 ? '名前を登録しました。次は観た公演を評価してください' : '記録を入れました。次は評価して、見逃したくない名前も登録してください';
+    const next = nWait ? `<b>次は、未評価の記録 ${nWait} 件に ${E(words.marks)} を付けてください。</b>`
+      : nWorks ? '<b>記録した公演は、上演が終わると評価できるようになります。</b>' : '<b>次は、観た公演を記録して評価してください（3 段目）。</b>';
+    lede = (nDec ? `登録した名前 ${nDec} 件の公演は、もう「お気に入り」に出ています。` : 'まだ名前が無いので、1 段目で見逃したくない名前を 1 つ登録すると、その公演がすぐ「お気に入り」に出ます。')
+      + `${next}評価が付くと、好みに合わせたおすすめも出るようになります。`;
+    foot = nDec ? '<p class="lede"><a href="/recommend/favourites?t=__TAGURI_TOKEN__">お気に入りの公演を見る</a></p>' : '';
+  } else {
+    h1 = 'はじめに、見逃したくない名前を 1 つ登録してください';
+    lede = 'まだ登録も記録もないので、届けられるものがありません。<b>下の3つのうち、1つ目だけで始められます。</b>';
+    foot = '<p class="lede">ナビゲーションから、各画面を先に見ることもできます。<b>どの画面もまだ0件です。</b></p>';
+  }
+  const body = `<h1>${h1}</h1>
+<p class="lede">たぐりは<b>これから観られる公演の中から、見逃したくない舞台を毎週届けるアプリ</b>です。${lede}</p>
+${doneLine}
 ${step1}
 ${step2}
 ${step3}
-<p class="lede">ナビゲーションから、各画面を先に見ることもできます。<b>どの画面もまだ0件です。</b></p>`;
+${foot}`;
   return {title: 'はじめる', body_html: body};
 }
 
@@ -230,23 +280,30 @@ export async function registerScreen(_params, ctx) {
 
 <div class="card imx" data-import>${h2('mail', '① Google カレンダー・購入確認メールから取り込む')}
 <p class="lead">カレンダーの予定や購入確認メールから、観た公演を見つけて足します。
-<b>読み取りはこの端末の中だけで行い、カレンダーやメールの中身はたぐりに送りません。</b>
-読み取った題名・日付を公演と照合し、選んだものだけを記録に足します。</p>
+<b>読み方によって、たぐりのサーバーを通るものが違います。</b>それぞれの欄に書きました。
+どの読み方でも、予定やメールの本文・カレンダーのアドレスは、たぐりに保存しません。
+予定やメールから取り出した<b>題名の候補と日付は、公演と照合するためにたぐりに送ります</b>（照合に使うだけで、保存しません）。
+記録として保存するのは、一覧で選んで足した公演の題名・日付・開演時刻・劇場だけです。</p>
 <details class="imx-src" open><summary>Google カレンダーから</summary>
-<p class="note">押すと Google の画面で「カレンダーの閲覧」を許可するか聞かれます。許可すると、過去 5 年の予定をこの端末で読み、公演と照合します。
-<b>予定も許可の鍵も、たぐりのサーバーには送らず、保存もしません。</b></p>
+<p class="note">押すと Google の画面で「カレンダーの閲覧」を許可するか聞かれます。許可すると、過去 5 年の予定を<b>この端末のブラウザが Google から直接読みます</b>。
+<b>予定の中身も許可の鍵も、たぐりのサーバーには送らず、保存もしません。</b>たぐりに送るのは、上に書いた題名の候補と日付だけです。</p>
 <div class="imx-row"><button type="button" class="primary" data-imx-google="1">Google カレンダーから取り込む</button></div>
 <details class="imx-alt"><summary>アドレスやファイルから読み込む</summary>
-<p class="note">パソコンの Google カレンダーで、設定 → 取り込むカレンダー → 「カレンダーの統合」にある
-<b>「iCal 形式の非公開アドレス」</b>をコピーして貼ってください。アドレスは保存せず、読むのはこの 1 回だけです。</p>
-<div class="imx-row"><input id="imx-url" type="url" inputmode="url" autocomplete="off" placeholder="https://calendar.google.com/calendar/ical/…/basic.ics" size="40">
+<p class="note"><b>.ics ファイルを選ぶとき</b>：ファイルはこの端末の中だけで読み、たぐりには送りません。</p>
+<p class="note"><b>非公開アドレスを貼るとき</b>：Google はブラウザから直接このアドレスを読ませないので、<b>アドレスをたぐりのサーバーに送り、サーバーが Google からカレンダー全体を取ってきて、この端末に渡します</b>。
+アドレスもカレンダーも、たぐりには保存しません（読むのはこの 1 回だけです）。アドレスを送りたくないときは、.ics ファイルを書き出して選んでください。<br>
+アドレスは、パソコンの Google カレンダーで、設定 → 取り込むカレンダー → 「カレンダーの統合」にある
+<b>「iCal 形式の非公開アドレス」</b>です。コピーして貼ってください。</p>
+<div class="imx-row"><input id="imx-url" type="url" inputmode="url" autocomplete="off" aria-label="iCal 形式の非公開アドレス" aria-describedby="imx-url-note" placeholder="https://calendar.google.com/calendar/ical/…/basic.ics" size="40">
 <button type="button" data-imx-cal="1">読み込む</button></div>
-<p class="note">書き出した .ics ファイルを選んでも読めます：<input id="imx-ics" type="file" accept=".ics,text/calendar"></p>
+<p class="note imx-url-note" id="imx-url-note">このアドレスはたぐりのサーバーを通ります（保存はしません）。</p>
+<p class="note">書き出した .ics ファイルを選ぶ（この端末の中だけで読みます）：<input id="imx-ics" type="file" accept=".ics,text/calendar"></p>
 </details>
 </details>
 <details class="imx-src"><summary>購入確認メールから</summary>
 <p class="note">ぴあ・ローチケ・おけぴ・東宝ナビザーブ・劇団のチケットサービスの書式を読めます（ほかのサイトもできるだけ読みます）。
-メールの本文をコピーして貼るか、メールを .eml ファイルで保存してまとめて選んでください。Gmail では、メールの「︙」→「メッセージをダウンロード」で保存できます。</p>
+メールの本文をコピーして貼るか、メールを .eml ファイルで保存してまとめて選んでください。Gmail では、メールの「︙」→「メッセージをダウンロード」で保存できます。<br>
+<b>貼った本文もファイルも、この端末の中だけで読み、たぐりには送りません。</b>たぐりに送るのは、読み取った題名と日付だけです。</p>
 <textarea id="imx-text" rows="6" placeholder="購入確認メールの本文を貼る（何通分でも、続けて貼れます）"></textarea>
 <div class="imx-row"><button type="button" data-imx-mail="1">読み取る</button>
 <span class="note">または <input id="imx-eml" type="file" accept=".eml,message/rfc822" multiple></span></div>
@@ -259,19 +316,22 @@ export async function registerScreen(_params, ctx) {
 <div class="card">${h2('plus', '② メールに残らない分を手で 1 件足す')}
 <p class="lead">招待・当日窓口・人に取ってもらった分は購入確認メールに残らないので、
 ここから足してください。</p>
-<div class="add-work"><input id="w-title" type="text" placeholder="公演の題名" size="26"
-  autocomplete="off"><input id="w-stage" type="hidden" value="">
- <input id="w-date" type="date"> <input id="w-time" type="time" aria-label="開演時刻（任意）">
- <input id="w-venue" type="text" placeholder="劇場（任意）" size="14">
+<div class="add-work"><label class="fld" for="w-title"><span class="fl">公演の題名<small class="req">必須</small></span><input id="w-title" type="text" placeholder="例：夜の果て" size="26"
+  autocomplete="off"></label><input id="w-stage" type="hidden" value="">
+ <label class="fld" for="w-date"><span class="fl">観た日<small class="opt">任意</small></span><input id="w-date" type="date"></label>
+ <label class="fld" for="w-time"><span class="fl">開演時刻<small class="opt">任意</small></span><input id="w-time" type="time"></label>
+ <label class="fld" for="w-venue"><span class="fl">劇場<small class="opt">任意</small></span><input id="w-venue" type="text" placeholder="例：本多劇場" size="14"></label>
  <button data-add-work="1">${ico('plus')}登録する</button>
- <button data-sug-web="1">${ico('search')}CoRichで検索</button><span class="said"></span></div>
+ <button data-sug-web="1">${ico('search')}公演一覧から探す</button><span class="said"></span></div>
 <div id="sug" class="sug"></div>
-<p class="ed-lead"><b>題名を 2 文字入れると、手元の情報から候補が出ます。</b>
+<p class="ed-lead"><b>題名を 2 文字入れると、たぐりの公演一覧（毎日の更新で集めた公演と、2019 年からの過去の公演）とあなたの記録から候補が出ます。</b>
 選ぶと劇場・日程・出演者・作り手が一緒に入り、次のおすすめの材料になります。
 すでに記録にあるものは「記録あり」と出るので、二重に足さずに済みます。<br>
-<b>候補に出てこないときは「CoRichで検索」を押してください。</b>その場で公演情報を探します
-（8 秒ほどかかります）。同じ題名の公演が複数出ることがあります。
+「公演一覧から探す」を押すと、同じ公演一覧から公演だけを並べます。<b>その場で外のサイト（CoRich など）は探しません。</b>
+同じ題名の公演が複数出ることがあります。
 別の劇場での上演や再演なので、劇場と日程を見て、観た公演を選んでください。<br>
+<b>一覧に無い公演は</b>、出てくる「次の更新で探してもらう」から依頼を控えられます。${crawlSearch.requests ? `次の更新（次回は${crawlLabel(nextCrawl(ctx.now))}）で探します。` : 'ただ、依頼された題名を毎日の更新で探す段はまだ準備中で、いまは探されません。'}
+待たずに、題名と観た日を入れてそのまま「登録する」を押しても記録できます。あとで同じ題名・日付の公演が集まると、自動で結び付きます。<br>
 ポスターが出るのは、手元に画像がある公演だけです。</p></div>
 
 <div class="card">${h2('flag', '③ 観ていない公演を「観ればよかった」に足す', missed.length ? `<span class="badge part">${missed.length} 件</span>` : '')}
@@ -281,7 +341,7 @@ export async function registerScreen(_params, ctx) {
 <b>①② と違って、これは観ていない公演です。</b>観た本数にも、図にも、評価待ちにも入らず、
 評価（◎）の材料にもなりません。再演や別会場での上演を次は見逃したくないときは、
 下の一覧から「お気に入りに入れる」を押してください。</p>
-<div class="miss-add"><input id="miss-title" type="text" placeholder="公演の題名" size="30">
+<div class="miss-add"><label class="fld" for="miss-title"><span class="fl">公演の題名<small class="req">必須</small></span><input id="miss-title" type="text" placeholder="例：夜の果て" size="30"></label>
  <button data-miss="1">${ico('flag')}登録する</button><span class="said"></span></div>
 ${missedHtml(missed)}</div>
 

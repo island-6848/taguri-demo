@@ -292,7 +292,7 @@ test('探す: coming stages and works seen, by words and by month', async () => 
     const none = (await screen(env, a, 'search', '?q=' + encodeURIComponent('存在しない公演'))).body_html;
     assert.match(none, /data-search-request="存在しない公演"/);
     assert.equal((await step(env, a, {post: '/api/search_request', body: {q: '存在しない公演', source: 'search'}})).status, 200);
-    assert.match((await screen(env, a, 'search', '?q=' + encodeURIComponent('存在しない公演'))).body_html, /探すよう頼んであります/);
+    assert.match((await screen(env, a, 'search', '?q=' + encodeURIComponent('存在しない公演'))).body_html, /依頼を控えました。<b>ただ、依頼された題名を毎日の更新で探す段はまだ準備中で、まだ探していません。<\/b>/);
     assert.equal((await step(env, a, {post: '/api/search_request', body: {q: 'x'}})).status, 400);
   } finally { sqlite.close(); }
 });
