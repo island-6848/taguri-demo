@@ -18,6 +18,7 @@ import {E, ValueError} from './py.js';
 import {compose, cardTemplates, posterHtml, mytixHtml, preNote} from './cards.js';
 import {titleKey} from './works.js';
 import {indexTabs} from './rate.js';
+import {themeExpansion} from '../vocab.js';
 import {PREFS, prefsFor, prefForm, prefQs, prefHidden, regionCounts, PAGE_PREF_NOTE} from './prefs.js';
 import {CONTENT_AXES} from '../recommend.js';
 import {rankedGroups, reasonRows, withTour} from './recommend.js';
@@ -108,6 +109,9 @@ async function ticketsOf(ctx) {
 }
 
 const META = 'stage_id,title,tour,start,end,pref,gnz,blob,ws,synz';
+/** 登録した題材を語彙表で下位に広げた言葉（正規化済み）。SQL で絞る入れ口に足す。決めるのは declaredLabels。 */
+const expandedThemes = declared => [...new Set((declared['題材'] || []).flatMap(d => [...themeExpansion(d).narrow]))].sort(cmp);
+
 /** recommend2.declared_hits over the stored texts of one card. */
 export function declaredLabels(m, declared) {
   const hits = [];
@@ -116,6 +120,8 @@ export function declaredLabels(m, declared) {
   const ws = m.ws ? m.ws.split('\n') : [];
   const themes = new Set([...(declared['題材'] || []), ...(declared['原作者'] || [])].filter(d => d
     && (ws.some(w => w.includes(nz(d)) || nz(d).includes(w)) || (m.synz && m.synz.includes(nz(d))))));
+  // 語彙表で下位に広げた言葉（「科学」→ SF・宇宙…）は、#題材 の言葉と丸ごと一致したときだけ（src/vocab.js）
+  for (const d of declared['題材'] || []) if (!themes.has(d) && ws.some(w => themeExpansion(d).narrow.has(w))) themes.add(d);
   for (const w of themes) hits.push(`題材「${w}」`);
   return [...new Set(hits)].sort(cmp);
 }
@@ -141,7 +147,17 @@ export function declinedWord(m, words) {
  */
 async function cardsMatching(ctx, needles) {
   const out = new Map();
-  for (const part of chunks([...new Set(needles.filter(n => n[1]))], 45)) {
+  // 1 回の問い合わせは rec_card を端から読むので、束はバインドの数（D1 は 100 まで）で詰める。
+  // 'theme' は 2 つ、ほかは 1 つ（語彙表で広げた言葉は 'ws' で来る）
+  const parts = [];
+  let part = [], binds = 0;
+  for (const n of new Map(needles.filter(n => n[1]).map(n => [n.join('\u0000'), n])).values()) {
+    const b = n[0] === 'theme' ? 2 : 1;
+    if (binds + b > 98) { parts.push(part); part = []; binds = 0; }
+    part.push(n); binds += b;
+  }
+  if (part.length) parts.push(part);
+  for (const part of parts) {
     const cond = part.map(([col]) => (col === 'theme' ? '(instr(ws,?)>0 OR instr(synz,?)>0)' : `instr(${col},?)>0`)).join(' OR ');
     const args = part.flatMap(([col, v]) => (col === 'theme' ? [v, v] : [v]));
     const {results} = await ctx.db.prepare(`SELECT ${META} FROM rec_card WHERE ver=(SELECT v FROM rec_meta WHERE k='rec_card') AND (${cond})`).bind(...args).all();
@@ -160,7 +176,7 @@ async function cardsMatching(ctx, needles) {
 async function catalogueMatching(ctx, declared, skip) {
   // Narrowed by the name's first two characters: the catalogue may write 「山田 花子」 for
   // 「山田花子」, and the range of dates is read in full anyway (declaredLabels decides).
-  const names = [...new Set(KINDS.flatMap(k => declared[k] || []).map(w => Array.from(nz(w)).slice(0, 2).join('')).filter(w => Array.from(w).length >= 2))];
+  const names = [...new Set([...KINDS.flatMap(k => declared[k] || []), ...expandedThemes(declared)].map(w => Array.from(nz(w)).slice(0, 2).join('')).filter(w => Array.from(w).length >= 2))];
   const out = new Map();
   if (!names.length) return out;
   const since = new Date(Date.parse(ctx.today + 'T00:00:00Z') - 120 * 86400000).toISOString().slice(0, 10);
@@ -225,6 +241,7 @@ export async function nameHits(ctx, declared, words, {catalogue = false} = {}) {
   for (const k of ['団体', '主催']) for (const w of declared[k] || []) needles.push(['gnz', nz(w)]);
   for (const k of ['人', '作品', '原作者']) for (const w of declared[k] || []) needles.push(['blob', nz(w)]);
   for (const w of [...(declared['題材'] || []), ...(declared['原作者'] || [])]) needles.push(['theme', nz(w)]);
+  for (const w of expandedThemes(declared)) needles.push(['ws', w]);
   const fav = await cardsMatching(ctx, needles);
   // The catalogue scan reads every coming stage, so only お気に入り itself asks for it.
   if (catalogue) for (const [sid, m] of await catalogueMatching(ctx, declared, new Set(fav.keys()))) fav.set(sid, m);

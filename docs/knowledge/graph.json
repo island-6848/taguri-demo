@@ -3881,6 +3881,22 @@
    "verifies": []
   },
   {
+   "id": "impl-theme-vocab",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "お気に入りの題材を語彙表（上位・下位・関連）で広げ、「科学」で SF・宇宙・ロボット・近未来の公演も拾う",
+   "sources": [
+    "cloudflare/src/vocab/concepts.json",
+    "cloudflare/src/vocab.js",
+    "cloudflare/src/screens/lists.js",
+    "cloudflare/src/recommend.js",
+    "cloudflare/test/vocab.test.js",
+    "tools/taguri/vocab_tree.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "impl-timetable",
    "type": "decision",
    "status": "adopted",
@@ -10248,6 +10264,11 @@
    "from": "impl-theme-favourite",
    "rel": "affects",
    "to": "comp-recommender"
+  },
+  {
+   "from": "impl-theme-vocab",
+   "rel": "affects",
+   "to": "impl-past-stage-kinds"
   },
   {
    "from": "impl-timetable",

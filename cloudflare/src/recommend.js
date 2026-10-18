@@ -11,6 +11,7 @@
 // - Strings compare by code point, as Python does (not UTF-16 units).
 
 import {titleKey} from './stage-search.js';
+import {themeExpansion} from './vocab.js';
 
 export const CONF_K = 3, TOP_N = 3;
 export const GRADE_VALUE = {'◎': 4, '○': 3, '△': 2, '×': 1};
@@ -505,12 +506,16 @@ export async function seedsFromFavourites({postingsFor, peopleFor, stagesMatchin
     return [...out].sort(cmp).slice(0, MAX_SEED_FAVS);
   };
   const groups = pick(SEED_GROUP_KINDS, nz), works = pick(SEED_WORK_KINDS, titleKey), subjects = pick(SEED_THEME_KINDS, nz);
+  // 題材は語彙表で下位と関連にも広げ、#題材 の言葉と丸ごと一致で当てる（src/vocab.js。「科学」→ SF・近未来…）
+  // 広げた言葉で当たった公演も、理由には登録した題材の名前を書く（wideOf: 広げた言葉 -> 登録した題材の語）
+  const wideOf = new Map();
+  for (const t of subjects) { const x = themeExpansion(t); for (const w of [...x.narrow, ...x.related]) if (!wideOf.has(w)) wideOf.set(w, t); }
+  const wider = [...wideOf.keys()].sort(cmp);
   if ((groups.length || works.length || subjects.length) && stagesMatching) {
     const labels = new Map();
-    // 4 つ目の引数（exact: 語彙表で広げた #題材 の言葉）は PR #210 が使う枠。ここでは空で渡し、labels は 5 つ目
-    for (const sid of await stagesMatching(groups, works, subjects, [], labels)) {
+    for (const sid of await stagesMatching(groups, works, subjects, wider, labels)) {
       sids.add(sid);
-      for (const x of labels.get(sid) || []) note(sid, back.get(x) ?? x);
+      for (const x of labels.get(sid) || []) { const y = back.has(x) ? x : (wideOf.get(x) ?? x); note(sid, back.get(y) ?? y); }
     }
   }
   const skip = new Set(lookup.keys());
@@ -568,8 +573,8 @@ export function d1Access(db, ver, counter = {rows: 0, queries: 0}) {
       }
       return map;
     },
-    // labels（任意の Map）: stage_id -> 当たった語（groups・works・subjects の値）。理由に登録した名前を書くため。
-    // 読む行は前と同じ（列を 2〜3 つ足すだけ）。exact は PR #210（語彙表で広げた #題材 の言葉を丸ごと一致で当てる）の枠
+    // labels（任意の Map）: stage_id -> 当たった語（groups・works・subjects・exact の値）。理由に登録した名前を書くため。
+    // 読む行は前と同じ（列を 1〜2 つ足すだけ）。exact は語彙表で広げた #題材 の言葉（丸ごと一致）
     async stagesMatching(groups, works, subjects = [], exact = [], labels = null) {
       const out = new Set();
       const label = (sid, x) => { if (!labels) return; if (!labels.has(sid)) labels.set(sid, new Set()); labels.get(sid).add(x); };
@@ -595,6 +600,13 @@ export function d1Access(db, ver, counter = {rows: 0, queries: 0}) {
           const p = String(r.person || '');
           for (const t of subjects) if (p.includes(t) || (Array.from(p).length >= 2 && t.includes(p))) label(r.stage_id, t);
         }
+      }
+      for (let i = 0; i < exact.length; i += IDS_PER_QUERY) {
+        const chunk = exact.slice(i, i + IDS_PER_QUERY);
+        const {results} = await db.prepare(`SELECT DISTINCT stage_id,person FROM rec_credit WHERE ver=? AND role=? AND person IN (${chunk.map(() => '?').join(',')})`)
+          .bind(ver, THEME_AXIS, ...chunk).all();
+        counter.rows += results.length; counter.queries += 1;
+        for (const r of results) { out.add(r.stage_id); label(r.stage_id, String(r.person || '')); }
       }
       return [...out];
     },

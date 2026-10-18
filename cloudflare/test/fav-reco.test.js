@@ -6,7 +6,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
 import {setup, step, signIn} from './screens/harness.js';
-import {personValues, scoreFromIndex, FAV_SPREAD_W} from '../src/recommend.js';
+import {personValues, scoreFromIndex, seedsFromFavourites, FAV_SPREAD_W} from '../src/recommend.js';
 import {multipliersOf, tunedWeights, defaultStep, ROLE_GROUPS} from '../src/screens/weights.js';
 
 const here = p => new URL(p, import.meta.url).pathname;
@@ -109,4 +109,21 @@ sys.path[:0] = ['../tools/taguri', '../tools/review']
 import app as APP
 print(json.dumps({k: APP.default_step(k) for k, _l, _r in APP.ROLE_GROUPS}))`], {encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore']}));
   assert.deepEqual(py, w);
+});
+
+// 題材を語彙表で広げた言葉（「科学」→ ロボット …、PR #210）で当たった公演も、理由には登録した題材の語を書く
+test('a subject widened by the vocabulary is named by the registered subject', async () => {
+  const calls = [];
+  const access = {
+    postingsFor: async () => [],
+    peopleFor: async ids => new Map(ids.map(id => [id, [['出演', '俳優' + id]]])),
+    stagesMatching: async (groups, works, subjects, exact, labels) => {
+      calls.push({subjects, exact});
+      labels.set('S1', new Set(['ロボット'])); labels.set('S2', new Set(['科学']));
+      return ['S1', 'S2'];
+    },
+  };
+  const got = await seedsFromFavourites(access, [{name: '科学', kind: '題材'}]);
+  assert.ok(calls[0].exact.includes('ロボット') && calls[0].subjects.includes('科学'));
+  assert.deepEqual(got.seeds.map(s => [s.stage_id, s.fav]), [['S1', ['科学']], ['S2', ['科学']]]);
 });
