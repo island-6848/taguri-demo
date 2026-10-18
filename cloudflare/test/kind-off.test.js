@@ -61,17 +61,18 @@ test('turning a kind reason off takes it out of the reasons and the score, for t
   } finally { sqlite.close(); }
 });
 
+// 札の表示は「種類」から「形式」に（起案者の指示 2026-10-18「『種類』ってよりは形式？って表現近いと思う」）
 test('原作の国 is a kind reason with its own label (no 出典), and can be turned off like the others', () => {
   const html = reasonRows({parts: [], kinds: [[0.3, '#原作の国', '韓国', 2]]}, new Map());
-  assert.match(html, /<span class="net">種類<\/span>原作の国 <b>韓国<\/b>/);
+  assert.match(html, /<span class="net">形式<\/span>原作の国 <b>韓国<\/b>/);
   assert.doesNotMatch(html, /出典/);
   assert.match(html, /data-kindoff="#原作の国\t韓国"/);
 });
 
 test('原作 shows the kind of source without repeating the heading; no price band reason', () => {
   const html = reasonRows({parts: [], kinds: [[0.3, '#原作', '漫画原作', 2], [0.2, '#原作', 'オリジナル', 1]]}, new Map());
-  assert.match(html, /<span class="net">種類<\/span><b>漫画原作<\/b>/);
-  assert.match(html, /<span class="net">種類<\/span>原作 <b>オリジナル<\/b>/);
+  assert.match(html, /<span class="net">形式<\/span><b>漫画原作<\/b>/);
+  assert.match(html, /<span class="net">形式<\/span>原作 <b>オリジナル<\/b>/);
   assert.doesNotMatch(html, /出典/);
 });
 
@@ -81,5 +82,6 @@ test('原作「原作もの」 left in the production index is neither a reason 
   assert.ok(!droppedKind('#原作', '漫画原作') && !droppedKind('#原作', 'オリジナル'));
   const html = reasonRows({parts: [], kinds: [[0.3, '#原作', '原作もの', 2], [0.2, '#形式', 'ミュージカル', 1]]}, new Map());
   assert.doesNotMatch(html, /原作もの/);
-  assert.match(html, /<b>ミュージカル<\/b>/);
+  assert.match(html, /<span class="net">形式<\/span><b>ミュージカル<\/b>/);   // 札と同じ見出し「形式」は重ねない
+  assert.doesNotMatch(html, /種類/);
 });

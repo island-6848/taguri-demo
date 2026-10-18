@@ -675,7 +675,9 @@ def cast_block(c: dict) -> str:
             f'<span class="src">［出典: {E(ROLE_SRC)}］</span></div>')
 
 
-WORKS_SHOWN = 3
+# 作品名は、いちばん新しい公演といちばん古い公演の 2 つまで（起案者の指示 2026-10-18「最大2件だけ表示。
+# 一番最近の公演と一番古い公演から計2個」。Worker の screens/recommend.js worksText と同じ）
+WORKS_SHOWN = 2
 # 種類の理由の見出し（user_recommender.stage_tags が付ける軸）
 KIND_LABEL = {"#形式": "形式", "#原作": "原作", "#翻訳": "", "#原作の国": "原作の国", "#会場": "劇場", "#題材": "題材", "#ジャンル": "ジャンル"}
 
@@ -684,12 +686,14 @@ def works_text(works: list, n: int) -> str:
     """人物の理由に添える「（『作品A』・『作品B』 ほか 2 本）」。HTML を返す。
 
     **作品名だけを書き、◎ などの印は付けない**（起案者の指示 2026-10-14「理由に作品名を書くとき、
-    ◯とかの評価は不要。作品名だけでよい」）。並びは person_titles の順（◎ を付けた作品が先）のまま。
+    ◯とかの評価は不要。作品名だけでよい」）。person_titles は新しい日付から並べるので、先頭（いちばん新しい）と
+    末尾（いちばん古い）だけを出す（2026-10-18）。
     """
     if not works:
-        return f"（履歴 {int(n)} 本）"
-    shown = [f"『{E(t)}』" for t, _m in works[:WORKS_SHOWN]]
-    rest = len(works) - WORKS_SHOWN
+        return f"（履歴 {int(n)} 本）" if int(n) else ""
+    pick = [works[0], works[-1]] if len(works) > WORKS_SHOWN else list(works)
+    shown = [f"『{E(t)}』" for t, _m in pick]
+    rest = len(works) - len(pick)
     return "（" + "・".join(shown) + (f" ほか {rest} 本" if rest > 0 else "") + "）"
 
 
@@ -758,8 +762,9 @@ def reason_rows(c: dict) -> str:
     for contrib, axis, tag, n in sorted((k for k in c.get("why_kind") or [] if k[0] > 0),
                                         key=lambda k: (k[1] not in content, -k[0], k[1], k[2]))[:2]:
         works = (kind_works.get(f"{axis}\t{tag}") or []) if isinstance(kind_works, dict) else []
-        out.append(f'<li class="rs c k"><span class="net">種類</span>'
-                   f'{(E(label) + " ") if (label := KIND_LABEL.get(axis, axis.lstrip("#"))) and not tag.endswith(label) else ""}<b>{E(tag)}</b>'
+        # 札の表示は「形式」（起案者の指示 2026-10-18「『種類』ってよりは形式？」）。札と同じ見出しは重ねない
+        out.append(f'<li class="rs c k"><span class="net">形式</span>'
+                   f'{(E(label) + " ") if (label := KIND_LABEL.get(axis, axis.lstrip("#"))) and label != "形式" and not tag.endswith(label) else ""}<b>{E(tag)}</b>'
                    f'<span class="n">{works_text(works, n)}</span></li>')
     # **本人の感想の引用（「あなたの言葉」）は出さない**（起案者の指示・2026-10-13 ──
     # 「あなたの言葉は個人情報すぎるので表示しないで。サービス版もデモ版も」）。感想の文が

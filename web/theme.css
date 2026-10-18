@@ -1263,7 +1263,7 @@ details.pbox>summary[data-fold] .fv,.ftab .fv{margin-left:auto;text-align:right;
 :is(.ticket.cmp,.rec-row.cmp) .leadbox .lsyn>.cl{display:inline-block;margin:0 0 3px}
 :is(.ticket.cmp,.rec-row.cmp) .leadbox .lsyn>.lv{display:block}
 
-/* ---- おすすめ理由の「人物」「種類」の札。字は基本の Zen角ゴシック（fonts.css。押すものではないため。前は丸ゴシック、2026-10-18） */
+/* ---- おすすめ理由の「人物」「形式」の札。字は Zen丸ゴシック 700（fonts.css。起案者の指示 2026-10-18） */
 .rs .net{font-weight:700;letter-spacing:.04em}
 
 /* ---- 暦の日・土はマスの地も赤・青に（起案者の指示 2026-10-18）。折りたたみの地は一度薄めたが、元の色に戻した（同日） */
@@ -1303,3 +1303,19 @@ html .dgli .noposter:not(#_):not(#_) span{font-size:9px;letter-spacing:0}
 .card.tips .tip-or{display:flex;align-items:center;gap:10px;margin:12px 0;color:var(--mute);font-size:12.5px}
 .card.tips .tip-or::before,.card.tips .tip-or::after{content:"";flex:1;border-top:1px dashed var(--ring)}
 @media(max-width:560px){.card.tips .tip{gap:10px}.card.tips .tip-art{width:44px;height:44px}}
+
+/* ==== おすすめのカード（起案者の指示 2026-10-18 の 7 点のうち見た目の分）。この作業の分はここにまとめる ==== */
+/* 公式サイトの押し口と発売の札の枠線を 2px に（「『公式サイト』やチケット発売日のボタンの枠線を少し太くして」。前は 1.5px・1px）。
+   カードのポスターの下に出ている「公式サイト」は app.js が作る .sitelink（.sitebtn は「くわしく」の中） */
+.ticket .sitebtn:not(#_):not(#_),.ticket .sitelink:not(#_):not(#_),.ticket .sale .pill:not(#_){border-width:2px}
+/* 発売の札は値段帯のすぐ下（app.js compactTickets）。値段帯との間は詰める */
+.ticket.cmp .main>.lprice+.sale{margin:2px 0 8px}
+/* あらすじの続きを開いても地の色は付けない（「続きを読むを押して展開するとき、背景色つけないで」） */
+:is(.ticket.cmp,.rec-row.cmp) .lsynmore[open]:not(#_){padding:0;background:none;border-radius:0}
+/* 開いたあらすじの下に、あらすじから読み取った題材をハッシュタグで（「取得したワードをハッシュタグっぽく」）。
+   お気に入りの名前の札（.ftag）と同じ丸い枠の形。押すものではないので、色は札の墨（--ink2）にする */
+:is(.ticket.cmp,.rec-row.cmp) .lsyntags{display:flex;flex-wrap:wrap;gap:6px 8px;margin:8px 0 4px}
+:is(.ticket.cmp,.rec-row.cmp) .lsyntag{display:inline-block;font-size:12px;font-weight:600;line-height:1.5;padding:2px 10px;border-radius:99px;
+ color:var(--ink2);border:1px solid color-mix(in srgb,var(--ink2) 35%,transparent);white-space:nowrap}
+/* 日程の行と、「詳細」で開いた公演日時の暦の間を少しあける（「詳細の下線と背景が被ってる」） */
+.tourfull.v2 details[open]>.tf-body:not(#_){margin-top:6px}

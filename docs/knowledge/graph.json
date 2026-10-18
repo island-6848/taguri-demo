@@ -1124,7 +1124,7 @@
   {
    "id": "dec-font-accent-five",
    "type": "decision",
-   "status": "adopted",
+   "status": "superseded",
    "date": "2026-10-18",
    "title": "書体は Zen角ゴシック New が基本。さわらびゴシックは指定した 5 か所（公式サイト・発売の状況・お気に入りの名前の札・理由の人物/種類・評価しない）とロゴだけ",
    "sources": [
@@ -1132,6 +1132,22 @@
     "cloudflare/test/fonts.test.js",
     "tools/review/render_recommend.py",
     "cloudflare/src/screens/grade.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-font-accent-four-maru",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "おすすめ理由の丸枠の「人物」「形式」だけ Zen丸ゴシック 700。さわらびゴシックはほかの 4 か所（公式サイト・発売の状況・お気に入りの名前の札・評価しない）",
+   "sources": [
+    "web/fonts.css",
+    "web/assets/fonts/zen-maru-gothic/",
+    "web/assets/fonts/OFL-ZenMaruGothic.txt",
+    "cloudflare/scripts/sync_public_ui.py",
+    "cloudflare/test/fonts.test.js",
+    "cloudflare/test/e2e-walk.js"
    ],
    "verifies": []
   },
@@ -1709,9 +1725,25 @@
    "verifies": []
   },
   {
-   "id": "dec-reason-work-titles",
+   "id": "dec-reason-two-works",
    "type": "decision",
    "status": "adopted",
+   "date": "2026-10-18",
+   "title": "理由の作品名はいちばん新しい公演といちばん古い公演の 2 つまで。お気に入りから引いた公演の題名も書き、札は「人物」「形式」",
+   "sources": [
+    "cloudflare/src/screens/recommend.js",
+    "cloudflare/test/recommend-screen.test.js",
+    "cloudflare/test/kind-off.test.js",
+    "tools/review/render_recommend.py",
+    "tools/review/measure_nets.py",
+    "tools/review/test_reason_works.py"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-reason-work-titles",
+   "type": "decision",
+   "status": "superseded",
    "date": "2026-10-14",
    "title": "おすすめの人物の理由には、本数ではなく具体的な作品名（と付けた印）を書く",
    "sources": [
@@ -1720,6 +1752,21 @@
     "tools/review/user_recommender.py",
     "tools/review/render_recommend.py",
     "tools/review/test_reason_works.py"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-rec-card-1018-layout",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "おすすめのカード: 発売の札は値段帯のすぐ下、公式サイトと発売の札の枠線 2px、同じ額の幅は 1 つの額、あらすじの続きは地の色なしで題材のハッシュタグ、日程と暦の間をあける",
+   "sources": [
+    "web/app.js",
+    "web/theme.css",
+    "cloudflare/src/screens/schedule.js",
+    "cloudflare/test/schedule.test.js",
+    "cloudflare/test/e2e-walk.js"
    ],
    "verifies": []
   },
@@ -2896,6 +2943,25 @@
     "cloudflare/src/screens/search.js",
     "cloudflare/src/screens/rate.js",
     "web/app.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "fix-price-detail-missing",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-18",
+   "title": "値段の詳細が出ない公演の理由は 3 つ。公演ページに幅しか無い（これからの公演の 15%）、作り置きのカードの無い公演の札が料金を持っていなかった、一覧から拾った行の料金が幅だけ",
+   "sources": [
+    "tools/review/fetch_candidates.py",
+    "cloudflare/scripts/build_cards.py",
+    "cloudflare/src/screens/fallback.js",
+    "cloudflare/src/screens/override.js",
+    "cloudflare/src/screens/lists.js",
+    "web/app.js",
+    "cloudflare/test/cards.test.js",
+    "cloudflare/test/override.test.js",
+    "cloudflare/test/test_build_cards.py"
    ],
    "verifies": []
   },
@@ -7771,6 +7837,11 @@
    "to": "dec-font-sawarabi-round"
   },
   {
+   "from": "dec-font-accent-four-maru",
+   "rel": "supersedes",
+   "to": "dec-font-accent-five"
+  },
+  {
    "from": "dec-font-action-maru",
    "rel": "supersedes",
    "to": "dec-font-roles"
@@ -8254,6 +8325,16 @@
    "from": "dec-rating-scales",
    "rel": "affects",
    "to": "comp-recommender"
+  },
+  {
+   "from": "dec-reason-two-works",
+   "rel": "supersedes",
+   "to": "dec-reason-work-titles"
+  },
+  {
+   "from": "dec-rec-card-1018-layout",
+   "rel": "affects",
+   "to": "dec-ticket-price-filter"
   },
   {
    "from": "dec-rec-row-like-card",

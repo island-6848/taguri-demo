@@ -104,7 +104,9 @@ export function mergeInfo(s, ov) {
 export const PRICE_FIELD = '料金（1枚あたり）';
 /** render_recommend.price_range: the cheapest and dearest ticket in yen, [0, 0] for free, null when unreadable. */
 export function priceRange(text) {
-  const t = String(text || '').normalize('NFKC').replace(/【発売日】.*?(?=【|$)/gs, ' ');
+  // 「.」は改行をまたがない（Python の re と同じ）。前は s 旗で改行をまたぎ、【発売日】の行より後ろの券種の金額
+  // （「S席：12,000円」など）をすべて捨てていた（2026-10-18 に見つけた）
+  const t = String(text || '').normalize('NFKC').replace(/【発売日】.*?(?=【|$)/g, ' ');
   const vals = [];
   for (const m of t.matchAll(/(?:[¥￥]\s*([0-9][0-9,]*)|([0-9][0-9,]*)\s*円)/g)) {
     const v = Number((m[1] || m[2]).replace(/,/g, ''));

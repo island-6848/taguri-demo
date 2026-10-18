@@ -8,7 +8,7 @@
 import {E} from './py.js';
 import {ico} from './icons.js';
 import {castBlock} from './settings.js';
-import {loadOverrides, mergeInfo} from './override.js';
+import {loadOverrides, mergeInfo, priceRange, PRICE_FIELD} from './override.js';
 
 const PER_QUERY = 90;
 const slash = d => String(d || '').replaceAll('-', '/');
@@ -65,10 +65,15 @@ export function detailHtml(s) {
 /** A card template like rec_card's (the same markers, for cards.compose), drawn from stageInfo. */
 export function fallbackTemplate(s, {why = false} = {}) {
   const url = safeUrl(s.url);
+  // 料金は公演ページの欄（料金（1枚あたり））から。前は欄があっても出さず、作り置きのカード（rec_card）の無い公演
+  // （一覧 catalogue にだけある公演など）は、興味あり・お気に入りの一覧で「料金 不明」になっていた
+  // （起案者の質問 2026-10-18「たまに値段の詳細取得できてない公演があるのはなぜ？」）。金額の幅は絞り込みに使う data-yen
+  const price = String((s.fields || {})[PRICE_FIELD] || '').trim();
+  const yen = price ? priceRange(price) : null;
   const site = url ? `<a class="sitebtn" href="${E(url)}" target="_blank" rel="noopener noreferrer">${ico('link', 14)}公式サイト</a>` : '';
   const meta = [s.group ? `<span class="grp">${E(s.group)}</span>` : '', E(s.venue || '')].filter(Boolean).join('<span class="sep">／</span>')
     + (s.pref ? `<span class="pref">（${E(s.pref)}）</span>` : '');
-  return `<article class="ticket recommend" data-stage="${E(s.stage_id)}" data-tours="">
+  return `<article class="ticket recommend" data-stage="${E(s.stage_id)}" data-tours=""${yen ? ` data-yen="${yen[0]}-${yen[1]}"` : ''}>
 <div class="stub" aria-hidden="true"><!--mark--><span class="sd"><b>${E(md(s.start))}</b><span class="sk">初日</span></span></div>
 <div class="perf" aria-hidden="true"></div>
 <div class="body"><div class="pcol"><!--poster-->${site}</div>
@@ -76,7 +81,7 @@ export function fallbackTemplate(s, {why = false} = {}) {
  <h3>${E(s.title)}</h3>
  <div class="meta">${meta}</div>
  <!--mytix-->
- <div class="when">${E(range(s))}</div>
+ <div class="when">${E(range(s))}${price ? `\n  <span class="price">${E(price)}</span>` : ''}</div>
  ${castBlock(s.fields || {})}
  ${s.synopsis ? `<div class="syn"><p class="txt">${E(s.synopsis)}</p><span class="src">［出典: 公演の紹介文］</span></div>` : '<div class="syn no">あらすじを取れませんでした</div>'}
  ${why ? `<div class="whyh">${ico('eye', 14)}<!--whyh--></div><ul class="why"><!--why--></ul>` : ''}

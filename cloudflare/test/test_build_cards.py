@@ -62,6 +62,15 @@ class CardTest(unittest.TestCase):
         self.assertIn("大阪公演", cards["101"]["html"])
         self.assertEqual(cards["101"]["tour"], cards["301"]["tour"])
 
+    def test_price_comes_from_the_stage_page_field(self):
+        # 検索の一覧の幅だけの price より、公演ページの欄（券種ごとの明細）を使う（起案者の質問 2026-10-18）
+        pool = dict(self.pool)
+        pool["101"] = dict(pool["101"], price="3,000円 ～ 5,000円",
+                           fields=dict(pool["101"].get("fields") or {}, **{"料金（1枚あたり）": "3,000円 ～ 5,000円\n一般：5,000円\n学生：3,000円"}))
+        html = BC.build(pool, {}, TODAY)["101"]["html"]
+        self.assertIn('<span class="price">3,000円 ～ 5,000円\n一般：5,000円\n学生：3,000円</span>', html)
+        self.assertIn('data-yen="3000-5000"', html)
+
     def test_versioned_upload(self):
         sql = BC.to_sql(self.cards)
         self.assertTrue(sql[0].startswith("DELETE FROM rec_card WHERE ver="))

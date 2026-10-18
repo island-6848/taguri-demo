@@ -455,7 +455,8 @@ def person_titles(rated: list[dict], react: dict | None = None) -> dict[tuple[st
     具体的に（『作品A』『作品B』など）って書いてほしい」。名簿（`build_roster`）の本数と同じ材料
     ── 評価を付けた記録（印は ◎・○・△・×）と、興味ありを押した公演（印は「興味あり」）── から作る。
     観ればよかった（`missed_fields`）は題名を持たないので入らない（本数には入っている）。
-    並びは ◎ → ○ → △ → × → 興味あり、同じ印の中は新しい観劇日から。
+    並びは新しい観劇日から（同じ日は ◎ → ○ → △ → × の順、日付の無い興味ありは後ろ）。理由の行は先頭（いちばん新しい）と
+    末尾（いちばん古い）を出す（起案者の指示 2026-10-18「一番最近の公演と一番古い公演から計2個」。前は ◎ を付けた作品が先）。
     """
     order = {"◎": 0, "○": 1, "△": 2, "×": 3}
     acc: dict[tuple[str, str], list[tuple[int, str, str, str]]] = collections.defaultdict(list)
@@ -474,8 +475,9 @@ def person_titles(rated: list[dict], react: dict | None = None) -> dict[tuple[st
                 acc[key].append((9, "", v["title"], "興味あり"))
     out = {}
     for key, rows in acc.items():
-        rows.sort(key=lambda t: t[1], reverse=True)    # 新しい観劇日から
-        rows.sort(key=lambda t: t[0])                   # 印の順（安定な並べ替えなので日付の順は残る）
+        rows.sort(key=lambda t: t[0])                   # 同じ日は印の順
+        rows.sort(key=lambda t: t[1], reverse=True)    # 新しい観劇日から（安定な並べ替えなので印の順は残る）
+        rows.sort(key=lambda t: not t[1])               # 日付の無いもの（興味あり）は後ろ
         seen, items = set(), []
         for _o, _d, title, mark in rows:
             if title in seen:

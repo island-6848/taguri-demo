@@ -50,6 +50,8 @@ test('priceRange matches render_recommend.price_range', () => {
   assert.deepEqual(priceRange('一般 5,000円 学生 3,000円【発売日】2026/09/01'), [3000, 5000]);
   assert.deepEqual(priceRange('入場無料'), [0, 0]);
   assert.deepEqual(priceRange('未定'), null);
+  // 公演ページの欄の形（幅の行・発売日の行・券種の行）。発売日の行より後ろの金額も読む（2026-10-18）
+  assert.deepEqual(priceRange('12,000円 ～ 12,000円\n【発売日】2026/09/01\nS席：12,000円\nU-25：6,000円'), [6000, 12000]);
 });
 
 // 起案者の質問 2026-10-17「すでにあらすじが取れている公演なのに、各画面に実際の文章が表示されていないのはなぜ？」

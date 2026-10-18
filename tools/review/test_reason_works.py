@@ -26,14 +26,16 @@ class ReasonWorksTest(unittest.TestCase):
         react = {"9": {"interest": 1, "title": "気になる"}, "8": {"interest": 0, "title": "興味なし"}}
         with patch.object(M, "_fields_by_stage", return_value={"9": {"出演": "山田太郎"}, "8": {"出演": "山田太郎"}}):
             got = M.person_titles(rated, react)[KEY]
-        self.assertEqual(got, [("新しい◎", "◎"), ("古い◎", "◎"), ("まる", "○"), ("気になる", "興味あり")])
+        # 新しい日付から（起案者の指示 2026-10-18「一番最近の公演と一番古い公演から計2個」。前は ◎ が先）
+        self.assertEqual(got, [("まる", "○"), ("新しい◎", "◎"), ("古い◎", "◎"), ("気になる", "興味あり")])
 
     def test_reason_row_names_works_and_escapes(self):
         c = {"stage_id": "1", "why_b": [[0.1, "出演", "山田太郎", 5], [0.05, "演出", "佐藤", 2]],
              "why_b_works": {"出演\t山田太郎": [["<夜>", "◎"], ["春", "○"], ["冬", "◎"], ["秋", "興味あり"]]}}
         with patch.object(RR, "synopsis_source", return_value=("公演情報", False)):
             html = RR.reason_rows(c)
-        self.assertIn("『&lt;夜&gt;』・『春』・『冬』 ほか 1 本", html)
+        self.assertIn("『&lt;夜&gt;』・『秋』 ほか 2 本", html)   # 先頭（いちばん新しい）と末尾（いちばん古い）だけ
+        self.assertNotIn("『春』", html)
         self.assertNotIn("』◎", html)
         self.assertNotIn("での実績", html)
         self.assertIn("（履歴 2 本）", html)        # 作品名が引けない人は本数で書く
@@ -49,7 +51,7 @@ class KindReasonTest(unittest.TestCase):
         with patch.object(RR, "synopsis_source", return_value=("公演情報", False)):
             html = RR.reason_rows(c)
         self.assertNotIn("理由を出せていません", html)
-        self.assertIn("形式 <b>ミュージカル</b>", html)
+        self.assertIn("<span class=\"net\">形式</span><b>ミュージカル</b>", html)   # 札が「形式」なので見出しは重ねない（2026-10-18）
         self.assertIn("（『夜』・『朝』）", html)
         self.assertIn("<b>翻訳劇</b><span class=\"n\">（履歴 1 本）", html)
         self.assertNotIn("本多劇場", html)          # 点を下げた種類は理由にしない

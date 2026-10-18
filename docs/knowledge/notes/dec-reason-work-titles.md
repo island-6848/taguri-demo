@@ -1,7 +1,7 @@
 ---
 id: dec-reason-work-titles
 type: decision
-status: adopted
+status: superseded
 date: 2026-10-14
 title: おすすめの人物の理由には、本数ではなく具体的な作品名（と付けた印）を書く
 sources:

@@ -17,13 +17,15 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 WEB, PUBLIC = ROOT / "web", ROOT / "cloudflare" / "public"
 COPIED = ("tour.js", "style.css", "tour.css", "theme.css", "fonts.css", "recommendation-exposure.js",
-          "assets/fonts/OFL-ZenKakuGothicAntique.txt", "assets/fonts/OFL-SawarabiGothic.txt",
+          "assets/fonts/OFL-ZenKakuGothicAntique.txt", "assets/fonts/OFL-SawarabiGothic.txt", "assets/fonts/OFL-ZenMaruGothic.txt",
           "assets/fonts/OFL-ZenKakuGothicNew.txt")
 # Self-hosted title font (SIL OFL, subset to the page titles). Copied byte for byte.
 BINARY = ("assets/fonts/zkga-title.woff2",
           "assets/logo/apple-touch-icon.png")   # ホーム画面のアイコン（docs/design/logo/make_type.py）
 # 押すものと公演名の文字（さわらびゴシック Regular、SIL OFL）。文字の範囲ごとのファイルを丸ごと写す
 BINARY += tuple("assets/fonts/sawarabi-gothic/" + p.name for p in sorted((WEB / "assets/fonts/sawarabi-gothic").glob("*.woff2")))
+# おすすめ理由の丸枠の字（Zen丸ゴシック Bold、SIL OFL。起案者の指示 2026-10-18）
+BINARY += tuple("assets/fonts/zen-maru-gothic/" + p.name for p in sorted((WEB / "assets/fonts/zen-maru-gothic").glob("*.woff2")))
 # 本文（Zen角ゴシック New の Regular・Bold、SIL OFL）
 BINARY += tuple("assets/fonts/zen-kaku-gothic-new/" + p.name for p in sorted((WEB / "assets/fonts/zen-kaku-gothic-new").glob("*.woff2")))
 
