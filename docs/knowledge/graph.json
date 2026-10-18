@@ -1780,6 +1780,20 @@
    "verifies": []
   },
   {
+   "id": "dec-reco-start-tips",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "使い始めでおすすめが無いときは、ワンポイント（3 つの始め方と小さな絵）だけを出し、選び方・絞り込みは出さない",
+   "sources": [
+    "cloudflare/src/screens/recommend.js",
+    "web/theme.css",
+    "cloudflare/test/recommend-screen.test.js",
+    "cloudflare/test/e2e-walk.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-recommend-compact-poster",
    "type": "decision",
    "status": "adopted",
@@ -8310,6 +8324,11 @@
    "from": "dec-reco-per-user-eval",
    "rel": "raises",
    "to": "q-reco-personal-backtest"
+  },
+  {
+   "from": "dec-reco-start-tips",
+   "rel": "affects",
+   "to": "new-user-reco-threshold"
   },
   {
    "from": "dec-recommend-compact-poster",

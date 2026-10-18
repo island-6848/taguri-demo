@@ -237,6 +237,20 @@ async function walkA(A) {
     note('D1 の terms_version: ' + row.terms_version);
   });
 
+  // 使い始めでおすすめが無いときは、ワンポイント（3 つの始め方）だけを出し、選び方・絞り込みは出さない（起案者 2026-10-18）
+  await step('初めてのおすすめ: ワンポイントだけ（選び方・絞り込みは出さない）', async () => {
+    await go('/recommend');
+    const t = await content();
+    check(/おすすめを出すためのワンポイント/.test(t), 'ワンポイントが無い');
+    check(/過去の観劇記録を2件以上追加する/.test(t) && /開幕リマインド」で興味あり・なしを回答する/.test(t), '3 つの始め方が無い');
+    check(!/おすすめの選び方|表示の絞り込み/.test(t), '選び方・絞り込みが出ている');
+    await page.setViewportSize({width: 390, height: 844});
+    await sleep(300);
+    await page.screenshot({path: join(OUT, 'recommend-start-phone.png'), fullPage: true});
+    await page.setViewportSize({width: 1280, height: 900});
+    await sleep(200);
+  });
+
   await step('観劇記録を手で 1 件足す', async () => {
     await go('/register');
     const g = page.locator('.add-work');

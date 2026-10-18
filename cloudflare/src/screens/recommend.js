@@ -15,7 +15,7 @@ import {stageInfo} from './fallback.js';
 import {tourBlock} from './schedule.js';
 import {parseCredits} from './credits.js';
 import {chooseVariant, groupOf, VARIANTS} from '../reco-gate.js';
-import {readWeights, multipliersOf, weightForm, weightAction} from './weights.js';
+import {readWeights, multipliersOf, weightForm, weightAction, DEFAULT_STEP} from './weights.js';
 import {impressionAdjust, round6} from '../impression.js';
 import {E, ValueError} from './py.js';
 import {answerSnapshot, recordShown} from './evalrec.js';
@@ -28,16 +28,40 @@ export {prefForm, prefsFor};
 import {loadDeclared, loadDeclined, loadKindOff, nameHits, KINDS, reactionsOf, declinedBox, kindOffBox} from './lists.js';
 
 export const TOP = 15;
+// 初めて使ったとき（おすすめがまだ無いとき）の案内（起案者の指示 2026-10-18 の文面。使い方ガイドのような小さな絵を添える）。
+// 絵の色は画面の色（--ink2・--curtain・--wax）なので、暗い画面でもそのまま読める
+const TIP_ART = {
+  // 1. 観劇記録を足す: 日記帳のページと「＋」
+  record: `<svg class="tip-art" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true">
+<rect x="12" y="8" width="34" height="46" rx="4" fill="var(--surf)" stroke="var(--ink2)" stroke-width="2"/>
+<path d="M12 16h-3M12 26h-3M12 36h-3M12 46h-3" stroke="var(--ink2)" stroke-width="2" stroke-linecap="round"/>
+<path d="M19 19h20M19 26h20M19 33h13" stroke="var(--ink2)" stroke-width="2" stroke-linecap="round" opacity=".55"/>
+<circle cx="46" cy="46" r="11" fill="var(--curtain)"/><path d="M46 40v12M40 46h12" stroke="var(--surf)" stroke-width="2.6" stroke-linecap="round"/></svg>`,
+  // 2. お気に入りに登録する: 人と星
+  favourite: `<svg class="tip-art" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true">
+<circle cx="26" cy="22" r="9" fill="var(--surf)" stroke="var(--ink2)" stroke-width="2"/>
+<path d="M9 54c1-11 8-18 17-18s16 7 17 18z" fill="var(--surf)" stroke="var(--ink2)" stroke-width="2" stroke-linejoin="round"/>
+<path d="M47 8l3.6 7.4 8.1 1.2-5.9 5.7 1.4 8.1L47 26.6l-7.2 3.8 1.4-8.1-5.9-5.7 8.1-1.2z" fill="var(--wax)" stroke="var(--wax)" stroke-width="1.2" stroke-linejoin="round"/></svg>`,
+  // 3. 開幕リマインドで答える: 暦と旗
+  reminder: `<svg class="tip-art" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true">
+<rect x="8" y="12" width="40" height="40" rx="4" fill="var(--surf)" stroke="var(--ink2)" stroke-width="2"/>
+<path d="M8 22h40M18 8v8M38 8v8" stroke="var(--ink2)" stroke-width="2" stroke-linecap="round"/>
+<path d="M15 30h5M24 30h5M33 30h5M15 38h5M24 38h5M15 46h5" stroke="var(--ink2)" stroke-width="2.4" stroke-linecap="round" opacity=".45"/>
+<rect x="31" y="35" width="9" height="9" rx="1.5" fill="var(--curtain)" opacity=".85"/>
+<path d="M48 30v26" stroke="var(--ink2)" stroke-width="2" stroke-linecap="round"/>
+<path d="M48 30h11l-3 5 3 5H48z" fill="var(--curtain)"/></svg>`,
+};
+const tip = (n, art, head, body) => `<div class="tip">${TIP_ART[art]}<div class="tip-t"><p class="tip-h"><span class="tip-n">${n}</span><b>${head}</b></p>${body}</div></div>`;
 const TIPS = `<section class="card tips">
 <h2>おすすめを出すためのワンポイント</h2>
-<ol>
-<li><b>観た公演を 2 本以上、評価してください。</b>「◎」だけでなく「○」「△」「×」も混ぜて付けるのがコツです。よかった公演といまひとつだった公演の両方があると、どこが好みなのかが分かります。全部「◎」だと、違いが分からず、おすすめが出ません。</li>
-<li><b>観た公演は題名と観た日を正しく入れてください。</b>公演の情報（出演者や作り手）が分かると、その人たちの次の公演をおすすめできます。日記帳で「まだどの公演とも結び付いていません」と出る記録は、その欄から観た公演を選んでください。</li>
-<li><b>好きな俳優・劇団・作品を「お気に入り」に登録してください。</b>登録した名前の公演は、評価が無くてもすぐ「お気に入り」に出ます。一緒に出ている人の公演もおすすめに出やすくなります。</li>
-<li><b>気になる公演に「興味あり」を押してください。</b>観た記録が無くても、押した公演に出ている人や作り手の、ほかの公演がおすすめに出ます。<a href="/search?t=__TAGURI_TOKEN__">探す</a>で題名や人名から探すか、<a href="/recommend/reminder?t=__TAGURI_TOKEN__">開幕リマインド</a>から選ぶのが手軽です。</li>
-<li><b>評価が増えるほど、おすすめは増えて、当たりやすくなります。</b>まずは 10 本ほどを目安にどうぞ。</li>
-</ol>
-<p class="lead"><a href="/rate?t=__TAGURI_TOKEN__">観た公演の評価</a>・<a href="/recommend/favourites?t=__TAGURI_TOKEN__">お気に入り</a>・<a href="/records/works?t=__TAGURI_TOKEN__">日記帳</a>から始められます。</p>
+${tip(1, 'record', '過去の観劇記録を2件以上追加する',
+  '<p>「<a href="/register?t=__TAGURI_TOKEN__">観劇記録を追加</a>」から、追加してください。<br>「<a href="/search?t=__TAGURI_TOKEN__">探す</a>」から公演名などで検索して追加することもできます。</p>')}
+<p class="tip-or">または</p>
+${tip(2, 'favourite', '好きな俳優・劇団・作品を「お気に入り」に登録する',
+  '<p>「<a href="/recommend/favourites?t=__TAGURI_TOKEN__">お気に入り</a>」に好きな要素を追加してください。<br>共演者や題材などが推薦に反映されます。</p>')}
+<p class="tip-or">または</p>
+${tip(3, 'reminder', '「開幕リマインド」で興味あり・なしを回答する',
+  '<p>「<a href="/recommend/reminder?t=__TAGURI_TOKEN__">開幕リマインド</a>」では、あなたへのおすすめ関係なく、今後開催の全ての公演が表示されます。<br>その中から、気になる作品を選んで、回答してください。</p>')}
 </section>
 `;
 // 出せる候補にすべて答え終えたとき（起案者の指示 2026-10-17「本当に全部回答しきってオススメに出せるものが
@@ -608,6 +632,12 @@ export async function recommendScreen(params, ctx) {
   // 条件は new-user-reco-threshold: 公演とつながった記録が 2 件以上で、評価が 2 種類以上。
   // 一覧の途中で答え終えたときは、画面（app.js）がこの控えを最後のカードの下に出す
   const tips = prefs.length ? '' : allAnswered ? THANKS : !cards.length ? TIPS : `<template id="rec-thanks-t">${THANKS}</template>`;
+  // 使い始めでおすすめがまだ無いときは、選び方・絞り込み・興味ありへの案内を出さない（起案者の指示 2026-10-18
+  // 「使い始めの人で、おすすめがないときは選び方や絞り込みは表示させないで。一件以上ある時のみ表示」）。
+  // 県で絞って 0 件になったとき、使わない言葉・効かせ方・出さない種類を変えて 0 件になったときは、戻せるよう出したまま
+  const [declined, kindOff] = await Promise.all([loadDeclined(ctx), loadKindOff(ctx)]);
+  const tuned = declined.length > 0 || kindOff.length > 0 || Object.values(data.weights || {}).some(v => v !== DEFAULT_STEP);
+  const starting = !prefs.length && !allAnswered && !cards.length && !tuned;
   const nInterest = (await ctx.db.prepare('SELECT count(DISTINCT stage_id) AS n FROM reaction WHERE user_id=? AND interest=1 AND COALESCE(owned,0)=0').bind(ctx.uid).first())?.n || 0;
   const nSyn = cards.filter(h => /<div class="syn( doubt)?"/.test(h)).length;
   const limits = cards.length ? `<p class="note toinfo"><b>この ${cards.length} 件で、出せていない情報です。</b><br>
@@ -618,15 +648,15 @@ export async function recommendScreen(params, ctx) {
 評価・公演情報・設定が変わると、順位も変わることがあります</p>` : '';
   // 件数の 1 行は枠に入れず地の文で、「表示の絞り込み」の下に少し空けて置く（起案者の指示 2026-10-18）
   const body = `<h1>${E(head)}</h1>
-${tips}<p class="fgh">${ico('light', 15)}<b>おすすめの選び方</b><span>おすすめに表示される結果自体が変わります。</span></p>
-<div class="fil2 tune">${weightForm(data.weights || {}, data.w_counts || {})}${declinedBox(await loadDeclined(ctx))}${kindOffBox(await loadKindOff(ctx))}</div>
+${tips}${starting ? '' : `<p class="fgh">${ico('light', 15)}<b>おすすめの選び方</b><span>おすすめに表示される結果自体が変わります。</span></p>
+<div class="fil2 tune">${weightForm(data.weights || {}, data.w_counts || {})}${declinedBox(declined)}${kindOffBox(kindOff)}</div>
 <p class="fgh">${ico('search', 15)}<b>表示の絞り込み</b><span>おすすめの候補の中から、表示する項目を設定できます。</span></p>
 <div class="fil2 narrow">${prefForm(prefCounts(data.groups), prefs, '/recommend', PAGE_PREF_NOTE, {}, regionCounts(data.groups.map(g => ({key: g.stage_id, prefs: g.venues.map(v => v.pref)}))))}</div>
-${lede}
+`}${lede}
 ${cards.join('')}
-<p class="lede">気になった公演で「興味あり」を押すと、
+${starting ? '' : `<p class="lede">気になった公演で「興味あり」を押すと、
 <a href="/recommend/interest?t=__TAGURI_TOKEN__">「興味あり」（いま ${nInterest} 件）</a>に移ります。</p>
-${limits}`;
+`}${limits}`;
   return {title: '今週のおすすめ', body_html: body, unrated_ends: await unratedEnds(ctx), diag: data.diag || null};
 }
 
