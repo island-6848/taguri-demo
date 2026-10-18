@@ -645,8 +645,12 @@ function isInternalPath(p) {
 }
 
 document.addEventListener("click", ev => {
-  const a = ev.target.closest("a[href]");
+  // **ふつうの左クリックで、同じタブに開くリンクだけを引き受ける**（#86）。Ctrl・⌘ で新しいタブ、Shift で新しい窓、
+  // Alt で保存、中ボタン、target="_blank"・download のリンク、ほかの処理が止めた押下は、ブラウザに任せる
+  if (ev.defaultPrevented || ev.button !== 0 || ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey) return;
+  const a = ev.target.closest && ev.target.closest("a[href]");
   if (!a) return;
+  if (a.hasAttribute("download") || (a.getAttribute("target") || "_self").toLowerCase() !== "_self") return;
   const href = a.getAttribute("href");
   if (!href || /^[a-z]+:/i.test(href) || href.startsWith("#")) return;
   let path = href.split("#")[0], search = "";
