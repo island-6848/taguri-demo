@@ -2516,6 +2516,33 @@
    "verifies": []
   },
   {
+   "id": "dec-theme-kinds-1018",
+   "type": "decision",
+   "status": "superseded",
+   "date": "2026-10-18",
+   "title": "あらすじの言葉を 8 種類に分け、種類ごとに上限と推薦の重さ、根拠ごとに重さを持たせる（g5）",
+   "sources": [
+    "tools/credits/extract_theme_llm.py",
+    "cloudflare/scripts/build_recommend_index.py",
+    "tools/credits/test_theme_queue.py",
+    "cloudflare/test/test_recommend_index.py"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-theme-kinds-6p2",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "あらすじの言葉を照合用 6 種類（ジャンル・題材・テーマ・舞台設定・味わい・語り口）と別扱い 2 種類（原作・モチーフ）にする",
+   "sources": [
+    "tools/credits/extract_theme_llm.py",
+    "cloudflare/scripts/build_recommend_index.py",
+    "cloudflare/src/vocab/concepts.json"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-theme-user-choice",
    "type": "decision",
    "status": "proposed",
@@ -6541,6 +6568,24 @@
    "verifies": []
   },
   {
+   "id": "q-theme-kinds-count",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-18",
+   "title": "演目を記述する言葉の種類は何種類が適切か（読書相談の appeal・NoveList・分類理論の裏付け）",
+   "sources": [
+    "https://www.alastore.ala.org/sites/default/files/book_samples/9780838917817_sample_0.pdf",
+    "https://journals.ala.org/index.php/rusq/article/view/2892/2959",
+    "https://about.ebsco.com/blogs/novelist/NoveList-story-elements",
+    "https://libraries.ne.gov/cpls/files/2023/10/NoveList-Story-Elements.pdf",
+    "https://files.grouplens.org/datasets/tag-genome/",
+    "https://e.humanities.uva.nl/publications/2015/kool_what15.pdf",
+    "https://flamenco.ischool.berkeley.edu/papers/hcir08.pdf",
+    "https://pubmed.ncbi.nlm.nih.gov/11515286/"
+   ],
+   "verifies": []
+  },
+  {
    "id": "q-theme-preference",
    "type": "question",
    "status": "open",
@@ -9361,6 +9406,36 @@
    "to": "q-synopsis-routine-quota"
   },
   {
+   "from": "dec-theme-kinds-1018",
+   "rel": "affects",
+   "to": "eval-g5-trial-1018"
+  },
+  {
+   "from": "dec-theme-kinds-1018",
+   "rel": "affects",
+   "to": "impl-theme-vocab"
+  },
+  {
+   "from": "dec-theme-kinds-1018",
+   "rel": "affects",
+   "to": "q-theme-kinds-count"
+  },
+  {
+   "from": "dec-theme-kinds-6p2",
+   "rel": "supersedes",
+   "to": "dec-theme-kinds-1018"
+  },
+  {
+   "from": "dec-theme-kinds-6p2",
+   "rel": "affects",
+   "to": "q-theme-kinds-count"
+  },
+  {
+   "from": "dec-theme-kinds-6p2",
+   "rel": "affects",
+   "to": "impl-theme-vocab"
+  },
+  {
    "from": "dec-theme-user-choice",
    "rel": "affects",
    "to": "q-design-direction"
@@ -12104,6 +12179,11 @@
    "from": "q-theme-favourite",
    "rel": "affects",
    "to": "comp-recommender"
+  },
+  {
+   "from": "q-theme-kinds-count",
+   "rel": "affects",
+   "to": "dec-theme-kinds-1018"
   },
   {
    "from": "q-theme-preference",

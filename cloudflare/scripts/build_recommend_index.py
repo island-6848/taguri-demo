@@ -60,19 +60,48 @@ def _public_entry(entry: dict) -> dict:
 
 
 THEME_AXIS = "#題材"
-MAX_THEME_WORDS = 6
+MAX_THEME_WORDS = 16   # 照合に使う 6 種類と原作の上限の合計
+# 種類ごとの上限と推薦の重さ（起案者の判断 2026-10-18「6＋2 に組み替えて」。dec-theme-kinds-6p2）。
+# ジャンル・題材・テーマ・味わいは好みの中心で 1.0（推定の多さは根拠の重さで別に下げるので、種類では下げない）。
+# 語り口（会話劇・群像劇）は多くの公演に共通で公演を見分けにくいので 0.7、舞台設定は背景なので 0.5。
+# モチーフはその作品にしか無い言葉でほかの公演と当たらないので索引に入れない（カードの言葉には残す）。
+# 原作は「原作者」のお気に入りが #題材 の言葉で当てているので残す。
+# 関係・感情・構造は初めの g5（8 種類）の、トーンは g4 までの種類で、読み直すまでの行のために残す。
+# 種類の無い言葉（手で入れた題材）と知らない種類は、全体の上限まで重さ 1
+THEME_KIND_W = {"ジャンル": (2, 1.0), "題材": (4, 1.0), "テーマ": (3, 1.0), "味わい": (3, 1.0), "原作": (2, 1.0),
+                "語り口": (2, 0.7), "舞台設定": (2, 0.5), "モチーフ": (0, 0.0),
+                "関係・感情": (3, 1.0), "構造": (2, 0.7), "トーン": (2, 0.7)}
+# 根拠の強さ（g5 の basis）。g4 までの行は本文から取った言葉なので 1
+THEME_BASIS_W = {"本文": 1.0, "推定": 0.7, "作風": 0.5}
+
+
+def theme_terms(row: dict | None) -> list[tuple[str, float]]:
+    """Subject words of one stage (#題材 tags) with their weight: the synopsis elements
+    (themes.jsonl, net_c.load_themes) normalised like net_c.words, at least two characters,
+    in the order the synopsis gave them, up to each kind's cap (THEME_KIND_W) and
+    MAX_THEME_WORDS in all. The weight is the kind's times the basis's; a word given
+    twice keeps the larger."""
+    out: dict[str, float] = {}
+    per: dict[str, int] = {}
+    for e in (row or {}).get("elements") or []:
+        if not isinstance(e, dict):
+            continue
+        w = RC.nz(e.get("word") or "")
+        kind = e.get("kind") or ""
+        cap, kw = THEME_KIND_W.get(kind, (MAX_THEME_WORDS, 1.0))
+        if len(w) < 2 or per.get(kind, 0) >= cap:
+            continue
+        per[kind] = per.get(kind, 0) + 1
+        x = round(kw * THEME_BASIS_W.get(e.get("basis") or "本文", 1.0), 6)
+        if w not in out and len(out) >= MAX_THEME_WORDS:
+            continue
+        out[w] = max(out.get(w, 0.0), x)
+    return list(out.items())
 
 
 def theme_words(row: dict | None) -> list[str]:
-    """Subject words of one stage (#題材 tags): the synopsis elements
-    (themes.jsonl, net_c.load_themes) normalised like net_c.words, at least two
-    characters, in the order the synopsis gave them, at most MAX_THEME_WORDS."""
-    out = []
-    for e in (row or {}).get("elements") or []:
-        w = RC.nz(e.get("word") or "") if isinstance(e, dict) else ""
-        if len(w) >= 2 and w not in out:
-            out.append(w)
-    return out[:MAX_THEME_WORDS]
+    """The words of theme_terms (past stages and the people lists carry no weight)."""
+    return [w for w, _ in theme_terms(row)]
 
 
 def build_index(pool: dict[str, dict], fields_by_stage: dict[str, dict], role_group,
@@ -96,7 +125,12 @@ def build_index(pool: dict[str, dict], fields_by_stage: dict[str, dict], role_gr
         credits = sorted(set(M.parse_credits(entry.get("fields") or {})))
         titles.setdefault(sid, title)
         tags = UR.stage_tags(title, [(entry.get("fields") or {}).get("劇場", "")], credits,
-                             source=UR.source_text(entry.get("fields") or {}), group=entry.get("group") or "") + [(THEME_AXIS, w) for w in themes.get(sid, [])]
+                             source=UR.source_text(entry.get("fields") or {}), group=entry.get("group") or "")
+        # 題材の言葉は種類と根拠で重さが違う（theme_terms）。言葉だけの古い形（重さ 1）も受ける
+        terms = [(t, 1.0) if isinstance(t, str) else (t[0], t[1]) for t in themes.get(sid, [])]
+        own = {tag for axis, tag in tags if axis == THEME_AXIS}
+        tags += [(THEME_AXIS, w) for w, _ in terms if w not in own]
+        tw = dict(terms)
         stages[sid] = {"title": title, "tkey": M.R.title_key(title), "grp": entry.get("group") or "",
                        "tour": UR.tour_key(title, entry.get("group") or "", credits),
                        "gkey": RC.nz(entry.get("group") or ""),
@@ -107,7 +141,8 @@ def build_index(pool: dict[str, dict], fields_by_stage: dict[str, dict], role_gr
             postings.append((role, person, sid, RC.ROLE_W.get(role, RC.BACKSTAGE_W),
                              role_group(role)))
         for axis, tag in tags:
-            postings.append((axis, tag, sid, UR.GENRE_W, "theme"))
+            x = tw.get(tag, 1.0) if axis == THEME_AXIS else 1.0
+            postings.append((axis, tag, sid, round(UR.GENRE_W * x, 6), "theme"))
     people = {}
     for sid, f in fields_by_stage.items():
         if not f:
@@ -115,11 +150,11 @@ def build_index(pool: dict[str, dict], fields_by_stage: dict[str, dict], role_gr
         credits = sorted(set(M.parse_credits(f)))
         tags = UR.stage_tags(titles.get(sid, ""), [f.get("劇場", "")], credits,
                              source=UR.source_text(f), group=(pool.get(sid) or {}).get("group") or "")
-        tags += [(THEME_AXIS, w) for w in themes.get(sid, [])]
+        tags += [(THEME_AXIS, t if isinstance(t, str) else t[0]) for t in themes.get(sid, [])]
         people[sid] = [list(c) for c in sorted(set(credits) | set(tags))]
     for sid, ws in themes.items():
         if sid not in people and ws:
-            people[sid] = [[THEME_AXIS, w] for w in sorted(set(ws))]
+            people[sid] = [[THEME_AXIS, w] for w in sorted({t if isinstance(t, str) else t[0] for t in ws})]
     people = {sid: p for sid, p in people.items() if p}
     return {"stages": stages, "postings": postings, "people": people}
 
@@ -640,7 +675,7 @@ def main() -> int:
     # Subject words of candidate stages (synopsis elements, hand-entered ones overlaid).
     import net_c as C
     themes = {sid: ws for (side, sid), row in C.load_themes().items()
-              if side == "candidate" for ws in [theme_words(row)] if ws}
+              if side == "candidate" for ws in [theme_terms(row)] if ws}
     index = build_index(pool, M._fields_by_stage(), APP.group_of, titles, themes)
     counts = None
     if a.hashes_out:
