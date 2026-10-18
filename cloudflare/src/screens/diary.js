@@ -77,6 +77,28 @@ function cleanValue(f, value) {
   return slice(v, 0, f === 'title' ? 200 : 80);
 }
 
+/**
+ * 鍵（work_key）で記録に結び付いている行を、古い鍵から新しい鍵へ移す文（issue #186）。works の書き換えと同じ batch で流す。
+ * 手で入れた出演者（hand_credits）・まとめた印（merges の両側）・取り消しの印（excluded の work:<key>・purged:<key>）。
+ * どれも利用者と古い鍵で絞る。前の版で取り残された行が新しい鍵に残っていれば、古い鍵の行があるときだけ先に消す（主キーがぶつかるため）。
+ */
+function moveKey(ctx, from, to) {
+  const q = sql => ctx.db.prepare(sql).bind(ctx.uid, from, to);
+  const stmts = [];
+  for (const t of ['hand_credits', 'merges']) {
+    stmts.push(q(`DELETE FROM ${t} WHERE user_id=?1 AND work_key=?3 AND EXISTS(SELECT 1 FROM ${t} WHERE user_id=?1 AND work_key=?2)`),
+      q(`UPDATE ${t} SET work_key=?3 WHERE user_id=?1 AND work_key=?2`));
+  }
+  stmts.push(q('UPDATE merges SET into_key=?3 WHERE user_id=?1 AND into_key=?2'),
+    // 取り残された印で、自分自身にまとめた形になったら外す（その記録が一覧から消えるため）
+    q('DELETE FROM merges WHERE user_id=?1 AND work_key=?3 AND into_key=?3'));
+  for (const p of ['work:', 'purged:']) {
+    stmts.push(ctx.db.prepare('DELETE FROM excluded WHERE user_id=?1 AND uid=?3 AND EXISTS(SELECT 1 FROM excluded WHERE user_id=?1 AND uid=?2)').bind(ctx.uid, p + from, p + to),
+      ctx.db.prepare('UPDATE excluded SET uid=?3 WHERE user_id=?1 AND uid=?2').bind(ctx.uid, p + from, p + to));
+  }
+  return stmts;
+}
+
 /** app._fix_manual */
 async function fixManual(ctx, workKey, title, shows) {
   const sv = await savedWork(ctx, workKey);
@@ -90,9 +112,10 @@ async function fixManual(ctx, workKey, title, shows) {
   }
   const key = `${titleKey(newTitle)}#${date || 'undated'}`;
   if (key !== workKey && await savedWork(ctx, key)) throw new ValueError('その題名・日付の記録はもう別にある');
-  await ctx.db.prepare('UPDATE works SET work_key=?, title=?, first_date=?, last_date=?, venue=?, time=?, updated_at=?'
+  await ctx.db.batch([ctx.db.prepare('UPDATE works SET work_key=?, title=?, first_date=?, last_date=?, venue=?, time=?, updated_at=?'
     + ' WHERE user_id=? AND work_key=?')
-    .bind(key, newTitle, date, date || sv.last_date, venue, time, now(ctx), ctx.uid, workKey).run();
+    .bind(key, newTitle, date, date || sv.last_date, venue, time, now(ctx), ctx.uid, workKey),
+  ...(key !== workKey ? moveKey(ctx, workKey, key) : [])]);
   await autoLink(ctx, [key]);
   return {ok: true, work_key: key, title: norm(newTitle), moved: key !== workKey, gone: false, n: 1, manual: true};
 }
