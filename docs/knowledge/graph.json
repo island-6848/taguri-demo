@@ -3028,6 +3028,20 @@
    "verifies": []
   },
   {
+   "id": "import-data-flow",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-18",
+   "title": "取り込みの読み方ごとに、端末で読むもの・サーバーを通るもの・保存するものが違う。非公開アドレスはサーバーを通る（#91）",
+   "sources": [
+    "cloudflare/src/client/import.js",
+    "cloudflare/src/client/calendar-callback.js",
+    "cloudflare/src/screens/import.js",
+    "cloudflare/src/screens/settings.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "index-never-delivered",
    "type": "finding",
    "status": "confirmed",
@@ -8414,6 +8428,11 @@
    "from": "impl-tour-slots",
    "rel": "affects",
    "to": "comp-recommender"
+  },
+  {
+   "from": "import-data-flow",
+   "rel": "affects",
+   "to": "dec-import-calendar-mail"
   },
   {
    "from": "index-never-delivered",

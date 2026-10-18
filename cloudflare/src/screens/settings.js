@@ -230,23 +230,30 @@ export async function registerScreen(_params, ctx) {
 
 <div class="card imx" data-import>${h2('mail', '① Google カレンダー・購入確認メールから取り込む')}
 <p class="lead">カレンダーの予定や購入確認メールから、観た公演を見つけて足します。
-<b>読み取りはこの端末の中だけで行い、カレンダーやメールの中身はたぐりに送りません。</b>
-読み取った題名・日付を公演と照合し、選んだものだけを記録に足します。</p>
+<b>読み方によって、たぐりのサーバーを通るものが違います。</b>それぞれの欄に書きました。
+どの読み方でも、予定やメールの本文・カレンダーのアドレスは、たぐりに保存しません。
+予定やメールから取り出した<b>題名の候補と日付は、公演と照合するためにたぐりに送ります</b>（照合に使うだけで、保存しません）。
+記録として保存するのは、一覧で選んで足した公演の題名・日付・開演時刻・劇場だけです。</p>
 <details class="imx-src" open><summary>Google カレンダーから</summary>
-<p class="note">押すと Google の画面で「カレンダーの閲覧」を許可するか聞かれます。許可すると、過去 5 年の予定をこの端末で読み、公演と照合します。
-<b>予定も許可の鍵も、たぐりのサーバーには送らず、保存もしません。</b></p>
+<p class="note">押すと Google の画面で「カレンダーの閲覧」を許可するか聞かれます。許可すると、過去 5 年の予定を<b>この端末のブラウザが Google から直接読みます</b>。
+<b>予定の中身も許可の鍵も、たぐりのサーバーには送らず、保存もしません。</b>たぐりに送るのは、上に書いた題名の候補と日付だけです。</p>
 <div class="imx-row"><button type="button" class="primary" data-imx-google="1">Google カレンダーから取り込む</button></div>
 <details class="imx-alt"><summary>アドレスやファイルから読み込む</summary>
-<p class="note">パソコンの Google カレンダーで、設定 → 取り込むカレンダー → 「カレンダーの統合」にある
-<b>「iCal 形式の非公開アドレス」</b>をコピーして貼ってください。アドレスは保存せず、読むのはこの 1 回だけです。</p>
-<div class="imx-row"><input id="imx-url" type="url" inputmode="url" autocomplete="off" placeholder="https://calendar.google.com/calendar/ical/…/basic.ics" size="40">
+<p class="note"><b>.ics ファイルを選ぶとき</b>：ファイルはこの端末の中だけで読み、たぐりには送りません。</p>
+<p class="note"><b>非公開アドレスを貼るとき</b>：Google はブラウザから直接このアドレスを読ませないので、<b>アドレスをたぐりのサーバーに送り、サーバーが Google からカレンダー全体を取ってきて、この端末に渡します</b>。
+アドレスもカレンダーも、たぐりには保存しません（読むのはこの 1 回だけです）。アドレスを送りたくないときは、.ics ファイルを書き出して選んでください。<br>
+アドレスは、パソコンの Google カレンダーで、設定 → 取り込むカレンダー → 「カレンダーの統合」にある
+<b>「iCal 形式の非公開アドレス」</b>です。コピーして貼ってください。</p>
+<div class="imx-row"><input id="imx-url" type="url" inputmode="url" autocomplete="off" aria-label="iCal 形式の非公開アドレス" aria-describedby="imx-url-note" placeholder="https://calendar.google.com/calendar/ical/…/basic.ics" size="40">
 <button type="button" data-imx-cal="1">読み込む</button></div>
-<p class="note">書き出した .ics ファイルを選んでも読めます：<input id="imx-ics" type="file" accept=".ics,text/calendar"></p>
+<p class="note imx-url-note" id="imx-url-note">このアドレスはたぐりのサーバーを通ります（保存はしません）。</p>
+<p class="note">書き出した .ics ファイルを選ぶ（この端末の中だけで読みます）：<input id="imx-ics" type="file" accept=".ics,text/calendar"></p>
 </details>
 </details>
 <details class="imx-src"><summary>購入確認メールから</summary>
 <p class="note">ぴあ・ローチケ・おけぴ・東宝ナビザーブ・劇団のチケットサービスの書式を読めます（ほかのサイトもできるだけ読みます）。
-メールの本文をコピーして貼るか、メールを .eml ファイルで保存してまとめて選んでください。Gmail では、メールの「︙」→「メッセージをダウンロード」で保存できます。</p>
+メールの本文をコピーして貼るか、メールを .eml ファイルで保存してまとめて選んでください。Gmail では、メールの「︙」→「メッセージをダウンロード」で保存できます。<br>
+<b>貼った本文もファイルも、この端末の中だけで読み、たぐりには送りません。</b>たぐりに送るのは、読み取った題名と日付だけです。</p>
 <textarea id="imx-text" rows="6" placeholder="購入確認メールの本文を貼る（何通分でも、続けて貼れます）"></textarea>
 <div class="imx-row"><button type="button" data-imx-mail="1">読み取る</button>
 <span class="note">または <input id="imx-eml" type="file" accept=".eml,message/rfc822" multiple></span></div>
