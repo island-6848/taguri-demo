@@ -73,6 +73,10 @@ PROMPT_VERSION = "g4"   # 2026-10-18 に g2 から上げた（起案者の判断
 MODEL = LLM.MODEL
 READER = os.environ.get("TAGURI_THEME_READER", "gemini").lower()
 CLAUDE_MODEL = "claude-routine"
+# **これより短い本文は、読む前に規則で空にする**（起案者の指示 2026-10-18「限界までルールベースで、Claude は最小限」）。
+# 取得の作業データの候補 1,353 件（10-16）を数えると、本文 400 字未満の 42 件はあらすじが 0 件・言葉ありが 1 件だった。
+# 「。」の数などで線を引き上げると、言葉の取れていた公演を数十件落とすので、ここまでにした。行は model="rule" で残す
+MIN_STORY_TEXT = 400
 
 PROMPT_C2 = """あなたは演劇の公演ページの本文から、あらすじと内容の要素を抜き出す部品である。
 入力は複数の公演で、それぞれ「### id: <id>」の行で始まり、次の「###」までがその公演の本文である。
@@ -803,6 +807,16 @@ def main() -> int:
                         fp.write(json.dumps({"side": side, "id": r["id"], "title": r["title"],
                                              "url": r["url"], "synopsis": "", "elements": [],
                                              "reason": "本文なし", "model": a.model,
+                                             "prompt_version": a.prompt_version,
+                                             "at": datetime.date.today().isoformat()},
+                                            ensure_ascii=False) + "\n")
+                continue
+            if len(r["text"]) < MIN_STORY_TEXT:     # 規則で先に落とす（読む数を減らす）
+                with _lock:
+                    with OUT.open("a", encoding="utf-8") as fp:
+                        fp.write(json.dumps({"side": side, "id": r["id"], "title": r["title"],
+                                             "url": r["url"], "synopsis": "", "elements": [],
+                                             "reason": "本文が短い", "model": "rule",
                                              "prompt_version": a.prompt_version,
                                              "at": datetime.date.today().isoformat()},
                                             ensure_ascii=False) + "\n")
