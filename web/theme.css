@@ -1488,6 +1488,49 @@ details.lprice>summary .plist>li:only-child::before{display:block}
 .card.tips.eguide .tip-h b{font-size:15.5px}
 @media(max-width:560px){.card.tips.eguide .tip-h b{font-size:14.5px}}
 
+/* ==== カードの見た目（作業 A。起案者の指示 2026-10-18 の 6 点。app.js fixLinks・dismissButton・leadSynopsis・compactTickets・priceRowsOf） ==== */
+/* ヘルプ（公演修正依頼の「？」）は、カードの枠の内側の右下の角へ（「ヘルプマークやっぱりカード内の右下角において」）。
+   回答の押し口の行に重ならないよう、ヘルプのあるカードは下に 1 段ぶん余白を足す。押せる広さは 44px 四方のまま */
+.ticket:has(>.fixq){padding-bottom:26px}
+.ticket>.fixq:not(#_){top:auto;bottom:4px;right:6px}
+.ticket>.fixq .fixq-open:not(#_){background:none;border-color:transparent}
+.ticket>.fixq .fixq-open:not(#_):hover,.ticket>.fixq .fixq-open:not(#_):focus-visible{border-color:var(--acc)}
+/* 候補から消す ✕: ヘルプの前の場所（枠の外の右上の角）に重ねて小さく出す（「今ヘルプマークがあるとこには取り消しの✕をつけて」） */
+.ticket>.dismissq{position:absolute;top:-12px;right:-10px;margin:0;z-index:3;line-height:0}
+.dismissq-open{position:relative;display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;padding:0;
+ border:1px solid var(--ring);border-radius:50%;background:var(--surf);color:var(--mute);cursor:pointer}
+.dismissq-open:hover,.dismissq-open:focus-visible{color:var(--acc);border-color:var(--acc)}
+.dismissq-open:disabled{opacity:.5;cursor:default}
+.dismissq-open::after{content:"";position:absolute;left:50%;top:50%;width:44px;height:44px;transform:translate(-50%,-50%)}
+/* 消したカードの跡の 1 行 */
+.dismissed{margin:0 0 16px;padding:10px 14px;border:1px dashed var(--ring);color:var(--ink2);font-size:13px;line-height:1.6}
+.dismissed .said:not(:empty){margin-left:.6em}
+/* あらすじ: 続きは同じ段落の中で、畳む前の最後の字のすぐ次から続ける（details をやめて span の開け閉めに）。
+   ハッシュタグは折りたたみの外で、閉じていても見える */
+:is(.ticket.cmp,.rec-row.cmp) .lsynopen{display:inline;margin-left:4px;padding:0;border:0;background:none;font:inherit;font-size:12px;
+ color:var(--curtain);cursor:pointer}
+:is(.ticket.cmp,.rec-row.cmp) .lsynopen[hidden],:is(.ticket.cmp,.rec-row.cmp) .lsynrest[hidden]{display:none}
+:is(.ticket.cmp,.rec-row.cmp) .lsynmore.open{display:inline;padding:0;background:none}
+/* 「ほか n 会場」で開く中身は会場名だけ、地の色なし（「会場名だけでよい。背景色も不要」） */
+.ticket.cmp .meta .mvlist:not(#_){padding:0;background:none;border-radius:0;margin:0 0 2px 17px}
+/* 折りたたみの三角: 公演日時（日程の行）と「ほか n 会場」の三角を、ほかの折りたたみ（「▶効かせ方」）と同じ ▶ で、見える大きさに
+   （「公演日時の折りたたみの三角▶小さすぎて見えない」。前は ▸ を .8em ≒ 10px で、細い三角になっていた） */
+.tourfull.v2:not(#_) summary.tf-head::after{content:"▶";font-size:10px;margin-left:.5em;vertical-align:1px;transform-origin:50% 55%}
+.ticket.cmp:not(#_) .meta .mvmore::before{content:"▶";font-size:10px;margin-right:3px;vertical-align:1px;transform-origin:50% 55%}
+/* 料金: 畳んだ明細の 1 行目（開く前）には行頭の菱形を付けない（「価格帯、展開する前の♦は不要。消して」）。開いたら続きの行とそろえて付ける */
+details.lprice:not([open])>summary .plist>li:only-child:not(#_){padding-left:0}
+details.lprice:not([open]):not(#_)>summary .plist>li:only-child::before{display:none}
+/* 日程の欄と次の行（脚本・演出など）のすき間を、作り手の行どうしの間（.leadbox の gap 4px）と同じに（起案者の指示 2026-10-18
+   「日程と脚本のすき間を、脚本と演出くらいの余白にして（縮めて）」。前は 8px を足していた） */
+.ticket.cmp .ltour:has(.tourfull.v2):not(#_){margin-bottom:0}
+/* 発売の札は、価格帯（料金の明細の折りたたみ）の右隣に（「発売済みなどのマークは価格帯の詳細の隣に置くようにして」）。
+   入りきらない幅では次の行へ回る。明細を開いても札は 1 行目の高さのまま */
+.ticket.cmp .main>.lprice:has(+.sale):not(#_){display:inline-block;vertical-align:top;max-width:100%;margin:6px 10px 0 0}
+.ticket.cmp .main>.lprice+.sale:not(#_){display:inline-flex;vertical-align:top;margin:3px 0 8px}
+/* 「公式サイト」の字と枠線は回答の押し口と同じスミクロ（--btn-ink）に（「「公式サイト」って文字と枠線もスミクロにして」）。字は fonts.css */
+.ticket .sitebtn:not(#_):not(#_),:is(.ticket.cmp,.rec-row.cmp) .sitelink:not(#_):not(#_){color:var(--btn-ink);border-color:var(--btn-ink)}
+.ticket .sitebtn:not(#_):not(#_):hover,:is(.ticket.cmp,.rec-row.cmp) .sitelink:not(#_):not(#_):hover{background:var(--curtain-w);color:var(--ink)}
+
 /* ---- お気に入りの役職（起案者の指示 2026-10-18「人って選んだあとに、細く指定したい場合のみ任意で選べるように。複数役職やる人もいるので」、
    q-favourite-homonym）。種類で「人」を選んだときだけ出す。選ばなければ、どの役職でも当てる */
 .fav-add .fav-roles{display:none;flex:1 0 100%;flex-wrap:wrap;gap:4px 14px;align-items:center;margin:4px 0 0;padding:8px 10px;border:1px solid var(--ring);border-radius:8px}
