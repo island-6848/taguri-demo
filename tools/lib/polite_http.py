@@ -14,7 +14,7 @@
 | 間隔を空ける | **同じホストには 1.1 秒に 1 回まで**（Crawl-delay がそれより長ければそちら）。別のホストへは並行してよい。スレッドをまたいで守る |
 | 待ってと言われたら待つ | 429/503 は `Retry-After` の秒数だけ待って 1 回だけ取り直す（上限 `RETRY_AFTER_MAX` 秒） |
 | 断られ続けたら引く | 同じホストに 403/429/503 が `REFUSALS_TO_STOP` 回続いたら、**その実行ではもうそのホストへ行かない** |
-| 取りすぎない | gzip で受け取り、`max_bytes` を超える分は読まない |
+| 取りすぎない | gzip で受け取る。`max_bytes` は**受け取った量と展開した後の量の両方**に掛け、超えたら途中で切らずに `TooLarge` で断る |
 
 robots.txt を読めなかったとき（5xx・通信失敗）は、**そのホストはその実行では取りに
 行かない**（安全側。読めないことを「何でも許された」とは扱わない）。404 など 4xx は
@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import atexit
 import gzip
+import io
 import re
 import sys
 import threading
@@ -59,6 +60,10 @@ ROBOTS_TIMEOUT = 10
 
 class Skipped(Exception):
     """robots.txt の禁止・ホストから手を引いたなどで、**通信せずに**取りやめたこと。"""
+
+
+class TooLarge(Exception):
+    """本文が上限を超えたこと。**切った残りを成功として返さない**（欠けたページを使わせない）。"""
 
 
 _lock = threading.Lock()
@@ -99,6 +104,24 @@ def _open(url: str, *, timeout: float, headers: dict | None, context):
     return urllib.request.urlopen(req, timeout=timeout, context=context)
 
 
+def _read_body(r, limit: int | None) -> bytes:
+    """本文を読む。gzip は展開して返す。`limit` は受け取る量と展開後の量の両方に掛ける。
+
+    **展開前だけに上限を掛けると、小さな gzip が展開で何百倍にも膨らみ**、取得の
+    メモリを使い切る（3 KB の上限で 2 MB が返った）。展開も上限 + 1 バイトまでしか
+    読まず、超えたら断る。
+    """
+    raw = r.read(limit + 1) if limit else r.read()
+    if limit and len(raw) > limit:
+        raise TooLarge(f"受け取った本文が {limit} バイトを超えた")
+    if (r.headers.get("Content-Encoding") or "").strip().lower() == "gzip":
+        with gzip.GzipFile(fileobj=io.BytesIO(raw)) as z:
+            raw = z.read(limit + 1) if limit else z.read()
+        if limit and len(raw) > limit:
+            raise TooLarge(f"展開した本文が {limit} バイトを超えた")
+    return raw
+
+
 def _robots_for(origin: str, host: str, context):
     """ホストの robots.txt を 1 回だけ読む（並行して呼ばれても読むのは 1 回）。"""
     with _lock:
@@ -114,9 +137,7 @@ def _robots_for(origin: str, host: str, context):
         try:
             with _open(origin + "/robots.txt", timeout=ROBOTS_TIMEOUT, headers=None,
                        context=context) as r:
-                raw = r.read(500_000)
-                if r.headers.get("Content-Encoding") == "gzip":
-                    raw = gzip.decompress(raw)
+                raw = _read_body(r, 500_000)
             text = raw.decode("utf-8", "replace")
             rp = urllib.robotparser.RobotFileParser()
             rp.parse(text.splitlines())
@@ -228,9 +249,7 @@ def fetch(url: str, *, timeout: float = 30, max_bytes: int | None = None,
         _wait_turn(host)
         try:
             with _open(url, timeout=timeout, headers=headers, context=context) as r:
-                raw = r.read(max_bytes) if max_bytes else r.read()
-                if r.headers.get("Content-Encoding") == "gzip":
-                    raw = gzip.decompress(raw)
+                raw = _read_body(r, max_bytes)
             with _lock:
                 _refusals[host] = 0
             return raw

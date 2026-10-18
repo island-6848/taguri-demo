@@ -110,11 +110,13 @@ async function currentUser(request, db) {
 // (rate-limit.guardedUserInsert, #124), so a refused sign-up leaves no session
 // and keeps the device's old one.
 // guard: [sql, ...args], a further condition on the users row (e.g. that the
-// recovery code used is still the account's, #126).
+// recovery code used is still the account's, #126; that the Firebase sign-in is
+// newer than a sign-out everywhere, #178). The old session is revoked only when
+// the new one goes in, so a refused sign-in keeps the device's old session.
 async function startSession(db, uid, commands, oldRaw, guard = null) {
   const session = token();
   const [cond, ...args] = guard ?? ['1'];
-  if (oldRaw) commands.push(db.prepare('DELETE FROM sessions WHERE hash=? AND EXISTS (SELECT 1 FROM users WHERE id=?)').bind(await hash(oldRaw),uid));
+  if (oldRaw) commands.push(db.prepare(`DELETE FROM sessions WHERE hash=? AND EXISTS (SELECT 1 FROM users WHERE id=? AND ${cond})`).bind(await hash(oldRaw),uid,...args));
   // Delete expired sessions and bound the number of devices per account.
   commands.push(db.prepare('DELETE FROM sessions WHERE user_id=? AND (expires_at<=? OR hash NOT IN (SELECT hash FROM sessions WHERE user_id=? ORDER BY expires_at DESC LIMIT 9))').bind(uid,now(),uid));
   commands.push(db.prepare(`INSERT INTO sessions(hash,user_id,expires_at,created_at) SELECT ?,id,?,? FROM users WHERE id=? AND ${cond}`).bind(await hash(session),now()+TTL,now(),uid,...args));
@@ -189,8 +191,16 @@ async function firebaseSignIn(request, env) {
     commands.push(guardedUserInsert(db, plan, ['id','recovery_hash','created_at','firebase_uid','terms_version','terms_at'], [uid,'firebase:'+token(),now(),identity.uid,TERMS_VERSION,now()]),
       ...countNewAccount(db, plan, uid));
   }
-  const session = await startSession(db, uid, commands, oldRaw);
+  // 上の失効の確認からここまでのあいだに /api/logout/all が終わっていたら、セッションを作らない（#178）。
+  // 確認と作成のあいだの競合をなくすため、INSERT そのものに Firebase UID と失効時刻の条件を付け、
+  // 行ができなかったら 401（成功の Cookie は返さない）。結び付け・新規作成は同じ batch で firebase_uid が入る
+  const guard = known
+    ? ['firebase_uid=? AND (tokens_valid_after IS NULL OR tokens_valid_after<?)', identity.uid, identity.authTime]
+    : ['firebase_uid=?', identity.uid];
+  const session = await startSession(db, uid, commands, oldRaw, guard);
   if (created) await confirmNewAccount(db, env, fail, uid, request);
+  if (!(await db.prepare('SELECT 1 AS ok FROM sessions WHERE hash=?').bind(await hash(session)).first()))
+    fail(401, known ? 'すべての端末でログアウトしたあとです。もう一度 Google かメールでログインしてください。' : 'ログインし直してください。');
   return json({linked,created},200,{'Set-Cookie':cookie(session)});
 }
 // Firebase 側の削除の保留（#128）。たぐりの記録を消したあと、Google 側（Firebase Authentication）の

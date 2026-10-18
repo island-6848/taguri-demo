@@ -267,6 +267,45 @@ test('興味あり copied to the tour\'s other venues counts once as a hint; a v
   } finally { sqlite.close(); }
 });
 
+// #196: 押した公演と同じ公演のほかの会場への答えは、まとめて保存するか、まったく保存しないか。
+// 入れ替わりの 1 枚が作れなくても、保存できた答えを失敗とは返さない（fill: null と、取り直せる印）
+function faultyDb(env, fails) {
+  const orig = env.DB.prepare, state = {saved: false};
+  const wrapSt = (st, sql, args = []) => {
+    const go = async (m, isWrite) => {
+      if (fails(sql, args, state)) throw new Error('injected D1 failure');
+      const r = await st[m]();
+      if (isWrite && /INSERT INTO reaction/.test(sql)) state.saved = true;
+      return r;
+    };
+    return {bind: (...v) => wrapSt(st.bind(...v), sql, v), first: () => go('first'), all: () => go('all'), run: () => go('run', true), execute: () => go('execute', true)};
+  };
+  env.DB.prepare = sql => wrapSt(orig(sql), sql);
+  return () => { env.DB.prepare = orig; };
+}
+test('an answer and its copies to the other venues are saved together or not at all; a failed fill still reports the save', async () => {
+  const {env, sqlite} = await withIndex();
+  const a = await signIn(env);
+  try {
+    const ins = sqlite.prepare("INSERT INTO catalogue(id,title,date,venue,url,metadata) VALUES(?,'気になるツアー','2026-12-01',?,'',?)");
+    for (const [id, v] of [['781', '劇場A'], ['782', '劇場B'], ['783', '劇場C']]) ins.run(id, v, JSON.stringify({end_date: '2026-12-05', fields: {出演: '俳優甲'}}));
+    const count = () => sqlite.prepare("SELECT count(*) AS n FROM reaction WHERE stage_id IN ('781','782','783')").get().n;
+    // 3 つめの会場の保存で失敗: 押した公演も 2 つめの会場も残さない（応答の失敗と保存の結果が合う）
+    let restore = faultyDb(env, (sql, args) => /INSERT INTO reaction/.test(sql) && args.includes('783'));
+    const broken = await step(env, a, {post: '/api/react', body: {stage_id: '781', value: 'interest', nofill: true, siblings: ['782', '783']}});
+    restore();
+    assert.notEqual(broken.status, 200);
+    assert.equal(count(), 0, 'nothing is saved when one venue fails');
+    // 保存のあと、入れ替わりの 1 枚を作る読み取りで失敗: 保存できたと返し、fill は null（取り直せる）
+    restore = faultyDb(env, (sql, args, st) => st.saved && !/INSERT INTO reaction/.test(sql));
+    const got = await step(env, a, {post: '/api/react', body: {stage_id: '781', value: 'interest', siblings: ['782', '783'], shown: ['781']}});
+    restore();
+    assert.equal(got.status, 200);
+    assert.deepEqual({ok: got.body.ok, saved: got.body.saved, fill: got.body.fill, retry: got.body.fill_status}, {ok: true, saved: true, fill: null, retry: 'retry_available'});
+    assert.equal(count(), 3);
+  } finally { sqlite.close(); }
+});
+
 // 起案者の指示 2026-10-18「おすすめ理由に『（お気に入り・興味ありの公演から）』って書くのやめて。ちゃんと公演タイトル書いて」:
 // 作品名の引けない人は何も添えない（前は「（お気に入り・興味ありの公演から）」と書いていた）
 test('a person raised only by pseudo ratings is not shown as 履歴 0 本, nor as （お気に入り・興味ありの公演から）', async () => {

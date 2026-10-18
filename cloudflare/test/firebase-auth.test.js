@@ -211,6 +211,35 @@ test('after signing out everywhere, an ID token from an earlier sign-in is refus
   assert.equal(sqlite.prepare('SELECT count(*) AS n FROM users WHERE tokens_valid_after IS NOT NULL').get().n, 1);
 });
 
+// issue #178: 失効の確認（SELECT）とセッションの作成（batch）のあいだに全端末のログアウトが終わっても、
+// 古いトークンでセッションを作らない。セッションの INSERT 自体に Firebase UID と失効時刻の条件を付ける
+test('a sign-out everywhere landing between the revocation check and the session insert still wins', async () => {
+  const {call, sqlite, env} = setup();
+  const t = nowSec();
+  const before = await idToken({auth_time: t - 30, iat: t - 30});
+  const one = await signIn(call, await idToken({auth_time: t - 30, iat: t - 30}));
+  const batch = env.DB.batch;
+  let raced = false;
+  env.DB.batch = async commands => {
+    if (!raced) {
+      // 交換の batch の直前に、本人が別の端末で /api/logout/all を終えた
+      raced = true;
+      assert.equal((await call('logout/all', {}, one.cookie)).status, 200);
+      assert.equal(sqlite.prepare('SELECT count(*) AS n FROM sessions').get().n, 0);
+    }
+    return batch(commands);
+  };
+  const stolen = await signIn(call, before);
+  env.DB.batch = batch;
+  assert.ok(raced);
+  assert.equal(stolen.status, 401);
+  assert.equal(stolen.response.headers.get('set-cookie'), null);   // 成功の Cookie を返さない
+  assert.equal(sqlite.prepare('SELECT count(*) AS n FROM sessions').get().n, 0);
+  // 同じトークンを後からもう一度出しても入れない。新しいログインは入れる
+  assert.equal((await signIn(call, before)).status, 401);
+  assert.equal((await signIn(call, await idToken({auth_time: t + 5, iat: t + 5}))).status, 200);
+});
+
 test('signing in with a different Google account while signed in never lands in the current account', async () => {
   const {call, sqlite} = setup();
   const x = await signIn(call, await idToken({sub: 'google-x'}));

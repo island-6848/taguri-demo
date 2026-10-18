@@ -93,9 +93,10 @@ FAILS = ROOT / "data" / "credits" / "official_fail.json"
 _lock = threading.Lock()
 _fails: dict[str, str] | None = None
 _fail_dirty = False
+# **証明書とホスト名は標準どおり確かめる。** 以前は検証を切っていたため、通信の途中で
+# 応答を差し替えられると、偽のクレジットや取得可否（robots.txt）をそのまま取り込んでいた。
+# 証明書の不備な公式サイトは、検証を緩めて救わず **落ちた先として控える**（`get` の except）
 _ctx = ssl.create_default_context()
-_ctx.check_hostname = False
-_ctx.verify_mode = ssl.CERT_NONE
 
 
 def _host(url: str) -> str:

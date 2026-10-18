@@ -19,6 +19,7 @@ import json
 import secrets
 import sys
 import threading
+import traceback
 import urllib.parse
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -37,6 +38,13 @@ NO_KEY = """<!doctype html><meta charset="utf-8"><title>たぐり 管理画面</
 <p>管理画面を起動したときに、黒い画面（ターミナル）に <b>http://127.0.0.1:8770/?t=…</b> と出ます。その URL をそのまま開いてください。
 鍵は data/admin/token に控えてあり、起動し直しても変わりません。</p></body>"""
 LOCK = threading.Lock()          # D1 と記録への書き込みは 1 つずつ
+
+
+def failed(data: Path, where: str) -> dict:
+    """思わぬ失敗の返事。**例外の中身は返さず**、手元の記録（admin.diagnose）に書いて番号だけ返す。"""
+    ref = A.diagnose(where, traceback.format_exc(), data)
+    return {"ok": False, "error": f"うまくいきませんでした（問い合わせ番号 {ref}。詳しい中身は手元の {A.DIAG} に控えました）",
+            "reference": ref}
 
 
 def make_handler(token: str, db: A.D1, data: Path):
@@ -85,8 +93,8 @@ def make_handler(token: str, db: A.D1, data: Path):
                 return self._send(404, {"ok": False, "error": "ありません"})
             except A.AdminError as e:
                 return self._send(400, {"ok": False, "error": str(e)})
-            except Exception as e:                                   # noqa: BLE001
-                return self._send(500, {"ok": False, "error": f"うまくいきませんでした（{type(e).__name__}: {e}）"})
+            except Exception:                                        # noqa: BLE001
+                return self._send(500, failed(data, f"{self.command} {u.path}"))
 
         def do_POST(self):
             u = urllib.parse.urlparse(self.path)
@@ -124,8 +132,8 @@ def make_handler(token: str, db: A.D1, data: Path):
                 return self._send(400, {"ok": False, "error": str(e)})
             except (ValueError, TypeError) as e:
                 return self._send(400, {"ok": False, "error": f"入力がおかしい（{type(e).__name__}）"})
-            except Exception as e:                                   # noqa: BLE001
-                return self._send(500, {"ok": False, "error": f"うまくいきませんでした（{type(e).__name__}: {e}）"})
+            except Exception:                                        # noqa: BLE001
+                return self._send(500, failed(data, f"{self.command} {u.path}"))
 
     return H
 

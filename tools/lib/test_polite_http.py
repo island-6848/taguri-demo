@@ -5,6 +5,7 @@
 """
 from __future__ import annotations
 
+import gzip
 import http.server
 import sys
 import threading
@@ -18,6 +19,8 @@ PH.INTERVAL = 0.3              # 試験を速くする（本番は 1.1 秒）
 PH.RETRY_AFTER_MAX = 2.0
 
 ok = ng = 0
+# 高圧縮の gzip（展開すると 2,000,000 バイト・圧縮後は 2 KB ほど）
+BOMB = gzip.compress(b"\0" * 2_000_000)
 
 
 def check(name: str, cond: bool, detail="") -> None:
@@ -53,6 +56,10 @@ class H(http.server.BaseHTTPRequestHandler):
                 return self._send(404)
             if kind == "robots500":
                 return self._send(500)
+            if kind == "robotsbomb":
+                return self._send(200, BOMB, {"Content-Encoding": "gzip"})
+            if kind == "size":
+                return self._send(404)
             return self._send(200, b"User-agent: *\nDisallow: /private\nCrawl-delay: 0.6\n")
         if self.path.startswith("/429"):
             H.state["429"] += 1
@@ -61,6 +68,12 @@ class H(http.server.BaseHTTPRequestHandler):
             return self._send(200, b"after-wait")
         if self.path.startswith("/503"):
             return self._send(503, headers={"Retry-After": "1"})
+        if self.path.startswith("/bomb"):
+            return self._send(200, BOMB, {"Content-Encoding": "gzip"})
+        if self.path.startswith("/gz"):
+            return self._send(200, gzip.compress(b"small page"), {"Content-Encoding": "gzip"})
+        if self.path.startswith("/big"):
+            return self._send(200, b"x" * 5000)
         if self.path.startswith("/403"):
             return self._send(403)
         return self._send(200, f"page {self.path} on {port}".encode())
@@ -144,6 +157,29 @@ except PH.Skipped:
     check("robots.txt が 500 なら取りに行かない（安全側）", True)
 srv6, base6 = serve("robots500")
 check("robots=False（公開者の書き出し口）は robots.txt を見ない", PH.fetch(base6 + "/csv", robots=False).startswith(b"page"))
+
+print("取りすぎない")
+srv7, base7 = serve("size")
+check("上限内の gzip は展開して返す", PH.fetch(base7 + "/gz", max_bytes=3000) == b"small page")
+try:
+    body = PH.fetch(base7 + "/bomb", max_bytes=3000)
+    check("展開後に上限を超える gzip は断る", False, f"{len(body)} バイト返った")
+except PH.TooLarge:
+    check("展開後に上限を超える gzip は断る（TooLarge）", True)
+try:
+    body = PH.fetch(base7 + "/big", max_bytes=3000)
+    check("上限を超える非圧縮の本文は、切って成功にせず断る", False, f"{len(body)} バイト返った")
+except PH.TooLarge:
+    check("上限を超える非圧縮の本文は、切って成功にせず断る（TooLarge）", True)
+check("上限ちょうどまでは取れる", PH.fetch(base7 + "/big", max_bytes=5000) == b"x" * 5000)
+srv8, base8 = serve("robotsbomb")
+H.hits.clear()
+try:
+    PH.fetch(base8 + "/x")
+    check("展開すると大きすぎる robots.txt は読めなかった扱い", False, "取れてしまった")
+except PH.Skipped as e:
+    check("展開すると大きすぎる robots.txt は読めなかった扱い（取りに行かない）",
+          "TooLarge" in str(e) and not any(h[1] == "/x" for h in H.hits), e)
 
 print(f"\n{ok} 件通過・{ng} 件失敗")
 sys.exit(1 if ng else 0)

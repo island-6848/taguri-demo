@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import sys
 import tempfile
+import threading
 import time
 from pathlib import Path
 
@@ -65,6 +66,33 @@ AU.revoke_session(token)
 check("失効させたセッションは解決できない", AU.resolve_session(token) is None)
 check("存在しないトークンはNone", AU.resolve_session("no-such-token") is None)
 
+# --- issue #183: DB にはセッショントークンの生の値を置かない ---
+token = AU.create_session(uid1)
+conn = AU._db()
+stored = [r[0] for r in conn.execute("SELECT session_token FROM sessions WHERE user_id = ?", (uid1,))]
+conn.close()
+check("DB に生のトークンが無い（#183）", token not in stored and len(stored) == 1, stored)
+check("DB の値を Cookie に入れても入れない（#183）", AU.resolve_session(stored[0]) is None)
+check("生のトークンなら今までどおり解決できる", AU.resolve_session(token) == uid1)
+AU.revoke_session(token)
+check("生のトークンで失効させられる", AU.resolve_session(token) is None)
+
+# 生の値を入れていた頃の DB（user_version 0）は、開いたときに残りのセッションを消す
+old_token = "old-plain-token"
+conn = AU._db()
+conn.execute("INSERT INTO sessions (session_token, user_id, created_at, last_seen_at) VALUES (?, ?, ?, ?)",
+             (old_token, uid1, time.time(), time.time()))
+conn.execute("PRAGMA user_version = 0")
+conn.commit()
+conn.close()
+check("古い形の DB に残った生のトークンは使えない", AU.resolve_session(old_token) is None)
+conn = AU._db()
+left = conn.execute("SELECT COUNT(*) FROM sessions").fetchone()[0]
+version = conn.execute("PRAGMA user_version").fetchone()[0]
+conn.close()
+check("古い形の DB は開いたときにセッションを消し、版を上げる", left == 0 and version == AU.SESSION_SCHEMA_VERSION,
+      (left, version))
+
 # --- /recover ---
 recovered_uid = AU.recover(code1, ip="127.0.0.1")
 check("正しいコードでrecoverできる", recovered_uid == uid1)
@@ -115,6 +143,52 @@ try:
     check("存在しない連携コードはAuthErrorになるはず", False)
 except AU.AuthError:
     check("存在しない連携コードはAuthError", True)
+
+# --- issue #182: 同じ連携コードを同時に 2 回引き換えられない ---
+# 2 つの要求が link_codes に最初に触れる直前で待ち合わせ、同時に進ませる
+# （修正前は、両方が「未使用」を読んでから使い切っていた）。
+link_race = AU.create_link_code(uid1)
+barrier = threading.Barrier(2, timeout=5)
+real_db = AU._db
+
+
+class _MeetBeforeLinkCodes:
+    def __init__(self, conn):
+        self._conn, self._met = conn, False
+
+    def execute(self, sql, *args):
+        if "link_codes" in sql and not self._met:
+            self._met = True
+            try:
+                barrier.wait()
+            except threading.BrokenBarrierError:
+                pass
+        return self._conn.execute(sql, *args)
+
+    def __getattr__(self, name):
+        return getattr(self._conn, name)
+
+
+race_results: list = []
+
+
+def _redeem_race(ip: str) -> None:
+    try:
+        race_results.append(AU.redeem_link_code(link_race, ip=ip))
+    except AU.AuthError as e:
+        race_results.append(e)
+
+
+AU._db = lambda: _MeetBeforeLinkCodes(real_db())
+try:
+    racers = [threading.Thread(target=_redeem_race, args=(f"198.51.100.4{i}",)) for i in range(2)]
+    [t.start() for t in racers]
+    [t.join(15) for t in racers]
+finally:
+    AU._db = real_db
+check("同時の 2 要求のうち、引き換えられるのは 1 つだけ（#182）",
+      sorted(isinstance(r, str) for r in race_results) == [False, True]
+      and [r for r in race_results if isinstance(r, str)] == [uid1], race_results)
 
 # --- セキュリティレビュー2026-08-28 指摘①への回帰テスト ---
 # 「外れの推測は該当コードのattemptsに触れない」ことを利用して総当たりしても、

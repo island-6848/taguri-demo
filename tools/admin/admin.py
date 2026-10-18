@@ -22,6 +22,7 @@ import datetime as dt
 import json
 import os
 import re
+import secrets
 import shutil
 import subprocess
 import sys
@@ -38,6 +39,7 @@ import deliver_posters as DP    # noqa: E402
 
 DATA = Path(os.environ.get("TAGURI_ADMIN_DATA", ROOT / "data" / "admin"))
 LOG = "log.jsonl"
+DIAG = "diagnostics.jsonl"      # 失敗の詳しい中身（例外・wrangler や claude の出力）。画面には出さない
 QUEUE = "llm_queue.jsonl"
 DB_NAME = "taguri-demo"
 BUCKET = os.environ.get("TAGURI_POSTER_BUCKET", "taguri-posters")
@@ -53,6 +55,30 @@ WRITES_POSTER = 4      # poster の行と索引（2）＋ admin_log（2）
 
 class AdminError(Exception):
     pass
+
+
+def diagnose(where: str, detail: str, data: Path | None = None) -> str:
+    """失敗の詳しい中身を手元の記録にだけ書き、画面に出す問い合わせ番号を返す。
+
+    **例外の文や wrangler・claude の出力は画面に返さない。** SQL の断片・手元のパス・接続の設定が
+    混ざることがあり、画面やスクリーンショットから外に出る。画面には決まった文と番号だけを出し、
+    番号で data/admin/diagnostics.jsonl（本人だけが読める権限）を引く。
+    """
+    ref = secrets.token_hex(8)
+    d = DATA if data is None else data
+    try:
+        d.mkdir(parents=True, exist_ok=True)
+        p = d / DIAG
+        with p.open("a", encoding="utf-8") as f:
+            f.write(json.dumps({"at": now_iso(), "ref": ref, "where": where, "detail": detail[-4000:]},
+                               ensure_ascii=False) + "\n")
+        try:
+            p.chmod(0o600)
+        except OSError:
+            pass
+    except OSError:
+        pass                     # 記録に書けなくても、画面に詳しい中身を出す方へは戻さない
+    return ref
 
 
 def now_iso() -> str:
@@ -81,7 +107,8 @@ def wrangler_run(args: list[str]) -> str:
     except subprocess.TimeoutExpired as e:
         raise AdminError("D1 から返事がありませんでした（初めての実行は wrangler の取り込みに時間がかかります。もう一度押してください）") from e
     if r.returncode:
-        raise AdminError("D1 に届きませんでした（wrangler にログインしているか確かめてください）: " + (r.stderr or r.stdout)[-400:])
+        ref = diagnose("wrangler d1 execute", r.stderr or r.stdout or "")
+        raise AdminError(f"D1 に届きませんでした（wrangler にログインしているか確かめてください。問い合わせ番号 {ref}）")
     return r.stdout
 
 
@@ -476,7 +503,8 @@ def run_claude(prompt: str, timeout: int = 300) -> str:
         hint = ""
         if re.search(r"unknown option|unrecognized|--tools|--strict-mcp-config|--no-session-persistence", r.stderr or ""):
             hint = "（claude が古く、道具を外す引数を知らないようです。`claude update` で新しくしてください）"
-        raise AdminError("Claude Code が答えませんでした" + hint + ": " + (r.stderr or r.stdout)[-300:])
+        ref = diagnose("claude -p", r.stderr or r.stdout or "")
+        raise AdminError(f"Claude Code が答えませんでした{hint}（問い合わせ番号 {ref}）")
     return r.stdout
 
 
