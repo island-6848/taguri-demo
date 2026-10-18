@@ -13,7 +13,7 @@ import {frac} from './grade.js';
 import {scoreFromIndex, d1Access, seedsFromFavourites, gradeOf, MAX_SEED_STAGES, droppedKind, GENRE_AXIS, CONTENT_AXES, favSpread} from '../recommend.js';
 import {stageInfo} from './fallback.js';
 import {tourBlock} from './schedule.js';
-import {parseCredits} from './credits.js';
+import {parseCredits, isGuide} from './credits.js';
 import {chooseVariant, groupOf, VARIANTS} from '../reco-gate.js';
 import {readWeights, multipliersOf, weightForm, weightAction, tunedWeights} from './weights.js';
 import {impressionAdjust, round6} from '../impression.js';
@@ -107,7 +107,7 @@ const KEEP = 400;
 const GATE_REUSE_MIN = 30;
 // 再生（H5）で 1 つずつ外す部品: 興味ありの配り分け・1 段広げる・並べ直し（spreadLeads）・裏の答え合わせ（chooseVariant）・感想の好み（#104）
 export const REPLAY_ABLATIONS = ['split', 'expand', 'spread', 'gate', 'impression', 'rollup'];
-const VERSION = 'screen-v35';   // v35: fine subject likes roll up the vocabulary to broader concepts (SF) across 3+ branches, and the reason names them (rolledThemeWords, 2026-10-18); v34: 作曲・音楽 spread from favourites too (FAV_SPREAD_W, 2026-10-18); v33: favourites' own stages (お気に入りの一覧) seed too, spread by role (FAV_SPREAD_W), reasons name the favourite, the 効かせ方 defaults per group (2026-10-18); v32: the reasons name the newest and oldest works, favourites' works too (2026-10-18); v31: 感想で書いた特徴への好みが順位と理由に効く（#104）; v30: the hidden check's choice is reused while the ratings are unchanged (CPU, #138); v29: the cache keeps only the reasons the screens show (CPU, #138); v28: the hidden check leaves out the dropped kinds as the ranking does (#115); v27: a rating of a record dated after today is not learnt from (#116); v26: ratings ordered by when they were rated (works.rated_at), not by the last edit (#112); v25: a name in the 興味あり note counts only when not denied or compared against (#111); v24: a 興味あり copied to the tour's other venues counts once (#110); v23: 興味なし weakens after the split, not before (#109); v22: favourite seeds weigh FAV_SEED_W (お気に入り＞興味あり); v21: credits read only where needed (CPU); v20: a production answered under another stage id stays out; v19: same title + (group / venue / a shared person) is one card; v18: one card per title+group (sameProduction); v17: no 出典 on the reasons; v16: #会場 dropped, 行けない (interest=2) as a liked seed; v15: 出さない語 also hits the kind tags; v14: #ジャンル (a genre turned off hides its stages); v13: no 原作「原作もの」 (DROPPED_KEYS); v12: no #値段 (DROPPED_AXES); v11: reasons of answered stages (answered_why); v2: the user's 効かせ方 (rank_weight) and the per-group counts; v3: 興味あり as seeds; v4: diag; v5: 興味あり split (impl-interest-split); v6: by part importance; v7: tiers + トメ; v8: two tiers only; v9: トメ joins the main roles; v10: spread leads + one-step partners
+const VERSION = 'screen-v36';   // v36: a favourite's reason names its role, the work and this person's role there, rows without an explanation are left out (2026-10-18); the ✕ (dismiss) and role-narrowed favourites (declared_roles) change the seeds (2026-10-18); v35: fine subject likes roll up the vocabulary to broader concepts (SF) across 3+ branches, and the reason names them (rolledThemeWords, 2026-10-18); v34: 作曲・音楽 spread from favourites too (FAV_SPREAD_W, 2026-10-18); v33: favourites' own stages (お気に入りの一覧) seed too, spread by role (FAV_SPREAD_W), reasons name the favourite, the 効かせ方 defaults per group (2026-10-18); v32: the reasons name the newest and oldest works, favourites' works too (2026-10-18); v31: 感想で書いた特徴への好みが順位と理由に効く（#104）; v30: the hidden check's choice is reused while the ratings are unchanged (CPU, #138); v29: the cache keeps only the reasons the screens show (CPU, #138); v28: the hidden check leaves out the dropped kinds as the ranking does (#115); v27: a rating of a record dated after today is not learnt from (#116); v26: ratings ordered by when they were rated (works.rated_at), not by the last edit (#112); v25: a name in the 興味あり note counts only when not denied or compared against (#111); v24: a 興味あり copied to the tour's other venues counts once (#110); v23: 興味なし weakens after the split, not before (#109); v22: favourite seeds weigh FAV_SEED_W (お気に入り＞興味あり); v21: credits read only where needed (CPU); v20: a production answered under another stage id stays out; v19: same title + (group / venue / a shared person) is one card; v18: one card per title+group (sameProduction); v17: no 出典 on the reasons; v16: #会場 dropped, 行けない (interest=2) as a liked seed; v15: 出さない語 also hits the kind tags; v14: #ジャンル (a genre turned off hides its stages); v13: no 原作「原作もの」 (DROPPED_KEYS); v12: no #値段 (DROPPED_AXES); v11: reasons of answered stages (answered_why); v2: the user's 効かせ方 (rank_weight) and the per-group counts; v3: 興味あり as seeds; v4: diag; v5: 興味あり split (impl-interest-split); v6: by part importance; v7: tiers + トメ; v8: two tiers only; v9: トメ joins the main roles; v10: spread leads + one-step partners
 export {PREFS} from './prefs.js';
 const KIND_LABEL = {'#形式': '形式', '#原作': '原作', '#翻訳': '', '#原作の国': '原作の国', '#会場': '劇場', '#題材': '題材', '#ジャンル': 'ジャンル'};
 // 理由に添える作品名は、いちばん新しい公演といちばん古い公演の 2 つまで（起案者の指示 2026-10-18「公演タイトルすでに
@@ -220,6 +220,60 @@ export function favOrigins(seeds, skip = new Set()) {
   return out;
 }
 
+/**
+ * お気に入りから広げた人の理由に書く作品: (role, person) -> [登録した名前, その種類, [[登録した名前のその作品での役職, 作品名, この人のその作品での役職]...]]。
+ * 作品は新しい初日から（いちばん新しい・いちばん古いを出す。worksText と同じ）。登録した名前の役職は、人・原作者ならその公演の
+ * 名簿で同じ名前（空白を詰めて NFKC）の役職、団体・主催なら「主催」、作品・題材には付けない。名簿に無ければ空（役職を書かない）。
+ * 起案者の指示 2026-10-18「『お気に入りの横山拓也と同じ公演に関わる人：『雉はじめて鳴く』』→『横山拓也 演出『雉はじめて鳴く』出演』」
+ */
+const ROLE_RANK = role => -favSpread(role);
+const rolesText = roles => [...new Set(roles)].sort((a, b) => (ROLE_RANK(a) - ROLE_RANK(b)) || (a < b ? -1 : a > b ? 1 : 0)).join('・');
+const FAV_WORKS_KEPT = 8;
+export function favDetails(seeds, origins, info, kindOf) {
+  const out = new Map();
+  for (const [k, name] of origins) {
+    const [role, person] = k.split('\t');
+    const kind = kindOf.get(name) || '人';
+    const works = [];
+    for (const s of seeds) {
+      if (!(s.fav || []).includes(name) || !(s.people || []).some(([r, p]) => r === role && p === person)) continue;
+      const st = info.get(String(s.stage_id)) || {};
+      if (!st.title) continue;
+      const mine = (s.people || []).filter(([r, p]) => p === person && !r.startsWith('#')).map(([r]) => r);
+      const favRole = kind === '団体' || kind === '主催' ? '主催' : kind === '作品' || kind === '題材' ? ''
+        : rolesText((s.people || []).filter(([r, p]) => !r.startsWith('#') && nzName(p) === nzName(name)).map(([r]) => r));
+      works.push([String(st.start || ''), favRole, st.title, rolesText(mine)]);
+    }
+    works.sort((a, b) => (!a[0] - !b[0]) || (a[0] < b[0] ? 1 : a[0] > b[0] ? -1 : 0) || (a[2] < b[2] ? -1 : a[2] > b[2] ? 1 : 0));
+    const seen = new Set();
+    const uniq = works.filter(w => !seen.has(w[2]) && seen.add(w[2])).slice(0, FAV_WORKS_KEPT).map(w => w.slice(1));
+    out.set(k, [name, kind, uniq]);
+  }
+  return out;
+}
+
+/**
+ * お気に入りから広げた人の括弧の中（起案者の指示 2026-10-18）。人・原作者「横山拓也 演出『雉はじめて鳴く』出演」、
+ * 団体「劇団乙 主催『舞台ふたつめ』出演」、作品「『舞台ふたつめ』出演」、題材「題材「科学」の『舞台』出演」。
+ * 役職の分からない登録名は役職を書かない（「横山拓也『雉はじめて鳴く』出演」）。作品が 2 つで役職が同じなら
+ * 「演出『A』・『B』出演」、役職が違えば「演出『A』出演、脚本『B』出演」。3 つ以上は新旧 2 つと「ほか n 本」。
+ * このカードの公演そのもの（own）は作品に数えない。作品を書けないとき（題名の引けない古い控え）は「（○○と同じ公演）」
+ */
+export function favText(name, kind, works, own = '') {
+  const ws = (works || []).filter(w => w[1] && w[1] !== own);
+  if (!ws.length) return `（${E(name)}と同じ公演）`;
+  const shown = ws.length > WORKS_SHOWN ? [ws[0], ws[ws.length - 1]] : ws;
+  const rest = ws.length - shown.length;
+  const groups = [];
+  for (const [fr, t, pr] of shown) {
+    const g = groups.find(x => x.fr === fr && x.pr === pr);
+    if (g) g.t.push(t); else groups.push({fr, pr, t: [t]});
+  }
+  const head = kind === '作品' ? '' : kind === '題材' ? `題材「${E(name)}」の` : E(name);
+  const body = groups.map((g, i) => (g.fr ? (i || !head ? '' : ' ') + E(g.fr) : '') + g.t.map(t => `『${E(t)}』`).join('・') + E(g.pr)).join('、');
+  return `（${head}${body}${rest > 0 ? ` ほか ${rest} 本` : ''}）`;
+}
+
 /** 観た回に出ていなかったと本人が外した出演者（works.cast_off）。1 段広げるときにも戻さない。 */
 const castOffKeys = rated => new Set(rated.flatMap(r => (r.cast_off || []).map(n => '出演\u0000' + n)));
 
@@ -262,30 +316,41 @@ const worksText = (titles, n) => {
   return '（' + shown.map(t => `『${E(t)}』`).join('・') + (rest > 0 ? ` ほか ${rest} 本` : '') + '）';
 };
 
-/** render_recommend.reason_rows for the Worker's reasons (people, then kinds of show). */
-export function reasonRows(group, titles) {
+/**
+ * render_recommend.reason_rows for the Worker's reasons (people, then kinds of show).
+ * 括弧の説明（作品名・履歴の本数・好きな人・お気に入りの名前）を書けない行は出さない（起案者の問い 2026-10-18「括弧で
+ * おすすめ理由がついてないものがおすすめ理由に出ちゃってる。なぜ？」、fix-reason-no-paren）。評価の無い人・形式
+ * （興味あり・お気に入りの公演だけで上がったもの）の作品名が、このカードの公演そのものしか無い（cardsHtml が除く）か、
+ * 引けなかったときに、名前だけの行になっていた。`own` はこのカードの公演の題名（お気に入りの作品から除く）
+ */
+export function reasonRows(group, titles, own = '') {
   const out = [];
   // 1 段広げて来た人（scoreFromIndex の via）: 「○○とよく組む人」と書く
   const via = new Map(group.via || []);
   // お気に入りの公演にいたことで上がった人（rankedGroups の fav）: 登録した名前と、その公演の題名で書く
   // （起案者の指示 2026-10-18「理由の文は、登録した名前（ここでは堂本光一）を書く」）
-  const fav = new Map(group.fav || []);
+  // 控えの形は [鍵, 登録した名前, 種類, 作品]（v35）。前の形（[鍵, 登録した名前]、興味ありに残した理由）は作品なしで書く
+  const fav = new Map((group.fav || []).map(([k, ...rest]) => [k, rest]));
   for (const [, role, person, n] of group.parts.slice(0, 4)) {
+    // 案内の文（「スタッフ欄をご覧ください。」）は人ではない。索引が入れ替わるまで残る行も出さない（fix-credit-guide-text）
+    if (isGuide(person)) continue;
     const k = role + '\t' + person, w = via.get(k), f = fav.get(k);
-    const works = f ? worksText(titles.get(k), 0) : '';
+    const why = w ? `（好きな${E(w)}と同じ公演に関わる人）` : f ? favText(f[0], f[1], f[2], own) : worksText(titles.get(k), n);
+    if (!why) continue;
     out.push(`<li class="rs b"><span class="net">人物</span>${E(role)} <b>${E(person)}</b>`
-      + `<span class="n">${w ? `（好きな${E(w)}と同じ公演に関わる人）`
-        : f ? `（お気に入りの${E(f)}と同じ公演に関わる人${works ? '：' + works.slice(1, -1) : ''}）` : worksText(titles.get(k), n)}</span>`
+      + `<span class="n">${why}</span>`
       + `<button class="rsx" data-word="${E(person)}" title="この人物を理由に出さない">✕</button></li>`);
   }
   for (const [, axis, tag, n] of group.kinds.filter(k => !droppedKind(k[1], k[2])).slice(0, 2)) {
+    const why = worksText(titles.get(axis + '\t' + tag), n);
+    if (!why) continue;
     // 「漫画原作」のように中身が見出しを含むときは見出しを出さない（「原作 漫画原作」にしない）
     const label0 = Object.hasOwn(KIND_LABEL, axis) ? KIND_LABEL[axis] : axis.replace(/^#+/, '');
     const label = label0 && tag.endsWith(label0) ? '' : label0;
     // 札の表示は「形式」（起案者の指示 2026-10-18「『種類』ってよりは形式？って表現近いと思う」。人物・形式でそろえる）。
     // 札と同じ見出し（#形式）は重ねて書かない（「形式 形式 ミュージカル」にしない）
     out.push(`<li class="rs c k"><span class="net">形式</span>${label && label !== '形式' ? E(label) + ' ' : ''}<b>${E(tag)}</b>`
-      + `<span class="n">${worksText(titles.get(axis + '\t' + tag), n)}</span>`
+      + `<span class="n">${why}</span>`
       + `<button class="rsx" data-kindoff="${E(axis + '\t' + tag)}" title="この理由をおすすめに使わない（公演は消さない）">✕</button></li>`);
   }
   // 感想で書いた好み（#104）: 特徴と、その根拠にした自分の感想の一文
@@ -432,10 +497,16 @@ export async function rankedGroups(ctx) {
   // One slot per production (collapse_tours), after answered stages are left out.
   // 評価の履歴が無く、お気に入りの公演にいたことで上がった人は、理由に登録した名前を書く（起案者の指示 2026-10-18
   // 「理由の文は、登録した名前を書く」）。理由に出る上位 4 人だけ
-  const origins = favOrigins(seeds, skip);
+  // お気に入りの名前から引いた公演の題名と初日（理由の作品名に使う）。控えが古いときだけ読む（公演は MAX_SEED_STAGES まで、
+  // rec_stage と catalogue を 1 回ずつ。D1 の読み取りは多くて 120 行）
+  const favInfo = seeds.length ? await stageInfo(db, seeds.map(r => r.stage_id)) : new Map();
+  // 同じ名前を別の種類でも登録していれば、人・原作者として書く
+  const kindOf = new Map();
+  for (const f of [...favourites].sort((a, b) => ['人', '原作者'].includes(b.kind) - ['人', '原作者'].includes(a.kind))) if (!kindOf.has(f.name)) kindOf.set(f.name, f.kind);
+  const origins = favDetails(seeds, favOrigins(seeds, skip), favInfo, kindOf);
   const favWhy = c => {
     const via = new Map(c.via || []);
-    const w = c.parts.slice(0, 4).filter(p => !p[3]).map(p => p[1] + '\t' + p[2]).filter(k => !via.has(k) && origins.has(k)).map(k => [k, origins.get(k)]);
+    const w = c.parts.slice(0, 4).filter(p => !p[3]).map(p => p[1] + '\t' + p[2]).filter(k => !via.has(k) && origins.has(k)).map(k => [k, ...origins.get(k)]);
     return w.length ? {fav: w} : {};
   };
   const byTour = new Map();
@@ -475,9 +546,6 @@ export async function rankedGroups(ctx) {
     // Answered venues of the production stay out too (the answer is copied to the tour).
     g.venues = g.venues.filter(v => v.stage_id === g.stage_id || !done.has(v.stage_id));
   }
-  // お気に入りの名前から引いた公演の題名と初日（理由の作品名に使う）。控えが古いときだけ読む（公演は MAX_SEED_STAGES まで、
-  // rec_stage と catalogue を 1 回ずつ。D1 の読み取りは多くて 120 行）
-  const favInfo = seeds.length ? await stageInfo(db, seeds.map(r => r.stage_id)) : new Map();
   const favWorks = seeds.map(r => ({...r, title: favInfo.get(String(r.stage_id))?.title || '', date: favInfo.get(String(r.stage_id))?.start || ''}));
   const titles = personTitles(rated, liked, favWorks);
   // 答えた公演の理由（理由を残す前に押した興味ありのため。lists.interestScreen が reaction.why の無い行に使う）。
@@ -634,7 +702,7 @@ export async function cardsHtml(ctx, rows, titles, first = 1) {
     const own = info.get(String(r.shown))?.title || '';
     const mine = own ? new Map([...(r.parts || []), ...(r.kinds || [])].map(p => p[1] + '\t' + p[2]).filter(k => titles.has(k))
       .map(k => [k, titles.get(k).filter(t => t !== own)])) : titles;
-    out.push(withTour(compose(card, r.shown, 'recommend', {rank: rank++, why: reasonRows(r, mine), poster: pic ? posterHtml(pic) : ''}), tour));
+    out.push(withTour(compose(card, r.shown, 'recommend', {rank: rank++, why: reasonRows(r, mine, own), poster: pic ? posterHtml(pic) : ''}), tour));
   }
   return out;
 }

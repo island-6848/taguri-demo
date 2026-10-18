@@ -57,7 +57,7 @@ export const regionLabel = (pref, fallback = '') => (!pref ? fallback : pref ===
 
 /** render_recommend.venues */
 const venue = c => ({stage_id: String(c.stage_id || ''), theater: c.theater || '', pref: c.pref || '', period: c.period || '',
-  days: c.days || 0, price: c.price || '', url: c.url || '', onsale: c.onsale || '確認できず'});
+  days: c.days || 0, price: c.price || '', url: c.url || '', onsale: c.onsale || '発売日不明'});
 export const venues = c => [venue(c), ...(c.tours || []).map(venue)];
 
 /** render_recommend.schedule_html */
@@ -168,7 +168,7 @@ function mergeSiblings(rows) {
       tail.push(m);
     }
     if (tail.length) head.tours = tail.map(m => ({stage_id: m.stage_id, theater: m.theater || '', pref: m.pref || '', period: m.period || '',
-      days: m.days || 0, price: m.price || '', url: m.url || '', onsale: m.onsale || '確認できず'}));
+      days: m.days || 0, price: m.price || '', url: m.url || '', onsale: m.onsale || '発売日不明'}));
     const best = members.map(m => m.kind_key).reduce((a, b) => (STATUS_RANK[b] > STATUS_RANK[a] ? b : a));
     if (best !== head.kind_key) [head.kind_key, [head.kind, head.icon, head.cls]] = [best, KIND[best]];
     out.push(head);

@@ -1912,6 +1912,18 @@
    "verifies": []
   },
   {
+   "id": "dec-price-same-amount",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "カードの料金で、金額だけの行と同じ額が券種つきの行にもあるときは、券種つきの行だけを出す（「7,000円／全席指定 7,000円」→「全席指定 7,000円」）",
+   "sources": [
+    "web/app.js",
+    "cloudflare/test/e2e-walk.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-rate-limit-fail-open",
    "type": "decision",
    "status": "proposed",
@@ -2356,6 +2368,20 @@
    "title": "サービス版を Render の有料サービスで立てる",
    "sources": [
     "deploy/render-service.yaml"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-sale-label-words",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "発売の札は「発売済」「発売日不明」「10/25 10:00 発売」（時刻は取得元にあるときだけ。取得元で時刻まで書く公演は【発売日】4,697 件のうち 5 件）",
+   "sources": [
+    "tools/review/recommend2.py",
+    "tools/review/render_recommend.py",
+    "tools/review/test_reason_works.py",
+    "cloudflare/src/screens/reminder.js"
    ],
    "verifies": []
   },
@@ -3221,6 +3247,23 @@
    "verifies": []
   },
   {
+   "id": "fix-credit-guide-text",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-18",
+   "title": "出演欄などに名前の代わりに書かれた案内の文（「スタッフ欄をご覧ください。」「詳細は公式サイトにて、https://…」など）を人名として読んでいた。カードの出演の行と推薦の索引（rec_people）の両方に入っていたので、案内の文と URL は名前として読まないようにした",
+   "sources": [
+    "tools/review/measure_nets.py",
+    "cloudflare/src/screens/credits.js",
+    "cloudflare/src/screens/cast.js",
+    "tools/review/render_recommend.py",
+    "cloudflare/test/credits.test.js",
+    "cloudflare/test/cast.test.js",
+    "tools/review/test_measure_nets.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "fix-declined-kind-tags",
    "type": "decision",
    "status": "adopted",
@@ -3260,6 +3303,20 @@
     "cloudflare/src/screens/recommend.js",
     "cloudflare/src/screens/lists.js",
     "cloudflare/test/fav-reco.test.js",
+    "cloudflare/test/e2e-walk.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "fix-fav-reason-roles",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "お気に入りから広げた人の理由は「登録した名前 その作品での役職『作品名』この人のその作品での役職」（例「横山拓也 演出『雉はじめて鳴く』出演」）",
+   "sources": [
+    "cloudflare/src/screens/recommend.js",
+    "cloudflare/test/fav-reco.test.js",
+    "cloudflare/test/recommend-screen.test.js",
     "cloudflare/test/e2e-walk.js"
    ],
    "verifies": []
@@ -3379,6 +3436,21 @@
     "cloudflare/src/recommend.js",
     "tools/review/user_recommender.py",
     "cloudflare/test/reco-gate.test.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "fix-reason-no-paren",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-18",
+   "title": "括弧の説明の無い理由の行は、推薦アルゴリズム（順位）の問題ではなく、理由の文を作る側の問題。評価の無い人・形式（興味あり・お気に入りの公演だけで上がったもの）で、作品名がこのカードの公演そのものしか無い・引けないと、名前だけの行になっていた",
+   "sources": [
+    "cloudflare/src/screens/recommend.js",
+    "tools/review/render_recommend.py",
+    "cloudflare/test/fav-reco.test.js",
+    "cloudflare/test/recommend-screen.test.js",
+    "tools/review/test_reason_works.py"
    ],
    "verifies": []
   },
@@ -5797,6 +5869,17 @@
     "cloudflare/src/recommend.js",
     "cloudflare/src/screens/recommend.js",
     "cloudflare/test/fav-reco.test.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "q-fav-same-production",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-18",
+   "title": "お気に入りの一覧に出ている公演と同じ公演（別の番号）を、おすすめから外すべきか",
+   "sources": [
+    "cloudflare/src/screens/recommend.js"
    ],
    "verifies": []
   },
@@ -8967,6 +9050,11 @@
    "to": "q-worker-posters"
   },
   {
+   "from": "dec-price-same-amount",
+   "rel": "affects",
+   "to": "dec-ticket-price-filter"
+  },
+  {
    "from": "dec-rate-limit-fail-open",
    "rel": "depends_on",
    "to": "dec-rate-limit"
@@ -9335,6 +9423,11 @@
    "from": "dec-render-full-migration",
    "rel": "affects",
    "to": "q-direction"
+  },
+  {
+   "from": "dec-sale-label-words",
+   "rel": "affects",
+   "to": "fix-price-detail-missing"
   },
   {
    "from": "dec-scale-workers",
@@ -10022,6 +10115,11 @@
    "to": "dec-ui-1018b"
   },
   {
+   "from": "fix-credit-guide-text",
+   "rel": "affects",
+   "to": "dec-credit-part-names"
+  },
+  {
    "from": "fix-declined-kind-tags",
    "rel": "depends_on",
    "to": "impl-kind-reason-off"
@@ -10040,6 +10138,16 @@
    "from": "fix-fav-only-no-reco",
    "rel": "raises",
    "to": "q-fav-reco-running-shows"
+  },
+  {
+   "from": "fix-fav-reason-roles",
+   "rel": "depends_on",
+   "to": "dec-fav-spread-roles"
+  },
+  {
+   "from": "fix-fav-reason-roles",
+   "rel": "affects",
+   "to": "dec-reason-two-works"
   },
   {
    "from": "fix-future-dated-ratings",
@@ -10095,6 +10203,16 @@
    "from": "fix-rated-at",
    "rel": "raises",
    "to": "q-replay-history-restore"
+  },
+  {
+   "from": "fix-reason-no-paren",
+   "rel": "affects",
+   "to": "dec-reason-two-works"
+  },
+  {
+   "from": "fix-reason-no-paren",
+   "rel": "affects",
+   "to": "dec-reason-work-titles"
   },
   {
    "from": "fix-request-mail",
@@ -11730,6 +11848,11 @@
    "from": "q-fav-reco-running-shows",
    "rel": "depends_on",
    "to": "fix-fav-only-no-reco"
+  },
+  {
+   "from": "q-fav-same-production",
+   "rel": "depends_on",
+   "to": "fix-reason-no-paren"
   },
   {
    "from": "q-favourite-homonym",
