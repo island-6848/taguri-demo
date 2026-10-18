@@ -6,6 +6,7 @@
 // Enabled per name with env.NATIVE_UI ("all", or a comma list like
 // "screen:rate,api:rate"); everything else still goes to Render until the
 // switch-over (docs/render-migration-plan.md).
+import {readCapped} from '../body-limit.js';
 import {tickerScreens} from './ticker.js';
 import {rateScreens} from './rate.js';
 import {diaryScreens} from './diary.js';
@@ -92,8 +93,10 @@ export async function readInput(request, name = '') {
   const tooLong = {status: 413, body: envelope({error: '本文の長さが不正です'})};
   if (!Number.isInteger(declared) || declared < 0) return {status: 400, body: tooLong.body};
   if (declared > cap) return tooLong;
-  const bytes = new Uint8Array(await request.arrayBuffer());
-  if (bytes.length > cap) return tooLong;
+  // Read with the cap applied while streaming: a missing or false Content-Length must not
+  // let a large body be buffered in full before the size check (issue #123).
+  const bytes = await readCapped(request, cap);
+  if (!bytes) return tooLong;
   try {
     const value = bytes.length ? JSON.parse(new TextDecoder('utf-8', {fatal: true}).decode(bytes)) : {};
     if (value && typeof value === 'object' && !Array.isArray(value)) return {input: value};

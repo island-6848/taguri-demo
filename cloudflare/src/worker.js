@@ -28,6 +28,7 @@ export const shrinkingPath = (path, input) => SHRINKING_PATHS.has(path)
   || (['/api/favourite', '/api/reaction'].includes(path) && input?.remove === true);
 const STORAGE_FULL = '保存できる量の上限に近づいたので、無料の範囲で動かすために、いまは保存を止めています。見ることと消すことはできます。';
 import {fetchCalendar} from './screens/import.js';
+import {readCapped} from './body-limit.js';
 import {nativeScreen, nativeAction, allNative, movingScreen, movingAction, screen as nativeScreenBody, action as nativeActionBody, readInput as nativeInput} from './screens/index.js';
 const MAX_BODY = 262144;
 const COOKIE = 'taguri_session';
@@ -79,12 +80,9 @@ function reactionUpsert(db,uid,r) {
 }
 async function body(request) {
   if (!request.headers.get('content-type')?.startsWith('application/json')) fail(415,'JSON形式で送信してください。');
-  const reader = request.body?.getReader();
-  if (!reader) fail(400,'入力がありません。');
-  let size = 0; const chunks = [];
-  while (true) { const {done,value} = await reader.read(); if (done) break; size += value.byteLength; if (size > MAX_BODY) { await reader.cancel(); fail(413,'ファイルが大きすぎます。'); } chunks.push(value); }
-  const bytes = new Uint8Array(size); let offset = 0;
-  for (const chunk of chunks) {bytes.set(chunk,offset); offset += chunk.length;}
+  if (!request.body) fail(400,'入力がありません。');
+  const bytes = await readCapped(request, MAX_BODY);
+  if (!bytes) fail(413,'ファイルが大きすぎます。');
   let value; try {value=JSON.parse(new TextDecoder().decode(bytes));} catch {fail(400,'JSONを読み取れませんでした。');}
   if (!value || typeof value !== 'object' || Array.isArray(value)) fail(400,'JSONの形式を確認してください。');
   return value;

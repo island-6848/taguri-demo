@@ -2739,6 +2739,21 @@
    "verifies": []
   },
   {
+   "id": "impl-body-stream-cap",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-18",
+   "title": "Native 画面の本文（readInput）は全部読んでから大きさを見ていた。読みながら上限で止める共通の関数（src/body-limit.js）にした",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/123",
+    "cloudflare/src/body-limit.js",
+    "cloudflare/src/screens/index.js",
+    "cloudflare/src/worker.js",
+    "cloudflare/test/body-limit.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "impl-card-schedule",
    "type": "decision",
    "status": "adopted",
@@ -8241,6 +8256,11 @@
    "from": "impl-admin-tool",
    "rel": "raises",
    "to": "q-admin-override-in-index"
+  },
+  {
+   "from": "impl-body-stream-cap",
+   "rel": "depends_on",
+   "to": "sec-audit-1017"
   },
   {
    "from": "impl-card-schedule",
