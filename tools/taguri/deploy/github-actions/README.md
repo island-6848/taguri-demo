@@ -23,6 +23,7 @@ EC2 も AWS も使っていない（docs/knowledge の no-ec2・no-aws）。毎�
 ## 置くもの
 
 - `catalog.yml` → 非公開リポジトリの `.github/workflows/catalog.yml`
+- `replay.yml` → 非公開リポジトリの `.github/workflows/replay.yml`（推薦の再生。手で動かすだけ。下の「推薦の再生」）
 
 ## 設定
 
@@ -72,3 +73,16 @@ EC2 も AWS も使っていない（docs/knowledge の no-ec2・no-aws）。毎�
 - 実際のカタログで、初回と毎日の書き込み行数・索引の大きさを測る（q-real-catalog-stats）
 - Worker の `/api/catalogue` は 1,000 件までしか返さない（q-catalogue-api-limit）
 - 定期実行は遅れたり飛ばされたりすることがある（gha-schedule-unreliable）
+
+## 推薦の再生（replay.yml）
+
+推薦が当たっているかを、本番の利用者の記録で測る（`docs/research/real-data-eval-plan.md` の §3・H5、`impl-replay-eval`）。
+パソコンが無くても、スマートフォンの GitHub アプリかブラウザで動かせる（起案者の指示 2026-10-18）。
+
+1. taguri-crawler の Actions → **Replay** → Run workflow（持ち主の user_id は任意）
+2. 終わったら、その実行の **Summary** に表が出る（AUC・部品を外したときの差・p 値。集計だけ）
+
+- 最初の段が Actions の分数を数え、毎日の取得の分を取っておいて 20 分が残るときだけ動かす（`free_tier.py plan --mode replay`）
+- 利用者の記録は D1 から読むだけ（毎日の控えと同じ表。数千行で、D1 の 1 日の読み出しの無料枠 500 万行のわずか）。
+  索引と過去の公演は作業データから作る。読んだ記録は一時ディレクトリに置き、終わったら消す
+- 秘密は Catalog と同じ `CLOUDFLARE_API_TOKEN`・`CLOUDFLARE_ACCOUNT_ID`

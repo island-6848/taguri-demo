@@ -80,6 +80,14 @@ class ActionsTest(unittest.TestCase):
         self.assertFalse(FT.plan([60] * 31, 'index')['run'])
         self.assertFalse(FT.plan(None, 'index')['run'])
 
+    def test_replay_runs_only_with_room_left_after_the_daily_updates(self):
+        self.assertTrue(FT.plan([0] * 31, 'replay')['run'])
+        self.assertFalse(FT.plan(None, 'replay')['run'])
+        # 毎日の更新の分（31 日 × 15 分）と今日の分を取っておくと、残りが REPLAY_MINUTES に足りない
+        tight = FT.CAPS['actions_minutes_31d'] - FT.future_catalog(30) - FT.CATALOG_MINUTES['daily'] - FT.REPLAY_MINUTES + 1
+        self.assertFalse(FT.plan([tight] + [0] * 30, 'replay')['run'])
+        self.assertTrue(FT.plan([tight - 1] + [0] * 30, 'replay')['run'])
+
 class LedgerTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
