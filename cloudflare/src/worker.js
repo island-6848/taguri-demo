@@ -1,4 +1,5 @@
 import {deleteAccountStatements, sweepEmptyAccounts} from './cleanup.js';
+import {purgeFixRequests} from './screens/fixrequest.js';
 import {isOriginalRoute, originalUI, ORIGINAL_SCREENS, ORIGINAL_WRITES} from './original-ui.js';
 import {verifyIdToken, isAuthError} from './firebase-auth.js';
 import {passkeyRoutes} from './passkey.js';
@@ -506,6 +507,8 @@ export default {
   // 1 日 1 回（wrangler.jsonc の triggers.crons）: 記録の無いアカウントを片付ける（cleanup.js）
   async scheduled(event, env, ctx) {
     ctx.waitUntil(sweepEmptyAccounts(env.DB).then(n => { if (n) console.log(`empty accounts removed: ${n}`); }));
+    // 対応済みの公演修正依頼の本文・行を期限で消す（issue #129）
+    ctx.waitUntil(purgeFixRequests(env.DB).then(r => { if (r.cleared || r.removed) console.log(`fix_request purged: ${r.cleared} bodies, ${r.removed} rows`); }));
   },
   async fetch(request, env) {
     const url = new URL(request.url);

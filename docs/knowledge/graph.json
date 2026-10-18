@@ -1076,6 +1076,21 @@
    "verifies": []
   },
   {
+   "id": "dec-fix-request-retention",
+   "type": "decision",
+   "status": "proposed",
+   "date": "2026-10-18",
+   "title": "公演修正依頼の保存に上限と期限を付ける（1 人の未対応 10 件・1 人 50 件・全体 2,000 件。対応済みは 30 日で本文、180 日で行を消す）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/129",
+    "cloudflare/src/screens/fixrequest.js",
+    "cloudflare/src/free-tier.js",
+    "cloudflare/test/fixrequest.test.js",
+    "cloudflare/public/privacy.html"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-free-tier-only",
    "type": "decision",
    "status": "adopted",
@@ -6946,6 +6961,16 @@
    "from": "dec-firebase-auth",
    "rel": "raises",
    "to": "q-firebase-free-tier"
+  },
+  {
+   "from": "dec-fix-request-retention",
+   "rel": "depends_on",
+   "to": "impl-fix-request"
+  },
+  {
+   "from": "dec-fix-request-retention",
+   "rel": "affects",
+   "to": "comp-d1"
   },
   {
    "from": "dec-free-tier-only",

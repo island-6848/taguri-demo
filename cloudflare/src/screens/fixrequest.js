@@ -7,10 +7,12 @@
 //   SMTP_USER（Gmail のアドレス）・SMTP_PASS（Google の「アプリ パスワード」）・NOTIFY_TO（届け先。無ければ SMTP_USER）
 // 設定が無い・送れないときも依頼は保存する（管理画面で見られる）。
 import {ValueError} from './py.js';
-import {FIX_REQUESTS_PER_USER_DAY, FIX_MAILS_PER_DAY} from '../free-tier.js';
+import {FIX_REQUESTS_PER_USER_DAY, FIX_MAILS_PER_DAY, FIX_OPEN_PER_USER, FIX_STORED_PER_USER, FIX_STORED_TOTAL,
+  FIX_RESOLVED_BODY_DAYS, FIX_RESOLVED_ROW_DAYS} from '../free-tier.js';
 
 export const KINDS = ['日程', '料金', '会場', 'あらすじ', '出演・スタッフ', 'ポスター', 'その他'];
 const MAX_MESSAGE = 1000;
+export const PURGED = '（対応済みのため消去）';   // 対応済みの依頼の本文を消したあとに置く文
 
 const b64 = s => btoa(String.fromCharCode(...new TextEncoder().encode(s)));
 const wrap76 = s => s.replace(/.{1,76}/g, m => m + '\r\n');
@@ -84,14 +86,19 @@ async function fixRequestAction(b, ctx) {
   if (!message) throw new ValueError('どう違うかを書いてください（正しい情報や、載っているページの URL など）');
   if (message.length > MAX_MESSAGE) throw new ValueError(`${MAX_MESSAGE} 字までにしてください`);
   const since = new Date(Date.parse(ctx.today + 'T00:00:00+09:00')).toISOString();
-  const n = (await ctx.db.prepare('SELECT count(*) AS n FROM fix_request WHERE user_id=? AND created_at>=?').bind(ctx.uid, since).first())?.n || 0;
-  if (n >= FIX_REQUESTS_PER_USER_DAY) throw new ValueError(`1 日に送れる依頼は ${FIX_REQUESTS_PER_USER_DAY} 件までです。明日またお願いします`);
   const st = await ctx.db.prepare("SELECT title FROM rec_stage WHERE ver=(SELECT v FROM rec_meta WHERE k='current') AND stage_id=?").bind(stageId).first()
     || await ctx.db.prepare('SELECT title FROM catalogue WHERE id=?').bind(stageId).first();
   const title = st?.title || '';
   const at = new Date(ctx.now).toISOString();
-  const row = await ctx.db.prepare('INSERT INTO fix_request(stage_id,user_id,kind,message,created_at) VALUES(?,?,?,?,?) RETURNING id')
-    .bind(stageId, ctx.uid, kind, message, at).first();
+  // 上限は INSERT の条件に入れる（数えてから入れるまでのあいだに別の依頼が入っても越えない。issue #129）
+  const row = await ctx.db.prepare(`INSERT INTO fix_request(stage_id,user_id,kind,message,created_at)
+    SELECT ?1,?2,?3,?4,?5 WHERE (SELECT count(*) FROM fix_request WHERE user_id=?2 AND created_at>=?6)<?7
+      AND (SELECT count(*) FROM fix_request WHERE user_id=?2 AND status='open')<?8
+      AND (SELECT count(*) FROM fix_request WHERE user_id=?2)<?9
+      AND (SELECT count(*) FROM fix_request)<?10 RETURNING id`)
+    .bind(stageId, ctx.uid, kind, message, at, since, FIX_REQUESTS_PER_USER_DAY, FIX_OPEN_PER_USER, FIX_STORED_PER_USER,
+      FIX_STORED_TOTAL).first();
+  if (!row) throw new ValueError(await refusal(ctx, since));
   const open = (await ctx.db.prepare("SELECT count(*) AS n FROM fix_request WHERE status='open'").first())?.n || 0;
   const text = `たぐりに公演修正依頼が届きました（依頼 #${row.id}）。\n\n公演: ${title || '（題名不明）'}（#${stageId}）\n`
     + `違うところ: ${kind}\n内容:\n${message}\n\n${/^\d+$/.test(stageId) ? `公演のページ: https://stage.corich.jp/stage/${stageId}\n` : ''}`
@@ -100,6 +107,32 @@ async function fixRequestAction(b, ctx) {
   const mailed = await notifyOwner(ctx, `【たぐり】公演修正依頼: ${title || stageId}（${kind}）`, text, ctx.env?.SMTP_OPEN);
   if (mailed) await ctx.db.prepare('UPDATE fix_request SET mailed=1 WHERE id=?').bind(row.id).run();
   return {body: {ok: true, id: row.id, said: '送りました。ありがとうございます。確かめて直します。直すまで少し時間がかかることがあります'}};
+}
+
+/** Why the conditional INSERT added nothing (the first limit that is reached). */
+async function refusal(ctx, since) {
+  const c = await ctx.db.prepare(`SELECT
+      (SELECT count(*) FROM fix_request WHERE user_id=?1 AND created_at>=?2) AS today,
+      (SELECT count(*) FROM fix_request WHERE user_id=?1 AND status='open') AS open,
+      (SELECT count(*) FROM fix_request WHERE user_id=?1) AS mine`).bind(ctx.uid, since).first() || {};
+  if (c.today >= FIX_REQUESTS_PER_USER_DAY) return `1 日に送れる依頼は ${FIX_REQUESTS_PER_USER_DAY} 件までです。明日またお願いします`;
+  if (c.open >= FIX_OPEN_PER_USER) return `まだ確かめていない依頼が ${FIX_OPEN_PER_USER} 件あります。確かめ終わるまで、少し待ってください`;
+  if (c.mine >= FIX_STORED_PER_USER) return `送れる依頼は ${FIX_STORED_PER_USER} 件までです。古い依頼が片付くまで、少し待ってください`;
+  return 'いまは依頼を受け付けられません。しばらくしてから送ってください';
+}
+
+/**
+ * 対応済みの依頼を片付ける（Worker の定期実行が 1 日 1 回呼ぶ。issue #129）。
+ * 直してから FIX_RESOLVED_BODY_DAYS 日たった依頼は本文を消し、FIX_RESOLVED_ROW_DAYS 日たった依頼は行ごと消す。
+ * 未対応の依頼は消さない（数は FIX_OPEN_PER_USER・FIX_STORED_TOTAL で抑える）。D1 の書き込みは 1 日 2 文と、変えた行の数。
+ */
+export async function purgeFixRequests(db, nowMs = Date.now()) {
+  const before = days => new Date(nowMs - days * 86400_000).toISOString();
+  const cleared = await db.prepare(`UPDATE fix_request SET message=?1 WHERE status!='open' AND resolved_at IS NOT NULL
+    AND resolved_at<?2 AND message!=?1`).bind(PURGED, before(FIX_RESOLVED_BODY_DAYS)).run();
+  const removed = await db.prepare(`DELETE FROM fix_request WHERE status!='open' AND resolved_at IS NOT NULL AND resolved_at<?`)
+    .bind(before(FIX_RESOLVED_ROW_DAYS)).run();
+  return {cleared: cleared?.meta?.changes ?? cleared?.changes ?? 0, removed: removed?.meta?.changes ?? removed?.changes ?? 0};
 }
 
 export const fixRequestScreens = {actions: {fix_request: fixRequestAction}};
