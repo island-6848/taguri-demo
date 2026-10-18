@@ -271,14 +271,16 @@ export async function registerScreen(_params, ctx) {
  <input id="w-date" type="date"> <input id="w-time" type="time" aria-label="開演時刻（任意）">
  <input id="w-venue" type="text" placeholder="劇場（任意）" size="14">
  <button data-add-work="1">${ico('plus')}登録する</button>
- <button data-sug-web="1">${ico('search')}CoRichで検索</button><span class="said"></span></div>
+ <button data-sug-web="1">${ico('search')}公演一覧から探す</button><span class="said"></span></div>
 <div id="sug" class="sug"></div>
-<p class="ed-lead"><b>題名を 2 文字入れると、手元の情報から候補が出ます。</b>
+<p class="ed-lead"><b>題名を 2 文字入れると、たぐりの公演一覧（毎日の更新で集めた公演と、2019 年からの過去の公演）とあなたの記録から候補が出ます。</b>
 選ぶと劇場・日程・出演者・作り手が一緒に入り、次のおすすめの材料になります。
 すでに記録にあるものは「記録あり」と出るので、二重に足さずに済みます。<br>
-<b>候補に出てこないときは「CoRichで検索」を押してください。</b>その場で公演情報を探します
-（8 秒ほどかかります）。同じ題名の公演が複数出ることがあります。
+「公演一覧から探す」を押すと、同じ公演一覧から公演だけを並べます。<b>その場で外のサイト（CoRich など）は探しません。</b>
+同じ題名の公演が複数出ることがあります。
 別の劇場での上演や再演なので、劇場と日程を見て、観た公演を選んでください。<br>
+<b>一覧に無い公演は</b>、出てくる「次の更新で探してもらう」から依頼すると、次の更新（毎日 4 時台・日本時間）で探します。
+待たずに、題名と観た日を入れてそのまま「登録する」を押しても記録できます。あとで同じ題名・日付の公演が集まると、自動で結び付きます。<br>
 ポスターが出るのは、手元に画像がある公演だけです。</p></div>
 
 <div class="card">${h2('flag', '③ 観ていない公演を「観ればよかった」に足す', missed.length ? `<span class="badge part">${missed.length} 件</span>` : '')}

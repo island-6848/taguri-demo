@@ -429,6 +429,7 @@ async function nativeRoute(request, env, url) {
       return json({ok:false,error:error.status ? error.message : '書き出せませんでした。'}, error.status ?? 500);
     }
   }
+  // suggest_web も同じ保存済みの公演一覧から探す（その場で外のサイトは探さない。画面の文言もそう書く、#92）
   if (allNative(env) && request.method === 'GET' && ['/api/suggest', '/api/suggest_web'].includes(url.pathname)) {
     try {
       const uid = await user(request, env.DB);

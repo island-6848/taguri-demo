@@ -1,5 +1,6 @@
 // GET /api/suggest (and /api/suggest_web, which the public Python service answers
-// the same way): stages and the user's own records whose title matches what is
+// the same way: neither searches CoRich on the spot, #92 — the screens say so and
+// offer 「次の更新で探してもらう」 (search_request) for stages not in D1): stages and the user's own records whose title matches what is
 // being typed, for linking a record to a stage. Answered by the Worker once
 // production no longer goes to Render (NATIVE_UI=all): Render's answer mixed in
 // the demo's records as "your" records.
