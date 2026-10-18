@@ -211,6 +211,22 @@ test('cross-origin requests are refused and pending challenges are bounded', asy
   assert.equal((await call('auth/passkey/login/options', {})).status, 200);
 });
 
+test('one address cannot fill the pending challenges for everyone (issue #73)', async () => {
+  const {sqlite, env} = setup();
+  const from = ip => worker.fetch(new Request(`${ORIGIN}/api/auth/passkey/login/options`, {method: 'POST',
+    headers: {origin: ORIGIN, 'content-type': 'application/json', 'cf-connecting-ip': ip}, body: '{}'}), env);
+  for (let i = 0; i < 10; i++) assert.equal((await from('203.0.113.7')).status, 200);
+  assert.equal((await from('203.0.113.7')).status, 429);
+  assert.equal((await from('198.51.100.2')).status, 200);
+  // 住所そのものは残さない（ハッシュの先頭だけ）
+  const addrs = sqlite.prepare('SELECT DISTINCT addr FROM webauthn_challenges').all().map(r => r.addr);
+  assert.equal(addrs.length, 2);
+  for (const a of addrs) assert.match(a, /^[0-9a-f]{24}$/);
+  // 期限が切れた問いは数えない
+  sqlite.prepare('UPDATE webauthn_challenges SET expires_at=0').run();
+  assert.equal((await from('203.0.113.7')).status, 200);
+});
+
 test('starting with a passkey asks for the terms before the device makes one', async () => {
   const {call, sqlite} = setup();
   assert.equal((await call('auth/passkey/register/options', {agree: undefined})).status, 400);
