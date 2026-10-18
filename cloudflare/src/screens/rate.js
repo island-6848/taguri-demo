@@ -411,7 +411,7 @@ async function addWorkAction(b, ctx) {
   if (had) {
     // 同じ日に同じ公演を 2 回（昼・夜）観たときは、開演の時刻で別の記録にする（起案者の指摘 2026-10-18
     // 「連続で何回も同じ公演を追加したい場合に対処して」）。時刻が無い・同じなら、同じ記録とみなして断る
-    if (!time || (had.time || '') === time) throw new ValueError(time ? 'その日・その開演の記録はもうある' : 'その日の記録はもうある。同じ日にもう一度観たときは、開演の時刻を入れる');
+    if (!time || (had.time || '') === time) throw new ValueError(time ? 'その日・その開演の記録はもうある' : 'その作品はもう登録してある');   // 時刻なしは Python の app.add_work と同じ文（screens.test.js）
     key = `${key}#${time}`;
     if (await ctx.db.prepare('SELECT 1 FROM works WHERE user_id=? AND work_key=?').bind(ctx.uid, key).first()) {
       throw new ValueError('その日・その開演の記録はもうある');

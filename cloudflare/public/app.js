@@ -1806,6 +1806,10 @@ document.addEventListener("click", ev => {
       const d = form.querySelector("input[name=date]"), t = form.querySelector("input[name=time]");
       if (!d.value) { if (said) said.textContent = "観た日を入れてください"; d.focus(); return; }
       if (!d.checkValidity()) { if (said) said.textContent = "観た日は上演期間の中から選んでください"; d.focus(); return; }
+      const prev = li.querySelector(".past-done");
+      if (prev && !t.value && (prev.dataset.days || "").split(",").includes(d.value)) {
+        if (said) said.textContent = "その日はもう追加しました。同じ日にもう一度観たときは、開演の時刻も入れてください"; t.focus(); return;
+      }
       // ツアーは選んだ劇場（観た日から選び直してある）の公演に結び付ける
       const sel = form.querySelector("select[name=stage]"), opt = sel && sel.selectedOptions[0];
       if (opt) {
@@ -1825,6 +1829,7 @@ document.addEventListener("click", ev => {
           if (!done) { done = document.createElement("p"); done.className = "past-done"; form.after(done); }
           done.dataset.n = String(+(done.dataset.n || 0) + 1);
           done.dataset.list = (done.dataset.list ? done.dataset.list + "、" : "") + when;
+          done.dataset.days = (done.dataset.days ? done.dataset.days + "," : "") + d.value;
           done.textContent = `追加した回（${done.dataset.n}）: ${done.dataset.list}`;
           d.value = ""; t.value = ""; d.focus();
           const seen = li.querySelector("[data-past=seen]");
