@@ -5771,6 +5771,18 @@
    "verifies": []
   },
   {
+   "id": "q-favourite-homonym",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-18",
+   "title": "お気に入りの人の名前に同姓同名がいる（加藤拓也）とき、片方だけを拾うにはどうするか。役職で絞る・団体で絞る・公演ごとに ✕ のどれにするか",
+   "sources": [
+    "data/review/candidates.jsonl",
+    "cloudflare/src/screens/lists.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "q-favourite-seed-volume",
    "type": "question",
    "status": "open",
@@ -11673,6 +11685,11 @@
    "from": "q-fav-reco-running-shows",
    "rel": "depends_on",
    "to": "fix-fav-only-no-reco"
+  },
+  {
+   "from": "q-favourite-homonym",
+   "rel": "depends_on",
+   "to": "dec-card-dismiss"
   },
   {
    "from": "q-favourite-seed-volume",
