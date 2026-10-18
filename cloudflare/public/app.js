@@ -491,15 +491,41 @@ function agreeAgain(version) {
     + '<div class="agreepop-foot"><button type="button" class="agreepop-ok" disabled>同意して続ける</button><span class="said" role="status"></span></div>'
     + '<p class="note">同意しない場合は、<a href="/account">アカウント</a>の画面からログアウトや退会ができます。</p></div>';
   const box = pop.querySelector(".agreepop-box"), ok = pop.querySelector(".agreepop-ok");
+  // **キーボードでも、この窓の中だけを動く**（#87）。開いたら窓へ焦点を移し、Tab は窓の中で回し、
+  // 後ろの画面は inert で触れなくする（後から足された帯にも付ける）。閉じたら元の場所へ焦点を戻す。
+  // 同意しない人も、Tab で「アカウント」のリンクまで行ける
+  const prev = document.activeElement, made = new Set();
+  const inertRest = () => [...document.body.children].forEach(n => {
+    if (n !== pop && !n.inert) { n.inert = true; made.add(n); }
+  });
+  const mo = new MutationObserver(inertRest);
+  const close = () => {
+    mo.disconnect();
+    made.forEach(n => { n.inert = false; });
+    pop.remove();
+    if (prev && prev.isConnected && prev.focus) prev.focus();
+  };
+  pop.addEventListener("keydown", ev => {
+    if (ev.key !== "Tab") return;
+    const f = [...box.querySelectorAll("a[href], input, button")].filter(n => !n.disabled);
+    if (!f.length) return;
+    const i = f.indexOf(document.activeElement);
+    if (ev.shiftKey && i <= 0) { ev.preventDefault(); f[f.length - 1].focus(); }
+    else if (!ev.shiftKey && (i < 0 || i === f.length - 1)) { ev.preventDefault(); f[0].focus(); }
+  });
   pop.querySelector("input").addEventListener("change", ev => { ok.disabled = !ev.target.checked; });
   // アカウントの画面へ行くときは閉じる（その画面でログアウト・退会できるように。ほかの画面を開くとまた出る）
-  pop.querySelector('.note a[href="/account"]').addEventListener("click", () => pop.remove());
+  pop.querySelector('.note a[href="/account"]').addEventListener("click", close);
   ok.addEventListener("click", async () => {
     ok.disabled = true;
     const d = await post("/api/agree", {agree: version}, box, "ありがとうございます");
-    if (d) setTimeout(() => pop.remove(), 600); else ok.disabled = false;
+    if (d) setTimeout(close, 600); else ok.disabled = false;
   });
   document.body.appendChild(pop);
+  inertRest();
+  mo.observe(document.body, {childList: true});
+  box.tabIndex = -1;
+  box.focus();
 }
 
 function renderScreen(el, activePath, d, exposureSource) {
@@ -557,11 +583,22 @@ function renderScreen(el, activePath, d, exposureSource) {
 // あとから解決した「今週のおすすめ」の結果でDOMが上書きされてしまっていた
 // (実機の実データで確認した不具合)。**呼ぶたびに番号を進め、自分の番号が
 // 最新でなくなっていたら画面には反映しない**(読み込み中の表示は消す)。
-let loadSeq = 0;
+let loadSeq = 0, shownKey = null;
 
-async function loadScreen(path, search) {
+// **リンクの「#」の先へ移る**（#102。検索の月のカレンダーの「#cal」など）。画面を描いたあとに探す。
+// 見つからなければ画面の先頭のまま（navigate で先頭へ戻してある）
+function scrollToHash(hash) {
+  if (!hash || hash.length < 2) return;
+  let id = hash.slice(1);
+  try { id = decodeURIComponent(id); } catch (e) { /* そのままの名前で探す */ }
+  const t = document.getElementById(id);
+  if (t) t.scrollIntoView();
+}
+
+async function loadScreen(path, search, hash) {
   if (window.TaguriExposure) TaguriExposure.stop();
   const seq = ++loadSeq;
+  shownKey = path + "?" + (search || "");
   const name = SCREENS[path];
   const el = contentEl();
   const stale = () => seq !== loadSeq;
@@ -590,6 +627,7 @@ async function loadScreen(path, search) {
   if (cached) {
     if (stale()) return;
     renderScreen(el, activePath, cached, "cache");
+    scrollToHash(hash);
     return;
   }
   const stopLoading = startLoading(el);
@@ -607,17 +645,17 @@ async function loadScreen(path, search) {
     // 先に飛ばした分が読めなかったときは、もう 1 回だけ取り直す
     if (!d || !d.ok) {
       const url = API_BASE + "/api/screen/" + name + (search ? "?" + search : "");
-      const r = await fetch(url, {credentials: "include"});
+      const r = await fetch(url, {credentials: "include"}).catch(() => null);
+      if (!r) throw {status: 0};
       // サーバーが途中で止まると（処理の上限を越えたときなど）、JSON ではなく Cloudflare のエラーのページが返る。
       // そのまま JSON として読むと「SyntaxError: Unexpected token '<'」としか出ず、何が起きたか分からない（起案者の報告 2026-10-18）
       d = await r.json().catch(() => null);
-      if (!d) throw new Error("サーバーの処理が途中で止まりました（" + r.status + "）。少し待ってから、ページを読み込み直してください。");
-      if (!r.ok || !d.ok) throw new Error(d.error || r.status);
+      if (!r.ok || !d || !d.ok) throw {status: r.ok && d ? 500 : r.status, error: d && d.error};
     }
   } catch (e) {
     stopLoading();
     if (stale()) return;
-    el.innerHTML = "<h1>読み込めませんでした</h1><p>" + E(e && e.message ? e.message : String(e)) + "</p>";
+    loadFailed(el, e, () => loadScreen(path, search, hash));
     return;
   }
   showWelcomeCode(d.welcome_code);
@@ -625,18 +663,40 @@ async function loadScreen(path, search) {
   stopLoading();
   if (stale()) return;
   renderScreen(el, activePath, d);
+  scrollToHash(hash);
+}
+
+// **読み込めなかったわけを、使う人の言葉で言う**（#96）。通信できない・ログインの期限切れ・一時的に止めている
+// （503）を分け、生の例外（SyntaxError など）は出さない。「再試行」は同じ画面（同じ条件）をもう 1 度取りに行く。
+// 画面の取得は読むだけなので取り直してよい。保存（post）は、届いたか分からないときに勝手に送り直さない
+const LOGIN_URL = (API_BASE || "") + "/login";   // 「http…」で始めて、SPA の切り替えに取られないようにする
+function failWords(status, error) {
+  if (!status) return ["通信できませんでした", "インターネットにつながっているか確かめて、もう一度試してください。"];
+  if (status === 401) return ["ログインの期限が切れました", "もう一度ログインしてください。"];
+  if (status === 503) return ["いまは一時的に止めています", error ? String(error) : "少し時間をおいてから、もう一度試してください。"];
+  if (error) return ["うまくいきませんでした", String(error)];
+  return ["サーバーの処理が途中で止まりました", "少し待ってから、もう一度試してください（" + status + "）。"];
+}
+function loadFailed(el, e, retry) {
+  const status = e && typeof e.status === "number" ? e.status : 0;
+  const [head, body] = failWords(status, e && e.error);
+  el.innerHTML = "<h1>読み込めませんでした</h1><p><b>" + E(head) + "</b>。" + E(body) + "</p>"
+    + '<p class="loadfail">' + (status === 401 ? '<a class="loadbtn" href="' + E(LOGIN_URL) + '">ログインし直す</a>'
+      : '<button type="button" class="loadbtn" data-reload-screen>再試行</button>') + "</p>";
+  const b = el.querySelector("[data-reload-screen]");
+  if (b) b.addEventListener("click", retry);
 }
 
 // --- SPAルーター:内部リンク・GETフォームをその場遷移に変える ----------------
 function stripToken(usp) { usp.delete("t"); return usp; }
 
-function navigate(path, search, push) {
+function navigate(path, search, push, hash) {
   const usp = stripToken(new URLSearchParams(search || ""));
   const qs = usp.toString();
-  const display = REPO_BASE + path + (qs ? "?" + qs : "");
+  const display = REPO_BASE + path + (qs ? "?" + qs : "") + (hash || "");
   if (push !== false) history.pushState(null, "", display);
   window.scrollTo(0, 0);
-  loadScreen(path, qs);
+  loadScreen(path, qs, hash);
 }
 
 function isInternalPath(p) {
@@ -645,16 +705,22 @@ function isInternalPath(p) {
 }
 
 document.addEventListener("click", ev => {
-  const a = ev.target.closest("a[href]");
+  // **ふつうの左クリックで、同じタブに開くリンクだけを引き受ける**（#86）。Ctrl・⌘ で新しいタブ、Shift で新しい窓、
+  // Alt で保存、中ボタン、target="_blank"・download のリンク、ほかの処理が止めた押下は、ブラウザに任せる
+  if (ev.defaultPrevented || ev.button !== 0 || ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey) return;
+  const a = ev.target.closest && ev.target.closest("a[href]");
   if (!a) return;
+  if (a.hasAttribute("download") || (a.getAttribute("target") || "_self").toLowerCase() !== "_self") return;
   const href = a.getAttribute("href");
   if (!href || /^[a-z]+:/i.test(href) || href.startsWith("#")) return;
-  let path = href.split("#")[0], search = "";
+  // 「#」の先は捨てずに持っていく（#102）。画面を描いたあと、その場所へ移る
+  const hi = href.indexOf("#"), hash = hi >= 0 ? href.slice(hi) : "";
+  let path = hi >= 0 ? href.slice(0, hi) : href, search = "";
   const qi = path.indexOf("?");
   if (qi >= 0) { search = path.slice(qi + 1); path = path.slice(0, qi); }
   if (!path || !isInternalPath(path)) return;
   ev.preventDefault();
-  navigate(path, search);
+  navigate(path, search, true, hash);
 }, true);
 
 document.addEventListener("submit", ev => {
@@ -674,7 +740,10 @@ document.addEventListener("submit", ev => {
 
 window.addEventListener("popstate", () => {
   const path = (location.pathname.slice(REPO_BASE.length) || "/");
-  loadScreen(path, location.search.replace(/^\?/, ""));
+  const search = location.search.replace(/^\?/, "");
+  // 「#」の先だけが変わった戻る・進むは、描き直さない（同じ画面の中で動くだけ。ブラウザが位置を戻す）
+  if (path + "?" + search === shownKey) return;
+  loadScreen(path, search, location.hash);
 });
 
 // **戻ってきたページを、そのまま信じない**（起案者の指摘 2026-10-14「取り消したのに、リロードせずに
@@ -685,7 +754,7 @@ window.addEventListener("pageshow", ev => {
   if (!ev.persisted || !API_BASE) return;
   fragmentCache.clear();
   const path = (location.pathname.slice(REPO_BASE.length) || "/");
-  loadScreen(path, location.search.replace(/^\?/, ""));
+  loadScreen(path, location.search.replace(/^\?/, ""), location.hash);
 });
 // **別のタブで書いたら、このタブの控えも捨てる。** タブごとに 45 秒の控えを持つので、
 // 片方で取り消した記録が、もう片方では控えのまま出ていた
@@ -709,7 +778,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document.querySelector(".side").insertAdjacentHTML("beforeend", renderNav() + renderPNav());
   restoreNavFold();
   const path = (location.pathname.slice(REPO_BASE.length) || "/");
-  loadScreen(path, location.search.replace(/^\?/, ""));
+  loadScreen(path, location.search.replace(/^\?/, ""), location.hash);
   if (!IS_DEMO) loadTicker();
 });
 
@@ -868,24 +937,48 @@ function priceFilter(el) {
   }
   fil.appendChild(box);
   const sl = box.querySelector(".ysl");
+  // **隠しているときは、一覧の場所にも言う**（#97）。上限はこの端末に覚えるので、別の画面でも効いたままになる ──
+  // 畳んだ箱の中だけで言うと、全件が隠れたとき「公演が無い」としか見えない。外す押し口もここに置く
+  const bar = document.createElement("p");
+  bar.className = "yall";
+  bar.setAttribute("role", "status");
+  bar.hidden = true;
+  const first = el.querySelector("article.ticket");
+  (first.closest(".tickets") || first).before(bar);
   const apply = () => {
     const max = YEN_STEPS[Number(sl.value)] || 0;
-    let hidden = 0;
+    let hidden = 0, total = 0;
     el.querySelectorAll("article.ticket").forEach(t => {
       const y = yenOf(t);
       const hide = Boolean(max && y && y[0] > max);
       t.classList.toggle("yenout", hide);
+      total++;
       if (hide) hidden++;
     });
-    box.querySelector(".yv").textContent = yenStepLabel(max);
-    box.querySelector(".ynow").textContent = yenStepLabel(max);
-    sl.setAttribute("aria-valuetext", yenStepLabel(max));
+    const label = yenStepLabel(max);
+    box.querySelector(".yv").textContent = label;
+    // 見出しは filterRow が「▶料金 … いまの値」の形に作り直すので、どちらの形でも書く
+    const now = box.querySelector(".ynow") || box.querySelector("summary .fv");
+    if (now) now.textContent = label;
+    sl.setAttribute("aria-valuetext", label);
     box.querySelector(".yenn").textContent = hidden ? hidden + " 件を隠しています" : "";
+    bar.hidden = !hidden;
+    bar.innerHTML = !hidden ? "" : (hidden === total ? "<b>料金の条件（" + E(label) + "）で全件が非表示です。</b>"
+      : "料金の条件（" + E(label) + "）で " + hidden + " 件を隠しています。")
+      + '<button type="button" class="yclear">料金の上限を外す</button>';
     const tab = el.querySelector('.ftab[data-for="ybox"] .fv');
     if (tab) tab.textContent = yenStepLabel(max);
     try { localStorage.setItem(YEN_KEY, String(max)); } catch (e) { /* 覚えられなくても絞り込みは効く */ }
   };
   sl.addEventListener("input", apply);
+  bar.addEventListener("click", ev => {
+    if (!ev.target.closest(".yclear")) return;
+    sl.value = String(YEN_STEPS.length - 1);   // いちばん右が「上限なし」
+    apply();
+    // 押した押し口は消えるので、焦点は料金の札（無ければ箱の見出し）へ移す
+    const to = el.querySelector('.ftab[data-for="ybox"]') || box.querySelector("summary");
+    if (to) to.focus({preventScroll: true});
+  });
   apply();
 }
 
@@ -1251,18 +1344,30 @@ async function post(path, body, group, done) {
   // （起案者の指摘 2026-10-14「『記録しました。』までの文言が出る時間が長い…『書き込み中…』など表示するかにして」）
   if (said && done !== null) { said.textContent = "書き込み中…"; said.classList.add("saving"); }
   const settle = () => { if (said) said.classList.remove("saving"); };
+  // 失敗は使う人の言葉で出す（#96）。届いたか分からない失敗（通信が切れた・途中で止まった）は、そう言う ──
+  // 送り直しは押した人に任せ、ここでは勝手に送り直さない
+  const fail = (status, error) => {
+    settle();
+    if (!said) return null;
+    const [head, body] = failWords(status, error);
+    const unknown = !status || (status >= 500 && status !== 503 && !error);
+    said.textContent = "できませんでした: " + head + "。" + (unknown ? "記録できたかは確かめられていません。" : "") + body;
+    if (status === 401) said.insertAdjacentHTML("beforeend", ' <a href="' + E(LOGIN_URL) + '">ログインし直す</a>');
+    return null;
+  };
+  let r;
   try {
-    const r = await fetch(API_BASE + path, {method: "POST", credentials: "include",
+    r = await fetch(API_BASE + path, {method: "POST", credentials: "include",
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify(body)});
-    const d = await r.json();
-    settle();
-    if (!r.ok) { if (said) said.textContent = "できませんでした: " + (d.error || r.status); return null; }
-    showWelcomeCode(d.welcome_code);
-    if (d.ok !== false && path !== "/api/hand_theme_refresh" && !path.startsWith("/api/recommendation/")) markMutated();
-    if (said && done !== null) said.textContent = done || "記録しました";
-    return d;
-  } catch (e) { settle(); if (said) said.textContent = "できませんでした: " + e; return null; }
+  } catch (e) { return fail(0); }
+  const d = await r.json().catch(() => null);
+  if (!r.ok || !d) return fail(r.ok ? 500 : r.status, d && d.error);
+  settle();
+  showWelcomeCode(d.welcome_code);
+  if (d.ok !== false && path !== "/api/hand_theme_refresh" && !path.startsWith("/api/recommendation/")) markMutated();
+  if (said && done !== null) said.textContent = done || "記録しました";
+  return d;
 }
 
 // 段の名前と札。**画面に出す言葉は 1 か所（WEIGHT_STEPS）から取る** ──
@@ -2827,6 +2932,7 @@ function stampRerate(root) {
       rb.style.top = (s.bottom - r.top + 6) + "px";
     };
     const close = () => { rb.hidden = true; st.setAttribute("aria-expanded", "false"); };
+    rb._close = close;   // 外を押したら閉じる（下の 1 つの受け口から呼ぶ）
     const toggle = () => {
       if (!rb.hidden) { close(); return; }
       rb.classList.remove("done");
@@ -2841,9 +2947,21 @@ function stampRerate(root) {
     // 押して記録できたら（押し口の列に done が付いたら）閉じる
     new MutationObserver(() => { if (rb.classList.contains("done")) setTimeout(close, 450); })
       .observe(rb, {attributes: true, attributeFilter: ["class"]});
-    document.addEventListener("click", ev => { if (!rb.hidden && !rb.contains(ev.target) && ev.target !== st) close(); });
   });
 }
+// **外を押したら閉じる受け口は、画面全体で 1 つだけにする**（#85）。行ごと・画面ごとに document へ足していくと、
+// 画面を移るたびに増え、外した画面の分まで残り続けていた。開いている札を、押したときに探して閉じる
+document.addEventListener("click", ev => {
+  document.querySelectorAll(".rb.rbpop:not([hidden])").forEach(rb => {
+    const st = rb.closest(".rec-row")?.querySelector("[data-stamp]");
+    if (rb._close && !rb.contains(ev.target) && !(st && st.contains(ev.target))) rb._close();
+  });
+  const pop = document.getElementById("infopop");
+  if (pop && !pop.hidden && !pop.contains(ev.target) && !ev.target.closest?.(".crumbinfo")) {
+    pop.hidden = true;
+    document.querySelectorAll(".crumbinfo").forEach(b => b.setAttribute("aria-expanded", "false"));
+  }
+});
 
 // **画面の説明文は、パンくずの右端の「ⓘ」から開く。**（起案者の指示 2026-10-13「こういう文章はパンくずリストの
 // 一番右にあるやつの右に、インフォーメーションマークつけて、押したらポップアップで説明出るように（パソコンも）。
@@ -2892,9 +3010,7 @@ function infoFromLede(root) {
   });
   pop.addEventListener("keydown", ev => { if (ev.key === "Escape") { close(); btn.focus(); } });
   btn.addEventListener("keydown", ev => { if (ev.key === "Escape") close(); });
-  document.addEventListener("click", ev => {
-    if (!pop.hidden && !pop.contains(ev.target) && ev.target !== btn) close();
-  });
+  // 外を押したら閉じるのは、stampRerate の下の 1 つの受け口（#85）
 }
 
 // **書いてある感想・回のメモの「書き直す」を、文の末尾の鉛筆にする。**（起案者の指摘 2026-10-13
@@ -2948,13 +3064,20 @@ function editInPlace(btn, el, ta, row, path, bodyOf, okMsg) {
     el.removeAttribute("aria-multiline");
     setPen(btn, false);
     const text = el.textContent.trim();
-    if (!save || text === before.trim()) { el.textContent = before; return; }
+    // 前に保存できなかった文（unsaved）は、書き直さずに離れても送り直す（#83）
+    if (!save || (text === before.trim() && !el.dataset.unsaved)) { el.textContent = before; return; }
     el.textContent = text;
-    if (ta) { ta.value = text; ta.dataset.was = text; }
+    if (ta) ta.value = text;
     if (!live) return;
-    post(path, bodyOf(ta || {dataset: {}, value: text}), row, okMsg).then(d => {
-      if (!d) { el.textContent = before; if (ta) { ta.value = before; ta.dataset.was = before; } }
-    });
+    // 送るのは隠れている欄と同じ順番待ち（#84）。失敗しても文は巻き戻さない ── 巻き戻すと、
+    // 返ってくるまでに書いた新しい文まで消える。保存できなかった印だけ付けておく
+    const holder = ta || el;
+    if (holder.dataset.was === undefined) holder.dataset.was = before.trim();
+    saveQueued(holder, text, row, t => post(path, bodyOf({dataset: ta ? ta.dataset : {}, value: t}), row, okMsg).then(d => {
+      if (d && el.textContent.trim() === t) delete el.dataset.unsaved;
+      if (!d) el.dataset.unsaved = "1";
+      return d;
+    }));
   };
   const onBlur = () => { btn._finishedAt = Date.now(); finish(true); };
   const onKey = ev => {
@@ -3117,6 +3240,27 @@ function tagChips(onPick) {
 }
 const addTag = (text, tag) => (text.includes(tag) ? text : (text.trim() ? text.replace(/\s*$/, " ") : "") + tag);
 
+// **離れたときに保存する欄の送り方**（#83・#84）。
+// - 「保存済みの文」（dataset.was）は、保存できたときだけ進める。失敗したら書いた文は欄に残し、
+//   もう一度離れれば送り直す（前は送る前に進めていたので、同じ文のままでは二度と送られなかった）
+// - 同じ欄の保存は 1 本ずつ送る。送っている間に書き直されたら、返ってから最新の文を送る ──
+//   先に送った分が後から返って、新しい文を上書き・巻き戻すことがない
+// - 届いたか分からない失敗でも、同じ文を勝手に送り直さない（#96）。送り直すのは、書いた人が離れたとき
+function saveQueued(holder, text, group, send) {
+  if (holder._busy) { holder._next = text; return; }
+  if (text === holder.dataset.was) return;
+  holder._busy = true;
+  send(text).then(d => {
+    holder._busy = false;
+    if (d) holder.dataset.was = text;
+    const next = holder._next;
+    holder._next = undefined;
+    if (next !== undefined && next !== text) { saveQueued(holder, next, group, send); return; }
+    const said = group && group.querySelector(".said");
+    if (!d && said) said.append("（書いた文は残しています。もう一度欄から離れると送り直します）");
+  });
+}
+
 function bindNotes(root) {
 root.querySelectorAll("article.ticket.cmp").forEach(favButton);
 linkTags(root);
@@ -3132,10 +3276,9 @@ root.querySelectorAll(".why-note textarea").forEach(t => {
   noteTags(t);
   t.addEventListener("blur", () => {
     const g = t.closest(".why-note");
-    if (!live || t.value === t.dataset.was) return;
-    t.dataset.was = t.value;
-    post("/api/react", {stage_id: g.dataset.stage, note: t.value}, g,
-         "理由を保存しました（お気に入りに加える候補に出ます）");
+    if (!live) return;
+    saveQueued(t, t.value, g, text => post("/api/react", {stage_id: g.dataset.stage, note: text}, g,
+         "理由を保存しました（お気に入りに加える候補に出ます）"));
   });
 });
 
@@ -3146,18 +3289,18 @@ root.querySelectorAll("textarea[data-prenote]").forEach(t => {
   t.dataset.was = t.value;
   t.addEventListener("blur", () => {
     const g = t.closest(".nn");
-    if (!live || t.value === t.dataset.was) return;
-    t.dataset.was = t.value;
-    post("/api/react", {stage_id: g.dataset.stage, note_pre: t.value}, g, "メモを保存しました").then(d => {
-      if (!d) return;
+    if (!live) return;
+    saveQueued(t, t.value, g, text => post("/api/react", {stage_id: g.dataset.stage, note_pre: text}, g, "メモを保存しました").then(d => {
+      if (!d) return d;
       const s = g.querySelector("summary");
-      if (!t.value.trim()) { s.innerHTML = '観る前のメモを書く<span class="opt">任意</span>'; return; }
+      if (!text.trim()) { s.innerHTML = '観る前のメモを書く<span class="opt">任意</span>'; return d; }
       s.textContent = "観る前のメモ";
       const v = document.createElement("span");
       v.className = "nnv";
-      v.textContent = t.value;
+      v.textContent = text;
       s.append(v);
-    });
+      return d;
+    }));
   });
 });
 
@@ -3168,19 +3311,19 @@ root.querySelectorAll("textarea[data-nono]").forEach(t => {
   t.dataset.was = t.value;
   t.addEventListener("blur", () => {
     const g = t.closest(".nn");
-    if (!live || t.value === t.dataset.was) return;
-    t.dataset.was = t.value;
-    post("/api/react", {stage_id: g.dataset.stage, note_no: t.value}, g,
+    if (!live) return;
+    saveQueued(t, t.value, g, text => post("/api/react", {stage_id: g.dataset.stage, note_no: text}, g,
          "理由を保存しました").then(d => {
-      if (!d || !t.value.trim()) return;
+      if (!d || !text.trim()) return d;
       // **畳んだ見出しに書いた文を出す。** 閉じても読めることが、この欄の返りである
       const s = g.querySelector("summary");
       s.textContent = "見送った理由";
       const v = document.createElement("span");
       v.className = "nnv";
-      v.textContent = t.value;
+      v.textContent = text;
       s.append(v);
-    });
+      return d;
+    }));
   });
 });
 
@@ -3189,13 +3332,12 @@ root.querySelectorAll("textarea[data-note]").forEach(t => {
   t.dataset.bound = "1";
   t.dataset.was = t.value;
   t.addEventListener("blur", () => {
-    if (!live || t.value === t.dataset.was) return;
-    t.dataset.was = t.value;
+    if (!live) return;
     // **保存できたことを、書いた欄のそばに出す。** `.rec-row` しか見ていなかったため、
     // 評価待ちの行と溜まった分の束に置いた欄では**保存の合図がどこにも出なかった**
     // （消えたのか保存されたのか分からない入力になる）
-    post("/api/note", {work_key: t.dataset.note, note_impression: t.value},
-         t.closest(".inote, .wnote, .wait, .rec-row"), "感想を保存しました");
+    const g = t.closest(".inote, .wnote, .wait, .rec-row");
+    saveQueued(t, t.value, g, text => post("/api/note", {work_key: t.dataset.note, note_impression: text}, g, "感想を保存しました"));
   });
 });
 
@@ -3206,10 +3348,9 @@ root.querySelectorAll("textarea[data-vnote]").forEach(t => {
   t.dataset.bound = "1";
   t.dataset.was = t.value;
   t.addEventListener("blur", () => {
-    if (!live || t.value === t.dataset.was) return;
-    t.dataset.was = t.value;
-    post("/api/visit_note", {uid: t.dataset.vnote, note: t.value},
-         t.closest(".vnote, .rec-row"), "メモを保存しました");
+    if (!live) return;
+    const g = t.closest(".vnote, .rec-row");
+    saveQueued(t, t.value, g, text => post("/api/visit_note", {uid: t.dataset.vnote, note: text}, g, "メモを保存しました"));
   });
 });
 }
@@ -4056,9 +4197,10 @@ document.addEventListener("click", ev => {
   const dlg = b.closest("dialog");
   const body = {stage_id: b.dataset.stage, date: b.dataset.date, time: b.dataset.time,
                 action: b.dataset.ok ? "confirm" : "del"};
-  const said = {del: "取り消しました", confirm: "確定しました"}[body.action];
+  // 削除は、何を消して何が残るかをサーバーがボタンに書いておく（data-done・#100）。読めるように少し待ってから読み込み直す
+  const said = body.action === "del" ? (b.dataset.done || "削除しました") : "確定しました";
   post("/api/ticket", body, dlg, said).then(r => {
-    if (r) setTimeout(() => location.reload(), 500);
+    if (r) setTimeout(() => location.reload(), body.action === "del" ? 2500 : 500);
   });
 });
 document.addEventListener("change", ev => {

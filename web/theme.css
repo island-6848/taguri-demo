@@ -567,6 +567,11 @@ html[data-font="trial"] :is(button,.sitebtn,.pill,.ftab,.btns button,select,[rol
 @media(max-width:560px){.ftab{flex-direction:column;align-items:flex-start;gap:0;padding:6px 8px}
  .ftab svg.ico{display:none}.ftab .fv{max-width:100%;font-size:11.5px}}
 .ticket.yenout{display:none}
+/* 料金の条件で隠しているとき、一覧の場所に出す知らせ（#97） */
+.yall{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:8px 0 12px;padding:10px 12px;border:1px solid var(--grid);border-radius:8px;background:var(--surf);font-size:14px}
+.yall[hidden]{display:none}
+.yclear{min-height:44px;padding:4px 14px;border:1px solid var(--acc);border-radius:8px;background:var(--surf);color:var(--acc);font:inherit;font-weight:600;cursor:pointer}
+.yclear:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
 
 /* ---- 「書き込み中…」（app.js の post）。返事を待つあいだ、文字をゆっくり明滅させる */
 .said.saving{color:var(--mute);animation:tg-saving 1s ease-in-out infinite alternate}
@@ -1079,6 +1084,7 @@ a.pill.buy .go:not(#_){font-size:12px;margin-left:2px}
 /* 規約の改定のあとの同意（app.js agreeAgain）。同意するまで画面の上に出す */
 .agreepop{position:fixed;inset:0;z-index:2147483001;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:16px}
 .agreepop-box{width:min(480px,100%);max-height:calc(100vh - 32px);overflow:auto;background:var(--surf);color:var(--ink);border-radius:12px;padding:20px 20px 14px;box-shadow:0 8px 32px rgba(0,0,0,.3)}
+.agreepop-box:focus{outline:none}
 .agreepop-box h2{font-size:16px;margin:0 0 8px}
 .agreepop-box p{margin:0 0 10px;font-size:14px;line-height:1.7}
 .agreepop-links{display:flex;gap:16px;flex-wrap:wrap}
@@ -1244,3 +1250,7 @@ details.pbox>summary[data-fold] .fv,.ftab .fv{margin-left:auto;text-align:right;
 .tourfull.v2 .ttb td.sat:not(.out),.ticket .ttb td.sat:not(.out){background:color-mix(in srgb,#2f6fa8 10%,var(--surf))}
 .tourfull.v2 .ttb td.sun.out,.ticket .ttb td.sun.out{background:color-mix(in srgb,#b8432f 4%,transparent)}
 .tourfull.v2 .ttb td.sat.out,.ticket .ttb td.sat.out{background:color-mix(in srgb,#2f6fa8 4%,transparent)}
+/* 読み込めなかったときの「再試行」「ログインし直す」（#96） */
+.loadfail{margin:12px 0 0}
+.loadbtn{display:inline-flex;align-items:center;min-height:44px;padding:6px 20px;border:1px solid var(--acc);border-radius:8px;background:var(--acc);color:#fff;font:inherit;font-weight:600;text-decoration:none;cursor:pointer}
+.loadbtn:focus-visible{outline:2px solid var(--acc);outline-offset:2px}

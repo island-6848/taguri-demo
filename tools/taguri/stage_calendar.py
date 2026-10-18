@@ -647,9 +647,10 @@ document.addEventListener("click", ev => {
   const dlg = b.closest("dialog");
   const body = {stage_id: b.dataset.stage, date: b.dataset.date, time: b.dataset.time,
                 action: b.dataset.ok ? "confirm" : "del"};
-  const said = {del: "取り消しました", confirm: "確定しました"}[body.action];
+  // 削除は、何を消して何が残るかをサーバーがボタンに書いておく（data-done・#100）。読めるように少し待ってから読み込み直す
+  const said = body.action === "del" ? (b.dataset.done || "削除しました") : "確定しました";
   post("/api/ticket", body, dlg, said).then(r => {
-    if (r) setTimeout(() => location.reload(), 500);
+    if (r) setTimeout(() => location.reload(), body.action === "del" ? 2500 : 500);
   });
 });
 document.addEventListener("change", ev => {
