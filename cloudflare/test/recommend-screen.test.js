@@ -27,7 +27,7 @@ test('a new account gets no recommendations and is told what to do', async () =>
   try {
     const got = await step(env, a, {get: '/api/screen/recommend'});
     assert.equal(got.status, 200);
-    assert.equal(got.body.title, '今週のおすすめ');
+    assert.equal(got.body.title, '今週のあなたへのおすすめ');
     assert.equal(got.body.moving, undefined);
     assert.match(got.body.body_html, /<h1>今週のあなたへのおすすめはありません<\/h1>/);
     assert.doesNotMatch(got.body.body_html, /<article/);
@@ -39,6 +39,7 @@ test('a new account gets no recommendations and is told what to do', async () =>
     assert.match(got.body.body_html, /<svg class="tip-art"/);
     // 使い始めでおすすめが無いときは、選び方と絞り込みを出さない（起案者 2026-10-18）
     assert.doesNotMatch(got.body.body_html, /おすすめの選び方|表示の絞り込み|class="fil2/);
+    assert.doesNotMatch(got.body.body_html, /favnone/);   // お気に入りが無い人には一文を出さない
   } finally { sqlite.close(); }
 });
 

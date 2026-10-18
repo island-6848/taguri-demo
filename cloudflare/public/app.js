@@ -53,7 +53,7 @@ const IMPLEMENTED = new Set(["recommend", "interest", "reminder", "favourites", 
 // おすすめ＝これから観るものを選ぶ（今週のおすすめ・興味あり・お気に入り）／予定＝観に行く日を確かめる
 // （公演カレンダー・開幕リマインド・購入済み公演）。開幕リマインドは「初日が近い公演の知らせ」で、選ぶ画面
 // ではなく日程を見る画面なので、予定に移した。URL（/recommend/reminder）は変えない（覚えた道を壊さない）
-const NAV = [[null, "おすすめ", "ticket", [["/recommend", "今週のおすすめ", "ticket"], ["/recommend/interest", "興味あり", "flag"], ["/recommend/favourites", "お気に入り", "star"]]], [null, "予定", "calendar", [["/calendar", "公演カレンダー", "calendar"], ["/recommend/reminder", "開幕リマインド", "inbox"], ["/tickets", "購入済み公演", "ticket"]]], [null, "観た公演の評価", "check", [["/rate", "評価一覧", "check"], ["/rate/unrated", "未評価", "clock"], ["/rate/notes", "感想", "pencil"], ["/register", "観劇記録を追加", "plus"]]], [null, "記録を見返す", "chart", [["/records", "眺める", "chart"], ["/records/trace", "たどる", "user"], ["/records/chronicle", "観劇史年表", "calendar"], ["/records/works", "日記帳", "book"]]], ["/search", "探す", "search", []], ["/settings", "設定", "gear", []]];
+const NAV = [[null, "おすすめ", "ticket", [["/recommend", "今週のあなたへのおすすめ", "ticket"], ["/recommend/interest", "興味あり", "flag"], ["/recommend/favourites", "お気に入り", "star"]]], [null, "予定", "calendar", [["/calendar", "公演カレンダー", "calendar"], ["/recommend/reminder", "開幕リマインド", "inbox"], ["/tickets", "購入済の公演", "ticket"]]], [null, "観た公演の評価", "check", [["/rate", "評価一覧", "check"], ["/rate/unrated", "未評価", "clock"], ["/rate/notes", "感想", "pencil"], ["/register", "観劇記録を追加", "plus"]]], [null, "記録を見返す", "chart", [["/records", "眺める", "chart"], ["/records/trace", "たどる", "user"], ["/records/chronicle", "観劇史年表", "calendar"], ["/records/works", "日記帳", "book"]]], ["/search", "探す", "search", []], ["/settings", "設定", "gear", []]];
 if (!IS_DEMO) NAV.push(["/account", "アカウント", "user", []]);
 
 // --- 絵記号(icons.py の P/ALIAS をそのまま) --------------------------------
@@ -112,8 +112,8 @@ function renderNav() {
 // 「４つの大きいメニューにアイコンをつけて」）。パソコン幅では今までどおり左の帯（NAV）を使う。
 // 探すは帯の検索窓、設定は右上の歯車、公演情報の登録はその左の「＋」から入る。
 const PNAV = [
-  ["rec", "おすすめ", "yarn", [["/recommend", "今週のおすすめ"], ["/recommend/interest", "興味あり"], ["/recommend/favourites", "お気に入り"]]],
-  ["plan", "予定", "calendar", [["/calendar", "公演カレンダー"], ["/recommend/reminder", "開幕リマインド"], ["/tickets", "購入済み公演"]]],
+  ["rec", "おすすめ", "yarn", [["/recommend", "今週のあなたへのおすすめ"], ["/recommend/interest", "興味あり"], ["/recommend/favourites", "お気に入り"]]],
+  ["plan", "予定", "calendar", [["/calendar", "公演カレンダー"], ["/recommend/reminder", "開幕リマインド"], ["/tickets", "購入済の公演"]]],
   ["rate", "評価", "stamp", [["/rate", "評価一覧"], ["/rate/unrated", "未評価"], ["/rate/notes", "感想"], ["/register", "観劇記録を追加"]]],
   ["rec2", "記録", "notebook", [["/records/works", "日記帳"], ["/records", "眺める"], ["/records/trace", "たどる"], ["/records/chronicle", "観劇史年表"]]],
 ];
@@ -1592,7 +1592,7 @@ function ownedNote(g) {
   said.textContent = "購入済みにしました。";
   const a = document.createElement("a");
   a.setAttribute("href", "/tickets");
-  a.textContent = "購入済み公演を見る";
+  a.textContent = "購入済の公演を見る";
   said.append(a);
 }
 
@@ -1718,7 +1718,7 @@ document.addEventListener("click", ev => {
     // 星は押した所までを ★ にする（記録できなかったら元に戻す）
     const unfill = fillStars(g, b);
     // お気に入りの「購入済みにする」は、入った先を言う（起案者の指示 2026-10-15。お気に入りには残る）
-    const said0 = tk && tk.classList.contains("favourite") && b.dataset.v === "owned" ? "購入済みにしました（購入済み公演にも入りました）" : undefined;
+    const said0 = tk && tk.classList.contains("favourite") && b.dataset.v === "owned" ? "購入済みにしました（購入済の公演にも入りました）" : undefined;
     post(path, body, g, said0).then(async d => {
       if (!d) { if (tear) row.classList.remove("torn"); b.classList.remove("picked"); unfill(); return; }
       g.classList.add("done");

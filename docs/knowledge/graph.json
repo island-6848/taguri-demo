@@ -1161,6 +1161,25 @@
    "verifies": []
   },
   {
+   "id": "dec-fav-reco-answers-1018",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "起案者の答え（2026-10-18）: お気に入りがあるのに 0 件なら一文添える（C）、作曲・音楽も広げる元に入れる、ハッシュタグ一覧はこれからの公演のみ、▸ はそのまま、サイドバー・パンくずを見出しに合わせる、興味ありの並べ替えを月のタブの下へ",
+   "sources": [
+    "cloudflare/src/screens/recommend.js",
+    "cloudflare/src/recommend.js",
+    "tools/review/user_recommender.py",
+    "cloudflare/src/screens/lists.js",
+    "cloudflare/src/screens/index.js",
+    "cloudflare/src/screens/cards.js",
+    "web/app.js",
+    "cloudflare/test/fav-reco.test.js",
+    "cloudflare/test/recommend-screen.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-fav-spread-roles",
    "type": "decision",
    "status": "adopted",
@@ -5711,7 +5730,7 @@
   {
    "id": "q-fav-reco-running-shows",
    "type": "question",
-   "status": "open",
+   "status": "answered",
    "date": "2026-10-18",
    "title": "お気に入りの共演者などの別の公演が、終わった・もう始まっている・本人の公演だけのとき、おすすめは 0 件のまま。始まっている公演も出すか、案内の文を実際に合わせるか",
    "sources": [
@@ -8309,6 +8328,21 @@
    "from": "dec-fav-over-interest",
    "rel": "depends_on",
    "to": "impl-interest-split"
+  },
+  {
+   "from": "dec-fav-reco-answers-1018",
+   "rel": "answers",
+   "to": "q-fav-reco-running-shows"
+  },
+  {
+   "from": "dec-fav-reco-answers-1018",
+   "rel": "depends_on",
+   "to": "fix-fav-only-no-reco"
+  },
+  {
+   "from": "dec-fav-reco-answers-1018",
+   "rel": "depends_on",
+   "to": "dec-fav-spread-roles"
   },
   {
    "from": "dec-fav-spread-roles",

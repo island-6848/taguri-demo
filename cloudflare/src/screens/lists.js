@@ -556,12 +556,13 @@ export async function interestScreen(params, ctx) {
     : emptyGuide('interest', '「興味あり」の公演はまだありません', '<p>「<a href="/recommend?t=__TAGURI_TOKEN__">おすすめ</a>」または「<a href="/recommend/reminder?t=__TAGURI_TOKEN__">開幕リマインド</a>」、'
       + '「<a href="/search?t=__TAGURI_TOKEN__">探す</a>」で「興味あり」と回答してください。</p>');
   // 見出しは「「興味あり」の公演」（起案者の指示 2026-10-18。以前は「追いかけている N 件」）。
-  // 0 件のときは月のタブと「0 件すべてを表示しています」を出さず、案内だけにする
+  // 0 件のときは月のタブと「0 件すべてを表示しています」を出さず、案内だけにする。「並べ替え」はお気に入りと同じく年月のタブより下
+  // （起案者の答え 2026-10-18「お願い」）
   const body = `<h1>「興味あり」の公演</h1>
-<p class="lede">「興味あり」を押した公演を並べています。順位は付けていません。並べ替えは下の「並べ替え」で選べます。チケットが取れたら「すでに持っている」を押してください。購入済み公演に移り、上演日を過ぎると評価待ちに並びます。<br>
+<p class="lede">「興味あり」を押した公演を並べています。順位は付けていません。並べ替えは下の「並べ替え」で選べます。チケットが取れたら「すでに持っている」を押してください。「購入済の公演」に移り、上演日を過ぎると評価待ちに並びます。<br>
 「なぜ気になったか」に書いた名前は、<a href="/recommend/favourites?t=__TAGURI_TOKEN__">お気に入り</a>に加える候補として並びます。</p>
-${rows.length ? sortForm('/recommend/interest', sort, keys) : ''}
 ${rows.length ? mfil : ''}
+${rows.length ? sortForm('/recommend/interest', sort, keys) : ''}
 ${list}
 ${rows.length ? mfoot : ''}`;
   return {title: '興味あり', body_html: body};
@@ -829,7 +830,7 @@ ${owned.length ? sortForm('/tickets', sort, keys) : ''}
 ${html || emptyGuide('owned', '購入済の公演はまだありません', '<p>「<a href="/recommend?t=__TAGURI_TOKEN__">おすすめ</a>」または「<a href="/recommend/reminder?t=__TAGURI_TOKEN__">開幕リマインド</a>」、'
   + '「<a href="/search?t=__TAGURI_TOKEN__">探す</a>」で「購入済」と回答してください。<br>また「<a href="/register?t=__TAGURI_TOKEN__">観劇記録を追加</a>」で購入済の公演を追加してください。</p>')}
 `;
-  return {title: '購入済み公演', body_html: body};
+  return {title: '購入済の公演', body_html: body};
 }
 
 // ---------------------------------------------------------------- writes

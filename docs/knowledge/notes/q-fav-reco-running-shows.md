@@ -1,7 +1,7 @@
 ---
 id: q-fav-reco-running-shows
 type: question
-status: open
+status: answered
 date: 2026-10-18
 title: お気に入りの共演者などの別の公演が、終わった・もう始まっている・本人の公演だけのとき、おすすめは 0 件のまま。始まっている公演も出すか、案内の文を実際に合わせるか
 sources:

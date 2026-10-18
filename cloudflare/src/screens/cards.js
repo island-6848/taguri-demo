@@ -30,7 +30,7 @@ export const interestButtons = sid => '<button class="wnb" data-btns-open="1">�
 export const ownedButton = sid => `<span class="btns" data-stage="${E(sid)}">`
   + '<button data-v="owned">購入済みにする</button><span class="said"></span></span>';
 /** お気に入り: 購入済みにした公演は一覧に残し、ボタンの代わりに印を出す（起案者の指示 2026-10-15「購入済み押してもお気に入りから消さないで」）。 */
-export const ownedMark = '<span class="owned-mark">購入済みです。<a href="/tickets?t=__TAGURI_TOKEN__">購入済み公演で行く日を入れる</a></span>';
+export const ownedMark = '<span class="owned-mark">購入済みです。<a href="/tickets?t=__TAGURI_TOKEN__">購入済の公演で行く日を入れる</a></span>';
 
 /** render_recommend.why_note */
 export function whyNote(sid, note = '', {open = false, ask = false} = {}) {

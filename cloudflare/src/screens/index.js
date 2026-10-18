@@ -49,8 +49,8 @@ const withToken = obj => JSON.parse(JSON.stringify(obj).replaceAll('__TAGURI_TOK
 // Screens not ported yet, once production no longer goes to Render (NATIVE_UI=all).
 // Their titles are the ones serve.py gives. 起案者の指示（2026-10-14）「本番用のサイトなはずなのに、
 // デモ用の内容がでる。最初ログイン（会員登録）したらデータは空なはず」で、移し終える前に切り替えた。
-const MOVING_TITLES = {recommend: '今週のおすすめ', reminder: '開幕リマインド', register: '観劇記録を追加',
-  interest: '興味あり', favourites: 'お気に入り', calendar: '公演カレンダー', tickets: '購入済み公演',
+const MOVING_TITLES = {recommend: '今週のあなたへのおすすめ', reminder: '開幕リマインド', register: '観劇記録を追加',
+  interest: '興味あり', favourites: 'お気に入り', calendar: '公演カレンダー', tickets: '購入済の公演',
   records: '眺める', trace: 'たどる', chronicle: '観劇史年表', start: 'はじめる', settings: '設定', search: '探す', tagged: '題材の公演'};
 export function movingScreen(name) {
   const title = MOVING_TITLES[name] || 'この画面';

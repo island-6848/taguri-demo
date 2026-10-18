@@ -60,6 +60,8 @@ test('nothing to recommend when every co-worker\'s other show is the favourite\'
   const got = await favOnly('人', '俳優甲');
   assert.equal(got.diag.favourite_seeds, 2);
   assert.match(got.body_html, /<h1>今週のあなたへのおすすめはありません<\/h1>/);
+  // お気に入りがあるのに 0 件のときだけ、一文添える（起案者の答え 2026-10-18「C」）
+  assert.match(got.body_html, /<p class="rcount favnone">お気に入りに登録した名前と関わりのある人の、これから観られる公演はまだ見つかっていません。/);
 });
 
 test('people of a favourite\'s show count by role: 出演 > 演出 > 脚本 > 翻訳 > 主催 > 美術…; 制作・宣伝・その他 not at all', () => {
@@ -68,7 +70,9 @@ test('people of a favourite\'s show count by role: 出演 > 演出 > 脚本 > �
   const v = personValues([], [seed], new Set(['推し']));
   const val = r => (v.get(r + '\u0000' + r + 'の人') || [0, 0])[1];
   for (let i = 1; i < 6; i++) assert.ok(val(roles[i - 1]) > val(roles[i]), `${roles[i - 1]} > ${roles[i]}`);
-  for (const r of ['制作', '宣伝', '舞台監督', 'スタッフ', '作曲']) assert.equal(v.has(r + '\u0000' + r + 'の人'), false, r);
+  for (const r of ['制作', '宣伝', '舞台監督', 'スタッフ']) assert.equal(v.has(r + '\u0000' + r + 'の人'), false, r);
+  // 作曲・音楽は美術などと同じ重みで広げる（起案者の答え 2026-10-18「作曲・音楽を広げる元に入れて」）
+  assert.ok(Math.abs(val('作曲') / val('出演') - 0.1) < 1e-12);
   // 値は重みの比（分母は同じ）。公演の種類は人ではないので 1 のまま
   assert.ok(Math.abs(val('演出') / val('出演') - FAV_SPREAD_W['演出']) < 1e-12);
   assert.ok(Math.abs(val('照明') / val('出演') - 0.1) < 1e-12);
