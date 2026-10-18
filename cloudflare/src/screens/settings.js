@@ -7,6 +7,7 @@
 // looked up in the stages already in D1 instead of fetching the web.
 import {scaleOf, scaleCardHtml, SCALE_LABEL, frac} from './grade.js';
 import {FAV_SEED_W} from '../recommend.js';
+import {nextCrawl, crawlLabel, crawlSearch} from '../crawl-time.js';
 import {E, ValueError} from './py.js';
 import {ico, h2} from './icons.js';
 import {PREFS, readPrefSetting, regionsHtml, regionCounts, prefSettingAction} from './prefs.js';
@@ -329,7 +330,7 @@ export async function registerScreen(_params, ctx) {
 「公演一覧から探す」を押すと、同じ公演一覧から公演だけを並べます。<b>その場で外のサイト（CoRich など）は探しません。</b>
 同じ題名の公演が複数出ることがあります。
 別の劇場での上演や再演なので、劇場と日程を見て、観た公演を選んでください。<br>
-<b>一覧に無い公演は</b>、出てくる「次の更新で探してもらう」から依頼すると、次の更新（毎日 4 時台・日本時間）で探します。
+<b>一覧に無い公演は</b>、出てくる「次の更新で探してもらう」から依頼を控えられます。${crawlSearch.requests ? `次の更新（次回は${crawlLabel(nextCrawl(ctx.now))}）で探します。` : 'ただ、依頼された題名を毎日の更新で探す段はまだ準備中で、いまは探されません。'}
 待たずに、題名と観た日を入れてそのまま「登録する」を押しても記録できます。あとで同じ題名・日付の公演が集まると、自動で結び付きます。<br>
 ポスターが出るのは、手元に画像がある公演だけです。</p></div>
 

@@ -26,6 +26,7 @@ import {stageInfo, fallbackTemplate} from './fallback.js';
 import {tourBlock} from './schedule.js';
 import {withTour} from './recommend.js';
 import {runRange, periodStart} from './reminder.js';
+import {nextCrawl, crawlsSince, crawlLabel, jstDay, crawlSearch} from '../crawl-time.js';
 
 const cmp = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
 // 波ダッシュの揺れ（〜 U+301C と ～ U+FF5E など）は NFKC でも 1 つにならない。取得元は「ふぉ～ゆ～」、
@@ -298,12 +299,38 @@ function requestQuery(q) {
   return w;
 }
 const MAX_REQUESTS = 30;
-/** app._web_hits for the public service: ask the next daily run instead of searching now. */
-async function webHits(ctx, q) {
+/**
+ * app._web_hits for the public service: ask the next daily run instead of searching now.
+ * 依頼のあとの様子（#101）: 控えにあるのは依頼した日（search_request.created_at）だけで、取得が探したか・
+ * 見つからなかったか・失敗したかは D1 に記録していない。なので「依頼した」「そのあと更新が n 回あった」までを書き、
+ * 分からないことは分からないと書く。次回の日時は crawl-time.js の 1 つの決まりから作る。
+ */
+async function webHits(ctx, q, found = 0) {
   if (!requestQuery(q)) return '<p class="note">たぐりの公演一覧から検索できます。</p>';
-  const have = await ctx.db.prepare('SELECT 1 FROM search_request WHERE user_id=? AND qkey=?').bind(ctx.uid, titleKey(requestQuery(q))).first();
-  if (have) return `<div class="webq" id="web"><p class="lead">「${E(q)}」は、次の更新（毎日 4 時台）で CoRich から探すよう頼んであります。見つかれば、翌日からここに出ます。</p></div>`;
-  return `<div class="webq" id="web"><p class="lead">この画面はその場では CoRich を検索せず、毎日の更新で集めた公演から探します。<b>そこに無い公演は、次の更新で CoRich から探すよう頼めます。</b>見つかれば、翌日からこの画面と「手で足す」の候補に出ます。</p>`
+  const next = crawlLabel(nextCrawl(ctx.now));
+  const manual = '観た公演なら、<a href="/register?t=__TAGURI_TOKEN__">観劇記録を追加</a>で題名と日付を手で入れても記録できます。';
+  const have = await ctx.db.prepare('SELECT created_at FROM search_request WHERE user_id=? AND qkey=?').bind(ctx.uid, titleKey(requestQuery(q))).first();
+  if (have) {
+    const at = Date.parse(have.created_at);
+    const asked = Number.isFinite(at) ? `${jstDay(at)}に` : '';
+    let lead;
+    if (!crawlSearch.requests) {
+      lead = `「${E(q)}」は${asked}依頼を控えました。<b>ただ、依頼された題名を毎日の更新で探す段はまだ準備中で、まだ探していません。</b>`
+        + `準備ができたら、そのあとの更新で探します。公演一覧そのものは毎日更新しています（次回は${next}）。${manual}`;
+    } else {
+      const n = Number.isFinite(at) ? crawlsSince(at, ctx.now) : 0;
+      lead = n === 0
+        ? `「${E(q)}」は${asked}、CoRich から探すよう依頼済みです。<b>次回は${next}の更新で探します</b>（更新は遅れることがあります）。見つかれば、その更新のあとからこの画面と「手で足す」の候補に出ます。`
+        : `「${E(q)}」は${asked}依頼済みです。そのあと更新が ${n} 回ありましたが、${found ? 'ここに出ている公演のほかには' : ''}<b>まだたぐりの公演一覧に入っていません。</b>`
+          + '探して見つからなかったのか、まだ順番が来ていないのか（1 回に探す件数には上限があります）、探せなかったのかは、いまは記録していないので、この画面では分かりません。'
+          + `次回は${next}の更新です。副題や団体名を外して短くすると見つかることがあります。${manual}`;
+    }
+    return `<div class="webq" id="web"><p class="lead">${lead}</p></div>`;
+  }
+  const ask = crawlSearch.requests
+    ? `<b>そこに無い公演は、次の更新（次回は${next}）で CoRich から探すよう頼めます。</b>見つかれば、その更新のあとからこの画面と「手で足す」の候補に出ます。`
+    : `そこに無い公演は、探してほしいと依頼を控えておけます。<b>ただ、依頼された題名を毎日の更新で探す段はまだ準備中で、いまは探されません。</b>${manual}`;
+  return `<div class="webq" id="web"><p class="lead">この画面はその場では CoRich を検索せず、毎日の更新で集めた公演から探します。${ask}</p>`
     + `<button type="button" data-search-request="${E(q)}" data-source="search">${ico('search')}「${E(q)}」を次の更新で探してもらう</button><span class="said"></span></div>`;
 }
 
@@ -397,9 +424,9 @@ export async function searchScreen(params, ctx) {
   // 言葉が入っているときは、下の札とカレンダーも当たったものだけを数える（起案者の指示 2026-10-17
   // 「ワードが入って検索されてるなら、次のところも該当件数のみ表示されるようにして」）
   cal = monthGrid(hits.map(([w]) => w), upCounts, nUpAll, side, ym, q);
-  const web = await webHits(ctx, q);
   const dec = await loadDeclared(ctx);
   const [pastHtml, nPast] = await pastHits(ctx, q, ws);
+  const web = await webHits(ctx, q, nUp + nPast);
   let body;
   if (!hits.length && !nUp && !nPast) {
     const narrowed = ym && side === 'up' ? `<b>いまは ${ym.slice(0, 4)} 年 ${Number(ym.slice(5, 7))} 月に絞っています。</b>ほかの月にはあるかもしれません。カレンダーで別の月を押すか、<a href="/search?t=__TAGURI_TOKEN__&amp;cal=up&amp;q=${E(q)}">月の指定を外して</a>お試しください。<br>` : '';
@@ -426,7 +453,10 @@ async function searchRequestAction(b, ctx) {
       .bind(ctx.uid, titleKey(w), w, source, new Date(ctx.now).toISOString()),
     ctx.db.prepare('DELETE FROM search_request WHERE user_id=? AND qkey NOT IN (SELECT qkey FROM search_request WHERE user_id=? ORDER BY created_at DESC LIMIT ?)')
       .bind(ctx.uid, ctx.uid, MAX_REQUESTS)]);
-  return {body: {ok: true, query: w, message: '次の更新（毎日 4 時台）で CoRich から探します。見つかれば、翌日からこの画面と「手で足す」の候補に出ます。'}};
+  const message = crawlSearch.requests
+    ? `依頼しました。次回は${crawlLabel(nextCrawl(ctx.now))}の更新で CoRich から探します（遅れることがあります）。見つかれば、その更新のあとからこの画面と「手で足す」の候補に出ます。`
+    : '依頼を控えました。依頼された題名を毎日の更新で探す段はまだ準備中で、準備ができたら探します。観た公演なら、題名と日付を手で入れても記録できます。';
+  return {body: {ok: true, query: w, message}};
 }
 
 export const searchScreens = {screens: {search: searchScreen}, actions: {search_request: searchRequestAction}};
