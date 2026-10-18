@@ -51,6 +51,7 @@ class BackupTest(unittest.TestCase):
             self.assertIn(t, got)
         for t in ("catalogue", "rec_stage", "rec_credit", "rec_cache", "past_stage", "poster", "usage", "sessions", "webauthn_challenges"):
             self.assertNotIn(t, got)
+        self.assertEqual(B.user_tables(["works", "_cf_KV", "_cf_FOO", "sqlite_sequence"]), ["works"])
 
     @unittest.skipUnless(shutil.which("gpg"), "gpg が無い")
     def test_backup_is_encrypted_and_opens_with_the_passphrase(self):
