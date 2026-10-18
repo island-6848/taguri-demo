@@ -28,6 +28,7 @@ import argparse
 import datetime
 import json
 import math
+import re
 import sqlite3
 import subprocess
 import sys
@@ -95,6 +96,52 @@ def counts(db: sqlite3.Connection, owner: str | None) -> dict:
         "opted_out": len(out_),
         "owner": users.get(owner) if owner else None,
     }
+
+
+GRADE = re.compile(r"^(\d{1,2})/(\d{1,2})$")
+
+
+def graded(verdict) -> bool:
+    """recommend.gradeOf と同じ: ◎○△× か「n/m」（2〜11 段）。"""
+    if verdict in ("◎", "○", "△", "×"):
+        return True
+    m = GRADE.match(str(verdict or ""))
+    return bool(m) and 2 <= int(m[2]) <= 11 and 1 <= int(m[1]) <= int(m[2])
+
+
+def materials(backup: str, index: Path, extras: list[Path], today: str) -> dict:
+    """今の記録のうち、推薦の材料になれている数（ratedWorks と同じ条件。集計だけで、作品名は出さない）。"""
+    with tempfile.TemporaryDirectory(prefix="materials-") as tmp:
+        db = build_base(backup, index, extras, Path(tmp) / "base.sqlite")
+        ver = (db.execute("SELECT v FROM rec_meta WHERE k='current'").fetchone() or [None])[0]
+        rec = {sid: json.loads(p) for sid, p in db.execute("SELECT stage_id, people FROM rec_people WHERE ver=?", (ver,))}
+        past = {sid: json.loads(p) for sid, p in db.execute("SELECT stage_id, people FROM past_stage")} if has_table(db, "past_stage") else {}
+        out_ = opted_out(db)
+        c = defaultdict(int)
+        for uid, verdict, sid, first, note in db.execute(
+                "SELECT user_id, verdict, stage_id, first_date, note_impression FROM works"):
+            if uid in out_:
+                continue
+            c["records"] += 1
+            if not graded(verdict):
+                continue
+            c["rated"] += 1
+            if (first or "") > today:
+                c["rated_future"] += 1
+                continue
+            if not sid:
+                c["rated_unlinked"] += 1
+                continue
+            people = rec.get(sid) if sid in rec else past.get(sid)
+            c["linked_index" if sid in rec else "linked_past" if sid in past else "linked_missing"] += 1
+            names = [p for p in people or [] if not str(p[0]).startswith("#")]
+            kinds = [p for p in people or [] if str(p[0]).startswith("#") and p[0] in ("#形式", "#原作", "#翻訳", "#原作の国", "#題材", "#ジャンル")]
+            c["with_names"] += bool(names)
+            c["with_kinds"] += bool(kinds)
+            c["with_note"] += bool((note or "").strip())
+            c["with_note_and_kinds"] += bool((note or "").strip()) and bool(kinds)
+        db.close()
+    return dict(c)
 
 
 def auc(pos: list[float], neg: list[float]) -> float | None:
