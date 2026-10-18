@@ -1237,6 +1237,23 @@
    "verifies": []
   },
   {
+   "id": "dec-favourite-role-filter",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "お気に入りの人は、任意で役職（出演・脚本・演出・作曲・音楽・振付・翻訳・原作、複数可）に絞れる。絞った名前は、その役職で欄に書かれた公演だけを一覧と推薦の種に使う",
+   "sources": [
+    "cloudflare/src/screens/lists.js",
+    "cloudflare/src/screens/settings.js",
+    "cloudflare/src/screens/recommend.js",
+    "cloudflare/src/recommend.js",
+    "web/app.js",
+    "web/theme.css",
+    "cloudflare/test/fav-roles.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-firebase-auth",
    "type": "decision",
    "status": "adopted",
@@ -5800,7 +5817,7 @@
   {
    "id": "q-favourite-homonym",
    "type": "question",
-   "status": "open",
+   "status": "answered",
    "date": "2026-10-18",
    "title": "お気に入りの人の名前に同姓同名がいる（加藤拓也）とき、片方だけを拾うにはどうするか。役職で絞る・団体で絞る・公演ごとに ✕ のどれにするか",
    "sources": [
@@ -8447,6 +8464,11 @@
    "from": "dec-favourite-owned-button",
    "rel": "affects",
    "to": "comp-frontend"
+  },
+  {
+   "from": "dec-favourite-role-filter",
+   "rel": "answers",
+   "to": "q-favourite-homonym"
   },
   {
    "from": "dec-firebase-auth",

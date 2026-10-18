@@ -12,7 +12,7 @@ import {E, ValueError} from './py.js';
 import {ico, h2} from './icons.js';
 import {PREFS, readPrefSetting, regionsHtml, regionCounts, prefSettingAction} from './prefs.js';
 import {rankedGroups, prefCounts} from './recommend.js';
-import {KINDS, loadDeclared} from './lists.js';
+import {KINDS, loadDeclared, favRoleBox} from './lists.js';
 import {loadWorks, titleKey, DROP_KEEP_DAYS, expiredKeys} from './works.js';
 import {dateParts} from './row.js';
 import {splitNames} from './cast.js';
@@ -223,7 +223,7 @@ export async function startScreen(_params, ctx) {
   const kinds = KINDS.map(k => `<option value="${E(k)}">${E(k)}</option>`).join('');
   const tags = KINDS.flatMap(k => (dec[k] || []).map(n => `<span class="tag" data-kind="${E(k)}" data-name="${E(n)}">${E(k)}「${E(n)}」<button data-fav="remove">✕</button></span>`)).join('');
   const form = `<div class="fav-add"><label class="fld" for="fav-kind"><span class="fl">種類<small class="req">必須</small></span><select id="fav-kind">${kinds}</select></label> <label class="fld" for="fav-name"><span class="fl">名前<small class="req">必須</small></span><input id="fav-name" type="text" placeholder="例：劇団四季・シェイクスピア・家族" size="26"></label>`
-    + ` <button data-fav="add">${ico('star')}登録する</button><span class="said"></span></div>` + (tags ? `<div class="tags">${tags}</div>` : '');
+    + ` <button data-fav="add">${ico('star')}登録する</button>${favRoleBox()}<span class="said"></span></div>` + (tags ? `<div class="tags">${tags}</div>` : '');
   const step1 = stepCard(1, `見逃したくない名前を登録する（いま ${nDec} 件）`, nDec > 0,
     '劇団・俳優・演出家・作品・原作者・題材のどれでも登録できます。<b>登録した名前の公演は、内容を問わず、件数の制限も付けずに「お気に入り」に出します。</b>1 件登録するだけで動き始めます。<br>あとから「おすすめ ▸ お気に入り」で足すことも外すこともできます。', form);
   const step2 = stepCard(2, '公演の情報を取り寄せる', nCand > 0, nCand > 0

@@ -25,7 +25,7 @@ import {castOffOf} from './diary.js';
 import {compose, cardTemplates, posterHtml} from './cards.js';
 import {PREFS, prefForm, prefsFor, regionCounts, PAGE_PREF_NOTE} from './prefs.js';
 export {prefForm, prefsFor};
-import {loadDeclared, loadDeclined, loadKindOff, nameHits, KINDS, reactionsOf, declinedBox, kindOffBox, nz as nzName} from './lists.js';
+import {loadDeclared, loadDeclined, loadKindOff, loadRoles, rolesAllowed, nameHits, KINDS, reactionsOf, declinedBox, kindOffBox, nz as nzName} from './lists.js';
 
 export const TOP = 15;
 // 初めて使ったとき（おすすめがまだ無いとき）の案内（起案者の指示 2026-10-18 の文面。使い方ガイドのような小さな絵を添える）。
@@ -331,7 +331,7 @@ export async function rankedGroups(ctx) {
     (SELECT count(*) FROM reaction WHERE user_id=?1) AS an, (SELECT max(updated_at) FROM reaction WHERE user_id=?1) AS am,
     (SELECT count(*) FROM favourites WHERE user_id=?1) AS fn, (SELECT count(*) FROM merges WHERE user_id=?1) AS mn,
     (SELECT count(*) FROM excluded WHERE user_id=?1) AS xn,
-    (SELECT max(updated_at) FROM app_setting WHERE user_id=?1 AND key IN ('declared','declined')) AS dm,
+    (SELECT max(updated_at) FROM app_setting WHERE user_id=?1 AND key IN ('declared','declined','declared_roles')) AS dm,
     (SELECT max(updated_at) FROM rank_weight WHERE user_id=?1) AS km,
     (SELECT v FROM rec_meta WHERE k='rec_card') AS cv,
     (SELECT v FROM rec_meta WHERE k='index_rev') AS ir, (SELECT rec_rev FROM users WHERE id=?1) AS rr, (SELECT works_rev FROM users WHERE id=?1) AS wr`).bind(ctx.uid).first();
@@ -370,7 +370,10 @@ export async function rankedGroups(ctx) {
   const multipliers = {...gate.multipliers};
   for (const [g, m] of Object.entries(own)) multipliers[g] = (Object.hasOwn(multipliers, g) ? multipliers[g] : 1.0) * m;
   const declared = await loadDeclared(ctx);
-  const favourites = KINDS.flatMap(kind => (declared[kind] || []).map(name => ({name, kind}))).slice(0, 200);
+  // 役職で絞った人（q-favourite-homonym）は、その役職の索引だけを引く（同姓同名の別の人の公演を種にしない）
+  const roleOf = await loadRoles(ctx);
+  const favourites = KINDS.flatMap(kind => (declared[kind] || []).map(name => ({name, kind,
+    ...(kind === '人' && roleOf[name] ? {roles: rolesAllowed(roleOf[name])} : {})}))).slice(0, 200);
   const fav = await seedsFromFavourites(access, favourites), skip = fav.skip;
   // Stages of a registered name are お気に入り, stages of a word not to show are left out
   // (app._rebucket): neither is ranked here.
