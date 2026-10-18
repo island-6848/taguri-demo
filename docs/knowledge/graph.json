@@ -2108,6 +2108,19 @@
    "verifies": []
   },
   {
+   "id": "decision-spa-save-retry",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "画面の SPA は、保存を欄ごとに 1 本ずつ送り、届いたか分からない保存は勝手に送り直さない",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/83",
+    "https://github.com/island-6848/taguri-demo/issues/84",
+    "https://github.com/island-6848/taguri-demo/issues/96"
+   ],
+   "verifies": []
+  },
+  {
    "id": "demo-seed-link-rate",
    "type": "finding",
    "status": "unverified",
