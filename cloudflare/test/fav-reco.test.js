@@ -29,7 +29,7 @@ async function favOnly(kind, name) {
 // 理由には、登録していない人を「好きな」とは書かず、登録した名前を書く
 test('a favourite alone recommends a show of a co-worker, and the reason names the favourite', async () => {
   const got = await favOnly('人', '作家丁');
-  assert.match(got.body_html, /<h1>今週のおすすめ 1 件<\/h1>/);
+  assert.match(got.body_html, /<h1>今週のあなたへのおすすめ 1 件<\/h1>/);
   assert.match(got.body_html, /data-stage="101"/);
   assert.match(got.body_html, /出演 <b>俳優乙<\/b><span class="n">（お気に入りの作家丁と同じ公演に関わる人：『舞台ふたつめ』）<\/span>/);
   assert.doesNotMatch(got.body_html, /好きな俳優乙|おすすめを出すためのワンポイント/);
@@ -59,7 +59,7 @@ test('a troupe or a work as the favourite is named in the reason', async () => {
 test('nothing to recommend when every co-worker\'s other show is the favourite\'s own, over, or already running', async () => {
   const got = await favOnly('人', '俳優甲');
   assert.equal(got.diag.favourite_seeds, 2);
-  assert.match(got.body_html, /<h1>今週のおすすめはありません<\/h1>/);
+  assert.match(got.body_html, /<h1>今週のあなたへのおすすめはありません<\/h1>/);
 });
 
 test('people of a favourite\'s show count by role: 出演 > 演出 > 脚本 > 翻訳 > 主催 > 美術…; 制作・宣伝・その他 not at all', () => {
