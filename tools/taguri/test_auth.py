@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import sys
 import tempfile
+import threading
 import time
 from pathlib import Path
 
@@ -115,6 +116,52 @@ try:
     check("存在しない連携コードはAuthErrorになるはず", False)
 except AU.AuthError:
     check("存在しない連携コードはAuthError", True)
+
+# --- issue #182: 同じ連携コードを同時に 2 回引き換えられない ---
+# 2 つの要求が link_codes に最初に触れる直前で待ち合わせ、同時に進ませる
+# （修正前は、両方が「未使用」を読んでから使い切っていた）。
+link_race = AU.create_link_code(uid1)
+barrier = threading.Barrier(2, timeout=5)
+real_db = AU._db
+
+
+class _MeetBeforeLinkCodes:
+    def __init__(self, conn):
+        self._conn, self._met = conn, False
+
+    def execute(self, sql, *args):
+        if "link_codes" in sql and not self._met:
+            self._met = True
+            try:
+                barrier.wait()
+            except threading.BrokenBarrierError:
+                pass
+        return self._conn.execute(sql, *args)
+
+    def __getattr__(self, name):
+        return getattr(self._conn, name)
+
+
+race_results: list = []
+
+
+def _redeem_race(ip: str) -> None:
+    try:
+        race_results.append(AU.redeem_link_code(link_race, ip=ip))
+    except AU.AuthError as e:
+        race_results.append(e)
+
+
+AU._db = lambda: _MeetBeforeLinkCodes(real_db())
+try:
+    racers = [threading.Thread(target=_redeem_race, args=(f"198.51.100.4{i}",)) for i in range(2)]
+    [t.start() for t in racers]
+    [t.join(15) for t in racers]
+finally:
+    AU._db = real_db
+check("同時の 2 要求のうち、引き換えられるのは 1 つだけ（#182）",
+      sorted(isinstance(r, str) for r in race_results) == [False, True]
+      and [r for r in race_results if isinstance(r, str)] == [uid1], race_results)
 
 # --- セキュリティレビュー2026-08-28 指摘①への回帰テスト ---
 # 「外れの推測は該当コードのattemptsに触れない」ことを利用して総当たりしても、

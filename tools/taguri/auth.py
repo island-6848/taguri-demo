@@ -373,23 +373,23 @@ def redeem_link_code(code: str, ip: str) -> str:
     _throttle("link_redeem", ip, LINK_REDEEM_MAX_ATTEMPTS, LINK_REDEEM_WINDOW_SEC)
     conn = _db()
     try:
+        # **確かめることと使い切ることを、1 つの条件付き UPDATE で同時に行う。** 先に
+        # SELECT で「未使用・期限内」を読んでから別の UPDATE で使い切ると、同時に
+        # 来た 2 つの要求がどちらも未使用を読み、同じコードで 2 つのセッションが出る。
+        # 行を書き換えられた要求だけが利用者 ID を受け取る
         row = conn.execute(
-            "SELECT user_id, expires_at, used, attempts FROM link_codes WHERE code = ?",
-            (code,),
+            "UPDATE link_codes SET used = 1, attempts = attempts + 1 "
+            "WHERE code = ? AND used = 0 AND expires_at >= ? AND attempts < ? "
+            "RETURNING user_id",
+            (code, time.time(), LINK_MAX_ATTEMPTS),
         ).fetchone()
-        if row is None:
-            raise AuthError("連携コードが正しくありません。")
-        user_id, expires_at, used, attempts = row
-        if used or time.time() > expires_at or attempts >= LINK_MAX_ATTEMPTS:
-            raise AuthError("連携コードの有効期限が切れているか、無効化されています。")
-        conn.execute(
-            "UPDATE link_codes SET attempts = attempts + 1 WHERE code = ?", (code,)
-        )
-        conn.execute(
-            "UPDATE link_codes SET used = 1 WHERE code = ?", (code,)
-        )
         conn.commit()
-        return user_id
+        if row is not None:
+            return row[0]
+        # 使えなかった理由の文を選ぶためだけに読む（ここでは何も書き換えない）
+        if conn.execute("SELECT 1 FROM link_codes WHERE code = ?", (code,)).fetchone() is None:
+            raise AuthError("連携コードが正しくありません。")
+        raise AuthError("連携コードの有効期限が切れているか、無効化されています。")
     finally:
         conn.close()
 
