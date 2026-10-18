@@ -25,6 +25,7 @@
 <section id="records" class="card"><h2>観劇記録</h2><p id="count"></p><div id="list"></div></section>
 <section id="favourites" class="card"><h2>お気に入り</h2><form id="favourite"><label>名前<input name="name" required maxlength="200"></label><label>種類<select name="kind"><option>人</option><option>団体</option><option>主催</option><option>作品</option><option>題材</option><option>原作者</option></select></label><button>登録する</button></form><ul id="favs"></ul></section>
 <section id="passkeys" class="card" hidden><h2>パスキー</h2><p>指紋・顔認証・端末のロック解除でログインできるようにします。端末をなくしたときは、ここでその端末のパスキーを削除してください。</p><ul id="passkey-list"></ul><button id="passkey-add" type="button" class="primary">この端末のパスキーを追加</button><p id="passkey-status" class="status" role="status" aria-live="polite"></p></section>
+<section id="recovery-reissue" class="card"><h2>復旧コードを作り直す</h2><p>復旧コードの控えをなくしたとき・人に見られたときに使います。記録はそのままで、いまのコードは使えなくなり、新しいコードを 1 回だけ表示します。ほかの端末はすべてログアウトします。ログインしてから10分以内に操作してください。</p><button id="reissue" type="button">復旧コードを作り直す</button></section>
 <section id="backup" class="card"><h2>持ち出す・取り込む</h2><button id="export">記録をJSONで保存</button><label>移行用JSONを取り込む<input id="import" type="file" accept="application/json,.json"></label><p>取り込みは10件ずつ行います。同じIDの記録は更新されます。</p><button id="logout">ログアウト</button></section>
 <section class="card danger-zone"><h2>アカウントの削除</h2><p>記録・パスキー・ログイン情報をすべて消します。元に戻せません。</p><p><a href="/login?purpose=delete">アカウントを削除する</a></p></section>
 </div>

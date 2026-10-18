@@ -1062,6 +1062,22 @@
    "verifies": []
   },
   {
+   "id": "dec-firebase-delete-pending",
+   "type": "decision",
+   "status": "proposed",
+   "date": "2026-10-18",
+   "title": "結び付いたアカウントを消すときは、Firebase UID のハッシュだけを 30 日残し、その間に同じ Google・メールでログインしたら、セッションを作らずにブラウザーに Google 側を消し直させる",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/128",
+    "cloudflare/src/worker.js",
+    "cloudflare/src/client/login.js",
+    "cloudflare/public/privacy.html",
+    "cloudflare/test/firebase-auth.test.js",
+    "cloudflare/test/account-delete.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-free-tier-only",
    "type": "decision",
    "status": "adopted",
@@ -1238,6 +1254,22 @@
    "verifies": []
   },
   {
+   "id": "dec-login-email-ttl",
+   "type": "decision",
+   "status": "proposed",
+   "date": "2026-10-18",
+   "title": "メールのリンクでのログインのために端末に控えるアドレス・どちらの欄か・同意の版は、1 時間で消す（Google・パスキーを始めたとき・ログアウトしたときも消す）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/132",
+    "cloudflare/src/client/login-store.js",
+    "cloudflare/src/client/login.js",
+    "web/app.js",
+    "cloudflare/test/login-store.test.js",
+    "docs/cloudflare-security-review.md"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-login-hardening",
    "type": "decision",
    "status": "adopted",
@@ -1253,6 +1285,21 @@
     "cloudflare/test/gate.test.js",
     "cloudflare/test/firebase-auth.test.js",
     "cloudflare/test/passkey.test.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-logout-all-token-boundary",
+   "type": "decision",
+   "status": "proposed",
+   "date": "2026-10-18",
+   "title": "「すべての端末でログアウト」は、全セッションを消し、その時刻より前のログインで得た Firebase の ID トークンも受け付けなくする（users.tokens_valid_after、migration 0033）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/127",
+    "cloudflare/migrations/0033.sql",
+    "cloudflare/src/worker.js",
+    "cloudflare/src/firebase-auth.js",
+    "cloudflare/test/firebase-auth.test.js"
    ],
    "verifies": []
   },
@@ -1736,6 +1783,22 @@
    "verifies": []
   },
   {
+   "id": "dec-recovery-reissue",
+   "type": "decision",
+   "status": "proposed",
+   "date": "2026-10-18",
+   "title": "復旧コードは、直近 10 分以内のログインで作り直せる。古いコードは 1 つの UPDATE で使えなくなり、ほかの端末はログアウトする（Google・メールで始めたアカウントには作らない）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/126",
+    "cloudflare/src/worker.js",
+    "cloudflare/public/migration-data/index.html",
+    "cloudflare/public/migration-data/app.js",
+    "cloudflare/src/screens/account.js",
+    "cloudflare/test/recovery-reissue.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-reminder-catalogue-fill",
    "type": "decision",
    "status": "adopted",
@@ -1907,6 +1970,23 @@
    "sources": [
     "https://github.com/island-6848/taguri-demo/blob/cloudflare-d1-preview/cloudflare/src/worker.js",
     "https://github.com/island-6848/taguri-demo/blob/cloudflare-d1-preview/cloudflare/test/gate.test.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-signup-cap-atomic",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "新規登録の上限（総数・1 日・接続元）は、利用者の行を足す書き込みの中で確かめる。下見は読むだけで、枠は登録が通ったときだけ数える",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/124",
+    "https://github.com/island-6848/taguri-demo/issues/125",
+    "cloudflare/src/rate-limit.js",
+    "cloudflare/src/worker.js",
+    "cloudflare/src/passkey.js",
+    "cloudflare/test/rate-limit.test.js",
+    "cloudflare/test/passkey.test.js"
    ],
    "verifies": []
   },
@@ -6906,6 +6986,21 @@
    "to": "q-firebase-free-tier"
   },
   {
+   "from": "dec-firebase-delete-pending",
+   "rel": "affects",
+   "to": "dec-account-deletion"
+  },
+  {
+   "from": "dec-firebase-delete-pending",
+   "rel": "affects",
+   "to": "q-firebase-user-deletion"
+  },
+  {
+   "from": "dec-firebase-delete-pending",
+   "rel": "depends_on",
+   "to": "dec-firebase-auth"
+  },
+  {
    "from": "dec-free-tier-only",
    "rel": "supersedes",
    "to": "dec-scale-workers"
@@ -7054,6 +7149,26 @@
    "from": "dec-loading-yarn",
    "rel": "affects",
    "to": "dec-design-adopted"
+  },
+  {
+   "from": "dec-login-email-ttl",
+   "rel": "affects",
+   "to": "q-login-email-storage"
+  },
+  {
+   "from": "dec-login-email-ttl",
+   "rel": "affects",
+   "to": "comp-firebase-login"
+  },
+  {
+   "from": "dec-logout-all-token-boundary",
+   "rel": "depends_on",
+   "to": "dec-firebase-auth"
+  },
+  {
+   "from": "dec-logout-all-token-boundary",
+   "rel": "affects",
+   "to": "comp-firebase-login"
   },
   {
    "from": "dec-migration-branch-wip",
@@ -7511,6 +7626,16 @@
    "to": "comp-native-screens"
   },
   {
+   "from": "dec-recovery-reissue",
+   "rel": "affects",
+   "to": "dec-account-deletion"
+  },
+  {
+   "from": "dec-recovery-reissue",
+   "rel": "depends_on",
+   "to": "dec-rate-limit"
+  },
+  {
    "from": "dec-reminder-catalogue-fill",
    "rel": "depends_on",
    "to": "dec-reminder-worker"
@@ -7629,6 +7754,21 @@
    "from": "dec-signed-out-gate",
    "rel": "affects",
    "to": "comp-cf-worker"
+  },
+  {
+   "from": "dec-signup-cap-atomic",
+   "rel": "supports",
+   "to": "dec-rate-limit"
+  },
+  {
+   "from": "dec-signup-cap-atomic",
+   "rel": "depends_on",
+   "to": "dec-account-cap-counted"
+  },
+  {
+   "from": "dec-signup-cap-atomic",
+   "rel": "supports",
+   "to": "dec-free-tier-only"
   },
   {
    "from": "dec-spread-and-partners",

@@ -89,8 +89,14 @@ test('a Google-linked account reports the link, and the same Google account late
   assert.equal(refused.status, 409);
   assert.equal(rowsOf(sqlite, a.uid).users, 1);
   const res = await call('account/delete', {confirm: '削除', firebase_ready: true}, a.cookie);
-  assert.deepEqual(await res.json(), {deleted: true, firebase_linked: true});
+  assert.deepEqual(await res.json(), {deleted: true, firebase_linked: true, firebase_pending: true});
   assert.equal(sqlite.prepare("SELECT count(*) AS n FROM users WHERE firebase_uid='google-1'").get().n, 0);
+  // Google 側の削除の保留（#128）: UID のハッシュと期限だけ。UID そのものは残さない
+  const held = sqlite.prepare("SELECT k,n FROM usage WHERE k LIKE 'fbdel:%'").all();
+  assert.equal(held.length, 1);
+  assert.match(held[0].k, /^fbdel:[0-9a-f]{64}$/);
+  assert.ok(!JSON.stringify(held).includes('google-1'));
+  assert.ok(Math.abs(held[0].n - (Math.floor(Date.now() / 1000) + 30 * 86400)) < 5);
 });
 
 test('with the Render bridge on, deletion and recovery reach this Worker via /migration-api/', async () => {

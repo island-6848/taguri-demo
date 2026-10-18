@@ -89,7 +89,9 @@ export function passkeyRoutes(h) {
       if (ch.user_id && !await h.freshSession(env.DB, request, uid)) fail(401, REAUTH);
       if (!ch.user_id && env.ALLOW_REGISTRATION !== 'true') fail(503, '新規登録を一時停止しています。');
       if (!ch.user_id) requireAgreement(input, fail);
-      if (!ch.user_id) await h.checkNewAccount(env.DB, env, fail, undefined, request);
+      // 下見だけ（読むだけで枠は数えない）。枠を数えるのは、署名を確かめて利用者の行を足す batch の中（issue #124・#125）。
+      // 不正な応答を何度送っても、同じ接続元の新規登録の枠は減らない
+      const plan = ch.user_id ? null : await h.checkNewAccount(env.DB, env, fail, undefined, request);
       let result;
       try {
         result = await verifyRegistrationResponse({response, expectedChallenge: ch.challenge, expectedOrigin: origin,
@@ -97,9 +99,10 @@ export function passkeyRoutes(h) {
       } catch { rejected(); }
       if (!result?.verified) rejected();
       const {credential, credentialBackedUp} = result.registrationInfo;
-      const insert = owner => env.DB.prepare('INSERT INTO passkeys(id,user_id,user_handle,public_key,counter,transports,backed_up,created_at) VALUES(?,?,?,?,?,?,?,?)')
-        .bind(credential.id, owner, ch.user_handle, isoBase64URL.fromBuffer(credential.publicKey), credential.counter,
-              JSON.stringify(credential.transports ?? []), credentialBackedUp ? 1 : 0, now());
+      // 持ち主の行があるときだけ入る（新しいアカウントの行は、上限の内でだけ同じ batch で入る）
+      const insert = owner => env.DB.prepare('INSERT INTO passkeys(id,user_id,user_handle,public_key,counter,transports,backed_up,created_at) SELECT ?,id,?,?,?,?,?,? FROM users WHERE id=?')
+        .bind(credential.id, ch.user_handle, isoBase64URL.fromBuffer(credential.publicKey), credential.counter,
+              JSON.stringify(credential.transports ?? []), credentialBackedUp ? 1 : 0, now(), owner);
       if (await env.DB.prepare('SELECT 1 FROM passkeys WHERE id=?').bind(credential.id).first()) fail(409, 'このパスキーは登録済みです。');
       if (ch.user_id) {
         await env.DB.batch([insert(ch.user_id)]);
@@ -109,8 +112,9 @@ export function passkeyRoutes(h) {
       // only its hash is kept, as for recovery-code accounts.
       const newUid = crypto.randomUUID(), recovery = token();
       const session = await h.startSession(env.DB, newUid, [
-        env.DB.prepare('INSERT INTO users(id,recovery_hash,created_at,terms_version,terms_at) VALUES(?,?,?,?,?)').bind(newUid, await hash(recovery), now(), TERMS_VERSION, now()),
-        insert(newUid)], h.sessionCookie(request));
+        h.guardedUserInsert(env.DB, plan, ['id', 'recovery_hash', 'created_at', 'terms_version', 'terms_at'], [newUid, await hash(recovery), now(), TERMS_VERSION, now()]),
+        ...h.countNewAccount(env.DB, plan, newUid), insert(newUid)], h.sessionCookie(request));
+      await h.confirmNewAccount(env.DB, env, fail, newUid, request);
       return json({created: true, recovery_code: recovery}, 200, {'Set-Cookie': h.cookie(session)});
     },
 

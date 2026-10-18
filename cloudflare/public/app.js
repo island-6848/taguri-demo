@@ -4324,5 +4324,7 @@ document.addEventListener("click", async ev => {
   if (all && !confirm("ほかの端末も含めて、すべてログアウトします。よろしいですか？")) return;
   const card = b.closest(".acct-card");
   const d = await post(all ? "/api/logout/all" : "/api/logout", {}, card, "ログアウトしました");
+  // ログインの画面がメールのリンク用に控えたアドレスなども消す（#132、cloudflare/src/client/login.js）
+  if (d) try { for (const k of ["taguri_login_email", "taguri_login_agree", "taguri_login_intent", "taguri_login_saved_at"]) localStorage.removeItem(k); } catch {}
   if (d) location.href = "/login";
 });

@@ -9,7 +9,7 @@ import {suggest} from './screens/suggest.js';
 import {exportPayload} from './screens/settings.js';
 import {chooseVariant} from './reco-gate.js';
 import {R2_READS_CAP, r2ReadAllowed, d1RoomLeft, d1Bytes, D1_BYTES_CAP, MAX_ACCOUNTS} from './free-tier.js';
-import {rateLimit, checkNewAccount} from './rate-limit.js';
+import {rateLimit, checkNewAccount, guardedUserInsert, countNewAccount, confirmNewAccount} from './rate-limit.js';
 // Writes that only remove a user's rows: allowed even when D1 is at its storage cap.
 // 保存の上限でも通す操作（減らす操作と、既にある行を書き換えるだけの規約の同意 terms.agreeAction）
 const SHRINKING_ACTIONS = new Set(['drop_work', 'purge_work', 'unseen', 'agree']);
@@ -23,7 +23,8 @@ const SHRINKING_WHEN = {
 /** 画面の書き込み（/api/<name>）が、保存の上限でも通してよい減らす操作か */
 export const shrinkingAction = (name, input) => SHRINKING_ACTIONS.has(name) || Boolean(SHRINKING_WHEN[name]?.(input || {}));
 // Worker の API で上限でも通すもの: 消す・外す操作と、ログアウト・アカウントの削除（セッションや行を消すだけ。#88）
-const SHRINKING_PATHS = new Set(['/api/record/delete', '/api/logout', '/api/logout/all', '/api/account/delete']);
+// 復旧コードの作り直し（#126）は既にある行を書き換えるだけで増えない。漏れたコードを止める操作なので上限でも通す
+const SHRINKING_PATHS = new Set(['/api/record/delete', '/api/logout', '/api/logout/all', '/api/account/delete', '/api/recovery/reissue']);
 export const shrinkingPath = (path, input) => SHRINKING_PATHS.has(path)
   || (['/api/favourite', '/api/reaction'].includes(path) && input?.remove === true);
 const STORAGE_FULL = '保存できる量の上限に近づいたので、無料の範囲で動かすために、いまは保存を止めています。見ることと消すことはできます。';
@@ -105,12 +106,19 @@ async function currentUser(request, db) {
 }
 // New session for uid; the caller's old session (if any) is revoked so a
 // session fixed before sign-in cannot carry over (session rotation).
-async function startSession(db, uid, commands, oldRaw) {
+// The session row goes in only when the user row exists: a new account's row is
+// added earlier in the same batch only while the sign-up caps hold
+// (rate-limit.guardedUserInsert, #124), so a refused sign-up leaves no session
+// and keeps the device's old one.
+// guard: [sql, ...args], a further condition on the users row (e.g. that the
+// recovery code used is still the account's, #126).
+async function startSession(db, uid, commands, oldRaw, guard = null) {
   const session = token();
-  if (oldRaw) commands.push(db.prepare('DELETE FROM sessions WHERE hash=?').bind(await hash(oldRaw)));
+  const [cond, ...args] = guard ?? ['1'];
+  if (oldRaw) commands.push(db.prepare('DELETE FROM sessions WHERE hash=? AND EXISTS (SELECT 1 FROM users WHERE id=?)').bind(await hash(oldRaw),uid));
   // Delete expired sessions and bound the number of devices per account.
   commands.push(db.prepare('DELETE FROM sessions WHERE user_id=? AND (expires_at<=? OR hash NOT IN (SELECT hash FROM sessions WHERE user_id=? ORDER BY expires_at DESC LIMIT 9))').bind(uid,now(),uid));
-  commands.push(db.prepare('INSERT INTO sessions(hash,user_id,expires_at,created_at) VALUES(?,?,?,?)').bind(await hash(session),uid,now()+TTL,now()));
+  commands.push(db.prepare(`INSERT INTO sessions(hash,user_id,expires_at,created_at) SELECT ?,id,?,? FROM users WHERE id=? AND ${cond}`).bind(await hash(session),now()+TTL,now(),uid,...args));
   await db.batch(commands);
   return session;
 }
@@ -145,7 +153,12 @@ async function firebaseSignIn(request, env) {
     throw e;
   }
   const db = env.DB, oldRaw = sessionCookie(request);
-  let uid = (await db.prepare('SELECT id FROM users WHERE firebase_uid=?').bind(identity.uid).first())?.id;
+  const known = await db.prepare('SELECT id,tokens_valid_after FROM users WHERE firebase_uid=?').bind(identity.uid).first();
+  // すべての端末でログアウトしたあとは、それより前のログインで得たトークンを受け付けない（#127）。
+  // 新しく Google・メールでログインし直せば（auth_time が新しくなる）入れる
+  if (known?.tokens_valid_after && identity.authTime <= known.tokens_valid_after)
+    fail(401,'すべての端末でログアウトしたあとです。もう一度 Google かメールでログインしてください。');
+  let uid = known?.id;
   let linked = false, created = false;
   const commands = [];
   const current = oldRaw ? await db.prepare('SELECT u.id,u.firebase_uid,s.created_at FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.hash=? AND s.expires_at>?').bind(await hash(oldRaw),now()).first() : null;
@@ -161,18 +174,39 @@ async function firebaseSignIn(request, env) {
   } else if (!uid && current && !current.firebase_uid) {
     fail(409,'いまログインしているアカウントの記録を引き継ぐには、アカウントのページの「Google・メールを結び付ける」から進んでください。別のアカウントとして始めるなら、ログアウトしてからログインしてください。');
   }
+  if (!uid && input.link !== true && await firebaseDeletePending(db, identity.uid)) {
+    // 前にたぐりのアカウントを削除したが、Google 側（Firebase）の利用者を消せなかった人（#128）。
+    // セッションは作らない。ブラウザーはいまログインしたばかりなので、Firebase の利用者を消せる
+    return json({firebase_delete_pending: true});
+  }
   if (!uid) {
     // ログインの欄（intent: 'login'）から来たときは、新しいアカウントを作らない（起案者の指示 2026-10-17
     // 「ログイン（上）または新規登録（下）にレイアウトし直して」）。新規登録の欄は intent: 'signup'
     if (input.intent === 'login') fail(404,'この Google・メールは、まだ登録されていません。はじめての方は、下の「新規登録」から始めてください。');
     if (env.ALLOW_REGISTRATION !== 'true') fail(503,'新規登録を一時停止しています。');
     requireAgreement(input, fail);
-    await checkNewAccount(db, env, fail, undefined, request);
+    const plan = await checkNewAccount(db, env, fail, undefined, request);
     uid = crypto.randomUUID(); created = true;
-    commands.push(db.prepare('INSERT INTO users(id,recovery_hash,created_at,firebase_uid,terms_version,terms_at) VALUES(?,?,?,?,?,?)').bind(uid,'firebase:'+token(),now(),identity.uid,TERMS_VERSION,now()));
+    commands.push(guardedUserInsert(db, plan, ['id','recovery_hash','created_at','firebase_uid','terms_version','terms_at'], [uid,'firebase:'+token(),now(),identity.uid,TERMS_VERSION,now()]),
+      ...countNewAccount(db, plan, uid));
   }
   const session = await startSession(db, uid, commands, oldRaw);
+  if (created) await confirmNewAccount(db, env, fail, uid, request);
   return json({linked,created},200,{'Set-Cookie':cookie(session)});
+}
+// Firebase 側の削除の保留（#128）。たぐりの記録を消したあと、Google 側（Firebase Authentication）の
+// 利用者はブラウザーが消すが、失敗・離脱してもサーバーには分からない。そこで、結び付いていたアカウントを消すときに
+// Firebase UID のハッシュだけを FIREBASE_DELETE_DAYS 日のあいだ usage に残す（UID そのもの・メールは残さない）。
+// その間に同じ Google・メールでログインすると、セッションを作らずに「Google 側を消す」ようブラウザーに返す。
+// ブラウザーの「消せた」という申告では消さない（サーバーでは確かめられないので、期限で消えるまで残す）。
+export const FIREBASE_DELETE_DAYS = 30;
+const firebaseDeleteKey = async firebaseUid => `fbdel:${await hash('firebase-uid|' + firebaseUid)}`;
+async function firebaseDeletePending(db, firebaseUid) {
+  return Boolean((await db.prepare('SELECT n FROM usage WHERE k=? AND n>?').bind(await firebaseDeleteKey(firebaseUid), now()).first())?.n);
+}
+async function firebaseDeleteStatements(db, firebaseUid) {
+  return [db.prepare("DELETE FROM usage WHERE k LIKE 'fbdel:%' AND n<=?").bind(now()),
+    db.prepare('INSERT INTO usage(k,n) VALUES(?,?) ON CONFLICT(k) DO UPDATE SET n=excluded.n').bind(await firebaseDeleteKey(firebaseUid), now() + FIREBASE_DELETE_DAYS * 86400)];
 }
 // Account deletion (security rules R7). Irreversible, so it needs a fresh
 // sign-in (freshSession). Every table is cleared explicitly rather than
@@ -186,8 +220,26 @@ async function deleteAccount(request, env, uid, input) {
   // Firebase sign-in, so a linked account must be deleted after signing in
   // with Google or the email link (otherwise the email would stay at Google).
   if (linked && input.firebase_ready !== true) fail(409,'このアカウントは Google またはメールと結び付いています。Google 側の記録も消すため、Google かメールのリンクでログインし直してから削除してください。');
-  await env.DB.batch(deleteAccountStatements(env.DB, uid));
-  return json({deleted:true,firebase_linked:!!linked},200,{'Set-Cookie':`${COOKIE}=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0`});
+  await env.DB.batch([...deleteAccountStatements(env.DB, uid), ...(linked ? await firebaseDeleteStatements(env.DB, linked) : [])]);
+  // firebase_pending: Google 側はまだ消えていない（ブラウザーが消す。消せなければ、次のログインでもう一度）
+  return json(linked ? {deleted:true,firebase_linked:true,firebase_pending:true} : {deleted:true,firebase_linked:false},200,{'Set-Cookie':`${COOKIE}=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0`});
+}
+// 復旧コードの作り直し（#126）。控えをなくした・人に見られたときに、アカウントと記録はそのままで、
+// 古いコードだけを使えなくする。直近 10 分以内のログインが要る（盗まれた Cookie だけでは作り直せない）。
+// 古いコードは 1 つの UPDATE で新しいコードに置き換わるので、同時に古いコードで入ろうとしても入れない
+// （/api/recover はコードが変わっていないときだけセッションを作る）。この端末以外のセッションはすべて消す
+// （古いコードで入った人を締め出すため）。Google・メールのリンク・パスキーはそのまま。
+// Google・メールで始めたアカウント（復旧コードを持たない）は、新しくコードを作らない。
+async function reissueRecovery(request, env, uid) {
+  const db = env.DB;
+  if (!await freshSession(db, request, uid)) fail(401,'本人確認のため、ログインし直してから10分以内に復旧コードを作り直してください。');
+  const row = await db.prepare('SELECT recovery_hash FROM users WHERE id=?').bind(uid).first();
+  if (!row || String(row.recovery_hash).startsWith('firebase:')) fail(409,'このアカウントには復旧コードがありません（Google・メールのリンクやパスキーでログインしてください）。');
+  const recovery = token(), keep = await hash(sessionCookie(request));
+  await db.batch([
+    db.prepare("UPDATE users SET recovery_hash=? WHERE id=? AND substr(recovery_hash,1,9)<>'firebase:'").bind(await hash(recovery), uid),
+    db.prepare('DELETE FROM sessions WHERE user_id=? AND hash<>?').bind(uid, keep)]);
+  return json({recovery_code: recovery, other_sessions_signed_out: true});
 }
 // ---------------------------------------------------------------- recommendations
 // Person scores from the batch-built index (migrations/0003, scripts/
@@ -339,7 +391,7 @@ async function state(db, uid) {
   const result = await db.batch([db.prepare("SELECT id,title,date,time,venue,rating,note,COALESCE(stage_id,'') AS stage_id,aspects FROM records WHERE user_id=? ORDER BY date DESC,id LIMIT 500").bind(uid),db.prepare('SELECT name,kind FROM favourites WHERE user_id=? ORDER BY kind,name LIMIT 200').bind(uid),db.prepare('SELECT stage_id,status FROM reactions WHERE user_id=? ORDER BY stage_id LIMIT 500').bind(uid)]);
   return {version:2,records:result[0].results,favourites:result[1].results,reactions:result[2].results};
 }
-const passkey = passkeyRoutes({fail, json, token, hash, now, body, cookie, sessionCookie, currentUser, startSession, checkNewAccount, freshSession});
+const passkey = passkeyRoutes({fail, json, token, hash, now, body, cookie, sessionCookie, currentUser, startSession, checkNewAccount, guardedUserInsert, countNewAccount, confirmNewAccount, freshSession});
 // Public Firebase web config. apiKey identifies the project to Google; it is
 // not a secret (access is governed by authorized domains and the sign-in
 // methods enabled in the console). Nothing here is read from user input.
@@ -545,22 +597,27 @@ export default {
       }
       if (method === 'POST' && ['/api/register','/api/recover'].includes(path)) {
         const input = await body(request);
-        let uid; let recovery;
+        let uid; let recovery; let plan; let used;
         if (path === '/api/register') {
           if (env.ALLOW_REGISTRATION !== 'true') fail(503,'新規登録を一時停止しています。');
           requireAgreement(input, fail);
-          await checkNewAccount(env.DB, env, fail, undefined, request);
+          plan = await checkNewAccount(env.DB, env, fail, undefined, request);
           recovery = token(); uid = crypto.randomUUID();
         } else {
           const code = string(input.code, 80, true).replaceAll('-', '').toLowerCase();
           if (!/^[a-f0-9]{64}$/.test(code)) fail(401,'復旧コードを確認してください。');
-          uid = (await env.DB.prepare('SELECT id FROM users WHERE recovery_hash=?').bind(await hash(code)).first())?.id;
+          used = await hash(code);
+          uid = (await env.DB.prepare('SELECT id FROM users WHERE recovery_hash=?').bind(used).first())?.id;
           if (!uid) fail(401,'復旧コードを確認してください。');
         }
         const commands = [];
-        if (recovery) commands.push(env.DB.prepare('INSERT INTO users(id,recovery_hash,created_at,terms_version,terms_at) VALUES(?,?,?,?,?)').bind(uid,await hash(recovery),now(),TERMS_VERSION,now()));
+        if (recovery) commands.push(guardedUserInsert(env.DB, plan, ['id','recovery_hash','created_at','terms_version','terms_at'], [uid,await hash(recovery),now(),TERMS_VERSION,now()]),
+          ...countNewAccount(env.DB, plan, uid));
         // この端末の古いセッションは消す（firebase・パスキーと同じ。共有の端末で前の人のセッションが残らない）
-        const session = await startSession(env.DB, uid, commands, sessionCookie(request));
+        // 復旧コードでのログインは、そのコードがまだ有効なときだけセッションになる（同時に作り直されたら入れない、#126）
+        const session = await startSession(env.DB, uid, commands, sessionCookie(request), used ? ['recovery_hash=?', used] : null);
+        if (recovery) await confirmNewAccount(env.DB, env, fail, uid, request);
+        if (used && !(await env.DB.prepare('SELECT 1 AS ok FROM sessions WHERE hash=?').bind(await hash(session)).first())) fail(401,'復旧コードを確認してください。');
         return json({recovery_code:recovery},200,{'Set-Cookie':cookie(session)});
       }
       if (method === 'POST' && path === '/api/auth/firebase') return await firebaseSignIn(request, env);
@@ -633,9 +690,13 @@ export default {
         return new Response(got.body, {headers: {'Content-Type': 'text/calendar; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff'}});
       }
       if (path === '/api/account/delete') return await deleteAccount(request, env, uid, input);
+      if (path === '/api/recovery/reissue') return await reissueRecovery(request, env, uid);
       if (path === '/api/logout/all') {
-        // Sign out every device, e.g. after losing a phone.
-        await env.DB.prepare('DELETE FROM sessions WHERE user_id=?').bind(uid).run();
+        // Sign out every device, e.g. after losing a phone. Firebase ID tokens from
+        // sign-ins before this moment are refused from now on (tokens_valid_after, #127):
+        // within their 5 minutes they could otherwise be exchanged for a new session.
+        await env.DB.batch([env.DB.prepare('UPDATE users SET tokens_valid_after=? WHERE id=?').bind(now(),uid),
+          env.DB.prepare('DELETE FROM sessions WHERE user_id=?').bind(uid)]);
         return json({ok:true},200,{'Set-Cookie':`${COOKIE}=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0`});
       }
       if (path === '/api/logout') {

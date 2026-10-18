@@ -52,7 +52,7 @@ async function loadKeys(nowSec, force) {
   cache = {keys: map, expires: nowSec + Math.min(maxAge, 6 * 3600), fetched: nowSec};
 }
 
-/** Returns {uid, provider} for a valid token, or throws. */
+/** Returns {uid, provider, authTime} for a valid token, or throws. */
 export async function verifyIdToken(idToken, projectId, nowSec = Math.floor(Date.now() / 1000)) {
   if (!projectId) throw Object.assign(new Error('firebase project not configured'), {config: true});
   if (typeof idToken !== 'string' || idToken.length > MAX_TOKEN) reject('size');
@@ -78,7 +78,7 @@ export async function verifyIdToken(idToken, projectId, nowSec = Math.floor(Date
   const provider = payload.firebase?.sign_in_provider;
   if (!ALLOWED.has(provider)) reject('provider');
   if (provider === 'password' && payload.email_verified !== true) reject('unverified');
-  return {uid: payload.sub, provider};
+  return {uid: payload.sub, provider, authTime};
 }
 
 export const isAuthError = e => e instanceof AuthError;
