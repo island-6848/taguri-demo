@@ -746,6 +746,19 @@
    "verifies": []
   },
   {
+   "id": "dec-cap-allows-shrinking",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "D1 が保存の上限（4 GB）に達しても、外す・消す・空にする操作と、ログアウト・アカウントの削除は通す。足す操作は止めたまま（#88）",
+   "sources": [
+    "cloudflare/src/worker.js",
+    "cloudflare/src/screens/lists.js",
+    "cloudflare/test/free-tier-d1.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-change-answer-unified",
    "type": "decision",
    "status": "adopted",
@@ -6446,6 +6459,16 @@
    "from": "dec-calendar-worker",
    "rel": "affects",
    "to": "comp-native-screens"
+  },
+  {
+   "from": "dec-cap-allows-shrinking",
+   "rel": "depends_on",
+   "to": "dec-account-cap-counted"
+  },
+  {
+   "from": "dec-cap-allows-shrinking",
+   "rel": "depends_on",
+   "to": "dec-free-tier-only"
   },
   {
    "from": "dec-change-answer-unified",

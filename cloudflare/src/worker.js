@@ -12,6 +12,19 @@ import {rateLimit, checkNewAccount} from './rate-limit.js';
 // Writes that only remove a user's rows: allowed even when D1 is at its storage cap.
 // 保存の上限でも通す操作（減らす操作と、既にある行を書き換えるだけの規約の同意 terms.agreeAction）
 const SHRINKING_ACTIONS = new Set(['drop_work', 'purge_work', 'unseen', 'agree']);
+// 中身で減らす操作か足す操作かが決まるもの（#88）。外す・消す・空にするときだけ通す。足すときは止めたまま
+const SHRINKING_WHEN = {
+  favourite: b => b.action === 'remove', decline: b => b.action === 'remove', kind_off: b => b.action === 'remove',
+  ticket: b => b.action === 'del',
+  // 表示名・アイコンを空にする（app_setting の行を消す）
+  account: b => (Object.hasOwn(b, 'avatar') ? b.avatar === '' : b.display_name === ''),
+};
+/** 画面の書き込み（/api/<name>）が、保存の上限でも通してよい減らす操作か */
+export const shrinkingAction = (name, input) => SHRINKING_ACTIONS.has(name) || Boolean(SHRINKING_WHEN[name]?.(input || {}));
+// Worker の API で上限でも通すもの: 消す・外す操作と、ログアウト・アカウントの削除（セッションや行を消すだけ。#88）
+const SHRINKING_PATHS = new Set(['/api/record/delete', '/api/logout', '/api/logout/all', '/api/account/delete']);
+export const shrinkingPath = (path, input) => SHRINKING_PATHS.has(path)
+  || (['/api/favourite', '/api/reaction'].includes(path) && input?.remove === true);
 const STORAGE_FULL = '保存できる量の上限に近づいたので、無料の範囲で動かすために、いまは保存を止めています。見ることと消すことはできます。';
 import {fetchCalendar} from './screens/import.js';
 import {SCREEN_TABLES, nativeScreen, nativeAction, allNative, movingScreen, movingAction, screen as nativeScreenBody, action as nativeActionBody, readInput as nativeInput} from './screens/index.js';
@@ -454,7 +467,7 @@ async function nativeRoute(request, env, url) {
     if (!(request.headers.get('content-type') || '').startsWith('application/json')) fail(415,'JSONで送ってください。');
     const read = await nativeInput(request, m[2]);
     if (!read.input) return json(read.body, read.status);
-    if (!SHRINKING_ACTIONS.has(m[2]) && !(await d1RoomLeft(env.DB, env))) fail(503, STORAGE_FULL);
+    if (!shrinkingAction(m[2], read.input) && !(await d1RoomLeft(env.DB, env))) fail(503, STORAGE_FULL);
     const out = await nativeActionBody(m[2], read.input, ctx);
     return json(out.body, out.status);
   } catch (error) {
@@ -568,7 +581,7 @@ export default {
       const input = await body(request);
       // Writes that change what is recommended drop the cached result (the stamp
       // alone misses two edits within the same second).
-      if (path !== '/api/record/delete' && !(await d1RoomLeft(env.DB, env))) fail(503, STORAGE_FULL);
+      if (!shrinkingPath(path, input) && !(await d1RoomLeft(env.DB, env))) fail(503, STORAGE_FULL);
       if (['/api/record','/api/record/delete','/api/reaction','/api/favourite','/api/import'].includes(path))
         await env.DB.prepare('DELETE FROM rec_cache WHERE user_id=?').bind(uid).run();
       if (path === '/api/record') {

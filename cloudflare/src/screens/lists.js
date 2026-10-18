@@ -750,11 +750,13 @@ async function favouriteAction(b, ctx) {
   const v = await readJson(ctx, DECLARED_KEY);
   const d = Object.fromEntries(KINDS.map(k => [k, (v && Array.isArray(v[k]) ? v[k] : []).filter(x => typeof x === 'string')]));
   let cur = d[kind];
+  // 外すときに無い名前なら書かない（保存の上限でも外す操作は通すので、行を増やさない。#88）
+  const keep = action === 'remove' && !cur.includes(name);
   if (action === 'add') { if (!cur.includes(name)) cur.push(name); } else cur = cur.filter(x => x !== name);
   d[kind] = cur;
   // app.save_declared: trimmed, de-duplicated, sorted, at most 100 per kind.
   const out = Object.fromEntries(KINDS.map(k => [k, [...new Set(d[k].map(x => String(x).trim().slice(0, 80)).filter(Boolean))].sort(cmp).slice(0, 100)]));
-  await writeJson(ctx, DECLARED_KEY, out);
+  if (!keep) await writeJson(ctx, DECLARED_KEY, out);
   if (action === 'remove') await ctx.db.prepare('DELETE FROM favourites WHERE user_id=? AND name=? AND kind=?').bind(ctx.uid, name, kind).run();
   return {body: {ok: true, kind, name, n: cur.length, said: '登録しました。手元にある公演から探して、お気に入りに表示します'}};
 }
@@ -770,9 +772,10 @@ async function declineAction(b, ctx) {
   if (!DEC_KIND_SET.has(kind)) throw new ValueError('対象がおかしい');
   const entry = (k0 || kind) ? `${k0 || kind}\t${word}` : word;
   let cur = await loadDeclined(ctx);
+  const keep = action === 'remove' && !cur.includes(entry);   // 無いものを外すときは書かない（#88）
   if (action === 'add') { if (!cur.includes(entry)) cur.push(entry); } else cur = cur.filter(w => w !== entry);
   cur = [...new Set(cur.map(w => w.trim().slice(0, 60)).filter(Boolean))].slice(0, 200);
-  await writeJson(ctx, DECLINED_KEY, cur);
+  if (!keep) await writeJson(ctx, DECLINED_KEY, cur);
   return {body: {ok: true, word, kind: k0 || kind, n: cur.length}};
 }
 
@@ -781,9 +784,10 @@ async function kindOffAction(b, ctx) {
   const action = String(b.action ?? ''), key = String(b.key ?? '').trim().slice(0, 80);
   if (!['add', 'remove'].includes(action) || !/^#[^\t]+\t[^\t]+$/.test(key)) throw new ValueError('action（add / remove）と key（#種類 と 中身）が要る');
   let cur = await loadKindOff(ctx);
+  const keep = action === 'remove' && !cur.includes(key);     // 無いものを外すときは書かない（#88）
   if (action === 'add') { if (!cur.includes(key)) cur.push(key); } else cur = cur.filter(k => k !== key);
   cur = [...new Set(cur)].slice(0, KIND_OFF_MAX);
-  await writeJson(ctx, KIND_OFF_KEY, cur);
+  if (!keep) await writeJson(ctx, KIND_OFF_KEY, cur);
   return {body: {ok: true, key, n: cur.length}};
 }
 
