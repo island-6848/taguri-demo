@@ -121,6 +121,18 @@ def undated_case():
     return rows
 
 
+def years_case():
+    """長く出てくる人と、最後の 2 年で新しくよく出てくる人（読みの recent・long の文）。"""
+    b = Book()
+    b.add("2016-03-01", [(CAST, "長い人"), (CAST, "甲")])
+    b.add("2017-03-01", [(CAST, "長い人"), (CAST, "甲")])
+    b.add("2019-05-01", [(CAST, "長い人"), (DIR, "演出家")])
+    b.add("2021-02-01", [(DIR, "演出家"), (CAST, "新人A")])
+    b.add("2022-02-01", [(CAST, "新人A"), (CAST, "新人B"), (CAST, "甲")])
+    b.add("2022-06-01", [(CAST, "新人B"), (CAST, "長い人")])
+    return b.rows
+
+
 def too_small_case():
     b = Book()
     b.add("2023-01-01", [(CAST, "甲"), (CAST, "乙")])
@@ -177,8 +189,13 @@ def build():
     import people as PE
     cases = []
     for name, rated in (("main", main_case()), ("tiny", tiny_case()), ("split", split_case()),
-                        ("undated", undated_case()), ("too_small", too_small_case()), ("empty", [])):
-        cases.append({"name": name, "rated": rated, "html": PE.panel(rated, owner=False)})
+                        ("undated", undated_case()), ("years", years_case()),
+                        ("too_small", too_small_case()), ("empty", [])):
+        g = PE.build(rated)
+        tl = PE.timeline(rated, g, {p: i for i, p in enumerate(g["core"])})
+        f = PE.read_facts(rated, g, PE.components(g), tl)
+        cases.append({"name": name, "rated": rated, "html": PE.panel(rated, owner=False),
+                      "facts": f, "read": PE.reading(f)})
     return {"cases": cases, "text_w": [[s, PE._text_w(s)] for s in TEXT_W],
             "unidata": unicodedata.unidata_version, "wf": wf_ranges(), "unassigned": unassigned_ranges(), "trig": trig()}
 
