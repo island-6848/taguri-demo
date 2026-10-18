@@ -1,5 +1,7 @@
-"""ひな明朝の「たぐり」を絵に組み込んだロゴ（起案者 2026-10-18「たぐりの文字、図形の下に明記するんじゃなくて
-うまく図に組み込めない？ひな明朝がいいかも」）。濁点は 2 つの星（スポットライト）に、「り」の払いの先から糸をのばす。"""
+"""「たぐり」の字を絵に組み込んだロゴ（起案者 2026-10-18「たぐりの文字、図形の下に明記するんじゃなくて
+うまく図に組み込めない？ひな明朝がいいかも」）。濁点は 2 つの星（スポットライト）に、「り」の払いの先から糸をのばす。
+字は Zen丸ゴシック Medium（起案者 2026-10-18「丸のなかの文字だけ丸ゴシックにできる？」で「ロゴの丸」を選んだ）。
+前のひな明朝に戻すときは LOGO_FONT=hina。"""
 import math, os, sys
 from pathlib import Path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -10,13 +12,24 @@ from fontTools.pens.transformPen import TransformPen
 from glyphs import ftext
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-# ひな明朝は Google Fonts の部分フォント（OFL）を gf/ に置く（リポジトリには入れない）
-FONT = os.environ.get('HINA', os.path.join(HERE, 'gf', 'Hina_Mincho.ttf'))
+# 字の形ごとの寸法（字の単位）。字のファイルは Google Fonts（OFL）のものを gf/ に置く（リポジトリには入れない。.gitignore）
+#   取り方: curl -o gf/ZenMaruGothic-Medium.ttf https://raw.githubusercontent.com/google/fonts/main/ofl/zenmarugothic/ZenMaruGothic-Medium.ttf
+# dakuten: 「ぐ」の濁点の輪郭の番号、stars: 星を置く濁点の 2 つの点、ri_tip: 「り」の払いの先、
+# ink_x: 字の墨の左右の端（「ぐ」は濁点を除く）、mid: 3 字の墨の上下の真ん中、size: 紋章の字の大きさ
+FONTS = {
+    'hina': dict(file='Hina_Mincho.ttf', dakuten={1, 2}, stars=((720, 555), (640, 485)), ri_tip=(350, -50),
+                 ink_x={'た': (141, 849), 'ぐ': (241, 589), 'り': (270, 729)}, mid=381, size=57),
+    'maru': dict(file='ZenMaruGothic-Medium.ttf', dakuten={1, 2}, stars=((818, 560), (737, 478)), ri_tip=(500, -44),
+                 ink_x={'た': (121, 873), 'ぐ': (284, 691), 'り': (285, 727)}, mid=377, size=54),
+}
+KIND = os.environ.get('LOGO_FONT', 'maru')
+M = FONTS[KIND]
+FONT = os.environ.get('HINA' if KIND == 'hina' else 'LOGO_FONT_FILE', os.path.join(HERE, 'gf', M['file']))
 OUT = os.environ.get('OUT_DIR', os.path.join(HERE, 'type') + '/')
 INK, BG = '#1d1d1f', '#fbeee2'
 T = TTFont(FONT); CMAP = T.getBestCmap(); GS = T.getGlyphSet()
-DAKUTEN = {'ぐ': {1, 2}}       # 濁点の輪郭（独立した 2 つ）
-RI_TIP = (350, -50)            # 「り」の払いの先（字の単位）
+DAKUTEN = {'ぐ': M['dakuten']}  # 濁点の輪郭（独立した 2 つ）
+RI_TIP = M['ri_tip']            # 「り」の払いの先（字の単位）
 
 def contours(ch):
     rp = RecordingPen(); GS[CMAP[ord(ch)]].draw(rp)
@@ -89,11 +102,11 @@ def sparkle(cx, cy, r, sw=1.4, fill=False):
 
 def dakuten_stars(x, base, size):
     """濁点の 2 つの点の位置に、2 つの星（大小）。"""
-    a = at(x, base, size, (720, 555)); b = at(x, base, size, (640, 485))
+    a = at(x, base, size, M['stars'][0]); b = at(x, base, size, M['stars'][1])
     return sparkle(a[0] - size * 0.015, a[1] - size * 0.025, size * 0.062, 1.0, fill=True) + sparkle(b[0] - size * 0.005, b[1] - size * 0.01, size * 0.04, 0.9, fill=True)
 
 # 字の墨の左右の端（字の単位）。「ぐ」の右端は「く」の線（星の濁点は含めない）
-INK_X = {'た': (141, 849), 'ぐ': (241, 589), 'り': (270, 729)}
+INK_X = M['ink_x']
 
 def spaced(center, size, gap_tg, gap_gr):
     """「たぐり」を、字と字の墨の隙間で並べる（起案者 2026-10-18「ぐとりの間に、たとぐ以上の隙間あるのが気になる」）。
@@ -127,10 +140,10 @@ def stage():
         b.append(f'<circle cx="{x}" cy="141" r="2.8" fill="none" stroke="{INK}" stroke-width="1.4"/>')
         b.append(line(f'M{x - 2} 144 L{x - 3.5} 152 M{x} 144 L{x} 153 M{x + 2} 144 L{x + 3.5} 152', 1.1))
     # 字: 舞台の真ん中。濁点は星に、「り」の払いの先から糸が床へ垂れて、床の線になる
-    # 字の墨の上下の真ん中（字の単位で 381）を、丸の中心の高さ cy に合わせる（起案者 2026-10-18「円に対して下よりなので、中央を通るように」）
+    # 字の墨の上下の真ん中（字の単位で M['mid']）を、丸の中心の高さ cy に合わせる（起案者 2026-10-18「円に対して下よりなので、中央を通るように」）
     # 起案者 2026-10-18「たぐりちょっと右寄りかも。たぐりの文字もうちょっとだけ下でもいい」: 左へ 5、下へ 5
-    size = 57
-    base = cy + 381 * size / 1000 + 5
+    size = M['size']
+    base = cy + M['mid'] * size / 1000 + 5
     # 「ぐ」と「り」の間は、星の濁点が入る分だけ少し広く（それでも「た」「ぐ」の間に近く見える幅）
     tx, gx, rx = spaced(149, size, 10, 16)
     b.append(glyph('た', tx, base, size))
@@ -228,7 +241,8 @@ def icon():
 def row():
     """横組み: オペラグラスのアイコン（どの大きさでも同じ絵）と「たぐり」（電話の幅の上の帯に置く）。"""
     inner = icon().split('\n', 1)[1].rsplit('</svg>', 1)[0]
-    size, base = 44, 32 + 381 * 44 / 1000
+    size = 44 * M['size'] / 57
+    base = 32 + M['mid'] * size / 1000
     xs = spaced(118, size, 8, 12.5)      # 紋章と同じ並べ方（字の墨の隙間で揃える）
     b = [f'<g>{inner}</g>', glyph('た', xs[0], base, size), glyph('ぐ', xs[1], base, size, skip=DAKUTEN['ぐ']),
          dakuten_stars(xs[1], base, size), glyph('り', xs[2], base, size)]

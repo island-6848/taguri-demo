@@ -1,7 +1,7 @@
 ---
 id: dec-font-action-maru
 type: decision
-status: adopted
+status: superseded
 date: 2026-10-18
 title: 書体は基本すべて Zen角ゴシック New、利用者が起こすアクション（ボタン・ボタン形のリンク・タブ・選ぶ欄）だけ Zen丸ゴシック
 sources:

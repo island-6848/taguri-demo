@@ -20,3 +20,6 @@ backup*.sql
 
 # Claude Code の並行作業の作業用コピー（git worktree）
 .claude/worktrees/
+
+# ロゴを作るときの字のファイル（Google Fonts の OFL。docs/design/logo/make_type.py）
+docs/design/logo/gf/

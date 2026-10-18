@@ -1,0 +1,33 @@
+---
+id: dec-font-sawarabi-round
+type: decision
+status: adopted
+date: 2026-10-18
+title: 押すものと公演名はさわらびゴシック、丸の中の字（両端が半円の押し口と札・ロゴの丸）は Zen丸ゴシック、ほかは Zen角ゴシック New
+sources:
+  - https://fonts.google.com/specimen/Sawarabi+Gothic
+  - https://fonts.googleapis.com/css2?family=Sawarabi+Gothic&display=swap
+  - https://github.com/google/fonts/blob/main/ofl/sawarabigothic/OFL.txt
+  - https://github.com/google/fonts/blob/main/ofl/sawarabigothic/METADATA.pb
+  - https://github.com/google/fonts/blob/main/ofl/zenmarugothic/ZenMaruGothic-Medium.ttf
+  - web/fonts.css
+  - web/round-text.js
+  - docs/design/logo/make_type.py
+  - cloudflare/test/fonts.test.js
+links:
+  - supersedes: dec-font-action-maru
+---
+起案者の指示（2026-10-18）「丸ゴシックのところ さわらびゴシックにできる？公演名に使う字体もこれにして」、続けて「丸のなかの文字だけ丸ゴシックにできる？」。どれが「丸のなか」かを聞き、「角が丸い押し口」「角が丸い札」「ロゴの丸」を選んだ（評価の判子は選ばなかった）。
+
+確かめたこと（一次情報・取得元から直接取得）:
+- さわらびゴシックは SIL OFL 1.1（google/fonts の OFL.txt・METADATA.pb の license: "OFL"、designer: "mshio"）。Google Fonts の CSS が返すのは 400 だけで、文字の範囲ごとの woff2 が 121 ファイル（計約 1.3 MB）。太字は無い
+- サイトの CSP（default-src 'self'）が外のフォントを読まないので、woff2 を web/assets/fonts/sawarabi-gothic/ に置いて配る。ライセンスの本文は assets/fonts/OFL-SawarabiGothic.txt。静的なファイルは Workers の無料枠の数に入らない〔workers-static-assets-free〕
+
+決めたこと（web/fonts.css）:
+- `--font-action`（さわらびゴシック）: ボタン・ボタンの形のリンク・タブ・select・送信。`--font-title`（さわらびゴシック）: 公演名。どちらも 400 のまま組み、font-synthesis:none で作り太りを止める（日本語の字の作り太りはつぶれるため）。前は押すものを丸ゴシックの太字にしていたので、押す字は細くなった
+- `--font-round`（Zen丸ゴシック 700）: 両端が半円の押し口と札の中の字。web/round-text.js が、描かれた形（border-radius が高さの半分以上で、枠線か地の色があるもの）を見て data-round を付ける。丸さは部品ごと・画面の幅ごとに CSS が決め、theme.css が四角に上書きしている部品もあるので、クラスの名前を並べると漏れる。読んでから書く順にして組み直しを抑え、画面の書き換え（MutationObserver）と幅の変化で付け直す。評価の判子（.rb・.stamp）と図（svg、制覇マップのマス・ログインの図の丸）は外す。app.js を読まないログイン・規約の頁でも同じファイルを読む
+- ロゴの丸（紋章）と、電話の幅の帯の横組みの「たぐり」を Zen丸ゴシック Medium の字形にした（docs/design/logo/make_type.py。字ごとの寸法を FONTS にまとめ、LOGO_FONT=hina で前のひな明朝に戻せる）。濁点の星・「り」の払いの先の糸・字の墨の真ん中を丸の中心に合わせる決まりは前のまま。字のファイルは gf/ に置き、リポジトリには入れない（.gitignore）。案 2・案 3（type2・type3）はひな明朝の案のまま残した
+
+確かめたこと: e2e-walk 41 段（wrangler dev と Chromium）。画面の写しで、両端が丸い「戻る」「取り消す」「任意」「確認できず」「使い方」・ログインの丸い押し口が丸ゴシック、四角に近い「公式サイト」「回答を直す」「追加」・並べ替えの select がさわらびゴシック、公演名がさわらびゴシック、ロゴが丸ゴシック。test/fonts.test.js（どの頁も fonts.css と round-text.js を読む・@font-face の指すファイルが全部ある・丸の決まりが押すものの決まりより後ろ）。
+
+分かっていないこと: ログインの画面の上の帯の「たぐり」（auth.css の .brand、明朝の文字）は丸の中ではないので変えていない。

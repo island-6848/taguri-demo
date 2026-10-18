@@ -37,11 +37,11 @@ test('signed out: the top goes to /login, other pages to /login with a way back'
 
 test('signed out: /login and static files load, /about goes to /login; app data and posters do not', async () => {
   const {get, post, served} = setup();
-  for (const path of ['/login', '/style.css', '/auth.css', '/fonts.css', '/assets/fonts/zen-maru-gothic/zmg700-000.woff2', '/vendor/firebase-login.js', '/assets/taguri-howto.mp4']) {
+  for (const path of ['/login', '/style.css', '/auth.css', '/fonts.css', '/assets/fonts/sawarabi-gothic/sg400-000.woff2', '/vendor/firebase-login.js', '/assets/taguri-howto.mp4']) {
     const r = await get(path);
     assert.equal(r.status, 200, path);
   }
-  assert.deepEqual(served, ['/login', '/style.css', '/auth.css', '/fonts.css', '/assets/fonts/zen-maru-gothic/zmg700-000.woff2', '/vendor/firebase-login.js', '/assets/taguri-howto.mp4']);
+  assert.deepEqual(served, ['/login', '/style.css', '/auth.css', '/fonts.css', '/assets/fonts/sawarabi-gothic/sg400-000.woff2', '/vendor/firebase-login.js', '/assets/taguri-howto.mp4']);
   const about = await get('/about');
   assert.equal(about.status, 302);
   assert.equal(about.headers.get('location'), '/login');

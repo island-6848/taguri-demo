@@ -1124,7 +1124,7 @@
   {
    "id": "dec-font-action-maru",
    "type": "decision",
-   "status": "adopted",
+   "status": "superseded",
    "date": "2026-10-18",
    "title": "書体は基本すべて Zen角ゴシック New、利用者が起こすアクション（ボタン・ボタン形のリンク・タブ・選ぶ欄）だけ Zen丸ゴシック",
    "sources": [
@@ -1149,6 +1149,25 @@
     "cloudflare/public/_headers",
     "cloudflare/src/worker.js",
     "cloudflare/test/gate.test.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-font-sawarabi-round",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "押すものと公演名はさわらびゴシック、丸の中の字（両端が半円の押し口と札・ロゴの丸）は Zen丸ゴシック、ほかは Zen角ゴシック New",
+   "sources": [
+    "https://fonts.google.com/specimen/Sawarabi+Gothic",
+    "https://fonts.googleapis.com/css2?family=Sawarabi+Gothic&display=swap",
+    "https://github.com/google/fonts/blob/main/ofl/sawarabigothic/OFL.txt",
+    "https://github.com/google/fonts/blob/main/ofl/sawarabigothic/METADATA.pb",
+    "https://github.com/google/fonts/blob/main/ofl/zenmarugothic/ZenMaruGothic-Medium.ttf",
+    "web/fonts.css",
+    "web/round-text.js",
+    "docs/design/logo/make_type.py",
+    "cloudflare/test/fonts.test.js"
    ],
    "verifies": []
   },
@@ -7716,6 +7735,11 @@
    "from": "dec-font-roles",
    "rel": "affects",
    "to": "dec-design-default-ito"
+  },
+  {
+   "from": "dec-font-sawarabi-round",
+   "rel": "supersedes",
+   "to": "dec-font-action-maru"
   },
   {
    "from": "dec-free-tier-audit-fixes-1018",
