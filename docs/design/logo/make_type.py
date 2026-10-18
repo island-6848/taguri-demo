@@ -200,36 +200,34 @@ def vertical():
     return svg(200, 300, b)
 
 # ---------------------------------------------------------------- 小さい版（タブ・ホーム画面のアイコン）
-def icon(small=False):
+def icon():
     """強弱のある丸の中にオペラグラス（起案者 2026-10-18「アイコンにするときはぐ、じゃなくてオペラグラスのイラスト」）。
-    small=True は 16〜32px 向け: 線を太くし、レンズの内側の輪・光・星を省き、糸の先は短いはね 1 つ。"""
+    どの大きさでもこの 1 つを使う（起案者 2026-10-18「今48px以上のやつ、48以下でもそれに統一してほしい」。
+    以前は 16〜32px 向けに線を太くして細部を省いた版を別に持っていた）。"""
     cx, cy, r = 31, 29.5, 22.5
-    # 16〜32px では先の輪がつぶれるので、ほどけた先は短いはね 1 つにする
-    tail = [((4, 1), (8, 4), (10, 9))] if small else [((5, 1), (9, 4), (7, 7.5)), ((-2, 2.5), (-5.5, -0.5), (-2.5, -2.5)), ((3.5, -2), (8.5, 1), (10.5, 4.5))]
-    b = [taper_ring(cx, cy, r, 192, 160, tail, 2.4 if small else 1.4, 5.2 if small else 3.8)]
-    lw = 2.6 if small else 1.9           # オペラグラスの線
-    lr = 6.6 if small else 6.2           # レンズの半径
+    tail = [((5, 1), (9, 4), (7, 7.5)), ((-2, 2.5), (-5.5, -0.5), (-2.5, -2.5)), ((3.5, -2), (8.5, 1), (10.5, 4.5))]
+    b = [taper_ring(cx, cy, r, 192, 160, tail, 1.4, 3.8)]
+    lw, lr = 1.9, 6.2                    # オペラグラスの線・レンズの半径
     lx, rx, ly = cx - 8, cx + 8, cy + 3
     for x in (lx, rx):
         b.append(f'<circle cx="{x}" cy="{ly}" r="{lr}" fill="none" stroke="{INK}" stroke-width="{lw}"/>')
         # 接眼の筒（レンズの上の台形）
         b.append(line(f'M{x - 3.6:.1f} {ly - lr - 0.6:.1f} L{x - 2.6:.1f} {ly - lr - 4.2:.1f} L{x + 2.6:.1f} {ly - lr - 4.2:.1f} L{x + 3.6:.1f} {ly - lr - 0.6:.1f}', lw * 0.85))
-        if not small:
-            b.append(f'<circle cx="{x}" cy="{ly}" r="{lr - 2.4:.1f}" fill="none" stroke="{INK}" stroke-width="0.9"/>')
-            b.append(line(f'M{x - 3.2:.1f} {ly - 0.6:.1f} Q{x - 2.6:.1f} {ly - 3:.1f} {x - 0.4:.1f} {ly - 3.4:.1f}', 0.9))   # レンズの光
+        b.append(f'<circle cx="{x}" cy="{ly}" r="{lr - 2.4:.1f}" fill="none" stroke="{INK}" stroke-width="0.9"/>')
+        b.append(line(f'M{x - 3.2:.1f} {ly - 0.6:.1f} Q{x - 2.6:.1f} {ly - 3:.1f} {x - 0.4:.1f} {ly - 3.4:.1f}', 0.9))   # レンズの光
     # 二つのレンズをつなぐ橋
     b.append(line(f'M{lx + lr - 0.4:.1f} {ly - 2:.1f} Q{cx} {ly - 6:.1f} {rx - lr + 0.4:.1f} {ly - 2:.1f}', lw * 0.85))
     # 柄（左のレンズから斜め下へ）
     b.append(line(f'M{lx - lr * 0.7:.1f} {ly + lr * 0.7:.1f} L{lx - lr * 0.7 - 5:.1f} {ly + lr * 0.7 + 6:.1f}', lw))
-    if not small:   # 上にきらきら（劇場のあかり）
-        b.append(sparkle(cx, 15.5, 2.6, 0.6, fill=True))
-        b.append(sparkle(cx - 6.5, 17.5, 1.4, 0.5, fill=True)); b.append(sparkle(cx + 6.5, 17.5, 1.4, 0.5, fill=True))
+    # 上にきらきら（劇場のあかり）
+    b.append(sparkle(cx, 15.5, 2.6, 0.6, fill=True))
+    b.append(sparkle(cx - 6.5, 17.5, 1.4, 0.5, fill=True)); b.append(sparkle(cx + 6.5, 17.5, 1.4, 0.5, fill=True))
     return svg(64, 64, b)
 
 # ---------------------------------------------------------------- サイトに入れる（ヘッダー・タブ・ホーム画面）
 def row():
-    """横組み: オペラグラスのアイコンと「たぐり」（電話の幅の上の帯に置く）。"""
-    inner = icon(True).split('\n', 1)[1].rsplit('</svg>', 1)[0]
+    """横組み: オペラグラスのアイコン（どの大きさでも同じ絵）と「たぐり」（電話の幅の上の帯に置く）。"""
+    inner = icon().split('\n', 1)[1].rsplit('</svg>', 1)[0]
     size, base = 44, 32 + 381 * 44 / 1000
     xs = spaced(118, size, 8, 12.5)      # 紋章と同じ並べ方（字の墨の隙間で揃える）
     b = [f'<g>{inner}</g>', glyph('た', xs[0], base, size), glyph('ぐ', xs[1], base, size, skip=DAKUTEN['ぐ']),
@@ -245,7 +243,7 @@ def inline(svg_text, cls, label):
 def favicon_href():
     """タブの絵（data: で埋め込む）。暗いタブでは明るい色にする（タブの地はページの明暗と一致しない）。"""
     from urllib.parse import quote
-    body = icon(True).split('\n', 1)[1].rsplit('</svg>', 1)[0]
+    body = icon().split('\n', 1)[1].rsplit('</svg>', 1)[0]
     style = ('<style>[fill="#1d1d1f"]{fill:#1d1d1f}[stroke="#1d1d1f"]{stroke:#1d1d1f}'
              '@media(prefers-color-scheme:dark){[fill="#1d1d1f"]{fill:#f2f2f3}[stroke="#1d1d1f"]{stroke:#f2f2f3}}</style>')
     return 'data:image/svg+xml,' + quote(f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">{style}{body}</svg>', safe='')
@@ -277,6 +275,6 @@ if len(sys.argv) > 2 and sys.argv[1] == '--python':
 if len(sys.argv) > 2 and sys.argv[1] == '--embed':
     embed(sys.argv[2]); print('embedded'); raise SystemExit
 
-for name, f in [('icon', icon), ('icon-small', lambda: icon(True)), ('row', row), ('type1-stage', stage), ('type2-wordmark', wordmark), ('type3-vertical', vertical)]:
+for name, f in [('icon', icon), ('row', row), ('type1-stage', stage), ('type2-wordmark', wordmark), ('type3-vertical', vertical)]:
     open(OUT + name + '.svg', 'w', encoding='utf-8').write(f())
 print('ok')
