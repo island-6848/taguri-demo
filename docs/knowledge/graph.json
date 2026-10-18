@@ -929,6 +929,20 @@
    "verifies": []
   },
   {
+   "id": "dec-demo-seed-fictional",
+   "type": "decision",
+   "status": "proposed",
+   "date": "2026-10-18",
+   "title": "公開デモの見本 96 件を架空の題名・日付・会場に入れ替え、日報メールの宛先と差出人を手元の設定へ移す（今の版だけ。履歴は起案者が決める）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/122",
+    "tools/taguri/demo_purchase_works.json",
+    "tools/mail/send_daily_report.py",
+    "docs/demo-seed-ratings.md"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-demo-stays-render-free",
    "type": "decision",
    "status": "superseded",
@@ -2194,7 +2208,7 @@
   {
    "id": "demo-seed-link-rate",
    "type": "finding",
-   "status": "unverified",
+   "status": "outdated",
    "date": "2026-10-12",
    "title": "見本の記録のうち推薦の材料になるのは 6 割ほど（見積もり）",
    "sources": [
@@ -5000,6 +5014,17 @@
    "verifies": []
   },
   {
+   "id": "q-pii-git-history",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-18",
+   "title": "公開リポジトリの過去の履歴に残る観劇記録と第三者の連絡先を、履歴から消すか（force push と、複製・フォークへの影響を含めて起案者が決める）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/122"
+   ],
+   "verifies": []
+  },
+  {
    "id": "q-plainwalk-ui",
    "type": "question",
    "status": "open",
@@ -6756,6 +6781,21 @@
    "from": "dec-defer-workers",
    "rel": "depends_on",
    "to": "q-direction"
+  },
+  {
+   "from": "dec-demo-seed-fictional",
+   "rel": "depends_on",
+   "to": "sec-audit-1017"
+  },
+  {
+   "from": "dec-demo-seed-fictional",
+   "rel": "affects",
+   "to": "demo-seed-link-rate"
+  },
+  {
+   "from": "dec-demo-seed-fictional",
+   "rel": "raises",
+   "to": "q-pii-git-history"
   },
   {
    "from": "dec-demo-stays-render-free",
@@ -9731,6 +9771,11 @@
    "from": "q-past-stage-catalogue",
    "rel": "depends_on",
    "to": "catalog-terms-no-redistribution"
+  },
+  {
+   "from": "q-pii-git-history",
+   "rel": "depends_on",
+   "to": "dec-demo-seed-fictional"
   },
   {
    "from": "q-plainwalk-ui",

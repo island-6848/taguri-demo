@@ -40,6 +40,12 @@ OAuth クライアントを 1 つ作る必要がある。**管理者権限は不
 
          python3 tools/mail/send_daily_report.py --login
 
+  7. 宛先と差出人の名前を手元に置く（**リポジトリには書かない**）。次の形で
+     `~/.config/nau-mail/report.json` に保存する（環境変数 `DAILY_REPORT_TO`
+     （カンマ区切り）・`DAILY_REPORT_SENDER` でも渡せる）:
+
+         {"to": ["宛先1@example.com", "宛先2@example.com"], "sender_name": "名前"}
+
 トークンは `~/.config/nau-mail/google_token.json` に権限 600 で保存される
 （**リポジトリには入れない**。パスワード同等の機密情報）。以降は無操作で送信できる。
 
@@ -90,8 +96,37 @@ CLIENT_PATH = CONFIG_DIR / "google_client.json"
 TOKEN_PATH = CONFIG_DIR / "google_token.json"
 REPORT_DIR = Path(__file__).resolve().parent.parent.parent / "docs" / "daily"
 
-DEFAULT_RECIPIENTS = ["yamaguchi@nau.co.jp", "turusaki@nau.co.jp"]
-SENDER_NAME = "仲谷"
+# **宛先と差出人の名前はリポジトリに書かない**（issue #122）。公開リポジトリに第三者の
+# 連絡先を置かないため、手元の設定ファイルか環境変数から読む:
+#   ~/.config/nau-mail/report.json  {"to": ["a@example.com", "b@example.com"], "sender_name": "名前"}
+#   環境変数 DAILY_REPORT_TO（カンマ区切り）・DAILY_REPORT_SENDER（どちらも設定ファイルより優先）
+SETTINGS_PATH = CONFIG_DIR / "report.json"
+
+
+def load_settings() -> dict:
+    data = {}
+    if SETTINGS_PATH.exists():
+        data = json.loads(SETTINGS_PATH.read_text(encoding="utf-8"))
+    to = os.environ.get("DAILY_REPORT_TO")
+    if to:
+        data["to"] = [a.strip() for a in to.split(",") if a.strip()]
+    if os.environ.get("DAILY_REPORT_SENDER"):
+        data["sender_name"] = os.environ["DAILY_REPORT_SENDER"]
+    return data
+
+
+def sender_name() -> str:
+    return load_settings().get("sender_name") or ""
+
+
+def default_recipients() -> list[str]:
+    to = load_settings().get("to") or []
+    if not to:
+        raise SystemExit(
+            f"宛先がありません。--to で渡すか、{SETTINGS_PATH} に\n"
+            '  {"to": ["宛先@example.com"], "sender_name": "名前"}\n'
+            "を置いてください（環境変数 DAILY_REPORT_TO でもよい）。")
+    return list(to)
 
 
 # --------------------------------------------------------------------------
@@ -355,9 +390,10 @@ def extract_section(markdown: str, heading: str) -> str:
 def build_message(date: str, recipients: list[str]) -> tuple[EmailMessage, Path, int]:
     path, markdown = load_report(date)
     msg = EmailMessage()
-    msg["Subject"] = f"【日報】{date} {SENDER_NAME}"
+    name = sender_name()
+    msg["Subject"] = f"【日報】{date} {name}".rstrip()
     msg["To"] = ", ".join(recipients)
-    msg.set_content(f"""お世話になっております。{SENDER_NAME}です。
+    msg.set_content(f"""お世話になっております。{name}です。
 
 {date} の日報をお送りします。詳細は添付のファイルをご確認ください。
 
@@ -376,7 +412,7 @@ def build_message(date: str, recipients: list[str]) -> tuple[EmailMessage, Path,
 気付いたこと・疑問点・課題および備考は、添付ファイルに記載しております。
 ご確認のほどよろしくお願いいたします。
 
-{SENDER_NAME}
+{name}
 """)
     raw = markdown.encode("utf-8")
     msg.add_attachment(raw, maintype="text", subtype="markdown", filename=path.name)
@@ -409,7 +445,7 @@ def main() -> None:
     ap.add_argument("--date", default=datetime.date.today().isoformat(),
                     help="日報の日付 (YYYY-MM-DD)。既定は当日")
     ap.add_argument("--to", action="append", dest="recipients",
-                    help="宛先。複数指定可。既定は山口様・津留崎様")
+                    help="宛先。複数指定可。既定は ~/.config/nau-mail/report.json の to")
     ap.add_argument("--login", action="store_true",
                     help="初回の認証を行う（ブラウザでの許可が必要）")
     ap.add_argument("--dry-run", action="store_true",
@@ -420,7 +456,7 @@ def main() -> None:
         login()
         return
 
-    recipients = args.recipients or DEFAULT_RECIPIENTS
+    recipients = args.recipients or default_recipients()
     msg, path, size = build_message(args.date, recipients)
 
     if args.dry_run:

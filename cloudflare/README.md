@@ -62,7 +62,7 @@ npm run deploy
 
 ```sh
 python3 scripts/convert_records.py --database /secure/review.db --user-id USER_ID --output private-exports/records.json
-# The selected purchase fixture already in the repository can also be converted:
+# The fictional demo fixture in the repository can also be converted (format check only):
 python3 scripts/convert_records.py --purchases ../tools/taguri/demo_purchase_works.json --output private-exports/purchases.json
 ```
 

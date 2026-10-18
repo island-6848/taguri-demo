@@ -52,10 +52,12 @@ check("未評価の感想は空", all(not w["note_impression"] for w in works if
 check("評価の4段階がある", {w["verdict"] for w in works if w["verdict"]} == {"◎", "○", "△", "×"})
 check("感想は架空のデモと分かる", all(w["note_impression"].startswith("【デモ用の架空の感想】") for w in works if w["verdict"]))
 check("日時の違う同日公演を両方残す",
-      sum(w["last_date"] == "2024-08-14" for w in works) == 2)
-check("ゴドーの会場と時刻を保存する", any(
-      w["title"] == "ゴドーを待ちながら" and w["last_date"] == "2026-10-19"
-      and w["venue"] == "サンモールスタジオ" and w["time"] == "19:00" for w in works))
+      sum(w["last_date"] == "2021-10-10" for w in works) == 2)
+check("会場と時刻を保存する", any(
+      w["title"] == "見本：まだ観ていない舞台 1" and w["last_date"] == "2030-03-21"
+      and w["venue"] == "見本小劇場" and w["time"] == "19:00" for w in works))
+check("見本は架空の題名だけ（実在の公演・観劇日を入れない）",
+      all(s["title"].startswith("見本：") for s in APP.DEMO_PURCHASE_WORKS))
 check("新しい順に並ぶ", [w["last_date"] for w in works]
       == sorted((w["last_date"] for w in works), reverse=True))
 # **ツアーの「◎○△× をつける」段で押すものが要る**
