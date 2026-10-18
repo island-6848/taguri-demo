@@ -6808,7 +6808,7 @@ def _synopsis_html(text: str) -> str:
 def _rec_row(user_id: str, w: dict, *, poster: str = "", rate_always: bool = False,
              editable: bool = False, extra: str = "", rate_reopen: bool = False,
              id_suffix: str = "", visit_uid: str = "", visit_note: str = "",
-             full_date: bool = False) -> str:
+             full_date: bool = True) -> str:
     """1 公演の記録を 1 件出す。**1 件が 1 日ぶんの帳面になる**（起案者の指示・2026-08-24
     ──「記録を観るページは日記帳っぽいとなおいい」）。
 
@@ -6888,7 +6888,7 @@ def _rec_row(user_id: str, w: dict, *, poster: str = "", rate_always: bool = Fal
     y, md, wd = _date_parts(w.get("first_date") or "")
     if md and full_date:
         # **日記帳の日付は yyyy/mm/dd(曜日) の 1 続きで書く**（起案者の指示 2026-10-18「日記帳の日付の書き方、
-        # yyyy/mm/dd(曜日)で統一して。」）。例: 2026/10/17(土)。評価一覧などの行は今までどおり割って出す
+        # yyyy/mm/dd(曜日)で統一して。」）。例: 2026/10/17(土)。「評価一覧と検索の日付もそろえて」で、どの行も既定でこの形
         mo, dd = md.split(".")
         dt = f'<span class="dt"><span class="ymd">{y}/{int(mo):02d}/{dd}({wd})</span></span>'
     elif md:

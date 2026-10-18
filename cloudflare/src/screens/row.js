@@ -136,7 +136,7 @@ function castHtml(people) {
  * `extra` (the search screen) and the per-visit note (only for rows opened
  * from mails, which a public user does not have) are not passed yet.
  */
-export function recRow(w, {poster = '', rateAlways = false, editable = false, rateReopen = false, label = '', idSuffix = '', extra = '', scale = 'marks', fullDate = false} = {}) {
+export function recRow(w, {poster = '', rateAlways = false, editable = false, rateReopen = false, label = '', idSuffix = '', extra = '', scale = 'marks', fullDate = true} = {}) {
   const v = w.verdict || '';
   const unseen = Boolean(w.unseen);
   // 星の段階で付ける（付けた）行は、星の列そのものが評価を見せるので、余白の丸い判子を出さず、星を常に出す
@@ -171,8 +171,9 @@ export function recRow(w, {poster = '', rateAlways = false, editable = false, ra
   const where = [venueOf(w), times].filter(x => x).map(x => `<span>${E(x)}</span>`).join(' ');
   const [impHead, impBox] = impressionParts(w);
   const [y, md, wd] = dateParts(w.first_date || '');
-  // 日記帳の日付は yyyy/mm/dd(曜日) の 1 続きで書く（起案者の指示 2026-10-18「日記帳の日付の書き方、
-  // yyyy/mm/dd(曜日)で統一して。」）。例: 2026/10/17(土)。app._rec_row(full_date=True) と同じ形
+  // 日付は yyyy/mm/dd(曜日) の 1 続きで書く（起案者の指示 2026-10-18「日記帳の日付の書き方、yyyy/mm/dd(曜日)で統一して。」、
+  // 続けて「評価一覧と検索の日付もyyyy/mm/dd(曜日)でそろえて」で、どの行も既定でこの形）。例: 2026/10/17(土)。
+  // app._rec_row(full_date=True) と同じ形
   const [mo, dd] = md.split('.');
   const dt = md && fullDate
     ? `<span class="dt"><span class="ymd">${y}/${mo.padStart(2, '0')}/${dd}(${wd})</span></span>`

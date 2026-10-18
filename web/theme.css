@@ -1437,3 +1437,18 @@ html .dgli .noposter:not(#_):not(#_) span{font-size:9px;letter-spacing:0}
 .btns button.picked::after{border-color:var(--btn-ink);
  background-image:repeating-linear-gradient(-45deg,var(--btn-ink),var(--btn-ink) 1px,transparent 2px,transparent 5px)}
 .btns.done button:not(.picked),.btns.done button:not(.picked)::after{border-color:var(--mute);color:var(--mute)}
+
+/* ---- 評価一覧・検索・未評価の行の日付（yyyy/mm/dd(曜日)。起案者の指示 2026-10-18「評価一覧と検索の日付もそろえて」）。
+   日記帳の行は日付印の形（上の日記帳の塊）なので、ここでは日記帳以外の行の字だけを決める */
+.rec-row .dt .ymd{font-size:13.5px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;letter-spacing:.02em;white-space:nowrap}
+
+/* ---- 回答の押し口の下の台（しま模様）が、押し口の丸い下の角の外へのぞいていた（起案者の指摘 2026-10-18「ボタンの下側が
+   はみ出してる」）。台の上の角が四角いままで、押し口の丸い角の外に見えていた。台の 4 つの角を押し口と同じ丸みにして、
+   押し口の後ろに収める。枠線は 2px に（「ボタンの枠線2pxくらい太くてもよい」） */
+.btns button,.btns button:first-of-type,.btns button:last-of-type,.btns button:only-of-type{border-width:2px}
+.btns button::after{left:-2px;right:-2px;border-width:2px;border-radius:.5rem}
+/* 枠を 2px にした分、台のしまが細くなるので台を 1px 伸ばす（押したときの沈みも同じだけ） */
+.btns button::after{bottom:-6px;height:12px}
+.btns button:hover::after{bottom:-4px}
+.btns button:active::after{bottom:-2px}
+.btns button.picked::after{bottom:-3px}
