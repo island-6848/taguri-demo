@@ -116,14 +116,22 @@ test('効かせ方: the sliders show the saved steps and the counts; "効かせ�
     await rateSeen(env, a, '一日だけの舞台', '2026-09-05', '104', '×');
     let html = (await step(env, a, {get: '/api/screen/recommend'})).body.body_html;
     assert.match(html, /<details class="pbox wbox" id="weights">/);
-    assert.match(html, /いまは<b>ふつう<\/b>/);
+    // 保存していない人は群ごとの初めの設定（起案者の指示 2026-10-18「出演者、作品の内容︰少し強く／制作・宣伝、その他の役職︰
+    // あまり効かせない／それ以外はふつう」）。前は全部「ふつう」だった
+    assert.match(html, /いまは<b>出演者・作品の内容強め／制作・宣伝・その他の役職弱め<\/b>/);
     assert.match(html, /<div class="wrow" data-grp="cast"><span class="wl">出演者<\/span><span class="wn">おすすめの候補 1 件で一致<\/span>/);
+    assert.match(html, /value="3" data-weight="cast" data-default="strong"[^>]*><span class="wv">少し強く<\/span>/);
+    assert.match(html, /value="3" data-weight="theme" data-default="strong"/);
+    assert.match(html, /value="1" data-weight="produce" data-default="weak"/);
+    assert.match(html, /value="1" data-weight="other" data-default="weak"/);
+    assert.match(html, /value="2" data-weight="author" data-default="mid"/);
+    assert.match(html, /<button class="pall-btn" data-wreset="1">すべて初めの設定に戻す<\/button>/);
     assert.match(html, /<h1>今週のおすすめ 1 件<\/h1>/);
     const saved = await step(env, a, {post: '/api/weight', body: {weights: {cast: 'off', theme: 'max'}}});
     assert.equal(saved.status, 200);
     assert.deepEqual(saved.body.weights, {cast: 'off', theme: 'max'});
     html = (await step(env, a, {get: '/api/screen/recommend'})).body.body_html;
-    assert.match(html, /いまは<b>作品の内容強め／出演者なし<\/b>/);
+    assert.match(html, /いまは<b>作品の内容強め／制作・宣伝・その他の役職弱め／出演者なし<\/b>/);
     assert.match(html, /<div class="wrow off" data-grp="cast">/);
     assert.doesNotMatch(html, /<span class="net">人物<\/span>出演 /);   // the cast leaves the reasons too
     const all = Object.fromEntries(['cast', 'author', 'craft', 'stage', 'produce', 'other', 'theme'].map(k => [k, 'off']));
@@ -135,7 +143,11 @@ test('効かせ方: the sliders show the saved steps and the counts; "効かせ�
     assert.equal(sqlite.prepare("SELECT step FROM rank_weight WHERE grp='cast'").get().step, 'off');
     // Back to ふつう brings it back; another user is never affected.
     await step(env, a, {post: '/api/weight', body: {weights: Object.fromEntries(Object.keys(all).map(k => [k, 'mid']))}});
-    assert.match((await step(env, a, {get: '/api/screen/recommend'})).body.body_html, /<h1>今週のおすすめ 1 件<\/h1>/);
+    const back = (await step(env, a, {get: '/api/screen/recommend'})).body.body_html;
+    assert.match(back, /<h1>今週のおすすめ 1 件<\/h1>/);
+    // 保存してある段は、初めの設定が変わってもそのまま（すべて「ふつう」で保存した人は「ふつう」）
+    assert.match(back, /いまは<b>ふつう<\/b>/);
+    assert.match(back, /value="2" data-weight="cast" data-default="strong"/);
     // B は効かせ方を何も変えていない（使い始めでおすすめが無いので、選び方を出さず、使い始めの案内を出す）
     const bHtml = (await step(env, b, {get: '/api/screen/recommend'})).body.body_html;
     assert.match(bHtml, /おすすめを出すためのワンポイント/);
@@ -337,7 +349,9 @@ test('a co-worker of a favourite is named with the favourite\'s work', async () 
     assert.equal((await step(env, a, {post: '/api/favourite', body: {action: 'add', kind: '人', name: '作家丁'}})).status, 200);
     const html = (await step(env, a, {get: '/api/screen/recommend'})).body.body_html;
     assert.match(html, /data-stage="101"/);
-    assert.match(html, /出演 <b>俳優乙<\/b><span class="n">（『舞台ふたつめ』）<\/span>/);
+    // 評価の履歴の無い人は、登録した名前と、その公演の題名で書く（起案者の指示 2026-10-18「理由の文は、登録した名前を書く」。
+    // 前は「（『舞台ふたつめ』）」だけで、だれのお気に入りから来たのか分からなかった）
+    assert.match(html, /出演 <b>俳優乙<\/b><span class="n">（お気に入りの作家丁と同じ公演に関わる人：『舞台ふたつめ』）<\/span>/);
     // 種類の理由も、新しい公演（初日 10/01）→ 古い公演（観た日 08/05）の順
     assert.match(html, /<span class="net">形式<\/span>原作 <b>オリジナル<\/b><span class="n">（『舞台ふたつめ』・『終わった舞台』）<\/span>/);
     assert.doesNotMatch(html, /お気に入り・興味ありの公演から/);
