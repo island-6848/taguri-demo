@@ -51,7 +51,8 @@ const TIP_ART = {
 <path d="M48 30v26" stroke="var(--ink2)" stroke-width="2" stroke-linecap="round"/>
 <path d="M48 30h11l-3 5 3 5H48z" fill="var(--curtain)"/></svg>`,
 };
-const tip = (n, art, head, body) => `<div class="tip">${TIP_ART[art]}<div class="tip-t"><p class="tip-h"><span class="tip-n">${n}</span><b>${head}</b></p>${body}</div></div>`;
+// 並びは 番号・絵・文。番号を左端にそろえ、番号と絵は文の高さの真ん中に置く（起案者の指示 2026-10-18）
+const tip = (n, art, head, body) => `<div class="tip"><span class="tip-n">${n}</span>${TIP_ART[art]}<div class="tip-t"><p class="tip-h"><b>${head}</b></p>${body}</div></div>`;
 const TIPS = `<section class="card tips">
 <h2>おすすめを出すためのワンポイント</h2>
 ${tip(1, 'record', '過去の観劇記録を2件以上追加する',
