@@ -593,6 +593,9 @@ function scrollToHash(hash) {
   let id = hash.slice(1);
   try { id = decodeURIComponent(id); } catch (e) { /* そのままの名前で探す */ }
   const t = document.getElementById(id);
+  // 指された道具（<details>）は開く。足したあと読み込み直したとき（waitJob が #names などを付ける）に、
+  // 開いていた枠を開いたままにするため。読み込みのときの同じ処理は、画面の中身が入る前に走るので効かない（#134）
+  if (t && t.tagName === "DETAILS") t.open = true;
   if (t) t.scrollIntoView();
 }
 
