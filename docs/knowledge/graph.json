@@ -3103,6 +3103,18 @@
    "verifies": []
   },
   {
+   "id": "lit-boilerplate-shallow-features",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-18",
+   "title": "ウェブページの本文と飾り（定型部分）は、語数や語の密度のような浅い特徴だけでも安く見分けられる（Kohlschütter ほか, WSDM 2010。Boilerpipe）",
+   "sources": [
+    "https://ir.webis.de/anthology/2010.wsdm_conference-2010.45",
+    "https://course.khoury.northeastern.edu/cs6200sp15/extra/07_du/Boilerplate%20Detection%20using%20Shallow%20Text%20Features.pdf"
+   ],
+   "verifies": []
+  },
+  {
    "id": "lit-bpr-pairwise",
    "type": "finding",
    "status": "confirmed",
@@ -3279,6 +3291,33 @@
    "verifies": []
   },
   {
+   "id": "lit-grounding-string-match",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-18",
+   "title": "LLM の抜き出しを原文と文字列で照らす方法は実務で広く使われるが、完全一致は正しい出力も落とすので、あいまい一致や意味での照合を後ろに足す報告がある",
+   "sources": [
+    "https://github.com/google/langextract",
+    "https://arxiv.org/abs/2402.13364",
+    "https://arxiv.org/abs/2601.16946",
+    "https://arxiv.org/abs/2602.11886"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "lit-hallucination-detection",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-18",
+   "title": "LLM の作り話を見つける方法には、何度も生成させて食い違いを見る方法（SelfCheckGPT）と、原子的な事実に分けて出典で裏付けを数える方法（FActScore）がある",
+   "sources": [
+    "https://arxiv.org/abs/2303.08896",
+    "https://aclanthology.org/2023.emnlp-main.557",
+    "https://aclanthology.org/2023.emnlp-main.741"
+   ],
+   "verifies": []
+  },
+  {
    "id": "lit-hierarchical-user-model",
    "type": "finding",
    "status": "confirmed",
@@ -3350,6 +3389,42 @@
    "sources": [
     "https://ar5iv.arxiv.org/html/1804.09073",
     "https://www.alphaxiv.org/abs/1804.09073"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "lit-llm-augmented-item-text",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-18",
+   "title": "LLM で品目の説明文を補ってから推薦に使うと精度が上がるという報告がある（LLM-Rec、KAR）。補った文が正しいとは限らない点も論文自身が扱っている",
+   "sources": [
+    "https://arxiv.org/abs/2307.15780",
+    "https://preview.aclanthology.org/dashboard/2024.findings-naacl.39"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "lit-llm-keyphrase-zeroshot",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-18",
+   "title": "LLM に指示だけで文章から鍵語を抜かせる方法は、初期の測定では従来の手法に及ばず、後の研究では新しいモデルで追いついた（Song ほか 2023、Kang・Shin 2025）",
+   "sources": [
+    "https://arxiv.org/abs/2312.15156",
+    "https://preview.aclanthology.org/setup/2025.coling-main.248"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "lit-lost-in-the-middle",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-18",
+   "title": "LLM は長い入力の真ん中にある情報を使いにくく、最初か最後にあるときがいちばん正確（Liu ほか 2023、TACL 2024）",
+   "sources": [
+    "https://arxiv.org/abs/2307.03172",
+    "https://preview.aclanthology.org/setup/2024.tacl-1.9"
    ],
    "verifies": []
   },
@@ -3650,6 +3725,18 @@
    "sources": [
     "https://cdn.aaai.org/MSL/1996/MSL96-023.pdf",
     "https://www.doi.org/10.1007/978-3-540-72079-9_10"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "lit-tag-genome",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-18",
+   "title": "映画の「タグゲノム」は、1,128 個のタグについて全作品に 0〜1 の関連度を持たせ、利用者の調査で学習・評価した（Vig・Sen・Riedl 2012）",
+   "sources": [
+    "https://files.grouplens.org/datasets/movielens/ml-25m-README.html",
+    "https://grouplens.org/datasets/movielens/tag-genome-2021/"
    ],
    "verifies": []
   },
@@ -5097,6 +5184,17 @@
     "S11",
     "S24"
    ]
+  },
+  {
+   "id": "q-synopsis-lit-gaps",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-18",
+   "title": "あらすじの読み取りを文献と比べて見えた穴（題材の言葉が本文と照らされていない・別の公演の本文の引き写しは検査で止まらない・窓と閾値の根拠）を、どの順で測って直すか",
+   "sources": [
+    "tools/credits/extract_theme_llm.py"
+   ],
+   "verifies": []
   },
   {
    "id": "q-synopsis-reader",
@@ -8330,6 +8428,11 @@
    "to": "q-reco-learning-design"
   },
   {
+   "from": "lit-boilerplate-shallow-features",
+   "rel": "affects",
+   "to": "synopsis-llm-history"
+  },
+  {
    "from": "lit-bpr-pairwise",
    "rel": "supports",
    "to": "q-reco-learning-design"
@@ -8425,6 +8528,16 @@
    "to": "q-favourites-seed"
   },
   {
+   "from": "lit-grounding-string-match",
+   "rel": "affects",
+   "to": "synopsis-llm-history"
+  },
+  {
+   "from": "lit-hallucination-detection",
+   "rel": "affects",
+   "to": "synopsis-llm-history"
+  },
+  {
    "from": "lit-hierarchical-user-model",
    "rel": "supports",
    "to": "q-reco-learning-design"
@@ -8468,6 +8581,21 @@
    "from": "lit-live-show-propagation",
    "rel": "supports",
    "to": "q-theatre-differences"
+  },
+  {
+   "from": "lit-llm-augmented-item-text",
+   "rel": "affects",
+   "to": "impl-theme-favourite"
+  },
+  {
+   "from": "lit-llm-keyphrase-zeroshot",
+   "rel": "affects",
+   "to": "synopsis-llm-history"
+  },
+  {
+   "from": "lit-lost-in-the-middle",
+   "rel": "affects",
+   "to": "synopsis-llm-history"
   },
   {
    "from": "lit-mnar",
@@ -8618,6 +8746,16 @@
    "from": "lit-syskill-webert-prior",
    "rel": "supports",
    "to": "q-reco-learning-design"
+  },
+  {
+   "from": "lit-tag-genome",
+   "rel": "affects",
+   "to": "impl-theme-favourite"
+  },
+  {
+   "from": "lit-tag-genome",
+   "rel": "affects",
+   "to": "theme-words-sparse-past"
   },
   {
    "from": "lit-temporal-dynamics",
@@ -9648,6 +9786,36 @@
    "from": "q-search-request-crawl",
    "rel": "affects",
    "to": "dec-free-tier-only"
+  },
+  {
+   "from": "q-synopsis-lit-gaps",
+   "rel": "depends_on",
+   "to": "lit-hallucination-detection"
+  },
+  {
+   "from": "q-synopsis-lit-gaps",
+   "rel": "depends_on",
+   "to": "lit-grounding-string-match"
+  },
+  {
+   "from": "q-synopsis-lit-gaps",
+   "rel": "depends_on",
+   "to": "lit-llm-keyphrase-zeroshot"
+  },
+  {
+   "from": "q-synopsis-lit-gaps",
+   "rel": "depends_on",
+   "to": "lit-lost-in-the-middle"
+  },
+  {
+   "from": "q-synopsis-lit-gaps",
+   "rel": "depends_on",
+   "to": "q-prompt-g2-base"
+  },
+  {
+   "from": "q-synopsis-lit-gaps",
+   "rel": "affects",
+   "to": "synopsis-llm-history"
   },
   {
    "from": "q-synopsis-reader",
