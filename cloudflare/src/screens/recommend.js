@@ -22,13 +22,11 @@ import {ico} from './icons.js';
 import {loadWorks} from './works.js';
 import {castOffOf} from './diary.js';
 import {compose, cardTemplates, posterHtml} from './cards.js';
-import {PREFS, prefForm, prefsFor, regionCounts} from './prefs.js';
+import {PREFS, prefForm, prefsFor, regionCounts, PAGE_PREF_NOTE} from './prefs.js';
 export {prefForm, prefsFor};
 import {loadDeclared, loadDeclined, loadKindOff, nameHits, KINDS, reactionsOf, declinedBox, kindOffBox} from './lists.js';
 
 export const TOP = 15;
-// 起案者の指示 2026-10-17: おすすめの「場所」の説明。共通の絞り込みは設定に保存する
-const REC_PREF_NOTE = '他ページでもこの絞り込みを適用したい場合は、<a href="/settings?t=__TAGURI_TOKEN__">設定</a>から表示する都道府県の規定を設定してください。';
 const TIPS = `<section class="card tips">
 <h2>おすすめを出すためのワンポイント</h2>
 <ol>
@@ -494,7 +492,7 @@ export async function recommendScreen(params, ctx) {
 ${tips}<p class="fgh">${ico('light', 15)}<b>おすすめの選び方</b><span>おすすめに表示される結果自体が変わります。</span></p>
 <div class="fil2 tune">${weightForm(data.weights || {}, data.w_counts || {})}${declinedBox(await loadDeclined(ctx))}${kindOffBox(await loadKindOff(ctx))}</div>
 <p class="fgh">${ico('search', 15)}<b>表示の絞り込み</b><span>おすすめの候補の中から、表示する項目を設定できます。</span></p>
-<div class="fil2 narrow">${prefForm(prefCounts(data.groups), prefs, '/recommend', REC_PREF_NOTE, {}, regionCounts(data.groups.map(g => ({key: g.stage_id, prefs: g.venues.map(v => v.pref)}))))}</div>
+<div class="fil2 narrow">${prefForm(prefCounts(data.groups), prefs, '/recommend', PAGE_PREF_NOTE, {}, regionCounts(data.groups.map(g => ({key: g.stage_id, prefs: g.venues.map(v => v.pref)}))))}</div>
 ${lede}
 ${cards.join('')}
 <p class="lede">気になった公演で「興味あり」を押すと、

@@ -11,7 +11,7 @@ import {buttons, changeAnswer, posterHtml, cardTemplates} from './cards.js';
 import {stageInfo, detailHtml, detailFromCard} from './fallback.js';
 import {indexTabs} from './rate.js';
 import {nz, buckets} from './lists.js';
-import {prefsFor, prefForm, prefQs, regionCounts} from './prefs.js';
+import {prefsFor, prefForm, prefQs, regionCounts, PAGE_PREF_NOTE} from './prefs.js';
 
 export const WINDOW = 7, TICKET_MAX = 6;
 export const WEEKS = [['this', '今週'], ['next', '来週']];
@@ -346,12 +346,8 @@ export async function reminderScreen(params, ctx) {
   const counts = {};
   for (const r of wr) if (r.pref) counts[r.pref] = (counts[r.pref] || 0) + 1;
   const label = Object.fromEntries(WEEKS)[week];
-  const note = '都道府県は<b>いくつでも同時に選べます</b>。選んだ県で開幕する公演を、'
-    + '<b>順位は付けずに日付が近い順で全部</b>表示します。数字はその県で'
-    + `${label}開幕する件数です。<b>選ばなければ全国です。</b>`
-    + 'ツアーで来る公演は、その会場のある県として数えます。<br>'
-    + '<b>「今週のおすすめ」と同じ絞り込みです。</b>'
-    + 'どちらの画面で選んでも、両方に反映されます。';
+  // 場所の説明はどのページでも同じ（起案者の指示 2026-10-18）。以前の「今週のおすすめと同じ絞り込み」は 2026-10-17 から違う（絞り込みはページの中だけ）
+  const note = PAGE_PREF_NOTE;
   const venueOf = new Map(cands.map(c => [c.stage_id, c.venue || '']));
   const owned = b.owned.flatMap(r => (r.sids || [r.stage_id]).map(sid => ({stage_id: sid, title: r.title, venue: venueOf.get(sid) || ''})));
   const pics = await postersOf(ctx, cands.map(c => c.stage_id));
@@ -378,8 +374,9 @@ export async function reminderScreen(params, ctx) {
     + `<ul class="dglist">${unknown.map(r => row(r, ctx.today, poster, detail, 'この行の会場')).join('')}</ul></details>`;
   const body = `<h1>開幕リマインド ── 見逃していませんか</h1>
 <p class="lede"><b>初日が近い公演を、答えたかどうかに関わらず全部出します。</b>「興味あり」も「興味なし」も押さないうちに開幕してしまうのが、いちばんの見逃しだからです。未回答の行はその場で答えられます。</p>
-<p class="fgh">${ico('search', 15)}<b>表示の絞り込み</b><span>初日が近い公演のうち、見る分だけに絞ります</span></p>
+<p class="fgh">${ico('search', 15)}<b>表示の絞り込み</b><span>初日が近い公演の中から、表示する項目を設定できます。</span></p>
 <div class="fil2 narrow">${prefForm(counts, prefs, '/recommend/reminder', note, {w: week}, regionCounts(wr.map(r => ({key: r.stage_id || r.title, prefs: [r.pref]}))))}</div>
+<p class="rcount"><b>${prefs.length ? E(prefs.length <= 3 ? prefs.join('・') : `${prefs[0]}ほか ${prefs.length - 1} 県`) : '全国'}</b>／${E(label)}開幕する公演 ${main.length} 件を表示中</p>
 ${FOLD_STYLE}
 ${unknownHtml ? html.replace('</section>\n<section class="dgcard">', `${unknownHtml}</section>\n<section class="dgcard">`) : html}`;
   return {title: '開幕リマインド', body_html: body};

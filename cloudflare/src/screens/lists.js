@@ -18,7 +18,7 @@ import {E, ValueError} from './py.js';
 import {compose, cardTemplates, posterHtml, mytixHtml, preNote} from './cards.js';
 import {titleKey} from './works.js';
 import {indexTabs} from './rate.js';
-import {PREFS, prefsFor, prefForm, prefQs, prefHidden, regionCounts} from './prefs.js';
+import {PREFS, prefsFor, prefForm, prefQs, prefHidden, regionCounts, PAGE_PREF_NOTE} from './prefs.js';
 import {CONTENT_AXES} from '../recommend.js';
 import {rankedGroups, reasonRows, withTour} from './recommend.js';
 import {tourBlock} from './schedule.js';
@@ -670,7 +670,6 @@ ${past}`;
   return {title: `#${name}`, body_html: body};
 }
 
-const FAV_PREF_NOTE = '都道府県は<b>いくつでも同時に選べます</b>。選んだ県の会場で観られるお気に入りの公演だけを表示します。ツアー公演は、会場のどれか 1 つが選んだ県にあれば表示します。数字はその県で観られる件数です。<b>何も選ばなければ全国です。</b>この絞り込みはこのページの中だけで使われます。いつも使う県は<a href="/settings?t=__TAGURI_TOKEN__">設定</a>で保存できます。';
 export async function favouritesScreen(params, ctx) {
   const b = await buckets(ctx, {catalogue: true});
   const named = String(params.get('n') || '').trim().slice(0, 80);
@@ -696,15 +695,15 @@ export async function favouritesScreen(params, ctx) {
   const n = KINDS.reduce((s, k) => s + (dec[k] || []).length, 0);
   // 登録した名前は、この一覧に出る公演そのものを決める。場所・料金は出てきた公演の絞り込み。2 段に分ける
   // （起案者の指示 2026-10-17。出さない語・使わない理由はおすすめの設定なので、おすすめの画面に置く）
-  const tools = `<p class="fgh">${ico('star', 15)}<b>お気に入りに出す名前</b><span>この一覧に出る公演そのものは、登録した名前で決まります</span></p>`
+  const tools = `<p class="fgh">${ico('star', 15)}<b>お気に入りに出す名前</b><span>お気に入りに表示される結果自体が変わります。</span></p>`
     + `<div class="fil2 tune"><details class="pbox" id="names"${keep ? ' open' : ''}>`
-    + `<summary>${ico('star')}登録した名前 <b>${n} 件</b> ── 足す・外す</summary>`
+    + `<summary>${ico('star')}登録した名前 <b>${n}件</b> ── 足す・外す</summary>`
     + '<p class="lead">観た記録に無い名前も登録できます。おすすめは ◎ を付けた公演の作り手からしか作れないので、まだ観たことのない劇団や、人から聞いただけの名前は、ここから登録してください。'
     + '<b>表記ゆれ（漢字とカタカナ、送り仮名の違いなど）は、自動では見分けられません。</b>表記ゆれがありそうなときは、両方の書き方をそれぞれ登録してください。</p>'
     + `<div class="fav-add"><select id="fav-kind">${kinds}</select> <input id="fav-name" type="text" placeholder="団体名・人名・作品名・題材" size="26"> <button data-fav="add">登録する</button>`
     + `<span class="said"></span></div><div class="tags">${tags}</div></details></div>`
-    + (allFavs.length ? `<p class="fgh">${ico('search', 15)}<b>表示の絞り込み</b><span>出てきた公演を、見たいものだけに絞ります</span></p>`
-      + `<div class="fil2 narrow">${prefForm(pcounts, prefs, '/recommend/favourites', FAV_PREF_NOTE, sort !== 'start' ? {s: sort} : {},
+    + (allFavs.length ? `<p class="fgh">${ico('search', 15)}<b>表示の絞り込み</b><span>お気に入りの公演の中から、表示する項目を設定できます。</span></p>`
+      + `<div class="fil2 narrow">${prefForm(pcounts, prefs, '/recommend/favourites', PAGE_PREF_NOTE, sort !== 'start' ? {s: sort} : {},
         regionCounts(allFavs.map(r => ({key: r.stage_id, prefs: prefsOf(r)}))))}</div>` : '');
   // 当たった名前（「人「俳優甲」」→「俳優甲」）をハッシュタグにする。理由の欄は出さない（起案者の指示 2026-10-15）
   const why = r => ({owned: Boolean(r.owned), tags: [...new Set(r.a.map(w => (/「(.*)」$/.exec(w) || [, w])[1]))]});
@@ -715,11 +714,12 @@ export async function favouritesScreen(params, ctx) {
     ? `<p class="lead"><b>${E(SORTS[sort])}</b>に並んでいます。順位は付けていません。観ると決めたら、公式サイトで券を買ってください。<b>券を取ったら「購入済みにする」を押してください。</b>押した公演はこの一覧に「購入済み」の印を付けて残り、<a href="/tickets?t=__TAGURI_TOKEN__">購入済み公演</a>にも入ります。行く日は購入済み公演で入れられます。</p>`
       + `<div class="tickets">${(await cards(ctx, show, 'favourite', why)).join('')}</div>`
     : `<p class="empty">登録した名前に当たる公演は、いまたぐりが集めている公演${nCat ? `（CoRich・ステイジーズカレンダーから毎日集めている、これからの公演 ${nCat} 件）` : ''}の中にはありません。<b>当たる公演が新しく集まると、毎日の更新のあとにここに出ます。</b>表記ゆれ（漢字とカタカナなど）があるときは、別の書き方も登録してみてください。</p>`;
-  const pnow = prefs.length && allFavs.length ? `<p class="pnow"><b>${E(where)}</b>／全 ${allFavs.length} 件中 ${favs.length} 件を表示中</p>` : '';
+  // 件数の 1 行は、おすすめと同じく枠に入れず、表示の絞り込みの下に地の文で（起案者の指示 2026-10-18「他ページにも反映して」）
+  const rcount = allFavs.length ? `<p class="rcount"><b>${prefs.length ? E(where) : '全国'}</b>／全 ${allFavs.length} 件中 ${favs.length} 件を表示中</p>` : '';
   const body = `<h1>お気に入り ── 新着 ${favs.length} 件</h1>
-${pnow}
 <p class="lede">登録した名前の公演を、件数の制限なしにすべて表示します。順位は付けていません。件数が多いので、上演月ごとに分けています。</p>
 ${tools}
+${rcount}
 ${favs.length ? sortForm('/recommend/favourites', sort, keys, prefHidden(params)) : ''}
 ${mfil}
 ${list}
