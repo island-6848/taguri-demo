@@ -80,8 +80,10 @@ def remote_tables(db: str) -> list[str]:
 
 
 def remote_counts(db: str, tables: list[str]) -> dict[str, int]:
-    sql = " UNION ALL ".join(f"SELECT '{t}' AS t, count(*) AS n FROM \"{t}\"" for t in tables)
-    return {r["t"]: int(r["n"]) for r in remote_json(db, sql)}
+    # D1 は UNION ALL でつなげる数に上限がある（too many terms in compound SELECT）。1 行の列として数える
+    sql = "SELECT " + ", ".join(f'(SELECT count(*) FROM "{t}") AS "{t}"' for t in tables)
+    row = remote_json(db, sql)[0]
+    return {t: int(row[t]) for t in tables}
 
 
 def local_counts(sql_text: str, tables: list[str]) -> dict[str, int]:

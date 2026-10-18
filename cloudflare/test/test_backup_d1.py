@@ -6,6 +6,7 @@ import sqlite3
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
@@ -52,6 +53,21 @@ class BackupTest(unittest.TestCase):
         for t in ("catalogue", "rec_stage", "rec_credit", "rec_cache", "past_stage", "poster", "usage", "sessions", "webauthn_challenges"):
             self.assertNotIn(t, got)
         self.assertEqual(B.user_tables(["works", "_cf_KV", "_cf_FOO", "sqlite_sequence"]), ["works"])
+
+    def test_counts_are_one_select_without_union(self):
+        # D1 は UNION ALL の数に上限がある（Replay の 2 回目、2026-10-18）。1 行の列として数える
+        con = sqlite3.connect(":memory:")
+        con.executescript('CREATE TABLE a(x); CREATE TABLE "b c"(x); INSERT INTO a VALUES(1),(2);')
+        sent = []
+
+        def fake(db, sql):
+            sent.append(sql)
+            cur = con.execute(sql)
+            return [dict(zip([d[0] for d in cur.description], r)) for r in cur.fetchall()]
+
+        with mock.patch.object(B, "remote_json", fake):
+            self.assertEqual(B.remote_counts("db", ["a", "b c"]), {"a": 2, "b c": 0})
+        self.assertNotIn("UNION", sent[0])
 
     @unittest.skipUnless(shutil.which("gpg"), "gpg が無い")
     def test_backup_is_encrypted_and_opens_with_the_passphrase(self):
