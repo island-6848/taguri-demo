@@ -49,3 +49,5 @@ links:
   - 索引は作業データから作る。past_stage は data/past/stages.jsonl から手元で作り、D1 からは読まない。
   - 最初の段は `free_tier.py plan --mode replay`。毎日の取得の分を取っておいて、20 分が残るときだけ動かす。
   - 調べて分かったこと：本番の catalog.yml には「Back up the user records」の段が無い。雛形にはある。そのため、毎日の控えはまだ一度も作られていない。
+    - 起案者「お願い」（2026-10-18）で、taguri-crawler の PR #5 に控えの段を足した。あわせて restore-drill.yml も置いた。
+    - 合言葉 BACKUP_PASSPHRASE が登録されるまでは、何もしない。
