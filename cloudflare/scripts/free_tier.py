@@ -180,8 +180,15 @@ def job_minutes_by_day(repo: str, token: str, now: dt.datetime, days: int = 31,
 
 
 def future_catalog(k: int) -> int:
-    """これからの k 日に Catalog が使う分の見積もり（毎日の分 + 週 1 の上乗せ）。"""
-    return CATALOG_MINUTES["daily"] * k + WEEKLY_EXTRA * math.ceil(k / 7)
+    """これからの k 日に Catalog が必ず使う分の見積もり（毎日の更新の分だけ）。
+
+    週 1 の取り直しの上乗せ・過去の公演・ポスターは、その日の plan が残りを見て決め、足りなければ
+    毎日の更新に落とす（または 0 分にする）。だから先の日の分として取っておくのは、毎日の更新の分だけでよい。
+    前は週 1 の上乗せ（105 分）も先に数えていたため、過去の公演を多く読んだ数日のあとに、
+    31 日の見込みが上限を越え、毎日の更新まで止まった（Catalog #11、2026-10-17 21:27 UTC。
+    実際に使ったのは 682 分／1,500 分）。どの日も「今日の分＋先の日の毎日の分」が上限に収まるかを
+    その日に確かめるので、上限を越えることはない（test_every_31_day_window_stays_under_the_cap）。"""
+    return CATALOG_MINUTES["daily"] * k
 
 
 def worst_window(by_day: list[int]) -> int:
