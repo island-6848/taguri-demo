@@ -198,7 +198,7 @@ async function firebaseSignIn(request, env) {
 // Firebase UID のハッシュだけを FIREBASE_DELETE_DAYS 日のあいだ usage に残す（UID そのもの・メールは残さない）。
 // その間に同じ Google・メールでログインすると、セッションを作らずに「Google 側を消す」ようブラウザーに返す。
 // ブラウザーの「消せた」という申告では消さない（サーバーでは確かめられないので、期限で消えるまで残す）。
-const FIREBASE_DELETE_DAYS = 30;
+const FIREBASE_DELETE_DAYS = 30;   // export しない: workerd は入り口の名前付き export をすべて入り口として読む
 const firebaseDeleteKey = async firebaseUid => `fbdel:${await hash('firebase-uid|' + firebaseUid)}`;
 async function firebaseDeletePending(db, firebaseUid) {
   return Boolean((await db.prepare('SELECT n FROM usage WHERE k=? AND n>?').bind(await firebaseDeleteKey(firebaseUid), now()).first())?.n);
