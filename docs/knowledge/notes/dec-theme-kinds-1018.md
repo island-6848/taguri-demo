@@ -1,7 +1,7 @@
 ---
 id: dec-theme-kinds-1018
 type: decision
-status: adopted
+status: superseded
 date: 2026-10-18
 title: あらすじの言葉を 8 種類に分け、種類ごとに上限と推薦の重さ、根拠ごとに重さを持たせる（g5）
 sources:

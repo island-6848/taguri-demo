@@ -1,7 +1,7 @@
 ---
 id: q-theme-kinds-count
 type: question
-status: open
+status: answered
 date: 2026-10-18
 title: 演目を記述する言葉の種類は何種類が適切か（読書相談の appeal・NoveList・分類理論の裏付け）
 sources:

@@ -125,6 +125,7 @@ class PromptChainTest(unittest.TestCase):
         self.assertTrue(g5.split("2. elements")[0].replace("3 つ", "2 つ").startswith(
             g4.split("2. elements")[0].split("その次から")[0]))
         self.assertIn("フェスティバル", g5)
+        self.assertEqual(set(E.G5_KINDS), {"ジャンル", "題材", "テーマ", "舞台設定", "味わい", "語り口", "原作", "モチーフ"})
         for kind in E.G5_KINDS:
             self.assertIn(f"「{kind}」", g5)
         self.assertIn("SF＝サイエンスフィクション", g5, "語彙表を付ける")
@@ -134,9 +135,10 @@ class PromptChainTest(unittest.TestCase):
     def test_g5_checks_basis_quotes_and_caps(self):
         text = "海辺の町で暮らす三姉妹が、父の残した古い手紙をきっかけに、それぞれの秘密と向き合っていく会話劇です。"
         g = {"elements": [
-            {"kind": "関係・感情", "word": "姉妹", "basis": "本文"},
-            {"kind": "関係・感情", "word": "すれ違い", "basis": "推定", "from": "それぞれの 秘密と向き合っていく"},
+            {"kind": "テーマ", "word": "姉妹", "basis": "本文"},
+            {"kind": "テーマ", "word": "すれ違い", "basis": "推定", "from": "それぞれの 秘密と向き合っていく"},
             {"kind": "時代", "word": "昭和", "basis": "推定", "from": "昭和の町"},
+            {"kind": "関係・感情", "word": "姉妹愛", "basis": "本文"},
             {"kind": "舞台設定", "word": "昭和", "basis": "推定", "from": "昭和の町"},
             {"kind": "味わい", "word": "人情", "basis": "作風", "from": "人情"},
             {"kind": "ジャンル", "word": "喜劇", "basis": "作風", "from": "喜劇"},
@@ -146,6 +148,7 @@ class PromptChainTest(unittest.TestCase):
         words = [e["word"] for e in els]
         self.assertIn("すれ違い", words, "引用が本文にある推定は残す（空白は無視）")
         self.assertNotIn("昭和", words, "引用が本文に無い推定と、知らない種類は落とす")
+        self.assertNotIn("姉妹愛", words, "6＋2 に組み替える前の種類（関係・感情）は落とす")
         self.assertNotIn("人情", words, "手がかりに無い作風は落とす")
         self.assertIn("喜劇", words)
         self.assertEqual(sum(1 for e in els if e["kind"] == "題材"), E.G5_KINDS["題材"])

@@ -439,19 +439,19 @@ class FavouriteSeedKindsTest(unittest.TestCase):
         self.assertEqual(len(BI.theme_words(many)), BI.MAX_THEME_WORDS)
 
     def test_theme_terms_cap_and_weigh_each_kind(self):
-        # 起案者の判断（2026-10-18）「まずそれでやってみる」: 種類ごとの上限と重さ、根拠の強さ
+        # 起案者の判断（2026-10-18）「6＋2 に組み替えて」: 種類ごとの上限と重さ、根拠の強さ
         row = {'elements': [{'kind': '題材', 'word': f'題材{i}'} for i in range(6)]
                + [{'kind': 'モチーフ', 'word': '閉店間際の銭湯'},
                   {'kind': '舞台設定', 'word': '江戸'},
-                  {'kind': '構造', 'word': '群像劇', 'basis': '推定', 'from': '…'},
-                  {'kind': '関係・感情', 'word': 'すれ違い', 'basis': '作風', 'from': '…'}]}
+                  {'kind': '語り口', 'word': '群像劇', 'basis': '推定', 'from': '…'},
+                  {'kind': 'テーマ', 'word': 'すれ違い', 'basis': '作風', 'from': '…'}]}
         terms = dict(BI.theme_terms(row))
         self.assertEqual(sum(1 for w in terms if w.startswith('題材')), 4, '題材は 4 つまで')
         self.assertNotIn('閉店間際の銭湯', terms, 'モチーフは索引に入れない')
         self.assertEqual(terms['題材0'], 1.0)
         self.assertEqual(terms['江戸'], 0.5)
-        self.assertEqual(terms['群像劇'], 0.49)                        # 構造 0.7 × 推定 0.7
-        self.assertEqual(terms['すれ違い'], 0.5)                       # 関係・感情 1.0 × 作風 0.5
+        self.assertEqual(terms['群像劇'], 0.49)                        # 語り口 0.7 × 推定 0.7
+        self.assertEqual(terms['すれ違い'], 0.5)                       # テーマ 1.0 × 作風 0.5
         pool = UR.candidate_pool({}, [{'stage_id': '9', 'title': '公演', 'period': '2099/01/01 〜 2099/01/02', 'fields': {}}])
         index = BI.build_index(pool, {}, APP.group_of, themes={'9': BI.theme_terms(row)})
         w = {r[1]: r[3] for r in index['postings'] if r[0] == '#題材' and r[2] == '9'}
