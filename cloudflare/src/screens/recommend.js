@@ -76,7 +76,7 @@ ${THANKS_ART}
 `;
 // Groups kept per user between requests: enough to fill 15 cards in any one prefecture.
 const KEEP = 400;
-const VERSION = 'screen-v20';   // v20: a production answered under another stage id stays out; v19: same title + (group / venue / a shared person) is one card; v18: one card per title+group (sameProduction); v17: no 出典 on the reasons; v16: #会場 dropped, 行けない (interest=2) as a liked seed; v15: 出さない語 also hits the kind tags; v14: #ジャンル (a genre turned off hides its stages); v13: no 原作「原作もの」 (DROPPED_KEYS); v12: no #値段 (DROPPED_AXES); v11: reasons of answered stages (answered_why); v2: the user's 効かせ方 (rank_weight) and the per-group counts; v3: 興味あり as seeds; v4: diag; v5: 興味あり split (impl-interest-split); v6: by part importance; v7: tiers + トメ; v8: two tiers only; v9: トメ joins the main roles; v10: spread leads + one-step partners
+const VERSION = 'screen-v21';   // v21: credits read only where needed (CPU); v20: a production answered under another stage id stays out; v19: same title + (group / venue / a shared person) is one card; v18: one card per title+group (sameProduction); v17: no 出典 on the reasons; v16: #会場 dropped, 行けない (interest=2) as a liked seed; v15: 出さない語 also hits the kind tags; v14: #ジャンル (a genre turned off hides its stages); v13: no 原作「原作もの」 (DROPPED_KEYS); v12: no #値段 (DROPPED_AXES); v11: reasons of answered stages (answered_why); v2: the user's 効かせ方 (rank_weight) and the per-group counts; v3: 興味あり as seeds; v4: diag; v5: 興味あり split (impl-interest-split); v6: by part importance; v7: tiers + トメ; v8: two tiers only; v9: トメ joins the main roles; v10: spread leads + one-step partners
 export {PREFS} from './prefs.js';
 const KIND_LABEL = {'#形式': '形式', '#原作': '原作', '#翻訳': '', '#原作の国': '原作の国', '#会場': '劇場', '#題材': '題材', '#ジャンル': 'ジャンル'};
 const WORKS_SHOWN = 3;
@@ -319,6 +319,7 @@ export async function rankedGroups(ctx) {
  * 次のどれかが合うときだけ同じ公演とみなす: 団体が同じか片方に無い・会場が同じ・作り手に同じ人がいる。
  * 先に来た（点の高い）束を残し、後の束の鍵は aliases に入れて会場を合わせる。読むのは残す分（KEEP）の少し先までの主キーの行だけ。
  */
+const NO_NAMES = new Set();
 const looseVenue = v => String(v || '').normalize('NFKC').replace(/[\s　]+/gu, '');
 export function sameStage(a, b) {
   if (a.g === b.g || !a.g || !b.g) return true;
@@ -330,17 +331,33 @@ export async function sameProduction(db, ver, groups, limit = Math.ceil(KEEP * 1
   const head = groups.slice(0, limit);
   const info = new Map();
   const want = [...new Set([...head.map(g => String(g.stage_id)), ...answered.map(String)])];
+  // まず題名・団体・会場だけを読む。作り手の一覧（credits）は大きく、全部を読んで解くと Worker の CPU の上限
+  // （無料枠は 1 回 10 ミリ秒）を越えて画面が読み込めなくなった（起案者の報告 2026-10-18「読み込めませんでした
+  // SyntaxError: Unexpected token '<'」）。作り手は、題名が同じで団体も会場も決め手にならない組だけ、あとで読む
   for (const part of chunks(want, 90)) {
     let results = [];
     try {
-      ({results} = await db.prepare(`SELECT stage_id,tkey,gkey,credits,json_extract(entry,'$.theater') AS th FROM rec_stage WHERE ver=? AND stage_id IN (${part.map(() => '?').join(',')})`).bind(ver, ...part).all());
+      ({results} = await db.prepare(`SELECT stage_id,tkey,gkey,json_extract(entry,'$.theater') AS th FROM rec_stage WHERE ver=? AND stage_id IN (${part.map(() => '?').join(',')})`).bind(ver, ...part).all());
     } catch { return groups; }
+    for (const r of results) if (r.tkey) info.set(String(r.stage_id), {t: r.tkey, g: r.gkey || '', th: r.th || '', names: NO_NAMES});
+  }
+  const perTitle = new Map();
+  for (const [sid, me] of info) { if (!perTitle.has(me.t)) perTitle.set(me.t, []); perTitle.get(me.t).push([sid, me]); }
+  const needNames = [];
+  for (const list of perTitle.values()) {
+    if (list.length < 2) continue;
+    for (const [, me] of list) me.th = looseVenue(me.th);   // 会場名の表記ゆれ寄せは、同じ題名が 2 つ以上ある組だけ（重い）
+    for (const [sid, me] of list) if (me.g && list.some(([o, x]) => o !== sid && x.g && x.g !== me.g && !(me.th && me.th === x.th))) needNames.push(sid);
+  }
+  for (const part of chunks(needNames, 90)) {
+    let results = [];
+    try {
+      ({results} = await db.prepare(`SELECT stage_id,credits FROM rec_stage WHERE ver=? AND stage_id IN (${part.map(() => '?').join(',')})`).bind(ver, ...part).all());
+    } catch { break; }
     for (const r of results) {
-      if (!r.tkey) continue;
       let cr = [];
       try { cr = JSON.parse(r.credits || '[]'); } catch { /* no credits */ }
-      const names = new Set(cr.filter(c => Array.isArray(c) && !String(c[0]).startsWith('#')).map(c => String(c[1])).filter(Boolean));
-      info.set(String(r.stage_id), {t: r.tkey, g: r.gkey || '', th: looseVenue(r.th), names});
+      info.get(String(r.stage_id)).names = new Set(cr.filter(c => Array.isArray(c) && !String(c[0]).startsWith('#')).map(c => String(c[1])).filter(Boolean));
     }
   }
   const byTitle = new Map(), out = [];

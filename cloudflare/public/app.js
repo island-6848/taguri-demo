@@ -603,17 +603,21 @@ async function loadScreen(path, search) {
       const pf = window.__prefetch;
       window.__prefetch = null;
       d = await pf;
-      if (!d || !d.ok) throw new Error((d && d.error) || "prefetch failed");
-    } else {
+    }
+    // 先に飛ばした分が読めなかったときは、もう 1 回だけ取り直す
+    if (!d || !d.ok) {
       const url = API_BASE + "/api/screen/" + name + (search ? "?" + search : "");
       const r = await fetch(url, {credentials: "include"});
-      d = await r.json();
+      // サーバーが途中で止まると（処理の上限を越えたときなど）、JSON ではなく Cloudflare のエラーのページが返る。
+      // そのまま JSON として読むと「SyntaxError: Unexpected token '<'」としか出ず、何が起きたか分からない（起案者の報告 2026-10-18）
+      d = await r.json().catch(() => null);
+      if (!d) throw new Error("サーバーの処理が途中で止まりました（" + r.status + "）。少し待ってから、ページを読み込み直してください。");
       if (!r.ok || !d.ok) throw new Error(d.error || r.status);
     }
   } catch (e) {
     stopLoading();
     if (stale()) return;
-    el.innerHTML = "<h1>読み込めませんでした</h1><p>" + E(String(e)) + "</p>";
+    el.innerHTML = "<h1>読み込めませんでした</h1><p>" + E(e && e.message ? e.message : String(e)) + "</p>";
     return;
   }
   showWelcomeCode(d.welcome_code);

@@ -2354,6 +2354,20 @@
    "verifies": []
   },
   {
+   "id": "fix-cpu-same-production",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-18",
+   "title": "「読み込めませんでした SyntaxError: Unexpected token '<'」── 同じ公演をまとめる処理が作り手の一覧を全部読んで、Worker の CPU 10 ミリ秒を越えたと見る",
+   "sources": [
+    "cloudflare/src/screens/recommend.js",
+    "cloudflare/src/screens/rate.js",
+    "web/app.js",
+    "docs/free-tier-budget.md"
+   ],
+   "verifies": []
+  },
+  {
    "id": "fix-declined-kind-tags",
    "type": "decision",
    "status": "adopted",
@@ -7750,6 +7764,11 @@
    "from": "fix-card-synopsis-stale",
    "rel": "depends_on",
    "to": "dec-recommend-worker-cards"
+  },
+  {
+   "from": "fix-cpu-same-production",
+   "rel": "depends_on",
+   "to": "dec-ui-1018b"
   },
   {
    "from": "fix-declined-kind-tags",

@@ -309,7 +309,9 @@ async function unratedScreen(_params, ctx) {
   const labels = await stageLabels(ctx, unrated.map(w => w.stage_id));
   const files = await posterFiles(ctx, unrated);
   const scale = await scaleOf(ctx);
-  const infos = await rowInfos(ctx, unrated, await peopleByKey(ctx, unrated));
+  // 未評価は全件を 1 枚に出すので、作り手・あらすじを添えるのは先頭の 40 件まで（Worker の CPU の上限 10 ミリ秒を越えないように）
+  const head = unrated.slice(0, 40);
+  const infos = await rowInfos(ctx, head, await peopleByKey(ctx, head));
   const rows = unrated.map(w => recRow({...w, info: infos[w.work_key]}, {poster: posterHtml(w, files), rateAlways: true, editable: true, label: labels[w.stage_id] || '', scale})).join('');
   return {title: '未評価', body_html: `<h1>未評価 ── ${unrated.length} 件</h1>
 <p class="lede">評価がまだ付いていない記録です。<b>上演日が分からない記録も含みます。</b>日付がないと上演が終わったかどうかを判定できないので、「まだ答えていない」には出てきません。${skipped}<br>
