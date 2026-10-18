@@ -7,7 +7,8 @@
 import {E} from './py.js';
 
 const DAY = 86400000;
-const WEEK = ['月', '火', '水', '木', '金', '土', '日'];
+// 暦は日曜はじまり（起案者の指示 2026-10-18「ツアー日程の公演日時のカレンダー、日曜始まりにして」）
+const WEEK = ['日', '月', '火', '水', '木', '金', '土'];
 const MAX_WEEKS = 10;            // これより長い公演は暦にしない（公式サイトを見てもらう）
 const iso = ms => new Date(ms).toISOString().slice(0, 10);
 const ms = d => Date.parse(d + 'T00:00:00Z');
@@ -114,10 +115,10 @@ export function timetableGrid(perf, start, end, today, texts = []) {
   const last = /^\d{4}-\d{2}-\d{2}$/.test(end || '') ? end : start;
   const days = [...perf.keys()].sort();
   const from = days[0] < start ? days[0] : start, to = days.at(-1) > last ? days.at(-1) : last;
-  const mon = ms(from) - ((new Date(ms(from)).getUTCDay() + 6) % 7) * DAY;
+  const mon = ms(from) - new Date(ms(from)).getUTCDay() * DAY;   // その週の日曜
   const weeks = Math.ceil((ms(to) - mon + DAY) / (7 * DAY));
   if (weeks > MAX_WEEKS) return '';
-  const head = WEEK.map((w, i) => `<th${i === 5 ? ' class="sat"' : i === 6 ? ' class="sun"' : ''}>${w}</th>`).join('');
+  const head = WEEK.map((w, i) => `<th${i === 6 ? ' class="sat"' : i === 0 ? ' class="sun"' : ''}>${w}</th>`).join('');
   const rows = [];
   for (let w = 0; w < weeks; w++) {
     const cells = [];
@@ -126,7 +127,7 @@ export function timetableGrid(perf, start, end, today, texts = []) {
       const inRun = d >= from && d <= to;
       const label = (w === 0 && i === 0) || d.slice(8) === '01' || d === from ? md(d) : String(Number(d.slice(8)));
       const ps = perf.get(d) || [];
-      const cls = [i === 5 ? 'sat' : i === 6 ? 'sun' : '', d < today ? 'past' : '', !inRun ? 'out' : ''].filter(Boolean).join(' ');
+      const cls = [i === 6 ? 'sat' : i === 0 ? 'sun' : '', d < today ? 'past' : '', !inRun ? 'out' : ''].filter(Boolean).join(' ');
       const body = !inRun ? '' : ps.length
         // 印は時刻のすぐ後ろに（起案者の指示 2026-10-18「今図形（改行）時刻、になってるけど時刻のすぐ後ろに図形つけて」）
         ? ps.map(p => `<span class="tm">${E(p.t || '公演')}${p.m ? `<i>${E(p.m)}</i>` : ''}</span>`).join('')

@@ -27,10 +27,10 @@ test('timetable lines as the crawled pages write them', () => {
 test('the weekly calendar: times on their days, 休演 inside the run, blank outside, weekend colours', () => {
   const perf = parseTimetable('10月8日(水) 18:30\n10月9日(木) 13:30／18:30\n10月11日(土) 13:00／18:00', '2025-10-08', '2025-10-12');
   const html = timetableGrid(perf, '2025-10-08', '2025-10-12', '2025-10-01');
-  assert.match(html, /<thead><tr><th>月<\/th><th>火<\/th><th>水<\/th><th>木<\/th><th>金<\/th><th class="sat">土<\/th><th class="sun">日<\/th><\/tr><\/thead>/);
+  assert.match(html, /<thead><tr><th class="sun">日<\/th><th>月<\/th><th>火<\/th><th>水<\/th><th>木<\/th><th>金<\/th><th class="sat">土<\/th><\/tr><\/thead>/);
   assert.match(html, /<td><span class="d">9<\/span><span class="tm">13:30<\/span><span class="tm">18:30<\/span><\/td>/);
   assert.match(html, /<td><span class="d">10<\/span><span class="off">休演<\/span><\/td>/);   // 金: 休演日
-  assert.match(html, /<td class="out"><span class="d">10\/6<\/span><\/td>/);                // 月: 期間の外
+  assert.match(html, /<td class="sun out"><span class="d">10\/5<\/span><\/td><td class="out"><span class="d">6<\/span><\/td>/);   // 日曜はじまり: 期間の外
   assert.equal(timetableGrid(new Map(), '2025-10-08', '2025-10-12', '2025-10-01'), '');
 });
 

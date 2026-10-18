@@ -1223,3 +1223,17 @@ details.pbox>summary[data-fold] .fv,.ftab .fv{margin-left:auto;text-align:right;
 
 /* ツアーの日程で、いま上演中の会場の行頭（●）は差し色で（起案者の指示 2026-10-18） */
 .tourfull.v2 .tf-dot.live{color:var(--curtain);font-size:.8em}
+
+/* ---- 公演日時の暦: 折りたたみの地（--fold-bg）の上で灰色のマスが沈んで読みにくかった（起案者の指摘 2026-10-18）。
+   公演のある日のマスは紙の白に細い枠、期間の外は地のまま。字は濃く */
+.tourfull.v2 .ttb td:not(.out),.ticket .ttb td:not(.out){background:var(--surf);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ring) 80%,transparent)}
+.tourfull.v2 .ttb td.out,.ticket .ttb td.out{background:transparent;box-shadow:none}
+.ttb td .off{color:var(--mute)}
+
+/* ---- あらすじは「あらすじ」の見出しのあと改行して本文（起案者の指示 2026-10-18）。作り手の行は今までどおり左に見出し */
+:is(.ticket.cmp,.rec-row.cmp) .leadbox .lsyn{display:block}
+:is(.ticket.cmp,.rec-row.cmp) .leadbox .lsyn>.cl{display:inline-block;margin:0 0 3px}
+:is(.ticket.cmp,.rec-row.cmp) .leadbox .lsyn>.lv{display:block}
+
+/* ---- おすすめ理由の「人物」「種類」の札は丸ゴシック（起案者の指示 2026-10-18） */
+.rs .net{font-family:"Zen Maru Gothic",var(--font-body-default);font-weight:700;letter-spacing:.04em}
