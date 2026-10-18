@@ -85,13 +85,18 @@ def main():
             (WORKS[:4], RATED[:4]), busy(1), busy(2), busy(3)]
     cases = [{"works": ws, "rated": rs, "html": CR.panel(ws, rs, owner=False),
               "reading": CR.reading(CR.facts(ws, rs))} for ws, rs in sets]
+    # 星で付ける人（issue #177）: いちばん上の評価・下の評価の数え方を Worker の grade.js とそろえる
+    star = {"◎": "5/5", "○": "4/5", "△": "2/5", "×": "1/5"}
+    stars = [{**x, "verdict": star.get(x["verdict"], x["verdict"])} for x in WORKS]
+    star_cases = [{"works": stars, "rated": RATED, "facts": {k: v for k, v in CR.facts(stars, RATED).items() if k not in ("links", "marks")},
+                   "reading": CR.reading(CR.facts(stars, RATED))}]
     real = CR._themes
     CR._themes = lambda: THEMES_ERAS
     facts = [CR.facts(ERAS_WORKS, ERAS_RATED), CR.facts(WORKS, RATED)]
     CR._themes = real
     readings = [{"facts": {k: v for k, v in f.items() if k not in ("links", "marks")},
                  "reading": CR.reading(f)} for f in facts]
-    print(json.dumps({"cases": cases, "readings": readings}, ensure_ascii=False))
+    print(json.dumps({"cases": cases, "readings": readings, "star_cases": star_cases}, ensure_ascii=False))
 
 
 if __name__ == "__main__":
