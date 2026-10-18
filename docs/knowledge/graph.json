@@ -4965,6 +4965,18 @@
    "verifies": []
   },
   {
+   "id": "q-reminder-region-split",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-18",
+   "title": "開幕リマインドで、同じ公演が別の地方で同じ週に始まるとき、1 行にまとめるか（いまは 2026-08-26 の指示で地方ごとに分けている）",
+   "sources": [
+    "cloudflare/src/screens/reminder.js",
+    "tools/taguri/digest.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "q-render-free-viable",
    "type": "question",
    "status": "answered",
@@ -9473,6 +9485,11 @@
    "from": "q-reco-personal-backtest",
    "rel": "affects",
    "to": "comp-recommender"
+  },
+  {
+   "from": "q-reminder-region-split",
+   "rel": "depends_on",
+   "to": "dec-ui-1018b"
   },
   {
    "from": "q-render-s3-dependency",
