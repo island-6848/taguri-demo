@@ -243,13 +243,15 @@ export async function rankedGroups(ctx) {
     (SELECT max(updated_at) FROM app_setting WHERE user_id=?1 AND key IN ('declared','declined')) AS dm,
     (SELECT max(updated_at) FROM rank_weight WHERE user_id=?1) AS km,
     (SELECT v FROM rec_meta WHERE k='rec_card') AS cv,
-    (SELECT v FROM rec_meta WHERE k='index_rev') AS ir`).bind(ctx.uid).first();
+    (SELECT v FROM rec_meta WHERE k='index_rev') AS ir, (SELECT rec_rev FROM users WHERE id=?1) AS rr, (SELECT works_rev FROM users WHERE id=?1) AS wr`).bind(ctx.uid).first();
   // 索引は差分で入れ、版（ver）は 'live' のまま変わらないので、中身が変わった合図は index_rev（q-index-incremental）。
   // 「使わない」にした種類の理由は中身ごと控えの印に入れる（同じ秒に外して戻しても、控えが古いまま残らない）
   // 出さない語も中身ごと（同じ秒に足して外すと、更新日時だけでは控えが古いまま残る）
   const off = new Set(await loadKindOff(ctx));
   const words = await loadDeclined(ctx);
-  const stamp = [VERSION, ver, st.ir || '', ctx.today, st.wn, st.wm, st.an, st.am, st.fn, st.mn, st.xn, st.dm, st.cv, st.km, [...off].sort().join(','),
+  // rec_rev は材料の表に書くたびに進む（migrations/0035 のトリガー、#189）。件数と更新時刻（秒）だけでは、同じ秒の
+  // 付け直しで印が変わらなかった
+  const stamp = [VERSION, ver, st.ir || '', ctx.today, st.rr ?? '', st.wn, st.wm, st.an, st.am, st.fn, st.mn, st.xn, st.dm, st.cv, st.km, [...off].sort().join(','),
     [...words].sort().join('\n')].join('|');
   const access = d1Access(db, ver);
   // 部品を外した計算（ctx.ablate）は控えと印が同じなので、控えを読まず、書かない
@@ -265,7 +267,7 @@ export async function rankedGroups(ctx) {
   const ablate = ctx.ablate || {};
   // 裏の答え合わせ（chooseVariant）は評価だけで決まる（評価の数・最後の更新・今日・使わない種類）。興味ありを押しただけで
   // 控えが捨てられたときは、前の控えに残した結果をそのまま使う。評価が多いと計算の 2〜4 割をここで使っていた（#138）
-  const gateKey = [VERSION, ctx.today, st.wn, st.wm, [...off].sort().join(',')].join('|');
+  const gateKey = [VERSION, ctx.today, st.wr ?? '', st.wn, st.wm, [...off].sort().join(',')].join('|');
   let gate = null;
   if (!ablate.gate && prev && rated.length >= GATE_REUSE_MIN) {
     try { const g = JSON.parse(prev.body).gate; if (g && g.key === gateKey) gate = g.choice; } catch { /* recompute */ }

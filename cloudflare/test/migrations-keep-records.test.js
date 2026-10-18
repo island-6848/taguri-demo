@@ -153,7 +153,9 @@ test('the test would notice a migration that loses user rows (a table rebuilt wi
   seed(db);
   const n = db.prepare('SELECT count(*) AS n FROM works').get().n;
   // users を作り直す（よくある「列を変えるための作り直し」）と、ON DELETE CASCADE で利用者の行が全部消える
-  db.exec('CREATE TABLE users_new AS SELECT * FROM users; DROP TABLE users; ALTER TABLE users_new RENAME TO users;');
-  assert.notEqual(db.prepare('SELECT count(*) AS n FROM works').get().n, n);
+  // 0035 からは、消える行のトリガー（rec_rev、#189）が users を引くので、作り直しはエラーで止まる。止まらずに通れば行が減る
+  let stopped = false;
+  try { db.exec('CREATE TABLE users_new AS SELECT * FROM users; DROP TABLE users; ALTER TABLE users_new RENAME TO users;'); } catch { stopped = true; }
+  assert.ok(stopped || db.prepare('SELECT count(*) AS n FROM works').get().n !== n);
   db.close();
 });
