@@ -6140,6 +6140,21 @@ def page_rate(user_id: str, verdict: str = "", year: str = "", venues=(), page: 
     return layout("評価一覧", "/rate", body, RR.STYLE, active_sub="/rate")
 
 
+def _rate_empty_next(b: dict) -> str:
+    """評価が 1 件も無いときに、次に押す先（#94）。未評価があればそこへ、記録が無ければ追加へ。
+
+    行き止まりにしない ── 前は「まだ評価が付いた記録はありません」だけで、どこにも行けなかった。
+    Worker（cloudflare/src/screens/rate.js の rateEmptyNext）と同じ形にする。
+    """
+    n = len(b["unrated"])
+    if n:
+        return (f'<p class="empty-next"><a href="/rate/unrated?t=__TAGURI_TOKEN__">'
+                f'未評価の記録に評価する（{n}件）</a></p>')
+    lead = ("記録した公演は、上演が終わると未評価に並び、評価できるようになります。"
+            if any(not w.get("unseen") for w in b["all"]) else "観た公演を記録すると、ここで評価できます。")
+    return f'<p class="empty-next">{lead}<a href="/register?t=__TAGURI_TOKEN__">観劇記録を追加</a></p>'
+
+
 def _rate_body(user_id: str, verdict: str = "", year: str = "", venues=(), page: int = 1) -> str:
     """`page_rate()` の中身だけを組み立てる(#000009、`_recommend_body`と同じ形)。"""
     b = _rate_base(user_id)
@@ -6152,7 +6167,7 @@ def _rate_body(user_id: str, verdict: str = "", year: str = "", venues=(), page:
     live = [g for g in CH.VERDICT_ORDER if by_v[g]]
     if not live:
         return (f'<h1>評価一覧</h1>{verdict_fig}'
-                f'<p class="empty">まだ評価が付いた記録はありません。</p>')
+                f'<p class="empty">まだ評価が付いた記録はありません。</p>{_rate_empty_next(b)}')
     # **既定は ◎ である。** 名簿の材料であり、感想の引用が返るのも ◎ の作品だけなので、
     # 確かめたくなるのはここである。**「すべて」は明示的に選んだときだけ**
     # （`v=all`。空文字は「まだ何も選んでいない」の意味のままにしておく ──

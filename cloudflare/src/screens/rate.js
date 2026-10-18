@@ -233,6 +233,12 @@ export async function posterFiles(ctx, works) {
 }
 
 // ---------------------------------------------------------------- screens
+/** app._rate_empty_next: 評価が 1 件も無いときに、次に押す先（#94）。未評価があればそこへ、記録が無ければ追加へ */
+function rateEmptyNext(b) {
+  if (b.unrated.length) return `<p class="empty-next"><a href="/rate/unrated?t=__TAGURI_TOKEN__">未評価の記録に評価する（${b.unrated.length}件）</a></p>`;
+  const lead = b.all.some(w => !w.unseen) ? '記録した公演は、上演が終わると未評価に並び、評価できるようになります。' : '観た公演を記録すると、ここで評価できます。';
+  return `<p class="empty-next">${lead}<a href="/register?t=__TAGURI_TOKEN__">観劇記録を追加</a></p>`;
+}
 /** app._rate_body (GET /api/screen/rate?v=&y=&venue=&p=) */
 async function rateScreen(params, ctx) {
   const verdict = qsFirst(params, 'v'), year = qsFirst(params, 'y'), venues = qsAll(params, 'venue');
@@ -245,7 +251,7 @@ async function rateScreen(params, ctx) {
   const stars = live.some(isStar), scaled = live.some(isScaled);
   const title = '評価一覧';
   if (!live.length) {
-    return {title, body_html: `<h1>評価一覧</h1>${verdictFig}<p class="empty">まだ評価が付いた記録はありません。</p>`, note_tags: noteTags(b.all)};
+    return {title, body_html: `<h1>評価一覧</h1>${verdictFig}<p class="empty">まだ評価が付いた記録はありません。</p>${rateEmptyNext(b)}`, note_tags: noteTags(b.all)};
   }
   const sel = (live.includes(verdict) || verdict === 'all') ? verdict : (live.includes('◎') ? '◎' : live[0]);
   const allSorted = byFirstDesc(rated);
