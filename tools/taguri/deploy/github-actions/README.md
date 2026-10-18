@@ -40,7 +40,7 @@ Worker の推薦の CPU・D1 の行数の測定（`cloudflare/scripts/measure_wo
 ## 設定
 
 - 秘密は要らない（作業データは同じリポジトリの `state` ブランチに書き戻すので、`GITHUB_TOKEN` だけで足りる）
-- `GEMINI_API_KEY` は渡さない。あらすじは LLM を呼ばずに読み取り待ち（`data/credits/synopsis_queue.jsonl`）に書き出し、
+- LLM の鍵は渡さない。あらすじは LLM を呼ばずに読み取り待ち（`data/credits/synopsis_queue.jsonl`）に書き出し、
   起案者の Claude の定期実行が読む（dec-synopsis-reader-claude。下の「あらすじの読み取り」）
 - 初回は Actions → Catalog → Run workflow を mode=weekly で手動で動かす（前回の作業データが無いので、候補から取り直す）
 

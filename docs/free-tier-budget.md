@@ -23,7 +23,7 @@
 | Render（デモ・橋渡し先） | 月 750 時間〔render-free-spin-down〕 | 月末まで止まる | ― | 無料プランのまま |
 | GitHub Pages（デモ） | 無料 | ― | ― | ― |
 | Firebase Authentication | 無料の Spark プラン〔q-firebase-free-tier〕 | ― | ― | カード登録をしない |
-| Gemini API | 使う場合も月の呼び出しに上限〔gemini-budget-cap〕 | ― | 月 300 回（既定） | 取得では呼ばない |
+| あらすじの読み取り（運営者の Claude の定期実行） | 有料の API は使わない | ― | 1 回 60 件・1 日 4 回まで〔q-synopsis-routine-quota〕 | 取得では LLM を呼ばない〔dec-synopsis-reader-claude〕 |
 | Gmail（公演修正依頼の知らせ） | 個人の Gmail は 1 日 500 通まで〔fix-request-mail〕 | その日は送れない（請求なし） | 1 日 30 通（`free-tier.js` の `FIX_MAILS_PER_DAY`）・依頼は 1 人 1 日 5 件 | Worker が送る前に D1 の `usage` に数える。越えた日は保存だけして管理画面で見る〔impl-fix-request〕。保存は 1 人の未対応 10 件・1 人 50 件・全体 2,000 件（約 6 MB）までで、INSERT の条件で守る。対応済みは 30 日で本文、180 日で行を消す（定期実行で 1 日 2 文）〔dec-fix-request-retention〕 |
 | 管理画面（手元・`tools/admin`） | 上の D1・R2 の枠の中 | ― | D1 の書き込み 1 日 1,000 行・ポスター月 300 枚（`CAPS` の `admin_*`） | 書く前に控え（`data/admin/free_tier/usage.json`）で数え、取得と共通の上限も見る。読み取り（あらすじ → 題材）は手元の Claude Code で、従量課金の API キーは渡さない〔impl-admin-tool〕 |
 

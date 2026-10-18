@@ -3,7 +3,7 @@
 2026-10-13 決定（起案者）:
 
 - Renderの他人の記録は引き継がない（デモ扱い）。
-- 持ち主（EC2）の記録もアカウントに入れない。メール取り込み・Gemini・ふりかえりの作り直しなど持ち主専用の機能はEC2に残す。
+- 持ち主（EC2）の記録もアカウントに入れない。メール取り込み・LLM の読み取り・ふりかえりの作り直しなど持ち主専用の機能はEC2に残す。
 - 画面は**今の見た目のまま**移す。Pythonが組んでいる画面（`/api/screen/*` の `body_html`）を1枚ずつWorkerのJSに移し、**Pythonと同じHTMLが出ることをテストで確かめる。**
 
 ## いまの形
@@ -33,7 +33,7 @@
 | 4 | 探す・ふりかえり・設定 | search・records・trace・chronicle・settings・start・register | missed・search_request |
 | 5 | 切り替え | — | 本番で `NATIVE_UI` を全画面にし、中継（`original-ui.js`）を外す。D1の旧 `records` 表（「アカウント・記録」の画面）を works に移す。Renderを止める |
 
-持ち主専用で移さないもの: import_mail・mail_hints・chronicle/people_read の作り直し（Gemini）・hand_theme・hand_poster・close・ふりかえり（lookback）・外部の公演検索（suggest_web の外部分）。Renderの公開版でもすでに止まっているもの。デモ版の96件の種まきも移さない（本番は空から始まる）。
+持ち主専用で移さないもの: import_mail・mail_hints・chronicle/people_read の作り直し（LLM）・hand_theme・hand_poster・close・ふりかえり（lookback）・外部の公演検索（suggest_web の外部分）。Renderの公開版でもすでに止まっているもの。デモ版の96件の種まきも移さない（本番は空から始まる）。
 
 ## 確かめること（切り替え前）
 

@@ -17,7 +17,7 @@ links:
 起案者の指示（2026-10-13）:「あらすじの情報文章もってきて、解読は一度で済むよね？こっちでそれやって、サイトで動かす情報はデータベースに置くのじゃダメなの？gemini apiは利用者の感想を抽出して推薦の向上に活かすときのみ」。q-synopsis-reader の A を採る。
 
 作り（extract_theme_llm.py）:
-- 取得処理（taguri-crawler の GitHub Actions）は `TAGURI_THEME_READER=queue` で動き、LLM を呼ばない。読み取り待ちの本文を `data/credits/synopsis_queue.jsonl`、指示（g2）を `synopsis_prompt.txt` に書き出す。Gemini の鍵は渡さない。
+- 取得処理（taguri-crawler の GitHub Actions）は `TAGURI_THEME_READER=queue` で動き、LLM を呼ばない。読み取り待ちの本文を `data/credits/synopsis_queue.jsonl`、指示（2026-10-18 から g4）を `synopsis_prompt.txt` に書き出す。LLM の鍵は渡さない。
 - 起案者の Claude（定期実行）が `--print-queue N` で Gemini に渡していたのと同じ指示・同じ本文を受け取り、答えを JSON で書く。
 - `--import-answers FILE` が、待ちの一覧にある本文と突き合わせて同じ検査（本文に実在するか・要素の数の上限）を通し、themes.jsonl に `model: claude-routine` で足す。足した分は待ちから外す。済んだ公演は二度と読まない。
 - サイトが使うのは確定した themes.jsonl を D1 に入れたもの（届ける段は q-catalog-to-worker で作る）。

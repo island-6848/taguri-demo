@@ -23,22 +23,15 @@
 そこで結果は `data/credits/themes.jsonl` に確定させ、**モデルとプロンプトの版を行に記録する。**
 版を上げるときは `--refresh` で全件を引き直す（一部だけ新しくしない）。
 
-## LLM の呼び出し口
-
-**Gemini API を専用の鍵で呼ぶ**（`tools/llm_gemini.py`）。以前は `claude` CLI を
-サブプロセスとして呼んでいたが、対話用セッションと同じ枠・同じログイン状態に
-バッチ処理の認証まで乗せるのはコストとセキュリティの両面でまずいという指摘
-（起案者・2026-08-27）を受けて切り離した。入出力の型（JSON 配列）を固定して
-いるので、担い手を替えても呼び出し側は変わらない。
-
-## 読み取りを起案者の Claude に任せる（`TAGURI_THEME_READER=queue`）
+## 読み手は運営者の Claude（`TAGURI_THEME_READER=queue`）
 
 あらすじの読み取りは公演ごとに一度で済む（済んだ行は二度と読まない）。そこで取得処理
 （GitHub Actions）は LLM を呼ばず、**読み取り待ちの本文を `synopsis_queue.jsonl` に、
-指示を `synopsis_prompt.txt` に書き出すだけ**にする。起案者の Claude（定期実行）が
+指示を `synopsis_prompt.txt` に書き出すだけ**にする。運営者の Claude（定期実行）が
 それを読んで答えを JSON で書き、`--import-answers` が**同じ検査**（本文に実在するか・
-要素の数）を通して themes.jsonl に足す。Gemini API は利用者の感想を読むときだけに使う
-（docs/knowledge の dec-synopsis-reader-claude）。
+要素の数）を通して themes.jsonl に足す。サイトに出るのは、この検査を通ったものだけ
+（docs/knowledge の dec-synopsis-reader-claude）。入出力の型（JSON 配列）を固定して
+いるので、読み手を替えても呼び出し側は変わらない。
 
     python3 tools/credits/extract_theme_llm.py --side candidate --limit 40
     python3 tools/credits/extract_theme_llm.py --side both
@@ -76,7 +69,7 @@ OUT = ROOT / "data" / "credits" / "themes.jsonl"
 QUEUE = ROOT / "data" / "credits" / "synopsis_queue.jsonl"
 QUEUE_PROMPT = ROOT / "data" / "credits" / "synopsis_prompt.txt"
 
-PROMPT_VERSION = "g2"
+PROMPT_VERSION = "g4"   # 2026-10-18 に g2 から上げた（起案者の判断。eval-synopsis-blind-1018）
 MODEL = LLM.MODEL
 READER = os.environ.get("TAGURI_THEME_READER", "gemini").lower()
 CLAUDE_MODEL = "claude-routine"
@@ -237,9 +230,8 @@ PROMPT_G2 = _sub(
 # g3 ── **g1 の自問の上に g2 の具体化を重ねる。** g2 は c6 から作っていて、g1 で足した
 # 「この一段落が《題名》自身の物語か」の自問が入っていなかった（2026-10-18 に気付いた。
 # 〔q-prompt-g2-base〕）。別の公演の物語の引き写しは verbatim() を通る（本文に実在するので）
-# から、止められるのは指示文だけ。**PROMPT_VERSION はまだ g2 のまま。** g2 と g3 を同じ標本
-# （検証 050 の「別公演」「空が正しい」と、measure_synopsis_recall.py の取りこぼし）で比べ、
-# 取りこぼしを増やさずに混入が減ったときだけ上げる。手順は docs/verification/synopsis-g3.md。
+# から、止められるのは指示文だけ。答えを伏せた読み比べ（eval-synopsis-blind-1018）で g2 より
+# 悪くならないことを確かめ、本番は g4（g3 ＋ フェスティバルの例外）にした。
 PROMPT_G3 = _sub(
     PROMPT_G1,
     "   - 「感動」「衝撃」「話題」「必見」「圧巻」のような宣伝の語は出さない。",
@@ -252,13 +244,29 @@ PROMPT_G3 = _sub(
     "   - 「感動」「衝撃」「話題」「必見」「圧巻」のような宣伝の語は出さない。",
 )
 
+# g4 ── **g3 に、フェスティバルのときだけ「催しの内容の説明」を許す一段を足す。**
+# 答えを知らない Claude で g2・g3 を読み比べた検証（2026-10-18、eval-synopsis-blind-1018）で、
+# g2・g3 のどちらでも、物語が無いのでどの版も空にした公演が 3 件あった。3 件とも、ページには
+# 演目の紹介や企画の趣旨が書いてあった。起案者の判断（2026-10-18）「フェスの場合に限る。g3 に
+# 切り替えてよい」を受け、**フェスティバル（複数の演目をまとめた催し）に限って**その説明を
+# synopsis にしてよいとする。単独の公演で紹介文・企画意図しか無いときは、これまでどおり空文字。
+PROMPT_G4 = _sub(
+    PROMPT_G3,
+    "空文字を避けようとして、根拠の弱い一致を拾わない。",
+    "空文字を避けようとして、根拠の弱い一致を拾わない。\n"
+    "   - **例外: フェスティバル（演劇祭・〇〇フェス・ショーケースなど、複数の演目や団体をまとめた催し）に限り、"
+    "物語が無くても、その催し自身の演目の紹介や企画の趣旨を書いた一段を synopsis にしてよい。** "
+    "その催しのものだと本文から言えることは、ほかの公演と同じく確かめる。"
+    "フェスティバルでない公演で、紹介文・企画意図しか無いときは、これまでどおり空文字にする。",
+)
+
 PROMPTS = {"c2": PROMPT_C2, "c3": PROMPT_C3, "c4": PROMPT_C4,
            "c5": PROMPT_C5, "c6": PROMPT_C6, "g1": PROMPT_G1, "g2": PROMPT_G2,
-           "g3": PROMPT_G3}
+           "g3": PROMPT_G3, "g4": PROMPT_G4}
 
 # **要素の上限は版ごとに違う。** 版だけ上げてコード側の切り詰めが 5 のままだと、
 # 指示は 8 個を許しているのに書き出しで 5 個に落ちる（版の比較が成立しない）。
-MAX_ELEMENTS = {"c2": 5, "c3": 5, "c4": 5, "c5": 8, "c6": 8, "g1": 8, "g2": 8, "g3": 8}
+MAX_ELEMENTS = {"c2": 5, "c3": 5, "c4": 5, "c5": 8, "c6": 8, "g1": 8, "g2": 8, "g3": 8, "g4": 8}
 
 
 _lock = threading.Lock()
@@ -616,7 +624,7 @@ def write_queue(todo: list[dict], sides: list[str], version: str) -> int:
 
 
 def queue_prompt(n: int) -> str:
-    """待ちの先頭 n 件を、**Gemini に渡すのと同じ指示・同じ本文の形**で返す（担い手が変わっても入力は同じ）。
+    """待ちの先頭 n 件を、**指示と本文をつないだ形**で返す（運営者の Claude が読む。読み手が変わっても入力は同じ）。
 
     答えには `side` を足す（学習側と候補側で id が重なり得るため）。版が混ざっていたら先頭の版だけ出す。
     """
@@ -688,7 +696,7 @@ def main() -> int:
     ap.add_argument("--import-answers", type=Path, metavar="FILE",
                     help="起案者の Claude が書いた答えを検査して themes.jsonl に足す（LLM は呼ばない）")
     ap.add_argument("--print-queue", type=int, metavar="N",
-                    help="読み取り待ちの先頭 N 件を、Gemini に渡すのと同じ形（指示＋本文）で表示する")
+                    help="読み取り待ちの先頭 N 件を、指示＋本文の形で表示する（運営者の Claude が読む）")
     a = ap.parse_args()
     if a.print_queue:
         print(queue_prompt(a.print_queue), end="")
