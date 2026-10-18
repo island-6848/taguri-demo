@@ -1,7 +1,7 @@
 ---
 id: font-trial
 type: decision
-status: adopted
+status: superseded
 date: 2026-10-18
 title: 文字の形を試す。ボタンは Zen丸ゴシック Bold、本文は Zen角ゴシック New（どちらもサイトに置いて配る）。これまでの文字を「規定」として残し、設定で戻せる
 sources:

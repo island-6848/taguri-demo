@@ -1122,6 +1122,24 @@
    "verifies": []
   },
   {
+   "id": "dec-font-roles",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "書体の役割を決める。見出しは Zen丸ゴシック、本文・ボタン・入れ口・表・札・数字・公演名は Zen角ゴシック New。指定は web/fonts.css だけに置く",
+   "sources": [
+    "web/fonts.css",
+    "web/theme.css",
+    "web/index.html",
+    "web/app.js",
+    "cloudflare/public/login.html",
+    "cloudflare/public/_headers",
+    "cloudflare/src/worker.js",
+    "cloudflare/test/gate.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-free-tier-audit-fixes-1018",
    "type": "decision",
    "status": "adopted",
@@ -2852,7 +2870,7 @@
   {
    "id": "font-trial",
    "type": "decision",
-   "status": "adopted",
+   "status": "superseded",
    "date": "2026-10-18",
    "title": "文字の形を試す。ボタンは Zen丸ゴシック Bold、本文は Zen角ゴシック New（どちらもサイトに置いて配る）。これまでの文字を「規定」として残し、設定で戻せる",
    "sources": [
@@ -7670,6 +7688,16 @@
    "from": "dec-fix-request-retention",
    "rel": "affects",
    "to": "comp-d1"
+  },
+  {
+   "from": "dec-font-roles",
+   "rel": "supersedes",
+   "to": "font-trial"
+  },
+  {
+   "from": "dec-font-roles",
+   "rel": "affects",
+   "to": "dec-design-default-ito"
   },
   {
    "from": "dec-free-tier-audit-fixes-1018",

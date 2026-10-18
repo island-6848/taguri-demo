@@ -2936,9 +2936,9 @@ function creditSetting(el) {
   (last || h1).after(sec);
 }
 
-// 文字の形（お試し）。ボタンは Zen丸ゴシックの Bold、本文は Zen角ゴシック New（起案者の指示 2026-10-18。本文は初めマメロンで試し、同日に Zen角ゴシック New に変えた）。
+// 文字の形。見出しは Zen丸ゴシック、本文・ボタン・入れ口・表・札は Zen角ゴシック New（起案者の指示 2026-10-18。fonts.css。前はボタンを Zen丸ゴシックにして試していた）。
 // 「あくまでお試しなので、現在のフォントを規定として」── これまでの文字を「規定」として残し、設定でいつでも戻せる。
-// 既定はお試し。theme.css の html[data-font="trial"] が切り替える
+// 既定は決まりの文字（値は前のまま "trial"）。fonts.css の html:not([data-font="default"]) が切り替える
 const FONT_KEY = "taguri_font_v1";
 function fontMode() { try { return localStorage.getItem(FONT_KEY) === "default" ? "default" : "trial"; } catch (e) { return "trial"; } }
 document.documentElement.dataset.font = fontMode();
@@ -2949,10 +2949,10 @@ function fontSetting(el) {
   const cur = fontMode();
   const sec = document.createElement("section");
   sec.className = "fontset pbox";
-  sec.innerHTML = '<h2>文字の形（お試し）</h2><p class="lead">いまは、ボタンを Zen丸ゴシック、本文を Zen角ゴシック New にして試しています。'
+  sec.innerHTML = '<h2>文字の形</h2><p class="lead">いまは、見出しを Zen丸ゴシック、本文とボタンを Zen角ゴシック New にしています。'
     + 'これまでの文字に戻すときは「規定の文字」を選んでください。この端末で有効です。</p>'
     + '<div class="aspmode" role="radiogroup" aria-label="文字の形">'
-    + [["trial", "お試しの文字", "ボタン: Zen丸ゴシック（Bold）／本文: Zen角ゴシック New"], ["default", "規定の文字", "これまでの文字（端末に入っている文字）"]].map(([v, t, d]) =>
+    + [["trial", "いまの文字", "見出し: Zen丸ゴシック／本文・ボタン: Zen角ゴシック New"], ["default", "規定の文字", "これまでの文字（端末に入っている文字）"]].map(([v, t, d]) =>
       '<label class="aspm"><input type="radio" name="fontmode" value="' + v + '"' + (v === cur ? " checked" : "") + '><b>' + t + "</b><span>" + d + "</span></label>").join("")
     + '</div><p class="said" role="status"></p>';
   sec.addEventListener("change", ev => {
