@@ -13,7 +13,7 @@ import {ico, h2} from './icons.js';
 import {PREFS, readPrefSetting, regionsHtml, regionCounts, prefSettingAction} from './prefs.js';
 import {rankedGroups, prefCounts} from './recommend.js';
 import {KINDS, loadDeclared} from './lists.js';
-import {loadWorks, titleKey, DROP_KEEP_DAYS} from './works.js';
+import {loadWorks, titleKey, DROP_KEEP_DAYS, expiredKeys} from './works.js';
 import {dateParts} from './row.js';
 import {splitNames} from './cast.js';
 import {optedOut, optoutCardHtml, optoutAction} from './evalrec.js';
@@ -22,9 +22,11 @@ const cardH2 = (name, text, extra = '') => `<summary>${h2(name, text, extra)}</s
 
 // ---------------------------------------------------------------- 設定
 async function droppedRows(ctx) {
-  const {results} = await ctx.db.prepare('SELECT uid, program FROM excluded WHERE user_id = ? ORDER BY uid, program').bind(ctx.uid).all();
+  const {results} = await ctx.db.prepare('SELECT uid, program, updated_at FROM excluded WHERE user_id = ? ORDER BY uid, program').bind(ctx.uid).all();
   const ex = results.map(r => [r.uid, r.program]);
-  const marks = new Map(ex.filter(([u]) => u.startsWith('work:')).map(([u, p]) => [u.slice(5), p]));
+  // 30 日たって消すのを待っている記録（works.expireDropped の上限で、まだ消していない分）は、戻せるように並べない
+  const expired = expiredKeys(ctx, results);
+  const marks = new Map(ex.filter(([u]) => u.startsWith('work:') && !expired.has(u.slice(5))).map(([u, p]) => [u.slice(5), p]));
   const purged = new Set(ex.filter(([u]) => u.startsWith('purged:')).map(([u]) => u.slice(7)));
   const purgedLegacy = new Set(ex.filter(([u]) => u.startsWith('purged-legacy:')).map(([, p]) => p));
   const rows = [...marks].filter(([k]) => !purged.has(k)).map(([k, t]) => ({key: k, title: t, n: 1, legacy: false}));

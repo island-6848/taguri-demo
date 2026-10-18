@@ -36,27 +36,41 @@ export async function answerSnapshot(ctx, stageId, screenVersion) {
 /**
  * その日に画面に出した stage_id を rec_shown に足す。その日の行が既にあって、新しく出した公演が無ければ書かない
  * （読み出し 1 回だけ）。書き直しは 1 日 SHOWN_WRITES_MAX 回まで。その日の最初の行を書くときに、その人の古い行（SHOWN_KEEP_DAYS 日より前）を消す。
+ * 書き込みは、読んだときの並び・回数のままで、分析から外れる設定も無いときだけ通る（issue #190）。別の画面が先に書いていたら
+ * （変わった行が 0）、読み直して足し直す（SHOWN_RETRIES 回まで）。前は読んだ並びに足して上書きしていたので、同時に開いた
+ * 2 画面の後の方が先の方の公演を消し、回数の上限も越え得た。
  */
+export const SHOWN_RETRIES = 3;
+const changed = r => r?.meta?.changes ?? r?.changes ?? 0;
 export async function recordShown(ctx, screen, ids, ver = null) {
   if (!SCREENS.has(screen) || !ctx.uid) return false;
   const list = [...new Set(ids.map(String).filter(Boolean))];
   if (!list.length) return false;
-  const row = await ctx.db.prepare(`SELECT ids, writes, (SELECT value FROM app_setting WHERE user_id=?1 AND key='${OPTOUT_KEY}') AS optout
-    FROM users LEFT JOIN rec_shown ON rec_shown.user_id=users.id AND rec_shown.label=?2 AND rec_shown.screen=?3 WHERE users.id=?1`)
-    .bind(ctx.uid, ctx.today, screen).first();
-  if (!row || row.optout === '1' || (row.writes || 0) >= SHOWN_WRITES_MAX) return false;
-  const had = row.ids ? JSON.parse(row.ids) : [];
-  const seen = new Set(had);
-  const merged = [...had, ...list.filter(s => !seen.has(s))].slice(0, SHOWN_MAX);
-  if (merged.length === had.length) return false;
-  const at = new Date(ctx.now).toISOString();
-  const put = ctx.db.prepare(`INSERT INTO rec_shown(user_id,label,screen,ids,ver,updated_at) VALUES(?,?,?,?,?,?)
-    ON CONFLICT(user_id,label,screen) DO UPDATE SET ids=excluded.ids, ver=excluded.ver, writes=rec_shown.writes+1, updated_at=excluded.updated_at`)
-    .bind(ctx.uid, ctx.today, screen, JSON.stringify(merged), ver, at);
-  if (row.ids) { await put.run(); return true; }
-  const since = new Date(Date.parse(ctx.today + 'T00:00:00Z') - SHOWN_KEEP_DAYS * 86400000).toISOString().slice(0, 10);
-  await ctx.db.batch([ctx.db.prepare('DELETE FROM rec_shown WHERE user_id=? AND label<?').bind(ctx.uid, since), put]);
-  return true;
+  const notOut = `NOT EXISTS(SELECT 1 FROM app_setting WHERE user_id=?1 AND key='${OPTOUT_KEY}' AND value='1')`;
+  for (let i = 0; i < SHOWN_RETRIES; i++) {
+    const row = await ctx.db.prepare(`SELECT ids, writes, (SELECT value FROM app_setting WHERE user_id=?1 AND key='${OPTOUT_KEY}') AS optout
+      FROM users LEFT JOIN rec_shown ON rec_shown.user_id=users.id AND rec_shown.label=?2 AND rec_shown.screen=?3 WHERE users.id=?1`)
+      .bind(ctx.uid, ctx.today, screen).first();
+    if (!row || row.optout === '1' || (row.writes || 0) >= SHOWN_WRITES_MAX) return false;
+    const had = row.ids ? JSON.parse(row.ids) : [];
+    const seen = new Set(had);
+    const merged = [...had, ...list.filter(s => !seen.has(s))].slice(0, SHOWN_MAX);
+    if (merged.length === had.length) return false;
+    const at = new Date(ctx.now).toISOString();
+    if (row.ids) {
+      const r = await ctx.db.prepare(`UPDATE rec_shown SET ids=?4, ver=?5, writes=writes+1, updated_at=?6
+        WHERE user_id=?1 AND label=?2 AND screen=?3 AND ids=?7 AND writes=?8 AND writes<${SHOWN_WRITES_MAX} AND ${notOut}`)
+        .bind(ctx.uid, ctx.today, screen, JSON.stringify(merged), ver, at, row.ids, row.writes).run();
+      if (changed(r)) return true;
+      continue;
+    }
+    const since = new Date(Date.parse(ctx.today + 'T00:00:00Z') - SHOWN_KEEP_DAYS * 86400000).toISOString().slice(0, 10);
+    const [, put] = await ctx.db.batch([ctx.db.prepare('DELETE FROM rec_shown WHERE user_id=? AND label<?').bind(ctx.uid, since),
+      ctx.db.prepare(`INSERT OR IGNORE INTO rec_shown(user_id,label,screen,ids,ver,updated_at) SELECT ?1,?2,?3,?4,?5,?6 WHERE ${notOut}`)
+        .bind(ctx.uid, ctx.today, screen, JSON.stringify(merged), ver, at)]);
+    if (changed(put)) return true;
+  }
+  return false;
 }
 
 // ---------------------------------------------------------------- 設定のカード
