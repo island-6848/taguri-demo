@@ -20,7 +20,8 @@ COPIED = ("tour.js", "style.css", "tour.css", "theme.css", "recommendation-expos
           "assets/fonts/OFL-ZenKakuGothicAntique.txt", "assets/fonts/OFL-ZenMaruGothic.txt",
           "assets/fonts/OFL-ZenKakuGothicNew.txt")
 # Self-hosted title font (SIL OFL, subset to the page titles). Copied byte for byte.
-BINARY = ("assets/fonts/zkga-title.woff2",)
+BINARY = ("assets/fonts/zkga-title.woff2",
+          "assets/logo/apple-touch-icon.png")   # ホーム画面のアイコン（docs/design/logo/make_type.py）
 # お試しのボタンの文字（Zen丸ゴシック Bold、SIL OFL）。文字の範囲ごとのファイルを丸ごと写す
 BINARY += tuple("assets/fonts/zen-maru-gothic/" + p.name for p in sorted((WEB / "assets/fonts/zen-maru-gothic").glob("*.woff2")))
 # 本文（Zen角ゴシック New の Regular・Bold、SIL OFL）

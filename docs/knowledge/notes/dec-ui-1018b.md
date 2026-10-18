@@ -16,6 +16,8 @@ sources:
   - docs/design/logo/make.py
   - docs/design/logo/make_type.py
   - docs/design/logo/make_tsukimi.py
+  - web/index.html
+  - web/assets/logo/apple-touch-icon.png
 links:
   - depends_on: dec-rec-row-like-card
 ---
@@ -36,3 +38,4 @@ links:
 - 起案者「ひな明朝のときの1で、英語表記消しがいいかも」→ ひな明朝の「幕の中のたぐり」（docs/design/logo/type/type1-stage.svg）から TAGURI を外し、空いた分は字をひと回り大きくして床を下げ、釣り合いを取った（見え方は docs/design/logo/type1-stage.png）
 - 起案者「小さい版もつくって。外の丸だけ毛糸っぽくするためにちょっと太くして。線の終わりも角丸」→ 外の丸と、ほどけた先を太い線（端は丸い）にし、線に沿って斜めの撚りの筋を並べて毛糸に見せた（SVG の破線は線に直角の切れ目しか作れず物差しのように見えたので、線上の点を計算して斜めの筋を描く。yarn_ring）。小さい版は毛糸の丸の中に「ぐ」（濁点は星）: icon.svg（48px 以上。撚りの筋と飾り幕あり）と icon-small.svg（16〜32px。筋と幕を省き、先は短いはね 1 つ）。PNG は docs/design/logo/png/（favicon 16・32、ホーム画面 180・512、ロゴ 600）。サイトへの組み込みはまだ
 - 起案者「毛糸っぽくしなくてよい。線の太さ、縁の下ほど太くて上ほど細くして強弱つけて」「アイコンにするときはぐ、じゃなくてオペラグラスのイラスト」「たぐりの文字が円に対して下よりなので、中央を通るように」「たぐりの上にある星、1個だとアンバランス」→ 撚りの筋をやめ、外の丸は高さで太さが変わる塗りの形に（上 1.6 → 下 5.0、ほどけた先は細くなって終わる。taper_ring）。字の墨の上下の真ん中を丸の中心の高さに合わせ、少し小さくして幕の留め紐に当たらないようにした。字の上の星は 3 つを左右対称に。アイコン（icon.svg・icon-small.svg）は同じ丸の中にオペラグラス
+- 起案者「ヘッダーとアイコンに入れて。たぐりちょっと右寄りかも。たぐりの文字もうちょっとだけ下でもいい」→ 字を左へ 5・下へ 5。サイトに入れた: web/index.html の帯の頭（<!--brand-->〜<!--/brand-->）に、パソコンは丸い紋章、電話の幅（820px 以下）はオペラグラスと字の横組みを、どちらも currentColor のインライン SVG で埋め込む（暗い表示でも帯の文字の色になる）。タブの絵（<!--favicon-->）は 16〜32px 版の data: SVG（暗いタブでは明るい色）、ホーム画面は web/assets/logo/apple-touch-icon.png。埋め込みは make_type.py --embed web/index.html。index.html は 5.9KB → 30KB（座標を小数 1 桁・丸の点を減らして 68KB から縮めた。Cloudflare の静的な配信は無料枠の数に入らない）。分からないこと・残り: 古い Python 版（tools/taguri/logo.py。Render のデモ）の標章は糸の束のまま
