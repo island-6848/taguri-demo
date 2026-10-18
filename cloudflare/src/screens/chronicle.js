@@ -3,8 +3,9 @@
 // closing) written by the same rules as chronicle.reading, with no LLM call (起案者の指示 2026-10-18).
 // chronicle.test.js checks the HTML and the reading against Python on the same records/facts.
 // CPU: one pass over the works for the facts, then arithmetic over the years only.
-// The subject and tone words of the works seen (themes.jsonl, rated side) are the owner's
-// batch output, so `themes` is empty here (as in Python without that file).
+// 題材は、観た公演に付いた #題材 の言葉（あらすじの読み取りから。records.chronicleScreen が rated の themes に入れる、
+// issue #177）。#題材 は内容の要素を種類で分けずに持つので、トーンは数えない（tone は空）。原作者などの名前は、
+// その公演のクレジットにある名前と同じ言葉を除いて、題材に混ぜない（Python の「原作は題材に数えない」と同じ考え）。
 import {isTop, isScaled, gradeText, markOf} from './grade.js';
 import {E, fmtF} from './py.js';
 import {h2} from './icons.js';
@@ -33,14 +34,17 @@ export function facts(works, rated) {
   const byYear = new Map();
   for (const w of dated) { const y = w.first_date.slice(0, 4); if (!byYear.has(y)) byYear.set(y, []); byYear.get(y).push(w); }
   const seenV = new Set(), firstYear = new Map(), pplYears = new Map(), pplN = new Counter(), venYears = new Map();
+  const overallSubj = new Counter();
   const key = (r, n) => r + '\u0000' + n;
   const years = [];
   for (const y of [...byYear.keys()].sort()) {
     const g = byYear.get(y);
-    const ven = new Counter(), ppl = new Counter();
+    const ven = new Counter(), ppl = new Counter(), subj = new Counter();
     const loved = new Set();
     for (const w of g) {
       const r = rr.get(w.work_key) || {};
+      const names = new Set((r.people || []).map(p => p[1]));
+      for (const t of new Set(r.themes || [])) if (t && !names.has(t)) subj.add(t);
       for (const v of r.venues || []) { ven.add(v); if (!venYears.has(v)) venYears.set(v, new Set()); venYears.get(v).add(y); }
       for (const pair of r.people || []) {
         const [role, name] = [...pair, '', ''].slice(0, 2);
@@ -53,6 +57,7 @@ export function facts(works, rated) {
         if (isTop(w.verdict)) loved.add(name);
       }
     }
+    for (const [t, n] of subj) overallSubj.add(t, n);
     const newV = [...ven.keys()].filter(v => !seenV.has(v));
     for (const v of ven.keys()) seenV.add(v);
     const byName = new Map();
@@ -70,7 +75,7 @@ export function facts(works, rated) {
       venues: ven.mostCommon(4), new_venues: newV.slice(0, 5),
       people: ranked.slice(0, 5).map(([nm, c]) => [nm, desc(c), sumOf(c)]),
       new_people: newP.map(([nm, c]) => [nm, desc(c), sumOf(c)]).slice(0, 4),
-      themes: [], tone: [],
+      themes: subj.mostCommon(5), tone: [],
       loved: g.filter(w => isTop(w.verdict)).map(w => w.title).slice(0, 6),
       hard: g.filter(w => ['△', '×'].includes(markOf(w.verdict))).map(w => w.title).slice(0, 3),
       repeats: g.filter(w => timesOf(w) > 1).map(w => [w.title, timesOf(w)]).sort((a, b) => b[1] - a[1]).slice(0, 5),
@@ -91,7 +96,7 @@ export function facts(works, rated) {
   return {links, marks, years, kept_venues: keepV.map(([v, s]) => [v, s[0], s.at(-1), s.length]),
     left_venues: leftV.map(([v, s]) => [v, s[0], s.at(-1)]),
     long_people: longP.map(([role, nm, s, n]) => [role, nm, s[0], s.at(-1), n]),
-    overall_themes: [], overall_tone: [], verdict_tally: tally,
+    overall_themes: overallSubj.mostCommon(8), overall_tone: [], verdict_tally: tally,
     n_repeated: dated.filter(w => timesOf(w) > 1).length, n_loved: dated.filter(w => isTop(w.verdict)).length,
     n_hard: dated.filter(w => ['△', '×'].includes(markOf(w.verdict))).length, n_works: dated.length,
     n_undated: works.filter(w => !/^\d{4}/.test((w.first_date || '').slice(0, 4)) && w.bucket !== 'upcoming').length};

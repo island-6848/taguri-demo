@@ -6,7 +6,7 @@ import {execFileSync} from 'node:child_process';
 import {panel, facts, reading} from '../src/screens/chronicle.js';
 
 const here = p => new URL(p, import.meta.url).pathname;
-const {cases, readings} = JSON.parse(execFileSync('python3', [here('./screens/chronicle_fixture.py')], {encoding: 'utf8'}));
+const {cases, readings, star_cases: starCases} = JSON.parse(execFileSync('python3', [here('./screens/chronicle_fixture.py')], {encoding: 'utf8'}));
 
 test('観劇史年表 matches chronicle.panel', () => {
   cases.forEach((c, i) => {
@@ -24,6 +24,26 @@ test('観劇史年表: the reading from the records matches chronicle.reading', 
 
 test('観劇史年表: the reading from the facts (with themes) matches chronicle.reading', () => {
   readings.forEach((c, i) => assert.deepEqual(reading(c.facts), c.reading, `reading ${i}`));
+});
+
+test('観劇史年表: a star user\'s top and low grades are counted as in Python (issue #177)', () => {
+  starCases.forEach((c, i) => {
+    const f = facts(c.works, c.rated);
+    for (const k of ['n_loved', 'n_hard']) assert.equal(f[k], c.facts[k], `${k} ${i}`);
+    assert.deepEqual(f.years.map(y => [y.loved, y.hard, y.new_people]), c.facts.years.map(y => [y.loved, y.hard, y.new_people]), `years ${i}`);
+    assert.ok(f.n_loved > 0);
+    assert.deepEqual(reading(f), c.reading, `reading ${i}`);
+  });
+});
+
+test('観劇史年表: the #題材 words of the stages seen become the year\'s themes, without the names in the credits (issue #177)', () => {
+  const ws = [1, 2, 3].map(i => ({work_key: `t${i}`, title: `作${i}`, first_date: `2024-0${i}-01`, verdict: '○'}));
+  const rated = [{key: 't1', people: [['原作', 'シェイクスピア']], venues: [], themes: ['家族', 'シェイクスピア']},
+    {key: 't2', people: [], venues: [], themes: ['家族', '法廷']}, {key: 't3', people: [], venues: [], themes: ['家族']}];
+  const f = facts(ws, rated);
+  assert.deepEqual(f.years[0].themes, [['家族', 3], ['法廷', 1]]);
+  assert.deepEqual(f.overall_themes, [['家族', 3], ['法廷', 1]]);
+  assert.deepEqual(f.years[0].tone, []);
 });
 
 // ---------------------------------------------------------------- the rules

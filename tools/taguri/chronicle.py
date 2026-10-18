@@ -58,6 +58,7 @@ import collections
 import datetime as dt
 import hashlib
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -78,6 +79,32 @@ ROLES = ("出演", "演出", "作", "脚本", "翻訳", "原作", "演出補", "
 
 
 # ---------------------------------------------------------------- 事実（規則）
+_MARK_F = {"◎": 1.0, "○": 2 / 3, "△": 1 / 3, "×": 0.0}
+_SCALED = re.compile(r"^(\d{1,2})/(2|3|5|11)$")
+
+
+def _frac(v) -> float | None:
+    """段階の中での位置（最低 0〜最高 1）。cloudflare/src/screens/grade.js の frac と同じ（issue #177）。
+    前は ◎ の文字だけを最上位と数えていたので、★ で付ける人では「出会った作り手」などが Worker とずれた"""
+    if v in _MARK_F:
+        return _MARK_F[v]
+    m = _SCALED.match(str(v or ""))
+    if not m:
+        return None
+    n, size = int(m[1]), int(m[2])
+    return (n - 1) / (size - 1) if 1 <= n <= size else None
+
+
+def _top(v) -> bool:
+    return _frac(v) == 1
+
+
+def _low(v) -> bool:
+    """grade.markOf が △ か × になる評価（段階の真ん中より下）"""
+    f = _frac(v)
+    return f is not None and f < 0.5
+
+
 def _elements(t: dict) -> list:
     el = t.get("elements") or []
     if isinstance(el, str):
@@ -149,7 +176,7 @@ def facts(works: list[dict], rated: list[dict]) -> dict:
                     ppl[(role, name)] += 1
                     ppl_years[(role, name)].add(y)
                     ppl_n[(role, name)] += 1
-                    if w.get("verdict") == "◎":
+                    if _top(w.get("verdict")):
                         loved_names.add(name)
             for e in _elements(th.get(w.get("work_key")) or {}):
                 if not e.get("word"):
@@ -194,8 +221,8 @@ def facts(works: list[dict], rated: list[dict]) -> dict:
                             sum(c.values())] for nm, c in new_p][:4],
             "themes": [[w_, n] for w_, n in subj.most_common(5)],
             "tone": [[w_, n] for w_, n in tone.most_common(4)],
-            "loved": [w["title"] for w in g if w.get("verdict") == "◎"][:6],
-            "hard": [w["title"] for w in g if w.get("verdict") in ("△", "×")][:3],
+            "loved": [w["title"] for w in g if _top(w.get("verdict"))][:6],
+            "hard": [w["title"] for w in g if _low(w.get("verdict"))][:3],
             # **多く観た順に切る。** 記録の順で切ると、その年でいちばん通った作品が
             # 落ちる（実測 ── 8 回観た 1 本が落ち、2 回の 3 本が残っていた）
             "repeats": sorted(([w["title"], int(w["times"])] for w in g
@@ -233,8 +260,8 @@ def facts(works: list[dict], rated: list[dict]) -> dict:
     verdict_tally = collections.Counter(w.get("verdict") or "" for w in dated)
     verdict_tally.pop("", None)
     n_repeated = sum(1 for w in dated if int(w.get("times") or 1) > 1)
-    n_loved = sum(1 for w in dated if w.get("verdict") == "◎")
-    n_hard = sum(1 for w in dated if w.get("verdict") in ("△", "×"))
+    n_loved = sum(1 for w in dated if _top(w.get("verdict")))
+    n_hard = sum(1 for w in dated if _low(w.get("verdict")))
     return {
         "links": links,
         "marks": marks,

@@ -69,8 +69,31 @@ ${main}`;
   return {title: 'たどる', body_html: body};
 }
 
+/** stage_id -> #題材 の言葉（索引 rec_people、無ければ過去の公演 past_stage）。年表の題材に使う（issue #177） */
+async function themesOf(ctx, sids) {
+  const want = [...new Set(sids.filter(Boolean).map(String))], out = {};
+  const pick = (sid, people) => {
+    try { const ws = JSON.parse(people || '[]').filter(p => p[0] === '#題材').map(p => p[1]); if (ws.length) out[sid] = ws; } catch { /* broken row */ }
+  };
+  for (let i = 0; i < want.length; i += 90) {
+    const part = want.slice(i, i + 90);
+    const {results} = await ctx.db.prepare(`SELECT stage_id, people FROM rec_people WHERE ver=(SELECT v FROM rec_meta WHERE k='current') AND stage_id IN (${part.map(() => '?').join(',')})`).bind(...part).all();
+    for (const r of results) pick(r.stage_id, r.people);
+  }
+  const rest = want.filter(s => !out[s]);
+  for (let i = 0; i < rest.length; i += 90) {
+    const part = rest.slice(i, i + 90);
+    let results = [];
+    try { ({results} = await ctx.db.prepare(`SELECT stage_id, people FROM past_stage WHERE stage_id IN (${part.map(() => '?').join(',')})`).bind(...part).all()); } catch { break; }
+    for (const r of results) pick(r.stage_id, r.people);
+  }
+  return out;
+}
+
 export async function chronicleScreen(_params, ctx) {
   const d = await recordsBase(ctx);
+  const themes = await themesOf(ctx, d.rated.map(r => r.stage_id));
+  for (const r of d.rated) r.themes = themes[r.stage_id] || [];
   const main = chroniclePanel(d.seen, d.rated) || '<section class="card"><p class="empty">まだ年表を描けるだけの記録がありません。上演日の分かる記録が増えると出るようになります。</p></section>';
   return {title: '観劇史年表', body_html: `<h1>観劇史年表 ── 何が始まった年か</h1>
 ${recordsLede(d)}
