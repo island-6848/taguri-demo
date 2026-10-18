@@ -73,6 +73,17 @@ class ActionsTest(unittest.TestCase):
         self.assertEqual((p['run'], p['mode'], p['past_minutes']), (True, 'daily', 0))
 
 
+    def test_stories_run_takes_what_is_left_after_the_daily_reserve(self):
+        # 起案者の指示 2026-10-18「ページを取る時間を増やして」: 本文だけを取る実行（stories.yml）
+        p = FT.plan([0] * 31, 'stories')
+        self.assertEqual((p['run'], p['past_minutes']), (True, FT.STORIES_MAX_MINUTES))
+        self.assertEqual(p['past_limit'], int(FT.STORIES_MAX_MINUTES * 60 / FT.PAST_SECONDS_PER_PAGE))
+        # 毎日の更新の分を食わない: 残りが少なければ、その分だけ（10 分未満なら動かさない）
+        small = FT.plan([46] * 31, 'stories')                 # 残り 59 分（1,500 - 46×31 - 毎日の 15 分）
+        self.assertEqual((small['run'], small['past_minutes']), (True, 59 - FT.STORIES_AFTER_MINUTES))
+        self.assertFalse(FT.plan([60] * 31, 'stories')['run'])
+        self.assertFalse(FT.plan(None, 'stories')['run'])
+
     def test_index_only_run_reads_nothing_and_keeps_the_daily_reserve(self):
         # 索引だけの手動実行（q-index-load-now）: 取り直しも過去の公演も読まない
         p = FT.plan([0] * 31, 'index')

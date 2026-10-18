@@ -25,6 +25,7 @@ EC2 も AWS も使っていない（docs/knowledge の no-ec2・no-aws）。毎�
 - `catalog.yml` → 非公開リポジトリの `.github/workflows/catalog.yml`
 - `replay.yml` → 非公開リポジトリの `.github/workflows/replay.yml`（推薦の再生。手で動かすだけ。下の「推薦の再生」）
 - `restore-drill.yml` → 非公開リポジトリの `.github/workflows/restore-drill.yml`（控えから戻す予行）
+- `stories.yml` → 非公開リポジトリの `.github/workflows/stories.yml`（過去の公演のあらすじの本文だけを取って読み取り待ちに積む。手で動かす。Catalog と同時には動かない）
 
 **雛形と本番は同じ中身にしておく。** 2026-10-18 に本番だけにある段（あらすじの読み取り待ち・過去の公演のポスター・
 名前の索引）と、雛形だけにある段（Worker の CPU・D1 の行数の測定、毎日の控え）がずれていた（#70）。
