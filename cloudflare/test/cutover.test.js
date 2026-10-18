@@ -107,7 +107,7 @@ test('NATIVE_UI=all: nothing of a user goes to Render; every screen is native, u
     }
     assert.equal(sqlite.prepare('SELECT count(*) AS n FROM works').get().n, 0);
     // おすすめ is answered by the Worker too (recommend-screen.test.js), empty for a new account.
-    assert.match((await step(env, cookie, {get: '/api/screen/recommend'})).body.body_html, /今週のおすすめはありません/);
+    assert.match((await step(env, cookie, {get: '/api/screen/recommend'})).body.body_html, /今週のあなたへのおすすめはありません/); // 見出しの言い方は起案者の指示 2026-10-18 で「あなたへのおすすめ」に
     // Only posters missing from R2 may still be fetched from Render.
     await step(env, cookie, {get: '/img/101.jpg'});
     assert.deepEqual(r.sent, ['GET /img/101.jpg']);

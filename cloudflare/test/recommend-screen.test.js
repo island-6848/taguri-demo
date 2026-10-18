@@ -29,7 +29,7 @@ test('a new account gets no recommendations and is told what to do', async () =>
     assert.equal(got.status, 200);
     assert.equal(got.body.title, '今週のおすすめ');
     assert.equal(got.body.moving, undefined);
-    assert.match(got.body.body_html, /<h1>今週のおすすめはありません<\/h1>/);
+    assert.match(got.body.body_html, /<h1>今週のあなたへのおすすめはありません<\/h1>/);
     assert.doesNotMatch(got.body.body_html, /<article/);
     // 推薦を出すためのワンポイント (起案者 2026-10-14): what to do, in plain words.
     assert.match(got.body.body_html, /<h2>おすすめを出すためのワンポイント<\/h2>/);
@@ -49,7 +49,7 @@ test('a ◎ on a stage recommends the coming stage of the same people, with the 
     await rateSeen(env, a, '終わった舞台', '2026-08-05', '103', '◎');
     await rateSeen(env, a, '一日だけの舞台', '2026-09-05', '104', '×');
     const html = (await step(env, a, {get: '/api/screen/recommend'})).body.body_html;
-    assert.match(html, /<h1>今週のおすすめ 1 件<\/h1>/);
+    assert.match(html, /<h1>今週のあなたへのおすすめ 1 件<\/h1>/);
     assert.match(html, /<article class="ticket recommend" data-stage="101"/);
     assert.doesNotMatch(html, /おすすめを出すためのワンポイント/);
     assert.match(html, /おすすめの選び方/);
@@ -62,11 +62,11 @@ test('a ◎ on a stage recommends the coming stage of the same people, with the 
     assert.doesNotMatch((await step(env, b, {get: '/api/screen/recommend'})).body.body_html, /<article/);
     // Prefecture filter: ?f=1 holds it for this page only (not saved), an empty ?f=1 is 全国.
     const osaka = (await step(env, a, {get: '/api/screen/recommend?f=1&pref=' + encodeURIComponent('大阪府')})).body.body_html;
-    assert.match(osaka, /<h1>大阪府のおすすめはありません<\/h1>/);
+    assert.match(osaka, /<h1>大阪府でのあなたへのおすすめはありません<\/h1>/);
     assert.match((await step(env, a, {get: '/api/screen/recommend'})).body.body_html, /いまは<b>全国<\/b>/);
     assert.equal(sqlite.prepare("SELECT count(*) AS n FROM app_setting WHERE key='recommend_prefs'").get().n, 0);
     const tokyo = (await step(env, a, {get: '/api/screen/recommend?f=1&pref=' + encodeURIComponent('東京都')})).body.body_html;
-    assert.match(tokyo, /<h1>東京都のおすすめ 1 件<\/h1>/);
+    assert.match(tokyo, /<h1>東京都でのあなたへのおすすめ 1 件<\/h1>/);
     assert.match((await step(env, a, {get: '/api/screen/recommend?f=1'})).body.body_html, /いまは<b>全国<\/b>/);
     // A poster in R2 goes into the card.
     sqlite.exec("INSERT INTO poster(stage_id,file) VALUES('101','101.webp')");
@@ -91,7 +91,7 @@ test('answering a card takes it out of the recommendations, for this user only',
     assert.match(fill.body.fill.said, /入れ替える候補はもうありません/);
     // Every candidate answered: the thank-you block with its advice, not the new-user tips
     const doneHtml = (await step(env, a, {get: '/api/screen/recommend'})).body.body_html;
-    assert.match(doneHtml, /<h1>今週のおすすめにはすべて答えました<\/h1>/);
+    assert.match(doneHtml, /<h1>今週のあなたへのおすすめにはすべて答えました<\/h1>/);
     assert.match(doneHtml, /回答ありがとうございました[\s\S]*<b>過去の観劇記録を足す<\/b>：/);
     assert.doesNotMatch(doneHtml, /おすすめを出すためのワンポイント|<template id="rec-thanks-t">/);
     const bHtml = (await step(env, b, {get: '/api/screen/recommend'})).body.body_html;
@@ -118,7 +118,7 @@ test('効かせ方: the sliders show the saved steps and the counts; "効かせ�
     assert.match(html, /<details class="pbox wbox" id="weights">/);
     assert.match(html, /いまは<b>ふつう<\/b>/);
     assert.match(html, /<div class="wrow" data-grp="cast"><span class="wl">出演者<\/span><span class="wn">おすすめの候補 1 件で一致<\/span>/);
-    assert.match(html, /<h1>今週のおすすめ 1 件<\/h1>/);
+    assert.match(html, /<h1>今週のあなたへのおすすめ 1 件<\/h1>/);
     const saved = await step(env, a, {post: '/api/weight', body: {weights: {cast: 'off', theme: 'max'}}});
     assert.equal(saved.status, 200);
     assert.deepEqual(saved.body.weights, {cast: 'off', theme: 'max'});
@@ -128,14 +128,14 @@ test('効かせ方: the sliders show the saved steps and the counts; "効かせ�
     assert.doesNotMatch(html, /<span class="net">人物<\/span>出演 /);   // the cast leaves the reasons too
     const all = Object.fromEntries(['cast', 'author', 'craft', 'stage', 'produce', 'other', 'theme'].map(k => [k, 'off']));
     assert.equal((await step(env, a, {post: '/api/weight', body: {weights: all}})).status, 200);
-    assert.match((await step(env, a, {get: '/api/screen/recommend'})).body.body_html, /<h1>今週のおすすめはありません<\/h1>/);
+    assert.match((await step(env, a, {get: '/api/screen/recommend'})).body.body_html, /<h1>今週のあなたへのおすすめはありません<\/h1>/);
     // Only the listed groups and steps; nothing is written when one is wrong.
     assert.equal((await step(env, a, {post: '/api/weight', body: {weights: {cast: 'mid', bogus: 'max'}}})).status, 400);
     assert.equal((await step(env, a, {post: '/api/weight', body: {weights: {cast: '9'}}})).status, 400);
     assert.equal(sqlite.prepare("SELECT step FROM rank_weight WHERE grp='cast'").get().step, 'off');
     // Back to ふつう brings it back; another user is never affected.
     await step(env, a, {post: '/api/weight', body: {weights: Object.fromEntries(Object.keys(all).map(k => [k, 'mid']))}});
-    assert.match((await step(env, a, {get: '/api/screen/recommend'})).body.body_html, /<h1>今週のおすすめ 1 件<\/h1>/);
+    assert.match((await step(env, a, {get: '/api/screen/recommend'})).body.body_html, /<h1>今週のあなたへのおすすめ 1 件<\/h1>/);
     // B は効かせ方を何も変えていない（使い始めでおすすめが無いので、選び方を出さず、使い始めの案内を出す）
     const bHtml = (await step(env, b, {get: '/api/screen/recommend'})).body.body_html;
     assert.match(bHtml, /おすすめを出すためのワンポイント/);
