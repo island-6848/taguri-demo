@@ -1,7 +1,7 @@
 ---
 id: dec-diary-collage
 type: decision
-status: adopted
+status: superseded
 date: 2026-10-18
 title: 日記帳はコラージュの見た目にする。日付は yyyy/mm/dd(曜日)、テープはポスターの上辺にかけて 4 柄、感想の欄に地の色
 sources:

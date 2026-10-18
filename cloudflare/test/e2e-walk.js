@@ -915,7 +915,9 @@ async function walkA(A) {
         const tapeMid = pr.top + parseFloat(t.top) + parseFloat(t.height) / 2;
         // ポスターの上辺（傾ける前）: 枠の上端。傾きは小さいので、外接の箱の上端から上の縁の太さまでの間に入る
         const top = pin.getBoundingClientRect().top + parseFloat(getComputedStyle(pin).paddingTop);
-        return {date: r.querySelector('.dt')?.textContent || '', gap: Math.abs(tapeMid - top), tape: t.backgroundImage + t.backgroundColor + t.transform,
+        return {date: r.querySelector('.dt')?.textContent || '', gap: Math.abs(tapeMid - top),
+          // テープは形そのものを行ごとに替える（同日「テープは柄だけでなく形自体（うねうね、四角、丸シールなど）も何種類かほしい」）
+          tape: [t.width, t.height, t.borderRadius, t.clipPath, t.maskImage || t.webkitMaskImage].join('|'),
           inb: getComputedStyle(r.querySelector('.inr>.inb') || r).backgroundColor, poster: pcs.borderTopWidth,
           wide: document.documentElement.scrollWidth};
       }));
@@ -926,7 +928,7 @@ async function walkA(A) {
         check(!/rgba\(0, 0, 0, 0\)|transparent/.test(r.inb), '感想の欄に地の色が無い');
         check(r.wide <= w, `横にはみ出す（${r.wide}px）`);
       }
-      check(new Set(rows.slice(0, 4).map(r => r.tape)).size === Math.min(4, rows.length), 'テープの柄が行ごとに替わらない');
+      check(new Set(rows.slice(0, 4).map(r => r.tape)).size === Math.min(4, rows.length), 'テープの形が行ごとに替わらない');
       await page.screenshot({path: join(OUT, name), fullPage: true});
       note(`${w}px: ${rows.map(r => r.date).join(' / ')}`);
     }
