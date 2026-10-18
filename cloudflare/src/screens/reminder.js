@@ -350,9 +350,9 @@ export async function reminderScreen(params, ctx) {
   const unknownHtml = !unknown.length ? '' : `<details class="dgday" open><summary>都道府県が分からない公演　${unknown.length} 件</summary>`
     + '<p class="dglead">会場の都道府県がまだ分からないため、場所の絞り込みに入れられない公演です。見逃さないように、ここに分けて出しています。</p>'
     + `<ul class="dglist">${unknown.map(r => row(r, ctx.today, poster, detail, 'この行の会場')).join('')}</ul></details>`;
-  // 見出しと前置きの 1 文は起案者の指示 2026-10-18 の文面
+  // 見出しと前置きの 1 文は起案者の指示 2026-10-18 の文面。見出しの下に見えるように置くので、ⓘ に移る p.lede ではなく p.hsub
   const body = `<h1>開幕リマインド</h1>
-<p class="lede">開幕リマインドでは、おすすめやお気に入りにかかわらず、今週・来週開幕予定の公演を全件掲載しています。</p>
+<p class="hsub">開幕リマインドでは、おすすめやお気に入りにかかわらず、今週・来週開幕予定の公演を全件掲載しています。</p>
 <p class="fgh">${ico('search', 15)}<b>表示の絞り込み</b><span>初日が近い公演の中から、表示する項目を設定できます。</span></p>
 <div class="fil2 narrow">${prefForm(counts, prefs, '/recommend/reminder', note, {w: week}, regionCounts(wr.map(r => ({key: r.stage_id || r.title, prefs: [r.pref]}))))}</div>
 ${FOLD_STYLE}

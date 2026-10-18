@@ -1418,3 +1418,11 @@ html .dgli .noposter:not(#_):not(#_) span{font-size:9px;letter-spacing:0}
 .btns button:hover::after{bottom:-4px}
 .btns button:active::after{bottom:-2px}
 .btns button.picked::after{bottom:-3px}
+
+/* ---- 一覧の見出しの下の 1 文と、空のときの案内（担当: 一覧の見出し。起案者の指示 2026-10-18）
+   .hsub は見出しのすぐ下に見せる 1 文（p.lede は ⓘ の説明に移るので別の名前にする。お気に入り・開幕リマインド）。
+   .eguide は興味あり・購入済の公演が 0 件のときの案内。作りはおすすめのワンポイント（.card.tips）のまま使う */
+.hsub{color:var(--ink2);margin:0 0 18px;font-size:14px;line-height:1.75;max-width:70em}
+.card.tips.eguide{margin:8px 0 20px}
+.card.tips.eguide .tip-h b{font-size:15.5px}
+@media(max-width:560px){.card.tips.eguide .tip-h b{font-size:14.5px}}

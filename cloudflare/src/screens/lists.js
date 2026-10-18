@@ -555,14 +555,15 @@ export async function interestScreen(params, ctx) {
     // 0 件のときは、おすすめの初めてのワンポイントと同じ形の、絵の付いた案内（起案者の指示 2026-10-18 の文面）
     : emptyGuide('interest', '「興味あり」の公演はまだありません', '<p>「<a href="/recommend?t=__TAGURI_TOKEN__">おすすめ</a>」または「<a href="/recommend/reminder?t=__TAGURI_TOKEN__">開幕リマインド</a>」、'
       + '「<a href="/search?t=__TAGURI_TOKEN__">探す</a>」で「興味あり」と回答してください。</p>');
-  // 見出しは「「興味あり」の公演」（起案者の指示 2026-10-18。以前は「追いかけている N 件」）
+  // 見出しは「「興味あり」の公演」（起案者の指示 2026-10-18。以前は「追いかけている N 件」）。
+  // 0 件のときは月のタブと「0 件すべてを表示しています」を出さず、案内だけにする
   const body = `<h1>「興味あり」の公演</h1>
 <p class="lede">「興味あり」を押した公演を並べています。順位は付けていません。並べ替えは下の「並べ替え」で選べます。チケットが取れたら「すでに持っている」を押してください。購入済み公演に移り、上演日を過ぎると評価待ちに並びます。<br>
 「なぜ気になったか」に書いた名前は、<a href="/recommend/favourites?t=__TAGURI_TOKEN__">お気に入り</a>に加える候補として並びます。</p>
 ${rows.length ? sortForm('/recommend/interest', sort, keys) : ''}
-${mfil}
+${rows.length ? mfil : ''}
 ${list}
-${mfoot}`;
+${rows.length ? mfoot : ''}`;
   return {title: '興味あり', body_html: body};
 }
 
@@ -802,9 +803,9 @@ export async function favouritesScreen(params, ctx) {
   // 件数の 1 行は、おすすめと同じく枠に入れず、表示の絞り込みの下に地の文で（起案者の指示 2026-10-18「他ページにも反映して」）
   const rcount = allFavs.length ? `<p class="rcount"><b>${prefs.length ? E(where) : '全国'}</b>／全 ${allFavs.length} 件中 ${favs.length} 件を表示中</p>` : '';
   // 見出しは「お気に入り」だけにし、下に何をする画面かを 1 文で（起案者の指示 2026-10-18 の文面）。
-  // 「並べ替え」は年月で絞り込むタブより下に置く（同じ指示）
+  // 「並べ替え」は年月で絞り込むタブより下に置く（同じ指示）。1 文は見出しの下に見えるよう、ⓘ に移る p.lede ではなく p.hsub
   const body = `<h1>お気に入り</h1>
-<p class="lede">おすすめにかかわらず新着情報を知りたい題材や作り手がいるときは、お気に入りに追加することで情報の追跡ができます。</p>
+<p class="hsub">おすすめにかかわらず新着情報を知りたい題材や作り手がいるときは、お気に入りに追加することで情報の追跡ができます。</p>
 ${tools}
 ${rcount}
 ${mfil}

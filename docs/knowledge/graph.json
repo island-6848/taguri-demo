@@ -1468,6 +1468,26 @@
    "verifies": []
   },
   {
+   "id": "dec-list-headings-2026-10-18",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "一覧の画面（お気に入り・興味あり・購入済の公演・開幕リマインド・おすすめ）の見出しと説明を短くし、空のときは絵の付いた案内にし、開幕リマインドの「直近の観劇予定」の枠を外す",
+   "sources": [
+    "cloudflare/src/screens/lists.js",
+    "cloudflare/src/screens/guide.js",
+    "cloudflare/src/screens/reminder.js",
+    "cloudflare/src/screens/recommend.js",
+    "tools/taguri/digest.py",
+    "web/theme.css",
+    "web/app.js",
+    "cloudflare/test/lists-screen.test.js",
+    "cloudflare/test/reminder.test.js",
+    "cloudflare/test/e2e-walk.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-list-sort",
    "type": "decision",
    "status": "adopted",
@@ -8336,6 +8356,16 @@
    "from": "dec-legal-style-no-reagree",
    "rel": "raises",
    "to": "q-privacy-ical-url"
+  },
+  {
+   "from": "dec-list-headings-2026-10-18",
+   "rel": "affects",
+   "to": "dec-reco-start-tips"
+  },
+  {
+   "from": "dec-list-headings-2026-10-18",
+   "rel": "affects",
+   "to": "dec-list-sort"
   },
   {
    "from": "dec-list-sort",

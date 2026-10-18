@@ -939,7 +939,7 @@ function priceFilter(el) {
   if (!fil) {
     // 絞り込みの欄が無い画面（興味あり・購入済み公演など）でも、同じ「表示の絞り込み」の見出しの下に置く
     const h1 = el.querySelector("h1"); if (!h1) return;
-    const lede = h1.nextElementSibling && h1.nextElementSibling.matches(".lede, .pnow") ? h1.nextElementSibling : h1;
+    const lede = h1.nextElementSibling && h1.nextElementSibling.matches(".lede, .pnow, .hsub") ? h1.nextElementSibling : h1;
     const head = document.createElement("p");
     head.className = "fgh";
     head.innerHTML = ico("search", 15) + "<b>表示の絞り込み</b><span>並んでいる公演のうち、見る分だけに絞ります</span>";

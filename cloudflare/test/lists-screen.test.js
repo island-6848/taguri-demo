@@ -22,7 +22,7 @@ test('a new account has empty lists', async () => {
     // 見出し・説明・空のときの案内は起案者の指示 2026-10-18 の仕様変更（件数は見出しに入れない。空のときは絵の付いた案内）
     assert.match((await screen(env, a, 'interest')).body_html, /<h1>「興味あり」の公演<\/h1>[\s\S]*<section class="card tips eguide">[\s\S]*<a href="\/recommend\?t=__TAGURI_TOKEN__">おすすめ<\/a>」または「<a href="\/recommend\/reminder\?t=__TAGURI_TOKEN__">開幕リマインド<\/a>」、「<a href="\/search\?t=__TAGURI_TOKEN__">探す<\/a>」で「興味あり」と回答してください。[\s\S]*<svg class="tip-art"/);
     const fav = (await screen(env, a, 'favourites')).body_html;
-    assert.match(fav, /<h1>お気に入り<\/h1>\n<p class="lede">おすすめにかかわらず新着情報を知りたい題材や作り手がいるときは、お気に入りに追加することで情報の追跡ができます。<\/p>/);
+    assert.match(fav, /<h1>お気に入り<\/h1>\n<p class="hsub">おすすめにかかわらず新着情報を知りたい題材や作り手がいるときは、お気に入りに追加することで情報の追跡ができます。<\/p>/);
     assert.match(fav, /<summary>[^]*要素を登録 <b>0件<\/b>/);
     assert.match(fav, /<p class="lead">表記ゆれ（漢字とカタカナ、送り仮名の違いなど）は、自動では見分けられない場合があります。<\/p>/);
     assert.doesNotMatch(fav, /観た記録に無い名前も登録できます|件を表示中/);
@@ -146,7 +146,7 @@ test('開幕リマインド: every stage opening this week, with a prefecture fi
     const html = (await screen(env, a, 'reminder')).body_html;
     // 見出し・前置きの 1 文・件数の 1 行の位置（週のタブの下）、「直近の観劇予定」の枠を外したことは
     // 起案者の指示 2026-10-18 の仕様変更
-    assert.match(html, /<h1>開幕リマインド<\/h1>\n<p class="lede">開幕リマインドでは、おすすめやお気に入りにかかわらず、今週・来週開幕予定の公演を全件掲載しています。<\/p>/);
+    assert.match(html, /<h1>開幕リマインド<\/h1>\n<p class="hsub">開幕リマインドでは、おすすめやお気に入りにかかわらず、今週・来週開幕予定の公演を全件掲載しています。<\/p>/);
     assert.match(html, /<nav class="idx" aria-label="週で切り替える">[\s\S]*<\/nav>\n<p class="rcount"><b>全国<\/b>／今週開幕する公演 0 件を表示中<\/p>\n<section class="dgcard dgmain">/);
     assert.doesNotMatch(html, /直近の観劇予定|見逃していませんか|好みに関係なく/);
     assert.match(html, /今週<span class="mn">0<\/span>/);

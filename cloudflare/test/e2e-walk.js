@@ -228,7 +228,7 @@ async function walkA(A) {
     await page.click('#recovery-done');
     await page.waitForURL(BASE + '/');
     await settle();
-    check(/今週のおすすめ/.test(await content()), '登録後におすすめの画面が出ない');
+    check(/今週のあなたへのおすすめ/.test(await content()), '登録後におすすめの画面が出ない');   // 見出しは 2026-10-18 から「今週のあなたへのおすすめ…」
   });
   A.code = code;
   A.uid = sql('SELECT id FROM users')[0]?.id;
