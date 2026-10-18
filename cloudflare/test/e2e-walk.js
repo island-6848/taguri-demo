@@ -702,6 +702,27 @@ async function walkA(A) {
     await hideTour(false);
   });
 
+  // 候補から消す ✕（起案者の指示 2026-10-18「今ヘルプマークがあるとこには取り消しの✕をつけて…候補から消したい」）。
+  // ハッシュタグの公演の一覧（/recommend/tag）の 106（ほかの段では使わない）で押すと、/api/react に value 'dismiss'（from: search）が行き、
+  // カードが「候補から消しました」の 1 行になり、D1 には interest=3 が残る（screens/recommend.js reactAction）。
+  // おすすめの画面はこの時点で 101 の 1 枚だけで、ほかの段が使うので、ここでは押さない
+  await step('候補から消す ✕（ハッシュタグの一覧で押すと消え、D1 に dismiss が残る）', async () => {
+    await go('/recommend/tag?w=' + encodeURIComponent('家族'));
+    const card = page.locator('#content article.ticket[data-stage="106"]').first();
+    await card.waitFor({timeout: 10000});
+    const sent = page.waitForRequest(r => r.url().endsWith('/api/react') && r.method() === 'POST' && /"value":"dismiss"/.test(r.postData() || ''), {timeout: 10000});
+    await card.locator(':scope > .dismissq .dismissq-open').click();
+    const body = JSON.parse((await sent).postData());
+    check(body.stage_id === '106' && body.value === 'dismiss' && body.from === 'search', '送った中身: ' + JSON.stringify(body));
+    await page.locator('#content .dismissed').waitFor({timeout: 10000});
+    check(/候補から消しました/.test(await page.locator('#content .dismissed').innerText()), '「候補から消しました」が出ない');
+    check(await page.locator('#content article.ticket[data-stage="106"]').count() === 0, '消したカードが残る');
+    const r = sql("SELECT interest FROM reaction WHERE stage_id='106'");
+    check(r[0]?.interest === 3, 'D1 に dismiss（interest=3）が無い: ' + JSON.stringify(r));
+    await page.screenshot({path: join(OUT, 'dismiss-tag.png'), fullPage: true}).catch(() => {});
+    note('D1: ' + JSON.stringify(r));
+  });
+
   await step('今週のおすすめ: 興味なし → 押し直して興味あり', async () => {
     await go('/');
     const card = page.locator('.ticket.recommend[data-stage="101"]');
@@ -728,34 +749,6 @@ async function walkA(A) {
     await hide(false);
     await go('/');
     check(await page.locator('.ticket.recommend[data-stage="101"]').count() === 0, '答えた公演がおすすめに残る');
-  });
-
-  // 候補から消す ✕（起案者の指示 2026-10-18「今ヘルプマークがあるとこには取り消しの✕をつけて…候補から消したい」）。
-  // 購入済の公演のカードには出さない。おすすめのカードで押すと /api/react に value 'dismiss' が行き、カードが「候補から消しました」の
-  // 1 行になって、開き直しても出てこない。受けて保存するのはサーバー側（screens/recommend.js reactAction）
-  await step('候補から消す ✕（購入済の公演には無い・おすすめで押すと消え、開き直しても出ない）', async () => {
-    await go('/tickets');
-    const owned = await page.locator('#content article.ticket').count();
-    check(await page.locator('#content .dismissq').count() === 0, '購入済の公演のカードに ✕ がある');
-    await go('/');
-    await page.locator('#content article.ticket.recommend').first().waitFor({timeout: 10000});
-    // おすすめの一覧の、ほかの段で使わない公演のいちばん下の 1 枚（「出てこない公演を探す」の結果は除く）。設定で場所を絞る段より前に置く
-    // （絞ったあとはおすすめが 0 件になる）
-    const sid = await page.evaluate(used => [...document.querySelectorAll('#content article.ticket.recommend')].filter(a => !a.closest('.rfind'))
-      .filter(a => ![a.dataset.stage, ...(a.dataset.tours || '').split(',')].some(x => used.includes(x))).pop()?.dataset.stage, ['101', '102', '103', '104', '106', '107']);
-    check(!!sid, 'ほかの段で使わないおすすめのカードが無い');
-    const last = page.locator(`#content article.ticket.recommend[data-stage="${sid}"]`).first();
-    const sent = page.waitForRequest(r => r.url().endsWith('/api/react') && r.method() === 'POST' && /"value":"dismiss"/.test(r.postData() || ''), {timeout: 10000});
-    await last.locator(':scope > .dismissq .dismissq-open').click();
-    const body = JSON.parse((await sent).postData());
-    check(body.stage_id === sid && body.value === 'dismiss', '送った中身: ' + JSON.stringify(body));
-    await page.locator('#content .dismissed').waitFor({timeout: 10000});
-    check(/候補から消しました/.test(await page.locator('#content .dismissed').innerText()), '「候補から消しました」が出ない');
-    check(await page.locator(`#content article.ticket.recommend[data-stage="${sid}"]`).count() === 0, '消したカードが残る');
-    await page.screenshot({path: join(OUT, 'dismiss-recommend.png'), fullPage: true}).catch(() => {});
-    await go('/');
-    check(await page.locator(`#content article.ticket[data-stage="${sid}"]`).count() === 0, '開き直すと消したカードがまた出る');
-    note(`購入済のカード ${owned} 枚 / 消した公演 ${sid}`);
   });
 
   await step('お気に入り: 名前を足す・外す', async () => {
@@ -861,6 +854,8 @@ async function walkA(A) {
     await go('/tickets');
     await dump('tickets');
     check(/舞台ふたつめ/.test(await content()), '購入済み公演に出ない');
+    // 購入済の公演（持っている券）のカードには、候補から消す ✕ を出さない（起案者の指示 2026-10-18 の ✕ の範囲）
+    check(await page.locator('#content article.ticket').count() >= 1 && await page.locator('#content .dismissq').count() === 0, '購入済の公演のカードに ✕ がある');
   });
 
   await step('公演カレンダー: 行く日を 2 つ入れて、1 つを「この日時を削除」', async () => {

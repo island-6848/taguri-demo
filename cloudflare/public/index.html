@@ -25,6 +25,9 @@
     var segs = path.split("/").filter(Boolean);
     if (segs.length && TOP.indexOf(segs[0]) === -1) segs.shift();
     var name = segs.length ? segs[segs.length - 1] : "recommend";
+    // 画面名がパスの最後のセグメントと違う画面（app.js の SCREENS。/recommend/tag は tagged）。合わせないと
+    // 先に飛ばした取得が /api/screen/tag の 404 になり、コンソールにエラーが出ていた（2026-10-18 に e2e で気づいた）
+    if (name === "tag") name = "tagged";
     // **app.jsのDOMContentLoadedが渡すsearchと同じ形にする**
     // (location.search.replace(/^\?/, "")、トークンの除去なし)。
     var qs = location.search.replace(/^\?/, "");
