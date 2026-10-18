@@ -719,6 +719,18 @@
    "verifies": []
   },
   {
+   "id": "dec-calendar-import-limits",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "Google カレンダーの取り込みは、5 年前から今日までの予定を 5,000 件まで、新しい順に、カレンダーごとに公平に分けて読む。上限で落とした分は画面で知らせる。iCal の TZID は Intl.DateTimeFormat で日本時間にそろえる",
+   "sources": [
+    "cloudflare/src/client/calendar-google.js",
+    "cloudflare/src/client/import-parse.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-calendar-oauth",
    "type": "decision",
    "status": "adopted",
@@ -6472,6 +6484,11 @@
    "from": "dec-calendar-go-visible",
    "rel": "affects",
    "to": "comp-frontend"
+  },
+  {
+   "from": "dec-calendar-import-limits",
+   "rel": "affects",
+   "to": "q-review-1015"
   },
   {
    "from": "dec-calendar-oauth",
