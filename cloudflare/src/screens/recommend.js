@@ -14,7 +14,7 @@ import {scoreFromIndex, d1Access, seedsFromFavourites, gradeOf, MAX_SEED_STAGES,
 import {stageInfo} from './fallback.js';
 import {tourBlock} from './schedule.js';
 import {parseCredits} from './credits.js';
-import {chooseVariant, groupOf} from '../reco-gate.js';
+import {chooseVariant, groupOf, VARIANTS} from '../reco-gate.js';
 import {readWeights, multipliersOf, weightForm, weightAction} from './weights.js';
 import {E, ValueError} from './py.js';
 import {answerSnapshot, recordShown} from './evalrec.js';
@@ -76,6 +76,8 @@ ${THANKS_ART}
 `;
 // Groups kept per user between requests: enough to fill 15 cards in any one prefecture.
 const KEEP = 400;
+// 再生（H5）で 1 つずつ外す部品: 興味ありの配り分け・1 段広げる・並べ直し（spreadLeads）・裏の答え合わせ（chooseVariant）
+export const REPLAY_ABLATIONS = ['split', 'expand', 'spread', 'gate'];
 const VERSION = 'screen-v22';   // v22: favourite seeds weigh FAV_SEED_W (お気に入り＞興味あり); v21: credits read only where needed (CPU); v20: a production answered under another stage id stays out; v19: same title + (group / venue / a shared person) is one card; v18: one card per title+group (sameProduction); v17: no 出典 on the reasons; v16: #会場 dropped, 行けない (interest=2) as a liked seed; v15: 出さない語 also hits the kind tags; v14: #ジャンル (a genre turned off hides its stages); v13: no 原作「原作もの」 (DROPPED_KEYS); v12: no #値段 (DROPPED_AXES); v11: reasons of answered stages (answered_why); v2: the user's 効かせ方 (rank_weight) and the per-group counts; v3: 興味あり as seeds; v4: diag; v5: 興味あり split (impl-interest-split); v6: by part importance; v7: tiers + トメ; v8: two tiers only; v9: トメ joins the main roles; v10: spread leads + one-step partners
 export {PREFS} from './prefs.js';
 const KIND_LABEL = {'#形式': '形式', '#原作': '原作', '#翻訳': '', '#原作の国': '原作の国', '#会場': '劇場', '#題材': '題材', '#ジャンル': 'ジャンル'};
@@ -223,14 +225,17 @@ export async function rankedGroups(ctx) {
   const stamp = [VERSION, ver, st.ir || '', ctx.today, st.wn, st.wm, st.an, st.am, st.fn, st.mn, st.xn, st.dm, st.cv, st.km, [...off].sort().join(','),
     [...words].sort().join('\n')].join('|');
   const access = d1Access(db, ver);
-  const cached = await db.prepare('SELECT body FROM rec_cache WHERE user_id=? AND stamp=?').bind(ctx.uid, stamp).first();
+  // 部品を外した計算（ctx.ablate）は控えと印が同じなので、控えを読まず、書かない
+  const cached = ctx.ablate ? null : await db.prepare('SELECT body FROM rec_cache WHERE user_id=? AND stamp=?').bind(ctx.uid, stamp).first();
   if (cached) {
     const body = JSON.parse(cached.body);
     return {...body, titles: new Map(body.titles), cached: true};
   }
   // 「使わない」にした種類の理由（q-kind-reason-off）は、評価・興味あり・お気に入りのどこからも値を持たせない
   const rated = withoutKinds(await ratedWorks(ctx, access), off);
-  const gate = chooseVariant(rated);
+  // 部品を外した計算（手元の再生 replay_eval.py の H5 だけが ctx.ablate を渡す。本番は渡さないので動きは変わらない）
+  const ablate = ctx.ablate || {};
+  const gate = ablate.gate ? {multipliers: VARIANTS.base, aspects: true} : chooseVariant(rated);
   // 効かせ方（本人が決めた段）は、裏の答え合わせが選んだ倍率に掛け合わせる。
   // 「効かせない」（0）にした項目は、順位からも理由からも消える（scoreFromIndex は 0 の寄与を捨てる）
   const weights = await readWeights(ctx), own = multipliersOf(weights);
@@ -246,7 +251,7 @@ export async function rankedGroups(ctx) {
   // (app._rebucket): neither is ranked here.
   const {hits, declined} = await nameHits(ctx, declared, words);
   const ranked = await scoreFromIndex({...access, rated: gate.aspects ? rated : rated.map(r => ({...r, aspects: []})),
-    multipliers, today: ctx.today, seeds, skip, liked, disliked, expand: {peopleFor: access.peopleFor, exclude: castOffKeys(rated)}});
+    multipliers, today: ctx.today, seeds, skip, liked, disliked, expand: {peopleFor: access.peopleFor, exclude: castOffKeys(rated)}, ablate});
   // app._weight_counts: per group, the candidates it matches (the people and kinds that raised them).
   const wCounts = {};
   for (const c of ranked) {
@@ -265,7 +270,7 @@ export async function rankedGroups(ctx) {
     const key = c.tour || 'stage:' + c.stage_id;
     if (!byTour.has(key)) byTour.set(key, {stage_id: c.stage_id, tour: c.tour || '', parts: c.parts, kinds: c.kinds, b: c.b, ...(c.via ? {via: c.via} : {})});
   }
-  const groups = await sameProduction(db, ver, spreadLeads([...byTour.values()]), undefined, [...done]);
+  const groups = await sameProduction(db, ver, ablate.spread ? [...byTour.values()] : spreadLeads([...byTour.values()]), undefined, [...done]);
   const kept = groups.slice(0, KEEP);
   // Every venue of the kept productions (the index groups a tour by rec_stage.tour).
   const venues = new Map();
@@ -306,7 +311,7 @@ export async function rankedGroups(ctx) {
     ranked: ranked.length, after_answered: groups.length};
   const body = {ready: true, ver, n_rated: rated.length, n_scored: groups.length, groups: kept, weights, w_counts: wCounts, diag, answered_why: answeredWhy,
     titles: [...titles].filter(([k]) => kept.some(g => g.parts.slice(0, 4).some(p => p[1] + '\t' + p[2] === k) || g.kinds.slice(0, 2).some(p => p[1] + '\t' + p[2] === k)))};
-  await db.prepare('INSERT INTO rec_cache(user_id,stamp,body,created_at) VALUES(?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET stamp=excluded.stamp,body=excluded.body,created_at=excluded.created_at')
+  if (!ctx.ablate) await db.prepare('INSERT INTO rec_cache(user_id,stamp,body,created_at) VALUES(?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET stamp=excluded.stamp,body=excluded.body,created_at=excluded.created_at')
     .bind(ctx.uid, stamp, JSON.stringify(body), Math.floor(ctx.now / 1000)).run();
   return {...body, titles: new Map(body.titles), cached: false};
 }
