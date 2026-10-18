@@ -91,10 +91,13 @@ def backup_sql(path, later_answers, *, rated_at="2026-09-01 10:00:00"):
         db.execute("INSERT INTO reaction(user_id,label,stage_id,interest,owned,source,updated_at) VALUES('u',?,?,?,0,'reminder',?)",
                    (at[:10], sid, interest, at))
     path.write_text("\n".join(db.iterdump()) + "\n", encoding="utf-8")
+    db.close()
 
 
 class Replay(unittest.TestCase):
-    ANSWERS = [("311", 1, "2026-10-10T01:00:00Z"), ("312", 0, "2026-10-10T01:01:00Z"), ("313", 0, "2026-10-10T01:02:00Z")]
+    # 最初の答え（10/5、索引に無い公演）の日が最初の区切り。10/10 の 3 件が、その後 7 日の答え
+    ANSWERS = [("399", 0, "2026-10-05T01:00:00Z"),
+               ("311", 1, "2026-10-10T01:00:00Z"), ("312", 0, "2026-10-10T01:01:00Z"), ("313", 0, "2026-10-10T01:02:00Z")]
 
     def run_replay(self, answers, **kw):
         with tempfile.TemporaryDirectory() as tmp:
@@ -104,7 +107,7 @@ class Replay(unittest.TestCase):
             return replay_eval.replay(str(bk), idx, [])
 
     def test_one_user_is_enough_and_later_answers_do_not_leak(self):
-        # 日 t（10/9）までの記録は ◎ 俳優甲・× 俳優乙だけ。10/10 の答え（311 興味あり）は計算に入らないので、
+        # 日 t（10/5）までの記録は ◎ 俳優甲・× 俳優乙だけ。10/10 の答え（311 興味あり）は計算に入らないので、
         # 311 は候補に残って 1 位、312・313 は圏外。正例が上なので AUC 1.0
         r = self.run_replay(self.ANSWERS)
         self.assertEqual(r["origins"], 1)
@@ -114,6 +117,7 @@ class Replay(unittest.TestCase):
         self.assertAlmostEqual(main["p_sign_H1"], 0.5)
         self.assertEqual(set(main["H5"]), set(replay_eval.ABLATIONS))
         self.assertEqual(r["other"]["users"], 0)
+        self.assertEqual(r["per_origin"], [{"t": "2026-10-05", "users": 1, "answers": 3, "with_ratings": 1, "with_recommendations": 1}])
 
     def test_ratings_made_after_the_origin_are_cut(self):
         # 評価が答えより後に付いたなら、日 t には評価が無い: 何も出ず、どれも圏外で AUC 0.5

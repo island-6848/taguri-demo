@@ -9,6 +9,9 @@ sources:
   - cloudflare/scripts/replay_rank.js
   - cloudflare/src/screens/recommend.js
   - cloudflare/test/test_replay_eval.py
+  - cloudflare/scripts/replay_job.py
+  - cloudflare/test/test_replay_job.py
+  - tools/taguri/deploy/github-actions/replay.yml
   - docs/research/real-data-eval-plan.md
 links:
   - depends_on: plan-real-data-eval
@@ -40,4 +43,11 @@ links:
 - **限界。**
   - 索引は日 t のものではなく、今日作ったもの。控えに索引は無く、作業データの state 枝も履歴を持たない。そのため、日 t より後に載った公演や、あとから足された出演者も候補に入る。
   - favourites には時刻が無く、日 t より後のお気に入りも入る。
-  - まだ実データでは動かしていない（控えの復号は起案者の手元）。
+- **パソコン無しで動かす（2026-10-18 追記）。** 起案者「パソコン環境じゃなくても動かせるようにして」。
+  - 非公開の taguri-crawler の Actions に、手で動かす **Replay**（replay.yml）を置いた。スマートフォンから Run workflow で動かし、結果はその実行の Summary に出る（集計だけ）。
+  - 利用者の記録は、控えを復号する代わりに D1 から書き出す（backup_d1 と同じ表）。読む行が REPLAY_MAX_ROWS（30 万行）を越えるなら、読まずに止まる。
+  - 索引は作業データから作る。past_stage は data/past/stages.jsonl から手元で作り、D1 からは読まない。
+  - 最初の段は `free_tier.py plan --mode replay`。毎日の取得の分を取っておいて、20 分が残るときだけ動かす。
+  - 調べて分かったこと：本番の catalog.yml には「Back up the user records」の段が無い。雛形にはある。そのため、毎日の控えはまだ一度も作られていない。
+    - 起案者「お願い」（2026-10-18）で、taguri-crawler の PR #5 に控えの段を足した。あわせて restore-drill.yml も置いた。
+    - 合言葉 BACKUP_PASSPHRASE が登録されるまでは、何もしない。

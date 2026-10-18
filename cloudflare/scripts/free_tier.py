@@ -52,6 +52,8 @@ PAST_SECONDS_PER_PAGE = 1.15     # polite_http の 1.1 秒の間隔と処理
 POSTER_MAX_MINUTES = 60
 POSTER_AFTER_MINUTES = 5
 AFTER_PAST_MINUTES = 15          # 読み取りの段の時間の上限の余り（5 分）と、そのあとの D1・書き戻し
+# 推薦の再生（replay.yml、replay_job.py）を手で動かすときに取っておく分。準備と計算で 10 分ほど、多めに取る
+REPLAY_MINUTES = 20
 
 LEDGER = Path("free_tier") / "usage.json"
 
@@ -202,10 +204,10 @@ def plan(by_day: list[int] | None, mode: str) -> dict:
     """今日の Catalog を動かしてよいか、どの mode で、過去の公演を何分読むか。
     分数が読めなかったとき（by_day が None）は、過去の公演は読まず、毎日の更新だけにする。"""
     cap = CAPS["actions_minutes_31d"]
-    if by_day is None and mode == "index":
+    if by_day is None and mode in ("index", "replay"):
         # 索引だけの手動実行は急がない。分数が読めないなら動かさない（毎日の実行に任せる）
         return {"run": False, "mode": mode, "catalog_minutes": 1, "past_minutes": 0, "past_limit": 0,
-                "past_timeout": 1, "used_31d": None, "note": "Actions の分数が読めなかったので、索引だけの実行はしない"}
+                "past_timeout": 1, "used_31d": None, "note": "Actions の分数が読めなかったので、索引だけ・再生の実行はしない"}
     if by_day is None:
         return {"run": True, "mode": "daily", "catalog_minutes": 45, "past_minutes": 0, "past_limit": 0,
                 "past_timeout": 5,
@@ -215,6 +217,12 @@ def plan(by_day: list[int] | None, mode: str) -> dict:
     # 今日のこの実行の Catalog の分（週 1 なら上乗せも）は、ここで別に取っておく
     room = cap - worst - CATALOG_MINUTES["daily"]
     note = ""
+    if mode == "replay":
+        # 推薦の再生の手動実行。これからの毎日の更新と今日の分を取っておいたうえで、REPLAY_MINUTES が残るときだけ
+        ok = room >= REPLAY_MINUTES
+        return {"run": ok, "mode": mode, "catalog_minutes": 1, "past_minutes": 0, "past_limit": 0,
+                "past_timeout": 1, "used_31d": sum(by_day), "worst_31d": worst,
+                "note": "" if ok else f"Actions の分数が上限 {cap} 分に届く見込みなので、再生はしない"}
     if mode == "index":
         # 索引だけの手動実行（q-index-load-now）。取り直しも過去の公演も読まない。数分で終わるが、
         # 毎日の分（CATALOG_MINUTES["daily"]）をまるごと取っておく
@@ -288,7 +296,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("action", choices=["plan", "check"])
     ap.add_argument("--data", type=Path, default=Path(__file__).resolve().parents[2] / "data")
-    ap.add_argument("--mode", default="daily", choices=["daily", "weekly", "index"])
+    ap.add_argument("--mode", default="daily", choices=["daily", "weekly", "index", "replay"])
     ap.add_argument("--d1-usage", type=Path, help="wrangler d1 execute --json の出力（usage 表）")
     a = ap.parse_args()
     now = utc_now()

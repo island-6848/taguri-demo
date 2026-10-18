@@ -2905,6 +2905,9 @@
     "cloudflare/scripts/replay_rank.js",
     "cloudflare/src/screens/recommend.js",
     "cloudflare/test/test_replay_eval.py",
+    "cloudflare/scripts/replay_job.py",
+    "cloudflare/test/test_replay_job.py",
+    "tools/taguri/deploy/github-actions/replay.yml",
     "docs/research/real-data-eval-plan.md"
    ],
    "verifies": []
