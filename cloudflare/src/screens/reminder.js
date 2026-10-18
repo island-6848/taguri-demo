@@ -1,6 +1,6 @@
 // 開幕リマインド: digest.panel and the parts of render_recommend it uses, ported to the
 // Worker (起案者の指示 2026-10-14「残りの画面も順に移して」). reminder.test.js checks the
-// panel against digest.panel on the same candidates, answers and tickets.
+// panel against digest.panel on the same candidates and answers.
 //
 // Candidates are the stages of the current index (rec_stage: the pool the batch builds
 // from digest.all_candidates). Not ported: the prefecture map (prefmap.panel).
@@ -13,7 +13,7 @@ import {indexTabs} from './rate.js';
 import {nz, buckets} from './lists.js';
 import {prefsFor, prefForm, prefQs, regionCounts, PAGE_PREF_NOTE} from './prefs.js';
 
-export const WINDOW = 7, TICKET_MAX = 6;
+export const WINDOW = 7;
 export const WEEKS = [['this', '今週'], ['next', '来週']];
 const WEEK = '月火水木金土日';
 const KIND = {unanswered: ['未回答', 'inbox', 'und'], tracking: ['興味あり', 'flag', 'trk'],
@@ -201,19 +201,6 @@ export function weekAll(cands, status, today, prefs = [], offset = 0) {
   return {days: [...days].sort((a, b) => cmp(a[0], b[0])), n: rows.length, lo, hi};
 }
 
-/** digest.near_tickets: owned = [{stage_id, title, venue}], tickets: Map(stage_id -> [...]) */
-export function nearTickets(owned, tickets, today, cap = TICKET_MAX) {
-  const by = new Map(owned.filter(c => c.stage_id).map(c => [String(c.stage_id), c]));
-  const rows = [];
-  for (const [sid, tk] of tickets) {
-    const c = by.get(sid);
-    if (!c) continue;
-    for (const t of tk) if ((t.date || '') >= today) rows.push({title: c.title || '', venue: c.venue || '', date: t.date, time: t.time || '', confirmed: Boolean(t.confirmed)});
-  }
-  rows.sort((a, b) => cmp(a.date, b.date) || cmp(a.time, b.time));
-  return {rows: rows.slice(0, cap), n: rows.length};
-}
-
 const jd = isoDate => `${Number(isoDate.slice(5, 7))}月${Number(isoDate.slice(8, 10))}日（${WEEK[(new Date(isoDate + 'T00:00:00Z').getUTCDay() + 6) % 7]}）`;
 // 劇場名は「〇〇劇場（東京都）」の形にそろえる。開幕までの日数（「本日開幕」など）は日付の見出しで分かるので出さない
 // （起案者の指示 2026-10-18）。digest._where と同じ
@@ -238,11 +225,12 @@ function row(r, today, poster, detail, hereLabel) {
 }
 
 /** digest.panel */
-export function panel({cands, status, owned, tickets, today, prefs = [], week = 'this', poster = () => '', detail = null, hereLabel = 'このおすすめの日程', pq = ''}) {
+// 「直近の観劇予定」の枠は外した（起案者の指示 2026-10-18「下にある『直近の観劇予定』の枠は消す」）。digest.panel と同じ。
+// count は週のタブのすぐ下に置く 1 行（画面だけが渡す。digest.panel には無いので、既定は空）
+export function panel({cands, status, today, prefs = [], week = 'this', poster = () => '', detail = null, hereLabel = 'このおすすめの日程', pq = '', count = ''}) {
   week = WEEKS.some(([k]) => k === week) ? week : 'this';
   const wks = Object.fromEntries(WEEKS.map(([k], i) => [k, weekAll(cands, status, today, prefs, i)]));
   const wk = wks[week];
-  const tk = nearTickets(owned, tickets, today);
   const tabs = indexTabs(WEEKS.map(([k, lab]) => [k, lab, wks[k].n]), week, k => `/recommend/reminder?t=__TAGURI_TOKEN__&w=${k}${pq}`, '週で切り替える');
   const where = prefs.length > 0 && prefs.length <= 3 ? prefs.join('・') : prefs.length ? `${prefs[0]}ほか ${prefs.length - 1} 県` : '';
   const span = `${md(wk.lo)}〜${md(wk.hi)}`;
@@ -251,30 +239,19 @@ export function panel({cands, status, owned, tickets, today, prefs = [], week = 
     const days = wk.days.map(([day, rows]) => `<details class="dgday"${dayDiff(day, today) <= 1 ? ' open' : ''}>`
       + `<summary>${jd(day)}　${rows.length} 件</summary>`
       + `<ul class="dglist">${rows.map(r => row(r, today, poster, detail, hereLabel)).join('')}</ul></details>`).join('');
-    const lead = prefs.length ? `<b>${E(where)}</b>で観られる、${E(span)} に開幕する公演が <b>${wk.n} 件</b>あります。`
-      : `<b>${E(span)} に開幕する公演が ${wk.n} 件</b>あります。`;
-    open = `<p class="dglead">${lead}好みに関係なく全部出しています。</p>${days}`;
+    // 「〇〜〇に開幕する公演 ︰ N 件」の形（起案者の指示 2026-10-18。県で絞ったときも同じ形）
+    const lead = prefs.length ? `<b>${E(where)}</b>で ${E(span)} に開幕する公演 ︰ <b>${wk.n} 件</b>`
+      : `<b>${E(span)} に開幕する公演 ︰ ${wk.n} 件</b>`;
+    open = `<p class="dglead">${lead}</p>${days}`;
   } else if (prefs.length) {
     open = `<p class="dgempty"><b>${E(where)}</b>で ${E(span)} に開幕する公演はありません。</p>`;
   } else {
     open = `<p class="dgempty">${E(span)} に開幕する公演はありません。</p>`;
   }
-  let tkHtml;
-  if (tk.rows.length) {
-    const li = tk.rows.map(r => `<li><b class="dgt">${E(r.title)}</b><span class="dgw">${jd(r.date)}`
-      + `${r.time ? ' ' + E(r.time) : ''}${r.venue ? '・' + E(r.venue) : ''}${!r.confirmed ? '　<i class="dgun">確定前</i>' : ''}</span></li>`).join('');
-    const more = tk.n > tk.rows.length ? `<p class="dgmore">ほかに ${tk.n - tk.rows.length} 件、券を入れてあります。</p>` : '';
-    tkHtml = `<ul class="dglist">${li}</ul>${more}`;
-  } else {
-    tkHtml = '<p class="dgempty">今日より先の券はまだありません。<a href="/tickets?t=__TAGURI_TOKEN__">持っているチケット</a>に日を入れると、ここに出ます。</p>';
-  }
   const label = Object.fromEntries(WEEKS)[week];
-  return `${tabs}
+  return `${tabs}${count}
 <section class="dgcard dgmain">${h2('inbox', `${label}開幕するすべての公演`)}
-${open}</section>
-<section class="dgcard">${h2('ticket', '直近の観劇予定')}
-<p class="dglead">チケットを入れてある公演だけです。</p>
-${tkHtml}</section>`;
+${open}</section>`;
 }
 
 // ---------------------------------------------------------------- the screen (app._reminder_body)
@@ -349,8 +326,6 @@ export async function reminderScreen(params, ctx) {
   const label = Object.fromEntries(WEEKS)[week];
   // 場所の説明はどのページでも同じ（起案者の指示 2026-10-18）。以前の「今週のおすすめと同じ絞り込み」は 2026-10-17 から違う（絞り込みはページの中だけ）
   const note = PAGE_PREF_NOTE;
-  const venueOf = new Map(cands.map(c => [c.stage_id, c.venue || '']));
-  const owned = b.owned.flatMap(r => (r.sids || [r.stage_id]).map(sid => ({stage_id: sid, title: r.title, venue: venueOf.get(sid) || ''})));
   const pics = await postersOf(ctx, cands.map(c => c.stage_id));
   // What each row of this week shows when opened: the prebuilt card's parts, or (a stage
   // only in the catalogue) its credits and synopsis from there (fallback.js).
@@ -369,17 +344,19 @@ export async function reminderScreen(params, ctx) {
   const bare = shown.filter(sid => !details.has(sid));
   if (bare.length) for (const [sid, s] of await stageInfo(ctx.db, bare)) details.set(sid, detailHtml(s));
   const poster = sid => (pics.has(sid) ? posterHtml(pics.get(sid)) : NO_POSTER), detail = sid => details.get(sid) || '';
-  const html = panel({cands, status, owned, tickets: b.tickets, today: ctx.today, prefs, week, poster, detail, hereLabel: 'この行の会場', pq: prefQs(params)});
+  // 件数の 1 行は、今週・来週を選ぶタブの下に置く（起案者の指示 2026-10-18）
+  const count = `\n<p class="rcount"><b>${prefs.length ? E(prefs.length <= 3 ? prefs.join('・') : `${prefs[0]}ほか ${prefs.length - 1} 県`) : '全国'}</b>／${E(label)}開幕する公演 ${main.length} 件を表示中</p>`;
+  const html = panel({cands, status, today: ctx.today, prefs, week, poster, detail, hereLabel: 'この行の会場', pq: prefQs(params), count});
   const unknownHtml = !unknown.length ? '' : `<details class="dgday" open><summary>都道府県が分からない公演　${unknown.length} 件</summary>`
     + '<p class="dglead">会場の都道府県がまだ分からないため、場所の絞り込みに入れられない公演です。見逃さないように、ここに分けて出しています。</p>'
     + `<ul class="dglist">${unknown.map(r => row(r, ctx.today, poster, detail, 'この行の会場')).join('')}</ul></details>`;
-  const body = `<h1>開幕リマインド ── 見逃していませんか</h1>
-<p class="lede"><b>初日が近い公演を、答えたかどうかに関わらず全部出します。</b>「興味あり」も「興味なし」も押さないうちに開幕してしまうのが、いちばんの見逃しだからです。未回答の行はその場で答えられます。</p>
+  // 見出しと前置きの 1 文は起案者の指示 2026-10-18 の文面
+  const body = `<h1>開幕リマインド</h1>
+<p class="lede">開幕リマインドでは、おすすめやお気に入りにかかわらず、今週・来週開幕予定の公演を全件掲載しています。</p>
 <p class="fgh">${ico('search', 15)}<b>表示の絞り込み</b><span>初日が近い公演の中から、表示する項目を設定できます。</span></p>
 <div class="fil2 narrow">${prefForm(counts, prefs, '/recommend/reminder', note, {w: week}, regionCounts(wr.map(r => ({key: r.stage_id || r.title, prefs: [r.pref]}))))}</div>
-<p class="rcount"><b>${prefs.length ? E(prefs.length <= 3 ? prefs.join('・') : `${prefs[0]}ほか ${prefs.length - 1} 県`) : '全国'}</b>／${E(label)}開幕する公演 ${main.length} 件を表示中</p>
 ${FOLD_STYLE}
-${unknownHtml ? html.replace('</section>\n<section class="dgcard">', `${unknownHtml}</section>\n<section class="dgcard">`) : html}`;
+${unknownHtml && html.endsWith('</section>') ? html.slice(0, -'</section>'.length) + unknownHtml + '</section>' : html}`;
   return {title: '開幕リマインド', body_html: body};
 }
 

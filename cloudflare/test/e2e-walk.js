@@ -113,6 +113,16 @@ async function settle() {
 async function go(path) { await page.goto(BASE + path); await settle(); }
 const content = () => page.locator('#content').innerText();
 // 調べるための控え（画面の文と HTML）
+// 写しを PC と電話の幅で撮る（見出し・説明・空のときの案内を目で確かめるため）
+async function shotsBoth(name) {
+  await page.screenshot({path: join(OUT, `${name}-pc.png`), fullPage: true});
+  await page.setViewportSize({width: 390, height: 844});
+  await sleep(300);
+  await page.screenshot({path: join(OUT, `${name}-phone.png`), fullPage: true});
+  await page.setViewportSize({width: 1280, height: 900});
+  await sleep(200);
+}
+
 async function dump(name) {
   try { writeFileSync(join(OUT, `dump-${name}.txt`), await content()); writeFileSync(join(OUT, `dump-${name}.html`), await page.locator('#content').innerHTML()); } catch {}
 }
@@ -265,6 +275,23 @@ async function walkA(A) {
     await page.screenshot({path: join(OUT, 'recommend-start-phone.png'), fullPage: true});
     await page.setViewportSize({width: 1280, height: 900});
     await sleep(200);
+  });
+
+  // 興味あり・購入済の公演が 0 件のときは、ワンポイントと同じ形の絵の付いた案内（起案者の指示 2026-10-18）
+  await step('空の一覧: 興味あり・購入済の公演は絵の付いた案内（PC・電話の幅）', async () => {
+    await go('/recommend/interest');
+    let t = await content();
+    check(/「興味あり」の公演/.test(t) && !/追いかけている/.test(t), '興味ありの見出しが違う');
+    check(/「おすすめ」または「開幕リマインド」、「探す」で「興味あり」と回答してください。/.test(t), '興味ありの案内の文が違う');
+    check(await page.locator('section.eguide svg.tip-art').count() === 1, '興味ありの案内に絵が無い');
+    check(await page.locator('section.eguide a[href^="/recommend/reminder"]').count() === 1, '案内の「開幕リマインド」がリンクでない');
+    await shotsBoth('interest-empty');
+    await go('/tickets');
+    t = await content();
+    check(/購入済の公演/.test(t) && !/購入済み公演 ──/.test(t), '購入済の公演の見出しが違う');
+    check(/で「購入済」と回答してください。/.test(t) && /「観劇記録を追加」で購入済の公演を追加してください。/.test(t), '購入済の案内の文が違う');
+    check(await page.locator('section.eguide a[href^="/register"]').count() === 1, '案内の「観劇記録を追加」がリンクでない');
+    await shotsBoth('tickets-empty');
   });
 
   await step('観劇記録を手で 1 件足す', async () => {
@@ -573,7 +600,18 @@ async function walkA(A) {
     const t = await content();
     check(/俳優乙/.test(t) && /劇団ナシ/.test(t), '足した名前が出ない');
     check(/舞台ふたつめ/.test(t), '俳優乙の公演（舞台ふたつめ）がお気に入りに出ない');
-    check(await page.locator('details#names').getAttribute('open') !== null, '足したあと「登録した名前」が畳まれる');
+    check(await page.locator('details#names').getAttribute('open') !== null, '足したあと「要素を登録」が畳まれる');
+    // 見出し・説明・札の形・並べ替えの位置（起案者の指示 2026-10-18）
+    check(/^お気に入り$/.test((await page.locator('h1').first().innerText()).trim()), 'お気に入りの見出しが「お気に入り」だけでない');
+    check(/お気に入りに追加することで情報の追跡ができます。/.test(t) && !/観ると決めたら、公式サイトで券を買って|すべてを表示しています/.test(t), 'お気に入りの説明の文が違う');
+    check((await page.locator('details#names .tag[data-name="俳優乙"] .tgn').innerText()).trim() === '#人「俳優乙」', '札が「#人「俳優乙」」の形でない');
+    check(/要素を登録/.test(await page.locator('details#names > summary').innerText()), '箱の名前が「要素を登録」でない');
+    const below = await page.evaluate(() => {
+      const nav = document.querySelector('nav.idx[aria-label="月で切り替える"]'), f = document.querySelector('form.sortf');
+      return Boolean(nav && f && (nav.compareDocumentPosition(f) & Node.DOCUMENT_POSITION_FOLLOWING));
+    });
+    check(below, '並べ替えが月のタブより下にない');
+    await shotsBoth('favourites');
     const tag = page.locator('.tag[data-name="劇団ナシ"]');
     const reload = page.waitForEvent('load', {timeout: 15000});
     await tag.locator('button[data-fav="remove"]').click();
@@ -610,6 +648,11 @@ async function walkA(A) {
     const card = page.locator(`li.dgli[data-stage="${SOON.id}"]`);
     check(await card.locator('button[data-btns-open]').isVisible(), '「回答を直す」が無い');
     await page.screenshot({path: join(OUT, 'reminder-pc.png'), fullPage: true});
+    // 見出し・前置きの 1 文・件数の 1 行（週のタブの下）・「直近の観劇予定」の枠なし（起案者の指示 2026-10-18）
+    const rt = await content();
+    check(/開幕リマインドでは、おすすめやお気に入りにかかわらず、今週・来週開幕予定の公演を全件掲載しています。/.test(rt) && !/見逃していませんか|直近の観劇予定|好みに関係なく/.test(rt), '開幕リマインドの文が違う');
+    check(/に開幕する公演 ︰ \d+ 件/.test(rt), '「〇〜〇に開幕する公演 ︰ N 件」の形でない');
+    check(await page.evaluate(() => document.querySelector('nav.idx[aria-label="週で切り替える"]')?.nextElementSibling?.classList.contains('rcount')), '件数の 1 行が週のタブの下にない');
     check(!(await card.locator('button[data-v="interest"]').isVisible()), '押す前から三択が見えている');
     await card.locator('button[data-btns-open]').click();
     check(await card.locator('button[data-v="interest"]').isVisible(), '押しても興味ありが出ない');
@@ -667,10 +710,13 @@ async function walkA(A) {
     t = sql("SELECT date, time FROM ticket WHERE stage_id='102'");
     check(t.length === 1 && t[0].date === '2026-10-20' && t[0].time === '18:30', 'D1 に残った行く日が違う: ' + JSON.stringify(t));
     check(sql("SELECT owned FROM reaction WHERE stage_id='102'")[0]?.owned === 1, '行く日を消したら購入済みまで消えた');
+    // 開幕リマインドの「直近の観劇予定」の枠は外した（起案者の指示 2026-10-18）。残った行く日は購入済の公演の画面で確かめる
     await go('/recommend/reminder');
-    const plan = await page.locator('section.dgcard').filter({hasText: '直近の観劇予定'}).innerText();
-    note('開幕リマインドの直近の観劇予定: ' + plan.replace(/\s+/g, ' ').slice(0, 160));
-    check(/舞台ふたつめ/.test(plan) && /10\/20|10月20日/.test(plan) && !/10\/19|10月19日/.test(plan), '直近の観劇予定が残った日（10/20）だけになっていない');
+    check(!/直近の観劇予定/.test(await content()), '開幕リマインドに「直近の観劇予定」の枠が残っている');
+    await go('/tickets');
+    const plan = await page.locator('article.ticket[data-stage="102"] .mytix').first().innerText();
+    note('購入済の公演の行く日: ' + plan.replace(/\s+/g, ' ').slice(0, 160));
+    check(/10\/20|10月20日/.test(plan) && !/10\/19|10月19日/.test(plan), '購入済の公演の行く日が残った日（10/20）だけになっていない');
   });
 
   await step('観察: 行く日が過ぎた券（昨日）は評価待ちになるか', async () => {
@@ -957,7 +1003,7 @@ async function walkB(A, B) {
       const t = await content();
       for (const w of ['手で足した芝居', '最初に書いた感想', '冬の物語', '俳優乙', '近く開く芝居', '舞台ふたつめ'])
         if (t.includes(w) && !(p.startsWith('/search') || p === '/recommend/reminder') ) leaks.push(`${p}: ${w}`);
-      if (p === '/recommend/reminder' && /舞台ふたつめ/.test(await page.locator('section.dgcard').filter({hasText: '直近の観劇予定'}).innerText())) leaks.push('reminder: A の行く日');
+      // 開幕リマインドの「直近の観劇予定」（A の行く日が出うる枠）は 2026-10-18 に外した。行く日は /tickets で見ている
       if (p.startsWith('/search') && await page.locator('.pastrow .past-done, [data-past=missed][disabled]').count()) leaks.push('search: A の「観た」');
     }
     check(!leaks.length, '見えた: ' + leaks.join(' / '));

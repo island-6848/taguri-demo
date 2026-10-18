@@ -89,7 +89,6 @@ import render_recommend as RR                                         # noqa: E4
 E = lambda s: html.escape(str(s))                                    # noqa: E731
 
 OPEN_WINDOW_DAYS = 7   # 今日を含めて何日先までを対象にするか
-TICKET_MAX = 6         # 直近予定（券だけ）に出す上限（あふれた分は件数で書く）
 
 WEEK = "月火水木金土日"
 
@@ -388,30 +387,6 @@ def week_all(d: dict, today: datetime.date, window: int = OPEN_WINDOW_DAYS,
            "lo": lo, "hi": hi}
 
 
-def near_tickets(owned: list[dict], tickets: dict, today: datetime.date,
-                  cap: int = TICKET_MAX) -> dict:
-    """「すでに持っている」公演のうち、今日以降の券だけを日付順に。
-
-    **確定前（メールから読み取ったが本人がまだ確かめていない）の券も出すが、印を付ける。**
-    隠すと「券を入れたのに、ここに出ない」という別の分からなさを生む
-    （`stage_calendar.py` と同じ判断）。
-    """
-    by_title = {str(c.get("stage_id") or ""): c for c in owned if c.get("stage_id")}
-    rows = []
-    for sid, tk in tickets.items():
-        c = by_title.get(sid)
-        if not c:
-            continue                            # 券はあるが、束からは外れた公演
-        for t in tk:
-            if (t.get("date") or "") < today.isoformat():
-                continue
-            rows.append({"title": c.get("title") or "", "venue": c.get("venue") or "",
-                        "date": t["date"], "time": t.get("time") or "",
-                        "confirmed": bool(t.get("confirmed"))})
-    rows.sort(key=lambda r: (r["date"], r["time"]))
-    return {"rows": rows[:cap], "n": len(rows)}
-
-
 # **同梱した `app._poster` を差し込む。** 何も差し込まれていなければポスターは出さない
 # （枠だけ置かない、既存の約束と同じ）。
 POSTER = None
@@ -457,15 +432,12 @@ def _week_span(wk: dict) -> str:
     return f"{lo.month}/{lo.day}〜{hi.month}/{hi.day}"
 
 
-def panel(d: dict, today: datetime.date, tickets: dict | None = None, prefs=(),
-         week: str = "this") -> str:
+def panel(d: dict, today: datetime.date, prefs=(), week: str = "this") -> str:
     """帯そのもの。**空でも「無い」と言い切る**（読み手が「まだ読んでいないだけ」と
     勘違いしないようにする）。
 
-    **都道府県の絞り込みは「開幕する公演（全部）」にだけ効かせる。**
-    「直近の観劇予定」は券を入れてある＝すでに決めた公演の一覧で、`app.py` の設定画面が
-    「もう決めた予定は都道府県で隠さない」と決めたのと同じ理由で、ここも絞り込まない
-    （選んだ県の外に行く予定を、絞り込みのせいで見落としては本末転倒である）。
+    **「直近の観劇予定」（券を入れてある公演）の枠は外した**（起案者の指示・2026-10-18
+    ──「下にある『直近の観劇予定』の枠は消す」）。券は購入済みの公演の画面で見る。
 
     **今週に加えて来週も見られる**（起案者の指示・2026-08-26 ──「今週のページに加えて
     来週開催公演も追加して。タブで切り替えられるように」）。**タブは既存の索引の耳
@@ -478,7 +450,6 @@ def panel(d: dict, today: datetime.date, tickets: dict | None = None, prefs=(),
     week = week if week in keys else "this"
     wks = {k: week_all(d, today, prefs=prefs, offset=i) for i, k in enumerate(keys)}
     wk = wks[week]
-    tk = near_tickets(d.get("owned") or [], tickets or {}, today)
 
     tabs = RR.index_tabs(
         [(k, lab, wks[k]["n"]) for k, lab in WEEKS], week,
@@ -499,11 +470,12 @@ def panel(d: dict, today: datetime.date, tickets: dict | None = None, prefs=(),
             f'<summary>{_jd(day)}　{len(rows)} 件</summary>'
             f'<ul class="dglist">{"".join(_row(r, today) for r in rows)}</ul></details>'
             for day, rows in wk["days"])
-        lead = (f'<b>{E(where)}</b>で観られる、{E(span)} に開幕する公演が '
-                f'<b>{wk["n"]} 件</b>あります。' if prefs else
-                f'<b>{E(span)} に開幕する公演が {wk["n"]} 件</b>あります。')
-        open_html = (f'<p class="dglead">{lead}好みに関係なく全部出しています。</p>'
-                    f'{days_html}')
+        # 件数の 1 行は「〇〜〇に開幕する公演 ︰ N 件」の形（起案者の指示・2026-10-18。
+        # 「好みに関係なく全部出しています」は見出しの下の 1 文が言うので外した）
+        lead = (f'<b>{E(where)}</b>で {E(span)} に開幕する公演 ︰ '
+                f'<b>{wk["n"]} 件</b>' if prefs else
+                f'<b>{E(span)} に開幕する公演 ︰ {wk["n"]} 件</b>')
+        open_html = f'<p class="dglead">{lead}</p>{days_html}'
     elif prefs:
         open_html = (f'<p class="dgempty"><b>{E(where)}</b>で {E(span)} に'
                      f'開幕する公演はありません。</p>')
@@ -511,28 +483,9 @@ def panel(d: dict, today: datetime.date, tickets: dict | None = None, prefs=(),
         open_html = (f'<p class="dgempty">{E(span)} に開幕する公演は'
                      f'ありません。</p>')
 
-    if tk["rows"]:
-        li2 = "".join(
-            f'<li><b class="dgt">{E(r["title"])}</b>'
-            f'<span class="dgw">{_jd(datetime.date.fromisoformat(r["date"]))}'
-            f'{" " + E(r["time"]) if r["time"] else ""}'
-            f'{"・" + E(r["venue"]) if r["venue"] else ""}'
-            f'{"　<i class=\"dgun\">確定前</i>" if not r["confirmed"] else ""}</span></li>'
-            for r in tk["rows"])
-        more2 = (f'<p class="dgmore">ほかに {tk["n"] - len(tk["rows"])} 件、'
-                 f'券を入れてあります。</p>' if tk["n"] > len(tk["rows"]) else "")
-        tk_html = f'<ul class="dglist">{li2}</ul>{more2}'
-    else:
-        tk_html = ('<p class="dgempty">今日より先の券はまだありません。'
-                    '<a href="/tickets?t=__TAGURI_TOKEN__">持っているチケット</a>'
-                    'に日を入れると、ここに出ます。</p>')
-
     return f"""{tabs}
 <section class="dgcard dgmain">{IC.h2("inbox", f"{dict(WEEKS)[week]}開幕するすべての公演")}
-{open_html}</section>
-<section class="dgcard">{IC.h2("ticket", "直近の観劇予定")}
-<p class="dglead">チケットを入れてある公演だけです。</p>
-{tk_html}</section>"""
+{open_html}</section>"""
 
 
 STYLE = """

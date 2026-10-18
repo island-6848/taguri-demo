@@ -144,8 +144,11 @@ test('開幕リマインド: every stage opening this week, with a prefecture fi
   try {
     env.CLOCK = {today: '2026-10-20', now: Date.parse('2026-10-20T03:00:00Z')};
     const html = (await screen(env, a, 'reminder')).body_html;
-    assert.match(html, /<h1>開幕リマインド ── 見逃していませんか<\/h1>/);
-    assert.match(html, /<nav class="idx" aria-label="週で切り替える">/);
+    // 見出し・前置きの 1 文・件数の 1 行の位置（週のタブの下）、「直近の観劇予定」の枠を外したことは
+    // 起案者の指示 2026-10-18 の仕様変更
+    assert.match(html, /<h1>開幕リマインド<\/h1>\n<p class="lede">開幕リマインドでは、おすすめやお気に入りにかかわらず、今週・来週開幕予定の公演を全件掲載しています。<\/p>/);
+    assert.match(html, /<nav class="idx" aria-label="週で切り替える">[\s\S]*<\/nav>\n<p class="rcount"><b>全国<\/b>／今週開幕する公演 0 件を表示中<\/p>\n<section class="dgcard dgmain">/);
+    assert.doesNotMatch(html, /直近の観劇予定|見逃していませんか|好みに関係なく/);
     assert.match(html, /今週<span class="mn">0<\/span>/);
     assert.match(html, /来週<span class="mn">1<\/span>/);
     const next = (await screen(env, a, 'reminder', '?w=next')).body_html;
@@ -365,7 +368,8 @@ test('公演カレンダー shows an owned stage that only the catalogue has', a
     assert.match(tokyo, /都道府県が分からない公演が 1 件あり、場所で絞ると表示できません/);
     // 開幕リマインド keeps them, below the chosen prefecture's list (it is there so nothing opens unnoticed).
     const rem = (await screen(env, a, 'reminder', '?f=1&pref=' + encodeURIComponent('東京都'))).body_html;
-    assert.match(rem, /<summary>都道府県が分からない公演　1 件<\/summary>[\s\S]*一覧だけの舞台[\s\S]*<\/section>\n<section class="dgcard">/);
+    // 「直近の観劇予定」の枠を外したので（起案者の指示 2026-10-18）、開幕する公演の枠の最後に入る
+    assert.match(rem, /<summary>都道府県が分からない公演　1 件<\/summary>[\s\S]*一覧だけの舞台[\s\S]*<\/details><\/section>\n*$/);
   } finally { sqlite.close(); }
 });
 
@@ -384,7 +388,7 @@ test('a catalogue stage takes its prefecture from venue_pref', async () => {
     assert.match(cal, /劇場の分かる舞台/);
     assert.doesNotMatch(cal, /都道府県が分からない公演/);
     const rem = (await screen(env, a, 'reminder', '?f=1&pref=' + encodeURIComponent('大阪府'))).body_html;
-    assert.match(rem, /<b>大阪府<\/b>で観られる、[^<]*に開幕する公演が <b>1 件<\/b>/);
+    assert.match(rem, /<b>大阪府<\/b>で [^<]*に開幕する公演 ︰ <b>1 件<\/b>/);   // 文の形は起案者の指示 2026-10-18
     assert.doesNotMatch(rem, /都道府県が分からない公演/);
   } finally { sqlite.close(); }
 });
