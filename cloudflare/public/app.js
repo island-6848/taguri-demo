@@ -447,6 +447,15 @@ function openFixPopup(t) {
   document.body.appendChild(pop);
   pop.querySelector(".fixq-msg").focus();
 }
+// カードの「ほか n 会場」: 押すと、ほかの会場の一覧を開く・閉じる（起案者の指示 2026-10-18）
+document.addEventListener("click", ev => {
+  const b = ev.target.closest && ev.target.closest(".mvmore");
+  if (!b) return;
+  const ul = b.closest(".meta")?.querySelector(".mvlist");
+  if (!ul) return;
+  ul.hidden = !ul.hidden;
+  b.setAttribute("aria-expanded", String(!ul.hidden));
+});
 // あらすじの続きを開いたあと「折りたたむ」で閉じる（起案者の指示 2026-10-18）
 document.addEventListener("click", ev => {
   const b = ev.target.closest && ev.target.closest(".lsynfold");
@@ -1200,6 +1209,15 @@ function compactRows(root) {
   });
 }
 
+// 料金の箇条書き（起案者の指示 2026-10-18「料金の書き方を統一。箇条書きにする」）。rows: [[券種, 金額] | [文]]。
+// お金の絵記号は頭に 1 つ（icon=false で、その幅だけあけてそろえる）。cloudflare/src/screens/schedule.js priceList と同じ形
+function priceListHtml(rows, tail = "", icon = true) {
+  const cell = r => r.length > 1 ? '<span class="lp-k">' + E(r[0]) + '</span><span class="lp-v">' + E(r[1]) + "</span>"
+    : '<span class="lp-v lp-all">' + E(r[0]) + "</span>";
+  return '<div class="pblock"><span class="lp-ico">' + (icon ? ico("yen", 13) : "") + '</span><ul class="plist">'
+    + rows.map((r, i) => '<li class="lp-row">' + cell(r) + (i === 0 ? tail : "") + "</li>").join("") + "</ul></div>";
+}
+
 function compactTickets(root) {
   // おすすめの画面の一覧のカードには「くわしく」の折りたたみを付けない（起案者の指示 2026-10-17「おすすめページには
   // 『くわしく』の折りたたみなくして」）。閉じた 1 枚に出す分（日程・出演 5 人・あらすじの 1 文・料金・公式サイト）だけにする
@@ -1246,9 +1264,31 @@ function compactTickets(root) {
       const venue = v.textContent.trim();
       const stops = t.querySelectorAll(".tourfull .tf-row").length;
       // 団体の前に人の絵記号、会場の前に建物の絵記号（起案者の指示 2026-10-14）
+      // 「ほか n 会場」は押すと、ほかの会場（会場と日付）がその下に開く（起案者の指示 2026-10-18「劇場で『ほかN会場』と
+      // 表記されているとき、押したら他の会場も展開して表示されるようにしてほしい」）
       meta.innerHTML = (grp ? '<span class="mg">' + ico("user", 13) + "<span>" + E(grp) + "</span></span>" : "")
         + (venue ? '<span class="mv">' + ico("building", 13) + "<span>" + E(venue)
-          + (stops > 1 ? '<span class="mt">ほか ' + (stops - 1) + " 会場</span>" : "") + "</span></span>" : "");
+          + (stops > 1 ? '<button type="button" class="mt mvmore" aria-expanded="false">ほか ' + (stops - 1) + " 会場</button>" : "") + "</span></span>" : "");
+      if (stops > 1) {
+        const key = x => x.normalize("NFKC").replace(/\s+/g, "");
+        // 本文の会場の行: 同じ名前の最初の 1 つ。名前で見つからない（カードに劇場名が無い）ときは、開いてある行（このカードの会場。
+        // 県で絞っていて ★ の行があるときは決められないので除かない）
+        const rows = [...t.querySelectorAll(".tourfull .tf-row")];
+        const byName = rows.find(row => key((row.querySelector(".tf-loc")?.textContent || "").trim()) === key(venue));
+        const me = byName || (t.querySelector(".tourfull .tf-star") ? null : rows.find(row => row.matches("details[open]")));
+        const items = rows.map(row => {
+          const loc = (row.querySelector(".tf-loc")?.textContent || "").trim();
+          const w = row.querySelector(".tf-when")?.cloneNode(true);
+          if (w) w.querySelectorAll(".tf-dot, .tf-star, .tf-cnt").forEach(n => n.remove());
+          if (row === me) return "";
+          return '<li><span class="mvw">' + E((w?.textContent || "").trim()) + '</span><span class="mvl">' + E(loc) + "</span></li>";
+        }).filter(Boolean);
+        const ul = document.createElement("ul");
+        ul.className = "mvlist";
+        ul.hidden = true;
+        ul.innerHTML = items.join("");
+        meta.querySelector(".mv")?.after(ul);
+      }
     }
     const sale = main.querySelector(".sale");
     // 料金の欄の文も、両端が同じ額の幅は 1 つの額に（くわしくの中・購入済みなどの画面。起案者の指示 2026-10-18）
@@ -1260,17 +1300,14 @@ function compactTickets(root) {
     let priced = false;
     if (noMore && !t.dataset.tourprice) {
       const rows = priceRowsOf(main.querySelector(".when .price")?.textContent || "");
-      const cell = r => r.length > 1 ? '<span class="lp-k">' + E(r[0]) + '</span><span class="lp-v">' + E(r[1]) + "</span>"
-        : '<span class="lp-v lp-all">' + E(r[0]) + "</span>";
-      // 金額にはお金の絵記号を付ける（起案者の指示 2026-10-17）。1 行目の頭に 1 つ、続きの行はその幅だけ下げてそろえる
-      const yen = '<span class="lp-ico">' + ico("yen", 13) + "</span>";
-      const list = (rs, first = true) => rs.map((r, i) => '<div class="lp-row">' + (first && i === 0 ? yen : '<span class="lp-ico"></span>') + cell(r) + "</div>").join("");
+      // 料金は、どこでも同じ箇条書きの形（お金の絵記号を頭に 1 つ、券種と金額を 1 行ずつ）にする（起案者の指示 2026-10-18
+      // 「料金の書き方を統一。箇条書きにする。できれば各行が改行されないように」。schedule.js priceList と同じ形）
       const box = document.createElement(rows.length > 2 ? "details" : "div");
       box.className = "lprice";
       // 1 行目の金額のすぐ横に「▼詳細」。開いた残りは一段右へ。料金を読めない公演は「不明」（起案者の指示 2026-10-17）
-      box.innerHTML = !rows.length ? '<div class="lp-row">' + yen + '<span class="lp-k">料金</span><span class="lp-v">不明</span></div>'
-        : rows.length > 2 ? '<summary><div class="lp-row">' + yen + cell(rows[0]) + '<span class="lp-more">詳細</span></div></summary><div class="lp-body">' + list(rows.slice(1), false) + "</div>"
-        : list(rows);
+      box.innerHTML = !rows.length ? priceListHtml([["料金", "不明"]])
+        : rows.length > 2 ? "<summary>" + priceListHtml(rows.slice(0, 1), '<span class="lp-more">詳細</span>') + '</summary><div class="lp-body">' + priceListHtml(rows.slice(1), "", false) + "</div>"
+        : priceListHtml(rows);
       (sale || main.querySelector(".when") || main.querySelector(".meta")).after(box);
       priced = box;
     }
@@ -1283,7 +1320,7 @@ function compactTickets(root) {
       // 札ごとポスターの下の列に落ちていた）。金額にはお金の絵記号（起案者の指示 2026-10-17）
       const pr = document.createElement("div");
       pr.className = "lprice lyen";
-      pr.innerHTML = '<div class="lp-row"><span class="lp-ico">' + ico("yen", 13) + '</span><span class="lp-v lp-all">' + E(yenLabel(yen)) + "</span></div>";
+      pr.innerHTML = priceListHtml([[yenLabel(yen)]]);
       sale.before(pr);
       priced = pr;
     }

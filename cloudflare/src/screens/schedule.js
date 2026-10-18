@@ -236,9 +236,14 @@ export function priceRows(text, {dropRange = false} = {}) {
 // お金の絵記号（web/app.js の ICON_P.yen と同じ形）。金額の頭に付ける（起案者の指示 2026-10-17）
 export const YEN_ICON = '<svg class="ico" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
   + '<path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM8.6 7.4 12 12l3.4-4.6M12 12v5.2M9.2 12.6h5.6M9.2 15.2h5.6"/></svg>';
-export function priceTable(rows) {
+/**
+ * 料金の箇条書き（起案者の指示 2026-10-18「料金の書き方を統一。箇条書きにする。できれば各行が改行されないように」）:
+ * お金の絵記号を頭に 1 つ、券種と金額を 1 行ずつ。カードの料金の明細（web/app.js priceListHtml）と同じ形。前は表（.ptb）だった
+ */
+export function priceList(rows) {
   if (!rows.length) return '';
-  return `<span class="lp-ico">${YEN_ICON}</span><table class="ptb">${rows.map(r => (r.length > 1 ? `<tr><th>${E(r[0])}</th><td>${E(r[1])}</td></tr>` : `<tr><td colspan="2">${E(r[0])}</td></tr>`)).join('')}</table>`;
+  const cell = r => (r.length > 1 ? `<span class="lp-k">${E(r[0])}</span><span class="lp-v">${E(r[1])}</span>` : `<span class="lp-v lp-all">${E(r[0])}</span>`);
+  return `<div class="pblock"><span class="lp-ico">${YEN_ICON}</span><ul class="plist">${rows.map(r => `<li class="lp-row">${cell(r)}</li>`).join('')}</ul></div>`;
 }
 
 /**
@@ -264,21 +269,24 @@ export function tourBlock(venues, shown, today, prefs = []) {
     const isHere = tour && prefs.length > 0 && prefs.includes(v.pref);
     const shownRow = vs.length === 1 || (prefs.length ? isHere : String(v.stage_id) === String(shown));   // 暦を開いておく行
     const n = [...perf.values()].reduce((a, ps) => a + ps.length, 0);
-    const price = perVenuePrice ? (priceTable(priceOf(v)) || `<p class="lp-none"><span class="lp-ico">${YEN_ICON}</span>料金 不明</p>`) : '';
+    const price = perVenuePrice ? (priceList(priceOf(v)) || priceList([['料金', '不明']])) : '';
     // 会場の名前はツアーのときだけ（1 か所なら上の劇場の行と同じなので出さない。起案者の指示 2026-10-17）
     // 公演の回数は、開く前の日程の横に「（N 回）」（起案者の指示 2026-10-18。開いた中の「公演日時（N 回）」の見出しはやめた）
     // いま上演中の会場（初日から千穐楽までに今日が入る）は「・」を「●」に（起案者の指示 2026-10-18）。絞り込んだ県の会場は「★」のまま
     const live = v.start <= today && today <= end;
+    // 行頭の印は「・」の字ではなく、テーマの色の小さな菱形（theme.css）。上演中の会場は「●」をやめて「→」に
+    // （起案者の指示 2026-10-18「日程の箇条書きの『・』が味気ないので少しデザイン的に…『●』→『→』にして」）
     const mark = isHere ? '<span class="tf-star" title="絞り込んだ都道府県の会場">★</span>'
-      : live ? '<span class="tf-dot live" title="いま上演中">●</span>' : '<span class="tf-dot" aria-hidden="true">・</span>';
+      : live ? '<span class="tf-dot live" title="いま上演中">→</span>' : '<span class="tf-dot" aria-hidden="true"></span>';
     const head = `<span class="tf-when">${tour ? mark : ''}${E(when)}`
       + (grid && n ? `<span class="tf-cnt">（${n} 回${unsureIn(perf, v.start, end) ? '以上' : ''}）</span>` : '') + '</span>'
       + (tour ? `<span class="tf-loc">${E(where)}</span>` : '');
     const body = (price ? `<div class="tf-price">${price}</div>` : '') + (grid || '');
     const cls = `tf-row${isHere ? ' here' : ''}${end < today ? ' done' : ''}`;
-    // 日程の行そのものを押す口にし、行の右に「▶詳細」。開いた中身（料金・暦）は一段右にずらす（起案者の指示 2026-10-17）
+    // 日程の行そのものを押す口にし、開いた中身（料金・暦）は一段右にずらす（起案者の指示 2026-10-17）。行の右の「詳細」の字は
+    // やめ、開くことが分かる小さな三角（theme.css の summary.tf-head::after）だけにする（起案者の指示 2026-10-18「『詳細』のボタンは不要」）
     return body
-      ? `<details class="${cls}"${shownRow ? ' open' : ''}><summary class="tf-head">${head}<span class="tf-more">詳細</span></summary><div class="tf-body">${body}</div></details>`
+      ? `<details class="${cls}"${shownRow ? ' open' : ''}><summary class="tf-head">${head}</summary><div class="tf-body">${body}</div></details>`
       : `<div class="${cls}"><div class="tf-head">${head}</div></div>`;
   });
   // 会場が 1 つなら one: 見出し「日程」の横から書き始める（起案者の指示 2026-10-17）

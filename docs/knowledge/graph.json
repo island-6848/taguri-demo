@@ -1906,6 +1906,22 @@
    "verifies": []
   },
   {
+   "id": "dec-rec-card-1018-layout-c",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "おすすめのカード: 「ほか n 会場」を押すとほかの会場が開く、日程の行の「詳細」の字はやめて三角だけ、料金はどこでも同じ箇条書き、日程の行頭は菱形・上演中は「→」",
+   "sources": [
+    "web/app.js",
+    "web/theme.css",
+    "cloudflare/src/screens/schedule.js",
+    "cloudflare/test/schedule.test.js",
+    "cloudflare/test/cantgo.test.js",
+    "cloudflare/test/e2e-walk.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-rec-card-1018-layout",
    "type": "decision",
    "status": "adopted",
@@ -8703,6 +8719,16 @@
    "from": "dec-rec-card-1018-layout-b",
    "rel": "raises",
    "to": "q-ttb-kas-phone-fonts"
+  },
+  {
+   "from": "dec-rec-card-1018-layout-c",
+   "rel": "affects",
+   "to": "dec-rec-card-1018-layout-b"
+  },
+  {
+   "from": "dec-rec-card-1018-layout-c",
+   "rel": "affects",
+   "to": "dec-rec-card-1018-layout"
   },
   {
    "from": "dec-rec-card-1018-layout",

@@ -582,6 +582,17 @@ async function walkA(A) {
     check(/12,500円|9,800円/.test(yen), '値段の行: ' + yen);
     check(await c.locator('.tourfull .tf-row').count() === 2, '日程の会場が 2 つでない');
     note('106 の並び: ' + order + ' / 値段: ' + yen.replace(/\s+/g, ' '));
+    // 「ほか 1 会場」を押すと、ほかの会場（劇場Z・12/10〜12/12）が開く。日程の行に「詳細」の字は無い（起案者の指示 2026-10-18）
+    const more = c.locator('.meta .mvmore');
+    check(await more.count() === 1 && !(await c.locator('.meta .mvlist').isVisible()), '「ほか n 会場」の押し口が無いか、最初から開いている');
+    await more.click();
+    const mv = (await c.locator('.meta .mvlist').innerText()).replace(/\s+/g, ' ').trim();
+    check(/劇場Z/.test(mv) && /12\/10〜12\/12/.test(mv) && !/劇場Y/.test(mv), 'ほかの会場の一覧: ' + mv);
+    check(await more.getAttribute('aria-expanded') === 'true', 'aria-expanded が true にならない');
+    check(await c.locator('.tf-more').count() === 0 && !/詳細/.test(await c.locator('.tourfull').innerText()), '日程の行に「詳細」が残る');
+    // 料金はどこでも同じ箇条書き（.pblock .plist li）。表（.ptb）は使わない
+    check(await c.locator('.ptb').count() === 0 && await c.locator('.tf-price .plist li').count() >= 1 && await c.locator('.main > .lprice .plist li').count() === 1, '料金が箇条書きでない');
+    note('ほかの会場: ' + mv);
     const lines = el => el.evaluate(n => { const r = n.getClientRects(); return [r.length, Math.round(n.getBoundingClientRect().height), parseFloat(getComputedStyle(n).lineHeight) || 0]; });
     await hideTour(true);
     for (const [w, h, tag] of [[1280, 900, 'pc'], [390, 844, 'phone']]) {
@@ -593,6 +604,9 @@ async function walkA(A) {
       const cells = await c.locator('.ttb .tm.kas').evaluateAll(ns => ns.map(n => { const td = n.closest('td'); return {t: n.textContent, rects: n.getClientRects().length, w: Math.round(n.scrollWidth), cw: Math.round(td.clientWidth)}; }));
       check(cells.length && cells.every(x => x.rects === 1 && x.w <= x.cw), `${tag}: 暦の貸切の回: ` + JSON.stringify(cells));
       note(`${tag}: 貸切の升 ` + cells.map(x => `${x.t} ${x.w}/${x.cw}px`).join(' '));
+      // 料金の箇条書きの各行は 1 行（券種・金額が折り返さない）。おすすめのカード（101）の明細も同じ形
+      const pls = await page.locator('#content .plist li:visible').evaluateAll(ns => ns.map(n => { const lh = parseFloat(getComputedStyle(n).lineHeight) || 19; return {t: n.textContent.trim(), one: n.getBoundingClientRect().height < lh * 1.6}; }));
+      check(pls.length && pls.every(x => x.one), `${tag}: 料金の行が折り返す: ` + JSON.stringify(pls.filter(x => !x.one)));
       await page.screenshot({path: join(OUT, `tag-list-${tag}.png`), fullPage: true}).catch(() => {});
       await around(c, join(OUT, `card-tag-tour-${tag}.png`));
     }

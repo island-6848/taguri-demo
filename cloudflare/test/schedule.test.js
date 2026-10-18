@@ -51,8 +51,10 @@ test('the tour block: a bulleted row per venue in date order, ★ on the filtere
   const v = (sid, start, end, venue, pref, price, tt = '') => ({stage_id: sid, start, end, venue, pref, fields: {'料金（1枚あたり）': price, 'タイムテーブル': tt}});
   const same = tourBlock([v('2', '2026-11-06', '2026-11-08', 'ささしまスタジオ', '愛知県', '一般：5,000円'), v('1', '2026-10-28', '2026-11-01', '恵比寿・エコー劇場', '東京都', '一般：5,000円', '10月28日(水) 19:00')], '2', '2026-10-20');
   assert.equal(same.perVenuePrice, false);
-  assert.match(same.html, /<details class="tf-row"><summary class="tf-head"><span class="tf-when"><span class="tf-dot" aria-hidden="true">・<\/span>10\/28〜11\/1<span class="tf-cnt">（1 回）<\/span><\/span><span class="tf-loc">恵比寿・エコー劇場（東京都）<\/span><span class="tf-more">詳細<\/span><\/summary><div class="tf-body"><table class="ttb"/);
-  assert.match(same.html, /<div class="tf-row"><div class="tf-head"><span class="tf-when"><span class="tf-dot" aria-hidden="true">・<\/span>11\/6〜11\/8<\/span><span class="tf-loc">ささしまスタジオ（愛知県）<\/span><\/div><\/div>/);
+  // 行頭の印は「・」の字ではなく theme.css で描く菱形、行の右の「詳細」の字は無し（起案者の指示 2026-10-18 で変えた）
+  assert.match(same.html, /<details class="tf-row"><summary class="tf-head"><span class="tf-when"><span class="tf-dot" aria-hidden="true"><\/span>10\/28〜11\/1<span class="tf-cnt">（1 回）<\/span><\/span><span class="tf-loc">恵比寿・エコー劇場（東京都）<\/span><\/summary><div class="tf-body"><table class="ttb"/);
+  assert.doesNotMatch(same.html, /tf-more|詳細|・<\/span>|●/);
+  assert.match(same.html, /<div class="tf-row"><div class="tf-head"><span class="tf-when"><span class="tf-dot" aria-hidden="true"><\/span>11\/6〜11\/8<\/span><span class="tf-loc">ささしまスタジオ（愛知県）<\/span><\/div><\/div>/);
   assert.doesNotMatch(same.html, /tf-n|★/);
   // 都道府県で絞っているときは、その県の会場の行頭が ★
   const filtered = tourBlock([v('2', '2026-11-06', '2026-11-08', 'ささしまスタジオ', '愛知県', '一般：5,000円'), v('1', '2026-10-28', '2026-11-01', '恵比寿・エコー劇場', '東京都', '一般：5,000円', '10月28日(水) 19:00')], '1', '2026-10-20', ['愛知県']);
@@ -65,7 +67,20 @@ test('the tour block: a bulleted row per venue in date order, ★ on the filtere
   assert.doesNotMatch(one.html, /tf-loc/);   // 1 か所なら会場の名前は出さない
   const diff = tourBlock([v('1', '2026-10-28', '2026-11-01', 'A', '東京都', 'S席：12,000円\nA席：9,500円'), v('2', '2026-11-06', '2026-11-08', 'B', '愛知県', '全席：8,000円')], '1', '2026-10-20');
   assert.equal(diff.perVenuePrice, true);
-  assert.match(diff.html, /<table class="ptb"><tr><th>S席<\/th><td>12,000円<\/td><\/tr><tr><th>A席<\/th><td>9,500円<\/td><\/tr><\/table>/);
+  // 料金は箇条書き（起案者の指示 2026-10-18「料金の書き方を統一。箇条書きにする」。前は表）
+  assert.match(diff.html, /<div class="pblock"><span class="lp-ico"><svg[^>]*>[\s\S]*?<\/svg><\/span><ul class="plist"><li class="lp-row"><span class="lp-k">S席<\/span><span class="lp-v">12,000円<\/span><\/li><li class="lp-row"><span class="lp-k">A席<\/span><span class="lp-v">9,500円<\/span><\/li><\/ul><\/div>/);
+  assert.doesNotMatch(diff.html, /class="ptb"/);
+  // 料金の読めない会場も同じ形で「料金 不明」
+  const unk = tourBlock([v('1', '2026-10-28', '2026-11-01', 'A', '東京都', '全席：5,000円'), v('2', '2026-11-06', '2026-11-08', 'B', '愛知県', '')], '1', '2026-10-20');
+  assert.match(unk.html, /<ul class="plist"><li class="lp-row"><span class="lp-k">料金<\/span><span class="lp-v">不明<\/span><\/li><\/ul>/);
+});
+
+test('the venue playing today is marked with →, not ●', () => {
+  const v = (sid, start, end, venue) => ({stage_id: sid, start, end, venue, pref: '東京都', fields: {}});
+  const t = tourBlock([v('1', '2026-10-10', '2026-10-25', 'A'), v('2', '2026-11-06', '2026-11-08', 'B')], '1', '2026-10-20');
+  assert.match(t.html, /<span class="tf-dot live" title="いま上演中">→<\/span>10\/10〜10\/25/);
+  assert.match(t.html, /<span class="tf-dot" aria-hidden="true"><\/span>11\/6〜11\/8/);
+  assert.doesNotMatch(t.html, /●/);
 });
 
 test('mark legends from the stage page, and an honest line for marks it does not explain', async () => {
