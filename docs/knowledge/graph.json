@@ -2537,6 +2537,18 @@
    "verifies": []
   },
   {
+   "id": "eval-synopsis-blind-1018",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-18",
+   "title": "あらすじの読み取りを、答えを知らない Claude で読み直し、伏せた審査で比べた（候補 40 件）。別の公演の話を取った誤りは 0 件。言葉の根拠なしはほぼ 0。g3 は本番（g2）と同じ出来で、g2 の読み直しより 2 件多く取れた。取りこぼしは 3 件で、3 つとも同じ公演（物語ではなく催しの内容の説明）",
+   "sources": [
+    "tools/credits/extract_theme_llm.py",
+    "docs/verification/synopsis-g3.md"
+   ],
+   "verifies": []
+  },
+  {
    "id": "eval-yahoo-aspects",
    "type": "finding",
    "status": "confirmed",
@@ -8620,6 +8632,21 @@
    "from": "eval-reputation-signals",
    "rel": "affects",
    "to": "q-public-reputation-signal"
+  },
+  {
+   "from": "eval-synopsis-blind-1018",
+   "rel": "affects",
+   "to": "q-prompt-g2-base"
+  },
+  {
+   "from": "eval-synopsis-blind-1018",
+   "rel": "affects",
+   "to": "q-synopsis-lit-gaps"
+  },
+  {
+   "from": "eval-synopsis-blind-1018",
+   "rel": "depends_on",
+   "to": "synopsis-coverage-1016"
   },
   {
    "from": "eval-yahoo-aspects",
