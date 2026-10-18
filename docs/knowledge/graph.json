@@ -2562,6 +2562,19 @@
    "verifies": []
   },
   {
+   "id": "dec-theme-knowledge",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "あらすじの読み取りで、本文に名前が出ている作品の事実（知識）と作家・劇団の作風（定評）を根拠に使ってよいとする",
+   "sources": [
+    "tools/credits/extract_theme_llm.py",
+    "cloudflare/scripts/build_recommend_index.py",
+    "tools/credits/test_theme_queue.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-theme-user-choice",
    "type": "decision",
    "status": "proposed",
@@ -9468,6 +9481,16 @@
    "from": "dec-theme-kinds-6p2",
    "rel": "affects",
    "to": "impl-theme-vocab"
+  },
+  {
+   "from": "dec-theme-knowledge",
+   "rel": "affects",
+   "to": "dec-theme-kinds-6p2"
+  },
+  {
+   "from": "dec-theme-knowledge",
+   "rel": "affects",
+   "to": "eval-g5-trial-1018"
   },
   {
    "from": "dec-theme-user-choice",

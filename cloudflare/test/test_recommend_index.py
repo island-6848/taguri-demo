@@ -444,7 +444,8 @@ class FavouriteSeedKindsTest(unittest.TestCase):
                + [{'kind': 'モチーフ', 'word': '閉店間際の銭湯'},
                   {'kind': '舞台設定', 'word': '江戸'},
                   {'kind': '語り口', 'word': '群像劇', 'basis': '推定', 'from': '…'},
-                  {'kind': 'テーマ', 'word': 'すれ違い', 'basis': '作風', 'from': '…'}]}
+                  {'kind': 'テーマ', 'word': 'すれ違い', 'basis': '作風', 'from': '…'},
+                  {'kind': '味わい', 'word': 'アングラ', 'basis': '定評', 'from': '…'}]}
         terms = dict(BI.theme_terms(row))
         self.assertEqual(sum(1 for w in terms if w.startswith('題材')), 4, '題材は 4 つまで')
         self.assertNotIn('閉店間際の銭湯', terms, 'モチーフは索引に入れない')
@@ -452,6 +453,7 @@ class FavouriteSeedKindsTest(unittest.TestCase):
         self.assertEqual(terms['江戸'], 0.5)
         self.assertEqual(terms['群像劇'], 0.49)                        # 語り口 0.7 × 推定 0.7
         self.assertEqual(terms['すれ違い'], 0.5)                       # テーマ 1.0 × 作風 0.5
+        self.assertEqual(terms['アングラ'], 0.3)                       # 味わい 1.0 × 定評 0.3
         pool = UR.candidate_pool({}, [{'stage_id': '9', 'title': '公演', 'period': '2099/01/01 〜 2099/01/02', 'fields': {}}])
         index = BI.build_index(pool, {}, APP.group_of, themes={'9': BI.theme_terms(row)})
         w = {r[1]: r[3] for r in index['postings'] if r[0] == '#題材' and r[2] == '9'}
