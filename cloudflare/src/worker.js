@@ -430,6 +430,13 @@ async function nativeRoute(request, env, url) {
       return json({ok:false,error:error.status ? error.message : '探せませんでした。'}, error.status ?? 500);
     }
   }
+  // 画面は記録を足した・結び付けた直後に、裏の取得が終わったかを聞きに来る（web/app.js waitJob）。
+  // Worker では裏で走る取得が無いので、いつも「走っていない」と答える。答えが無いと 404 になり、
+  // 足すたびにブラウザーのコンソールにエラーが出ていた（#134 の通し検証）
+  if (allNative(env) && request.method === 'GET' && url.pathname === '/api/import_status') {
+    try { await user(request, env.DB); } catch (error) { return json({ok:false,error:error.message}, error.status ?? 401); }
+    return json({running: false});
+  }
   const m = url.pathname.match(/^\/api\/(?:screen\/([a-z]+)|([a-z_]+(?:\/[a-z_]+)?))$/);
   if (!m) return null;
   const isScreen = Boolean(m[1]) && request.method === 'GET';
