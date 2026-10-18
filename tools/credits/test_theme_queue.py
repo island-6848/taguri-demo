@@ -85,5 +85,19 @@ class QueueTest(unittest.TestCase):
             self.assertEqual(E.targets("rated", fetch=False), [])
 
 
+
+class PromptChainTest(unittest.TestCase):
+    def test_g3_keeps_g1_self_check_and_g2_concrete_words(self):
+        # g2 は c6 から作ったので g1 の自問が抜けていた（〔q-prompt-g2-base〕）。g3 は両方を持つ
+        g1, g2, g3 = E.PROMPTS["g1"], E.PROMPTS["g2"], E.PROMPTS["g3"]
+        self_check = "自身の物語だという根拠"
+        concrete = "「人間関係」のような曖昧な語に丸めず"
+        self.assertIn(self_check, g1)
+        self.assertNotIn(self_check, g2)
+        self.assertIn(concrete, g2)
+        self.assertIn(self_check, g3)
+        self.assertIn(concrete, g3)
+        self.assertEqual(E.MAX_ELEMENTS["g3"], E.MAX_ELEMENTS["g2"])
+
 if __name__ == "__main__":
     unittest.main()

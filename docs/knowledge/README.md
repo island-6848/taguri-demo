@@ -484,33 +484,34 @@ flowchart LR
   n461("バックアップの検査が Python 3.13 では 1 件失敗する")
   n462("サーバーは標準ライブラリの http.server と sqlite3 で書いてある")
   n463("眺めるの「人の流れ」（StoryFlow の配置）は、重い記録だと Worker の CPU 10 ミリ秒に収まらない（温まって約 12 ミリ秒・最初の 1 回は約 80 ミリ秒）")
-  n464("あらすじの読み取りは Gemini API。以前の claude CLI 呼び出しは起案者の判断でやめている")
-  n465("全国の劇場の一覧の候補。いちばん使えるのは自前の公演データ（これからの公演と 2019 年以降の過去の公演の会場、約 2,980 件・全部に都道府県）。公立の名簿は民間の劇場が入らず、国の文化施設データと OSM は条件か件数が未確認")
-  n466("舞台の公演に業界共通の公式のジャンル分けは見つからない。近いものは日本劇作家協会「戯曲デジタルアーカイブ」のジャンル（戯曲向け）")
-  n467("持ち主の過去の検証では、あらすじのテーマ語は作品間で重なりにくく、一般的な語（家族・恋愛・コメディ・友情）に偏っていた")
-  n468("試行回数の制限は接続元のアドレスで数えている")
-  n469("ジュルネは 1 日 3 回公演の真ん中の回（マチネ・ジュルネ・ソワレ）。公式の定義は見つからず、時刻の決まりも無い")
-  n470("題字の書体の候補（明朝と本文ゴシックの間）── どれも SIL OFL")
-  n471("題名の正規化（title_key）は JS でも Python と同じにできる")
-  n472[["サイトの文章を yomiyasu（日本語の推敲スキル）で書き直す。スキルは .claude/skills/yomiyasu に入れた"]]
-  n473("画面の△の説明「あまり合わなかった」は、起案者の考える△（まあ良いが気になる所がある）と食い違う")
-  n474("1 人が D1 に置く量は、ふつうに使って約 0.7 MB、いまの行数の歯止めの中でいちばん長い文字で埋めると約 218 MB（しかも上限の無い表があった）")
-  n475("note・Notion のような白基調の記録サイトの見た目（白い紙面・真っ黒でない文字・差し色 1 つ・広い余白）")
-  n476("本番の Worker の /api/health は、Render への橋渡しに取られて 404 になっていた（直した）")
-  n477("Worker での推薦計算は 1 回 10〜12 ミリ秒、重い想定で 39 ミリ秒（見積もり）")
-  n478("起案者が Workers Builds を master だけ組み立てるようにした")
-  n479("push するたびに Workers Builds が D1 の migration を当ててから deploy する")
-  n480("コミットの ✗（Workers Builds）は、master 以外のブランチの組み立てが失敗しているもの。master の組み立ては毎回成功している見込み")
-  n481("Workers Builds（GitHub からの自動配信）は無料プランで月 3,000 分・同時 1 本・1 回 20 分まで")
-  n482("コミットの ✗ は Workers Builds が cloudflare/ の無い master を組もうとして失敗していたため")
-  n483("Workers の Cache API は *.workers.dev では何もしない（独自ドメインでだけ効く）")
-  n484("Workers の定期実行は、無料プランだと 1 回あたり CPU 10 ミリ秒・外部への要求 50 回まで")
-  n485("別の作業で、Workers＋D1 の版が workers.dev で動き始めている")
-  n486("workers.dev の URL は無料のまま名前を変えられる（アカウントの subdomain と Worker の名前）。独自ドメインは年額がかかる")
-  n487("Workers の無料プランは 1 要求あたり CPU 10 ミリ秒・1 日 10 万要求まで")
-  n488("Workers の有料プランは月 5 ドルで、要求 1000 万回・CPU 3000 万ミリ秒・D1 の読み 250 億行が含まれる")
-  n489("master 以外のブランチの組み立ては `npx wrangler preview` を走らせ、設定に previews の欄が無いので失敗している")
-  n490("Workers の静的ファイルへの要求は無料・無制限で、要求数の上限に数えない")
+  n464("本番の取得（state ブランチ、2026-10-16 22:27 UTC）では、終わっていない候補 1,353 件すべてがあらすじの読み取り済み。あらすじあり 836 件（62%）、題材の語あり 1,109 件（82%）")
+  n465("あらすじの読み取りは Gemini API。以前の claude CLI 呼び出しは起案者の判断でやめている")
+  n466("全国の劇場の一覧の候補。いちばん使えるのは自前の公演データ（これからの公演と 2019 年以降の過去の公演の会場、約 2,980 件・全部に都道府県）。公立の名簿は民間の劇場が入らず、国の文化施設データと OSM は条件か件数が未確認")
+  n467("舞台の公演に業界共通の公式のジャンル分けは見つからない。近いものは日本劇作家協会「戯曲デジタルアーカイブ」のジャンル（戯曲向け）")
+  n468("持ち主の過去の検証では、あらすじのテーマ語は作品間で重なりにくく、一般的な語（家族・恋愛・コメディ・友情）に偏っていた")
+  n469("試行回数の制限は接続元のアドレスで数えている")
+  n470("ジュルネは 1 日 3 回公演の真ん中の回（マチネ・ジュルネ・ソワレ）。公式の定義は見つからず、時刻の決まりも無い")
+  n471("題字の書体の候補（明朝と本文ゴシックの間）── どれも SIL OFL")
+  n472("題名の正規化（title_key）は JS でも Python と同じにできる")
+  n473[["サイトの文章を yomiyasu（日本語の推敲スキル）で書き直す。スキルは .claude/skills/yomiyasu に入れた"]]
+  n474("画面の△の説明「あまり合わなかった」は、起案者の考える△（まあ良いが気になる所がある）と食い違う")
+  n475("1 人が D1 に置く量は、ふつうに使って約 0.7 MB、いまの行数の歯止めの中でいちばん長い文字で埋めると約 218 MB（しかも上限の無い表があった）")
+  n476("note・Notion のような白基調の記録サイトの見た目（白い紙面・真っ黒でない文字・差し色 1 つ・広い余白）")
+  n477("本番の Worker の /api/health は、Render への橋渡しに取られて 404 になっていた（直した）")
+  n478("Worker での推薦計算は 1 回 10〜12 ミリ秒、重い想定で 39 ミリ秒（見積もり）")
+  n479("起案者が Workers Builds を master だけ組み立てるようにした")
+  n480("push するたびに Workers Builds が D1 の migration を当ててから deploy する")
+  n481("コミットの ✗（Workers Builds）は、master 以外のブランチの組み立てが失敗しているもの。master の組み立ては毎回成功している見込み")
+  n482("Workers Builds（GitHub からの自動配信）は無料プランで月 3,000 分・同時 1 本・1 回 20 分まで")
+  n483("コミットの ✗ は Workers Builds が cloudflare/ の無い master を組もうとして失敗していたため")
+  n484("Workers の Cache API は *.workers.dev では何もしない（独自ドメインでだけ効く）")
+  n485("Workers の定期実行は、無料プランだと 1 回あたり CPU 10 ミリ秒・外部への要求 50 回まで")
+  n486("別の作業で、Workers＋D1 の版が workers.dev で動き始めている")
+  n487("workers.dev の URL は無料のまま名前を変えられる（アカウントの subdomain と Worker の名前）。独自ドメインは年額がかかる")
+  n488("Workers の無料プランは 1 要求あたり CPU 10 ミリ秒・1 日 10 万要求まで")
+  n489("Workers の有料プランは月 5 ドルで、要求 1000 万回・CPU 3000 万ミリ秒・D1 の読み 250 億行が含まれる")
+  n490("master 以外のブランチの組み立ては `npx wrangler preview` を走らせ、設定に previews の欄が無いので失敗している")
+  n491("Workers の静的ファイルへの要求は無料・無制限で、要求数の上限に数えない")
   n0 -- 新たな問いを生む --> n335
   n0 -- 影響する --> n392
   n1 -- 影響する --> n361
@@ -566,7 +567,7 @@ flowchart LR
   n41 -- 根拠になる --> n48
   n42 -- 影響する --> n25
   n43 -- 影響する --> n383
-  n43 -- 影響する --> n485
+  n43 -- 影響する --> n486
   n44 -- 前提にする --> n45
   n44 -- 影響する --> n229
   n45 -- 前提にする --> n41
@@ -659,7 +660,7 @@ flowchart LR
   n79 -- 前提にする --> n436
   n79 -- 前提にする --> n193
   n79 -- 前提にする --> n39
-  n79 -- 前提にする --> n487
+  n79 -- 前提にする --> n488
   n79 -- 影響する --> n52
   n79 -- 影響する --> n109
   n79 -- 影響する --> n382
@@ -716,7 +717,7 @@ flowchart LR
   n105 -- 前提にする --> n109
   n105 -- 影響する --> n17
   n106 -- 影響する --> n70
-  n106 -- 前提にする --> n470
+  n106 -- 前提にする --> n471
   n107 -- 影響する --> n17
   n108 -- 前提にする --> n35
   n108 -- 答える --> n403
@@ -773,7 +774,7 @@ flowchart LR
   n127 -- 前提にする --> n424
   n127 -- 前提にする --> n46
   n128 -- 前提にする --> n59
-  n128 -- 前提にする --> n487
+  n128 -- 前提にする --> n488
   n128 -- 前提にする --> n79
   n128 -- 影響する --> n22
   n129 -- 前提にする --> n131
@@ -812,7 +813,7 @@ flowchart LR
   n144 -- 答える --> n407
   n144 -- 影響する --> n26
   n145 -- 答える --> n422
-  n145 -- 前提にする --> n464
+  n145 -- 前提にする --> n465
   n145 -- 前提にする --> n61
   n145 -- 影響する --> n338
   n145 -- 新たな問いを生む --> n423
@@ -826,7 +827,7 @@ flowchart LR
   n151 -- 前提にする --> n129
   n152 -- 前提にする --> n114
   n153 -- 答える --> n359
-  n153 -- 前提にする --> n486
+  n153 -- 前提にする --> n487
   n153 -- 根拠になる --> n79
   n154 -- 答える --> n428
   n154 -- 影響する --> n26
@@ -844,7 +845,7 @@ flowchart LR
   n158 -- 置き換える --> n67
   n158 -- 置き換える --> n157
   n158 -- 食い違う --> n67
-  n158 -- 前提にする --> n487
+  n158 -- 前提にする --> n488
   n158 -- 影響する --> n16
   n158 -- 影響する --> n358
   n159 -- 影響する --> n26
@@ -970,9 +971,9 @@ flowchart LR
   n221 -- 影響する --> n185
   n222 -- 前提にする --> n205
   n222 -- 前提にする --> n323
-  n223 -- 前提にする --> n472
+  n223 -- 前提にする --> n473
   n224 -- 置き換える --> n304
-  n224 -- 前提にする --> n465
+  n224 -- 前提にする --> n466
   n224 -- 前提にする --> n289
   n224 -- 影響する --> n127
   n225 -- 答える --> n426
@@ -992,7 +993,7 @@ flowchart LR
   n231 -- 影響する --> n360
   n233 -- 根拠になる --> n156
   n234 -- 根拠になる --> n410
-  n235 -- 影響する --> n464
+  n235 -- 影響する --> n465
   n236 -- 根拠になる --> n410
   n237 -- 影響する --> n412
   n238 -- 影響する --> n412
@@ -1012,8 +1013,8 @@ flowchart LR
   n249 -- 根拠になる --> n271
   n250 -- 根拠になる --> n427
   n250 -- 根拠になる --> n362
-  n251 -- 影響する --> n464
-  n252 -- 影響する --> n464
+  n251 -- 影響する --> n465
+  n252 -- 影響する --> n465
   n253 -- 根拠になる --> n410
   n253 -- 食い違う --> n118
   n254 -- 根拠になる --> n410
@@ -1024,8 +1025,8 @@ flowchart LR
   n258 -- 根拠になる --> n271
   n258 -- 根拠になる --> n425
   n259 -- 影響する --> n225
-  n260 -- 影響する --> n464
-  n261 -- 影響する --> n464
+  n260 -- 影響する --> n465
+  n261 -- 影響する --> n465
   n262 -- 食い違う --> n410
   n263 -- 根拠になる --> n406
   n264 -- 根拠になる --> n407
@@ -1057,7 +1058,7 @@ flowchart LR
   n285 -- 影響する --> n412
   n286 -- 根拠になる --> n410
   n287 -- 影響する --> n225
-  n287 -- 影響する --> n467
+  n287 -- 影響する --> n468
   n288 -- 影響する --> n216
   n289 -- 影響する --> n412
   n290 -- 影響する --> n412
@@ -1081,7 +1082,7 @@ flowchart LR
   n302 -- 前提にする --> n92
   n303 -- 答える --> n378
   n303 -- 影響する --> n301
-  n304 -- 前提にする --> n465
+  n304 -- 前提にする --> n466
   n304 -- 前提にする --> n289
   n304 -- 前提にする --> n284
   n304 -- 影響する --> n127
@@ -1113,7 +1114,7 @@ flowchart LR
   n318 -- 影響する --> n216
   n319 -- 影響する --> n423
   n320 -- 根拠になる --> n128
-  n320 -- 前提にする --> n487
+  n320 -- 前提にする --> n488
   n321 -- 影響する --> n128
   n322 -- 影響する --> n128
   n323 -- 前提にする --> n330
@@ -1153,7 +1154,7 @@ flowchart LR
   n334 -- 影響する --> n302
   n335 -- 前提にする --> n0
   n335 -- 影響する --> n392
-  n336 -- 影響する --> n480
+  n336 -- 影響する --> n481
   n337 -- 前提にする --> n348
   n338 -- 前提にする --> n408
   n338 -- 前提にする --> n307
@@ -1181,7 +1182,7 @@ flowchart LR
   n357 -- 影響する --> n132
   n358 -- 前提にする --> n408
   n358 -- 前提にする --> n429
-  n359 -- 前提にする --> n486
+  n359 -- 前提にする --> n487
   n359 -- 影響する --> n79
   n359 -- 影響する --> n360
   n360 -- 前提にする --> n358
@@ -1225,7 +1226,7 @@ flowchart LR
   n395 -- 影響する --> n113
   n396 -- 影響する --> n79
   n396 -- 影響する --> n34
-  n399 -- 影響する --> n464
+  n399 -- 影響する --> n465
   n399 -- 影響する --> n145
   n400 -- 前提にする --> n5
   n400 -- 前提にする --> n107
@@ -1237,7 +1238,7 @@ flowchart LR
   n405 -- 影響する --> n16
   n406 -- 前提にする --> n407
   n406 -- 影響する --> n410
-  n407 -- 前提にする --> n473
+  n407 -- 前提にする --> n474
   n407 -- 影響する --> n410
   n408 -- 前提にする --> n361
   n409 -- 前提にする --> n118
@@ -1269,8 +1270,8 @@ flowchart LR
   n421 -- 前提にする --> n260
   n421 -- 前提にする --> n261
   n421 -- 前提にする --> n399
-  n421 -- 影響する --> n464
-  n422 -- 前提にする --> n464
+  n421 -- 影響する --> n465
+  n422 -- 前提にする --> n465
   n422 -- 前提にする --> n61
   n423 -- 前提にする --> n145
   n424 -- 前提にする --> n412
@@ -1291,7 +1292,7 @@ flowchart LR
   n432 -- 前提にする --> n119
   n433 -- 前提にする --> n434
   n433 -- 前提にする --> n408
-  n434 -- 前提にする --> n487
+  n434 -- 前提にする --> n488
   n434 -- 影響する --> n22
   n436 -- 検証項目 --> n437
   n436 -- 根拠になる --> n79
@@ -1344,45 +1345,48 @@ flowchart LR
   n462 -- 根拠になる --> n157
   n462 -- 答える --> n435
   n463 -- 根拠になる --> n128
-  n463 -- 前提にする --> n487
-  n464 -- 影響する --> n422
-  n465 -- 答える --> n424
-  n466 -- 影響する --> n427
+  n463 -- 前提にする --> n488
+  n464 -- 影響する --> n421
+  n464 -- 影響する --> n423
+  n464 -- 影響する --> n399
+  n465 -- 影響する --> n422
+  n466 -- 答える --> n424
   n467 -- 影響する --> n427
-  n468 -- 影響する --> n14
-  n468 -- 新たな問いを生む --> n342
-  n469 -- 影響する --> n226
-  n470 -- 根拠になる --> n309
-  n470 -- 影響する --> n70
-  n473 -- 新たな問いを生む --> n407
-  n473 -- 影響する --> n26
-  n474 -- 根拠になる --> n48
-  n475 -- 影響する --> n71
-  n476 -- 影響する --> n3
-  n476 -- 根拠になる --> n79
-  n477 -- 食い違う --> n67
-  n477 -- 新たな問いを生む --> n408
-  n477 -- 影響する --> n358
-  n478 -- 影響する --> n489
-  n479 -- 影響する --> n18
-  n480 -- 影響する --> n482
-  n480 -- 新たな問いを生む --> n336
-  n481 -- 根拠になる --> n79
-  n482 -- 影響する --> n16
-  n483 -- 影響する --> n79
-  n484 -- 影響する --> n348
-  n485 -- 食い違う --> n67
-  n485 -- 影響する --> n358
-  n485 -- 影響する --> n26
-  n486 -- 影響する --> n360
-  n486 -- 根拠になる --> n79
-  n487 -- 根拠になる --> n67
-  n487 -- 答える --> n435
-  n488 -- 根拠になる --> n134
-  n488 -- 影響する --> n358
-  n489 -- 答える --> n336
-  n489 -- 根拠になる --> n480
-  n490 -- 影響する --> n455
+  n468 -- 影響する --> n427
+  n469 -- 影響する --> n14
+  n469 -- 新たな問いを生む --> n342
+  n470 -- 影響する --> n226
+  n471 -- 根拠になる --> n309
+  n471 -- 影響する --> n70
+  n474 -- 新たな問いを生む --> n407
+  n474 -- 影響する --> n26
+  n475 -- 根拠になる --> n48
+  n476 -- 影響する --> n71
+  n477 -- 影響する --> n3
+  n477 -- 根拠になる --> n79
+  n478 -- 食い違う --> n67
+  n478 -- 新たな問いを生む --> n408
+  n478 -- 影響する --> n358
+  n479 -- 影響する --> n490
+  n480 -- 影響する --> n18
+  n481 -- 影響する --> n483
+  n481 -- 新たな問いを生む --> n336
+  n482 -- 根拠になる --> n79
+  n483 -- 影響する --> n16
+  n484 -- 影響する --> n79
+  n485 -- 影響する --> n348
+  n486 -- 食い違う --> n67
+  n486 -- 影響する --> n358
+  n486 -- 影響する --> n26
+  n487 -- 影響する --> n360
+  n487 -- 根拠になる --> n79
+  n488 -- 根拠になる --> n67
+  n488 -- 答える --> n435
+  n489 -- 根拠になる --> n134
+  n489 -- 影響する --> n358
+  n490 -- 答える --> n336
+  n490 -- 根拠になる --> n481
+  n491 -- 影響する --> n455
   class n0 finding_confirmed
   class n1 finding_confirmed
   class n2 finding_confirmed
@@ -1849,24 +1853,24 @@ flowchart LR
   class n463 finding_confirmed
   class n464 finding_confirmed
   class n465 finding_confirmed
-  class n466 finding_unverified
+  class n466 finding_confirmed
   class n467 finding_unverified
-  class n468 finding_confirmed
-  class n469 finding_unverified
-  class n470 finding_confirmed
+  class n468 finding_unverified
+  class n469 finding_confirmed
+  class n470 finding_unverified
   class n471 finding_confirmed
-  class n472 decision_adopted
-  class n473 finding_confirmed
+  class n472 finding_confirmed
+  class n473 decision_adopted
   class n474 finding_confirmed
-  class n475 finding_unverified
-  class n476 finding_confirmed
-  class n477 finding_unverified
+  class n475 finding_confirmed
+  class n476 finding_unverified
+  class n477 finding_confirmed
   class n478 finding_unverified
-  class n479 finding_confirmed
+  class n479 finding_unverified
   class n480 finding_confirmed
   class n481 finding_confirmed
-  class n482 finding_outdated
-  class n483 finding_confirmed
+  class n482 finding_confirmed
+  class n483 finding_outdated
   class n484 finding_confirmed
   class n485 finding_confirmed
   class n486 finding_confirmed
@@ -1874,6 +1878,7 @@ flowchart LR
   class n488 finding_confirmed
   class n489 finding_confirmed
   class n490 finding_confirmed
+  class n491 finding_confirmed
   classDef finding_confirmed fill:#e6f4ea,stroke:#2e7d32
   classDef finding_unverified fill:#fff8e1,stroke:#b26a00,stroke-dasharray:4 3
   classDef finding_outdated fill:#eeeeee,stroke:#9e9e9e
@@ -1929,7 +1934,7 @@ flowchart LR
 | [Render のデモ版は、起動し直すと動かなくなるのではないか](notes/q-render-s3-dependency.md) | 未着手 | 2026-10-13 | ─ | 前提にする → [AWS はもう使っていない](notes/no-aws.md)<br>影響する → [データを持たないお試し版をどう作るか](notes/q-demo-trial-design.md)<br>[AWS はもう使っていない](notes/no-aws.md) が新たな問いを生む |
 | [Safari で Cookie が通るか（実機）](notes/q-safari-cookies.md) | 未着手 | 2026-10-13 | S04, S19 | 前提にする → [独自ドメインを取り、画面と API を同じドメインの下に置く](notes/dec-own-domain.md)<br>[Pages と Render は別サイトなので、Cookie が別サイトの扱いになる](notes/cross-origin-cookies.md) が新たな問いを生む |
 | [取得元の利用規約・robots.txt・ポスター画像の権利](notes/q-source-terms.md) | 未着手 | 2026-10-13 | S11, S24 | [利用規約は公演情報を第三者へ再配布しないと約束している](notes/catalog-terms-no-redistribution.md) が新たな問いを生む<br>[CoRich の robots.txt は禁止を書いておらず、サイトマップを 2 つ示している](notes/corich-robots-sitemap-only.md) が影響する<br>[取得元の実際の robots.txt はまだ読めていない](notes/corich-robots-unchecked.md) が新たな問いを生む<br>[CoRich の検索ページが断る理由と、代わりに公演一覧をどこから取るか](notes/q-corich-search-refusal.md) が影響する |
-| [あらすじを Claude の定期実行で読むと、1 日にどれだけ読め、起案者の使用枠をどれだけ使うか](notes/q-synopsis-routine-quota.md) | 未着手 | 2026-10-13 | ─ | 前提にする → [公演のあらすじは起案者の Claude が一度だけ読み、結果をデータベースに置く。Gemini API は利用者の感想を読むときだけ](notes/dec-synopsis-reader-claude.md)<br>[公演のあらすじは起案者の Claude が一度だけ読み、結果をデータベースに置く。Gemini API は利用者の感想を読むときだけ](notes/dec-synopsis-reader-claude.md) が新たな問いを生む<br>[別のセッションが、あらすじを読む定期実行（毎日 06:07 UTC・40 件、trig_01Y7a7jwMQpEgcCiTdkwwVaK）を作った。Catalog の state の書き戻しは毎回 force push なので、両方の時刻が重ならないことが前提](notes/peer-synopsis-routine.md) が影響する |
+| [あらすじを Claude の定期実行で読むと、1 日にどれだけ読め、起案者の使用枠をどれだけ使うか](notes/q-synopsis-routine-quota.md) | 未着手 | 2026-10-13 | ─ | 前提にする → [公演のあらすじは起案者の Claude が一度だけ読み、結果をデータベースに置く。Gemini API は利用者の感想を読むときだけ](notes/dec-synopsis-reader-claude.md)<br>[公演のあらすじは起案者の Claude が一度だけ読み、結果をデータベースに置く。Gemini API は利用者の感想を読むときだけ](notes/dec-synopsis-reader-claude.md) が新たな問いを生む<br>[別のセッションが、あらすじを読む定期実行（毎日 06:07 UTC・40 件、trig_01Y7a7jwMQpEgcCiTdkwwVaK）を作った。Catalog の state の書き戻しは毎回 force push なので、両方の時刻が重ならないことが前提](notes/peer-synopsis-routine.md) が影響する<br>[本番の取得（state ブランチ、2026-10-16 22:27 UTC）では、終わっていない候補 1,353 件すべてがあらすじの読み取り済み。あらすじあり 836 件（62%）、題材の語あり 1,109 件（82%）](notes/synopsis-coverage-1016.md) が影響する |
 | [観劇でジャンルにあたる手がかり（テーマ語・劇団・会場など）をどう取り、本人の好みとして足すか](notes/q-theme-preference.md) | 未着手 | 2026-10-13 | ─ | 影響する → [本人向けのおすすめ計算（user_recommender.py）](notes/comp-recommender.md)<br>[本人のジャンルの好みを足すと、人物だけより当たりが上がり、使うほどの伸びも大きくなる（映画の公開データ）](notes/eval-genre-preference.md) が新たな問いを生む<br>[舞台のジャンル分けは、チケット販売サイト・業界の白書・助成制度・演劇史の区分がそれぞれ独自に持っていて、共通の公式の分け方は無い](notes/genre-schemes-found.md) が影響する<br>[推薦の計算を person-ordinal-v3 に変えた（評価を順序として読み、公演の種類の好みを足す）](notes/impl-person-ordinal-v3.md) が答える<br>[映画のジャンルを使った推薦の研究は、主に「新しい利用者・新作の立ち上がり」のために使われている](notes/lit-genre-reco.md) が根拠になる<br>[舞台の公演に業界共通の公式のジャンル分けは見つからない。近いものは日本劇作家協会「戯曲デジタルアーカイブ」のジャンル（戯曲向け）](notes/theatre-genre-sources.md) が影響する<br>[持ち主の過去の検証では、あらすじのテーマ語は作品間で重なりにくく、一般的な語（家族・恋愛・コメディ・友情）に偏っていた](notes/theme-words-sparse-past.md) が影響する |
 | [移した画面は Workers 無料枠の CPU 10 ミリ秒に収まるか](notes/q-workers-cpu-real.md) | 未着手 | 2026-10-13 | ─ | 前提にする → [Workers の無料プランは 1 要求あたり CPU 10 ミリ秒・1 日 10 万要求まで](notes/workers-free-cpu-10ms.md)<br>影響する → [元の画面の Worker 版（cloudflare/src/screens/）](notes/comp-native-screens.md)<br>[試験用の小さな索引（84 公演）でも、Worker のおすすめの計算は CPU 中央値 2〜9 ms・最も遅い回 50 ms。無料の 10 ms に近いので、本物の索引で測る](notes/measure-worker-fixture-1014.md) が影響する<br>[無料プランで CPU 10 ミリ秒を超えると、実際にはどうなるか](notes/q-workers-cpu-overrun.md) が前提にする |
 | [本番で 1 人・1 日あたり D1 を何行読んでいるか（利用者 300 人の上限の前提）](notes/q-d1-reads-real.md) | 未着手 | 2026-10-14 | ─ | 影響する → [利用者の上限は数えて決めた：300 人まで・新規は 1 日 30 人まで。D1 の大きさを Worker が見て 4 GB で書き込みと登録を止め、上限の無かった 5 つの表に 1 人あたりの件数の上限を付ける](notes/dec-account-cap-counted.md) |
@@ -1947,9 +1952,9 @@ flowchart LR
 | [たぐりの推薦に学術的な新規性はあるか。部品はどれも既存の手法で、言えるとすれば「組み合わせと場面」。主張するには実データでの検証と、文献の確認のやり直しが要る](notes/q-academic-novelty.md) | 未着手 | 2026-10-17 | ─ | 前提にする → [評価を等間隔の数ではなく順序として扱う研究（OrdRec）と、少ない件数を割り引く「damping」は推薦の定番](notes/lit-ordinal-damping.md)<br>前提にする → [推薦では、利用者ごとの評価の甘さ辛さ（user bias）を差し引いて扱うのが定番（Koren 2008 ほか）](notes/lit-user-bias.md)<br>前提にする → [利用者ごとの好みを、全体の事前分布から少しずつ個人に寄せる学習は確立した方法（Zhang & Koren 2007）](notes/lit-hierarchical-user-model.md)<br>前提にする → [内容ベースの推薦で、本人の初期の好みを評価が増えるたびに修正する方法がある（Billsus & Pazzani）](notes/lit-syskill-webert-prior.md)<br>前提にする → [届いた順に「予想してから答え合わせ」する評価（prequential）は、変わり続ける推薦の評価に使われている（Vinagre ほか 2014）](notes/lit-prequential.md)<br>前提にする → [新しい方式は「前より悪くないと高い確信で言えるときだけ」採る、という考え方がある（Thomas ほか 2015）](notes/lit-safe-improvement.md)<br>前提にする → [推薦の一覧を話題が偏らないよう並べ直すと、平均の精度は下がるが利用者の満足は上がった（Ziegler・McNee・Konstan・Lausen, WWW 2005）](notes/lit-topic-diversification.md)<br>前提にする → [コンサート・演劇・サーカスの新しい公演は購入履歴が無いので、内容の似かよいを購入者のつながりに広げて推薦する（Creusefond・Latapy 2018）](notes/lit-live-show-propagation.md)<br>前提にする → [舞台芸術の推薦の先行例は少なく、主に劇場側の販売データでの協調フィルタリング](notes/lit-performing-arts.md)<br>前提にする → [持ち主 1 人（n=1）の実験結果は、推薦の改善の根拠にしない](notes/dec-no-n1-evidence.md)<br>前提にする → [評価を利用者ごとの百分位に直してから推薦すると、ランキングの精度が上がった（Mansoury・Burke・Mobasher, ACM TIST 2021）。たぐりの順序化（式 1–2）とほぼ同じ考え方](notes/lit-percentile-transform.md)<br>前提にする → [利用者ごとに推薦の手法を選ぶ研究は 2012 年からある（Ekstrand・Riedl RecSys 2012、Collins ほか 2018–2020）。効果は小さく、2026 年の監査では利用者ごとの重みに一貫した効き目は無かった](notes/lit-per-user-algorithm-selection.md)<br>前提にする → [興味ありの配り分け（式 10–11）の 4 つの手がかりは、どれも先行研究に近い形がある。まとめて学習なしの閉じた式で配る形は見つからなかったが、新しさは「組み合わせと場面」にとどまる](notes/lit-interest-split-precedents.md)<br>[興味ありの配り分け（式 10–11）の 4 つの手がかりは、どれも先行研究に近い形がある。まとめて学習なしの閉じた式で配る形は見つからなかったが、新しさは「組み合わせと場面」にとどまる](notes/lit-interest-split-precedents.md) が影響する<br>[利用者ごとに推薦の手法を選ぶ研究は 2012 年からある（Ekstrand・Riedl RecSys 2012、Collins ほか 2018–2020）。効果は小さく、2026 年の監査では利用者ごとの重みに一貫した効き目は無かった](notes/lit-per-user-algorithm-selection.md) が影響する<br>[評価を利用者ごとの百分位に直してから推薦すると、ランキングの精度が上がった（Mansoury・Burke・Mobasher, ACM TIST 2021）。たぐりの順序化（式 1–2）とほぼ同じ考え方](notes/lit-percentile-transform.md) が影響する<br>[推薦の効き目を本番の利用者のデータで測る設計。主な方法はバックアップを手元で再生する方法で、開幕リマインドでの答えを偏りの少ない主な結果にする。足す記録は答えの行の列と、1 人 1 日 1 行だけ](notes/plan-real-data-eval.md) が前提にする |
 | [管理画面で手で直した題材・あらすじを、おすすめの計算（rec_credit の #題材）と検索（rec_card の ws/synz）にも効かせるには、取得の側（taguri-crawler）が D1 の stage_override を読む必要があるか](notes/q-admin-override-in-index.md) | 未着手 | 2026-10-17 | ─ | 影響する → [手元で開く管理画面（tools/admin）を作った。手で直した分は D1 の stage_override に置き、Worker が画面に出すときに重ねる。読み取りは Claude Code](notes/impl-admin-tool.md)<br>[手元で開く管理画面（tools/admin）を作った。手で直した分は D1 の stage_override に置き、Worker が画面に出すときに重ねる。読み取りは Claude Code](notes/impl-admin-tool.md) が新たな問いを生む |
 | [評価一覧・未評価・日記帳の文が、画面の実際の名前・動きと食い違っている所がある](notes/q-rate-diary-copy-mismatch.md) | 未着手 | 2026-10-17 | ─ | ─ |
-| [あらすじの読み取りの今の版 g2 は c6 から作られていて、g1 で足した「題名の公演自身の物語か」の自問が入っていない。意図どおりか、g1 の上に g2 を重ねるべきか](notes/q-prompt-g2-base.md) | 未着手 | 2026-10-18 | ─ | 影響する → [あらすじの読み取りは Gemini API。以前の claude CLI 呼び出しは起案者の判断でやめている](notes/synopsis-llm-history.md)<br>影響する → [公演のあらすじは起案者の Claude が一度だけ読み、結果をデータベースに置く。Gemini API は利用者の感想を読むときだけ](notes/dec-synopsis-reader-claude.md)<br>[あらすじの読み取りを文献と比べて見えた穴（題材の言葉が本文と照らされていない・別の公演の本文の引き写しは検査で止まらない・窓と閾値の根拠）を、どの順で測って直すか](notes/q-synopsis-lit-gaps.md) が前提にする |
+| [あらすじの読み取りの今の版 g2 は c6 から作られていて、g1 で足した「題名の公演自身の物語か」の自問が入っていない。意図どおりか、g1 の上に g2 を重ねるべきか](notes/q-prompt-g2-base.md) | 未着手 | 2026-10-18 | ─ | 影響する → [あらすじの読み取りは Gemini API。以前の claude CLI 呼び出しは起案者の判断でやめている](notes/synopsis-llm-history.md)<br>影響する → [公演のあらすじは起案者の Claude が一度だけ読み、結果をデータベースに置く。Gemini API は利用者の感想を読むときだけ](notes/dec-synopsis-reader-claude.md)<br>[あらすじの読み取りを文献と比べて見えた穴（題材の言葉が本文と照らされていない・別の公演の本文の引き写しは検査で止まらない・窓と閾値の根拠）を、どの順で測って直すか](notes/q-synopsis-lit-gaps.md) が前提にする<br>[本番の取得（state ブランチ、2026-10-16 22:27 UTC）では、終わっていない候補 1,353 件すべてがあらすじの読み取り済み。あらすじあり 836 件（62%）、題材の語あり 1,109 件（82%）](notes/synopsis-coverage-1016.md) が影響する |
 | [開幕リマインドで、同じ公演が別の地方で同じ週に始まるとき、1 行にまとめるか（いまは 2026-08-26 の指示で地方ごとに分けている）](notes/q-reminder-region-split.md) | 未着手 | 2026-10-18 | ─ | 前提にする → [理由は畳まない・購入済みでもカードを残す・同じ公演の重複を直す・日記帳をノートの見た目に・行に公式サイト・ロゴ案 3 つ](notes/dec-ui-1018b.md) |
-| [あらすじの読み取りを文献と比べて見えた穴（題材の言葉が本文と照らされていない・別の公演の本文の引き写しは検査で止まらない・窓と閾値の根拠）を、どの順で測って直すか](notes/q-synopsis-lit-gaps.md) | 未着手 | 2026-10-18 | ─ | 前提にする → [LLM の作り話を見つける方法には、何度も生成させて食い違いを見る方法（SelfCheckGPT）と、原子的な事実に分けて出典で裏付けを数える方法（FActScore）がある](notes/lit-hallucination-detection.md)<br>前提にする → [LLM の抜き出しを原文と文字列で照らす方法は実務で広く使われるが、完全一致は正しい出力も落とすので、あいまい一致や意味での照合を後ろに足す報告がある](notes/lit-grounding-string-match.md)<br>前提にする → [LLM に指示だけで文章から鍵語を抜かせる方法は、初期の測定では従来の手法に及ばず、後の研究では新しいモデルで追いついた（Song ほか 2023、Kang・Shin 2025）](notes/lit-llm-keyphrase-zeroshot.md)<br>前提にする → [LLM は長い入力の真ん中にある情報を使いにくく、最初か最後にあるときがいちばん正確（Liu ほか 2023、TACL 2024）](notes/lit-lost-in-the-middle.md)<br>前提にする → [あらすじの読み取りの今の版 g2 は c6 から作られていて、g1 で足した「題名の公演自身の物語か」の自問が入っていない。意図どおりか、g1 の上に g2 を重ねるべきか](notes/q-prompt-g2-base.md)<br>影響する → [あらすじの読み取りは Gemini API。以前の claude CLI 呼び出しは起案者の判断でやめている](notes/synopsis-llm-history.md) |
+| [あらすじの読み取りを文献と比べて見えた穴（題材の言葉が本文と照らされていない・別の公演の本文の引き写しは検査で止まらない・窓と閾値の根拠）を、どの順で測って直すか](notes/q-synopsis-lit-gaps.md) | 未着手 | 2026-10-18 | ─ | 前提にする → [LLM の作り話を見つける方法には、何度も生成させて食い違いを見る方法（SelfCheckGPT）と、原子的な事実に分けて出典で裏付けを数える方法（FActScore）がある](notes/lit-hallucination-detection.md)<br>前提にする → [LLM の抜き出しを原文と文字列で照らす方法は実務で広く使われるが、完全一致は正しい出力も落とすので、あいまい一致や意味での照合を後ろに足す報告がある](notes/lit-grounding-string-match.md)<br>前提にする → [LLM に指示だけで文章から鍵語を抜かせる方法は、初期の測定では従来の手法に及ばず、後の研究では新しいモデルで追いついた（Song ほか 2023、Kang・Shin 2025）](notes/lit-llm-keyphrase-zeroshot.md)<br>前提にする → [LLM は長い入力の真ん中にある情報を使いにくく、最初か最後にあるときがいちばん正確（Liu ほか 2023、TACL 2024）](notes/lit-lost-in-the-middle.md)<br>前提にする → [あらすじの読み取りの今の版 g2 は c6 から作られていて、g1 で足した「題名の公演自身の物語か」の自問が入っていない。意図どおりか、g1 の上に g2 を重ねるべきか](notes/q-prompt-g2-base.md)<br>影響する → [あらすじの読み取りは Gemini API。以前の claude CLI 呼び出しは起案者の判断でやめている](notes/synopsis-llm-history.md)<br>[本番の取得（state ブランチ、2026-10-16 22:27 UTC）では、終わっていない候補 1,353 件すべてがあらすじの読み取り済み。あらすじあり 836 件（62%）、題材の語あり 1,109 件（82%）](notes/synopsis-coverage-1016.md) が影響する |
 
 ## 決めたこと（138 件）
 
@@ -2094,7 +2099,7 @@ flowchart LR
 | [劇場制覇マップの見本を作った（都道府県のタイル地図、3 つの見せ方: 行った劇場の数・はじめて行った年・年ごとの並び）。分母はたぐりの会場データ](notes/mock-theater-conquest.md) | 置き換え済み | 2026-10-16 | ─ | 前提にする → [全国の劇場の一覧の候補。いちばん使えるのは自前の公演データ（これからの公演と 2019 年以降の過去の公演の会場、約 2,980 件・全部に都道府県）。公立の名簿は民間の劇場が入らず、国の文化施設データと OSM は条件か件数が未確認](notes/theater-master-options.md)<br>前提にする → [McNeill & Hale 2017「Generating Tile Maps」（Computer Graphics Forum）── 地域を同じ大きさのマスに並べた地図を作る方法。良い並べ方は地域と目的で変わる](notes/lit-tilemap-mcneill2017.md)<br>前提にする → [Bach ほか 2014「A Review of Temporal Data Visualizations Based on Space-Time Cube Operations」（EuroVis STAR）── 時間と空間の図は、時空の立方体を切る・つぶす・並べる操作として説明できる](notes/lit-space-time-cube-bach2014.md)<br>影響する → [眺めるには「劇場の制覇マップ」と「観劇の時間割」を足す。ポスターの壁は眺めるでなく日記帳の作品のまとめの見せ方にする。年報カードは保留](notes/dec-records-viz-picks.md)<br>[劇場制覇マップを眺めるに入れた（タイル地図 1 枚。分母は取得した公演に 2 回以上出た会場 1,360、同じ建物のホールは別に数える）](notes/impl-theater-conquest.md) が置き換える |
 | [おすすめ画面に「おすすめに出てこない公演を探す」欄を置いた（これから観られる公演だけを引き、その場で「興味あり」を押せる）](notes/impl-recommend-find.md) | 置き換え済み | 2026-10-17 | ─ | 影響する → [新規登録した人に推薦が出るのは「公演に結び付いた記録が 2 件以上で、評価が 2 種類以上」から。同じ評価だけ・1 件だけ・結び付いていない記録では出ない。お気に入りは名前の公演を別枠で必ず出す](notes/new-user-reco-threshold.md)<br>[おすすめ画面の道具を「おすすめの選び方」（効かせ方・出さない語）と「表示の絞り込み」（場所・料金）の 2 段に分け、「おすすめに出てこない公演を探す」を外した](notes/dec-recommend-filter-tiers.md) が置き換える<br>[探すを、カードの無い公演（索引だけ・一覧だけの新しい公演）まで広げ、波ダッシュの揺れと名前の後ろの括弧でも当たるようにした。言葉があるときは札とカレンダーも当たった数だけ](notes/fix-search-uncarded.md) が影響する<br>[回答を 4 択（興味あり・興味なし・購入済・行けない）にした。行けない＝interest 2、好みの手がかりには興味ありと同じ向きで使う](notes/impl-four-answers.md) が影響する<br>[おすすめに答え終えたら「回答ありがとうございました」の絵と、また出るようにするためのワンポイントを出す](notes/impl-recommend-thanks.md) が前提にする |
 
-## 調べたこと（231 件）
+## 調べたこと（232 件）
 
 | 項目 | 状態 | 日付 | 検証項目 | つながり |
 | --- | --- | --- | --- | --- |
@@ -2239,6 +2244,7 @@ flowchart LR
 | [評価を利用者ごとの百分位に直してから推薦すると、ランキングの精度が上がった（Mansoury・Burke・Mobasher, ACM TIST 2021）。たぐりの順序化（式 1–2）とほぼ同じ考え方](notes/lit-percentile-transform.md) | 確認済み | 2026-10-17 | ─ | 根拠になる → [推薦の計算を person-ordinal-v3 に変えた（評価を順序として読み、公演の種類の好みを足す）](notes/impl-person-ordinal-v3.md)<br>影響する → [たぐりの推薦に学術的な新規性はあるか。部品はどれも既存の手法で、言えるとすれば「組み合わせと場面」。主張するには実データでの検証と、文献の確認のやり直しが要る](notes/q-academic-novelty.md)<br>[たぐりの推薦に学術的な新規性はあるか。部品はどれも既存の手法で、言えるとすれば「組み合わせと場面」。主張するには実データでの検証と、文献の確認のやり直しが要る](notes/q-academic-novelty.md) が前提にする |
 | [安全の点検（ログイン・データの分け方・ブラウザ側・保存先と控え）。重大・高は無し。直したもの 8 件と、起案者に決めてもらうもの・あとで直すものを分けた](notes/sec-audit-1017.md) | 確認済み | 2026-10-17 | ─ | 前提にする → [利用規約（/terms）とプライバシーの説明（/privacy）をサービスの画面として置いた。ログイン画面は上がログイン、下が新規登録。新規登録は「利用規約とプライバシーの説明に同意して始める」にチェックを入れたときだけ通し、同意した版と日時を users に残す。ログインの欄からはアカウントを作らない](notes/impl-terms-consent.md)<br>前提にする → [D1 の控えは Time Travel（7 日）に加え、利用者の記録の表を毎日書き出し、gpg で暗号化して R2 に 30 日置く。月に 1 回、新しい D1 に戻す予行を自動で流す](notes/dec-d1-backup.md) |
 | [マメロン Hi Regular の配布ファイルの readme は、商用利用と Web フォントでの利用を認め、無断の改変・二次配布は控えるよう求めている](notes/mamelon-readme.md) | 確認済み | 2026-10-18 | ─ | 答える → [マメロンを Web フォントとしてサイトに置いて配ってよいか（ライセンス）と、ファイルをどこから取るか](notes/q-mamelon-license.md)<br>影響する → [文字の形を試す。ボタンは Zen丸ゴシック Bold、本文は Zen角ゴシック New（どちらもサイトに置いて配る）。これまでの文字を「規定」として残し、設定で戻せる](notes/font-trial.md) |
+| [本番の取得（state ブランチ、2026-10-16 22:27 UTC）では、終わっていない候補 1,353 件すべてがあらすじの読み取り済み。あらすじあり 836 件（62%）、題材の語あり 1,109 件（82%）](notes/synopsis-coverage-1016.md) | 確認済み | 2026-10-18 | ─ | 影響する → [あらすじの読み取りを文献と比べて見えた穴（題材の言葉が本文と照らされていない・別の公演の本文の引き写しは検査で止まらない・窓と閾値の根拠）を、どの順で測って直すか](notes/q-synopsis-lit-gaps.md)<br>影響する → [あらすじを Claude の定期実行で読むと、1 日にどれだけ読め、起案者の使用枠をどれだけ使うか](notes/q-synopsis-routine-quota.md)<br>影響する → [あらすじの読み取りの今の版 g2 は c6 から作られていて、g1 で足した「題名の公演自身の物語か」の自問が入っていない。意図どおりか、g1 の上に g2 を重ねるべきか](notes/q-prompt-g2-base.md) |
 | [取得元の実際の robots.txt はまだ読めていない](notes/corich-robots-unchecked.md) | 古い | 2026-10-12 | S24 | 新たな問いを生む → [取得元の利用規約・robots.txt・ポスター画像の権利](notes/q-source-terms.md)<br>[CoRich の robots.txt は禁止を書いておらず、サイトマップを 2 つ示している](notes/corich-robots-sitemap-only.md) が置き換える |
 | [Claude の GitHub アプリは taguri-crawler にまだ入っていない](notes/claude-app-repo-access.md) | 古い | 2026-10-13 | ─ | 影響する → [取得処理用の非公開リポジトリ（taguri-crawler）と、その秘密の設定](notes/q-crawler-repo.md) |
 | [日記帳などを Worker の画面に切り替えるための今の状態（NATIVE_UI）](notes/native-cutover-map.md) | 古い | 2026-10-13 | ─ | 新たな問いを生む → [Worker の画面への切り替えを、日記帳など 4 画面だけ先にするか、全画面がそろってから一度にするか](notes/q-native-cutover.md)<br>[Worker の画面への切り替えを、日記帳など 4 画面だけ先にするか、全画面がそろってから一度にするか](notes/q-native-cutover.md) が前提にする |

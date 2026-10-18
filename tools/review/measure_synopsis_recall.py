@@ -100,6 +100,8 @@ def main() -> int:
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--repeat", type=int, default=1)
     ap.add_argument("--jobs", type=int, default=4)
+    # 既定は検証 042 の記録。別の比べ（g2/g3 など）で 042 を上書きしないよう、書き出し先を選べる
+    ap.add_argument("--out", type=Path, default=OUT)
     ap.add_argument("--conditions", default="c2/6,c3/6,c4/6,c4/1",
                     help="版/まとめて渡す件数 をカンマ区切りで")
     a = ap.parse_args()
@@ -159,7 +161,8 @@ def main() -> int:
                 line += f" {version}/{batch}:{mark}"
             print(line)
 
-    OUT.write_text(json.dumps(
+    a.out.parent.mkdir(parents=True, exist_ok=True)
+    a.out.write_text(json.dumps(
         {"conditions": [f"{v}/{b}" for v, b in conds], "repeat": a.repeat,
          "model": E.MODEL,
          "items": [{"key": r["id"], "title": r["title"], "group": truth[r["id"]],
@@ -170,7 +173,7 @@ def main() -> int:
                              for v, b in conds}}
                    for r in rows]},
         ensure_ascii=False, indent=1), encoding="utf-8")
-    print(f"\n1 件ずつの中身を {OUT.relative_to(ROOT)} に残した")
+    print(f"\n1 件ずつの中身を {a.out} に残した")
     return 0
 
 
