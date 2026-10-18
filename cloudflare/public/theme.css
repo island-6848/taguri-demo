@@ -1435,8 +1435,11 @@ a.lsyntag{text-decoration:none;color:inherit;cursor:pointer}
 a.lsyntag:hover,a.lsyntag:focus-visible{text-decoration:underline}
 /* 公演日時の暦の貸切の回「(貸)17:00」: 升の中で折り返さないよう、「(貸)」の括弧と字間を詰める
    （電話の幅で 1 升 35px ほど。12px の字のまま、時刻の字間も少しだけ詰めて収める） */
-.ttb .tm.kas:not(#_){letter-spacing:-.1em}
-.ttb .tm.kas b{font-weight:600;color:var(--ink2);letter-spacing:-.22em;margin-right:.1em}
+/* 字間を詰めすぎると「(貸)」の括弧が字に重なった（起案者に見せる前に気づいた、2026-10-18）。「(貸)」は少し小さくして字間は詰めず、
+   升の狭い電話の幅（420px 以下）だけ、「(貸)」を時刻の上の行に小さく置く（時刻の「18:00」は 1 行のまま） */
+.ttb .tm.kas:not(#_){letter-spacing:0;white-space:nowrap}
+.ttb .tm.kas b{font-weight:600;color:var(--ink2);letter-spacing:0;font-size:.82em;margin-right:.06em}
+@media(max-width:420px){.ttb .tm.kas b{display:block;margin:0;line-height:1.1;font-size:.75em}}
 /* 「ほか n 会場」は押すと、ほかの会場の一覧（.mvlist）が会場の行の下に開く（app.js compactTickets） */
 .ticket.cmp .meta .mvmore{display:inline;margin-left:6px;padding:0;border:0;background:none;font:inherit;color:var(--curtain);
  cursor:pointer;white-space:nowrap;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px;position:relative}
