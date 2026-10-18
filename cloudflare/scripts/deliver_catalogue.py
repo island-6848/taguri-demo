@@ -55,6 +55,9 @@ VENUE_WRITES = 2               # venue_pref: the row and its primary-key index
 META_WRITES = 2                # rec_meta: the row and its primary-key index
 CENSUS_WRITES = 2              # venue_census (migration 0027): the row and its primary-key index
 INDEX_WRITES_PER_ROW = 2       # rec_* / stage_label / rec_card rows: the row and its primary-key index
+# rec_stage の行はさらに開始日（0019）と tour（0038）の索引で 2、rec_card の行は tour の索引（0038）で 1 多い
+STAGE_EXTRA_WRITES = 2
+CARD_WRITES_PER_ROW = INDEX_WRITES_PER_ROW + 1
 STATE = Path("d1") / "delivered.json"
 
 
@@ -204,7 +207,8 @@ INDEX_HASHES = Path("d1") / "index-hashes.json"
 
 # 索引を入れるときも、題名（stage_label）とカード（rec_card）の毎日の入れ替えの分は残す
 # （Catalog #6 で約 9,600 と 3,100）。索引の初回は全部で約 5 万行なので、何日かに分けて入れる（q-index-first-load）。
-LABELS_CARDS_RESERVE = 15_000
+# 0038 で rec_card に tour の索引を足したので、カードの分を 1 行 1 つ（入れる・消すで約 3,100）多く残す。
+LABELS_CARDS_RESERVE = 18_000
 # 1 回の wrangler d1 execute に送る大きさ。2026-10-16 の索引 2 万行を 1 つのファイルで送ったら、D1 の
 # import が 60 秒で "Upstream service unavailable [code: 7009]" になった（Catalog #7、q-index-load-now）。
 # 文の切れ目で分け、1 つずつ送る。どの文も upsert か delete なので、途中で止まっても送り直してよい
@@ -253,8 +257,9 @@ def build_index(out: Path, data: Path, max_rows: int | None = None) -> tuple[str
     if not d.get("rev"):
         return None
     n = int(d.get("upserted", 0)) + int(d.get("deleted", 0))
-    # Each row changed or deleted costs the row and its key index; a rec_stage row also its start index.
-    return d["rev"], INDEX_WRITES_PER_ROW * n + int(d.get("stages_upserted", 0)), sql, n, int(d.get("left", 0))
+    # Each row changed or deleted costs the row and its key index; a rec_stage row also its start and tour indexes.
+    return (d["rev"], INDEX_WRITES_PER_ROW * n + STAGE_EXTRA_WRITES * int(d.get("stages_upserted", 0)), sql, n,
+            int(d.get("left", 0)))
 
 
 def build_labels(out: Path) -> tuple[str, int, Path] | None:
@@ -285,8 +290,8 @@ def build_cards(out: Path, today: datetime.date) -> tuple[str, int, Path] | None
     m = re.search(r"VALUES\('rec_card','([0-9a-f]+)'\)", sql.read_text(encoding="utf-8"))
     if not m:
         return None
-    # Each row is written with its key index; deleting the previous version writes them again (ops in build).
-    return m.group(1), INDEX_WRITES_PER_ROW * json.loads(r.stdout.strip().splitlines()[-1])["stages"], sql
+    # Each row is written with its key and tour indexes; deleting the previous version writes them again (ops in build).
+    return m.group(1), CARD_WRITES_PER_ROW * json.loads(r.stdout.strip().splitlines()[-1])["stages"], sql
 
 
 def build(data: Path, out: Path, today: datetime.date, with_index: bool, budget: int,
@@ -342,7 +347,9 @@ def build(data: Path, out: Path, today: datetime.date, with_index: bool, budget:
     out.mkdir(parents=True)
     if with_index or index_only:
         reserve = 0 if index_only else LABELS_CARDS_RESERVE
-        # 1 行は行＋主キーの索引で 2、rec_stage はさらに 1。多めに 3 で割って、今日入れられる行数にする
+        # 1 行は行＋主キーの索引で 2、rec_stage はさらに 2。多めに 3 で割って、今日入れられる行数にする
+        # （公演ごとに rec_stage 1 行と rec_people・rec_credit の行をまとめて選ぶので、平均は 3 を越えない。
+        # 越えた日は下の「writes would exceed the budget」で送らない）
         got = build_index(out, data, (budget - writes - reserve) // (INDEX_WRITES_PER_ROW + 1))
         if got is None:
             report["index"] = "not built (see the log above)"
