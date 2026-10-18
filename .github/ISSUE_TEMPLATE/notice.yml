@@ -1,0 +1,24 @@
+name: 使っていて気付いたこと
+description: 困ったこと・おかしい表示・こうしてほしいこと。Claude が読んで直します（1 行だけでも大丈夫）
+labels: ["起案者"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: 気付いたこと
+      description: どの画面で、何が、どうなっていたか。こうしてほしい、でもよいです。スクリーンショットも貼れます（個人の記録・メールアドレスが写っていたら隠してください。issue は公開です）
+    validations:
+      required: true
+  - type: input
+    id: where
+    attributes:
+      label: 画面（任意）
+      placeholder: おすすめ・お気に入り・日記帳・探す・設定 など
+  - type: dropdown
+    id: urgency
+    attributes:
+      label: 急ぎ（任意）
+      options:
+        - ふつう
+        - 急ぎ（使えない・データが消えそう）
+        - いつでもよい
