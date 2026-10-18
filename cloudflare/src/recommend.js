@@ -23,6 +23,18 @@ export const SEED_Z = 0.4 * SQRT12, SEED_K = 3;
 // 「推薦の強さ、お気に入り＞興味ありにしてほしい」）。お気に入りの種は 1 公演ごとに、そこにいる人それぞれへ w × FAV_SEED_W を足す
 export const FAV_SEED_W = 2;
 export const SEED_ROLES = ['出演', '演出', '脚本', '作', '原作', '翻訳', '潤色', '構成', '振付', '作曲', '音楽'];
+// お気に入りの公演から広げる「関わりのある人」の役職と重み（起案者の指示 2026-10-18「関わりのある人にも度合いがあって、
+// 共演者＞演出＞脚本＞＞＞翻訳＞主催＞美術・照明・音響・映像・衣裳・振付くらいだけでいい」、dec-fav-spread-roles）。
+// 種の仮の評価 SEED_Z にこの重みを掛ける（値はほぼこの比になる）。表に無い役職（制作・宣伝・進行・その他）からは広げない。
+// 公演の種類（#形式・#題材 …）は人ではないので 1 のまま。役職の名前は credits.canonRole の後（作 → 脚本、衣装 → 衣裳）。
+// user_recommender.FAV_SPREAD_W と同じ
+export const FAV_SPREAD_W = {'出演': 1.0, '演出': 0.7, '演出・振付': 0.7,
+  '脚本': 0.5, '作': 0.5, '上演台本': 0.5, '脚色': 0.5, '潤色': 0.5, '構成': 0.5, '原作': 0.5, '原案': 0.5,
+  '翻訳': 0.2, '訳': 0.2, '主催': 0.15,
+  '美術': 0.1, '舞台美術': 0.1, '照明': 0.1, '音響': 0.1, '映像': 0.1, '衣裳': 0.1, '衣装': 0.1, '振付': 0.1};
+export const favSpread = role => (role.startsWith('#') ? 1.0 : Object.hasOwn(FAV_SPREAD_W, role) ? FAV_SPREAD_W[role] : 0);
+/** 登録した人の名前を索引の書き方に寄せる（索引は NFKC で姓名のあいだの空白を詰めてある: measure_nets._names）。 */
+export const personKey = s => String(s ?? '').normalize('NFKC').replace(/[\s　]/gu, '');
 export const SEED_KINDS = ['人', '原作者'], MAX_SEED_FAVS = 20, MAX_SEED_STAGES = 60;
 export const SEED_GROUP_KINDS = ['団体', '主催'], SEED_WORK_KINDS = ['作品'], SEED_THEME_KINDS = ['題材'];
 export const THEME_AXIS = '#題材';
@@ -334,8 +346,10 @@ export function personValues(rated, seeds = [], skip = new Set(), liked = [], di
   for (const r of seeds) {
     const keys = [...new Set((r.people || []).filter(([, person]) => !skip.has(person)).map(([role, person]) => role + '\u0000' + person))].sort(cmp);
     for (const k of keys) {
+      const rw = favSpread(k.slice(0, k.indexOf('\u0000')));
+      if (!rw) continue;                        // 制作・宣伝・その他の役職からは広げない
       const t = tally.get(k) || [0, 0, 0];
-      t[1] += w * FAV_SEED_W * SEED_Z; t[2] += w * FAV_SEED_W;
+      t[1] += w * FAV_SEED_W * SEED_Z * rw; t[2] += w * FAV_SEED_W;
       tally.set(k, t);
     }
   }
@@ -389,7 +403,11 @@ export async function scoreFromIndex({postingsFor, stagesFor, rated, multipliers
   // 1 段だけ広げる: 好きな人（値が正）が出る公演の共演者・作り手
   const via = new Map();                       // key -> name of the liked person they work with
   if (expand?.peopleFor && !ablate.expand) {
-    const top = [...values.entries()].filter(([k, [, v]]) => v > 0 && !k.startsWith('#')).sort((a, b) => (b[1][1] - a[1][1]) || cmp(a[0], b[0])).slice(0, EXPAND_PEOPLE);
+    // 広げる元は、本人が評価した公演・興味ありを押した公演にいる人だけ。お気に入りの公演の共演者などは、それ自体が
+    // お気に入りの名前から 1 段広げた人なので、そこからさらに広げると 2 段先になり、理由に登録していない人が
+    // 「好きな○○」と出ていた（起案者の指摘 2026-10-18「堂本光一と登録したら『好きな諸鍛冶裕太と同じ公演に関わる人』と出た」）
+    const direct = new Set([...rated, ...liked].flatMap(r => (r.people || []).filter(([, p]) => !skip.has(p)).map(([role, p]) => role + '\u0000' + p)));
+    const top = [...values.entries()].filter(([k, [, v]]) => v > 0 && !k.startsWith('#') && direct.has(k)).sort((a, b) => (b[1][1] - a[1][1]) || cmp(a[0], b[0])).slice(0, EXPAND_PEOPLE);
     const likedTop = new Map(top.map(([k, [, v]]) => [k, v]));
     const stageLiked = new Map();               // sid -> [[key, v]...] of liked people in it
     for (const [sid, all] of byStage) for (const p of all) {
@@ -468,21 +486,37 @@ export async function scoreFromIndex({postingsFor, stagesFor, rated, multipliers
  */
 export async function seedsFromFavourites({postingsFor, peopleFor, stagesMatching}, favourites) {
   const names = [...new Set(favourites.filter(f => SEED_KINDS.includes(f.kind)).map(f => f.name))].sort(cmp).slice(0, MAX_SEED_FAVS);
-  const sids = new Set();
+  // 「堂本 光一」と空白を入れて登録しても、索引の「堂本光一」で引く（お気に入りの一覧は空白を詰めて当てるので公演が出るのに、
+  // 推薦の種は名前そのままで引いていて 0 件になっていた。2026-10-18、fix-fav-only-no-reco）。build_recommend_index と同じ
+  const lookup = new Map();                    // 索引で引く名前 -> 登録した名前
+  for (const name of names) for (const n of [name, personKey(name)]) if (n && !lookup.has(n)) lookup.set(n, name);
+  const sids = new Set(), favOf = new Map();   // stage_id -> 登録した名前（理由に書く）
+  const note = (sid, name) => { if (!favOf.has(sid)) favOf.set(sid, new Set()); favOf.get(sid).add(name); };
   if (names.length) {
-    const keys = names.flatMap(name => SEED_ROLES.map(role => [role, name])).sort(cmpTuple);
-    for (const r of await postingsFor(keys)) sids.add(r[2]);
+    const keys = [...lookup.keys()].flatMap(name => SEED_ROLES.map(role => [role, name])).sort(cmpTuple);
+    for (const r of await postingsFor(keys)) { sids.add(r[2]); note(r[2], lookup.get(r[1]) ?? r[1]); }
   }
   // Troupes / producers by the producing company, works by the title
   // (recommend2.declared_hits' rules on normalised text).
-  const pick = (kinds, norm) => [...new Set(favourites.filter(f => kinds.includes(f.kind)).map(f => norm(f.name)).filter(x => x.length >= 2))].sort(cmp).slice(0, MAX_SEED_FAVS);
+  const back = new Map();
+  const pick = (kinds, norm) => {
+    const out = new Set();
+    for (const f of favourites.filter(f => kinds.includes(f.kind))) { const x = norm(f.name); if (x.length >= 2) { out.add(x); if (!back.has(x)) back.set(x, f.name); } }
+    return [...out].sort(cmp).slice(0, MAX_SEED_FAVS);
+  };
   const groups = pick(SEED_GROUP_KINDS, nz), works = pick(SEED_WORK_KINDS, titleKey), subjects = pick(SEED_THEME_KINDS, nz);
-  if ((groups.length || works.length || subjects.length) && stagesMatching)
-    for (const sid of await stagesMatching(groups, works, subjects)) sids.add(sid);
+  if ((groups.length || works.length || subjects.length) && stagesMatching) {
+    const labels = new Map();
+    for (const sid of await stagesMatching(groups, works, subjects, labels)) {
+      sids.add(sid);
+      for (const x of labels.get(sid) || []) note(sid, back.get(x) ?? x);
+    }
+  }
+  const skip = new Set(lookup.keys());
   const chosen = [...sids].sort(cmp).slice(0, MAX_SEED_STAGES);
-  if (!chosen.length) return {seeds: [], skip: new Set(names)};
+  if (!chosen.length) return {seeds: [], skip};
   const people = await peopleFor(chosen);
-  return {seeds: chosen.filter(sid => people.get(sid)?.length).map(sid => ({stage_id: sid, people: people.get(sid)})), skip: new Set(names)};
+  return {seeds: chosen.filter(sid => people.get(sid)?.length).map(sid => ({stage_id: sid, people: people.get(sid), fav: [...(favOf.get(sid) || [])].sort(cmp)})), skip};
 }
 
 /**
@@ -533,22 +567,33 @@ export function d1Access(db, ver, counter = {rows: 0, queries: 0}) {
       }
       return map;
     },
-    async stagesMatching(groups, works, subjects = []) {
+    // labels（任意の Map）: stage_id -> 当たった語（groups・works・subjects の値）。理由に登録した名前を書くため。
+    // 読む行は前と同じ（列を 2〜3 つ足すだけ）
+    async stagesMatching(groups, works, subjects = [], labels = null) {
       const out = new Set();
+      const label = (sid, x) => { if (!labels) return; if (!labels.has(sid)) labels.set(sid, new Set()); labels.get(sid).add(x); };
       // Troupes / works: one pass over this version's stages (no index on these).
       const conds = [...groups.map(() => 'instr(gkey,?)>0'), ...works.map(() => 'instr(tkey,?)>0')];
       if (conds.length) {
-        const {results} = await db.prepare(`SELECT stage_id FROM rec_stage WHERE ver=? AND (${conds.join(' OR ')})`).bind(ver, ...groups, ...works).all();
+        const {results} = await db.prepare(`SELECT stage_id,gkey,tkey FROM rec_stage WHERE ver=? AND (${conds.join(' OR ')})`).bind(ver, ...groups, ...works).all();
         counter.rows += results.length; counter.queries += 1;
-        for (const r of results) out.add(r.stage_id);
+        for (const r of results) {
+          out.add(r.stage_id);
+          for (const g of groups) if (String(r.gkey || '').includes(g)) label(r.stage_id, g);
+          for (const t of works) if (String(r.tkey || '').includes(t)) label(r.stage_id, t);
+        }
       }
       // Subjects: #題材 words that contain the name or are contained in it (net_c.declared_hits).
       if (subjects.length) {
         const cond = subjects.map(() => '(instr(person,?)>0 OR (length(person)>=2 AND instr(?,person)>0))').join(' OR ');
-        const {results} = await db.prepare(`SELECT DISTINCT stage_id FROM rec_credit WHERE ver=? AND role=? AND (${cond})`)
+        const {results} = await db.prepare(`SELECT DISTINCT stage_id,person FROM rec_credit WHERE ver=? AND role=? AND (${cond})`)
           .bind(ver, THEME_AXIS, ...subjects.flatMap(t => [t, t])).all();
         counter.rows += results.length; counter.queries += 1;
-        for (const r of results) out.add(r.stage_id);
+        for (const r of results) {
+          out.add(r.stage_id);
+          const p = String(r.person || '');
+          for (const t of subjects) if (p.includes(t) || (Array.from(p).length >= 2 && t.includes(p))) label(r.stage_id, t);
+        }
       }
       return [...out];
     },

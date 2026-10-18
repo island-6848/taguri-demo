@@ -45,6 +45,18 @@ SEED_Z = 0.4 * SQRT12
 SEED_K = 3
 # お気に入りから作る種の重さ（起案者の指示 2026-10-18「推薦の強さ、お気に入り＞興味ありにしてほしい」。Worker の FAV_SEED_W と同じ）
 FAV_SEED_W = 2
+# お気に入りの公演から広げる「関わりのある人」の役職と重み（起案者の指示 2026-10-18「関わりのある人にも度合いがあって、
+# 共演者＞演出＞脚本＞＞＞翻訳＞主催＞美術・照明・音響・映像・衣裳・振付くらいだけでいい」、dec-fav-spread-roles）。
+# 種の仮の評価 SEED_Z に掛ける。表に無い役職（制作・宣伝・進行・その他）からは広げない。公演の種類（"#..."）は 1 のまま。
+# Worker の recommend.FAV_SPREAD_W と同じ
+FAV_SPREAD_W = {"出演": 1.0, "演出": 0.7, "演出・振付": 0.7,
+                "脚本": 0.5, "作": 0.5, "上演台本": 0.5, "脚色": 0.5, "潤色": 0.5, "構成": 0.5, "原作": 0.5, "原案": 0.5,
+                "翻訳": 0.2, "訳": 0.2, "主催": 0.15,
+                "美術": 0.1, "舞台美術": 0.1, "照明": 0.1, "音響": 0.1, "映像": 0.1, "衣裳": 0.1, "衣装": 0.1, "振付": 0.1}
+
+
+def fav_spread(role: str) -> float:
+    return 1.0 if role.startswith("#") else FAV_SPREAD_W.get(role, 0)
 GRADE_VALUE = {"◎": 4, "○": 3, "△": 2, "×": 1}
 # Users may choose their own scale (2–11 levels, 5 by default; dec-user-scale-range).
 # Such a rating is stored as "value/levels", e.g. "4/5"; ◎○△× are a 4-level scale.
@@ -374,7 +386,10 @@ def person_values(rated: list[dict], seeds: list[dict] = (), skip: set = frozens
         for key in rated_keys(r):
             if key[1] in skip:
                 continue
-            tally[key][1] += w * FAV_SEED_W * SEED_Z
+            rw = fav_spread(key[0])
+            if not rw:
+                continue        # 制作・宣伝・その他の役職からは広げない
+            tally[key][1] += w * FAV_SEED_W * SEED_Z * rw
             tally[key][2] += w * FAV_SEED_W
     values = {k: (n, s / (wt + M.CONF_K)) for k, (n, s, wt) in tally.items()}
     return values, {str(k): len(v) for k, v in sorted(by_scale.items())}

@@ -1978,7 +1978,8 @@ document.addEventListener("click", ev => {
     });
   } else if (b.dataset.wreset) {
     const box = b.closest(".wbox"), w = {};
-    box.querySelectorAll(".wsl").forEach(sl => { w[sl.dataset.weight] = "mid"; });
+    // 「すべて初めの設定に戻す」: 群ごとの既定（つまみの data-default、起案者の指示 2026-10-18）
+    box.querySelectorAll(".wsl").forEach(sl => { w[sl.dataset.weight] = sl.dataset.default || "mid"; });
     post("/api/weight", {weights: w}, null, null).then(d => {
       if (!d) return;
       location.hash = "weights";
