@@ -535,7 +535,10 @@ export async function seedsFromFavourites({postingsFor, peopleFor, stagesMatchin
   const note = (sid, name) => { if (!favOf.has(sid)) favOf.set(sid, new Set()); favOf.get(sid).add(name); };
   const put = (sid, x) => { if (!(sids.get(sid) >= x)) sids.set(sid, x); };
   if (names.length) {
-    const keys = [...lookup.keys()].flatMap(name => SEED_ROLES.map(role => [role, name])).sort(cmpTuple);
+    // 役職で絞った人（f.roles、lists.rolesAllowed。q-favourite-homonym）は、その役職の札だけを引く
+    const allowed = new Map(favourites.filter(f => f.roles).map(f => [f.name, f.roles]));
+    const fits = (name, role) => { const a = allowed.get(name); return !a || a.has(role); };
+    const keys = [...lookup.keys()].flatMap(name => SEED_ROLES.filter(role => fits(lookup.get(name), role)).map(role => [role, name])).sort(cmpTuple);
     for (const r of await postingsFor(keys)) { put(r[2], 1); note(r[2], lookup.get(r[1]) ?? r[1]); }
   }
   // Troupes / producers by the producing company, works by the title

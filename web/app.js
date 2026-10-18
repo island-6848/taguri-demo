@@ -1818,9 +1818,12 @@ document.addEventListener("click", ev => {
   } else if (b.dataset.fav === "add") {
     const g = b.closest(".fav-add"), i = g.querySelector("#fav-name");
     if (!i.value.trim()) return;
-    post("/api/favourite", {action: "add", kind: g.querySelector("#fav-kind").value,
-      name: i.value.trim()}, g, "登録しました")
-      .then(d => { if (d) { i.value = ""; waitJob(g, true); } });
+    // 人を選んだときだけ、任意の「役職で絞る」の札も送る（起案者の指示 2026-10-18、q-favourite-homonym）
+    const kind = g.querySelector("#fav-kind").value;
+    const boxes = [...g.querySelectorAll(".fav-roles input:checked")];
+    post("/api/favourite", {action: "add", kind,
+      name: i.value.trim(), ...(kind === "人" && boxes.length ? {roles: boxes.map(x => x.value)} : {})}, g, "登録しました")
+      .then(d => { if (d) { i.value = ""; boxes.forEach(x => { x.checked = false; }); waitJob(g, true); } });
   } else if (b.dataset.fav === "promote") {
     const r = b.closest(".prom");
     post("/api/favourite", {action: "add", kind: b.dataset.kind, name: b.dataset.name}, r,

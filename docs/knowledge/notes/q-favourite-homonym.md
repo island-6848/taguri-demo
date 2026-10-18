@@ -1,7 +1,7 @@
 ---
 id: q-favourite-homonym
 type: question
-status: open
+status: answered
 date: 2026-10-18
 title: お気に入りの人の名前に同姓同名がいる（加藤拓也）とき、片方だけを拾うにはどうするか。役職で絞る・団体で絞る・公演ごとに ✕ のどれにするか
 sources:
