@@ -1959,6 +1959,21 @@
    "verifies": []
   },
   {
+   "id": "dec-rec-card-1018-dismiss-help",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "カードの見た目: ヘルプ（？）は枠の内側の右下、枠の外の右上は「候補から消す ✕」、あらすじのタグは常に表示・続きは同じ段落で、ほか N 会場は会場名だけ、三角は ▶ 10px、料金の畳んだ行の菱形と行頭の「・」を消す",
+   "sources": [
+    "web/app.js",
+    "web/theme.css",
+    "cloudflare/src/screens/schedule.js",
+    "cloudflare/test/schedule.test.js",
+    "cloudflare/test/e2e-walk.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-rec-card-1018-layout-b",
    "type": "decision",
    "status": "adopted",
@@ -8961,6 +8976,11 @@
    "from": "dec-reason-two-works",
    "rel": "supersedes",
    "to": "dec-reason-work-titles"
+  },
+  {
+   "from": "dec-rec-card-1018-dismiss-help",
+   "rel": "affects",
+   "to": "dec-rec-card-1018-layout-b"
   },
   {
    "from": "dec-rec-card-1018-layout-b",

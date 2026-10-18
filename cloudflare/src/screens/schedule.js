@@ -216,6 +216,8 @@ const RANGE = /^[\d,]+円\s*[~〜～\-－]\s*[\d,]+円$/;
  * 同一金額になってるときは、簡潔に12000円と明記して」）。web/app.js の sameYen と同じ
  */
 export const sameYen = line => line.replace(/([\d,]+)円\s*[~〜～\-－]\s*([\d,]+)円/g, (all, a, b) => (a.replace(/,/g, '') === b.replace(/,/g, '') ? a + '円' : all));
+/** 料金の行の頭の箇条書きの印（「・S席 7,000円」の「・」） */
+export const PRICE_BULLET = /^(?:[・･•●○◆◇■□▪▫]|[-*]\s)\s*/;
 /**
  * Price rows of a price text: [[券種, 金額] | [文]]. Lines about sale dates are left out.
  * `dropRange`: leave out the range-only line when there are other rows (ツアーの各会場の行。起案者の指示 2026-10-17）.
@@ -223,7 +225,9 @@ export const sameYen = line => line.replace(/([\d,]+)円\s*[~〜～\-－]\s*([\d
 export function priceRows(text, {dropRange = false} = {}) {
   const out = [];
   for (const raw of String(text || '').normalize('NFKC').split(/\n+/)) {
-    const line = raw.replace(/\s+/g, ' ').trim();
+    // 行頭の「・」「◆」などの印は落とす（箇条書きの ◆ と重なる。起案者の指摘 2026-10-18「価格帯の展開したところ、◆があるのに
+    // 重複して箇条書きの・がのこっているところがある」。web/app.js priceRowsOf と同じ）
+    const line = raw.replace(/\s+/g, ' ').trim().replace(PRICE_BULLET, '');
     if (!/円|無料/.test(line) || /発売|受付|抽選|開始|販売/.test(line)) continue;
     const m = /^【?([^:：】]{1,24})】?\s*[:：]\s*(.+)$/.exec(line);
     out.push(m ? [m[1].trim(), m[2].trim()] : [line]);

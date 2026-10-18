@@ -413,10 +413,26 @@ function fixLinks(root) {
     const box = document.createElement("div");
     box.className = "fixq";
     box.innerHTML = '<button type="button" class="fixq-open" aria-label="公演情報の誤りを知らせる" title="公演情報の誤りを知らせる">' + HELP_ICON + '</button>';
-    // カードの枠の外の右上に小さく出す（起案者の指示 2026-10-18「ヘルプマーク、カード欄外の右上に小さく表示して」。
-    // 前は本文の終わりの右に置いていた）。枠（article）の直下に置き、位置は theme.css の「カードの右上のヘルプ」
+    // カードの枠の内側の右下の角に小さく出す（起案者の指示 2026-10-18「ヘルプマークやっぱりカード内の右下角において」。
+    // その前の同じ日の指示で枠の外の右上に置いていた。そこには候補から消す ✕ を置く）。枠（article）の直下に置き、
+    // 位置は theme.css の「カードの見た目（作業 A）」の塊
     t.appendChild(box);
+    dismissButton(t);
   });
+}
+// ---- 候補から消す ✕（起案者の指示 2026-10-18「逆に今ヘルプマークがあるとこには取り消しの✕をつけて。たとえばお気に入りとか、
+// これいらんなってときがある。その時候補から消したい。興味の画面でバツを押された場合は、興味なしか視界にも入れたくないから
+// 結構マイナスと判断できる」）。カードの枠の外の右上。押すと /api/react に value 'dismiss'（興味ありの一覧では 'dismiss_strong'）を
+// 三択のボタンと同じ形（shown・siblings・from）で送り、カードを消す。購入済の公演（持っている券）のカードには出さない
+const DISMISS_ICON = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg>';
+function dismissButton(t) {
+  if (t.querySelector(":scope > .dismissq") || t.classList.contains("owned")) return;
+  const here = location.pathname.slice(REPO_BASE.length) || "/";
+  if (here === "/tickets") return;
+  const box = document.createElement("div");
+  box.className = "dismissq";
+  box.innerHTML = '<button type="button" class="dismissq-open" aria-label="この公演を候補から消す" title="この公演を候補から消す">' + DISMISS_ICON + "</button>";
+  t.appendChild(box);
 }
 function openFixPopup(t) {
   const title = ((t.querySelector("h3") || {}).textContent || "").trim();
@@ -456,12 +472,52 @@ document.addEventListener("click", ev => {
   ul.hidden = !ul.hidden;
   b.setAttribute("aria-expanded", String(!ul.hidden));
 });
-// あらすじの続きを開いたあと「折りたたむ」で閉じる（起案者の指示 2026-10-18）
+// あらすじの「続きを読む」で続きを開き、「折りたたむ」で閉じる（起案者の指示 2026-10-18）
 document.addEventListener("click", ev => {
-  const b = ev.target.closest && ev.target.closest(".lsynfold");
+  const b = ev.target.closest && ev.target.closest(".lsynopen, .lsynfold");
   if (!b) return;
-  const d = b.closest("details.lsynmore");
-  if (d) d.open = false;
+  const m = b.closest(".lsynmore"), rest = m && m.querySelector(".lsynrest"), open = m && m.querySelector(".lsynopen");
+  if (!rest || !open) return;
+  const on = b.classList.contains("lsynopen");
+  rest.hidden = !on;
+  open.hidden = on;
+  open.setAttribute("aria-expanded", String(on));
+  m.classList.toggle("open", on);
+  (on ? rest.querySelector(".lsynfold") : open).focus({preventScroll: true});
+});
+// 候補から消す ✕ を押したとき（dismissButton）。記録できたらカードを「候補から消しました」の 1 行に置き換え、おすすめの画面なら
+// 三択のボタンと同じく、空いた枠を次の候補で埋める（fill_only）。記録できなかったらカードは残し、帯の欄に理由を出す
+document.addEventListener("click", async ev => {
+  const b = ev.target.closest && ev.target.closest(".dismissq-open");
+  if (!b || b.disabled) return;
+  const t = b.closest("article.ticket[data-stage]");
+  if (!t) return;
+  const here = location.pathname.slice(REPO_BASE.length) || "/";
+  // 興味ありの一覧で消すのは、興味なしより強い「見たくない」（起案者の指示 2026-10-18）
+  const body = {stage_id: t.dataset.stage, value: here === "/recommend/interest" ? "dismiss_strong" : "dismiss", nofill: true};
+  const from = {"/recommend/reminder": "reminder", "/search": "search", "/recommend/tag": "search", "/recommend/favourites": "favourites"}[here];
+  if (from) body.from = from;
+  if (t.closest(".rfind")) body.from = "search";
+  if (t.dataset.tours !== undefined) body.siblings = t.dataset.tours.split(",").filter(Boolean);
+  const onRecommend = ["/", "/recommend"].includes(here);
+  const slot = onRecommend && !t.closest(".rfind") && t.classList.contains("recommend");
+  const shown = slot ? [...document.querySelectorAll(".ticket.recommend")].filter(a => !a.closest(".rfind")).map(a => a.dataset.stage).filter(Boolean) : null;
+  const g = t.querySelector(".btns[data-stage]") || t;
+  b.disabled = true;
+  const d = await post("/api/react", body, g, "候補から消しました");
+  if (!d) { b.disabled = false; return; }
+  const title = ((t.querySelector("h3") || {}).textContent || "").trim();
+  const note = document.createElement("p");
+  note.className = "dismissed";
+  note.setAttribute("role", "status");
+  note.innerHTML = (title ? "「" + E(title) + "」を" : "この公演を") + '候補から消しました。<span class="said"></span>';
+  t.replaceWith(note);
+  if (!shown) return;
+  const f = await fetch(API_BASE + "/api/react", {method: "POST", credentials: "include",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({stage_id: body.stage_id, fill_only: true, shown, ...pagePrefs()})})
+    .then(r => r.ok ? r.json() : null).catch(() => null);
+  if (f && f.fill) applyFill(f.fill, note);
 });
 document.addEventListener("click", ev => {
   const b = ev.target.closest && ev.target.closest(".fixq-open");
@@ -475,7 +531,7 @@ function applyDemoRestrictions(root) {
     const note = document.createElement("p");
     note.className = "note";
     note.textContent = IS_DEMO ? "デモでは公演情報の編集はできません。"
-      : "公演情報は全員で共有しているため、ここでは編集できません。誤りはカードの右上の「？」から知らせてください。";
+      : "公演情報は全員で共有しているため、ここでは編集できません。誤りはカードの右下の「？」から知らせてください。";
     editor.replaceWith(note);
   });
   root.querySelectorAll("[data-hand-img], [data-hand-off]").forEach(control => {
@@ -895,11 +951,14 @@ const CAST_LEAD = 5, SYN_LEAD = 100;
 // 「12,000円 ~ 12,000円」のように両端が同じ額の幅は「12,000円」と 1 つだけ書く（起案者の指示 2026-10-18
 // 「値段帯が12000円〜12000円って同一金額になってるときは、簡潔に12000円と明記して」。screens/schedule.js sameYen と同じ）
 const sameYen = line => line.replace(/([\d,]+)円\s*[~〜～\-－]\s*([\d,]+)円/g, (all, a, b) => (a.replace(/,/g, "") === b.replace(/,/g, "") ? a + "円" : all));
+const PRICE_BULLET = /^(?:[・･•●○◆◇■□▪▫]|[-*]\s)\s*/;
 /** 料金の欄の文から、金額の行を [券種, 金額] か [文] にして返す（screens/schedule.js priceRows と同じ決まり） */
 function priceRowsOf(text) {
   const out = [];
   for (const raw of String(text || "").normalize("NFKC").split(/\n+/)) {
-    const line = sameYen(raw.replace(/\s+/g, " ").trim());
+    // 行頭の「・」「◆」などの印は落とす（箇条書きの ◆ と重なる。起案者の指摘 2026-10-18「価格帯の展開したところ、◆があるのに
+    // 重複して箇条書きの・がのこっているところがある」。screens/schedule.js priceRows と同じ）
+    const line = sameYen(raw.replace(/\s+/g, " ").trim().replace(PRICE_BULLET, ""));
     if (!/円|無料/.test(line) || /発売|受付|抽選|開始|販売/.test(line)) continue;
     const m = /^【?([^:：】]{1,24})】?\s*[:：]\s*(.+)$/.exec(line);
     const r = m ? [m[1].trim(), m[2].trim()] : [line];
@@ -1142,7 +1201,11 @@ function leadSynopsis(t, lead, noMore) {
           let cut = SYN_LEAD;
           const m = full.slice(80, 121).search(/[。！？!?]/);
           if (m >= 0) cut = 80 + m + 1;
-          const head = full.slice(0, cut), rest = full.slice(cut);
+          // 続きは、畳む前の最後の字のすぐ次の字から同じ段落の続きとして書く（起案者の指示 2026-10-18「続きを読むを押したときに、
+          // ちゃんとたたむ前の次の文字から書かれるようにして。いま展開したら変な改行から始まってる」）。文の切れ目で切ったときに
+          // 続きの頭に残る空白（元は段落の改行）は落とす
+          const head = full.slice(0, cut);
+          const rest = /[。！？!?」』）)]$/.test(head) ? full.slice(cut).replace(/^\s+/, "") : full.slice(cut);
           // あらすじから読み取った題材（render_recommend.syn_block の .tags .tag「#ワード」。手で入れた印の札は除く）を、
           // 開いたあらすじの下にハッシュタグで並べる（起案者の指示 2026-10-18「取得したワードをハッシュタグっぽく記載して」）。
           // 続きの無い短いあらすじは、本文のすぐ下に出す
@@ -1152,9 +1215,13 @@ function leadSynopsis(t, lead, noMore) {
           const tag = w => IS_DEMO ? '<span class="lsyntag">#' + E(w) + "</span>"
             : '<a class="lsyntag" href="/recommend/tag?w=' + encodeURIComponent(w) + '">#' + E(w) + "</a>";
           const tags = words.length ? '<span class="lsyntags">' + words.map(tag).join("") + "</span>" : "";
+          // ハッシュタグは折りたたみの外に出して、閉じていても見せる（起案者の指示 2026-10-18「あらすじのハッシュタグは常に表示。
+          // あらすじの本文で長いところだけ折りたたんで」）。続きは details をやめ、同じ行の中の span を開け閉めする
+          // （details の中身は段落の箱になり、開くと続きが新しい行から始まっていた）
           p.innerHTML = '<span class="cl">あらすじ</span><span class="lv">' + E(head)
-            + (rest ? '<details class="lsynmore"><summary>続きを読む</summary><span class="lsynrest">' + E(rest)
-              + "</span>" + tags + '<button type="button" class="lsynfold">折りたたむ</button></details>' : tags) + "</span>";
+            + (rest ? '<span class="lsynmore"><button type="button" class="lsynopen" aria-expanded="false">続きを読む</button>'
+              + '<span class="lsynrest" hidden>' + E(rest) + '<button type="button" class="lsynfold">折りたたむ</button></span></span>' : "")
+            + tags + "</span>";
         } else {
           p.innerHTML = '<span class="cl">あらすじ</span><span class="lv">' + E(firstSentence(text)) + "</span>";
         }
@@ -1279,10 +1346,9 @@ function compactTickets(root) {
         const me = byName || (t.querySelector(".tourfull .tf-star") ? null : rows.find(row => row.matches("details[open]")));
         const items = rows.map(row => {
           const loc = (row.querySelector(".tf-loc")?.textContent || "").trim();
-          const w = row.querySelector(".tf-when")?.cloneNode(true);
-          if (w) w.querySelectorAll(".tf-dot, .tf-star, .tf-cnt").forEach(n => n.remove());
           if (row === me) return "";
-          return '<li><span class="mvw">' + E((w?.textContent || "").trim()) + '</span><span class="mvl">' + E(loc) + "</span></li>";
+          // 開いた中身は会場名だけ（起案者の指示 2026-10-18「「ほかN会場」を押したら出てくるのは会場名だけでよい。背景色も不要」）
+          return loc ? '<li><span class="mvl">' + E(loc) + "</span></li>" : "";
         }).filter(Boolean);
         const ul = document.createElement("ul");
         ul.className = "mvlist";
@@ -1330,6 +1396,8 @@ function compactTickets(root) {
     // 「チケット発売日のボタンは、値段帯の折りたたむ前の下に置いて」）。どのカードでも本文の列（題名・団体・会場の下）に置き、
     // ポスターの下の列には落とさない（起案者の指示 2026-10-18「値段と発売済みが左寄りにあるときがあるから修正して」。
     // 前は明細を出さないカードだけ公式サイトのボタンの下に置いていた）
+    // 2026-10-18 の後の指示「発売済みなどのマークは価格帯の詳細の隣に置くようにして」: 並びは値段帯のすぐ後のまま、
+    // theme.css（カードの見た目（作業 A）の塊）で値段帯と同じ行の右隣に並べる
     if (sale && priced) priced.after(sale);
     // おすすめ理由は畳まず、いつも全部出す（起案者の指示 2026-10-18「おすすめ理由は常に折りたたまず、全部表示」）
     // ツアーの日程は、閉じていても全部出す（起案者の指示 2026-10-14「おすすめ欄にはつねにツアー日程を全部書いて
@@ -1341,6 +1409,9 @@ function compactTickets(root) {
       row.innerHTML = '<span class="cl">日程</span>';
       row.appendChild(tf);
       lead.prepend(row);
+      // おすすめの画面では、会場ごとの公演日時（暦）を初めは閉じておく（起案者の指示 2026-10-18「おすすめ画面では日程を基本的に
+      // 折りたたむ。なぜなら、おすすめは内容だけで選んでほしいから（それじゃないと推薦の精度にかかわる）」）。会場と期間の行は出す
+      if (recPage && t.classList.contains("recommend") && !t.closest(".rfind")) tf.querySelectorAll("details[open]").forEach(d => { d.open = false; });
     }
     // くわしく: 会期と料金・出演と作り手・あらすじ（全文と入れ口）・公式サイト
     [".when", ".cast", ".syn", ".nolink"].forEach(sel => {
@@ -1575,6 +1646,38 @@ function pagePrefs() {
   return usp.has("f") ? {prefs: usp.getAll("pref")} : {};
 }
 
+// 答えた枠を、次の候補で埋める（三択のボタンと、候補から消す ✕ の両方から使う）。fill: /api/react の fill_only の返事
+function applyFill(fill, g) {
+  const d = {fill};
+  if (d.fill) {
+    const said = g && g.querySelector(".said");
+    if (d.fill.said && said) said.textContent = d.fill.said;
+    if (d.fill.html) {
+      const all = [...document.querySelectorAll(".ticket.recommend")].filter(a => !a.closest(".rfind"));
+      const box = document.createElement("div");
+      box.innerHTML = d.fill.html;
+      box.querySelectorAll("li.rs.q").forEach(n => n.remove());
+      compactTickets(box);
+      fixLinks(box);
+      const fresh = box.firstElementChild;
+      // 続けて 2 枚に答えると、2 つの入れ替えが同じ候補を返すことがある。もう出ている公演（どの会場の番号でも）は足さない
+      const ids = a => [a.dataset.stage, ...(a.dataset.tours || "").split(/[\s,]+/)].filter(Boolean);
+      const here = new Set(all.flatMap(ids));
+      const dup = fresh && ids(fresh).some(x => here.has(x));
+      if (fresh && all.length && !dup) {
+        fresh.classList.add("filled");
+        all[all.length - 1].after(fresh);
+        if (window.TaguriExposure) TaguriExposure.refresh(contentEl(), "fill");
+        bindNotes(fresh);          // 足した 1 枚の入力欄にも動きを付ける
+        const ys = document.querySelector(".yfil .ysl");   // 料金の絞り込みを足した 1 枚にも効かせる
+        if (ys) ys.dispatchEvent(new Event("input"));
+      }
+    }
+  }
+  // 入れ替える候補が尽きて、一覧の全部に答えたら「回答ありがとうございました」を出す（起案者の指示 2026-10-17。
+  // 中身はサーバーが <template id="rec-thanks-t"> で置く。都道府県で絞っているときは置かない）
+  if (d.fill && !d.fill.html) showThanks();
+}
 function showThanks() {
   const t = document.getElementById("rec-thanks-t");
   if (!t || document.getElementById("rec-thanks")) return;
@@ -1773,34 +1876,7 @@ document.addEventListener("click", ev => {
       // **押した 1 枚は消さずに残す。** 興味あり・興味なしは直後に理由の欄が開くので、
       // 消すと書いている途中の欄ごと消える。**足す先は一覧のいちばん下** ── 上から
       // 下へ読む画面なので、読み進む先に現れる。点の高い順という並びも壊れない。
-      if (d.fill) {
-        const said = g.querySelector(".said");
-        if (d.fill.said && said) said.textContent = d.fill.said;
-        if (d.fill.html) {
-          const all = [...document.querySelectorAll(".ticket.recommend")].filter(a => !a.closest(".rfind"));
-          const box = document.createElement("div");
-          box.innerHTML = d.fill.html;
-          box.querySelectorAll("li.rs.q").forEach(n => n.remove());
-          compactTickets(box);
-          fixLinks(box);
-          const fresh = box.firstElementChild;
-          // 続けて 2 枚に答えると、2 つの入れ替えが同じ候補を返すことがある。もう出ている公演（どの会場の番号でも）は足さない
-          const ids = a => [a.dataset.stage, ...(a.dataset.tours || "").split(/[\s,]+/)].filter(Boolean);
-          const here = new Set(all.flatMap(ids));
-          const dup = fresh && ids(fresh).some(x => here.has(x));
-          if (fresh && all.length && !dup) {
-            fresh.classList.add("filled");
-            all[all.length - 1].after(fresh);
-            if (window.TaguriExposure) TaguriExposure.refresh(contentEl(), "fill");
-            bindNotes(fresh);          // 足した 1 枚の入力欄にも動きを付ける
-            const ys = document.querySelector(".yfil .ysl");   // 料金の絞り込みを足した 1 枚にも効かせる
-            if (ys) ys.dispatchEvent(new Event("input"));
-          }
-        }
-      }
-      // 入れ替える候補が尽きて、一覧の全部に答えたら「回答ありがとうございました」を出す（起案者の指示 2026-10-17。
-      // 中身はサーバーが <template id="rec-thanks-t"> で置く。都道府県で絞っているときは置かない）
-      if (d.fill && !d.fill.html) showThanks();
+      applyFill(d.fill, g);
       // **「すでに持っている」を押した 1 枚は、この一覧から外して「購入済み公演」へ送る**
       // （起案者の指示 2026-10-14「押したら、持ってる公演のところだけに表示されて」）。
       // 外したあとに 1 行だけ残し、行き先へ飛べるようにする（どこへ行ったか分からなくしない）

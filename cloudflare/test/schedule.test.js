@@ -45,6 +45,9 @@ test('price rows: 券種と金額, sale-date lines left out', () => {
   assert.deepEqual(priceRows('12,000円 ～ 12,000円'), [['12,000円']]);
   assert.deepEqual(priceRows('一般：12,000円〜12,000円\n学生：3,000円〜5,000円'), [['一般', '12,000円'], ['学生', '3,000円〜5,000円']]);
   assert.deepEqual(priceRows('12,000円 ～ 12,000円\n一般：12,000円', {dropRange: true}), [['一般', '12,000円']]);
+  // 行頭の「・」「◆」などの印は落とす（箇条書きの ◆ と重なる。起案者の指摘 2026-10-18）。文の中の「・」は残す
+  assert.deepEqual(priceRows('・一般：7,000円\n◆U-25：4,000円\n- 学生：3,000円\n全席指定・税込 5,000円'),
+    [['一般', '7,000円'], ['U-25', '4,000円'], ['学生', '3,000円'], ['全席指定・税込 5,000円']]);
 });
 
 test('the tour block: a bulleted row per venue in date order, ★ on the filtered prefectures, the count beside the dates, prices per venue only when they differ', () => {

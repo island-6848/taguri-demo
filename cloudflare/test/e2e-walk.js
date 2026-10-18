@@ -71,7 +71,7 @@ function seed() {
     '海辺の町で小さな食堂を営む家族の物語。父が倒れ、都会に出ていた長女が十年ぶりに戻ってくる。閉めるか続けるかで揺れる家族の前に、'
     + '父が昔書き残した献立帳が見つかる。献立帳をたどるうちに、長女は町の人たちと父の知られざる過去に出会っていく。笑って泣ける再生の物語。',
     JSON.stringify(['家族', '再生', '食堂']),
-    JSON.stringify({fields: {'料金（1枚あたり）': '12,000円 ～ 12,000円\n【発売日】2026/09/01\nS席：12,000円\nA席：8,000円〜8,000円\nU-25：6,000円',
+    JSON.stringify({fields: {'料金（1枚あたり）': '12,000円 ～ 12,000円\n【発売日】2026/09/01\nS席：12,000円\nA席：8,000円〜8,000円\n・U-25：6,000円',
       // 11/3 の 18:00 は貸切の回（暦に「(貸)18:00」。起案者の指示 2026-10-18）
       'タイムテーブル': '11月1日(日) 13:00\n11月2日(月) 19:00\n11月3日(火) 13:00/18:00貸切'}}),
     '2026-10-18T00:00:00Z'].map(q).join(',')});`;
@@ -543,6 +543,24 @@ async function walkA(A) {
     check(/lprice,sale/.test(order), '発売の札が値段帯のすぐ下にない: ' + order);
     const bw = await card.evaluate(t => [t.querySelector('.sale .pill'), t.querySelector('.pcol .sitebtn, .sitelink')].filter(Boolean).map(n => getComputedStyle(n).borderTopWidth));
     check(bw[0] === '2px' && (bw.length < 2 || bw[1] === '2px'), '発売の札の枠線: ' + bw.join(','));
+    // おすすめの画面では公演日時（暦）を初めは閉じる（起案者の指示 2026-10-18「おすすめ画面では日程を基本的に折りたたむ」）。
+    // 日程の欄と次の行（演出）のすき間は、作り手の行どうし（演出と出演）と同じ
+    check(await card.locator('.tourfull details[open]').count() === 0, 'おすすめの画面で日程の暦が開いている');
+    const gaps = await card.evaluate(t => {
+      const rows = [...t.querySelectorAll('.leadbox > *')].map(n => n.getBoundingClientRect());
+      return rows.slice(1).map((r, i) => Math.round(r.top - rows[i].bottom));
+    });
+    check(gaps.length >= 2 && gaps[0] === gaps[1], '日程と次の行のすき間が作り手の行どうしと違う: ' + gaps.join(','));
+    // 発売の札は価格帯の右隣（「発売済みなどのマークは価格帯の詳細の隣に」）。札と公式サイトは Zen丸ゴシック、公式サイトの字と枠線はスミクロ
+    const side = await card.evaluate(t => { const p = t.querySelector('.main > .lprice'), r = p.getBoundingClientRect(), l = p.querySelector('.plist li').getBoundingClientRect(), s = t.querySelector('.main > .sale .pill').getBoundingClientRect(); return {dx: Math.round(s.left - r.right), dy: Math.round((s.top + s.bottom) / 2 - (l.top + l.bottom) / 2)}; });
+    check(side.dx >= 0 && Math.abs(side.dy) <= 4, '発売の札が価格帯の隣にない: ' + JSON.stringify(side));
+    const look = await card.evaluate(t => {
+      const pill = getComputedStyle(t.querySelector('.sale .pill')), site = getComputedStyle(t.querySelector('.sitelink'));
+      const ink = getComputedStyle(t.querySelector('.btns button:not(.picked)')).color;
+      return {pill: pill.fontFamily.split(',')[0], site: site.fontFamily.split(',')[0], siteColor: site.color === ink, siteBorder: site.borderTopColor === ink};
+    });
+    check(/Zen Maru Gothic/.test(look.pill) && /Zen Maru Gothic/.test(look.site) && look.siteColor && look.siteBorder, '札・公式サイトの字と色: ' + JSON.stringify(look));
+    note('行のすき間: ' + gaps.join(',') + ' / 札の位置: ' + JSON.stringify(side) + ' / ' + JSON.stringify(look));
     const price = await card.locator('.lprice').innerText();
     check(!/12,000円\s*[~〜～]\s*12,000円/.test(price) && /12,000円/.test(price), '同じ額の幅が残っている: ' + price.replace(/\s+/g, ' '));
     note('料金: ' + price.replace(/\s+/g, ' ') + ' / 並び: ' + order + ' / 枠線: ' + bw.join(','));
@@ -552,13 +570,34 @@ async function walkA(A) {
     await page.setViewportSize({width: 390, height: 844});
     await card.scrollIntoViewIfNeeded();
     await card.screenshot({path: join(OUT, 'card-recommend-phone-closed.png')}).catch(() => {});
-    // 開く: 料金の詳細・あらすじの続き。日程の暦は会場が 1 つなら開いている
+    // 開く: 料金の詳細・あらすじの続き。日程の暦（おすすめの画面では初めは閉じている）
+    // 起案者の指示 2026-10-18「あらすじのハッシュタグは常に表示。あらすじの本文で長いところだけ折りたたんで」: 閉じていてもタグが見える
+    // （前は「続きを読む」の中にあった）。畳んだ料金の 1 行目には行頭の菱形を付けない（「価格帯、展開する前の♦は不要」）
+    const tags0 = await card.locator('.lsyn .lsyntag:visible').allInnerTexts();
+    check(tags0.join(' ') === '#家族 #再生 #食堂', '閉じたあらすじのハッシュタグ: ' + tags0.join(' '));
+    const dia = await card.evaluate(t => { const li = t.querySelector('details.lprice:not([open]) > summary .plist > li'); return li ? getComputedStyle(li, '::before').display : 'なし'; });
+    check(dia === 'none', '畳んだ料金の 1 行目に菱形: ' + dia);
     await card.locator('details.lprice > summary').click().catch(() => {});
-    await card.locator('details.lsynmore > summary').click();
-    const tags = await card.locator('.lsynmore .lsyntag').allInnerTexts();
+    await card.locator('.tourfull summary.tf-head').first().click();
+    // 「続きを読む」で開くと、続きは畳む前の最後の字のすぐ次から同じ行に続く（「いま展開したら変な改行から始まってる」）
+    await card.locator('.lsynopen').click();
+    const tags = await card.locator('.lsyn .lsyntag').allInnerTexts();
     check(tags.join(' ') === '#家族 #再生 #食堂', 'あらすじのハッシュタグ: ' + tags.join(' '));
-    const bg = await card.locator('details.lsynmore').evaluate(n => getComputedStyle(n).backgroundColor);
+    const flow = await card.evaluate(t => {
+      const lv = t.querySelector('.lsyn .lv'), rest = t.querySelector('.lsynrest');
+      const r = document.createRange(); r.selectNodeContents(lv.firstChild);
+      const hs = [...r.getClientRects()], rs = [...rest.getClientRects()];
+      if (!hs.length || !rs.length) return null;
+      const h = hs[hs.length - 1], f = rs[0];
+      return {sameLine: Math.abs(h.top - f.top) < 3, gap: Math.round(f.left - h.right), head: lv.firstChild.textContent.slice(-4), rest: rest.textContent.slice(0, 4)};
+    });
+    check(flow && flow.sameLine && flow.gap >= 0 && flow.gap < 8, '続きが畳む前の字のすぐ次から始まらない: ' + JSON.stringify(flow));
+    note('あらすじの継ぎ目: ' + JSON.stringify(flow));
+    const bg = await card.locator('.lsynmore').evaluate(n => getComputedStyle(n).backgroundColor);
     check(bg === 'rgba(0, 0, 0, 0)' || bg === 'transparent', '開いたあらすじに地の色: ' + bg);
+    // 開いた料金の明細の行に「・」が重ならない（行頭は ◆ だけ。「◆があるのに重複して箇条書きの・がのこっている」）
+    const dots = await card.locator('.lprice .plist li').allInnerTexts();
+    check(dots.length && dots.every(x => !/^[・･•◆]/.test(x.trim())), '料金の行頭に印が重なる: ' + dots.join(' / '));
     const gap = await card.evaluate(t => { const b = t.querySelector('.tourfull.v2 details[open] > .tf-body'); return b ? getComputedStyle(b).marginTop : 'なし'; });
     check(gap === '6px', '日程と暦の間: ' + gap);
     note('ハッシュタグ: ' + tags.join(' ') + ' / 暦の上: ' + gap);
@@ -571,27 +610,32 @@ async function walkA(A) {
 
   // 起案者の指示 2026-10-18: あらすじのハッシュタグ → その題材の公演の一覧／暦の貸切は「(貸)17:00」で升の中で折り返さない／
   // 値段と発売の札は本文の列（料金の明細の無いカードも）・札の ↗ は折り返さない／ヘルプはカードの枠の外の右上に小さく
-  await step('あらすじのハッシュタグ → 題材の公演の一覧（2 会場で料金の明細の無いカード・暦の貸切・右上のヘルプ。PC・電話の幅）', async () => {
+  await step('あらすじのハッシュタグ → 題材の公演の一覧（2 会場で料金の明細の無いカード・暦の貸切・右下のヘルプと右上の ✕。PC・電話の幅）', async () => {
     await go('/');
     const card = page.locator('.ticket.recommend[data-stage="101"]');
     await card.waitFor({timeout: 10000});
+    await card.locator('.tourfull summary.tf-head').first().click();   // おすすめの画面では暦が閉じている
     const kas = await card.locator('.ttb .tm.kas').allInnerTexts();
     check(kas.map(t => t.trim()).join(',') === '(貸)18:00', '暦の貸切の回: ' + kas.join(','));
-    // ヘルプ（？）は枠の外の右上の角: 右端・上端が枠の外に出て、見た目は 24px ほど、押せる広さは 44px
-    const helpAt = () => card.evaluate(t => {
-      const a = t.getBoundingClientRect(), btn = t.querySelector(':scope > .fixq .fixq-open');
+    // ヘルプ（？）は枠の内側の右下の角、候補から消す ✕ は枠の外の右上の角（起案者の指示 2026-10-18「ヘルプマークやっぱりカード内の
+    // 右下角において。逆に今ヘルプマークがあるとこには取り消しの✕をつけて」。前の期待はヘルプが枠の外の右上だった）。
+    // どちらも見た目は 24px ほど、押せる広さは 44px。ヘルプは回答の押し口に重ならない
+    const cornerAt = sel => card.evaluate((t, sel) => {
+      const a = t.getBoundingClientRect(), btn = t.querySelector(sel);
       if (!btn) return null;
       const b = btn.getBoundingClientRect(), hit = getComputedStyle(btn, '::after');
-      return {right: Math.round(b.right - a.right), top: Math.round(b.top - a.top), w: Math.round(b.width), hit: hit.width};
-    });
-    const hp = await helpAt();
-    check(hp && hp.right > 0 && hp.top < 0 && hp.w <= 26 && hp.hit === '44px', 'ヘルプの位置: ' + JSON.stringify(hp));
-    note('ヘルプ: ' + JSON.stringify(hp));
+      const over = [...t.querySelectorAll('.btns button')].some(x => { const r = x.getBoundingClientRect(); return r.right > b.left && r.left < b.right && r.bottom > b.top && r.top < b.bottom; });
+      return {right: Math.round(b.right - a.right), top: Math.round(b.top - a.top), bottom: Math.round(b.bottom - a.bottom), w: Math.round(b.width), hit: hit.width, over, label: btn.getAttribute('aria-label')};
+    }, sel);
+    const hp = await cornerAt(':scope > .fixq .fixq-open');
+    check(hp && hp.right < 0 && hp.right > -16 && hp.bottom < 0 && hp.bottom > -16 && hp.w <= 26 && hp.hit === '44px' && !hp.over, 'ヘルプの位置: ' + JSON.stringify(hp));
+    const dp = await cornerAt(':scope > .dismissq .dismissq-open');
+    check(dp && dp.right > 0 && dp.top < 0 && dp.w <= 26 && dp.hit === '44px' && /候補から消す/.test(dp.label || ''), '✕ の位置: ' + JSON.stringify(dp));
+    note('ヘルプ: ' + JSON.stringify(hp) + ' / ✕: ' + JSON.stringify(dp));
     const hideTour = on => page.evaluate(v => document.querySelectorAll('.tgt-root').forEach(n => { n.style.visibility = v ? 'hidden' : ''; }), on);
     // カードの写しは、枠の外のヘルプが入るように周りを 16px 広げて撮る
     const around = async (loc, path) => { await loc.scrollIntoViewIfNeeded(); const b = await loc.boundingBox(); if (b) await page.screenshot({path, clip: {x: Math.max(0, b.x - 16), y: Math.max(0, b.y - 16), width: b.width + 32, height: b.height + 24}}).catch(() => {}); };
-    await card.locator('details.lsynmore > summary').click();
-    const link = card.locator('.lsynmore a.lsyntag', {hasText: '#家族'});
+    const link = card.locator('.lsyn a.lsyntag', {hasText: '#家族'});
     check(await link.count() === 1, 'ハッシュタグがリンクになっていない');
     await link.click();
     await page.waitForURL(/\/recommend\/tag\?w=/, {timeout: 10000});
@@ -614,7 +658,13 @@ async function walkA(A) {
     check(await more.count() === 1 && !(await c.locator('.meta .mvlist').isVisible()), '「ほか n 会場」の押し口が無いか、最初から開いている');
     await more.click();
     const mv = (await c.locator('.meta .mvlist').innerText()).replace(/\s+/g, ' ').trim();
-    check(/劇場Z/.test(mv) && /12\/10〜12\/12/.test(mv) && !/劇場Y/.test(mv), 'ほかの会場の一覧: ' + mv);
+    // 開いた中身は会場名だけ・地の色なし（起案者の指示 2026-10-18「会場名だけでよい。背景色も不要」。前の期待は日付も出ていた）
+    check(/劇場Z/.test(mv) && !/12\/10/.test(mv) && !/劇場Y/.test(mv), 'ほかの会場の一覧: ' + mv);
+    const mvbg = await c.locator('.meta .mvlist').evaluate(n => getComputedStyle(n).backgroundColor);
+    check(mvbg === 'rgba(0, 0, 0, 0)' || mvbg === 'transparent', 'ほかの会場の一覧に地の色: ' + mvbg);
+    // 公演日時の折りたたみの三角は ▶ で 10px（「三角▶小さすぎて見えない」）
+    const tri = await c.locator('.tourfull summary.tf-head').first().evaluate(n => { const a = getComputedStyle(n, '::after'); return a.content + ' ' + a.fontSize; });
+    check(tri === '"▶" 10px', '公演日時の三角: ' + tri);
     check(await more.getAttribute('aria-expanded') === 'true', 'aria-expanded が true にならない');
     check(await c.locator('.tf-more').count() === 0 && !/詳細/.test(await c.locator('.tourfull').innerText()), '日程の行に「詳細」が残る');
     // 料金はどこでも同じ箇条書き（.pblock .plist li）。表（.ptb）は使わない
@@ -673,6 +723,34 @@ async function walkA(A) {
     await hide(false);
     await go('/');
     check(await page.locator('.ticket.recommend[data-stage="101"]').count() === 0, '答えた公演がおすすめに残る');
+  });
+
+  // 候補から消す ✕（起案者の指示 2026-10-18「今ヘルプマークがあるとこには取り消しの✕をつけて…候補から消したい」）。
+  // 購入済の公演のカードには出さない。おすすめのカードで押すと /api/react に value 'dismiss' が行き、カードが「候補から消しました」の
+  // 1 行になって、開き直しても出てこない。受けて保存するのはサーバー側（screens/recommend.js reactAction）
+  await step('候補から消す ✕（購入済の公演には無い・おすすめで押すと消え、開き直しても出ない）', async () => {
+    await go('/tickets');
+    const owned = await page.locator('#content article.ticket').count();
+    check(await page.locator('#content .dismissq').count() === 0, '購入済の公演のカードに ✕ がある');
+    await go('/');
+    await page.locator('#content article.ticket.recommend').first().waitFor({timeout: 10000});
+    // おすすめの一覧の、ほかの段で使わない公演のいちばん下の 1 枚（「出てこない公演を探す」の結果は除く）。設定で場所を絞る段より前に置く
+    // （絞ったあとはおすすめが 0 件になる）
+    const sid = await page.evaluate(used => [...document.querySelectorAll('#content article.ticket.recommend')].filter(a => !a.closest('.rfind'))
+      .filter(a => ![a.dataset.stage, ...(a.dataset.tours || '').split(',')].some(x => used.includes(x))).pop()?.dataset.stage, ['101', '102', '103', '104', '106', '107']);
+    check(!!sid, 'ほかの段で使わないおすすめのカードが無い');
+    const last = page.locator(`#content article.ticket.recommend[data-stage="${sid}"]`).first();
+    const sent = page.waitForRequest(r => r.url().endsWith('/api/react') && r.method() === 'POST' && /"value":"dismiss"/.test(r.postData() || ''), {timeout: 10000});
+    await last.locator(':scope > .dismissq .dismissq-open').click();
+    const body = JSON.parse((await sent).postData());
+    check(body.stage_id === sid && body.value === 'dismiss', '送った中身: ' + JSON.stringify(body));
+    await page.locator('#content .dismissed').waitFor({timeout: 10000});
+    check(/候補から消しました/.test(await page.locator('#content .dismissed').innerText()), '「候補から消しました」が出ない');
+    check(await page.locator(`#content article.ticket.recommend[data-stage="${sid}"]`).count() === 0, '消したカードが残る');
+    await page.screenshot({path: join(OUT, 'dismiss-recommend.png'), fullPage: true}).catch(() => {});
+    await go('/');
+    check(await page.locator(`#content article.ticket[data-stage="${sid}"]`).count() === 0, '開き直すと消したカードがまた出る');
+    note(`購入済のカード ${owned} 枚 / 消した公演 ${sid}`);
   });
 
   await step('お気に入り: 名前を足す・外す', async () => {
