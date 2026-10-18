@@ -34,7 +34,7 @@ export async function run(job) {
     const out = [];
     for (const j of job.jobs) {
       const data = await rankedGroups({db, env, uid: j.uid, today: job.today, now, ablate: j.ablate || {}});
-      out.push({uid: j.uid, variant: j.variant, n_ranked: data.groups.length, ranks: ranksOf(data.groups, j.stages)});
+      out.push({uid: j.uid, variant: j.variant, n_rated: data.n_rated || 0, n_ranked: data.groups.length, ranks: ranksOf(data.groups, j.stages)});
     }
     return out;
   } finally {

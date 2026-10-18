@@ -276,12 +276,14 @@ def replay(backup: str, index: Path, extras: list[Path], *, owner: str | None = 
         first = min(rows[0][0] for rows in answers.values())
         last = max(rows[-1][0] for rows in answers.values())
         step = datetime.timedelta(days=step_days)
-        t = datetime.date.fromisoformat(first) - datetime.timedelta(days=1)
+        # 最初の区切りは、最初に答えた日。それより前は、たぐりに記録が無いことが多い（D1 に移る前の記録は、移した日の時刻になる）
+        t = datetime.date.fromisoformat(first)
         # 利用者 × 画面（reminder・other・all）× 計算 → [勝ち, 組]、区切りの数
         tally = defaultdict(lambda: [0.0, 0])
         windows = defaultdict(int)
         coverage = [0, 0]
         n_origins = 0
+        per_origin = []           # 区切りごとの人数だけ（だれかは出さない）
         while t.isoformat() < last:
             lo, hi = t.isoformat(), (t + step).isoformat()
             targets = {uid: [r for r in rows if lo < r[0] <= hi] for uid, rows in answers.items()}
@@ -292,7 +294,12 @@ def replay(backup: str, index: Path, extras: list[Path], *, owner: str | None = 
                 cut_copy(base, cut, lo)
                 jobs = [{"uid": u, "variant": v, "ablate": ab, "stages": sorted({r[1] for r in rs})}
                         for u, rs in sorted(targets.items()) for v, ab in variants.items()]
-                ranks = {(o["uid"], o["variant"]): o["ranks"] for o in bridge(cut, (t + datetime.timedelta(days=1)).isoformat(), jobs)}
+                got = bridge(cut, (t + datetime.timedelta(days=1)).isoformat(), jobs)
+                ranks = {(o["uid"], o["variant"]): o["ranks"] for o in got}
+                base_runs = [o for o in got if o["variant"] == "base"]
+                per_origin.append({"t": lo, "users": len(targets), "answers": sum(len(rs) for rs in targets.values()),
+                                   "with_ratings": sum(o.get("n_rated", 0) > 0 for o in base_runs),
+                                   "with_recommendations": sum(o["n_ranked"] > 0 for o in base_runs)})
                 cut.unlink()
                 for u, rs in targets.items():
                     coverage[0] += sum(ranks[(u, "base")].get(r[1]) is not None for r in rs)
@@ -310,7 +317,7 @@ def replay(backup: str, index: Path, extras: list[Path], *, owner: str | None = 
         base.close()
     auc_of = lambda u, sc, v: tally[(u, sc, v)][0] / tally[(u, sc, v)][1] if tally[(u, sc, v)][1] else None
     result = {"origins": n_origins, "step_days": step_days, "first_answer": first, "last_answer": last,
-              "answers_ranked_share": round(coverage[0] / coverage[1], 3) if coverage[1] else None}
+              "answers_ranked_share": round(coverage[0] / coverage[1], 3) if coverage[1] else None, "per_origin": per_origin}
     for screen in ("reminder", "other", "all"):
         users = sorted({u for (u, sc) in windows if sc == screen})
         others = [u for u in users if u != owner]
