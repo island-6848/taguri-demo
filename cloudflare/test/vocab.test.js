@@ -17,6 +17,8 @@ test('「科学」は SF とその下位に広がり、近未来は関連にだ�
   assert.ok(!narrow.has('科学'), '登録した言葉そのものは含めない');
   assert.ok(!narrow.has('近未来') && related.has('近未来') && related.has('未来'));
   assert.ok(related.has('超能力'));
+  // 孫（終末・ディストピア）の関連（戦争）まではたどらない
+  assert.ok(!related.has('戦争') && !related.has('戦後'));
   // 下位から上には広げない
   const sf = themeExpansion('ＳＦ');
   assert.ok(sf.narrow.has('宇宙') && !sf.narrow.has('科学') && !sf.narrow.has('生命科学'));

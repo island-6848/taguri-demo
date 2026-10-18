@@ -13,7 +13,7 @@ import VOCAB from './vocab/concepts.json' with {type: 'json'};
 const nz = s => String(s ?? '').normalize('NFKC').replaceAll(' ', '').replaceAll('　', '').toLowerCase();
 
 // 下位へ 1 段ごとの重さ（4 段目より下は最後の値）と、関連に掛ける重さ
-export const DEPTH_W = [1, 0.6, 0.35, 0.2], RELATED_W = 0.3;
+export const DEPTH_W = [1, 0.6, 0.35, 0.2], RELATED_W = 0.3, RELATED_FROM_DEPTH = 1;
 const depthW = d => DEPTH_W[Math.min(d, DEPTH_W.length - 1)];
 
 const CONCEPTS = VOCAB.concepts;
@@ -52,8 +52,9 @@ export function themeExpansion(word) {
   const own = new Map();                                   // 概念 → 段
   for (const n of byName.get(d) || []) for (const [c, k] of below(n)) if (!(own.get(c) <= k)) own.set(c, k);
   for (const [c, k] of own) for (const w of wordsOf(c)) put(w, depthW(k), true);
-  // 関連: 広げた概念（と、言葉として持つ概念）の関連先とその下位
-  const from = new Set([...own.keys(), ...(byWord.get(d) || [])]);
+  // 関連: 広げた概念のうち 1 段下まで（と、言葉として持つ概念）の関連先とその下位。深い所の関連までたどると、
+  // 「科学」→ 終末・ディストピア（孫）〔関連〕戦争 → 戦後 のように、登録した言葉と関係の薄い公演が種になる
+  const from = new Set([...[...own].filter(([, k]) => k <= RELATED_FROM_DEPTH).map(([c]) => c), ...(byWord.get(d) || [])]);
   for (const n of from) for (const r of related.get(n) || []) for (const [c, k] of below(r))
     if (!own.has(c)) for (const w of wordsOf(c)) if (!narrow.has(w)) { rel.add(w); put(w, RELATED_W * depthW(k), false); }
   // 仲間: 言葉として登録した概念の、ほかの言葉

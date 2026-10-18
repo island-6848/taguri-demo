@@ -483,7 +483,7 @@ export async function seedsFromFavourites({postingsFor, peopleFor, stagesMatchin
   if ((groups.length || works.length || subjects.length) && stagesMatching)
     for (const sid of await stagesMatching(groups, works, subjects)) sids.set(sid, 1);
   // 題材は語彙表で下位と関連にも広げ、#題材 の言葉と丸ごと一致で当てる。重さは離れるほど弱い（src/vocab.js。
-  // 「科学」→ SF 0.6・宇宙 0.35・近未来 0.18…）。種の数に上限があるので、重い公演から取る
+  // 「科学」→ SF 0.6・宇宙 0.35・近未来 0.3…）。種の数に上限があるので、重い公演から取る
   const wider = new Map();
   for (const t of subjects) for (const [w, x] of themeExpansion(t).weights) if (!(wider.get(w) >= x)) wider.set(w, x);
   if (wider.size && stagesByWords)
