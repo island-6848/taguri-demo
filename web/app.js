@@ -1002,7 +1002,8 @@ function priceFilter(el) {
 // 札・箱の名前は箱ごとに決める。お気に入りの画面の 2 つ（登録した名前・出さない語）まで「場所」と
 // 出ていた（起案者の指摘 2026-10-14「『お気に入り』画面の『場所』ってなに？」）
 const boxName = d => d.classList.contains("wbox") ? ["効かせ方", "light"] : d.classList.contains("ybox") ? ["料金", "ticket"]
-  : d.id === "names" ? ["登録した名前", "star"] : d.id === "declined" ? ["使わない言葉", "flag"]
+// お気に入りの名前の箱は「要素を登録」（起案者の指示 2026-10-18「『登録した名前』→『要素を登録』」）
+  : d.id === "names" ? ["要素を登録", "star"] : d.id === "declined" ? ["使わない言葉", "flag"]
   : d.id === "kind-off" ? ["使わない理由", "flag"] : ["場所", "search"];
 function filterRow(el) {
   el.querySelectorAll(".fil2").forEach(filterRowOf);
