@@ -3014,13 +3014,20 @@ function editInPlace(btn, el, ta, row, path, bodyOf, okMsg) {
     el.removeAttribute("aria-multiline");
     setPen(btn, false);
     const text = el.textContent.trim();
-    if (!save || text === before.trim()) { el.textContent = before; return; }
+    // 前に保存できなかった文（unsaved）は、書き直さずに離れても送り直す（#83）
+    if (!save || (text === before.trim() && !el.dataset.unsaved)) { el.textContent = before; return; }
     el.textContent = text;
-    if (ta) { ta.value = text; ta.dataset.was = text; }
+    if (ta) ta.value = text;
     if (!live) return;
-    post(path, bodyOf(ta || {dataset: {}, value: text}), row, okMsg).then(d => {
-      if (!d) { el.textContent = before; if (ta) { ta.value = before; ta.dataset.was = before; } }
-    });
+    // 送るのは隠れている欄と同じ順番待ち（#84）。失敗しても文は巻き戻さない ── 巻き戻すと、
+    // 返ってくるまでに書いた新しい文まで消える。保存できなかった印だけ付けておく
+    const holder = ta || el;
+    if (holder.dataset.was === undefined) holder.dataset.was = before.trim();
+    saveQueued(holder, text, row, t => post(path, bodyOf({dataset: ta ? ta.dataset : {}, value: t}), row, okMsg).then(d => {
+      if (d && el.textContent.trim() === t) delete el.dataset.unsaved;
+      if (!d) el.dataset.unsaved = "1";
+      return d;
+    }));
   };
   const onBlur = () => { btn._finishedAt = Date.now(); finish(true); };
   const onKey = ev => {
@@ -3183,6 +3190,27 @@ function tagChips(onPick) {
 }
 const addTag = (text, tag) => (text.includes(tag) ? text : (text.trim() ? text.replace(/\s*$/, " ") : "") + tag);
 
+// **離れたときに保存する欄の送り方**（#83・#84）。
+// - 「保存済みの文」（dataset.was）は、保存できたときだけ進める。失敗したら書いた文は欄に残し、
+//   もう一度離れれば送り直す（前は送る前に進めていたので、同じ文のままでは二度と送られなかった）
+// - 同じ欄の保存は 1 本ずつ送る。送っている間に書き直されたら、返ってから最新の文を送る ──
+//   先に送った分が後から返って、新しい文を上書き・巻き戻すことがない
+// - 届いたか分からない失敗でも、同じ文を勝手に送り直さない（#96）。送り直すのは、書いた人が離れたとき
+function saveQueued(holder, text, group, send) {
+  if (holder._busy) { holder._next = text; return; }
+  if (text === holder.dataset.was) return;
+  holder._busy = true;
+  send(text).then(d => {
+    holder._busy = false;
+    if (d) holder.dataset.was = text;
+    const next = holder._next;
+    holder._next = undefined;
+    if (next !== undefined && next !== text) { saveQueued(holder, next, group, send); return; }
+    const said = group && group.querySelector(".said");
+    if (!d && said) said.append("（書いた文は残しています。もう一度欄から離れると送り直します）");
+  });
+}
+
 function bindNotes(root) {
 root.querySelectorAll("article.ticket.cmp").forEach(favButton);
 linkTags(root);
@@ -3198,10 +3226,9 @@ root.querySelectorAll(".why-note textarea").forEach(t => {
   noteTags(t);
   t.addEventListener("blur", () => {
     const g = t.closest(".why-note");
-    if (!live || t.value === t.dataset.was) return;
-    t.dataset.was = t.value;
-    post("/api/react", {stage_id: g.dataset.stage, note: t.value}, g,
-         "理由を保存しました（お気に入りに加える候補に出ます）");
+    if (!live) return;
+    saveQueued(t, t.value, g, text => post("/api/react", {stage_id: g.dataset.stage, note: text}, g,
+         "理由を保存しました（お気に入りに加える候補に出ます）"));
   });
 });
 
@@ -3212,18 +3239,18 @@ root.querySelectorAll("textarea[data-prenote]").forEach(t => {
   t.dataset.was = t.value;
   t.addEventListener("blur", () => {
     const g = t.closest(".nn");
-    if (!live || t.value === t.dataset.was) return;
-    t.dataset.was = t.value;
-    post("/api/react", {stage_id: g.dataset.stage, note_pre: t.value}, g, "メモを保存しました").then(d => {
-      if (!d) return;
+    if (!live) return;
+    saveQueued(t, t.value, g, text => post("/api/react", {stage_id: g.dataset.stage, note_pre: text}, g, "メモを保存しました").then(d => {
+      if (!d) return d;
       const s = g.querySelector("summary");
-      if (!t.value.trim()) { s.innerHTML = '観る前のメモを書く<span class="opt">任意</span>'; return; }
+      if (!text.trim()) { s.innerHTML = '観る前のメモを書く<span class="opt">任意</span>'; return d; }
       s.textContent = "観る前のメモ";
       const v = document.createElement("span");
       v.className = "nnv";
-      v.textContent = t.value;
+      v.textContent = text;
       s.append(v);
-    });
+      return d;
+    }));
   });
 });
 
@@ -3234,19 +3261,19 @@ root.querySelectorAll("textarea[data-nono]").forEach(t => {
   t.dataset.was = t.value;
   t.addEventListener("blur", () => {
     const g = t.closest(".nn");
-    if (!live || t.value === t.dataset.was) return;
-    t.dataset.was = t.value;
-    post("/api/react", {stage_id: g.dataset.stage, note_no: t.value}, g,
+    if (!live) return;
+    saveQueued(t, t.value, g, text => post("/api/react", {stage_id: g.dataset.stage, note_no: text}, g,
          "理由を保存しました").then(d => {
-      if (!d || !t.value.trim()) return;
+      if (!d || !text.trim()) return d;
       // **畳んだ見出しに書いた文を出す。** 閉じても読めることが、この欄の返りである
       const s = g.querySelector("summary");
       s.textContent = "見送った理由";
       const v = document.createElement("span");
       v.className = "nnv";
-      v.textContent = t.value;
+      v.textContent = text;
       s.append(v);
-    });
+      return d;
+    }));
   });
 });
 
@@ -3255,13 +3282,12 @@ root.querySelectorAll("textarea[data-note]").forEach(t => {
   t.dataset.bound = "1";
   t.dataset.was = t.value;
   t.addEventListener("blur", () => {
-    if (!live || t.value === t.dataset.was) return;
-    t.dataset.was = t.value;
+    if (!live) return;
     // **保存できたことを、書いた欄のそばに出す。** `.rec-row` しか見ていなかったため、
     // 評価待ちの行と溜まった分の束に置いた欄では**保存の合図がどこにも出なかった**
     // （消えたのか保存されたのか分からない入力になる）
-    post("/api/note", {work_key: t.dataset.note, note_impression: t.value},
-         t.closest(".inote, .wnote, .wait, .rec-row"), "感想を保存しました");
+    const g = t.closest(".inote, .wnote, .wait, .rec-row");
+    saveQueued(t, t.value, g, text => post("/api/note", {work_key: t.dataset.note, note_impression: text}, g, "感想を保存しました"));
   });
 });
 
@@ -3272,10 +3298,9 @@ root.querySelectorAll("textarea[data-vnote]").forEach(t => {
   t.dataset.bound = "1";
   t.dataset.was = t.value;
   t.addEventListener("blur", () => {
-    if (!live || t.value === t.dataset.was) return;
-    t.dataset.was = t.value;
-    post("/api/visit_note", {uid: t.dataset.vnote, note: t.value},
-         t.closest(".vnote, .rec-row"), "メモを保存しました");
+    if (!live) return;
+    const g = t.closest(".vnote, .rec-row");
+    saveQueued(t, t.value, g, text => post("/api/visit_note", {uid: t.dataset.vnote, note: text}, g, "メモを保存しました"));
   });
 });
 }
