@@ -30,9 +30,50 @@ class PastStagesTest(unittest.TestCase):
         P.ROWS = P.PAST / "stages.jsonl"
         P.PROGRESS = P.PAST / "progress.json"
         P.CANDIDATES = d / "candidates.jsonl"
+        # あらすじの 2 周目が書く先（読み取り待ち・題材の表）も作り物の場所にする
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "credits"))
+        import extract_theme_llm as EX
+        self.EX, self._ex = EX, (EX.OUT, EX.QUEUE, EX.QUEUE_PROMPT)
+        EX.OUT, EX.QUEUE, EX.QUEUE_PROMPT = d / "themes.jsonl", d / "queue.jsonl", d / "prompt.txt"
 
     def tearDown(self):
+        self.EX.OUT, self.EX.QUEUE, self.EX.QUEUE_PROMPT = self._ex
         self.tmp.cleanup()
+
+    def test_second_pass_queues_story_text_for_the_reader(self):
+        story = "<p>" + "ある家族が、古い家を手放す日の朝に集まり、それぞれの思い出を語り合う物語。" * 12 + "</p>"
+        P.PAST.mkdir(parents=True)
+        P.ROWS.write_text("".join(json.dumps({"stage_id": s, "title": t}, ensure_ascii=False) + "\n"
+                                  for s, t in (("30", "夜の果て"), ("20", "短い話"), ("10", "読んだ話"))), encoding="utf-8")
+        P.save_progress({"done": True, "cursor": 1})
+        # 10 はこれからの公演だったときに読んである
+        self.EX.OUT.write_text(json.dumps({"side": "candidate", "id": "10", "synopsis": "x", "elements": []}) + "\n", encoding="utf-8")
+        pages = {30: f"<html><body>{story}</body></html>", 20: "<html><body><p>出演：山田太郎、鈴木花子、佐藤一郎ほか</p></body></html>"}
+        seen = []
+        got = P.run([], limit=10, since="2019-01-01", stop_after=5, max_minutes=0,
+                    fetch=lambda sid: (seen.append(sid), pages[sid])[1])
+        self.assertEqual(seen, [30, 20])
+        self.assertEqual((got["stories"]["queued"], got["stories"]["short"], got["stories"]["left"]), (1, 1, 0))
+        q = [json.loads(x) for x in self.EX.QUEUE.read_text(encoding="utf-8").splitlines()]
+        self.assertEqual([(x["side"], x["id"], x["prompt_version"]) for x in q], [("past", "30", self.EX.PROMPT_VERSION)])
+        self.assertIn("ある家族が", q[0]["text"])
+        short = [json.loads(x) for x in self.EX.OUT.read_text(encoding="utf-8").splitlines()][-1]
+        self.assertEqual((short["side"], short["id"], short["model"], short["reason"]), ("past", "20", "rule", "本文が短い"))
+        # 2 回目は何も読まない（済み）
+        P.run([], limit=10, since="2019-01-01", stop_after=5, max_minutes=0, fetch=lambda sid: (seen.append(sid), pages[sid])[1])
+        self.assertEqual(seen, [30, 20])
+
+    def test_second_pass_waits_while_the_queue_is_full(self):
+        P.PAST.mkdir(parents=True)
+        P.ROWS.write_text(json.dumps({"stage_id": "30", "title": "夜の果て"}) + "\n", encoding="utf-8")
+        P.save_progress({"done": True})
+        old, P.STORY_QUEUE_MAX = P.STORY_QUEUE_MAX, 1
+        try:
+            self.EX.QUEUE.write_text(json.dumps({"side": "past", "id": "99", "text": "x"}) + "\n", encoding="utf-8")
+            got = P.run([], limit=10, since="2019-01-01", stop_after=5, max_minutes=0, fetch=lambda sid: self.fail("read"))
+            self.assertEqual((got["stories"]["queued"], got["stories"]["left"]), (0, 1))
+        finally:
+            P.STORY_QUEUE_MAX = old
 
     def rows(self):
         return [json.loads(x) for x in P.ROWS.read_text(encoding="utf-8").splitlines() if x.strip()]
