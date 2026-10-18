@@ -34,14 +34,35 @@ test('(2) a person already liked gets more of the stage', () => {
   close(n.get(K('出演', '好き')), 0.5);
 });
 
-test('(3) what is also in 興味なし weighs less; what is only in 興味あり more', () => {
+test('(3) what is also in 興味なし weighs less; the rest keeps its share', () => {
   const liked = [{people: [['出演', 'どちらも'], ['出演', 'ありだけ']]}];
   const disliked = [{people: [['出演', 'どちらも'], ['出演', 'なしだけ']]}];
   const c = interestContrast(liked, disliked);
   assert.deepEqual(c.get(K('出演', 'どちらも')), [1, 1]);
   const m = interestShares(liked[0], new Map(), c);
-  close(m.get(K('出演', 'ありだけ')), 2 / 3);
-  close(m.get(K('出演', 'どちらも')), 1 / 3);
+  close(m.get(K('出演', 'ありだけ')), 1 / 2);
+  close(m.get(K('出演', 'どちらも')), 1 / 4);
+});
+
+// #109: the weakening was applied before the shares were renormalised, so a stage whose keys are all
+// in 興味なし in the same proportion (one person and one form, say) lost nothing however many 興味なし came.
+test('(3) 興味なし on the same people and kinds weakens them, however few keys the stage has', () => {
+  const liked = [{people: [['出演', 'A'], ['#形式', 'X']]}];
+  const same = () => ({people: [['出演', 'A'], ['#形式', 'X']]});
+  const val = (dis, k) => personValues([], [], new Set(), liked, dis).get(k)[1];
+  for (const k of [K('出演', 'A'), K('#形式', 'X')]) {
+    const v0 = val([], k), v1 = val([same()], k), v20 = val(Array.from({length: 20}, same), k);
+    assert.ok(v1 < v0 && v20 < v1, `${k}: ${v0} > ${v1} > ${v20}`);
+    assert.ok(v20 < v0 / 10, '20 興味なし leave little of one 興味あり');
+  }
+  // Only one of the two shared: that one weakens, the other does not gain from it.
+  const onlyA = [{people: [['出演', 'A'], ['#形式', 'Y']]}];
+  close(val(onlyA, K('#形式', 'X')), val([], K('#形式', 'X')));
+  assert.ok(val(onlyA, K('出演', 'A')) < val([], K('出演', 'A')));
+  // A one-key stage too.
+  const one = [{people: [['出演', 'A']]}];
+  assert.ok(personValues([], [], new Set(), one, [{people: [['出演', 'A']]}]).get(K('出演', 'A'))[1]
+    < personValues([], [], new Set(), one, []).get(K('出演', 'A'))[1]);
 });
 
 test('the optional note naming a person gives that person more', () => {

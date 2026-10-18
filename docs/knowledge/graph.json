@@ -2494,6 +2494,19 @@
    "verifies": []
   },
   {
+   "id": "fix-interest-contrast-after-split",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "興味なしとの比べ（興味ありの件数 /（興味あり＋興味なし））は、1 公演ぶんを割ったあとに掛ける。興味なしの分はその公演の重さから引くだけで、ほかの人・種類には回さない（#109）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/109",
+    "cloudflare/src/recommend.js",
+    "cloudflare/test/recommend-interest.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "fix-request-mail",
    "type": "finding",
    "status": "unverified",
@@ -8076,6 +8089,11 @@
    "from": "fix-declined-kind-tags",
    "rel": "depends_on",
    "to": "impl-kind-reason-off"
+  },
+  {
+   "from": "fix-interest-contrast-after-split",
+   "rel": "affects",
+   "to": "impl-interest-split"
   },
   {
    "from": "fix-request-mail",

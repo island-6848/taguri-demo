@@ -126,7 +126,7 @@ export function independentRatings(rows) {
 // (1) 人・種類に割る（何件にも共通する人・種類だけが積み上がって効く）。人に INTEREST_PEOPLE_SHARE、種類に残り。
 //     人の中は役の格（castImportance・CORE_CREATORS、2 段だけ）の割合で割る
 // (2) 評価・お気に入りで好きと分かっている人には 1 + INTEREST_PRIOR_BOOST × その値 の割合で多めに配る
-// (3) 興味なしの公演にもいる人・種類は、興味ありの件数 /（興味あり＋興味なし）に弱める
+// (3) 興味なしの公演にもいる人・種類は、割ったあとの分を 興味ありの件数 /（興味あり＋興味なし）倍に弱める（#109）
 // 「なぜ気になったか」に名前が書いてあれば、その人に INTEREST_NOTE_BOOST 倍で配る。
 // z はお気に入りと同じ SEED_Z、重みも SEED_K / (SEED_K + 評価の数) で評価が増えるほど薄まる。値は舞台では未検証。
 export const INTEREST_PEOPLE_SHARE = 0.5, INTEREST_PRIOR_BOOST = 3, INTEREST_NOTE_BOOST = 5;
@@ -170,7 +170,7 @@ export function castImportance(text, names) {
 const importanceOf = (role, person, cast) => (role === '出演' ? (cast?.get(person) ?? 1)
   : CORE_CREATORS.has(role) ? 1 : LESSER_IMPORTANCE);
 const keyOf = (role, person) => role + '\u0000' + person;
-/** One interest stage's share per key ("role\0person"), summing to 1. */
+/** One interest stage's share per key ("role\0person"), summing to 1 (less when some keys are also in 興味なし). */
 export function interestShares(stage, prior, contrast = new Map(), skip = new Set()) {
   const keys = [...new Set((stage.people || []).filter(([, person]) => !skip.has(person)).map(([role, person]) => keyOf(role, person)))].sort(cmp);
   const note = String(stage.note || '');
@@ -180,14 +180,17 @@ export function interestShares(stage, prior, contrast = new Map(), skip = new Se
     const role = k.slice(0, k.indexOf('\u0000')), person = k.slice(k.indexOf('\u0000') + 1);
     let f = (role.startsWith('#') ? 1 : importanceOf(role, person, cast)) * (1 + INTEREST_PRIOR_BOOST * Math.max(prior.get(k)?.[1] || 0, 0));
     if (!role.startsWith('#') && Array.from(person).length >= 2 && note.includes(person)) f *= INTEREST_NOTE_BOOST;
-    const [yes, no] = contrast.get(k) || [1, 0];
-    return f * (yes / (yes + no));
+    return f;
   };
+  // (3) 興味なしとの比べは、割ったあとで掛ける（#109）。割る前に掛けると、興味なしにも同じ割合でいる人・種類
+  // ばかりの公演（1 人だけ・全員が同じ公演に出ている など）では割り直しで打ち消され、興味なしが何件あっても弱まらなかった。
+  // 割ったあとに掛けるので、興味なしの分はこの公演の重さから引かれるだけで、ほかの人・種類へは回らない
+  const ratio = k => { const [yes, no] = contrast.get(k) || [1, 0]; return yes / (yes + no); };
   const people = keys.filter(k => !k.startsWith('#')), kinds = keys.filter(k => k.startsWith('#'));
   const out = new Map();
   const spread = (ks, total) => {
     const fs = ks.map(factor), sum = fs.reduce((a, b) => a + b, 0);
-    if (sum > 0) ks.forEach((k, i) => out.set(k, total * fs[i] / sum));
+    if (sum > 0) ks.forEach((k, i) => out.set(k, total * fs[i] / sum * ratio(k)));
   };
   if (people.length && kinds.length) { spread(people, INTEREST_PEOPLE_SHARE); spread(kinds, 1 - INTEREST_PEOPLE_SHARE); }
   else spread(people.length ? people : kinds, 1);
