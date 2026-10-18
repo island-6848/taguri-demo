@@ -1418,3 +1418,20 @@ html .dgli .noposter:not(#_):not(#_) span{font-size:9px;letter-spacing:0}
 .btns button:hover::after{bottom:-4px}
 .btns button:active::after{bottom:-2px}
 .btns button.picked::after{bottom:-3px}
+
+/* ---- おすすめのカードの見た目（起案者の指示 2026-10-18 の 3 点。app.js compactTickets・fixLinks・leadSynopsis、schedule.js timetableGrid） */
+/* 発売の札の中で ↗ が 2 行目に落ちないように（「発売済み ↗」を 1 行に） */
+.ticket .sale .pill{white-space:nowrap}
+/* 料金の明細を出さないカードの値段の 1 行（.lprice.lyen）も、明細と同じ形で本文の列に、発売の札の上に */
+.ticket.cmp .main>.lprice.lyen{margin:6px 0 0}
+/* カードの右上のヘルプ（公演修正依頼の「？」）: 枠の外の右上の角に重ねて小さく出す。押せる広さは 44px 四方のまま */
+.ticket>.fixq{position:absolute;top:-12px;right:-10px;margin:0;z-index:3;line-height:0}
+.ticket>.fixq .fixq-open{position:relative;width:24px;height:24px;background:var(--surf);border:1px solid var(--ring);color:var(--mute)}
+.ticket>.fixq .fixq-open:hover,.ticket>.fixq .fixq-open:focus-visible{color:var(--acc);background:var(--surf);border-color:var(--acc)}
+.ticket>.fixq .fixq-open svg{width:16px;height:16px}
+.ticket>.fixq .fixq-open::after{content:"";position:absolute;left:50%;top:50%;width:44px;height:44px;transform:translate(-50%,-50%)}
+/* あらすじのハッシュタグは、その題材の公演の一覧（/recommend/tag）へのリンク */
+a.lsyntag{text-decoration:none;color:inherit;cursor:pointer}
+a.lsyntag:hover,a.lsyntag:focus-visible{text-decoration:underline}
+/* 公演日時の暦の貸切の回「(貸)17:00」: 升の中で折り返さないよう、「(貸)」の括弧と字間を詰める */
+.ttb .tm.kas b{font-weight:600;color:var(--ink2);letter-spacing:-.18em;margin-right:.12em}

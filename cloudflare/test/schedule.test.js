@@ -3,7 +3,8 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {parseTimetable, timetableGrid, priceRows, tourBlock} from '../src/screens/schedule.js';
 
-const flat = m => Object.fromEntries([...m].map(([d, ps]) => [d, ps.map(p => (p.m || '') + p.t)]));
+// 貸切の回は「(貸)」を頭に付けて比べる（起案者の指示 2026-10-18）
+const flat = m => Object.fromEntries([...m].map(([d, ps]) => [d, ps.map(p => (p.k ? '(貸)' : '') + (p.m || '') + p.t)]));
 
 test('timetable lines as the crawled pages write them', () => {
   // 丘の家（歩・印は出演者の組）
@@ -82,7 +83,22 @@ test('mark legends from the stage page, and an honest line for marks it does not
 test('times on the line after the date (三婆), 「- -」 as no performance, 貸切 as a performance', () => {
   const tt = '11月03日( 火 )\n13:00 -\n\n11月04日( 水 )\n11:00 貸切\n\n11月05日( 木 )\n- -\n\n11月06日( 金 )\n11:00 15:30\n※開場は開演の30分前';
   assert.deepEqual(flat(parseTimetable(tt, '2026-11-03', '2026-11-25')),
-    {'2026-11-03': ['13:00'], '2026-11-04': ['11:00', '貸切'], '2026-11-06': ['11:00', '15:30']});
+    // 貸切は、その回の時刻に付ける（起案者の指示 2026-10-18「(貸)17:00」。前は時刻と別に「貸切」の回を足していた）
+    {'2026-11-03': ['13:00'], '2026-11-04': ['(貸)11:00'], '2026-11-06': ['11:00', '15:30']});
+});
+
+test('貸切 on the time it belongs to: after (17:00貸切・(貸切)・貸切公演), before (貸切17:00・【貸切】), or alone', () => {
+  const tt = '11月1日(日) 13:00／17:00貸切\n11月2日(月) 【貸切】13:00／18:00\n11月3日(火) 12:00 / 16:00（貸切）\n'
+    + '11月4日(水) 貸切 14:00\n11月5日(木) 貸切\n11月6日(金) ★13:00 / 18:00 貸切公演';
+  const perf = parseTimetable(tt, '2026-11-01', '2026-11-06');
+  assert.deepEqual(flat(perf), {'2026-11-01': ['13:00', '(貸)17:00'], '2026-11-02': ['(貸)13:00', '18:00'],
+    '2026-11-03': ['12:00', '(貸)16:00'], '2026-11-04': ['(貸)14:00'], '2026-11-05': ['(貸)'], '2026-11-06': ['★13:00', '(貸)18:00']});
+  const html = timetableGrid(perf, '2026-11-01', '2026-11-06', '2026-10-18');
+  // 暦の升: 「(貸)」は時刻のすぐ前、★などの印はそのまま時刻の後ろ。時刻の無い貸切は「(貸)」だけ
+  assert.match(html, /<span class="tm">13:00<\/span><span class="tm kas"><b>\(貸\)<\/b>17:00<\/span>/);
+  assert.match(html, /<span class="tm">13:00<i>★<\/i><\/span><span class="tm kas"><b>\(貸\)<\/b>18:00<\/span>/);
+  assert.match(html, /<span class="d">5<\/span><span class="tm kas"><b>\(貸\)<\/b><\/span>/);
+  assert.doesNotMatch(html, />貸切</);
 });
 
 test('「19時」「14時半」「午後7時」「1830開演」, 開場/終演/上演時間 dropped, 開演 on the next line', () => {

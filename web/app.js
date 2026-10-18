@@ -29,6 +29,8 @@ const SCREENS = {
   "/recommend/reminder": "reminder",
   "/recommend/interest": "interest",
   "/recommend/favourites": "favourites",
+  // あらすじのハッシュタグ（題材）の公演の一覧（起案者の指示 2026-10-18）。Worker だけが答える画面
+  "/recommend/tag": "tagged",
   "/calendar": "calendar",
   "/tickets": "tickets",
   "/rate": "rate", "/rate/unrated": "unrated", "/rate/notes": "notes",
@@ -44,7 +46,7 @@ const SCREENS = {
 // 名残りとして残してある(未知のIMPLEMENTED外の画面名が来た場合の保険)。
 const IMPLEMENTED = new Set(["recommend", "interest", "reminder", "favourites", "calendar",
   "rate", "unrated", "notes", "tickets", "records", "trace", "chronicle", "works",
-  "start", "register", "settings", "search", "account"]);
+  "start", "register", "settings", "search", "account", "tagged"]);
 
 // --- NAV(app.py の NAV表と同じデータ) -------------------------------------
 // ページの地図（起案者の指摘 2026-10-14「リマインドはおすすめの下？違和感ある」で見直した）:
@@ -399,7 +401,7 @@ function fixupFigs(root) {
 // 外部サイトもその場では検索しない(探す先は手元の公演一覧)。文言だけ版で変える
 const WEB_BUTTON = IS_DEMO ? "デモの公演から探す" : "公演一覧から探す";
 // ---- 公演修正依頼（起案者の指示 2026-10-17。届くと起案者にメールが行き、手元の管理画面で直す）。
-// カードの右下のヘルプの印（？）を押すと、ポップアップで送れる（起案者の指示 2026-10-17「ヘルプマークアイコンを
+// カードの右上（枠の外）のヘルプの印（？）を押すと、ポップアップで送れる（起案者の指示 2026-10-17「ヘルプマークアイコンを
 // 押したらポップアップでメール送信できるようにして」。src/screens/fixrequest.js）
 const FIX_KINDS = ["日程", "料金", "会場", "あらすじ", "出演・スタッフ", "ポスター", "その他"];
 const HELP_ICON = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
@@ -411,7 +413,9 @@ function fixLinks(root) {
     const box = document.createElement("div");
     box.className = "fixq";
     box.innerHTML = '<button type="button" class="fixq-open" aria-label="公演情報の誤りを知らせる" title="公演情報の誤りを知らせる">' + HELP_ICON + '</button>';
-    (t.querySelector(".main") || t).appendChild(box);
+    // カードの枠の外の右上に小さく出す（起案者の指示 2026-10-18「ヘルプマーク、カード欄外の右上に小さく表示して」。
+    // 前は本文の終わりの右に置いていた）。枠（article）の直下に置き、位置は theme.css の「カードの右上のヘルプ」
+    t.appendChild(box);
   });
 }
 function openFixPopup(t) {
@@ -462,7 +466,7 @@ function applyDemoRestrictions(root) {
     const note = document.createElement("p");
     note.className = "note";
     note.textContent = IS_DEMO ? "デモでは公演情報の編集はできません。"
-      : "公演情報は全員で共有しているため、ここでは編集できません。誤りはカードの右下の「？」から知らせてください。";
+      : "公演情報は全員で共有しているため、ここでは編集できません。誤りはカードの右上の「？」から知らせてください。";
     editor.replaceWith(note);
   });
   root.querySelectorAll("[data-hand-img], [data-hand-off]").forEach(control => {
@@ -1133,7 +1137,11 @@ function leadSynopsis(t, lead, noMore) {
           // 開いたあらすじの下にハッシュタグで並べる（起案者の指示 2026-10-18「取得したワードをハッシュタグっぽく記載して」）。
           // 続きの無い短いあらすじは、本文のすぐ下に出す
           const words = [...new Set([...syn.querySelectorAll(".tags .tag:not(.mine)")].map(n => n.textContent.trim().replace(/^#/, "")).filter(Boolean))];
-          const tags = words.length ? '<span class="lsyntags">' + words.map(w => '<span class="lsyntag">#' + E(w) + "</span>").join("") + "</span>" : "";
+          // 押すと、その題材の付いた、これから観られる公演の一覧へ（起案者の指示 2026-10-18「あらすじのハッシュタグ押したら
+          // それがついてる公演一覧が出るようにして」。src/screens/tagged.js）。デモ版（Render）にはその画面が無いので押せない札のまま
+          const tag = w => IS_DEMO ? '<span class="lsyntag">#' + E(w) + "</span>"
+            : '<a class="lsyntag" href="/recommend/tag?w=' + encodeURIComponent(w) + '">#' + E(w) + "</a>";
+          const tags = words.length ? '<span class="lsyntags">' + words.map(tag).join("") + "</span>" : "";
           p.innerHTML = '<span class="cl">あらすじ</span><span class="lv">' + E(head)
             + (rest ? '<details class="lsynmore"><summary>続きを読む</summary><span class="lsynrest">' + E(rest)
               + "</span>" + tags + '<button type="button" class="lsynfold">折りたたむ</button></details>' : tags) + "</span>";
@@ -1199,6 +1207,7 @@ function compactTickets(root) {
   const recPage = ["/", "/recommend"].includes(here);
   const interestPage = here === "/recommend/interest";   // 興味ありの一覧もおすすめと同じ表示（起案者の指示 2026-10-17）
   const favPage = here === "/recommend/favourites";       // お気に入りも同じ表示（起案者の指示 2026-10-17）
+  const tagPage = here === "/recommend/tag";              // あらすじのハッシュタグの公演の一覧も同じ表示（起案者の指示 2026-10-18）
   // お気に入りも同じ形にする（起案者の指示 2026-10-15「お気に入りのページのレイアウト変更して。購入済み公演と似た感じ」）
   root.querySelectorAll("article.ticket.recommend, article.ticket.interest, article.ticket.owned, article.ticket.favourite").forEach(t => {
     if (t.classList.contains("cmp")) return;
@@ -1209,7 +1218,8 @@ function compactTickets(root) {
     // （起案者の指示 2026-10-17。あらすじの続きだけ畳む）
     const noMore = (recPage && t.classList.contains("recommend") && !t.closest(".rfind"))
       || (interestPage && t.classList.contains("interest"))
-      || (favPage && t.classList.contains("favourite"));
+      || (favPage && t.classList.contains("favourite"))
+      || (tagPage && (t.classList.contains("recommend") || t.classList.contains("interest")));
     const more = document.createElement("details");
     more.className = "more";
     more.innerHTML = "<summary><b>くわしく</b><span>会期・料金・出演の全員・あらすじの全文</span></summary>";
@@ -1268,18 +1278,21 @@ function compactTickets(root) {
     // 金額はサーバーが料金の欄から読んだもの（render_recommend.price_range）。読めなかった公演には出さない
     const yen = yenOf(t);
     if (yen && sale && !priced) {   // 明細を出したカードには、幅（〜円）を重ねて出さない
-      const pr = document.createElement("span");
-      pr.className = "yen";
-      pr.innerHTML = ico("yen", 12) + E(yenLabel(yen));   // 金額にはお金の絵記号（起案者の指示 2026-10-17）
-      sale.appendChild(pr);
+      // 明細を出さないカード（会場ごとに料金が違う・くわしくの付く画面）も、値段は本文の列に、明細と同じ形の 1 行で出す
+      // （起案者の指示 2026-10-18「値段と発売済みが左寄りにあるときがあるから修正して」。前は発売の札の横に付け、
+      // 札ごとポスターの下の列に落ちていた）。金額にはお金の絵記号（起案者の指示 2026-10-17）
+      const pr = document.createElement("div");
+      pr.className = "lprice lyen";
+      pr.innerHTML = '<div class="lp-row"><span class="lp-ico">' + ico("yen", 13) + '</span><span class="lp-v lp-all">' + E(yenLabel(yen)) + "</span></div>";
+      sale.before(pr);
+      priced = pr;
     }
     (sale || main.querySelector(".meta")).after(lead);
     // 発売の札（発売済み など）は、値段帯（料金の明細の、畳む前に見えている行）のすぐ下に置く（起案者の指示 2026-10-18
-    // 「チケット発売日のボタンは、値段帯の折りたたむ前の下に置いて」。その前の同じ日の指示では公式サイトのボタンの下）。
-    // 料金の明細を出さないカード（会場ごとに料金が違う・くわしくの付く画面）は、公式サイトのボタンの下のまま
-    const siteBtn = t.querySelector(".pcol .sitebtn");
+    // 「チケット発売日のボタンは、値段帯の折りたたむ前の下に置いて」）。どのカードでも本文の列（題名・団体・会場の下）に置き、
+    // ポスターの下の列には落とさない（起案者の指示 2026-10-18「値段と発売済みが左寄りにあるときがあるから修正して」。
+    // 前は明細を出さないカードだけ公式サイトのボタンの下に置いていた）
     if (sale && priced) priced.after(sale);
-    else if (sale && siteBtn) siteBtn.after(sale);
     // おすすめ理由は畳まず、いつも全部出す（起案者の指示 2026-10-18「おすすめ理由は常に折りたたまず、全部表示」）
     // ツアーの日程は、閉じていても全部出す（起案者の指示 2026-10-14「おすすめ欄にはつねにツアー日程を全部書いて
     // （土地で絞り込んでたとしても）」）。出演・あらすじと同じ形で「日程」の見出しを付けて先頭に置く
@@ -1643,7 +1656,8 @@ document.addEventListener("click", ev => {
       body.nofill = true;
       // どの画面で答えたか（興味ありの一覧で「開幕リマインドからの追加」などと出すため。起案者の指示 2026-10-15）
       const here = (location.pathname.slice(REPO_BASE.length) || "/");
-      const from = {"/recommend/reminder": "reminder", "/search": "search", "/recommend/favourites": "favourites"}[here];
+      // ハッシュタグ（題材）の公演の一覧で答えたものは、探すから足したものとして扱う（screens/tagged.js）
+      const from = {"/recommend/reminder": "reminder", "/search": "search", "/recommend/tag": "search", "/recommend/favourites": "favourites"}[here];
       if (from) body.from = from;
       if (b.closest(".rfind")) body.from = "search";     // おすすめ画面の「出てこない公演を探す」で答えた
       const tk0 = b.closest(".ticket");

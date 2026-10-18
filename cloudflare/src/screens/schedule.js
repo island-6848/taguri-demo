@@ -35,21 +35,30 @@ function slots(raw) {
     .replace(/(?<!\d)([012]\d)([0-5]\d)(?=\s*開演)/g, '$1:$2')
     .replace(/(?:開場|受付(?:開始)?|終演)(?:・開場)?\s*[:：]?\s*\d{1,2}:\d{2}|\d{1,2}:\d{2}\s*(?:終演|開場)/g, '');
   const list = [];
+  // 貸切の回（一般には売らない回）は、その回の時刻に k を付ける。暦には「(貸)17:00」と書く（起案者の指示 2026-10-18
+  // 「公演日時のカレンダーで貸切のとき、(貸)って書けば伝わる。ただし貸切のときだけは『(貸)17:00』みたいな表記で」）。
+  // 時刻のすぐ後ろ（「17:00貸切」「17:00(貸切)」「17:00 貸切公演」）を先に、無ければすぐ前（「貸切17:00」「【貸切】17:00」）を見る
+  const kas = [...after.matchAll(/貸切/g)].map(x => x.index), used = new Set();
+  const take = i => (i !== undefined && kas.includes(i) && !used.has(i) ? (used.add(i), true) : false);
   // 印は時刻の前（「歩13:00」）か後ろ（「19:00 A」）の 1 字。0:00〜23:59 の外の時刻（「29:99」）は時刻にしない
   for (const m of after.matchAll(/(?:([^\s\d])\s*)?(?<!\d)(\d{1,2}):(\d{2})(?:\s?([A-Za-z]|[^\x00-\x7F])(?=$|[\s/／、,]))?/gu)) {
     if (Number(m[2]) > 23 || Number(m[3]) > 59) continue;
-    const pre = m[1] && !NOT_MARK.test(m[1]) ? m[1] : '';
+    const pre = m[1] && !NOT_MARK.test(m[1]) && m[1] !== '切' ? m[1] : '';
     const post = m[4] && !NOT_MARK.test(m[4]) && m[4] !== '貸' ? m[4] : '';
-    list.push({t: `${Number(m[2])}:${m[3]}`, m: pre || post});
+    const at = m.index + m[0].search(/\d/), to = at + m[2].length + 1 + m[3].length;
+    const tail = /^\s*[(【［\[〈<]?\s*(?=貸切)/.exec(after.slice(to));
+    const head = /貸切(?:公演)?\s*[)】］\]〉>]?\s*[:：]?\s*$/.exec(after.slice(0, at));
+    const k = (tail && take(to + tail[0].length)) || (head && take(head.index)) || false;
+    list.push({t: `${Number(m[2])}:${m[3]}`, m: pre || post, ...(k ? {k: true} : {})});
   }
-  // 貸切の回（一般には売らない回）も、その日の公演として出す
-  for (const _ of after.match(/貸切/g) || []) list.push({t: '貸切', m: ''});
+  // 時刻の分からない貸切の回も、その日の公演として出す（暦には「(貸)」だけ）
+  for (const i of kas) if (!used.has(i)) list.push({t: '', m: '', k: true});
   if (!list.length) for (const w of after.match(/マチネ|ソワレ|昼|夜/g) || []) list.push({t: w, m: ''});
   return {list, found: list.length > 0, dash: /[-ー‐－―]/.test(after.replace(/[(（][^)）]*[)）]/g, ''))};
 }
 
 /**
- * The performances read from a timetable text: Map 'YYYY-MM-DD' -> [{t: '13:00' | 'マチネ' | '', m: '歩' | ''}].
+ * The performances read from a timetable text: Map 'YYYY-MM-DD' -> [{t: '13:00' | 'マチネ' | '', m: '歩' | '', k?: true (貸切)}].
  * Lines with one date, and ranges whose days all have the same times (「22日(木)〜23日(金) 各19:00」);
  * the year is the one that puts the date near the run (start..end).
  * The Map also carries `closed` (days the text says have no performance: 「休演」「- -」) and `unknown`
@@ -180,7 +189,8 @@ export function timetableGrid(perf, start, end, today, texts = []) {
       // 公演の無い日のうち、タイムテーブルの行を読めなかった日（期間の行など）は「休演」と言い切らない（#76）
       const body = !inRun ? '' : ps.length
         // 印は時刻のすぐ後ろに（起案者の指示 2026-10-18「今図形（改行）時刻、になってるけど時刻のすぐ後ろに図形つけて」）
-        ? ps.map(p => `<span class="tm">${E(p.t || '公演')}${p.m ? `<i>${E(p.m)}</i>` : ''}</span>`).join('')
+        // 貸切の回は時刻の前に「(貸)」（起案者の指示 2026-10-18）。升の中で折り返さないよう、印の字間は theme.css で詰める
+        ? ps.map(p => `<span class="tm${p.k ? ' kas' : ''}">${p.k ? '<b>(貸)</b>' : ''}${E(p.t || (p.k ? '' : '公演'))}${p.m ? `<i>${E(p.m)}</i>` : ''}</span>`).join('')
         : unsure(perf, d) ? '<span class="unk">公式で確認</span>' : '<span class="off">休演</span>';
       cells.push(`<td${cls ? ` class="${cls}"` : ''}><span class="d">${E(label)}</span>${body}</td>`);
     }
