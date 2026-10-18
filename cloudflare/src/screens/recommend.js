@@ -78,7 +78,7 @@ ${THANKS_ART}
 const KEEP = 400;
 // 再生（H5）で 1 つずつ外す部品: 興味ありの配り分け・1 段広げる・並べ直し（spreadLeads）・裏の答え合わせ（chooseVariant）
 export const REPLAY_ABLATIONS = ['split', 'expand', 'spread', 'gate'];
-const VERSION = 'screen-v22';   // v22: favourite seeds weigh FAV_SEED_W (お気に入り＞興味あり); v21: credits read only where needed (CPU); v20: a production answered under another stage id stays out; v19: same title + (group / venue / a shared person) is one card; v18: one card per title+group (sameProduction); v17: no 出典 on the reasons; v16: #会場 dropped, 行けない (interest=2) as a liked seed; v15: 出さない語 also hits the kind tags; v14: #ジャンル (a genre turned off hides its stages); v13: no 原作「原作もの」 (DROPPED_KEYS); v12: no #値段 (DROPPED_AXES); v11: reasons of answered stages (answered_why); v2: the user's 効かせ方 (rank_weight) and the per-group counts; v3: 興味あり as seeds; v4: diag; v5: 興味あり split (impl-interest-split); v6: by part importance; v7: tiers + トメ; v8: two tiers only; v9: トメ joins the main roles; v10: spread leads + one-step partners
+const VERSION = 'screen-v28';   // v28: the hidden check leaves out the dropped kinds as the ranking does (#115); v27: a rating of a record dated after today is not learnt from (#116); v26: ratings ordered by when they were rated (works.rated_at), not by the last edit (#112); v25: a name in the 興味あり note counts only when not denied or compared against (#111); v24: a 興味あり copied to the tour's other venues counts once (#110); v23: 興味なし weakens after the split, not before (#109); v22: favourite seeds weigh FAV_SEED_W (お気に入り＞興味あり); v21: credits read only where needed (CPU); v20: a production answered under another stage id stays out; v19: same title + (group / venue / a shared person) is one card; v18: one card per title+group (sameProduction); v17: no 出典 on the reasons; v16: #会場 dropped, 行けない (interest=2) as a liked seed; v15: 出さない語 also hits the kind tags; v14: #ジャンル (a genre turned off hides its stages); v13: no 原作「原作もの」 (DROPPED_KEYS); v12: no #値段 (DROPPED_AXES); v11: reasons of answered stages (answered_why); v2: the user's 効かせ方 (rank_weight) and the per-group counts; v3: 興味あり as seeds; v4: diag; v5: 興味あり split (impl-interest-split); v6: by part importance; v7: tiers + トメ; v8: two tiers only; v9: トメ joins the main roles; v10: spread leads + one-step partners
 export {PREFS} from './prefs.js';
 const KIND_LABEL = {'#形式': '形式', '#原作': '原作', '#翻訳': '', '#原作の国': '原作の国', '#会場': '劇場', '#題材': '題材', '#ジャンル': 'ジャンル'};
 const WORKS_SHOWN = 3;
@@ -92,15 +92,20 @@ const chunks = (xs, n) => Array.from({length: Math.ceil(xs.length / n)}, (_, i) 
 
 /** The user's rated works as the recommender reads them, with their linked stage's credits. */
 async function ratedWorks(ctx, access) {
-  const works = (await loadWorks(ctx)).filter(w => !w.unseen && w.stage_id && gradeOf(w.verdict));
-  const {results} = await ctx.db.prepare("SELECT work_key, updated_at FROM works WHERE user_id=? AND verdict IS NOT NULL AND verdict<>''").bind(ctx.uid).all();
-  const updated = new Map(results.map(r => [r.work_key, r.updated_at]));
+  // 観た日がまだ来ていない記録（先の予定・日付の打ち間違い）の評価は、観たあとの好みとして学ばない（#116。
+  // docs/impression-preferences.md「未来の記録…は学習に含めない」、感想の補正 app._apply_impression_preferences と同じ
+  // first_date <= 今日。日付の無い記録は数える）。日付を直せば、次の計算から入る（控えの印に works の更新日時と今日がある）
+  const works = (await loadWorks(ctx)).filter(w => !w.unseen && w.stage_id && gradeOf(w.verdict) && (w.first_date || '') <= ctx.today);
+  // 評価した順は、評価を付けた（直した）時刻（rated_at、#112）。updated_at は感想・日付の編集でも進むので、
+  // rated_at の無い行（移行の前に書いた行）だけ updated_at で代える
+  const {results} = await ctx.db.prepare("SELECT work_key, COALESCE(rated_at, updated_at) AS rated_at FROM works WHERE user_id=? AND verdict IS NOT NULL AND verdict<>''").bind(ctx.uid).all();
+  const updated = new Map(results.map(r => [r.work_key, r.rated_at]));
   const people = await access.peopleFor([...new Set(works.map(w => w.stage_id))]);
   // 観た回に出ていなかった出演者（Wキャスト・休演、works.cast_off）は、この記録の材料から外す。
   return works.map(w => {
     const off = new Set(castOffOf(w));
     return {key: w.work_key, title: w.title, stage_id: w.stage_id, verdict: w.verdict, cast_off: [...off],
-      date: w.last_date || w.first_date || '', aspects: w.aspects || '', updated_at: updated.get(w.work_key) || '',
+      date: w.last_date || w.first_date || '', aspects: w.aspects || '', rated_at: updated.get(w.work_key) || '',
       people: (people.get(w.stage_id) || []).filter(([role, person]) => !(role === '出演' && off.has(person)))};
   });
 }
@@ -113,11 +118,15 @@ async function ratedWorks(ctx, access) {
  */
 async function interestSeeds(ctx, access) {
   // reaction は日ごとの行（label = その日）なので、公演ごとに新しい答えで上書きしてから選ぶ（lists.reactionsOf と同じ）。
-  const {results} = await ctx.db.prepare('SELECT stage_id,interest,updated_at FROM reaction WHERE user_id=? AND interest IS NOT NULL ORDER BY updated_at')
+  const {results} = await ctx.db.prepare('SELECT stage_id,interest,source,updated_at FROM reaction WHERE user_id=? AND interest IS NOT NULL ORDER BY updated_at')
     .bind(ctx.uid).all();
   const last = new Map();
-  for (const r of results) { last.delete(r.stage_id); last.set(r.stage_id, Number(r.interest)); }
-  const newest = (...vs) => [...last].filter(([, x]) => vs.includes(x)).map(([s]) => String(s)).reverse().slice(0, MAX_SEED_STAGES);
+  for (const r of results) { last.delete(r.stage_id); last.set(r.stage_id, [Number(r.interest), String(r.source || '')]); }
+  // ツアーのほかの会場へ写した答え（reactAction の siblings、source が '…_tour'）は、押した 1 回と同じ答えなので
+  // 手がかりに数えない（#110）。数えると 1 回の興味ありが会場の数だけの重さになり、MAX_SEED_STAGES も写しで埋まる。
+  // 会場の行は、答えた公演をおすすめから外すため（answered）と一覧のためにそのまま残す。いちばん新しい答えが写しの
+  // 会場だけを外すので、あとでその会場を直接押し直した答えは数える
+  const newest = (...vs) => [...last].filter(([, [x, src]]) => vs.includes(x) && !src.endsWith('_tour')).map(([s]) => String(s)).reverse().slice(0, MAX_SEED_STAGES);
   // 行けない（2）も、気になった公演として興味ありと同じ向きの手がかりにする
   const sids = newest(1, 2), noes = newest(0);
   if (!sids.length) return {seeds: [], disliked: [], n: 0};
@@ -458,6 +467,41 @@ export function withTour(card, {html, perVenuePrice}) {
   // 会場ごとに料金を書いたカードは、販売の札の横の料金（おすすめに出ている会場の分）を重ねない
   if (perVenuePrice) out = out.replace(/<article class="ticket (\w+)"/, (m) => m + ' data-tourprice="1"');
   return out;
+}
+
+/**
+ * GET /api/recommend（#119）: 今週のおすすめの画面と同じ計算・同じ控え（rankedGroups）を、データとして返す。
+ * 前は旧い移行用の表（records・reactions）から別の計算（person-ordinal-v3+fav3+asp1+tour1+why1）をしていて、
+ * 画面で付けた評価・興味ありが届かず、同じ rec_cache の行を画面と取り合って毎回計算し直させていた。
+ * 都道府県では絞らない（全国の上位 TOP 件）。表示に使う列は rec_stage から、出す分（最大 TOP 件の会場）だけ読む。
+ */
+export async function recommendApi(ctx, top = TOP) {
+  const data = await rankedGroups(ctx);
+  if (!data.ready) return {ready: false, items: []};
+  const {rows} = filtered(data.groups, [], top);
+  const ids = [...new Set(rows.flatMap(g => [g.stage_id, ...(g.venues || []).map(v => v.stage_id)]).map(String))];
+  const entries = new Map();
+  for (const part of chunks(ids, 90)) {
+    const {results} = await ctx.db.prepare(`SELECT stage_id,title,grp,start,end,entry FROM rec_stage WHERE ver=? AND stage_id IN (${part.map(() => '?').join(',')})`).bind(data.ver, ...part).all();
+    for (const r of results) entries.set(String(r.stage_id), r);
+  }
+  const venue = id => {
+    const e = entries.get(String(id)) || {};
+    let entry = {};
+    try { entry = JSON.parse(e.entry || '{}') || {}; } catch { /* no entry */ }
+    return {stage_id: String(id), start: e.start || '', end: e.end || '', theater: entry.theater || '', pref: entry.pref || '', url: entry.url || ''};
+  };
+  const diag = data.diag || {};
+  return {ready: true, recommender: `${VERSION}|${data.ver}`, cached: Boolean(data.cached), n_rated: diag.rated || 0, n_linked: diag.rated_linked || 0,
+    n_seeds: (diag.favourite_seeds || 0) + (diag.interest_with_people || 0), n_scored: data.n_scored || 0,
+    items: rows.map(g => {
+      const e = entries.get(String(g.stage_id)) || {};
+      // 理由は画面と同じ（reasonRows）: 人を先に、空きを種類で埋めて 3 つまで。使わなくなった種類は出さない
+      const reasons = [...g.parts.slice(0, 3), ...g.kinds.filter(k => !droppedKind(k[1], k[2]))].slice(0, 3);
+      return {...venue(g.stage_id), title: e.title || '', group: e.grp || '', score: g.b,
+        reasons: reasons.map(([, role, person, n]) => ({role, person, n})),
+        tours: (g.venues || []).filter(v => String(v.stage_id) !== String(g.stage_id)).map(v => venue(v.stage_id))};
+    })};
 }
 
 /** app.unrated_ends: the dates unrated works ended (no titles), for the nudge in app.js. */

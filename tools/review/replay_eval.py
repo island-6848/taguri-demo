@@ -118,9 +118,10 @@ def logged(db: sqlite3.Connection, owner: str | None, min_users: int) -> dict:
     per = defaultdict(lambda: ([], []))
     for uid, interest, owned, source, score in db.execute(
             "SELECT user_id, interest, owned, source, score FROM reaction WHERE score IS NOT NULL AND (interest IS NOT NULL OR owned=1)"):
-        if uid in out_:
+        # ツアーのほかの会場へ写した答え（source が '…_tour'）は押した 1 回と同じ答えなので数えない（#110）
+        if uid in out_ or (source or "").endswith("_tour"):
             continue
-        screen = (source or "screen").removesuffix("_tour")
+        screen = source or "screen"
         pos = owned == 1 or interest in POSITIVE
         per[(uid, screen)][0 if pos else 1].append(score)
     result = {}

@@ -75,6 +75,24 @@ test('the replay only uses ratings made before each one (predict, then check)', 
   assert.notDeepEqual(chooseVariant(rows).checked, chooseVariant(reversed).checked);
 });
 
+// #115: the check scores like the ranking: kinds the index no longer uses (#値段, #会場) count for nothing.
+test('stageScore leaves out the dropped kinds, as scoreFromIndex does', () => {
+  const values = new Map([['#値段\u0000〜5000円', [3, 1]], ['#会場\u0000劇場X', [3, 1]], ['#原作\u0000原作もの', [3, 1]], ['#形式\u0000ミュージカル', [3, 0.5]]]);
+  assert.equal(stageScore(values, [['#値段', '〜5000円']]), null);
+  assert.equal(stageScore(values, [['#会場', '劇場X'], ['#原作', '原作もの']]), null);
+  assert.equal(stageScore(values, [['#値段', '〜5000円'], ['#形式', 'ミュージカル']]), 0.5);
+});
+
+// #112: editing only the 感想 moves works.updated_at; the order of ratings is when they were rated (rated_at).
+test('a later edit that is not a rating (updated_at only) does not change the replay order or the choice', () => {
+  const rows = user(60, 'dir', 2).map(r => ({...r, rated_at: r.updated_at}));
+  const edited = rows.map((r, i) => (i === 9 ? {...r, updated_at: '2026-12-31T00:00:00.000Z'} : r));
+  assert.deepEqual(chooseVariant(edited), chooseVariant(rows));
+  // Without rated_at (rows written before migration 0034) the last change still orders them, as before.
+  const legacy = user(60, 'dir', 2), legacyEdited = legacy.map((r, i) => (i === 9 ? {...r, updated_at: '2026-12-31T00:00:00.000Z'} : r));
+  assert.notDeepEqual(chooseVariant(legacyEdited).checked, chooseVariant(legacy).checked);
+});
+
 test('stage scores follow person-ordinal-v3 (people top 3 up and down, plus the mean of kind tags)', () => {
   const rated = [
     {key: 'a', verdict: '◎', people: [['出演', '甲'], ['#形式', 'ミュージカル']]},
@@ -114,7 +132,10 @@ test('marked 気になった所 predict the user better than ignoring them, and 
     assert.equal(g.aspects, true, `seed ${seed}`);
     wins += g.checked.aspects_off.wins; losses += g.checked.aspects_off.losses;
   }
-  assert.ok(losses > wins * 1.15, `ignoring aspects won ${wins} blocks, lost ${losses}`);
+  // Since #115 the check, like the ranking, does not score #値段 (dropped from the index): the
+  // price penalty itself can no longer be predicted, only kept off the cast, so the margin is
+  // smaller than when #値段 was scored (1.15×).
+  assert.ok(losses > wins, `ignoring aspects won ${wins} blocks, lost ${losses}`);
 });
 
 test('aspects marked at random can be switched off by the check', () => {

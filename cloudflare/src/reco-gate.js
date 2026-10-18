@@ -15,7 +15,7 @@
 // same index serves them all. They are the choices public data could not
 // settle for theatre (eval_design_choices.py): how much kinds of show count,
 // and how much the director / writer count compared with the cast.
-import {independentRatings, personValues, gradeOf, TOP_N} from './recommend.js';
+import {independentRatings, personValues, gradeOf, droppedKind, TOP_N} from './recommend.js';
 
 // Ports of tools/review/recommend2.py ROLE_W / BACKSTAGE_W and
 // tools/taguri/app.py ROLE_GROUPS (checked against Python in the test).
@@ -49,6 +49,8 @@ export function stageScore(values, people, multipliers = {}) {
   const mult = g => (Object.hasOwn(multipliers, g) ? multipliers[g] : 1.0);
   const parts = [], negative = [], kinds = [];
   for (const [role, person] of people) {
+    // 使わなくなった種類（#値段・#会場・原作「原作もの」）は、本番の点（scoreFromIndex）と同じく数えない（#115）
+    if (role.startsWith('#') && droppedKind(role, person)) continue;
     const v = values.get(role + '\u0000' + person);
     if (!v) continue;
     const w = role.startsWith('#') ? GENRE_W : (Object.hasOwn(ROLE_W, role) ? ROLE_W[role] : BACKSTAGE_W);

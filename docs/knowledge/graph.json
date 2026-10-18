@@ -2561,6 +2561,23 @@
    "verifies": []
   },
   {
+   "id": "fix-api-recommend-delegates",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "GET /api/recommend（/migration-api/recommend）は「今週のおすすめ」の画面と同じ計算・同じ控え（screens/recommend.rankedGroups）の全国上位 15 件をデータで返す。移行用の表（records・reactions）からの別の計算はやめた（#119）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/119",
+    "cloudflare/src/worker.js",
+    "cloudflare/src/screens/recommend.js",
+    "cloudflare/public/migration-data/recommend.js",
+    "cloudflare/scripts/measure_worker.mjs",
+    "cloudflare/test/recommend-screen.test.js",
+    "cloudflare/test/recommend.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "fix-card-synopsis-stale",
    "type": "finding",
    "status": "unverified",
@@ -2619,6 +2636,74 @@
    "verifies": []
   },
   {
+   "id": "fix-future-dated-ratings",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "観た日（first_date）が今日より後の記録の評価は、推薦の学習（ratedWorks・裏の答え合わせ）に入れない。日付の無い記録は入れる（#116）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/116",
+    "cloudflare/src/screens/recommend.js",
+    "docs/impression-preferences.md",
+    "tools/taguri/app.py",
+    "cloudflare/test/recommend-screen.test.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "fix-gate-dropped-kinds",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "裏の答え合わせの点（reco-gate.stageScore）も、本番の点（scoreFromIndex）と同じく、使わなくなった種類（#値段・#会場・原作「原作もの」）を数えない。答え合わせを表示の計算とそろえる残り（本人の倍率・お気に入り・興味あり・1 段広げる）は測ってから（#115）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/115",
+    "cloudflare/src/reco-gate.js",
+    "cloudflare/test/reco-gate.test.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "fix-interest-contrast-after-split",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "興味なしとの比べ（興味ありの件数 /（興味あり＋興味なし））は、1 公演ぶんを割ったあとに掛ける。興味なしの分はその公演の重さから引くだけで、ほかの人・種類には回さない（#109）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/109",
+    "cloudflare/src/recommend.js",
+    "cloudflare/test/recommend-interest.test.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "fix-interest-note-names",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "興味ありの「なぜ気になったか」に名前があっても、打ち消し・苦手の語がある区切り、「○○より」「○○と比べ」の名前、長い名前の一部は多めに配らない（分からないときは等分のまま）。LLM は使わない（#111）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/111",
+    "cloudflare/src/recommend.js",
+    "cloudflare/test/recommend-interest.test.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "fix-interest-tour-copies",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "ツアーのほかの会場へ写した答え（reaction.source が '…_tour'）は、好みの手がかり（興味あり・興味なしの種）にも、手元の答え合わせ（replay_eval の logged）にも数えない。会場ごとの行は、答えた公演を外すため・一覧のために残す（#110）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/110",
+    "cloudflare/src/screens/recommend.js",
+    "tools/review/replay_eval.py",
+    "cloudflare/test/recommend-screen.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "fix-past-tour-venue-by-date",
    "type": "decision",
    "status": "adopted",
@@ -2628,6 +2713,24 @@
     "cloudflare/src/screens/search.js",
     "cloudflare/src/screens/rate.js",
     "web/app.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "fix-rated-at",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "評価した順は works.rated_at（評価・詳細が変わったときだけ進む、migrations/0034）で決める。感想・日付などの編集で進む updated_at は使わない（無い行だけ代わりに使う）（#112）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/112",
+    "cloudflare/migrations/0034.sql",
+    "cloudflare/src/screens/rate.js",
+    "cloudflare/src/screens/diary.js",
+    "cloudflare/src/screens/recommend.js",
+    "cloudflare/src/recommend.js",
+    "tools/review/user_recommender.py",
+    "cloudflare/test/reco-gate.test.js"
    ],
    "verifies": []
   },
@@ -4571,6 +4674,31 @@
    "verifies": []
   },
   {
+   "id": "q-all-same-ratings-no-reco",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-18",
+   "title": "評価がみな同じ段（全部 ◎ など）の利用者は、評価を何件足しても推薦が出ない（相対評価 person-ordinal-v3 の性質）。同点でも使える補助の道を作るか（#106、起案者の判断）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/106",
+    "cloudflare/src/recommend.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "q-answer-snapshot-shown",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-18",
+   "title": "答えたときの順位・点（answerSnapshot）は、その人の最新の控えの全国 400 件の中の位置で、画面に出していた順位・県・版とは限らない。表示したときの記録に答えを結び付けるか（#120、測る道具の直し）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/120",
+    "cloudflare/src/screens/evalrec.js",
+    "cloudflare/src/screens/recommend.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "q-aspect-attribution-check",
    "type": "question",
    "status": "open",
@@ -4875,6 +5003,18 @@
    ]
   },
   {
+   "id": "q-favourite-seed-volume",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-18",
+   "title": "お気に入りの仮の好みの量が、掲載の公演の数・ツアーの会場の数・公演 ID の並び（先頭 60 件で切る）で変わる。お気に入り 1 件の証拠の量をどう決めるか（#108、測ってから）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/108",
+    "cloudflare/src/recommend.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "q-favourites-seed",
    "type": "question",
    "status": "answered",
@@ -4929,12 +5069,52 @@
    "verifies": []
   },
   {
+   "id": "q-gate-matches-shown-ranking",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-18",
+   "title": "裏の答え合わせ（chooseVariant）は、評価だけの personValues と自前の stageScore で方式を比べ、本人の効かせ方の倍率・お気に入り・興味あり・1 段広げる・表示の選別を入れない。表示の計算と同じ条件で比べると、選ぶ方式は変わるか（#115）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/115",
+    "cloudflare/src/reco-gate.js",
+    "cloudflare/src/screens/recommend.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "q-hand-credits-not-learnt",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-18",
+   "title": "手で入れた出演者・作り手（hand_credits）は、推薦の学習に入らない。公演と結び付いていない記録の手入力、結び付いた記録の手直しをどう扱うか（#105、起案者の判断）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/105",
+    "cloudflare/src/screens/recommend.js",
+    "cloudflare/src/screens/works.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "q-hidden-gate",
    "type": "question",
    "status": "open",
    "date": "2026-10-13",
    "title": "新しい要素を安全に入れる「裏の答え合わせ」をどう作るか（起案者が良いと判断）",
    "sources": [],
+   "verifies": []
+  },
+  {
+   "id": "q-impression-not-in-service",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-18",
+   "title": "感想の本文による好みの補正（impression preferences）は、サービス版の推薦（Worker）に届いていない。つなぐか、未対応と書くか（#104、起案者の判断）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/104",
+    "cloudflare/src/screens/recommend.js",
+    "docs/impression-preferences.md",
+    "tools/taguri/app.py"
+   ],
    "verifies": []
   },
   {
@@ -5389,6 +5569,32 @@
    "verifies": []
   },
   {
+   "id": "q-reco-screen-cpu-20-ratings",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-18",
+   "title": "今週のおすすめの計算（rankedGroups）を、試験の小さな索引で measure_worker.mjs に通すと、評価 20 件以上で JS の CPU の中央値が 10 ミリ秒を越えた。本物の索引・本物の Worker でどうか",
+   "sources": [
+    "cloudflare/scripts/measure_worker.mjs",
+    "cloudflare/src/screens/recommend.js",
+    "cloudflare/src/reco-gate.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "q-reco-time-decay",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-18",
+   "title": "好みの変化に古い評価が追いつけるか。personValues は昔の評価も同じ重さで数える（日付で減らさない）。全履歴・最近の窓・時間減衰を比べる（#117、測ってから）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/117",
+    "cloudflare/src/recommend.js",
+    "cloudflare/src/reco-gate.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "q-records-viz",
    "type": "question",
    "status": "open",
@@ -5398,6 +5604,18 @@
     "cloudflare/src/screens/records.js",
     "cloudflare/src/screens/charts.js",
     "cloudflare/migrations"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "q-region-before-keep",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-18",
+   "title": "今週のおすすめは全国で並べて上位 400 件（KEEP）に切ってから都道府県で絞るので、全国 401 位より下の県の候補は出せず「その県のおすすめはありません」になりうる。並べ直し（spreadLeads）も絞る前（#118、起案者の判断）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/118",
+    "cloudflare/src/screens/recommend.js"
    ],
    "verifies": []
   },
@@ -5429,6 +5647,31 @@
    "date": "2026-10-13",
    "title": "Render のデモ版は、起動し直すと動かなくなるのではないか",
    "sources": [],
+   "verifies": []
+  },
+  {
+   "id": "q-replay-h3-satisfaction",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-18",
+   "title": "評価の計画の H3（観る前の点と観たあとの評価の順位相関）を、手元の再生（replay_eval）にまだ実装していない。興味の指標（H1）と満足の指標を分けて出す（#114、測る道具を作る）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/114",
+    "tools/review/replay_eval.py",
+    "docs/research/real-data-eval-plan.md"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "q-replay-history-restore",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-18",
+   "title": "手元の再生（replay_eval の cut_copy）は、時点 t より後に編集した行を丸ごと消すので、当時あった評価が消える。当時の値をどう戻すか（履歴の行・時点別の控え）、戻せない期間をどう結果から外すか（#113）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/113",
+    "tools/review/replay_eval.py"
+   ],
    "verifies": []
   },
   {
@@ -5468,6 +5711,19 @@
    "date": "2026-10-14",
    "title": "本番の「次の更新で探してもらう」依頼（D1 の search_request）を、取得が読んで CoRich で探す段をどう作るか",
    "sources": [],
+   "verifies": []
+  },
+  {
+   "id": "q-seed-weight-total-ratings",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-18",
+   "title": "お気に入り・興味ありの仮の好みの重み 3/(3+評価の数) は、その人に関係の無い評価が増えるだけで薄まる（関係の無い 3/5 を 100 件で約 95% 減）。人・種類ごとの証拠の量で薄めるほうがよいか（#107、測ってから）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/107",
+    "cloudflare/src/recommend.js",
+    "tools/review/user_recommender.py"
+   ],
    "verifies": []
   },
   {
@@ -8349,6 +8605,16 @@
    "to": "q-firebase-key-restriction"
   },
   {
+   "from": "fix-api-recommend-delegates",
+   "rel": "affects",
+   "to": "dec-reco-on-worker"
+  },
+  {
+   "from": "fix-api-recommend-delegates",
+   "rel": "raises",
+   "to": "q-reco-screen-cpu-20-ratings"
+  },
+  {
    "from": "fix-card-synopsis-stale",
    "rel": "depends_on",
    "to": "dec-synopsis-reader-claude"
@@ -8369,9 +8635,59 @@
    "to": "impl-kind-reason-off"
   },
   {
+   "from": "fix-future-dated-ratings",
+   "rel": "affects",
+   "to": "impl-person-ordinal-v3"
+  },
+  {
+   "from": "fix-gate-dropped-kinds",
+   "rel": "affects",
+   "to": "impl-hidden-gate"
+  },
+  {
+   "from": "fix-gate-dropped-kinds",
+   "rel": "raises",
+   "to": "q-gate-matches-shown-ranking"
+  },
+  {
+   "from": "fix-interest-contrast-after-split",
+   "rel": "affects",
+   "to": "impl-interest-split"
+  },
+  {
+   "from": "fix-interest-note-names",
+   "rel": "affects",
+   "to": "impl-interest-split"
+  },
+  {
+   "from": "fix-interest-note-names",
+   "rel": "depends_on",
+   "to": "q-interest-why-unknown"
+  },
+  {
+   "from": "fix-interest-tour-copies",
+   "rel": "affects",
+   "to": "impl-interest-split"
+  },
+  {
+   "from": "fix-interest-tour-copies",
+   "rel": "affects",
+   "to": "impl-replay-eval"
+  },
+  {
    "from": "fix-past-tour-venue-by-date",
    "rel": "affects",
    "to": "impl-admin-tool"
+  },
+  {
+   "from": "fix-rated-at",
+   "rel": "affects",
+   "to": "impl-hidden-gate"
+  },
+  {
+   "from": "fix-rated-at",
+   "rel": "raises",
+   "to": "q-replay-history-restore"
   },
   {
    "from": "fix-request-mail",
@@ -9679,6 +9995,21 @@
    "to": "impl-admin-tool"
   },
   {
+   "from": "q-all-same-ratings-no-reco",
+   "rel": "depends_on",
+   "to": "impl-person-ordinal-v3"
+  },
+  {
+   "from": "q-all-same-ratings-no-reco",
+   "rel": "depends_on",
+   "to": "reco-base-rate-relative"
+  },
+  {
+   "from": "q-answer-snapshot-shown",
+   "rel": "affects",
+   "to": "impl-replay-eval"
+  },
+  {
    "from": "q-aspect-attribution-check",
    "rel": "depends_on",
    "to": "q-rating-aspects"
@@ -9869,6 +10200,11 @@
    "to": "q-direction"
   },
   {
+   "from": "q-favourite-seed-volume",
+   "rel": "depends_on",
+   "to": "impl-favourite-seed"
+  },
+  {
    "from": "q-favourites-seed",
    "rel": "depends_on",
    "to": "lit-syskill-webert-prior"
@@ -9904,6 +10240,16 @@
    "to": "dec-free-tier-only"
   },
   {
+   "from": "q-gate-matches-shown-ranking",
+   "rel": "affects",
+   "to": "impl-hidden-gate"
+  },
+  {
+   "from": "q-hand-credits-not-learnt",
+   "rel": "affects",
+   "to": "dec-reco-on-worker"
+  },
+  {
    "from": "q-hidden-gate",
    "rel": "depends_on",
    "to": "dec-reco-per-user-eval"
@@ -9912,6 +10258,11 @@
    "from": "q-hidden-gate",
    "rel": "affects",
    "to": "comp-recommender"
+  },
+  {
+   "from": "q-impression-not-in-service",
+   "rel": "affects",
+   "to": "dec-reco-on-worker"
   },
   {
    "from": "q-index-incremental",
@@ -10189,6 +10540,26 @@
    "to": "comp-recommender"
   },
   {
+   "from": "q-reco-screen-cpu-20-ratings",
+   "rel": "depends_on",
+   "to": "workers-free-cpu-10ms"
+  },
+  {
+   "from": "q-reco-screen-cpu-20-ratings",
+   "rel": "affects",
+   "to": "fix-api-recommend-delegates"
+  },
+  {
+   "from": "q-reco-time-decay",
+   "rel": "depends_on",
+   "to": "impl-person-ordinal-v3"
+  },
+  {
+   "from": "q-region-before-keep",
+   "rel": "affects",
+   "to": "dec-recommend-filter-tiers"
+  },
+  {
    "from": "q-reminder-region-split",
    "rel": "depends_on",
    "to": "dec-ui-1018b"
@@ -10202,6 +10573,21 @@
    "from": "q-render-s3-dependency",
    "rel": "affects",
    "to": "q-demo-trial-design"
+  },
+  {
+   "from": "q-replay-h3-satisfaction",
+   "rel": "depends_on",
+   "to": "plan-real-data-eval"
+  },
+  {
+   "from": "q-replay-h3-satisfaction",
+   "rel": "affects",
+   "to": "impl-replay-eval"
+  },
+  {
+   "from": "q-replay-history-restore",
+   "rel": "affects",
+   "to": "impl-replay-eval"
   },
   {
    "from": "q-restore-redelete",
@@ -10267,6 +10653,16 @@
    "from": "q-search-request-crawl",
    "rel": "affects",
    "to": "dec-free-tier-only"
+  },
+  {
+   "from": "q-seed-weight-total-ratings",
+   "rel": "depends_on",
+   "to": "eval-favourite-seed"
+  },
+  {
+   "from": "q-seed-weight-total-ratings",
+   "rel": "depends_on",
+   "to": "dec-fav-over-interest"
   },
   {
    "from": "q-synopsis-lit-gaps",

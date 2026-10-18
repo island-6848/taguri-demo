@@ -1,6 +1,7 @@
-// "あなたへのおすすめ（試験版）": person-score recommendations computed by the
-// Worker from the user's own ratings (GET /migration-api/recommend). Shown
-// only when signed in. Everything from the server is set with textContent.
+// "あなたへのおすすめ（試験版）": the 今週のおすすめ ranking (GET /migration-api/recommend
+// answers with the screen's own recommendations since #119: the 日記帳 / 評価 / 興味あり /
+// お気に入り of the service, not the records on this page). Shown only when signed in.
+// Everything from the server is set with textContent.
 const $ = s => document.querySelector(s);
 const el = (tag, text, cls) => { const n = document.createElement(tag); if (text) n.textContent = text; if (cls) n.className = cls; return n; };
 const day = iso => iso ? iso.replaceAll('-', '/') : '';
@@ -17,11 +18,11 @@ async function load() {
   box.replaceChildren();
   if (!data.ready) { note.textContent = '公演の索引がまだ作られていません。'; return; }
   if (!data.items.length) {
-    note.textContent = data.n_linked ? 'いまの記録からは、おすすめできる公演が見つかりませんでした。◎の記録が増えると出やすくなります。'
-      : '記録が公演に結び付いていないため、まだおすすめを出せません。下の「観劇記録」で、記録ごとに「公演を探して結び付ける」を押してください。';
+    note.textContent = data.n_linked ? 'いまの記録からは、おすすめできる公演が見つかりませんでした。評価が増えると出やすくなります。'
+      : 'まだおすすめを出せません。日記帳の記録を公演に結び付けて評価するか、お気に入り・興味ありを登録してください。';
     return;
   }
-  note.textContent = `あなたの評価で良かった作品に関わった人が出る、これからの公演です（評価${data.n_rated}件・公演に結び付いた記録${data.n_linked}件から）。`;
+  note.textContent = `「今週のおすすめ」と同じ、全国の上位です（日記帳の評価${data.n_rated}件・公演に結び付いた記録${data.n_linked}件ほかから）。`;
   for (const item of data.items) {
     const a = el('article');
     const h = el('h3');
@@ -31,7 +32,7 @@ async function load() {
     // A tour's other venues (one slot per production).
     if ((item.tours || []).length) a.append(el('p', 'ほかの会場：' + item.tours.map(t =>
       [t.theater || '会場未定', [day(t.start), day(t.end)].filter(Boolean).join('〜')].filter(Boolean).join(' ')).join('／'), 'tours'));
-    a.append(el('p', '理由：' + item.reasons.map(r => `${r.role} ${r.person}（${r.n ? r.n + '作品' : 'お気に入りから'}）`).join('、'), 'why'));
+    a.append(el('p', '理由：' + item.reasons.map(r => `${r.role} ${r.person}（${r.n ? r.n + '作品' : 'お気に入り・興味ありから'}）`).join('、'), 'why'));
     box.append(a);
   }
 }

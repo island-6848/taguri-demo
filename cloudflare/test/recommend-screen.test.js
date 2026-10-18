@@ -164,6 +164,99 @@ test('興味あり alone, on a stage only the catalogue has, recommends the same
   } finally { sqlite.close(); }
 });
 
+// #116: a record dated after today (a plan, a typo) is not a rating to learn from yet.
+test('a rating on a record dated after today is not learnt from until the day comes', async () => {
+  const {env, sqlite} = await withIndex();
+  const a = await signIn(env);
+  try {
+    const k1 = await rateSeen(env, a, '終わった舞台', '2026-08-05', '103', '◎');
+    await rateSeen(env, a, '一日だけの舞台', '2026-09-05', '104', '×');
+    const count = async () => (await step(env, a, {get: '/api/screen/recommend'})).body.diag.rated;
+    assert.equal(await count(), 2);
+    sqlite.prepare("UPDATE works SET first_date='2099-01-01', last_date='2099-01-01', updated_at='2099-01-01 00:00:00' WHERE work_key=?").run(k1);
+    assert.equal(await count(), 1);
+    sqlite.prepare("UPDATE works SET first_date=?, last_date=?, updated_at='2099-01-02 00:00:00' WHERE work_key=?").run(env.CLOCK.today, env.CLOCK.today, k1);
+    assert.equal(await count(), 2, 'seen today counts');
+  } finally { sqlite.close(); }
+});
+
+// #119: GET /api/recommend is the screen's ranking (same input, same rules, same cache row), as data.
+test('/api/recommend answers with the 今週のおすすめ ranking and shares its cache; migration-era records do not feed it', async () => {
+  const {env, sqlite} = await withIndex();
+  const a = await signIn(env);
+  try {
+    await rateSeen(env, a, '終わった舞台', '2026-08-05', '103', '◎');
+    await rateSeen(env, a, '一日だけの舞台', '2026-09-05', '104', '×');
+    const screen = await step(env, a, {get: '/api/screen/recommend'});
+    const shown = [...screen.body.body_html.matchAll(/<article class="ticket recommend" data-stage="(\d+)"/g)].map(m => m[1]);
+    assert.ok(shown.length >= 1);
+    const stamp = sqlite.prepare('SELECT stamp FROM rec_cache').get().stamp;
+    const api = await step(env, a, {get: '/api/recommend'});
+    assert.equal(api.status, 200);
+    assert.equal(api.body.ready, true);
+    assert.equal(api.body.cached, true, 'the screen\'s cached ranking, not a second computation');
+    assert.equal(sqlite.prepare('SELECT stamp FROM rec_cache').get().stamp, stamp, 'the cache row is not overwritten');
+    assert.match(api.body.recommender, /^screen-v\d+\|/);
+    assert.deepEqual(api.body.items.map(i => i.stage_id), shown);
+    assert.equal(api.body.n_rated, 2);
+    assert.deepEqual(api.body.items[0].reasons[0], {role: '出演', person: '俳優甲', n: 1});
+    assert.ok(api.body.items[0].title);
+    // An answer on the screen reaches it at once.
+    assert.equal((await step(env, a, {post: '/api/react', body: {stage_id: shown[0], value: 'nointerest', nofill: true}})).status, 200);
+    assert.ok(!(await step(env, a, {get: '/api/recommend'})).body.items.some(i => i.stage_id === shown[0]));
+    // The migration-era store (/api/record, records) is not an input of the recommendations any more.
+    const before = (await step(env, a, {get: '/api/recommend'})).body.items.map(i => i.stage_id);
+    assert.equal((await step(env, a, {post: '/migration-api/record', body: {id: 'm1', title: 't', date: '2026-08-01', rating: '◎', stage_id: '104'}})).status, 200);
+    assert.deepEqual((await step(env, a, {get: '/api/recommend'})).body.items.map(i => i.stage_id), before);
+  } finally { sqlite.close(); }
+});
+
+// #112: the time a rating was made is kept apart from later edits of the 感想.
+test('editing only the 感想 keeps the time the rating was made; a new rating or 詳細 moves it', async () => {
+  const {env, sqlite} = await withIndex();
+  const a = await signIn(env);
+  try {
+    const key = await rateSeen(env, a, '終わった舞台', '2026-08-05', '103', '◎');
+    const at = () => sqlite.prepare('SELECT rated_at, updated_at FROM works WHERE work_key=?').get(key);
+    const first = at();
+    assert.ok(first.rated_at);
+    const later = () => { env.CLOCK = {today: env.CLOCK.today, now: env.CLOCK.now + 3600e3}; };
+    later();
+    assert.equal((await step(env, a, {post: '/api/note', body: {work_key: key, note_impression: '家族の描写がよかった'}})).status, 200);
+    assert.equal(at().rated_at, first.rated_at);
+    assert.notEqual(at().updated_at, first.updated_at);
+    later();
+    assert.equal((await step(env, a, {post: '/api/rate', body: {work_key: key, verdict: '◎'}})).status, 200);
+    assert.equal(at().rated_at, first.rated_at, 'the same rating again is not a new one');
+    later();
+    assert.equal((await step(env, a, {post: '/api/rate', body: {work_key: key, aspects: '+acting'}})).status, 200);
+    const third = at().rated_at;
+    assert.ok(third > first.rated_at, '詳細 is part of the rating');
+    later();
+    assert.equal((await step(env, a, {post: '/api/rate', body: {work_key: key, verdict: '○'}})).status, 200);
+    assert.ok(at().rated_at > third);
+  } finally { sqlite.close(); }
+});
+
+// #110: the answer copied to the tour's other venues is the same one press, not more interest.
+test('興味あり copied to the tour\'s other venues counts once as a hint; a venue pressed again directly counts', async () => {
+  const {env, sqlite} = await withIndex();
+  const a = await signIn(env);
+  try {
+    const ins = sqlite.prepare("INSERT INTO catalogue(id,title,date,venue,url,metadata) VALUES(?,'気になるツアー','2026-12-01',?,'',?)");
+    for (const [id, v] of [['781', '劇場A'], ['782', '劇場B'], ['783', '劇場C']]) ins.run(id, v, JSON.stringify({end_date: '2026-12-05', fields: {出演: '俳優甲'}}));
+    assert.equal((await step(env, a, {post: '/api/react', body: {stage_id: '781', value: 'interest', nofill: true, siblings: ['782', '783']}})).status, 200);
+    assert.equal(sqlite.prepare("SELECT count(*) AS n FROM reaction WHERE source='screen_tour'").get().n, 2, 'the venues keep their copy');
+    const diag = (await step(env, a, {get: '/api/screen/recommend'})).body.diag;
+    assert.deepEqual({i: diag.interest, p: diag.interest_with_people}, {i: 1, p: 1});
+    // Pressed again on another venue by the user themself: that one is an answer of its own.
+    env.CLOCK = {today: env.CLOCK.today, now: env.CLOCK.now + 864e5 + 1000};
+    sqlite.exec("UPDATE reaction SET label='2000-01-01'");
+    assert.equal((await step(env, a, {post: '/api/react', body: {stage_id: '782', value: 'interest', nofill: true}})).status, 200);
+    assert.equal((await step(env, a, {get: '/api/screen/recommend'})).body.diag.interest, 2);
+  } finally { sqlite.close(); }
+});
+
 test('a person raised only by pseudo ratings is not shown as 履歴 0 本', async () => {
   const {reasonRows} = await import('../src/screens/recommend.js');
   const html = reasonRows({parts: [[0.5, '脚本', '家丁', 0]], kinds: []}, new Map());

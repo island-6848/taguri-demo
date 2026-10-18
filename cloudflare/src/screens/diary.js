@@ -132,14 +132,16 @@ async function mergeWorks(ctx, workKey, otherKey) {
   if (!strip(kv.note_impression || '') && strip(dv.note_impression || '')) moved.push('感想');
   if (moved.length) {
     await ctx.db.prepare('INSERT INTO works (user_id, work_key, title, first_date, last_date, times,'
-      + ' verdict, chosen, note_impression, note_motive, updated_at)'
-      + " VALUES (?,?,?,?,?,?,?,?,?,'',?)"
+      + ' verdict, chosen, note_impression, note_motive, updated_at, rated_at)'
+      + " VALUES (?,?,?,?,?,?,?,?,?,'',?,?)"
       + ' ON CONFLICT(user_id, work_key) DO UPDATE SET verdict=COALESCE(works.verdict,'
       + " excluded.verdict), note_impression=CASE WHEN trim(works.note_impression)=''"
       + ' THEN excluded.note_impression ELSE works.note_impression END,'
+      // 移した評価は、評価した時刻（rated_at、#112）も一緒に移す
+      + ' rated_at=CASE WHEN works.verdict IS NULL THEN excluded.rated_at ELSE works.rated_at END,'
       + ' updated_at=excluded.updated_at')
       .bind(ctx.uid, keep.work_key, keep.title, keep.first_date || '', keep.last_date || '', keep.times || 1,
-        dv.verdict ?? null, kv.chosen ?? null, dv.note_impression || '', now(ctx)).run();
+        dv.verdict ?? null, kv.chosen ?? null, dv.note_impression || '', now(ctx), dv.verdict ? (dv.rated_at || dv.updated_at || null) : null).run();
   }
   const hand = await readHand(ctx);
   const kh = hand[keep.work_key] || {}, dh = hand[drop.work_key] || {};

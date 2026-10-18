@@ -7,7 +7,7 @@ import {readFileSync, readdirSync} from 'node:fs';
 import {execFileSync} from 'node:child_process';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {scoreFromIndex, d1Access, independentRatings, seedsFromFavourites} from '../src/recommend.js';
+import {scoreFromIndex, d1Access, independentRatings, seedsFromFavourites, collapseRanked} from '../src/recommend.js';
 
 const fixture = JSON.parse(execFileSync('python3', [new URL('./parity_fixture.py', import.meta.url).pathname], {maxBuffer: 256 * 1024 * 1024, encoding: 'utf8'}));
 
@@ -51,8 +51,27 @@ test('only the latest rating per linked stage counts; unlinked records stay sepa
   assert.deepEqual(independentRatings(rows).map(r => r.key), ['c', 'b']);
 });
 
+// #112: the time a rating was made (rated_at) orders them before the row's last edit, in Python too.
+test('ratings are ordered by rated_at, then updated_at, then the date, the same as Python', () => {
+  const rows = [
+    {key: 'a', stage_id: 's1', verdict: '○', rated_at: '2026-09-01 10:00:00', updated_at: '2026-09-20 10:00:00'},
+    {key: 'b', stage_id: 's1', verdict: '◎', rated_at: '2026-09-05 10:00:00', updated_at: '2026-09-06 10:00:00'},
+    {key: 'c', stage_id: 's2', verdict: '×', updated_at: '2026-09-03 10:00:00'},
+    {key: 'd', stage_id: '', verdict: '△', date: '2026-08-01'},
+  ];
+  const js = independentRatings(rows).map(r => r.key);
+  // s1 keeps its first slot (a, rated before c) with its latest rating (b), though a was edited last.
+  assert.deepEqual(js, ['d', 'b', 'c']);
+  const py = JSON.parse(execFileSync('python3', ['-c', `
+import json, sys
+sys.path[:0] = ['../tools/review', '../tools/taguri']
+import user_recommender as UR
+print(json.dumps([r["key"] for r in UR.independent_ratings(json.loads(sys.stdin.read()))]))`], {input: JSON.stringify(rows), encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore']}));
+  assert.deepEqual(js, py);
+});
+
 // ---------------------------------------------------------------- through the Worker
-import worker, {recommendFor, onboardingFor} from '../src/worker.js';
+import worker, {onboardingFor} from '../src/worker.js';
 import {TERMS_VERSION} from '../src/terms.js';
 const ORIGIN = 'https://taguri.example';
 function envFor(sqlite) {
@@ -61,81 +80,20 @@ function envFor(sqlite) {
 }
 const call = (env, path, value, cookie = '') => worker.fetch(new Request(`${ORIGIN}/migration-api/${path}`, value === undefined ? {headers: {cookie}} : {method: 'POST', headers: {cookie, origin: ORIGIN, 'content-type': 'application/json'}, body: JSON.stringify(value)}), env);
 
-test('records saved through the API give the same recommendations as Python, minus reacted stages', async () => {
+// One slot per production, as Python's collapse_tours (build_recommend_index.collapse_ranked).
+// GET /api/recommend no longer computes from the migration-era records (#119: it answers with the
+// 今週のおすすめ screen's ranking, test/recommend-screen.test.js), so the Python parity of the
+// scoring is checked on scoreFromIndex above and of the grouping here.
+test('one slot per tour, the first 15, as Python', () => {
   let checked = 0, toursSeen = 0;
-  for (const cat of fixture.catalogues.slice(0, 6)) {
-    for (const c of cat.cases.filter(x => !x.favourites && Object.keys(x.multipliers).length === 0 && x.expected.length >= 3)) {
-      const sqlite = load(cat), env = envFor(sqlite);
-      const reg = await call(env, 'register', {agree: TERMS_VERSION});
-      const cookie = reg.headers.get('set-cookie').split(';')[0];
-      const uid = sqlite.prepare('SELECT id FROM users').get().id;
-      for (const r of c.rated) {
-        const res = await call(env, 'record', {id: r.key, title: r.key, date: r.date, rating: r.verdict, stage_id: r.stage_id, aspects: r.aspects}, cookie);
-        assert.equal(res.status, 200, await res.text());
-        // Keep Python's order of rating times (latest rating of a stage wins).
-        sqlite.prepare('UPDATE records SET updated_at=? WHERE user_id=? AND id=?').run(Date.parse(r.updated_at.replace(' ', 'T') + 'Z') / 1000, uid, r.key);
-      }
-      const reacted = c.expected[0].stage_id;
-      await call(env, 'reaction', {stage_id: reacted, status: 'no'}, cookie);
-      const got = await recommendFor(env.DB, uid, fixture.today);
-      // One slot per tour, as Python's collapse_tours (collapse_ranked).
-      const byId = new Map(c.expected.map(x => [x.stage_id, x]));
-      const want = c.listed_after_first;
-      assert.equal(got.ready, true);
-      assert.equal(got.variant, 'base', 'few ratings: the hidden check keeps the default rules');
-      assert.deepEqual(got.items.map(i => [i.stage_id, i.score, i.tours.map(t => t.stage_id)]), want.map(g => [g.stage_id, byId.get(g.stage_id).b, g.tours]));
-      assert.deepEqual(got.items[0].reasons, [...byId.get(want[0].stage_id).parts.slice(0, 3), ...byId.get(want[0].stage_id).kinds].slice(0, 3).map(([, role, person, n]) => ({role, person, n})));
-      toursSeen += got.items.some(i => i.tours.length);
-      assert.ok(got.items.every(i => i.tours.every(t => t.theater)), 'tour venues carry their display fields');
-      assert.ok(got.items.every(i => i.title), 'display fields come from rec_stage');
-      // The cache is keyed by the scoring rules too (a rule change recomputes).
-      assert.ok(sqlite.prepare('SELECT stamp FROM rec_cache WHERE user_id=?').get(uid).stamp.startsWith('person-ordinal-v3+fav3+asp1+tour1+why1|'));
-      // Second view: served from the cache, same answer.
-      const again = await recommendFor(env.DB, uid, fixture.today);
-      assert.equal(again.cached, true);
-      assert.deepEqual(again.items, got.items);
-      // A new rating, a reaction, a new day or a new index version recomputes.
-      await call(env, 'reaction', {stage_id: got.items[0].stage_id, status: 'interest'}, cookie);
-      const afterReaction = await recommendFor(env.DB, uid, fixture.today);
-      assert.equal(afterReaction.cached, false);
-      assert.ok(!afterReaction.items.some(i => i.stage_id === got.items[0].stage_id));
-      assert.equal((await recommendFor(env.DB, uid, '2026-10-13')).cached, false);
-      // Two changes within the same second still recompute.
-      await recommendFor(env.DB, uid, fixture.today);
-      sqlite.prepare('UPDATE reactions SET updated_at=0 WHERE user_id=?').run(uid);
-      await recommendFor(env.DB, uid, fixture.today);
-      await call(env, 'reaction', {stage_id: got.items[0].stage_id, status: 'owned'}, cookie);   // same count, same time
-      sqlite.prepare('UPDATE reactions SET updated_at=0 WHERE user_id=?').run(uid);
-      assert.equal((await recommendFor(env.DB, uid, fixture.today)).cached, false);
-      checked++;
-      sqlite.close();
-    }
+  for (const cat of fixture.catalogues) for (const c of cat.cases) {
+    const want = c.listed || c.listed_after_first;
+    const got = collapseRanked(c.listed ? c.expected : c.expected.slice(1), 15);
+    assert.deepEqual(got.map(g => [g.stage_id, g.tours]), want.map(g => [g.stage_id, g.tours]));
+    checked++; toursSeen += got.some(g => g.tours.length);
   }
-  assert.ok(checked >= 5, `checked ${checked}`);
+  assert.equal(checked, 144 + 24);
   assert.ok(toursSeen >= 2, `listings with a tour: ${toursSeen}`);
-});
-
-test('favourites give recommendations before any rating, as Python, and fade as ratings come in', async () => {
-  let checked = 0;
-  for (const cat of fixture.catalogues.slice(0, 6)) {
-    const c = cat.cases.find(x => x.favourites && !x.rated.length && x.expected.length >= 3);
-    if (!c) continue;
-    const sqlite = load(cat), env = envFor(sqlite);
-    const cookie = (await call(env, 'register', {agree: TERMS_VERSION})).headers.get('set-cookie').split(';')[0];
-    const uid = sqlite.prepare('SELECT id FROM users').get().id;
-    assert.equal((await recommendFor(env.DB, uid, fixture.today)).items.length, 0, 'nothing to go on yet');
-    for (const f of c.favourites) assert.equal((await call(env, 'favourite', f, cookie)).status, 200);
-    const got = await recommendFor(env.DB, uid, fixture.today);
-    assert.equal(got.cached, false, 'adding a favourite drops the cached result');
-    assert.equal(got.n_seeds, c.seeds.length);
-    const byId = new Map(c.expected.map(x => [x.stage_id, x]));
-    assert.deepEqual(got.items.map(i => [i.stage_id, i.score, i.tours.map(t => t.stage_id)]), c.listed.map(g => [g.stage_id, byId.get(g.stage_id).b, g.tours]));
-    // The favourites' own shows are listed elsewhere, not recommended here.
-    assert.ok(!got.items.some(i => c.seeds.includes(i.stage_id)));
-    checked++;
-    sqlite.close();
-  }
-  assert.ok(checked >= 3, `checked ${checked}`);
 });
 
 test('the first stages to ask about: favourites already on, then the batch list, minus recorded ones', async () => {
