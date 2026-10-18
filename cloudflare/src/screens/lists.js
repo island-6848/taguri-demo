@@ -518,7 +518,7 @@ const ORIGIN = {reminder: '開幕リマインドからの追加', search: '探�
  */
 export function ownlessWhy(w, title) {
   const titles = new Map((w.titles || []).map(([k, v]) => [k, (v || []).filter(t => t !== title)]));
-  const via = new Map(w.via || []);
+  const via = new Map([...(w.via || []), ...(w.fav || [])]);   // お気に入りの名前で書く人（fav）も、作品名が無くても残す
   const keep = p => { const k = p[1] + '\t' + p[2]; return via.has(k) || (titles.get(k) || []).length > 0; };
   return {...w, parts: w.parts.filter(keep), kinds: w.kinds.filter(keep), titles: [...titles]};
 }

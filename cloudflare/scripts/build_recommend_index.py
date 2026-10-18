@@ -28,8 +28,10 @@ import datetime
 import hashlib
 import json
 import os
+import re
 import statistics
 import sys
+import unicodedata
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -167,6 +169,11 @@ SEED_WORK_KINDS = ("作品",)
 SEED_THEME_KINDS = ("題材",)
 
 
+def person_key(name: str) -> str:
+    """登録した人の名前を索引の書き方に寄せる（NFKC、空白を詰める: measure_nets._names）。"""
+    return re.sub(r"[\s\u3000]", "", unicodedata.normalize("NFKC", str(name or "")))
+
+
 def seeds_from_favourites(postings_for, people_of, favourites: list[dict],
                           stages_matching=None) -> tuple[list[dict], set]:
     """Seed productions for the user's favourites (q-favourites-seed).
@@ -182,7 +189,10 @@ def seeds_from_favourites(postings_for, people_of, favourites: list[dict],
     order; people from rec_people. Returns (seeds, person names to skip).
     """
     names = sorted({f["name"] for f in favourites if f.get("kind") in SEED_KINDS})[:MAX_SEED_FAVS]
-    keys = sorted((role, name) for name in names for role in SEED_ROLES)
+    # 「堂本 光一」と空白を入れて登録しても、索引の「堂本光一」で引く（索引の名前は NFKC で空白を詰めてある。
+    # Worker の recommend.personKey と同じ、2026-10-18 fix-fav-only-no-reco）
+    lookup = {n for name in names for n in (name, person_key(name)) if n}
+    keys = sorted((role, name) for name in lookup for role in SEED_ROLES)
     sids = {row[2] for row in postings_for(keys)}
     groups = sorted({g for f in favourites if f.get("kind") in SEED_GROUP_KINDS
                      for g in [RC.nz(f["name"])] if len(g) >= 2})[:MAX_SEED_FAVS]
@@ -197,7 +207,7 @@ def seeds_from_favourites(postings_for, people_of, favourites: list[dict],
         people = people_of(sid)
         if people:
             seeds.append({"stage_id": sid, "people": people})
-    return seeds, set(names)
+    return seeds, lookup
 
 
 def score_from_index(postings_for, stage_of, rated: list[dict], *, multipliers: dict,

@@ -582,6 +582,16 @@ async function walkA(A) {
     const f = JSON.parse(sql("SELECT value FROM app_setting WHERE key='declared'")[0]?.value || '{}');
     note('D1 app_setting.declared: ' + JSON.stringify(f));
     check(JSON.stringify(f['人']) === '["俳優乙"]' && !(f['団体'] || []).length, 'D1 のお気に入りが違う');
+    // おすすめの理由の文（起案者の指摘 2026-10-18「堂本光一と登録したら『好きな諸鍛冶裕太と同じ公演に関わる人)』と出た」）。
+    // 登録していない人を「好きな」と書かない。カッコは開きと閉じがそろう（全角のまま書き、halfwidth.js が半角にする）
+    await go('/');
+    await dump('home-after-favourite');
+    const why = (await page.locator('li.rs').allInnerTexts().catch(() => [])).map(t => t.replace(/\s+/g, ' ').replace(/✕/g, '').trim());
+    note('おすすめの理由: ' + why.join(' / '));
+    check(!why.some(t => /好きな/.test(t) && !/好きな俳優乙/.test(t)), '登録していない人が「好きな」と出る');
+    check(why.every(t => (t.match(/[(（]/g) || []).length === (t.match(/[)）]/g) || []).length), '理由のカッコの数が合わない');
+    const first = page.locator('.ticket.recommend').first();
+    if (await first.count()) await first.screenshot({path: join(OUT, 'reasons-after-favourite.png')}).catch(() => {});
   });
 
   await step('開幕リマインド: 近く開く公演に興味あり', async () => {
@@ -706,11 +716,18 @@ async function walkA(A) {
     note('開幕リマインドの絞り込み: ' + ((await content()).match(/場所\n[^\n]*/) || [''])[0].replace('\n', ' '));
   });
 
-  await step('今週のおすすめ: 効かせ方のつまみ（保存して開き直す・ふつうに戻す）', async () => {
+  await step('今週のおすすめ: 効かせ方のつまみ（保存して開き直す・初めの設定に戻す）', async () => {
     await go('/');
     await page.locator('button.ftab[data-for="wbox"]').click();
     const sl = page.locator('.wsl[data-weight="cast"]');
     await sl.waitFor();
+    // 保存していない人のつまみは群ごとの初めの設定を指す（起案者の指示 2026-10-18「出演者、作品の内容︰少し強く／
+    // 制作・宣伝、その他の役職︰あまり効かせない／それ以外はふつう」、dec-weight-defaults）
+    const initial = Object.fromEntries(await page.locator('.wsl').evaluateAll(ns => ns.map(n => [n.dataset.weight, n.value])));
+    note('効かせ方の初めの位置: ' + JSON.stringify(initial));
+    check(JSON.stringify(initial) === JSON.stringify({cast: '3', author: '2', craft: '2', stage: '2', produce: '1', other: '1', theme: '3'}),
+      'つまみの初めの位置が群ごとの既定でない');
+    await page.locator('#weights').screenshot({path: join(OUT, 'weights-default.png')}).catch(() => {});
     await sl.fill('4');
     await sleep(800);
     check((await page.locator('.wrow[data-grp="cast"] .wv').innerText()).includes('とても強く'), 'つまみの札が変わらない');
@@ -722,7 +739,9 @@ async function walkA(A) {
     const reload = page.waitForEvent('load', {timeout: 15000});
     await page.locator('button[data-wreset]').click();
     await reload; await settle();
-    check(await page.locator('.wsl[data-weight="cast"]').inputValue() === '2', '「ふつうに戻す」で戻らない');
+    // 「すべて初めの設定に戻す」は群ごとの既定へ（出演者は「少し強く」= 3。前は全部「ふつう」= 2 だった）
+    check(await page.locator('.wsl[data-weight="cast"]').inputValue() === '3', '「すべて初めの設定に戻す」で戻らない');
+    check(await page.locator('.wsl[data-weight="produce"]').inputValue() === '1', '「すべて初めの設定に戻す」で制作・宣伝が既定に戻らない');
   });
 
   await step('取り込み: iCal ファイル（取り消した予定・VALARM を含む）', async () => {
@@ -989,6 +1008,30 @@ async function walkB(A, B) {
     const ap = A.page;
     await ap.goto(BASE + '/rate/unrated'); await ap.waitForLoadState('networkidle');
     check(!/Bだけの芝居/.test(await ap.locator('#content').innerText()), 'A に B の記録が見える');
+  });
+
+  // お気に入りを登録しただけでもおすすめが出る（起案者の問い 2026-10-18「お気に入りに登録するとおすすめが出る、って
+  // 書いてあるのに、何もでないときがある」、fix-fav-only-no-reco）。B は評価も興味ありも無い。名前は空白入りで登録する
+  // （前は索引の「作家丁」と当たらず 0 件だった）。理由には登録した名前を書く（「好きな○○」と登録していない人を書かない）
+  await step('B: お気に入り（作家 丁）だけでおすすめが出て、理由に登録した名前が出る', async () => {
+    await go('/recommend/favourites');
+    if (!(await page.locator('details#names').getAttribute('open') !== null)) await page.locator('details#names > summary').click();
+    await page.selectOption('#fav-kind', '人');
+    await page.fill('#fav-name', '作家 丁');
+    const reload = page.waitForEvent('load', {timeout: 15000});
+    await page.locator('.fav-add button[data-fav="add"]').click();
+    await waitSaid(page.locator('.fav-add'), /登録しました/);
+    await reload; await settle();
+    await go('/');
+    await dump('b-home-favourite-only');
+    const card = page.locator('.ticket.recommend[data-stage="101"]');
+    check(await card.count() === 1, 'お気に入りだけでおすすめ（舞台ひとつめ）が出ない');
+    const why = (await card.locator('li.rs').allInnerTexts().catch(() => [])).map(t => t.replace(/\s+/g, ' ').replace(/✕/g, '').trim());
+    note('おすすめの理由: ' + why.join(' / '));
+    check(why.some(t => /お気に入りの作家 丁と同じ公演に関わる人/.test(t)), '理由に登録した名前（作家 丁）が出ない');
+    check(!why.some(t => /好きな/.test(t)), '登録していない人が「好きな」と出る');
+    check(why.every(t => (t.match(/[(（]/g) || []).length === (t.match(/[)）]/g) || []).length), '理由のカッコの数が合わない');
+    await card.screenshot({path: join(OUT, 'reasons-favourite-only.png')}).catch(() => {});
   });
 }
 

@@ -622,7 +622,8 @@ document.addEventListener("click", ev => {
     });
   } else if (b.dataset.wreset) {
     const box = b.closest(".wbox"), w = {};
-    box.querySelectorAll(".wsl").forEach(sl => { w[sl.dataset.weight] = "mid"; });
+    // 「すべて初めの設定に戻す」: 群ごとの既定（つまみの data-default、起案者の指示 2026-10-18）
+    box.querySelectorAll(".wsl").forEach(sl => { w[sl.dataset.weight] = sl.dataset.default || "mid"; });
     post("/api/weight", {weights: w}, null, null).then(d => {
       if (!d) return;
       location.hash = "weights";
@@ -2898,6 +2899,13 @@ WEIGHT_STEPS = (("off", "効かせない", 0.0),
                 ("max", "とても強く", 4.0))
 STEP_MUL = {k: m for k, _l, m in WEIGHT_STEPS}
 DEFAULT_STEP = "mid"
+# 群ごとの初めの設定（起案者の指示 2026-10-18「効かせ方のデフォルトを設定する。出演者、作品の内容︰少し強く／制作・宣伝、
+# その他の役職︰あまり効かせない／それ以外はふつう」、dec-weight-defaults）。保存していない群はこの段。Worker の weights.GROUP_DEFAULT と同じ
+GROUP_DEFAULT = {"cast": "strong", "theme": "strong", "produce": "weak", "other": "weak"}
+
+
+def default_step(grp: str) -> str:
+    return GROUP_DEFAULT.get(grp, DEFAULT_STEP)
 # **段の名前と札を画面のスクリプトへ渡す。** 画面の側に書き写すと、つまみの位置と
 # 札の言葉がずれる ── 言葉の出どころを 1 つにする
 SCRIPT = (SCRIPT
@@ -2945,7 +2953,7 @@ def group_of(role: str) -> str:
 
 
 def read_weights(user_id: str) -> dict:
-    """いまの効かせ方。**保存が無ければ全部「ふつう」である。**"""
+    """いまの効かせ方。**保存が無ければ群ごとの初めの設定（default_step）である。**"""
     import rate_performances as R
     con = R.connect()
     try:
@@ -2955,7 +2963,7 @@ def read_weights(user_id: str) -> dict:
             "SELECT grp, step FROM rank_weight WHERE user_id=?", (user_id,))}
     finally:
         con.close()
-    return {k: (rows.get(k) if rows.get(k) in STEP_MUL else DEFAULT_STEP)
+    return {k: (rows.get(k) if rows.get(k) in STEP_MUL else default_step(k))
             for k, _l, _r in ROLE_GROUPS}
 
 
@@ -3464,11 +3472,11 @@ def _apply_weights(user_id: str, d: dict, w: dict | None = None) -> dict:
     """
     import recommend2 as RC2
     w = w or read_weights(user_id)
-    if all(v == DEFAULT_STEP for v in w.values()):
+    if all(STEP_MUL.get(v, 1.0) == 1.0 for v in w.values()):
         return dict(d, weights=w, w_dropped=0)
 
     def mul(grp: str) -> float:
-        return STEP_MUL.get(w.get(grp) or DEFAULT_STEP, 1.0)
+        return STEP_MUL.get(w.get(grp) or default_step(grp), 1.0)
 
     def redo(c: dict) -> dict:
         c = dict(c)
@@ -3572,12 +3580,12 @@ def weight_form(user_id: str, d: dict) -> str:
     # いまの効かせ方は「出演者強め」のように短く（起案者の指示 2026-10-18）。強く・とても強く → 強め、
     # あまり効かせない → 弱め、効かせない → なし。どれも「ふつう」なら「ふつう」
     def _by(sel):
-        return [GROUP_SHORT[k] for k, _l, _r in ROLE_GROUPS if (w.get(k) or DEFAULT_STEP) in sel]
+        return [GROUP_SHORT[k] for k, _l, _r in ROLE_GROUPS if (w.get(k) or default_step(k)) in sel]
     now = "／".join("・".join(ks) + t for ks, t in ((_by(("strong", "max")), "強め"), (_by(("weak",)), "弱め"),
                                                    (_by(("off",)), "なし")) if ks) or "ふつう"
     rows = []
     for k, label, _roles in ROLE_GROUPS:
-        cur = w.get(k) or DEFAULT_STEP
+        cur = w.get(k) or default_step(k)
         i = keys.index(cur)
         n = cnt.get(k) or 0
         rows.append(
@@ -3585,13 +3593,13 @@ def weight_form(user_id: str, d: dict) -> str:
             f'<span class="wl">{E(label)}</span>'
             f'<span class="wn">おすすめの候補 {n} 件で一致</span>'
             f'<input class="wsl" type="range" min="0" max="{len(keys) - 1}" step="1"'
-            f' value="{i}" data-weight="{k}"'
+            f' value="{i}" data-weight="{k}" data-default="{default_step(k)}"'
             f' aria-label="{E(label)}の効かせ方">'
             f'<span class="wv">{E(labels[cur])}</span></div>')
     drop = d.get("w_dropped") or 0
     dropped = ("" if not drop else
                f'<p class="lead">いまの設定で、おすすめに出なくなった公演が {drop} 件あります。'
-               f'「すべて「ふつう」に戻す」を押すと戻ります。</p>')
+               f'「すべて初めの設定に戻す」を押すと戻ります。</p>')
     # **目盛りの意味は 1 か所にだけ書く。** 7 行それぞれに 5 つの言葉を並べると、
     # 読む量が増えるばかりで、どの行を動かすかの判断には使われない
     # 目盛りの言葉はつまみの真上だけに置く（2026-10-17）。行と同じ並びの、つまみの列にだけ字を入れる
@@ -3605,7 +3613,7 @@ def weight_form(user_id: str, d: dict) -> str:
 {scale}
 {"".join(rows)}
 <div class="pfoot"><button data-wsave="1">{IC.ico("light")}この効かせ方でおすすめを読み込む</button>
- <button class="pall-btn" data-wreset="1">すべて「ふつう」に戻す</button>
+ <button class="pall-btn" data-wreset="1">すべて初めの設定に戻す</button>
  <span class="wsaid"></span></div>
 {dropped}
 </details></div>"""
@@ -3723,7 +3731,7 @@ def _apply_impression_preferences(user_id: str, data: dict, weights: dict) -> di
     """感想の保存・編集・削除は、次の画面取得で順位と理由に反映する。"""
     import datetime
     import net_c as C
-    multiplier = STEP_MUL.get(weights.get("theme") or DEFAULT_STEP, 1.0)
+    multiplier = STEP_MUL.get(weights.get("theme") or default_step("theme"), 1.0)
     profile = {}
     if multiplier > 0:
         today = datetime.date.today().isoformat()

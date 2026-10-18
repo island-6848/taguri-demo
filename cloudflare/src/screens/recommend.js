@@ -10,12 +10,12 @@
 // weights.js. Left out for now: the map above the prefecture chips (no outlines in
 // D1), the count of shows a setting hid (w_dropped); the impression preferences (感想の好み, #104) are applied in rankedGroups.
 import {frac} from './grade.js';
-import {scoreFromIndex, d1Access, seedsFromFavourites, gradeOf, MAX_SEED_STAGES, droppedKind, GENRE_AXIS, CONTENT_AXES} from '../recommend.js';
+import {scoreFromIndex, d1Access, seedsFromFavourites, gradeOf, MAX_SEED_STAGES, droppedKind, GENRE_AXIS, CONTENT_AXES, favSpread} from '../recommend.js';
 import {stageInfo} from './fallback.js';
 import {tourBlock} from './schedule.js';
 import {parseCredits} from './credits.js';
 import {chooseVariant, groupOf, VARIANTS} from '../reco-gate.js';
-import {readWeights, multipliersOf, weightForm, weightAction, DEFAULT_STEP} from './weights.js';
+import {readWeights, multipliersOf, weightForm, weightAction, tunedWeights} from './weights.js';
 import {impressionAdjust, round6} from '../impression.js';
 import {E, ValueError} from './py.js';
 import {answerSnapshot, recordShown} from './evalrec.js';
@@ -25,7 +25,7 @@ import {castOffOf} from './diary.js';
 import {compose, cardTemplates, posterHtml} from './cards.js';
 import {PREFS, prefForm, prefsFor, regionCounts, PAGE_PREF_NOTE} from './prefs.js';
 export {prefForm, prefsFor};
-import {loadDeclared, loadDeclined, loadKindOff, nameHits, KINDS, reactionsOf, declinedBox, kindOffBox} from './lists.js';
+import {loadDeclared, loadDeclined, loadKindOff, nameHits, KINDS, reactionsOf, declinedBox, kindOffBox, nz as nzName} from './lists.js';
 
 export const TOP = 15;
 // 初めて使ったとき（おすすめがまだ無いとき）の案内（起案者の指示 2026-10-18 の文面。使い方ガイドのような小さな絵を添える）。
@@ -107,7 +107,7 @@ const KEEP = 400;
 const GATE_REUSE_MIN = 30;
 // 再生（H5）で 1 つずつ外す部品: 興味ありの配り分け・1 段広げる・並べ直し（spreadLeads）・裏の答え合わせ（chooseVariant）・感想の好み（#104）
 export const REPLAY_ABLATIONS = ['split', 'expand', 'spread', 'gate', 'impression'];
-const VERSION = 'screen-v32';   // v32: the reasons name the newest and oldest works, favourites' works too (2026-10-18); v31: 感想で書いた特徴への好みが順位と理由に効く（#104）; v30: the hidden check's choice is reused while the ratings are unchanged (CPU, #138); v29: the cache keeps only the reasons the screens show (CPU, #138); v28: the hidden check leaves out the dropped kinds as the ranking does (#115); v27: a rating of a record dated after today is not learnt from (#116); v26: ratings ordered by when they were rated (works.rated_at), not by the last edit (#112); v25: a name in the 興味あり note counts only when not denied or compared against (#111); v24: a 興味あり copied to the tour's other venues counts once (#110); v23: 興味なし weakens after the split, not before (#109); v22: favourite seeds weigh FAV_SEED_W (お気に入り＞興味あり); v21: credits read only where needed (CPU); v20: a production answered under another stage id stays out; v19: same title + (group / venue / a shared person) is one card; v18: one card per title+group (sameProduction); v17: no 出典 on the reasons; v16: #会場 dropped, 行けない (interest=2) as a liked seed; v15: 出さない語 also hits the kind tags; v14: #ジャンル (a genre turned off hides its stages); v13: no 原作「原作もの」 (DROPPED_KEYS); v12: no #値段 (DROPPED_AXES); v11: reasons of answered stages (answered_why); v2: the user's 効かせ方 (rank_weight) and the per-group counts; v3: 興味あり as seeds; v4: diag; v5: 興味あり split (impl-interest-split); v6: by part importance; v7: tiers + トメ; v8: two tiers only; v9: トメ joins the main roles; v10: spread leads + one-step partners
+const VERSION = 'screen-v33';   // v33: favourites' own stages (お気に入りの一覧) seed too, spread by role (FAV_SPREAD_W), reasons name the favourite, the 効かせ方 defaults per group (2026-10-18); v32: the reasons name the newest and oldest works, favourites' works too (2026-10-18); v31: 感想で書いた特徴への好みが順位と理由に効く（#104）; v30: the hidden check's choice is reused while the ratings are unchanged (CPU, #138); v29: the cache keeps only the reasons the screens show (CPU, #138); v28: the hidden check leaves out the dropped kinds as the ranking does (#115); v27: a rating of a record dated after today is not learnt from (#116); v26: ratings ordered by when they were rated (works.rated_at), not by the last edit (#112); v25: a name in the 興味あり note counts only when not denied or compared against (#111); v24: a 興味あり copied to the tour's other venues counts once (#110); v23: 興味なし weakens after the split, not before (#109); v22: favourite seeds weigh FAV_SEED_W (お気に入り＞興味あり); v21: credits read only where needed (CPU); v20: a production answered under another stage id stays out; v19: same title + (group / venue / a shared person) is one card; v18: one card per title+group (sameProduction); v17: no 出典 on the reasons; v16: #会場 dropped, 行けない (interest=2) as a liked seed; v15: 出さない語 also hits the kind tags; v14: #ジャンル (a genre turned off hides its stages); v13: no 原作「原作もの」 (DROPPED_KEYS); v12: no #値段 (DROPPED_AXES); v11: reasons of answered stages (answered_why); v2: the user's 効かせ方 (rank_weight) and the per-group counts; v3: 興味あり as seeds; v4: diag; v5: 興味あり split (impl-interest-split); v6: by part importance; v7: tiers + トメ; v8: two tiers only; v9: トメ joins the main roles; v10: spread leads + one-step partners
 export {PREFS} from './prefs.js';
 const KIND_LABEL = {'#形式': '形式', '#原作': '原作', '#翻訳': '', '#原作の国': '原作の国', '#会場': '劇場', '#題材': '題材', '#ジャンル': 'ジャンル'};
 // 理由に添える作品名は、いちばん新しい公演といちばん古い公演の 2 つまで（起案者の指示 2026-10-18「公演タイトルすでに
@@ -176,6 +176,47 @@ async function interestSeeds(ctx, access) {
   return {n: sids.length, seeds: sids.filter(s => people.get(s)?.length).map(one), disliked: noes.filter(s => people.get(s)?.length).map(one)};
 }
 
+/**
+ * お気に入りの一覧に出る公演（lists.nameHits の hits）を、索引から引いた種（seedsFromFavourites）に足す。
+ * 多くて MAX_SEED_STAGES まで。人物は索引（rec_people）から、無ければ出演欄から読む（interestSeeds と同じ）。
+ * 控えが古いときだけ動き、D1 の読み取りは足す公演の数の行（多くて 60 行 × 2 表）。
+ */
+const FAV_LABEL = /^[^「]+「(.*)」$/u;
+async function hitSeeds(ctx, access, hits, seeds) {
+  const have = new Set(seeds.map(s => String(s.stage_id)));
+  const room = MAX_SEED_STAGES - seeds.length;
+  const add = [...hits.keys()].map(String).filter(s => !have.has(s)).sort().slice(0, Math.max(0, room));
+  if (!add.length) return seeds;
+  const people = await access.peopleFor(add);
+  const miss = add.filter(s => !people.get(s)?.length);
+  if (miss.length) {
+    const info = await stageInfo(ctx.db, miss);
+    for (const s of miss) { const p = parseCredits(info.get(s)?.fields || {}); if (p.length) people.set(s, p); }
+  }
+  const favOf = sid => [...new Set((hits.get(sid)?.a || []).map(x => (FAV_LABEL.exec(x) || [])[1]).filter(Boolean))].sort();
+  return [...seeds, ...add.filter(s => people.get(s)?.length).map(s => ({stage_id: s, people: people.get(s), fav: favOf(s)}))];
+}
+
+/**
+ * 理由の人のうち、評価の履歴が無く、お気に入りの公演にいたことで上がった人 -> 登録した名前（理由に書く）。
+ * 同じ人が何人ものお気に入りの公演にいれば、いっしょの公演が多い名前（同じ数なら名前の順で先）。
+ */
+export function favOrigins(seeds, skip = new Set()) {
+  const count = new Map();                     // "role\tperson" -> Map(fav -> 公演の数)
+  for (const s of seeds) for (const [role, p] of new Map((s.people || []).map(x => [x[0] + '\t' + x[1], x])).values()) {
+    if (role.startsWith('#') || skip.has(p) || !favSpread(role)) continue;
+    const k = role + '\t' + p;
+    if (!count.has(k)) count.set(k, new Map());
+    for (const f of s.fav || []) count.get(k).set(f, (count.get(k).get(f) || 0) + 1);
+  }
+  const out = new Map();
+  for (const [k, m] of count) {
+    const best = [...m].sort((a, b) => (b[1] - a[1]) || (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))[0];
+    if (best) out.set(k, best[0]);
+  }
+  return out;
+}
+
 /** 観た回に出ていなかったと本人が外した出演者（works.cast_off）。1 段広げるときにも戻さない。 */
 const castOffKeys = rated => new Set(rated.flatMap(r => (r.cast_off || []).map(n => '出演\u0000' + n)));
 
@@ -223,10 +264,15 @@ export function reasonRows(group, titles) {
   const out = [];
   // 1 段広げて来た人（scoreFromIndex の via）: 「○○とよく組む人」と書く
   const via = new Map(group.via || []);
+  // お気に入りの公演にいたことで上がった人（rankedGroups の fav）: 登録した名前と、その公演の題名で書く
+  // （起案者の指示 2026-10-18「理由の文は、登録した名前（ここでは堂本光一）を書く」）
+  const fav = new Map(group.fav || []);
   for (const [, role, person, n] of group.parts.slice(0, 4)) {
-    const w = via.get(role + '\t' + person);
+    const k = role + '\t' + person, w = via.get(k), f = fav.get(k);
+    const works = f ? worksText(titles.get(k), 0) : '';
     out.push(`<li class="rs b"><span class="net">人物</span>${E(role)} <b>${E(person)}</b>`
-      + `<span class="n">${w ? `（好きな${E(w)}と同じ公演に関わる人）` : worksText(titles.get(role + '\t' + person), n)}</span>`
+      + `<span class="n">${w ? `（好きな${E(w)}と同じ公演に関わる人）`
+        : f ? `（お気に入りの${E(f)}と同じ公演に関わる人${works ? '：' + works.slice(1, -1) : ''}）` : worksText(titles.get(k), n)}</span>`
       + `<button class="rsx" data-word="${E(person)}" title="この人物を理由に出さない">✕</button></li>`);
   }
   for (const [, axis, tag, n] of group.kinds.filter(k => !droppedKind(k[1], k[2])).slice(0, 2)) {
@@ -323,12 +369,19 @@ export async function rankedGroups(ctx) {
   const declared = await loadDeclared(ctx);
   const favourites = KINDS.flatMap(kind => (declared[kind] || []).map(name => ({name, kind}))).slice(0, 200);
   const fav = await seedsFromFavourites(access, favourites), skip = fav.skip;
-  const interest = await interestSeeds(ctx, access), nLiked = interest.n;
-  const liked = withoutKinds(interest.seeds, off), disliked = withoutKinds(interest.disliked, off);
-  const seeds = withoutKinds(fav.seeds, off);
   // Stages of a registered name are お気に入り, stages of a word not to show are left out
   // (app._rebucket): neither is ranked here.
   const {hits, declined} = await nameHits(ctx, declared, words);
+  // お気に入りの一覧に出る公演（名前を空白を詰めて本文で当てた公演）も種にする（起案者の問い 2026-10-18「お気に入りに
+  // 登録するとおすすめが出る、って書いてあるのに、何もでないときがある」、fix-fav-only-no-reco）。種は索引の役職
+  // （SEED_ROLES）で名前そのままを引くだけだったので、一覧には公演が出るのに種が 0 件で、おすすめも 0 件になることがあった
+  const favSeeds = await hitSeeds(ctx, access, hits, fav.seeds);
+  // 登録した人の名前は、索引の書き方（空白なし・NFKC）でも理由に出さない（その人の公演はお気に入りの一覧に出る）
+  const favNames = new Set(KINDS.filter(k => k === '人' || k === '原作者').flatMap(k => declared[k] || []).map(nzName));
+  for (const s of favSeeds) for (const [role, p] of s.people || []) if (!role.startsWith('#') && favNames.has(nzName(p))) skip.add(p);
+  const interest = await interestSeeds(ctx, access), nLiked = interest.n;
+  const liked = withoutKinds(interest.seeds, off), disliked = withoutKinds(interest.disliked, off);
+  const seeds = withoutKinds(favSeeds, off);
   const ranked = await scoreFromIndex({...access, rated: gate.aspects ? rated : rated.map(r => ({...r, aspects: []})),
     multipliers, today: ctx.today, seeds, skip, liked, disliked, expand: {peopleFor: access.peopleFor, exclude: castOffKeys(rated)}, ablate});
   // 感想で書いた特徴への好み（#104、起案者の指示 2026-10-18「感想で書いた内容を推薦に反映させるところまで」）。
@@ -371,11 +424,19 @@ export async function rankedGroups(ctx) {
   const offGenres = [...off].map(k => k.split('\t')).filter(([axis]) => axis === GENRE_AXIS);
   const genreOff = new Set(offGenres.length ? (await access.postingsFor(offGenres)).map(p => String(p[2])) : []);
   // One slot per production (collapse_tours), after answered stages are left out.
+  // 評価の履歴が無く、お気に入りの公演にいたことで上がった人は、理由に登録した名前を書く（起案者の指示 2026-10-18
+  // 「理由の文は、登録した名前を書く」）。理由に出る上位 4 人だけ
+  const origins = favOrigins(seeds, skip);
+  const favWhy = c => {
+    const via = new Map(c.via || []);
+    const w = c.parts.slice(0, 4).filter(p => !p[3]).map(p => p[1] + '\t' + p[2]).filter(k => !via.has(k) && origins.has(k)).map(k => [k, origins.get(k)]);
+    return w.length ? {fav: w} : {};
+  };
   const byTour = new Map();
   for (const c of ranked) {
     if (done.has(c.stage_id) || hits.has(c.stage_id) || declined.has(c.stage_id) || genreOff.has(String(c.stage_id))) continue;
     const key = c.tour || 'stage:' + c.stage_id;
-    if (!byTour.has(key)) byTour.set(key, {stage_id: c.stage_id, tour: c.tour || '', parts: c.parts, kinds: c.kinds, b: c.b, ...(c.via ? {via: c.via} : {}), ...(c.imp ? {imp: c.imp} : {})});
+    if (!byTour.has(key)) byTour.set(key, {stage_id: c.stage_id, tour: c.tour || '', parts: c.parts, kinds: c.kinds, b: c.b, ...(c.via ? {via: c.via} : {}), ...favWhy(c), ...(c.imp ? {imp: c.imp} : {})});
   }
   const groups = await sameProduction(db, ver, ablate.spread ? [...byTour.values()] : spreadLeads([...byTour.values()]), undefined, [...done]);
   const kept = groups.slice(0, KEEP);
@@ -415,7 +476,7 @@ export async function rankedGroups(ctx) {
   const titles = personTitles(rated, liked, favWorks);
   // 答えた公演の理由（理由を残す前に押した興味ありのため。lists.interestScreen が reaction.why の無い行に使う）。
   // 興味ありの公演は自分自身も種になっているので、作品名からは自分を除いて出す（lists.ownlessWhy）。
-  const answeredWhy = ranked.filter(c => done.has(c.stage_id)).slice(0, 200).map(c => [c.stage_id, whyOf(c, titles)]);
+  const answeredWhy = ranked.filter(c => done.has(c.stage_id)).slice(0, 200).map(c => [c.stage_id, whyOf({...c, ...favWhy(c)}, titles)]);
   // 推薦が出ないときに本番で何が足りないかを見るための数（画面には出さない。/api/screen/recommend の JSON の diag）。
   const diag = {rated: rated.length, rated_linked: rated.filter(r => r.people.length).length,
     interest: nLiked, interest_with_people: liked.length, favourite_seeds: fav.seeds.length,
@@ -662,7 +723,7 @@ export async function recommendScreen(params, ctx) {
   // 「使い始めの人で、おすすめがないときは選び方や絞り込みは表示させないで。一件以上ある時のみ表示」）。
   // 県で絞って 0 件になったとき、使わない言葉・効かせ方・出さない種類を変えて 0 件になったときは、戻せるよう出したまま
   const [declined, kindOff] = await Promise.all([loadDeclined(ctx), loadKindOff(ctx)]);
-  const tuned = declined.length > 0 || kindOff.length > 0 || Object.values(data.weights || {}).some(v => v !== DEFAULT_STEP);
+  const tuned = declined.length > 0 || kindOff.length > 0 || tunedWeights(data.weights || {});   // 初めの設定（群ごとの既定、weights.GROUP_DEFAULT）と比べる
   const starting = !prefs.length && !allAnswered && !cards.length && !tuned;
   const nInterest = (await ctx.db.prepare('SELECT count(DISTINCT stage_id) AS n FROM reaction WHERE user_id=? AND interest=1 AND COALESCE(owned,0)=0').bind(ctx.uid).first())?.n || 0;
   const nSyn = cards.filter(h => /<div class="syn( doubt)?"/.test(h)).length;
@@ -710,7 +771,7 @@ function reactRow(ctx, stageId, cols, source) {
 export function whyOf(g, titles) {
   const parts = g.parts.slice(0, 4), kinds = g.kinds.slice(0, 2);
   const keys = [...parts, ...kinds].map(p => p[1] + '\t' + p[2]);
-  return {parts, kinds, ...(g.via ? {via: g.via} : {}), ...(g.imp ? {imp: g.imp} : {}), titles: keys.filter(k => titles.has(k)).map(k => [k, titles.get(k)])};
+  return {parts, kinds, ...(g.via ? {via: g.via} : {}), ...(g.fav ? {fav: g.fav} : {}), ...(g.imp ? {imp: g.imp} : {}), titles: keys.filter(k => titles.has(k)).map(k => [k, titles.get(k)])};
 }
 
 /**
