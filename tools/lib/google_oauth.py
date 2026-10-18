@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import html
 import json
 import secrets
 import subprocess
@@ -86,12 +87,21 @@ class _CallbackHandler(BaseHTTPRequestHandler):
         params = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
         _CallbackHandler.code = params.get("code", [None])[0]
         _CallbackHandler.error = params.get("error", [None])[0]
+        # **URL から来た値は文字として出す。** `error` は誰でも好きな文字列を付けて
+        # このポートへ送れるので、そのまま HTML に埋めると、タグやスクリプトが
+        # 認証結果の画面に入る
         body = ("認証が完了しました。このタブを閉じてターミナルに戻ってください。"
                 if _CallbackHandler.code else
-                f"認証に失敗しました: {_CallbackHandler.error}")
+                "認証に失敗しました: " + html.escape(str(_CallbackHandler.error), quote=True))
         payload = f"<html><meta charset='utf-8'><body><p>{body}</p></body></html>"
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
+        # 画面は文字だけなので、スクリプト・読み込み・埋め込みを一切許さない。
+        # 認証の結果の画面なので、ブラウザに保存もさせない
+        self.send_header("Content-Security-Policy",
+                         "default-src 'none'; frame-ancestors 'none'; base-uri 'none'")
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Content-Type-Options", "nosniff")
         self.end_headers()
         self.wfile.write(payload.encode("utf-8"))
 
