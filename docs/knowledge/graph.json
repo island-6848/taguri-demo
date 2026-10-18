@@ -1210,6 +1210,18 @@
    "verifies": []
   },
   {
+   "id": "dec-fav-troupe-wording-same-production",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "団体で登録したお気に入りの理由は「劇団乙の『舞台ふたつめ』出演」（主催と書かない）。お気に入りの一覧に出る公演と同じ公演（別の番号）はおすすめから外す",
+   "sources": [
+    "cloudflare/src/screens/recommend.js",
+    "cloudflare/test/fav-reco.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-favourite-catalogue-match",
    "type": "decision",
    "status": "adopted",
@@ -5889,7 +5901,7 @@
   {
    "id": "q-fav-same-production",
    "type": "question",
-   "status": "open",
+   "status": "answered",
    "date": "2026-10-18",
    "title": "お気に入りの一覧に出ている公演と同じ公演（別の番号）を、おすすめから外すべきか",
    "sources": [
@@ -8527,6 +8539,16 @@
    "from": "dec-fav-spread-roles",
    "rel": "depends_on",
    "to": "impl-favourite-seed"
+  },
+  {
+   "from": "dec-fav-troupe-wording-same-production",
+   "rel": "answers",
+   "to": "q-fav-same-production"
+  },
+  {
+   "from": "dec-fav-troupe-wording-same-production",
+   "rel": "depends_on",
+   "to": "fix-fav-reason-roles"
   },
   {
    "from": "dec-favourite-catalogue-match",

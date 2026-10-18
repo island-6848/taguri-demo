@@ -55,7 +55,7 @@ test('a favourite written with a space (作家 丁) still seeds the recommendati
 test('a troupe or a work as the favourite is named in the reason', async () => {
   // 起案者の指示 2026-10-18「『お気に入りの横山拓也と同じ公演に関わる人：『雉はじめて鳴く』』→『横山拓也 演出『雉はじめて鳴く』出演』」で
   // 理由の形が変わったので、期待を「登録した名前 その作品での役職『作品名』この人のその作品での役職」に直した（fix-fav-reason-roles）。団体は「主催」、作品は役職を付けない
-  assert.match((await favOnly('団体', '劇団乙')).body_html, /（劇団乙 主催『舞台ふたつめ』出演）/);
+  assert.match((await favOnly('団体', '劇団乙')).body_html, /（劇団乙の『舞台ふたつめ』出演）/);
   assert.match((await favOnly('作品', '舞台ふたつめ')).body_html, /（『舞台ふたつめ』出演）/);
 });
 
@@ -155,7 +155,8 @@ test('the favourite reason: name, its role in the work, the work, and this perso
   assert.equal(favText('横山拓也', '人', [['演出', 'A', '出演'], ['演出', 'M', '出演'], ['演出', 'B', '出演']]), '（横山拓也 演出『A』・『B』出演 ほか 1 本）');
   // 登録した名前の役職が名簿に無い（本文で当たった）ときは役職を書かない
   assert.equal(favText('横山拓也', '人', [['', 'A', '出演']]), '（横山拓也『A』出演）');
-  assert.equal(favText('劇団乙', '団体', [['主催', '舞台ふたつめ', '出演']]), '（劇団乙 主催『舞台ふたつめ』出演）');
+  // 団体は主催とは限らないので役職を書かない（起案者の指示 2026-10-18「団体は必ずしも主催じゃない。文言を変えて」）
+  assert.equal(favText('劇団乙', '団体', [['', '舞台ふたつめ', '出演']]), '（劇団乙の『舞台ふたつめ』出演）');
   assert.equal(favText('舞台ふたつめ', '作品', [['', '舞台ふたつめ', '出演']]), '（『舞台ふたつめ』出演）');
   assert.equal(favText('科学', '題材', [['', 'ロボットの話', '演出']]), '（題材「科学」の『ロボットの話』演出）');
   // このカードの公演そのものは作品に数えない。作品を書けないときは登録した名前だけ

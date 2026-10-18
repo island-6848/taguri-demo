@@ -1,7 +1,7 @@
 ---
 id: q-fav-same-production
 type: question
-status: open
+status: answered
 date: 2026-10-18
 title: お気に入りの一覧に出ている公演と同じ公演（別の番号）を、おすすめから外すべきか
 sources:
