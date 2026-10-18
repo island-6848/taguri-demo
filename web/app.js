@@ -491,15 +491,41 @@ function agreeAgain(version) {
     + '<div class="agreepop-foot"><button type="button" class="agreepop-ok" disabled>同意して続ける</button><span class="said" role="status"></span></div>'
     + '<p class="note">同意しない場合は、<a href="/account">アカウント</a>の画面からログアウトや退会ができます。</p></div>';
   const box = pop.querySelector(".agreepop-box"), ok = pop.querySelector(".agreepop-ok");
+  // **キーボードでも、この窓の中だけを動く**（#87）。開いたら窓へ焦点を移し、Tab は窓の中で回し、
+  // 後ろの画面は inert で触れなくする（後から足された帯にも付ける）。閉じたら元の場所へ焦点を戻す。
+  // 同意しない人も、Tab で「アカウント」のリンクまで行ける
+  const prev = document.activeElement, made = new Set();
+  const inertRest = () => [...document.body.children].forEach(n => {
+    if (n !== pop && !n.inert) { n.inert = true; made.add(n); }
+  });
+  const mo = new MutationObserver(inertRest);
+  const close = () => {
+    mo.disconnect();
+    made.forEach(n => { n.inert = false; });
+    pop.remove();
+    if (prev && prev.isConnected && prev.focus) prev.focus();
+  };
+  pop.addEventListener("keydown", ev => {
+    if (ev.key !== "Tab") return;
+    const f = [...box.querySelectorAll("a[href], input, button")].filter(n => !n.disabled);
+    if (!f.length) return;
+    const i = f.indexOf(document.activeElement);
+    if (ev.shiftKey && i <= 0) { ev.preventDefault(); f[f.length - 1].focus(); }
+    else if (!ev.shiftKey && (i < 0 || i === f.length - 1)) { ev.preventDefault(); f[0].focus(); }
+  });
   pop.querySelector("input").addEventListener("change", ev => { ok.disabled = !ev.target.checked; });
   // アカウントの画面へ行くときは閉じる（その画面でログアウト・退会できるように。ほかの画面を開くとまた出る）
-  pop.querySelector('.note a[href="/account"]').addEventListener("click", () => pop.remove());
+  pop.querySelector('.note a[href="/account"]').addEventListener("click", close);
   ok.addEventListener("click", async () => {
     ok.disabled = true;
     const d = await post("/api/agree", {agree: version}, box, "ありがとうございます");
-    if (d) setTimeout(() => pop.remove(), 600); else ok.disabled = false;
+    if (d) setTimeout(close, 600); else ok.disabled = false;
   });
   document.body.appendChild(pop);
+  inertRest();
+  mo.observe(document.body, {childList: true});
+  box.tabIndex = -1;
+  box.focus();
 }
 
 function renderScreen(el, activePath, d, exposureSource) {
