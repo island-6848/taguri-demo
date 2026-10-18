@@ -42,7 +42,21 @@ const loginUrl = () => {
 };
 let firebaseUser = null;   // kept only in delete mode, to delete the Google-side user too
 const $ = s => document.querySelector(s);
-const say = (text, bad = false) => { const s = $('#status'); s.textContent = text; s.classList.toggle('bad', bad); };
+// 状態の文（「ログインを取りやめました」「リンクを送りました」など）は、押したボタン（欄）の直下に出す
+// （起案者の指示 2026-10-18「『ログインを取りやめました』や『メールを送信した』的な文章は、対応する各ボタンの下に
+// 文章が出るようにして。」）。#status は 1 つだけ（読み上げの aria-live もこの 1 つ）で、at の直後へ動かす。
+// at を省くと今の場所のまま、null ならもとの場所（ログインの欄の上）に戻す。
+// ボタンが横に並んでいるとき（パソコンの幅の .block.pair・.trio）は、並びを崩さないよう列の下に出す
+const STATUS_HOME = $('#login');
+const say = (text, bad = false, at) => {
+  const s = $('#status');
+  if (at === null) STATUS_HOME.before(s);
+  else if (at) {
+    const row = at.parentElement?.classList.contains('block') && getComputedStyle(at.parentElement).flexDirection === 'row';
+    (row ? at.parentElement : at).after(s);
+  }
+  s.textContent = text; s.classList.toggle('bad', bad);
+};
 const busy = on => document.querySelectorAll('button, input').forEach(el => { el.disabled = on; });
 // メールのリンク用の控え（アドレス・どちらの欄か・同意の版）。期限は login-store.js（#132）
 const store = loginStore(() => localStorage);
@@ -51,10 +65,10 @@ const agreed = () => ($('#agree')?.checked ? $('#agree').value : undefined);
 // 同意が要ると言われたら、チェックの場所を目立たせる
 const askAgree = e => { if (/同意して始める|利用規約/.test(e?.message || '')) { $('#agree-box')?.classList.add('need'); $('#agree')?.focus(); } };
 // 新規登録の欄のボタン: チェックが無ければ、何も始めずにそう言う
-const NEED_AGREE = 'はじめる前に利用規約とプライバシーの説明を読んで、「同意して始める」にチェックを入れてください。';
-function needAgree() {
+const NEED_AGREE = 'はじめる前に利用規約とプライバシーポリシーを読んで、「同意して始める」にチェックを入れてください。';
+function needAgree(at) {
   if (agreed()) return false;
-  say(NEED_AGREE, true); askAgree({message: NEED_AGREE});
+  say(NEED_AGREE, true, at); askAgree({message: NEED_AGREE});
   return true;
 }
 
@@ -68,7 +82,7 @@ async function exchange(auth, credential, intent, agree) {
   if (DELETE_MODE) firebaseUser = credential.user;
   else await signOut(auth).catch(() => {});
   if (!res.ok) throw new Error(data.error || 'ログインできませんでした。');
-  if (LINK_MODE) { say(data.linked ? '結び付けました。次からは Google かメールでログインできます。' : 'すでに結び付いています。'); location.replace(NEXT === '/' ? '/account' : NEXT); return; }
+  if (LINK_MODE) { say(data.linked ? '結び付けました。次からは Googleアカウントかメールでログインできます。' : 'すでに結び付いています。'); location.replace(NEXT === '/' ? '/account' : NEXT); return; }
   signedIn('ログインしました。');
 }
 
@@ -91,14 +105,14 @@ function signedIn(message) {
   if (LINK_MODE) {
     busy(false);
     $('#recovery-login').hidden = true;
-    say('本人確認ができました。続けて10分以内に、Google かメールでログインすると結び付きます。');
+    say('本人確認ができました。続けて10分以内に、Googleアカウントかメールでログインすると結び付きます。', false, $('#login-lead'));
     return;
   }
   if (!DELETE_MODE) { say(message); location.replace(NEXT); return; }
   busy(false);
   for (const id of ['#login', '#signup', '#recovery-login']) $(id).hidden = true;
   $('#delete-confirm').hidden = false;
-  say('本人確認ができました。10分以内に削除してください。');
+  say('本人確認ができました。10分以内に削除してください。', false, $('#delete-confirm > p'));
 }
 
 // Firebase error codes -> what the user can do about it. Never echo raw errors.
@@ -129,27 +143,30 @@ async function main() {
     // Opened on another device/browser: ask again instead of trusting the URL.
     // Linking only happens in the browser that asked for the link, so a link
     // someone else sent cannot attach their email to this account.
-    if (!email && LINK_MODE) say('結び付けるには、メールを送ったときと同じブラウザでリンクを開いてください。', true);
+    if (!email && LINK_MODE) say('結び付けるには、メールを送ったときと同じブラウザでリンクを開いてください。', true, null);
     else if (!email) email = (prompt('確認のため、リンクを送ったメールアドレスを入力してください。') || '').trim();
     if (email) {
-      busy(true); say('ログインしています…');
       const intent = store.intent();
+      busy(true); say('ログインしています…', false, intent === 'signup' ? $('#email-signup') : $('#email-form label'));
       try { await exchange(auth, await signInWithEmailLink(auth, email, link), intent, intent === 'signup' ? store.agree() || agreed() : undefined); }
       catch (e) { busy(false); say(explain(e), true); askAgree(e); }
       finally { store.clear(); }
     }
   }
 
-  const google = async (intent, agree) => {
+  const google = async (intent, agree, at) => {
     store.clear();   // 別の方法を始めたら、メールの控えは消す（#132）
-    busy(true); say('Google の画面でログインしてください…');
+    busy(true); say('Google の画面でログインしてください…', false, at);
     try { await exchange(auth, await signInWithPopup(auth, new GoogleAuthProvider()), intent, agree); }
     catch (e) { busy(false); say(explain(e), true); askAgree(e); }
   };
-  $('#google').addEventListener('click', () => google('login'));
-  $('#google-signup').addEventListener('click', () => { if (!needAgree()) google('signup', agreed()); });
+  $('#google').addEventListener('click', () => google('login', undefined, $('#google')));
+  $('#google-signup').addEventListener('click', () => { if (!needAgree($('#google-signup'))) google('signup', agreed(), $('#google-signup')); });
 
   const sendLink = async (email, intent) => {
+    // 文は、そのアドレスの欄（入力欄と「リンクを受け取る」）のすぐ下に出す
+    const at = $(intent === 'signup' ? '#signup-email-form label' : '#email-form label');
+    say('', false, at);
     busy(true);
     try {
       await sendSignInLinkToEmail(auth, email, {url: location.origin + loginUrl(), handleCodeInApp: true});
@@ -161,12 +178,13 @@ async function main() {
   $('#email-form').addEventListener('submit', ev => { ev.preventDefault(); sendLink($('#email').value.trim(), 'login'); });
   // 「メールで始める」は、押すとアドレスの欄を出す（ふだんは畳んで、新規登録の欄を短く保つ）
   $('#email-signup').addEventListener('click', () => {
-    if (needAgree()) return;
+    if (needAgree($('#email-signup'))) return;
+    say('', false, $('#email-signup'));
     $('#signup-email-form').hidden = false; $('#signup-email').focus();
   });
   $('#signup-email-form').addEventListener('submit', ev => {
     ev.preventDefault();
-    if (!needAgree()) sendLink($('#signup-email').value.trim(), 'signup');
+    if (!needAgree($('#signup-email-form label'))) sendLink($('#signup-email').value.trim(), 'signup');
   });
 }
 
@@ -190,7 +208,7 @@ function passkeyError(e) {
 function showRecovery(code) {
   $('#passkey-recovery').hidden = false;
   $('#recovery-code').textContent = code;
-  $('#copy-recovery').onclick = () => navigator.clipboard?.writeText(code).then(() => say('コピーしました。'), () => {});
+  $('#copy-recovery').onclick = () => navigator.clipboard?.writeText(code).then(() => say('コピーしました。', false, $('#copy-recovery')), () => {});
   $('#recovery-done').onclick = () => location.replace(NEXT);
 }
 
@@ -200,7 +218,7 @@ function setupPasskeys() {
   if (!browserSupportsWebAuthn()) { $('#passkey-signup').hidden = true; $('#passkey-login').hidden = true; $('#passkey-none').hidden = false; return; }
   $('#passkey-login').addEventListener('click', async () => {
     store.clear();   // 別の方法を始めたら、メールの控えは消す（#132）
-    busy(true); say('端末の画面でパスキーを選んでください…');
+    busy(true); say('端末の画面でパスキーを選んでください…', false, $('#passkey-login'));
     try {
       const {challenge_id, options} = await postJSON('/api/auth/passkey/login/options', {});
       const response = await startAuthentication({optionsJSON: options});
@@ -210,16 +228,16 @@ function setupPasskeys() {
   });
   $('#passkey-signup').addEventListener('click', async () => {
     // パスキーで始めるのは、いつも新しいアカウント。端末に作らせる前に同意を確かめる
-    if (needAgree()) return;
+    if (needAgree($('#passkey-signup'))) return;
     const agree = agreed();
     store.clear();
-    busy(true); say('端末の画面でパスキーを作ってください…');
+    busy(true); say('端末の画面でパスキーを作ってください…', false, $('#passkey-signup'));
     try {
       const {challenge_id, options} = await postJSON('/api/auth/passkey/register/options', {agree});
       const response = await startRegistration({optionsJSON: options});
       const data = await postJSON('/api/auth/passkey/register/verify', {challenge_id, response, agree});
       busy(false);
-      if (data.recovery_code) { $('#login').hidden = true; $('#signup').hidden = true; say('パスキーを作りました。下の復旧コードを控えてから進んでください。'); showRecovery(data.recovery_code); }
+      if (data.recovery_code) { $('#login').hidden = true; $('#signup').hidden = true; showRecovery(data.recovery_code); say('パスキーを作りました。下の復旧コードを控えてから進んでください。', false, $('#passkey-recovery > p')); }
       else { say('パスキーを追加しました。'); location.replace(NEXT); }
     } catch (e) { busy(false); say(passkeyError(e), true); }
   });
@@ -236,13 +254,14 @@ function setupDelete() {
   for (const id of ['#login-lead', '#signup']) $(id).hidden = true;
   $('#recovery-login').addEventListener('submit', async ev => {
     ev.preventDefault();
+    say('', false, $('#recovery-login label'));
     busy(true);
     try { await postJSON('/migration-api/recover', {code: $('#recovery-input').value}); signedIn(); }
     catch (e) { busy(false); say(e.server ? e.message : 'ログインできませんでした。', true); }
   });
   $('#delete-confirm').addEventListener('submit', async ev => {
     ev.preventDefault();
-    busy(true); say('削除しています…');
+    busy(true); say('削除しています…', false, $('#delete-confirm button'));
     try {
       await postJSON('/migration-api/account/delete', {confirm: $('#delete-word').value, firebase_ready: !!firebaseUser});
     } catch (e) { busy(false); say(e.server ? e.message : '削除できませんでした。', true); return; }
@@ -250,12 +269,12 @@ function setupDelete() {
     let note = '';
     if (firebaseUser) {
       try { await deleteUser(firebaseUser); }
-      catch { note = 'Google 側のログイン記録は消せませんでした。30日以内に、同じ Google・メールでもう一度ログインすると消します（ログインの欄からで大丈夫です）。'; }
+      catch { note = 'Google 側のログイン記録は消せませんでした。30日以内に、同じ Googleアカウント・メールでもう一度ログインすると消します（ログインの欄からで大丈夫です）。'; }
     }
     firebaseUser = null;
     $('#delete-confirm').hidden = true;
     $('#delete-done').hidden = false;
-    say(note || 'アカウントとすべての記録を削除しました。', !!note);
+    say(note || 'アカウントとすべての記録を削除しました。', !!note, $('#delete-done h1'));
   });
 }
 
@@ -263,12 +282,13 @@ function setupDelete() {
 // that makes the session fresh enough to link (the server checks it).
 function setupLink() {
   if (!LINK_MODE) return;
-  document.title = 'Google・メールを結び付ける ― たぐり';
-  $('#login-lead').textContent = 'いまのアカウントに Google かメールを結び付けます。10分以上前にログインした場合は、先に下の復旧コードかパスキーで本人確認をしてください。';
+  document.title = 'Googleアカウント・メールを結び付ける ― たぐり';
+  $('#login-lead').textContent = 'いまのアカウントに Googleアカウントかメールを結び付けます。10分以上前にログインした場合は、先に下の復旧コードかパスキーで本人確認をしてください。';
   for (const id of ['#about', '#signup']) { const el = $(id); if (el) el.hidden = true; }
   $('#recovery-login').hidden = false;
   $('#recovery-login').addEventListener('submit', async ev => {
     ev.preventDefault();
+    say('', false, $('#recovery-login label'));
     busy(true);
     try { await postJSON('/migration-api/recover', {code: $('#recovery-input').value}); signedIn(); }
     catch (e) { busy(false); say(e.server ? e.message : 'ログインできませんでした。', true); }
@@ -284,6 +304,7 @@ function setupRecovery() {
   $('#recovery-login').addEventListener('submit', async ev => {
     ev.preventDefault();
     store.clear();   // 別の方法を始めたら、メールの控えは消す（#132）
+    say('', false, $('#recovery-login label'));
     busy(true);
     try { await postJSON('/migration-api/recover', {code: $('#recovery-input').value.trim()}); signedIn('ログインしました。'); }
     catch (e) { busy(false); say(e.server ? e.message : 'ログインできませんでした。', true); }
@@ -297,4 +318,4 @@ setupDelete();
 setupLink();
 setupRecovery();
 setupPasskeys();
-main().catch(e => say(explain(e), true));
+main().catch(e => say(explain(e), true, null));

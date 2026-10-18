@@ -40,35 +40,35 @@
 <section id="delete-intro" class="auth-card danger-zone" hidden>
 <h1>アカウントの削除</h1>
 <p>たぐりに保存しているあなたのデータを、すべて削除します。<b>元に戻せません。</b>必要なら、先に「設定」の「書き出す」で記録を保存してください。</p>
-<ul><li>観劇記録・評価・感想・お気に入り・興味あり／なし</li><li>パスキー・ログイン中のすべての端末・復旧コード</li><li>Google またはメールで使っていた場合は、Google 側のログイン記録（メールアドレス）</li></ul>
-<p class="fine">Cloudflare の自動バックアップには 7 日、毎日の暗号化した控えには 30 日残り、その後に消えます。本人確認のため、いつもの方法でもう一度ログインしてください。Google またはメールで使っていた方は、Google かメールのリンクでログインしてください。</p>
+<ul><li>観劇記録・評価・感想・お気に入り・興味あり／なし</li><li>パスキー・ログイン中のすべての端末・復旧コード</li><li>Googleアカウントまたはメールで使っていた場合は、Google 側のログイン記録（メールアドレス）</li></ul>
+<p class="fine">Cloudflare の自動バックアップには 7 日、毎日の暗号化した控えには 30 日残り、その後に消えます。本人確認のため、いつもの方法でもう一度ログインしてください。Googleアカウントまたはメールで使っていた方は、Googleアカウントかメールのリンクでログインしてください。</p>
 </section>
 <p id="status" class="status" role="status" aria-live="polite"></p>
 <section id="login" class="auth-card">
 <h1>ログイン</h1>
 <p id="login-lead" class="lead-c">すでに使っている方はこちら。パスワードは使いません。</p>
 <div class="block pair">
-<button id="google" type="button" class="wide primary">Google でログイン</button>
+<button id="google" type="button" class="wide primary">Googleアカウントでログイン</button>
 <button id="passkey-login" type="button" class="wide">パスキーでログイン</button>
 </div>
 <p class="fine" id="passkey-none" hidden>この画面ではパスキーを使えません。LINE や X などのアプリの中で開いたときは、右上のメニューから「ブラウザで開く」を選び、Chrome や Safari で開き直すとパスキーが使えます。</p>
-<form id="email-form" class="mailrow"><label>メールでログイン<span class="mailin"><input id="email" type="email" required autocomplete="email" maxlength="254" placeholder="name@example.com"><button>リンクを受け取る</button></span></label></form>
+<form id="email-form" class="mailrow"><label>メールでログイン<span class="mailin"><input id="email" type="email" required autocomplete="email" maxlength="254" placeholder="name@example.com"><button>リンクを受け取る</button></span></label><p class="fine spam">ログイン用のメールは迷惑メールに振り分けられることがあります。届かないときは、迷惑メールボックスを確認してください。</p></form>
+<form id="recovery-login" class="mailrow recov" hidden><label>復旧コードでログイン<span class="mailin"><input id="recovery-input" required autocomplete="off" maxlength="80"><button>ログインする</button></span></label><p class="fine">パスキーで始めたときに控えた復旧コードで、記録に戻れます。</p></form>
 </section>
 <section id="signup" class="auth-card">
 <h2>はじめての方（新規登録）</h2>
 <div id="agree-box" class="agree-box">
-<label class="agree"><input type="checkbox" id="agree" value="2026-10-18-2"><span><a href="/terms" target="_blank" rel="noopener">利用規約</a>と<a href="/privacy" target="_blank" rel="noopener">プライバシーの説明</a>に同意して始める</span></label>
+<label class="agree"><input type="checkbox" id="agree" value="2026-10-18-2"><span><a href="/terms" target="_blank" rel="noopener">利用規約</a>と<a href="/privacy" target="_blank" rel="noopener">プライバシーポリシー</a>に同意して始める</span></label>
 </div>
 <div class="block trio">
-<button id="google-signup" type="button" class="wide primary">Google で始める</button>
+<button id="google-signup" type="button" class="wide primary">Googleアカウントで始める</button>
 <button id="email-signup" type="button" class="wide">メールで始める</button>
 <button id="passkey-signup" type="button" class="wide">パスキーで始める</button>
 </div>
-<form id="signup-email-form" class="mailrow" hidden><label>登録するメールアドレス<span class="mailin"><input id="signup-email" type="email" required autocomplete="email" maxlength="254" placeholder="name@example.com"><button>リンクを受け取る</button></span></label></form>
-<p class="fine" id="carry-over">パスキーは指紋・顔認証・端末のロック解除で使えます。Google もメールも使いません。たぐりが保存するのはログインの識別番号だけで、メールアドレスは保存しません。</p>
+<form id="signup-email-form" class="mailrow" hidden><label>登録するメールアドレス<span class="mailin"><input id="signup-email" type="email" required autocomplete="email" maxlength="254" placeholder="name@example.com"><button>リンクを受け取る</button></span></label><p class="fine spam">登録用のメールは迷惑メールに振り分けられることがあります。届かないときは、迷惑メールボックスを確認してください。</p></form>
+<p class="fine" id="carry-over">パスキーは指紋・顔認証・端末のロック解除で使えます。Googleアカウントもメールも使いません。たぐりが保存するのはログインの識別番号だけで、メールアドレスは保存しません。</p>
 </section>
-<form id="recovery-login" class="auth-card" hidden><h1>復旧コードでログイン</h1><p class="lead-c">パスキーで始めたときに控えた復旧コードで、記録に戻れます。</p><label>復旧コード<input id="recovery-input" required autocomplete="off" maxlength="80"></label><button class="wide">ログインする</button></form>
-<form id="delete-confirm" class="auth-card danger-zone" hidden><h1>削除の確認</h1><p>確認のため「削除」と入力してください。</p><label>確認<input id="delete-word" required autocomplete="off" maxlength="10"></label><button class="wide">すべて削除する</button></form>
+<form id="delete-confirm" class="auth-card danger-zone" hidden><h1>削除の確認</h1><p>確認のため「削除」と入力してください。</p><label>確認<input id="delete-word" required autocomplete="off" maxlength="10"></label><button class="wide primary">すべて削除する</button></form>
 <section id="delete-done" class="auth-card" hidden><h1>削除しました</h1><p class="lead-c">ご利用ありがとうございました。</p><p class="auth-foot"><a href="/login">トップへ</a></p></section>
 <section id="passkey-recovery" class="auth-card" hidden>
 <h1>復旧コードを控えてください</h1>
@@ -76,7 +76,7 @@
 <code id="recovery-code"></code>
 <div class="block"><button id="copy-recovery" type="button" class="wide">コピーする</button><button id="recovery-done" type="button" class="wide primary">控えました</button></div>
 </section>
-<p class="auth-foot"><a href="https://island-6848.github.io/taguri-demo/docs/000010-user-guide-taguri.html" rel="noopener">使い方ガイド</a>・<a href="/terms">利用規約</a>・<a href="/privacy">プライバシー</a></p>
+<p class="auth-foot"><a href="https://island-6848.github.io/taguri-demo/docs/000010-user-guide-taguri.html" rel="noopener">使い方ガイド</a>・<a href="/terms">利用規約</a>・<a href="/privacy">プライバシーポリシー</a></p>
 </div>
 </main>
 <script type="module" src="/vendor/firebase-login.js"></script>
