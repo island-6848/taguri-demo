@@ -539,19 +539,20 @@ flowchart LR
   n516("note・Notion のような白基調の記録サイトの見た目（白い紙面・真っ黒でない文字・差し色 1 つ・広い余白）")
   n517("本番の Worker の /api/health は、Render への橋渡しに取られて 404 になっていた（直した）")
   n518("Worker での推薦計算は 1 回 10〜12 ミリ秒、重い想定で 39 ミリ秒（見積もり）")
-  n519("起案者が Workers Builds を master だけ組み立てるようにした")
-  n520("push するたびに Workers Builds が D1 の migration を当ててから deploy する")
-  n521("コミットの ✗（Workers Builds）は、master 以外のブランチの組み立てが失敗しているもの。master の組み立ては毎回成功している見込み")
-  n522("Workers Builds（GitHub からの自動配信）は無料プランで月 3,000 分・同時 1 本・1 回 20 分まで")
-  n523("コミットの ✗ は Workers Builds が cloudflare/ の無い master を組もうとして失敗していたため")
-  n524("Workers の Cache API は *.workers.dev では何もしない（独自ドメインでだけ効く）")
-  n525("Workers の定期実行は、無料プランだと 1 回あたり CPU 10 ミリ秒・外部への要求 50 回まで")
-  n526("別の作業で、Workers＋D1 の版が workers.dev で動き始めている")
-  n527("workers.dev の URL は無料のまま名前を変えられる（アカウントの subdomain と Worker の名前）。独自ドメインは年額がかかる")
-  n528("Workers の無料プランは 1 要求あたり CPU 10 ミリ秒・1 日 10 万要求まで")
-  n529("Workers の有料プランは月 5 ドルで、要求 1000 万回・CPU 3000 万ミリ秒・D1 の読み 250 億行が含まれる")
-  n530("master 以外のブランチの組み立ては `npx wrangler preview` を走らせ、設定に previews の欄が無いので失敗している")
-  n531("Workers の静的ファイルへの要求は無料・無制限で、要求数の上限に数えない")
+  n519("workerd は Worker の入り口のモジュール（src/worker.js）の名前付き export をすべて入り口として読む。数や文字を export すると起動しない")
+  n520("起案者が Workers Builds を master だけ組み立てるようにした")
+  n521("push するたびに Workers Builds が D1 の migration を当ててから deploy する")
+  n522("コミットの ✗（Workers Builds）は、master 以外のブランチの組み立てが失敗しているもの。master の組み立ては毎回成功している見込み")
+  n523("Workers Builds（GitHub からの自動配信）は無料プランで月 3,000 分・同時 1 本・1 回 20 分まで")
+  n524("コミットの ✗ は Workers Builds が cloudflare/ の無い master を組もうとして失敗していたため")
+  n525("Workers の Cache API は *.workers.dev では何もしない（独自ドメインでだけ効く）")
+  n526("Workers の定期実行は、無料プランだと 1 回あたり CPU 10 ミリ秒・外部への要求 50 回まで")
+  n527("別の作業で、Workers＋D1 の版が workers.dev で動き始めている")
+  n528("workers.dev の URL は無料のまま名前を変えられる（アカウントの subdomain と Worker の名前）。独自ドメインは年額がかかる")
+  n529("Workers の無料プランは 1 要求あたり CPU 10 ミリ秒・1 日 10 万要求まで")
+  n530("Workers の有料プランは月 5 ドルで、要求 1000 万回・CPU 3000 万ミリ秒・D1 の読み 250 億行が含まれる")
+  n531("master 以外のブランチの組み立ては `npx wrangler preview` を走らせ、設定に previews の欄が無いので失敗している")
+  n532("Workers の静的ファイルへの要求は無料・無制限で、要求数の上限に数えない")
   n0 -- 影響する --> n455
   n1 -- 新たな問いを生む --> n363
   n1 -- 影響する --> n424
@@ -608,7 +609,7 @@ flowchart LR
   n42 -- 根拠になる --> n49
   n43 -- 影響する --> n26
   n44 -- 影響する --> n415
-  n44 -- 影響する --> n526
+  n44 -- 影響する --> n527
   n45 -- 前提にする --> n46
   n45 -- 影響する --> n255
   n46 -- 前提にする --> n42
@@ -712,7 +713,7 @@ flowchart LR
   n85 -- 前提にする --> n475
   n85 -- 前提にする --> n215
   n85 -- 前提にする --> n40
-  n85 -- 前提にする --> n528
+  n85 -- 前提にする --> n529
   n85 -- 影響する --> n53
   n85 -- 影響する --> n117
   n85 -- 影響する --> n414
@@ -832,7 +833,7 @@ flowchart LR
   n136 -- 前提にする --> n463
   n136 -- 前提にする --> n47
   n137 -- 前提にする --> n62
-  n137 -- 前提にする --> n528
+  n137 -- 前提にする --> n529
   n137 -- 前提にする --> n85
   n137 -- 影響する --> n23
   n138 -- 影響する --> n50
@@ -892,7 +893,7 @@ flowchart LR
   n164 -- 前提にする --> n139
   n165 -- 前提にする --> n123
   n166 -- 答える --> n387
-  n166 -- 前提にする --> n527
+  n166 -- 前提にする --> n528
   n166 -- 根拠になる --> n85
   n167 -- 答える --> n467
   n167 -- 影響する --> n27
@@ -910,7 +911,7 @@ flowchart LR
   n171 -- 置き換える --> n70
   n171 -- 置き換える --> n170
   n171 -- 食い違う --> n70
-  n171 -- 前提にする --> n528
+  n171 -- 前提にする --> n529
   n171 -- 影響する --> n17
   n171 -- 影響する --> n386
   n173 -- 影響する --> n27
@@ -1196,7 +1197,7 @@ flowchart LR
   n344 -- 影響する --> n241
   n345 -- 影響する --> n462
   n346 -- 根拠になる --> n137
-  n346 -- 前提にする --> n528
+  n346 -- 前提にする --> n529
   n347 -- 影響する --> n137
   n348 -- 影響する --> n137
   n349 -- 前提にする --> n356
@@ -1239,7 +1240,7 @@ flowchart LR
   n362 -- 影響する --> n328
   n363 -- 前提にする --> n1
   n363 -- 影響する --> n424
-  n364 -- 影響する --> n521
+  n364 -- 影響する --> n522
   n365 -- 前提にする --> n376
   n366 -- 前提にする --> n441
   n366 -- 前提にする --> n333
@@ -1267,7 +1268,7 @@ flowchart LR
   n385 -- 影響する --> n142
   n386 -- 前提にする --> n441
   n386 -- 前提にする --> n468
-  n387 -- 前提にする --> n527
+  n387 -- 前提にする --> n528
   n387 -- 影響する --> n85
   n387 -- 影響する --> n388
   n388 -- 前提にする --> n386
@@ -1339,7 +1340,7 @@ flowchart LR
   n443 -- 影響する --> n27
   n444 -- 前提にする --> n127
   n444 -- 影響する --> n27
-  n445 -- 前提にする --> n528
+  n445 -- 前提にする --> n529
   n445 -- 影響する --> n194
   n446 -- 前提にする --> n241
   n448 -- 影響する --> n129
@@ -1391,7 +1392,7 @@ flowchart LR
   n471 -- 前提にする --> n128
   n472 -- 前提にする --> n473
   n472 -- 前提にする --> n441
-  n473 -- 前提にする --> n528
+  n473 -- 前提にする --> n529
   n473 -- 影響する --> n23
   n475 -- 検証項目 --> n476
   n475 -- 根拠になる --> n85
@@ -1446,7 +1447,7 @@ flowchart LR
   n502 -- 根拠になる --> n170
   n502 -- 答える --> n474
   n503 -- 根拠になる --> n137
-  n503 -- 前提にする --> n528
+  n503 -- 前提にする --> n529
   n504 -- 影響する --> n460
   n504 -- 影響する --> n462
   n504 -- 影響する --> n432
@@ -1468,26 +1469,27 @@ flowchart LR
   n518 -- 食い違う --> n70
   n518 -- 新たな問いを生む --> n441
   n518 -- 影響する --> n386
-  n519 -- 影響する --> n530
-  n520 -- 影響する --> n19
-  n521 -- 影響する --> n523
-  n521 -- 新たな問いを生む --> n364
-  n522 -- 根拠になる --> n85
-  n523 -- 影響する --> n17
-  n524 -- 影響する --> n85
-  n525 -- 影響する --> n376
-  n526 -- 食い違う --> n70
-  n526 -- 影響する --> n386
-  n526 -- 影響する --> n27
-  n527 -- 影響する --> n388
-  n527 -- 根拠になる --> n85
-  n528 -- 根拠になる --> n70
-  n528 -- 答える --> n474
-  n529 -- 根拠になる --> n144
-  n529 -- 影響する --> n386
-  n530 -- 答える --> n364
-  n530 -- 根拠になる --> n521
-  n531 -- 影響する --> n494
+  n519 -- 影響する --> n521
+  n520 -- 影響する --> n531
+  n521 -- 影響する --> n19
+  n522 -- 影響する --> n524
+  n522 -- 新たな問いを生む --> n364
+  n523 -- 根拠になる --> n85
+  n524 -- 影響する --> n17
+  n525 -- 影響する --> n85
+  n526 -- 影響する --> n376
+  n527 -- 食い違う --> n70
+  n527 -- 影響する --> n386
+  n527 -- 影響する --> n27
+  n528 -- 影響する --> n388
+  n528 -- 根拠になる --> n85
+  n529 -- 根拠になる --> n70
+  n529 -- 答える --> n474
+  n530 -- 根拠になる --> n144
+  n530 -- 影響する --> n386
+  n531 -- 答える --> n364
+  n531 -- 根拠になる --> n522
+  n532 -- 影響する --> n494
   class n0 finding_confirmed
   class n1 finding_confirmed
   class n2 finding_confirmed
@@ -2007,12 +2009,12 @@ flowchart LR
   class n516 finding_unverified
   class n517 finding_confirmed
   class n518 finding_unverified
-  class n519 finding_unverified
-  class n520 finding_confirmed
+  class n519 finding_confirmed
+  class n520 finding_unverified
   class n521 finding_confirmed
   class n522 finding_confirmed
-  class n523 finding_outdated
-  class n524 finding_confirmed
+  class n523 finding_confirmed
+  class n524 finding_outdated
   class n525 finding_confirmed
   class n526 finding_confirmed
   class n527 finding_confirmed
@@ -2020,6 +2022,7 @@ flowchart LR
   class n529 finding_confirmed
   class n530 finding_confirmed
   class n531 finding_confirmed
+  class n532 finding_confirmed
   classDef finding_confirmed fill:#e6f4ea,stroke:#2e7d32
   classDef finding_unverified fill:#fff8e1,stroke:#b26a00,stroke-dasharray:4 3
   classDef finding_outdated fill:#eeeeee,stroke:#9e9e9e
@@ -2274,7 +2277,7 @@ flowchart LR
 | [劇場制覇マップの見本を作った（都道府県のタイル地図、3 つの見せ方: 行った劇場の数・はじめて行った年・年ごとの並び）。分母はたぐりの会場データ](notes/mock-theater-conquest.md) | 置き換え済み | 2026-10-16 | ─ | 前提にする → [全国の劇場の一覧の候補。いちばん使えるのは自前の公演データ（これからの公演と 2019 年以降の過去の公演の会場、約 2,980 件・全部に都道府県）。公立の名簿は民間の劇場が入らず、国の文化施設データと OSM は条件か件数が未確認](notes/theater-master-options.md)<br>前提にする → [McNeill & Hale 2017「Generating Tile Maps」（Computer Graphics Forum）── 地域を同じ大きさのマスに並べた地図を作る方法。良い並べ方は地域と目的で変わる](notes/lit-tilemap-mcneill2017.md)<br>前提にする → [Bach ほか 2014「A Review of Temporal Data Visualizations Based on Space-Time Cube Operations」（EuroVis STAR）── 時間と空間の図は、時空の立方体を切る・つぶす・並べる操作として説明できる](notes/lit-space-time-cube-bach2014.md)<br>影響する → [眺めるには「劇場の制覇マップ」と「観劇の時間割」を足す。ポスターの壁は眺めるでなく日記帳の作品のまとめの見せ方にする。年報カードは保留](notes/dec-records-viz-picks.md)<br>[劇場制覇マップを眺めるに入れた（タイル地図 1 枚。分母は取得した公演に 2 回以上出た会場 1,360、同じ建物のホールは別に数える）](notes/impl-theater-conquest.md) が置き換える |
 | [おすすめ画面に「おすすめに出てこない公演を探す」欄を置いた（これから観られる公演だけを引き、その場で「興味あり」を押せる）](notes/impl-recommend-find.md) | 置き換え済み | 2026-10-17 | ─ | 影響する → [新規登録した人に推薦が出るのは「公演に結び付いた記録が 2 件以上で、評価が 2 種類以上」から。同じ評価だけ・1 件だけ・結び付いていない記録では出ない。お気に入りは名前の公演を別枠で必ず出す](notes/new-user-reco-threshold.md)<br>[おすすめ画面の道具を「おすすめの選び方」（効かせ方・出さない語）と「表示の絞り込み」（場所・料金）の 2 段に分け、「おすすめに出てこない公演を探す」を外した](notes/dec-recommend-filter-tiers.md) が置き換える<br>[探すを、カードの無い公演（索引だけ・一覧だけの新しい公演）まで広げ、波ダッシュの揺れと名前の後ろの括弧でも当たるようにした。言葉があるときは札とカレンダーも当たった数だけ](notes/fix-search-uncarded.md) が影響する<br>[回答を 4 択（興味あり・興味なし・購入済・行けない）にした。行けない＝interest 2、好みの手がかりには興味ありと同じ向きで使う](notes/impl-four-answers.md) が影響する<br>[おすすめに答え終えたら「回答ありがとうございました」の絵と、また出るようにするためのワンポイントを出す](notes/impl-recommend-thanks.md) が前提にする |
 
-## 調べたこと（238 件）
+## 調べたこと（239 件）
 
 | 項目 | 状態 | 日付 | 検証項目 | つながり |
 | --- | --- | --- | --- | --- |
@@ -2377,7 +2380,7 @@ flowchart LR
 | [題名の正規化（title_key）は JS でも Python と同じにできる](notes/title-key-parity.md) | 確認済み | 2026-10-13 | ─ | ─ |
 | [画面の△の説明「あまり合わなかった」は、起案者の考える△（まあ良いが気になる所がある）と食い違う](notes/triangle-label-mismatch.md) | 確認済み | 2026-10-13 | ─ | 新たな問いを生む → [◎○△× の 4 段階は適切か。△をどう読み、どう推薦に使うか](notes/q-rating-scale.md)<br>影響する → [本人向けのおすすめ計算（user_recommender.py）](notes/comp-recommender.md)<br>[◎○△× の 4 段階は適切か。△をどう読み、どう推薦に使うか](notes/q-rating-scale.md) が前提にする |
 | [本番の Worker の /api/health は、Render への橋渡しに取られて 404 になっていた（直した）](notes/worker-health-bridged-404.md) | 確認済み | 2026-10-13 | ─ | 影響する → [カタログの日付は、公開の /api/health と毎日の GitHub Actions で確かめられるようにした](notes/catalog-age-check.md)<br>根拠になる → [たぐりは無料枠の中だけで動かす。上限は無料枠より低く取り、越えそうなら使う前に止めて知らせる](notes/dec-free-tier-only.md) |
-| [push するたびに Workers Builds が D1 の migration を当ててから deploy する](notes/workers-builds-applies-migrations.md) | 確認済み | 2026-10-13 | ─ | 影響する → [Cloudflare D1（taguri-demo データベース）](notes/comp-d1.md) |
+| [push するたびに Workers Builds が D1 の migration を当ててから deploy する](notes/workers-builds-applies-migrations.md) | 確認済み | 2026-10-13 | ─ | 影響する → [Cloudflare D1（taguri-demo データベース）](notes/comp-d1.md)<br>[workerd は Worker の入り口のモジュール（src/worker.js）の名前付き export をすべて入り口として読む。数や文字を export すると起動しない](notes/workerd-entry-exports.md) が影響する |
 | [Workers Builds（GitHub からの自動配信）は無料プランで月 3,000 分・同時 1 本・1 回 20 分まで](notes/workers-builds-free-3000.md) | 確認済み | 2026-10-13 | ─ | 根拠になる → [たぐりは無料枠の中だけで動かす。上限は無料枠より低く取り、越えそうなら使う前に止めて知らせる](notes/dec-free-tier-only.md) |
 | [Workers の Cache API は *.workers.dev では何もしない（独自ドメインでだけ効く）](notes/workers-cache-api-workers-dev.md) | 確認済み | 2026-10-13 | ─ | 影響する → [たぐりは無料枠の中だけで動かす。上限は無料枠より低く取り、越えそうなら使う前に止めて知らせる](notes/dec-free-tier-only.md) |
 | [Workers の定期実行は、無料プランだと 1 回あたり CPU 10 ミリ秒・外部への要求 50 回まで](notes/workers-cron-free-limits.md) | 確認済み | 2026-10-13 | S23 | 影響する → [公演情報の取得処理をどこで動かすか](notes/q-crawler-host.md) |
@@ -2426,6 +2429,7 @@ flowchart LR
 | [マメロン Hi Regular の配布ファイルの readme は、商用利用と Web フォントでの利用を認め、無断の改変・二次配布は控えるよう求めている](notes/mamelon-readme.md) | 確認済み | 2026-10-18 | ─ | 答える → [マメロンを Web フォントとしてサイトに置いて配ってよいか（ライセンス）と、ファイルをどこから取るか](notes/q-mamelon-license.md)<br>影響する → [文字の形を試す。ボタンは Zen丸ゴシック Bold、本文は Zen角ゴシック New（どちらもサイトに置いて配る）。これまでの文字を「規定」として残し、設定で戻せる](notes/font-trial.md) |
 | [「次の更新で探してもらう」の依頼は D1 に控えるだけで、毎日の更新はまだ読んでいない。画面は探すと約束せず、更新の日時は crawl-time.js の 1 つの決まりから出す（#101）](notes/search-request-not-read.md) | 確認済み | 2026-10-18 | ─ | 影響する → [本番の「次の更新で探してもらう」依頼（D1 の search_request）を、取得が読んで CoRich で探す段をどう作るか](notes/q-search-request-crawl.md)<br>影響する → [探すを Worker に移す（これからの公演は D1 のカードを SQL で絞ってから当て、観た記録は評価一覧と同じ行で出す）](notes/dec-search-worker.md) |
 | [本番の取得（state ブランチ、2026-10-16 22:27 UTC）では、終わっていない候補 1,353 件すべてがあらすじの読み取り済み。あらすじあり 836 件（62%）、題材の語あり 1,109 件（82%）](notes/synopsis-coverage-1016.md) | 確認済み | 2026-10-18 | ─ | 影響する → [あらすじの読み取りを文献と比べて見えた穴（題材の言葉が本文と照らされていない・別の公演の本文の引き写しは検査で止まらない・窓と閾値の根拠）を、どの順で測って直すか](notes/q-synopsis-lit-gaps.md)<br>影響する → [あらすじを Claude の定期実行で読むと、1 日にどれだけ読め、起案者の使用枠をどれだけ使うか](notes/q-synopsis-routine-quota.md)<br>影響する → [あらすじの読み取りの今の版 g2 は c6 から作られていて、g1 で足した「題名の公演自身の物語か」の自問が入っていない。意図どおりか、g1 の上に g2 を重ねるべきか](notes/q-prompt-g2-base.md) |
+| [workerd は Worker の入り口のモジュール（src/worker.js）の名前付き export をすべて入り口として読む。数や文字を export すると起動しない](notes/workerd-entry-exports.md) | 確認済み | 2026-10-18 | ─ | 影響する → [push するたびに Workers Builds が D1 の migration を当ててから deploy する](notes/workers-builds-applies-migrations.md) |
 | [取得元の実際の robots.txt はまだ読めていない](notes/corich-robots-unchecked.md) | 古い | 2026-10-12 | S24 | 新たな問いを生む → [取得元の利用規約・robots.txt・ポスター画像の権利](notes/q-source-terms.md)<br>[CoRich の robots.txt は禁止を書いておらず、サイトマップを 2 つ示している](notes/corich-robots-sitemap-only.md) が置き換える |
 | [見本の記録のうち推薦の材料になるのは 6 割ほど（見積もり）](notes/demo-seed-link-rate.md) | 古い | 2026-10-12 | ─ | 影響する → [本人向けのおすすめ計算（user_recommender.py）](notes/comp-recommender.md)<br>[公開デモの見本 96 件を架空の題名・日付・会場に入れ替え、日報メールの宛先と差出人を手元の設定へ移す（今の版だけ。履歴は起案者が決める）](notes/dec-demo-seed-fictional.md) が影響する |
 | [Claude の GitHub アプリは taguri-crawler にまだ入っていない](notes/claude-app-repo-access.md) | 古い | 2026-10-13 | ─ | 影響する → [取得処理用の非公開リポジトリ（taguri-crawler）と、その秘密の設定](notes/q-crawler-repo.md) |

@@ -6444,6 +6444,18 @@
    ]
   },
   {
+   "id": "workerd-entry-exports",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-18",
+   "title": "workerd は Worker の入り口のモジュール（src/worker.js）の名前付き export をすべて入り口として読む。数や文字を export すると起動しない",
+   "sources": [
+    "cloudflare/test/runtime-smoke.js",
+    "cloudflare/test/worker-exports.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "workers-branch-control-master",
    "type": "finding",
    "status": "unverified",
@@ -11183,6 +11195,11 @@
    "from": "worker-reco-cpu-estimate",
    "rel": "affects",
    "to": "q-direction"
+  },
+  {
+   "from": "workerd-entry-exports",
+   "rel": "affects",
+   "to": "workers-builds-applies-migrations"
   },
   {
    "from": "workers-branch-control-master",
