@@ -13,9 +13,13 @@ import {generateRegistrationOptions, verifyRegistrationResponse,
         generateAuthenticationOptions, verifyAuthenticationResponse} from '@simplewebauthn/server';
 import {isoBase64URL} from '@simplewebauthn/server/helpers';
 import {TERMS_VERSION, requireAgreement} from './terms.js';
+import {addressKey} from './rate-limit.js';
 
 const CHALLENGE_TTL = 300;
 const MAX_CHALLENGES = 1000;     // pending challenges overall; bounds unauthenticated writes
+// 1 つの接続元が待たせておける問いの数（issue #73）。全体の上限を 1 か所から埋められないように。
+// 認証の要求は 1 分に 10 回まで（rate-limit.js）なので、ふつうの人は 5 分の有効期限のあいだに数件しか作らない
+const MAX_CHALLENGES_PER_ADDR = 10;
 const MAX_RESPONSE = 16384;      // bytes of a WebAuthn response we accept
 const REAUTH = '本人確認のため、ログインし直してから10分以内にパスキーを追加してください。';
 
@@ -26,13 +30,15 @@ export function passkeyRoutes(h) {
     return {rpID: env.WEBAUTHN_RP_ID || url.hostname, origin: url.origin};
   };
 
-  async function newChallenge(db, purpose, challenge, extra = {}) {
+  async function newChallenge(db, purpose, challenge, extra = {}, request = null) {
     await db.prepare('DELETE FROM webauthn_challenges WHERE expires_at<=?').bind(now()).run();
-    const pending = (await db.prepare('SELECT count(*) AS n FROM webauthn_challenges').first()).n;
+    const addr = await addressKey(request, new Date(now() * 1000).toISOString().slice(0, 10));
+    const {n: pending, mine} = await db.prepare('SELECT count(*) AS n, count(CASE WHEN addr=? THEN 1 END) AS mine FROM webauthn_challenges').bind(addr).first();
+    if (addr && mine >= MAX_CHALLENGES_PER_ADDR) fail(429, 'パスキーの操作が続いています。数分待ってから試してください。');
     if (pending >= MAX_CHALLENGES) fail(429, '混み合っています。少し待ってから試してください。');
     const id = token();
-    await db.prepare('INSERT INTO webauthn_challenges(id,challenge,purpose,user_id,user_handle,expires_at) VALUES(?,?,?,?,?,?)')
-      .bind(id, challenge, purpose, extra.user_id ?? null, extra.user_handle ?? null, now() + CHALLENGE_TTL).run();
+    await db.prepare('INSERT INTO webauthn_challenges(id,challenge,purpose,user_id,user_handle,expires_at,addr) VALUES(?,?,?,?,?,?,?)')
+      .bind(id, challenge, purpose, extra.user_id ?? null, extra.user_handle ?? null, now() + CHALLENGE_TTL, addr).run();
     return id;
   }
   // One-time: the row is deleted whether or not the response then verifies.
@@ -67,7 +73,7 @@ export function passkeyRoutes(h) {
         excludeCredentials: existing.map(p => ({id: p.id, transports: JSON.parse(p.transports)})),
         timeout: CHALLENGE_TTL * 1000,
       });
-      const challenge_id = await newChallenge(env.DB, 'register', options.challenge, {user_id: uid, user_handle: userHandle});
+      const challenge_id = await newChallenge(env.DB, 'register', options.challenge, {user_id: uid, user_handle: userHandle}, request);
       return json({challenge_id, options});
     },
 
@@ -113,7 +119,7 @@ export function passkeyRoutes(h) {
       const {rpID} = rp(request, env);
       // Discoverable credentials: no account name is asked for or revealed.
       const options = await generateAuthenticationOptions({rpID, userVerification: 'required', timeout: CHALLENGE_TTL * 1000});
-      const challenge_id = await newChallenge(env.DB, 'login', options.challenge);
+      const challenge_id = await newChallenge(env.DB, 'login', options.challenge, {}, request);
       return json({challenge_id, options});
     },
 
