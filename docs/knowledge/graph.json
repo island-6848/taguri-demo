@@ -2089,6 +2089,19 @@
    "verifies": []
   },
   {
+   "id": "dec-sweep-recheck",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "記録の無いアカウントの片付けは、消す文ごとに「まだ空で、1 か月ログインしていない」を確かめ直す",
+   "sources": [
+    "cloudflare/src/cleanup.js",
+    "cloudflare/test/cleanup.test.js",
+    "https://github.com/island-6848/taguri-demo/issues/137"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-synopsis-reader-claude",
    "type": "decision",
    "status": "adopted",
@@ -4936,6 +4949,18 @@
    "verifies": []
   },
   {
+   "id": "q-d1-migration-failure",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-18",
+   "title": "D1 で migration の 1 ファイルが途中で失敗したとき、前半は巻き戻るか。再実行・コードの巻き戻しで記録は保てるか",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/137",
+    "https://developers.cloudflare.com/d1/reference/migrations/"
+   ],
+   "verifies": []
+  },
+  {
    "id": "q-d1-python-workers",
    "type": "question",
    "status": "open",
@@ -6084,6 +6109,22 @@
    "title": "推薦の計算 person-graded-v2 は、D1 の索引の作り（表と行）を変えない",
    "sources": [
     "https://github.com/island-6848/taguri-demo/blob/claude/demo-records-setup-yqo65u/cloudflare/scripts/build_recommend_index.py"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "records-survive-1018",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-18",
+   "title": "migration（0001〜0034 のどこからでも）・毎日の配送・再配備・定期実行の片付けは、本人の記録を消さず変えない（ローカルの試験で確認。本番・隔離環境の D1 は未実施）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/137",
+    "cloudflare/test/migrations-keep-records.test.js",
+    "cloudflare/test/test_delivery_keeps_records.py",
+    "cloudflare/test/redeploy-keeps-records.test.js",
+    "cloudflare/test/cleanup.test.js",
+    "docs/verification/records-survive-2026-10-18.md"
    ],
    "verifies": []
   },
@@ -8291,6 +8332,16 @@
    "to": "comp-recommender"
   },
   {
+   "from": "dec-sweep-recheck",
+   "rel": "depends_on",
+   "to": "dec-signup-cap-atomic"
+  },
+  {
+   "from": "dec-sweep-recheck",
+   "rel": "affects",
+   "to": "comp-d1"
+  },
+  {
    "from": "dec-synopsis-reader-claude",
    "rel": "answers",
    "to": "q-synopsis-reader"
@@ -10231,6 +10282,11 @@
    "to": "q-offsite-backup"
   },
   {
+   "from": "q-d1-migration-failure",
+   "rel": "affects",
+   "to": "comp-d1"
+  },
+  {
    "from": "q-d1-reads-real",
    "rel": "affects",
    "to": "dec-account-cap-counted"
@@ -11024,6 +11080,21 @@
    "from": "reco-v2-index-compatible",
    "rel": "affects",
    "to": "dec-d1-catalogue-delivery"
+  },
+  {
+   "from": "records-survive-1018",
+   "rel": "affects",
+   "to": "comp-d1"
+  },
+  {
+   "from": "records-survive-1018",
+   "rel": "supports",
+   "to": "dec-sweep-recheck"
+  },
+  {
+   "from": "records-survive-1018",
+   "rel": "raises",
+   "to": "q-d1-migration-failure"
   },
   {
    "from": "render-free-no-disk",
