@@ -1823,8 +1823,11 @@ document.addEventListener("click", ev => {
       const sel = form.querySelector("select[name=stage]"), opt = sel && sel.selectedOptions[0];
       if (opt) {
         if (!(opt.dataset.start <= d.value && d.value <= opt.dataset.end)) {
-          if (said) said.textContent = `${opt.dataset.venue || "選んだ劇場"}はその日に上演していません。劇場か観た日を選び直してください`;
-          sel.focus(); return;
+          // どの劇場の期間にも入らない日（ツアーの合間）なら、日を入れたときと同じ言い方にする（#134 の通しで食い違っていた）
+          const anyLeg = [...sel.options].some(o => o.dataset.start <= d.value && d.value <= o.dataset.end);
+          if (said) said.textContent = anyLeg ? `${opt.dataset.venue || "選んだ劇場"}はその日に上演していません。劇場か観た日を選び直してください`
+            : "その日はどの劇場でも上演していません。観た日を確かめてください";
+          (anyLeg ? sel : d).focus(); return;
         }
         body.stage_id = opt.value; body.venue = opt.dataset.venue || "";
       }
