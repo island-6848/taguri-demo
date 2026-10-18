@@ -45,6 +45,43 @@ def line(d, sw=2.0, extra=''):
 def halo(d, sw):               # 交差させるときの、地の色のふち（糸が字の上を通るように見せる）
     return f'<path d="{d}" fill="none" stroke="{BG}" stroke-width="{sw}" stroke-linecap="round" stroke-linejoin="round"/>'
 
+def yarn_ring(cx, cy, r, a0, a1, tail, sw, twist=True):
+    """毛糸の丸と、ほどけた先（起案者 2026-10-18「外の丸だけ毛糸っぽくするためにちょっと太くして。線の終わりも角丸」）。
+    a0→a1 は真上 0・時計回りの角度（a1 < a0 なら 1 周近く回る）。tail は丸の終わりからの 3 次曲線（終わりの点からの相対）。
+    太い線（端は丸い）の上に、撚りに見える斜めの短い筋（地の色）を線に沿って並べる。端の近くには置かない。"""
+    if a1 <= a0: a1 += 360
+    P = lambda th: (cx + r * math.sin(math.radians(th)), cy - r * math.cos(math.radians(th)))
+    p0, p1 = P(a0), P(a1)
+    d = f'M{p0[0]:.2f} {p0[1]:.2f} A{r} {r} 0 {1 if a1 - a0 > 180 else 0} 1 {p1[0]:.2f} {p1[1]:.2f}'
+    pts = [P(a0 + (a1 - a0) * i / 400) for i in range(401)]
+    cur = p1
+    for c1, c2, e in tail:
+        q1, q2, q3 = [(cur[0] + v[0], cur[1] + v[1]) for v in (c1, c2, e)]
+        d += f' C{q1[0]:.2f} {q1[1]:.2f} {q2[0]:.2f} {q2[1]:.2f} {q3[0]:.2f} {q3[1]:.2f}'
+        for i in range(1, 61):
+            t = i / 60; u = 1 - t
+            pts.append((u ** 3 * cur[0] + 3 * u * u * t * q1[0] + 3 * u * t * t * q2[0] + t ** 3 * q3[0],
+                        u ** 3 * cur[1] + 3 * u * u * t * q1[1] + 3 * u * t * t * q2[1] + t ** 3 * q3[1]))
+        cur = q3
+    out = [line(d, sw)]
+    if twist:
+        step, w = sw * 0.95, sw / 2 * 0.8
+        acc, total, marks = 0.0, 0.0, []
+        seg = [math.dist(pts[i], pts[i + 1]) for i in range(len(pts) - 1)]
+        length = sum(seg)
+        for i, l in enumerate(seg):
+            total += l; acc += l
+            if acc >= step and sw * 1.2 < total < length - sw * 1.2:
+                acc = 0.0
+                (x1, y1), (x2, y2) = pts[i], pts[i + 1]
+                tx, ty = (x2 - x1) / (l or 1), (y2 - y1) / (l or 1)
+                nx, ny = -ty, tx
+                k = w * 0.9        # 斜めの度合い（撚り）
+                marks.append(f'M{x2 - nx * w - tx * k:.2f} {y2 - ny * w - ty * k:.2f} '
+                             f'Q{x2 + tx * k * 0.2:.2f} {y2 + ty * k * 0.2:.2f} {x2 + nx * w + tx * k:.2f} {y2 + ny * w + ty * k:.2f}')
+        out.append(f'<path d="{" ".join(marks)}" fill="none" stroke="{BG}" stroke-width="{sw * 0.13:.2f}" stroke-linecap="round"/>')
+    return ''.join(out)
+
 def sparkle(cx, cy, r, sw=1.4, fill=False):
     d = f'M{cx:.1f} {cy - r:.1f} Q{cx:.1f} {cy:.1f} {cx + r:.1f} {cy:.1f} Q{cx:.1f} {cy:.1f} {cx:.1f} {cy + r:.1f} Q{cx:.1f} {cy:.1f} {cx - r:.1f} {cy:.1f} Q{cx:.1f} {cy:.1f} {cx:.1f} {cy - r:.1f}Z'
     return f'<path d="{d}" fill="{INK if fill else "none"}" stroke="{INK}" stroke-width="{sw}" stroke-linejoin="round"/>'
@@ -62,12 +99,7 @@ def svg(w, h, body):
 def stage():
     cx, cy, r = 150, 150, 112
     b = []
-    a0, a1 = math.radians(186), math.radians(164)
-    p0 = (cx + r * math.sin(a0), cy - r * math.cos(a0)); p1 = (cx + r * math.sin(a1), cy - r * math.cos(a1))
-    b.append(line(f'M{p0[0]:.1f} {p0[1]:.1f} A{r} {r} 0 1 1 {p1[0]:.1f} {p1[1]:.1f} '
-                  f'C{p1[0] + 18:.1f} {p1[1] + 2:.1f} {p1[0] + 34:.1f} {p1[1] + 16:.1f} {p1[0] + 25:.1f} {p1[1] + 25:.1f} '
-                  f'C{p1[0] + 16:.1f} {p1[1] + 34:.1f} {p1[0] + 4:.1f} {p1[1] + 21:.1f} {p1[0] + 18:.1f} {p1[1] + 14:.1f} '
-                  f'C{p1[0] + 34:.1f} {p1[1] + 7:.1f} {p1[0] + 50:.1f} {p1[1] + 22:.1f} {p1[0] + 56:.1f} {p1[1] + 36:.1f}', 2.3))
+    b.append(yarn_ring(cx, cy, r, 186, 164, [((18, 2), (34, 16), (25, 25)), ((-9, 9), (-21, -4), (-7, -11)), ((16, -7), (32, 8), (38, 22))], 5.2))
     # 幕: 竿・飾り幕・左右の幕（外へ寄せて留め、字の舞台を空ける）
     b.append(line('M70 74 L230 74', 2.0))
     b.append(line('M70 76 ' + ' '.join(f'Q{70 + 16 + 32 * i} 94 {70 + 32 * (i + 1)} 76' for i in range(5)), 1.8))
@@ -148,6 +180,25 @@ def vertical():
     b.append(sparkle(150, 60, 4, 1.1))
     return svg(200, 300, b)
 
-for name, f in [('type1-stage', stage), ('type2-wordmark', wordmark), ('type3-vertical', vertical)]:
+# ---------------------------------------------------------------- 小さい版（タブ・ホーム画面のアイコン）
+def icon(small=False):
+    """毛糸の丸の中に「ぐ」（濁点は星）。small=True は 16〜32px 向け: 撚りの筋と飾り幕を省き、線を太くする。"""
+    cx, cy, r = 31, 29.5, 22.5
+    sw = 5.0 if small else 4.2
+    # 16〜32px では先の輪がつぶれるので、ほどけた先は短いはね 1 つにする
+    tail = [((4, 1), (8, 4), (10, 9))] if small else [((5, 1), (9, 4), (7, 7.5)), ((-2, 2.5), (-5.5, -0.5), (-2.5, -2.5)), ((3.5, -2), (8.5, 1), (10.5, 4.5))]
+    b = [yarn_ring(cx, cy, r, 192, 160, tail, sw, twist=not small)]
+    if not small:   # 飾り幕の弧（舞台のしるし）
+        b.append(line('M19 15 ' + ' '.join(f'Q{19 + 3 + 6 * i} 18.6 {19 + 6 * (i + 1)} 15' for i in range(4)), 1.2))
+    size = 32 if small else 29
+    gx = cx - 522 * size / 1000 - 1
+    base = cy + 368 * size / 1000 + (1 if small else 3)
+    b.append(glyph('ぐ', gx, base, size, skip=DAKUTEN['ぐ']))
+    a = at(gx, base, size, (720, 555)); c = at(gx, base, size, (640, 485))
+    b.append(sparkle(a[0] + 1, a[1] - 1.5, size * (0.12 if small else 0.1), 0.6, fill=True))
+    if not small: b.append(sparkle(c[0] + 1, c[1] + 0.5, size * 0.06, 0.5, fill=True))
+    return svg(64, 64, b)
+
+for name, f in [('icon', icon), ('icon-small', lambda: icon(True)), ('type1-stage', stage), ('type2-wordmark', wordmark), ('type3-vertical', vertical)]:
     open(OUT + name + '.svg', 'w', encoding='utf-8').write(f())
 print('ok')
