@@ -12,6 +12,7 @@ on:
 
 permissions:
   contents: read
+  actions: read     # 無料枠の点検で、このリポジトリのジョブの分数を読む（issue #139）
 
 jobs:
   drill:
@@ -28,6 +29,12 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
+      - name: Plan within the free tier
+        # 毎日の取得の分を取っておいて 20 分（このジョブの上限）が残るときだけ動かす（free_tier.py plan --mode drill、issue #139）。
+        # 分数が読めなければ動かさない。予行が新しい D1 に書く行は backup_d1.py が CAPS["drill_d1_writes"] で抑える
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python cloudflare/scripts/free_tier.py plan --data drill --mode drill
       - name: Restore the newest backup into a scratch D1 and compare
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

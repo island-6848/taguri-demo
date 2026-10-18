@@ -54,6 +54,10 @@ DERIVED = {
     "stage_label", "past_stage", "poster", "usage", "sessions", "webauthn_challenges", "_cf_KV", "_cf_METADATA",
 }
 DRILL_DB = "taguri-restore-drill"
+# ensure_bucket が毎回使う R2 の操作（数えに足す。issue #139）。作る（PutBucket）と決まりを付ける（PutBucketLifecycleConfiguration）は
+# Class A、あるかを見る GET は Class B として数える（公式の分類は確かめきれていないので、多めの側に数える）
+ENSURE_CLASS_A = 2
+ENSURE_CLASS_B = 1
 
 
 def wrangler(*args: str, capture: bool = True) -> str:
@@ -95,6 +99,31 @@ def local_counts(sql_text: str, tables: list[str]) -> dict[str, int]:
     try:
         con.executescript(sql_text)
         return {t: con.execute(f'SELECT count(*) FROM "{t}"').fetchone()[0] for t in tables}
+    finally:
+        con.close()
+
+
+def local_tables(sql_text: str) -> list[str]:
+    con = sqlite3.connect(":memory:")
+    try:
+        con.executescript(sql_text)
+        return [r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'")]
+    finally:
+        con.close()
+
+
+def drill_writes(sql_text: str) -> int:
+    """控えを新しい D1 に入れたときの書き込みの行数の見込み。D1 は表の行と索引の行を 1 つずつ数えるので
+    （d1-free-limits）、表ごとに 行数 × (1 + 索引の数) を足す（主キー・UNIQUE の自動の索引も入れる。多めの側）。"""
+    con = sqlite3.connect(":memory:")
+    try:
+        con.executescript(sql_text)
+        total = 0
+        for (t,) in con.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").fetchall():
+            rows = con.execute(f'SELECT count(*) FROM "{t}"').fetchone()[0]
+            idx = con.execute("SELECT count(*) FROM sqlite_master WHERE type='index' AND tbl_name=?", (t,)).fetchone()[0]
+            total += rows * (1 + idx)
+        return total
     finally:
         con.close()
 
@@ -192,7 +221,7 @@ def backup(data: Path, *, export=None, counts=None, put=r2_put, delete=r2_delete
         return {"skipped": "BACKUP_PASSPHRASE が無いので控えを作らない"}
     now = now or FT.utc_now()
     u = FT.load(data)
-    if FT.r2_class_a(u, now) + 1 + len(to_drop(backup_keys(u), FT.today(now))) > FT.CAPS["r2_class_a_month"]:
+    if FT.r2_class_a(u, now) + 1 + ENSURE_CLASS_A + len(to_drop(backup_keys(u), FT.today(now))) > FT.CAPS["r2_class_a_month"]:
         return {"skipped": "R2 の書き込み回数が今月の上限に近いので控えを作らない"}
     if export is None:
         tables = user_tables(remote_tables(DB_NAME))
@@ -215,7 +244,10 @@ def backup(data: Path, *, export=None, counts=None, put=r2_put, delete=r2_delete
         return {"skipped": "R2 の保存量が上限に近いので控えを作らない"}
     key = f"{PREFIX}{FT.today(now)}.sql.gpg"
     m = FT.month(now)
-    u["r2"]["class_a"][m] = FT.r2_class_a(u, now) + 1
+    # 送る前に数える: 控えの PUT 1 回と、入れ物の確かめ（ensure_bucket）の分。入れ物の決まり（lifecycle）は毎日付け直すので
+    # Class A 2 回（作る・決まりを付ける。作らない日も多めに数える）と、入れ物があるかの GET を Class B 1 回（issue #139）
+    u["r2"]["class_a"][m] = FT.r2_class_a(u, now) + 1 + ENSURE_CLASS_A
+    u["r2"].setdefault("class_b", {})[m] = FT.r2_class_b(u, now) + ENSURE_CLASS_B
     bucket = ensure(account, token)
     try:
         put(account, token, key, body)
@@ -256,6 +288,15 @@ def drill(data: Path, get=r2_get) -> dict:
         return {"ok": False, "mismatch": ["この 4 日の控えが R2 に無い"]}
     sql_text = decrypt(body, passphrase).decode("utf-8")
     t_open = time.monotonic() - t0
+    # D1 の 1 日の書き込み（10 万行）は口座全体で、予行の新しい D1 への書き込みも同じ枠から出る（issue #139）。
+    # 入れる前に手元の SQLite で数え、上限を越える控えは D1 に入れず、手元で開けて数が合うかだけを確かめる
+    est = drill_writes(sql_text)
+    if est > FT.CAPS["drill_d1_writes"]:
+        tables = user_tables(local_tables(sql_text))
+        backed = local_counts(sql_text, tables)
+        return {"key": key, "ok": True, "d1_skipped": f"D1 への書き込みが {est:,} 行の見込みで、上限 {FT.CAPS['drill_d1_writes']:,} 行を越える"
+                "ので、新しい D1 には入れず手元の SQLite で開けるかだけを確かめた",
+                "estimated_writes": est, "tables": len(tables), "rows": sum(backed.values()), "seconds_open": round(t_open, 1)}
     # 復号した平文は data/ の外に置く（backup と同じ）。消すのは下の finally
     tmp = Path(tempfile.mkdtemp(prefix="taguri-drill-"))
     path = tmp / "drill.sql"
@@ -291,6 +332,8 @@ def main() -> int:
     a = ap.parse_args()
     got = backup(a.data) if a.what == "backup" else drill(a.data)
     print(json.dumps(got, ensure_ascii=False))
+    if got.get("d1_skipped"):
+        print(f"::warning::{got['d1_skipped']}")
     return 1 if got.get("ok") is False else 0
 
 

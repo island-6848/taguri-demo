@@ -62,6 +62,24 @@ class DeliverPostersTest(unittest.TestCase):
         self.assertEqual(got['uploaded'], 0)
         self.assertGreater(got['left'], 0)
 
+    def test_retries_stop_at_the_class_a_cap(self):
+        # issue #139: 上限の 2 回手前で R2 が 5xx を返し続けても、やり直しで上限を越えない
+        FT = DP.FT
+        u = FT.load(self.data)
+        u['r2']['class_a'][FT.month()] = FT.CAPS['r2_class_a_month'] - 2
+        FT.save(self.data, u)
+        calls = []
+
+        def down(a, t, b, k, body, ct):
+            calls.append(k)
+            raise urllib.error.HTTPError('u', 503, 'Unavailable', {}, None)
+
+        got = DP.build(self.data, self.out, bucket='b', limit=10, put=down, sleep=lambda s: None)
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(FT.r2_class_a(FT.load(self.data)), FT.CAPS['r2_class_a_month'])
+        self.assertIn('上限', got['stopped'])
+        self.assertEqual(got['uploaded'], 0)
+
     def test_no_r2_access_changes_nothing(self):
         def deny(*_a):
             raise urllib.error.HTTPError('u', 403, 'Forbidden', {}, None)

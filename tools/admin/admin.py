@@ -12,7 +12,9 @@
   Claude Code に読ませる。① 画面の「Claude で読み取る」で手元の `claude -p` を呼ぶ（ANTHROPIC_API_KEY は
   渡さない ── 渡すと従量課金の API になる）。② 動かせないときは積んだままにし、Claude Code のセッションで
   `python3 tools/admin/admin.py queue` → 読み取り → `python3 tools/admin/admin.py answer 答え.json`
-- 無料枠: 書く前に数える（free_tier.CAPS の admin_d1_writes_day・admin_posters_month と、取得と共通の上限）
+- 無料枠: 書く前に数える（free_tier.CAPS の admin_d1_writes_day・admin_posters_month・admin_r2_bytes と、取得と共通の上限）。
+  控え（data/admin/free_tier/usage.json）は取得の控えと別のファイルで、取得が使った量は見えない。だから管理画面の分に
+  別の上限を置き、取得の上限と足しても無料枠に収まるようにしている（docs/free-tier-audit-2026-10-18.md）
 """
 from __future__ import annotations
 
@@ -131,7 +133,7 @@ def spend_poster(data: Path, size: int) -> None:
     n = int(u.setdefault("admin_posters", {}).get(m, 0))
     if n + 1 > FT.CAPS["admin_posters_month"]:
         raise AdminError(f"今月の管理画面からのポスターが上限（{FT.CAPS['admin_posters_month']} 枚）に届くので止めました")
-    if FT.r2_bytes(u) + size > FT.CAPS["r2_bytes"]:
+    if FT.r2_bytes(u) + size > min(FT.CAPS["r2_bytes"], FT.CAPS["admin_r2_bytes"]):
         raise AdminError("R2 の保存が上限に届くので止めました（R2 は越えると請求されるため）")
     if FT.r2_class_a(u) + 1 > FT.CAPS["r2_class_a_month"]:
         raise AdminError("今月の R2 の書き込みが上限に届くので止めました")
@@ -500,7 +502,8 @@ def upload_font(data: Path, src: Path, *, put=None) -> dict:
     if len(body) > FONT_MAX:
         raise AdminError("フォントのファイルが大きすぎます（10 MB まで）")
     u = FT.load(data)
-    if FT.r2_bytes(u) + len(body) > FT.CAPS["r2_bytes"] or FT.r2_class_a(u) + 1 > FT.CAPS["r2_class_a_month"]:
+    if (FT.r2_bytes(u) + len(body) > min(FT.CAPS["r2_bytes"], FT.CAPS["admin_r2_bytes"])
+            or FT.r2_class_a(u) + 1 > FT.CAPS["r2_class_a_month"]):
         raise AdminError("R2 の上限に届くので止めました（R2 は越えると請求されるため）")
     u["r2"]["class_a"][FT.month()] = FT.r2_class_a(u) + 1       # 送る前に数える
     FT.save(data, u)
