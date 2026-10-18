@@ -1238,9 +1238,7 @@ details.pbox>summary[data-fold] .fv,.ftab .fv{margin-left:auto;text-align:right;
 /* ---- おすすめ理由の「人物」「種類」の札は丸ゴシック（起案者の指示 2026-10-18） */
 .rs .net{font-family:"Zen Maru Gothic",var(--font-body-default);font-weight:700;letter-spacing:.04em}
 
-/* ---- 折りたたみを開いたときの地が濃すぎた（起案者の指摘 2026-10-18）。紙の白にごく薄く幕の色を混ぜる。
-   --surf と混ぜるので暗い表示でも地の明るさに従う。暦の日・土はマスの地も赤・青に（同じ指摘） */
-:root{--fold-bg:color-mix(in srgb,var(--curtain) 5%,var(--surf))}
+/* ---- 暦の日・土はマスの地も赤・青に（起案者の指示 2026-10-18）。折りたたみの地は一度薄めたが、元の色に戻した（同日） */
 .tourfull.v2 .ttb td.sun:not(.out),.ticket .ttb td.sun:not(.out){background:color-mix(in srgb,#b8432f 10%,var(--surf))}
 .tourfull.v2 .ttb td.sat:not(.out),.ticket .ttb td.sat:not(.out){background:color-mix(in srgb,#2f6fa8 10%,var(--surf))}
 .tourfull.v2 .ttb td.sun.out,.ticket .ttb td.sun.out{background:color-mix(in srgb,#b8432f 4%,transparent)}
