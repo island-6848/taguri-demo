@@ -1177,27 +1177,42 @@ a.pill.buy .go:not(#_){font-size:12px;margin-left:2px}
 @media(min-width:701px){.rec-row.cmp .pin>.sitelink,.rec-row.cmp:nth-of-type(2n) .pin>.sitelink{width:112px}}
 
 /* ---- 日記帳はノートの見た目（起案者の指示 2026-10-18「日記帳はもう少しノートっぽいデザインにしたい」）。
-   1 件が 1 ページ: 生成りの紙、横罫、左の綴じ穴、余白の赤い縦線、重ねたページの影。色はテーマの地から混ぜて作り、暗い画面でも沈ませる */
+   1 件が 1 ページ。続けて「コラージュを意識してほしい」「罫線じゃなくてうっっっすいグレーの方眼にして」（同日）:
+   紙はごく薄い灰色の方眼、左に綴じ穴。ポスターは白い縁を付けてマスキングテープで留め、少し傾ける（ページごとに向きを変える）。
+   日付は切り抜いた紙片、あらすじは破った紙を貼ったように。色はテーマの地から混ぜて作り、暗い画面でも沈ませる */
 [data-route="/records/works"] .idxsheet>.rec-row{
- --paper:color-mix(in srgb,var(--surf) 88%,#f3e6c2);
- --rule:color-mix(in srgb,var(--grid) 62%,#7fa9d6);
- --margin-line:color-mix(in srgb,var(--curtain) 55%,transparent);
+ --paper:color-mix(in srgb,var(--surf) 94%,#efe6d2);
+ --grid-line:color-mix(in srgb,var(--ink) 3.5%,transparent);
+ --tape:color-mix(in srgb,var(--curtain) 22%,color-mix(in srgb,var(--surf) 70%,#f2d98a));
+ --scrap:color-mix(in srgb,var(--surf) 97%,#fff);
  background-color:var(--paper);
- background-image:linear-gradient(90deg,transparent 0 21px,var(--margin-line) 21px 22px,transparent 22px 24px,var(--margin-line) 24px 25px,transparent 25px),
-  repeating-linear-gradient(to bottom,transparent 0 27px,var(--rule) 27px 28px);
- background-position:0 0,0 10px;
+ background-image:linear-gradient(to right,var(--grid-line) 1px,transparent 1px),linear-gradient(to bottom,var(--grid-line) 1px,transparent 1px);
+ background-size:14px 14px;background-position:-1px -1px;
  border:1px solid color-mix(in srgb,var(--ring) 70%,#c9b88f);border-radius:2px 10px 10px 2px;
- padding-left:26px;margin-bottom:16px;
+ padding-left:26px;margin-bottom:18px;
  box-shadow:2px 2px 0 color-mix(in srgb,var(--paper) 80%,var(--ink) 8%),4px 4px 0 color-mix(in srgb,var(--ring) 80%,transparent)}
 /* 綴じ穴 */
 [data-route="/records/works"] .idxsheet>.rec-row::before{content:"";position:absolute;left:5px;top:10px;bottom:10px;width:10px;
  background:radial-gradient(circle at 5px 12px,var(--plane) 0 3.5px,color-mix(in srgb,var(--ink) 25%,transparent) 3.5px 4.5px,transparent 4.6px) 0 0/10px 26px repeat-y;pointer-events:none}
-/* 日付は手帳の見出しのように、細い下線つき */
-[data-route="/records/works"] .idxsheet>.rec-row .dt .md{font-size:17px;border-bottom:2px solid var(--margin-line);padding-bottom:1px}
-[data-route="/records/works"] .idxsheet>.rec-row .pin{border-right:1.5px dashed var(--rule)}
-[data-route="/records/works"] .idxsheet>.rec-row .poster,[data-route="/records/works"] .idxsheet>.rec-row .noposter{transform:rotate(-1.5deg);box-shadow:0 2px 4px rgba(0,0,0,.12)}
-[data-route="/records/works"] .idxsheet>.rec-row .leadbox .lsyn{background:color-mix(in srgb,var(--paper) 70%,var(--surf))}
-/* 感想は罫線の上に書いた字のように（行の高さを罫の間隔にそろえる） */
+/* 日付は切り抜いた紙片（テープの色の紙に、少し傾けて貼る） */
+[data-route="/records/works"] .idxsheet>.rec-row .dt .md{display:inline-block;font-size:17px;padding:1px 7px 2px;background:var(--tape);
+ transform:rotate(-2deg);box-shadow:1px 1px 0 color-mix(in srgb,var(--ink) 12%,transparent)}
+[data-route="/records/works"] .idxsheet>.rec-row:nth-of-type(2n) .dt .md{transform:rotate(1.5deg)}
+/* ポスターは白い縁の写真のように、上をマスキングテープで留める。ページごとに傾きを変える */
+[data-route="/records/works"] .idxsheet>.rec-row .pin{position:relative;border-right:0}
+[data-route="/records/works"] .idxsheet>.rec-row .poster,[data-route="/records/works"] .idxsheet>.rec-row .noposter{
+ transform:rotate(-2deg);background:var(--scrap);padding:5px 5px 14px;box-shadow:0 2px 5px rgba(0,0,0,.16)}
+[data-route="/records/works"] .idxsheet>.rec-row:nth-of-type(2n) .poster,[data-route="/records/works"] .idxsheet>.rec-row:nth-of-type(2n) .noposter{transform:rotate(1.8deg)}
+[data-route="/records/works"] .idxsheet>.rec-row .pin::before{content:"";position:absolute;z-index:2;top:-6px;left:50%;width:46px;height:15px;margin-left:-23px;
+ background:color-mix(in srgb,var(--tape) 85%,transparent);transform:rotate(-4deg);pointer-events:none;
+ clip-path:polygon(0 8%,6% 0,12% 10%,20% 2%,30% 9%,40% 0,52% 8%,62% 1%,72% 9%,82% 2%,92% 8%,100% 0,100% 92%,94% 100%,86% 91%,76% 100%,66% 92%,55% 100%,45% 91%,34% 100%,24% 92%,14% 100%,6% 91%,0 100%)}
+[data-route="/records/works"] .idxsheet>.rec-row:nth-of-type(2n) .pin::before{transform:rotate(5deg)}
+/* あらすじは破った紙片を貼ったように（下の縁をぎざぎざに、わずかに傾ける） */
+[data-route="/records/works"] .idxsheet>.rec-row .leadbox .lsyn{background:var(--scrap);padding:8px 10px 12px;transform:rotate(-.4deg);
+ box-shadow:1px 2px 3px color-mix(in srgb,var(--ink) 14%,transparent);
+ clip-path:polygon(0 0,100% 0,100% calc(100% - 6px),96% 100%,91% calc(100% - 5px),85% 100%,78% calc(100% - 4px),71% 100%,64% calc(100% - 6px),57% 100%,50% calc(100% - 4px),43% 100%,36% calc(100% - 6px),29% 100%,22% calc(100% - 4px),15% 100%,8% calc(100% - 6px),0 100%)}
+[data-route="/records/works"] .idxsheet>.rec-row:nth-of-type(2n) .leadbox .lsyn{transform:rotate(.35deg)}
+/* 感想は方眼の上に書いた字のように（行の高さを方眼 2 つ分にそろえる） */
 [data-route="/records/works"] .idxsheet>.rec-row .inr .int{line-height:28px}
 
 /* ---- ロゴ（docs/design/logo/make_type.py が web/index.html に埋め込む。起案者 2026-10-18「ヘッダーとアイコンに入れて」）。
