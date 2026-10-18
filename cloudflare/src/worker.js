@@ -3,11 +3,11 @@ import {isOriginalRoute, originalUI, ORIGINAL_SCREENS, ORIGINAL_WRITES} from './
 import {verifyIdToken, isAuthError} from './firebase-auth.js';
 import {passkeyRoutes} from './passkey.js';
 import {TERMS_VERSION, requireAgreement, needsAgreement} from './terms.js';
-import {scoreFromIndex, d1Access, gradeOf, seedsFromFavourites, collapseRanked, cleanAspects, SEED_KINDS, SEED_ROLES, MAX_SEED_FAVS, cmp} from './recommend.js';
+import {d1Access, gradeOf, cleanAspects, SEED_KINDS, SEED_ROLES, MAX_SEED_FAVS, cmp} from './recommend.js';
+import {recommendApi} from './screens/recommend.js';
 import {searchIndex, d1Search} from './stage-search.js';
 import {suggest} from './screens/suggest.js';
 import {exportPayload} from './screens/settings.js';
-import {chooseVariant} from './reco-gate.js';
 import {R2_READS_CAP, r2ReadAllowed, d1RoomLeft, d1Bytes, D1_BYTES_CAP, MAX_ACCOUNTS} from './free-tier.js';
 import {rateLimit, checkNewAccount} from './rate-limit.js';
 // Writes that only remove a user's rows: allowed even when D1 is at its storage cap.
@@ -190,73 +190,15 @@ async function deleteAccount(request, env, uid, input) {
   return json({deleted:true,firebase_linked:!!linked},200,{'Set-Cookie':`${COOKIE}=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0`});
 }
 // ---------------------------------------------------------------- recommendations
-// Person scores from the batch-built index (migrations/0003, scripts/
-// build_recommend_index.py) and the user's own ratings. Same results as the
-// Python recommender (test/recommend.test.js). Stages the user already reacted
-// to (interest / no / owned) are left out, as the Python app moves them to
-// other lists. Tour grouping and impression preferences are not ported yet.
-const RECOMMEND_TOP = 15;
-const RECOMMENDER = 'person-ordinal-v3+fav3+asp1+tour1+why1';   // +why1: a show needs a person who raised it; +fav3: favourites (people, troupes, works, subjects) as fading pseudo ratings; +asp1: 詳細; +tour1: one slot per tour
+// GET /api/recommend answers with the recommendations of the 今週のおすすめ screen
+// (screens/recommend.recommendApi: the same works / reactions / favourites, the same
+// rules, the same rec_cache row), as plain data (#119). It used to compute another
+// ranking from the migration-era tables (records / reactions), so what the user rated
+// on the screens never reached it, and the two took turns overwriting rec_cache.
+// The Python parity of the scoring itself is test/recommend.test.js (scoreFromIndex).
 const jstToday = () => new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
-// Served from rec_cache unless the index version, the date, or the user's
-// records/reactions changed since it was computed (a few rows read per view).
-export async function recommendFor(db, uid, today = jstToday()) {
-  const ver = (await db.prepare("SELECT v FROM rec_meta WHERE k='current'").first())?.v;
-  if (!ver) return {ready: false, items: []};
-  const st = await db.prepare('SELECT (SELECT count(*) FROM records WHERE user_id=?1) AS rn, (SELECT max(updated_at) FROM records WHERE user_id=?1) AS rm, (SELECT count(*) FROM reactions WHERE user_id=?1) AS an, (SELECT max(updated_at) FROM reactions WHERE user_id=?1) AS am, (SELECT v FROM rec_meta WHERE k=\'index_rev\') AS ir').bind(uid).first();
-  // RECOMMENDER names the scoring rules: changing them must not serve old results. The index is
-  // delivered as a diff under a fixed ver, so index_rev tells when its content changed.
-  const stamp = [RECOMMENDER, ver, st.ir || '', today, st.rn, st.rm, st.an, st.am].join('|');
-  const cached = await db.prepare('SELECT body FROM rec_cache WHERE user_id=? AND stamp=?').bind(uid, stamp).first();
-  if (cached) return {...JSON.parse(cached.body), cached: true};
-  const body = await computeRecommendations(db, uid, ver, today);
-  await db.prepare('INSERT INTO rec_cache(user_id,stamp,body,created_at) VALUES(?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET stamp=excluded.stamp,body=excluded.body,created_at=excluded.created_at')
-    .bind(uid, stamp, JSON.stringify(body), now()).run();
-  return {...body, cached: false};
-}
-async function computeRecommendations(db, uid, ver, today) {
-  const records = (await db.prepare("SELECT id,rating,COALESCE(stage_id,'') AS stage_id,date,updated_at,aspects FROM records WHERE user_id=? AND rating<>''").bind(uid).all()).results;
-  const access = d1Access(db, ver);
-  const linked = [...new Set(records.map(r => r.stage_id).filter(Boolean))];
-  const people = await access.peopleFor(linked);
-  // updated_at is epoch seconds here; as text it orders like the Python timestamps.
-  const rated = records.map(r => ({key: r.id, stage_id: r.stage_id, verdict: r.rating, date: r.date, aspects: r.aspects,
-    updated_at: new Date(r.updated_at * 1000).toISOString(), people: people.get(r.stage_id) || []}));
-  // 裏の答え合わせ: use a variant of the rules only if it clearly predicted
-  // this user's own later ratings better (src/reco-gate.js). Kept out of the
-  // answer shown on screen.
-  const gate = chooseVariant(rated);
-  // Favourite people's productions count as pseudo ratings that fade as real
-  // ratings come in (q-favourites-seed); their own shows are left out here.
-  const favourites = (await db.prepare('SELECT name,kind FROM favourites WHERE user_id=? ORDER BY kind,name LIMIT 200').bind(uid).all()).results;
-  const {seeds, skip} = await seedsFromFavourites(access, favourites);
-  const ranked = await scoreFromIndex({...access, rated: gate.aspects ? rated : rated.map(r => ({...r, aspects: []})),
-    multipliers: gate.multipliers, today, seeds, skip});
-  const reacted = new Set((await db.prepare('SELECT stage_id FROM reactions WHERE user_id=?').bind(uid).all()).results.map(r => r.stage_id));
-  // One slot per production: a tour's other venues ride along with its
-  // best-ranked one (user_recommender.collapse_tours), after reacted stages
-  // are left out, as the Python screen does.
-  const byId = new Map(ranked.map(c => [c.stage_id, c]));
-  const top = collapseRanked(ranked.filter(c => !reacted.has(c.stage_id)), RECOMMEND_TOP);
-  const entries = new Map();
-  const ids = top.flatMap(g => [g.stage_id, ...g.tours]);
-  for (let i = 0; i < ids.length; i += 98) {
-    const chunk = ids.slice(i, i + 98);
-    const rows = (await db.prepare(`SELECT stage_id,title,grp,start,end,entry FROM rec_stage WHERE ver=? AND stage_id IN (${chunk.map(() => '?').join(',')})`).bind(ver, ...chunk).all()).results;
-    for (const r of rows) entries.set(r.stage_id, r);
-  }
-  const venue = id => {
-    const e = entries.get(id) || {}, entry = JSON.parse(e.entry || '{}');
-    return {stage_id: id, start: e.start || '', end: e.end || '', theater: entry.theater || '', pref: entry.pref || '', url: entry.url || ''};
-  };
-  return {ready: true, n_rated: records.length, n_linked: records.filter(r => people.get(r.stage_id)?.length).length,
-    rows_read: access.counter.rows, variant: gate.variant, n_seeds: seeds.length, items: top.map(g => {
-      const c = byId.get(g.stage_id), e = entries.get(g.stage_id) || {};
-      return {...venue(g.stage_id), title: e.title || '', group: e.grp || '', score: c.b,
-        // People first; kinds of show ("#形式" etc. as role) fill the rest of the 3 slots.
-        reasons: [...c.parts.slice(0, 3), ...c.kinds].slice(0, 3).map(([, role, person, n]) => ({role, person, n})),
-        tours: g.tours.map(venue)};
-    })};
+export async function recommendFor(db, uid, today = jstToday(), nowMs = Date.now()) {
+  return recommendApi({db, uid, today, now: nowMs});
 }
 // How old the delivered catalogue is: dates and counts only, written by
 // scripts/deliver_catalogue.py (tools/taguri/check_catalog_age.py reads it).
@@ -578,7 +520,7 @@ export default {
       if (method === 'GET' && path === '/api/auth/passkeys') return await passkey.list(request, env, uid);
       if (method === 'POST' && path === '/api/auth/passkeys/delete') return await passkey.remove(request, env, uid);
       if (method === 'GET' && ['/api/state','/api/export'].includes(path)) return json(await state(env.DB,uid));
-      if (method === 'GET' && path === '/api/recommend') return json(await recommendFor(env.DB, uid));
+      if (method === 'GET' && path === '/api/recommend') return json(await recommendFor(env.DB, uid, env.CLOCK?.today ?? jstToday(), env.CLOCK?.now ?? Date.now()));
       if (method === 'GET' && path === '/api/stages') return json(await stagesFor(env.DB, url.searchParams));
       if (method === 'GET' && path === '/api/onboarding') return json(await onboardingFor(env.DB, uid));
       if (method !== 'POST') fail(404,'見つかりませんでした。');

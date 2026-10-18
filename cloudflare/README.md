@@ -193,9 +193,11 @@ npx wrangler d1 execute taguri-demo --remote --file /tmp/rec.sql
 
 **裏の答え合わせ（`src/reco-gate.js`）。** 推薦のたびに本人の評価を付けた順に再生し、6件ずつの区切りをそれより前の評価だけで採点して、今の計算と別の効かせ方（公演の種類2倍・演出脚本2.5倍）のどちらが本人の順に合ったかを数える。はっきり勝った（符号検定 z ≥ 1.96、決着した区切り6以上）ときだけその効かせ方を使う。保存も送信もしない。
 
-段1の索引（`rec_*`）と本人の評価から、Workerが人物得点の推薦を計算する（`src/recommend.js`、`GET /migration-api/recommend`）。「アカウント・記録」の画面に「あなたへのおすすめ（試験版）」として出す。
+段1の索引（`rec_*`）と本人の評価から、Workerが人物得点の推薦を計算する（`src/recommend.js`）。
 
-- **Pythonと同じ結果。** `test/recommend.test.js` は、Python（`test/parity_fixture.py` が `score_from_index` で出した答え。段1でこれが `user_recommender.prepare` と一致することを確かめている）と、架空カタログ12×履歴4×重み3の144通りで、公演・順位・点数・理由・強さが完全に一致することを確かめる。計算をわざと壊すと落ちることも確認した。合わせるために、足し算と掛け算の順番、6桁の丸め（`toFixed` と同じ値になる速い丸め。約95万通りで一致を確認）、文字列のコードポイント順をPythonに揃えている。
+**2026-10-18 から（issue #119）、`GET /api/recommend`（`/migration-api/recommend`）は「今週のおすすめ」の画面と同じ計算・同じ控えの、全国の上位15件をデータで返す（`screens/recommend.recommendApi`。入力はサービスの日記帳・評価・興味あり・お気に入り、版は `screen-vNN|索引の版` の `recommender`）。** 前は下に書く移行用の表（`records`・`reactions`）から別の計算（`person-ordinal-v3+fav3+asp1+tour1+why1`）をしていて、画面で付けた評価・興味ありが届かず、画面と同じ `rec_cache` の行を取り合っていた。移行用の表（`/api/record` など）は、もう推薦の入力にならない。下の記述のうち `records` と `rec_cache` の印の話は、その前のもの。「アカウント・記録」の画面の「あなたへのおすすめ（試験版）」もこの答えを出す。
+
+- **Pythonと同じ結果。** `test/recommend.test.js` は（点の計算 `scoreFromIndex` と、ツアーを1枠にまとめる `collapseRanked` を）、Python（`test/parity_fixture.py` が `score_from_index` で出した答え。段1でこれが `user_recommender.prepare` と一致することを確かめている）と、架空カタログ12×履歴4×重み3の144通りで、公演・順位・点数・理由・強さが完全に一致することを確かめる。計算をわざと壊すと落ちることも確認した。合わせるために、足し算と掛け算の順番、6桁の丸め（`toFixed` と同じ値になる速い丸め。約95万通りで一致を確認）、文字列のコードポイント順をPythonに揃えている。
 - **記録と公演の結び付け。** `records.stage_id`（`migrations/0007.sql`）。結び付いた記録の人物が得点に効く。結び付いていない記録も、全体の◎率には数える（Pythonと同じ）。結び付けは下の「記録を公演に結び付ける」。
 - **反応した公演（興味あり・興味なし・持っている）は外す**（Pythonの画面が別の一覧に移すのに合わせた）。
 - **ツアーは1枠にまとめる**（`+tour1`）。題名・団体（正規化）とクレジットの集合が同じ公演は同じツアー（`user_recommender.tour_key`）。索引を作るときに `rec_stage.tour`（`migrations/0016.sql`）に入れ、Workerは反応した公演を外したあとで、点の一番高い会場を代表にし、ほかの会場を `tours`（会場・都道府県・期間・URL）に付ける（`collapseRanked`、Pythonの `collapse_tours` と同じ並び）。Pythonの `collapse_tours` も、クレジットを並び順でなく集合で比べるようにした。感想からの好み（impression preferences）はまだ移していない。重みの調整（つまみ）も無く、すべて既定の1.0。

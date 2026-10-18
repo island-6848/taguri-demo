@@ -164,6 +164,37 @@ test('興味あり alone, on a stage only the catalogue has, recommends the same
   } finally { sqlite.close(); }
 });
 
+// #119: GET /api/recommend is the screen's ranking (same input, same rules, same cache row), as data.
+test('/api/recommend answers with the 今週のおすすめ ranking and shares its cache; migration-era records do not feed it', async () => {
+  const {env, sqlite} = await withIndex();
+  const a = await signIn(env);
+  try {
+    await rateSeen(env, a, '終わった舞台', '2026-08-05', '103', '◎');
+    await rateSeen(env, a, '一日だけの舞台', '2026-09-05', '104', '×');
+    const screen = await step(env, a, {get: '/api/screen/recommend'});
+    const shown = [...screen.body.body_html.matchAll(/<article class="ticket recommend" data-stage="(\d+)"/g)].map(m => m[1]);
+    assert.ok(shown.length >= 1);
+    const stamp = sqlite.prepare('SELECT stamp FROM rec_cache').get().stamp;
+    const api = await step(env, a, {get: '/api/recommend'});
+    assert.equal(api.status, 200);
+    assert.equal(api.body.ready, true);
+    assert.equal(api.body.cached, true, 'the screen\'s cached ranking, not a second computation');
+    assert.equal(sqlite.prepare('SELECT stamp FROM rec_cache').get().stamp, stamp, 'the cache row is not overwritten');
+    assert.match(api.body.recommender, /^screen-v\d+\|/);
+    assert.deepEqual(api.body.items.map(i => i.stage_id), shown);
+    assert.equal(api.body.n_rated, 2);
+    assert.deepEqual(api.body.items[0].reasons[0], {role: '出演', person: '俳優甲', n: 1});
+    assert.ok(api.body.items[0].title);
+    // An answer on the screen reaches it at once.
+    assert.equal((await step(env, a, {post: '/api/react', body: {stage_id: shown[0], value: 'nointerest', nofill: true}})).status, 200);
+    assert.ok(!(await step(env, a, {get: '/api/recommend'})).body.items.some(i => i.stage_id === shown[0]));
+    // The migration-era store (/api/record, records) is not an input of the recommendations any more.
+    const before = (await step(env, a, {get: '/api/recommend'})).body.items.map(i => i.stage_id);
+    assert.equal((await step(env, a, {post: '/migration-api/record', body: {id: 'm1', title: 't', date: '2026-08-01', rating: '◎', stage_id: '104'}})).status, 200);
+    assert.deepEqual((await step(env, a, {get: '/api/recommend'})).body.items.map(i => i.stage_id), before);
+  } finally { sqlite.close(); }
+});
+
 // #112: the time a rating was made is kept apart from later edits of the 感想.
 test('editing only the 感想 keeps the time the rating was made; a new rating or 詳細 moves it', async () => {
   const {env, sqlite} = await withIndex();

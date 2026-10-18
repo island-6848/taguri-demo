@@ -8,7 +8,8 @@
 // cannot reach the catalogue. The index SQL is loaded into an in-memory SQLite
 // with every migration; made-up users with 0 to 300 rated stages (stages drawn
 // from the index, at random, fixed seed) and a few favourites then get their
-// recommendations computed exactly as the Worker does (recommendFor, cache off).
+// recommendations computed exactly as the Worker does (recommendFor = the 今週のおすすめ
+// ranking, screens/recommend.rankedGroups; a new user each time, so never from the cache).
 //
 // What it reports per history size: the JavaScript CPU time with the time spent
 // inside SQLite taken out (on Workers, waiting for D1 is not CPU time), the
@@ -67,9 +68,12 @@ for (const n of [SIZES[SIZES.length - 1], ...SIZES]) {
   for (let k = 0; k < (warm ? 1 : REPEAT); k++) {
     const uid = `measure-${warm ? 'w' : n}-${k}`;
     sqlite.prepare('INSERT INTO users(id,recovery_hash,created_at) VALUES(?,?,0)').run(uid, uid);
-    const ins = sqlite.prepare('INSERT INTO records(user_id,id,title,date,rating,stage_id,updated_at) VALUES(?,?,?,?,?,?,?)');
-    for (let i = 0; i < n; i++)
-      ins.run(uid, `r${i}`, 't', '2025-01-01', `${1 + Math.floor(rand() * 5)}/5`, stages[Math.floor(rand() * stages.length)], i);
+    // The service's own records (works): GET /api/recommend answers with the 今週のおすすめ ranking (#119).
+    const ins = sqlite.prepare('INSERT INTO works(user_id,work_key,title,first_date,last_date,times,verdict,stage_id,updated_at,rated_at) VALUES(?,?,?,?,?,1,?,?,?,?)');
+    for (let i = 0; i < n; i++) {
+      const at = `2025-01-01 00:${String(Math.floor(i / 60) % 60).padStart(2, '0')}:${String(i % 60).padStart(2, '0')}`;
+      ins.run(uid, `r${i}`, 't', '2025-01-01', '2025-01-01', `${1 + Math.floor(rand() * 5)}/5`, stages[Math.floor(rand() * stages.length)], at, at);
+    }
     const fav = sqlite.prepare('INSERT OR IGNORE INTO favourites(user_id,name,kind) VALUES(?,?,?)');
     if (persons.length) fav.run(uid, persons[Math.floor(rand() * persons.length)], '人');
     if (groups.length) fav.run(uid, groups[Math.floor(rand() * groups.length)], '団体');
@@ -78,6 +82,7 @@ for (const n of [SIZES[SIZES.length - 1], ...SIZES]) {
     const body = await recommendFor(db, uid, today);
     const c = cpuUsage(c0), cpuMs = (c.user + c.system) / 1000;
     runs.push({cpu: cpuMs, sql: meter.sqlMs, js: Math.max(0, cpuMs - meter.sqlMs), rows: meter.rows, items: body.items.length, seeds: body.n_seeds});
+    if (!body.ready) { console.error('索引が読めない'); process.exit(2); }
   }
   if (warm) { out.warmed = true; continue; }
   const js = median(runs.map(r => r.js));

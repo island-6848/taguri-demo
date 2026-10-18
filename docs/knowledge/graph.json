@@ -2436,6 +2436,23 @@
    "verifies": []
   },
   {
+   "id": "fix-api-recommend-delegates",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "GET /api/recommend（/migration-api/recommend）は「今週のおすすめ」の画面と同じ計算・同じ控え（screens/recommend.rankedGroups）の全国上位 15 件をデータで返す。移行用の表（records・reactions）からの別の計算はやめた（#119）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/119",
+    "cloudflare/src/worker.js",
+    "cloudflare/src/screens/recommend.js",
+    "cloudflare/public/migration-data/recommend.js",
+    "cloudflare/scripts/measure_worker.mjs",
+    "cloudflare/test/recommend-screen.test.js",
+    "cloudflare/test/recommend.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "fix-card-synopsis-stale",
    "type": "finding",
    "status": "unverified",
@@ -5248,6 +5265,19 @@
    "date": "2026-10-13",
    "title": "その人の記録だけで、計算方式の良し悪しをどう確かめるか（振り返りでの検証）",
    "sources": [],
+   "verifies": []
+  },
+  {
+   "id": "q-reco-screen-cpu-20-ratings",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-18",
+   "title": "今週のおすすめの計算（rankedGroups）を、試験の小さな索引で measure_worker.mjs に通すと、評価 20 件以上で JS の CPU の中央値が 10 ミリ秒を越えた。本物の索引・本物の Worker でどうか",
+   "sources": [
+    "cloudflare/scripts/measure_worker.mjs",
+    "cloudflare/src/screens/recommend.js",
+    "cloudflare/src/reco-gate.js"
+   ],
    "verifies": []
   },
   {
@@ -8128,6 +8158,16 @@
    "to": "q-firebase-key-restriction"
   },
   {
+   "from": "fix-api-recommend-delegates",
+   "rel": "affects",
+   "to": "dec-reco-on-worker"
+  },
+  {
+   "from": "fix-api-recommend-delegates",
+   "rel": "raises",
+   "to": "q-reco-screen-cpu-20-ratings"
+  },
+  {
    "from": "fix-card-synopsis-stale",
    "rel": "depends_on",
    "to": "dec-synopsis-reader-claude"
@@ -9976,6 +10016,16 @@
    "from": "q-reco-personal-backtest",
    "rel": "affects",
    "to": "comp-recommender"
+  },
+  {
+   "from": "q-reco-screen-cpu-20-ratings",
+   "rel": "depends_on",
+   "to": "workers-free-cpu-10ms"
+  },
+  {
+   "from": "q-reco-screen-cpu-20-ratings",
+   "rel": "affects",
+   "to": "fix-api-recommend-delegates"
   },
   {
    "from": "q-reminder-region-split",

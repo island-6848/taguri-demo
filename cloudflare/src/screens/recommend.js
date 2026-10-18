@@ -466,6 +466,41 @@ export function withTour(card, {html, perVenuePrice}) {
   return out;
 }
 
+/**
+ * GET /api/recommend（#119）: 今週のおすすめの画面と同じ計算・同じ控え（rankedGroups）を、データとして返す。
+ * 前は旧い移行用の表（records・reactions）から別の計算（person-ordinal-v3+fav3+asp1+tour1+why1）をしていて、
+ * 画面で付けた評価・興味ありが届かず、同じ rec_cache の行を画面と取り合って毎回計算し直させていた。
+ * 都道府県では絞らない（全国の上位 TOP 件）。表示に使う列は rec_stage から、出す分（最大 TOP 件の会場）だけ読む。
+ */
+export async function recommendApi(ctx, top = TOP) {
+  const data = await rankedGroups(ctx);
+  if (!data.ready) return {ready: false, items: []};
+  const {rows} = filtered(data.groups, [], top);
+  const ids = [...new Set(rows.flatMap(g => [g.stage_id, ...(g.venues || []).map(v => v.stage_id)]).map(String))];
+  const entries = new Map();
+  for (const part of chunks(ids, 90)) {
+    const {results} = await ctx.db.prepare(`SELECT stage_id,title,grp,start,end,entry FROM rec_stage WHERE ver=? AND stage_id IN (${part.map(() => '?').join(',')})`).bind(data.ver, ...part).all();
+    for (const r of results) entries.set(String(r.stage_id), r);
+  }
+  const venue = id => {
+    const e = entries.get(String(id)) || {};
+    let entry = {};
+    try { entry = JSON.parse(e.entry || '{}') || {}; } catch { /* no entry */ }
+    return {stage_id: String(id), start: e.start || '', end: e.end || '', theater: entry.theater || '', pref: entry.pref || '', url: entry.url || ''};
+  };
+  const diag = data.diag || {};
+  return {ready: true, recommender: `${VERSION}|${data.ver}`, cached: Boolean(data.cached), n_rated: diag.rated || 0, n_linked: diag.rated_linked || 0,
+    n_seeds: (diag.favourite_seeds || 0) + (diag.interest_with_people || 0), n_scored: data.n_scored || 0,
+    items: rows.map(g => {
+      const e = entries.get(String(g.stage_id)) || {};
+      // 理由は画面と同じ（reasonRows）: 人を先に、空きを種類で埋めて 3 つまで。使わなくなった種類は出さない
+      const reasons = [...g.parts.slice(0, 3), ...g.kinds.filter(k => !droppedKind(k[1], k[2]))].slice(0, 3);
+      return {...venue(g.stage_id), title: e.title || '', group: e.grp || '', score: g.b,
+        reasons: reasons.map(([, role, person, n]) => ({role, person, n})),
+        tours: (g.venues || []).filter(v => String(v.stage_id) !== String(g.stage_id)).map(v => venue(v.stage_id))};
+    })};
+}
+
 /** app.unrated_ends: the dates unrated works ended (no titles), for the nudge in app.js. */
 async function unratedEnds(ctx) {
   return (await loadWorks(ctx)).filter(w => !w.verdict && !w.unseen && w.last_date && w.last_date <= ctx.today)
