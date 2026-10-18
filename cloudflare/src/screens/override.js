@@ -70,9 +70,12 @@ export async function fillCatalogueSynopsis(db, html, overrides = new Map()) {
   const want = [...html].filter(([sid, h]) => !/<p class="txt">/.test(h) && !(typeof overrides.get(sid)?.synopsis === 'string')).map(([sid]) => sid);
   for (let i = 0; i < want.length; i += 90) {
     const part = want.slice(i, i + 90);
-    const {results} = await db.prepare(`SELECT id,metadata FROM catalogue WHERE id IN (${part.map(() => '?').join(',')})`).bind(...part).all();
+    // metadata は出演欄なども入っていて大きいので、Worker で JSON を解かない（無料枠の CPU 10ms）。
+    // あらすじだけを D1 の json_extract で取り出し、あらすじのある行だけを受け取る
+    const {results} = await db.prepare(`SELECT id, json_extract(metadata,'$.synopsis') AS syn FROM catalogue
+      WHERE id IN (${part.map(() => '?').join(',')}) AND json_valid(metadata) AND json_extract(metadata,'$.synopsis')<>''`).bind(...part).all();
     for (const r of results) {
-      const syn = String(parseJson(r.metadata, {})?.synopsis || '').trim();
+      const syn = String(r.syn || '').trim();
       const sid = String(r.id);
       if (!syn || !html.has(sid)) continue;
       const card = html.get(sid), span = synSpan(card, sid);
