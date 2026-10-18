@@ -10,6 +10,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 SCRIPT = HERE.parent / 'scripts' / 'deliver_past.py'
 MIGRATION = HERE.parent / 'migrations' / '0012.sql'
+SYNOPSIS = HERE.parent / 'migrations' / '0036.sql'
 
 ROWS = [
     {"stage_id": "30", "title": "夜の果て", "start": "2024-03-01", "end": "2024-03-10", "theater": "本多劇場",
@@ -34,6 +35,7 @@ class DeliverPastTest(unittest.TestCase):
             con = sqlite3.connect(d / 'd1.db')
             con.executescript('CREATE TABLE works(user_id TEXT, work_key TEXT, title TEXT, first_date TEXT, stage_id TEXT);')
             con.executescript(MIGRATION.read_text(encoding='utf-8'))
+            con.executescript(SYNOPSIS.read_text(encoding='utf-8'))
             first = run('build', '--data', t, '--out', str(d / 'out'), '--budget', '3')   # one row: the row, its key index and the tkey index
             self.assertEqual((first['rows'], first['left']), (1, 1))
             con.executescript((d / 'out' / 'past-upload.sql').read_text(encoding='utf-8'))
@@ -65,6 +67,7 @@ class DeliverPastTest(unittest.TestCase):
             con = sqlite3.connect(d / 'd1.db')
             con.executescript('CREATE TABLE works(user_id TEXT, work_key TEXT, title TEXT, first_date TEXT, stage_id TEXT);')
             con.executescript(MIGRATION.read_text(encoding='utf-8'))
+            con.executescript(SYNOPSIS.read_text(encoding='utf-8'))
             for r in rows:
                 con.execute("INSERT INTO past_stage(stage_id,title,tkey,people) VALUES(?,?,?,'[]')", (r["stage_id"], r["title"], r["title"]))
             first = run('build', '--data', t, '--out', str(d / 'out'), '--budget', '4')     # 2 行分の UPDATE（1 行 2 と見る）
@@ -93,6 +96,7 @@ class DeliverPastTest(unittest.TestCase):
             con = sqlite3.connect(d / 'd1.db')
             con.executescript('CREATE TABLE works(user_id TEXT, work_key TEXT, title TEXT, first_date TEXT, stage_id TEXT);')
             con.executescript(MIGRATION.read_text(encoding='utf-8'))
+            con.executescript(SYNOPSIS.read_text(encoding='utf-8'))
             run('build', '--data', t, '--out', str(d / 'out'))
             con.executescript((d / 'out' / 'past-upload.sql').read_text(encoding='utf-8'))
             run('commit', '--data', t, '--out', str(d / 'out'))
@@ -108,6 +112,9 @@ class DeliverPastTest(unittest.TestCase):
             people = json.loads(con.execute("SELECT people FROM past_stage WHERE stage_id='30'").fetchone()[0])
             self.assertIn(['#題材', '家族'], people)
             self.assertIn(['出演', '山田太郎'], people)
+            # 日記帳に出すあらすじも入る（migrations/0036）
+            self.assertEqual(con.execute("SELECT synopsis FROM past_stage WHERE stage_id='30'").fetchone()[0], '家族の話')
+            self.assertEqual(con.execute("SELECT synopsis FROM past_stage WHERE stage_id='20'").fetchone()[0], '')
 
 
 class StatementSizeTest(unittest.TestCase):

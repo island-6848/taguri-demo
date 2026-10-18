@@ -63,7 +63,8 @@ export async function rowInfos(ctx, ws, people = {}) {
     const sid = String(w.stage_id || '');
     const s = info.get(sid) || {}, p = past[sid] || {};
     const credits = creditRows(people[w.work_key] || [], s.fields || {});
-    const synopsis = String(s.synopsis || cards.get(sid) || '').trim();
+    // 過去の公演は、あらすじの読み取りで取れたもの（past_stage.synopsis、migrations/0036）
+    const synopsis = String(s.synopsis || cards.get(sid) || p.synopsis || '').trim();
     const venue = s.venue ? s.venue + (s.pref ? `（${s.pref}）` : '') : p.venue ? p.venue + (p.pref ? `（${p.pref}）` : '') : '';
     if (!sid && !credits.length) continue;
     // 公式サイト（公演の欄の URL）。無ければ公演の情報を取ったページ（stage.corich.jp。stage_id はその番号）

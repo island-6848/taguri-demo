@@ -56,20 +56,31 @@ def people_of(fields: dict) -> list:
     return [list(c) for c in sorted(set(M.parse_credits(fields or {})))]
 
 
+def _reading_rows(data: Path) -> list[dict]:
+    path = data / THEMES
+    if not path.exists():
+        return []
+    return [json.loads(line) for line in path.read_text(encoding="utf-8").split("\n") if line.strip()]
+
+
 def load_themes(data: Path) -> dict[str, list[str]]:
     """公演ごとの題材の言葉（あらすじの読み取りの行。過去の公演として読んだ分も、これからの公演だったときに読んだ分も）。"""
     out: dict[str, list[str]] = {}
-    path = data / THEMES
-    if not path.exists():
-        return out
-    for line in path.read_text(encoding="utf-8").split("\n"):
-        if line.strip():
-            row = json.loads(line)
-            if row.get("side") in ("past", "candidate") and row.get("id"):
-                words = theme_words(row)
-                if words or str(row["id"]) not in out:
-                    out[str(row["id"])] = words
+    for row in _reading_rows(data):
+        if row.get("side") in ("past", "candidate") and row.get("id"):
+            words = theme_words(row)
+            if words or str(row["id"]) not in out:
+                out[str(row["id"])] = words
     return {k: v for k, v in out.items() if v}
+
+
+def load_synopses(data: Path) -> dict[str, str]:
+    """公演ごとのあらすじ（本文に実在するかの検査を通ったもの。日記帳に出す）。"""
+    out: dict[str, str] = {}
+    for row in _reading_rows(data):
+        if row.get("side") in ("past", "candidate") and row.get("id") and str(row.get("synopsis") or "").strip():
+            out[str(row["id"])] = str(row["synopsis"]).strip()
+    return out
 
 
 def people_and_tags(r: dict, themes: dict[str, list[str]] | None = None) -> list:
@@ -82,18 +93,23 @@ def people_and_tags(r: dict, themes: dict[str, list[str]] | None = None) -> list
     return [list(c) for c in sorted(set(credits) | set(tags))]
 
 
-def row_values(r: dict, themes: dict[str, list[str]] | None = None) -> tuple:
+COLUMNS = "stage_id,title,tkey,start,end,venue,grp,pref,people,synopsis"
+
+
+def row_values(r: dict, themes: dict[str, list[str]] | None = None, synopses: dict[str, str] | None = None) -> tuple:
     return (str(r["stage_id"]), r.get("title") or "", M.R.title_key(r.get("title") or ""),
             r.get("start") or "", r.get("end") or "", r.get("theater") or "",
             r.get("group") or "", r.get("pref") or "",
-            json.dumps(people_and_tags(r, themes), ensure_ascii=False, sort_keys=True))
+            json.dumps(people_and_tags(r, themes), ensure_ascii=False, sort_keys=True),
+            (synopses or {}).get(str(r["stage_id"]), ""))
 
 
-def _people_updates(rows: list[tuple[str, str]]) -> list[str]:
-    """送り直し: people の列だけを書き換える（索引の付いた列は変えないので、1 行の書き込みで済む）。"""
-    tail = ") UPDATE past_stage SET people=(SELECT p FROM v WHERE v.id=past_stage.stage_id) WHERE stage_id IN (SELECT id FROM v);"
-    stmts = _inserts("v", "id,p", rows)
-    return ["WITH v(id,p) AS (VALUES" + x[len("INSERT INTO v(id,p) VALUES"):-1] + tail for x in stmts]
+def _people_updates(rows: list[tuple[str, str, str]]) -> list[str]:
+    """送り直し: people とあらすじの列だけを書き換える（索引の付いた列は変えないので、1 行の書き込みで済む）。"""
+    tail = (") UPDATE past_stage SET people=(SELECT p FROM v WHERE v.id=past_stage.stage_id), "
+            "synopsis=(SELECT s FROM v WHERE v.id=past_stage.stage_id) WHERE stage_id IN (SELECT id FROM v);")
+    stmts = _inserts("v", "id,p,s", rows)
+    return ["WITH v(id,p,s) AS (VALUES" + x[len("INSERT INTO v(id,p,s) VALUES"):-1] + tail for x in stmts]
 
 
 def build(data: Path, out: Path, budget: int) -> dict:
@@ -108,7 +124,8 @@ def build(data: Path, out: Path, budget: int) -> dict:
     # 改行は "\n" だけで区切る（splitlines は題名の中の U+2028 などでも切ってしまう）
     text = (data / ROWS).read_text(encoding="utf-8") if (data / ROWS).exists() else ""
     lines = [line for line in text.split("\n") if line.strip()]
-    themes = load_themes(data)
+    themes, synopses = load_themes(data), load_synopses(data)
+    read = set(themes) | set(synopses)                # 題材かあらすじが読めた公演
     # 題材を送った公演（あらすじはあとから読むので、送り済みの行にも、読めたものから UPDATE で足す）
     sent = set(prev.get("themes_sent") or [])
     redo = lines[refreshed:min(refresh_to, refreshed + max(0, budget // WRITES_PER_UPDATE))]
@@ -116,8 +133,8 @@ def build(data: Path, out: Path, budget: int) -> dict:
     for line in redo:
         r = json.loads(line)
         if r.get("stage_id") and r.get("title"):
-            updates.append((str(r["stage_id"]), row_values(r, themes)[-1]))
-            if str(r["stage_id"]) in themes:
+            updates.append((str(r["stage_id"]), *row_values(r, themes, synopses)[-2:]))
+            if str(r["stage_id"]) in read:
                 sent.add(str(r["stage_id"]))
     budget -= WRITES_PER_UPDATE * len(updates)
     # 送り直しが済んだ範囲（refreshed より前と、前から送り済みの rev 2 の行）で、新しく題材が読めた公演
@@ -128,10 +145,10 @@ def build(data: Path, out: Path, budget: int) -> dict:
         if refresh_to and fresh_from <= idx < refresh_to:
             continue                                # まだ送り直していない行は、送り直しのときに題材も入る
         sid = str(json.loads(line).get("stage_id") or "")
-        if sid in themes and sid not in sent:
+        if sid in read and sid not in sent:
             r = json.loads(line)
             if r.get("title"):
-                updates.append((sid, row_values(r, themes)[-1]))
+                updates.append((sid, *row_values(r, themes, synopses)[-2:]))
                 sent.add(sid)
                 budget -= WRITES_PER_UPDATE
     take = max(0, budget // WRITES_PER_ROW)
@@ -140,14 +157,14 @@ def build(data: Path, out: Path, budget: int) -> dict:
     for line in new:
         r = json.loads(line)
         if r.get("stage_id") and r.get("title"):
-            rows.append(row_values(r, themes))
-            if str(r["stage_id"]) in themes:
+            rows.append(row_values(r, themes, synopses))
+            if str(r["stage_id"]) in read:
                 sent.add(str(r["stage_id"]))
     if out.exists():
         shutil.rmtree(out)
     out.mkdir(parents=True)
     stmts = _people_updates(updates) + [s.replace("INSERT INTO", "INSERT OR REPLACE INTO", 1) for s in
-                                        _inserts("past_stage", "stage_id,title,tkey,start,end,venue,grp,pref,people", rows)]
+                                        _inserts("past_stage", COLUMNS, rows)]
     if stmts:
         (out / "past-upload.sql").write_text("\n".join(stmts) + "\n", encoding="utf-8")
     (out / "pending.json").write_text(json.dumps({"lines": done + len(new), "rev": PEOPLE_REV,
