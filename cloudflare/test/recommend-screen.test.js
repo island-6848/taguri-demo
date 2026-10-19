@@ -56,7 +56,7 @@ test('a ◎ on a stage recommends the coming stage of the same people, with the 
     assert.match(html, /おすすめの選び方/);
     assert.match(html, /表示の絞り込み/);
     assert.match(html, /<span class="sn">No\.01<\/span>/);
-    assert.match(html, /<li class="rs b"><span class="net">人物<\/span>出演 <b>俳優甲<\/b><span class="n">（『終わった舞台』）<\/span>/);
+    assert.match(html, /<li class="rs b"><span class="net">人物<\/span>出演 <a class="rsl"[^>]*><b>俳優甲<\/b><\/a><span class="n">（『終わった舞台』）<\/span>/);
     assert.doesNotMatch(html, /<!--(rank|why|poster)-->/);
     assert.match(html, /<button data-v="interest">興味あり<\/button>/);
     // The other user sees none of it.
@@ -172,7 +172,7 @@ test('興味あり alone, on a stage only the catalogue has, recommends the same
     assert.equal((await step(env, a, {post: '/api/react', body: {stage_id: '779', value: 'interest', nofill: true}})).status, 200);
     const html = (await step(env, a, {get: '/api/screen/recommend'})).body.body_html;
     assert.match(html, /<article class="ticket recommend" data-stage="101"/);
-    assert.match(html, /出演 <b>俳優甲<\/b><span class="n">（『気になる新作』）<\/span>/);
+    assert.match(html, /出演 <a class="rsl"[^>]*><b>俳優甲<\/b><\/a><span class="n">（『気になる新作』）<\/span>/);
     // diag: what fed the recommendations (the JSON only, for checking production).
     const diag = (await step(env, a, {get: '/api/screen/recommend'})).body.diag;
     assert.deepEqual({i: diag.interest, p: diag.interest_with_people, r: diag.rated}, {i: 1, p: 1, r: 0});
@@ -336,9 +336,9 @@ test('a reason names only the newest and the oldest work', async () => {
   const {reasonRows} = await import('../src/screens/recommend.js');
   const titles = new Map([['出演\t甲', ['新', '中', '古']], ['演出\t乙', ['一つ']], ['脚本\t丙', ['二', '一']]]);
   const html = reasonRows({parts: [[0.5, '出演', '甲', 3], [0.4, '演出', '乙', 1], [0.3, '脚本', '丙', 2]], kinds: []}, titles);
-  assert.match(html, /出演 <b>甲<\/b><span class="n">（『新』・『古』 ほか 1 本）<\/span>/);
-  assert.match(html, /演出 <b>乙<\/b><span class="n">（『一つ』）<\/span>/);
-  assert.match(html, /脚本 <b>丙<\/b><span class="n">（『二』・『一』）<\/span>/);
+  assert.match(html, /出演 <a class="rsl"[^>]*><b>甲<\/b><\/a><span class="n">（『新』・『古』 ほか 1 本）<\/span>/);
+  assert.match(html, /演出 <a class="rsl"[^>]*><b>乙<\/b><\/a><span class="n">（『一つ』）<\/span>/);
+  assert.match(html, /脚本 <a class="rsl"[^>]*><b>丙<\/b><\/a><span class="n">（『二』・『一』）<\/span>/);
   assert.doesNotMatch(html, /『中』/);
 });
 
@@ -357,9 +357,9 @@ test('a co-worker of a favourite is named with the favourite\'s work', async () 
     // 前は「（『舞台ふたつめ』）」だけで、だれのお気に入りから来たのか分からなかった）
     // 起案者の指示 2026-10-18「『お気に入りの横山拓也と同じ公演に関わる人：『雉はじめて鳴く』』→『横山拓也 演出『雉はじめて鳴く』出演』」で
     // 理由の形が変わったので、期待を「登録した名前 その作品での役職『作品名』この人のその作品での役職」に直した（fix-fav-reason-roles）
-    assert.match(html, /出演 <b>俳優乙<\/b><span class="n">（作家丁 脚本『舞台ふたつめ』出演）<\/span>/);
+    assert.match(html, /出演 <a class="rsl"[^>]*><b>俳優乙<\/b><\/a><span class="n">（作家丁 脚本『舞台ふたつめ』出演）<\/span>/);
     // 種類の理由も、新しい公演（初日 10/01）→ 古い公演（観た日 08/05）の順
-    assert.match(html, /<span class="net">形式<\/span>原作 <b>オリジナル<\/b><span class="n">（『舞台ふたつめ』・『終わった舞台』）<\/span>/);
+    assert.match(html, /<span class="net">形式<\/span>原作 <a class="rsl"[^>]*><b>オリジナル<\/b><\/a><span class="n">（『舞台ふたつめ』・『終わった舞台』）<\/span>/);
     assert.doesNotMatch(html, /お気に入り・興味ありの公演から/);
   } finally { sqlite.close(); }
 });
@@ -371,7 +371,7 @@ test('興味あり pressed on おすすめ keeps the reasons it was shown with, 
   try {
     await rateSeen(env, a, '終わった舞台', '2026-08-05', '103', '◎');
     await rateSeen(env, a, '一日だけの舞台', '2026-09-05', '104', '×');
-    const reason = /<li class="rs b"><span class="net">人物<\/span>出演 <b>俳優甲<\/b><span class="n">（『終わった舞台』）<\/span>/;
+    const reason = /<li class="rs b"><span class="net">人物<\/span>出演 <a class="rsl"[^>]*><b>俳優甲<\/b><\/a><span class="n">（『終わった舞台』）<\/span>/;
     assert.match((await step(env, a, {get: '/api/screen/recommend'})).body.body_html, reason);
     assert.equal((await step(env, a, {post: '/api/react', body: {stage_id: '101', value: 'interest', nofill: true, siblings: []}})).status, 200);
     assert.match(sqlite.prepare("SELECT why FROM reaction WHERE stage_id='101'").get().why, /俳優甲/);

@@ -1,7 +1,7 @@
 ---
 id: dec-entity-pages-later
 type: decision
-status: adopted
+status: superseded
 date: 2026-10-19
 title: おすすめ理由の太字のリンク（人物・形式のページ）は先送りにして、いったん元に戻す
 sources:

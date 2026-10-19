@@ -338,7 +338,8 @@ export function reasonRows(group, titles, own = '') {
     const k = role + '\t' + person, w = via.get(k), f = fav.get(k);
     const why = w ? `（好きな${E(w)}と同じ公演に関わる人）` : f ? favText(f[0], f[1], f[2], own) : worksText(titles.get(k), n);
     if (!why) continue;
-    out.push(`<li class="rs b"><span class="net">人物</span>${E(role)} <b>${E(person)}</b>`
+    // 太字の名前は、その人の画面へ（起案者の指示 2026-10-19「おすすめ理由になってる項目の黒太字押したら、各個別ページに飛ぶように」）
+    out.push(`<li class="rs b"><span class="net">人物</span>${E(role)} <a class="rsl" href="/recommend/person?t=__TAGURI_TOKEN__&amp;n=${encodeURIComponent(person)}&amp;r=${encodeURIComponent(role)}"><b>${E(person)}</b></a>`
       + `<span class="n">${why}</span>`
       + `<button class="rsx" data-word="${E(person)}" title="この人物を理由に出さない">✕</button></li>`);
   }
@@ -350,7 +351,7 @@ export function reasonRows(group, titles, own = '') {
     const label = label0 && tag.endsWith(label0) ? '' : label0;
     // 札の表示は「形式」（起案者の指示 2026-10-18「『種類』ってよりは形式？って表現近いと思う」。人物・形式でそろえる）。
     // 札と同じ見出し（#形式）は重ねて書かない（「形式 形式 ミュージカル」にしない）
-    out.push(`<li class="rs c k"><span class="net">形式</span>${label && label !== '形式' ? E(label) + ' ' : ''}<b>${E(tag)}</b>`
+    out.push(`<li class="rs c k"><span class="net">形式</span>${label && label !== '形式' ? E(label) + ' ' : ''}<a class="rsl" href="/recommend/kind?t=__TAGURI_TOKEN__&amp;a=${encodeURIComponent(axis)}&amp;w=${encodeURIComponent(tag)}"><b>${E(tag)}</b></a>`
       + `<span class="n">${why}</span>`
       + `<button class="rsx" data-kindoff="${E(axis + '\t' + tag)}" title="この理由をおすすめに使わない（公演は消さない）">✕</button></li>`);
   }

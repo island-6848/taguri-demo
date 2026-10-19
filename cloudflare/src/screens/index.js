@@ -18,6 +18,7 @@ import {calendarScreens} from './calendar.js';
 import {settingsScreens} from './settings.js';
 import {searchScreens} from './search.js';
 import {taggedScreens} from './tagged.js';
+import {entityScreens} from './entity.js';
 import {recordScreens} from './records.js';
 import {importScreens} from './import.js';
 import {ValueError} from './py.js';
@@ -30,7 +31,7 @@ export const SCREEN_TABLES = ['works', 'excluded', 'merges', 'hand_credits', 'vi
 // public service never checks it; screens only carry it in links.
 export const TOKEN = 'cfw0000000000000000000000000000000';
 
-const SCREENS = {...tickerScreens.screens, ...rateScreens.screens, ...diaryScreens.screens, ...accountScreens.screens, ...recommendScreens.screens, ...listScreens.screens, ...reminderScreens.screens, ...calendarScreens.screens, ...settingsScreens.screens, ...searchScreens.screens, ...taggedScreens.screens, ...recordScreens.screens};
+const SCREENS = {...tickerScreens.screens, ...rateScreens.screens, ...diaryScreens.screens, ...accountScreens.screens, ...recommendScreens.screens, ...listScreens.screens, ...reminderScreens.screens, ...calendarScreens.screens, ...settingsScreens.screens, ...searchScreens.screens, ...taggedScreens.screens, ...entityScreens.screens, ...recordScreens.screens};
 const ACTIONS = {...rateScreens.actions, ...diaryScreens.actions, ...accountScreens.actions, ...recommendScreens.actions, ...listScreens.actions, ...settingsScreens.actions, ...searchScreens.actions, ...importScreens.actions, ...fixRequestScreens.actions, agree: agreeAction};
 
 const enabled = (env, kind, name) => {
@@ -51,7 +52,7 @@ const withToken = obj => JSON.parse(JSON.stringify(obj).replaceAll('__TAGURI_TOK
 // デモ用の内容がでる。最初ログイン（会員登録）したらデータは空なはず」で、移し終える前に切り替えた。
 const MOVING_TITLES = {recommend: '今週のあなたへのおすすめ', reminder: '開幕リマインド', register: '観劇記録を追加',
   interest: '興味あり', favourites: 'お気に入り', calendar: '公演カレンダー', tickets: '購入済の公演',
-  records: '眺める', trace: 'たどる', chronicle: '観劇史年表', start: 'はじめる', settings: '設定', search: '探す', tagged: '題材の公演'};
+  records: '眺める', trace: 'たどる', chronicle: '観劇史年表', start: 'はじめる', settings: '設定', search: '探す', tagged: '題材の公演', person: '人物', kind: '形式'};
 export function movingScreen(name) {
   const title = MOVING_TITLES[name] || 'この画面';
   const settings = name === 'settings'

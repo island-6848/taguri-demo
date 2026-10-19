@@ -1164,9 +1164,21 @@
    ]
   },
   {
-   "id": "dec-entity-pages-later",
+   "id": "dec-entity-pages-keep",
    "type": "decision",
    "status": "adopted",
+   "date": "2026-10-19",
+   "title": "おすすめ理由の太字のリンク（人物・形式のページ）は、作った形のまま残す",
+   "sources": [
+    "cloudflare/src/screens/entity.js",
+    "cloudflare/src/screens/recommend.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-entity-pages-later",
+   "type": "decision",
+   "status": "superseded",
    "date": "2026-10-19",
    "title": "おすすめ理由の太字のリンク（人物・形式のページ）は先送りにして、いったん元に戻す",
    "sources": [
@@ -8912,6 +8924,21 @@
    "to": "comp-frontend"
   },
   {
+   "from": "dec-entity-pages-keep",
+   "rel": "supersedes",
+   "to": "dec-entity-pages-later"
+  },
+  {
+   "from": "dec-entity-pages-keep",
+   "rel": "depends_on",
+   "to": "dec-entity-pages"
+  },
+  {
+   "from": "dec-entity-pages-keep",
+   "rel": "affects",
+   "to": "comp-cf-worker"
+  },
+  {
    "from": "dec-entity-pages-later",
    "rel": "supersedes",
    "to": "dec-entity-pages"
@@ -12479,7 +12506,7 @@
   {
    "from": "q-entity-pages-next",
    "rel": "depends_on",
-   "to": "dec-entity-pages-later"
+   "to": "dec-entity-pages-keep"
   },
   {
    "from": "q-fav-reco-running-shows",
