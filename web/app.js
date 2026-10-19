@@ -431,7 +431,9 @@ function dismissButton(t) {
   if (here === "/tickets") return;
   const box = document.createElement("div");
   box.className = "dismissq";
-  box.innerHTML = '<button type="button" class="dismissq-open" aria-label="この公演を候補から消す" title="この公演を候補から消す">' + DISMISS_ICON + "</button>";
+  const label = here === "/recommend/interest" ? "この公演を一覧から外し、今後のおすすめを減らす"
+    : "この公演を候補に表示しない（好みには反映しません）";
+  box.innerHTML = '<button type="button" class="dismissq-open" aria-label="' + E(label) + '" title="' + E(label) + '">' + DISMISS_ICON + "</button>";
   t.appendChild(box);
 }
 function openFixPopup(t) {
@@ -1058,6 +1060,8 @@ function priceFilter(el) {
       + '<button type="button" class="yclear">料金の上限を外す</button>';
     const tab = el.querySelector('.ftab[data-for="ybox"] .fv');
     if (tab) tab.textContent = yenStepLabel(max);
+    const budget = el.querySelector(".rec-controls .rec-budget");
+    if (budget) budget.textContent = max ? "／料金 " + label : "";
     try { localStorage.setItem(YEN_KEY, String(max)); } catch (e) { /* 覚えられなくても絞り込みは効く */ }
   };
   sl.addEventListener("input", apply);
@@ -1066,7 +1070,8 @@ function priceFilter(el) {
     sl.value = String(YEN_STEPS.length - 1);   // いちばん右が「上限なし」
     apply();
     // 押した押し口は消えるので、焦点は料金の札（無ければ箱の見出し）へ移す
-    const to = el.querySelector('.ftab[data-for="ybox"]') || box.querySelector("summary");
+    const to = el.querySelector('.rec-controls:not([open]) > summary')
+      || el.querySelector('.ftab[data-for="ybox"]') || box.querySelector("summary");
     if (to) to.focus({preventScroll: true});
   });
   apply();
@@ -1338,6 +1343,9 @@ function compactTickets(root) {
     const main = t.querySelector(".main");
     if (!main) return;
     t.classList.add("cmp");
+    t.querySelectorAll('button[data-v="nointerest"]').forEach(b => {
+      b.title = "好みではないとして、今後のおすすめに反映します";
+    });
     // おすすめの画面の一覧のカード: 折りたたみを付けず、料金の明細・出演の全員・あらすじの 100 字ほどを出す
     // （起案者の指示 2026-10-17。あらすじの続きだけ畳む）
     const noMore = (recPage && t.classList.contains("recommend") && !t.closest(".rfind"))
@@ -1684,6 +1692,42 @@ function pagePrefs() {
   return usp.has("f") ? {prefs: usp.getAll("pref")} : {};
 }
 
+// 回答済みカードは残し、題名と保存できた回答に縮める。展開すると元のカードで回答・理由を直せる。
+// 保存に成功してから呼ぶ。理由の欄を DOM から外さないので、入力途中の文も残る。
+function compactAnswered(t, value) {
+  let summary = t.querySelector(":scope > .answered-summary");
+  if (!summary) {
+    summary = document.createElement("div");
+    summary.className = "answered-summary";
+    const title = t.querySelector("h3")?.textContent.trim() || "この公演";
+    summary.innerHTML = '<span class="answered-title">' + E(title) + '</span>'
+      + '<span class="answered-value" role="status"></span>'
+      + '<button type="button" data-answer-expand="1" aria-expanded="false">回答を直す</button>';
+    t.prepend(summary);
+  }
+  summary.querySelector(".answered-value").textContent = {interest: "興味あり", nointerest: "興味なし", owned: "購入済"}[value] || value;
+  const focused = t.contains(document.activeElement);
+  t.classList.add("answered-compact");
+  t.classList.remove("answer-editing");
+  const b = summary.querySelector("button");
+  b.textContent = "回答を直す";
+  b.setAttribute("aria-expanded", "false");
+  if (focused) b.focus({preventScroll: true});
+}
+document.addEventListener("click", ev => {
+  const b = ev.target.closest && ev.target.closest("[data-answer-expand]");
+  if (!b) return;
+  const t = b.closest(".answered-compact");
+  if (!t) return;
+  const open = t.classList.toggle("answer-editing");
+  b.setAttribute("aria-expanded", String(open));
+  b.textContent = open ? "閉じる" : "回答を直す";
+  if (open && t.querySelector('button[data-v="interest"].picked')) {
+    const note = t.querySelector(".why-note");
+    if (note) note.hidden = false;
+  }
+});
+
 // 答えた枠を、次の候補で埋める（三択のボタンと、候補から消す ✕ の両方から使う）。fill: /api/react の fill_only の返事
 function applyFill(fill, g) {
   const d = {fill};
@@ -1855,14 +1899,21 @@ document.addEventListener("click", ev => {
     else if (tk) tk.classList.remove("torn");   // 押し直し（興味あり→興味なし など）では、もいだ印を戻す
     // 押した 1 つだけに印を付ける（色が変わって弾む・theme.css の .picked）。記録できなかったら外す
     // （起案者の指摘 2026-10-13「興味ありだけ黒いのなぜ？押したら色変わるとかなにかしらのアニメーション」）
+    const previousPick = g.querySelector("button[data-v].picked");
     g.querySelectorAll("button[data-v]").forEach(x => x.classList.toggle("picked", x === b));
     // 星は押した所までを ★ にする（記録できなかったら元に戻す）
     const unfill = fillStars(g, b);
     // お気に入りの「購入済みにする」は、入った先を言う（起案者の指示 2026-10-15。お気に入りには残る）
     const said0 = tk && tk.classList.contains("favourite") && b.dataset.v === "owned" ? "購入済みにしました（購入済の公演にも入りました）" : undefined;
     post(path, body, g, said0).then(async d => {
-      if (!d) { if (tear) row.classList.remove("torn"); b.classList.remove("picked"); unfill(); return; }
+      if (!d || d.ok === false) {
+        if (tear) row.classList.remove("torn");
+        g.querySelectorAll("button[data-v]").forEach(x => x.classList.toggle("picked", x === previousPick));
+        unfill();
+        return;
+      }
       g.classList.add("done");
+      if (slot) compactAnswered(slot, b.dataset.v);
       if (said0) { b.textContent = "購入済み"; b.disabled = true; }
       // 入れ替わりの 1 枚は、その 1 枚で初めて答えたときだけ足す（押し直すたびに増やさない）
       if (shown && g.dataset.stage && !slot.dataset.filled) {
@@ -1890,7 +1941,7 @@ document.addEventListener("click", ev => {
           if (isTopGrade(b.dataset.v)) box.querySelector("textarea").focus();
         }
       }
-      if (tk && b.dataset.v === "interest") {
+      if (tk && !slot && b.dataset.v === "interest") {
         const wn = tk.querySelector(".why-note");
         if (wn) { wn.hidden = false; wn.querySelector("textarea").focus(); }
       }
@@ -4608,4 +4659,3 @@ document.addEventListener("click", async ev => {
   if (d) try { for (const k of ["taguri_login_email", "taguri_login_agree", "taguri_login_intent", "taguri_login_saved_at"]) localStorage.removeItem(k); } catch {}
   if (d) location.href = "/login";
 });
-
