@@ -1277,6 +1277,18 @@ def declared_rows(c: dict) -> str:
                    f'登録した{E(w)}の公演です</li>' for w in a)
 
 
+def program_text(c: dict) -> str:
+    """The program (演目) of a 能・狂言・歌舞伎・文楽・落語・寄席 show from the stage page's スタッフ field; '' for other forms."""
+    import user_recommender as UR                                   # noqa: E402  (user_recommender は recommend2 を読む。読み込みの輪を避ける)
+    f = c.get("fields") or {}
+    text = "\n".join(line.rstrip() for line in str(f.get("スタッフ") or "").strip().splitlines())
+    if not text:
+        return ""
+    roles = {role for role, _ in MN.parse_credits(f)}
+    form = UR.form_of(c.get("title") or "", [f.get("劇場", ""), c.get("venue") or "", c.get("theater") or "", c.get("group") or ""], roles)
+    return re.sub(r"\n{3,}", "\n\n", text) if form in UR.PROGRAM_FORMS else ""
+
+
 def syn_block(c: dict) -> str:
     """あらすじの枠を組む。**枠ごと組み直せるようにしてある** ── 内容を手で入れた直後に、
     この枠だけを差し替えて画面へ出すためである（`/api/hand_theme`）。
@@ -1320,6 +1332,14 @@ def syn_block(c: dict) -> str:
         # 1 枚が画面の高さを超えて「並べて見比べる」ができなくなる。**消さずに畳む**
         return (f'<div class="syn{cls}" data-stage="{E(c["stage_id"])}">'
                 f'<p class="txt">{E(syn)}</p>{tag_html}{cite}'
+                f'<button class="mrb" data-more="1">続きを読む</button>{form}</div>')
+    prog = program_text(c)
+    if prog:
+        # 能・狂言・歌舞伎・文楽・落語・寄席は、あらすじの代わりに演目（曲目と「役：名前」の演者、日ごとの違いも）を同じ枠に出す
+        # （起案者の指示 2026-10-19「能のとき、あらすじはないけど演目はわかる。演目をあらすじ代わりに同じ欄に書いてほしい」）。
+        # 行の区切りは公演ページのまま（日付・曲目・演者の並びが意味を持つ）。長いものは、あらすじと同じく 3 行で畳む
+        return (f'<div class="syn prog" data-stage="{E(c["stage_id"])}"><p class="txt"><b class="pl">演目</b>{E(prog)}</p>'
+                f'{tag_html}<span class="src">［出典: 公演ページのスタッフ欄］</span>'
                 f'<button class="mrb" data-more="1">続きを読む</button>{form}</div>')
     if tags:
         # **あらすじが無くてもタグは出る。** 筋書きを持たない催し（落語会・フェス・

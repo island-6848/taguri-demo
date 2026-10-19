@@ -1875,6 +1875,19 @@
    "verifies": []
   },
   {
+   "id": "dec-noh-program",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-19",
+   "title": "能・狂言・歌舞伎・文楽・落語・寄席で、あらすじが無いときはスタッフ欄の演目をあらすじの枠に出す",
+   "sources": [
+    "tools/review/render_recommend.py",
+    "tools/review/user_recommender.py",
+    "web/theme.css"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-operator-name",
    "type": "decision",
    "status": "adopted",
@@ -3615,6 +3628,17 @@
     "https://soona.co/image-resizer/twitter-spec-guide",
     "https://kb.theseoframework.com/kb/twitter-cards-and-x-sharing/",
     "https://frontendchecklist.io/rules/seo/twitter-cards"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "f-noh-program-staff",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-19",
+   "title": "能・狂言・歌舞伎などの演目（曲目と「役：名前」の演者、日ごとの違い）は、CoRich の公演ページのスタッフ欄に載っている",
+   "sources": [
+    "data/review/candidates.jsonl"
    ],
    "verifies": []
   },
@@ -6707,7 +6731,7 @@
   {
    "id": "q-noh-program",
    "type": "question",
-   "status": "open",
+   "status": "answered",
    "date": "2026-10-19",
    "title": "能などで、あらすじの代わりに演目（日ごとの曲目と演者）を出せるか。CoRich の公演ページに載っているか",
    "sources": [
@@ -9579,6 +9603,21 @@
    "to": "render-free-no-disk"
   },
   {
+   "from": "dec-noh-program",
+   "rel": "depends_on",
+   "to": "f-noh-program-staff"
+  },
+  {
+   "from": "dec-noh-program",
+   "rel": "depends_on",
+   "to": "dec-forms-1019"
+  },
+  {
+   "from": "dec-noh-program",
+   "rel": "affects",
+   "to": "comp-cf-worker"
+  },
+  {
    "from": "dec-own-domain",
    "rel": "affects",
    "to": "comp-frontend"
@@ -10852,6 +10891,11 @@
    "from": "f-link-card-spec",
    "rel": "affects",
    "to": "dec-link-card"
+  },
+  {
+   "from": "f-noh-program-staff",
+   "rel": "answers",
+   "to": "q-noh-program"
   },
   {
    "from": "f-search-asu-prefix",

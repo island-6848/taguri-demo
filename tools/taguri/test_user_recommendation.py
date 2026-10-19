@@ -307,6 +307,21 @@ class KindOfShowTests(unittest.TestCase):
         self.assertEqual(F("漫才ライブ"), "お笑い")
         self.assertIn(("#形式", "能・狂言"), UR.stage_tags("青山能〈4月〉1部", ["銕仙会能楽研修所"], []))
 
+    def test_program_in_synopsis(self):
+        """能・狂言などは、あらすじの代わりにスタッフ欄の演目を同じ枠に出す（起案者の指示 2026-10-19）。演劇には出さない。"""
+        import render_recommend as RR
+        staff = "2026年1月2日(金)\n\n素囃子\n笛：藤田貴寛\n\n\n\n三番叟\n三番叟：中村修一"
+        noh = {"stage_id": "1", "title": "二〇二六年 正月公演", "venue": "セルリアンタワー能楽堂",
+               "fields": {"スタッフ": staff, "出演": "中村修一"}}
+        self.assertEqual(RR.program_text(noh), "2026年1月2日(金)\n\n素囃子\n笛：藤田貴寛\n\n三番叟\n三番叟：中村修一")
+        html = RR.syn_block(noh)
+        self.assertIn('class="syn prog"', html)
+        self.assertIn("<b class=\"pl\">演目</b>2026年1月2日(金)", html)
+        self.assertIn("公演ページのスタッフ欄", html)
+        play = {"stage_id": "2", "title": "頭痛肩こり樋口一葉", "venue": "横浜能楽堂", "fields": {"スタッフ": "音楽：河崎純"}}
+        self.assertEqual(RR.program_text(play), "")
+        self.assertNotIn("演目", RR.syn_block(play))
+
     def test_student_theatre(self):
         """大学演劇・高校演劇（起案者の指示 2026-10-19「大学演劇とか高校演劇もあるな」）はジャンル。主催の名前で見る。"""
         G = UR.genres

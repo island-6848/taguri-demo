@@ -133,6 +133,12 @@ _FORM_PLACE = (
 )
 
 
+_PLAY_ROLES = {"脚本", "演出", "作・演出", "作", "作曲", "音楽", "振付", "美術", "照明"}
+# あらすじの代わりに、公演ページのスタッフ欄の演目（曲目と「役：名前」の演者）を出す形式（起案者の指示 2026-10-19「能のとき、
+# あらすじはないけど演目はわかる。演目をあらすじ代わりに同じ欄に書いてほしい」→ 演目は CoRich のスタッフ欄に載っている）
+PROGRAM_FORMS = ("能・狂言", "歌舞伎", "文楽", "落語・寄席")
+
+
 def form_of(title: str, places=(), roles=frozenset()) -> str:
     """The form of one production ('' = 演劇). `places`: the venue and troupe names; `roles`: the credit roles."""
     t = M.norm(title or "")
@@ -141,6 +147,9 @@ def form_of(title: str, places=(), roles=frozenset()) -> str:
             return name
     place = " ".join(M.norm(p or "") for p in places if p)
     for name, pat in _FORM_PLACE:
+        # 能楽堂でかかる演劇もある（脚本・演出・音楽の作り手が並ぶ）。それは劇場の名前だけで能・狂言にしない
+        if name == "能・狂言" and roles & _PLAY_ROLES:
+            continue
         if pat.search(place):
             return name
     # オペラ劇場（新国立劇場など）はオペラもバレエもかかる。振付があればバレエ、指揮だけならオペラ

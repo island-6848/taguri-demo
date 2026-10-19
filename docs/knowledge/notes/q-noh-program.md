@@ -1,7 +1,7 @@
 ---
 id: q-noh-program
 type: question
-status: open
+status: answered
 date: 2026-10-19
 title: 能などで、あらすじの代わりに演目（日ごとの曲目と演者）を出せるか。CoRich の公演ページに載っているか
 sources:
