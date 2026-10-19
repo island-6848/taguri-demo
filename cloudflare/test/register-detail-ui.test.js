@@ -5,14 +5,14 @@ import {readFileSync} from 'node:fs';
 const source = readFileSync(new URL('../../web/app.js', import.meta.url), 'utf8');
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
 
-test('register keeps the selected production for repeated attendance, clears dates, and keeps failed inputs', async () => {
+test('save keeps all inputs so a changed date/time adds another attendance without any mode control', async () => {
   const start = source.indexOf('    const g = b.closest(".add-work");', source.indexOf('} else if (b.dataset.addWork)'));
   const end = source.indexOf('  } else if (b.dataset.addFound)', start);
   const run = new Function('b', 'post', 'document', 'askMerge', 'waitJob', 'let sugSeq = 0, sugTimer = null;\n' + source.slice(start, end));
   const field = value => ({value, focus() {this.focused = true}});
   const result = {replaceChildren(...children) {this.children = children}, hidden: true};
   const fields = {'#w-title': field('同じ作品'), '#w-stage': field('99'), '#w-venue': field('劇場'), '#w-date': field('2026-01-02'),
-    '#w-time': field('14:00'), '.said': {textContent: ''}, '[data-register-repeat]:checked': {checked: true}};
+    '#w-time': field('14:00'), '.said': {textContent: ''}};
   const g = {dataset: {registerSingle: '1'}, querySelector: s => fields[s], parentElement: {querySelector: () => result, querySelectorAll: () => []}};
   const b = {closest: () => g};
   const doc = {createElement: () => ({}), getElementById: () => ({replaceChildren() {}})};
@@ -21,7 +21,7 @@ test('register keeps the selected production for repeated attendance, clears dat
   const wait = () => assert.fail('must not reload');
   run(b, post, doc, () => {}, wait); await settle();
   assert.equal(fields['#w-title'].value, '同じ作品'); assert.equal(fields['#w-stage'].value, '99'); assert.equal(fields['#w-venue'].value, '劇場');
-  assert.equal(fields['#w-date'].value, ''); assert.equal(fields['#w-time'].value, ''); assert.ok(fields['#w-date'].focused);
+  assert.equal(fields['#w-date'].value, '2026-01-02'); assert.equal(fields['#w-time'].value, '14:00'); assert.ok(fields['#w-date'].focused);
   assert.equal(result.children[1].href, '/rate/unrated'); assert.ok(posts[0].repeat);
   fields['#w-date'].value = '2026-01-02'; fields['#w-time'].value = '19:00';
   run(b, post, doc, () => {}, wait); await settle();
@@ -29,9 +29,9 @@ test('register keeps the selected production for repeated attendance, clears dat
   fields['#w-date'].value = '2026-01-03';
   run(b, async () => null, doc, () => {}, wait); await settle();
   assert.equal(fields['#w-date'].value, '2026-01-03'); assert.equal(fields['#w-title'].value, '同じ作品'); assert.equal(b.disabled, false);
-  fields['[data-register-repeat]:checked'] = null;
+  fields['#w-title'].value = '別の作品'; fields['#w-stage'].value = ''; fields['#w-venue'].value = '別の劇場';
   run(b, post, doc, () => {}, wait); await settle();
-  assert.equal(fields['#w-title'].value, ''); assert.equal(fields['#w-stage'].value, ''); assert.equal(fields['#w-venue'].value, '');
+  assert.equal(posts[2].title, '別の作品'); assert.equal(posts[2].venue, '別の劇場');
 });
 
 test('detail dialog sends the chosen schedule precision without turning the filter into attendance', async () => {
@@ -48,7 +48,7 @@ test('detail dialog sends the chosen schedule precision without turning the filt
   const selectors = {'form': form, '.rs-status': status, '.rs-results': box, '[data-rs-close]': {addEventListener: (type, fn) => {close[type] = fn}}};
   const dialog = {dataset: {}, isConnected: true, setAttribute() {}, querySelector: s => selectors[s],
     addEventListener(type, fn) {handlers['dialog-' + type] = fn}, showModal() {this.open = true}, close() {this.open = false; handlers['dialog-close']()}, remove() {this.isConnected = false}};
-  const doc = {querySelector: () => null, createElement: () => dialog, getElementById: id => ({value: id === 'w-title' ? '演劇' : '2026-01-02'}), body: {append() {}}};
+  const doc = {getElementById: id => id === 'register-search-dialog' ? dialog : ({value: id === 'w-title' ? '演劇' : '2026-01-02'})};
   let request, rows, failing = false;
   const open = make(doc, async url => {request = new URL(url, 'https://taguri.test'); if (failing) throw Error('通信失敗'); return {ok: true, json: async () => ({rows: [{kind: 'stage', title: '演劇の夜', stage_id: '99', date: ''}]})}}, (_, got) => {rows = got}, '', 'token');
   const trigger = {isConnected: true, focus() {this.focused = true}}; open(trigger);
@@ -73,4 +73,6 @@ test('detail dialog sends the chosen schedule precision without turning the filt
   assert.ok(!request.searchParams.has('schedule_month')); assert.ok(!request.searchParams.has('schedule_day'));
   failing = true; await handlers.submit(event); assert.match(status.textContent, /通信失敗/); assert.equal(button.disabled, false);
   close.click(); assert.ok(!dialog.open); assert.ok(trigger.focused);
+  open(trigger); assert.ok(dialog.open); assert.equal(dialog.dataset.rsBound, '1');
 });
+
