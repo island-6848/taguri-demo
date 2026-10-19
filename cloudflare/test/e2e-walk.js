@@ -859,7 +859,7 @@ async function walkA(A) {
       await card.waitFor();
       const head = (await card.locator('.lprice summary .lp-row').first().innerText()).replace(/\s+/g, ' ').trim();
       note('価格帯（閉じた行）: ' + head);
-      check(/^6,000円～12,000円/.test(head), '閉じた行が「min円～max円」でない: ' + head);
+      check(/^6,000円〜12,000円/.test(head), '閉じた行が「min円〜max円」でない: ' + head);
       await card.locator('.lprice summary').click();
       const rows = (await card.locator('.lprice .lp-body .lp-row').allInnerTexts()).map(t => t.replace(/\s+/g, ' ').trim());
       note('開いた行: ' + rows.join(' / '));

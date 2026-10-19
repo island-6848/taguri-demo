@@ -1012,7 +1012,7 @@ function priceRowsOf(text) {
 const SEATING = /全席指定|全席自由|座席指定|日時指定|指定席|自由席|整理番号付き?自由|立見/;
 /**
  * 料金の明細の形（起案者の指示 2026-10-19「折りたたむ前は『min円～max円』（min=maxならばmax円）。展開したら『S席 max円 / A席 min円』」）:
- * 閉じた 1 行は金額の幅（いちばん安い〜いちばん高い）と座席の決まり、開くと券種ごとの行を高い順に。座席の決まりが券種の名前に無ければ
+ * 閉じた 1 行は座席の決まりと金額の幅（「全席指定 6,000円〜12,000円」）、開くと券種ごとの行を高い順に。座席の決まりが券種の名前に無ければ
  * 「S席(指定)」のように添える。返すのは {open: 開いた中身の行（無ければ空）, head: 閉じた 1 行}
  */
 function priceSummary(text) {
@@ -1025,13 +1025,14 @@ function priceSummary(text) {
   if (!all.length) return {head: rows.length ? rows[0] : ["料金", "不明"], open: rows.slice(1)};
   const f = n => n.toLocaleString("ja-JP") + "円";
   const lo = Math.min(...all), hi = Math.max(...all);
-  const head = [(lo === hi ? f(hi) : f(lo) + "～" + f(hi)) + (seat ? " " + seat : "")];
+  // 座席の決まりは金額の前（起案者の指示 2026-10-19「全席指定（または自由席） 〇円〜〇円のほうがいいな」）
+  const head = [(seat ? seat + " " : "") + (lo === hi ? f(hi) : f(lo) + "〜" + f(hi))];
   const named = rows.filter(r => !(r.length === 1 && /^[\d,]+円(?:\s*[~〜～\-－]\s*[\d,]+円)?$/.test(r[0])));
   const open = named.map(r => {
     if (!kind || /指定|自由/.test(r.join(" "))) return r;
     return r.length > 1 ? [r[0] + "(" + kind + ")", r[1]] : [r[0].replace(/^(\S+?)(\s*[\d,]+円)/, "$1(" + kind + ")$2")];
   }).sort((a, b) => Math.max(0, ...nums(b)) - Math.max(0, ...nums(a)));
-  // 券種が 1 つで、閉じた 1 行と同じ金額だけなら、開く中身は無い（「全席指定 7,000円」→「7,000円 全席指定」の 1 行）
+  // 券種が 1 つで、閉じた 1 行と同じ金額だけなら、開く中身は無い（「全席指定 7,000円」の 1 行）
   const same = open.length === 1 && nums(open[0]).every(n => n === hi) && (open[0].length === 1 || SEATING.test(open[0][0]) || !/\S/.test(open[0][0].replace(/券|一般|料金|チケット/g, "")));
   return {head, open: same ? [] : open};
 }
