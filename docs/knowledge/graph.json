@@ -6574,6 +6574,18 @@
    "verifies": []
   },
   {
+   "id": "q-link-card-x",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-19",
+   "title": "X にリンクのカードが出ない（2026-10-19、起案者の報告）。何が原因か",
+   "sources": [
+    "cloudflare/src/link-card.js",
+    "cloudflare/public/robots.txt"
+   ],
+   "verifies": []
+  },
+  {
    "id": "q-lockfile-reproducible",
    "type": "question",
    "status": "open",
@@ -12719,6 +12731,11 @@
    "from": "q-interest-why-unknown",
    "rel": "affects",
    "to": "impl-interest-split"
+  },
+  {
+   "from": "q-link-card-x",
+   "rel": "depends_on",
+   "to": "dec-link-card"
   },
   {
    "from": "q-lockfile-reproducible",

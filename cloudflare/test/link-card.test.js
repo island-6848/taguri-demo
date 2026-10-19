@@ -56,3 +56,11 @@ test('a link-preview crawler gets the sign-in page with the card instead of a re
     assert.equal((await get('/assets/og.png', 'Twitterbot/1.0')).status, 200);
   } finally { delete globalThis.HTMLRewriter; }
 });
+
+// robots.txt が無いと、アプリの HTML（single-page-application の受け皿）が robots.txt として返っていた。クローラーが読める本物を置く
+test('robots.txt is a real file that lets the card crawlers in', () => {
+  const t = readFileSync(new URL('../public/robots.txt', import.meta.url), 'utf8');
+  assert.match(t, /^User-agent: \*$/m);
+  assert.match(t, /^Allow: \/$/m);
+  assert.doesNotMatch(t, /^Disallow: \/\s*$/m);
+});
