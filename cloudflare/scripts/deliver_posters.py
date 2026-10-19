@@ -150,7 +150,11 @@ def build(data: Path, out: Path, *, bucket: str, limit: int, put=put_object,
           get=get_object, delete=delete_object, reshrink: int = 0, sleep=time.sleep) -> dict:
     account, token = os.environ.get("CLOUDFLARE_ACCOUNT_ID", ""), os.environ.get("CLOUDFLARE_API_TOKEN", "")
     done = load(data)
-    files = sorted(f for f in (data / IMG).iterdir() if f.is_file()) if (data / IMG).exists() else []
+    # 新しい公演から入れる（起案者の指示 2026-10-19「2026 年の過去公演とれるところまで取って」）。名前の順だと
+    # 番号の小さい古い公演から 1 回 --limit 枚ずつ入るので、2026 年の 1,602 枚が手元に溜まったまま回ってこなかった
+    files = sorted((f for f in (data / IMG).iterdir() if f.is_file()),
+                   key=lambda f: (f.stem.isdigit(), int(f.stem) if f.stem.isdigit() else 0, f.name),
+                   reverse=True) if (data / IMG).exists() else []
     todo = [f for f in files if f.stem not in done and f.suffix.lower() in TYPES][:limit]
     if out.exists():
         shutil.rmtree(out)

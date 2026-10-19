@@ -40,6 +40,22 @@ class PastStagesTest(unittest.TestCase):
         self.EX.OUT, self.EX.QUEUE, self.EX.QUEUE_PROMPT = self._ex
         self.tmp.cleanup()
 
+    def test_stories_read_this_years_stages_first(self):
+        # 起案者の指示（2026-10-19）「2026 年の過去公演とれるところまで取って」。番号の順だと今年の公演が後ろの行に散らばる
+        from datetime import date
+        story = "<p>" + "ある家族が、古い家を手放す日の朝に集まり、それぞれの思い出を語り合う物語。" * 12 + "</p>"
+        this, old = f"{date.today().year}-03-01", "2019-03-01"
+        P.PAST.mkdir(parents=True)
+        P.ROWS.write_text("".join(json.dumps({"stage_id": s, "title": s, "end": e}) + "\n"
+                                  for s, e in (("50", old), ("40", old), ("30", this), ("20", old), ("10", this))), encoding="utf-8")
+        p = {"done": True, "story_line": 0}
+        seen = []
+        got = P.stories(p, limit=3, max_minutes=0, fetch=lambda sid: (seen.append(sid), f"<html><body>{story}</body></html>")[1])
+        self.assertEqual(seen, [30, 10, 50])                 # 今年の 2 件を先に、残りの 1 件は順送りで
+        self.assertEqual((got["queued"], p["story_line"]), (3, 1))
+        got = P.stories(p, limit=10, max_minutes=0, fetch=lambda sid: (seen.append(sid), f"<html><body>{story}</body></html>")[1])
+        self.assertEqual(seen[3:], [40, 20])                 # 先に読んだ今年の公演は読み直さない
+
     def test_second_pass_queues_story_text_for_the_reader(self):
         story = "<p>" + "ある家族が、古い家を手放す日の朝に集まり、それぞれの思い出を語り合う物語。" * 12 + "</p>"
         P.PAST.mkdir(parents=True)

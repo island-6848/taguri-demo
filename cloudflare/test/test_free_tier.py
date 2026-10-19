@@ -151,7 +151,7 @@ class LedgerTest(unittest.TestCase):
         FT.CAPS['r2_bytes'] = 250
         put = []
         got = DP.build(self.data, self.out, bucket='b', limit=10, put=lambda *a: put.append(a[3]))
-        self.assertEqual((got['uploaded'], put), (2, ['1.jpg', '2.jpg']))
+        self.assertEqual((got['uploaded'], put), (2, ['3.jpg', '2.jpg']))   # 新しい公演（番号の大きいほう）から入る
         self.assertIn('保存', got['stopped'])
         u = FT.load(self.data)
         self.assertEqual((FT.r2_bytes(u), FT.r2_class_a(u)), (200, 2))
