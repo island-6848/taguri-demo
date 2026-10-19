@@ -3244,58 +3244,31 @@ function shortAddButtons(root) {
   });
 }
 
-// **評価の分布を、0 を中心に左右へ分ける帯（発散型の積み上げ棒）に描き直す。**
-// 起案者の指示 2026-10-13「評価の分布、もうちょっといい可視化方法を可視化分野の論文読んで実装」。
-// - Heiberger & Robbins (2014, J. Stat. Softw. 57(5))：評定尺度は、肯定側と否定側を 0 の基線から
-//   左右に伸ばす発散型の積み上げ棒を主に使う。両側の合計を同じ基線から比べられる
-// - Cleveland & McGill (1984, JASA 79(387))：位置の判断（共通の目盛りの上の位置）が最も正確で、
-//   長さ・角度・面積の順に落ちる ── 「合っていた／合わなかった」の大きさを 0 からの位置で読ませる
-// 前の帯は ◎○△× を左から 1 本に積んでいたので、△× 側の合計は帯の途中から読むしかなかった。
-// 「まだ判断できない」などの中立の分は帯に入れず、横に件数だけを添える（中立を真ん中で割ると
-// 左右の合計が読みにくくなるという批判を避ける）。数字は今までどおり「数字で見る」の表にある
+// **評価の分布は、評価の段階ごとの件数を横棒で並べるだけにする。**
+// 起案者の指示 2026-10-19「『評価一覧』の分布で勝手に『合っていた』評価の☆の数を判定しないで。合ってるかどうかはあなたが判断しないで。
+// 私にとって★3.5は合ってなかった評価なのに、合ってる認定されている」。前は Heiberger & Robbins (2014) の発散型の積み上げ棒で、
+// 星の段階の真ん中より上を「合っていた」、下を「合わなかった」に機械的に分けていた。どの段階が合っていたかは本人の尺度なので、
+// 画面では分けず、段階ごとの件数を同じ目盛り（0 から）の横棒で並べる（Cleveland & McGill 1984: 共通の目盛りの上の位置・長さで読む）
 function divergeVerdicts(root) {
   root.querySelectorAll(".card .dbar").forEach(bar => {
     const card = bar.closest(".card");
     if (!card || card.dataset.diverged) return;
-    // 4 つの束: a 強く合っていた・b 合っていた・c 合わなかった・d 強く合わなかった。◎○△× は記号で、
-    // "n/L"（星・○×・○△×）は行の data-v から段階の中の位置 f で分ける（真ん中はどちらにも入れない）
-    const B = {a: [], b: [], c: [], d: []}, others = [];
+    const rows = [];
     card.querySelectorAll("table tr").forEach(tr => {
       const td = tr.querySelectorAll("td");
       if (td.length < 2) return;
       const g = td[0].textContent.trim(), v = parseInt(td[1].textContent, 10) || 0;
-      if (!v) return;
-      const pr = gradeParts(tr.dataset.v || "");
-      let k = {"◎": "a", "○": "b", "△": "c", "×": "d"}[g];
-      if (pr) { const d = (pr[0] - 1) / (pr[1] - 1) - 0.5; k = d > 0.3 ? "a" : d > 0 ? "b" : d < -0.3 ? "d" : d < 0 ? "c" : undefined; }
-      if (k) B[k].push([g, v]); else others.push([g, v]);
+      if (v) rows.push([g, v]);
     });
-    const lab = k => B[k].map(x => x[0]).join("・"), num = k => B[k].reduce((t, x) => t + x[1], 0);
-    const [p1, p2, n1, n2] = [lab("b"), lab("a"), lab("c"), lab("d")];
-    const pos = [[p1, num("b"), "b"], [p2, num("a"), "a"]];       // 中心から外へ: ○ → ◎
-    const neg = [[n1, num("c"), "c"], [n2, num("d"), "d"]];       // 中心から外へ: △ → ×
-    const P = pos[0][1] + pos[1][1], N = neg[0][1] + neg[1][1];
-    if (!P && !N) return;
+    if (!rows.length) return;
     card.dataset.diverged = "1";
-    const side = Math.max(P, N);                                     // 左右とも同じ目盛り（0〜side）
-    const pct = v => (v / side * 100).toFixed(2) + "%";     // 左右それぞれの半分の幅に対する割合
-    const all = P + N;
-    const seg = ([g, v, k]) => v ? '<span class="vdv-s vdv-' + k
-      + '" style="width:' + pct(v) + '" title="' + E(g) + " " + v + ' 件"><i>' + E(g) + " " + v + "</i></span>" : "";
-    const html = '<div class="vdv" role="img" aria-label="'
-      + E("合っていた（" + p2 + p1 + "）" + P + " 件、合わなかった（" + n1 + n2 + "）" + N + " 件") + '">'
-      + '<div class="vdv-tot"><span class="vdv-n">合わなかった <b>' + N + "</b> 件<small>（" + Math.round(N / all * 100) + "%）</small></span>"
-      + '<span class="vdv-p">合っていた <b>' + P + "</b> 件<small>（" + Math.round(P / all * 100) + "%）</small></span></div>"
-      + '<div class="vdv-row"><div class="vdv-l">' + seg(neg[1]) + seg(neg[0]) + "</div>"
-      + '<div class="vdv-0" aria-hidden="true"></div>'
-      + '<div class="vdv-r">' + seg(pos[0]) + seg(pos[1]) + "</div></div>"
-      + '<div class="vdv-ax" aria-hidden="true"><span>' + side + "</span><span>0</span><span>" + side + "</span></div>"
-      + (others.length ? '<p class="vdv-o">帯に入れていないもの: ' + others.map(([g, v]) => E(g) + " " + v + " 件").join("、") + "</p>" : "")
+    const max = Math.max(...rows.map(r => r[1])), all = rows.reduce((t, r) => t + r[1], 0);
+    const html = '<div class="vdist" role="img" aria-label="' + E(rows.map(([g, v]) => g + " " + v + " 件").join("、")) + '">'
+      + rows.map(([g, v]) => '<div class="vd-row"><span class="vd-g">' + E(g) + '</span><span class="vd-bar"><i style="width:'
+        + (v / max * 100).toFixed(2) + '%"></i></span><span class="vd-n">' + v + " 件<small>（" + Math.round(v / all * 100) + "%）</small></span></div>").join("")
       + "</div>";
     bar.insertAdjacentHTML("afterend", html);
     bar.remove();
-    const lead = card.querySelector("p.lead");
-    if (lead) lead.insertAdjacentHTML("beforeend", "真ん中の線から右が「合っていた」、左が「合わなかった」です。");
   });
 }
 

@@ -33,8 +33,8 @@ function synSpan(html, sid) {
 
 // 書式つきのあらすじ（起案者の指示 2026-10-19「あらすじ、凝ってるものはそのまま入力できるようにしたい（中央寄せとか、書体変更の
 // やつたまにある）管理者画面でその辺の書体管理したまま入力できる欄に変えて」）。管理画面（tools/admin/admin.html）が書式を
-// 決まった印（class）だけの HTML にして、頭に RICH を付けて stage_override.synopsis に置く。サイトの CSP は style 属性を
-// 許さない（style-src 'self'）ので、寄せ・大きさ・書体は class で持つ。出すときに、ここでもう一度、許した札と class だけに絞る
+// 決まった印（class）だけの HTML にして、頭に RICH を付けて stage_override.synopsis に置く。入れられる書式を決まった形だけに
+// 絞るため（貼り付けた色・背景・位置などを持ち込まない）、寄せ・大きさ・書体は class で持つ。出すときに、ここでもう一度、許した札と class だけに絞る
 export const RICH = '<!--rich-->';
 const RICH_TAGS = new Set(['p', 'br', 'div', 'span', 'b', 'strong', 'i', 'em', 'u', 's', 'small']);
 export const RICH_CLASSES = new Set(['ta-left', 'ta-center', 'ta-right', 'fs-s', 'fs-l', 'ff-mincho', 'ff-gothic']);

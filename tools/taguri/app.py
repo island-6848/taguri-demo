@@ -6179,8 +6179,8 @@ def _rate_body(user_id: str, verdict: str = "", year: str = "", venues=(), page:
     # 確かめたくなるのはここである。**「すべて」は明示的に選んだときだけ**
     # （`v=all`。空文字は「まだ何も選んでいない」の意味のままにしておく ──
     # 年の耳と違い、評価はデフォルトで◎に絞ることに変えていないため）。
-    sel = verdict if (verdict in live or verdict == "all") else (
-        "◎" if "◎" in live else live[0])
+    # 初めに開くのは「すべて」（起案者の指示 2026-10-19「評価一覧でデフォルトで開かれるのを『すべて』にして」）。Worker の rate.js と同じ
+    sel = verdict if (verdict in live or verdict == "all") else "all"
     all_sorted = sorted(rated, key=lambda w: w.get("first_date") or "", reverse=True)
     chips = index_tabs(
         [("all", "すべて", len(rated))]

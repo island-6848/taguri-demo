@@ -95,7 +95,7 @@ const E = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&": "&amp;", "<": "&l
 
 // ---- 書式つきのあらすじ（起案者の指示 2026-10-19「あらすじ、凝ってるものはそのまま入力できるようにしたい（中央寄せとか、書体変更の
 // やつたまにある）管理者画面でその辺の書体管理したまま入力できる欄に変えて」）。
-// 本番の CSP は style 属性を許さないので、寄せ・大きさ・書体は決まった class（cloudflare/src/screens/override.js の RICH_CLASSES）に
+// 入れられる書式を決まった形だけに絞るため、寄せ・大きさ・書体は決まった class（cloudflare/src/screens/override.js の RICH_CLASSES）に
 // 置き換えて保存する。書式が無ければ、これまでどおりの文だけで保存する。本番の側でも同じ札と class だけに絞り直す
 const RICH = "<!--rich-->";
 const RICH_CLASSES = ["ta-left", "ta-center", "ta-right", "fs-s", "fs-l", "ff-mincho", "ff-gothic"];

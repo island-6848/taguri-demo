@@ -1997,6 +1997,20 @@
    "verifies": []
   },
   {
+   "id": "dec-rate-dist-no-fit",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-19",
+   "title": "評価一覧の分布は段階ごとの件数の横棒だけにし、「合っていた／合わなかった」を画面で判定しない。評価一覧は初めに「すべて」を開く",
+   "sources": [
+    "web/app.js",
+    "web/theme.css",
+    "cloudflare/src/screens/rate.js",
+    "tools/taguri/app.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-rate-limit-fail-open",
    "type": "decision",
    "status": "proposed",
@@ -9384,6 +9398,11 @@
    "from": "dec-price-same-amount",
    "rel": "affects",
    "to": "dec-ticket-price-filter"
+  },
+  {
+   "from": "dec-rate-dist-no-fit",
+   "rel": "depends_on",
+   "to": "dec-ui-1019"
   },
   {
    "from": "dec-rate-limit-fail-open",

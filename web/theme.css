@@ -1590,7 +1590,7 @@ details.lprice:not([open]):not(#_)>summary .plist>li:only-child::before{display:
 .side button.pacct{border:0;background:none;box-shadow:none;color:inherit;cursor:pointer}
 
 /* 書式つきのあらすじ（管理者が入れたもの。screens/override.js richHtml の決まった class だけ。起案者の指示 2026-10-19）。
-   サイトの CSP が style 属性を許さないので、寄せ・大きさ・書体は class で決める */
+   寄せ・大きさ・書体は決まった class で決める（貼り付けた色・背景などは持ち込まない） */
 :is(.txt.rich,.lsynrich) :is(.ta-left){text-align:left}
 :is(.txt.rich,.lsynrich) :is(.ta-center){text-align:center}
 :is(.txt.rich,.lsynrich) :is(.ta-right){text-align:right}
@@ -1604,3 +1604,12 @@ details.lprice:not([open]):not(#_)>summary .plist>li:only-child::before{display:
 .lsyn-rich.open .lsynrich{max-height:none}
 .lsyn-rich .lsynrichmore{display:inline;margin:2px 0 0;padding:0;min-height:0;border:0;background:none;box-shadow:none;color:var(--acc);font:inherit;font-size:12px;text-decoration:underline;cursor:pointer}
 .lsyn-rich .lsynrichmore[hidden]{display:none}
+
+/* 評価の分布（app.js divergeVerdicts）: 段階ごとの件数の横棒。合う・合わないの色分けや左右の振り分けはしない（起案者の指示 2026-10-19） */
+.vdist{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:6px 10px;align-items:center;margin:12px 0 6px}
+.vdist .vd-row{display:contents}
+.vdist .vd-g{font-size:13px;color:var(--ink);white-space:nowrap}
+.vdist .vd-bar{height:12px;background:var(--fold-bg);border-radius:6px;overflow:hidden}
+.vdist .vd-bar i{display:block;height:100%;background:var(--ink2);border-radius:6px}
+.vdist .vd-n{font-size:12.5px;color:var(--ink2);white-space:nowrap;font-variant-numeric:tabular-nums}
+.vdist .vd-n small{margin-left:2px;color:var(--mute)}

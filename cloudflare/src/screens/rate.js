@@ -255,7 +255,8 @@ async function rateScreen(params, ctx) {
   if (!live.length) {
     return {title, body_html: `<h1>評価一覧</h1>${verdictFig}<p class="empty">まだ評価が付いた記録はありません。</p>${rateEmptyNext(b)}`, note_tags: noteTags(b.all)};
   }
-  const sel = (live.includes(verdict) || verdict === 'all') ? verdict : (live.includes('◎') ? '◎' : live[0]);
+  // 初めに開くのは「すべて」（起案者の指示 2026-10-19「評価一覧でデフォルトで開かれるのを『すべて』にして」。前は ◎ か、いちばん上の評価）
+  const sel = (live.includes(verdict) || verdict === 'all') ? verdict : 'all';
   const allSorted = byFirstDesc(rated);
   const chips = indexTabs(
     [['all', 'すべて', rated.length],
