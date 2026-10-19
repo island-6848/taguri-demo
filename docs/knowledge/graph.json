@@ -650,6 +650,19 @@
    "verifies": []
   },
   {
+   "id": "data-inventory-1019",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-19",
+   "title": "保存先は D1（taguri-demo、38 表）・R2（taguri-posters・taguri-backup）・Firebase Authentication。D1 の利用者ごとの表は 21、全員共有の公演データは 14、運営・数え上げは 3",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/tree/master/cloudflare/migrations",
+    "https://github.com/island-6848/taguri-demo/blob/master/cloudflare/wrangler.jsonc",
+    "https://github.com/island-6848/taguri-demo/blob/master/docs/free-tier-budget.md"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-about-on-login",
    "type": "decision",
    "status": "adopted",
@@ -8599,6 +8612,11 @@
    "from": "data-inventory-1016",
    "rel": "affects",
    "to": "q-records-viz"
+  },
+  {
+   "from": "data-inventory-1019",
+   "rel": "affects",
+   "to": "d1-user-isolation-1019"
   },
   {
    "from": "dec-account-cap-counted",
