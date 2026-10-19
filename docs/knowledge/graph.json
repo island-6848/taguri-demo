@@ -691,6 +691,19 @@
    "verifies": []
   },
   {
+   "id": "dec-affiliation-table",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-19",
+   "title": "出演欄の「名前（所属）」を所属の表（rec_affil）にする。親が所属、子が人。公演ごとに 1 行",
+   "sources": [
+    "tools/review/measure_nets.py",
+    "cloudflare/scripts/build_recommend_index.py",
+    "cloudflare/migrations/0039.sql"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-aspects-five-levels",
    "type": "decision",
    "status": "adopted",
@@ -8626,6 +8639,11 @@
    "from": "dec-account-page",
    "rel": "affects",
    "to": "comp-frontend"
+  },
+  {
+   "from": "dec-affiliation-table",
+   "rel": "affects",
+   "to": "comp-d1"
   },
   {
    "from": "dec-aspects-five-levels",

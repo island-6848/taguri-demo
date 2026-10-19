@@ -11,6 +11,9 @@ does not depend on the user is computed here once:
 - rec_stage: candidate stages with run dates and parsed credits
 - rec_credit: (role, person) -> stages, with role weight and role group
 - rec_people: stage -> parsed credits, to build a user's roster from records
+- rec_affil: (affiliation, person, stage) from the 「名前（所属）」 of the cast field
+  (measure_nets.affiliations): the troupe / agency / group as the parent of its
+  people (dec-affiliation-table). Not read by the Worker yet
 - rec_gram: two-character pieces of title keys, to find a stage by title when
   a user links a record to it (`search_index` is the reference)
 
@@ -106,7 +109,8 @@ def theme_words(row: dict | None) -> list[str]:
 
 
 def build_index(pool: dict[str, dict], fields_by_stage: dict[str, dict], role_group,
-                titles: dict[str, str] | None = None, themes: dict[str, list[str]] | None = None) -> dict:
+                titles: dict[str, str] | None = None, themes: dict[str, list[str]] | None = None,
+                past: list[dict] | None = None) -> dict:
     """User-independent material. `pool` is `UR.candidate_pool(...)`.
 
     Kind-of-show tags (UR.stage_tags: form, source, venue) are stored with the
@@ -158,7 +162,42 @@ def build_index(pool: dict[str, dict], fields_by_stage: dict[str, dict], role_gr
         if sid not in people and ws:
             people[sid] = [[THEME_AXIS, w] for w in sorted({t if isinstance(t, str) else t[0] for t in ws})]
     people = {sid: p for sid, p in people.items() if p}
-    return {"stages": stages, "postings": postings, "people": people}
+    src = [(sid, e.get("fields") or {}, RC.period_start(e.get("period") or "") or "", e.get("group") or "") for sid, e in pool.items()]
+    src += [(sid, f, "", (pool.get(sid) or {}).get("group") or "") for sid, f in fields_by_stage.items() if f and sid not in pool]
+    src += [(str(r.get("stage_id") or ""), r.get("fields") or {}, r.get("start") or "", r.get("group") or "") for r in past or []]
+    return {"stages": stages, "postings": postings, "people": people, "affil": affiliation_rows(src)}
+
+
+# 所属の種類（目安）。主催の団体名と同じなら「劇団」。名前の言葉で劇団・事務所・グループに分け、分からなければ空
+AFFIL_KINDS = (
+    ("劇団", re.compile(r"劇団|劇場|演劇|一座|座$|カンパニー|company|theat(?:re|er)|シアター|ユニット|unit|プロデュース|produce|"
+                       r"企画|団$|クラブ|倶楽部|俱楽部|バレエ|ballet|オペラ|歌劇", re.I)),
+    ("事務所", re.compile(r"プロダクション|プロモーション|エンタテ|エンターテ|事務所|オフィス|office|株式会社|有限会社|マネジメント|"
+                         r"management|アーツ|artists?$|芸能|興業|プロ$|pro$|agency|エージェン", re.I)),
+    ("グループ", re.compile(r"\d{2}$|jr\.?$|group$|グループ", re.I)),
+)
+# 所属に見えて実は人の名前（「役名（演じる人）」「芸名（本名）」）。出演欄に人として出てくる名前は、
+# 所属の言葉（AFFIL_KINDS）を含まない限り所属にしない（実データで「堂前透」「岡部道子」など）
+def affiliation_rows(src: list[tuple[str, dict, str, str]]) -> list[tuple]:
+    """(stage_id, fields, start, group) の並びから rec_affil の行 (affil, person, stage_id, start, kind)。
+
+    所属は時期で変わる（移籍・退団）ので、人と所属の 1 本の線ではなく「この公演ではこう書かれていた」を
+    公演ごとに残す。今の所属は、読む側が start の新しい行で決める。
+    """
+    groups = {RC.nz(g) for _sid, _f, _st, g in src if g}
+    cast = {}
+    for sid, f, start, _g in src:
+        if sid and f.get("出演"):
+            cast[sid] = (start, M.affiliations(f["出演"]))
+    persons = {n for sid, f, _st, _g in src if f.get("出演") for n in M._names(f["出演"])}
+    rows = set()
+    for sid, (start, pairs) in cast.items():
+        for person, affil in pairs:
+            kind = "劇団" if RC.nz(affil) in groups else next((k for k, rx in AFFIL_KINDS if rx.search(affil)), "")
+            if affil in persons and not kind:
+                continue
+            rows.add((affil, person, sid, start, kind))
+    return sorted(rows)
 
 
 # ---------------------------------------------------------------- request time (reference)
@@ -479,6 +518,8 @@ def to_sql(index: dict, ver: str, onboarding: list[str] | None = None) -> list[s
                       [(ver, *r) for r in sorted(set(index["postings"]))])
     stmts += _inserts("rec_people", "ver,stage_id,people",
                       [(ver, sid, dumps(p)) for sid, p in sorted(index["people"].items())])
+    stmts += _inserts("rec_affil", "ver,affil,person,stage_id,start,kind",
+                      [(ver, *r) for r in index.get("affil", [])])
     stmts += _inserts("rec_gram", "ver,gram,part,entries", gram_rows(index, ver))
     if onboarding is not None:
         stmts.append("INSERT INTO rec_meta(k,v) VALUES('onboarding',"
@@ -489,7 +530,7 @@ def to_sql(index: dict, ver: str, onboarding: list[str] | None = None) -> list[s
     return stmts
 
 
-TABLES = ("rec_stage", "rec_credit", "rec_people", "rec_gram")
+TABLES = ("rec_stage", "rec_credit", "rec_people", "rec_affil", "rec_gram")
 
 # ---------------------------------------------------------------- 差分で入れる（q-index-incremental）
 # 起案者の指示（2026-10-15）。版ごとに全部入れて前の版を消すと、1 日の書き込みが行数の約 4 倍になり、
@@ -502,6 +543,7 @@ TABLE_COLS = {
     "rec_stage": (("stage_id",), ("title", "tkey", "grp", "tour", "gkey", "start", "end", "credits", "entry")),
     "rec_credit": (("role", "person", "stage_id"), ("role_w", "role_group")),
     "rec_people": (("stage_id",), ("people",)),
+    "rec_affil": (("affil", "person", "stage_id"), ("start", "kind")),
     "rec_gram": (("gram", "part"), ("entries",)),
 }
 
@@ -514,6 +556,7 @@ def live_rows(index: dict) -> dict[str, list[tuple]]:
                        dumps(s["credits"]), dumps(s["entry"])) for sid, s in sorted(index["stages"].items())],
         "rec_credit": [tuple(r) for r in sorted(set(index["postings"]))],
         "rec_people": [(sid, dumps(p)) for sid, p in sorted(index["people"].items())],
+        "rec_affil": [tuple(r) for r in index.get("affil", [])],
         "rec_gram": [tuple(r[1:]) for r in gram_rows(index, LIVE)],
     }
 
@@ -548,7 +591,7 @@ def _delete_sql(table: str, gone: list[str]) -> list[str]:
 def _stage_of(table: str, key: str) -> str:
     """The stage a row belongs to (rec_gram rows belong to none)."""
     parts = key.split("\x1f")
-    return {"rec_stage": parts[0], "rec_people": parts[0], "rec_credit": parts[-1]}.get(table, "")
+    return {"rec_stage": parts[0], "rec_people": parts[0], "rec_credit": parts[-1], "rec_affil": parts[-1]}.get(table, "")
 
 
 def diff_sql(index: dict, prev: dict, onboarding: list[str] | None = None,
@@ -579,8 +622,12 @@ def diff_sql(index: dict, prev: dict, onboarding: list[str] | None = None,
         deletions = [c for c in changes if c[2] is None]
         chosen = deletions[:limit]
         room = limit - len(chosen)
-        order = sorted((sid for sid in by_stage if sid), key=lambda sid: (starts.get(sid, "9999"), sid))
-        for sid in order + [""]:                  # "" = title pieces, after every stage
+        # 所属（rec_affil）の行しか変わらない公演（過去の公演）は推薦の材料が変わらないので、題名のかけら（""）より後に回す
+        affil_only = {sid for sid, cs in by_stage.items() if sid and all(c[0] == "rec_affil" for c in cs)}
+        order = sorted((sid for sid in by_stage if sid and sid not in affil_only),
+                       key=lambda sid: (starts.get(sid, "9999"), sid))
+        rest = sorted(affil_only)
+        for sid in order + [""] + rest:           # "" = title pieces, after every stage
             group = [c for c in by_stage[sid] if c[2] is not None] if sid in by_stage else []
             if group and len(group) <= room:
                 chosen += group
@@ -639,7 +686,8 @@ def stats(index: dict, sql_bytes: int) -> dict:
             # D1 free tier: 100,000 rows written per day. Uploading a version
             # writes every row once, and deleting the previous one writes again.
             "rows_written": len(index["stages"]) + len(set(index["postings"]))
-            + len(index["people"]) + len(gram_rows(index, "")),
+            + len(index["people"]) + len(index.get("affil", [])) + len(gram_rows(index, "")),
+            "affil_rows": len(index.get("affil", [])),
             "sql_bytes": sql_bytes}
 
 
@@ -678,7 +726,10 @@ def main() -> int:
     import net_c as C
     themes = {sid: ws for (side, sid), row in C.load_themes().items()
               if side == "candidate" for ws in [theme_terms(row)] if ws}
-    index = build_index(pool, M._fields_by_stage(), APP.group_of, titles, themes)
+    # 過去の公演（fetch_past_stages の控え）は、所属の表（rec_affil）にだけ使う
+    past_path = ROOT / "data" / "past" / "stages.jsonl"
+    past = [json.loads(x) for x in past_path.read_text(encoding="utf-8").split("\n") if x.strip()] if past_path.exists() else []
+    index = build_index(pool, M._fields_by_stage(), APP.group_of, titles, themes, past)
     counts = None
     if a.hashes_out:
         prev = json.loads(a.prev_hashes.read_text(encoding="utf-8")) if a.prev_hashes and a.prev_hashes.exists() else {}
