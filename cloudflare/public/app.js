@@ -2078,19 +2078,24 @@ document.addEventListener("click", ev => {
       return;
     }
     const title = t.value.trim(), date = dt.value;
+    const repeat = !!g.querySelector('[data-register-repeat]:checked');
+    const savedTime = g.querySelector('#w-time').value;
     b.disabled = true;
     post("/api/add_work", {title: t.value.trim(), date: dt.value,
       venue: g.querySelector("#w-venue").value,
       time: g.querySelector("#w-time").value,
-      stage_id: g.querySelector("#w-stage").value}, g, "登録しました（評価待ちに並びます）")
+      stage_id: g.querySelector("#w-stage").value, repeat}, g, "登録しました（評価待ちに並びます）")
       .then(d => {
         if (!d) return;
-        t.value = ""; g.querySelector("#w-stage").value = "";
+        clearTimeout(sugTimer); ++sugSeq;
+        if (!repeat) { t.value = ""; g.querySelector("#w-stage").value = ""; }
+        else if (d.stage_id) g.querySelector("#w-stage").value = d.stage_id;
         document.getElementById("sug").replaceChildren();
         if (g.dataset.registerSingle) {
           const result = g.parentElement.querySelector("[data-register-result]");
           const message = document.createElement("p");
-          message.textContent = "「" + title + "」を保存しました。続けて別の公演も追加できます。";
+          message.textContent = "「" + title + "」" + (date ? "（" + date + (savedTime ? " " + savedTime : "") + "）" : "")
+            + "を保存しました。" + (repeat ? "次に観た日と開演時刻を入れて、同じ作品を追加できます。" : "続けて別の作品も追加できます。");
           const link = document.createElement("a");
           const today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
           link.href = date && date <= today ? "/rate/unrated" : "/records/works";
@@ -2098,6 +2103,10 @@ document.addEventListener("click", ev => {
           result.replaceChildren(message, link);
           result.hidden = false;
           g.querySelector(".said").textContent = "保存しました。";
+          dt.value = ""; g.querySelector('#w-time').value = "";
+          if (!repeat) g.querySelector('#w-venue').value = "";
+          (repeat ? dt : t).focus();
+          g.parentElement.querySelectorAll('.mergeq').forEach(el => el.remove());
           askMerge(g.parentElement, d.work_key, d.similar);
           // Worker saves synchronously. Keep the result and next action visible.
           return;
@@ -2118,15 +2127,29 @@ document.addEventListener("click", ev => {
       .then(d => { if (d) waitJob(g, true); else b.disabled = false; });
   } else if (b.dataset.sugWeb) {
     sugWeb();
+  } else if (b.dataset.registerSearch) {
+    registerSearchDialog(b);
+  } else if (b.dataset.registerReset) {
+    const g = b.closest('.add-work');
+    clearTimeout(sugTimer); ++sugSeq;
+    for (const id of ['w-title', 'w-stage', 'w-date', 'w-time', 'w-venue']) g.querySelector('#' + id).value = '';
+    document.getElementById('sug').replaceChildren();
+    g.querySelector('.said').textContent = '';
+    g.parentElement.querySelector('[data-register-result]').hidden = true;
+    g.parentElement.querySelectorAll('.mergeq').forEach(el => el.remove());
+    g.querySelector('#w-title').focus();
   } else if (b.dataset.pick) {
     // **候補を選んだら、そのまま欄に入れる。** 打ち直させない
     const r = b.closest(".sug-row"), g = document.querySelector(".add-work");
+    clearTimeout(sugTimer); ++sugSeq;
     g.querySelector("#w-title").value = r.dataset.title;
     g.querySelector("#w-date").value = r.dataset.date || "";
     g.querySelector("#w-venue").value = r.dataset.venue || "";
     g.querySelector("#w-stage").value = r.dataset.stage || "";
     document.getElementById("sug").replaceChildren();
     g.querySelector(".said").textContent = "候補から入れました。内容を確かめて登録してください";
+    const dialog = r.closest('dialog.register-search-dialog');
+    if (dialog) { dialog.dataset.picked = '1'; dialog.close(); }
   } else if (b.dataset.merge) {
     const g = b.closest(".mergeq");
     post("/api/merge_work", {work_key: b.dataset.mergeWork, other: b.dataset.merge}, g,
@@ -2705,6 +2728,81 @@ function lkRender(box, rows) {
 
 // **手で足す欄の候補。** すでにある情報を、打っている最中に出す
 let sugTimer = null;
+let sugSeq = 0;
+
+// Native dialog supplies Escape handling, modal focus and focus restoration.
+function registerSearchDialog(trigger) {
+  if (document.querySelector('.register-search-dialog')) return;
+  const dialog = document.createElement('dialog');
+  dialog.className = 'register-search-dialog';
+  dialog.setAttribute('aria-labelledby', 'rs-heading');
+  dialog.innerHTML = '<div class="rs-head"><h2 id="rs-heading">公演の詳細検索</h2><button type="button" data-rs-close>閉じる</button></div>'
+    + '<p>公演名は2文字以上、先頭から入力してください。団体名・劇場・上演日程で絞り込めます。</p>'
+    + '<form class="rs-form"><label>公演名<input name="q" maxlength="120" required autofocus></label>'
+    + '<label>団体名（任意）<input name="group" maxlength="80"></label>'
+    + '<label>劇場（任意）<input name="venue" maxlength="80"></label>'
+    + '<fieldset class="rs-schedule"><legend>上演日程（任意）</legend>'
+    + '<label>指定の細かさ<select name="schedule_precision"><option value="none">指定なし</option>'
+    + '<option value="month">月</option><option value="monthday">月日</option><option value="year">年</option>'
+    + '<option value="yearmonth">年月</option><option value="date">年月日</option></select></label>'
+    + '<div class="rs-schedule-fields"><label hidden>年<input name="schedule_year" type="number" min="1" max="9999" step="1" inputmode="numeric" placeholder="例：2026" disabled></label>'
+    + '<label hidden>月<select name="schedule_month" disabled><option value="">月を選ぶ</option>'
+    + Array.from({length: 12}, (_, i) => `<option value="${i + 1}">${i + 1}月</option>`).join('') + '</select></label>'
+    + '<label hidden>日<select name="schedule_day" disabled><option value="">日を選ぶ</option>'
+    + Array.from({length: 31}, (_, i) => `<option value="${i + 1}">${i + 1}日</option>`).join('') + '</select></label></div>'
+    + '<p class="note">指定した月・日・年に、上演期間が重なる公演を探します。月・月日だけなら年は問いません。</p></fieldset>'
+    + '<button type="submit" class="primary">検索する</button></form>'
+    + '<p class="rs-status" role="status" aria-live="polite"></p><div class="sug rs-results"></div>';
+  const form = dialog.querySelector('form'), status = dialog.querySelector('.rs-status'), box = dialog.querySelector('.rs-results');
+  form.elements.q.value = document.getElementById('w-title').value;
+  const updateSchedule = () => {
+    const precision = form.elements.schedule_precision.value;
+    const active = {year: ['year', 'yearmonth', 'date'], month: ['month', 'monthday', 'yearmonth', 'date'], day: ['monthday', 'date']};
+    for (const [part, modes] of Object.entries(active)) {
+      const field = form.elements['schedule_' + part], enabled = modes.includes(precision);
+      field.closest('label').hidden = !enabled;
+      field.disabled = !enabled; field.required = enabled;
+    }
+  };
+  form.elements.schedule_precision.addEventListener('change', updateSchedule);
+  updateSchedule();
+  dialog.querySelector('[data-rs-close]').addEventListener('click', () => dialog.close());
+  dialog.addEventListener('close', () => {
+    const picked = dialog.dataset.picked;
+    dialog.remove();
+    if (picked) document.getElementById('w-date')?.focus();
+    else if (trigger.isConnected) trigger.focus();
+  });
+  dialog.addEventListener('click', ev => { if (ev.target === dialog) {
+    const r = dialog.getBoundingClientRect();
+    if (ev.clientX < r.left || ev.clientX > r.right || ev.clientY < r.top || ev.clientY > r.bottom) dialog.close();
+  }});
+  form.addEventListener('submit', async ev => {
+    ev.preventDefault(); ev.stopPropagation();
+    const q = form.elements.q.value.trim();
+    if (Array.from(q).length < 2) { status.textContent = '公演名を2文字以上入力してください。'; form.elements.q.focus(); return; }
+    const params = new URLSearchParams({q, advanced: '1', t: T,
+      group: form.elements.group.value.trim(), venue: form.elements.venue.value.trim(), schedule_precision: form.elements.schedule_precision.value});
+    for (const part of ['year', 'month', 'day']) {
+      const field = form.elements['schedule_' + part];
+      if (!field.disabled) params.set('schedule_' + part, field.value);
+    }
+    const button = form.querySelector('button[type=submit]');
+    button.disabled = true; box.replaceChildren(); status.textContent = '検索中…';
+    try {
+      const response = await fetch(API_BASE + '/api/suggest?' + params, {credentials: 'include'});
+      const data = await response.json();
+      if (!response.ok || data.error) throw Error(data.error || '検索できませんでした。もう一度お試しください。');
+      if (!dialog.isConnected) return;
+      const rows = (data.rows || []).filter(row => row.kind === 'stage');
+      status.textContent = rows.length ? rows.length + '件の候補が見つかりました。観た公演を選んでください。'
+        : '条件に合う公演が見つかりませんでした。公演名を詳しく入力するか、ほかの条件を減らしてください。閉じて手入力で記録することもできます。';
+      sugRender(box, rows, '保存済みの公演から、最大8作品の候補を表示します。');
+    } catch (error) { if (dialog.isConnected) status.textContent = error.message; }
+    finally { button.disabled = false; }
+  });
+  document.body.append(dialog); dialog.showModal();
+}
 // **画面を差し込むたびに呼ぶ**（renderScreen）。画面の中身は読み込んだあとに fetch で入るので、
 // 読み込みのときに 1 度だけ呼んでいた頃は欄がまだ無く、打っても候補が出なかった（#134 の通し検証）。
 // 2 度結ばないように印を付ける
@@ -2715,11 +2813,13 @@ function sugWatch() {
   t.addEventListener("input", () => {
     document.getElementById("w-stage").value = "";   // 打ち直したら結び付きを外す
     clearTimeout(sugTimer);
+    ++sugSeq;
     sugTimer = setTimeout(() => sugFetch(t.value, box), 220);
   });
 }
 
 async function sugFetch(q, box) {
+  const seq = ++sugSeq;
   if (q.trim().length < 2) { box.replaceChildren(); return; }
   let d;
   try {
@@ -2727,6 +2827,7 @@ async function sugFetch(q, box) {
       + "&q=" + encodeURIComponent(q), {headers: {"X-Taguri-Token": T}, credentials: "include"});
     d = await r.json();
   } catch (e) { return; }
+  if (seq !== sugSeq || !box.isConnected) return;
   sugRender(box, d.rows, "すでにある情報から選べます（"
     + ((d.rows || []).length) + " 件）");
 }
@@ -4608,4 +4709,5 @@ document.addEventListener("click", async ev => {
   if (d) try { for (const k of ["taguri_login_email", "taguri_login_agree", "taguri_login_intent", "taguri_login_saved_at"]) localStorage.removeItem(k); } catch {}
   if (d) location.href = "/login";
 });
+
 

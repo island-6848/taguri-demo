@@ -31,7 +31,7 @@ export function bigrams(key) {
 }
 
 /** Stage ids best first; entriesFor(grams) -> Map(gram -> [[sid, tkey, start, end]...]) */
-export async function searchIndex(entriesFor, q, date = '') {
+export async function searchIndex(entriesFor, q, date = '', limit = SEARCH_LIMIT) {
   const k = titleKey(q);
   if (chars(k).length < 2) return [];
   const grams = bigrams(k);
@@ -47,7 +47,7 @@ export async function searchIndex(entriesFor, q, date = '') {
     hits.push([miss, score, chars(tkey).length, sid]);
   }
   hits.sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]) || (a[2] - b[2]) || cmp(a[3], b[3]));
-  return hits.slice(0, SEARCH_LIMIT).map(h => h[3]);
+  return hits.slice(0, Math.min(200, Math.max(1, limit))).map(h => h[3]);
 }
 
 export function d1Search(db, ver, counter = {rows: 0, queries: 0}) {
@@ -85,3 +85,4 @@ export function d1Search(db, ver, counter = {rows: 0, queries: 0}) {
     },
   };
 }
+
