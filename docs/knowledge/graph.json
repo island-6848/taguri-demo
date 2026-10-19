@@ -3689,6 +3689,19 @@
    "verifies": []
   },
   {
+   "id": "f-form-rodoku-1019",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-19",
+   "title": "形式（#形式）に「朗読」がある（札の名前は「朗読劇」ではなく「朗読」）。題名に 朗読 か リーディング があれば付く。題材の語彙表にも別に「朗読劇」（語り口の軸）がある",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/blob/master/tools/review/user_recommender.py",
+    "https://github.com/island-6848/taguri-demo/blob/master/cloudflare/src/vocab/concepts.json",
+    "https://github.com/island-6848/taguri-demo/blob/master/tools/review/recommend.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "f-link-card-spec",
    "type": "finding",
    "status": "unverified",
@@ -11032,6 +11045,11 @@
    "from": "eval-yahoo-aspects",
    "rel": "depends_on",
    "to": "q-aspect-attribution-check"
+  },
+  {
+   "from": "f-form-rodoku-1019",
+   "rel": "depends_on",
+   "to": "dec-forms-1019"
   },
   {
    "from": "f-link-card-spec",
