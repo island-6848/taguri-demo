@@ -31,6 +31,8 @@ const SCREENS = {
   "/recommend/favourites": "favourites",
   // あらすじのハッシュタグ（題材）の公演の一覧（起案者の指示 2026-10-18）。Worker だけが答える画面
   "/recommend/tag": "tagged",
+  // おすすめ理由の太字（人物・形式）の個別の画面（起案者の指示 2026-10-19。src/screens/entity.js）。Worker だけが答える画面
+  "/recommend/person": "person", "/recommend/kind": "kind",
   "/calendar": "calendar",
   "/tickets": "tickets",
   "/rate": "rate", "/rate/unrated": "unrated", "/rate/notes": "notes",
@@ -46,7 +48,7 @@ const SCREENS = {
 // 名残りとして残してある(未知のIMPLEMENTED外の画面名が来た場合の保険)。
 const IMPLEMENTED = new Set(["recommend", "interest", "reminder", "favourites", "calendar",
   "rate", "unrated", "notes", "tickets", "records", "trace", "chronicle", "works",
-  "start", "register", "settings", "search", "account", "tagged"]);
+  "start", "register", "settings", "search", "account", "tagged", "person", "kind"]);
 
 // --- NAV(app.py の NAV表と同じデータ) -------------------------------------
 // ページの地図（起案者の指摘 2026-10-14「リマインドはおすすめの下？違和感ある」で見直した）:
@@ -527,7 +529,7 @@ document.addEventListener("click", async ev => {
   const here = location.pathname.slice(REPO_BASE.length) || "/";
   // 興味ありの一覧で消すのは、興味なしより強い「見たくない」（起案者の指示 2026-10-18）
   const body = {stage_id: t.dataset.stage, value: here === "/recommend/interest" ? "dismiss_strong" : "dismiss", nofill: true};
-  const from = {"/recommend/reminder": "reminder", "/search": "search", "/recommend/tag": "search", "/recommend/favourites": "favourites"}[here];
+  const from = {"/recommend/reminder": "reminder", "/search": "search", "/recommend/tag": "search", "/recommend/person": "search", "/recommend/kind": "search", "/recommend/favourites": "favourites"}[here];
   if (from) body.from = from;
   if (t.closest(".rfind")) body.from = "search";
   if (t.dataset.tours !== undefined) body.siblings = t.dataset.tours.split(",").filter(Boolean);
@@ -1423,7 +1425,7 @@ function compactTickets(root) {
   const interestPage = here === "/recommend/interest";   // 興味ありの一覧もおすすめと同じ表示（起案者の指示 2026-10-17）
   const favPage = here === "/recommend/favourites";       // お気に入りも同じ表示（起案者の指示 2026-10-17）
   const tagPage = here === "/recommend/tag";              // あらすじのハッシュタグの公演の一覧も同じ表示（起案者の指示 2026-10-18）
-  const searchPage = here === "/search";                  // 「探す」の公演のカードも同じ表示（起案者の指示 2026-10-19「『検索』で出てくる公演カードも他ページのレイアウトと統一して」）
+  const searchPage = here === "/search" || here === "/recommend/person" || here === "/recommend/kind";   // 人物・形式の画面も同じ表示                  // 「探す」の公演のカードも同じ表示（起案者の指示 2026-10-19「『検索』で出てくる公演カードも他ページのレイアウトと統一して」）
   // お気に入りも同じ形にする（起案者の指示 2026-10-15「お気に入りのページのレイアウト変更して。購入済み公演と似た感じ」）
   root.querySelectorAll("article.ticket.recommend, article.ticket.interest, article.ticket.owned, article.ticket.favourite").forEach(t => {
     if (t.classList.contains("cmp")) return;
@@ -1973,7 +1975,7 @@ document.addEventListener("click", ev => {
       // どの画面で答えたか（興味ありの一覧で「開幕リマインドからの追加」などと出すため。起案者の指示 2026-10-15）
       const here = (location.pathname.slice(REPO_BASE.length) || "/");
       // ハッシュタグ（題材）の公演の一覧で答えたものは、探すから足したものとして扱う（screens/tagged.js）
-      const from = {"/recommend/reminder": "reminder", "/search": "search", "/recommend/tag": "search", "/recommend/favourites": "favourites"}[here];
+      const from = {"/recommend/reminder": "reminder", "/search": "search", "/recommend/tag": "search", "/recommend/person": "search", "/recommend/kind": "search", "/recommend/favourites": "favourites"}[here];
       if (from) body.from = from;
       if (b.closest(".rfind")) body.from = "search";     // おすすめ画面の「出てこない公演を探す」で答えた
       const tk0 = b.closest(".ticket");

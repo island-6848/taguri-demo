@@ -1149,6 +1149,17 @@
    ]
   },
   {
+   "id": "dec-entity-pages",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-19",
+   "title": "おすすめ理由の太字から、人物・形式ごとのページへ飛べるようにする",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/blob/master/cloudflare/src/screens/entity.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-fav-only-reco",
    "type": "decision",
    "status": "adopted",
@@ -8784,6 +8795,11 @@
    "from": "dec-edition-split",
    "rel": "affects",
    "to": "comp-frontend"
+  },
+  {
+   "from": "dec-entity-pages",
+   "rel": "affects",
+   "to": "comp-cf-worker"
   },
   {
    "from": "dec-fav-only-reco",

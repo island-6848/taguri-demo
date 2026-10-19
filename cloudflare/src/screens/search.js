@@ -160,9 +160,9 @@ const PAST_TITLE_ROWS = 1000;
 // 見つかった分は全部たどれるよう、ページ送りを付ける（起案者の指示 2026-10-19「ちゃんと全件表示して。サーバーで問題があるならページ送りを
 // つけて」）。これから観られる公演はカード（1 枚ごとに D1 を読み、組み立てに Worker の CPU を使う）なので 1 ページ UP_PER 件、
 // 過去の公演は文字だけの行なので 1 ページ PAST_PER 件
-const UP_PER = 5, PAST_PER = 5;   // 起案者の指示 2026-10-19「『これから観られる公演』『過去の公演』は 5 件ずつ表示し、ページ送りで最後までたどる」
+export const UP_PER = 5, PAST_PER = 5;   // 起案者の指示 2026-10-19「『これから観られる公演』『過去の公演』は 5 件ずつ表示し、ページ送りで最後までたどる」
 /** 「← 前の n 件 ／ p / last ページ ／ 次の n 件 →」。href(p) はそのページへの道 */
-function pagerHtml(total, per, page, href) {
+export function pagerHtml(total, per, page, href) {
   const last = Math.max(1, Math.ceil(total / per));
   if (last <= 1 || !href) return '';
   return `<div class="mfoot">${page > 1 ? `<a class="mpage" href="${href(page - 1)}">← 前の ${per} 件</a>` : '<span class="mpage off">最初のページです</span>'}`
@@ -171,7 +171,7 @@ function pagerHtml(total, per, page, href) {
 }
 const md = d => (/^\d{4}-\d{2}-\d{2}$/.test(d || '') ? `${d.slice(0, 4)}/${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}` : '');
 
-async function pastHits(ctx, q, ws, page = 1, href = null) {
+export async function pastHits(ctx, q, ws, page = 1, href = null) {
   const linked = new Set(ws.map(w => w.stage_id).filter(Boolean).map(String));
   const rows = new Map();
   let capped = false;
