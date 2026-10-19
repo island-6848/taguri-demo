@@ -1,3 +1,4 @@
+import {SESSION_TTL} from '../session-policy.js';
 // アカウント: the signed-in user's own page (起案者の指示 2026-10-14「アカウントの
 // ページを作成して（プロフィールページみたいなもの）」、見るのは本人だけ).
 // A Worker-only screen: the Python service has no account page, so there is no
@@ -79,7 +80,7 @@ async function accountScreen(_params, ctx) {
     db.prepare('SELECT value FROM app_setting WHERE user_id=? AND key=?').bind(uid, NAME_KEY).first(),
     db.prepare('SELECT value FROM app_setting WHERE user_id=? AND key=?').bind(uid, AVATAR_KEY).first(),
     db.prepare('SELECT count(*) AS n FROM passkeys WHERE user_id=?').bind(uid).first(),
-    db.prepare('SELECT count(*) AS n FROM sessions WHERE user_id=? AND expires_at>?').bind(uid, Math.floor(ctx.now / 1000)).first(),
+    db.prepare('SELECT count(*) AS n FROM sessions WHERE user_id=? AND expires_at>? AND created_at>?').bind(uid, Math.floor(ctx.now / 1000), Math.floor(ctx.now / 1000) - SESSION_TTL).first(),
     // お気に入りは、いまは本人の設定（app_setting の declared、lists.loadDeclared）に入る。前は古い表（favourites）だけを
     // 数えていて、いつも 0 件だった（起案者の指摘 2026-10-18「『お気に入り』が常に0件なのなぜ？」）
     loadDeclared(ctx),

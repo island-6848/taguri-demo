@@ -2711,6 +2711,20 @@
    "verifies": []
   },
   {
+   "id": "dec-session-one-week",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-19",
+   "title": "セッションは既発行分を含めログインから1週間で失効する",
+   "sources": [
+    "cloudflare/src/session-policy.js",
+    "cloudflare/src/worker.js",
+    "cloudflare/src/screens/account.js",
+    "cloudflare/test/firebase-auth.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-settings-worker",
    "type": "decision",
    "status": "adopted",
@@ -9925,6 +9939,11 @@
    "from": "dec-session-lax",
    "rel": "affects",
    "to": "dec-login-hardening"
+  },
+  {
+   "from": "dec-session-one-week",
+   "rel": "affects",
+   "to": "comp-firebase-login"
   },
   {
    "from": "dec-settings-worker",

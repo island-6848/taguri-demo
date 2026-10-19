@@ -228,7 +228,7 @@ test('the page Google returns to may talk only to the Calendar API, and the clie
   // Signed out: sent to sign in first.
   assert.equal((await worker.fetch(new Request('https://app.example/oauth/calendar'), env)).status, 302);
   sqlite.prepare("INSERT INTO sessions(hash,user_id,expires_at,created_at) VALUES(?,?,?,?)").run(
-    [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode('a'.repeat(64))))].map(b => b.toString(16).padStart(2, '0')).join(''), 'u1', 9e9, 0);
+    [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode('a'.repeat(64))))].map(b => b.toString(16).padStart(2, '0')).join(''), 'u1', 9e9, Math.floor(Date.now() / 1000));
   const page = await worker.fetch(new Request('https://app.example/oauth/calendar', {headers: {cookie: 'taguri_session=' + 'a'.repeat(64)}}), env);
   assert.equal(page.status, 200);
   const csp = page.headers.get('content-security-policy');
