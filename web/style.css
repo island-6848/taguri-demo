@@ -2343,7 +2343,11 @@ code.cmd{display:inline-block;margin:10px 0 4px;padding:8px 14px;border-radius:8
 .register-search-dialog .rs-head h2{margin:0}
 .register-search-dialog .rs-form{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .register-search-dialog .rs-form label{display:flex;flex-direction:column;gap:6px;min-width:0}
-.register-search-dialog input{box-sizing:border-box;width:100%;min-width:0;font:inherit;padding:8px;border:1px solid var(--ring);border-radius:8px}
+.register-search-dialog input,.register-search-dialog select{box-sizing:border-box;width:100%;min-width:0;font:inherit;padding:8px;border:1px solid var(--ring);border-radius:8px}
+.register-search-dialog .rs-schedule{grid-column:1/-1;min-width:0;margin:0;padding:12px;border:1px solid var(--ring);border-radius:8px}
+.register-search-dialog .rs-schedule-fields{display:flex;flex-wrap:wrap;gap:12px;margin-top:12px}
+.register-search-dialog .rs-schedule-fields>label{flex:1 1 100px}
+.register-search-dialog .rs-form label[hidden]{display:none}
 .register-search-dialog button{font:inherit;cursor:pointer;padding:8px 12px;border-radius:8px}
 .register-search-dialog .rs-status{overflow-wrap:anywhere}
 .register-search-dialog .rs-results .sug-row{flex-wrap:wrap}

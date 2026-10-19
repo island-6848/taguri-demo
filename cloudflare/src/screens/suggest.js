@@ -12,7 +12,7 @@
 import {gradeText} from './grade.js';
 import {titleKey, d1Search, searchIndex} from '../stage-search.js';
 import {loadWorks} from './works.js';
-import {isDay} from '../client/import-parse.js';
+import {scheduleFilter} from './schedule-filter.js';
 
 const LIMIT = 8;
 const PAST_LIMIT = 20;
@@ -38,10 +38,11 @@ export async function suggest(params, ctx) {
   const advanced = params.get('advanced') === '1';
   const venue = advanced ? (params.get('venue') || '').trim().slice(0, 80) : '';
   const group = advanced ? (params.get('group') || '').trim().slice(0, 80) : '';
-  const date = advanced ? (params.get('date') || '') : '';
-  if (date && !isDay(date)) return {q, rows: [], error: '観た日を正しく入力してください。'};
+  let schedule;
+  try { schedule = scheduleFilter(advanced ? params : new URLSearchParams()); }
+  catch (error) { return {q, rows: [], error: error.message}; }
   const fits = (v, g, start, end) => (!venue || (v || '').includes(venue))
-    && (!group || (g || '').includes(group)) && (!date || (start && start <= date && date <= (end || start)));
+    && (!group || (g || '').includes(group)) && schedule.matches(start, end);
   const db = ctx.db;
   const works = (await loadWorks(ctx)).filter(w => !w.unseen);
   const mine = {};
@@ -60,7 +61,8 @@ export async function suggest(params, ctx) {
   const seen = new Set();
   if (ver) {
     const search = d1Search(db, ver);
-    const ids = await search.stages(await searchIndex(search.entriesFor, q, date || ctx.today));
+    const ids = await search.stages(await searchIndex(search.entriesFor, q, schedule.from || ctx.today,
+      advanced ? DETAIL_SCAN_LIMIT : undefined));
     for (const st of ids) {
       if (!fits(st.theater, st.group, st.start, st.end)) continue;
       seen.add(st.stage_id);
@@ -76,14 +78,13 @@ export async function suggest(params, ctx) {
   const filters = [], args = [k, k + '\u{10FFFF}'];
   if (venue) { filters.push("instr(COALESCE(venue,''),?)>0"); args.push(venue); }
   if (group) { filters.push("instr(COALESCE(grp,''),?)>0"); args.push(group); }
-  if (date) { filters.push("start<=? AND COALESCE(NULLIF(end,''),start)>=?"); args.push(date, date); }
+  if (schedule.from) { filters.push("start<=? AND COALESCE(NULLIF(end,''),start)>=?"); args.push(schedule.to, schedule.from); }
   const pastQuery = 'SELECT stage_id,title,tkey,start,end,venue,grp,pref FROM past_stage WHERE tkey>=? AND tkey<?';
   const {results: past} = await db.prepare((advanced
     ? `SELECT * FROM (${pastQuery} ORDER BY tkey LIMIT ${DETAIL_SCAN_LIMIT})` + (filters.length ? ' WHERE ' + filters.join(' AND ') : '')
     : pastQuery) + ' ORDER BY tkey LIMIT ?')
-    .bind(...args, PAST_LIMIT).all();
-  for (const p of past) {
-    if (!fits(p.venue, p.grp, p.start, p.end)) continue;
+    .bind(...args, advanced ? DETAIL_SCAN_LIMIT : PAST_LIMIT).all();
+  for (const p of past.filter(p => fits(p.venue, p.grp, p.start, p.end)).slice(0, PAST_LIMIT)) {
     if (seen.has(p.stage_id)) continue;
     const one = runRange(p.start, p.end, ctx.today);
     rows.push({_s: [p.tkey === k ? 0 : 1, 1], kind: 'stage', key: p.stage_id, title: p.title,

@@ -54,3 +54,37 @@ test('repeated attendance saves distinct days and matinee/evening; duplicate sta
     assert.ok(suggestions.rows[0].mine >= 3);
   } finally {db.close()}
 });
+
+test('schedule precision filters runs, including recurring months after the first twenty candidates', async () => {
+  const {db, ctx, stage} = fixture();
+  try {
+    for (let i = 1; i <= 25; i++) stage(i, '東京劇場', '劇団甲', '2025-12-01', '2025-12-15');
+    stage(99, '東京劇場', '劇団甲', '2026-01-20', '2026-03-05');
+    stage(100, '東京劇場', '劇団甲', '2024-02-29', '2024-02-29');
+    const ids = async parts => (await suggest(new URLSearchParams({q: '演劇', advanced: '1', ...parts}), ctx)).rows.map(r => r.stage_id);
+    assert.deepEqual(await ids({schedule_precision: 'month', schedule_month: '2'}), ['99', '100']);
+    assert.deepEqual(await ids({schedule_precision: 'monthday', schedule_month: '2', schedule_day: '29'}), ['100']);
+    assert.deepEqual(await ids({schedule_precision: 'yearmonth', schedule_year: '2026', schedule_month: '2'}), ['99']);
+    assert.deepEqual(await ids({schedule_precision: 'date', schedule_year: '2026', schedule_month: '3', schedule_day: '5'}), ['99']);
+    assert.deepEqual(await ids({schedule_precision: 'date', schedule_year: '2026', schedule_month: '3', schedule_day: '6'}), []);
+  } finally {db.close()}
+});
+
+test('schedule filtering also reaches current catalogue candidates beyond the default twenty', async () => {
+  const {db, ctx} = fixture();
+  try {
+    db.exec(`CREATE TABLE rec_gram(ver TEXT,gram TEXT,part INTEGER,entries TEXT);
+      CREATE TABLE rec_stage(ver TEXT,stage_id TEXT,title TEXT,tkey TEXT,grp TEXT,start TEXT,end TEXT,entry TEXT);
+      INSERT INTO rec_meta VALUES('current','v');`);
+    const entries = [];
+    for (let i = 1; i <= 30; i++) {
+      const sid = String(i).padStart(2, '0'), month = i === 30 ? '02' : '12';
+      const start = `2026-${month}-01`, end = `2026-${month}-20`;
+      entries.push([sid, '演劇の夜', start, end]);
+      db.prepare('INSERT INTO rec_stage VALUES(?,?,?,?,?,?,?,?)').run('v', sid, '演劇の夜', '演劇の夜', '劇団甲', start, end, JSON.stringify({theater: '東京劇場'}));
+    }
+    db.prepare('INSERT INTO rec_gram VALUES(?,?,?,?)').run('v', '演劇', 0, JSON.stringify(entries));
+    const result = await suggest(new URLSearchParams({q: '演劇', advanced: '1', schedule_precision: 'month', schedule_month: '2'}), ctx);
+    assert.deepEqual(result.rows.map(r => r.stage_id), ['30']);
+  } finally {db.close()}
+});

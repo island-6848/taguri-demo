@@ -34,11 +34,16 @@ test('register keeps the selected production for repeated attendance, clears dat
   assert.equal(fields['#w-title'].value, ''); assert.equal(fields['#w-stage'].value, ''); assert.equal(fields['#w-venue'].value, '');
 });
 
-test('detail dialog sends selected filters, supports retry, and applies the searched attendance date to a candidate', async () => {
+test('detail dialog sends the chosen schedule precision without turning the filter into attendance', async () => {
   const start = source.indexOf('function registerSearchDialog('), end = source.indexOf('\nfunction sugWatch()', start);
   const make = new Function('document', 'fetch', 'sugRender', 'API_BASE', 'T', source.slice(start, end) + '\nreturn registerSearchDialog;');
   const handlers = {}, status = {}, button = {}, box = {replaceChildren() {}}, close = {};
-  const form = {elements: Object.fromEntries(['q', 'group', 'venue', 'date'].map(k => [k, {value: '', focus() {}}])),
+  const fields = Object.fromEntries(['q', 'group', 'venue', 'schedule_precision', 'schedule_year', 'schedule_month', 'schedule_day'].map(k => {
+    const label = {};
+    return [k, {value: k === 'schedule_precision' ? 'none' : '', focus() {}, closest: () => label,
+      addEventListener: (type, fn) => {handlers[k + '-' + type] = fn}}];
+  }));
+  const form = {elements: fields,
     querySelector: () => button, addEventListener: (type, fn) => {handlers[type] = fn}};
   const selectors = {'form': form, '.rs-status': status, '.rs-results': box, '[data-rs-close]': {addEventListener: (type, fn) => {close[type] = fn}}};
   const dialog = {dataset: {}, isConnected: true, setAttribute() {}, querySelector: s => selectors[s],
@@ -48,11 +53,24 @@ test('detail dialog sends selected filters, supports retry, and applies the sear
   const open = make(doc, async url => {request = new URL(url, 'https://taguri.test'); if (failing) throw Error('通信失敗'); return {ok: true, json: async () => ({rows: [{kind: 'stage', title: '演劇の夜', stage_id: '99', date: ''}]})}}, (_, got) => {rows = got}, '', 'token');
   const trigger = {isConnected: true, focus() {this.focused = true}}; open(trigger);
   assert.ok(dialog.open); assert.equal(request, undefined);
+  assert.ok(fields.schedule_year.disabled); assert.ok(fields.schedule_month.disabled); assert.ok(fields.schedule_day.disabled);
   form.elements.group.value = '劇団甲'; form.elements.venue.value = '東京劇場';
+  fields.schedule_precision.value = 'month'; handlers['schedule_precision-change']();
+  fields.schedule_month.value = '10'; fields.schedule_year.value = '2026';
+  assert.ok(!fields.schedule_month.disabled); assert.ok(fields.schedule_year.disabled); assert.ok(fields.schedule_day.disabled);
+  assert.equal(fields.schedule_month.closest('label').hidden, false);
   const event = {preventDefault() {}, stopPropagation() {}};
   await handlers.submit(event);
   assert.equal(request.searchParams.get('advanced'), '1'); assert.equal(request.searchParams.get('group'), '劇団甲');
-  assert.equal(request.searchParams.get('venue'), '東京劇場'); assert.equal(rows[0].date, '2026-01-02'); assert.equal(button.disabled, false);
+  assert.equal(request.searchParams.get('venue'), '東京劇場'); assert.equal(rows[0].date, ''); assert.equal(button.disabled, false);
+  assert.equal(request.searchParams.get('schedule_precision'), 'month'); assert.equal(request.searchParams.get('schedule_month'), '10');
+  assert.ok(!request.searchParams.has('schedule_year')); assert.ok(!request.searchParams.has('date'));
+  fields.schedule_precision.value = 'date'; handlers['schedule_precision-change'](); fields.schedule_day.value = '19';
+  await handlers.submit(event);
+  assert.equal(request.searchParams.get('schedule_year'), '2026'); assert.equal(request.searchParams.get('schedule_day'), '19');
+  assert.equal(rows[0].date, '');
+  fields.schedule_precision.value = 'none'; handlers['schedule_precision-change'](); await handlers.submit(event);
+  assert.ok(!request.searchParams.has('schedule_month')); assert.ok(!request.searchParams.has('schedule_day'));
   failing = true; await handlers.submit(event); assert.match(status.textContent, /通信失敗/); assert.equal(button.disabled, false);
   close.click(); assert.ok(!dialog.open); assert.ok(trigger.focused);
 });
