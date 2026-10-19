@@ -8,7 +8,7 @@ import {loadDeclared} from './lists.js';
 import {strip} from './py.js';
 import {body as traceBody} from './trace.js';
 import {panel as chroniclePanel} from './chronicle.js';
-import {spiralPanel, venuePanel} from './charts.js';
+import {spiralPanel} from './charts.js';
 import {craftRows, panel as comparePanel, popNote, population} from './compare.js';
 import {RECORDS_EMPTY} from './diary.js';
 import {localNow} from './py.js';
@@ -65,7 +65,9 @@ export async function traceScreen(params, ctx) {
   }
   const body = `<h1>たどる ── 1 つの名前をたどる</h1>
 ${recordsLede(d)}
-<p class="lede">名前を1つ選ぶと、<b>その名前をいつ知って、何につながったか</b>が出ます。何本観たか、どの劇場が多いかは「眺める」で見られます。</p>
+<div class="figs"><div data-fig="people"></div></div>
+<script id="figs-src" type="application/json">${scriptJson({rated: d.rated})}</script>
+<p class="lede">名前を1つ選ぶと、<b>その名前をいつ知って、何につながったか</b>が出ます。観劇の傾向は「眺める」で見られます。</p>
 ${main}`;
   return {title: 'たどる', body_html: body};
 }
@@ -137,9 +139,7 @@ ${spiralPanel(d.seen)}
 ${timetable}
 ${conquest}
 
-${venuePanel(d.rated)}
 <div data-fig="storyline"></div>
-<div data-fig="people"></div>
 </div>
 <script id="figs-src" type="application/json">${scriptJson({rated: d.rated})}</script>
 <h2>比べる ── これから上演される公演との差</h2>
