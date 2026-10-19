@@ -5,6 +5,7 @@
 // the Python text speaks of the Render server: the アカウント card (recovery codes on Render)
 // points to the account page, the mail import is the owner's only, and 「観ればよかった」 is
 // looked up in the stages already in D1 instead of fetching the web.
+import {registerDialogHtml} from './register-dialog.js';
 import {scaleOf, scaleCardHtml, SCALE_LABEL, frac} from './grade.js';
 import {FAV_SEED_W} from '../recommend.js';
 import {nextCrawl, crawlLabel, crawlSearch} from '../crawl-time.js';
@@ -326,14 +327,13 @@ export async function registerScreen(_params, ctx) {
 <div class="card register-single">${h2('plus', '観た公演を1件追加')}
 <div class="add-work" data-register-single="1">
  <div class="register-search"><label class="fld" for="w-title"><span class="fl">公演の題名<small class="req">必須</small></span><input id="w-title" type="text" placeholder="例：夜の果て" size="26" autocomplete="off" aria-describedby="register-title-help"></label><input id="w-stage" type="hidden" value="">
- <button type="button" data-register-search="1">${ico('search')}詳細検索</button></div>
+ <button type="button" data-register-search="1" data-open-dialog="register-search-dialog">${ico('search')}詳細検索</button></div>
  <p class="note" id="register-title-help">題名を2文字入れると候補が出ます。劇場と上演期間を見て選んでください。見つからなくても、入力した名前で記録できます。</p>
  <div id="sug" class="sug"></div>
  <div class="register-dates"><label class="fld" for="w-date"><span class="fl">観た日<small class="opt">任意</small></span><input id="w-date" type="date"></label>
  <label class="fld" for="w-time"><span class="fl">開演時刻<small class="opt">任意</small></span><input id="w-time" type="time"></label></div>
  <label class="fld" for="w-venue"><span class="fl">劇場<small class="opt">任意</small></span><input id="w-venue" type="text" placeholder="例：本多劇場" size="26"></label>
- <label class="register-repeat"><input type="checkbox" data-register-repeat="1" checked>同じ作品を続けて追加する</label>
- <div class="register-save"><button type="button" class="primary" data-add-work="1">${ico('plus')}観劇記録を保存</button><button type="button" data-register-reset="1">別の作品を追加</button><span class="said" role="status" aria-live="polite"></span></div>
+ <div class="register-save"><button type="button" class="primary" data-add-work="1">${ico('plus')}観劇記録を保存</button><span class="said" role="status" aria-live="polite"></span></div>
 </div>
 <div class="register-result" data-register-result="1" hidden></div>
 <details class="register-help"><summary>公演の候補について</summary>
@@ -393,6 +393,7 @@ export async function registerScreen(_params, ctx) {
  <button data-miss="1">${ico('flag')}登録する</button><span class="said"></span></div>
 ${missedHtml(missed)}</details>
 
+${registerDialogHtml()}
 <p class="note">保存した記録の評価・感想は、<a href="/rate?t=__TAGURI_TOKEN__">「観た公演の評価」（未評価 ${wait.length} 件）</a>で追加できます。</p>`;
   return {title: '観劇記録を追加', body_html: body};
 }
@@ -437,5 +438,6 @@ export const settingsScreens = {
   screens: {settings: settingsScreen, start: startScreen, register: registerScreen},
   actions: {pref_setting: prefSettingAction, missed: missedAction, analysis_optout: optoutAction},
 };
+
 
 
