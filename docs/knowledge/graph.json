@@ -1913,6 +1913,17 @@
    "verifies": []
   },
   {
+   "id": "dec-owned-seed-rated-once",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-19",
+   "title": "購入済みも興味ありと同じ種にし、評価を付けた公演は評価 1 回分だけにする",
+   "sources": [
+    "cloudflare/src/screens/recommend.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-page-pref-filter",
    "type": "decision",
    "status": "adopted",
@@ -9536,6 +9547,11 @@
    "from": "dec-own-domain",
    "rel": "depends_on",
    "to": "q-domain"
+  },
+  {
+   "from": "dec-owned-seed-rated-once",
+   "rel": "affects",
+   "to": "impl-interest-seed"
   },
   {
    "from": "dec-page-pref-filter",
