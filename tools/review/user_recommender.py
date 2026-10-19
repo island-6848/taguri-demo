@@ -103,10 +103,52 @@ def independent_ratings(rows: list[dict]) -> list[dict]:
 # words in the title, the credits (原作・翻訳・music roles) and the venue.
 # Tags are ("#axis", value) pairs and travel with the credits (rec_people, the
 # index) so the Worker needs no extra table.
-_FORM_WORDS = (("ミュージカル", "ミュージカル"), ("朗読", "朗読"), ("リーディング", "朗読"),
-               ("人形劇", "人形劇"), ("バレエ", "ダンス"), ("ダンス", "ダンス"),
-               ("歌舞伎", "古典"), ("狂言", "古典"), ("文楽", "古典"),
-               ("落語", "お笑い"), ("コント", "お笑い"), ("漫才", "お笑い"))
+# 形式（#形式）。起案者の指示 2026-10-19「能、とかバレエ、とかオペラ、とかの区切りがないなら分けないといけない」「落語・寄席も
+# あるかな？」→「その分け方で移行」: 演劇（どれにも当たらない公演。札は付けない）・ミュージカル・能・狂言・歌舞伎・文楽・
+# 落語・寄席（講談・浪曲など演芸を含む）・バレエ・ダンス・オペラ・お笑い（コント・漫才）。前は 歌舞伎・狂言・文楽 を「古典」、
+# 落語を「お笑い」、バレエを「ダンス」にまとめ、能とオペラは区切りが無かった。朗読・人形劇・音楽劇は前のまま残す。
+# 題名を先に見て、題名で決まらないときだけ劇場・主催の名前を見る（能楽堂で講談、文楽劇場で演芸の会もあるため）。上から順に最初に当たったもの
+_FORM_TITLE = (
+    ("落語・寄席", re.compile(r"落語|寄席|講談|浪曲|演芸|高座|噺家|^(?:桂|林家|柳家|立川|三遊亭|古今亭|春風亭|柳亭|入船亭|金原亭|瀧川|"
+                            r"笑福亭|月亭|露の|一龍斎|神田|宝井|玉川|春野)\S*\s*(?:独演会|二人会|三人会|落語会)")),
+    ("能・狂言", re.compile(r"能楽|狂言|薪能|(?:^|[\s「『〈<（(・])能(?![力率動性面])|能[「『〈]")),
+    ("歌舞伎", re.compile(r"歌舞伎(?!座)|大歌舞伎")),
+    ("文楽", re.compile(r"文楽|人形浄瑠璃")),
+    ("オペラ", re.compile(r"オペラ|オペレッタ|歌劇(?!団)")),
+    ("バレエ", re.compile(r"バレエ")),
+    ("ミュージカル", re.compile(r"ミュージカル")),
+    ("お笑い", re.compile(r"コント|漫才|お笑い")),
+    ("ダンス", re.compile(r"ダンス")),
+    ("朗読", re.compile(r"朗読|リーディング")),
+    ("人形劇", re.compile(r"人形劇")),
+)
+# 題名で決まらないとき: 劇場・主催の名前（宝塚歌劇団・OSK日本歌劇団はオペラではない）
+_FORM_PLACE = (
+    ("落語・寄席", re.compile(r"寄席|演芸場|演芸ホール|末廣亭|鈴本|にぎわい座|繁昌亭|喜楽館|落語協会|落語芸術協会")),
+    ("能・狂言", re.compile(r"能楽堂|能楽研修所|能舞台|能楽|観世|宝生|金春|金剛|喜多流|狂言")),
+    ("文楽", re.compile(r"文楽協会")),
+    ("バレエ", re.compile(r"バレエ")),
+    ("オペラ", re.compile(r"オペラ(?!劇場|シティ)|二期会|藤原歌劇団|歌劇場")),
+    ("ミュージカル", re.compile(r"ミュージカル")),
+)
+
+
+def form_of(title: str, places=(), roles=frozenset()) -> str:
+    """The form of one production ('' = 演劇). `places`: the venue and troupe names; `roles`: the credit roles."""
+    t = M.norm(title or "")
+    for name, pat in _FORM_TITLE:
+        if pat.search(t):
+            return name
+    place = " ".join(M.norm(p or "") for p in places if p)
+    for name, pat in _FORM_PLACE:
+        if pat.search(place):
+            return name
+    # オペラ劇場（新国立劇場など）はオペラもバレエもかかる。振付があればバレエ、指揮だけならオペラ
+    if "オペラ劇場" in place:
+        return "バレエ" if "振付" in roles else "オペラ" if "指揮" in roles else ""
+    return ""
+
+
 _MUSIC_ROLES = {"作曲", "音楽", "編曲", "音楽監督", "歌唱指導"}
 # Ticket price band (#値段), from the highest yen amount in the price text, so
 # that "not worth the price" can land on price rather than on the people.
@@ -205,10 +247,35 @@ _25D_TITLE = re.compile(r"the\s*stage|^\s*(?:舞台|ミュージカル|音楽劇
 _BRACKETED = re.compile(r"[『「]([^』」]{2,})[』」]")
 
 
+# 学生の演劇（起案者の指示 2026-10-19「大学演劇とか高校演劇もあるな」）。形式（ミュージカル・ダンスなど）とは別のくくりなので
+# ジャンルに置く（大学のミュージカル研究会の公演は、形式 ミュージカル・ジャンル 大学演劇）。主催・劇団の名前で見る（「大学」の
+# 語は題名にも出る）。大学の研究所・センターが主催する公演は学生の演劇ではないので外す
+_HIGHSCHOOL = re.compile(r"高校|高等学校|高等部|中学校|中高|高文連")
+_UNIVERSITY = re.compile(r"大学|短大|学生劇団|学生演劇")
+_UNIV_INSTITUTE = re.compile(r"研究センター|研究所|機構|附属|財団")
+_STUDENT_TITLE = re.compile(r"(高校|中学)演劇|(大学|学生)演劇")
+
+
+def student(title: str, group: str) -> str:
+    """'高校演劇' / '大学演劇' when a school's students put the show on; '' otherwise."""
+    g, t = M.norm(group or ""), M.norm(title or "")
+    if _HIGHSCHOOL.search(g):
+        return "高校演劇"
+    if _UNIVERSITY.search(g) and not _UNIV_INSTITUTE.search(g):
+        return "大学演劇"
+    m = _STUDENT_TITLE.search(t)
+    if m:
+        return "高校演劇" if m.group(1) else "大学演劇"
+    return ""
+
+
 def genres(title: str, group: str = "", source: str = "") -> list[str]:
-    """Big genres of one production ('2.5次元', '宝塚'). 宝塚 is read from the troupe only: the staff
-    lists name 宝塚歌劇団 for people lent to other shows."""
+    """Big genres of one production ('2.5次元', '宝塚', '大学演劇', '高校演劇'). 宝塚 is read from the troupe only:
+    the staff lists name 宝塚歌劇団 for people lent to other shows."""
     title, group = title or "", group or ""
+    school = student(title, group)
+    if school:
+        return [school]
     if _TAKARAZUKA in group:
         return ["宝塚"]
     if set(source_kinds(source)) & _25D_SOURCES:
@@ -228,8 +295,7 @@ def stage_tags(title: str, venues, credits, prices=(), source: str = "", group: 
     does not score (起案者の指示 2026-10-16「料金帯はおすすめ理由に入れないで。重み付けでも料金入ってるなら消して」)."""
     roles = {role for role, _ in credits if not role.startswith("#")}
     tags = set()
-    t = M.norm(title or "")
-    form = next((name for word, name in _FORM_WORDS if word in t), "")
+    form = form_of(title, [*(venues or []), group], roles)
     if not form and roles & _MUSIC_ROLES:
         form = "音楽劇"
     if form:
@@ -463,7 +529,7 @@ def prepare(raw: dict, candidates: list[dict], rated: list[dict], *,
                 parts.append([contrib, role, person, n])
             elif contrib < 0:
                 negative.append([contrib, role, person, n])
-        for axis, tag in stage_tags(c.get("title") or "", [fields.get("劇場", "")], credits,
+        for axis, tag in stage_tags(c.get("title") or "", [fields.get("劇場", ""), c.get("venue") or "", c.get("theater") or ""], credits,
                                     source=source_text(fields), group=c.get("group") or ""):
             if (axis, tag) in values:
                 n, value = values[(axis, tag)]

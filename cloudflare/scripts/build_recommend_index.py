@@ -125,7 +125,7 @@ def build_index(pool: dict[str, dict], fields_by_stage: dict[str, dict], role_gr
         period = entry.get("period") or ""
         credits = sorted(set(M.parse_credits(entry.get("fields") or {})))
         titles.setdefault(sid, title)
-        tags = UR.stage_tags(title, [(entry.get("fields") or {}).get("劇場", "")], credits,
+        tags = UR.stage_tags(title, [(entry.get("fields") or {}).get("劇場", ""), entry.get("venue") or "", entry.get("theater") or ""], credits,
                              source=UR.source_text(entry.get("fields") or {}), group=entry.get("group") or "")
         # 題材の言葉は種類と根拠で重さが違う（theme_terms）。言葉だけの古い形（重さ 1）も受ける
         terms = [(t, 1.0) if isinstance(t, str) else (t[0], t[1]) for t in themes.get(sid, [])]
@@ -149,7 +149,8 @@ def build_index(pool: dict[str, dict], fields_by_stage: dict[str, dict], role_gr
         if not f:
             continue
         credits = sorted(set(M.parse_credits(f)))
-        tags = UR.stage_tags(titles.get(sid, ""), [f.get("劇場", "")], credits,
+        row = pool.get(sid) or {}
+        tags = UR.stage_tags(titles.get(sid, ""), [f.get("劇場", ""), row.get("venue") or "", row.get("theater") or ""], credits,
                              source=UR.source_text(f), group=(pool.get(sid) or {}).get("group") or "")
         tags += [(THEME_AXIS, t if isinstance(t, str) else t[0]) for t in themes.get(sid, [])]
         people[sid] = [list(c) for c in sorted(set(credits) | set(tags))]

@@ -1450,6 +1450,18 @@
    "verifies": []
   },
   {
+   "id": "dec-forms-1019",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-19",
+   "title": "形式を 演劇・ミュージカル・能・狂言・歌舞伎・文楽・落語・寄席・バレエ・ダンス・オペラ・お笑い に分け、大学演劇・高校演劇をジャンルに足す",
+   "sources": [
+    "tools/review/user_recommender.py",
+    "tools/taguri/test_user_recommendation.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-free-tier-audit-fixes-1018",
    "type": "decision",
    "status": "adopted",
@@ -6693,6 +6705,29 @@
    "verifies": []
   },
   {
+   "id": "q-noh-program",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-19",
+   "title": "能などで、あらすじの代わりに演目（日ごとの曲目と演者）を出せるか。CoRich の公演ページに載っているか",
+   "sources": [
+    "https://www.ceruleantower-noh.com/lineup/2026/20260101.html"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "q-nonplay-in-reco",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-19",
+   "title": "能・歌舞伎・落語・バレエ・オペラなどを、おすすめの候補に入れるか（いまは題名で外している）",
+   "sources": [
+    "tools/review/recommend.py",
+    "cloudflare/scripts/build_recommend_index.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "q-offsite-backup",
    "type": "question",
    "status": "answered",
@@ -9192,6 +9227,11 @@
    "from": "dec-font-sawarabi-round",
    "rel": "supersedes",
    "to": "dec-font-action-maru"
+  },
+  {
+   "from": "dec-forms-1019",
+   "rel": "affects",
+   "to": "comp-cf-worker"
   },
   {
    "from": "dec-free-tier-audit-fixes-1018",
@@ -12802,6 +12842,16 @@
    "from": "q-native-cutover",
    "rel": "depends_on",
    "to": "native-cutover-map"
+  },
+  {
+   "from": "q-noh-program",
+   "rel": "depends_on",
+   "to": "dec-forms-1019"
+  },
+  {
+   "from": "q-nonplay-in-reco",
+   "rel": "depends_on",
+   "to": "dec-forms-1019"
   },
   {
    "from": "q-offsite-backup",

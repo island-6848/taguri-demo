@@ -286,6 +286,38 @@ class KindOfShowTests(unittest.TestCase):
         self.assertEqual(G("HUNGER", "HUNGER製作委員会"), [])
         self.assertEqual(G("サボテンの微笑み", "キューブ"), [])
         self.assertIn(("#ジャンル", "宝塚"), UR.stage_tags("エリザベート", [], [("演出", "甲")], group="宝塚歌劇団"))
+
+    def test_forms_2026_10_19(self):
+        """形式の分け方（起案者の指示 2026-10-19「その分け方で移行」）: 能・狂言・歌舞伎・文楽・落語・寄席・バレエ・ダンス・オペラ・
+        お笑い・ミュージカルを分け、どれにも当たらなければ演劇（札なし）。題名で決まらなければ劇場・主催の名前、オペラ劇場は役職で見る。"""
+        F = UR.form_of
+        self.assertEqual(F("二〇二六年 正月公演", ["セルリアンタワー能楽堂"]), "能・狂言")
+        self.assertEqual(F("能を知る会"), "能・狂言")
+        self.assertEqual(F("可能性の舞台"), "")
+        self.assertEqual(F("四月大歌舞伎", ["歌舞伎座"]), "歌舞伎")
+        self.assertEqual(F("華氏マイナス320°", ["大阪新歌舞伎座"]), "")
+        self.assertEqual(F("令和8年4月文楽公演"), "文楽")
+        self.assertEqual(F("令和8年5月上方演芸特選会", ["国立文楽劇場・小ホール"]), "落語・寄席")
+        self.assertEqual(F("桂宮治 独演会"), "落語・寄席")
+        self.assertEqual(F("声が走る。浪曲が走る。"), "落語・寄席")
+        self.assertEqual(F("ルル", ["新国立劇場 オペラ劇場"], {"指揮", "演出"}), "オペラ")
+        self.assertEqual(F("ライモンダ", ["新国立劇場 オペラ劇場"], {"指揮", "振付"}), "バレエ")
+        self.assertEqual(F("新「コッペリア」", ["東京バレエ団"]), "バレエ")
+        self.assertEqual(F("エリザベート", ["宝塚大劇場", "宝塚歌劇団"]), "")
+        self.assertEqual(F("漫才ライブ"), "お笑い")
+        self.assertIn(("#形式", "能・狂言"), UR.stage_tags("青山能〈4月〉1部", ["銕仙会能楽研修所"], []))
+
+    def test_student_theatre(self):
+        """大学演劇・高校演劇（起案者の指示 2026-10-19「大学演劇とか高校演劇もあるな」）はジャンル。主催の名前で見る。"""
+        G = UR.genres
+        self.assertEqual(G("BLOOM", "明治大学ミュージカル研究会"), ["大学演劇"])
+        self.assertEqual(G("夏の夜の夢", "東京都立総合芸術高等学校舞台表現科"), ["高校演劇"])
+        self.assertEqual(G("高校演劇[小劇場]桜まつり", "渡辺源四郎商店"), ["高校演劇"])
+        self.assertEqual(G("琉球芸能 特別公演", "京都芸術大学 舞台芸術研究センター"), [])
+        self.assertEqual(G("大学生の恋", "劇団X"), [])
+        tags = UR.stage_tags("BLOOM", [], [("出演", "甲")], group="明治大学ミュージカル研究会")
+        self.assertIn(("#形式", "ミュージカル"), tags)
+        self.assertIn(("#ジャンル", "大学演劇"), tags)
         self.assertIn("#ジャンル", UR.CONTENT_AXES)
 
     def test_tags_from_title_credits_and_venue(self):

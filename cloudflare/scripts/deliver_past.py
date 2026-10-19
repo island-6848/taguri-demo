@@ -87,7 +87,7 @@ def people_and_tags(r: dict, themes: dict[str, list[str]] | None = None) -> list
     """build_recommend_index.build_index の rec_people と同じ: クレジット・種類の言葉（stage_tags）・題材（#題材）。"""
     fields = r.get("fields") or {}
     credits = sorted(set(M.parse_credits(fields)))
-    tags = UR.stage_tags(r.get("title") or "", [fields.get("劇場", "")], credits,
+    tags = UR.stage_tags(r.get("title") or "", [fields.get("劇場", ""), r.get("venue") or ""], credits,
                          source=UR.source_text(fields), group=r.get("group") or "")
     tags += [(THEME_AXIS, w) for w in (themes or {}).get(str(r.get("stage_id")), [])]
     return [list(c) for c in sorted(set(credits) | set(tags))]
