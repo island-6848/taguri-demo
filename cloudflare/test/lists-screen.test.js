@@ -42,9 +42,8 @@ test('興味あり lists what was answered "interest", with the note; other user
     assert.equal((html.match(/<article class="ticket interest"/g) || []).length, 1);
     assert.match(html, /<article class="ticket interest" data-stage="101"/);
     assert.match(html, /<span class="wnt">俳優甲 &amp; 乙<\/span>/);
-    // 興味ありの一覧は 興味なし・購入済・行けない を畳まずに（起案者 2026-10-17）。「興味あり」は出さない
+    // 興味ありの一覧は 興味なし・購入済・行けない を畳まずに（起案者 2026-10-17）。2026-10-19 からは、押してある「興味あり」も印付きで出す（押し直しで解除）
     assert.match(html, /<span class="btns" data-stage="101" data-current="interest"><button data-v="interest" aria-pressed="true" class="picked">興味あり<\/button><button data-v="nointerest">興味なし<\/button><button data-v="owned">購入済<\/button><button data-v="cantgo">行けない<\/button>/);
-    assert.doesNotMatch(html.slice(html.indexOf('data-stage="101"')), /data-v="interest"/);
     assert.match(html, /<nav class="idx" aria-label="月で切り替える">/);
     assert.match((await screen(env, b, 'interest')).body_html, /「興味あり」の公演はまだありません/);
     // Not interested: out of 興味あり.
@@ -425,7 +424,8 @@ test('購入済みにする on お気に入り adds the stage to 購入済み公
     const fav = (await screen(env, a, 'favourites')).body_html;
     assert.match(fav, /全 1 件中 1 件を表示中/);
     assert.match(fav, /<article class="ticket favourite" data-stage="101"[\s\S]*<span class="owned-mark">購入済み/);
-    assert.doesNotMatch(fav, /data-v="owned"/);
+    // 2026-10-19: 購入済のボタンは印付きで残し、押し直しで解除できる
+    assert.match(fav, /<button data-v="owned" aria-pressed="true" class="picked">購入済<\/button>/);
     const t = (await screen(env, a, 'tickets')).body_html;
     assert.match(t, /<h1>購入済の公演<\/h1>/);   // 見出しに件数は入れない（起案者の指示 2026-10-18）
     assert.equal((t.match(/<article class="ticket owned"/g) || []).length, 1);

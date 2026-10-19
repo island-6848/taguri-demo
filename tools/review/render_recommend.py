@@ -842,7 +842,7 @@ def owned_button(stage_id) -> str:
             '<button data-v="owned">購入済みにする</button><span class="said"></span></span>')
 
 
-def buttons(stage_id, *, hidden: bool = False) -> str:
+def buttons(stage_id, *, hidden: bool = False, current: str = "") -> str:
     """三択。**押した本人に返りがあるものだけを置く**（企画書 2 章・検証 021）。
 
     - **すでに持っている** → 観る予定に移り、推薦枠から出る
@@ -860,16 +860,20 @@ def buttons(stage_id, *, hidden: bool = False) -> str:
     # チケットの絵に付けた呼び名であって、**利用者がふだん使う言葉ではない**
     # （起案者の指示・2026-08-24）。動き（`.torn`）はそのまま残す ── 形で結果が
     # 分かることと、その動きに名前を付けて画面に書くことは別である
-    return _band(stage_id, ("interest", "nointerest", "owned"), hidden=hidden)
+    values = ("interest", "nointerest", "owned", "cantgo") if current == "cantgo" else ("interest", "nointerest", "owned")
+    return _band(stage_id, values, hidden=hidden, current=current)
 
 
 # 回答の名前（cloudflare/src/screens/cards.js の LABEL と同じ）。行けない は興味ありの一覧だけに出す（起案者 2026-10-17）
 ANSWER_LABEL = {"interest": "興味あり", "nointerest": "興味なし", "owned": "購入済", "cantgo": "行けない"}
 
 
-def _band(stage_id, values, *, hidden: bool = False) -> str:
-    return (f'<span class="btns"{" hidden" if hidden else ""} data-stage="{E(stage_id)}">'
-            + "".join(f'<button data-v="{v}">{ANSWER_LABEL[v]}</button>' for v in values)
+def _band(stage_id, values, *, hidden: bool = False, current: str = "") -> str:
+    # 保存済みの回答は印を付けて出す。同じ選択肢の押し直しで解除する（cards.js の band と同じ。2026-10-19）
+    return (f'<span class="btns"{" hidden" if hidden else ""} data-stage="{E(stage_id)}"'
+            + (f' data-current="{E(current)}"' if current else "") + '>'
+            + "".join(f'<button data-v="{v}"{" aria-pressed=\"true\" class=\"picked\"" if v == current else ""}>{ANSWER_LABEL[v]}</button>'
+                      for v in values)
             + '<span class="said"></span></span>')
 
 
