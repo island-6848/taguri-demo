@@ -37,12 +37,16 @@ test('all past stages found are listed on 探す, not the newest 15', async () =
   const a = await signIn(env);
   try {
     const ins = sqlite.prepare("INSERT INTO past_stage(stage_id,title,tkey,start,end,venue,grp,pref,people) VALUES(?,?,?,?,?,'劇場Z',?,'東京都','[]')");
-    for (let i = 0; i < 20; i++) {
-      const d = `20${String(20 + Math.floor(i / 4)).padStart(2, '0')}-0${1 + (i % 4)}-01`;
+    for (let i = 0; i < 35; i++) {
+      const d = `${2019 + (i % 6)}-${String(1 + Math.floor(i / 6)).padStart(2, '0')}-01`;   // どれも終わった公演（2019〜2024 年）
       ins.run(String(9300 + i), `星の旅 ${i}`, titleKey(`星の旅 ${i}`), d, d, `劇団${i}`);
     }
+    // 1 ページ 30 件でページ送り（起案者の指示 2026-10-19「サーバーで問題があるならページ送りをつけて」）
     const page = (await step(env, a, {get: '/api/screen/search?q=' + encodeURIComponent('星の旅')})).body.body_html;
-    assert.equal((page.match(/class="pastrow"/g) || []).length, 20);
-    assert.match(page, /過去の公演（2019 年〜） 20 件/);
+    assert.equal((page.match(/class="pastrow"/g) || []).length, 30);
+    assert.match(page, /過去の公演（2019 年〜） 35 件/);
+    assert.match(page, /<span class="mp">1 \/ 2 ページ<\/span><a class="mpage" href="\/search\?t=__TAGURI_TOKEN__&amp;q=[^"]*&amp;pp=2#past-hits">次の 5 件 →<\/a>/);
+    const p2 = (await step(env, a, {get: '/api/screen/search?q=' + encodeURIComponent('星の旅') + '&pp=2'})).body.body_html;
+    assert.equal((p2.match(/class="pastrow"/g) || []).length, 5);
   } finally { sqlite.close(); }
 });

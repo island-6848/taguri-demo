@@ -156,10 +156,22 @@ async function upcomingMonths(ctx) {
 // 見つかった過去の公演は全部出す（起案者の指示 2026-10-19「検索結果、新しい順から15件表示するのではなく、ちゃんと全件表示して」。
 // 前は新しい順に 15 件まで）。題名で引く行は、短い言葉で何千行も読まないよう PAST_TITLE_ROWS 行まで（D1 の読み取りの無料枠。
 // 1 回の検索で多くて 600 行）。それを越えたときは、そう書く
-const PAST_TITLE_ROWS = 600;
+const PAST_TITLE_ROWS = 1000;
+// 見つかった分は全部たどれるよう、ページ送りを付ける（起案者の指示 2026-10-19「ちゃんと全件表示して。サーバーで問題があるならページ送りを
+// つけて」）。これから観られる公演はカード（1 枚ごとに D1 を読み、組み立てに Worker の CPU を使う）なので 1 ページ UP_PER 件、
+// 過去の公演は文字だけの行なので 1 ページ PAST_PER 件
+const UP_PER = 10, PAST_PER = 30;
+/** 「← 前の n 件 ／ p / last ページ ／ 次の n 件 →」。href(p) はそのページへの道 */
+function pagerHtml(total, per, page, href) {
+  const last = Math.max(1, Math.ceil(total / per));
+  if (last <= 1 || !href) return '';
+  return `<div class="mfoot">${page > 1 ? `<a class="mpage" href="${href(page - 1)}">← 前の ${per} 件</a>` : '<span class="mpage off">最初のページです</span>'}`
+    + `<span class="mp">${page} / ${last} ページ</span>`
+    + `${page < last ? `<a class="mpage" href="${href(page + 1)}">次の ${Math.min(per, total - page * per)} 件 →</a>` : '<span class="mpage off">これで最後です</span>'}</div>`;
+}
 const md = d => (/^\d{4}-\d{2}-\d{2}$/.test(d || '') ? `${d.slice(0, 4)}/${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}` : '');
 
-async function pastHits(ctx, q, ws) {
+async function pastHits(ctx, q, ws, page = 1, href = null) {
   const linked = new Set(ws.map(w => w.stage_id).filter(Boolean).map(String));
   const rows = new Map();
   let capped = false;
@@ -198,7 +210,9 @@ async function pastHits(ctx, q, ws) {
   if (!prods.length) return ['', 0];
   const {results: miss} = await ctx.db.prepare('SELECT title FROM missed WHERE user_id=?').bind(ctx.uid).all();
   const missed = new Set(miss.map(m => indexKey(m.title)));
-  const li = prods.map(p => {
+  const last = Math.max(1, Math.ceil(prods.length / PAST_PER));
+  page = Math.min(Math.max(1, page), last);
+  const li = prods.slice((page - 1) * PAST_PER, page * PAST_PER).map(p => {
     const run = p.start === p.end ? md(p.start) : `${md(p.start)}〜${md(p.end)}`;
     const isMissed = missed.has(indexKey(p.title));
     // 観た日の欄: 1 日だけの公演はその日を入れておく。期間の外は選べない（min/max）
@@ -220,7 +234,7 @@ async function pastHits(ctx, q, ws) {
   const more = capped ? `<p class="lead">題名で当たる公演が多いので、題名の順に ${PAST_TITLE_ROWS} 公演までを読んで出しています。言葉を足すと絞れます。</p>` : '';
   return [`<h2>過去の公演（2019 年〜） ${prods.length} 件</h2>
 <p class="lead">終わった公演のうち、まだ日記帳に無いものです。<b>「観た」</b>を押して観た日を入れると、観劇記録に追加して、その公演と結び付けます。開演の時刻も入れられます。<b>「観ればよかった」</b>を押すと、見逃した公演の一覧に入ります。
-題名は先頭から一致するもの、人・団体は名前全体が一致するものを探しています。</p>${more}<ul class="pastlist">${li}</ul>`, prods.length];
+題名は先頭から一致するもの、人・団体は名前全体が一致するものを探しています。</p>${more}<ul class="pastlist" id="past-hits">${li}</ul>${pagerHtml(prods.length, PAST_PER, page, href)}`, prods.length];
 }
 
 /** app._search_follow */
@@ -242,7 +256,7 @@ ${out.slice(0, 8).join('')}</div>`;
 }
 
 /** app._upcoming_hits: [html, names, n, {month: n} of the stages the word hits (empty without a word), stages the word hits in any month] */
-export async function upcomingHits(ctx, q, ym, b, top = 8) {
+export async function upcomingHits(ctx, q, ym, b, top = UP_PER, page = 1, href = null) {
   const rows = await upcoming(ctx, q);
   const state = new Map();
   for (const [k, lab] of [['tracking', '追いかけています（興味ありと答えました）'], ['owned', '観る予定です（すでに持っていると答えました）'], ['others', '興味なしと答えました']])
@@ -270,7 +284,9 @@ export async function upcomingHits(ctx, q, ym, b, top = 8) {
   const matched = q ? rows.filter(c => hitUpcoming(q, c, c._ws)[0]) : rows;
   const counts = q ? monthCounts(matched, ctx.today) : {};
   if (!hits.length) return ['', [], 0, counts, matched.length];
-  const show = hits.slice(0, top);
+  const lastUp = Math.max(1, Math.ceil(hits.length / top));
+  page = Math.min(Math.max(1, page), lastUp);
+  const show = hits.slice((page - 1) * top, page * top);
   const {html, posters} = await cardTemplates(ctx.db, show.map(h => h[0]));
   // カードがまだ無い公演（新しい公演など）は、一覧と索引の中身から描く（fallback.js）
   const bare = show.map(h => h[0]).filter(sid => !html.has(sid));
@@ -297,11 +313,11 @@ export async function upcomingHits(ctx, q, ym, b, top = 8) {
     const card = compose(html.get(sid), sid, tracking.has(sid) ? 'interest' : 'recommend', {top: w, poster: pic ? cardPoster(pic) : ''});
     return withTour(card, tourBlock([...new Set(tourSids.get(String(sid)))].map(x => info.get(x)).filter(Boolean), sid, ctx.today));
   });
-  const tail = hits.length <= top ? '' : `<p class="lead">見つかったのは ${hits.length} 件で、上演日の近い ${top} 件を表示しています。<b>残りは`
-    + (!q ? '言葉を入れて絞り込むと出てきます' : '言葉を変えると出てきます') + '</b>（人名・団体名・劇場名など）。</p>';
+  const tail = '';
+  const pager = pagerHtml(hits.length, top, page, href);
   const head = ym ? `${ym.slice(0, 4)} 年 ${Number(ym.slice(5, 7))} 月に観られる公演` : 'これから観られる公演';
   const order = ym ? 'この月に始まる公演を先に並べ、そのあとに、すでに始まっている公演を終わりの近い順に並べています。' : '上演日の近い順に並べています。';
-  return [`<h2>${E(head)} ${hits.length} 件</h2><p class="lead">${order}順位は付けていません。<b>ここから「興味あり」を押すと、「興味あり」の一覧に入ります。</b></p>${tail}${cards.join('')}`, names, hits.length, counts, matched.length];
+  return [`<h2>${E(head)} ${hits.length} 件</h2><p class="lead">${order}順位は付けていません。<b>ここから「興味あり」を押すと、「興味あり」の一覧に入ります。</b></p>${tail}<div id="up-hits">${cards.join('')}</div>${pager}`, names, hits.length, counts, matched.length];
 }
 
 /** app._request_query */
@@ -397,6 +413,14 @@ export async function searchScreen(params, ctx) {
   const ws = await loadWorks(ctx);
   // Without a choice, a person with no dated records starts on the coming stages.
   const side = params.get('cal') === 'up' || (!params.get('cal') && !ws.some(w => !w.unseen && (w.first_date || '').length >= 7)) ? 'up' : 'past';
+  const pageOf = k => Math.max(1, Number.parseInt(params.get(k) || '1', 10) || 1);
+  const upPage = pageOf('up'), pastPage = pageOf('pp');
+  // ページ送りの道: いまの言葉・月・カレンダーの側はそのまま、ページだけを変える（#up-hits・#past-hits で一覧の頭へ）
+  const pageHref = (key, anchor) => n => {
+    const u = new URLSearchParams(params);
+    u.delete('t'); u.set(key, String(n));
+    return `/search?t=__TAGURI_TOKEN__&amp;${E(u.toString()).replace(/&amp;amp;/g, '&amp;')}#${anchor}`;
+  };
   const people = await peopleByKey(ctx, ws);
   const months = await upcomingMonths(ctx);
   const nPeople = ws.filter(w => (people[w.work_key] || []).length).length;
@@ -413,7 +437,7 @@ export async function searchScreen(params, ctx) {
   if (!q) {
     let body;
     if (side === 'up') {
-      const [upHtml] = await upcomingHits(ctx, '', ym, b);
+      const [upHtml] = await upcomingHits(ctx, '', ym, b, UP_PER, upPage, pageHref('up', 'up-hits'));
       body = ym ? upHtml : '<p class="empty">上のカレンダーから月を選ぶと、その月に観られる公演が出ます。</p>';
     } else if (!ym) {
       body = '<p class="empty">上のカレンダーから月を選ぶと、その月に観た記録が出ます。これから観られる公演は言葉を入れて探してください。</p>';
@@ -432,13 +456,13 @@ export async function searchScreen(params, ctx) {
     if (why) { hits.push([w, why]); names.push(...found); }
   }
   hits.sort((x, y) => cmp(y[0].first_date || '', x[0].first_date || ''));
-  const [upHtml, upNames, nUp, upCounts, nUpAll] = await upcomingHits(ctx, q, side === 'up' ? ym : '', b);
+  const [upHtml, upNames, nUp, upCounts, nUpAll] = await upcomingHits(ctx, q, side === 'up' ? ym : '', b, UP_PER, upPage, pageHref('up', 'up-hits'));
   names.push(...upNames);
   // 言葉が入っているときは、下の札とカレンダーも当たったものだけを数える（起案者の指示 2026-10-17
   // 「ワードが入って検索されてるなら、次のところも該当件数のみ表示されるようにして」）
   cal = monthGrid(hits.map(([w]) => w), upCounts, nUpAll, side, ym, q);
   const dec = await loadDeclared(ctx);
-  const [pastHtml, nPast] = await pastHits(ctx, q, ws);
+  const [pastHtml, nPast] = await pastHits(ctx, q, ws, pastPage, pageHref('pp', 'past-hits'));
   const web = await webHits(ctx, q, nUp + nPast);
   let body;
   if (!hits.length && !nUp && !nPast) {
