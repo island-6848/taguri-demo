@@ -2399,6 +2399,23 @@
    "verifies": []
   },
   {
+   "id": "dec-register-optional-date-parts",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-19",
+   "title": "上演日程は年・月・日を常時表示し、任意入力された項目だけで検索する",
+   "sources": [
+    "cloudflare/src/screens/register-dialog.js",
+    "cloudflare/src/screens/schedule-filter.js",
+    "cloudflare/src/screens/settings.js",
+    "web/app.js",
+    "cloudflare/test/schedule-filter.test.js",
+    "cloudflare/test/register-detail.test.js",
+    "cloudflare/test/register-dialog-browser.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-register-run-precision",
    "type": "decision",
    "status": "adopted",
@@ -9663,6 +9680,11 @@
    "from": "dec-register-dialog-shared-controls",
    "rel": "affects",
    "to": "fix-register-empty-dialog"
+  },
+  {
+   "from": "dec-register-optional-date-parts",
+   "rel": "affects",
+   "to": "dec-register-run-precision"
   },
   {
    "from": "dec-register-run-precision",
