@@ -1658,6 +1658,20 @@
    "verifies": []
   },
   {
+   "id": "dec-link-card",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-19",
+   "title": "リンクのカード（OGP・X のカード）は全ページ同じ 1 枚。Worker が HTML に足し、クローラーにはログインの画面を 200 で返す",
+   "sources": [
+    "cloudflare/src/link-card.js",
+    "cloudflare/src/worker.js",
+    "cloudflare/public/assets/og.png",
+    "cloudflare/test/link-card.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-list-headings-2026-10-18",
    "type": "decision",
    "status": "adopted",
@@ -3565,6 +3579,19 @@
     "docs/research/person-reco-eval.md",
     "tools/review/eval_yahoo_aspects.py",
     "https://github.com/KunalShm/Multi-Criteria-Recommendation-System"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "f-link-card-spec",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-19",
+   "title": "X のカード（summary_large_image）の画像は 2:1 前後・5MB まで、X のタグが無ければ OGP を使う（公式は未確認）",
+   "sources": [
+    "https://soona.co/image-resizer/twitter-spec-guide",
+    "https://kb.theseoframework.com/kb/twitter-cards-and-x-sharing/",
+    "https://frontendchecklist.io/rules/seo/twitter-cards"
    ],
    "verifies": []
   },
@@ -9344,6 +9371,16 @@
    "to": "q-privacy-ical-url"
   },
   {
+   "from": "dec-link-card",
+   "rel": "depends_on",
+   "to": "f-link-card-spec"
+  },
+  {
+   "from": "dec-link-card",
+   "rel": "affects",
+   "to": "comp-cf-worker"
+  },
+  {
    "from": "dec-list-headings-2026-10-18",
    "rel": "affects",
    "to": "dec-reco-start-tips"
@@ -10742,6 +10779,11 @@
    "from": "eval-yahoo-aspects",
    "rel": "depends_on",
    "to": "q-aspect-attribution-check"
+  },
+  {
+   "from": "f-link-card-spec",
+   "rel": "affects",
+   "to": "dec-link-card"
   },
   {
    "from": "f-search-asu-prefix",

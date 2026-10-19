@@ -1,3 +1,4 @@
+import {withCard, PREVIEW_BOT} from './link-card.js';
 import {SESSION_TTL} from './session-policy.js';
 import {deleteAccountStatements, sweepEmptyAccounts} from './cleanup.js';
 import {purgeFixRequests} from './screens/fixrequest.js';
@@ -374,8 +375,8 @@ async function loginPage(request, env) {
   // pages drop the section.
   const q = new URL(request.url).searchParams;
   if ((q.get('purpose') === 'delete' || q.get('link') === '1') && typeof HTMLRewriter !== 'undefined')
-    return new HTMLRewriter().on('#about', {element(el) { el.remove(); }}).transform(page);
-  return page;
+    return withCard(new HTMLRewriter().on('#about', {element(el) { el.remove(); }}).transform(page), new URL(request.url));
+  return withCard(page, new URL(request.url));
 }
 // 「Google カレンダーから取り込む」 comes back here with an access token in the
 // address (#access_token=...). Only this page may call the Calendar API, from the
@@ -503,6 +504,7 @@ async function gate(request, env, url) {
   if (await currentUser(request, env.DB)) return null;
   const page = request.method === 'GET' && !path.startsWith('/api/') && !path.startsWith('/img/');
   if (!page) return json({error:'ログインしてください。'}, 401);
+  if (PREVIEW_BOT.test(request.headers.get('user-agent') || '')) return loginPage(request, env);
   if (path === '/') return redirect('/login');
   return redirect('/login?next=' + encodeURIComponent(path + url.search));
 }
@@ -553,7 +555,7 @@ export default {
     if(migrationAPI)url.pathname=url.pathname.replace('/migration-api/','/api/');
     // After the switch the menu has its own アカウント page (screens/account.js); the
     // older 「アカウント・記録」 page (/migration-data/) keeps only the passkey settings.
-    if (!url.pathname.startsWith('/api/')) return withWorkerParts(await env.ASSETS.fetch(request));
+    if (!url.pathname.startsWith('/api/')) return withCard(withWorkerParts(await env.ASSETS.fetch(request)), url);
     try {
       const path = url.pathname; const method = request.method;
       if (method !== 'GET' && method !== 'POST') fail(405,'対応していない操作です。');
