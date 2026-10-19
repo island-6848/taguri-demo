@@ -3726,6 +3726,20 @@
    "verifies": []
   },
   {
+   "id": "f-people-json-no-affil-1019",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-19",
+   "title": "推薦の索引の出演者（rec_people・past_stage の people、rec_stage.credits）は、名前の後ろの（所属）を外した名前だけ。所属は別の表 rec_affil。書かれたままの文は公演の欄（entry.fields）に残る",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/blob/master/tools/review/measure_nets.py",
+    "https://github.com/island-6848/taguri-demo/blob/master/cloudflare/src/screens/credits.js",
+    "https://github.com/island-6848/taguri-demo/blob/master/cloudflare/migrations/0039.sql",
+    "https://github.com/island-6848/taguri-demo/blob/master/cloudflare/scripts/build_recommend_index.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "f-search-asu-prefix",
    "type": "finding",
    "status": "confirmed",
@@ -11038,6 +11052,11 @@
    "from": "f-noh-program-staff",
    "rel": "answers",
    "to": "q-noh-program"
+  },
+  {
+   "from": "f-people-json-no-affil-1019",
+   "rel": "affects",
+   "to": "dec-split-pieces"
   },
   {
    "from": "f-search-asu-prefix",
