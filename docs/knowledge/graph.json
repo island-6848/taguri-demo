@@ -611,6 +611,19 @@
    "verifies": []
   },
   {
+   "id": "d1-user-isolation-1019",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-19",
+   "title": "D1 は外から直接は読めず、Worker 経由でもログイン中の本人の記録しか返さない。全員分が見えるのは Cloudflare の管理画面（アカウントの持ち主）だけ",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/blob/master/cloudflare/wrangler.jsonc",
+    "https://github.com/island-6848/taguri-demo/blob/master/cloudflare/src/worker.js",
+    "https://github.com/island-6848/taguri-demo/tree/master/cloudflare/migrations"
+   ],
+   "verifies": []
+  },
+  {
    "id": "d1-writes-undercounted",
    "type": "finding",
    "status": "confirmed",
@@ -8561,6 +8574,11 @@
    "from": "d1-upsert-counts",
    "rel": "affects",
    "to": "index-only-run-1016"
+  },
+  {
+   "from": "d1-user-isolation-1019",
+   "rel": "affects",
+   "to": "q-review-1015"
   },
   {
    "from": "d1-writes-undercounted",
