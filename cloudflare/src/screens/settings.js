@@ -322,17 +322,32 @@ export async function registerScreen(_params, ctx) {
   const wait = works.filter(w => !w.verdict && !w.unseen && w.last_date && w.last_date <= ctx.today);
   const missed = await missedRows(ctx);
   const body = `<h1>観劇記録を追加</h1>
-<p class="lede">公演を記録に足す場所です。<b>入口は3つあります。</b>Google カレンダー・購入確認メールからの取り込み、メールに残らない分（招待・当日券・人に取ってもらった分）の手入力、そして<b>観ればよかった公演（観ていないもの）の追加</b>です。評価は「観た公演の評価」で付けます。評価がなくても、記録は残せます。</p>
+<p class="lede">公演名だけでも保存できます。日付や評価はあとから追加できます。</p>
+<div class="card register-single">${h2('plus', '観た公演を1件追加')}
+<div class="add-work" data-register-single="1">
+ <div class="register-search"><label class="fld" for="w-title"><span class="fl">公演の題名<small class="req">必須</small></span><input id="w-title" type="text" placeholder="例：夜の果て" size="26" autocomplete="off" aria-describedby="register-title-help"></label><input id="w-stage" type="hidden" value="">
+ <button type="button" data-sug-web="1">${ico('search')}公演一覧から探す</button></div>
+ <p class="note" id="register-title-help">題名を2文字入れると候補が出ます。劇場と上演期間を見て選んでください。見つからなくても、入力した名前で記録できます。</p>
+ <div id="sug" class="sug"></div>
+ <div class="register-dates"><label class="fld" for="w-date"><span class="fl">観た日<small class="opt">任意</small></span><input id="w-date" type="date"></label>
+ <label class="fld" for="w-time"><span class="fl">開演時刻<small class="opt">任意</small></span><input id="w-time" type="time"></label></div>
+ <label class="fld" for="w-venue"><span class="fl">劇場<small class="opt">任意</small></span><input id="w-venue" type="text" placeholder="例：本多劇場" size="26"></label>
+ <div class="register-save"><button type="button" class="primary" data-add-work="1">${ico('plus')}観劇記録を保存</button><span class="said" role="status" aria-live="polite"></span></div>
+</div>
+<div class="register-result" data-register-result="1" hidden></div>
+<details class="register-help"><summary>公演の候補について</summary>
+<p class="note">たぐりの公演一覧とあなたの記録から候補を出します。候補を選ぶと公演情報も記録に結び付き、次のおすすめの材料になります。すでに記録にあるものは「記録あり」と表示します。<br>
+「公演一覧から探す」では、保存済みの公演だけを並べます。その場で外のサイト（CoRich など）は探しません。<br>
+一覧に無い公演は「次の更新で探してもらう」から依頼できます。${crawlSearch.requests ? `次の更新（次回は${crawlLabel(nextCrawl(ctx.now))}）で探します。` : '依頼された題名を毎日の更新で探す段はまだ準備中で、いまは探されません。'}待たずに保存することもできます。あとで同じ題名・日付の公演が集まると、自動で結び付きます。</p>
+</details>
+</div>
 
-<div class="card imx" data-import>${h2('mail', '① Google カレンダー・購入確認メールから取り込む')}
-<p class="lead">カレンダーの予定や購入確認メールから、観た公演を見つけて足します。
-<b>読み方によって、たぐりのサーバーを通るものが違います。</b>それぞれの欄に書きました。
-どの読み方でも、予定やメールの本文・カレンダーのアドレスは、たぐりに保存しません。
-予定やメールから取り出した<b>題名の候補と日付は、公演と照合するためにたぐりに送ります</b>（照合に使うだけで、保存しません）。
-記録として保存するのは、一覧で選んで足した公演の題名・日付・開演時刻・劇場だけです。</p>
-<details class="imx-src" open><summary>Google カレンダーから</summary>
+<div class="card imx" data-import>${h2('mail', 'まとめて取り込む')}
+<p class="lead">カレンダーや購入確認メールから、複数の公演をまとめて追加できます。読み込んだあと、保存する公演を選べます。</p>
+
+<details class="imx-src"><summary>Google カレンダーから</summary>
 <p class="note">押すと Google の画面で「カレンダーの閲覧」を許可するか聞かれます。許可すると、過去 5 年の予定を<b>この端末のブラウザが Google から直接読みます</b>。
-<b>予定の中身も許可の鍵も、たぐりのサーバーには送らず、保存もしません。</b>たぐりに送るのは、上に書いた題名の候補と日付だけです。</p>
+<b>予定の中身も許可の鍵も、たぐりのサーバーには送らず、保存もしません。</b>題名の候補と日付は、公演と照合するためにたぐりに送ります（照合に使うだけで、保存しません）。</p>
 <div class="imx-row"><button type="button" class="primary" data-imx-google="1">Google カレンダーから取り込む</button></div>
 <details class="imx-alt"><summary>アドレスやファイルから読み込む</summary>
 <p class="note"><b>.ics ファイルを選ぶとき</b>：ファイルはこの端末の中だけで読み、たぐりには送りません。</p>
@@ -354,46 +369,30 @@ export async function registerScreen(_params, ctx) {
 <div class="imx-row"><button type="button" data-imx-mail="1">読み取る</button>
 <span class="note">または <input id="imx-eml" type="file" accept=".eml,message/rfc822" multiple></span></div>
 </details>
+<details class="imx-src"><summary>取り込み時のデータの扱い</summary>
+<p class="note">カレンダーの予定や購入確認メールから、観た公演を見つけて足します。
+<b>読み方によって、たぐりのサーバーを通るものが違います。</b>それぞれの欄に書きました。
+どの読み方でも、予定やメールの本文・カレンダーのアドレスは、たぐりに保存しません。
+予定やメールから取り出した<b>題名の候補と日付は、公演と照合するためにたぐりに送ります</b>（照合に使うだけで、保存しません）。
+記録として保存するのは、一覧で選んで足した公演の題名・日付・開演時刻・劇場だけです。</p>
+</details>
 <p class="said" role="status" aria-live="polite"></p>
 <div class="imx-found" hidden><p class="imx-head"></p><ul class="imx-list"></ul>
 <div class="imx-row"><button type="button" class="primary" data-imx-add="1">選んだものを記録に足す</button></div></div>
 </div>
 
-<div class="card">${h2('plus', '② メールに残らない分を手で 1 件足す')}
-<p class="lead">招待・当日窓口・人に取ってもらった分は購入確認メールに残らないので、
-ここから足してください。</p>
-<div class="add-work"><label class="fld" for="w-title"><span class="fl">公演の題名<small class="req">必須</small></span><input id="w-title" type="text" placeholder="例：夜の果て" size="26"
-  autocomplete="off"></label><input id="w-stage" type="hidden" value="">
- <label class="fld" for="w-date"><span class="fl">観た日<small class="opt">任意</small></span><input id="w-date" type="date"></label>
- <label class="fld" for="w-time"><span class="fl">開演時刻<small class="opt">任意</small></span><input id="w-time" type="time"></label>
- <label class="fld" for="w-venue"><span class="fl">劇場<small class="opt">任意</small></span><input id="w-venue" type="text" placeholder="例：本多劇場" size="14"></label>
- <button data-add-work="1">${ico('plus')}登録する</button>
- <button data-sug-web="1">${ico('search')}公演一覧から探す</button><span class="said"></span></div>
-<div id="sug" class="sug"></div>
-<p class="ed-lead"><b>題名を 2 文字入れると、たぐりの公演一覧（毎日の更新で集めた公演と、2019 年からの過去の公演）とあなたの記録から候補が出ます。</b>
-選ぶと劇場・日程・出演者・作り手が一緒に入り、次のおすすめの材料になります。
-すでに記録にあるものは「記録あり」と出るので、二重に足さずに済みます。<br>
-「公演一覧から探す」を押すと、同じ公演一覧から公演だけを並べます。<b>その場で外のサイト（CoRich など）は探しません。</b>
-同じ題名の公演が複数出ることがあります。
-別の劇場での上演や再演なので、劇場と日程を見て、観た公演を選んでください。<br>
-<b>一覧に無い公演は</b>、出てくる「次の更新で探してもらう」から依頼を控えられます。${crawlSearch.requests ? `次の更新（次回は${crawlLabel(nextCrawl(ctx.now))}）で探します。` : 'ただ、依頼された題名を毎日の更新で探す段はまだ準備中で、いまは探されません。'}
-待たずに、題名と観た日を入れてそのまま「登録する」を押しても記録できます。あとで同じ題名・日付の公演が集まると、自動で結び付きます。<br>
-ポスターが出るのは、手元に画像がある公演だけです。</p></div>
-
-<div class="card">${h2('flag', '③ 観ていない公演を「観ればよかった」に足す', missed.length ? `<span class="badge part">${missed.length} 件</span>` : '')}
+<details class="card register-missed"><summary>${h2('flag', '観ていない公演を「観ればよかった」に残す', missed.length ? `<span class="badge part">${missed.length} 件</span>` : '')}</summary>
 <p class="lead">出てこなかったせいで見逃した公演を登録してください。
 どこで漏れたのか（一覧に無かった／順位が低かった／出したのに押されなかった）と、
 演者・あらすじを調べて下に出します（数十秒かかることがあります）。<br>
-<b>①② と違って、これは観ていない公演です。</b>観た本数にも、図にも、評価待ちにも入らず、
+<b>これは観ていない公演のための記録です。</b>観た本数にも、図にも、評価待ちにも入らず、
 評価（◎）の材料にもなりません。再演や別会場での上演を次は見逃したくないときは、
 下の一覧から「お気に入りに入れる」を押してください。</p>
 <div class="miss-add"><label class="fld" for="miss-title"><span class="fl">公演の題名<small class="req">必須</small></span><input id="miss-title" type="text" placeholder="例：夜の果て" size="30"></label>
  <button data-miss="1">${ico('flag')}登録する</button><span class="said"></span></div>
-${missedHtml(missed)}</div>
+${missedHtml(missed)}</details>
 
-<p class="lede">①② で登録した公演は、上演が終わると
-<a href="/rate?t=__TAGURI_TOKEN__">「観た公演の評価」（いま ${wait.length} 件）</a>に並びます。
-評価はそちらで付けてください。</p>`;
+<p class="note">保存した記録の評価・感想は、<a href="/rate?t=__TAGURI_TOKEN__">「観た公演の評価」（未評価 ${wait.length} 件）</a>で追加できます。</p>`;
   return {title: '観劇記録を追加', body_html: body};
 }
 
@@ -437,3 +436,4 @@ export const settingsScreens = {
   screens: {settings: settingsScreen, start: startScreen, register: registerScreen},
   actions: {pref_setting: prefSettingAction, missed: missedAction, analysis_optout: optoutAction},
 };
+

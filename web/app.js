@@ -2072,7 +2072,13 @@ document.addEventListener("click", ev => {
   } else if (b.dataset.addWork) {
     const g = b.closest(".add-work");
     const t = g.querySelector("#w-title"), dt = g.querySelector("#w-date");
-    if (!t.value.trim()) return;
+    if (!t.value.trim()) {
+      g.querySelector(".said").textContent = "公演の題名を入れてください。";
+      t.focus();
+      return;
+    }
+    const title = t.value.trim(), date = dt.value;
+    b.disabled = true;
     post("/api/add_work", {title: t.value.trim(), date: dt.value,
       venue: g.querySelector("#w-venue").value,
       time: g.querySelector("#w-time").value,
@@ -2081,11 +2087,26 @@ document.addEventListener("click", ev => {
         if (!d) return;
         t.value = ""; g.querySelector("#w-stage").value = "";
         document.getElementById("sug").replaceChildren();
+        if (g.dataset.registerSingle) {
+          const result = g.parentElement.querySelector("[data-register-result]");
+          const message = document.createElement("p");
+          message.textContent = "「" + title + "」を保存しました。続けて別の公演も追加できます。";
+          const link = document.createElement("a");
+          const today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+          link.href = date && date <= today ? "/rate/unrated" : "/records/works";
+          link.textContent = date && date <= today ? "続けて評価する" : "保存した記録を確認する";
+          result.replaceChildren(message, link);
+          result.hidden = false;
+          g.querySelector(".said").textContent = "保存しました。";
+          askMerge(g.parentElement, d.work_key, d.similar);
+          // Worker saves synchronously. Keep the result and next action visible.
+          return;
+        }
         if (askMerge(g.parentElement, d.work_key, d.similar)) return;
         // **材料を取り終えてから作り直す。** すぐ読み込み直すと、取りに行っている
         // 最中の画面（ポスターの無い行）が出て、押した結果が見えない
         waitJob(g, true);
-      });
+      }).finally(() => { b.disabled = false; });
   } else if (b.dataset.addFound) {
     // **探して見つけた、終わった公演を、その場で観た記録として登録する。**
     // 経路は「公演情報の登録」②（手で足す）と同じ /api/add_work（`RR.register_button`）
@@ -4587,3 +4608,4 @@ document.addEventListener("click", async ev => {
   if (d) try { for (const k of ["taguri_login_email", "taguri_login_agree", "taguri_login_intent", "taguri_login_saved_at"]) localStorage.removeItem(k); } catch {}
   if (d) location.href = "/login";
 });
+

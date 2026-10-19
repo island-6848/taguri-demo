@@ -2318,3 +2318,27 @@ code.cmd{display:inline-block;margin:10px 0 4px;padding:8px 14px;border-radius:8
 .pastrow .past-seen button{border-radius:8px}
 .pastrow > .said{display:block;text-align:right;margin-top:6px}
 .pastrow > .said:empty{display:none}
+
+/* Service registration: choose a performance before filling the optional fields. */
+.register-single .add-work{display:flex;flex-direction:column;align-items:stretch;gap:16px;max-width:640px}
+.register-single .register-search,.register-single .register-dates,.register-single .register-save{display:flex;align-items:flex-end;flex-wrap:wrap;gap:12px}
+.register-single .register-search .fld{flex:1;min-width:180px}
+.register-single .fld{min-width:0}
+.register-single input{box-sizing:border-box;width:100%;min-width:0}
+.register-single .register-dates .fld{flex:1;min-width:130px}
+.register-single .register-search button{margin:0}
+.register-single #register-title-help{margin:0}
+.register-single #sug:empty{display:none}
+.register-single .register-save .said{flex:1 1 180px}
+.register-single .register-result{margin-top:16px;padding:12px 16px;border:1px solid var(--ring);border-radius:10px}
+.register-single .register-result p{margin:0 0 8px;overflow-wrap:anywhere}
+.register-single .register-result[hidden]{display:none}
+.register-single .register-help{margin-top:18px}
+.register-single .register-help summary,.register-missed>summary{cursor:pointer}
+.register-missed>summary h2{display:inline}
+@media(max-width:480px){
+ .register-single .register-search{align-items:stretch}
+ .register-single .register-search .fld{flex-basis:100%}
+ .register-single .register-save>button{width:100%}
+}
+
