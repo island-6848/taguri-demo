@@ -14,11 +14,11 @@ const src = f => readFileSync(new URL(`../src/${f}`, import.meta.url), 'utf8');
 const plan = (sql, ...args) => sqlite.prepare('EXPLAIN QUERY PLAN ' + sql).all(...args).map(r => r.detail).join(' | ');
 
 const CASES = [
-  {file: 'worker.js', index: 'sessions_user_expiry', args: ['u', 0, 'u'],
-    sql: 'DELETE FROM sessions WHERE user_id=? AND (expires_at<=? OR hash NOT IN (SELECT hash FROM sessions WHERE user_id=? ORDER BY expires_at DESC LIMIT 9))'},
+  {file: 'worker.js', index: 'sessions_user_expiry', args: ['u', 0, 0, 'u'],
+    sql: 'DELETE FROM sessions WHERE user_id=? AND (expires_at<=? OR created_at IS NULL OR created_at<=? OR hash NOT IN (SELECT hash FROM sessions WHERE user_id=? ORDER BY expires_at DESC LIMIT 9))'},
   {file: 'worker.js', index: 'sessions_user_expiry', args: ['u', 'h'], sql: 'DELETE FROM sessions WHERE user_id=? AND hash<>?'},
   {file: 'worker.js', index: 'sessions_user_expiry', args: ['u'], sql: 'DELETE FROM sessions WHERE user_id=?'},
-  {file: 'screens/account.js', index: 'sessions_user_expiry', args: ['u', 0], sql: 'SELECT count(*) AS n FROM sessions WHERE user_id=? AND expires_at>?'},
+  {file: 'screens/account.js', index: 'sessions_user_expiry', args: ['u', 0, 0], sql: 'SELECT count(*) AS n FROM sessions WHERE user_id=? AND expires_at>? AND created_at>?'},
   {file: 'screens/recommend.js', index: 'rec_stage_tour', args: ['live', 't1', 't2'],
     fragment: "FROM rec_stage WHERE ver=? AND tour IN (",
     sql: "SELECT stage_id,tour,start,end,json_extract(entry,'$.pref') AS pref FROM rec_stage WHERE ver=? AND tour IN (?,?)"},

@@ -1,3 +1,4 @@
+import {SESSION_TTL} from '../src/session-policy.js';
 // 記録の無いアカウントを 1 か月で片付ける（src/cleanup.js、起案者の指示 2026-10-18「1ヶ月で消してほしい」）。
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
@@ -117,8 +118,8 @@ test('the edges: made or signed in exactly a month ago is kept; one second more 
 });
 
 test('a sign-in lasts no longer than the month, so a signed-in account is always within the window', () => {
-  const ttl = readFileSync(new URL('../src/worker.js', import.meta.url), 'utf8').match(/const TTL = ([\d* ]+);/)[1];
-  assert.ok(Function(`return ${ttl}`)() <= EMPTY_ACCOUNT_DAYS * DAY);
+  assert.equal(SESSION_TTL, 7 * DAY);
+  assert.ok(SESSION_TTL <= EMPTY_ACCOUNT_DAYS * DAY);
 });
 
 test('a record added after the account was picked, before it is deleted, keeps the account', async () => {
