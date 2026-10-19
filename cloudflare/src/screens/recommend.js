@@ -147,12 +147,19 @@ async function ratedWorks(ctx, access) {
  * 評価が増えるほど薄まる（recommend.personValues の SEED_K / (SEED_K + 評価の数)）。
  * 索引に人物の無い公演（一覧 catalogue にだけある開幕リマインドの公演など）は、出演欄から人物を読む。
  */
-async function interestSeeds(ctx, access) {
+async function interestSeeds(ctx, access, ratedSids = new Set()) {
   // reaction は日ごとの行（label = その日）なので、公演ごとに新しい答えで上書きしてから選ぶ（lists.reactionsOf と同じ）。
-  const {results} = await ctx.db.prepare('SELECT stage_id,interest,source,updated_at FROM reaction WHERE user_id=? AND interest IS NOT NULL ORDER BY updated_at')
+  // 購入済み（owned=1）は興味ありと同じ手がかりにする。購入済みを押しても interest は前の答えのまま（REACT.owned）なので、
+  // 興味ありを押さずに買った公演が種にならず、興味ありを押してから買った公演とで重さが違っていた（起案者の指示 2026-10-19
+  // 「興味あり押さずにいきなり購入済みに入れた作品でも、興味あり分加算してあげないとだめじゃない？」）
+  const {results} = await ctx.db.prepare('SELECT stage_id,interest,owned,source,updated_at FROM reaction WHERE user_id=? AND (interest IS NOT NULL OR owned=1) ORDER BY updated_at')
     .bind(ctx.uid).all();
   const last = new Map();
-  for (const r of results) { last.delete(r.stage_id); last.set(r.stage_id, [Number(r.interest), String(r.source || '')]); }
+  for (const r of results) { last.delete(r.stage_id); last.set(r.stage_id, [Number(r.owned) === 1 ? 1 : Number(r.interest), String(r.source || '')]); }
+  // 評価を付けた公演（ratedWorks に入る記録）は、評価 1 回分だけを数え、ここの種からは外す。興味あり→観て評価、の順に
+  // 付けた公演だけが 2 回分になり、評価だけの過去の記録と重さが揃わなかった（同上 2026-10-19）。観た日が先の記録は
+  // 評価を学ばないので、種のまま残る
+  for (const s of ratedSids) last.delete(String(s));
   // ツアーのほかの会場へ写した答え（reactAction の siblings、source が '…_tour'）は、押した 1 回と同じ答えなので
   // 手がかりに数えない（#110）。数えると 1 回の興味ありが会場の数だけの重さになり、MAX_SEED_STAGES も写しで埋まる。
   // 会場の行は、答えた公演をおすすめから外すため（answered）と一覧のためにそのまま残す。いちばん新しい答えが写しの
@@ -452,7 +459,7 @@ export async function rankedGroups(ctx) {
   // 登録した人の名前は、索引の書き方（空白なし・NFKC）でも理由に出さない（その人の公演はお気に入りの一覧に出る）
   const favNames = new Set(KINDS.filter(k => k === '人' || k === '原作者').flatMap(k => declared[k] || []).map(nzName));
   for (const s of favSeeds) for (const [role, p] of s.people || []) if (!role.startsWith('#') && favNames.has(nzName(p))) skip.add(p);
-  const interest = await interestSeeds(ctx, access), nLiked = interest.n;
+  const interest = await interestSeeds(ctx, access, new Set(rated.map(r => String(r.stage_id)))), nLiked = interest.n;
   const liked = withoutKinds(interest.seeds, off), disliked = withoutKinds(interest.disliked, off);
   const seeds = withoutKinds(favSeeds, off);
   const ranked = await scoreFromIndex({...access, rated: gate.aspects ? rated : rated.map(r => ({...r, aspects: []})),

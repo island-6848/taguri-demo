@@ -187,6 +187,26 @@ test('興味あり alone, on a stage only the catalogue has, recommends the same
   } finally { sqlite.close(); }
 });
 
+// 起案者の指示 2026-10-19: 購入済みは興味ありと同じ種になる（興味ありを押さずに買っても）。評価を付けた公演は
+// 評価 1 回分だけで、興味あり・購入済みの種からは外れる（記録の付け方で重さが変わらない）。
+test('購入済み alone is a 興味あり seed; once the stage is rated, only the rating counts', async () => {
+  const {env, sqlite} = await withIndex();
+  const a = await signIn(env);
+  try {
+    sqlite.prepare("INSERT INTO catalogue(id,title,date,venue,url,metadata) VALUES('779','気になる新作','2026-12-01','劇場Z','',?)")
+      .run(JSON.stringify({end_date: '2026-12-05', fields: {出演: '俳優甲'}}));
+    assert.equal((await step(env, a, {post: '/api/react', body: {stage_id: '779', value: 'owned', nofill: true}})).status, 200);
+    const diag = async () => (await step(env, a, {get: '/api/screen/recommend'})).body.diag;
+    let d = await diag();
+    assert.deepEqual({i: d.interest, r: d.rated}, {i: 1, r: 0});
+    assert.equal((await step(env, a, {post: '/api/react', body: {stage_id: '103', value: 'interest', nofill: true}})).status, 200);
+    assert.equal((await diag()).interest, 2);
+    await rateSeen(env, a, '終わった舞台', '2026-08-05', '103', '◎');
+    d = await diag();
+    assert.deepEqual({i: d.interest, r: d.rated}, {i: 1, r: 1});
+  } finally { sqlite.close(); }
+});
+
 // #116: a record dated after today (a plan, a typo) is not a rating to learn from yet.
 test('a rating on a record dated after today is not learnt from until the day comes', async () => {
   const {env, sqlite} = await withIndex();
