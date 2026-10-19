@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import collections
+import html
 import json
 import re
 import sys
@@ -172,6 +173,80 @@ def _names(text: str) -> list[str]:
 def canon_role(role: str) -> str:
     r = norm(role)
     return ROLE_ALIAS.get(r, r)
+
+
+# ---------------------------------------------------------------- 所属（名前の後ろのカッコ）
+# 起案者の指示（2026-10-19「劇団名が（）で人名の後ろについてる人とかは、ツリーの親が劇団で子が各個人」「所属の表をつくって」）。
+# _names はカッコを名前から外して捨てる。ここではそのカッコを「人 → 所属」として読む（dec-affiliation-table）。
+# 実データ（過去と候補の出演欄 24,148 公演、2026-10-19）では、カッコの中は所属（劇団・事務所・グループ）のほかに、
+# 配役の注記（Wキャスト 221 件・トリプルキャスト・スウィング・Aチーム）、出る日や場所（12/20・石川、新潟公演）、
+# 楽器・声部・役どころ（ピアノ・ソプラノ・プリンシパル）、身分（客演・フリー・特別出演）、以前の所属（元〜・〜を経て）があった。
+# それらは所属として拾わない
+_AFFIL_PAREN = re.compile(r"[（(]([^（()）]*)[）)]")
+_AFFIL_BEFORE = re.compile(r"[、,，／/\n）)]")
+_AFFIL_PART = re.compile(r"[、,，／/]")
+_NOT_AFFIL = re.compile(
+    r"キャスト|交互|スウィング|swing|チーム|team|公演|出演|日替|回替|替わり|\d+/\d+|\d+月|\d+日|\d+年|^\d+$|"
+    r"フリー|free|特別|友情|ゲスト|guest|予定|のみ|休演|代役|映像|声|昼|夜|マチネ|ソワレ|千秋楽|初日|^元|を経て|在住|出身|拠点|司会|音順|"
+    r"^dance$|percussion|^(keyboards?|piano|guitar|bass|drums?|violin|cello|vocals?|chorus|sax|flute)$|[:：]|。$|"
+    r"歳|才|子役|小学|中学|高校|年生|^[A-Za-z]$|班$|^[A-Z]組$|予備|^[A-Z]・[A-Z]$|^以上|※|順不同|五十音|敬称略|ほか|他$|変更|未定|"
+    r"プリンシパル|ソリスト|^客演|^俳優$|アンサンブル|ソプラノ|アルト|テノール|バリトン|^バス$|メゾ|カウンターテナー|"
+    r"^(主演|出演者|共演|新人|研究生|準劇団員|劇団員|看板|座長|ex)$|"
+    r"ピアノ|ヴァイオリン|バイオリン|チェロ|ギター|ベース|ドラム|パーカ|キーボード|アコーディオン|accordion|二胡|ニッケルハルパ|"
+    r"琵琶|フルート|トランペット|サックス|クラリネット|マリンバ|ハープ|オルガン|鍵盤|奏者|演奏|弁士|芸人|コンビ|舞踏家|"
+    r"^(pf|vn|vc|gt|ba|dr|perc|sax|fl|vo|key|cl|tp|tb|hr|ob|fg|va|cb)\.?$|"
+    r"^(歌|唄|三味線|笛|太鼓|尺八|箏|琴|語り|ナレーション|朗読|踊り|ダンス|司会|mc|指揮|振付|ヴォーカル|ボーカル|コーラス)$|役$",
+    re.I)
+_AFFIL_PLACE = re.compile(r"^(北海道|東京|大阪|京都|名古屋|福岡|札幌|神戸|横浜|仙台|広島|金沢|新潟|沖縄|那覇|.{1,4}[都道府県市町村])$")
+# 出る日・場所・回の注記は、カッコの中のどこかにあればカッコごと所属ではない（「石川、新潟公演」の「石川」を拾わない）
+_AFFIL_SCHEDULE = re.compile(r"公演|交互|日替|回替|替わり|\d+/\d+|\d+月|\d+日|のみ")
+# 「〇〇主宰」「〇〇所属」「〇〇代表」は〇〇が所属
+_AFFIL_TAIL = re.compile(r"(主宰|所属|代表|創始|座長)$")
+
+
+def affiliations(text: str) -> list[tuple[str, str]]:
+    """出演欄の「名前（所属）」を (名前, 所属) の並びにする。名前は _names と同じ書き方（索引の人と合う）。
+
+    カッコの直前の 1 人だけに付ける（「A・B（劇団X）」の A には付けない。どちらの所属か決められない）。
+    カッコの中が「、」「／」で区切られていれば、所属が複数ある（「Aぇ!group、関西ジャニーズJr.」）。
+    """
+    out = []
+    t = _URL.sub("", html.unescape(text or ""))
+    for m in _AFFIL_PAREN.finditer(t):
+        seg = _MIDDOT_KANJI.split(_AFFIL_BEFORE.split(t[:m.start()])[-1])[-1]
+        names = _names(seg)
+        if len(names) != 1 or _AFFIL_SCHEDULE.search(m.group(1)):
+            continue
+        for a in _AFFIL_PART.split(m.group(1)):
+            a = re.sub(r"[\u200b-\u200d\ufeff]", "", norm(a)).strip(" 　・#「」『』\"")
+            a = _AFFIL_TAIL.sub("", a).strip(" 　・")
+            if 2 <= len(a) <= 30 and not _NOT_AFFIL.search(a) and not _AFFIL_PLACE.match(a) and a not in ROLE_VOCAB \
+                    and a != names[0]:
+                out.append((names[0], a))
+    return out
+
+
+# 所属の表記ゆれを束ねる鍵（起案者の指示 2026-10-19「表記ゆれをたばねる」、dec-affiliation-table）。
+# 実データで同じ所属が「流山児★事務所／流山児☆事務所」「LE VELVETS／LEVELVETS」「吉本興業／吉本興業株式会社」
+# 「avenir'e／avenir’e」のように、記号・空白・大小文字・会社の種類の書き方で分かれていた
+_AFFIL_LEGAL = re.compile(r"^(株式会社|有限会社|合同会社|一般社団法人|公益社団法人|一般財団法人|公益財団法人|npo法人|特定非営利活動法人)|"
+                          r"(株式会社|有限会社|合同会社|\(株\)|\(有\)|inc\.?|co\.,?ltd\.?|ltd\.?|llc)$")
+_AFFIL_SYMBOL = re.compile(r"[\s・･.,★☆♪♡♥!?~〜～\-‐－―ー_'’\"「」『』]")
+# 「劇団青年座／青年座」「演劇集団キャラメルボックス／キャラメルボックス」は、頭の「劇団」などを除いた残り（核）で束ねる
+_AFFIL_HEAD = re.compile(r"^(劇団|演劇集団|演劇ユニット|演劇組織|演劇企画)")
+# 頭の語を除くと別の所属と同じになるもの。「劇団EXILE」は劇団で、「EXILE」は音楽のグループ（実データの束 98 組を
+# 目で確かめて、違うものはこれだけだった。2026-10-19）
+AFFIL_KEEP_HEAD = {"exile"}
+
+
+def affil_key(name: str) -> str:
+    """所属の束ねる鍵。記号・空白・大小文字・会社の種類を落とし、頭の「劇団」などを除く。"""
+    k = unicodedata.normalize("NFKC", name or "").lower()
+    for _ in range(2):
+        k = _AFFIL_LEGAL.sub("", k).strip()
+    k = _AFFIL_SYMBOL.sub("", k)
+    core = _AFFIL_HEAD.sub("", k)
+    return k if len(core) < 2 or core in AFFIL_KEEP_HEAD else core
 
 
 def parse_credits(fields: dict) -> list[tuple[str, str]]:

@@ -717,6 +717,19 @@
    "verifies": []
   },
   {
+   "id": "dec-affiliation-table",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-19",
+   "title": "出演欄の「名前（所属）」を所属の表（rec_affil）にする。親が所属、子が人。公演ごとに 1 行",
+   "sources": [
+    "tools/review/measure_nets.py",
+    "cloudflare/scripts/build_recommend_index.py",
+    "cloudflare/migrations/0039.sql"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-aspects-five-levels",
    "type": "decision",
    "status": "adopted",
@@ -3654,6 +3667,19 @@
     "https://soona.co/image-resizer/twitter-spec-guide",
     "https://kb.theseoframework.com/kb/twitter-cards-and-x-sharing/",
     "https://frontendchecklist.io/rules/seo/twitter-cards"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "f-multi-piece-handling-1019",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-19",
+   "title": "1 回の公演に複数の演目がある場合、本番（Worker）では 1 公演 = 1 記録・評価 1 つ。演目ごとに分ける仕組みは Render 時代の Python（メール取り込み）にしか無い",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/blob/master/tools/review/rate_performances.py",
+    "https://github.com/island-6848/taguri-demo/blob/master/cloudflare/src/screens/works.js",
+    "https://github.com/island-6848/taguri-demo/blob/master/tools/review/render_recommend.py"
    ],
    "verifies": []
   },
@@ -8664,6 +8690,11 @@
    "to": "comp-frontend"
   },
   {
+   "from": "dec-affiliation-table",
+   "rel": "affects",
+   "to": "comp-d1"
+  },
+  {
    "from": "dec-aspects-five-levels",
    "rel": "affects",
    "to": "dec-aspects-screen"
@@ -10927,6 +10958,16 @@
    "from": "f-link-card-spec",
    "rel": "affects",
    "to": "dec-link-card"
+  },
+  {
+   "from": "f-multi-piece-handling-1019",
+   "rel": "affects",
+   "to": "dec-noh-program"
+  },
+  {
+   "from": "f-multi-piece-handling-1019",
+   "rel": "affects",
+   "to": "q-nonplay-in-reco"
   },
   {
    "from": "f-noh-program-staff",

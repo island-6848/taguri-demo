@@ -46,7 +46,7 @@ DPAST = _load("deliver_past")
 DPOST = _load("deliver_posters")
 
 # 配送が書いてよい表（公演の情報と、その控え）
-DELIVERY_TABLES = {"catalogue", "venue_pref", "venue_census", "rec_meta", "rec_stage", "rec_credit", "rec_people",
+DELIVERY_TABLES = {"catalogue", "venue_pref", "venue_census", "rec_meta", "rec_stage", "rec_credit", "rec_people", "rec_affil",
                    "rec_gram", "rec_card", "stage_label", "past_stage", "poster"}
 WRITE_ACTIONS = {sqlite3.SQLITE_INSERT: "INSERT", sqlite3.SQLITE_UPDATE: "UPDATE", sqlite3.SQLITE_DELETE: "DELETE",
                  sqlite3.SQLITE_DROP_TABLE: "DROP", sqlite3.SQLITE_ALTER_TABLE: "ALTER",
