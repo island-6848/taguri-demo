@@ -27,6 +27,7 @@ reactions (why_b, a, _notes, ...) never enter the index.
 from __future__ import annotations
 
 import argparse
+import collections
 import datetime
 import hashlib
 import json
@@ -179,7 +180,7 @@ AFFIL_KINDS = (
 # 所属に見えて実は人の名前（「役名（演じる人）」「芸名（本名）」）。出演欄に人として出てくる名前は、
 # 所属の言葉（AFFIL_KINDS）を含まない限り所属にしない（実データで「堂前透」「岡部道子」など）
 def affiliation_rows(src: list[tuple[str, dict, str, str]]) -> list[tuple]:
-    """(stage_id, fields, start, group) の並びから rec_affil の行 (affil, person, stage_id, start, kind)。
+    """(stage_id, fields, start, group) の並びから rec_affil の行 (affil, person, stage_id, start, kind, written)。
 
     所属は時期で変わる（移籍・退団）ので、人と所属の 1 本の線ではなく「この公演ではこう書かれていた」を
     公演ごとに残す。今の所属は、読む側が start の新しい行で決める。
@@ -190,14 +191,32 @@ def affiliation_rows(src: list[tuple[str, dict, str, str]]) -> list[tuple]:
         if sid and f.get("出演"):
             cast[sid] = (start, M.affiliations(f["出演"]))
     persons = {n for sid, f, _st, _g in src if f.get("出演") for n in M._names(f["出演"])}
-    rows = set()
+    found = []
     for sid, (start, pairs) in cast.items():
         for person, affil in pairs:
             kind = "劇団" if RC.nz(affil) in groups else next((k for k, rx in AFFIL_KINDS if rx.search(affil)), "")
             if affil in persons and not kind:
                 continue
-            rows.add((affil, person, sid, start, kind))
-    return sorted(rows)
+            found.append((affil, person, sid, start, kind))
+    # 表記ゆれを束ねる（measure_nets.affil_key）。束の名前はいちばん多い書き方（同じ数なら会社の種類の無いほう、次に長いほう）、
+    # 種類は束のどれかに付いたもの（劇団・事務所・グループの順）。書かれたままの名前は written に残す
+    seen = collections.Counter(f[0] for f in found)
+    names, kinds = {}, {}
+    for affil, n in seen.items():
+        k = M.affil_key(affil)
+        score = lambda x: (seen[x], not M._AFFIL_LEGAL.search(unicodedata.normalize("NFKC", x).lower()), len(x), x)  # noqa: E731
+        if k not in names or score(affil) > score(names[k]):
+            names[k] = affil
+    rank = {"劇団": 0, "事務所": 1, "グループ": 2, "": 3}
+    for affil, _p, _s, _st, kind in found:
+        k = M.affil_key(affil)
+        if rank[kind] < rank[kinds.get(k, "")]:
+            kinds[k] = kind
+    rows = {}
+    for affil, person, sid, start, _kind in sorted(found):
+        k = M.affil_key(affil)
+        rows.setdefault((names[k], person, sid), (names[k], person, sid, start, kinds.get(k, ""), affil))
+    return sorted(rows.values())
 
 
 # ---------------------------------------------------------------- request time (reference)
@@ -518,7 +537,7 @@ def to_sql(index: dict, ver: str, onboarding: list[str] | None = None) -> list[s
                       [(ver, *r) for r in sorted(set(index["postings"]))])
     stmts += _inserts("rec_people", "ver,stage_id,people",
                       [(ver, sid, dumps(p)) for sid, p in sorted(index["people"].items())])
-    stmts += _inserts("rec_affil", "ver,affil,person,stage_id,start,kind",
+    stmts += _inserts("rec_affil", "ver,affil,person,stage_id,start,kind,written",
                       [(ver, *r) for r in index.get("affil", [])])
     stmts += _inserts("rec_gram", "ver,gram,part,entries", gram_rows(index, ver))
     if onboarding is not None:
@@ -543,7 +562,7 @@ TABLE_COLS = {
     "rec_stage": (("stage_id",), ("title", "tkey", "grp", "tour", "gkey", "start", "end", "credits", "entry")),
     "rec_credit": (("role", "person", "stage_id"), ("role_w", "role_group")),
     "rec_people": (("stage_id",), ("people",)),
-    "rec_affil": (("affil", "person", "stage_id"), ("start", "kind")),
+    "rec_affil": (("affil", "person", "stage_id"), ("start", "kind", "written")),
     "rec_gram": (("gram", "part"), ("entries",)),
 }
 

@@ -188,7 +188,7 @@ _AFFIL_PART = re.compile(r"[、,，／/]")
 _NOT_AFFIL = re.compile(
     r"キャスト|交互|スウィング|swing|チーム|team|公演|出演|日替|回替|替わり|\d+/\d+|\d+月|\d+日|\d+年|^\d+$|"
     r"フリー|free|特別|友情|ゲスト|guest|予定|のみ|休演|代役|映像|声|昼|夜|マチネ|ソワレ|千秋楽|初日|^元|を経て|在住|出身|拠点|司会|音順|"
-    r"^dance$|percussion|[:：]|。$|"
+    r"^dance$|percussion|^(keyboards?|piano|guitar|bass|drums?|violin|cello|vocals?|chorus|sax|flute)$|[:：]|。$|"
     r"歳|才|子役|小学|中学|高校|年生|^[A-Za-z]$|班$|^[A-Z]組$|予備|^[A-Z]・[A-Z]$|^以上|※|順不同|五十音|敬称略|ほか|他$|変更|未定|"
     r"プリンシパル|ソリスト|^客演|^俳優$|アンサンブル|ソプラノ|アルト|テノール|バリトン|^バス$|メゾ|カウンターテナー|"
     r"^(主演|出演者|共演|新人|研究生|準劇団員|劇団員|看板|座長|ex)$|"
@@ -224,6 +224,29 @@ def affiliations(text: str) -> list[tuple[str, str]]:
                     and a != names[0]:
                 out.append((names[0], a))
     return out
+
+
+# 所属の表記ゆれを束ねる鍵（起案者の指示 2026-10-19「表記ゆれをたばねる」、dec-affiliation-table）。
+# 実データで同じ所属が「流山児★事務所／流山児☆事務所」「LE VELVETS／LEVELVETS」「吉本興業／吉本興業株式会社」
+# 「avenir'e／avenir’e」のように、記号・空白・大小文字・会社の種類の書き方で分かれていた
+_AFFIL_LEGAL = re.compile(r"^(株式会社|有限会社|合同会社|一般社団法人|公益社団法人|一般財団法人|公益財団法人|npo法人|特定非営利活動法人)|"
+                          r"(株式会社|有限会社|合同会社|\(株\)|\(有\)|inc\.?|co\.,?ltd\.?|ltd\.?|llc)$")
+_AFFIL_SYMBOL = re.compile(r"[\s・･.,★☆♪♡♥!?~〜～\-‐－―ー_'’\"「」『』]")
+# 「劇団青年座／青年座」「演劇集団キャラメルボックス／キャラメルボックス」は、頭の「劇団」などを除いた残り（核）で束ねる
+_AFFIL_HEAD = re.compile(r"^(劇団|演劇集団|演劇ユニット|演劇組織|演劇企画)")
+# 頭の語を除くと別の所属と同じになるもの。「劇団EXILE」は劇団で、「EXILE」は音楽のグループ（実データの束 98 組を
+# 目で確かめて、違うものはこれだけだった。2026-10-19）
+AFFIL_KEEP_HEAD = {"exile"}
+
+
+def affil_key(name: str) -> str:
+    """所属の束ねる鍵。記号・空白・大小文字・会社の種類を落とし、頭の「劇団」などを除く。"""
+    k = unicodedata.normalize("NFKC", name or "").lower()
+    for _ in range(2):
+        k = _AFFIL_LEGAL.sub("", k).strip()
+    k = _AFFIL_SYMBOL.sub("", k)
+    core = _AFFIL_HEAD.sub("", k)
+    return k if len(core) < 2 or core in AFFIL_KEEP_HEAD else core
 
 
 def parse_credits(fields: dict) -> list[tuple[str, str]]:
