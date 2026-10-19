@@ -441,10 +441,14 @@ async function addWorkAction(b, ctx) {
   // the stage's material) is skipped on the public service. Instead, a record
   // with a date is linked to the one stage running that day under the same title.
   const linked = stageId ? '' : ((await autoLink(ctx, [key]))[key] || '');
-  return {body: {ok: true, work_key: key, stage_id: stageId || linked, adopted: {}, similar: await similarWorks(ctx, title, key)}};
+  const similar = await similarWorks(ctx, title, key);
+  // Repeated attendance is intentional; keep each date/time as its own record.
+  return {body: {ok: true, work_key: key, stage_id: stageId || linked, adopted: {},
+    similar: b.repeat === true ? similar.filter(w => titleKey(w.title) !== titleKey(title)) : similar}};
 }
 
 export const rateScreens = {
   screens: {rate: rateScreen, unrated: unratedScreen, notes: notesScreen},
   actions: {rate: rateAction, note: noteAction, add_work: addWorkAction, rating_scale: scaleAction},
 };
+

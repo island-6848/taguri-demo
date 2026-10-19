@@ -2335,10 +2335,24 @@ code.cmd{display:inline-block;margin:10px 0 4px;padding:8px 14px;border-radius:8
 .register-single .register-result[hidden]{display:none}
 .register-single .register-help{margin-top:18px}
 .register-single .register-help summary,.register-missed>summary{cursor:pointer}
+.register-single .register-repeat{display:flex;gap:8px;align-items:center}
+.register-single .register-repeat input{width:auto;flex:none}
+.register-search-dialog{box-sizing:border-box;width:min(720px,calc(100vw - 24px));max-height:85dvh;overflow:auto;padding:24px;border:1px solid var(--ring);border-radius:16px;background:var(--surf,#fff);color:var(--ink,#222)}
+.register-search-dialog::backdrop{background:rgb(0 0 0 / .45)}
+.register-search-dialog .rs-head{display:flex;gap:16px;justify-content:space-between;align-items:center}
+.register-search-dialog .rs-head h2{margin:0}
+.register-search-dialog .rs-form{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.register-search-dialog .rs-form label{display:flex;flex-direction:column;gap:6px;min-width:0}
+.register-search-dialog input{box-sizing:border-box;width:100%;min-width:0;font:inherit;padding:8px;border:1px solid var(--ring);border-radius:8px}
+.register-search-dialog button{font:inherit;cursor:pointer;padding:8px 12px;border-radius:8px}
+.register-search-dialog .rs-status{overflow-wrap:anywhere}
+.register-search-dialog .rs-results .sug-row{flex-wrap:wrap}
+@media(max-width:480px){.register-search-dialog{padding:16px}.register-search-dialog .rs-form{grid-template-columns:1fr}}
 .register-missed>summary h2{display:inline}
 @media(max-width:480px){
  .register-single .register-search{align-items:stretch}
  .register-single .register-search .fld{flex-basis:100%}
  .register-single .register-save>button{width:100%}
 }
+
 
