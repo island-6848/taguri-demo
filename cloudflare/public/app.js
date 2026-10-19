@@ -636,16 +636,7 @@ function renderScreen(el, activePath, d, exposureSource) {
   // 推薦の理由に引いていた本人の感想（「あなたの言葉」）は出さない。個人の文がそのまま画面に出るため
   // （起案者の指示 2026-10-13「あなたの言葉は個人情報すぎるので表示しないで。サービス版もデモ版も」）。
   // サーバー（render_recommend.reason_rows）も出さないようにしたが、古いサーバーの HTML にも効かせる
-  el.querySelectorAll("li.rs.q").forEach(n => n.remove());
-  compactTickets(el);
-  compactRows(el);
-  penNotes(el);
-  el.querySelectorAll(".rb").forEach(starValue);
-  el.querySelectorAll(".btns,.rb[data-work]").forEach(g => pickChoice(g, savedChoice(g)));
-  shortAddButtons(el);
-  divergeVerdicts(el);
-  stampRerate(el);
-  aspectsPanel(el);
+  decorateCards(el);
   if (activePath === "/settings") { aspectsSetting(el); creditSetting(el); }
   if (window.TaguriExposure) TaguriExposure.start(el, exposureSource || "network", async (path, body) => {
     const r = await fetch(API_BASE + path, {method: "POST", credentials: "include", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
@@ -679,6 +670,54 @@ function renderScreen(el, activePath, d, exposureSource) {
   el.querySelectorAll('img[src^="/img/"]').forEach(img => {
     img.src = API_BASE + img.getAttribute("src");
   });
+}
+
+// 札・行の見た目と押し口を整える。画面を描いたときと、一覧だけを差し替えたとき（hitPartPage）に使う
+function decorateCards(el) {
+  el.querySelectorAll("li.rs.q").forEach(n => n.remove());
+  compactTickets(el);
+  compactRows(el);
+  penNotes(el);
+  el.querySelectorAll(".rb").forEach(starValue);
+  el.querySelectorAll(".btns,.rb[data-work]").forEach(g => pickChoice(g, savedChoice(g)));
+  shortAddButtons(el);
+  divergeVerdicts(el);
+  stampRerate(el);
+  aspectsPanel(el);
+}
+
+// **「次の 5 件」は、その一覧（.hitpart）だけを取り直して差し替える**（起案者の指摘 2026-10-19「いちいち画面全部を
+// 再読込する必要ある？その部分だけ読み込めないの？ロード時間が長い」）。サーバーは part= のときその一覧だけを作る
+// （screens/search.js）。読めなかったときは、これまでどおり画面ごと読み直す
+async function hitPartPage(box, path, search, hash) {
+  const qs = stripToken(new URLSearchParams(search || "")).toString();
+  const usp = new URLSearchParams(qs);
+  usp.set("part", box.dataset.part);
+  box.classList.add("hp-loading");
+  box.setAttribute("aria-busy", "true");
+  let d = null;
+  try {
+    const r = await fetch(API_BASE + "/api/screen/" + SCREENS[path] + "?" + usp, {credentials: "include"});
+    d = r.ok ? await r.json().catch(() => null) : null;
+  } catch (e) { d = null; }
+  if (!box.isConnected) return;
+  const tmp = document.createElement("div");
+  if (d && d.ok) tmp.innerHTML = d.body_html;
+  const next = tmp.querySelector(".hitpart");
+  if (!next) { navigate(path, search, true, hash); return; }
+  box.replaceWith(next);
+  decorateCards(next);
+  fixLinks(next);
+  saleLabels(next);
+  fixupSynClamp(next);
+  bindNotes(next);
+  next.querySelectorAll('img[src^="/img/"]').forEach(img => { img.src = API_BASE + img.getAttribute("src"); });
+  // 料金の絞り込みを、差し替えた札にも効かせる
+  const ysl = contentEl().querySelector(".yfil .ysl");
+  if (ysl) ysl.dispatchEvent(new Event("input"));
+  history.pushState(null, "", REPO_BASE + path + (qs ? "?" + qs : "") + (hash || ""));
+  shownKey = path + "?" + qs;
+  next.scrollIntoView({block: "start"});
 }
 
 // **後から押した画面が、先に押した(だが遅く返ってきた)画面に上書きされない
@@ -833,6 +872,8 @@ document.addEventListener("click", ev => {
   if (qi >= 0) { search = path.slice(qi + 1); path = path.slice(0, qi); }
   if (!path || !isInternalPath(path)) return;
   ev.preventDefault();
+  const part = a.classList.contains("mpage") && a.closest(".hitpart");
+  if (part && SCREENS[path]) { hitPartPage(part, path, search, hash); return; }
   navigate(path, search, true, hash);
 }, true);
 

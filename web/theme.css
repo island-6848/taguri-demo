@@ -1631,3 +1631,6 @@ details.lprice:not([open]):not(#_)>summary .plist>li:only-child::before{display:
  .side .psud a:not(#_):active{background:var(--fold-bg)}
  .side .psud a.on:not(#_){border-color:var(--acc);color:var(--acc);font-weight:700}
 }
+
+/* 「次の 5 件」で一覧だけを読み直している間（app.js の hitPartPage） */
+.hitpart.hp-loading { opacity: .5; pointer-events: none; transition: opacity .15s; }

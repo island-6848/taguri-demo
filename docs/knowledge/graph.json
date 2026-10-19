@@ -2711,6 +2711,19 @@
    ]
   },
   {
+   "id": "dec-search-part-paging",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-19",
+   "title": "探すの「次の 5 件」は、その一覧だけを読み直して差し替える（part=up・pp）",
+   "sources": [
+    "cloudflare/src/screens/search.js",
+    "web/app.js",
+    "cloudflare/test/title-leads.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-search-public-only",
    "type": "decision",
    "status": "adopted",
@@ -3527,6 +3540,19 @@
     "docs/research/person-reco-eval.md",
     "tools/review/eval_yahoo_aspects.py",
     "https://github.com/KunalShm/Multi-Criteria-Recommendation-System"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "f-search-asu-prefix",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-19",
+   "title": "「明日」で「明日、泣けない女〜」は題名の先頭一致で当たる（コードとテストで確認）。本番で見えなかったわけは未確認",
+   "sources": [
+    "cloudflare/src/stage-search.js",
+    "cloudflare/src/screens/search.js",
+    "cloudflare/test/title-leads.test.js"
    ],
    "verifies": []
   },
@@ -10006,6 +10032,11 @@
    "to": "q-crawler-host"
   },
   {
+   "from": "dec-search-part-paging",
+   "rel": "affects",
+   "to": "comp-cf-worker"
+  },
+  {
    "from": "dec-search-public-only",
    "rel": "raises",
    "to": "q-past-stage-catalogue"
@@ -10644,6 +10675,11 @@
    "from": "eval-yahoo-aspects",
    "rel": "depends_on",
    "to": "q-aspect-attribution-check"
+  },
+  {
+   "from": "f-search-asu-prefix",
+   "rel": "affects",
+   "to": "dec-search-part-paging"
   },
   {
    "from": "fav-reason-two-step",

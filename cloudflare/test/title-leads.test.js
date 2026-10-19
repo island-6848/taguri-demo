@@ -50,3 +50,27 @@ test('all past stages found are listed on 探す, not the newest 15', async () =
     assert.equal((p2.match(/class="pastrow"/g) || []).length, 5);
   } finally { sqlite.close(); }
 });
+
+// 「次の 5 件」は、その一覧だけを返す（起案者の指摘 2026-10-19「いちいち画面全部を再読込する必要ある？その部分だけ読み込めないの？」）。
+// 「明日」で「明日、泣けない女〜」も当たる（同じ日の指摘。読点は題名の鍵に残るが、先頭一致はその前で当たる）
+test('part=pp returns only the past list: the page asked for, without the rest of the screen', async () => {
+  const {env, sqlite} = setup();
+  const a = await signIn(env);
+  try {
+    const ins = sqlite.prepare("INSERT INTO past_stage(stage_id,title,tkey,start,end,venue,grp,pref,people) VALUES(?,?,?,?,?,'劇場Z','劇団Q','東京都','[]')");
+    const titles = ['明日、泣けない女〜ほか', '明日の詩', '明日のハナコ', '明日は晴れ', '明日を待つ', '明日の約束', '明日もまた'];
+    titles.forEach((t, i) => ins.run(String(9300 + i), t, titleKey(t), `2022-0${i + 1}-01`, `2022-0${i + 1}-02`));
+    const get = more => step(env, a, {get: '/api/screen/search?q=' + encodeURIComponent('明日') + more}).then(r => r.body.body_html);
+    const full = await get('');
+    assert.match(full, /<h1>探す<\/h1>/);
+    assert.match(full, /<section class="hitpart" data-part="pp"><h2>過去の公演（2019 年〜） 7 件<\/h2>/);
+    assert.match(full, /<a class="mpage" href="\/search\?t=__TAGURI_TOKEN__&amp;q=%E6%98%8E%E6%97%A5&amp;pp=2#past-hits">次の 2 件 →<\/a>/);
+    const part = await get('&part=pp&pp=2');
+    assert.ok(part.startsWith('<section class="hitpart" data-part="pp">') && part.endsWith('</section>'));
+    assert.doesNotMatch(part, /<h1>|観た記録/);
+    assert.equal((part.match(/<li class="pastrow"/g) || []).length, 2);
+    assert.match(part, /明日、泣けない女〜ほか/);              // the oldest, on the last page
+    assert.match(part, /2 \/ 2 ページ/);
+    assert.doesNotMatch(part, /[?;]part=/);                       // the pager's links are the full page's
+  } finally { sqlite.close(); }
+});

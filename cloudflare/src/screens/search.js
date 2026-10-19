@@ -406,6 +406,9 @@ async function foundRows(ctx, ws, people, whyOf = () => '') {
     {poster: posterHtml(w, files), rateAlways: true, editable: true, label: labels[w.stage_id] || '', extra: whyOf(w), scale})).join('');
 }
 
+/** ページ送りで差し替える一覧の枠（web/app.js の hitPartPage） */
+const hitPart = (key, html) => (html ? `<section class="hitpart" data-part="${key}">${html}</section>` : '');
+
 export async function searchScreen(params, ctx) {
   const q = params.get('q') || '';
   let ym = params.get('ym') || '';
@@ -418,9 +421,17 @@ export async function searchScreen(params, ctx) {
   // ページ送りの道: いまの言葉・月・カレンダーの側はそのまま、ページだけを変える（#up-hits・#past-hits で一覧の頭へ）
   const pageHref = (key, anchor) => n => {
     const u = new URLSearchParams(params);
-    u.delete('t'); u.set(key, String(n));
+    u.delete('t'); u.delete('part'); u.set(key, String(n));
     return `/search?t=__TAGURI_TOKEN__&amp;${E(u.toString()).replace(/&amp;amp;/g, '&amp;')}#${anchor}`;
   };
+  // 「次の 5 件」は、その一覧だけを作って返す（part=up・pp。画面は枠 .hitpart だけを差し替える。起案者の指摘 2026-10-19
+  // 「いちいち画面全部を再読込する必要ある？その部分だけ読み込めないの？」）。ほかの一覧・カレンダー・ウェブの検索は読まない
+  const part = params.get('part');
+  if (part === 'pp' && q) return {title: '探す', body_html: hitPart('pp', (await pastHits(ctx, q, ws, pastPage, pageHref('pp', 'past-hits')))[0])};
+  if (part === 'up') {
+    const [upHtml] = await upcomingHits(ctx, q, q ? (side === 'up' ? ym : '') : ym, await buckets(ctx), UP_PER, upPage, pageHref('up', 'up-hits'));
+    return {title: '探す', body_html: hitPart('up', upHtml)};
+  }
   const people = await peopleByKey(ctx, ws);
   const months = await upcomingMonths(ctx);
   const nPeople = ws.filter(w => (people[w.work_key] || []).length).length;
@@ -438,7 +449,7 @@ export async function searchScreen(params, ctx) {
     let body;
     if (side === 'up') {
       const [upHtml] = await upcomingHits(ctx, '', ym, b, UP_PER, upPage, pageHref('up', 'up-hits'));
-      body = ym ? upHtml : '<p class="empty">上のカレンダーから月を選ぶと、その月に観られる公演が出ます。</p>';
+      body = ym ? hitPart('up', upHtml) : '<p class="empty">上のカレンダーから月を選ぶと、その月に観られる公演が出ます。</p>';
     } else if (!ym) {
       body = '<p class="empty">上のカレンダーから月を選ぶと、その月に観た記録が出ます。これから観られる公演は言葉を入れて探してください。</p>';
     } else {
@@ -462,20 +473,21 @@ export async function searchScreen(params, ctx) {
   // 「ワードが入って検索されてるなら、次のところも該当件数のみ表示されるようにして」）
   cal = monthGrid(hits.map(([w]) => w), upCounts, nUpAll, side, ym, q);
   const dec = await loadDeclared(ctx);
-  const [pastHtml, nPast] = await pastHits(ctx, q, ws, pastPage, pageHref('pp', 'past-hits'));
+  const [pastOnly, nPast] = await pastHits(ctx, q, ws, pastPage, pageHref('pp', 'past-hits'));
+  const pastHtml = pastOnly && hitPart('pp', pastOnly);
   const web = await webHits(ctx, q, nUp + nPast);
   let body;
   if (!hits.length && !nUp && !nPast) {
     const narrowed = ym && side === 'up' ? `<b>いまは ${ym.slice(0, 4)} 年 ${Number(ym.slice(5, 7))} 月に絞っています。</b>ほかの月にはあるかもしれません。カレンダーで別の月を押すか、<a href="/search?t=__TAGURI_TOKEN__&amp;cal=up&amp;q=${E(q)}">月の指定を外して</a>お試しください。<br>` : '';
     body = `<p class="empty">${narrowed}手元には、これから観られる公演にも観た記録にも見つかりませんでした。<b>公演ページを見つけられなかった記録は、出演者や題材では探せません。</b>その場合は題名で探してください。</p>` + web + cal;
   } else if (!hits.length) {
-    body = searchFollow(dec, names) + upHtml + '<h2>観た記録</h2><p class="empty">観た記録の中には見つかりませんでした。</p>' + pastHtml + web + cal;
+    body = searchFollow(dec, names) + hitPart('up', upHtml) + '<h2>観た記録</h2><p class="empty">観た記録の中には見つかりませんでした。</p>' + pastHtml + web + cal;
   } else {
     const nUn = hits.filter(([w]) => !w.verdict).length;
     const lead = `<h2>観た記録 ${hits.length} 件</h2>` + (nUn ? `<p class="lead">このうち ${nUn} 件はまだ評価が付いていません。<b>この場で${{marks4: ' ◎○△× ', stars5: '★', stars11: '★'}[await scaleOf(ctx)] || '評価'}を押せます。</b></p>`
       : '<p class="lead">評価を付け直すことも、感想を足すこともできます。</p>');
     const why = new Map(hits.map(([w, h]) => [w.work_key, h]));
-    body = searchFollow(dec, names) + upHtml + lead + await foundRows(ctx, hits.map(([w]) => w), people, w => why.get(w.work_key)) + pastHtml + web + cal;
+    body = searchFollow(dec, names) + hitPart('up', upHtml) + lead + await foundRows(ctx, hits.map(([w]) => w), people, w => why.get(w.work_key)) + pastHtml + web + cal;
   }
   return {title: '探す', body_html: head + body};
 }
