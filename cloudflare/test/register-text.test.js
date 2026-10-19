@@ -15,6 +15,21 @@ async function registerHtml() {
   } finally { sqlite.close(); }
 }
 
+test('single entry comes first; import and unwatched performances stay separate', async () => {
+  const html = await registerHtml();
+  assert.ok(html.indexOf('id="w-title"') < html.indexOf('data-import'));
+  assert.ok(html.indexOf('id="sug"') < html.indexOf('id="w-date"'));
+  assert.ok(html.indexOf('id="w-venue"') < html.indexOf('data-add-work'));
+  assert.ok(html.indexOf('data-import') < html.indexOf('register-missed'));
+  assert.match(html, /公演名だけでも保存できます/);
+  assert.match(html, /data-add-work="1">[\s\S]*?観劇記録を保存<\/button>/);
+  assert.match(html, /<details class="card register-missed"><summary>/);
+  assert.doesNotMatch(html, /<details class="imx-src" open|メールに残らない分を手で|入口は3つ/);
+  for (const id of ['w-title', 'w-date', 'w-time', 'w-venue', 'sug', 'imx-url', 'imx-ics', 'imx-text', 'imx-eml']) {
+    assert.equal(html.split(`id="${id}"`).length - 1, 1, id);
+  }
+});
+
 test('#91: the private address is said to pass through the server; files stay on the device', async () => {
   const html = await registerHtml();
   assert.doesNotMatch(html, /読み取りはこの端末の中だけで行い、カレンダーやメールの中身はたぐりに送りません/);
@@ -56,3 +71,4 @@ test('#95: inputs have visible labels with required/optional, placeholders are e
     assert.match(search, /<label class="fld" for="search-q"><span class="fl">人名・団体・題材・題名<small class="req">必須<\/small><\/span><input type="text" id="search-q" name="q"/);
   } finally { sqlite.close(); }
 });
+

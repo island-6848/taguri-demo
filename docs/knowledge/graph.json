@@ -2343,6 +2343,20 @@
    "verifies": []
   },
   {
+   "id": "dec-register-single-first",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "観劇記録の追加は1件入力を先頭に置き、取り込みと観ていない公演を分ける",
+   "sources": [
+    "cloudflare/src/screens/settings.js",
+    "web/app.js",
+    "web/style.css",
+    "cloudflare/test/register-text.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-reminder-catalogue-fill",
    "type": "decision",
    "status": "adopted",
@@ -9487,6 +9501,11 @@
    "from": "dec-recovery-reissue",
    "rel": "depends_on",
    "to": "dec-rate-limit"
+  },
+  {
+   "from": "dec-register-single-first",
+   "rel": "depends_on",
+   "to": "dec-import-calendar-mail"
   },
   {
    "from": "dec-reminder-catalogue-fill",
