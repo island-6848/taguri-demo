@@ -2534,6 +2534,22 @@
    "verifies": []
   },
   {
+   "id": "dec-sale-label-1019",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-19",
+   "title": "発売の札は「発売済」「未確認」「10/25発売」（日付と発売の間を空けない）。前の文言で作ったカードは画面で読み替える。札は上の行から離す",
+   "sources": [
+    "tools/review/recommend2.py",
+    "tools/review/render_recommend.py",
+    "web/app.js",
+    "web/theme.css",
+    "tools/review/test_reason_works.py",
+    "cloudflare/test/e2e-walk.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-sale-label-words",
    "type": "decision",
    "status": "adopted",
@@ -6053,6 +6069,19 @@
    "verifies": [
     "S04"
    ]
+  },
+  {
+   "id": "q-e2e-register-rework",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-19",
+   "title": "観劇記録の追加の画面を作り替えた PR #219・#220 のあと、e2e-walk の 13 段が落ちる。だれが e2e を新しい画面に合わせるか",
+   "sources": [
+    "cloudflare/test/e2e-walk.js",
+    "https://github.com/island-6848/taguri-demo/pull/219",
+    "https://github.com/island-6848/taguri-demo/pull/220"
+   ],
+   "verifies": []
   },
   {
    "id": "q-ec2-cost",
@@ -9711,6 +9740,11 @@
    "to": "q-direction"
   },
   {
+   "from": "dec-sale-label-1019",
+   "rel": "supersedes",
+   "to": "dec-sale-label-words"
+  },
+  {
    "from": "dec-sale-label-words",
    "rel": "affects",
    "to": "fix-price-detail-missing"
@@ -12149,6 +12183,11 @@
    "from": "q-domain",
    "rel": "depends_on",
    "to": "q-direction"
+  },
+  {
+   "from": "q-e2e-register-rework",
+   "rel": "depends_on",
+   "to": "dec-sale-label-1019"
   },
   {
    "from": "q-fav-reco-running-shows",

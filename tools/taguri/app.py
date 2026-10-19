@@ -2669,7 +2669,7 @@ def _collapse_tracking_tours(rows: list, RC2) -> list:
         extra = [{"stage_id": str(o.get("stage_id") or ""), "theater": o.get("theater") or "",
                  "pref": o.get("pref") or "", "period": o.get("period") or "",
                  "days": o.get("days") or 0, "price": o.get("price") or "",
-                 "url": o.get("url") or "", "onsale": o.get("onsale") or "発売日不明"}
+                 "url": o.get("url") or "", "onsale": o.get("onsale") or "未確認"}
                 for o in others]
         rep["tours"] = extra + [t for t in (rep.get("tours") or [])
                                 if str(t.get("stage_id") or "") not in have]

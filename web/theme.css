@@ -1540,8 +1540,9 @@ details.lprice:not([open]):not(#_)>summary .plist>li:only-child::before{display:
 .ticket.cmp .ltour:has(.tourfull.v2):not(#_){margin-bottom:0}
 /* 発売の札は、価格帯（料金の明細の折りたたみ）の右隣に（「発売済みなどのマークは価格帯の詳細の隣に置くようにして」）。
    入りきらない幅では次の行へ回る。明細を開いても札は 1 行目の高さのまま */
-.ticket.cmp .main>.lprice:has(+.sale):not(#_){display:inline-block;vertical-align:top;max-width:100%;margin:6px 10px 0 0}
-.ticket.cmp .main>.lprice+.sale:not(#_){display:inline-flex;vertical-align:top;margin:3px 0 8px}
+/* 上の「ほか N 会場」の行と札が近すぎた（起案者の指摘 2026-10-19「ほか会場と発売済みが近すぎるで離して」）。価格帯と札をそろって 6px 下げる（中心はそろったまま） */
+.ticket.cmp .main>.lprice:has(+.sale):not(#_){display:inline-block;vertical-align:top;max-width:100%;margin:12px 10px 0 0}
+.ticket.cmp .main>.lprice+.sale:not(#_){display:inline-flex;vertical-align:top;margin:9px 0 8px}
 /* 「公式サイト」の字と枠線は回答の押し口と同じスミクロ（--btn-ink）に（「「公式サイト」って文字と枠線もスミクロにして」）。字は fonts.css */
 .ticket .sitebtn:not(#_):not(#_),:is(.ticket.cmp,.rec-row.cmp) .sitelink:not(#_):not(#_){color:var(--btn-ink);border-color:var(--btn-ink)}
 .ticket .sitebtn:not(#_):not(#_):hover,:is(.ticket.cmp,.rec-row.cmp) .sitelink:not(#_):not(#_):hover{background:var(--curtain-w);color:var(--ink)}

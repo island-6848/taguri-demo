@@ -141,18 +141,20 @@ class TicketDetailsTest(unittest.TestCase):
         self.assertEqual(RR.sale_pill({"url": "javascript:x"}, "発売済", "ok"), '<span class="pill ok">発売済</span>')
 
     def test_sale_label_words(self):
-        # 起案者の指示 2026-10-18「『発売済』『発売日不明』『〇/〇 （取得できれば何時からかも）発売』にして」
+        # 起案者の指示 2026-10-19「『発売済』『未確認』『◎/◎発売』に文言を揃えて」（前は 2026-10-18 の「発売日不明」「〇/〇 発売」）
         import recommend2 as RC
         import datetime
         t = datetime.date(2026, 10, 18)
-        self.assertEqual(RC.onsale({}, t), "発売日不明")
+        self.assertEqual(RC.onsale({}, t), "未確認")
         self.assertEqual(RC.onsale({"料金": "【発売日】2026/09/01"}, t), "発売済")
-        self.assertEqual(RC.onsale({"料金": "【発売日】2026/10/25"}, t), "10/25 発売")
-        self.assertEqual(RC.onsale({"料金": "【発売日】2026/10/25(土)10:00"}, t), "10/25 10:00 発売")
+        self.assertEqual(RC.onsale({"料金": "【発売日】2026/10/25"}, t), "10/25発売")
+        self.assertEqual(RC.onsale({"料金": "【発売日】2026/10/25(土)10:00"}, t), "10/25 10:00発売")
         # 前の版の文言で残った値も、新しい文言と色で出す
+        for old, new in [("確認できず", "未確認"), ("発売日不明", "未確認"), ("発売済み", "発売済"), ("10/25 発売", "10/25発売")]:
+            self.assertEqual(RR.sale_label(old), new)
         html = RR.ticket({"stage_id": "1", "title": "t", "onsale": "確認できず"})
         self.assertIn('class="pill warn', html)
-        self.assertIn("発売日不明", html)
+        self.assertIn("未確認", html)
         self.assertNotIn("確認できず", html)
 
     def test_limits_note_goes_to_info(self):

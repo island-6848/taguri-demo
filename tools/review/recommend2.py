@@ -178,8 +178,9 @@ ONSALE = re.compile(r"【発売日】\s*(20\d\d)/(\d{1,2})/(\d{1,2})")
 # 発売日のすぐ後ろの時刻（「【発売日】2026/08/16 10:00」「2026/06/01(月)16:00」）。取得元で時刻まで書く公演は少ない
 # （2026-10-18 の候補で【発売日】4,697 件のうち 5 件）。無ければ日付だけで書く
 ONSALE_AT = re.compile(r"【発売日】\s*(20\d\d)/(\d{1,2})/(\d{1,2})\s*(?:[(（][^)）]{1,3}[)）])?\s*(\d{1,2})[:：](\d{2})")
-# 発売の札の文言（起案者の指示 2026-10-18「『発売済』『発売日不明』『〇/〇 （取得できれば何時からかも）発売』にして」）
-ONSALE_DONE, ONSALE_UNKNOWN = "発売済", "発売日不明"
+# 発売の札の文言（起案者の指示 2026-10-18「『発売済』『発売日不明』『〇/〇 （取得できれば何時からかも）発売』にして」、
+# 2026-10-19「『発売済』『未確認』『◎/◎発売』に文言を揃えて」）。日付と「発売」の間は空けない
+ONSALE_DONE, ONSALE_UNKNOWN = "発売済", "未確認"
 
 
 def run_days(period: str) -> int:
@@ -198,11 +199,11 @@ def url_of(field: str) -> str:
 
 
 def onsale(fields: dict, today: datetime.date) -> str:
-    """販売状況。**取れないものは「発売日不明」と書いて出す**（企画書 2 章。前は「確認できず」、2026-10-18 に文言を変えた）。
+    """販売状況。**取れないものは「未確認」と書いて出す**（企画書 2 章。前は「確認できず」→「発売日不明」、2026-10-19 に「未確認」）。
 
     **判定できるのは発売日だけである。** CoRich の料金欄には全 818 件に「【発売日】」の見出しが
     あり、日付が入っているのは 672 件（82%）。**「販売終了」「予定枚数終了」は一覧にも
-    公演ページの表にも無いので、ここでは判定できない** ── 落とさずに「発売日不明」を添える
+    公演ページの表にも無いので、ここでは判定できない** ── 落とさずに「未確認」を添える
     （当日券の経路があるため消さない）。
     """
     text = json.dumps(fields, ensure_ascii=False)
@@ -214,7 +215,7 @@ def onsale(fields: dict, today: datetime.date) -> str:
         return ONSALE_DONE
     at = next((f" {int(h)}:{mi}" for y, m, d, h, mi in ONSALE_AT.findall(text)
                if datetime.date(int(y), int(m), int(d)) == first and int(h) < 24), "")
-    return f"{first.month}/{first.day}{at} 発売"
+    return f"{first.month}/{first.day}{at}発売"
 
 
 def declared_hits(c: dict, declared: dict, ws: list[str]) -> tuple[list[str], list[str]]:
