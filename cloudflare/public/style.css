@@ -327,10 +327,10 @@ body{padding:0}
 .ed-src{margin:0 0 8px;font-size:12px;color:var(--ink2);display:flex;
  flex-direction:column;gap:2px}
 .ed-hints{color:var(--mute);font-size:11.5px;white-space:pre-wrap}
-select,input[type=text],input[type=date],input[type=time]{font:inherit;font-size:13px;
+select,input[type=text],input[type=date],input[type=time],.register-search-dialog input{font:inherit;font-size:13px;
  padding:6px 10px;border:1px solid var(--ring);border-radius:8px;background:var(--plane);
  color:var(--ink)}
-.card button,.fav-add button,.miss-add button,.imp button,.add-work button{
+.card button,.fav-add button,.miss-add button,.imp button,.add-work button,.register-search-dialog button{
  font:inherit;font-size:13px;padding:7px 18px;border-radius:99px;
  border:1px solid var(--ring);background:var(--surf);color:var(--ink2);cursor:pointer}
 .imp button{border-color:var(--acc);color:var(--acc);font-weight:600}
@@ -2335,19 +2335,20 @@ code.cmd{display:inline-block;margin:10px 0 4px;padding:8px 14px;border-radius:8
 .register-single .register-result[hidden]{display:none}
 .register-single .register-help{margin-top:18px}
 .register-single .register-help summary,.register-missed>summary{cursor:pointer}
-.register-search-dialog{box-sizing:border-box;width:min(720px,calc(100vw - 24px));max-height:85dvh;overflow:auto;padding:24px;border:1px solid var(--ring);border-radius:16px;background:var(--surf,#fff);color:var(--ink,#222)}
+.register-search-dialog{box-sizing:border-box;width:min(720px,calc(100vw - 24px));max-height:85dvh;overflow:auto;padding:22px 24px 18px;border:1px solid var(--ring);border-radius:14px;background:var(--surf);color:var(--ink)}
 .register-search-dialog::backdrop{background:rgb(0 0 0 / .45)}
-.register-search-dialog .rs-head{display:flex;gap:16px;justify-content:space-between;align-items:center}
+.register-search-dialog .rs-head{display:flex;gap:16px;justify-content:space-between;align-items:center;margin-bottom:12px}
 .register-search-dialog .rs-head h2{margin:0}
 .register-search-dialog .rs-form{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.register-search-dialog .rs-form label{display:flex;flex-direction:column;gap:6px;min-width:0}
-.register-search-dialog input,.register-search-dialog select{box-sizing:border-box;width:100%;min-width:0;font:inherit;padding:8px;border:1px solid var(--ring);border-radius:8px}
+.register-search-dialog .rs-form label{display:flex;min-width:0}
+.register-search-dialog input,.register-search-dialog select{box-sizing:border-box;width:100%;min-width:0}
 .register-search-dialog .rs-schedule{grid-column:1/-1;min-width:0;margin:0;padding:12px;border:1px solid var(--ring);border-radius:8px}
 .register-search-dialog .rs-schedule-fields{display:flex;flex-wrap:wrap;gap:12px;margin-top:12px}
 .register-search-dialog .rs-schedule-fields>label{flex:1 1 100px}
 .register-search-dialog .rs-form label[hidden]{display:none}
-.register-search-dialog button{font:inherit;cursor:pointer;padding:8px 12px;border-radius:8px}
-.register-search-dialog .rs-status{overflow-wrap:anywhere}
+.register-search-dialog .rs-form>button{justify-self:start}
+.register-search-dialog :is(button,input,select):focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.register-search-dialog .rs-status{overflow-wrap:anywhere;font-size:12px;color:var(--ink2)}
 .register-search-dialog .rs-results .sug-row{flex-wrap:wrap}
 @media(max-width:480px){.register-search-dialog{padding:16px}.register-search-dialog .rs-form{grid-template-columns:1fr}}
 .register-missed>summary h2{display:inline}

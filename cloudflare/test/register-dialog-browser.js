@@ -44,6 +44,14 @@ export async function checkRegisterDialog(browser, base) {
         assert.ok(await field.evaluate((el, text) => [...el.labels].some(l => l.textContent.includes(text)), label));
       }
       assert.equal(await dialog.locator('[name=q]').inputValue(), '夜の果て');
+      const sameStyle = async (inside, outside, properties) => {
+        const styleOf = (el, props) => Object.fromEntries(props.map(p => [p, getComputedStyle(el)[p]]));
+        assert.deepEqual(await inside.evaluate(styleOf, properties), await outside.evaluate(styleOf, properties), `${width}: shared control styling`);
+      };
+      const buttonProps = ['fontFamily', 'fontSize', 'borderRadius', 'borderTopWidth', 'borderTopStyle', 'borderTopColor', 'backgroundColor', 'color', 'paddingTop', 'paddingRight'];
+      await sameStyle(dialog.locator('button[type=submit]'), page.locator('[data-add-work]'), buttonProps);
+      await sameStyle(dialog.locator('[data-rs-close]'), page.locator('[data-add-work]'), buttonProps);
+      await sameStyle(dialog.locator('[name=q]'), page.locator('#w-title'), ['fontFamily', 'fontSize', 'borderRadius', 'backgroundColor', 'color', 'paddingTop', 'paddingRight']);
       await dialog.locator('[name=schedule_precision]').selectOption('month');
       assert.ok(await dialog.locator('[name=schedule_month]').isVisible());
       assert.equal(await dialog.locator('[name=schedule_year]').isVisible(), false);

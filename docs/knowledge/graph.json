@@ -2374,6 +2374,19 @@
    "verifies": []
   },
   {
+   "id": "dec-register-dialog-shared-controls",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-19",
+   "title": "詳細検索のボタンと入力欄は他ページの共通スタイルを使う",
+   "sources": [
+    "web/style.css",
+    "cloudflare/src/screens/register-dialog.js",
+    "cloudflare/test/register-dialog-browser.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-register-run-precision",
    "type": "decision",
    "status": "adopted",
@@ -9599,6 +9612,11 @@
    "from": "dec-register-detail-repeat",
    "rel": "depends_on",
    "to": "dec-register-single-first"
+  },
+  {
+   "from": "dec-register-dialog-shared-controls",
+   "rel": "affects",
+   "to": "fix-register-empty-dialog"
   },
   {
    "from": "dec-register-run-precision",
