@@ -406,6 +406,23 @@ const WEB_BUTTON = IS_DEMO ? "デモの公演から探す" : "公演一覧から
 const FIX_KINDS = ["日程", "料金", "会場", "あらすじ", "出演・スタッフ", "ポスター", "その他"];
 const HELP_ICON = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
   + '<circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8 1c0 1.7-2.4 2.2-2.4 3.7"/><path d="M12 17.2h.01"/></svg>';
+// 発売の札の文言を「発売済」「未確認」「10/25発売」にそろえる（起案者の指示 2026-10-19「『発売済』『未確認』『◎/◎発売』に文言を揃えて」）。
+// 札はデータの取得のときに作ってデータベースに置いてあるので、前の版の文言（発売済み・確認できず・発売日不明・「10/25 発売」）の
+// カードは、作り直されるまでここで読み替える（render_recommend.sale_label と同じ）
+function saleLabel(v) {
+  v = String(v || "").trim();
+  v = ({"確認できず": "未確認", "発売日不明": "未確認", "発売済み": "発売済", "": "未確認"})[v] ?? v;
+  return v.replace(/\s+発売$/, "発売");
+}
+function saleLabels(root) {
+  root.querySelectorAll(".sale .pill").forEach(p => {
+    const t = [...p.childNodes].find(n => n.nodeType === 3 && n.textContent.trim());
+    if (!t) return;
+    const was = t.textContent.trim(), next = saleLabel(was);
+    if (next !== was) t.textContent = t.textContent.replace(was, next);   // ↗ との間の空白は残す
+    if (next === "未確認") { p.classList.remove("ok", "soon"); p.classList.add("warn"); }
+  });
+}
 function fixLinks(root) {
   if (IS_DEMO || !API_BASE) return;
   root.querySelectorAll("article.ticket[data-stage]").forEach(t => {
@@ -630,6 +647,7 @@ function renderScreen(el, activePath, d, exposureSource) {
   priceFilter(el);
   filterRow(el);
   fixLinks(el);
+  saleLabels(el);
   updateNavActive(activePath);
   fixupSynClamp(el);
   fixupMonthScroll(el);

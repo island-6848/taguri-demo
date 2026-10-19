@@ -328,7 +328,7 @@ def _merge_siblings(rows: list[dict]) -> list[dict]:
                 {"stage_id": m["stage_id"], "theater": m.get("theater") or "",
                  "pref": m.get("pref") or "", "period": m.get("period") or "",
                  "days": m.get("days") or 0, "price": m.get("price") or "",
-                 "url": m.get("url") or "", "onsale": m.get("onsale") or "発売日不明"}
+                 "url": m.get("url") or "", "onsale": m.get("onsale") or "未確認"}
                 for m in tail]
         # **状態は、いちばん決着しているほうを出す。** 片方の会場だけ「持っている」まで
         # 答えていれば、もう片方が未回答でもその答えを出す（`_STATUS_RANK`）

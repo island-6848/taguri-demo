@@ -555,6 +555,11 @@ async function walkA(A) {
     // 発売の札は価格帯の右隣（「発売済みなどのマークは価格帯の詳細の隣に」）。札と公式サイトは Zen丸ゴシック、公式サイトの字と枠線はスミクロ
     const side = await card.evaluate(t => { const p = t.querySelector('.main > .lprice'), r = p.getBoundingClientRect(), l = p.querySelector('.plist li').getBoundingClientRect(), s = t.querySelector('.main > .sale .pill').getBoundingClientRect(); return {dx: Math.round(s.left - r.right), dy: Math.round((s.top + s.bottom) / 2 - (l.top + l.bottom) / 2)}; });
     check(side.dx >= 0 && Math.abs(side.dy) <= 4, '発売の札が価格帯の隣にない: ' + JSON.stringify(side));
+    // 札の文言は「発売済」「未確認」「10/25発売」（起案者の指示 2026-10-19）。上の行（劇場・ほか N 会場）とは 6px 以上あける（同じ日「ほか会場と発売済みが近すぎる」）
+    const pill = await card.evaluate(t => { const s = t.querySelector('.main > .sale .pill'), p = t.querySelector('.main > .lprice'), above = p.previousElementSibling;
+      return {text: s.textContent.replace(/[\s↗]+/g, ''), gap: Math.round(s.getBoundingClientRect().top - above.getBoundingClientRect().bottom)}; });
+    check(/^(発売済|未確認|\d{1,2}\/\d{1,2}(\d{1,2}:\d{2})?発売)$/.test(pill.text) && pill.gap >= 6, '発売の札の文言・上の行とのすき間: ' + JSON.stringify(pill));
+    note('札: ' + JSON.stringify(pill));
     const look = await card.evaluate(t => {
       const pill = getComputedStyle(t.querySelector('.sale .pill')), site = getComputedStyle(t.querySelector('.sitelink'));
       const ink = getComputedStyle(t.querySelector('.btns button:not(.picked)')).color;
