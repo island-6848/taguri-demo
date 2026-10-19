@@ -47,3 +47,31 @@ test('invalid or incomplete schedules fail; irrelevant fields are ignored', () =
   assert.ok(filter('none', {month: 99}).matches('', ''));
   assert.ok(filter('month', {year: 2025, month: 10, day: 99}).matches('2026-10-01', '2026-10-31'));
 });
+
+const optional = parts => scheduleFilter(new URLSearchParams(Object.fromEntries(Object.entries(parts).map(([k, v]) => ['schedule_' + k, String(v)]))));
+
+test('all eight combinations of optional year/month/day constrain only the supplied parts', () => {
+  assert.ok(optional({}).matches('', ''));
+  assert.ok(optional({year: 2026}).matches('2025-12-31', '2026-01-01'));
+  assert.ok(optional({month: 10}).matches('2024-09-20', '2024-10-01'));
+  assert.ok(optional({day: 31}).matches('2026-01-30', '2026-02-01'));
+  assert.ok(!optional({day: 31}).matches('2026-02-01', '2026-03-01'));
+  assert.ok(optional({year: 2026, month: 2}).matches('2026-01-31', '2026-02-01'));
+  assert.ok(!optional({year: 2026, month: 2}).matches('2025-02-01', '2025-02-28'));
+  assert.ok(optional({year: 2026, day: 31}).matches('2026-05-30', '2026-06-01'));
+  assert.ok(!optional({year: 2026, day: 31}).matches('2025-12-31', '2026-01-02'));
+  assert.ok(optional({month: 2, day: 29}).matches('2024-02-01', '2024-03-01'));
+  assert.ok(!optional({month: 2, day: 29}).matches('2025-02-01', '2025-03-01'));
+  assert.ok(optional({year: 2024, month: 2, day: 29}).matches('2024-02-29', '2024-02-29'));
+});
+
+test('blank optional parts are unrestricted and impossible dates are rejected', () => {
+  assert.ok(optional({year: '', month: ' ', day: ''}).matches('', ''));
+  assert.ok(optional({year: '', month: '', day: 29}).matches('2025-02-28', '2025-03-29'));
+  for (const parts of [{year: 0}, {year: 10000}, {month: 13}, {day: 32}, {day: '1.5'}, {month: 2, day: 30}, {year: 2025, month: 2, day: 29}]) {
+    assert.throws(() => optional(parts), /上演日程/);
+  }
+  const yearDay = optional({year: 2026, day: 31});
+  assert.deepEqual([yearDay.from, yearDay.to], ['2026-01-01', '2026-12-31']);
+  assert.ok(optional({month: 2, day: 29}).matches('2096-03-01', '2104-02-29'));
+});

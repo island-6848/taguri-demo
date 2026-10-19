@@ -67,6 +67,9 @@ test('schedule precision filters runs, including recurring months after the firs
     assert.deepEqual(await ids({schedule_precision: 'yearmonth', schedule_year: '2026', schedule_month: '2'}), ['99']);
     assert.deepEqual(await ids({schedule_precision: 'date', schedule_year: '2026', schedule_month: '3', schedule_day: '5'}), ['99']);
     assert.deepEqual(await ids({schedule_precision: 'date', schedule_year: '2026', schedule_month: '3', schedule_day: '6'}), []);
+    assert.deepEqual(await ids({schedule_day: '31'}), ['99']);
+    assert.deepEqual(await ids({schedule_year: '2024', schedule_day: '29'}), ['100']);
+    assert.deepEqual(await ids({schedule_year: '2026', schedule_month: '2'}), ['99']);
   } finally {db.close()}
 });
 
