@@ -7,7 +7,7 @@ import {TERMS_VERSION, requireAgreement, needsAgreement} from './terms.js';
 import {d1Access, gradeOf, cleanAspects, SEED_KINDS, SEED_ROLES, MAX_SEED_FAVS, cmp} from './recommend.js';
 import {recommendApi} from './screens/recommend.js';
 import {searchIndex, d1Search} from './stage-search.js';
-import {suggest} from './screens/suggest.js';
+import {suggest, stageTimes} from './screens/suggest.js';
 import {exportPayload} from './screens/settings.js';
 import {R2_READS_CAP, r2ReadAllowed, d1RoomLeft, d1Bytes, D1_BYTES_CAP, MAX_ACCOUNTS} from './free-tier.js';
 import {rateLimit, checkNewAccount, guardedUserInsert, countNewAccount, confirmNewAccount, rateLimitHealth} from './rate-limit.js';
@@ -429,6 +429,15 @@ async function nativeRoute(request, env, url) {
       return new Response(body, {headers: {'Content-Type': 'application/json; charset=utf-8', 'Content-Disposition': 'attachment; filename="taguri-export.json"', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff'}});
     } catch (error) {
       return json({ok:false,error:error.status ? error.message : '書き出せませんでした。'}, error.status ?? 500);
+    }
+  }
+  // 観劇記録の追加で選んだ公演の、上演日ごとの開演時刻（screens/suggest.stageTimes）
+  if (allNative(env) && request.method === 'GET' && url.pathname === '/api/stage_times') {
+    try {
+      await user(request, env.DB);
+      return json(await stageTimes(url.searchParams, {db: env.DB}));
+    } catch (error) {
+      return json({ok:false,error:error.status ? error.message : '読めませんでした。'}, error.status ?? 500);
     }
   }
   // suggest_web も同じ保存済みの公演一覧から探す（その場で外のサイトは探さない。画面の文言もそう書く、#92）

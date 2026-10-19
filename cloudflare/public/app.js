@@ -2278,6 +2278,7 @@ document.addEventListener("click", ev => {
     g.querySelector("#w-title").value = r.dataset.title;
     g.querySelector("#w-date").value = r.dataset.date || "";
     runDates(g.querySelector("#w-date"), r.dataset.start, r.dataset.end);
+    loadStageTimes(r.dataset.stage || "");
     g.querySelector("#w-venue").value = r.dataset.venue || "";
     g.querySelector("#w-stage").value = r.dataset.stage || "";
     document.getElementById("sug").replaceChildren();
@@ -2997,9 +2998,50 @@ function sugSay(box, msg, clear) {
 // 年月で開くので、範囲を上演期間にすると、その公演の年月から開く。選び直す・題名を打ち直すと範囲を外す
 function runDates(dt, start, end) {
   if (!dt) return;
+  if (!start && !end) { delete dt.dataset.times; setTimeChoices(null); }
   const ok = v => /^\d{4}-\d{2}-\d{2}$/.test(v || "");
   if (ok(start)) dt.min = start; else dt.removeAttribute("min");
   if (ok(end || start)) dt.max = ok(end) ? end : start; else dt.removeAttribute("max");
+}
+// 選んだ公演の開演時刻（/api/stage_times）が分かる日は、開演時刻の欄をその時刻だけのプルダウンにする（起案者の指示 2026-10-19
+// 「観た日の時間、も最初からわかってるならその時間しか選べないようにプルダウン化してよい」）。分からない日は、これまでどおり自由に入れる欄
+function setTimeChoices(times) {
+  const cur = document.getElementById("w-time");
+  if (!cur) return;
+  const want = times && times.length ? "SELECT" : "INPUT";
+  let el = cur;
+  if (cur.tagName !== want) {
+    el = document.createElement(want === "SELECT" ? "select" : "input");
+    el.id = "w-time";
+    if (want === "INPUT") el.type = "time";
+    cur.replaceWith(el);
+  }
+  if (want === "SELECT") {
+    const keep = cur.value;
+    el.innerHTML = (times.length > 1 ? '<option value="">選んでください</option>' : "") + times.map(t => '<option value="' + E(t) + '">' + E(t) + "</option>").join("");
+    if (times.includes(keep)) el.value = keep;
+  }
+}
+function timesForDate() {
+  const dt = document.getElementById("w-date");
+  let all = {};
+  try { all = JSON.parse(dt?.dataset.times || "{}") || {}; } catch (e) { all = {}; }
+  setTimeChoices(dt && dt.value ? all[dt.value] || null : null);
+}
+document.addEventListener("change", ev => { if (ev.target.id === "w-date") timesForDate(); });
+async function loadStageTimes(sid) {
+  const dt = document.getElementById("w-date");
+  if (!dt) return;
+  delete dt.dataset.times;
+  setTimeChoices(null);
+  if (!sid || IS_DEMO) return;
+  try {
+    const r = await fetch(API_BASE + "/api/stage_times?stage_id=" + encodeURIComponent(sid), {credentials: "include"});
+    const d = r.ok ? await r.json() : {};
+    if (document.getElementById("w-stage")?.value !== sid) return;   // 待つ間に選び直した
+    dt.dataset.times = JSON.stringify(d.times || {});
+    timesForDate();
+  } catch (e) { /* 分からなければ自由に入れる欄のまま */ }
 }
 function sugRender(box, rows, headText) {
   box.replaceChildren();

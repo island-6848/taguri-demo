@@ -13,6 +13,9 @@ import {gradeText} from './grade.js';
 import {titleKey, d1Search, searchIndex, titlePrefixes, prefixWhere} from '../stage-search.js';
 import {loadWorks} from './works.js';
 import {scheduleFilter} from './schedule-filter.js';
+import {stageInfo} from './fallback.js';
+import {parseTimetable} from './schedule.js';
+import {loadOverrides, mergeInfo} from './override.js';
 
 const LIMIT = 8;
 const PAST_LIMIT = 20;
@@ -114,3 +117,25 @@ export async function suggest(params, ctx) {
   return {q, rows: kept.map(({_s, ...r}) => ({...r, mine: mine[r.stage_id] || 0, poster: posters[r.stage_id] || ''}))};
 }
 
+
+/**
+ * GET /api/stage_times?stage_id=: 公演の上演日ごとの開演時刻（{times: {'YYYY-MM-DD': ['13:00', …]}}）。観劇記録の追加で
+ * 「これを使う」で選んだ公演の観た日を選ぶと、開演時刻をこの中から選ぶプルダウンにする（起案者の指示 2026-10-19
+ * 「観た日の時間、も最初からわかってるならその時間しか選べないようにプルダウン化してよい」）。読めるのはタイムテーブルの欄に
+ * 時刻が書いてある日だけ（schedule.parseTimetable）。貸切の回と、時刻の無い回（マチネなど）は入れない。分からない公演は空
+ */
+export async function stageTimes(params, ctx) {
+  const sid = String(params.get('stage_id') || '').slice(0, 40);
+  if (!/^[A-Za-z0-9_-]+$/.test(sid)) return {times: {}};
+  const [info, ovs] = await Promise.all([stageInfo(ctx.db, [sid]), loadOverrides(ctx.db, [sid])]);
+  const st0 = info.get(sid);
+  if (!st0) return {times: {}};
+  const st = ovs.has(sid) ? mergeInfo(st0, ovs.get(sid)) : st0;   // 管理者が直した公演日時も重ねる
+  const perf = parseTimetable(st.fields?.['タイムテーブル'] || '', st.start, st.end);
+  const times = {};
+  for (const [d, list] of perf) {
+    const ts = [...new Set(list.filter(x => !x.k && /^\d{1,2}:\d{2}$/.test(x.t || '')).map(x => x.t.padStart(5, '0')))].sort();
+    if (ts.length) times[d] = ts;
+  }
+  return {times};
+}
