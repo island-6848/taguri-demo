@@ -822,11 +822,15 @@ export async function recommendScreen(params, ctx) {
 評価・公演情報・設定が変わると、順位も変わることがあります</p>` : '';
   // 件数の 1 行は枠に入れず地の文で、「表示の絞り込み」の下に少し空けて置く（起案者の指示 2026-10-18）
   const body = `<h1>${E(head)}</h1>
-${lede.includes('favnone') ? lede : ''}${tips}${starting ? '' : `<p class="fgh">${ico('light', 15)}<b>おすすめの選び方</b><span>おすすめに表示される結果自体が変わります。</span></p>
+${lede.includes('favnone') ? lede : ''}${tips}${starting ? '' : `<details class="rec-controls">
+<summary><b>地域・調整</b><span>${E(where || '全国')}${tuned ? '／選び方を調整中' : ''}</span><span class="rec-budget"></span></summary>
+<p class="fgh">${ico('light', 15)}<b>おすすめの選び方</b><span>おすすめに表示される結果自体が変わります。</span></p>
 <div class="fil2 tune">${weightForm(data.weights || {}, data.w_counts || {})}${declinedBox(declined)}${kindOffBox(kindOff)}</div>
 <p class="fgh">${ico('search', 15)}<b>表示の絞り込み</b><span>おすすめの候補の中から、表示する項目を設定できます。</span></p>
 <div class="fil2 narrow">${prefForm(prefCounts(data.groups), prefs, '/recommend', PAGE_PREF_NOTE, {}, regionCounts(data.groups.map(g => ({key: g.stage_id, prefs: g.venues.map(v => v.pref)}))))}</div>
+</details>
 `}${lede.includes('favnone') ? '' : lede}
+${cards.length ? '<p class="rec-answer-help">「興味なし」は今後のおすすめに反映します。右上の×は候補を非表示にするだけで、好みには反映しません。</p>' : ''}
 ${cards.join('')}
 ${starting ? '' : `<p class="lede">気になった公演で「興味あり」を押すと、
 <a href="/recommend/interest?t=__TAGURI_TOKEN__">「興味あり」（いま ${nInterest} 件）</a>に移ります。</p>
