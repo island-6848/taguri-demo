@@ -2800,17 +2800,6 @@ function registerSearchDialog(trigger) {
   }
   if (dialog.dataset.rsBound) { dialog.showModal(); return; }
   dialog.dataset.rsBound = '1';
-  const updateSchedule = () => {
-    const precision = form.elements.schedule_precision.value;
-    const active = {year: ['year', 'yearmonth', 'date'], month: ['month', 'monthday', 'yearmonth', 'date'], day: ['monthday', 'date']};
-    for (const [part, modes] of Object.entries(active)) {
-      const field = form.elements['schedule_' + part], enabled = modes.includes(precision);
-      field.closest('label').hidden = !enabled;
-      field.disabled = !enabled; field.required = enabled;
-    }
-  };
-  form.elements.schedule_precision.addEventListener('change', updateSchedule);
-  updateSchedule();
   dialog.querySelector('[data-rs-close]').addEventListener('click', () => dialog.close());
   dialog.addEventListener('close', () => {
     const picked = dialog.dataset.picked;
@@ -2827,10 +2816,11 @@ function registerSearchDialog(trigger) {
     const q = form.elements.q.value.trim();
     if (Array.from(q).length < 2) { status.textContent = '公演名を2文字以上入力してください。'; form.elements.q.focus(); return; }
     const params = new URLSearchParams({q, advanced: '1', t: T,
-      group: form.elements.group.value.trim(), venue: form.elements.venue.value.trim(), schedule_precision: form.elements.schedule_precision.value});
+      group: form.elements.group.value.trim(), venue: form.elements.venue.value.trim()});
     for (const part of ['year', 'month', 'day']) {
       const field = form.elements['schedule_' + part];
-      if (!field.disabled) params.set('schedule_' + part, field.value);
+      const value = field.value.trim();
+      if (value) params.set('schedule_' + part, value);
     }
     const button = form.querySelector('button[type=submit]');
     button.disabled = true; box.replaceChildren(); status.textContent = '検索中…';

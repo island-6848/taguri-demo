@@ -10,9 +10,14 @@ test('registration HTML contains a complete, initially closed detail-search dial
   assert.match(html, /<dialog id="register-search-dialog"[^>]*>/);
   assert.doesNotMatch(html, /<dialog[^>]*\bopen\b/);
   const content = html.slice(html.indexOf('<dialog id="register-search-dialog"'), html.indexOf('</dialog>'));
-  for (const name of ['q', 'group', 'venue', 'schedule_precision', 'schedule_year', 'schedule_month', 'schedule_day']) {
+  for (const name of ['q', 'group', 'venue', 'schedule_year', 'schedule_month', 'schedule_day']) {
     assert.equal((content.match(new RegExp(`name="${name}"`, 'g')) || []).length, 1, name);
   }
-  for (const value of ['none', 'month', 'monthday', 'year', 'yearmonth', 'date']) assert.match(content, new RegExp(`value="${value}"`));
+  assert.doesNotMatch(content, /schedule_precision|指定の細かさ/);
+  for (const part of ['year', 'month', 'day']) {
+    const input = content.match(new RegExp(`<input name="schedule_${part}"[^>]*>`))[0];
+    assert.doesNotMatch(input, /required|disabled/);
+  }
+  assert.doesNotMatch(content, /hidden/);
   assert.match(content, /検索する/); assert.match(content, /条件を入れて/); assert.match(content, /rs-results/);
 });

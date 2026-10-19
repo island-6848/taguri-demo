@@ -338,7 +338,7 @@ export async function registerScreen(_params, ctx) {
 <div class="register-result" data-register-result="1" hidden></div>
 <details class="register-help"><summary>公演の候補について</summary>
 <p class="note">たぐりの公演一覧とあなたの記録から候補を出します。候補を選ぶと公演情報も記録に結び付き、次のおすすめの材料になります。すでに記録にあるものは「記録あり」と表示します。<br>
-「詳細検索」では、公演名に団体名・劇場・上演日程を加えて絞り込めます。上演日程は月・月日・年・年月・年月日から細かさを選べます。その場で外のサイト（CoRich など）は探しません。<br>
+「詳細検索」では、公演名に団体名・劇場・上演日程を加えて絞り込めます。上演日程の年・月・日は任意入力で、入力した項目だけで絞り込めます。その場で外のサイト（CoRich など）は探しません。<br>
 一覧に無い公演は「次の更新で探してもらう」から依頼できます。${crawlSearch.requests ? `次の更新（次回は${crawlLabel(nextCrawl(ctx.now))}）で探します。` : '依頼された題名を毎日の更新で探す段はまだ準備中で、いまは探されません。'}待たずに保存することもできます。あとで同じ題名・日付の公演が集まると、自動で結び付きます。</p>
 </details>
 </div>
