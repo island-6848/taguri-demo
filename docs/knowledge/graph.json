@@ -1503,6 +1503,19 @@
    "verifies": []
   },
   {
+   "id": "dec-form-rodokugeki",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-19",
+   "title": "形式の札「朗読」を「朗読劇」に改める。外していた人の設定（kind_off）は migration 0043 で新しい名前に移す",
+   "sources": [
+    "tools/review/user_recommender.py",
+    "cloudflare/migrations/0043.sql",
+    "cloudflare/test/migrations-keep-records.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-forms-1019",
    "type": "decision",
    "status": "adopted",
@@ -7157,6 +7170,17 @@
    "verifies": []
   },
   {
+   "id": "q-reading-music-form",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-19",
+   "title": "「リーディング音楽劇『ジャングル大帝』」のように朗読劇と音楽劇（ミュージカル）を兼ねる公演の形式をどうするか",
+   "sources": [
+    "tools/review/user_recommender.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "q-real-catalog-stats",
    "type": "question",
    "status": "open",
@@ -9395,6 +9419,16 @@
    "from": "dec-font-sawarabi-round",
    "rel": "supersedes",
    "to": "dec-font-action-maru"
+  },
+  {
+   "from": "dec-form-rodokugeki",
+   "rel": "depends_on",
+   "to": "f-form-rodoku-1019"
+  },
+  {
+   "from": "dec-form-rodokugeki",
+   "rel": "affects",
+   "to": "dec-forms-1019"
   },
   {
    "from": "dec-forms-1019",
@@ -13235,6 +13269,11 @@
    "from": "q-rating-scale",
    "rel": "affects",
    "to": "q-reco-learning-design"
+  },
+  {
+   "from": "q-reading-music-form",
+   "rel": "depends_on",
+   "to": "dec-form-rodokugeki"
   },
   {
    "from": "q-real-catalog-stats",
