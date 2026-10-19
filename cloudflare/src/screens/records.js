@@ -6,8 +6,13 @@ import {peopleByKey, recordsLede, autoMerge} from './diary.js';
 import {autoLink, pastStages} from './autolink.js';
 import {strip} from './py.js';
 import {panel as chroniclePanel} from './chronicle.js';
+<<<<<<< cloudflare/src/screens/records.js
+import {spiralPanel, venuePanel} from './charts.js';
+import {comparisonPopulation, personalComparison, fourPanels} from './compare-four.js';
+=======
 import {spiralPanel} from './charts.js';
 import {craftRows, panel as comparePanel, popNote, population} from './compare.js';
+>>>>>>> /tmp/four-master-0
 import {RECORDS_EMPTY} from './diary.js';
 import {localNow} from './py.js';
 import {timetableFor} from './timetable.js';
@@ -103,10 +108,13 @@ export async function recordsScreen(_params, ctx) {
   const d = await recordsBase(ctx);
   let cmpPanels = '';
   if (d.seen.length) {
-    // **落ちても画面は出す**（app._pop_note・_compare_panel と同じ）
-    let pop = null;
-    try { pop = await population(ctx.db, localNow().slice(0, 10)); } catch { /* 比べる相手を数えられなかった */ }
-    if (pop) cmpPanels = popNote(d.rated, pop) + (d.rated.length ? comparePanel({craft: craftRows(d.rated, pop)}) : '');
+    try {
+      const world = await comparisonPopulation(ctx.db, ctx.today || localNow().slice(0, 10));
+      const mine = await personalComparison(ctx, d.seen);
+      cmpPanels = fourPanels(mine, world);
+    } catch {
+      cmpPanels = '<p class="empty">比較データを読み込めませんでした。時間をおいて開き直してください。</p>';
+    }
   }
   let timetable = '';
   try { timetable = await timetableFor(ctx, d.seen, localNow().slice(0, 10)); } catch { /* 時間割は無くても画面は出す */ }
@@ -123,8 +131,8 @@ ${conquest}
 <div data-fig="storyline"></div>
 </div>
 <script id="figs-src" type="application/json">${scriptJson({rated: d.rated})}</script>
-<h2>比べる ── これから上演される公演との差</h2>
-<p class="lede">観た記録をこれから観られる公演の一覧と並べて、差の大きいところを出しています。</p>
+<h2>比べる ── 掲載公演と自分の観劇</h2>
+<p class="lede">クレジット・題材・地域・公演期間を、割合と件数で比べます。</p>
 ${d.seen.length ? '' : COMPARE_EMPTY}
 <div class="figs">${cmpPanels}</div>`;
   return {title: '眺める', body_html: body};

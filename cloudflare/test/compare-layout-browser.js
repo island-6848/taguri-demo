@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {CRAFTS, rows, panel, popNote} from '../src/screens/compare.js';
+import {personalCounts, fourPanels} from '../src/screens/compare-four.js';
 
 // Render the production comparison markup, including long labels and empty-world ratios.
 export async function checkCompareLayout(browser, base) {
@@ -7,6 +8,9 @@ export async function checkCompareLayout(browser, base) {
   const html = popNote([{date: '2019-01-01'}, {date: '2026-10-01'}],
     {n: 4200, n_upcoming: 3000, n_running: 1000, n_ended: 200, first: '2026-09-01', last: '2027-03-01', other: 5100})
     + panel({craft: [rows(labels, {[labels[0]]: 2, [labels[1]]: 1}, {[labels[0]]: 10}, 12, 4200), 12, 4200]});
+  const fixture = personalCounts([{work_key:'one',stage_id:'1',times:5},{work_key:'two'}],
+    {'1':{pref:'東京都',start:'2026-10-01',end:'2026-10-08',people:[['#題材','家族と世代を越えてつながる物語']]}}, {one:[['翻訳','A'],['原作','B']]});
+  const four = fourPanels(fixture,{...fixture,updated:'2026-10-19',first:'2026-10-01',last:'2026-10-08'});
   for (const width of [320, 390, 1280]) {
     const page = await browser.newPage({viewport: {width, height: 900}});
     try {
@@ -36,7 +40,17 @@ export async function checkCompareLayout(browser, base) {
         assert.ok(await page.locator('.compare-scroll-hint').isVisible());
       }
       await page.screenshot({path: `/tmp/taguri-visual/compare-${width}.png`, fullPage: true});
+      // The expanded production UI uses cards, so each pair of percentages is visible without scrolling.
+      await page.locator('main').evaluate((el,html)=>{el.innerHTML=html},four);
+      assert.equal(await page.locator('[data-compare-axis]').count(),4);
+      for(const axis of ['craft','theme','region','duration']) {
+        assert.ok(await page.locator(`[data-compare-axis="${axis}"] .cf-item`).count()>0);
+      }
+      assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'four-axis page overflow');
+      assert.ok(await page.locator('.cf-item').evaluateAll(els=>els.every(el=>el.scrollWidth<=el.clientWidth+1)),'comparison card overflow');
+      await page.screenshot({path:`/tmp/taguri-visual/compare-four-${width}.png`,fullPage:true});
       console.log(`compare/${width}: no page overflow; all columns retained, table scroll checked`);
+      console.log(`compare-four/${width}: four axes, readable percentage cards, no overflow`);
     } finally { await page.close(); }
   }
 }

@@ -2368,3 +2368,15 @@ code.cmd{display:inline-block;margin:10px 0 4px;padding:8px 14px;border-radius:8
 .compare-table:focus-visible{outline:2px solid var(--acc);outline-offset:3px}
 .compare-scroll-hint{display:none}
 @media(max-width:700px){.compare-scroll-hint{display:block}}
+
+/* 比べるの4軸。スマホでは1列のカードで、比較する数字を一緒に読める。 */
+.cf-axis{min-width:0;overflow-wrap:anywhere}
+.cf-items{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;list-style:none;padding:0;margin:16px 0 0}
+.cf-item{min-width:0;box-sizing:border-box;border:1px solid var(--grid);border-radius:10px;padding:14px}
+.cf-item h4{font-size:14px;margin:0 0 10px}
+.cf-item dl{margin:0;display:grid;gap:6px}
+.cf-item dl>div{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 10px}
+.cf-item dt,.cf-item dd{margin:0;font-size:13px}
+.cf-item small{font-size:11px;color:var(--mute)}
+.cf-diff{font-size:12px;margin:10px 0 0;color:var(--ink2)}
+@media(max-width:600px){.cf-items{grid-template-columns:minmax(0,1fr)}}
