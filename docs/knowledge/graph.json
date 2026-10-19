@@ -1870,6 +1870,18 @@
    "verifies": []
   },
   {
+   "id": "dec-past-2026-first",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-19",
+   "title": "過去の公演は今年の分を先に回す（ポスターの R2 入れは新しい公演から、あらすじの本文取りは今年に終わった公演から）",
+   "sources": [
+    "cloudflare/scripts/deliver_posters.py",
+    "tools/review/fetch_past_stages.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-past-name-index",
    "type": "decision",
    "status": "adopted",
@@ -2382,6 +2394,23 @@
    "sources": [
     "web/style.css",
     "cloudflare/src/screens/register-dialog.js",
+    "cloudflare/test/register-dialog-browser.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-register-optional-date-parts",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-19",
+   "title": "上演日程は年・月・日を常時表示し、任意入力された項目だけで検索する",
+   "sources": [
+    "cloudflare/src/screens/register-dialog.js",
+    "cloudflare/src/screens/schedule-filter.js",
+    "cloudflare/src/screens/settings.js",
+    "web/app.js",
+    "cloudflare/test/schedule-filter.test.js",
+    "cloudflare/test/register-detail.test.js",
     "cloudflare/test/register-dialog-browser.js"
    ],
    "verifies": []
@@ -9252,6 +9281,11 @@
    "to": "q-passkey-real-devices"
   },
   {
+   "from": "dec-past-2026-first",
+   "rel": "affects",
+   "to": "impl-theme-g5-reread"
+  },
+  {
    "from": "dec-past-name-index",
    "rel": "depends_on",
    "to": "dec-auto-link-past"
@@ -9675,6 +9709,11 @@
    "from": "dec-register-dialog-shared-controls",
    "rel": "affects",
    "to": "fix-register-empty-dialog"
+  },
+  {
+   "from": "dec-register-optional-date-parts",
+   "rel": "affects",
+   "to": "dec-register-run-precision"
   },
   {
    "from": "dec-register-run-precision",

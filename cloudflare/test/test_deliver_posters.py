@@ -27,13 +27,13 @@ class DeliverPostersTest(unittest.TestCase):
         put = []
         got = DP.build(self.data, self.out, bucket='b', limit=2, put=lambda a, t, b, k, body, ct: put.append((k, ct)))
         self.assertEqual(got['uploaded'], 2)
-        self.assertEqual(put, [('1.jpg', 'image/jpeg'), ('2.png', 'image/png')])
+        self.assertEqual(put, [('3.jpg', 'image/jpeg'), ('2.png', 'image/png')])   # 新しい公演（番号の大きいほう）から
         sql = (self.out / 'posters-upload.sql').read_text(encoding='utf-8')
-        self.assertIn("('1','1.jpg')", sql)
+        self.assertIn("('3','3.jpg')", sql)
         DP.commit(self.data, self.out)
         put.clear()
         again = DP.build(self.data, self.out, bucket='b', limit=10, put=lambda a, t, b, k, body, ct: put.append(k))
-        self.assertEqual((again['uploaded'], again['already'], put), (1, 2, ['3.jpg']))
+        self.assertEqual((again['uploaded'], again['already'], put), (1, 2, ['1.jpg']))
 
     def test_a_passing_r2_error_is_retried_and_the_rest_still_goes(self):
         # Catalog #12（2026-10-18）: HTTP 500 が 1 回出ただけで、残りを全部見送っていた

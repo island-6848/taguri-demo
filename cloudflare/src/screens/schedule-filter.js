@@ -1,55 +1,58 @@
 // An inclusive overlap with a performance's run, independent of attendance.
 import {isDay} from '../client/import-parse.js';
 
-const MODES = new Set(['none', 'month', 'monthday', 'year', 'yearmonth', 'date']);
+const LEGACY_PARTS = {none: [], month: ['month'], monthday: ['month', 'day'], year: ['year'], yearmonth: ['year', 'month'], date: ['year', 'month', 'day']};
 const pad = n => String(n).padStart(2, '0');
 const daysInMonth = (y, m) => [31, y % 4 === 0 && (y % 100 !== 0 || y % 400 === 0) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][m - 1];
+const anyRun = () => ({matches: () => true, from: '', to: ''});
 
 export function scheduleFilter(params) {
-  // Retain the exact-day parameter for clients with the previous cached UI.
-  const legacy = !params.has('schedule_precision') && params.get('date');
-  const mode = params.get('schedule_precision') || (legacy ? 'date' : 'none');
   const bad = () => {throw new Error('上演日程を正しく入力してください。')};
-  if (!MODES.has(mode)) bad();
-  if (mode === 'none') return {matches: () => true, from: '', to: ''};
-  const read = (key, min, max) => {
-    const value = params.get('schedule_' + key) || '';
-    if (!/^\d{1,4}$/.test(value) || Number(value) < min || Number(value) > max) bad();
+  const read = part => {
+    const value = (params.get('schedule_' + part) || '').trim();
+    const max = {year: 9999, month: 12, day: 31}[part];
+    if (!/^\d{1,4}$/.test(value) || Number(value) < 1 || Number(value) > max) bad();
     return Number(value);
   };
   let year, month, day;
-  if (legacy) {
+  const supplied = ['year', 'month', 'day'].filter(part => (params.get('schedule_' + part) || '').trim());
+  // Accept previous cached clients, but the new form only sends filled fields.
+  const precision = params.get('schedule_precision');
+  if (precision !== null) {
+    if (!Object.hasOwn(LEGACY_PARTS, precision || 'none')) bad();
+    const parts = LEGACY_PARTS[precision || 'none'];
+    if (!parts.length) return anyRun();
+    [year, month, day] = ['year', 'month', 'day'].map(part => parts.includes(part) ? read(part) : undefined);
+  } else if (!supplied.length && params.get('date')) {
+    const legacy = params.get('date');
     if (!isDay(legacy)) bad();
     [year, month, day] = legacy.split('-').map(Number);
   } else {
-    if (['year', 'yearmonth', 'date'].includes(mode)) year = read('year', 1, 9999);
-    if (['month', 'monthday', 'yearmonth', 'date'].includes(mode)) month = read('month', 1, 12);
-    if (['monthday', 'date'].includes(mode)) day = read('day', 1, 31);
+    [year, month, day] = ['year', 'month', 'day'].map(part => supplied.includes(part) ? read(part) : undefined);
   }
-  if (day && day > daysInMonth(year ?? 2000, month)) bad();
-  const interval = y => {
-    const ys = String(y).padStart(4, '0');
-    if (mode === 'year') return [ys + '-01-01', ys + '-12-31'];
-    if (day) {
-      if (day > daysInMonth(y, month)) return null;
-      const date = `${ys}-${pad(month)}-${pad(day)}`;
-      return [date, date];
-    }
-    return [`${ys}-${pad(month)}-01`, `${ys}-${pad(month)}-${daysInMonth(y, month)}`];
-  };
-  const absolute = year ? interval(year) : null;
-  const overlap = (range, start, end) => !!range && start <= range[1] && range[0] <= end;
+  if (!year && !month && !day) return anyRun();
+  if (month && day && day > daysInMonth(year ?? 2000, month)) bad();
+  const date = (y, m, d) => `${String(y).padStart(4, '0')}-${pad(m)}-${pad(d)}`;
+  const from = year ? date(year, month || 1, month ? (day || 1) : 1) : '';
+  const to = year ? date(year, month || 12, month ? (day || daysInMonth(year, month)) : 31) : '';
+  const overlap = (a, b, start, end) => start <= b && a <= end;
   return {
-    from: absolute?.[0] || '', to: absolute?.[1] || '',
+    from, to,
     matches(start, end) {
       end = end || start;
       if (!isDay(start) || !isDay(end) || end < start) return false;
-      if (absolute) return overlap(absolute, start, end);
-      const first = Number(start.slice(0, 4)), last = Number(end.slice(0, 4));
-      // A valid annual date recurs within eight years, including the leap-year
-      // gap at non-leap centuries. Keep work bounded for very long runs.
-      for (let y = first; y <= Math.min(last, first + 8); y++) {
-        if (overlap(interval(y), start, end)) return true;
+      if (from && !overlap(from, to, start, end)) return false;
+      if (year && !day) return true; // The year/month range already overlaps.
+      const first = year || Number(start.slice(0, 4));
+      const last = year || Math.min(Number(end.slice(0, 4)), first + 8);
+      // At most nine years and twelve months, even for a very long run.
+      // Eight years includes the leap-day gap at non-leap century boundaries.
+      for (let y = first; y <= last; y++) {
+        for (let m = month || 1; m <= (month || 12); m++) {
+          if (day && day > daysInMonth(y, m)) continue;
+          const a = date(y, m, day || 1), b = date(y, m, day || daysInMonth(y, m));
+          if (overlap(a, b, start, end)) return true;
+        }
       }
       return false;
     },

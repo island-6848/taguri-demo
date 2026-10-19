@@ -79,8 +79,9 @@ class ActionsTest(unittest.TestCase):
         self.assertEqual((p['run'], p['past_minutes']), (True, FT.STORIES_MAX_MINUTES))
         self.assertEqual(p['past_limit'], int(FT.STORIES_MAX_MINUTES * 60 / FT.PAST_SECONDS_PER_PAGE))
         # 毎日の更新の分を食わない: 残りが少なければ、その分だけ（10 分未満なら動かさない）
-        small = FT.plan([46] * 31, 'stories')                 # 残り 59 分（1,500 - 46×31 - 毎日の 15 分）
-        self.assertEqual((small['run'], small['past_minutes']), (True, 59 - FT.STORIES_AFTER_MINUTES))
+        small = FT.plan([46] * 31, 'stories')                 # 残り（上限 - 46×31 - 毎日の 15 分）。上限 1,500 なら 59 分
+        left = FT.CAPS['actions_minutes_31d'] - 46 * 31 - FT.CATALOG_MINUTES['daily']
+        self.assertEqual((small['run'], small['past_minutes']), (True, left - FT.STORIES_AFTER_MINUTES))
         self.assertFalse(FT.plan([60] * 31, 'stories')['run'])
         self.assertFalse(FT.plan(None, 'stories')['run'])
 
@@ -151,7 +152,7 @@ class LedgerTest(unittest.TestCase):
         FT.CAPS['r2_bytes'] = 250
         put = []
         got = DP.build(self.data, self.out, bucket='b', limit=10, put=lambda *a: put.append(a[3]))
-        self.assertEqual((got['uploaded'], put), (2, ['1.jpg', '2.jpg']))
+        self.assertEqual((got['uploaded'], put), (2, ['3.jpg', '2.jpg']))   # 新しい公演（番号の大きいほう）から入る
         self.assertIn('保存', got['stopped'])
         u = FT.load(self.data)
         self.assertEqual((FT.r2_bytes(u), FT.r2_class_a(u)), (200, 2))

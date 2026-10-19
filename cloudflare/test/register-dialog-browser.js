@@ -38,12 +38,17 @@ export async function checkRegisterDialog(browser, base) {
       await page.locator('#w-title').fill('夜の果て');
       await button.click();
       await dialog.waitFor({state: 'visible'});
-      for (const [name, label] of [['q', '公演名'], ['group', '団体名'], ['venue', '劇場'], ['schedule_precision', '指定の細かさ']]) {
+      for (const [name, label] of [['q', '公演名'], ['group', '団体名'], ['venue', '劇場'], ['schedule_year', '年'], ['schedule_month', '月'], ['schedule_day', '日']]) {
         const field = dialog.locator(`[name="${name}"]`);
         assert.ok(await field.isVisible(), `${width}: ${label} missing`);
         assert.ok(await field.evaluate((el, text) => [...el.labels].some(l => l.textContent.includes(text)), label));
       }
       assert.equal(await dialog.locator('[name=q]').inputValue(), '夜の果て');
+      assert.equal(await dialog.locator('[name=schedule_precision]').count(), 0);
+      for (const part of ['year', 'month', 'day']) {
+        assert.equal(await dialog.locator(`[name=schedule_${part}]`).getAttribute('required'), null);
+        assert.equal(await dialog.locator(`[name=schedule_${part}]`).inputValue(), '');
+      }
       const sameStyle = async (inside, outside, properties) => {
         const styleOf = (el, props) => Object.fromEntries(props.map(p => [p, getComputedStyle(el)[p]]));
         assert.deepEqual(await inside.evaluate(styleOf, properties), await outside.evaluate(styleOf, properties), `${width}: shared control styling`);
@@ -52,10 +57,7 @@ export async function checkRegisterDialog(browser, base) {
       await sameStyle(dialog.locator('button[type=submit]'), page.locator('[data-add-work]'), buttonProps);
       await sameStyle(dialog.locator('[data-rs-close]'), page.locator('[data-add-work]'), buttonProps);
       await sameStyle(dialog.locator('[name=q]'), page.locator('#w-title'), ['fontFamily', 'fontSize', 'borderRadius', 'backgroundColor', 'color', 'paddingTop', 'paddingRight']);
-      await dialog.locator('[name=schedule_precision]').selectOption('month');
-      assert.ok(await dialog.locator('[name=schedule_month]').isVisible());
-      assert.equal(await dialog.locator('[name=schedule_year]').isVisible(), false);
-      await dialog.locator('[name=schedule_month]').selectOption('10');
+      await dialog.locator('[name=schedule_month]').fill('10');
       await page.screenshot({path: `/tmp/taguri-visual/register-dialog-${width}.png`, fullPage: true});
       await dialog.getByRole('button', {name: '検索する', exact: true}).click();
       const pick = dialog.locator('[data-pick]');
@@ -63,6 +65,8 @@ export async function checkRegisterDialog(browser, base) {
       assert.equal(requests.length, 1);
       assert.equal(requests[0].searchParams.get('schedule_month'), '10');
       assert.ok(!requests[0].searchParams.has('schedule_year'));
+      assert.ok(!requests[0].searchParams.has('schedule_day'));
+      assert.ok(!requests[0].searchParams.has('schedule_precision'));
       await page.screenshot({path: `/tmp/taguri-visual/register-dialog-results-${width}.png`, fullPage: true});
       await pick.click();
       await dialog.waitFor({state: 'hidden'});
