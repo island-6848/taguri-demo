@@ -1,17 +1,17 @@
-// 記録を見返す ▸ たどる: tools/taguri/trace.py ported to the Worker (起案者の指示 2026-10-14
-// 「残りの画面も順に移して」). trace.test.js checks body() against trace.body on the same
-// rated rows. The rows are measure_nets.load_rated for a public user (records.ratedRows).
+// 1 人の名前を、観た日の順に糸で結んだ図（tools/taguri/trace.py の threadPanel を Worker に移したもの）。
+// 「たどる」の画面は外し、この図だけを人物のページ（entity.personScreen）に載せる（起案者の指示 2026-10-19「名前の一覧も
+// ネットワーク図もいらない。糸で繋がってる図だけ各人物の個人ページに入れてくれればok」）。
+// The rows are measure_nets.load_rated for a public user (records.ratedRows).
 import {E, quote, fmtF} from './py.js';
-import {ico, h2} from './icons.js';
+import {h2} from './icons.js';
 import {anchor} from './row.js';
 import {md5hex} from './md5.js';
-import {nz} from './lists.js';
 
 export const KEEP_ROLES = ['出演', '演出', '脚本', '作', '原作', '翻訳', '音楽', '作曲', '振付'];
-const MIN_WORKS = 2, BRANCH_MIN = 3, BRANCH_MAX = 4, BRANCH_AWAY = 180, TRAIL_MAX = 3;
-const HREF = '/records/trace?t=__TAGURI_TOKEN__';
+const MIN_WORKS = 2, BRANCH_MIN = 3, BRANCH_MAX = 4, BRANCH_AWAY = 180;
+// 垂れた名前は、その人の人物のページへ
+const PERSON_HREF = '/recommend/person?t=__TAGURI_TOKEN__&amp;n=';
 const ROW_HREF = '/records/works?t=__TAGURI_TOKEN__';
-const ARROW = '→';
 const SVG_W = 880.0, MID_Y = 150.0, PAD_X = 52.0, GAP_MIN = 74.0;
 const cmp = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
 const f1 = x => fmtF(x, 1);
@@ -41,17 +41,9 @@ export function build(rated) {
   for (const r of dated) for (const p of who.get(r.key) || []) if (!first.has(p)) first.set(p, r.key);
   const threads = new Map();
   for (const [p, v] of occ) if (v.size >= MIN_WORKS) threads.set(p, [...v.values()].sort((a, b) => cmp(a.date, b.date)));
-  return {threads, roles, who, first, occ, n_all: rated.length, n_dated: dated.length, n_undated: rated.length - dated.length, declared: null};
+  return {threads, roles, who, first, occ, n_all: rated.length, n_dated: dated.length, n_undated: rated.length - dated.length};
 }
 
-const declaredNames = g => g.declared || new Set();
-/** trace.picks */
-function picks(g) {
-  const dec = declaredNames(g);
-  const out = [...g.threads].map(([name, rows]) => ({name, role: mostCommon(g.roles.get(name), 2).join('・'), n: rows.length,
-    from: rows[0].date, to: rows.at(-1).date, span: days(rows[0].date, rows.at(-1).date), declared: dec.has(nz(name))}));
-  return out.sort((a, b) => (a.declared - b.declared) || (b.span - a.span) || (b.n - a.n) || cmp(a.name, b.name));
-}
 const leaves = (g, person, date) => [...(g.occ.get(person) || new Map()).values()].some(r => Math.abs(days(date, r.date)) > BRANCH_AWAY);
 /** trace.branches */
 function branches(g, name) {
@@ -126,64 +118,29 @@ function threadSvg(name, rows, brs, nxt) {
     + `<g class="pull">${segs.join('')}${hi.join('')}${brh.join('')}${labs.join('')}${knots.join('')}</g></svg></div>`;
 }
 
-function pickPanel(g) {
-  const ps = picks(g);
-  if (!ps.length) return '<section class="card"><p class="empty">2 つ以上の公演で観た名前がまだありません。観た記録が増えると出るようになります。</p></section>';
-  const rows = ps.map(p => `<li><a href="${HREF}&amp;name=${E(q(p.name))}" class="pk"><span class="pk-n">${E(p.name)}</span>`
-    + `<span class="pk-r">${E(p.role)}</span><span class="pk-c">${p.n} 作品</span>`
-    + `<span class="pk-s">${E(jdate(p.from))} 〜 ${E(jdate(p.to))}</span>${p.declared ? '<span class="pk-d">お気に入りに登録済み</span>' : ''}</a></li>`).join('');
-  const nDec = ps.filter(p => p.declared).length;
-  return `<section class="card">
-${h2('light', 'どの名前をたどりますか', `<span class="badge part">${ps.length} 名</span>`)}
-<p class="lead"><b>2 つ以上の公演で観た名前です。</b>お気に入りに登録していない名前を先に、
-そのなかで<b>最初に観た日から最後に観た日までが長い順</b>に並べています。
-登録済みの ${nDec} 名はすでにご存じの名前なので後ろにしています。</p>
-<div class="pk-search">${ico('search', 15)}
-<input type="text" data-pk-filter="1" placeholder="名前で絞り込む" autocomplete="off"
- aria-label="たどる名前を絞り込む"></div>
-<ol class="picks">${rows}</ol>
-<p class="empty pk-none" hidden>その名前は見つかりませんでした。</p></section>`;
-}
 
-function threadPanel(g, name, trail) {
+/** The thread of one name on its person page; '' while fewer than MIN_WORKS dated records have it. */
+export function personThread(rated, name) {
+  const g = build(rated);
   const rows = g.threads.get(name);
-  if (!rows) return `<section class="card"><p class="empty"><b>${E(name)}</b>の記録には、上演日のあるものが 2 件そろっていません。この線は 2 件目から引けます。</p></section>`;
+  if (!rows) return '';
   const brs = branches(g, name);
-  const nxt = `${HREF}&amp;via=${E(q([...trail, name].slice(-TRAIL_MAX).join(ARROW)))}&amp;name=`;
-  const dec = declaredNames(g).has(nz(name)) ? '（お気に入りに登録済みです）' : '';
   const role = mostCommon(g.roles.get(name), 3).join('・');
   const lis = rows.map((r, i) => {
     const a = anchor(r.key), ven = (r.venues || [])[0];
     const bs = brs.get(r.key) || [];
-    const links = bs.map(b => `<a href="${nxt}${E(q(b.name))}">${E(b.name)}</a>（${E(b.role)}・${b.n} 作品${b.new ? '・この公演がはじめて' : ''}）`).join('、');
+    const links = bs.map(b => `<a href="${PERSON_HREF}${E(q(b.name))}">${E(b.name)}</a>（${E(b.role)}・${b.n} 作品${b.new ? '・この公演がはじめて' : ''}）`).join('、');
     const bh = bs.length ? `<p class="brl">この公演から移れる名前：${links}</p>` : '';
     return `<li><span class="no">${i + 1}</span><div><a href="${ROW_HREF}&amp;w=${E(a)}#w-${E(a)}" class="ti">${E(r.title)}</a>`
       + `<p class="me">${E(jdate(r.date))}${ven ? '　' + E(ven) : ''}</p>${bh}</div></li>`;
   }).join('');
   return `<section class="card">
-${h2('light', `${name} ── ${rows.length} 作品`, `<span class="badge part">${jdate(rows[0].date)} 〜 ${jdate(rows.at(-1).date)}</span>`)}
-<p class="lead"><b>${E(role)}</b>として観た公演を、古いほうから順に結んでいます${E(dec)}。
+${h2('light', `観た公演をつなぐ糸 ── ${rows.length} 作品`, `<span class="badge part">${jdate(rows[0].date)} 〜 ${jdate(rows.at(-1).date)}</span>`)}
+<p class="lead"><b>${E(role)}</b>として観た公演を、古いほうから順に結んでいます。
 <b>結び目 1 つが 1 公演です。</b>押すと日記帳のその記録に飛びます。
-${brs.size ? '下に垂れている名前を押すと、その名前に移ります。その公演ではじめて観た名前には、その旨を書いています。' : 'この線からは、次の名前に移れる公演がありませんでした。'}</p>
-${threadSvg(name, rows, brs, nxt)}
+${brs.size ? '下に垂れている名前を押すと、その人のページに移ります。その公演ではじめて観た名前には、その旨を書いています。' : ''}</p>
+${threadSvg(name, rows, brs, PERSON_HREF)}
 <ol class="knots">${lis}</ol></section>`;
 }
 
-function trailHtml(trail, name) {
-  if (!trail.length) return '';
-  const ks = [...trail, name].slice(-(TRAIL_MAX + 1));
-  const parts = ks.map((k, i) => (i === ks.length - 1 ? `<b>${E(k)}</b>`
-    : `<a href="${HREF}&amp;via=${E(q(ks.slice(0, i).join(ARROW)))}&amp;name=${E(q(k))}">${E(k)}</a>`)).join(' → ');
-  return `<p class="trail">たどってきた道　${parts}</p>`;
-}
 
-/** trace.body; declared: kind -> names (the user's お気に入り). */
-export function body(rated, name = '', via = '', declared = null) {
-  const g = build(rated);
-  if (declared) g.declared = new Set(Object.values(declared).flat().map(nz));
-  const trail = String(via || '').split(ARROW).filter(t => t.trim()).slice(-TRAIL_MAX);
-  const und = !g.n_undated ? '' : `<p class="lead"><b>上演日が分からない記録が ${g.n_undated} 件あります。</b>この線には載りません。日記帳の「公演詳細を直す」から日付を入れると載るようになります。</p>`;
-  const main = name ? threadPanel(g, name, trail) : pickPanel(g);
-  const back = name ? `<p class="lead"><a href="${HREF}" class="back">ほかの名前を選ぶ</a></p>` : '';
-  return `${name ? trailHtml(trail, name) : ''}${main}${und}${back}`;
-}

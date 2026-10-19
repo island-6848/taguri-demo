@@ -2,7 +2,7 @@
 // Only the fixed existing application can be contacted; this is not a public proxy.
 const UPSTREAM = 'https://taguri-demo.onrender.com';
 const GET_PATHS = new Set(['/auth/start','/recover','/link','/api/suggest','/api/suggest_web','/api/import_status','/api/mail_hints']);
-export const ORIGINAL_SCREENS = new Set(['recommend','reminder','interest','favourites','calendar','tickets','rate','unrated','notes','register','records','trace','chronicle','works','search','settings','start']);
+export const ORIGINAL_SCREENS = new Set(['recommend','reminder','interest','favourites','calendar','tickets','rate','unrated','notes','register','records','chronicle','works','search','settings','start']);
 export const ORIGINAL_WRITES = new Set(['react','rate','note','favourite','kind_off','missed','add_work','import_mail','fix_work','merge_work','drop_work','restore_work','purge_work','unseen','ticket','chronicle','people_read','weight','pref_setting','hand_credits','hand_poster','link_stage','hand_theme','hand_theme_refresh','decline','visit_note','recover','link/create','link/redeem','close','recommendation/visit','recommendation/contact'].map(p=>'/api/'+p));
 // /api/auth/* (Firebase sign-in) is answered by this Worker, never the old server.
 export function isOriginalRoute(path) {

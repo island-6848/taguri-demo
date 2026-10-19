@@ -4,9 +4,7 @@ import {isScaled} from './grade.js';
 import {loadWorks} from './works.js';
 import {peopleByKey, recordsLede, autoMerge} from './diary.js';
 import {autoLink, pastStages} from './autolink.js';
-import {loadDeclared} from './lists.js';
 import {strip} from './py.js';
-import {body as traceBody} from './trace.js';
 import {panel as chroniclePanel} from './chronicle.js';
 import {spiralPanel} from './charts.js';
 import {craftRows, panel as comparePanel, popNote, population} from './compare.js';
@@ -53,23 +51,6 @@ export async function recordsBase(ctx) {
   const seen = ws.filter(w => !w.unseen);
   return {ws, seen, rated: await ratedRows(ctx, seen), nSkip: ws.length - seen.length,
     nRated: seen.filter(w => w.verdict).length, nNotes: seen.filter(w => strip(w.note_impression || '')).length};
-}
-
-export async function traceScreen(params, ctx) {
-  const d = await recordsBase(ctx);
-  let main;
-  try {
-    main = traceBody(d.rated, params.get('name') || '', params.get('via') || '', await loadDeclared(ctx));
-  } catch {
-    main = '<section class="card"><p class="empty">この線はいまの記録では組めませんでした。観た公演が増えると出るようになります。</p></section>';
-  }
-  const body = `<h1>たどる ── 1 つの名前をたどる</h1>
-${recordsLede(d)}
-<div class="figs"><div data-fig="people"></div></div>
-<script id="figs-src" type="application/json">${scriptJson({rated: d.rated})}</script>
-<p class="lede">名前を1つ選ぶと、<b>その名前をいつ知って、何につながったか</b>が出ます。観劇の傾向は「眺める」で見られます。</p>
-${main}`;
-  return {title: 'たどる', body_html: body};
 }
 
 /** stage_id -> #題材 の言葉（索引 rec_people、無ければ過去の公演 past_stage）。年表の題材に使う（issue #177） */
@@ -149,4 +130,4 @@ ${d.seen.length ? '' : COMPARE_EMPTY}
   return {title: '眺める', body_html: body};
 }
 
-export const recordScreens = {screens: {records: recordsScreen, trace: traceScreen, chronicle: chronicleScreen}, actions: {}};
+export const recordScreens = {screens: {records: recordsScreen, chronicle: chronicleScreen}, actions: {}};

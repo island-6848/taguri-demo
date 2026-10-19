@@ -3080,6 +3080,19 @@
    "verifies": []
   },
   {
+   "id": "dec-trace-into-person",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-19",
+   "title": "「たどる」の画面を外し、糸の図だけを人物のページに載せる（名前の一覧・人のネットワーク図はやめる）",
+   "sources": [
+    "cloudflare/src/screens/trace.js",
+    "cloudflare/src/screens/entity.js",
+    "web/app.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-trace-worker",
    "type": "decision",
    "status": "adopted",
@@ -7242,7 +7255,7 @@
   {
    "id": "q-trace-into-person",
    "type": "question",
-   "status": "open",
+   "status": "answered",
    "date": "2026-10-19",
    "title": "「たどる」の糸の図を人物のページに移して、「たどる」を消すか（名前の一覧と人のネットワーク図の行き先）",
    "sources": [
@@ -10334,6 +10347,21 @@
    "from": "dec-timetable-unknown-days",
    "rel": "affects",
    "to": "impl-card-schedule"
+  },
+  {
+   "from": "dec-trace-into-person",
+   "rel": "answers",
+   "to": "q-trace-into-person"
+  },
+  {
+   "from": "dec-trace-into-person",
+   "rel": "depends_on",
+   "to": "dec-entity-pages-keep"
+  },
+  {
+   "from": "dec-trace-into-person",
+   "rel": "affects",
+   "to": "comp-cf-worker"
   },
   {
    "from": "dec-trace-worker",

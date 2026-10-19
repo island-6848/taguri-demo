@@ -1229,7 +1229,7 @@ async function walkA(A) {
   });
 
   // 残りの画面も開いて、エラーが出ないことだけを確かめる
-  for (const p of ['/records', '/records/chronicle', '/records/trace', '/records/works', '/rate/notes', '/tickets', '/settings', '/account', '/search']) {
+  for (const p of ['/records', '/records/chronicle', '/records/works', '/rate/notes', '/tickets', '/settings', '/account', '/search']) {
     await step('開く ' + p, async () => { await go(p); check((await content()).trim().length > 0, '中身が空'); check(!/このページはありません|読み込めませんでした/.test(await content()), '画面が出ない'); });
   }
 

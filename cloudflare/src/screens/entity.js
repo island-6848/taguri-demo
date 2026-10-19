@@ -3,7 +3,8 @@
 // 今後の公演が見られる」）。
 // - 人物（/recommend/person?n=名前&r=役職）: たぐりにある、これから観られる公演（索引 rec_credit の (役職, 名前)。主な役職をまとめて
 //   主キーで引く）・過去の公演（探すと同じ。名前の索引 pastidx と題名）・自分の観た記録。経歴・プロフィールは、たぐりでは
-//   集めていないので、外のサイトで調べる道（Wikipedia・Google の検索）を置く（その場で外のサイトは読まない）
+//   集めていないので、外のサイトで調べる道（Wikipedia・Google の検索）を置く（その場で外のサイトは読まない）。
+//   評価した記録に 2 公演以上この名前があれば、観た日の順に結んだ糸の図（trace.personThread。もとは「たどる」の画面）
 // - 形式（/recommend/kind?a=#形式&w=ミュージカル）: その形式の付いた、これから観られる公演（rec_credit の (#形式, 語)）
 // どちらも、これから観られる公演はカードで 1 ページ ENT_PER 件（探すと同じ）。
 // 無料枠（D1 の読み取り）: 1 回開くごとに、索引の当たった行（主キーで引く。数十行）＋ 出すカード 5 件ぶんの行＋本人の答え・記録
@@ -17,6 +18,8 @@ import {loadWorks} from './works.js';
 import {pastHits, pagerHtml, UP_PER} from './search.js';
 import {peopleByKey} from './diary.js';
 import {SEED_ROLES, FAV_SPREAD_W} from '../recommend.js';
+import {ratedRows} from './records.js';
+import {personThread} from './trace.js';
 
 const ENT_ROWS = 300;   // 当たった公演（会場ごと）をここまでで打ち切る
 // 人の画面で引く役職（推薦の種・関わりのある人の広げ方に出てくるもの）。リンクの役職は必ず入れる
@@ -109,6 +112,9 @@ export async function personScreen(params, ctx) {
   const mineHtml = `<h2>観た記録 ${mine.length} 件</h2>` + (mine.length
     ? `<ul class="entmine">${mine.map(w => `<li><a href="/records/works?t=__TAGURI_TOKEN__#w-${E(encodeURIComponent(w.work_key))}">${E(w.title)}</a><span>${E(w.first_date || '')}${w.verdict ? '・' + E(w.verdict) : ''}</span></li>`).join('')}</ul>`
     : '<p class="empty">観た記録の中には、この名前のある作品はありません（出演者が分かっている記録だけを見ています）。</p>');
+  // 観た公演をつなぐ糸（評価した記録で、上演日のある 2 公演以上にこの名前があるとき）
+  let thread = '';
+  try { thread = personThread(await ratedRows(ctx, ws.filter(w => !w.unseen)), name); } catch { thread = ''; }
   const q = encodeURIComponent(name);
   const profile = `<section class="card entprof"><h2>経歴・プロフィール</h2>
 <p class="lead">たぐりでは、人の経歴やプロフィールは集めていません。<b>同じ名前の別の人がいることもあるので</b>、外のサイトで確かめてください（新しいタブで開きます）。</p>
@@ -117,6 +123,7 @@ export async function personScreen(params, ctx) {
   const body = `<h1>${E(name)}</h1>
 <p class="hsub">${role ? E(role) + 'として、' : ''}たぐりにある公演と、あなたの観た記録です。</p>
 ${profile}
+${thread}
 ${upcomingBlock(prods, shown, up, hrefOf('/recommend/person', params, 'up', 'ent-up'), 'いま、たぐりにある、これから観られる公演の中には見つかりませんでした。')}
 ${pastHtml || '<h2>過去の公演（2019 年〜）</h2><p class="empty">たぐりにある過去の公演の中には見つかりませんでした。</p>'}
 ${mineHtml}`;

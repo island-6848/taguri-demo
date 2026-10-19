@@ -4,7 +4,7 @@ import {originalUI,isOriginalRoute} from '../src/original-ui.js';
 import worker from '../src/worker.js';
 import {TERMS_VERSION} from '../src/terms.js';
 test('all original screen names are transported without changing fragment HTML',async()=>{
- const names=['recommend','reminder','interest','favourites','calendar','tickets','rate','unrated','notes','register','records','trace','chronicle','works','search','settings','start'];
+ const names=['recommend','reminder','interest','favourites','calendar','tickets','rate','unrated','notes','register','records','chronicle','works','search','settings','start'];
  for(const name of names) {
   const html='<h1>元の画面</h1><div class="card">変更しない本文</div>';
   const r=await originalUI(new Request(`https://taguri.example/api/screen/${name}?y=2026`,{headers:{cookie:'tg_session='+'a'.repeat(43)+'; taguri_session=private-d1-session'}}),async(url,options)=>{

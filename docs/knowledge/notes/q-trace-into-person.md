@@ -1,7 +1,7 @@
 ---
 id: q-trace-into-person
 type: question
-status: open
+status: answered
 date: 2026-10-19
 title: 「たどる」の糸の図を人物のページに移して、「たどる」を消すか（名前の一覧と人のネットワーク図の行き先）
 sources:

@@ -37,7 +37,7 @@ const SCREENS = {
   "/tickets": "tickets",
   "/rate": "rate", "/rate/unrated": "unrated", "/rate/notes": "notes",
   "/register": "register",
-  "/records": "records", "/records/trace": "trace",
+  "/records": "records",
   "/records/chronicle": "chronicle", "/records/works": "works",
   "/search": "search", "/settings": "settings",
   // アカウント（本人だけが見る。起案者の指示 2026-10-14）。Worker だけが答える画面なので、
@@ -47,7 +47,7 @@ const SCREENS = {
 // 全17画面を実装済み(#000009)。「準備中」プレースホルダは段階移行の
 // 名残りとして残してある(未知のIMPLEMENTED外の画面名が来た場合の保険)。
 const IMPLEMENTED = new Set(["recommend", "interest", "reminder", "favourites", "calendar",
-  "rate", "unrated", "notes", "tickets", "records", "trace", "chronicle", "works",
+  "rate", "unrated", "notes", "tickets", "records", "chronicle", "works",
   "start", "register", "settings", "search", "account", "tagged", "person", "kind"]);
 
 // --- NAV(app.py の NAV表と同じデータ) -------------------------------------
@@ -56,7 +56,7 @@ const IMPLEMENTED = new Set(["recommend", "interest", "reminder", "favourites", 
 // （公演カレンダー・開幕リマインド・購入済み公演）。開幕リマインドは「初日が近い公演の知らせ」で、選ぶ画面
 // ではなく日程を見る画面なので、予定に移した。URL（/recommend/reminder）は変えない（覚えた道を壊さない）
 // 左の帯とすだれの「今週のおすすめ」は短い名前にする（起案者の指示 2026-10-19「『今週のあなたへのおすすめ』っていうボタンの文字列は長すぎる」）。画面の見出しはそのまま
-const NAV = [[null, "おすすめ", "ticket", [["/recommend", "今週のおすすめ", "ticket"], ["/recommend/interest", "興味あり", "flag"], ["/recommend/favourites", "お気に入り", "star"]]], [null, "予定", "calendar", [["/calendar", "公演カレンダー", "calendar"], ["/recommend/reminder", "開幕リマインド", "inbox"], ["/tickets", "購入済の公演", "ticket"]]], [null, "観た公演の評価", "check", [["/rate", "評価一覧", "check"], ["/rate/unrated", "未評価", "clock"], ["/rate/notes", "感想", "pencil"], ["/register", "観劇記録を追加", "plus"]]], [null, "記録を見返す", "chart", [["/records", "眺める", "chart"], ["/records/trace", "たどる", "user"], ["/records/chronicle", "観劇史年表", "calendar"], ["/records/works", "日記帳", "book"]]], ["/search", "探す", "search", []], ["/settings", "設定", "gear", []]];
+const NAV = [[null, "おすすめ", "ticket", [["/recommend", "今週のおすすめ", "ticket"], ["/recommend/interest", "興味あり", "flag"], ["/recommend/favourites", "お気に入り", "star"]]], [null, "予定", "calendar", [["/calendar", "公演カレンダー", "calendar"], ["/recommend/reminder", "開幕リマインド", "inbox"], ["/tickets", "購入済の公演", "ticket"]]], [null, "観た公演の評価", "check", [["/rate", "評価一覧", "check"], ["/rate/unrated", "未評価", "clock"], ["/rate/notes", "感想", "pencil"], ["/register", "観劇記録を追加", "plus"]]], [null, "記録を見返す", "chart", [["/records", "眺める", "chart"], ["/records/chronicle", "観劇史年表", "calendar"], ["/records/works", "日記帳", "book"]]], ["/search", "探す", "search", []], ["/settings", "設定", "gear", []]];
 // 左の帯でも、設定はアカウントの小窓に入れる（起案者の指示 2026-10-19）。デモ版はアカウントが無いので設定のまま
 if (!IS_DEMO) NAV.splice(NAV.findIndex(n => n[0] === "/settings"), 1);
 if (!IS_DEMO) NAV.push(["/account", "アカウント", "user", []]);
@@ -128,7 +128,7 @@ const PNAV = [
   ["rec", "おすすめ", "yarn", [["/recommend", "今週のおすすめ"], ["/recommend/interest", "興味あり"], ["/recommend/favourites", "お気に入り"]]],
   ["plan", "予定", "calendar", [["/calendar", "公演カレンダー"], ["/recommend/reminder", "開幕リマインド"], ["/tickets", "購入済の公演"]]],
   ["rate", "評価", "stamp", [["/rate", "評価一覧"], ["/rate/unrated", "未評価"], ["/rate/notes", "感想"], ["/register", "観劇記録を追加"]]],
-  ["rec2", "記録", "notebook", [["/records/works", "日記帳"], ["/records", "眺める"], ["/records/trace", "たどる"], ["/records/chronicle", "観劇史年表"]]],
+  ["rec2", "記録", "notebook", [["/records/works", "日記帳"], ["/records", "眺める"], ["/records/chronicle", "観劇史年表"]]],
 ];
 function renderPNav() {
   // 公演情報の登録は「記録」の子から外し、歯車の左の「＋」から入る（起案者の指示 2026-10-13「スマホ版のみ」）。
@@ -744,6 +744,14 @@ function scrollToHash(hash) {
 }
 
 async function loadScreen(path, search, hash) {
+  // 「たどる」の画面は外した（起案者の指示 2026-10-19。糸の図は人物のページへ）。前の道は、名前があればその人のページ、
+  // 無ければ「眺める」へ
+  if (path === "/records/trace") {
+    const n = new URLSearchParams(search || "").get("name");
+    const to = n ? "/recommend/person" : "/records", qs = n ? "n=" + encodeURIComponent(n) : "";
+    history.replaceState(null, "", REPO_BASE + to + (qs ? "?" + qs : ""));
+    return loadScreen(to, qs, "");
+  }
   if (window.TaguriExposure) TaguriExposure.stop();
   const seq = ++loadSeq;
   shownKey = path + "?" + (search || "");
@@ -2881,23 +2889,6 @@ document.addEventListener("input", ev => {
   if (!i || !live) return;
   clearTimeout(i._t);
   i._t = setTimeout(() => lkSearch(i, false, null), 220);
-});
-
-// **「たどる」の、名前で絞り込む欄。** サーバーには何も送らない ── 85 枚の札は
-// すでに手元にあるので、打った文字でその場で出し分けるだけでよい（起案者の指摘・
-// 2026-08-26 ──「85名の名前を羅列するってセンスない」への答え）
-document.addEventListener("input", ev => {
-  const i = ev.target.closest("[data-pk-filter]");
-  if (!i) return;
-  const q = i.value.trim();
-  let shown = 0;
-  document.querySelectorAll(".picks .pk").forEach(a => {
-    const hit = !q || a.querySelector(".pk-n").textContent.includes(q);
-    a.closest("li").hidden = !hit;
-    if (hit) shown++;
-  });
-  const none = document.querySelector(".pk-none");
-  if (none) none.hidden = shown > 0;
 });
 
 function lkRender(box, rows) {
