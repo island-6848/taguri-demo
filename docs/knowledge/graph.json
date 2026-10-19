@@ -7240,6 +7240,18 @@
    "verifies": []
   },
   {
+   "id": "q-trace-into-person",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-19",
+   "title": "「たどる」の糸の図を人物のページに移して、「たどる」を消すか（名前の一覧と人のネットワーク図の行き先）",
+   "sources": [
+    "cloudflare/src/screens/trace.js",
+    "cloudflare/src/screens/records.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "q-ttb-kas-phone-fonts",
    "type": "question",
    "status": "open",
@@ -13122,6 +13134,11 @@
    "from": "q-ticket-to-rating",
    "rel": "affects",
    "to": "dec-native-cutover-now"
+  },
+  {
+   "from": "q-trace-into-person",
+   "rel": "depends_on",
+   "to": "dec-entity-pages-keep"
   },
   {
    "from": "q-ttb-kas-phone-fonts",
