@@ -30,3 +30,19 @@ test('「舞台 銀河鉄道の父」 is found by 「銀河鉄道の父」 in th
     assert.doesNotMatch(page, /銀河の果て/);
   } finally { sqlite.close(); }
 });
+
+// 見つかった過去の公演は全部出す（起案者の指示 2026-10-19「新しい順から15件表示するのではなく、ちゃんと全件表示して」）
+test('all past stages found are listed on 探す, not the newest 15', async () => {
+  const {env, sqlite} = setup();
+  const a = await signIn(env);
+  try {
+    const ins = sqlite.prepare("INSERT INTO past_stage(stage_id,title,tkey,start,end,venue,grp,pref,people) VALUES(?,?,?,?,?,'劇場Z',?,'東京都','[]')");
+    for (let i = 0; i < 20; i++) {
+      const d = `20${String(20 + Math.floor(i / 4)).padStart(2, '0')}-0${1 + (i % 4)}-01`;
+      ins.run(String(9300 + i), `星の旅 ${i}`, titleKey(`星の旅 ${i}`), d, d, `劇団${i}`);
+    }
+    const page = (await step(env, a, {get: '/api/screen/search?q=' + encodeURIComponent('星の旅')})).body.body_html;
+    assert.equal((page.match(/class="pastrow"/g) || []).length, 20);
+    assert.match(page, /過去の公演（2019 年〜） 20 件/);
+  } finally { sqlite.close(); }
+});

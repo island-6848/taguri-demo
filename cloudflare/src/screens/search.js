@@ -153,12 +153,16 @@ async function upcomingMonths(ctx) {
 // →「ボタン 2 つで入れて」: 観た（日記帳に足して公演に結び付ける）／観ればよかった（見逃した公演の一覧）。
 // 引き方は 2 つだけ（どちらも past_stage を全部は読まない）: 題名の先頭一致（tkey の索引。「舞台」などの頭の語の後ろも）と、人・団体の名前の
 // 完全一致（R2 の名前の索引 pastidx、lists.pastFromIndex）。途中の語や、名前の後ろの括弧（所属）では当たらない
-const PAST_TITLE_ROWS = 80, PAST_SHOW = 15;
+// 見つかった過去の公演は全部出す（起案者の指示 2026-10-19「検索結果、新しい順から15件表示するのではなく、ちゃんと全件表示して」。
+// 前は新しい順に 15 件まで）。題名で引く行は、短い言葉で何千行も読まないよう PAST_TITLE_ROWS 行まで（D1 の読み取りの無料枠。
+// 1 回の検索で多くて 600 行）。それを越えたときは、そう書く
+const PAST_TITLE_ROWS = 600;
 const md = d => (/^\d{4}-\d{2}-\d{2}$/.test(d || '') ? `${d.slice(0, 4)}/${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}` : '');
 
 async function pastHits(ctx, q, ws) {
   const linked = new Set(ws.map(w => w.stage_id).filter(Boolean).map(String));
   const rows = new Map();
+  let capped = false;
   const add = (r, why) => {
     const sid = String(r.stage_id);
     if (!r.end || r.end >= ctx.today || linked.has(sid)) return;
@@ -171,6 +175,7 @@ async function pastHits(ctx, q, ws) {
     const pw = prefixWhere(titlePrefixes(k));
     const {results} = await ctx.db.prepare(`SELECT stage_id,title,tkey,start,end,venue,grp FROM past_stage WHERE ${pw.sql} ORDER BY tkey LIMIT ?`)
       .bind(...pw.args, PAST_TITLE_ROWS).all();
+    capped = results.length >= PAST_TITLE_ROWS;
     for (const r of results) add(r, '題名');
   }
   for (const key of [...new Set([nz(q), nz(fold(q))])].filter(x => Array.from(x).length >= 2)) {
@@ -193,7 +198,7 @@ async function pastHits(ctx, q, ws) {
   if (!prods.length) return ['', 0];
   const {results: miss} = await ctx.db.prepare('SELECT title FROM missed WHERE user_id=?').bind(ctx.uid).all();
   const missed = new Set(miss.map(m => indexKey(m.title)));
-  const li = prods.slice(0, PAST_SHOW).map(p => {
+  const li = prods.map(p => {
     const run = p.start === p.end ? md(p.start) : `${md(p.start)}〜${md(p.end)}`;
     const isMissed = missed.has(indexKey(p.title));
     // 観た日の欄: 1 日だけの公演はその日を入れておく。期間の外は選べない（min/max）
@@ -212,7 +217,7 @@ async function pastHits(ctx, q, ws) {
 <div class="past-btns"><button type="button" data-past="seen">観た</button>`
       + `<button type="button" data-past="missed"${isMissed ? ' disabled' : ''}>${isMissed ? '観ればよかったに入っています' : '観ればよかった'}</button></div>${seenForm}<span class="said"></span></li>`;
   }).join('');
-  const more = prods.length > PAST_SHOW ? `<p class="lead">見つかったのは ${prods.length} 件で、新しい順に ${PAST_SHOW} 件を表示しています。言葉を足すと絞れます。</p>` : '';
+  const more = capped ? `<p class="lead">題名で当たる公演が多いので、題名の順に ${PAST_TITLE_ROWS} 公演までを読んで出しています。言葉を足すと絞れます。</p>` : '';
   return [`<h2>過去の公演（2019 年〜） ${prods.length} 件</h2>
 <p class="lead">終わった公演のうち、まだ日記帳に無いものです。<b>「観た」</b>を押して観た日を入れると、観劇記録に追加して、その公演と結び付けます。開演の時刻も入れられます。<b>「観ればよかった」</b>を押すと、見逃した公演の一覧に入ります。
 題名は先頭から一致するもの、人・団体は名前全体が一致するものを探しています。</p>${more}<ul class="pastlist">${li}</ul>`, prods.length];

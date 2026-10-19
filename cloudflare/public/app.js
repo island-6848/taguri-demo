@@ -1007,6 +1007,34 @@ function priceRowsOf(text) {
   const named = out.filter(r => !bare(r));
   return out.filter(r => !bare(r) || !named.length || !yens(r).every(y => named.some(o => yens(o).includes(y))));
 }
+// 料金の欄の座席の決まり（全席指定・全席自由・指定席・自由席など）。書いてあれば必ず出す（起案者の指示 2026-10-19
+// 「座席に『指定』とか『自由』が書いてあるならそれも必ず明記してほしい」）
+const SEATING = /全席指定|全席自由|座席指定|日時指定|指定席|自由席|整理番号付き?自由|立見/;
+/**
+ * 料金の明細の形（起案者の指示 2026-10-19「折りたたむ前は『min円～max円』（min=maxならばmax円）。展開したら『S席 max円 / A席 min円』」）:
+ * 閉じた 1 行は金額の幅（いちばん安い〜いちばん高い）と座席の決まり、開くと券種ごとの行を高い順に。座席の決まりが券種の名前に無ければ
+ * 「S席(指定)」のように添える。返すのは {open: 開いた中身の行（無ければ空）, head: 閉じた 1 行}
+ */
+function priceSummary(text) {
+  const rows = priceRowsOf(text);
+  const nums = r => (r.join(" ").match(/[\d,]+(?=円)/g) || []).map(a => Number(a.replace(/,/g, ""))).filter(n => n > 0);
+  const all = rows.flatMap(nums);
+  const src = String(text || "").normalize("NFKC");
+  const seat = (src.match(SEATING) || [""])[0];
+  const kind = /自由/.test(seat) ? "自由" : /指定/.test(seat) ? "指定" : "";
+  if (!all.length) return {head: rows.length ? rows[0] : ["料金", "不明"], open: rows.slice(1)};
+  const f = n => n.toLocaleString("ja-JP") + "円";
+  const lo = Math.min(...all), hi = Math.max(...all);
+  const head = [(lo === hi ? f(hi) : f(lo) + "～" + f(hi)) + (seat ? " " + seat : "")];
+  const named = rows.filter(r => !(r.length === 1 && /^[\d,]+円(?:\s*[~〜～\-－]\s*[\d,]+円)?$/.test(r[0])));
+  const open = named.map(r => {
+    if (!kind || /指定|自由/.test(r.join(" "))) return r;
+    return r.length > 1 ? [r[0] + "(" + kind + ")", r[1]] : [r[0].replace(/^(\S+?)(\s*[\d,]+円)/, "$1(" + kind + ")$2")];
+  }).sort((a, b) => Math.max(0, ...nums(b)) - Math.max(0, ...nums(a)));
+  // 券種が 1 つで、閉じた 1 行と同じ金額だけなら、開く中身は無い（「全席指定 7,000円」→「7,000円 全席指定」の 1 行）
+  const same = open.length === 1 && nums(open[0]).every(n => n === hi) && (open[0].length === 1 || SEATING.test(open[0][0]) || !/\S/.test(open[0][0].replace(/券|一般|料金|チケット/g, "")));
+  return {head, open: same ? [] : open};
+}
 function firstSentence(t) {
   t = (t || "").replace(/\s+/g, " ").trim();
   const m = t.match(/^.*?[。！？!?][」』）)]*/);
@@ -1253,6 +1281,20 @@ function leadCredits(t, lead, noMore) {
 }
 
 // あらすじの見出し付きの行（compactTickets・compactRows）
+// 書式つきのあらすじの畳み（起案者の指示 2026-10-19）: 畳んだ高さからはみ出すときだけ「続きを読む」を出し、押すと全部を開く
+function richFold(p) {
+  const box = p.querySelector(".lsynrich"), b = p.querySelector(".lsynrichmore");
+  if (!box || !b) return;
+  b.hidden = box.scrollHeight <= box.clientHeight + 2;
+}
+document.addEventListener("click", ev => {
+  const b = ev.target.closest(".lsynrichmore");
+  if (!b) return;
+  const p = b.closest(".lsyn-rich"), open = !p.classList.contains("open");
+  p.classList.toggle("open", open);
+  b.setAttribute("aria-expanded", String(open));
+  b.textContent = open ? "折りたたむ" : "続きを読む";
+});
 function leadSynopsis(t, lead, noMore) {
     // あらすじ: 最初の 1 文
     // 閉じていても、あらすじの最初の 1 文は必ず出す。本文の枠（.txt）が無い古い形の HTML でも、
@@ -1265,8 +1307,11 @@ function leadSynopsis(t, lead, noMore) {
         c.querySelectorAll(".tags, .src, button, form, details, label, textarea, input, .hand").forEach(n => n.remove());
         text = c.textContent;
       }
+      // 管理者が書式つきで入れたあらすじ（.txt.rich。中央寄せ・書体など。起案者の指示 2026-10-19）は、文字だけにせず書式を保って出す。
+      // 中身はサーバー（screens/override.js richHtml）が決まった札と class だけに絞ってある
+      const rich = noMore ? syn.querySelector(".txt.rich") : null;
       if (text.trim()) {
-        const p = document.createElement("p");
+        const p = document.createElement(rich ? "div" : "p");
         p.className = "lsyn";
         // 「出演」と同じく見出しを付ける ── 無いと出演の続きと区別が付かない（起案者の指摘 2026-10-13
         // 「どこからがあらすじの1文目なのかわかりにくい」）
@@ -1293,6 +1338,13 @@ function leadSynopsis(t, lead, noMore) {
           // ハッシュタグは折りたたみの外に出して、閉じていても見せる（起案者の指示 2026-10-18「あらすじのハッシュタグは常に表示。
           // あらすじの本文で長いところだけ折りたたんで」）。続きは details をやめ、同じ行の中の span を開け閉めする
           // （details の中身は段落の箱になり、開くと続きが新しい行から始まっていた）
+          if (rich) {
+            // 書式つき: 高さで畳み（3 行ほど）、はみ出すときだけ「続きを読む」を出す（richFold）
+            p.classList.add("lsyn-rich");
+            p.innerHTML = '<span class="cl">あらすじ</span><div class="lv"><div class="lsynrich">' + rich.innerHTML + "</div>"
+              + '<button type="button" class="lsynrichmore" aria-expanded="false" hidden>続きを読む</button>' + tags + "</div>";
+            requestAnimationFrame(() => richFold(p));
+          } else
           p.innerHTML = '<span class="cl">あらすじ</span><span class="lv">' + E(head)
             + (rest ? '<span class="lsynmore"><button type="button" class="lsynopen" aria-expanded="false">続きを読む</button>'
               + '<span class="lsynrest" hidden>' + E(rest) + '<button type="button" class="lsynfold">折りたたむ</button></span></span>' : "")
@@ -1452,15 +1504,15 @@ function compactTickets(root) {
     // 日程の各行に表があるので、ここには出さない（data-tourprice）
     let priced = false;
     if (noMore && !t.dataset.tourprice) {
-      const rows = priceRowsOf(main.querySelector(".when .price")?.textContent || "");
       // 料金は、どこでも同じ箇条書きの形（お金の絵記号を頭に 1 つ、券種と金額を 1 行ずつ）にする（起案者の指示 2026-10-18
-      // 「料金の書き方を統一。箇条書きにする。できれば各行が改行されないように」。schedule.js priceList と同じ形）
-      const box = document.createElement(rows.length > 2 ? "details" : "div");
+      // 「料金の書き方を統一。箇条書きにする。できれば各行が改行されないように」。schedule.js priceList と同じ形）。
+      // 閉じた 1 行は金額の幅、開くと券種ごとの行（priceSummary、起案者の指示 2026-10-19）
+      const {head, open} = priceSummary(main.querySelector(".when .price")?.textContent || "");
+      const box = document.createElement(open.length ? "details" : "div");
       box.className = "lprice";
-      // 1 行目の金額のすぐ横に「▼詳細」。開いた残りは一段右へ。料金を読めない公演は「不明」（起案者の指示 2026-10-17）
-      box.innerHTML = !rows.length ? priceListHtml([["料金", "不明"]])
-        : rows.length > 2 ? "<summary>" + priceListHtml(rows.slice(0, 1), '<span class="lp-more">詳細</span>') + '</summary><div class="lp-body">' + priceListHtml(rows.slice(1), "", false) + "</div>"
-        : priceListHtml(rows);
+      // 1 行目の金額のすぐ横に「▼詳細」。開いた中身は一段右へ。料金を読めない公演は「不明」（起案者の指示 2026-10-17）
+      box.innerHTML = open.length ? "<summary>" + priceListHtml([head], '<span class="lp-more">詳細</span>') + '</summary><div class="lp-body">' + priceListHtml(open, "", false) + "</div>"
+        : priceListHtml([head]);
       (sale || main.querySelector(".when") || main.querySelector(".meta")).after(box);
       priced = box;
     }

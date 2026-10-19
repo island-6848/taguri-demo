@@ -849,6 +849,32 @@ async function walkA(A) {
     await page.setViewportSize({width: 1280, height: 900});
   });
 
+  // 起案者の指示 2026-10-19: 価格帯は閉じて「min円～max円」、開いて券種ごと（高い順）、座席の決まり（全席指定など）は必ず出す。
+  // あらすじは管理者が書式つき（中央寄せ・書体）で入れたものをそのまま出す
+  await step('探すのカード: 価格帯の幅と券種・書式つきのあらすじ', async () => {
+    sql(`INSERT INTO stage_override(stage_id,synopsis,themes,info,updated_at) VALUES('101','<!--rich--><p class="ta-center fs-l">海辺の町の、小さな食堂</p><p class="ff-mincho">父が倒れ、長女が戻ってくる。</p><p class="ta-right"><b>――家族の物語</b></p><script>alert(1)</script>',NULL,NULL,'2026-10-19T00:00:00Z') ON CONFLICT(stage_id) DO UPDATE SET synopsis=excluded.synopsis`);
+    try {
+      await go('/search?q=' + encodeURIComponent('舞台ひとつめ'));
+      const card = page.locator('.ticket[data-stage="101"]').first();
+      await card.waitFor();
+      const head = (await card.locator('.lprice summary .lp-row').first().innerText()).replace(/\s+/g, ' ').trim();
+      note('価格帯（閉じた行）: ' + head);
+      check(/^6,000円～12,000円/.test(head), '閉じた行が「min円～max円」でない: ' + head);
+      await card.locator('.lprice summary').click();
+      const rows = (await card.locator('.lprice .lp-body .lp-row').allInnerTexts()).map(t => t.replace(/\s+/g, ' ').trim());
+      note('開いた行: ' + rows.join(' / '));
+      check(rows.length === 3 && /^S席/.test(rows[0]) && /12,000円/.test(rows[0]) && /6,000円/.test(rows[2]), '開いた行が券種ごとの高い順でない');
+      const rich = card.locator('.lsyn-rich .lsynrich');
+      check(await rich.count() === 1, '書式つきのあらすじが出ない');
+      const look = await rich.evaluate(n => ({center: getComputedStyle(n.querySelector('.ta-center')).textAlign, mincho: getComputedStyle(n.querySelector('.ff-mincho')).fontFamily, script: !!n.querySelector('script')}));
+      note('書式: ' + JSON.stringify(look));
+      check(look.center === 'center' && /mincho|serif/i.test(look.mincho) && !look.script, '書式が出ない・script が残る');
+      await shotsBoth('search-card-rich');
+    } finally {
+      sql("DELETE FROM stage_override WHERE stage_id='101'");
+    }
+  });
+
   await step('購入済みにする（探すから）', async () => {
     await go('/search?q=' + encodeURIComponent('舞台ふたつめ'));
     const card = page.locator('.ticket[data-stage="102"]').first();

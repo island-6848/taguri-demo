@@ -33,7 +33,8 @@ button:disabled{opacity:.5;cursor:default}
 .badge.ok{color:var(--ok);border-color:var(--ok)}
 .badge.no{color:var(--warn);border-color:var(--warn)}
 label.f{display:block;margin:0 0 10px}
-label.f>span{display:block;font-size:12px;color:var(--mute);margin-bottom:2px}
+label.f>span,div.f>.fl{display:block;font-size:12px;color:var(--mute);margin-bottom:2px}
+div.f{display:block;margin:0 0 10px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
 @media(max-width:560px){.grid2{grid-template-columns:1fr}}
 .was{font-size:12px;color:var(--mute);margin-top:2px;white-space:pre-wrap}
@@ -43,6 +44,15 @@ label.f>span{display:block;font-size:12px;color:var(--mute);margin-bottom:2px}
 .pv{max-width:180px;max-height:240px;border-radius:4px;border:1px solid var(--line);display:block;margin:8px 0}
 .pv[hidden]{display:none}
 .log{font-size:12px;margin:0;padding:0;list-style:none}
+/* 書式つきのあらすじの欄（起案者の指示 2026-10-19）。本番の画面と同じ class で寄せ・大きさ・書体を見せる */
+.rtool{display:flex;flex-wrap:wrap;gap:4px;margin:0 0 4px}
+.rtool button{min-height:28px;padding:2px 8px;font-size:12px}
+.redit{min-height:120px;max-height:420px;overflow:auto;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px 10px;white-space:pre-wrap;outline:none}
+.redit:focus{border-color:var(--acc)}
+.redit p,.redit div{margin:0 0 .4em}
+.redit .ta-left{text-align:left}.redit .ta-center{text-align:center}.redit .ta-right{text-align:right}
+.redit .fs-s{font-size:.85em}.redit .fs-l{font-size:1.2em}
+.redit .ff-mincho{font-family:"Hiragino Mincho ProN","Yu Mincho",serif}.redit .ff-gothic{font-family:system-ui,sans-serif}
 .log li{border-top:1px solid var(--line);padding:6px 0}
 .log code{font-size:11px;color:var(--mute);word-break:break-all}
 .note{font-size:12px;color:var(--mute)}
@@ -82,6 +92,106 @@ if (location.protocol === "file:" || TOKEN.startsWith("__")) {
 }
 const FIELDS = ["劇場", "料金（1枚あたり）", "タイムテーブル", "出演", "演出", "脚本", "スタッフ", "公式／劇場サイト", "その他注意事項"];
 const E = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
+
+// ---- 書式つきのあらすじ（起案者の指示 2026-10-19「あらすじ、凝ってるものはそのまま入力できるようにしたい（中央寄せとか、書体変更の
+// やつたまにある）管理者画面でその辺の書体管理したまま入力できる欄に変えて」）。
+// 本番の CSP は style 属性を許さないので、寄せ・大きさ・書体は決まった class（cloudflare/src/screens/override.js の RICH_CLASSES）に
+// 置き換えて保存する。書式が無ければ、これまでどおりの文だけで保存する。本番の側でも同じ札と class だけに絞り直す
+const RICH = "<!--rich-->";
+const RICH_CLASSES = ["ta-left", "ta-center", "ta-right", "fs-s", "fs-l", "ff-mincho", "ff-gothic"];
+const KEEP = {b: "b", strong: "b", i: "i", em: "i", u: "u", s: "s", strike: "s", del: "s", small: "small", p: "p", div: "div", span: "span", font: "span",
+  h1: "p", h2: "p", h3: "p", h4: "p", h5: "p", h6: "p", li: "p", blockquote: "p", center: "div"};
+function classesOf(el) {
+  const c = new Set([...(el.classList || [])].filter(x => RICH_CLASSES.includes(x)));
+  const st = el.style || {}, tag = el.tagName.toLowerCase();
+  const align = (st.textAlign || el.getAttribute("align") || (tag === "center" ? "center" : "")).toLowerCase();
+  if (align === "center") c.add("ta-center"); else if (align === "right" || align === "end") c.add("ta-right"); else if (align === "left" && el.getAttribute("align")) c.add("ta-left");
+  const face = (st.fontFamily || el.getAttribute("face") || "").toLowerCase();
+  if (/mincho|明朝|serif/.test(face) && !/sans/.test(face)) c.add("ff-mincho"); else if (/gothic|ゴシック|sans/.test(face)) c.add("ff-gothic");
+  const size = st.fontSize || "", fsz = el.getAttribute("size");
+  const px = /px$/.test(size) ? parseFloat(size) : /em$|rem$/.test(size) ? parseFloat(size) * 16 : /%$/.test(size) ? parseFloat(size) * .16 : 0;
+  if ((px && px < 13) || /small/.test(size) || (fsz && Number(fsz) < 3)) c.add("fs-s"); else if ((px && px > 17) || /large/.test(size) || (fsz && Number(fsz) > 3) || /^h[1-3]$/.test(tag)) c.add("fs-l");
+  if (st.fontWeight && (st.fontWeight === "bold" || Number(st.fontWeight) >= 600)) c.add("__bold");
+  if (st.fontStyle === "italic") c.add("__italic");
+  return c;
+}
+/** The editor's contents as allowed tags + RICH_CLASSES only (the same set the site keeps). */
+function richSerialize(node) {
+  let out = "";
+  for (const n of node.childNodes) {
+    if (n.nodeType === 3) { out += E(n.textContent); continue; }
+    if (n.nodeType !== 1) continue;
+    const tag = n.tagName.toLowerCase();
+    if (tag === "br") { out += "<br>"; continue; }
+    if (["script", "style", "meta", "link", "title", "head", "noscript"].includes(tag)) continue;
+    const inner = richSerialize(n);
+    const to = KEEP[tag];
+    if (!to) { out += inner + (["tr", "table", "ul", "ol"].includes(tag) ? "<br>" : ""); continue; }
+    const cls = classesOf(n);
+    let body = inner;
+    if (cls.delete("__bold")) body = "<b>" + body + "</b>";
+    if (cls.delete("__italic")) body = "<i>" + body + "</i>";
+    if (to === "span" && !cls.size) { out += body; continue; }
+    out += "<" + to + (cls.size ? ' class="' + [...cls].join(" ") + '"' : "") + ">" + body + "</" + to + ">";
+  }
+  return out;
+}
+function setRich(ed, v) {
+  v = String(v || "");
+  if (v.startsWith(RICH)) { const t = document.createElement("template"); t.innerHTML = v.slice(RICH.length); ed.innerHTML = richSerialize(t.content); }
+  else ed.textContent = v;
+}
+/** What to save: "<!--rich-->" + html when there is any formatting, else the plain text. */
+function richValue(ed) {
+  const html = richSerialize(ed).replace(/^(?:<br>)+|(?:<br>)+$/g, "");
+  const styled = /<(?:b|i|u|s|small)>|class="/.test(html);
+  return styled ? RICH + html : (ed.innerText || "").replace(/\u00a0/g, " ").replace(/\n{3,}/g, "\n\n").trim();
+}
+function blockOf(ed, node) {
+  while (node && node !== ed && !(node.nodeType === 1 && /^(P|DIV)$/.test(node.tagName) && node.parentNode === ed)) node = node.parentNode;
+  if (node && node !== ed) return node;
+  // 欄の直下に文がある: 選んだ所を含む行（改行まで）を段落で包む
+  document.execCommand("formatBlock", false, "p");
+  const sel = getSelection();
+  let n = sel.anchorNode;
+  while (n && n !== ed && !(n.nodeType === 1 && /^(P|DIV)$/.test(n.tagName) && n.parentNode === ed)) n = n.parentNode;
+  return n && n !== ed ? n : null;
+}
+function richTools(box, ed) {
+  document.execCommand("styleWithCSS", false, false);
+  box.querySelector(".rtool").addEventListener("mousedown", ev => ev.preventDefault());   // 押しても欄の選択を外さない
+  box.querySelector(".rtool").addEventListener("click", ev => {
+    const b = ev.target.closest("button");
+    if (!b) return;
+    ed.focus();
+    if (b.dataset.cmd) document.execCommand(b.dataset.cmd);
+    else if (b.dataset.block) {
+      const blk = blockOf(ed, getSelection().anchorNode);
+      if (blk) { const on = blk.classList.contains(b.dataset.block); blk.classList.remove("ta-left", "ta-center", "ta-right"); if (!on) blk.classList.add(b.dataset.block); }
+    } else if (b.dataset.wrap) {
+      const sel = getSelection();
+      if (!sel.rangeCount || sel.isCollapsed) return;
+      const r = sel.getRangeAt(0), span = document.createElement("span");
+      span.className = b.dataset.wrap;
+      span.appendChild(r.extractContents());
+      // 同じ組（大きさ・書体）の古い印は外す
+      const group = b.dataset.wrap.startsWith("fs-") ? ["fs-s", "fs-l"] : ["ff-mincho", "ff-gothic"];
+      span.querySelectorAll("." + group.join(",.")).forEach(x => x.classList.remove(...group));
+      r.insertNode(span);
+    } else if (b.hasAttribute("data-plain")) {
+      ed.textContent = ed.innerText;
+    }
+  });
+  // 貼り付けた書式も、保存できる形にしてから入れる（色や背景などは落ちる）
+  ed.addEventListener("paste", ev => {
+    const html = ev.clipboardData && ev.clipboardData.getData("text/html");
+    if (!html) return;
+    ev.preventDefault();
+    const t = document.createElement("template");
+    t.innerHTML = html;
+    document.execCommand("insertHTML", false, richSerialize(t.content));
+  });
+}
 const api = async (path, body) => {
   const r = await fetch(path, body === undefined ? {headers: {"X-Admin-Token": TOKEN}}
     : {method: "POST", headers: {"X-Admin-Token": TOKEN, "Content-Type": "application/json"}, body: JSON.stringify(body)});
@@ -170,8 +280,15 @@ async function open(id, req) {
 </div>
 <div class="card">
   <h2>あらすじ・題材</h2>
-  <label class="f"><span>あらすじ</span><textarea id="syn" rows="6">${E(ov.synopsis ?? s.synopsis)}</textarea>
-    ${ov.synopsis != null && s.synopsis ? `<div class="was">取得した分: ${E(s.synopsis)}</div>` : ""}</label>
+  <div class="f"><span class="fl">あらすじ（書式ごと貼り付けられます。中央寄せ・大きさ・書体・太字などは、そのまま本番のカードに出ます）</span>
+    <div class="rtool" role="toolbar" aria-label="あらすじの書式">
+      <button type="button" data-cmd="bold"><b>太字</b></button><button type="button" data-cmd="italic"><i>斜体</i></button><button type="button" data-cmd="underline"><u>下線</u></button>
+      <button type="button" data-block="ta-left">左寄せ</button><button type="button" data-block="ta-center">中央寄せ</button><button type="button" data-block="ta-right">右寄せ</button>
+      <button type="button" data-wrap="fs-s">小さく</button><button type="button" data-wrap="fs-l">大きく</button>
+      <button type="button" data-wrap="ff-mincho">明朝</button><button type="button" data-wrap="ff-gothic">ゴシック</button>
+      <button type="button" data-plain>書式を消す</button></div>
+    <div id="syn" class="redit" contenteditable="true" role="textbox" aria-multiline="true" aria-label="あらすじ"></div>
+    ${ov.synopsis != null && s.synopsis ? `<div class="was">取得した分: ${E(s.synopsis)}</div>` : ""}</div>
   <label class="f"><span>題材（読点か空白で区切る・${6} 語まで。空のままあらすじを入れると、Claude Code に読み取りを頼みます）</span>
     <input id="thm" type="text" value="${E((ov.themes ?? s.themes ?? []).join("、"))}">
     ${ov.themes ? `<div class="was">取得した分: ${E((s.themes || []).join("、") || "（なし）")}</div>` : ""}</label>
@@ -194,7 +311,10 @@ async function open(id, req) {
   <h2>この公演の記録</h2>
   ${d.log.length ? `<ul class="log">${d.log.map(l => `<li><b>${E(l.at)}</b>　${E({edit: "直した", poster: "ポスター"}[l.action] || l.action)}　<code>${E(JSON.stringify(l.detail))}</code></li>`).join("")}</ul>` : '<p class="note">まだありません。</p>'}
 </div>`;
-  const syn0 = box.querySelector("#syn").value, thm0 = box.querySelector("#thm").value;
+  const ed = box.querySelector("#syn");
+  setRich(ed, ov.synopsis ?? s.synopsis ?? "");
+  richTools(box, ed);
+  const syn0 = richValue(ed), thm0 = box.querySelector("#thm").value;
   const base = {synopsis: s.synopsis, themes: (s.themes || []).join("、")};
   // 詳細: 取得した値と違う欄だけを「手で直した分」として送る
   const infoNow = () => {
@@ -210,7 +330,7 @@ async function open(id, req) {
     return out;
   };
   box.querySelector("#ssave").addEventListener("click", async () => {
-    const out = box.querySelector("#ssaid"), syn = box.querySelector("#syn").value.trim(), thm = box.querySelector("#thm").value.trim();
+    const out = box.querySelector("#ssaid"), syn = richValue(box.querySelector("#syn")).trim(), thm = box.querySelector("#thm").value.trim();
     const body = {stage_id: s.stage_id, title: s.title,
       synopsis: syn === base.synopsis.trim() ? "" : syn,
       themes: thm === base.themes ? [] : thm.split(/[、,，\s]+/).filter(Boolean)};

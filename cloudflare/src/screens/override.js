@@ -31,12 +31,50 @@ function synSpan(html, sid) {
   return null;
 }
 
+// 書式つきのあらすじ（起案者の指示 2026-10-19「あらすじ、凝ってるものはそのまま入力できるようにしたい（中央寄せとか、書体変更の
+// やつたまにある）管理者画面でその辺の書体管理したまま入力できる欄に変えて」）。管理画面（tools/admin/admin.html）が書式を
+// 決まった印（class）だけの HTML にして、頭に RICH を付けて stage_override.synopsis に置く。サイトの CSP は style 属性を
+// 許さない（style-src 'self'）ので、寄せ・大きさ・書体は class で持つ。出すときに、ここでもう一度、許した札と class だけに絞る
+export const RICH = '<!--rich-->';
+const RICH_TAGS = new Set(['p', 'br', 'div', 'span', 'b', 'strong', 'i', 'em', 'u', 's', 'small']);
+export const RICH_CLASSES = new Set(['ta-left', 'ta-center', 'ta-right', 'fs-s', 'fs-l', 'ff-mincho', 'ff-gothic']);
+export const isRich = v => typeof v === 'string' && v.startsWith(RICH);
+const unEnt = s => s.replace(/&(lt|gt|quot|#39|amp|nbsp);/g, (_, k) => ({lt: '<', gt: '>', quot: '"', '#39': "'", amp: '&', nbsp: ' '})[k]);
+/** The stored rich synopsis as safe HTML: allowed tags only, class values from RICH_CLASSES only, every other attribute dropped. */
+export function richHtml(v) {
+  const src = String(v || '').replace(RICH, '').replace(/<(script|style)\b[\s\S]*?<\/\1\s*>/gi, '').replace(/<!--[\s\S]*?-->/g, '');
+  const out = [], open = [];
+  for (const m of src.matchAll(/<(\/?)([a-zA-Z][a-zA-Z0-9]*)\b([^>]*)>|([^<]+)|</g)) {
+    if (m[4] !== undefined || m[0] === '<') { out.push(E(unEnt(m[4] ?? '<'))); continue; }
+    const tag = m[2].toLowerCase();
+    if (!RICH_TAGS.has(tag)) continue;
+    if (tag === 'br') { out.push('<br>'); continue; }
+    if (m[1]) {
+      const i = open.lastIndexOf(tag);
+      if (i < 0) continue;
+      while (open.length > i) out.push(`</${open.pop()}>`);
+      continue;
+    }
+    const cm = /\bclass\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i.exec(m[3]);
+    const cls = (cm ? cm[1] ?? cm[2] ?? cm[3] : '').split(/\s+/).filter(c => RICH_CLASSES.has(c));
+    out.push(`<${tag}${cls.length ? ` class="${cls.join(' ')}"` : ''}>`);
+    open.push(tag);
+  }
+  while (open.length) out.push(`</${open.pop()}>`);
+  return out.join('');
+}
+/** The rich synopsis as plain text (for the first sentence, search and the theme reading). */
+export const richText = v => unEnt(String(v || '').replace(RICH, '').replace(/<(script|style)\b[\s\S]*?<\/\1\s*>/gi, '').replace(/<!--[\s\S]*?-->/g, '').replace(/<br\s*\/?>|<\/(p|div)>/gi, '\n').replace(/<[^>]+>/g, ''))
+  .replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+
 /** The あらすじ block from a hand-entered synopsis and/or themes (the card's own text where one is not given). */
 export function synBlock(sid, ov, base = {}) {
   const syn = (ov.synopsis ?? base.synopsis ?? '').trim();
   const tags = (ov.themes ?? base.themes ?? []).map(w => String(w).trim()).filter(Boolean);
   const tagHtml = tags.length ? `<div class="tags">${tags.map(w => `<span class="tag">#${E(w)}</span>`).join('')}</div>` : '';
   const cite = '<span class="src">［たぐりの管理者が入れた内容です］</span>';
+  // 書式つきは、決まった札だけに絞った HTML を .txt.rich にそのまま出す（画面の app.js leadSynopsis が書式を保ったまま畳む）
+  if (isRich(syn) && richText(syn)) return `<div class="syn" data-stage="${E(sid)}"><div class="txt rich">${richHtml(syn)}</div>${tagHtml}${cite}<button class="mrb" data-more="1">続きを読む</button></div>`;
   if (syn) return `<div class="syn" data-stage="${E(sid)}"><p class="txt">${E(syn)}</p>${tagHtml}${cite}<button class="mrb" data-more="1">続きを読む</button></div>`;
   if (tags.length) return `<div class="syn part" data-stage="${E(sid)}">あらすじは公演ページに載っていません。題材は次のとおりです。${tagHtml}${cite}</div>`;
   return '';
@@ -97,7 +135,7 @@ export function mergeInfo(s, ov) {
   const info = ov.info || {};
   const out = {...s, fields: {...(s.fields || {}), ...(info.fields || {})}};
   for (const k of ['venue', 'pref', 'period', 'url']) if (typeof info[k] === 'string' && info[k]) out[k] = info[k];
-  if (typeof ov.synopsis === 'string') out.synopsis = ov.synopsis;
+  if (typeof ov.synopsis === 'string') out.synopsis = isRich(ov.synopsis) ? richText(ov.synopsis) : ov.synopsis;   // 書式つきは本文の文字だけ
   return out;
 }
 

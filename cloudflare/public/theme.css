@@ -1588,3 +1588,19 @@ details.lprice:not([open]):not(#_)>summary .plist>li:only-child::before{display:
 .acctpop small{margin-left:2px;color:var(--mute);font-size:12px}
 .acctpop .said:not(:empty){padding:4px 12px;font-size:12px;color:var(--mute)}
 .side button.pacct{border:0;background:none;box-shadow:none;color:inherit;cursor:pointer}
+
+/* 書式つきのあらすじ（管理者が入れたもの。screens/override.js richHtml の決まった class だけ。起案者の指示 2026-10-19）。
+   サイトの CSP が style 属性を許さないので、寄せ・大きさ・書体は class で決める */
+:is(.txt.rich,.lsynrich) :is(.ta-left){text-align:left}
+:is(.txt.rich,.lsynrich) :is(.ta-center){text-align:center}
+:is(.txt.rich,.lsynrich) :is(.ta-right){text-align:right}
+:is(.txt.rich,.lsynrich) .fs-s{font-size:.85em}
+:is(.txt.rich,.lsynrich) .fs-l{font-size:1.2em}
+:is(.txt.rich,.lsynrich) .ff-mincho{font-family:var(--mincho),serif}
+:is(.txt.rich,.lsynrich) .ff-gothic{font-family:var(--font-sans)}
+:is(.txt.rich,.lsynrich) :is(p,div){margin:0 0 .4em}
+.lsyn-rich{display:grid;grid-template-columns:4em minmax(0,1fr);column-gap:6px}
+.lsyn-rich .lsynrich{max-height:5.2em;overflow:hidden;line-height:1.65}
+.lsyn-rich.open .lsynrich{max-height:none}
+.lsyn-rich .lsynrichmore{display:inline;margin:2px 0 0;padding:0;min-height:0;border:0;background:none;box-shadow:none;color:var(--acc);font:inherit;font-size:12px;text-decoration:underline;cursor:pointer}
+.lsyn-rich .lsynrichmore[hidden]{display:none}

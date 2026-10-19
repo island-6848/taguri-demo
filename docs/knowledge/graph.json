@@ -1965,6 +1965,26 @@
    "verifies": []
   },
   {
+   "id": "dec-price-rich-search-1019",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-19",
+   "title": "価格帯は閉じて「min円～max円」（同じなら 1 つ）、開いて券種ごと高い順、座席の決まり（全席指定など）は必ず出す。あらすじは管理画面で書式つき（寄せ・大きさ・書体・太字）で入れられる。探すの過去の公演は見つかった分を全部出す",
+   "sources": [
+    "web/app.js",
+    "web/theme.css",
+    "cloudflare/src/screens/override.js",
+    "cloudflare/src/screens/search.js",
+    "tools/admin/admin.html",
+    "tools/admin/admin.py",
+    "cloudflare/test/rich-synopsis.test.js",
+    "cloudflare/test/title-leads.test.js",
+    "cloudflare/test/test_admin_tool.py",
+    "cloudflare/test/e2e-walk.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-price-same-amount",
    "type": "decision",
    "status": "adopted",
@@ -9354,6 +9374,11 @@
    "from": "dec-posters-r2",
    "rel": "answers",
    "to": "q-worker-posters"
+  },
+  {
+   "from": "dec-price-rich-search-1019",
+   "rel": "depends_on",
+   "to": "dec-ui-1019"
   },
   {
    "from": "dec-price-same-amount",

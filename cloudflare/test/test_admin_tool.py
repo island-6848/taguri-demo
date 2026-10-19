@@ -258,3 +258,12 @@ class AdminTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RichSynopsisTest(unittest.TestCase):
+    """書式つきのあらすじ（起案者の指示 2026-10-19）: 題材の読み取りには文字だけを渡す。"""
+
+    def test_plain_text_for_the_reading(self):
+        v = A.RICH + '<p class="ta-center">春の<b>夜</b></p><script>x()</script><p>二人&amp;</p>'
+        self.assertEqual(A.plain_synopsis(v), "春の夜\n二人&")
+        self.assertEqual(A.plain_synopsis("ふつうの文"), "ふつうの文")

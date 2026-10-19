@@ -292,7 +292,8 @@ def save(db: D1, data: Path, sid: str, *, synopsis=None, themes=None, info=None,
     old = cur[0] if cur else {"synopsis": None, "themes": None, "info": None}
     new = dict(old)
     if synopsis is not None:
-        new["synopsis"] = synopsis.strip()[:4000] or None
+        # 書式つき（頭に <!--rich-->、管理画面の欄。起案者の指示 2026-10-19）は印の分だけ長いので、上限を広げる
+        new["synopsis"] = synopsis.strip()[:12000 if synopsis.strip().startswith(RICH) else 4000] or None
     if themes is not None:
         ws = norm_words(themes)
         new["themes"] = json.dumps(ws, ensure_ascii=False) if ws else None
@@ -394,8 +395,20 @@ PROMPT = """あなたは演劇公演の紹介文から「題材」の語を読�
 {items}"""
 
 
+RICH = "<!--rich-->"   # 書式つきのあらすじの頭の印（cloudflare/src/screens/override.js と同じ）
+
+
+def plain_synopsis(s: str) -> str:
+    """書式つきのあらすじから文字だけを取り出す（題材の読み取りには書式を渡さない）。"""
+    s = s or ""
+    if not s.startswith(RICH):
+        return s
+    s = re.sub(r"<(script|style)\b[\s\S]*?</\1\s*>", "", s[len(RICH):], flags=re.I)
+    return _unhtml(re.sub(r"<br\s*/?>|</(p|div)>", "\n", s, flags=re.I))
+
+
 def queue_add(data: Path, sid: str, synopsis: str, title: str = "") -> dict:
-    task = {"stage_id": sid, "title": title, "synopsis": synopsis.strip()[:4000], "kind": "themes", "at": now_iso()}
+    task = {"stage_id": sid, "title": title, "synopsis": plain_synopsis(synopsis).strip()[:4000], "kind": "themes", "at": now_iso()}
     data.mkdir(parents=True, exist_ok=True)
     rows = [t for t in queue_list(data) if t["stage_id"] != sid]
     rows.append(task)
