@@ -2358,6 +2358,38 @@
    "verifies": []
   },
   {
+   "id": "dec-register-detail-repeat",
+   "type": "decision",
+   "status": "superseded",
+   "date": "2026-10-19",
+   "title": "観劇記録の追加に詳細検索ダイアログと同じ作品の連続追加を設ける",
+   "sources": [
+    "cloudflare/src/screens/settings.js",
+    "cloudflare/src/screens/suggest.js",
+    "cloudflare/src/screens/rate.js",
+    "web/app.js",
+    "cloudflare/test/register-detail.test.js",
+    "cloudflare/test/register-detail-ui.test.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-register-run-precision",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-19",
+   "title": "詳細検索は上演期間との重なりで絞り、月・月日・年・年月・年月日を選べるようにする",
+   "sources": [
+    "cloudflare/src/screens/schedule-filter.js",
+    "cloudflare/src/screens/suggest.js",
+    "web/app.js",
+    "cloudflare/test/schedule-filter.test.js",
+    "cloudflare/test/register-detail.test.js",
+    "cloudflare/test/register-detail-ui.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-register-single-first",
    "type": "decision",
    "status": "adopted",
@@ -9531,6 +9563,16 @@
    "from": "dec-recovery-reissue",
    "rel": "depends_on",
    "to": "dec-rate-limit"
+  },
+  {
+   "from": "dec-register-detail-repeat",
+   "rel": "depends_on",
+   "to": "dec-register-single-first"
+  },
+  {
+   "from": "dec-register-run-precision",
+   "rel": "supersedes",
+   "to": "dec-register-detail-repeat"
   },
   {
    "from": "dec-register-single-first",

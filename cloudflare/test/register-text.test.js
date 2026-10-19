@@ -42,7 +42,10 @@ test('#91: the private address is said to pass through the server; files stay on
 test('#92: manual entry searches the saved catalogue, not CoRich on the spot', async () => {
   const html = await registerHtml();
   assert.doesNotMatch(html, /CoRichで検索|8 秒/);
-  assert.match(html, /data-sug-web="1">[\s\S]*?公演一覧から探す<\/button>/);
+  assert.match(html, /data-register-search="1">[\s\S]*?詳細検索<\/button>/);
+  assert.doesNotMatch(html, /data-sug-web|公演一覧から探す/);
+  assert.match(html, /data-register-repeat="1" checked/);
+  assert.match(html, /data-register-reset="1"/);
   assert.match(html, /その場で外のサイト（CoRich など）は探しません/);
   assert.match(html, /次の更新で探してもらう/);
 });
@@ -71,4 +74,5 @@ test('#95: inputs have visible labels with required/optional, placeholders are e
     assert.match(search, /<label class="fld" for="search-q"><span class="fl">人名・団体・題材・題名<small class="req">必須<\/small><\/span><input type="text" id="search-q" name="q"/);
   } finally { sqlite.close(); }
 });
+
 
