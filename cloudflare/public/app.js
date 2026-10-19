@@ -53,11 +53,14 @@ const IMPLEMENTED = new Set(["recommend", "interest", "reminder", "favourites", 
 // おすすめ＝これから観るものを選ぶ（今週のおすすめ・興味あり・お気に入り）／予定＝観に行く日を確かめる
 // （公演カレンダー・開幕リマインド・購入済み公演）。開幕リマインドは「初日が近い公演の知らせ」で、選ぶ画面
 // ではなく日程を見る画面なので、予定に移した。URL（/recommend/reminder）は変えない（覚えた道を壊さない）
-const NAV = [[null, "おすすめ", "ticket", [["/recommend", "今週のあなたへのおすすめ", "ticket"], ["/recommend/interest", "興味あり", "flag"], ["/recommend/favourites", "お気に入り", "star"]]], [null, "予定", "calendar", [["/calendar", "公演カレンダー", "calendar"], ["/recommend/reminder", "開幕リマインド", "inbox"], ["/tickets", "購入済の公演", "ticket"]]], [null, "観た公演の評価", "check", [["/rate", "評価一覧", "check"], ["/rate/unrated", "未評価", "clock"], ["/rate/notes", "感想", "pencil"], ["/register", "観劇記録を追加", "plus"]]], [null, "記録を見返す", "chart", [["/records", "眺める", "chart"], ["/records/trace", "たどる", "user"], ["/records/chronicle", "観劇史年表", "calendar"], ["/records/works", "日記帳", "book"]]], ["/search", "探す", "search", []], ["/settings", "設定", "gear", []]];
+// 左の帯とすだれの「今週のおすすめ」は短い名前にする（起案者の指示 2026-10-19「『今週のあなたへのおすすめ』っていうボタンの文字列は長すぎる」）。画面の見出しはそのまま
+const NAV = [[null, "おすすめ", "ticket", [["/recommend", "今週のおすすめ", "ticket"], ["/recommend/interest", "興味あり", "flag"], ["/recommend/favourites", "お気に入り", "star"]]], [null, "予定", "calendar", [["/calendar", "公演カレンダー", "calendar"], ["/recommend/reminder", "開幕リマインド", "inbox"], ["/tickets", "購入済の公演", "ticket"]]], [null, "観た公演の評価", "check", [["/rate", "評価一覧", "check"], ["/rate/unrated", "未評価", "clock"], ["/rate/notes", "感想", "pencil"], ["/register", "観劇記録を追加", "plus"]]], [null, "記録を見返す", "chart", [["/records", "眺める", "chart"], ["/records/trace", "たどる", "user"], ["/records/chronicle", "観劇史年表", "calendar"], ["/records/works", "日記帳", "book"]]], ["/search", "探す", "search", []], ["/settings", "設定", "gear", []]];
+// 左の帯でも、設定はアカウントの小窓に入れる（起案者の指示 2026-10-19）。デモ版はアカウントが無いので設定のまま
+if (!IS_DEMO) NAV.splice(NAV.findIndex(n => n[0] === "/settings"), 1);
 if (!IS_DEMO) NAV.push(["/account", "アカウント", "user", []]);
 
 // --- 絵記号(icons.py の P/ALIAS をそのまま) --------------------------------
-const ICON_P = {"ticket": "M3 9a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2 2 2 0 0 0 0 6 2 2 0 0 1-2 2H5a2 2 0 0 1-2-2 2 2 0 0 0 0-6zM11 7v10", "star": "M12 3.8l2.5 5.1 5.6.8-4 3.9 1 5.6-5.1-2.7-5.1 2.7 1-5.6-4-3.9 5.6-.8z", "inbox": "M3 12h5l1.5 2.5h5L16 12h5M3 12l3-7h12l3 7v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z", "chart": "M3 20h18M6.5 20v-5M11.5 20V6M16.5 20v-9", "search": "M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM16.2 16.2 21 21", "download": "M12 3v12m0 0 4-4m-4 4-4-4M4 20h16", "mail": "M3 6h18v12H3zM3 6.5l9 6.5 9-6.5", "plus": "M12 5v14M5 12h14", "clock": "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7.5V12l3.5 2", "pencil": "M4 20h4L18 10l-4-4L4 16zM13.5 6.5l4 4", "tag": "M4 12.5 12.5 4H20v7.5L11.5 20zM16.4 7.6h.01", "image": "M3 5h18v14H3zM3 15.5l5-4 4 3 3-2.5 6 4.5M8 9.5h.01", "user": "M12 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM4 20c0-3.3 3.6-5 8-5s8 1.7 8 5", "building": "M4 20V6l6-2.5V20M10 20h10V10.5L10 7M13.5 12h.01M13.5 16h.01M17 12h.01M17 16h.01", "book": "M4 5h7v15H4zM13 5h7v15h-7M11 5v15", "light": "M12 3v3.5M12 17.5V21M3 12h3.5M17.5 12H21M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18", "eye": "M2.5 12S6 6 12 6s9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6zM12 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z", "check": "M4.5 12.5 9.5 18 20 6", "flag": "M5 21V4h13l-2.5 4.5L18 13H5", "calendar": "M4 6.5h16V20H4zM4 10.5h16M8.5 3.5v4M15.5 3.5v4", "chevron": "M9.5 5.5 16 12l-6.5 6.5", "network": "M6 18a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM18 18a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM6.9 15.3 10.6 9M17.1 15.3 13.4 9M8 17.3h8", "gear": "M10.6 3.1 13.4 3.1 15.2 6.5 19.0 6.3 20.4 8.8 18.4 12.0 20.4 15.2 19.0 17.7 15.2 17.5 13.4 20.9 10.6 20.9 8.8 17.5 5.0 17.7 3.6 15.2 5.6 12.0 3.6 8.8 5.0 6.3 8.8 6.5ZM12 9.8a2.2 2.2 0 1 0 0 4.4 2.2 2.2 0 0 0 0-4.4z", "link": "M14 4h6v6M20 4 10 14M18 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h5"};
+const ICON_P = {"ticket": "M3 9a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2 2 2 0 0 0 0 6 2 2 0 0 1-2 2H5a2 2 0 0 1-2-2 2 2 0 0 0 0-6zM11 7v10", "star": "M12 3.8l2.5 5.1 5.6.8-4 3.9 1 5.6-5.1-2.7-5.1 2.7 1-5.6-4-3.9 5.6-.8z", "inbox": "M3 12h5l1.5 2.5h5L16 12h5M3 12l3-7h12l3 7v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z", "chart": "M3 20h18M6.5 20v-5M11.5 20V6M16.5 20v-9", "search": "M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM16.2 16.2 21 21", "download": "M12 3v12m0 0 4-4m-4 4-4-4M4 20h16", "mail": "M3 6h18v12H3zM3 6.5l9 6.5 9-6.5", "plus": "M12 5v14M5 12h14", "clock": "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7.5V12l3.5 2", "pencil": "M4 20h4L18 10l-4-4L4 16zM13.5 6.5l4 4", "tag": "M4 12.5 12.5 4H20v7.5L11.5 20zM16.4 7.6h.01", "image": "M3 5h18v14H3zM3 15.5l5-4 4 3 3-2.5 6 4.5M8 9.5h.01", "user": "M12 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM4 20c0-3.3 3.6-5 8-5s8 1.7 8 5", "building": "M4 20V6l6-2.5V20M10 20h10V10.5L10 7M13.5 12h.01M13.5 16h.01M17 12h.01M17 16h.01", "book": "M4 5h7v15H4zM13 5h7v15h-7M11 5v15", "light": "M12 3v3.5M12 17.5V21M3 12h3.5M17.5 12H21M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18", "eye": "M2.5 12S6 6 12 6s9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6zM12 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z", "check": "M4.5 12.5 9.5 18 20 6", "flag": "M5 21V4h13l-2.5 4.5L18 13H5", "calendar": "M4 6.5h16V20H4zM4 10.5h16M8.5 3.5v4M15.5 3.5v4", "chevron": "M9.5 5.5 16 12l-6.5 6.5", "network": "M6 18a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM18 18a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM6.9 15.3 10.6 9M17.1 15.3 13.4 9M8 17.3h8", "gear": "M10.6 3.1 13.4 3.1 15.2 6.5 19.0 6.3 20.4 8.8 18.4 12.0 20.4 15.2 19.0 17.7 15.2 17.5 13.4 20.9 10.6 20.9 8.8 17.5 5.0 17.7 3.6 15.2 5.6 12.0 3.6 8.8 5.0 6.3 8.8 6.5ZM12 9.8a2.2 2.2 0 1 0 0 4.4 2.2 2.2 0 0 0 0-4.4z", "link": "M14 4h6v6M20 4 10 14M18 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h5", "logout": "M10 4H5v16h5M15 8l4 4-4 4M19 12H9"};
 // スマホ幅の 4 つの大メニューの絵記号（dec-phone-nav-four）: 毛糸玉・判子・帳面
 Object.assign(ICON_P, {"yen": "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM8.6 7.4 12 12l3.4-4.6M12 12v5.2M9.2 12.6h5.6M9.2 15.2h5.6", "building": "M4 20.5h16M6.5 20.5V4.5h8v16M14.5 9.5h3.5v11M9 8h2.5M9 11.5h2.5M9 15h2.5", "info": "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 11v5.5M12 7.6h.01", "yarn": "M11 4a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15zM5.2 7.6c4.6.8 8.6 4.6 9.6 10.6M3.7 11.3c4.4.4 7.7 3.4 8.4 7.6M8.6 4.4c4.6 1.4 8.3 5.4 9.5 10M16.3 16.3c1.8 1.6 3.4 2.6 5.2 2.9", "stamp": "M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16zM12 7.8a4.2 4.2 0 1 0 0 8.4 4.2 4.2 0 0 0 0-8.4z", "notebook": "M5 4.5h11.5a2 2 0 0 1 2 2V20H7a2 2 0 0 1-2-2zM5 17.5a2 2 0 0 1 2-2h11.5M9 8.5h6"});
 const ICON_ALIAS = {"おすすめ": "ticket", "お気に入り": "star", "登録": "inbox", "記録": "chart", "探す": "search", "書き出す": "download", "暦": "calendar"};
@@ -105,6 +108,14 @@ function renderNav() {
     : navItemHtml(p, t, k, false) + kids.map(c => navItemHtml(c[0], c[1], c[2], true)).join("")
   ).join("") + "</div>";
 }
+// 左の帯の「アカウント」は、押すとアカウント・設定・ログアウトの小窓を開く（起案者の指示 2026-10-19。openAcctMenu）
+function markAcctNav(root) {
+  if (IS_DEMO) return;
+  root.querySelectorAll('a[data-path="/account"]:not(.acctpop a)').forEach(a => {
+    if (a.closest(".acctpop")) return;
+    a.setAttribute("data-acct-menu", ""); a.setAttribute("aria-haspopup", "menu"); a.setAttribute("aria-expanded", "false");
+  });
+}
 
 // **スマホ幅の行き先 ── 4 つの大メニューを均等に並べて常に出し、子はその下にすだれで下ろす。**
 // （起案者の指示 2026-10-13「スマホ版はメインの４つの大きいメニューは固定で表示して、それより子の
@@ -112,7 +123,7 @@ function renderNav() {
 // 「４つの大きいメニューにアイコンをつけて」）。パソコン幅では今までどおり左の帯（NAV）を使う。
 // 探すは帯の検索窓、設定は右上の歯車、公演情報の登録はその左の「＋」から入る。
 const PNAV = [
-  ["rec", "おすすめ", "yarn", [["/recommend", "今週のあなたへのおすすめ"], ["/recommend/interest", "興味あり"], ["/recommend/favourites", "お気に入り"]]],
+  ["rec", "おすすめ", "yarn", [["/recommend", "今週のおすすめ"], ["/recommend/interest", "興味あり"], ["/recommend/favourites", "お気に入り"]]],
   ["plan", "予定", "calendar", [["/calendar", "公演カレンダー"], ["/recommend/reminder", "開幕リマインド"], ["/tickets", "購入済の公演"]]],
   ["rate", "評価", "stamp", [["/rate", "評価一覧"], ["/rate/unrated", "未評価"], ["/rate/notes", "感想"], ["/register", "観劇記録を追加"]]],
   ["rec2", "記録", "notebook", [["/records/works", "日記帳"], ["/records", "眺める"], ["/records/trace", "たどる"], ["/records/chronicle", "観劇史年表"]]],
@@ -122,8 +133,10 @@ function renderPNav() {
   // 押したら登録の画面へそのまま移る。3 つの入口を選ぶ札は出さない（起案者の指示 2026-10-17「ポップアップ消して」）
   return '<a class="padd" href="/register" data-path="/register" aria-label="観劇記録を追加" title="観劇記録を追加"'
     + '>' + ico("plus", 22) + "</a>"
-    + (IS_DEMO ? "" : '<a class="pacct" href="/account" data-path="/account" aria-label="アカウント" title="アカウント">' + ico("user", 20) + "</a>")
-    + '<a class="pset" href="/settings" data-path="/settings" aria-label="設定">' + ico("gear", 20) + "</a>"
+    // アカウントのアイコンは、押すとアカウント・設定・ログアウトの小窓を開く。歯車（設定）は小窓に入れたので外した
+    // （起案者の指示 2026-10-19「現在のアカウントアイコンを押したら…ポップアップ…設定のアイコンは消して」）。デモ版は歯車のまま
+    + (IS_DEMO ? '<a class="pset" href="/settings" data-path="/settings" aria-label="設定">' + ico("gear", 20) + "</a>"
+      : '<button type="button" class="pacct" data-acct-menu aria-haspopup="menu" aria-expanded="false" aria-label="アカウント" title="アカウント">' + ico("user", 20) + "</button>")
     + '<div class="pnav">' + PNAV.map(([id, label, icon]) =>
       '<button type="button" class="pm" data-pm="' + id + '" aria-expanded="false">' + ico(icon, 22)
       + '<span class="pl">' + E(label) + ico("chevron", 9, "cv") + "</span></button>").join("") + "</div>"
@@ -632,7 +645,7 @@ function renderScreen(el, activePath, d, exposureSource) {
   divergeVerdicts(el);
   stampRerate(el);
   aspectsPanel(el);
-  if (activePath === "/settings") { aspectsSetting(el); creditSetting(el); fontSetting(el); }
+  if (activePath === "/settings") { aspectsSetting(el); creditSetting(el); }
   if (window.TaguriExposure) TaguriExposure.start(el, exposureSource || "network", async (path, body) => {
     const r = await fetch(API_BASE + path, {method: "POST", credentials: "include", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
     const result = await r.json(); return r.ok && result.ok === true;
@@ -808,6 +821,7 @@ document.addEventListener("click", ev => {
   if (ev.defaultPrevented || ev.button !== 0 || ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey) return;
   const a = ev.target.closest && ev.target.closest("a[href]");
   if (!a) return;
+  if (a.hasAttribute("data-acct-menu")) return;   // 左の帯の「アカウント」は小窓を開く（openAcctMenu）
   if (a.hasAttribute("download") || (a.getAttribute("target") || "_self").toLowerCase() !== "_self") return;
   const href = a.getAttribute("href");
   if (!href || /^[a-z]+:/i.test(href) || href.startsWith("#")) return;
@@ -874,6 +888,7 @@ document.addEventListener("DOMContentLoaded", () => {
   new MutationObserver(() => applyDemoRestrictions(contentEl()))
     .observe(contentEl(), {childList: true, subtree: true});
   document.querySelector(".side").insertAdjacentHTML("beforeend", renderNav() + renderPNav());
+  markAcctNav(document.querySelector(".side"));
   restoreNavFold();
   const path = (location.pathname.slice(REPO_BASE.length) || "/");
   loadScreen(path, location.search.replace(/^\?/, ""), location.hash);
@@ -1355,12 +1370,19 @@ function compactTickets(root) {
   const interestPage = here === "/recommend/interest";   // 興味ありの一覧もおすすめと同じ表示（起案者の指示 2026-10-17）
   const favPage = here === "/recommend/favourites";       // お気に入りも同じ表示（起案者の指示 2026-10-17）
   const tagPage = here === "/recommend/tag";              // あらすじのハッシュタグの公演の一覧も同じ表示（起案者の指示 2026-10-18）
+  const searchPage = here === "/search";                  // 「探す」の公演のカードも同じ表示（起案者の指示 2026-10-19「『検索』で出てくる公演カードも他ページのレイアウトと統一して」）
   // お気に入りも同じ形にする（起案者の指示 2026-10-15「お気に入りのページのレイアウト変更して。購入済み公演と似た感じ」）
   root.querySelectorAll("article.ticket.recommend, article.ticket.interest, article.ticket.owned, article.ticket.favourite").forEach(t => {
     if (t.classList.contains("cmp")) return;
     const main = t.querySelector(".main");
     if (!main) return;
     t.classList.add("cmp");
+    // 「探す」の「ヒットした箇所」は、ほかの画面の「おすすめ理由」と同じ所（回答の押し口のすぐ上）に同じ見た目で置く
+    // （起案者の指示 2026-10-19「『検索』で出てくる公演カードも他ページのレイアウトと統一して」）
+    if (searchPage) {
+      const wt = main.querySelector(":scope > .whyh.top"), ut = main.querySelector(":scope > ul.why.top"), act = main.querySelector(":scope > .act");
+      if (wt && ut && act) { act.before(wt); wt.after(ut); wt.classList.remove("top"); ut.classList.remove("top"); }
+    }
     t.querySelectorAll('button[data-v="nointerest"]').forEach(b => {
       b.title = "好みではないとして、今後のおすすめに反映します";
     });
@@ -1369,7 +1391,7 @@ function compactTickets(root) {
     const noMore = (recPage && t.classList.contains("recommend") && !t.closest(".rfind"))
       || (interestPage && t.classList.contains("interest"))
       || (favPage && t.classList.contains("favourite"))
-      || (tagPage && (t.classList.contains("recommend") || t.classList.contains("interest")));
+      || ((tagPage || searchPage) && (t.classList.contains("recommend") || t.classList.contains("interest")));
     const more = document.createElement("details");
     more.className = "more";
     more.innerHTML = "<summary><b>くわしく</b><span>会期・料金・出演の全員・あらすじの全文</span></summary>";
@@ -3305,9 +3327,10 @@ function aspectsSetting(el) {
   const h1 = el.querySelector("h1");
   if (!h1) return;
   const cur = aspectsMode();
-  const sec = document.createElement("section");
-  sec.className = "aspset pbox";
-  sec.innerHTML = '<h2>評価の詳細の出し方</h2><p class="lead">評価を付けた記録の「詳細」（話・演出・演技などを 好き〜好みではない の 5 段階で）を、'
+  // ほかの設定と同じ折りたたみ（details.card）にする（起案者の指示 2026-10-19「『カードに出す名前』『評価の詳細の出し方』も他と同じ様に折りたたみにして」）
+  const sec = document.createElement("details");
+  sec.className = "aspset card";
+  sec.innerHTML = '<summary><h2>評価の詳細の出し方</h2></summary><p class="lead">評価を付けた記録の「詳細」（話・演出・演技などを 好き〜好みではない の 5 段階で）を、'
     + 'ふだん閉じておくか、開いて出すかを選べます。表示だけの設定で、おすすめの計算は変わりません。</p>'
     + '<div class="aspmode" role="radiogroup" aria-label="評価の詳細の出し方">'
     + [["plain", "あっさり", "詳細は閉じておく（押すと開く）"], ["full", "詳しく", "詳細を開いた状態で出す"]].map(([v, t, d]) =>
@@ -3327,9 +3350,9 @@ function creditSetting(el) {
   const h1 = el.querySelector("h1");
   if (!h1) return;
   const cur = creditChoice();
-  const sec = document.createElement("section");
-  sec.className = "credset pbox";
-  sec.innerHTML = '<h2>カードに出す名前</h2><p class="lead">公演のカードに、どの役職の名前まで出すかを選べます。'
+  const sec = document.createElement("details");   // ほかの設定と同じ折りたたみ（起案者の指示 2026-10-19）
+  sec.className = "credset card";
+  sec.innerHTML = '<summary><h2>カードに出す名前</h2></summary><p class="lead">公演のカードに、どの役職の名前まで出すかを選べます。'
     + '<b>作・原作・脚本・演出は、いつも出します。</b>表示だけの設定で、おすすめの計算は変わりません。</p>'
     + '<div class="credlist">'
     + '<label class="credi"><input type="checkbox" checked disabled><span>作・原作・脚本・演出（いつも出します）</span></label>'
@@ -3344,33 +3367,9 @@ function creditSetting(el) {
   (last || h1).after(sec);
 }
 
-// 文字の形。基本はすべて Zen角ゴシック New、押して何かを起こすもの（ボタン・タブ・選ぶ欄）だけ Zen丸ゴシック（起案者の指示 2026-10-18。fonts.css）。
-// 「あくまでお試しなので、現在のフォントを規定として」── これまでの文字を「規定」として残し、設定でいつでも戻せる。
-// 既定は決まりの文字（値は前のまま "trial"）。fonts.css の html:not([data-font="default"]) が切り替える
-const FONT_KEY = "taguri_font_v1";
-function fontMode() { try { return localStorage.getItem(FONT_KEY) === "default" ? "default" : "trial"; } catch (e) { return "trial"; } }
-document.documentElement.dataset.font = fontMode();
-function fontSetting(el) {
-  if (el.querySelector(".fontset")) return;
-  const h1 = el.querySelector("h1");
-  if (!h1) return;
-  const cur = fontMode();
-  const sec = document.createElement("section");
-  sec.className = "fontset pbox";
-  sec.innerHTML = '<h2>文字の形</h2><p class="lead">いまは、基本の文字を Zen角ゴシック New、押すもの（ボタン・タブ・選ぶ欄）だけを Zen丸ゴシックにしています。'
-    + 'これまでの文字に戻すときは「規定の文字」を選んでください。この端末で有効です。</p>'
-    + '<div class="aspmode" role="radiogroup" aria-label="文字の形">'
-    + [["trial", "いまの文字", "基本: Zen角ゴシック New／押すもの: Zen丸ゴシック"], ["default", "規定の文字", "これまでの文字（端末に入っている文字）"]].map(([v, t, d]) =>
-      '<label class="aspm"><input type="radio" name="fontmode" value="' + v + '"' + (v === cur ? " checked" : "") + '><b>' + t + "</b><span>" + d + "</span></label>").join("")
-    + '</div><p class="said" role="status"></p>';
-  sec.addEventListener("change", ev => {
-    try { localStorage.setItem(FONT_KEY, ev.target.value); } catch (e) { /* 覚えられなくても、この画面では切り替わる */ }
-    document.documentElement.dataset.font = ev.target.value === "default" ? "default" : "trial";
-    sec.querySelector(".said").textContent = "切り替えました";
-  });
-  const last = [...el.querySelectorAll("section, .pbox, details")].filter(n => n.parentElement === el).pop();
-  (last || h1).after(sec);
-}
+// 文字の形の設定は外した（起案者の指示 2026-10-19「設定にある『文字の形』を消して」）。前に「規定の文字」を選んだ端末も、決まりの文字に戻す
+try { localStorage.removeItem("taguri_font_v1"); } catch (e) { /* 消せなくても下で決まりの文字にする */ }
+document.documentElement.dataset.font = "trial";
 
 function stampRerate(root) {
   root.querySelectorAll(".rec-row").forEach(row => {
@@ -4684,6 +4683,47 @@ document.addEventListener("click", ev => {
   });
 });
 
+// --- アカウントの小窓（起案者の指示 2026-10-19「現在のアカウントアイコンを押したら、現在開いている画面の上にポップアップが出るように
+// して。ポップアップの中にアカウントと設定とログアウト（この端末でログイン）を入れて、それぞれ押したらページに飛ぶように」）。
+// 電話の幅は右上のアイコン（.pacct）、パソコンの幅は左の帯の「アカウント」から開く
+function closeAcctMenu() {
+  document.querySelectorAll(".acctpop").forEach(p => p.remove());
+  document.querySelectorAll("[data-acct-menu]").forEach(b => b.setAttribute("aria-expanded", "false"));
+}
+function openAcctMenu(btn) {
+  closeAcctMenu();
+  const pop = document.createElement("div");
+  pop.className = "acctpop";
+  pop.setAttribute("role", "menu");
+  pop.innerHTML = '<a role="menuitem" href="/account" data-path="/account">' + ico("user", 16) + "アカウント</a>"
+    + '<a role="menuitem" href="/settings" data-path="/settings">' + ico("gear", 16) + "設定</a>"
+    + '<button type="button" role="menuitem" data-acct-logout>' + ico("logout", 16) + "ログアウト<small>（この端末で）</small></button>";
+  document.body.appendChild(pop);
+  const r = btn.getBoundingClientRect(), w = pop.offsetWidth;
+  pop.style.top = Math.round(Math.min(r.bottom + 6, window.innerHeight - pop.offsetHeight - 8)) + "px";
+  pop.style.left = Math.round(Math.max(8, Math.min(r.right - w, window.innerWidth - w - 8, r.left < window.innerWidth / 2 ? r.left : r.right - w))) + "px";
+  btn.setAttribute("aria-expanded", "true");
+  pop.querySelector("a,button").focus();
+}
+document.addEventListener("click", async ev => {
+  const btn = ev.target.closest("[data-acct-menu]");
+  if (btn) {
+    ev.preventDefault(); ev.stopImmediatePropagation();
+    if (btn.getAttribute("aria-expanded") === "true") closeAcctMenu(); else openAcctMenu(btn);
+    return;
+  }
+  const pop = ev.target.closest(".acctpop");
+  if (!pop) { closeAcctMenu(); return; }
+  if (ev.target.closest("a")) { setTimeout(closeAcctMenu, 0); return; }   // 画面の移動は、ふだんのリンクと同じ道で
+  if (ev.target.closest("[data-acct-logout]")) {
+    const d = await post("/api/logout", {}, pop, "ログアウトしました");
+    if (d) try { for (const k of ["taguri_login_email", "taguri_login_agree", "taguri_login_intent", "taguri_login_saved_at"]) localStorage.removeItem(k); } catch {}
+    if (d) location.href = "/login";
+  }
+}, true);
+document.addEventListener("keydown", ev => { if (ev.key === "Escape" && document.querySelector(".acctpop")) closeAcctMenu(); });
+window.addEventListener("resize", closeAcctMenu);
+
 // --- アカウント（Worker の screens/account.js。本人だけが見るページ） ---------------
 // 表示名の保存と、ログアウト。ログアウトは Worker の /api/logout（この端末）・/api/logout/all（すべて）
 document.addEventListener("submit", async ev => {
@@ -4692,10 +4732,25 @@ document.addEventListener("submit", async ev => {
   ev.preventDefault();
   const d = await post("/api/account", {display_name: f.elements.display_name.value}, f, "保存しました");
   if (d) {
-    const n = document.querySelector(".acname");
+    const n = document.querySelector(".acname .acname-t") || document.querySelector(".acname");
     if (n) n.textContent = d.display_name || "たぐりの利用者";
+    f.elements.display_name.defaultValue = d.display_name || "";
+    setTimeout(() => showNameForm(false), 900);
   }
 }, true);
+// 表示名は名前の右のえんぴつを押すと直す欄が開く（起案者の指示 2026-10-19）。「やめる」で閉じて、打ちかけた名前は元に戻す
+function showNameForm(open) {
+  const f = document.querySelector("form[data-account-name]"), b = document.querySelector("[data-account-name-edit]");
+  if (!f) return;
+  f.hidden = !open;
+  if (b) { b.hidden = open; b.setAttribute("aria-expanded", String(open)); }
+  if (open) { f.elements.display_name.focus(); f.elements.display_name.select(); }
+  else { f.elements.display_name.value = f.elements.display_name.defaultValue; const said = f.querySelector(".said"); if (said) said.textContent = ""; if (b) b.focus(); }
+}
+document.addEventListener("click", ev => {
+  if (ev.target.closest("[data-account-name-edit]")) showNameForm(true);
+  else if (ev.target.closest("[data-account-name-cancel]")) showNameForm(false);
+});
 // アイコン画像（起案者の指示 2026-10-14）。**ブラウザで小さくしてから送る**: まん中を正方形に
 // 切り抜いて 160×160 にし、WebP（書けない端末では JPEG）にする。元の写真は送らない（数 MB の写真を
 // そのまま保存すると D1 の無料枠を食う。上限はサーバーが 60,000 文字で確かめる）

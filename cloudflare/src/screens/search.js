@@ -21,7 +21,7 @@ import {peopleByKey} from './diary.js';
 import {parseCredits} from './credits.js';
 import {loadWorks, titleKey} from './works.js';
 import {loadDeclared, buckets, nz, pastFromIndex} from './lists.js';
-import {titleKey as indexKey} from '../stage-search.js';
+import {titleKey as indexKey, titlePrefixes, prefixWhere} from '../stage-search.js';
 import {stageInfo, fallbackTemplate} from './fallback.js';
 import {tourBlock} from './schedule.js';
 import {withTour} from './recommend.js';
@@ -151,7 +151,7 @@ async function upcomingMonths(ctx) {
 // ---------------------------------------------------------------- 過去の公演（2019 年〜）
 // 起案者の指示（2026-10-17）「『探す』で興味ありにもお気に入りにも観たわけでもないけど、過去の公演表示させることできる？」
 // →「ボタン 2 つで入れて」: 観た（日記帳に足して公演に結び付ける）／観ればよかった（見逃した公演の一覧）。
-// 引き方は 2 つだけ（どちらも past_stage を全部は読まない）: 題名の先頭一致（tkey の索引）と、人・団体の名前の
+// 引き方は 2 つだけ（どちらも past_stage を全部は読まない）: 題名の先頭一致（tkey の索引。「舞台」などの頭の語の後ろも）と、人・団体の名前の
 // 完全一致（R2 の名前の索引 pastidx、lists.pastFromIndex）。途中の語や、名前の後ろの括弧（所属）では当たらない
 const PAST_TITLE_ROWS = 80, PAST_SHOW = 15;
 const md = d => (/^\d{4}-\d{2}-\d{2}$/.test(d || '') ? `${d.slice(0, 4)}/${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}` : '');
@@ -167,8 +167,10 @@ async function pastHits(ctx, q, ws) {
   };
   const k = indexKey(q);
   if (Array.from(k).length >= 2) {
-    const {results} = await ctx.db.prepare('SELECT stage_id,title,tkey,start,end,venue,grp FROM past_stage WHERE tkey>=? AND tkey<? ORDER BY tkey LIMIT ?')
-      .bind(k, k + '\u{10FFFF}', PAST_TITLE_ROWS).all();
+    // 「舞台」「ミュージカル」など題名の頭に付く語の後ろも先頭一致で引く（stage-search.titlePrefixes、起案者の指摘 2026-10-19）
+    const pw = prefixWhere(titlePrefixes(k));
+    const {results} = await ctx.db.prepare(`SELECT stage_id,title,tkey,start,end,venue,grp FROM past_stage WHERE ${pw.sql} ORDER BY tkey LIMIT ?`)
+      .bind(...pw.args, PAST_TITLE_ROWS).all();
     for (const r of results) add(r, '題名');
   }
   for (const key of [...new Set([nz(q), nz(fold(q))])].filter(x => Array.from(x).length >= 2)) {

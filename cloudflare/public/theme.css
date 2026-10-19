@@ -1572,3 +1572,19 @@ details.lprice:not([open]):not(#_)>summary .plist>li:only-child::before{display:
 .rec-row .lcast .lcmore{display:inline;margin:0 0 0 6px;padding:0;min-height:0;border:0;background:none;box-shadow:none;color:var(--mute);font:inherit;font-size:11.5px;text-decoration:underline;cursor:pointer}
 .rec-row .lcast .lcmore:hover{color:var(--ink)}
 .rec-row .lcast.open .lrest{display:inline}
+
+/* アカウントの表示名の右のえんぴつ（起案者の指示 2026-10-19）。押すと下に直す欄が開く */
+.acname{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.acname .acedit{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;min-width:32px;padding:0;border:0;border-radius:50%;background:none;box-shadow:none;color:var(--mute);cursor:pointer;position:relative}
+.acname .acedit::after{content:"";position:absolute;inset:-6px}
+.acname .acedit:hover,.acname .acedit:focus-visible{color:var(--ink);background:var(--fold-bg)}
+.acname .acedit[hidden]{display:none}
+.acform[hidden]{display:none}
+
+/* アカウントの小窓（app.js openAcctMenu。起案者の指示 2026-10-19）: 押したアイコンのすぐ下に、いまの画面の上に重ねて出す */
+.acctpop{position:fixed;z-index:60;min-width:200px;padding:6px;background:var(--surf);border:1px solid var(--ring);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.14);display:flex;flex-direction:column}
+.acctpop a,.acctpop button{width:100%;justify-content:flex-start;margin:0;display:flex;align-items:center;gap:10px;min-height:44px;padding:0 12px;border:0;border-radius:8px;background:none;box-shadow:none;color:var(--ink);font:inherit;font-size:14px;text-align:left;text-decoration:none;cursor:pointer}
+.acctpop a:hover,.acctpop button:hover,.acctpop a:focus-visible,.acctpop button:focus-visible{background:var(--fold-bg)}
+.acctpop small{margin-left:2px;color:var(--mute);font-size:12px}
+.acctpop .said:not(:empty){padding:4px 12px;font-size:12px;color:var(--mute)}
+.side button.pacct{border:0;background:none;box-shadow:none;color:inherit;cursor:pointer}

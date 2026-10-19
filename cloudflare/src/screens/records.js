@@ -2,7 +2,7 @@
 // themselves (起案者の指示 2026-10-14「残りの画面も順に移して」).
 import {isScaled} from './grade.js';
 import {loadWorks} from './works.js';
-import {peopleByKey, recordsLede} from './diary.js';
+import {peopleByKey, recordsLede, autoMerge} from './diary.js';
 import {autoLink, pastStages} from './autolink.js';
 import {loadDeclared} from './lists.js';
 import {strip} from './py.js';
@@ -48,7 +48,8 @@ export async function ratedRows(ctx, ws) {
 /** app._records_base */
 export async function recordsBase(ctx) {
   await autoLink(ctx);
-  const ws = await loadWorks(ctx);
+  let ws = await loadWorks(ctx);
+  if ((await autoMerge(ctx, ws)).length) ws = await loadWorks(ctx);   // 同じ作品の記録を自動でまとめる（diary.autoMerge）
   const seen = ws.filter(w => !w.unseen);
   return {ws, seen, rated: await ratedRows(ctx, seen), nSkip: ws.length - seen.length,
     nRated: seen.filter(w => w.verdict).length, nNotes: seen.filter(w => strip(w.note_impression || '')).length};

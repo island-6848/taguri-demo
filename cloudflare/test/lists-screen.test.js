@@ -612,8 +612,12 @@ test('行く日が過ぎた券は、その回の記録（未評価）になる�
     await screen(env, a, 'unrated');
     await screen(env, a, 'unrated');
     assert.deepEqual(works().map(w => [w.first_date, w.time]), [['2026-11-03', '14:00'], ['2026-11-03', '18:00']]);
-    // 行かなかった回を消す（外す → 完全に取り消す）と、その回の券も消え、作り直さない
-    const night = works().find(w => w.time === '18:00').work_key;
+    // 同じ公演の 2 回は、同じ作品として自動でまとまる（起案者の指示 2026-10-19「回は違っても同じ作品なら同じ作品のツリーとして統合する
+    // 作業を自動でやって」、diary.autoMerge）。早い回（昼）に夜の回がまとまる
+    const night = works().find(w => w.time === '18:00').work_key, day = works().find(w => w.time === '14:00').work_key;
+    assert.deepEqual(sqlite.prepare('SELECT work_key, into_key FROM merges').all().map(r => [r.work_key, r.into_key]), [[night, day]]);
+    // 行かなかった回を消す（まとめを外す → 外す → 完全に取り消す）と、その回の券も消え、作り直さない
+    assert.equal((await step(env, a, {post: '/api/merge_work', body: {work_key: day, unmerge: true}})).status, 200);
     assert.equal((await step(env, a, {post: '/api/drop_work', body: {work_key: night}})).status, 200);
     assert.equal((await step(env, a, {post: '/api/purge_work', body: {key: night}})).status, 200);
     await screen(env, a, 'unrated');

@@ -13,6 +13,7 @@ const ICONS = {
   book: 'M4 5h7v15H4zM13 5h7v15h-7M11 5v15',
   check: 'M4.5 12.5 9.5 18 20 6',
   info: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 11v5.5M12 7.6h.01',
+  pencil: 'M4 20h4L18 10l-4-4L4 16zM13.5 6.5l4 4',
 };
 const ico = (name, size = 16) => `<svg class="ico" viewBox="0 0 24 24" width="${size}" height="${size}"`
   + ` fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"`
@@ -100,16 +101,17 @@ async function accountScreen(_params, ctx) {
 <p class="lede">あなただけが見られるページです。ほかの人には表示されません。</p>
 <section class="acct-card acct-me">
 <div class="acav" aria-hidden="true">${avatar?.value && avatarOk(avatar.value) ? `<img src="${E(avatar.value)}" alt="">` : ico('user', 30)}</div>
-<div class="acid"><p class="acname">${display ? E(display) : 'たぐりの利用者'}</p>
+<div class="acid"><p class="acname"><span class="acname-t">${display ? E(display) : 'たぐりの利用者'}</span><button type="button" class="acedit" data-account-name-edit aria-label="表示名を変える" title="表示名を変える">${ico('pencil', 16)}</button></p>
 ${since ? `<p class="acsince">${since}から使っています</p>` : ''}</div>
 <div class="acpic"><label class="btn acpick">アイコン画像を選ぶ<input type="file" accept="image/*" data-account-avatar hidden></label>
 <button type="button" data-account-avatar-clear${avatar?.value ? '' : ' hidden'}>画像を外す</button>
 <span class="said" data-account-avatar-said role="status" aria-live="polite"></span>
 <small>選んだ画像はまん中を正方形に切り抜いて、小さくしてから保存します。この画面にだけ出ます。</small></div>
-<form class="acform" data-account-name>
+<!-- 表示名は名前の右のえんぴつを押して直す（起案者の指示 2026-10-19「表示名の編集は、名前の右にえんぴつアイコンおいて編集できるようにして」） -->
+<form class="acform" data-account-name hidden>
 <label for="acname">表示名<small>（${NAME_MAX} 文字まで。この画面にだけ出ます）</small></label>
 <div class="acrow"><input id="acname" name="display_name" maxlength="${NAME_MAX}" value="${E(display)}" autocomplete="nickname">
-<button type="submit">保存</button></div><p class="said" role="status" aria-live="polite"></p></form>
+<button type="submit">保存</button><button type="button" data-account-name-cancel>やめる</button></div><p class="said" role="status" aria-live="polite"></p></form>
 </section>
 <section class="acct-card">${h2('book', 'これまでの記録')}
 <div class="acstats">${stat(seen.length, '観た作品', '/records/works')}${stat(seen.reduce((n, w) => n + (Number(w.times) || 1) + (w.merged || []).length, 0), '観た回数', '/records/works')}${stat(rated.length, '評価した作品', '/rate')}${stat(noted.length, '感想', '/rate/notes')}${stat(KINDS.reduce((n, k) => n + (favs[k] || []).length, 0), 'お気に入り', '/recommend/favourites')}${stat(reacts?.n || 0, '興味あり', '/recommend/interest')}</div>

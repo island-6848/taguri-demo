@@ -153,3 +153,6 @@ body.auth .status.bad{color:var(--neg)}
 .auth-card.legal ol.go>li::before{content:"(" counter(go) ")";position:absolute;left:-2.4em;width:2.1em;text-align:right}
 .auth-card.legal ol.iroha{list-style-type:katakana;padding-left:2em;margin:6px 0 0}
 .auth-card.legal li>ol{margin:6px 0 0}
+/* 新しいロゴ（横組み、帯の .tgl-row と同じ図。起案者の指示 2026-10-19） */
+.auth-top .brand .tgl-row{display:block;height:36px;width:auto;aspect-ratio:168/64}
+@media(max-width:520px){.auth-top .brand .tgl-row{height:30px}}

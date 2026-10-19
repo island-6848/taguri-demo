@@ -11,7 +11,7 @@ import {recRow, venueOf, venueKey, ico, h2, stageLabels} from './row.js';
 import {hashtagsHtml, noteTags} from './hashtags.js';
 import {promoteOwned} from './lists.js';
 import {rowInfos} from './rowinfo.js';
-import {peopleByKey} from './diary.js';
+import {peopleByKey, autoMerge} from './diary.js';
 
 /** serve.VERDICTS / charts.VERDICT_ORDER */
 const VERDICTS = ['◎', '○', '△', '×', 'まだ判断できない'];
@@ -34,7 +34,8 @@ export const SHEET_TOP = 15;
 async function rateBase(ctx) {
   await promoteOwned(ctx);           // app._load -> _rebucket -> _promote_owned_tickets
   await autoLink(ctx);
-  const all = await loadWorks(ctx);
+  let all = await loadWorks(ctx);
+  if ((await autoMerge(ctx, all)).length) all = await loadWorks(ctx);   // 同じ作品の記録を自動でまとめる（diary.autoMerge）
   const unrated = all.filter(w => !w.verdict && w.bucket !== 'upcoming' && !w.unseen);
   const nSkip = all.filter(w => w.unseen && !w.verdict && w.bucket !== 'upcoming').length;
   const rated = all.filter(w => w.verdict && !w.unseen);

@@ -17,6 +17,14 @@ const ART = {
 <path d="M13 27h16M13 34h12" stroke="var(--ink2)" stroke-width="2" stroke-linecap="round" opacity=".55"/>
 <circle cx="48" cy="46" r="11" fill="var(--curtain)"/>
 <path d="M42.5 46.5l4 4 7-8" fill="none" stroke="var(--surf)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  // お気に入り: 名前の札（#）と星（起案者の指示 2026-10-19「お気に入りが１件もないときは、おすすめが１件もないときの画面と同じように
+  // アイコンイラストを使ってそのことをわかりやすく説明」）
+  favourite: `<svg class="tip-art" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true">
+<rect x="6" y="20" width="38" height="16" rx="8" fill="var(--surf)" stroke="var(--ink2)" stroke-width="2"/>
+<path d="M14 25l-1.5 6M18.5 25 17 31M11.5 26.8h8M11 29.3h8" stroke="var(--ink2)" stroke-width="1.6" stroke-linecap="round"/>
+<path d="M24 28h13" stroke="var(--ink2)" stroke-width="2" stroke-linecap="round" opacity=".55"/>
+<rect x="12" y="42" width="26" height="12" rx="6" fill="var(--surf)" stroke="var(--ink2)" stroke-width="2" opacity=".6"/>
+<path d="M50 30l3.1 6.3 7 1-5 4.9 1.2 6.9-6.3-3.3-6.3 3.3 1.2-6.9-5-4.9 7-1z" fill="var(--curtain)"/></svg>`,
 };
 
 /** 空のときの案内の枠。art は ART の鍵、text は中の文（<p> を含む HTML）。 */

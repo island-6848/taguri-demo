@@ -185,11 +185,77 @@ async function mergeWorks(ctx, workKey, otherKey) {
   return {ok: true, kept: keep.work_key, kept_title: keep.title, dropped: drop.work_key, dropped_title: drop.title, moved};
 }
 
+/**
+ * 同じ作品の記録を自動でまとめる（起案者の指示 2026-10-19「観劇記録の中でも回は違っても同じ作品なら同じ作品のツリーとして統合する
+ * 作業を自動でやって（今ユーザーの手動）」）。手でまとめる（mergeWorks）のと同じ印（merges）を書く。
+ * - 同じ作品: 題名の鍵（works.titleKey）が同じで、団体が同じか片方に無い・劇場が同じ・同じ公演に結び付いている、のどれか
+ *   （同じ題名の別の上演（別の団体の『ハムレット』）はまとめない。おすすめの束ね方 recommend.sameStage と同じ考え）
+ * - 残すのはいちばん早い日の記録（mergeWorks と同じ）
+ * - 評価が違う記録・感想を書いた記録が 2 つ以上ある組はまとめない（まとめると片方の評価・感想が隠れるため。手でまとめれば選べる）。
+ *   評価が片方だけなら、まとめて残す記録に移す（mergeWorks と同じ）
+ * - 本人が「まとめを外す」をした記録（excluded の nomerge:<鍵>）はまとめ直さない
+ * 書くのは新しくまとめる組の分だけ。まとめる組が無ければ、読み 2 回（記録・外した印）だけで終わる
+ */
+export async function autoMerge(ctx, ws = null) {
+  ws = (ws || await loadWorks(ctx)).filter(w => !w.unseen && w.work_key);
+  const byTitle = new Map();
+  for (const w of ws) {
+    const k = titleKey(w.title || '');
+    if (Array.from(k).length < 2) continue;
+    if (!byTitle.has(k)) byTitle.set(k, []);
+    byTitle.get(k).push(w);
+  }
+  const groups = [...byTitle.values()].filter(g => g.length > 1);
+  if (!groups.length) return [];
+  const {results: off} = await ctx.db.prepare("SELECT uid FROM excluded WHERE user_id=? AND uid LIKE 'nomerge:%'").bind(ctx.uid).all();
+  const nomerge = new Set(off.map(r => r.uid.slice('nomerge:'.length)));
+  const sids = [...new Set(groups.flat().map(w => String(w.stage_id || '')).filter(Boolean))];
+  const grp = new Map();
+  for (let i = 0; i < sids.length; i += 90) {
+    const part = sids.slice(i, i + 90), qs = part.map(() => '?').join(',');
+    const [cur, past] = await Promise.all([
+      ctx.db.prepare(`SELECT stage_id, grp, tour FROM rec_stage WHERE ver=(SELECT v FROM rec_meta WHERE k='current') AND stage_id IN (${qs})`).bind(...part).all().catch(() => ({results: []})),
+      ctx.db.prepare(`SELECT stage_id, grp, '' AS tour FROM past_stage WHERE stage_id IN (${qs})`).bind(...part).all().catch(() => ({results: []}))]);
+    for (const r of [...past.results, ...cur.results]) grp.set(String(r.stage_id), {g: String(r.grp || '').normalize('NFKC').replace(/[\s　]+/gu, ''), tour: r.tour || ''});
+  }
+  const loose = v => String(v || '').normalize('NFKC').replace(/[\s　]+/gu, '');
+  const same = (a, b) => {
+    const x = grp.get(String(a.stage_id || '')) || {}, y = grp.get(String(b.stage_id || '')) || {};
+    if (a.stage_id && a.stage_id === b.stage_id) return true;
+    if (x.tour && x.tour === y.tour) return true;
+    if (!x.g || !y.g || x.g === y.g) return true;
+    return Boolean(loose(a.venue)) && loose(a.venue) === loose(b.venue);
+  };
+  // 評価は作品に 1 つ（まとめた回は同じ評価を共有する）。評価が違う記録どうし・感想を書いた記録どうしは、片方が隠れるのでまとめない
+  const clash = list => new Set(list.map(w => w.verdict || '').filter(Boolean)).size > 1
+    || list.filter(w => strip(w.note_impression || '')).length > 1;
+  const done = [];
+  for (const g of groups) {
+    // 早い日から順に、先に置いた束のどれかと同じ作品なら、その束に入れる
+    const sorted = [...g].sort((a, b) => cmp(a.first_date || '9999', b.first_date || '9999'));
+    const piles = [];
+    for (const w of sorted) {
+      const pile = piles.find(p => p.some(x => same(x, w)));
+      if (pile) pile.push(w); else piles.push([w]);
+    }
+    for (const pile of piles) {
+      const drops = pile.slice(1).filter(w => !nomerge.has(w.work_key));
+      if (!drops.length || clash([pile[0], ...drops])) continue;
+      for (const d of drops) done.push(await mergeWorks(ctx, pile[0].work_key, d.work_key));
+    }
+  }
+  return done;
+}
+
 /** serve.on_merge_work (POST /api/merge_work) */
 async function mergeWorkAction(b, ctx) {
   const workKey = req(b, 'work_key', 'work_key が要る');
   if (truthy(b.unmerge)) {
+    // 外した記録は、自動でまとめ直さない（autoMerge の nomerge:<鍵>）
+    const {results: drops} = await ctx.db.prepare('SELECT work_key FROM merges WHERE user_id=? AND into_key=?').bind(ctx.uid, workKey).all();
     const r = await ctx.db.prepare('DELETE FROM merges WHERE user_id=? AND into_key=?').bind(ctx.uid, workKey).run();
+    if (drops.length) await ctx.db.batch(drops.map(d => ctx.db.prepare("INSERT INTO excluded (user_id, uid, program, updated_at) VALUES (?,?,'auto_merge',?) ON CONFLICT DO NOTHING")
+      .bind(ctx.uid, 'nomerge:' + d.work_key, now(ctx))));
     return {body: {ok: true, n: r.meta?.changes ?? r.changes ?? 0}};
   }
   return {body: await mergeWorks(ctx, workKey, field(b, 'other'))};
@@ -422,7 +488,8 @@ const checkLine = n => !n
  */
 async function worksScreen(params, ctx) {
   await autoLink(ctx);
-  const ws = await loadWorks(ctx);
+  let ws = await loadWorks(ctx);
+  if ((await autoMerge(ctx, ws)).length) ws = await loadWorks(ctx);
   const seen = ws.filter(w => !w.unseen);
   const d = {seen, nSkip: ws.length - seen.length, nRated: seen.filter(w => w.verdict).length,
     nNotes: seen.filter(w => strip(w.note_impression || '')).length};

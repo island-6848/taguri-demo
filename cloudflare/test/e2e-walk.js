@@ -853,6 +853,9 @@ async function walkA(A) {
     await go('/search?q=' + encodeURIComponent('舞台ふたつめ'));
     const card = page.locator('.ticket[data-stage="102"]').first();
     await card.waitFor();
+    // 「探す」のカードも、おすすめ・興味あり・お気に入りと同じ形（「くわしく」の折りたたみ無し。起案者の指示 2026-10-19）
+    check(await card.locator('details.more').count() === 0 && await card.locator('.leadbox').count() === 1, '探すのカードがほかの画面と違う形');
+    await shotsBoth('search-card');
     await card.locator('button[data-v="owned"]').click();
     const said = await waitSaid(card, /記録しました|購入済/);
     note('押したあと: 「' + said.trim() + '」');
@@ -1109,7 +1112,51 @@ async function walkA(A) {
     const t = await content();
     note((t.match(/\d+\s*観た回数/) || ['観た回数なし'])[0].replace(/\s+/g, ' ') + '・' + (t.match(/\d+\s*お気に入り/) || ['お気に入りなし'])[0].replace(/\s+/g, ' '));
     check(/観た回数/.test(t), '観た回数が無い');
+    // 表示名は名前の右のえんぴつで直す（起案者の指示 2026-10-19）。欄は初めは閉じている
+    check(!(await page.locator('form[data-account-name]').isVisible()), '表示名の欄が初めから開いている');
+    await shotsBoth('account-name-closed');
+    await page.locator('[data-account-name-edit]').click();
+    await page.fill('#acname', '観劇の人');
+    await page.locator('form[data-account-name] button[type=submit]').click();
+    await page.locator('.acname', {hasText: '観劇の人'}).waitFor({timeout: 10000}).catch(() => {});
+    check((await page.locator('.acname').innerText()).includes('観劇の人'), '表示名が変わらない');
+    await page.waitForTimeout(1200);
+    check(!(await page.locator('form[data-account-name]').isVisible()), '保存したあと欄が閉じない');
     await shotsBoth('account-stats');
+  });
+
+  // 起案者の指示 2026-10-19: アカウントのアイコンで小窓（アカウント・設定・ログアウト）、歯車と「戻る」を外す、設定の 2 つを折りたたみに、
+  // 「文字の形」を外す、帯の「今週のおすすめ」
+  await step('画面の枠: アカウントの小窓・戻る無し・設定の折りたたみ・帯の名前（PC・電話の幅）', async () => {
+    await go('/settings');
+    const t = await content();
+    check(!/文字の形/.test(t), '設定に「文字の形」が残っている');
+    check(await page.locator('details.aspset').count() === 1 && await page.locator('details.credset').count() === 1, '「評価の詳細の出し方」「カードに出す名前」が折りたたみでない');
+    check(await page.locator('.backbtn').count() === 0, '「戻る」が残っている');
+    check(await page.locator('.side a[data-path="/settings"]').count() === 0, '帯に設定が残っている（小窓に入れたはず）');
+    check((await page.locator('.side').innerText()).includes('今週のおすすめ') && !(await page.locator('.side').innerText()).includes('今週のあなたへのおすすめ'), '帯の名前が「今週のおすすめ」でない');
+    // PC: 帯の「アカウント」で小窓
+    await page.locator('.side a[data-acct-menu]').first().click();
+    const pop = page.locator('.acctpop');
+    await pop.waitFor({timeout: 5000});
+    // 括弧は画面で半角になる（halfwidth.js）
+    check((await pop.innerText()).replace(/\s+/g, '') === 'アカウント設定ログアウト(この端末で)', '小窓の中身: ' + (await pop.innerText()).replace(/\s+/g, ' '));
+    await page.screenshot({path: join(OUT, 'acctpop-pc.png')});
+    await pop.locator('a[href="/account"]').click();
+    await settle();
+    check(new URL(page.url()).pathname === '/account' && await pop.count() === 0, '小窓の「アカウント」でアカウントの画面に行かない');
+    // 電話の幅: 右上のアイコンで小窓、歯車は無い
+    await page.setViewportSize({width: 390, height: 844});
+    await sleep(300);
+    check(await page.locator('.side .pset').count() === 0, '電話の幅に歯車が残っている');
+    await page.locator('.side button.pacct').click();
+    await pop.waitFor({timeout: 5000});
+    await page.screenshot({path: join(OUT, 'acctpop-phone.png')});
+    await pop.locator('a[href="/settings"]').click();
+    await settle();
+    check(new URL(page.url()).pathname === '/settings', '小窓の「設定」で設定の画面に行かない');
+    await page.screenshot({path: join(OUT, 'settings-phone.png'), fullPage: true});
+    await page.setViewportSize({width: 1280, height: 900});
   });
 
   await step('復旧コードでログイン', async () => {

@@ -2967,6 +2967,35 @@
    "verifies": []
   },
   {
+   "id": "dec-ui-1019",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-19",
+   "title": "2026-10-19 の画面の変更: 過去の公演も題名の頭の語（舞台・ミュージカル…）の後ろで引く、同じ作品の記録を自動でまとめる、表示名はえんぴつで直す、探すのカードをほかと同じ形に、アカウントの小窓、戻る・歯車・文字の形を外す、設定の 2 つを折りたたみに、帯は「今週のおすすめ」、ログインの画面のロゴ、お気に入りが無いときの案内",
+   "sources": [
+    "cloudflare/src/stage-search.js",
+    "cloudflare/src/screens/suggest.js",
+    "cloudflare/src/screens/search.js",
+    "cloudflare/src/screens/diary.js",
+    "cloudflare/src/screens/rate.js",
+    "cloudflare/src/screens/records.js",
+    "cloudflare/src/screens/account.js",
+    "cloudflare/src/screens/lists.js",
+    "cloudflare/src/screens/guide.js",
+    "cloudflare/public/login.html",
+    "cloudflare/public/auth.css",
+    "web/app.js",
+    "web/theme.css",
+    "web/index.html",
+    "web/404.html",
+    "cloudflare/test/title-leads.test.js",
+    "cloudflare/test/auto-merge.test.js",
+    "cloudflare/test/ui-1019.test.js",
+    "cloudflare/test/e2e-walk.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-url-app-taguri",
    "type": "decision",
    "status": "adopted",
@@ -10026,6 +10055,11 @@
    "from": "dec-ui-1018b",
    "rel": "depends_on",
    "to": "dec-rec-row-like-card"
+  },
+  {
+   "from": "dec-ui-1019",
+   "rel": "depends_on",
+   "to": "q-e2e-register-rework"
   },
   {
    "from": "dec-url-app-taguri",

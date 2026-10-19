@@ -23,6 +23,25 @@ export function titleKey(title) {
   return n.replace(CROWN, '').replace(DROP, '').toLowerCase();
 }
 
+// 題名の頭に付く形式の語（「舞台 銀河鉄道の父」「ミュージカル『…』」）。過去の公演（past_stage）は題名の先頭一致
+// （tkey の索引）でしか引けないので、打った言葉の頭にこれらを付けた形でも引く（起案者の指摘 2026-10-19「『銀河鉄道の父』を
+// 探そうとしたら『舞台 銀河鉄道の父』で登録されてるらしくて参照できなかった」）。途中の語まで当てると、打つたびに
+// past_stage を全部読むことになる（D1 の読み取りの無料枠）ので、索引で引ける頭の語だけにする。語は 2026-10-19 の
+// 取得データ（data/review/candidates.jsonl）で題名の頭に多かったもの。逆に、打った言葉の頭にこの語があれば外した形でも引く
+export const TITLE_LEADS = ['舞台', 'ミュージカル', '人形劇', '朗読劇', '音楽劇', 'オペラ', '歌劇', '演劇', 'リーディング',
+  '朗読', '喜劇', '新作', '再演', '二人芝居', '一人芝居', 'ひとり芝居', 'ストレートプレイ', 'バレエ', 'ライブ'];
+/** The title keys to look up by prefix: the query's key, without a leading form word, and with each form word in front. */
+export function titlePrefixes(k) {
+  const leads = TITLE_LEADS.map(titleKey);
+  const lead = leads.find(l => k.startsWith(l) && Array.from(k).length - Array.from(l).length >= 2);
+  const base = lead ? k.slice(lead.length) : k;
+  return [...new Set([k, base, ...leads.map(l => l + base)])];
+}
+/** SQL for "tkey starts with one of these keys" on the tkey index, and its arguments (2 per key). */
+export function prefixWhere(keys) {
+  return {sql: '(' + keys.map(() => '(tkey>=? AND tkey<?)').join(' OR ') + ')', args: keys.flatMap(x => [x, x + '\u{10FFFF}'])};
+}
+
 const chars = s => Array.from(s);
 export function bigrams(key) {
   const c = chars(key), set = new Set();
