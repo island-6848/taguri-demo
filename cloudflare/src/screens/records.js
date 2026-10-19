@@ -8,7 +8,7 @@ import {loadDeclared} from './lists.js';
 import {strip} from './py.js';
 import {body as traceBody} from './trace.js';
 import {panel as chroniclePanel} from './chronicle.js';
-import {spiralPanel, venuePanel} from './charts.js';
+import {spiralPanel} from './charts.js';
 import {craftRows, panel as comparePanel, popNote, population} from './compare.js';
 import {RECORDS_EMPTY} from './diary.js';
 import {localNow} from './py.js';
@@ -136,7 +136,6 @@ ${spiralPanel(d.seen)}
 ${timetable}
 ${conquest}
 
-${venuePanel(d.rated)}
 <div data-fig="storyline"></div>
 <div data-fig="people"></div>
 </div>

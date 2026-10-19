@@ -1791,6 +1791,17 @@
    "verifies": []
   },
   {
+   "id": "dec-overview-without-venue-ranking",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-19",
+   "title": "眺めるのよく行く劇場欄を削除する",
+   "sources": [
+    "cloudflare/src/screens/records.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-own-domain",
    "type": "decision",
    "status": "proposed",
