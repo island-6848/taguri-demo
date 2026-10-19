@@ -36,7 +36,10 @@ from pathlib import Path
 # ── 上限（無料枠より低く取る。変えるときは docs/free-tier-budget.md と knowledge を直す）──
 FREE = {"actions_minutes_month": 2_000, "d1_writes_day": 100_000, "r2_bytes": 10 * 10**9,
         "r2_class_a_month": 1_000_000, "r2_class_b_month": 10_000_000}
-CAPS = {"actions_minutes_31d": 1_500, "d1_writes_day": 80_000, "r2_bytes": 8 * 10**9,
+# actions_minutes_31d は一時的に 1,500 → 1,530（2026-10-19、起案者の判断「急ぐ。あげてよい」）。2026 年の過去公演の
+# 未読 159 件の本文を取る Stories を 1 回通すため（見込み 1,484 分＋毎日の 15 分で、1,500 では残りが 1 分だった）。
+# 無料の 2,000 分までは 470 分残る。その 1 回が動いたら 1,500 に戻す
+CAPS = {"actions_minutes_31d": 1_530,"d1_writes_day": 80_000, "r2_bytes": 8 * 10**9,
         "r2_class_a_month": 300_000, "r2_class_b_month": 3_000_000,
         # 手元の管理画面（tools/admin）の分。取得の分と同じ上限の中で、さらにこれだけに抑える
         "admin_d1_writes_day": 1_000, "admin_posters_month": 300,
