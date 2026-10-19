@@ -14,21 +14,22 @@ export const NO_REASON = '<li class="rs none">理由を出せていません</li
 
 /** render_recommend.buttons */
 /** 答えた公演は、どの画面でも「回答を直す」1 つにし、押すと三択が開く（起案者の指示 2026-10-14）。 */
-export const changeAnswer = sid => '<button class="wnb" data-btns-open="1">回答を直す</button>' + buttons(sid, true);
+export const changeAnswer = (sid, current = '') => '<button class="wnb" data-btns-open="1">回答を直す</button>' + buttons(sid, true, current);
 // 回答（起案者の指示 2026-10-17「興味あり、興味なし、購入済、行けないの 4 択にして」→「行けない、のボタンは
 // おすすめページには出さないで。興味あり、のページにつけて」）。行けない＝気にはなるが行けない: おすすめから外し、
 // 興味ありの一覧には入れず、好みの手がかり（興味ありと同じ向き）には使う。
-// おすすめ・探す・開幕リマインドは 興味あり・興味なし・購入済 の 3 つ。興味ありの一覧は、押してある「興味あり」を
-// 除いた 興味なし・購入済・行けない の 3 つを、畳まずにそのまま出す
+// おすすめ・探す・開幕リマインドは 興味あり・興味なし・購入済 の 3 つ。
+// 2026-10-19: 興味ありの一覧は現在の「興味あり」も出し、同じ選択肢の押し直しで解除する。
 const LABEL = {interest: '興味あり', nointerest: '興味なし', owned: '購入済', cantgo: '行けない'};
-const band = (sid, values, hidden = false) => `<span class="btns"${hidden ? ' hidden' : ''} data-stage="${E(sid)}">`
-  + values.map(v => `<button data-v="${v}">${LABEL[v]}</button>`).join('') + '<span class="said"></span></span>';
-export const buttons = (sid, hidden = false) => band(sid, ['interest', 'nointerest', 'owned'], hidden);
+const band = (sid, values, hidden = false, current = '') => `<span class="btns"${hidden ? ' hidden' : ''} data-stage="${E(sid)}"${current ? ` data-current="${E(current)}"` : ''}>`
+  + values.map(v => `<button data-v="${v}"${v === current ? ' aria-pressed="true" class="picked"' : ''}>${LABEL[v]}</button>`).join('') + '<span class="said"></span></span>';
+export const buttons = (sid, hidden = false, current = '') => band(sid, current === 'cantgo' ? ['interest', 'nointerest', 'owned', 'cantgo'] : ['interest', 'nointerest', 'owned'], hidden, current);
 // 「なぜ気になったか」は、これまで「回答を直す」と一緒に開いていた（起案者 2026-10-15）。その押し口を、名前を変えて残す
-export const interestButtons = sid => '<button class="wnb" data-btns-open="1">なぜ気になったか</button>' + band(sid, ['nointerest', 'owned', 'cantgo']);
+// 保存済みの「興味あり」も押し直して解除できるよう、現在の回答を選択済みで出す。
+export const interestButtons = sid => band(sid, ['interest', 'nointerest', 'owned', 'cantgo'], false, 'interest');
 /** お気に入り: 購入済みにするボタンだけ（起案者の指示 2026-10-15「お気に入りから、購入済みを登録できるようにして」）。 */
-export const ownedButton = sid => `<span class="btns" data-stage="${E(sid)}">`
-  + '<button data-v="owned">購入済みにする</button><span class="said"></span></span>';
+export const ownedButton = (sid, owned = false) => band(sid, ['owned'], false, owned ? 'owned' : '')
+  .replace('>購入済</button>', owned ? '>購入済</button>' : '>購入済みにする</button>');
 /** お気に入り: 購入済みにした公演は一覧に残し、ボタンの代わりに印を出す（起案者の指示 2026-10-15「購入済み押してもお気に入りから消さないで」）。 */
 export const ownedMark = '<span class="owned-mark">購入済みです。<a href="/tickets?t=__TAGURI_TOKEN__">購入済の公演で行く日を入れる</a></span>';
 
@@ -40,12 +41,9 @@ export function whyNote(sid, note = '', {open = false, ask = false} = {}) {
     + '<div class="wn-foot"><span class="hint">書いた文にある名前は、「お気に入り」に登録する候補として出てきます</span>'
     + '<span class="said"></span></div></div>';
   if (open || !ask) return box;
-  const head = note
-    ? `<div class="wnr"><span class="wnl">なぜ気になったか</span><span class="wnt">${E(note)}</span><button class="wnb" data-why="1">書き直す</button></div>`
-    : '<button class="wnb" data-why="1">なぜ気になったかを書く<span class="opt">任意</span></button>';
-  // ふだんは畳み、「回答を直す」で三択と一緒に出す（起案者の指示 2026-10-15「なぜ気になったか？の理由ユーザーに
-  // 向けて出す必要ある？…回答を直すのボタンを押したら出るように」。render_recommend.why_note と同じ）
-  return `<div class="wnw" hidden>${head}${box}</div>`;
+  // 記入済みの文を閉じた状態でも1行見せる。開くと全文を読め、そのまま編集できる。
+  return `<details class="wnw why-memo"><summary><span class="wnl">なぜ気になったか</span>`
+    + `<span class="wnt">${E(note || 'メモを書く（任意）')}</span></summary>${box.replace(' hidden>', '>')}</details>`;
 }
 
 /** 購入済み公演: a memo before seeing it (起案者の指示 2026-10-14「購入済みの公演のみ、観る前の感想をメモで書いておけるように」). */
@@ -97,7 +95,7 @@ export function compose(template, sid, mode, {rank = null, why = '', poster = ''
     interest: `<span class="sn done">${ico('check', 15)}</span>`,
     favourite: '<span class="wax" aria-hidden="true"></span>'}[mode] || '';
   const btns = {recommend: buttons(sid),
-    interest: interestButtons(sid), owned: changeAnswer(sid), favourite: owned ? ownedMark : ownedButton(sid)}[mode] || '';
+    interest: interestButtons(sid), owned: changeAnswer(sid, 'owned'), favourite: ownedButton(sid, owned) + (owned ? ownedMark : '')}[mode] || '';
   const answer = mode === 'recommend' || mode === 'interest';
   // Functions as replacements: the inserted text is never read as a replacement pattern ($&).
   return template.replace('<article class="ticket recommend"', () => `<article class="ticket ${mode}"`)

@@ -1080,19 +1080,6 @@
    "verifies": []
   },
   {
-   "id": "dec-diary-collage-quiet",
-   "type": "decision",
-   "status": "adopted",
-   "date": "2026-10-18",
-   "title": "日記帳のコラージュは控えめに。色はテーマのパレットだけ、テープは形を 4 種類、「劇」の切手は外す",
-   "sources": [
-    "web/theme.css",
-    "web/app.js",
-    "cloudflare/test/e2e-walk.js"
-   ],
-   "verifies": []
-  },
-  {
    "id": "dec-diary-collage",
    "type": "decision",
    "status": "superseded",
@@ -1104,6 +1091,19 @@
     "cloudflare/src/screens/row.js",
     "cloudflare/src/screens/diary.js",
     "tools/taguri/app.py",
+    "cloudflare/test/e2e-walk.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-diary-collage-quiet",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "日記帳のコラージュは控えめに。色はテーマのパレットだけ、テープは形を 4 種類、「劇」の切手は外す",
+   "sources": [
+    "web/theme.css",
+    "web/app.js",
     "cloudflare/test/e2e-walk.js"
    ],
    "verifies": []
@@ -1563,6 +1563,24 @@
    "verifies": []
   },
   {
+   "id": "dec-interest-ux-toggle-1019",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-19",
+   "title": "興味あり画面の回答状態・月の保持・メモ表示を直し、サービス版の全画面で選択済みの回答をもう一度押すと解除する",
+   "sources": [
+    "cloudflare/src/screens/recommend.js",
+    "cloudflare/src/screens/lists.js",
+    "cloudflare/src/screens/cards.js",
+    "cloudflare/src/screens/reminder.js",
+    "web/app.js",
+    "web/theme.css",
+    "cloudflare/test/answer-clear.test.js",
+    "tools/taguri/check_interest_ux.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-interest-why-1016",
    "type": "decision",
    "status": "adopted",
@@ -1977,6 +1995,19 @@
    "verifies": []
   },
   {
+   "id": "dec-rate-limit",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-14",
+   "title": "回数制限は Cloudflare の Rate Limiting binding（訪問者ごとのブレーキ）と、新規登録の 1 日の上限（D1 で正確に数える）の二段にする",
+   "sources": [
+    "cloudflare/src/rate-limit.js",
+    "cloudflare/wrangler.jsonc",
+    "cloudflare/test/rate-limit.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-rate-limit-fail-open",
    "type": "decision",
    "status": "proposed",
@@ -1989,19 +2020,6 @@
     "cloudflare/test/rate-limit.test.js",
     "tools/taguri/check_service.py",
     "tools/taguri/test_check_service.py"
-   ],
-   "verifies": []
-  },
-  {
-   "id": "dec-rate-limit",
-   "type": "decision",
-   "status": "adopted",
-   "date": "2026-10-14",
-   "title": "回数制限は Cloudflare の Rate Limiting binding（訪問者ごとのブレーキ）と、新規登録の 1 日の上限（D1 で正確に数える）の二段にする",
-   "sources": [
-    "cloudflare/src/rate-limit.js",
-    "cloudflare/wrangler.jsonc",
-    "cloudflare/test/rate-limit.test.js"
    ],
    "verifies": []
   },
@@ -2073,6 +2091,21 @@
    "verifies": []
   },
   {
+   "id": "dec-rec-card-1018-layout",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-18",
+   "title": "おすすめのカード: 発売の札は値段帯のすぐ下、公式サイトと発売の札の枠線 2px、同じ額の幅は 1 つの額、あらすじの続きは地の色なしで題材のハッシュタグ、日程と暦の間をあける",
+   "sources": [
+    "web/app.js",
+    "web/theme.css",
+    "cloudflare/src/screens/schedule.js",
+    "cloudflare/test/schedule.test.js",
+    "cloudflare/test/e2e-walk.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-rec-card-1018-layout-b",
    "type": "decision",
    "status": "adopted",
@@ -2099,21 +2132,6 @@
     "cloudflare/src/screens/schedule.js",
     "cloudflare/test/schedule.test.js",
     "cloudflare/test/cantgo.test.js",
-    "cloudflare/test/e2e-walk.js"
-   ],
-   "verifies": []
-  },
-  {
-   "id": "dec-rec-card-1018-layout",
-   "type": "decision",
-   "status": "adopted",
-   "date": "2026-10-18",
-   "title": "おすすめのカード: 発売の札は値段帯のすぐ下、公式サイトと発売の札の枠線 2px、同じ額の幅は 1 つの額、あらすじの続きは地の色なしで題材のハッシュタグ、日程と暦の間をあける",
-   "sources": [
-    "web/app.js",
-    "web/theme.css",
-    "cloudflare/src/screens/schedule.js",
-    "cloudflare/test/schedule.test.js",
     "cloudflare/test/e2e-walk.js"
    ],
    "verifies": []
@@ -6063,15 +6081,6 @@
    ]
   },
   {
-   "id": "q-domain-taguri-com",
-   "type": "question",
-   "status": "answered",
-   "date": "2026-10-14",
-   "title": "本番の URL を taguri.com にするか（独自ドメインは年額がかかり、無料だけの約束と食い違う）",
-   "sources": [],
-   "verifies": []
-  },
-  {
    "id": "q-domain",
    "type": "question",
    "status": "open",
@@ -6081,6 +6090,15 @@
    "verifies": [
     "S04"
    ]
+  },
+  {
+   "id": "q-domain-taguri-com",
+   "type": "question",
+   "status": "answered",
+   "date": "2026-10-14",
+   "title": "本番の URL を taguri.com にするか（独自ドメインは年額がかかり、無料だけの約束と食い違う）",
+   "sources": [],
+   "verifies": []
   },
   {
    "id": "q-e2e-register-rework",
@@ -7132,17 +7150,6 @@
    "verifies": []
   },
   {
-   "id": "r2-free-tier-billed",
-   "type": "finding",
-   "status": "confirmed",
-   "date": "2026-10-13",
-   "title": "R2 の無料枠は保存 10 GB・Class A 月 100 万回・Class B 月 1,000 万回で、越えた分は請求される（取り出しの通信料は無料）",
-   "sources": [
-    "https://developers.cloudflare.com/r2/pricing/"
-   ],
-   "verifies": []
-  },
-  {
    "id": "r2-free-tier",
    "type": "finding",
    "status": "unverified",
@@ -7151,6 +7158,17 @@
    "sources": [
     "https://flarecalc.com/calculators/r2",
     "https://www.spendbase.co/?p=35561"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "r2-free-tier-billed",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-13",
+   "title": "R2 の無料枠は保存 10 GB・Class A 月 100 万回・Class B 月 1,000 万回で、越えた分は請求される（取り出しの通信料は無料）",
+   "sources": [
+    "https://developers.cloudflare.com/r2/pricing/"
    ],
    "verifies": []
   },
@@ -8652,17 +8670,17 @@
    "to": "simple-design-principles"
   },
   {
+   "from": "dec-diary-collage",
+   "rel": "depends_on",
+   "to": "dec-rec-row-like-card"
+  },
+  {
    "from": "dec-diary-collage-quiet",
    "rel": "supersedes",
    "to": "dec-diary-collage"
   },
   {
    "from": "dec-diary-collage-quiet",
-   "rel": "depends_on",
-   "to": "dec-rec-row-like-card"
-  },
-  {
-   "from": "dec-diary-collage",
    "rel": "depends_on",
    "to": "dec-rec-row-like-card"
   },
@@ -9037,6 +9055,21 @@
    "to": "comp-frontend"
   },
   {
+   "from": "dec-interest-ux-toggle-1019",
+   "rel": "depends_on",
+   "to": "dec-card-dismiss"
+  },
+  {
+   "from": "dec-interest-ux-toggle-1019",
+   "rel": "affects",
+   "to": "dec-recommend-ui-1017"
+  },
+  {
+   "from": "dec-interest-ux-toggle-1019",
+   "rel": "depends_on",
+   "to": "dec-recommend-ux-1019"
+  },
+  {
    "from": "dec-interest-why-1016",
    "rel": "affects",
    "to": "comp-frontend"
@@ -9332,16 +9365,6 @@
    "to": "dec-ticket-price-filter"
   },
   {
-   "from": "dec-rate-limit-fail-open",
-   "rel": "depends_on",
-   "to": "dec-rate-limit"
-  },
-  {
-   "from": "dec-rate-limit-fail-open",
-   "rel": "affects",
-   "to": "comp-auth-throttle"
-  },
-  {
    "from": "dec-rate-limit",
    "rel": "answers",
    "to": "q-rate-limiting"
@@ -9354,6 +9377,16 @@
   {
    "from": "dec-rate-limit",
    "rel": "depends_on",
+   "to": "comp-auth-throttle"
+  },
+  {
+   "from": "dec-rate-limit-fail-open",
+   "rel": "depends_on",
+   "to": "dec-rate-limit"
+  },
+  {
+   "from": "dec-rate-limit-fail-open",
+   "rel": "affects",
    "to": "comp-auth-throttle"
   },
   {
@@ -9407,6 +9440,11 @@
    "to": "dec-font-accent-four-maru"
   },
   {
+   "from": "dec-rec-card-1018-layout",
+   "rel": "affects",
+   "to": "dec-ticket-price-filter"
+  },
+  {
    "from": "dec-rec-card-1018-layout-b",
    "rel": "affects",
    "to": "dec-rec-card-1018-layout"
@@ -9425,11 +9463,6 @@
    "from": "dec-rec-card-1018-layout-c",
    "rel": "affects",
    "to": "dec-rec-card-1018-layout"
-  },
-  {
-   "from": "dec-rec-card-1018-layout",
-   "rel": "affects",
-   "to": "dec-ticket-price-filter"
   },
   {
    "from": "dec-rec-row-like-card",
@@ -12182,6 +12215,11 @@
    "to": "q-vm-host-choice"
   },
   {
+   "from": "q-domain",
+   "rel": "depends_on",
+   "to": "q-direction"
+  },
+  {
    "from": "q-domain-taguri-com",
    "rel": "depends_on",
    "to": "workers-dev-subdomain-rename"
@@ -12195,11 +12233,6 @@
    "from": "q-domain-taguri-com",
    "rel": "affects",
    "to": "q-domain"
-  },
-  {
-   "from": "q-domain",
-   "rel": "depends_on",
-   "to": "q-direction"
   },
   {
    "from": "q-e2e-register-rework",
@@ -12892,21 +12925,6 @@
    "to": "comp-native-screens"
   },
   {
-   "from": "r2-free-tier-billed",
-   "rel": "verifies",
-   "to": "r2-free-tier"
-  },
-  {
-   "from": "r2-free-tier-billed",
-   "rel": "supports",
-   "to": "dec-free-tier-only"
-  },
-  {
-   "from": "r2-free-tier-billed",
-   "rel": "affects",
-   "to": "dec-posters-r2"
-  },
-  {
    "from": "r2-free-tier",
    "rel": "supports",
    "to": "dec-vm-cloudflare"
@@ -12920,6 +12938,21 @@
    "from": "r2-free-tier",
    "rel": "affects",
    "to": "comp-catalog-pipeline"
+  },
+  {
+   "from": "r2-free-tier-billed",
+   "rel": "verifies",
+   "to": "r2-free-tier"
+  },
+  {
+   "from": "r2-free-tier-billed",
+   "rel": "supports",
+   "to": "dec-free-tier-only"
+  },
+  {
+   "from": "r2-free-tier-billed",
+   "rel": "affects",
+   "to": "dec-posters-r2"
   },
   {
    "from": "rating-mixes-aspects",

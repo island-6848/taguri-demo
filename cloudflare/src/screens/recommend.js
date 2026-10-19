@@ -899,6 +899,18 @@ async function fillSlot(ctx, shown, pressed, page = null) {
 
 export async function reactAction(b, ctx) {
   const stageId = String(b.stage_id ?? ''), value = String(b.value ?? '');
+  if (b.clear === true) {
+    if (!/^[A-Za-z0-9_-]{1,40}$/.test(stageId) || value) throw new ValueError('解除する公演だけを指定してください');
+    const ids = [...new Set([stageId, ...(Array.isArray(b.siblings) ? b.siblings.slice(0, 40).map(String)
+      .filter(s => /^\d+$/.test(s)) : [])])];
+    // 日ごとの古い回答も解除する。最新の行だけ消すと、前日の回答が再び有効になってしまう。
+    // 本人のメモ・券・観劇記録は残す。再送しても結果の変わらない明示的な解除にする。
+    await ctx.db.batch([...ids.map(sid => ctx.db.prepare(`UPDATE reaction SET interest=NULL,owned=NULL,why=NULL,
+      rank=NULL,score=NULL,ver=NULL,arm=NULL,updated_at=? WHERE user_id=? AND stage_id=?
+      AND (interest IS NOT NULL OR owned IS NOT NULL)`).bind(new Date(ctx.now).toISOString(), ctx.uid, sid)),
+    ctx.db.prepare('DELETE FROM rec_cache WHERE user_id=?').bind(ctx.uid)]);
+    return {body: {ok: true, saved: true, stage_id: stageId, value: '', cleared: true}};
+  }
   if (b.fill_only) {
     if (!stageId) throw new ValueError('stage_id が要る');
     const shown = (Array.isArray(b.shown) ? b.shown : []).slice(0, 120).map(x => String(x).slice(0, 20));

@@ -621,7 +621,7 @@ export async function interestScreen(params, ctx) {
 <p class="lede">「興味あり」を押した公演を並べています。順位は付けていません。並べ替えは下の「並べ替え」で選べます。チケットが取れたら「すでに持っている」を押してください。「購入済の公演」に移り、上演日を過ぎると評価待ちに並びます。<br>
 「なぜ気になったか」に書いた名前は、<a href="/recommend/favourites?t=__TAGURI_TOKEN__">お気に入り</a>に加える候補として並びます。</p>
 ${rows.length ? mfil : ''}
-${rows.length ? sortForm('/recommend/interest', sort, keys) : ''}
+${rows.length ? sortForm('/recommend/interest', sort, keys, params.get('m') ? `<input type="hidden" name="m" value="${E(params.get('m'))}">` : '') : ''}
 ${list}
 ${rows.length ? mfoot : ''}`;
   return {title: '興味あり', body_html: body};

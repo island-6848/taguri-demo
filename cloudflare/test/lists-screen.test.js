@@ -43,7 +43,7 @@ test('興味あり lists what was answered "interest", with the note; other user
     assert.match(html, /<article class="ticket interest" data-stage="101"/);
     assert.match(html, /<span class="wnt">俳優甲 &amp; 乙<\/span>/);
     // 興味ありの一覧は 興味なし・購入済・行けない を畳まずに（起案者 2026-10-17）。「興味あり」は出さない
-    assert.match(html, /<span class="btns" data-stage="101"><button data-v="nointerest">興味なし<\/button><button data-v="owned">購入済<\/button><button data-v="cantgo">行けない<\/button>/);
+    assert.match(html, /<span class="btns" data-stage="101" data-current="interest"><button data-v="interest" aria-pressed="true" class="picked">興味あり<\/button><button data-v="nointerest">興味なし<\/button><button data-v="owned">購入済<\/button><button data-v="cantgo">行けない<\/button>/);
     assert.doesNotMatch(html.slice(html.indexOf('data-stage="101"')), /data-v="interest"/);
     assert.match(html, /<nav class="idx" aria-label="月で切り替える">/);
     assert.match((await screen(env, b, 'interest')).body_html, /「興味あり」の公演はまだありません/);
@@ -158,7 +158,7 @@ test('開幕リマインド: every stage opening this week, with a prefecture fi
     const answered = (await screen(env, a, 'reminder', '?w=next')).body_html;
     assert.match(answered, /<li class="dgli dgfold trk" data-stage="101">/);
     // 答えた公演は「回答を直す」1 つ（押すと三択が開く）。
-    assert.match(answered, /<button class="wnb" data-btns-open="1">回答を直す<\/button><span class="btns" hidden data-stage="101">/);
+    assert.match(answered, /<button class="wnb" data-btns-open="1">回答を直す<\/button><span class="btns" hidden data-stage="101" data-current="interest">/);
     // The filter chosen here stays on this page only (起案者の指示 2026-10-17): the week tabs carry it,
     // おすすめ and the next visit use the 設定 default.
     const osaka = (await screen(env, a, 'reminder', '?w=next&f=1&pref=' + encodeURIComponent('大阪府'))).body_html;
@@ -360,7 +360,7 @@ test('公演カレンダー shows an owned stage that only the catalogue has', a
     assert.equal((await step(env, a, {post: '/api/react', body: {stage_id: '778', value: 'owned', nofill: true}})).status, 200);
     const owned = (await screen(env, a, 'tickets')).body_html;
     assert.match(owned, /一覧だけの舞台/);
-    assert.match(owned, /data-btns-open="1">回答を直す<\/button><span class="btns" hidden data-stage="778">/);
+    assert.match(owned, /data-btns-open="1">回答を直す<\/button><span class="btns" hidden data-stage="778" data-current="owned">/);
     assert.match((await screen(env, a, 'calendar')).body_html, /一覧だけの舞台/);
     // 2026-10-15 起案者「場所絞ったら公演カレンダー0件になる」: the catalogue has no prefecture, so a
     // place filter cannot show it; the calendar says how many it left out instead of a silent 0.
@@ -467,7 +467,7 @@ test('興味あり added from 開幕リマインド says so in place of おす�
     assert.doesNotMatch(card('101'), /おすすめ理由|<ul class="why">/);
     assert.match(card('101'), /<span class="wnt">ポスターがかわいい<\/span>/);
     // 書いた理由は、ふだんは畳む（「なぜ気になったか」で開く。起案者 2026-10-15・17）
-    assert.match(card('101'), /<div class="wnw" hidden>/);
+    assert.match(card('101'), /<details class="wnw why-memo"><summary>/);
     assert.match(card('102'), /おすすめ理由/);
     assert.equal(sqlite.prepare("SELECT source FROM reaction WHERE stage_id='101' AND interest=1").get().source, 'reminder');
   } finally { sqlite.close(); }

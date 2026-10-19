@@ -3,17 +3,30 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
-import {compose, mytixHtml} from '../src/screens/cards.js';
+import {compose, mytixHtml, interestButtons, ownedButton, whyNote} from '../src/screens/cards.js';
 
 const here = p => new URL(p, import.meta.url).pathname;
 const {golden} = JSON.parse(execFileSync('python3', [here('./screens/recommend_fixture.py')], {encoding: 'utf8', maxBuffer: 64 * 1024 * 1024}));
 
-test('every list gets the same card as the Python screen', () => {
+test('every list keeps the same performance facts as the Python screen', () => {
   assert.ok(golden.length >= 12);
   for (const g of golden) {
     const kw = g.mode === 'owned' ? {mytix: mytixHtml(g.sid, g.start, g.end, g.kw.tickets)} : g.kw;
-    assert.equal(compose(g.template, g.sid, g.mode, kw), g.html, `${g.sid} ${g.mode} ${JSON.stringify(g.kw)}`);
+    // Service answer controls and editable memo previews now differ deliberately from the legacy Python UI.
+    // Keep the independent reference for posters, titles, dates, prices, credits, reasons and tickets.
+    const facts = h => h.replace(/<div class="act">[\s\S]*(<\/div><\/div><\/article>)$/, '$1');
+    assert.equal(facts(compose(g.template, g.sid, g.mode, kw)), facts(g.html), `${g.sid} ${g.mode} ${JSON.stringify(g.kw)}`);
   }
+});
+
+test('saved answers remain selectable for clearing and interest memos have a visible preview', () => {
+  assert.match(interestButtons('101'), /data-current="interest"/);
+  assert.match(interestButtons('101'), /data-v="interest" aria-pressed="true" class="picked"/);
+  assert.match(ownedButton('101', true), /data-current="owned"/);
+  const memo = whyNote('101', '<script>好き</script>\n続き', {ask: true});
+  assert.match(memo, /<details class="wnw why-memo"><summary>/);
+  assert.match(memo, /&lt;script&gt;好き&lt;\/script&gt;/);
+  assert.doesNotMatch(memo, /<script>|<div class="why-note"[^>]* hidden/);
 });
 
 // 起案者の質問 2026-10-18「たまに値段の詳細取得できてない公演があるのはなぜ？」: 作り置きのカードの無い公演の
