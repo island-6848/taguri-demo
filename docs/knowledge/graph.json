@@ -3574,6 +3574,22 @@
    "verifies": []
   },
   {
+   "id": "fix-register-empty-dialog",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-19",
+   "title": "詳細検索のフォームを画面HTMLに含め、開いた実画面をブラウザで検証する",
+   "sources": [
+    "cloudflare/src/screens/register-dialog.js",
+    "cloudflare/src/screens/settings.js",
+    "web/app.js",
+    "cloudflare/test/register-dialog-markup.test.js",
+    "cloudflare/test/register-dialog-browser.js",
+    "cloudflare/test/visual-check.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "fix-request-mail",
    "type": "finding",
    "status": "unverified",
@@ -10398,6 +10414,11 @@
    "from": "fix-reason-no-paren",
    "rel": "affects",
    "to": "dec-reason-work-titles"
+  },
+  {
+   "from": "fix-register-empty-dialog",
+   "rel": "affects",
+   "to": "dec-register-run-precision"
   },
   {
    "from": "fix-request-mail",

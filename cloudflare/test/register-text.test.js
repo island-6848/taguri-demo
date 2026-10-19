@@ -42,7 +42,7 @@ test('#91: the private address is said to pass through the server; files stay on
 test('#92: manual entry searches the saved catalogue, not CoRich on the spot', async () => {
   const html = await registerHtml();
   assert.doesNotMatch(html, /CoRichで検索|8 秒/);
-  assert.match(html, /data-register-search="1">[\s\S]*?詳細検索<\/button>/);
+  assert.match(html, /data-register-search="1"[^>]*>[\s\S]*?詳細検索<\/button>/);
   assert.doesNotMatch(html, /data-sug-web|公演一覧から探す/);
   assert.match(html, /data-register-repeat="1" checked/);
   assert.match(html, /data-register-reset="1"/);

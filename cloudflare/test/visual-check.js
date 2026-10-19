@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import {chromium} from 'playwright';
 import {PNG} from 'pngjs';
 import pixelmatch from 'pixelmatch';
+import {checkRegisterDialog} from './register-dialog-browser.js';
 const repo=resolve('..'), fixtures=JSON.parse(readFileSync('/tmp/taguri-visual-fixtures.json','utf8'));
 const server=createServer((req,res)=>{
  const url=new URL(req.url,'http://localhost'),original=url.pathname.startsWith('/taguri-demo/');
@@ -47,4 +48,6 @@ try {
   assert.ok(count/(a.width*a.height)<=0.001,`${name}/${width}: ${count} differing pixels`);
   console.log(`${name}/${width}: ${count} differing pixels; original CSS, shell and controls preserved.`);
  }
+ await checkRegisterDialog(browser,base);
 } finally {await browser.close();await new Promise(resolve=>server.close(resolve));}
+

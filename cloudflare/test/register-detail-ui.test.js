@@ -48,7 +48,7 @@ test('detail dialog sends the chosen schedule precision without turning the filt
   const selectors = {'form': form, '.rs-status': status, '.rs-results': box, '[data-rs-close]': {addEventListener: (type, fn) => {close[type] = fn}}};
   const dialog = {dataset: {}, isConnected: true, setAttribute() {}, querySelector: s => selectors[s],
     addEventListener(type, fn) {handlers['dialog-' + type] = fn}, showModal() {this.open = true}, close() {this.open = false; handlers['dialog-close']()}, remove() {this.isConnected = false}};
-  const doc = {querySelector: () => null, createElement: () => dialog, getElementById: id => ({value: id === 'w-title' ? '演劇' : '2026-01-02'}), body: {append() {}}};
+  const doc = {getElementById: id => id === 'register-search-dialog' ? dialog : ({value: id === 'w-title' ? '演劇' : '2026-01-02'})};
   let request, rows, failing = false;
   const open = make(doc, async url => {request = new URL(url, 'https://taguri.test'); if (failing) throw Error('通信失敗'); return {ok: true, json: async () => ({rows: [{kind: 'stage', title: '演劇の夜', stage_id: '99', date: ''}]})}}, (_, got) => {rows = got}, '', 'token');
   const trigger = {isConnected: true, focus() {this.focused = true}}; open(trigger);
@@ -73,4 +73,5 @@ test('detail dialog sends the chosen schedule precision without turning the filt
   assert.ok(!request.searchParams.has('schedule_month')); assert.ok(!request.searchParams.has('schedule_day'));
   failing = true; await handlers.submit(event); assert.match(status.textContent, /通信失敗/); assert.equal(button.disabled, false);
   close.click(); assert.ok(!dialog.open); assert.ok(trigger.focused);
+  open(trigger); assert.ok(dialog.open); assert.equal(dialog.dataset.rsBound, '1');
 });

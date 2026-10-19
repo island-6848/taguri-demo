@@ -2732,29 +2732,16 @@ let sugSeq = 0;
 
 // Native dialog supplies Escape handling, modal focus and focus restoration.
 function registerSearchDialog(trigger) {
-  if (document.querySelector('.register-search-dialog')) return;
-  const dialog = document.createElement('dialog');
-  dialog.className = 'register-search-dialog';
-  dialog.setAttribute('aria-labelledby', 'rs-heading');
-  dialog.innerHTML = '<div class="rs-head"><h2 id="rs-heading">公演の詳細検索</h2><button type="button" data-rs-close>閉じる</button></div>'
-    + '<p>公演名は2文字以上、先頭から入力してください。団体名・劇場・上演日程で絞り込めます。</p>'
-    + '<form class="rs-form"><label>公演名<input name="q" maxlength="120" required autofocus></label>'
-    + '<label>団体名（任意）<input name="group" maxlength="80"></label>'
-    + '<label>劇場（任意）<input name="venue" maxlength="80"></label>'
-    + '<fieldset class="rs-schedule"><legend>上演日程（任意）</legend>'
-    + '<label>指定の細かさ<select name="schedule_precision"><option value="none">指定なし</option>'
-    + '<option value="month">月</option><option value="monthday">月日</option><option value="year">年</option>'
-    + '<option value="yearmonth">年月</option><option value="date">年月日</option></select></label>'
-    + '<div class="rs-schedule-fields"><label hidden>年<input name="schedule_year" type="number" min="1" max="9999" step="1" inputmode="numeric" placeholder="例：2026" disabled></label>'
-    + '<label hidden>月<select name="schedule_month" disabled><option value="">月を選ぶ</option>'
-    + Array.from({length: 12}, (_, i) => `<option value="${i + 1}">${i + 1}月</option>`).join('') + '</select></label>'
-    + '<label hidden>日<select name="schedule_day" disabled><option value="">日を選ぶ</option>'
-    + Array.from({length: 31}, (_, i) => `<option value="${i + 1}">${i + 1}日</option>`).join('') + '</select></label></div>'
-    + '<p class="note">指定した月・日・年に、上演期間が重なる公演を探します。月・月日だけなら年は問いません。</p></fieldset>'
-    + '<button type="submit" class="primary">検索する</button></form>'
-    + '<p class="rs-status" role="status" aria-live="polite"></p><div class="sug rs-results"></div>';
+  const dialog = document.getElementById('register-search-dialog');
+  if (!dialog) return;
   const form = dialog.querySelector('form'), status = dialog.querySelector('.rs-status'), box = dialog.querySelector('.rs-results');
-  form.elements.q.value = document.getElementById('w-title').value;
+  const title = document.getElementById('w-title').value;
+  if (form.elements.q.value !== title) {
+    form.elements.q.value = title; box.replaceChildren();
+    status.textContent = '条件を入れて「検索する」を押してください。';
+  }
+  if (dialog.dataset.rsBound) { dialog.showModal(); return; }
+  dialog.dataset.rsBound = '1';
   const updateSchedule = () => {
     const precision = form.elements.schedule_precision.value;
     const active = {year: ['year', 'yearmonth', 'date'], month: ['month', 'monthday', 'yearmonth', 'date'], day: ['monthday', 'date']};
@@ -2769,7 +2756,7 @@ function registerSearchDialog(trigger) {
   dialog.querySelector('[data-rs-close]').addEventListener('click', () => dialog.close());
   dialog.addEventListener('close', () => {
     const picked = dialog.dataset.picked;
-    dialog.remove();
+    delete dialog.dataset.picked;
     if (picked) document.getElementById('w-date')?.focus();
     else if (trigger.isConnected) trigger.focus();
   });
@@ -2801,7 +2788,7 @@ function registerSearchDialog(trigger) {
     } catch (error) { if (dialog.isConnected) status.textContent = error.message; }
     finally { button.disabled = false; }
   });
-  document.body.append(dialog); dialog.showModal();
+  dialog.showModal();
 }
 // **画面を差し込むたびに呼ぶ**（renderScreen）。画面の中身は読み込んだあとに fetch で入るので、
 // 読み込みのときに 1 度だけ呼んでいた頃は欄がまだ無く、打っても候補が出なかった（#134 の通し検証）。
