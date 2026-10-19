@@ -30,14 +30,16 @@ export async function checkRegisterDialog(browser, base) {
       await page.locator('#w-title').fill('夜の果て');
       await button.click();
       await dialog.waitFor({state: 'visible'});
-      for (const label of ['公演名', '団体名（任意）', '劇場（任意）', '指定の細かさ']) {
-        assert.ok(await dialog.getByLabel(label, {exact: true}).isVisible(), `${width}: ${label} missing`);
+      for (const [name, label] of [['q', '公演名'], ['group', '団体名'], ['venue', '劇場'], ['schedule_precision', '指定の細かさ']]) {
+        const field = dialog.locator(`[name="${name}"]`);
+        assert.ok(await field.isVisible(), `${width}: ${label} missing`);
+        assert.ok(await field.evaluate((el, text) => [...el.labels].some(l => l.textContent.includes(text)), label));
       }
-      assert.equal(await dialog.getByLabel('公演名', {exact: true}).inputValue(), '夜の果て');
-      await dialog.getByLabel('指定の細かさ').selectOption('month');
-      assert.ok(await dialog.getByLabel('月', {exact: true}).isVisible());
-      assert.equal(await dialog.getByLabel('年', {exact: true}).isVisible(), false);
-      await dialog.getByLabel('月', {exact: true}).selectOption('10');
+      assert.equal(await dialog.locator('[name=q]').inputValue(), '夜の果て');
+      await dialog.locator('[name=schedule_precision]').selectOption('month');
+      assert.ok(await dialog.locator('[name=schedule_month]').isVisible());
+      assert.equal(await dialog.locator('[name=schedule_year]').isVisible(), false);
+      await dialog.locator('[name=schedule_month]').selectOption('10');
       await page.screenshot({path: `/tmp/taguri-visual/register-dialog-${width}.png`, fullPage: true});
       await dialog.getByRole('button', {name: '検索する', exact: true}).click();
       const pick = dialog.locator('[data-pick]');
@@ -53,7 +55,7 @@ export async function checkRegisterDialog(browser, base) {
       assert.equal(await page.locator('#w-date').inputValue(), '');
       await button.click();
       await dialog.waitFor({state: 'visible'});
-      assert.ok(await dialog.getByLabel('公演名', {exact: true}).isVisible());
+      assert.ok(await dialog.locator('[name=q]').isVisible());
       await dialog.getByRole('button', {name: '検索する', exact: true}).click();
       await page.waitForFunction(() => !document.querySelector('#register-search-dialog button[type=submit]').disabled);
       assert.equal(requests.length, 2, 'reopening must not duplicate submit handlers');
@@ -62,6 +64,10 @@ export async function checkRegisterDialog(browser, base) {
       assert.ok(await button.evaluate(el => document.activeElement === el));
       assert.deepEqual(errors, [], `${width}: detail dialog JavaScript errors`);
       console.log(`register dialog/${width}: fields visible, month filter, selection, reopen, Escape passed`);
+    } catch (error) {
+      await page.screenshot({path: `/tmp/taguri-visual/register-dialog-failure-${width}.png`, fullPage: true});
+      console.error('Detail dialog page errors:', errors);
+      throw error;
     } finally {await page.close()}
   }
 }
