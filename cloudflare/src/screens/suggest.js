@@ -6,7 +6,7 @@
 // the demo's records as "your" records.
 //
 // Same response shape as app.suggest ({q, rows:[{kind,key,title,date,venue,note,
-// times,stage_id,wk,mine,poster}]}), but not a byte-for-byte port: the stages
+// times,stage_id,wk,mine,poster}]}) plus the stage's run (start, end: the 観た日 picker opens there), but not a byte-for-byte port: the stages
 // come from D1 (current stages through rec_gram, past stages by title-key
 // prefix on its index) instead of the files on the Python server.
 import {gradeText} from './grade.js';
@@ -69,7 +69,7 @@ export async function suggest(params, ctx) {
       const one = runRange(st.start, st.end, ctx.today);
       rows.push({_s: [rank(titleKey(st.title)) < 0 ? 2 : rank(titleKey(st.title)), 1], kind: 'stage', key: st.stage_id, title: st.title,
         date: one && !one.includes('〜') ? iso(ymd(st.start)) : '', venue: st.theater,
-        note: `${st.group}／${one}（${st.pref}）`, times: 1, stage_id: st.stage_id,
+        note: `${st.group}／${one}（${st.pref}）`, times: 1, stage_id: st.stage_id, start: iso(ymd(st.start)), end: iso(ymd(st.end || st.start)),
         wk: groupKey(titleKey(st.title), st.group, st.stage_id)});
     }
   }
@@ -91,7 +91,7 @@ export async function suggest(params, ctx) {
     const one = runRange(p.start, p.end, ctx.today);
     rows.push({_s: [keys.includes(p.tkey) ? 0 : 1, 1], kind: 'stage', key: p.stage_id, title: p.title,
       date: one && !one.includes('〜') ? iso(ymd(p.start)) : '', venue: p.venue,
-      note: `${p.grp}／${one}（${p.pref}）`, times: 1, stage_id: p.stage_id,
+      note: `${p.grp}／${one}（${p.pref}）`, times: 1, stage_id: p.stage_id, start: iso(ymd(p.start)), end: iso(ymd(p.end || p.start)),
       wk: groupKey(p.tkey, p.grp, p.stage_id)});
   }
   rows.sort((a, b) => (a._s[0] - b._s[0]) || (a._s[1] - b._s[1]));

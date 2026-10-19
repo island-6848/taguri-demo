@@ -2232,7 +2232,7 @@ document.addEventListener("click", ev => {
       .then(d => {
         if (!d) return;
         clearTimeout(sugTimer); ++sugSeq;
-        if (!repeat) { t.value = ""; g.querySelector("#w-stage").value = ""; }
+        if (!repeat) { t.value = ""; g.querySelector("#w-stage").value = ""; runDates(dt, "", ""); }
         else if (d.stage_id) g.querySelector("#w-stage").value = d.stage_id;
         document.getElementById("sug").replaceChildren();
         if (g.dataset.registerSingle) {
@@ -2277,6 +2277,7 @@ document.addEventListener("click", ev => {
     clearTimeout(sugTimer); ++sugSeq;
     g.querySelector("#w-title").value = r.dataset.title;
     g.querySelector("#w-date").value = r.dataset.date || "";
+    runDates(g.querySelector("#w-date"), r.dataset.start, r.dataset.end);
     g.querySelector("#w-venue").value = r.dataset.venue || "";
     g.querySelector("#w-stage").value = r.dataset.stage || "";
     document.getElementById("sug").replaceChildren();
@@ -2922,6 +2923,7 @@ function sugWatch() {
   t.dataset.sugBound = "1";
   t.addEventListener("input", () => {
     document.getElementById("w-stage").value = "";   // 打ち直したら結び付きを外す
+    runDates(document.getElementById("w-date"), "", "");
     clearTimeout(sugTimer);
     ++sugSeq;
     sugTimer = setTimeout(() => sugFetch(t.value, box), 220);
@@ -2990,6 +2992,15 @@ function sugSay(box, msg, clear) {
 
 // **手元の候補と外の候補を、同じ見た目で並べる。** 選んだあとの動きが同じなので、
 // 描き方を 2 通り作ると片方だけ直す事故が起きる
+// 「これを使う」で選んだ公演の上演期間を、観た日の欄の選べる範囲にする（起案者の指示 2026-10-19「選んだ公演があるなら、観た日の
+// カレンダーの表示を最初からその年月にして表示してほしい」）。日付の欄（type=date）のカレンダーは、空のときは今日を選べる範囲に寄せた
+// 年月で開くので、範囲を上演期間にすると、その公演の年月から開く。選び直す・題名を打ち直すと範囲を外す
+function runDates(dt, start, end) {
+  if (!dt) return;
+  const ok = v => /^\d{4}-\d{2}-\d{2}$/.test(v || "");
+  if (ok(start)) dt.min = start; else dt.removeAttribute("min");
+  if (ok(end || start)) dt.max = ok(end) ? end : start; else dt.removeAttribute("max");
+}
 function sugRender(box, rows, headText) {
   box.replaceChildren();
   if (!rows || !rows.length) return;
@@ -3001,6 +3012,7 @@ function sugRender(box, rows, headText) {
     r.dataset.date = x.date || "";
     r.dataset.venue = x.venue || "";
     r.dataset.stage = x.kind === "stage" ? (x.stage_id || "") : "";
+    r.dataset.start = x.start || ""; r.dataset.end = x.end || "";
     r.innerHTML = '<span class="sg-p"></span><span class="sg-b">'
       + '<span class="sg-k"></span><span class="sg-t"></span>'
       + '<span class="sg-m"></span></span>';
