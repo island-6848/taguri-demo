@@ -305,11 +305,11 @@ def _table(rows: list[dict], head: str, unit: str) -> str:
             f'<td class="num strong">{r["mine"]:.0f}%</td>'
             f'<td class="num">{ratio}</td>'
             f'<td class="num dim">{r["n"]}</td></tr>')
-    return (f'<table class="tbl"><thead><tr><th>{E(head)}</th>'
+    return (f'<p class="compare-scroll-hint note">表は左右にスクロールできます。</p><div class="compare-table" role="region" aria-label="{E(head)}の比較表" tabindex="0"><table class="tbl"><thead><tr><th>{E(head)}</th>'
             f'<th class="th-dv">これからの公演との差</th><th class="num">これからの公演</th>'
             f'<th class="num">自分</th><th class="num">倍率</th>'
             f'<th class="num">{E(unit)}</th></tr></thead>'
-            f'<tbody>{"".join(body)}</tbody></table>')
+            f'<tbody>{"".join(body)}</tbody></table></div>')
 
 
 LEGEND = ('<div class="legend"><span class="lg"><i class="sw s-pos"></i>'

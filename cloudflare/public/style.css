@@ -2360,3 +2360,11 @@ code.cmd{display:inline-block;margin:10px 0 4px;padding:8px 14px;border-radius:8
 
 
 
+
+/* 比べるの6列表はカード内でスクロールし、狭い画面の幅を押し広げない。 */
+.card:has(>.compare-table){min-width:0;max-width:100%;box-sizing:border-box;overflow-wrap:anywhere}
+.compare-table{width:100%;max-width:100%;min-width:0;overflow-x:auto;overscroll-behavior-x:contain}
+.compare-table>.tbl{min-width:680px}
+.compare-table:focus-visible{outline:2px solid var(--acc);outline-offset:3px}
+.compare-scroll-hint{display:none}
+@media(max-width:700px){.compare-scroll-hint{display:block}}

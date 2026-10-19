@@ -42,11 +42,11 @@ function table(rs, head, unit) {
       + `<td class="num">${ratio}</td>`
       + `<td class="num dim">${r.n}</td></tr>`;
   }).join('');
-  return `<table class="tbl"><thead><tr><th>${E(head)}</th>`
+  return `<p class="compare-scroll-hint note">表は左右にスクロールできます。</p><div class="compare-table" role="region" aria-label="${E(head)}の比較表" tabindex="0"><table class="tbl"><thead><tr><th>${E(head)}</th>`
     + `<th class="th-dv">これからの公演との差</th><th class="num">これからの公演</th>`
     + `<th class="num">自分</th><th class="num">倍率</th>`
     + `<th class="num">${E(unit)}</th></tr></thead>`
-    + `<tbody>${body}</tbody></table>`;
+    + `<tbody>${body}</tbody></table></div>`;
 }
 
 const LEGEND = '<div class="legend"><span class="lg"><i class="sw s-pos"></i>'
