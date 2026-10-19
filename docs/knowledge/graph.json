@@ -2255,6 +2255,21 @@
    "verifies": []
   },
   {
+   "id": "dec-recommend-ux-1019",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-19",
+   "title": "おすすめの道具を地域・調整の1行にまとめ、×の意味を示し、回答済みの公演を修正できる短いカードにする",
+   "sources": [
+    "cloudflare/src/screens/recommend.js",
+    "web/app.js",
+    "web/theme.css",
+    "cloudflare/test/screens/recommend_ux_fixture.js",
+    "tools/taguri/check_recommend_ux.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-recommend-weights-worker",
    "type": "decision",
    "status": "adopted",
@@ -2359,6 +2374,19 @@
    "verifies": []
   },
   {
+   "id": "dec-register-dialog-shared-controls",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-19",
+   "title": "詳細検索のボタンと入力欄は他ページの共通スタイルを使う",
+   "sources": [
+    "web/style.css",
+    "cloudflare/src/screens/register-dialog.js",
+    "cloudflare/test/register-dialog-browser.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-register-run-precision",
    "type": "decision",
    "status": "adopted",
@@ -2371,6 +2399,21 @@
     "cloudflare/test/schedule-filter.test.js",
     "cloudflare/test/register-detail.test.js",
     "cloudflare/test/register-detail-ui.test.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-register-save-next-attendance",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-19",
+   "title": "観劇記録は通常の保存ボタンだけで日時の違う回を続けて追加する",
+   "sources": [
+    "cloudflare/src/screens/settings.js",
+    "web/app.js",
+    "web/style.css",
+    "cloudflare/test/register-detail-ui.test.js",
+    "cloudflare/test/register-dialog-browser.js"
    ],
    "verifies": []
   },
@@ -3586,6 +3629,22 @@
     "cloudflare/test/fav-reco.test.js",
     "cloudflare/test/recommend-screen.test.js",
     "tools/review/test_reason_works.py"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "fix-register-empty-dialog",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-19",
+   "title": "詳細検索のフォームを画面HTMLに含め、開いた実画面をブラウザで検証する",
+   "sources": [
+    "cloudflare/src/screens/register-dialog.js",
+    "cloudflare/src/screens/settings.js",
+    "web/app.js",
+    "cloudflare/test/register-dialog-markup.test.js",
+    "cloudflare/test/register-dialog-browser.js",
+    "cloudflare/test/visual-check.js"
    ],
    "verifies": []
   },
@@ -9484,6 +9543,21 @@
    "to": "dec-recommend-weights-worker"
   },
   {
+   "from": "dec-recommend-ux-1019",
+   "rel": "depends_on",
+   "to": "dec-recommend-filter-tiers"
+  },
+  {
+   "from": "dec-recommend-ux-1019",
+   "rel": "depends_on",
+   "to": "dec-card-dismiss"
+  },
+  {
+   "from": "dec-recommend-ux-1019",
+   "rel": "affects",
+   "to": "dec-recommend-ui-1017"
+  },
+  {
    "from": "dec-recommend-weights-worker",
    "rel": "depends_on",
    "to": "dec-recommend-worker-cards"
@@ -9569,9 +9643,19 @@
    "to": "dec-register-single-first"
   },
   {
+   "from": "dec-register-dialog-shared-controls",
+   "rel": "affects",
+   "to": "fix-register-empty-dialog"
+  },
+  {
    "from": "dec-register-run-precision",
    "rel": "supersedes",
    "to": "dec-register-detail-repeat"
+  },
+  {
+   "from": "dec-register-save-next-attendance",
+   "rel": "affects",
+   "to": "dec-register-run-precision"
   },
   {
    "from": "dec-register-single-first",
@@ -10432,6 +10516,11 @@
    "from": "fix-reason-no-paren",
    "rel": "affects",
    "to": "dec-reason-work-titles"
+  },
+  {
+   "from": "fix-register-empty-dialog",
+   "rel": "affects",
+   "to": "dec-register-run-precision"
   },
   {
    "from": "fix-request-mail",
