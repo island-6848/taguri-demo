@@ -41,6 +41,29 @@ function setup() {
   return {call, sqlite, env};
 }
 const cookieOf = response => response.headers.get('set-cookie').split(';')[0];
+
+test('sessions expire one week after sign-in, including cookies issued under the old 30-day policy', async () => {
+  const {call, sqlite, env} = setup();
+  const res = await call('register', {});
+  const cookie = cookieOf(res), t = nowSec(), week = 7 * 86400;
+  assert.match(res.headers.get('set-cookie'), /Max-Age=604800(?:;|$)/);
+  const row = sqlite.prepare('SELECT expires_at,created_at FROM sessions').get();
+  assert.equal(row.expires_at - row.created_at, week);
+  // Simulate a cookie and database expiry from the old 30-day policy.
+  sqlite.prepare('UPDATE sessions SET expires_at=?,created_at=?').run(t + 30 * 86400, t - week + 60);
+  assert.equal((await call('state')).status, 401); // no cookie
+  assert.equal((await call('state', undefined, cookie)).status, 200);
+  // Reading does not extend the absolute lifetime.
+  assert.equal(sqlite.prepare('SELECT created_at FROM sessions').get().created_at, t - week + 60);
+  for (const created of [t - week, t - week - 1, null]) {
+    sqlite.prepare('UPDATE sessions SET created_at=?').run(created);
+    assert.equal((await call('state', undefined, cookie)).status, 401, String(created));
+    const page = await worker.fetch(new Request('https://taguri.example/', {headers: {cookie}}), env);
+    assert.equal(page.status, 302);
+    assert.equal(page.headers.get('location'), '/login');
+    assert.equal((await signIn(call, await idToken(), cookie, {link: true})).status, 401);
+  }
+});
 async function signIn(call, token, cookie = '', extra = {}) {
   const response = await call('auth/firebase', {id_token: token, ...extra}, cookie);
   return {response, status: response.status, cookie: response.status === 200 ? cookieOf(response) : '', body: await response.json()};

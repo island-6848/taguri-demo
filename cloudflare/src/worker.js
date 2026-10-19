@@ -1,3 +1,4 @@
+import {SESSION_TTL} from './session-policy.js';
 import {deleteAccountStatements, sweepEmptyAccounts} from './cleanup.js';
 import {purgeFixRequests} from './screens/fixrequest.js';
 import {isOriginalRoute, originalUI, ORIGINAL_SCREENS, ORIGINAL_WRITES} from './original-ui.js';
@@ -34,7 +35,7 @@ import {readCapped} from './body-limit.js';
 import {nativeScreen, nativeAction, allNative, movingScreen, movingAction, screen as nativeScreenBody, action as nativeActionBody, readInput as nativeInput} from './screens/index.js';
 const MAX_BODY = 262144;
 const COOKIE = 'taguri_session';
-const TTL = 60 * 60 * 24 * 30;
+const TTL = SESSION_TTL;
 const json = (value, status = 200, headers = {}) => Response.json(value, {status, headers: {'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', ...headers}});
 const fail = (status, message) => { throw Object.assign(new Error(message), {status}); };
 const token = () => Array.from(crypto.getRandomValues(new Uint8Array(32)), b => b.toString(16).padStart(2,'0')).join('');
@@ -93,7 +94,7 @@ const sessionCookie = request => request.headers.get('cookie')?.match(/(?:^|;\s*
 async function user(request, db) {
   const raw = sessionCookie(request);
   if (!raw) fail(401,'復旧コードでログインするか、新しく始めてください。');
-  const session = await db.prepare('SELECT user_id FROM sessions WHERE hash=? AND expires_at>?').bind(await hash(raw),now()).first();
+  const session = await db.prepare('SELECT user_id FROM sessions WHERE hash=? AND expires_at>? AND created_at>?').bind(await hash(raw),now(),now()-TTL).first();
   if (!session) fail(401,'ログインし直してください。');
   return session.user_id;
 }
@@ -101,7 +102,7 @@ async function user(request, db) {
 async function currentUser(request, db) {
   const raw = sessionCookie(request);
   if (!raw) return null;
-  return (await db.prepare('SELECT user_id FROM sessions WHERE hash=? AND expires_at>?').bind(await hash(raw),now()).first())?.user_id ?? null;
+  return (await db.prepare('SELECT user_id FROM sessions WHERE hash=? AND expires_at>? AND created_at>?').bind(await hash(raw),now(),now()-TTL).first())?.user_id ?? null;
 }
 // New session for uid; the caller's old session (if any) is revoked so a
 // session fixed before sign-in cannot carry over (session rotation).
@@ -118,7 +119,7 @@ async function startSession(db, uid, commands, oldRaw, guard = null) {
   const [cond, ...args] = guard ?? ['1'];
   if (oldRaw) commands.push(db.prepare(`DELETE FROM sessions WHERE hash=? AND EXISTS (SELECT 1 FROM users WHERE id=? AND ${cond})`).bind(await hash(oldRaw),uid,...args));
   // Delete expired sessions and bound the number of devices per account.
-  commands.push(db.prepare('DELETE FROM sessions WHERE user_id=? AND (expires_at<=? OR hash NOT IN (SELECT hash FROM sessions WHERE user_id=? ORDER BY expires_at DESC LIMIT 9))').bind(uid,now(),uid));
+  commands.push(db.prepare('DELETE FROM sessions WHERE user_id=? AND (expires_at<=? OR created_at IS NULL OR created_at<=? OR hash NOT IN (SELECT hash FROM sessions WHERE user_id=? ORDER BY expires_at DESC LIMIT 9))').bind(uid,now(),now()-TTL,uid));
   commands.push(db.prepare(`INSERT INTO sessions(hash,user_id,expires_at,created_at) SELECT ?,id,?,? FROM users WHERE id=? AND ${cond}`).bind(await hash(session),now()+TTL,now(),uid,...args));
   await db.batch(commands);
   return session;
@@ -162,7 +163,7 @@ async function firebaseSignIn(request, env) {
   let uid = known?.id;
   let linked = false, created = false;
   const commands = [];
-  const current = oldRaw ? await db.prepare('SELECT u.id,u.firebase_uid,s.created_at FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.hash=? AND s.expires_at>?').bind(await hash(oldRaw),now()).first() : null;
+  const current = oldRaw ? await db.prepare('SELECT u.id,u.firebase_uid,s.created_at FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.hash=? AND s.expires_at>? AND s.created_at>?').bind(await hash(oldRaw),now(),now()-TTL).first() : null;
   if (input.link === true) {
     if (!current) fail(401,'結び付けるアカウントでログインしていません。ログインしてから、もう一度アカウントのページから進んでください。');
     if (uid && uid !== current.id) fail(409,'この Google・メールは、すでに別のアカウントで使われています。結び付けられませんでした。');
