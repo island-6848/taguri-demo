@@ -305,12 +305,12 @@ def venues(c: dict) -> list[dict]:
     out = [{"stage_id": str(c.get("stage_id") or ""), "theater": c.get("theater") or "",
             "pref": c.get("pref") or "", "period": c.get("period") or "",
             "days": c.get("days") or 0, "price": c.get("price") or "",
-            "url": c.get("url") or "", "onsale": c.get("onsale") or "発売日不明"}]
+            "url": c.get("url") or "", "onsale": c.get("onsale") or "未確認"}]
     for t in (c.get("tours") or []):
         out.append({"stage_id": str(t.get("stage_id") or ""), "theater": t.get("theater") or "",
                     "pref": t.get("pref") or "", "period": t.get("period") or "",
                     "days": t.get("days") or 0, "price": t.get("price") or "",
-                    "url": t.get("url") or "", "onsale": t.get("onsale") or "発売日不明"})
+                    "url": t.get("url") or "", "onsale": t.get("onsale") or "未確認"})
     return out
 
 
@@ -1181,6 +1181,14 @@ def official_ticket_url(url: str) -> str:
     return url + "#tickets:~:text=" + urllib.parse.quote("チケット")
 
 
+def sale_label(v: str) -> str:
+    """発売の札の文言を「発売済」「未確認」「10/25発売」にそろえる（起案者の指示 2026-10-19）。前の版の文言も読み替える。
+    web/app.js の saleLabel と同じ。"""
+    v = (v or "").strip()
+    v = {"確認できず": "未確認", "発売日不明": "未確認", "発売済み": "発売済", "": "未確認"}.get(v, v)
+    return re.sub(r"\s+発売$", "発売", v)
+
+
 def sale_pill(c: dict, onsale: str, cls: str) -> str:
     url = ticket_url(c)
     if not url.startswith(("https://", "http://")):
@@ -1445,10 +1453,10 @@ def ticket(c: dict, *, rank=None, mode: str = "recommend", note: str = "",
     ) if x)
     t_html = schedule_html(c)
     syn_html = syn_block(c)
-    # 札の文言は「発売済」「発売日不明」「10/25 10:00 発売」（起案者の指示 2026-10-18、recommend2.onsale）。
-    # 前の版の文言（発売済み・確認できず）で残った控えも同じ色に読む
-    onsale = {"確認できず": "発売日不明", "発売済み": "発売済"}.get(c.get("onsale") or "", c.get("onsale") or "発売日不明")
-    cls = "warn" if onsale == "発売日不明" else ("soon" if "発売" in onsale and onsale != "発売済" else "ok")
+    # 札の文言は「発売済」「未確認」「10/25発売」（起案者の指示 2026-10-19、recommend2.onsale）。
+    # 前の版の文言（発売済み・確認できず・発売日不明・「10/25 発売」）で残った控えも同じ文言と色に読む
+    onsale = sale_label(c.get("onsale") or "")
+    cls = "warn" if onsale == "未確認" else ("soon" if "発売" in onsale and onsale != "発売済" else "ok")
     # **探した結果は「なぜ出てきたか」ではなく「ヒットした箇所」を出す。**（言い方を
     # 起案者の指示で「当たったところ」→「ヒットした箇所：」に変えた・2026-08-26）
     # 探す画面から来た 1 枚は、推薦の理由で出ているのではなく、**打った言葉に当たった
