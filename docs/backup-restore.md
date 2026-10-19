@@ -50,4 +50,4 @@ npx wrangler d1 migrations apply taguri-restored --remote   # 控えのあとに
 
 | 日付 | 方法 | 控え | 結果 | 開く | 入れる |
 | --- | --- | --- | --- | --- | --- |
-| （まだ） | Restore drill | | | | |
+| 2026-10-19 | Restore drill（手動） | `backup/d1/2026-10-18.sql.gpg`（25 表・4,726 行。Catalog #13 が作った最初の控え） | **動かなかった**。無料枠の見積もり（`free_tier.py plan --mode drill`）が、直近 31 日の Actions 1,124 分＋見込み 1,484 分で上限 1,500 分に届くとして止めた | | |
