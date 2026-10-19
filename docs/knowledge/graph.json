@@ -7319,6 +7319,20 @@
    ]
   },
   {
+   "id": "q-split-pieces-1019",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-19",
+   "title": "1 公演に複数の作品がある記録を、利用者が望んだときだけ作品ごとに分けて評価・推薦・感想・題材の読み取りをするか。分けた作品の重みと出演者の割り当てをどうするか",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/blob/master/cloudflare/src/screens/recommend.js",
+    "https://github.com/island-6848/taguri-demo/blob/master/cloudflare/src/recommend.js",
+    "https://github.com/island-6848/taguri-demo/blob/master/tools/credits/extract_theme_llm.py",
+    "https://github.com/island-6848/taguri-demo/blob/master/tools/credits/fetch_credits.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "q-synopsis-lit-gaps",
    "type": "question",
    "status": "open",
@@ -13308,6 +13322,11 @@
    "from": "q-seed-weight-total-ratings",
    "rel": "depends_on",
    "to": "dec-fav-over-interest"
+  },
+  {
+   "from": "q-split-pieces-1019",
+   "rel": "depends_on",
+   "to": "f-multi-piece-handling-1019"
   },
   {
    "from": "q-synopsis-lit-gaps",
