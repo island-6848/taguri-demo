@@ -4195,6 +4195,17 @@
    "verifies": []
   },
   {
+   "id": "impl-theme-g5-reread",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-19",
+   "title": "あらすじの読み取りを g5 にそろえた（過去の公演 2,000 件と、これからの公演の g2 の 1,311 件）",
+   "sources": [
+    "tools/credits/extract_theme_llm.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "impl-theme-vocab",
    "type": "decision",
    "status": "adopted",
@@ -10826,6 +10837,16 @@
    "from": "impl-theme-favourite",
    "rel": "affects",
    "to": "comp-recommender"
+  },
+  {
+   "from": "impl-theme-g5-reread",
+   "rel": "affects",
+   "to": "eval-g5-trial-1018"
+  },
+  {
+   "from": "impl-theme-g5-reread",
+   "rel": "affects",
+   "to": "dec-hook-tag"
   },
   {
    "from": "impl-theme-vocab",
