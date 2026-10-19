@@ -401,9 +401,16 @@ export function personValues(rated, seeds = [], skip = new Set(), liked = [], di
 // その人の別の公演も候補にする。すでに値のある人・お気に入りの名前は除く。理由には「○○と組む」と出す。
 // Python の参照実装には無いので、一致試験の経路（expand なし）では動かない。値は舞台では未検証。
 export const EXPAND_PEOPLE = 20, EXPAND_STAGES = 60, EXPAND_WEIGHT = 0.3, EXPAND_MIN_SHARED = 1;
-export async function scoreFromIndex({postingsFor, stagesFor, rated, multipliers = {}, today, seeds = [], skip = new Set(), liked = [], disliked = [], expand = null, ablate = {}}) {
+export async function scoreFromIndex({postingsFor, stagesFor, rated, multipliers = {}, today, seeds = [], skip = new Set(), liked = [], disliked = [], expand = null, affil = null, ablate = {}}) {
   rated = independentRatings(rated);
-  const values = personValues(rated, seeds, skip, liked, disliked, ablate);
+  let values = personValues(rated, seeds, skip, liked, disliked, ablate);
+  // 所属から推し量った人（affil: {members, fav}。渡したときだけ。dec-affil-reco）。お気に入りの名前の人には配らない
+  let affilVia = new Map();
+  if (affil?.members?.size && !ablate.affil) {
+    const got = withAffil(values, affil.members, affil.fav || new Set());
+    for (const k of got.via.keys()) if (skip.has(k.slice(k.indexOf('\u0000') + 1))) { got.values.delete(k); got.via.delete(k); }
+    values = got.values; affilVia = got.via;
+  }
   const seeded = new Set(seeds.map(r => r.stage_id));
   // Everyone with a non-zero value can raise or lower a show.
   // 使わなくなった種類（料金帯 #値段、dec-source-kind-no-price）は、本番の索引に残っている間も点数と理由に使わない
@@ -511,6 +518,10 @@ export async function scoreFromIndex({postingsFor, stagesFor, rated, multipliers
     const shown = kinds.filter(k => k[0] > 0).sort((p, q) => (CONTENT_AXES.includes(q[1]) - CONTENT_AXES.includes(p[1]))
       || (q[0] - p[0]) || cmp(p[1], q[1]) || cmp(p[2], q[2]));
     const item = {stage_id: sid, b, strong: b, tour: st.tour || '', parts: parts.map(p => p.slice(0, 4)), kinds: shown.map(p => p.slice(0, 4))};
+    if (affilVia.size) {
+      const a = parts.slice(0, 4).map(p => [p[1] + '\t' + p[2], affilVia.get(p[1] + '\u0000' + p[2])]).filter(([, t]) => t);
+      if (a.length) item.affil = a;
+    }
     if (via.size) {
       const w = parts.slice(0, 4).map(p => [p[1] + '\t' + p[2], via.get(p[1] + '\u0000' + p[2])]).filter(([, n]) => n);
       if (w.length) item.via = w;
@@ -520,6 +531,56 @@ export async function scoreFromIndex({postingsFor, stagesFor, rated, multipliers
   out.sort((x, y) => (y.strong - x.strong) || (y.b - x.b) || cmp(x.stage_id, y.stage_id));
   return out;
 }
+
+// 所属（劇団）から推し量る（起案者の指示 2026-10-19「推薦への利用を考えたい」→「その進め方で進めてみて」、dec-affil-reco）。
+// 劇団の値は、その劇団に所属する人（出演）の値の平均を、値のある人の数で 0 に寄せたもの（AFFIL_K）。お気に入りに
+// 登録した団体は、仮の ◎ を付けた人 AFFIL_FAV_N 人ぶんとして足す。まだ値の無い所属の人に、劇団の値 × AFFIL_W を配る。
+// 大きな所属（養成所・大劇団）は「同じ所属」の意味が薄いので、AFFIL_SMALL 人を越えると √ で薄める。
+// 使うのは種類が劇団の所属で、直近 AFFIL_YEARS 年の公演に書かれたものだけ（退団した人に昔の劇団の値を配らない）。
+// 値は舞台では未検証。裏の答え合わせ（reco-gate の affil）で測るだけで、画面のおすすめにはまだ効かせない
+export const AFFIL_W = 0.3, AFFIL_K = 3, AFFIL_SMALL = 10, AFFIL_YEARS = 3, AFFIL_TROUPES = 20, AFFIL_PEOPLE = 300;
+export const AFFIL_FAV_N = 2, AFFIL_FAV_V = SEED_Z / (1 + CONF_K);
+const AFFIL_ROLE = '出演';
+
+/** members: Map(劇団 -> [人...])、fav: お気に入りの劇団の名前の Set。Map(劇団 -> [値のある人の数, 値]) */
+export function troupeValues(values, members, fav = new Set()) {
+  const out = new Map();
+  for (const [t, people] of members) {
+    let sum = 0, n = 0;
+    for (const p of people) {
+      const v = values.get(AFFIL_ROLE + '\u0000' + p);
+      if (v && v[1]) { sum += v[1]; n += 1; }
+    }
+    if (fav.has(t)) { sum += AFFIL_FAV_N * AFFIL_FAV_V; n += AFFIL_FAV_N; }
+    if (n) out.set(t, [n, sum / (n + AFFIL_K)]);
+  }
+  return out;
+}
+
+/**
+ * 値の無い所属の人に、劇団の値を配った values（元の Map は変えない）と、配った人 -> 劇団（理由に使う）。
+ * 劇団は値の大きさ（絶対値）の上位 AFFIL_TROUPES まで。2 つの劇団に入っている人は、大きいほうの値をもらう
+ */
+export function withAffil(values, members, fav = new Set()) {
+  const tv = [...troupeValues(values, members, fav)].sort((a, b) => (Math.abs(b[1][1]) - Math.abs(a[1][1])) || cmp(a[0], b[0])).slice(0, AFFIL_TROUPES);
+  const add = new Map();                       // key -> [値, 劇団]
+  for (const [t, [, v]] of tv) {
+    const people = members.get(t) || [];
+    const x = AFFIL_W * v * Math.min(1, Math.sqrt(AFFIL_SMALL / Math.max(1, people.length)));
+    for (const p of people) {
+      const k = AFFIL_ROLE + '\u0000' + p;
+      if (values.get(k)?.[1]) continue;
+      const cur = add.get(k);
+      if (!cur || Math.abs(x) > Math.abs(cur[0]) || (Math.abs(x) === Math.abs(cur[0]) && cmp(t, cur[1]) < 0)) add.set(k, [x, t]);
+    }
+  }
+  const out = new Map(values), via = new Map();
+  for (const [k, [x, t]] of add) if (x) { out.set(k, [0, x]); via.set(k, t); }
+  return {values: out, via};
+}
+
+/** 直近 AFFIL_YEARS 年の初めの日（YYYY-MM-DD）。today も YYYY-MM-DD */
+export const affilSince = today => /^\d{4}-/.test(today || '') ? String(Number(today.slice(0, 4)) - AFFIL_YEARS) + today.slice(4) : '';
 
 /**
  * build_recommend_index.seeds_from_favourites: candidate stages crediting a
@@ -679,6 +740,33 @@ export function d1Access(db, ver, counter = {rows: 0, queries: 0}) {
         }
       }
       return out;
+    },
+    /**
+     * 所属の木（rec_affil、dec-affiliation-table）: persons の人が入っている劇団と、troupes（名前そのまま）の劇団の、
+     * 劇団 -> 所属の人（since 以降の公演に書かれたもの）。表がまだ無い D1 では空
+     */
+    async affilMembers(persons, troupes = [], since = '') {
+      const found = new Set(troupes);
+      const members = new Map();
+      try {
+        for (let i = 0; i < persons.length; i += IDS_PER_QUERY) {
+          const chunk = persons.slice(i, i + IDS_PER_QUERY);
+          const results = await rowsOf(db.prepare(`SELECT DISTINCT affil FROM rec_affil WHERE ver=? AND person IN (${chunk.map(() => '?').join(',')}) AND kind='劇団' AND start>=?`)
+            .bind(ver, ...chunk, since), ['affil']);
+          counter.rows += results.length; counter.queries += 1;
+          for (const [a] of results) found.add(a);
+        }
+        const all = [...found].sort(cmp);
+        for (let i = 0; i < all.length; i += IDS_PER_QUERY) {
+          const chunk = all.slice(i, i + IDS_PER_QUERY);
+          const results = await rowsOf(db.prepare(`SELECT DISTINCT affil,person FROM rec_affil WHERE ver=? AND affil IN (${chunk.map(() => '?').join(',')}) AND kind='劇団' AND start>=?`)
+            .bind(ver, ...chunk, since), ['affil', 'person']);
+          counter.rows += results.length; counter.queries += 1;
+          for (const [a, p] of results) { if (!members.has(a)) members.set(a, []); members.get(a).push(p); }
+        }
+      } catch { return new Map(); }
+      for (const ps of members.values()) ps.sort(cmp);
+      return members;
     },
     async peopleFor(ids) {
       const map = new Map();
