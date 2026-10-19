@@ -1870,6 +1870,18 @@
    "verifies": []
   },
   {
+   "id": "dec-past-2026-first",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-19",
+   "title": "過去の公演は今年の分を先に回す（ポスターの R2 入れは新しい公演から、あらすじの本文取りは今年に終わった公演から）",
+   "sources": [
+    "cloudflare/scripts/deliver_posters.py",
+    "tools/review/fetch_past_stages.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-past-name-index",
    "type": "decision",
    "status": "adopted",
@@ -9238,6 +9250,11 @@
    "from": "dec-passkeys",
    "rel": "raises",
    "to": "q-passkey-real-devices"
+  },
+  {
+   "from": "dec-past-2026-first",
+   "rel": "affects",
+   "to": "impl-theme-g5-reread"
   },
   {
    "from": "dec-past-name-index",

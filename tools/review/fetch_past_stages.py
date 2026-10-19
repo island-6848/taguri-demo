@@ -249,29 +249,25 @@ def stories(p: dict, *, limit: int, max_minutes: float, fetch) -> dict:
     t0 = time.monotonic()
     i = int(p.get("story_line") or 0)
     add, short = [], []
+    # 今年に終わった公演を先に読む（起案者の指示 2026-10-19「2026 年の過去公演とれるところまで取って」）。
+    # 一覧は番号の順で、番号は登録の順なので、今年の公演でも先の行に散らばっている（2026 年の未読 159 件は
+    # 2,156〜6,155 行目にあった）。ここで読んだ行は seen に入るので、あとの順送りでは飛ばす。story_line は動かさない
+    year = str(date.today().year)
+    for j in range(i, len(lines)):
+        if len(add) >= min(room, limit) or (max_minutes and (time.monotonic() - t0) / 60 > max_minutes):
+            break
+        r = json.loads(lines[j])
+        if str(r.get("end") or r.get("start") or "")[:4] != year:
+            continue
+        stop = _story(r, seen, add, short, got, fetch)
+        if stop:
+            break
     while i < len(lines) and len(add) < min(room, limit):
         if max_minutes and (time.monotonic() - t0) / 60 > max_minutes:
             print(f"時間の上限（{max_minutes} 分）に来たので、ここまでにする")
             break
-        r = json.loads(lines[i])
-        sid = str(r.get("stage_id") or "")
-        if not sid or sid in seen:
-            i += 1
-            continue
-        try:
-            html = fetch(int(sid))
-        except PH.Skipped as e:
-            print(f"取得をやめる: {e}")
+        if _story(json.loads(lines[i]), seen, add, short, got, fetch):
             break
-        except Exception as e:                    # 消えたページ・一時的な失敗は飛ばす（次の周で読み直さない）
-            got["skipped"] += 1
-            print(f"{sid}: 読めなかった（{type(e).__name__}）")
-            i += 1
-            continue
-        text = EX.prep(EX.strip_reviews(html), 2500)
-        row = {"side": STORY_SIDE, "id": sid, "title": (r.get("title") or "")[:60], "url": "", "text": text}
-        (add if len(text) >= EX.MIN_STORY_TEXT else short).append(row)
-        seen.add(sid)
         i += 1
     if add:
         with EX.QUEUE.open("a", encoding="utf-8") as fp:
@@ -294,6 +290,29 @@ def report() -> None:
     p = load_progress()
     n = sum(1 for line in ROWS.read_text(encoding="utf-8").split("\n") if line.strip()) if ROWS.exists() else 0
     print(json.dumps({**p, "rows": n}, ensure_ascii=False, indent=1))
+
+
+def _story(r: dict, seen: set, add: list, short: list, got: dict, fetch) -> bool:
+    """1 公演の本文を取り、読み取り待ち（add）か本文が短い（short）に入れる。取得をやめるときは True。"""
+    import extract_theme_llm as EX
+    sid = str(r.get("stage_id") or "")
+    if not sid or sid in seen:
+        return False
+    try:
+        html = fetch(int(sid))
+    except PH.Skipped as e:
+        print(f"取得をやめる: {e}")
+        return True
+    except Exception as e:                    # 消えたページ・一時的な失敗は飛ばす（次の周で読み直さない）
+        got["skipped"] += 1
+        print(f"{sid}: 読めなかった（{type(e).__name__}）")
+        seen.add(sid)
+        return False
+    text = EX.prep(EX.strip_reviews(html), 2500)
+    row = {"side": STORY_SIDE, "id": sid, "title": (r.get("title") or "")[:60], "url": "", "text": text}
+    (add if len(text) >= EX.MIN_STORY_TEXT else short).append(row)
+    seen.add(sid)
+    return False
 
 
 def main() -> int:
