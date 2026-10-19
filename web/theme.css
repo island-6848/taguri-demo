@@ -1054,6 +1054,21 @@ a.pill.buy .go:not(#_){font-size:12px;margin-left:2px}
 .fgh svg.ico{align-self:center;color:var(--mute)}
 .fgh span{color:var(--mute);font-size:12px}
 .fil2.tune{margin-bottom:4px}
+/* おすすめは公演を先に読む。調整の2段は1行から開き、現在の地域・料金は閉じても見える。 */
+.rec-controls{margin:12px 0;border-block:1px solid var(--ring);padding:10px 0}
+.rec-controls>summary{cursor:pointer;font-size:13px;line-height:1.7}
+.rec-controls>summary span{color:var(--mute);font-size:12px;margin-left:8px;overflow-wrap:anywhere}
+.rec-controls .rec-budget:empty{display:none}
+.rec-answer-help{font-size:12px;color:var(--ink2);line-height:1.7;margin:10px 0 18px}
+/* 保存済みのカードだけを縮める。元の情報と入力欄は残し、「回答を直す」で再び開く。 */
+.ticket.answered-compact:not(.answer-editing){display:block;min-height:0;padding:10px 14px}
+.ticket.answered-compact:not(.answer-editing)>:not(.answered-summary){display:none!important}
+.ticket.answered-compact:not(.answer-editing)::before,.ticket.answered-compact:not(.answer-editing)::after{display:none}
+.ticket.answered-compact>.answered-summary{display:flex;align-items:center;flex-wrap:wrap;gap:6px 12px;width:100%;padding:2px 0;line-height:1.6}
+.answered-title{flex:1 1 160px;min-width:0;overflow-wrap:anywhere;font-weight:bold;font-size:14px}
+.answered-value{font-size:12px;color:var(--ink2)}
+.answered-summary button{min-height:44px;flex-shrink:0;font-size:12px}
+.ticket.answered-compact>.dismissq{display:none}
 /* 段の中が 1 つだけ（開幕リマインドの場所・お気に入りの登録した名前など）なら全幅に */
 .fil2:not(.tabbed)>:only-child{grid-column:1/-1}
 

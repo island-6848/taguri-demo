@@ -7,7 +7,7 @@ export async function checkRegisterDialog(browser, base) {
   const screen = await registerScreen({}, {db: {prepare: () => statement}, uid: 'fixture', today: '2026-10-19', now: Date.parse('2026-10-19T00:00:00Z')});
   for (const width of [1280, 390]) {
     const page = await browser.newPage({viewport: {width, height: 900}});
-    const errors = [], requests = [];
+    const errors = [], requests = [], saved = [];
     page.on('pageerror', e => errors.push(e.message));
     await page.route('**/*', async route => {
       const url = new URL(route.request().url());
@@ -17,6 +17,13 @@ export async function checkRegisterDialog(browser, base) {
         if (url.searchParams.get('advanced') === '1') requests.push(url);
         return route.fulfill({json: {rows: [{kind: 'stage', stage_id: '99', title: '夜の果て', venue: '本多劇場', date: '', note: '劇団甲／2026/10/1〜10/31'}]}});
       }
+      if (url.pathname === '/api/add_work') {
+        const body = route.request().postDataJSON();
+        if (saved.some(r => r.title === body.title && r.date === body.date && r.time === body.time))
+          return route.fulfill({status: 400, json: {error: 'その日・その開演の記録はもうある'}});
+        saved.push(body);
+        return route.fulfill({json: {ok: true, stage_id: '99', work_key: body.title + '#' + body.date + '#' + body.time, similar: []}});
+      }
       if (url.pathname.startsWith('/api/')) return route.fulfill({json: {ok: true}});
       return url.origin === base ? route.continue() : route.abort();
     });
@@ -24,6 +31,7 @@ export async function checkRegisterDialog(browser, base) {
       await page.goto(base + '/register');
       const button = page.locator('[data-register-search]');
       await button.waitFor();
+      assert.equal(await page.locator('[data-register-repeat],[data-register-reset]').count(), 0);
       const dialog = page.locator('#register-search-dialog');
       assert.equal(await dialog.count(), 1);
       assert.equal(await dialog.isVisible(), false);
@@ -62,8 +70,24 @@ export async function checkRegisterDialog(browser, base) {
       await page.keyboard.press('Escape');
       await dialog.waitFor({state: 'hidden'});
       assert.ok(await button.evaluate(el => document.activeElement === el));
+      // The same save button adds another performance when only the time changes.
+      await page.locator('#w-date').fill('2026-10-01');
+      await page.locator('#w-time').fill('14:00');
+      await page.locator('[data-add-work]').click();
+      await page.waitForFunction(() => document.querySelector('[data-register-result]').textContent.includes('14:00'));
+      assert.equal(await page.locator('#w-title').inputValue(), '夜の果て');
+      assert.equal(await page.locator('#w-date').inputValue(), '2026-10-01');
+      assert.equal(await page.locator('#w-time').inputValue(), '14:00');
+      await page.locator('#w-time').fill('19:00');
+      await page.locator('[data-add-work]').click();
+      await page.waitForFunction(() => document.querySelector('[data-register-result]').textContent.includes('19:00'));
+      assert.deepEqual(saved.map(r => r.time), ['14:00', '19:00']);
+      await page.locator('[data-add-work]').click();
+      await page.waitForFunction(() => document.querySelector('.register-single .said').textContent.includes('できませんでした'));
+      assert.equal(saved.length, 2);
+      await page.screenshot({path: `/tmp/taguri-visual/register-save-${width}.png`, fullPage: true});
       assert.deepEqual(errors, [], `${width}: detail dialog JavaScript errors`);
-      console.log(`register dialog/${width}: fields visible, month filter, selection, reopen, Escape passed`);
+      console.log(`register dialog/${width}: fields, search, selection, reopen, Escape, consecutive saves without extra controls passed`);
     } catch (error) {
       await page.screenshot({path: `/tmp/taguri-visual/register-dialog-failure-${width}.png`, fullPage: true});
       console.error('Detail dialog page errors:', errors);

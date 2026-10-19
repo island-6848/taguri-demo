@@ -333,8 +333,7 @@ export async function registerScreen(_params, ctx) {
  <div class="register-dates"><label class="fld" for="w-date"><span class="fl">観た日<small class="opt">任意</small></span><input id="w-date" type="date"></label>
  <label class="fld" for="w-time"><span class="fl">開演時刻<small class="opt">任意</small></span><input id="w-time" type="time"></label></div>
  <label class="fld" for="w-venue"><span class="fl">劇場<small class="opt">任意</small></span><input id="w-venue" type="text" placeholder="例：本多劇場" size="26"></label>
- <label class="register-repeat"><input type="checkbox" data-register-repeat="1" checked>同じ作品を続けて追加する</label>
- <div class="register-save"><button type="button" class="primary" data-add-work="1">${ico('plus')}観劇記録を保存</button><button type="button" data-register-reset="1">別の作品を追加</button><span class="said" role="status" aria-live="polite"></span></div>
+ <div class="register-save"><button type="button" class="primary" data-add-work="1">${ico('plus')}観劇記録を保存</button><span class="said" role="status" aria-live="polite"></span></div>
 </div>
 <div class="register-result" data-register-result="1" hidden></div>
 <details class="register-help"><summary>公演の候補について</summary>
@@ -439,5 +438,6 @@ export const settingsScreens = {
   screens: {settings: settingsScreen, start: startScreen, register: registerScreen},
   actions: {pref_setting: prefSettingAction, missed: missedAction, analysis_optout: optoutAction},
 };
+
 
 
