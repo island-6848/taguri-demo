@@ -717,6 +717,20 @@
    "verifies": []
   },
   {
+   "id": "dec-affil-reco",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-19",
+   "title": "所属（劇団）から値の無い人を推し量る部品を作り、まず裏の答え合わせで測るだけにする（画面のおすすめにはまだ効かせない）",
+   "sources": [
+    "cloudflare/src/recommend.js",
+    "cloudflare/src/reco-gate.js",
+    "cloudflare/src/screens/recommend.js",
+    "cloudflare/migrations/0041.sql"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-affiliation-table",
    "type": "decision",
    "status": "adopted",
@@ -8719,6 +8733,11 @@
    "from": "dec-account-page",
    "rel": "affects",
    "to": "comp-frontend"
+  },
+  {
+   "from": "dec-affil-reco",
+   "rel": "affects",
+   "to": "dec-affiliation-table"
   },
   {
    "from": "dec-affiliation-table",

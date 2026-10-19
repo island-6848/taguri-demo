@@ -15,7 +15,7 @@
 // same index serves them all. They are the choices public data could not
 // settle for theatre (eval_design_choices.py): how much kinds of show count,
 // and how much the director / writer count compared with the cast.
-import {independentRatings, personValues, gradeOf, droppedKind, TOP_N} from './recommend.js';
+import {independentRatings, personValues, gradeOf, droppedKind, withAffil, TOP_N} from './recommend.js';
 
 // Ports of tools/review/recommend2.py ROLE_W / BACKSTAGE_W and
 // tools/taguri/app.py ROLE_GROUPS (checked against Python in the test).
@@ -41,6 +41,11 @@ export const VARIANTS = {
 };
 // Variants that read the ratings without their 気になった所 (q-aspect-attribution-check).
 export const WITHOUT_ASPECTS = new Set(['aspects_off']);
+// 所属（劇団）から値の無い人を推し量る（recommend.withAffil、dec-affil-reco）。opts.affil（劇団 -> 所属の人）を渡したときだけ
+// 数える。**測るだけで選ばない**（MEASURE_ONLY）: 画面のおすすめに効かせると、理由の文（どの劇団の人か）が新しく要る。
+// 効き目が分かってから、理由の書き方と一緒に起案者に確かめる
+export const AFFIL_VARIANT = 'affil';
+export const MEASURE_ONLY = new Set([AFFIL_VARIANT]);
 const plain = rows => rows.map(r => (r.aspects && r.aspects.length ? {...r, aspects: []} : r));
 export const MIN_UNITS = 6, Z = 1.96, WINDOW = 120, MIN_HISTORY = 5, BLOCK = 6;
 
@@ -73,9 +78,10 @@ export function stageScore(values, people, multipliers = {}) {
  * {variant, multipliers, aspects (false: score with the ratings' 気になった所 ignored),
  * checked: {name: {wins, losses}}}.
  */
-export function chooseVariant(rated, {variants = VARIANTS, minUnits = MIN_UNITS, z = Z, window = WINDOW, block = BLOCK} = {}) {
+export function chooseVariant(rated, {variants = VARIANTS, minUnits = MIN_UNITS, z = Z, window = WINDOW, block = BLOCK, affil = null} = {}) {
   const ordered = independentRatings(rated).filter(r => (r.people || []).length);
-  const names = Object.keys(variants).filter(n => n !== 'base');
+  const withA = affil?.size > 0;
+  const names = [...Object.keys(variants).filter(n => n !== 'base'), ...(withA ? [AFFIL_VARIANT] : [])];
   // Unit: a block of `block` productions rated one after another, all
   // scored from the ratings made before the block only, and the pairs inside
   // it the user rated differently (same scale). Scoring both sides of a pair
@@ -105,8 +111,9 @@ export function chooseVariant(rated, {variants = VARIANTS, minUnits = MIN_UNITS,
       return n;
     };
     const base = right(variants.base || {});
+    const affilValues = withA ? withAffil(values, affil).values : null;
     for (const n of names) {
-      const r = right(variants[n], WITHOUT_ASPECTS.has(n) ? plainValues : values);
+      const r = n === AFFIL_VARIANT ? right(variants.base || {}, affilValues) : right(variants[n], WITHOUT_ASPECTS.has(n) ? plainValues : values);
       if (r > base) tally[n].wins += 1;
       else if (r < base) tally[n].losses += 1;
     }
@@ -114,6 +121,7 @@ export function chooseVariant(rated, {variants = VARIANTS, minUnits = MIN_UNITS,
   const checked = tally;
   let best = 'base', bestMargin = 0;
   for (const n of names) {
+    if (MEASURE_ONLY.has(n)) continue;
     const {wins, losses} = tally[n];
     const deciding = wins + losses, margin = wins - losses;
     if (deciding >= minUnits && margin >= z * Math.sqrt(deciding) && margin > bestMargin) { best = n; bestMargin = margin; }
