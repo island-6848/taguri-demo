@@ -37,14 +37,18 @@ test('only the favourite name tags (.ftag) use the accent font', () => {
   assert.doesNotMatch(css, /--font-(action|round)/);
 });
 
-test('the reason labels, the official-site button and the sale pill use Zen Maru Gothic 700', () => {
+test('the reason labels use Zen Maru Gothic 700; the official-site button and the sale pill use 500', () => {
+  // 公式サイトと発売の札は 500（起案者の答え 2026-10-19「ファイル追加して」。700 だけでは太字に見えた）
   const css = readFileSync(pub('fonts.css'), 'utf8');
-  const uses = [...css.matchAll(/([^{}]+)\{([^}]*font-family:var\(--font-maru\)[^}]*)\}/g)];
-  assert.equal(uses.length, 1);
-  const sel = uses[0][1].replace(/\/\*[\s\S]*?\*\//g, '').trim();
-  for (const s of ['.rs .net', '.sitebtn', '.sitelink', '.sale .pill']) assert.ok(sel.includes(s), s);
-  assert.match(uses[0][2], /font-weight:700!important/);
+  const uses = [...css.matchAll(/([^{}]+)\{([^}]*font-family:var\(--font-maru\)[^}]*)\}/g)].map(m => [m[1].replace(/\/\*[\s\S]*?\*\//g, '').trim(), m[2]]);
+  assert.equal(uses.length, 2);
+  assert.ok(uses[0][0].includes('.rs .net'));
+  assert.match(uses[0][1], /font-weight:700!important/);
+  for (const s of ['.sitebtn', '.sitelink', '.sale .pill']) assert.ok(uses[1][0].includes(s), s);
+  assert.doesNotMatch(uses[1][0], /\.rs \.net/);
+  assert.match(uses[1][1], /font-weight:500!important/);
   assert.match(css, /--font-maru:"Zen Maru Gothic"/);
   const maru = [...css.matchAll(/@font-face \{ font-family: 'Zen Maru Gothic';[^}]*\}/g)].map(m => m[0]);
-  assert.ok(maru.length > 50 && maru.every(f => f.includes('font-weight: 700')), `${maru.length} faces`);
+  for (const w of [700, 500]) assert.ok(maru.filter(f => f.includes(`font-weight: ${w}`)).length > 50, `${w}`);
+  assert.equal(maru.length, maru.filter(f => /font-weight: (500|700)/.test(f)).length);
 });

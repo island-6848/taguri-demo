@@ -1349,6 +1349,21 @@
    "verifies": []
   },
   {
+   "id": "dec-font-maru-500",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-19",
+   "title": "公式サイトの押し口と発売の札は Zen丸ゴシック 500（字のファイルを足した）。おすすめ理由の「人物」「形式」は 700 のまま。✕（候補から消す）は取り消せなくてよい",
+   "sources": [
+    "web/fonts.css",
+    "web/assets/fonts/zen-maru-gothic/",
+    "cloudflare/test/fonts.test.js",
+    "cloudflare/test/e2e-walk.js",
+    "https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500&display=swap"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-font-roles",
    "type": "decision",
    "status": "superseded",
@@ -8661,6 +8676,16 @@
    "from": "dec-font-action-maru",
    "rel": "supersedes",
    "to": "dec-font-roles"
+  },
+  {
+   "from": "dec-font-maru-500",
+   "rel": "depends_on",
+   "to": "dec-font-accent-four-maru"
+  },
+  {
+   "from": "dec-font-maru-500",
+   "rel": "depends_on",
+   "to": "dec-card-dismiss"
   },
   {
    "from": "dec-font-roles",

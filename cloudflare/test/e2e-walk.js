@@ -558,9 +558,12 @@ async function walkA(A) {
     const look = await card.evaluate(t => {
       const pill = getComputedStyle(t.querySelector('.sale .pill')), site = getComputedStyle(t.querySelector('.sitelink'));
       const ink = getComputedStyle(t.querySelector('.btns button:not(.picked)')).color;
-      return {pill: pill.fontFamily.split(',')[0], site: site.fontFamily.split(',')[0], siteColor: site.color === ink, siteBorder: site.borderTopColor === ink};
+      return {pill: pill.fontFamily.split(',')[0], site: site.fontFamily.split(',')[0], siteColor: site.color === ink, siteBorder: site.borderTopColor === ink,
+        w: [pill.fontWeight, site.fontWeight].join('/')};
     });
-    check(/Zen Maru Gothic/.test(look.pill) && /Zen Maru Gothic/.test(look.site) && look.siteColor && look.siteBorder, '札・公式サイトの字と色: ' + JSON.stringify(look));
+    // 太さは 500（起案者の答え 2026-10-19「ファイル追加して」）。500 の字のファイルが実際に読めているか
+    const loaded = await page.evaluate(async () => { await document.fonts.load('500 13px "Zen Maru Gothic"', '公式サイト発売済'); return document.fonts.check('500 13px "Zen Maru Gothic"', '公式サイト発売済'); });
+    check(/Zen Maru Gothic/.test(look.pill) && /Zen Maru Gothic/.test(look.site) && look.siteColor && look.siteBorder && look.w === '500/500' && loaded, '札・公式サイトの字と色: ' + JSON.stringify(look) + ' 500 の字: ' + loaded);
     note('行のすき間: ' + gaps.join(',') + ' / 札の位置: ' + JSON.stringify(side) + ' / ' + JSON.stringify(look));
     const price = await card.locator('.lprice').innerText();
     check(!/12,000円\s*[~〜～]\s*12,000円/.test(price) && /12,000円/.test(price), '同じ額の幅が残っている: ' + price.replace(/\s+/g, ' '));
