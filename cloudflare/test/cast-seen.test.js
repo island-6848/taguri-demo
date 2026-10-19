@@ -49,14 +49,14 @@ test('off performers leave the record\'s material; relinking the record clears t
     const k = await rateSeen(env, a, '舞台ひとつめ', '2026-08-01', '101', '◎');
     await rateSeen(env, a, '一日だけの舞台', '2026-09-05', '104', '×');
     const before = await recommend(env, a);
-    assert.match(before, /data-stage="102"[\s\S]*?出演 <a class="rsl"[^>]*><b>俳優乙<\/b><\/a>/);
+    assert.match(before, /data-stage="102"[\s\S]*?出演 <b>俳優乙<\/b>/);
     assert.equal((await step(env, a, {post: '/api/cast_seen', body: {work_key: k, off: ['俳優乙']}})).status, 200);
     assert.equal(sqlite.prepare('SELECT cast_off FROM works WHERE work_key=?').get(k).cast_off, '["俳優乙"]');
     assert.doesNotMatch(await recommend(env, a), /出演 <b>俳優乙<\/b>/);
     assert.match((await step(env, a, {get: '/api/screen/works'})).body.body_html, /いま 1 人を「観た回に出ていなかった」にしています/);
     // Back to everyone.
     assert.equal((await step(env, a, {post: '/api/cast_seen', body: {work_key: k, off: []}})).status, 200);
-    assert.match(await recommend(env, a), /出演 <a class="rsl"[^>]*><b>俳優乙<\/b><\/a>/);
+    assert.match(await recommend(env, a), /出演 <b>俳優乙<\/b>/);
     await step(env, a, {post: '/api/cast_seen', body: {work_key: k, off: ['俳優乙']}});
     await step(env, a, {post: '/api/link_stage', body: {work_key: k, stage_id: '103'}});
     assert.equal(sqlite.prepare('SELECT cast_off FROM works WHERE work_key=?').get(k).cast_off, '');

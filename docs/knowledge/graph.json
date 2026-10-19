@@ -1164,9 +1164,20 @@
    ]
   },
   {
-   "id": "dec-entity-pages",
+   "id": "dec-entity-pages-later",
    "type": "decision",
    "status": "adopted",
+   "date": "2026-10-19",
+   "title": "おすすめ理由の太字のリンク（人物・形式のページ）は先送りにして、いったん元に戻す",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/commit/8260cc2"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-entity-pages",
+   "type": "decision",
+   "status": "superseded",
    "date": "2026-10-19",
    "title": "おすすめ理由の太字から、人物・形式ごとのページへ飛べるようにする",
    "sources": [
@@ -6261,6 +6272,15 @@
    ]
   },
   {
+   "id": "q-entity-pages-next",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-19",
+   "title": "人物のページ（おすすめ理由の太字から飛ぶ）を、いつ・どの中身で作るか",
+   "sources": [],
+   "verifies": []
+  },
+  {
    "id": "q-fav-reco-running-shows",
    "type": "question",
    "status": "answered",
@@ -8864,6 +8884,16 @@
    "from": "dec-edition-split",
    "rel": "affects",
    "to": "comp-frontend"
+  },
+  {
+   "from": "dec-entity-pages-later",
+   "rel": "supersedes",
+   "to": "dec-entity-pages"
+  },
+  {
+   "from": "dec-entity-pages-later",
+   "rel": "affects",
+   "to": "comp-cf-worker"
   },
   {
    "from": "dec-entity-pages",
@@ -12409,6 +12439,11 @@
    "from": "q-e2e-register-rework",
    "rel": "depends_on",
    "to": "dec-sale-label-1019"
+  },
+  {
+   "from": "q-entity-pages-next",
+   "rel": "depends_on",
+   "to": "dec-entity-pages-later"
   },
   {
    "from": "q-fav-reco-running-shows",

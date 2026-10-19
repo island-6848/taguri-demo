@@ -1631,13 +1631,3 @@ details.lprice:not([open]):not(#_)>summary .plist>li:only-child::before{display:
  .side .psud a:not(#_):active{background:var(--fold-bg)}
  .side .psud a.on:not(#_){border-color:var(--acc);color:var(--acc);font-weight:700}
 }
-
-/* おすすめ理由の太字（人物・形式）は、その人・形式の画面へのリンク（起案者の指示 2026-10-19）。字は黒の太字のまま、下線は押せる所にだけ薄く */
-.rs a.rsl{color:inherit;text-decoration:underline;text-decoration-color:var(--ring);text-underline-offset:3px}
-.rs a.rsl:hover,.rs a.rsl:focus-visible{text-decoration-color:currentColor}
-/* 人物の画面（src/screens/entity.js） */
-.entprof{margin:12px 0 18px}
-.entprof .entext{display:flex;flex-wrap:wrap;gap:8px 16px;margin:6px 0 0}
-.entmine{list-style:none;margin:6px 0 0;padding:0}
-.entmine li{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--grid)}
-.entmine li span{color:var(--mute);font-size:12.5px;white-space:nowrap}

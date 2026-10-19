@@ -1,7 +1,7 @@
 ---
 id: dec-entity-pages
 type: decision
-status: adopted
+status: superseded
 date: 2026-10-19
 title: おすすめ理由の太字から、人物・形式ごとのページへ飛べるようにする
 sources:

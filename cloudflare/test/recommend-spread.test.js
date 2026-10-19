@@ -43,7 +43,7 @@ test('one step out: a show of someone who works with a liked person comes in, wi
 test('the reason names the liked person the partner works with', async () => {
   const {reasonRows} = await import('../src/screens/recommend.js');
   const html = reasonRows({parts: [[0.1, '出演', 'Q', 0]], kinds: [], via: [['出演\tQ', 'P']]}, new Map());
-  assert.match(html, /出演 <a class="rsl"[^>]*><b>Q<\/b><\/a><span class="n">（好きなPと同じ公演に関わる人）<\/span>/);
+  assert.match(html, /出演 <b>Q<\/b><span class="n">（好きなPと同じ公演に関わる人）<\/span>/);
 });
 
 // 起案者の指摘 2026-10-16「おすすめ理由に料金出たまま」: 本番の索引に残っている料金帯（#値段）の行は読まない。

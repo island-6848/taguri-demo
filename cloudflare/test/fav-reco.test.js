@@ -33,7 +33,7 @@ test('a favourite alone recommends a show of a co-worker, and the reason names t
   assert.match(got.body_html, /data-stage="101"/);
   // 起案者の指示 2026-10-18「『お気に入りの横山拓也と同じ公演に関わる人：『雉はじめて鳴く』』→『横山拓也 演出『雉はじめて鳴く』出演』」で
   // 理由の形が変わったので、期待を「登録した名前 その作品での役職『作品名』この人のその作品での役職」に直した（fix-fav-reason-roles）
-  assert.match(got.body_html, /出演 <a class="rsl"[^>]*><b>俳優乙<\/b><\/a><span class="n">（作家丁 脚本『舞台ふたつめ』出演）<\/span>/);
+  assert.match(got.body_html, /出演 <b>俳優乙<\/b><span class="n">（作家丁 脚本『舞台ふたつめ』出演）<\/span>/);
   assert.doesNotMatch(got.body_html, /好きな俳優乙|おすすめを出すためのワンポイント/);
 });
 
@@ -170,7 +170,7 @@ test('the favourite reason: name, its role in the work, the work, and this perso
   assert.deepEqual(got.get('出演\t乙'), ['横山 拓也', '人', [['', '新しい', '出演・演出'], ['演出・脚本', '古い', '出演']]]);
   // 控え（v35）の形でも、前の形（興味ありに残した [鍵, 名前]）でも書ける
   const row = reasonRows({parts: [[0.5, '出演', '乙', 0]], kinds: [], fav: [['出演\t乙', ...got.get('出演\t乙')]]}, new Map());
-  assert.match(row, /出演 <a class="rsl"[^>]*><b>乙<\/b><\/a><span class="n">（横山 拓也『新しい』出演・演出、演出・脚本『古い』出演）<\/span>/);
+  assert.match(row, /出演 <b>乙<\/b><span class="n">（横山 拓也『新しい』出演・演出、演出・脚本『古い』出演）<\/span>/);
   assert.match(reasonRows({parts: [[0.5, '出演', '乙', 0]], kinds: [], fav: [['出演\t乙', '横山拓也']]}, new Map()), /（横山拓也と同じ公演）/);
 });
 
@@ -181,7 +181,7 @@ test('a reason row with nothing to say in brackets is left out, and a guide text
   const titles = new Map([['出演\t甲', ['舞台A']], ['出演\t乙', []], ['#形式\tミュージカル', []]]);
   const html = reasonRows({parts: [[0.5, '出演', '甲', 0], [0.4, '出演', '乙', 0], [0.3, '出演', 'スタッフ欄をご覧ください。', 2]],
     kinds: [[0.2, '#形式', 'ミュージカル', 0], [0.1, '#原作', '漫画原作', 1]]}, titles);
-  assert.match(html, /出演 <a class="rsl"[^>]*><b>甲<\/b><\/a><span class="n">（『舞台A』）<\/span>/);
+  assert.match(html, /出演 <b>甲<\/b><span class="n">（『舞台A』）<\/span>/);
   assert.doesNotMatch(html, /<b>乙<\/b>|ミュージカル|スタッフ欄/);
-  assert.match(html, /<a class="rsl"[^>]*><b>漫画原作<\/b><\/a><span class="n">（履歴 1 本）<\/span>/);
+  assert.match(html, /<b>漫画原作<\/b><span class="n">（履歴 1 本）<\/span>/);
 });
