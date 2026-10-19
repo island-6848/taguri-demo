@@ -1574,6 +1574,24 @@
    "verifies": []
   },
   {
+   "id": "dec-interest-ux-toggle-1019",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-19",
+   "title": "興味あり画面の回答状態・月の保持・メモ表示を直し、サービス版の全画面で選択済みの回答をもう一度押すと解除する",
+   "sources": [
+    "cloudflare/src/screens/recommend.js",
+    "cloudflare/src/screens/lists.js",
+    "cloudflare/src/screens/cards.js",
+    "cloudflare/src/screens/reminder.js",
+    "web/app.js",
+    "web/theme.css",
+    "cloudflare/test/answer-clear.test.js",
+    "tools/taguri/check_interest_ux.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-interest-why-1016",
    "type": "decision",
    "status": "adopted",
@@ -9161,6 +9179,21 @@
    "from": "dec-interest-card-1015",
    "rel": "affects",
    "to": "comp-frontend"
+  },
+  {
+   "from": "dec-interest-ux-toggle-1019",
+   "rel": "depends_on",
+   "to": "dec-card-dismiss"
+  },
+  {
+   "from": "dec-interest-ux-toggle-1019",
+   "rel": "affects",
+   "to": "dec-recommend-ui-1017"
+  },
+  {
+   "from": "dec-interest-ux-toggle-1019",
+   "rel": "depends_on",
+   "to": "dec-recommend-ux-1019"
   },
   {
    "from": "dec-interest-why-1016",

@@ -211,7 +211,8 @@ const where = r => (r.venue && r.pref ? `${r.venue}（${r.pref}）` : r.venue ||
 export const NO_POSTER = '<div class="noposter np-print"><span>now printing...</span></div>';
 function row(r, today, poster, detail, hereLabel) {
   const answered = ['tracking', 'declined', 'cantgo', 'owned'].includes(r.kind_key);
-  const btns = !r.stage_id ? '' : r.kind_key === 'unanswered' ? buttons(r.stage_id) : answered ? changeAnswer(r.stage_id) : '';
+  const current = {tracking: 'interest', declined: 'nointerest', cantgo: 'cantgo', owned: 'owned'}[r.kind_key] || '';
+  const btns = !r.stage_id ? '' : r.kind_key === 'unanswered' ? buttons(r.stage_id) : answered ? changeAnswer(r.stage_id, current) : '';
   const tour = r.tours ? scheduleHtml(r, today, hereLabel) : '';
   const head = `<span class="dgk ${r.cls}">${ico(r.icon, 13)}${E(r.kind)}</span>`
     + `<b class="dgt">${E(r.title)}</b>`

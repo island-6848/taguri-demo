@@ -643,6 +643,7 @@ function renderScreen(el, activePath, d, exposureSource) {
   compactRows(el);
   penNotes(el);
   el.querySelectorAll(".rb").forEach(starValue);
+  el.querySelectorAll(".btns,.rb[data-work]").forEach(g => pickChoice(g, savedChoice(g)));
   shortAddButtons(el);
   divergeVerdicts(el);
   stampRerate(el);
@@ -1930,6 +1931,68 @@ function starValue(g) {
   }
   out.textContent = v === null ? "" : "★" + v;
 }
+function savedChoice(g) {
+  if (g.dataset.current !== undefined) return g.dataset.current;
+  const picked = g.querySelector("button[data-v].picked");
+  if (picked) return picked.dataset.v;
+  const stars = g.querySelectorAll("button.star.on").length;
+  if (stars) return stars + "/5";
+  if (g.querySelector(".star0.on")) return "1/11";
+  const halves = g.querySelectorAll(".hs.on").length, half = g.querySelector(".hs.h") ? .5 : 0;
+  if (halves || half) return (2 * (halves + half) + 1) + "/11";
+  const stamp = g.closest(".rec-row, .wait")?.querySelector("[data-stamp]")?.textContent.trim();
+  return [...g.querySelectorAll("button[data-v]")].find(b => gradeText(b.dataset.v) === stamp)?.dataset.v || "";
+}
+function pickChoice(g, value) {
+  g.dataset.current = value || "";
+  g.querySelectorAll("button[data-v]").forEach(b => {
+    const picked = b.dataset.v === value;
+    b.classList.toggle("picked", picked);
+    b.setAttribute("aria-pressed", String(picked));
+  });
+}
+function reactionState(g, value) {
+  const t = g.closest(".ticket, .dgli");
+  if (!t) return;
+  if (value !== "owned") t.querySelector(".owned-mark")?.remove();
+  let status = t.querySelector(".answer-state");
+  if (!status) { status = document.createElement("p"); status.className = "answer-state"; status.setAttribute("role", "status"); g.after(status); }
+  const label = {interest: "興味あり", nointerest: "興味なし", owned: "購入済", cantgo: "行けない"}[value];
+  status.textContent = label ? label + "として保存済み。" : "回答を解除しました（未回答）。";
+  const here = location.pathname.slice(REPO_BASE.length) || "/";
+  if (here === "/recommend/interest" && value !== "interest") status.append(" この画面を開き直すと一覧から外れます。");
+}
+async function clearChoice(g) {
+  if (g.dataset.saving) return;
+  g.dataset.saving = "1";
+  g.setAttribute("aria-busy", "true");
+  const stage = g.dataset.stage, t = g.closest(".ticket");
+  const body = stage ? {stage_id: stage, clear: true, siblings: (t?.dataset.tours || "").split(",").filter(Boolean)}
+    : {work_key: g.dataset.work, clear: true};
+  try {
+    const d = await post(stage ? "/api/react" : "/api/rate", body, g, stage ? "回答を解除しました" : "未評価に戻しました");
+    if (!d || d.ok === false) return;
+    pickChoice(g, "");
+    g.classList.remove("done");
+    if (stage) {
+      reactionState(g, "");
+      if (t) {
+        t.classList.remove("answered-compact", "answer-editing", "torn");
+        t.querySelector(":scope > .answered-summary")?.remove();
+      }
+      document.getElementById("rec-thanks")?.remove();
+    } else {
+      g.querySelectorAll(".star, .star0, .hs").forEach(x => x.classList.remove("on", "h"));
+      const clr = g.querySelector(".gclr"); if (clr) clr.hidden = true;
+      starValue(g);
+      const row = g.closest(".rec-row, .wait");
+      const stamp = row?.querySelector("[data-stamp]");
+      if (stamp) { stamp.textContent = "未評価"; stamp.className = "stamp hold"; stamp.setAttribute("aria-label", "評価を選び直す（いまは 未評価）"); }
+      row?.classList.remove("torn");
+      const asp = row?.querySelector(".asp"); if (asp) asp.hidden = true;
+    }
+  } finally { delete g.dataset.saving; g.removeAttribute("aria-busy"); }
+}
 // 星の右端の ✕: 評価を消して未評価に戻す（起案者の指示 2026-10-18「『評価しない』のボタンじゃなくて、星の右端に✕ボタンを
 // つけることでnullにできるようにして」）。POST /api/rate {work_key, clear: true}。記録できなかったら星を戻す
 document.addEventListener("click", ev => {
@@ -1938,14 +2001,7 @@ document.addEventListener("click", ev => {
   if (!b) return;
   const g = b.closest(".rb[data-work]");
   if (!g) return;
-  g.querySelectorAll("button[data-v]").forEach(x => x.classList.remove("picked"));
-  const unfill = fillStars(g, b);
-  post("/api/rate", {work_key: g.dataset.work, clear: true}, g, "評価を消しました（未評価に戻りました）").then(d => {
-    if (!d) { unfill(); return; }
-    const rr = g.closest(".rec-row");
-    const asp = rr && rr.querySelector(".asp");
-    if (asp) asp.hidden = true;      // 評価が無い記録には詳細を出さない（付け直せば、前の詳細のまま出る）
-  });
+  clearChoice(g);
 });
 document.addEventListener("click", ev => {
   if (!live) return;
@@ -1953,6 +2009,12 @@ document.addEventListener("click", ev => {
   if (!b) return;
   if (b.dataset.v) {
     const g = b.closest(".btns,.rb");
+    if (!g || g.dataset.saving) return;
+    const current = savedChoice(g);
+    // 公開デモの旧APIは公演の回答解除をまだ受け付けない。サービス版の全画面と評価で揃える。
+    if (current === b.dataset.v && (!g.dataset.stage || !IS_DEMO)) { clearChoice(g); return; }
+    g.dataset.saving = "1";
+    g.setAttribute("aria-busy", "true");
     const path = g.dataset.stage ? "/api/react" : "/api/rate";
     const body = g.dataset.stage ? {stage_id: g.dataset.stage, value: b.dataset.v}
                                  : {work_key: g.dataset.work, verdict: b.dataset.v};
@@ -2008,8 +2070,9 @@ document.addEventListener("click", ev => {
         return;
       }
       g.classList.add("done");
+      pickChoice(g, b.dataset.v);
+      if (g.dataset.stage) reactionState(g, b.dataset.v);
       if (slot) compactAnswered(slot, b.dataset.v);
-      if (said0) { b.textContent = "購入済み"; b.disabled = true; }
       // 入れ替わりの 1 枚は、その 1 枚で初めて答えたときだけ足す（押し直すたびに増やさない）
       if (shown && g.dataset.stage && !slot.dataset.filled) {
         slot.dataset.filled = "1";
@@ -2074,7 +2137,7 @@ document.addEventListener("click", ev => {
         const nn = row && row.querySelector(".nn");
         if (nn) nn.hidden = false;
       }
-    });
+    }).finally(() => { delete g.dataset.saving; g.removeAttribute("aria-busy"); });
   } else if (b.dataset.fav === "add") {
     const g = b.closest(".fav-add"), i = g.querySelector("#fav-name");
     if (!i.value.trim()) return;
@@ -3820,7 +3883,12 @@ root.querySelectorAll(".why-note textarea").forEach(t => {
     const g = t.closest(".why-note");
     if (!live) return;
     saveQueued(t, t.value, g, text => post("/api/react", {stage_id: g.dataset.stage, note: text}, g,
-         "理由を保存しました（お気に入りに加える候補に出ます）"));
+         "理由を保存しました（お気に入りに加える候補に出ます）").then(d => {
+      const memo = t.closest(".why-memo"), preview = memo?.querySelector("summary .wnt");
+      if (d && d.ok !== false && preview) preview.textContent = text || "メモを書く（任意）";
+      if ((!d || d.ok === false) && memo) memo.open = true;
+      return d;
+    }));
   });
 });
 
@@ -4881,4 +4949,3 @@ document.addEventListener("click", async ev => {
   if (d) try { for (const k of ["taguri_login_email", "taguri_login_agree", "taguri_login_intent", "taguri_login_saved_at"]) localStorage.removeItem(k); } catch {}
   if (d) location.href = "/login";
 });
-
