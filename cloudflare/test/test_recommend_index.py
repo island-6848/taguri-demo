@@ -137,7 +137,7 @@ def got(rows):
 
 def load_sql(index):
     con = sqlite3.connect(':memory:')
-    for name in ('0003.sql', '0009.sql', '0016.sql'):
+    for name in ('0003.sql', '0009.sql', '0016.sql', '0039.sql'):
         con.executescript((HERE / 'migrations' / name).read_text())
     ver = BI.version_of(index)
     for stmt in BI.to_sql(index, ver):
@@ -223,7 +223,7 @@ class ParityTest(unittest.TestCase):
         self.assertTrue(all(len(s.encode()) < 100_000 for s in stmts))
         con = sqlite3.connect(':memory:')
         self.addCleanup(con.close)
-        for name in ('0003.sql', '0009.sql', '0016.sql'):
+        for name in ('0003.sql', '0009.sql', '0016.sql', '0039.sql'):
             con.executescript((HERE / 'migrations' / name).read_text())
         for s in stmts:
             con.execute(s)
@@ -259,7 +259,7 @@ class DiffDeliveryTest(unittest.TestCase):
         b = BI.build_index(UR.candidate_pool(raw, cands[:40]), fbs, APP.group_of)      # stages gone
         con = sqlite3.connect(':memory:')
         self.addCleanup(con.close)
-        for name in ('0003.sql', '0009.sql', '0016.sql'):
+        for name in ('0003.sql', '0009.sql', '0016.sql', '0039.sql'):
             con.executescript((HERE / 'migrations' / name).read_text())
         # An older versioned delivery is cleaned up by the first diff.
         for stmt in BI.to_sql(a, 'old'):
@@ -297,7 +297,7 @@ class FirstLoadInPartsTest(DiffDeliveryTest):
         a = BI.build_index(UR.candidate_pool(raw, cands), fbs, APP.group_of)
         con = sqlite3.connect(':memory:')
         self.addCleanup(con.close)
-        for name in ('0003.sql', '0009.sql', '0016.sql'):
+        for name in ('0003.sql', '0009.sql', '0016.sql', '0039.sql'):
             con.executescript((HERE / 'migrations' / name).read_text())
         total = BI.diff_sql(a, {})[2]['upserted']
         limit = total // 4
@@ -330,7 +330,7 @@ class FirstLoadInPartsTest(DiffDeliveryTest):
         stmts1, _h, _c = BI.diff_sql(a, {}, None, limit)
         con2 = sqlite3.connect(':memory:')
         self.addCleanup(con2.close)
-        for name in ('0003.sql', '0009.sql', '0016.sql'):
+        for name in ('0003.sql', '0009.sql', '0016.sql', '0039.sql'):
             con2.executescript((HERE / 'migrations' / name).read_text())
         for stmt in stmts1:
             con2.execute(stmt)
@@ -497,6 +497,36 @@ class OnboardingTest(unittest.TestCase):
             con.execute(stmt)
         v = json.loads(con.execute("SELECT v FROM rec_meta WHERE k='onboarding'").fetchone()[0])
         self.assertEqual(v, {"ver": ver, "ids": ids})
+
+
+class AffiliationTest(unittest.TestCase):
+    """所属の表 rec_affil（起案者の指示 2026-10-19「所属の表をつくって」、dec-affiliation-table）。"""
+
+    def test_rows_per_stage_with_kind_from_past_and_coming_stages(self):
+        pool = {'1': {'title': '甲', 'period': '2026/11/01 〜 2026/11/03', 'group': '劇団丙',
+                      'fields': {'出演': '山田太郎（劇団丙）、佐藤花子（丁プロダクション）'}}}
+        past = [{'stage_id': '2', 'start': '2025-05-01', 'group': '戊企画',
+                 'fields': {'出演': '山田太郎（劇団己）、鈴木一（Wキャスト）、高橋二（佐藤花子）、伊藤三（無名の会合）'}}]
+        index = BI.build_index(pool, {}, APP.group_of, past=past)
+        self.assertEqual(index['affil'], [
+            ('丁プロダクション', '佐藤花子', '1', '2026-11-01', '事務所'),
+            ('劇団丙', '山田太郎', '1', '2026-11-01', '劇団'),
+            ('劇団己', '山田太郎', '2', '2025-05-01', '劇団'),
+            ('無名の会合', '伊藤三', '2', '2025-05-01', ''),
+        ])
+
+    def test_delivered_with_the_index_and_only_changes_next_time(self):
+        pool = {'1': {'title': '甲', 'period': '2026/11/01 〜 2026/11/03', 'fields': {'出演': '山田太郎（劇団丙）'}}}
+        index = BI.build_index(pool, {}, APP.group_of)
+        con = sqlite3.connect(':memory:')
+        for name in ('0003.sql', '0009.sql', '0016.sql', '0039.sql'):
+            con.executescript((HERE / 'migrations' / name).read_text())
+        stmts, hashes, _ = BI.diff_sql(index, {})
+        for st in stmts:
+            con.execute(st)
+        self.assertEqual(con.execute('SELECT affil, person, stage_id FROM rec_affil').fetchall(), [('劇団丙', '山田太郎', '1')])
+        again, _, counts = BI.diff_sql(index, hashes)
+        self.assertFalse(any(s.startswith('INSERT INTO rec_affil') for s in again))
 
 
 if __name__ == '__main__':

@@ -50,7 +50,7 @@ PREFIX = "backup/d1/"
 KEEP_DAYS = 30
 # 毎日作り直せる表と、控えに入れない一時的な表。これ以外はすべて書き出す。
 DERIVED = {
-    "catalogue", "rec_meta", "rec_stage", "rec_credit", "rec_people", "rec_cache", "rec_gram",
+    "catalogue", "rec_meta", "rec_stage", "rec_credit", "rec_people", "rec_affil", "rec_cache", "rec_gram",
     "stage_label", "past_stage", "poster", "usage", "sessions", "webauthn_challenges", "_cf_KV", "_cf_METADATA",
 }
 DRILL_DB = "taguri-restore-drill"
