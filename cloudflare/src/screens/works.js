@@ -59,6 +59,7 @@ export async function deleteWorks(ctx, keys) {
       AND (COALESCE(w.time,'')='' OR ticket.time='' OR ticket.time=w.time))`, ks, today),
     q('DELETE FROM works WHERE user_id=?1 AND work_key IN (SELECT value FROM json_each(?2))', ks),
     q('DELETE FROM hand_credits WHERE user_id=?1 AND work_key IN (SELECT value FROM json_each(?2))', ks),
+    q('DELETE FROM work_piece WHERE user_id=?1 AND work_key IN (SELECT value FROM json_each(?2))', ks),
     q('DELETE FROM merges WHERE user_id=?1 AND (work_key IN (SELECT value FROM json_each(?2)) OR into_key IN (SELECT value FROM json_each(?2)))', ks),
     q('DELETE FROM excluded WHERE user_id=?1 AND uid IN (SELECT value FROM json_each(?2))', marks),
   ]);
@@ -83,13 +84,32 @@ export async function expireDropped(ctx) {
   await deleteWorks(ctx, [...expiredKeys(ctx, results)].slice(0, EXPIRE_MAX));
 }
 
+/**
+ * 1 回の観劇で観た複数の作品を、作品ごとに分けた中身（work_piece、dec-split-pieces）。記録の鍵 -> 並び順の作品。
+ * 分けていない記録には無い（記録は 1 公演 1 行のまま）
+ */
+async function readPieces(ctx) {
+  // 表がまだ無い D1（migration 0042 の前に新しいコードが動いたとき）でも、記録の画面は止めずに「分けていない」として読む
+  let results = [];
+  try {
+    ({results} = await ctx.db.prepare('SELECT work_key, idx, title, verdict, aspects, note, cast_in, rated_at FROM work_piece WHERE user_id=? ORDER BY work_key, idx')
+      .bind(ctx.uid).all());
+  } catch { results = []; }
+  const out = new Map();
+  for (const r of results) { if (!out.has(r.work_key)) out.set(r.work_key, []); out.get(r.work_key).push(r); }
+  return out;
+}
+/** その作品に出ていた出演者の Set（work_piece.cast_in）。空・読めないときは null（公演の出演者の全員） */
+export function pieceCast(p) {
+  try { const v = JSON.parse(p?.cast_in || '[]'); return Array.isArray(v) && v.length ? new Set(v.filter(x => typeof x === 'string')) : null; } catch { return null; }
+}
 export async function loadWorks(ctx) {
   await expireDropped(ctx);
-  const [saved, excluded, merges, hand] = await Promise.all([
+  const [saved, excluded, merges, hand, pieces] = await Promise.all([
     readWorks(ctx),
     ctx.db.prepare('SELECT uid FROM excluded WHERE user_id=?').bind(ctx.uid).all(),
     ctx.db.prepare('SELECT work_key, into_key FROM merges WHERE user_id=?').bind(ctx.uid).all(),
-    readHand(ctx)]);
+    readHand(ctx), readPieces(ctx)]);
   // Records taken back ("work:<key>") and records merged into another one drop out.
   // 消す前の記録（purged:<key>、上限で消しきれなかった分）も、ここで外れる。
   const dropped = new Set(excluded.results.filter(r => r.uid.startsWith('work:') || r.uid.startsWith('purged:')).map(r => r.uid.slice(r.uid.indexOf(':') + 1)));
@@ -111,7 +131,7 @@ export async function loadWorks(ctx) {
       aspects: sv.aspects || '', cast_off: sv.cast_off || '',
       venue: sv.venue || '', time: sv.time || '', stage_id: sv.stage_id || '',
       auto_linked: !!sv.stage_auto && !!sv.stage_id, has_credits: false, unseen: false, skipped: 0,
-      suspect: false, merged: [], hand: hand[k] || {}, shows: []});
+      suspect: false, merged: [], hand: hand[k] || {}, shows: [], pieces: pieces.get(k) || []});
   }
   for (const w of out) if (into.has(w.work_key)) w.merged = [...w.merged, ...into.get(w.work_key)];
   // out.sort(key=lambda w: w["last_date"] or "0000", reverse=True) — stable.

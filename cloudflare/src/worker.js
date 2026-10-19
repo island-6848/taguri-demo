@@ -22,6 +22,8 @@ const SHRINKING_WHEN = {
   ticket: b => b.action === 'del',
   // 表示名・アイコンを空にする（app_setting の行を消す）
   account: b => (Object.hasOwn(b, 'avatar') ? b.avatar === '' : b.display_name === ''),
+  // 作品ごとに分けた中身を読むだけ、または分けるのをやめる（work_piece の行を消す）
+  pieces: b => b.pieces === undefined || (Array.isArray(b.pieces) && !b.pieces.length),
 };
 /** 画面の書き込み（/api/<name>）が、保存の上限でも通してよい減らす操作か */
 export const shrinkingAction = (name, input) => SHRINKING_ACTIONS.has(name) || Boolean(SHRINKING_WHEN[name]?.(input || {}));

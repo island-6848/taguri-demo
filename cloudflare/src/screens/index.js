@@ -26,7 +26,7 @@ import {fixRequestScreens} from './fixrequest.js';
 import {agreeAction} from '../terms.js';
 
 export const SCREEN_TABLES = ['works', 'excluded', 'merges', 'hand_credits', 'visit_note', 'reaction', 'viewed',
-  'ticket', 'missed', 'rank_weight', 'app_setting', 'search_request'];
+  'ticket', 'missed', 'rank_weight', 'app_setting', 'search_request', 'work_piece'];
 // Stands in for the Python server's per-process token (__TAGURI_TOKEN__). The
 // public service never checks it; screens only carry it in links.
 export const TOKEN = 'cfw0000000000000000000000000000000';

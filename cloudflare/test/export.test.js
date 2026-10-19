@@ -33,7 +33,7 @@ test('the export holds every private table of the user, with a schema version, a
     // 画面から足したお気に入り（app_setting の declared）
     assert.equal((await step(env, a, {post: '/api/favourite', body: {action: 'add', kind: '人', name: '画面のお気に入りA'}})).status, 200);
     const {text, out} = await exported(env, a);
-    assert.equal(out.schema_version, 1);
+    assert.equal(out.schema_version, 2);
     assert.match(out.exported_at, /^\d{4}-\d{2}-\d{2}T/);
     // これまでの鍵はそのまま（ほかの道具で読んでいる人の書き出しを壊さない）
     for (const k of ['works', 'ratings', 'attendance', 'reaction', 'ticket', 'presented', 'splits', 'excluded', 'missed', 'declared']) assert.ok(k in out, k);

@@ -787,6 +787,22 @@ a.htag-in:hover{text-decoration:underline}
 .ed-cast .ed-castl label{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
 .ed-cast>.ed-lk{display:block;margin-bottom:4px}
 .ed-cast .ed-castl .ed-btns{flex:0 0 100%;margin-top:4px}
+.ed-pieces>.ed-lk{display:block;margin-bottom:4px}
+.ed-pieces .ed-piecel{width:100%;margin-top:6px}
+.ed-pieces .pc-row{border:1px solid var(--ring);border-radius:6px;margin:0 0 8px;padding:8px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.ed-pieces .pc-head{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.ed-pieces .pc-head input{flex:1 1 12em;min-width:0}
+.ed-pieces textarea{width:100%;box-sizing:border-box}
+.ed-pieces .pc-cast{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:6px}
+.ed-pieces .pc-cast label{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+.ed-pieces button{min-height:44px}
+.rec-row .pcs{grid-column:2;margin:6px 0 2px;font-size:14px}
+.rec-row .pcs .pch{display:block;font-size:12px;opacity:.75}
+.rec-row .pcs ol{margin:2px 0 0;padding-left:1.4em}
+.rec-row .pcs li{margin:2px 0}
+.rec-row .pcs .pcv{margin-left:.6em;font-weight:700}
+.rec-row .pcs .pcv.none{font-weight:400;opacity:.6}
+.rec-row .pcs .pcn{display:block;white-space:pre-wrap;opacity:.85}
 
 /* ---- 流れる帯（起案者の指示 2026-10-15「今週開幕する公演を…メニューに流す」「本物の電光掲示板に寄せなくていいよ。
    文字流れてれば何でも」。app.js の renderTicker）。ほかの札と同じ地・字で、右から左へ流す。

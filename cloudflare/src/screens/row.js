@@ -2,7 +2,7 @@
 // Ports of tools/taguri/app.py (_rec_row, _impression_parts, _stamp,
 // _date_parts, _venue_of, _edit_html, _hand_html, stage_label), charts._anchor
 // and icons.ico/h2. Each returns exactly the Python HTML.
-import {gradeButtons, gradeText, parts} from './grade.js';
+import {gradeButtons, gradeText, parts, markOf} from './grade.js';
 import {pastStages} from './autolink.js';
 import {E, WS, strip, cmp} from './py.js';
 import {handCreditCount} from './credits.js';
@@ -193,12 +193,26 @@ export function recRow(w, {poster = '', rateAlways = false, editable = false, ra
     + (where ? `<div class="where">${where}</div>` : '')
     // 評価の押し口は会場のすぐ下（起案者の指示 2026-10-16「星の位置を会場の下に入れて省スペース化」）
     + ((rate || impHead) ? `<div class="tools">${rate}${impHead}</div>` : '')
+    + piecesHtml(w)
     // つながった公演の作り手・あらすじ（rowinfo.rowInfos。サービス版だけ）があれば、おすすめのカードと同じ形で出す
     + (w.info ? rinfoHtml(w.info, venueOf(w), times) : synopsisHtml(w.synopsis) + castHtml(w.people))
     + extra                         // 探す画面の「ヒットした箇所」（題名のすぐ下）
     + impBox
     + (editable ? editHtml(w, label) : '')
     + `</div>${pin}</article>`;
+}
+
+/**
+ * 作品ごとに分けた中身（work_piece、dec-split-pieces）。記録は 1 件のまま、その下に作品名と作品ごとの評価・感想を並べる。
+ * 分けていない記録では何も出さない（Python の行と同じ形のまま）
+ */
+function piecesHtml(w) {
+  const ps = w.pieces || [];
+  if (!ps.length) return '';
+  const li = p => `<li><span class="pct">${E(p.title)}</span>`
+    + (p.verdict ? `<span class="pcv" data-mark="${E(markOf(p.verdict))}">${E(gradeText(p.verdict))}</span>` : '<span class="pcv none">未評価</span>')
+    + (p.note && p.note.trim() ? `<span class="pcn">${E(p.note)}</span>` : '') + '</li>';
+  return `<div class="pcs"><span class="pch">作品ごと（${ps.length} 作品）</span><ol>${ps.map(li).join('')}</ol></div>`;
 }
 
 // ---------------------------------------------------------------- edit box
@@ -295,6 +309,14 @@ export function editHtml(w, label) {
     + `<button data-cast-open="${key}">Wキャスト・休演で出ていなかった人を選ぶ</button>`
     + `<span class="ed-m">${nOff ? `いま ${nOff} 人を「観た回に出ていなかった」にしています。` : 'Wキャストの公演では、観た回に出ていなかった人のチェックを外すと、おすすめはその人を好みに数えなくなります。'}</span>`
     + '<span class="said"></span><div class="ed-castl"></div></div>';
+  // 作品ごとに分ける（起案者の指示 2026-10-19、dec-split-pieces）: 押したときに中身と出演者を読む
+  const nPieces = (w.pieces || []).length;
+  const pieceRow = `<div class="ed-pieces" data-work="${key}"><span class="ed-lk">作品ごとに分ける</span>`
+    + `<button data-pieces-open="${key}">${nPieces ? `作品ごとの評価・感想を直す（${nPieces} 作品）` : '作品ごとに評価・感想を付ける'}</button>`
+    + `<span class="ed-m">${nPieces
+      ? 'おすすめは、作品ごとの評価から作ります。全部の作品に出ていた人も、1 回の観劇ぶんより大きくは数えません。'
+      : 'オムニバス・短編集・二本立てなど、1 回の公演で複数の作品を観たときに使えます。分けなくてもかまいません。記録は 1 件のままです。'}</span>`
+    + '<span class="said"></span><div class="ed-piecel"></div></div>';
   return `<details class="editor" data-work="${key}">
 <summary>記録を直す${mg.length ? `・まとめた ${mg.length} 件` : ''}</summary>
 ${mgNote}
@@ -307,6 +329,7 @@ ${link}
 <p class="ed-lead">${linkNote}</p>
 ${posterRow}
 ${castRow}
+${pieceRow}
 ${handBox}
 <div class="ed-btns"><button data-fix="${key}">この内容で保存する</button>
  ${merged}<button class="danger" data-drop="${key}">この記録を取り消す</button>

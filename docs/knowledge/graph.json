@@ -2965,6 +2965,23 @@
    "verifies": []
   },
   {
+   "id": "dec-split-pieces",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-19",
+   "title": "1 回の公演で観た複数の作品は、利用者が望めば作品ごとに分けて評価・感想・出演者を持つ。記録は 1 件のまま。推薦は人ごとに「出た作品の評価の平均 × 縮めた件数 m/(1+(m−1)·0.4)」を 1 回だけ足す",
+   "sources": [
+    "cloudflare/migrations/0042.sql",
+    "cloudflare/src/recommend.js",
+    "cloudflare/src/screens/recommend.js",
+    "cloudflare/src/screens/diary.js",
+    "cloudflare/src/screens/row.js",
+    "cloudflare/test/pieces.test.js",
+    "cloudflare/test/pieces-screen.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-spread-and-partners",
    "type": "decision",
    "status": "adopted",
@@ -7321,7 +7338,7 @@
   {
    "id": "q-split-pieces-1019",
    "type": "question",
-   "status": "open",
+   "status": "answered",
    "date": "2026-10-19",
    "title": "1 公演に複数の作品がある記録を、利用者が望んだときだけ作品ごとに分けて評価・推薦・感想・題材の読み取りをするか。分けた作品の重みと出演者の割り当てをどうするか",
    "sources": [
@@ -10387,6 +10404,21 @@
    "from": "dec-signup-cap-atomic",
    "rel": "supports",
    "to": "dec-free-tier-only"
+  },
+  {
+   "from": "dec-split-pieces",
+   "rel": "answers",
+   "to": "q-split-pieces-1019"
+  },
+  {
+   "from": "dec-split-pieces",
+   "rel": "depends_on",
+   "to": "f-multi-piece-handling-1019"
+  },
+  {
+   "from": "dec-split-pieces",
+   "rel": "affects",
+   "to": "comp-cf-worker"
   },
   {
    "from": "dec-spread-and-partners",

@@ -526,6 +526,54 @@ async function walkA(A) {
     check(n === 6, '評価の数が 6 でない: ' + n);
   });
 
+  // 1 回の公演で観た複数の作品を、作品ごとに分ける（起案者の指示 2026-10-19、dec-split-pieces）。記録は 1 件のまま、
+  // 行に作品ごとの評価と感想が並ぶ。あとのおすすめの段を変えないよう、最後に「分けるのをやめる」で戻す
+  await step('記録を作品ごとに分ける・やめる（パソコンと電話の幅）', async () => {
+    const row = () => page.locator('[data-route="/records/works"] .rec-row').filter({hasText: '終わった舞台'}).first();
+    await go('/records/works');
+    const ed = row().locator('details.editor');
+    if (!(await ed.evaluate(b => b.open))) await ed.locator(':scope > summary').click();
+    const box = row().locator('.ed-pieces');
+    await box.locator('[data-pieces-open]').click();
+    await box.locator('.pc-row').nth(1).waitFor();
+    check(await box.locator('.pc-row').count() === 2, '最初に 2 作品ぶんの欄が出ない');
+    await box.locator('[data-piece-add]').click();
+    check(await box.locator('.pc-row').count() === 3, '「作品を足す」で欄が増えない');
+    await box.locator('.pc-row').nth(2).locator('[data-piece-del]').click();
+    const fill = async (i, title, v, note) => {
+      const r = box.locator('.pc-row').nth(i);
+      await r.locator('[data-pc-title]').fill(title);
+      await r.locator('[data-pc-verdict]').selectOption(v);
+      if (note) await r.locator('[data-pc-note]').fill(note);
+    };
+    await fill(0, 'かもめ', '5/5', '一本目がよかった');
+    await fill(1, '熊', '2/5', '');
+    await page.setViewportSize({width: 390, height: 844});
+    await box.scrollIntoViewIfNeeded();
+    await page.screenshot({path: join(OUT, 'pieces-editor-phone.png'), fullPage: false});
+    check(await page.evaluate(() => document.documentElement.scrollWidth) <= 390, '電話の幅で横にはみ出す');
+    await page.setViewportSize({width: 1280, height: 900});
+    await box.locator('[data-pieces-save]').click();
+    await waitSaid(box, /2 作品に分けて保存しました/);
+    await page.waitForEvent('load', {timeout: 5000}).catch(() => {});
+    await settle();
+    const saved = sql("SELECT title, verdict, note FROM work_piece ORDER BY idx");
+    note('D1: ' + saved.map(r => `${r.title} ${r.verdict} ${r.note}`).join(' / '));
+    check(saved.length === 2 && saved[0].verdict === '5/5' && saved[1].verdict === '2/5', '作品ごとの評価が D1 に入らない');
+    check(sql("SELECT count(*) n FROM works WHERE title='終わった舞台'")[0].n === 1, '記録が 1 件のままでない');
+    const shown = await row().locator('.pcs').textContent();
+    check(/作品ごと[（(]2 作品[）)]/.test(shown) && /かもめ/.test(shown) && /★5/.test(shown) && /一本目がよかった/.test(shown), '行に作品ごとの評価・感想が出ない: ' + shown);
+    await row().screenshot({path: join(OUT, 'pieces-row.png')});
+    // 分けるのをやめる
+    const ed2 = row().locator('details.editor');
+    if (!(await ed2.evaluate(b => b.open))) await ed2.locator(':scope > summary').click();
+    const box2 = row().locator('.ed-pieces');
+    await box2.locator('[data-pieces-open]').click();
+    await box2.locator('[data-pieces-stop]').click();
+    await waitSaid(box2, /分けるのをやめました/);
+    check(sql("SELECT count(*) n FROM work_piece")[0].n === 0, '分けるのをやめても work_piece が残る');
+  });
+
   // 起案者の指示 2026-10-18（おすすめのカードの 7 点）: 理由の作品名は 2 つまで・札は「人物」「形式」で Zen丸ゴシック、
   // 発売の札は値段帯のすぐ下、枠線 2px、同じ額の幅は 1 つの額、あらすじの続きは地の色なしで題材のハッシュタグ、日程と暦の間をあける
   await step('今週のおすすめ: カードの見た目（理由・発売の札・料金・あらすじのハッシュタグ・暦。PC・電話の幅）', async () => {
