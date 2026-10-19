@@ -2277,6 +2277,18 @@
    "verifies": []
   },
   {
+   "id": "dec-reading-dual-form",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-19",
+   "title": "朗読劇はほかの形式と兼ねる。題名に 朗読・リーディング があれば、ほかの形式に加えて朗読劇の札も付け、朗読劇の題名に「音楽劇」があれば音楽劇の札も付ける",
+   "sources": [
+    "tools/review/user_recommender.py",
+    "tools/taguri/test_user_recommendation.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-reason-two-works",
    "type": "decision",
    "status": "adopted",
@@ -7172,7 +7184,7 @@
   {
    "id": "q-reading-music-form",
    "type": "question",
-   "status": "open",
+   "status": "answered",
    "date": "2026-10-19",
    "title": "「リーディング音楽劇『ジャングル大帝』」のように朗読劇と音楽劇（ミュージカル）を兼ねる公演の形式をどうするか",
    "sources": [
@@ -10014,6 +10026,21 @@
    "from": "dec-rating-scales",
    "rel": "affects",
    "to": "comp-recommender"
+  },
+  {
+   "from": "dec-reading-dual-form",
+   "rel": "answers",
+   "to": "q-reading-music-form"
+  },
+  {
+   "from": "dec-reading-dual-form",
+   "rel": "depends_on",
+   "to": "dec-form-rodokugeki"
+  },
+  {
+   "from": "dec-reading-dual-form",
+   "rel": "affects",
+   "to": "dec-forms-1019"
   },
   {
    "from": "dec-reason-two-works",
