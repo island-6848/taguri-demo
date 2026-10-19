@@ -1997,6 +1997,17 @@
    "verifies": []
   },
   {
+   "id": "dec-psud-buttons",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-19",
+   "title": "電話の幅の上のメニューを開いたときの子ページ（すだれ .psud）は、白い地・枠線・角丸・すき間のある独立したボタンにする",
+   "sources": [
+    "web/theme.css"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-rate-dist-no-fit",
    "type": "decision",
    "status": "adopted",
@@ -9398,6 +9409,11 @@
    "from": "dec-price-same-amount",
    "rel": "affects",
    "to": "dec-ticket-price-filter"
+  },
+  {
+   "from": "dec-psud-buttons",
+   "rel": "depends_on",
+   "to": "dec-ui-1019"
   },
   {
    "from": "dec-rate-dist-no-fit",
