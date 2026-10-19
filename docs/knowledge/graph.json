@@ -1920,6 +1920,17 @@
    "verifies": []
   },
   {
+   "id": "dec-people-network-on-trace",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-19",
+   "title": "一緒に出てくる人のネットワーク図はたどるの冒頭へ移す",
+   "sources": [
+    "cloudflare/src/screens/records.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-phone-nav-four",
    "type": "decision",
    "status": "adopted",
@@ -9291,6 +9302,11 @@
    "from": "dec-past-posters",
    "rel": "affects",
    "to": "comp-crawler"
+  },
+  {
+   "from": "dec-people-network-on-trace",
+   "rel": "affects",
+   "to": "dec-overview-without-venue-ranking"
   },
   {
    "from": "dec-phone-nav-four",
