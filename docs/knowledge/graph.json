@@ -913,6 +913,21 @@
    "verifies": []
   },
   {
+   "id": "dec-compare-mobile-and-expansion",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-19",
+   "title": "比較表のスマホはみ出しを修正し、公演DBと本人の比較拡充案を整理する",
+   "sources": [
+    "cloudflare/src/screens/compare.js",
+    "tools/taguri/compare.py",
+    "web/style.css",
+    "cloudflare/test/compare-layout-browser.js",
+    "docs/compare-expansion-proposal.md"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-corich-sitemap",
    "type": "decision",
    "status": "adopted",
