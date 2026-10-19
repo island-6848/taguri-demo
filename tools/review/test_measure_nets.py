@@ -104,5 +104,12 @@ for text in ("山田太郎（Wキャスト）", "山田太郎（12/20）", "山�
 check("どちらの人の所属か決められないときは付けない", MN.affiliations("甲野一郎・乙野二郎（劇団丙）") == [("乙野二郎", "劇団丙")],
       MN.affiliations("甲野一郎・乙野二郎（劇団丙）"))
 
+check("所属の束ねる鍵: 記号・空白・会社の種類・頭の劇団を落とす",
+      len({MN.affil_key(x) for x in ("劇団青年座", "青年座")}) == 1
+      and len({MN.affil_key(x) for x in ("流山児★事務所", "流山児☆事務所", "株式会社流山児★事務所")}) == 1
+      and len({MN.affil_key(x) for x in ("LE VELVETS", "LEVELVETS", "LeVelvets")}) == 1)
+check("劇団EXILE と EXILE は束ねない", MN.affil_key("劇団EXILE") != MN.affil_key("EXILE"))
+check("頭の語を除くと 1 字しか残らないものは束ねない", MN.affil_key("劇団森") != MN.affil_key("森"))
+
 print(f"{ok} 件通過・{fail} 件失敗")
 sys.exit(1 if fail else 0)
