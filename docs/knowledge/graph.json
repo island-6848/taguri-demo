@@ -3238,6 +3238,17 @@
    "verifies": []
   },
   {
+   "id": "dec-system-test-plan",
+   "type": "decision",
+   "status": "proposed",
+   "date": "2026-10-20",
+   "title": "一般公開の前のシステムテストは、IPA の非機能要件の 6 観点に S01〜S35 を並べ直して行い、負荷・壊す試験はローカルと別の D1 だけ、本番は 1 日の使う量を決めた少しの確かめだけにする（起案者の承認待ち）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/blob/master/docs/system-test-plan.md"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-theme-kinds-1018",
    "type": "decision",
    "status": "superseded",
@@ -11120,6 +11131,51 @@
    "from": "dec-synopsis-reader-claude",
    "rel": "raises",
    "to": "q-synopsis-routine-quota"
+  },
+  {
+   "from": "dec-system-test-plan",
+   "rel": "depends_on",
+   "to": "dec-free-tier-only"
+  },
+  {
+   "from": "dec-system-test-plan",
+   "rel": "depends_on",
+   "to": "dec-workers-d1"
+  },
+  {
+   "from": "dec-system-test-plan",
+   "rel": "depends_on",
+   "to": "e2e-walk-1018"
+  },
+  {
+   "from": "dec-system-test-plan",
+   "rel": "depends_on",
+   "to": "records-survive-1018"
+  },
+  {
+   "from": "dec-system-test-plan",
+   "rel": "depends_on",
+   "to": "dec-d1-backup"
+  },
+  {
+   "from": "dec-system-test-plan",
+   "rel": "depends_on",
+   "to": "dec-service-watch"
+  },
+  {
+   "from": "dec-system-test-plan",
+   "rel": "affects",
+   "to": "q-workers-cpu-real"
+  },
+  {
+   "from": "dec-system-test-plan",
+   "rel": "affects",
+   "to": "q-d1-migration-failure"
+  },
+  {
+   "from": "dec-system-test-plan",
+   "rel": "affects",
+   "to": "q-passkey-real-devices"
   },
   {
    "from": "dec-theme-kinds-1018",

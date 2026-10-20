@@ -76,7 +76,7 @@ flowchart LR
 
 ### 3. 検証する
 
-下の「検証項目」を通す。結果は [実行・検証記録](service-launch-verification.md) に残し、分かったことはナレッジグラフに足す。
+下の「検証項目」を通す。進め方・範囲・日程・リスクは [システムテスト計画書](system-test-plan.md)〔dec-system-test-plan〕。結果は [実行・検証記録](service-launch-verification.md) に残し、分かったことはナレッジグラフに足す。
 
 ### 4. 切り替える
 
