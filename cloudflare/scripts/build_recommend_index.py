@@ -137,8 +137,10 @@ def build_index(pool: dict[str, dict], fields_by_stage: dict[str, dict], role_gr
         own = {tag for axis, tag in tags if axis == THEME_AXIS}
         tags += [(THEME_AXIS, w) for w, _ in terms if w not in own]
         tw = dict(terms)
-        stages[sid] = {"title": title, "tkey": M.R.title_key(title), "grp": entry.get("group") or "",
-                       "tour": UR.tour_key(title, entry.get("group") or "", credits),
+        # 題名は冠名・サブタイトルを含めて出し、照合の鍵とツアーのまとめはタイトルだけで作る（dec-title-crown-subtitle）
+        main = entry.get("title_main") or title
+        stages[sid] = {"title": title, "tkey": M.R.title_key(main), "grp": entry.get("group") or "",
+                       "tour": UR.tour_key(main, entry.get("group") or "", credits),
                        "gkey": RC.nz(entry.get("group") or ""),
                        "start": RC.period_start(period), "end": _period_end(period),
                        "credits": [list(c) for c in credits],

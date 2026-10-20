@@ -73,7 +73,7 @@ def shards(data: Path) -> dict[int, dict]:
         names = {nz(p) for _, p in people_of(r.get("fields") or {})}
         if r.get("group"):
             names.add(nz(r["group"]))
-        row = [title, M.R.title_key(title), r.get("start") or "", r.get("end") or "", r.get("theater") or "", r.get("group") or ""]
+        row = [title, M.R.title_key(r.get("title_main") or title), r.get("start") or "", r.get("end") or "", r.get("theater") or "", r.get("group") or ""]
         for n in names:
             if len(n) < 2:
                 continue

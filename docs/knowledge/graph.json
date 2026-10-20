@@ -3329,6 +3329,24 @@
    "verifies": []
   },
   {
+   "id": "dec-title-crown-subtitle",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-20",
+   "title": "公演の題名は 冠名・タイトル・サブタイトルを空白でつなげたものにする。照合に使う題名の鍵（tkey）・ツアーのまとめ・名前の索引の鍵はタイトルだけ（title_main）から作る",
+   "sources": [
+    "tools/credits/fetch_credits.py",
+    "tools/review/fetch_candidates.py",
+    "tools/review/fetch_past_stages.py",
+    "cloudflare/scripts/build_recommend_index.py",
+    "cloudflare/scripts/deliver_past.py",
+    "cloudflare/scripts/deliver_past_index.py",
+    "tools/review/test_past_stages.py",
+    "cloudflare/test/test_deliver_past.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-trace-into-person",
    "type": "decision",
    "status": "adopted",
@@ -3841,6 +3859,18 @@
     "https://developer.apple.com/support/membership-fee-waiver/",
     "https://support.google.com/googleplay/android-developer/answer/6112435",
     "https://studio.adalo.com/blog/apple-developer-program-guide"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "f-corich-title-parts",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-20",
+   "title": "CoRich の公演ページの見出しは 冠名（p.crown）→ タイトル（h1.name）→ サブタイトル（p.subTitle）。<title> にはタイトルしか入らず、控えの 6,000 件で冠名は 4,092 件・サブタイトルは 969 件にあった",
+   "sources": [
+    "https://github.com/island-6848/taguri-crawler/tree/state/credits/pages",
+    "https://github.com/island-6848/taguri-demo/blob/master/tools/credits/fetch_credits.py"
    ],
    "verifies": []
   },
@@ -7268,6 +7298,17 @@
    "date": "2026-10-13",
    "title": "昔の公演を、公開情報だけで探せるようにするにはどうするか",
    "sources": [],
+   "verifies": []
+  },
+  {
+   "id": "q-past-title-backfill",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-20",
+   "title": "前に取った過去の公演（約 1.8 万件）の題名に冠名・サブタイトルを足すため、公演ページを読み直すか",
+   "sources": [
+    "tools/review/fetch_past_stages.py"
+   ],
    "verifies": []
   },
   {
@@ -11068,6 +11109,16 @@
    "to": "impl-card-schedule"
   },
   {
+   "from": "dec-title-crown-subtitle",
+   "rel": "depends_on",
+   "to": "f-corich-title-parts"
+  },
+  {
+   "from": "dec-title-crown-subtitle",
+   "rel": "raises",
+   "to": "q-past-title-backfill"
+  },
+  {
    "from": "dec-trace-into-person",
    "rel": "answers",
    "to": "q-trace-into-person"
@@ -11476,6 +11527,11 @@
    "from": "f-app-store-fees",
    "rel": "affects",
    "to": "q-app-direction"
+  },
+  {
+   "from": "f-corich-title-parts",
+   "rel": "affects",
+   "to": "dec-title-crown-subtitle"
   },
   {
    "from": "f-form-rodoku-1019",
@@ -13686,6 +13742,11 @@
    "from": "q-past-stage-catalogue",
    "rel": "depends_on",
    "to": "catalog-terms-no-redistribution"
+  },
+  {
+   "from": "q-past-title-backfill",
+   "rel": "depends_on",
+   "to": "dec-title-crown-subtitle"
   },
   {
    "from": "q-pii-git-history",

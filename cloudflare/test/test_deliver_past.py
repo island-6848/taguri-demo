@@ -117,6 +117,17 @@ class DeliverPastTest(unittest.TestCase):
             self.assertEqual(con.execute("SELECT synopsis FROM past_stage WHERE stage_id='20'").fetchone()[0], '')
 
 
+class TitleKeyTest(unittest.TestCase):
+    def test_the_key_comes_from_the_title_without_crown_and_subtitle(self):
+        # 題名は冠名・サブタイトル込みで出し、自動の結び付け・候補の頭の一致に使う鍵はタイトルだけ（dec-title-crown-subtitle）
+        sys.path.insert(0, str(SCRIPT.parent))
+        import deliver_past as DP
+        row = DP.row_values({"stage_id": "40", "title": "特別公演 熱海殺人事件", "title_main": "熱海殺人事件", "fields": {}})
+        self.assertEqual(row[1:3], ("特別公演 熱海殺人事件", "熱海殺人事件"))
+        # 前に取った行（title_main が無い）は題名から
+        self.assertEqual(DP.row_values({"stage_id": "41", "title": "夜の果て", "fields": {}})[2], "夜の果て")
+
+
 class StatementSizeTest(unittest.TestCase):
     def test_statements_fit_d1_in_bytes(self):
         # 2026-10-14: 文字数で数えていたので、日本語の多い 7,016 行が SQLITE_TOOBIG で断られた

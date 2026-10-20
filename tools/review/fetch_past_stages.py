@@ -100,7 +100,9 @@ def row_from_html(html: str, sid: str) -> dict:
     import unicodedata
     return {
         "stage_id": str(sid),
-        "title": unicodedata.normalize("NFKC", c["page_title"] or "").strip(),
+        # 題名は冠名・タイトル・サブタイトルをつなげたもの。照合の鍵はタイトルだけ（title_main、dec-title-crown-subtitle）
+        "title": unicodedata.normalize("NFKC", c.get("full_title") or c["page_title"] or "").strip(),
+        "title_main": unicodedata.normalize("NFKC", c["page_title"] or "").strip(),
         "period": period,
         "start": start,
         "end": end,

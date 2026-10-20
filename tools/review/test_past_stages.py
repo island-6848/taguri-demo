@@ -22,6 +22,37 @@ def page(title: str, period: str, cast: str = "山田太郎 鈴木花子") -> st
             f"<tr><th>料金</th><td>4,500円</td></tr></table></body></html>")
 
 
+class TitlePartsTest(unittest.TestCase):
+    """冠名・タイトル・サブタイトル（起案者の指示 2026-10-20「冠名とサブタイトルもタイトルに含めてほしい」）。
+    見出しの形は取得の控えの実物（stage.corich.jp/stage/425300 ほか）と同じ"""
+
+    @staticmethod
+    def heading(crown, name, sub):
+        h = (f'<div class="mainTitle"><p class="crown">{crown}</p><div class="name"><a href="/stage_main/1">{name}</a></div>'
+             f'<p class="subTitle">{sub}</p></div>')
+        return h + h.replace('<div class="name">', '<h1 class="name">').replace("</a></div>", "</a></h1>")
+
+    def test_the_row_title_carries_crown_and_subtitle_and_the_key_does_not(self):
+        html = page("新喜劇出前ツアー2025", "2025年10月01日 (水) ～ 2025年10月05日 (日)").replace(
+            "<body>", "<body>" + self.heading("寛平GMプロデュース公演", "新喜劇出前ツアー2025", "～あなたの肩越しに～"))
+        r = P.row_from_html(html, "5001")
+        self.assertEqual(r["title"], "寛平GMプロデュース公演 新喜劇出前ツアー2025 ~あなたの肩越しに~")
+        self.assertEqual(r["title_main"], "新喜劇出前ツアー2025")
+
+    def test_no_heading_parts_leaves_the_title_as_it_was(self):
+        html = page("夏の夜", "2025年10月01日 (水) ～ 2025年10月05日 (日)").replace("<body>", "<body>" + self.heading("", "夏の夜", ""))
+        r = P.row_from_html(html, "5002")
+        self.assertEqual((r["title"], r["title_main"]), ("夏の夜", "夏の夜"))
+        r = P.row_from_html(page("夏の夜", "2025年10月01日 (水)"), "5003")      # 見出しの無い古い形のページ
+        self.assertEqual((r["title"], r["title_main"]), ("夏の夜", "夏の夜"))
+
+    def test_a_crown_already_in_the_title_is_not_repeated(self):
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "credits"))
+        import fetch_credits as FC
+        self.assertEqual(FC.full_title("舞台", "舞台「呪術廻戦」", ""), "舞台「呪術廻戦」")
+        self.assertEqual(FC.full_title("創立45周年記念", "鼓童ワン・アース・ツアー2026", ""), "創立45周年記念 鼓童ワン・アース・ツアー2026")
+
+
 class PastStagesTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()

@@ -97,7 +97,8 @@ COLUMNS = "stage_id,title,tkey,start,end,venue,grp,pref,people,synopsis"
 
 
 def row_values(r: dict, themes: dict[str, list[str]] | None = None, synopses: dict[str, str] | None = None) -> tuple:
-    return (str(r["stage_id"]), r.get("title") or "", M.R.title_key(r.get("title") or ""),
+    # 題名は冠名・サブタイトルを含めたもの、鍵はタイトルだけ（title_main。前に取った行には無いので title。dec-title-crown-subtitle）
+    return (str(r["stage_id"]), r.get("title") or "", M.R.title_key(r.get("title_main") or r.get("title") or ""),
             r.get("start") or "", r.get("end") or "", r.get("theater") or "",
             r.get("group") or "", r.get("pref") or "",
             json.dumps(people_and_tags(r, themes), ensure_ascii=False, sort_keys=True),
