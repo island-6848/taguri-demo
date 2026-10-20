@@ -684,6 +684,7 @@ function decorateCards(el) {
   el.querySelectorAll(".btns,.rb[data-work]").forEach(g => pickChoice(g, savedChoice(g)));
   shortAddButtons(el);
   divergeVerdicts(el);
+  reminderPrices(el);
   stampRerate(el);
   aspectsPanel(el);
 }
@@ -928,6 +929,12 @@ function markMutated() {
   fragmentCache.clear();
   try { sessionStorage.removeItem("taguri-ticker"); } catch (e) { /* 控えが無ければ何もしない */ }
   try { localStorage.setItem(MUTATED_KEY, String(Date.now())); } catch (e) { /* 使えない端末では、このタブだけ */ }
+}
+
+// **アプリ（ホーム画面に入れたとき）の service worker**（起案者 2026-10-20「アプリにしたい」、impl-pwa-base）。
+// サービス版だけ（デモの GitHub Pages では入れない）。控えるのは画面の部品だけ（cloudflare/public/sw.js）
+if (EDITION.edition === "service" && "serviceWorker" in navigator && location.origin === API_BASE) {
+  window.addEventListener("load", () => { navigator.serviceWorker.register("/sw.js").catch(() => { /* 入れられなくても画面はそのまま動く */ }); });
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -1467,6 +1474,29 @@ function priceListHtml(rows, tail = "", icon = true) {
     + rows.map((r, i) => '<li class="lp-row">' + cell(r) + (i === 0 ? tail : "") + "</li>").join("") + "</ul></div>";
 }
 
+// 開幕リマインドの開いた中身の料金を、おすすめのカードと同じ形にする（起案者の指示 2026-10-20「開幕リマインドの料金の表示を、
+// おすすめ画面と同じにして」）。前は料金の欄の文をそのまま日程の行の後ろに続けて書いていた。おすすめと同じく、閉じた 1 行に
+// 金額の幅（座席の決まりつき）、「詳細」を開くと券種ごとの行（priceSummary・priceListHtml）を、日程のすぐ下に置き、
+// 発売の札はその後ろに並べる。料金の欄が無い公演は「料金 不明」
+function reminderPrices(root) {
+  root.querySelectorAll(".dgdetail .dginfo").forEach(info => {
+    if (info.dataset.priced) return;
+    const when = info.querySelector(":scope > .when");
+    if (!when) return;
+    info.dataset.priced = "1";
+    const priceEl = when.querySelector(".price");
+    const {head, open} = priceSummary(priceEl ? sameYen(priceEl.textContent) : "");
+    if (priceEl) priceEl.remove();
+    const box = document.createElement(open.length ? "details" : "div");
+    box.className = "lprice";
+    box.innerHTML = open.length ? "<summary>" + priceListHtml([head], '<span class="lp-more">詳細</span>') + '</summary><div class="lp-body">' + priceListHtml(open, "", false) + "</div>"
+      : priceListHtml([head]);
+    when.after(box);
+    const sale = info.querySelector(":scope > .sale");
+    if (sale) box.after(sale);
+  });
+}
+
 function compactTickets(root) {
   // おすすめの画面の一覧のカードには「くわしく」の折りたたみを付けない（起案者の指示 2026-10-17「おすすめページには
   // 『くわしく』の折りたたみなくして」）。閉じた 1 枚に出す分（日程・出演 5 人・あらすじの 1 文・料金・公式サイト）だけにする
@@ -1475,6 +1505,7 @@ function compactTickets(root) {
   const interestPage = here === "/recommend/interest";   // 興味ありの一覧もおすすめと同じ表示（起案者の指示 2026-10-17）
   const favPage = here === "/recommend/favourites";       // お気に入りも同じ表示（起案者の指示 2026-10-17）
   const tagPage = here === "/recommend/tag";              // あらすじのハッシュタグの公演の一覧も同じ表示（起案者の指示 2026-10-18）
+  const ticketsPage = here === "/tickets";                // 購入済の公演も同じ表示（起案者の指示 2026-10-20「購入済み画面のカードの構成、おすすめのと揃えて」）
   const searchPage = here === "/search" || here === "/recommend/person" || here === "/recommend/kind";   // 人物・形式の画面も同じ表示                  // 「探す」の公演のカードも同じ表示（起案者の指示 2026-10-19「『検索』で出てくる公演カードも他ページのレイアウトと統一して」）
   // お気に入りも同じ形にする（起案者の指示 2026-10-15「お気に入りのページのレイアウト変更して。購入済み公演と似た感じ」）
   root.querySelectorAll("article.ticket.recommend, article.ticket.interest, article.ticket.owned, article.ticket.favourite").forEach(t => {
@@ -1496,6 +1527,7 @@ function compactTickets(root) {
     const noMore = (recPage && t.classList.contains("recommend") && !t.closest(".rfind"))
       || (interestPage && t.classList.contains("interest"))
       || (favPage && t.classList.contains("favourite"))
+      || (ticketsPage && t.classList.contains("owned"))
       || ((tagPage || searchPage) && (t.classList.contains("recommend") || t.classList.contains("interest")));
     const more = document.createElement("details");
     more.className = "more";
@@ -1934,7 +1966,11 @@ function applyFill(fill, g) {
       const dup = fresh && ids(fresh).some(x => here.has(x));
       if (fresh && all.length && !dup) {
         fresh.classList.add("filled");
-        all[all.length - 1].after(fresh);
+        // **押したカードのすぐ下に出す**（起案者の指示 2026-10-20「押したら新しい候補を下に出してほしい。いちいち画面全体が
+        // 読み込まれるとうるさいので、その部分だけ出てくるように」）。前は一覧のいちばん下に足していたので、押した所からは
+        // 見えず、押したカードが縮んで下が詰まる動きだけが目に入った。✕ で消したときは「候補から消しました」の行の下
+        const at = g && (g.closest(".ticket.recommend") || (g.classList && g.classList.contains("dismissed") ? g : null));
+        (at && at.isConnected && !at.closest(".rfind") ? at : all[all.length - 1]).after(fresh);
         if (window.TaguriExposure) TaguriExposure.refresh(contentEl(), "fill");
         bindNotes(fresh);          // 足した 1 枚の入力欄にも動きを付ける
         const ys = document.querySelector(".yfil .ysl");   // 料金の絞り込みを足した 1 枚にも効かせる
@@ -2349,8 +2385,8 @@ document.addEventListener("click", ev => {
           seen.textContent = "観た（もう 1 回追加）";
         });
     } else {
-      post("/api/missed", body, li, "観ればよかったに入れました")
-        .then(r => { if (r) { b.disabled = true; b.textContent = "観ればよかったに入っています"; } });
+      post("/api/missed", body, li, "行けばよかったに入れました")
+        .then(r => { if (r) { b.disabled = true; b.textContent = "行けばよかったに入っています"; } });
     }
   } else if (b.dataset.imp) {
     const g = b.closest(".imp");
@@ -3436,11 +3472,11 @@ function shortAddButtons(root) {
   });
 }
 
-// **評価の分布は、評価の段階ごとの件数を横棒で並べるだけにする。**
-// 起案者の指示 2026-10-19「『評価一覧』の分布で勝手に『合っていた』評価の☆の数を判定しないで。合ってるかどうかはあなたが判断しないで。
-// 私にとって★3.5は合ってなかった評価なのに、合ってる認定されている」。前は Heiberger & Robbins (2014) の発散型の積み上げ棒で、
-// 星の段階の真ん中より上を「合っていた」、下を「合わなかった」に機械的に分けていた。どの段階が合っていたかは本人の尺度なので、
-// 画面では分けず、段階ごとの件数を同じ目盛り（0 から）の横棒で並べる（Cleveland & McGill 1984: 共通の目盛りの上の位置・長さで読む）
+// **評価の分布は、1 本の横向きの 100% 積み上げ帯にする。**
+// 起案者の指示 2026-10-20「評価一覧の分布、横向きの１００％積み上げ帯グラフにして」。全体のうち各段階が占める割合を 1 本の帯で見る。
+// 2026-10-19 の指示（「合っていた」を判定しない）は守る: 帯は「合っていた／合わなかった」の 2 色に分けず、段階の順（低い段階が左）に
+// 1 色の濃淡で塗る。評価でない行（未評価）は灰色の斜線。
+// 帯の中には、幅が足りる段階（9% 以上）だけ割合を書き、段階の名前と件数は下の凡例に書く（帯の中に名前まで書くと、狭い段階で切れる）。数字は「数字で見る」の表にもある
 function divergeVerdicts(root) {
   root.querySelectorAll(".card .dbar").forEach(bar => {
     const card = bar.closest(".card");
@@ -3454,11 +3490,24 @@ function divergeVerdicts(root) {
     });
     if (!rows.length) return;
     card.dataset.diverged = "1";
-    const max = Math.max(...rows.map(r => r[1])), all = rows.reduce((t, r) => t + r[1], 0);
-    const html = '<div class="vdist" role="img" aria-label="' + E(rows.map(([g, v]) => g + " " + v + " 件").join("、")) + '">'
-      + rows.map(([g, v]) => '<div class="vd-row"><span class="vd-g">' + E(g) + '</span><span class="vd-bar"><i style="width:'
-        + (v / max * 100).toFixed(2) + '%"></i></span><span class="vd-n">' + v + " 件<small>（" + Math.round(v / all * 100) + "%）</small></span></div>").join("")
-      + "</div>";
+    const all = rows.reduce((t, r) => t + r[1], 0);
+    const graded = rows.filter(([g]) => g !== "未評価").length;
+    let k = 0;
+    // 左がいちばん低い段階、右がいちばん高い段階（起案者の指示 2026-10-20「左が一番評価低くて一番右が評価高いで統一して」）。
+    // 表は高い段階から並ぶので、評価の段階を逆にし、評価でない「未評価」はいちばん左に置く（右端はいちばん高い段階のまま）
+    const segs = [...rows.filter(([g]) => g === "未評価"), ...rows.filter(([g]) => g !== "未評価").reverse()].map(([g, v]) => {
+      const p = v / all * 100, none = g === "未評価";
+      // 濃さ: 最も低い段階（左）を 28%、最も高い段階（右）を 100% にし、そのあいだを等分する（段階が 1 つなら 100%）
+      const shade = none ? 0 : graded > 1 ? Math.round(28 + 72 * (k++) / (graded - 1)) : (k++, 100);
+      return {g, v, p, none, shade};
+    });
+    const pctText = p => (p < 1 ? "1%未満" : Math.round(p) + "%");
+    const html = '<div class="vstack" role="img" aria-label="' + E("評価の割合: " + segs.map(x => x.g + " " + pctText(x.p)).join("、")) + '">'
+      + '<div class="vs-bar">' + segs.map(x => '<span class="vs-seg' + (x.none ? " none" : "") + (x.shade >= 60 ? " dark" : "") + '" style="width:'
+        + x.p.toFixed(2) + "%" + (x.none ? "" : ";--vs-shade:" + x.shade + "%") + '" title="' + E(x.g + " " + x.v + " 件（" + pctText(x.p) + "）") + '">'
+        + (x.p >= 9 ? '<span class="vs-in">' + pctText(x.p) + "</span>" : "") + "</span>").join("") + "</div>"
+      + '<ul class="vs-leg">' + segs.map(x => '<li><i class="vs-sw' + (x.none ? " none" : "") + '"' + (x.none ? "" : ' style="--vs-shade:' + x.shade + '%"')
+        + "></i>" + E(x.g) + ' <b>' + x.v + "</b> 件<small>（" + pctText(x.p) + "）</small></li>").join("") + "</ul></div>";
     bar.insertAdjacentHTML("afterend", html);
     bar.remove();
   });

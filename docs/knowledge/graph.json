@@ -744,6 +744,18 @@
    "verifies": []
   },
   {
+   "id": "dec-app-release-costs",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-20",
+   "title": "アプリをストアに出す登録料（Apple 年 99 米ドル・Google Play 1 回 25 米ドル）は起案者が負担する。ほかは無料枠のまま",
+   "sources": [
+    "docs/free-tier-budget.md",
+    "CLAUDE.md"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-aspects-five-levels",
    "type": "decision",
    "status": "adopted",
@@ -1368,6 +1380,17 @@
    "verifies": []
   },
   {
+   "id": "dec-fill-below",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-20",
+   "title": "おすすめで答えたときの入れ替わりの 1 枚は、押したカードのすぐ下に出す（画面全体は読み込み直さない）",
+   "sources": [
+    "web/app.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-firebase-auth",
    "type": "decision",
    "status": "adopted",
@@ -1609,6 +1632,21 @@
     "cloudflare/scripts/build_cards.py",
     "tools/review/render_recommend.py",
     "cloudflare/test/test_build_cards.py"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-ikeba-yokatta",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-20",
+   "title": "「観ればよかった」を「行けばよかった」にし、興味ありのまま購入済みにならずに終わった公演は自動で入れる。「行けない」のボタンはやめる",
+   "sources": [
+    "cloudflare/src/screens/settings.js",
+    "cloudflare/src/screens/cards.js",
+    "cloudflare/src/screens/search.js",
+    "web/app.js",
+    "cloudflare/test/cantgo.test.js"
    ],
    "verifies": []
   },
@@ -1954,6 +1992,22 @@
    "verifies": []
   },
   {
+   "id": "dec-nonplay-in-reco",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-20",
+   "title": "能・狂言・歌舞伎・文楽・落語・寄席・バレエ・ダンス・オペラ・お笑いも、おすすめの候補に入れる（外すのはコンサートなどだけ）",
+   "sources": [
+    "tools/review/recommend.py",
+    "tools/review/recommend2.py",
+    "tools/review/user_recommender.py",
+    "cloudflare/scripts/build_recommend_index.py",
+    "cloudflare/scripts/build_cards.py",
+    "cloudflare/test/test_recommend_index.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-operator-name",
    "type": "decision",
    "status": "adopted",
@@ -2210,6 +2264,15 @@
    "sources": [
     "web/theme.css"
    ],
+   "verifies": []
+  },
+  {
+   "id": "dec-quick-aspect-chips",
+   "type": "decision",
+   "status": "proposed",
+   "date": "2026-10-20",
+   "title": "星を付けた直後に「特に良かったのは？」「気になったのは？」を 1 行のチップで聞く（改善案 ① の C。見本を起案者に見せて、決まってから作る）",
+   "sources": [],
    "verifies": []
   },
   {
@@ -2838,6 +2901,19 @@
    "verifies": []
   },
   {
+   "id": "dec-same-star-grade",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-20",
+   "title": "評価一覧のタブと分布では、星の 5 段階と 0.5 きざみの同じ星の数を 1 つにまとめる",
+   "sources": [
+    "cloudflare/src/screens/grade.js",
+    "cloudflare/src/screens/rate.js",
+    "cloudflare/test/grade.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-scale-workers",
    "type": "decision",
    "status": "superseded",
@@ -2871,6 +2947,19 @@
    "title": "記録を公演に結び付ける検索には、公開カタログの公演だけを出す",
    "sources": [
     "https://github.com/island-6848/taguri-demo/blob/cloudflare-d1-preview/cloudflare/src/stage-search.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-search-tour-one-card",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-20",
+   "title": "探すの「今後の公演」（前の「これから観られる公演」）は、ツアーを 1 枚にまとめ、答えは全会場に付ける",
+   "sources": [
+    "cloudflare/src/screens/search.js",
+    "cloudflare/src/screens/entity.js",
+    "cloudflare/test/search-uncarded.test.js"
    ],
    "verifies": []
   },
@@ -3249,6 +3338,20 @@
     "cloudflare/src/screens/md5.js",
     "cloudflare/test/trace.test.js",
     "cloudflare/test/screens/trace_fixture.py"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-twa-fixed-signing",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-20",
+   "title": "アプリの上の URL と ✕ の帯を消すため、固定のアップロード鍵で debug も release も署名し、その指紋を assetlinks.json に載せる（WebView には替えない）",
+   "sources": [
+    "cloudflare/src/app-links.js",
+    "android/app/build.gradle.kts",
+    ".github/workflows/android.yml",
+    "https://developer.chrome.com/docs/android/trusted-web-activity/integration-guide"
    ],
    "verifies": []
   },
@@ -3714,6 +3817,19 @@
    "verifies": []
   },
   {
+   "id": "f-app-store-fees",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-20",
+   "title": "ストアに出すには登録料がかかる（App Store は年 99 米ドル、Google Play は最初に 25 米ドル）。ホーム画面に入れる Web アプリ（PWA）はかからない",
+   "sources": [
+    "https://developer.apple.com/support/membership-fee-waiver/",
+    "https://support.google.com/googleplay/android-developer/answer/6112435",
+    "https://studio.adalo.com/blog/apple-developer-program-guide"
+   ],
+   "verifies": []
+  },
+  {
    "id": "f-form-rodoku-1019",
    "type": "finding",
    "status": "confirmed",
@@ -3727,6 +3843,18 @@
    "verifies": []
   },
   {
+   "id": "f-ios-web-push",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-20",
+   "title": "iPhone・iPad でも、ホーム画面に追加した Web アプリは通知（Web Push）を受け取れる（iOS 16.4 から）",
+   "sources": [
+    "https://webkit.org/blog/13878/web-push-for-web-apps-on-ios-and-ipados/",
+    "https://www.webkit.org/?p=13966"
+   ],
+   "verifies": []
+  },
+  {
    "id": "f-link-card-spec",
    "type": "finding",
    "status": "unverified",
@@ -3736,6 +3864,18 @@
     "https://soona.co/image-resizer/twitter-spec-guide",
     "https://kb.theseoframework.com/kb/twitter-cards-and-x-sharing/",
     "https://frontendchecklist.io/rules/seo/twitter-cards"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "f-link-card-x-ok",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-20",
+   "title": "X（Twitter）にリンクのカードが出るようになった（起案者が確認）",
+   "sources": [
+    "cloudflare/public/robots.txt",
+    "cloudflare/src/link-card.js"
    ],
    "verifies": []
   },
@@ -3787,6 +3927,22 @@
     "cloudflare/src/stage-search.js",
     "cloudflare/src/screens/search.js",
     "cloudflare/test/title-leads.test.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "f-store-review-rules",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-20",
+   "title": "App Store は Web の画面を包んだだけのアプリを 4.2（最低限の機能）で落としやすい。Google Play の新しい個人アカウントは 12 人・14 日の非公開テストが要る。Android は PWA を TWA で包んで出せる",
+   "sources": [
+    "https://developer.apple.com/forums/thread/806726",
+    "https://www.mobiloud.com/blog/app-store-review-guidelines-webview-wrapper",
+    "https://support.google.com/googleplay/android-developer/answer/14151465",
+    "https://www.choicely.com/blog/google-play-12-tester-rule",
+    "https://www.thinktecture.com/en/pwa/twa-bubblewrap",
+    "https://developer.chrome.com/docs/android/trusted-web-activity/quick-start"
    ],
    "verifies": []
   },
@@ -4362,6 +4518,23 @@
    "verifies": []
   },
   {
+   "id": "impl-android-twa",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-20",
+   "title": "Android アプリは TWA（Chrome で app.taguri.workers.dev を全画面に開く入れ物）で作り、GitHub Actions で組む",
+   "sources": [
+    "android/app/build.gradle.kts",
+    "android/app/src/main/AndroidManifest.xml",
+    ".github/workflows/android.yml",
+    "cloudflare/src/app-links.js",
+    "cloudflare/src/worker.js",
+    "docs/android-release.md",
+    "docs/design/logo/make_android_icons.mjs"
+   ],
+   "verifies": []
+  },
+  {
    "id": "impl-body-stream-cap",
    "type": "finding",
    "status": "confirmed",
@@ -4654,6 +4827,24 @@
    "verifies": []
   },
   {
+   "id": "impl-pwa-base",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-20",
+   "title": "アプリ化の土台（PWA）: manifest・アイコン・service worker（画面の部品だけを控え、記録は控えない）・通信が無いときの画面",
+   "sources": [
+    "cloudflare/public/manifest.webmanifest",
+    "cloudflare/public/sw.js",
+    "cloudflare/public/_headers",
+    "cloudflare/src/link-card.js",
+    "web/app.js",
+    "web/assets/logo/icon-192.png",
+    "docs/design/logo/make_app_icons.mjs",
+    "cloudflare/test/link-card.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "impl-rating-aspects",
    "type": "finding",
    "status": "confirmed",
@@ -4720,6 +4911,19 @@
    "sources": [
     "cloudflare/src/screens/search.js",
     "cloudflare/test/search-uncarded.test.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "impl-store-images",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-20",
+   "title": "Google Play の掲載画像（フィーチャーグラフィック 1 枚・電話のスクリーンショット 5 枚）は、本物の画面に架空のデータを入れて写す",
+   "sources": [
+    "cloudflare/scripts/store_images.mjs",
+    "docs/store/images/",
+    "docs/store/google-play-listing.md"
    ],
    "verifies": []
   },
@@ -6026,6 +6230,15 @@
    "verifies": []
   },
   {
+   "id": "plan-app-release",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-20",
+   "title": "アプリ化の計画（PWA を土台に、Android は TWA、iPhone はネイティブの画面を持つアプリ）と、起案者に決めてもらうこと",
+   "sources": [],
+   "verifies": []
+  },
+  {
    "id": "plan-real-data-eval",
    "type": "decision",
    "status": "adopted",
@@ -6164,6 +6377,15 @@
     "cloudflare/src/screens/evalrec.js",
     "cloudflare/src/screens/recommend.js"
    ],
+   "verifies": []
+  },
+  {
+   "id": "q-app-direction",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-20",
+   "title": "「本格的にアプリ化」をどう進めるか（ホーム画面に入れる Web アプリ＝PWA から始めるか）",
+   "sources": [],
    "verifies": []
   },
   {
@@ -6446,6 +6668,29 @@
    "verifies": []
   },
   {
+   "id": "q-deck-gaps-1020",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-20",
+   "title": "プレゼン資料を読んで作られた改善案の文書が「既にあるもの」を指摘している ── 資料のどこが足りないか",
+   "sources": [
+    "docs/000003-final-presentation-taguri.html"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "q-deck-net-c-19of40",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-20",
+   "title": "プレゼン資料 5-2 の「網 C の語を意味でまとめ直すと、判別力が上がったのは取り直し 40 回中 19 回」の出典がリポジトリに無い",
+   "sources": [
+    "docs/000003-final-presentation-taguri.html",
+    "tools/review/recommend2.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "q-demo-after-render",
    "type": "question",
    "status": "answered",
@@ -6692,6 +6937,18 @@
    "verifies": []
   },
   {
+   "id": "q-improve-1-attribution",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-20",
+   "title": "改善案 ①「評価を人物ごとに適切に割り当てる」── 何が既にあり、何が残っているか。どれを直すか",
+   "sources": [
+    "tools/review/user_recommender.py",
+    "cloudflare/src/recommend.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "q-index-incremental",
    "type": "question",
    "status": "answered",
@@ -6758,7 +7015,7 @@
   {
    "id": "q-link-card-x",
    "type": "question",
-   "status": "open",
+   "status": "answered",
    "date": "2026-10-19",
    "title": "X にリンクのカードが出ない（2026-10-19、起案者の報告）。何が原因か",
    "sources": [
@@ -6877,7 +7134,7 @@
   {
    "id": "q-nonplay-in-reco",
    "type": "question",
-   "status": "open",
+   "status": "answered",
    "date": "2026-10-19",
    "title": "能・歌舞伎・落語・バレエ・オペラなどを、おすすめの候補に入れるか（いまは題名で外している）",
    "sources": [
@@ -8808,6 +9065,21 @@
    "to": "comp-d1"
   },
   {
+   "from": "dec-app-release-costs",
+   "rel": "answers",
+   "to": "q-app-direction"
+  },
+  {
+   "from": "dec-app-release-costs",
+   "rel": "depends_on",
+   "to": "f-app-store-fees"
+  },
+  {
+   "from": "dec-app-release-costs",
+   "rel": "affects",
+   "to": "dec-free-tier-only"
+  },
+  {
    "from": "dec-aspects-five-levels",
    "rel": "affects",
    "to": "dec-aspects-screen"
@@ -9353,6 +9625,11 @@
    "to": "q-favourite-homonym"
   },
   {
+   "from": "dec-fill-below",
+   "rel": "affects",
+   "to": "comp-cf-worker"
+  },
+  {
    "from": "dec-firebase-auth",
    "rel": "affects",
    "to": "comp-firebase-login"
@@ -9556,6 +9833,11 @@
    "from": "dec-hook-tag",
    "rel": "affects",
    "to": "dec-theme-kinds-6p2"
+  },
+  {
+   "from": "dec-ikeba-yokatta",
+   "rel": "affects",
+   "to": "comp-cf-worker"
   },
   {
    "from": "dec-import-calendar-mail",
@@ -9808,6 +10090,21 @@
    "to": "comp-cf-worker"
   },
   {
+   "from": "dec-nonplay-in-reco",
+   "rel": "answers",
+   "to": "q-nonplay-in-reco"
+  },
+  {
+   "from": "dec-nonplay-in-reco",
+   "rel": "depends_on",
+   "to": "dec-forms-1019"
+  },
+  {
+   "from": "dec-nonplay-in-reco",
+   "rel": "affects",
+   "to": "comp-cf-worker"
+  },
+  {
    "from": "dec-own-domain",
    "rel": "affects",
    "to": "comp-frontend"
@@ -9961,6 +10258,21 @@
    "from": "dec-psud-buttons",
    "rel": "depends_on",
    "to": "dec-ui-1019"
+  },
+  {
+   "from": "dec-quick-aspect-chips",
+   "rel": "answers",
+   "to": "q-improve-1-attribution"
+  },
+  {
+   "from": "dec-quick-aspect-chips",
+   "rel": "depends_on",
+   "to": "impl-rating-aspects"
+  },
+  {
+   "from": "dec-quick-aspect-chips",
+   "rel": "depends_on",
+   "to": "dec-aspects-strong-weight"
   },
   {
    "from": "dec-rate-dist-no-fit",
@@ -10418,6 +10730,11 @@
    "to": "fix-price-detail-missing"
   },
   {
+   "from": "dec-same-star-grade",
+   "rel": "affects",
+   "to": "comp-cf-worker"
+  },
+  {
    "from": "dec-scale-workers",
    "rel": "affects",
    "to": "q-direction"
@@ -10441,6 +10758,11 @@
    "from": "dec-search-public-only",
    "rel": "raises",
    "to": "q-past-stage-catalogue"
+  },
+  {
+   "from": "dec-search-tour-one-card",
+   "rel": "affects",
+   "to": "comp-cf-worker"
   },
   {
    "from": "dec-search-worker",
@@ -10736,6 +11058,16 @@
    "from": "dec-trace-worker",
    "rel": "affects",
    "to": "comp-native-screens"
+  },
+  {
+   "from": "dec-twa-fixed-signing",
+   "rel": "affects",
+   "to": "impl-android-twa"
+  },
+  {
+   "from": "dec-twa-fixed-signing",
+   "rel": "affects",
+   "to": "plan-app-release"
   },
   {
    "from": "dec-ui-1014-account-reminder",
@@ -11108,13 +11440,33 @@
    "to": "q-aspect-attribution-check"
   },
   {
+   "from": "f-app-store-fees",
+   "rel": "affects",
+   "to": "q-app-direction"
+  },
+  {
    "from": "f-form-rodoku-1019",
    "rel": "depends_on",
    "to": "dec-forms-1019"
   },
   {
+   "from": "f-ios-web-push",
+   "rel": "affects",
+   "to": "q-app-direction"
+  },
+  {
    "from": "f-link-card-spec",
    "rel": "affects",
+   "to": "dec-link-card"
+  },
+  {
+   "from": "f-link-card-x-ok",
+   "rel": "answers",
+   "to": "q-link-card-x"
+  },
+  {
+   "from": "f-link-card-x-ok",
+   "rel": "depends_on",
    "to": "dec-link-card"
   },
   {
@@ -11141,6 +11493,11 @@
    "from": "f-search-asu-prefix",
    "rel": "affects",
    "to": "dec-search-part-paging"
+  },
+  {
+   "from": "f-store-review-rules",
+   "rel": "affects",
+   "to": "plan-app-release"
   },
   {
    "from": "fav-reason-two-step",
@@ -11448,6 +11805,21 @@
    "to": "q-admin-override-in-index"
   },
   {
+   "from": "impl-android-twa",
+   "rel": "depends_on",
+   "to": "impl-pwa-base"
+  },
+  {
+   "from": "impl-android-twa",
+   "rel": "depends_on",
+   "to": "f-store-review-rules"
+  },
+  {
+   "from": "impl-android-twa",
+   "rel": "affects",
+   "to": "plan-app-release"
+  },
+  {
    "from": "impl-body-stream-cap",
    "rel": "depends_on",
    "to": "sec-audit-1017"
@@ -11698,6 +12070,21 @@
    "to": "q-theme-preference"
   },
   {
+   "from": "impl-pwa-base",
+   "rel": "depends_on",
+   "to": "dec-app-release-costs"
+  },
+  {
+   "from": "impl-pwa-base",
+   "rel": "affects",
+   "to": "plan-app-release"
+  },
+  {
+   "from": "impl-pwa-base",
+   "rel": "affects",
+   "to": "comp-cf-worker"
+  },
+  {
    "from": "impl-rating-aspects",
    "rel": "answers",
    "to": "q-rating-aspects"
@@ -11761,6 +12148,16 @@
    "from": "impl-search-past-stages",
    "rel": "affects",
    "to": "fix-search-uncarded"
+  },
+  {
+   "from": "impl-store-images",
+   "rel": "affects",
+   "to": "plan-app-release"
+  },
+  {
+   "from": "impl-store-images",
+   "rel": "depends_on",
+   "to": "impl-android-twa"
   },
   {
    "from": "impl-terms-consent",
@@ -12528,6 +12925,21 @@
    "to": "dec-records-worker"
   },
   {
+   "from": "plan-app-release",
+   "rel": "depends_on",
+   "to": "dec-app-release-costs"
+  },
+  {
+   "from": "plan-app-release",
+   "rel": "depends_on",
+   "to": "f-store-review-rules"
+  },
+  {
+   "from": "plan-app-release",
+   "rel": "depends_on",
+   "to": "f-ios-web-push"
+  },
+  {
    "from": "plan-real-data-eval",
    "rel": "depends_on",
    "to": "q-academic-novelty"
@@ -12696,6 +13108,16 @@
    "from": "q-answer-snapshot-shown",
    "rel": "affects",
    "to": "impl-replay-eval"
+  },
+  {
+   "from": "q-app-direction",
+   "rel": "depends_on",
+   "to": "f-app-store-fees"
+  },
+  {
+   "from": "q-app-direction",
+   "rel": "depends_on",
+   "to": "f-ios-web-push"
   },
   {
    "from": "q-aspect-attribution-check",
@@ -12883,6 +13305,16 @@
    "to": "d1-free-limits"
   },
   {
+   "from": "q-deck-gaps-1020",
+   "rel": "affects",
+   "to": "q-improve-1-attribution"
+  },
+  {
+   "from": "q-deck-net-c-19of40",
+   "rel": "raises",
+   "to": "reco-past-auc"
+  },
+  {
    "from": "q-demo-after-render",
    "rel": "depends_on",
    "to": "dec-render-full-migration"
@@ -13021,6 +13453,31 @@
    "from": "q-impression-not-in-service",
    "rel": "affects",
    "to": "dec-reco-on-worker"
+  },
+  {
+   "from": "q-improve-1-attribution",
+   "rel": "depends_on",
+   "to": "impl-rating-aspects"
+  },
+  {
+   "from": "q-improve-1-attribution",
+   "rel": "depends_on",
+   "to": "eval-yahoo-aspects"
+  },
+  {
+   "from": "q-improve-1-attribution",
+   "rel": "depends_on",
+   "to": "q-aspect-attribution-check"
+  },
+  {
+   "from": "q-improve-1-attribution",
+   "rel": "depends_on",
+   "to": "q-aspect-usage-check"
+  },
+  {
+   "from": "q-improve-1-attribution",
+   "rel": "depends_on",
+   "to": "dec-part-two-tiers"
   },
   {
    "from": "q-index-incremental",

@@ -10,7 +10,7 @@
 // weights.js. Left out for now: the map above the prefecture chips (no outlines in
 // D1), the count of shows a setting hid (w_dropped); the impression preferences (感想の好み, #104) are applied in rankedGroups.
 import {frac} from './grade.js';
-import {scoreFromIndex, d1Access, seedsFromFavourites, gradeOf, MAX_SEED_STAGES, droppedKind, GENRE_AXIS, CONTENT_AXES, favSpread, ratingCount, affilSince, AFFIL_PEOPLE} from '../recommend.js';
+import {scoreFromIndex, d1Access, seedsFromFavourites, gradeOf, MAX_SEED_STAGES, droppedKind, GENRE_AXIS, CONTENT_AXES, favSpread, ratingCount, affilSince, AFFIL_PEOPLE, SEED_GROUP_KINDS} from '../recommend.js';
 import {stageInfo} from './fallback.js';
 import {tourBlock} from './schedule.js';
 import {parseCredits, isGuide} from './credits.js';
@@ -499,8 +499,20 @@ export async function rankedGroups(ctx) {
   const interest = await interestSeeds(ctx, access, new Set(rated.map(r => String(r.stage_id)))), nLiked = interest.n;
   const liked = withoutKinds(interest.seeds, off), disliked = withoutKinds(interest.disliked, off);
   const seeds = withoutKinds(favSeeds, off);
+  // 所属（劇団）を効かせた計算を試す（ablate.try_affil。手元の再生 replay_eval.py の H6 だけが渡す。本番は渡さないので
+  // 画面のおすすめは変わらない。dec-affil-reco）。評価・興味ありの出演者の劇団と、お気に入りの団体の劇団
+  let affil = null;
+  if (ablate.try_affil) {
+    const cast = [...new Set([...rated, ...liked].flatMap(r => (r.people || []).filter(([role]) => role === '出演').map(([, p]) => p)))].sort().slice(0, AFFIL_PEOPLE);
+    const troupes = [...new Set(SEED_GROUP_KINDS.flatMap(k => declared[k] || []).flatMap(n => {
+      const core = String(n).replace(/^(劇団|演劇集団|演劇ユニット)/u, '');
+      return [n, core, '劇団' + core, '演劇集団' + core];
+    }))].sort();
+    const members = await access.affilMembers(cast, troupes, affilSince(ctx.today));
+    affil = {members, fav: new Set(troupes.filter(t => members.has(t)))};
+  }
   const ranked = await scoreFromIndex({...access, rated: gate.aspects ? rated : rated.map(r => ({...r, aspects: []})),
-    multipliers, today: ctx.today, seeds, skip, liked, disliked, expand: {peopleFor: access.peopleFor, exclude: castOffKeys(rated)}, ablate});
+    multipliers, today: ctx.today, seeds, skip, liked, disliked, expand: {peopleFor: access.peopleFor, exclude: castOffKeys(rated)}, affil, ablate});
   // 感想で書いた特徴への好み（#104、起案者の指示 2026-10-18「感想で書いた内容を推薦に反映させるところまで」）。
   // app._apply_impression_preferences と同じく「作品の内容」（theme）の効かせ方を掛け、点の付いた候補は
   // 上げ下げし、点の無い公演は好みが正のときだけ加える。規則だけで動き、好みのある言葉だけを索引から引く
@@ -834,7 +846,7 @@ export async function recommendScreen(params, ctx) {
     // 関わりのある人のほかの公演が、本人の公演だけ・終わった・もう始まっている、のどれかだと候補が無い
     const declared = await loadDeclared(ctx);
     lede = KINDS.some(kind => (declared[kind] || []).length)
-      ? '<p class="rcount favnone">お気に入りに登録した名前と関わりのある人の、これから観られる公演はまだ見つかっていません。'
+      ? '<p class="rcount favnone">お気に入りに登録した名前と関わりのある人の、今後の公演はまだ見つかっていません。'
         + '登録した名前の公演は「<a href="/recommend/favourites?t=__TAGURI_TOKEN__">お気に入り</a>」に出ます。新しい公演は毎日取り込んでいます。</p>'
       : '';
   } else if (!prefs.length) {
@@ -843,7 +855,7 @@ export async function recommendScreen(params, ctx) {
     lede = `<p class="rcount"><b>全国</b>／${data.n_scored} 件中 上位 ${cards.length} 件を表示中</p>`;
   } else if (!cards.length) {
     head = `${where}でのあなたへのおすすめはありません`;
-    lede = `<p class="rcount">これから観られる公演 ${nCand} 件のうち、<b>${E(where)}</b>で観られるものはありませんでした。ほかの都道府県を選ぶか、全国に戻してください。</p>`;
+    lede = `<p class="rcount">今後の公演 ${nCand} 件のうち、<b>${E(where)}</b>で観られるものはありませんでした。ほかの都道府県を選ぶか、全国に戻してください。</p>`;
   } else {
     head = `${where}でのあなたへのおすすめ ${cards.length} 件`;
     lede = `<p class="rcount"><b>${E(where)}</b>／${hit} 件中 上位 ${cards.length} 件を表示中</p>`;

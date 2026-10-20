@@ -1478,7 +1478,9 @@ a.lsyntag:hover,a.lsyntag:focus-visible{text-decoration:underline}
    升の狭い電話の幅（420px 以下）だけ、「(貸)」を時刻の上の行に小さく置く（時刻の「18:00」は 1 行のまま） */
 .ttb .tm.kas:not(#_){letter-spacing:0;white-space:nowrap}
 .ttb .tm.kas b{font-weight:600;color:var(--ink2);letter-spacing:0;font-size:.82em;margin-right:.06em}
-@media(max-width:420px){.ttb .tm.kas b{display:block;margin:0;line-height:1.1;font-size:.75em}}
+/* 2026-10-20: 420px より少し広い電話（450px 前後）でも「(貸)13:00」が升からはみ出していた（起案者の指摘「カレンダー（貸）で時刻が
+   日付の枠はみ出してるの修正して」）。幅で分けず、どの幅でも「(貸)」を時刻の上の行に小さく置く */
+.ttb .tm.kas b:not(#_){display:block;margin:0;line-height:1.1;font-size:.75em}
 /* 「ほか n 会場」は押すと、ほかの会場の一覧（.mvlist）が会場の行の下に開く（app.js compactTickets） */
 .ticket.cmp .meta .mvmore{display:inline;margin-left:6px;padding:0;border:0;background:none;font:inherit;color:var(--curtain);
  cursor:pointer;white-space:nowrap;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px;position:relative}
@@ -1630,13 +1632,21 @@ details.lprice:not([open]):not(#_)>summary .plist>li:only-child::before{display:
 .lsyn-rich .lsynrichmore[hidden]{display:none}
 
 /* 評価の分布（app.js divergeVerdicts）: 段階ごとの件数の横棒。合う・合わないの色分けや左右の振り分けはしない（起案者の指示 2026-10-19） */
-.vdist{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:6px 10px;align-items:center;margin:12px 0 6px}
-.vdist .vd-row{display:contents}
-.vdist .vd-g{font-size:13px;color:var(--ink);white-space:nowrap}
-.vdist .vd-bar{height:12px;background:var(--fold-bg);border-radius:6px;overflow:hidden}
-.vdist .vd-bar i{display:block;height:100%;background:var(--ink2);border-radius:6px}
-.vdist .vd-n{font-size:12.5px;color:var(--ink2);white-space:nowrap;font-variant-numeric:tabular-nums}
-.vdist .vd-n small{margin-left:2px;color:var(--mute)}
+/* 評価の分布: 1 本の 100% 積み上げ帯（app.js divergeVerdicts）。段階の順に 1 色の濃淡（--vs-shade）、未評価は灰色 */
+.vstack{margin:12px 0 6px}
+.vstack .vs-bar{display:flex;height:28px;border-radius:7px;overflow:hidden;background:var(--fold-bg)}
+.vstack .vs-seg{display:flex;align-items:center;justify-content:center;min-width:2px;height:100%;overflow:hidden;
+  background:color-mix(in srgb,var(--ink2) var(--vs-shade,60%),var(--fold-bg));box-shadow:inset -1px 0 0 var(--surf)}
+.vstack .vs-seg:last-child{box-shadow:none}
+.vstack .vs-seg.none{background:var(--fold-bg);background-image:repeating-linear-gradient(45deg,transparent 0 4px,color-mix(in srgb,var(--mute) 35%,transparent) 4px 5px)}
+.vstack .vs-in{font-size:12px;white-space:nowrap;color:var(--ink);font-variant-numeric:tabular-nums;padding:0 4px}
+.vstack .vs-seg.dark .vs-in{color:var(--surf)}
+.vstack .vs-leg{display:flex;flex-wrap:wrap;gap:4px 14px;margin:8px 0 0;padding:0;list-style:none;font-size:12.5px;color:var(--ink2)}
+.vstack .vs-leg li{display:flex;align-items:center;gap:5px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.vstack .vs-leg b{color:var(--ink)}
+.vstack .vs-leg small{color:var(--mute)}
+.vstack .vs-sw{display:inline-block;width:11px;height:11px;border-radius:3px;background:color-mix(in srgb,var(--ink2) var(--vs-shade,60%),var(--fold-bg))}
+.vstack .vs-sw.none{background:var(--fold-bg);background-image:repeating-linear-gradient(45deg,transparent 0 3px,color-mix(in srgb,var(--mute) 45%,transparent) 3px 4px)}
 
 /* 上のメニューを開いたときの子ページ（すだれ .psud）は、1 つずつ独立したボタンに見せる（起案者の指示 2026-10-19「今地続きの灰色背景帯の
    色上に文字がのってるので、それぞれボタンとして独立していることがわかるようなデザインに変更」）。白い地・枠線・角丸・すき間。
@@ -1663,3 +1673,21 @@ details.lprice:not([open]):not(#_)>summary .plist>li:only-child::before{display:
 /* 能・狂言・歌舞伎・文楽・落語・寄席の演目（あらすじの代わり。render_recommend.program_text）。公演ページの行の区切りのまま */
 .syn.prog .txt{white-space:pre-line}
 .syn.prog .txt .pl{display:block;font-weight:700;margin-bottom:2px}
+
+/* 行けばよかった（観劇記録を追加の畳んだ欄。settings.missedHtml）: 題名を 1 行ずつ、くわしくは畳む */
+.miss-list{list-style:none;margin:10px 0 0;padding:0}
+.miss-row{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;padding:8px 0;border-bottom:1px solid var(--grid)}
+.miss-row .mt{font-weight:700}
+.miss-row .mw{color:var(--mute);font-size:12.5px}
+.miss-row .mk{margin-left:auto;color:var(--mute);font-size:12px;white-space:nowrap}
+.miss-row .mk.auto{color:var(--acc)}
+.miss-row .miss-more{flex-basis:100%}
+.miss-row .miss-more>summary{font-size:12.5px;color:var(--mute);cursor:pointer}
+/* 開幕リマインドの開いた中身の料金（app.js reminderPrices）。おすすめのカード（.ticket.cmp .lprice）と同じ形 */
+.dginfo .lprice{display:block;font-size:12px;line-height:1.6;margin:0}
+.dginfo details.lprice summary{cursor:pointer;list-style:none;display:block}
+.dginfo details.lprice summary::-webkit-details-marker{display:none}
+.dginfo details.lprice summary .lp-more{display:inline-block;margin-left:.6em;color:var(--curtain);font-size:12px;font-weight:500;white-space:nowrap}
+.dginfo details.lprice summary .lp-more::before{content:"▼";font-size:9px;margin-right:2px}
+.dginfo details.lprice[open] summary .lp-more::before{content:"▲"}
+.dginfo .lp-body{background:var(--fold-bg);border-radius:6px;padding:6px 8px;margin:4px 0 0}

@@ -42,6 +42,8 @@ class ReplayJob(unittest.TestCase):
             self.assertIn("推薦の再生", text)
             self.assertIn("AUC の中央値 1.000", text)
             self.assertIn("並べ直し", text)
+            self.assertIn("所属（劇団）から推し量る", text)
+            self.assertIn("裏の答え合わせ: 所属（劇団）から推し量る（測るだけ）", text)
             # 利用者の ID・公演の番号は出さない。書き出した記録は残らない
             self.assertNotIn("'u'", text)
             self.assertNotIn("311", text)

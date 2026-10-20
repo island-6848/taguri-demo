@@ -790,7 +790,7 @@ async function nameView(params, ctx, b, name) {
   const favs = sortRows([...b.favourites, ...b.favOwned].filter(r => r.a.some(x => nz(label(x)) === key)), 'start');
   const why = r => ({owned: Boolean(r.owned), tags: [...new Set(r.a.map(label))]});
   const up = favs.length ? `<div class="tickets">${(await wholeTour(ctx, await cards(ctx, favs, 'favourite', why), favs)).join('')}</div>`
-    : '<p class="empty">これから観られる公演はいまのところ見つかっていません。</p>';
+    : '<p class="empty">今後の公演はいまのところ見つかっていません。</p>';
   // 観た公演
   const ws = (await loadWorks(ctx)).filter(w => !w.unseen);
   const people = await peopleByKey(ctx, ws);
@@ -806,7 +806,7 @@ async function nameView(params, ctx, b, name) {
   const past = await pastByName(ctx, name, key, seenSids);
   const body = `<h1><span class="ftag big">#${E(name)}</span> の公演</h1>
 <p class="lede"><a href="/recommend/favourites?t=__TAGURI_TOKEN__">← お気に入りに戻る</a></p>
-<h2>これから観られる公演 <span class="cnt">${favs.length} 件</span></h2>
+<h2>今後の公演 <span class="cnt">${favs.length} 件</span></h2>
 ${up}
 <h2>観た公演 <span class="cnt">${seenRows.length} 件</span></h2>
 ${seen}

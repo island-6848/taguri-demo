@@ -85,7 +85,7 @@ ${main}`};
 }
 
 const COMPARE_EMPTY = '<p class="pnow">まだ比べられません。'
-  + 'ここはこれから観られる公演の一覧と観た記録を並べて差を出す画面なので、'
+  + 'ここは今後の公演の一覧と観た記録を並べて差を出す画面なので、'
   + '記録が入ると出るようになります。</p>';
 // JSON inside <script>: no "</script>" or "<!--" can end it early.
 const scriptJson = x => JSON.stringify(x).replace(/</g, '\\u003c').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
@@ -124,7 +124,7 @@ ${conquest}
 </div>
 <script id="figs-src" type="application/json">${scriptJson({rated: d.rated})}</script>
 <h2>比べる ── これから上演される公演との差</h2>
-<p class="lede">観た記録をこれから観られる公演の一覧と並べて、差の大きいところを出しています。</p>
+<p class="lede">観た記録を今後の公演の一覧と並べて、差の大きいところを出しています。</p>
 ${d.seen.length ? '' : COMPARE_EMPTY}
 <div class="figs">${cmpPanels}</div>`;
   return {title: '眺める', body_html: body};

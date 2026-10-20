@@ -42,6 +42,9 @@ BRIDGE = ROOT / "cloudflare" / "scripts" / "replay_rank.js"
 JST = datetime.timezone(datetime.timedelta(hours=9))
 # cloudflare/src/screens/recommend.js の REPLAY_ABLATIONS と同じ（test_replay_eval が突き合わせる）
 ABLATIONS = ("split", "expand", "spread", "gate", "impression", "rollup")
+# 足して試す部品（H6）: 画面ではまだ動いていない部品を効かせた計算と比べる（ctx.ablate の try_<名前>）。
+# affil: 所属（劇団）から値の無い人を推し量る（cloudflare/src/recommend.js withAffil、dec-affil-reco）
+TRIALS = ("affil",)
 
 POSITIVE = {1, 2}          # 興味あり・行けない（購入済は owned=1 で別に正例にする）
 MIN_ANSWERS = 3            # 1 人の答えがこれ未満なら、その人の AUC は数えない（§3）
@@ -315,7 +318,7 @@ def holm(ps: dict[str, float]) -> dict[str, float]:
 
 def replay(backup: str, index: Path, extras: list[Path], *, owner: str | None = None, min_users: int = 1,
            step_days: int = STEP_DAYS) -> dict:
-    variants = {"base": {}, **{a: {a: True} for a in ABLATIONS}}
+    variants = {"base": {}, **{a: {a: True} for a in ABLATIONS}, **{f"try_{t}": {f"try_{t}": True} for t in TRIALS}}
     with tempfile.TemporaryDirectory(prefix="replay-") as tmp:
         base = build_base(backup, index, extras, Path(tmp) / "base.sqlite")
         answers = answers_of(base)
@@ -332,6 +335,7 @@ def replay(backup: str, index: Path, extras: list[Path], *, owner: str | None = 
         coverage = [0, 0]
         n_origins = 0
         per_origin = []           # 区切りごとの人数だけ（だれかは出さない）
+        gate_affil = {}           # 利用者 -> いちばん後の区切りの裏の答え合わせ（affil）の勝ち・負け（履歴がいちばん長い）
         while t.isoformat() < last:
             lo, hi = t.isoformat(), (t + step).isoformat()
             targets = {uid: [r for r in rows if lo < r[0] <= hi] for uid, rows in answers.items()}
@@ -345,6 +349,9 @@ def replay(backup: str, index: Path, extras: list[Path], *, owner: str | None = 
                 got = bridge(cut, (t + datetime.timedelta(days=1)).isoformat(), jobs)
                 ranks = {(o["uid"], o["variant"]): o["ranks"] for o in got}
                 base_runs = [o for o in got if o["variant"] == "base"]
+                for o in base_runs:
+                    if o.get("gate_affil"):
+                        gate_affil[o["uid"]] = o["gate_affil"]
                 per_origin.append({"t": lo, "users": len(targets), "answers": sum(len(rs) for rs in targets.values()),
                                    "with_ratings": sum(o.get("n_rated", 0) > 0 for o in base_runs),
                                    "with_recommendations": sum(o["n_ranked"] > 0 for o in base_runs)})
@@ -366,6 +373,13 @@ def replay(backup: str, index: Path, extras: list[Path], *, owner: str | None = 
     auc_of = lambda u, sc, v: tally[(u, sc, v)][0] / tally[(u, sc, v)][1] if tally[(u, sc, v)][1] else None
     result = {"origins": n_origins, "step_days": step_days, "first_answer": first, "last_answer": last,
               "answers_ranked_share": round(coverage[0] / coverage[1], 3) if coverage[1] else None, "per_origin": per_origin}
+    # 裏の答え合わせの affil（測るだけで選ばない）を全員分たす。持ち主は別に出す。区切りが重なるので、1 人 1 回（いちばん後）だけ
+    ga = {u: v for u, v in gate_affil.items() if u != owner}
+    result["gate_affil"] = {"users": len(ga), "wins": sum(int(v.get("wins", 0)) for v in ga.values()),
+                            "losses": sum(int(v.get("losses", 0)) for v in ga.values()),
+                            "users_better": sum(v.get("wins", 0) > v.get("losses", 0) for v in ga.values()),
+                            "users_worse": sum(v.get("wins", 0) < v.get("losses", 0) for v in ga.values()),
+                            **({"owner": gate_affil[owner]} if owner and owner in gate_affil else {})}
     for screen in ("reminder", "other", "all"):
         users = sorted({u for (u, sc) in windows if sc == screen})
         others = [u for u in users if u != owner]
@@ -382,8 +396,15 @@ def replay(backup: str, index: Path, extras: list[Path], *, owner: str | None = 
         entry["H5"] = {a: {"median_diff": sorted(d)[len(d) // 2] if d else None, "users_better": sum(x > 0 for x in d),
                            "users_worse": sum(x < 0 for x in d),
                            "p_holm": round(adj[a], 4) if enough else "まだ（人数が足りない）"} for a, d in diffs.items()}
+        # 足して試す部品（H6）: 差は「足した計算 − 今の計算」（正なら足すと当たりが増える）
+        tdiffs = {t: [auc_of(u, screen, f"try_{t}") - base_auc[u] for u in others] for t in TRIALS}
+        tadj = holm({t: wilcoxon_p(d) for t, d in tdiffs.items()})
+        entry["H6"] = {t: {"median_diff": sorted(d)[len(d) // 2] if d else None, "users_better": sum(x > 0 for x in d),
+                           "users_worse": sum(x < 0 for x in d),
+                           "p_holm": round(tadj[t], 4) if enough else "まだ（人数が足りない）"} for t, d in tdiffs.items()}
         if owner and owner in users:
-            entry["owner"] = {"auc": base_auc[owner], **{f"diff_{a}": base_auc[owner] - auc_of(owner, screen, a) for a in ABLATIONS}}
+            entry["owner"] = {"auc": base_auc[owner], **{f"diff_{a}": base_auc[owner] - auc_of(owner, screen, a) for a in ABLATIONS},
+                              **{f"gain_{t}": auc_of(owner, screen, f"try_{t}") - base_auc[owner] for t in TRIALS}}
         result[screen] = entry
     return result
 

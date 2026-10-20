@@ -70,7 +70,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import measure_nets as M                       # noqa: E402
 import user_scope as US                       # noqa: E402
 import net_c as C                             # noqa: E402  網 C（あらすじの要素）
-from recommend import DECLARED, NOT_PLAY_TITLE               # noqa: E402
+from recommend import DECLARED, NOT_STAGE_TITLE                # noqa: E402
 import recommend as RC1                                     # noqa: E402
 
 CAND = ROOT / "data" / "review" / "candidates.jsonl"
@@ -365,7 +365,7 @@ def main() -> int:
         end = period_end(c["period"])
         if not end or end < today:
             continue
-        if any(k in c["title"] for k in NOT_PLAY_TITLE):
+        if any(k in c["title"] for k in NOT_STAGE_TITLE):
             continue
         # 網 A ── 申告した名前。**推薦と混ぜない**（照合の規則は `declared_hits`）
         th = themes.get(("candidate", c["stage_id"]))
