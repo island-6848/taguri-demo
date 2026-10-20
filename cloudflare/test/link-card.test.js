@@ -85,3 +85,17 @@ test('the app manifest, its icons, the head tags, and a service worker that neve
   for (const p of ['/api/screen/recommend', '/api/react', '/img/1.jpg', '/login', '/export.json']) assert.ok(never.test(p), p);
   for (const p of ['/app.js', '/style.css', '/recommend']) assert.ok(!never.test(p), p);
 });
+
+// Android アプリ（TWA）との結び付け（impl-android-twa）: ログインなしで JSON を返す。指紋が無いうちは空の配列
+test('/.well-known/assetlinks.json is public JSON; with a fingerprint it names the app', async () => {
+  const r = await get('/.well-known/assetlinks.json', 'Mozilla/5.0');
+  assert.equal(r.status, 200);
+  assert.match(r.headers.get('content-type'), /application\/json/);
+  assert.ok(Array.isArray(await r.json()));
+  const {assetLinks, ANDROID_PACKAGE} = await import('../src/app-links.js');
+  const fp = Array.from({length: 32}, () => 'AB').join(':');
+  assert.deepEqual(assetLinks(ANDROID_PACKAGE, [fp]), [{relation: ['delegate_permission/common.handle_all_urls'],
+    target: {namespace: 'android_app', package_name: 'jp.taguri.app', sha256_cert_fingerprints: [fp]}}]);
+  const gradle = readFileSync(new URL('../../android/app/build.gradle.kts', import.meta.url), 'utf8');
+  assert.match(gradle, new RegExp(`applicationId = "${ANDROID_PACKAGE.replaceAll('.', '\\.')}"`));   // 2 か所の番号がそろっている
+});

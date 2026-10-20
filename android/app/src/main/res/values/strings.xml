@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">たぐり</string>
+    <string name="launch_url" translatable="false">https://app.taguri.workers.dev/recommend?source=android</string>
+    <!-- このアプリが app.taguri.workers.dev の画面を開いてよいと、サイトの側（assetlinks.json）と結び付ける -->
+    <string name="asset_statements" translatable="false">[{\"relation\": [\"delegate_permission/common.handle_all_urls\"], \"target\": {\"namespace\": \"web\", \"site\": \"https://app.taguri.workers.dev\"}}]</string>
+</resources>

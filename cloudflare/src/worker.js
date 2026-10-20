@@ -1,4 +1,5 @@
 import {withCard, PREVIEW_BOT} from './link-card.js';
+import {assetLinksResponse} from './app-links.js';
 import {SESSION_TTL} from './session-policy.js';
 import {deleteAccountStatements, sweepEmptyAccounts} from './cleanup.js';
 import {purgeFixRequests} from './screens/fixrequest.js';
@@ -537,6 +538,8 @@ export default {
     const url = new URL(request.url);
     const limited = await rateLimit(request, env, url);
     if (limited) return limited;
+    // Android アプリとの結び付け（app-links.js）。ログインの前に Google が読むので gate より先
+    if (url.pathname === '/.well-known/assetlinks.json' && request.method === 'GET') return assetLinksResponse();
     const blocked = await gate(request, env, url);
     if (blocked) return blocked;
     // たぐりとは and ログイン are one page now; old links to /about still land there.

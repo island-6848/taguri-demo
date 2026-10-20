@@ -4387,6 +4387,23 @@
    "verifies": []
   },
   {
+   "id": "impl-android-twa",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-20",
+   "title": "Android アプリは TWA（Chrome で app.taguri.workers.dev を全画面に開く入れ物）で作り、GitHub Actions で組む",
+   "sources": [
+    "android/app/build.gradle.kts",
+    "android/app/src/main/AndroidManifest.xml",
+    ".github/workflows/android.yml",
+    "cloudflare/src/app-links.js",
+    "cloudflare/src/worker.js",
+    "docs/android-release.md",
+    "docs/design/logo/make_android_icons.mjs"
+   ],
+   "verifies": []
+  },
+  {
    "id": "impl-body-stream-cap",
    "type": "finding",
    "status": "confirmed",
@@ -11487,6 +11504,21 @@
    "from": "impl-admin-tool",
    "rel": "raises",
    "to": "q-admin-override-in-index"
+  },
+  {
+   "from": "impl-android-twa",
+   "rel": "depends_on",
+   "to": "impl-pwa-base"
+  },
+  {
+   "from": "impl-android-twa",
+   "rel": "depends_on",
+   "to": "f-store-review-rules"
+  },
+  {
+   "from": "impl-android-twa",
+   "rel": "affects",
+   "to": "plan-app-release"
   },
   {
    "from": "impl-body-stream-cap",
