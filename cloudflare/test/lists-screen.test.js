@@ -282,15 +282,15 @@ test('探す: coming stages and works seen, by words and by month', async () => 
   try {
     const empty = (await screen(env, a, 'search')).body_html;
     assert.match(empty, /<h1>探す<\/h1>/);
-    assert.match(empty, /これから観られる公演 3 件と観た記録の両方から探します/);
+    assert.match(empty, /今後の公演 3 件と観た記録の両方から探します/);
     // A new account (no records yet) still gets the month calendar, opened on the coming stages
     // (2026-10-14 起案者「『探す』にあったカレンダーが消えてる」).
     assert.match(empty, /<div class="cal" id="cal">/);
-    assert.match(empty, /aria-current="page"[^>]*>これから観られる公演|これから観られる公演[^<]*<span class="mn">3<\/span>/);
+    assert.match(empty, /aria-current="page"[^>]*>今後の公演|今後の公演[^<]*<span class="mn">3<\/span>/);
     assert.match(empty, /class="cal-c l\d/);
     // A coming stage found by a cast name: the card with 「ヒットした箇所」 on top.
     const byName = (await screen(env, a, 'search', '?q=' + encodeURIComponent('俳優甲'))).body_html;
-    assert.match(byName, /<h2>これから観られる公演 1 件<\/h2>/);
+    assert.match(byName, /<h2>今後の公演 1 件<\/h2>/);
     assert.match(byName, /<div class="whyh top">[\s\S]*ヒットした箇所：<\/div><ul class="why top"><li class="rs found"><span class="net">出演<\/span>俳優甲<\/li><\/ul>/);
     assert.doesNotMatch(byName, /おすすめ理由/);
     assert.match(byName, /この名前を追いますか？[\s\S]*data-name="俳優甲"/);

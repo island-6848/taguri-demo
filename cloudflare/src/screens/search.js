@@ -104,14 +104,14 @@ async function upcoming(ctx, q = '') {
   const key = q ? nz(fold(q)) : '';
   const out = new Map();
   const idxWhere = key ? ` AND (instr(${sqlFold('c.blob')},?)>0 OR instr(${sqlFold('c.ws')},?)>0 OR instr(${sqlFold('lower(s.entry)')},?)>0 OR instr(${sqlFold('lower(s.title)')},?)>0)` : '';
-  const {results} = await ctx.db.prepare(`SELECT s.stage_id, s.title, s.entry, s.start, s.end, c.ws FROM rec_stage s
+  const {results} = await ctx.db.prepare(`SELECT s.stage_id, s.title, s.entry, s.start, s.end, s.tour, c.ws FROM rec_stage s
     LEFT JOIN rec_card c ON c.stage_id=s.stage_id AND c.ver=(SELECT v FROM rec_meta WHERE k='rec_card')
     WHERE s.ver=(SELECT v FROM rec_meta WHERE k='current') AND (s.end='' OR s.end>=?)${idxWhere}`)
     .bind(ctx.today, ...(key ? [key, key, key, key] : [])).all();
   for (const r of results) {
     let e = {};
     try { e = JSON.parse(r.entry || '{}') || {}; } catch { /* no entry */ }
-    out.set(String(r.stage_id), {...e, period: e.period || slashed(r.start, r.end), title: r.title, stage_id: String(r.stage_id), _ws: r.ws ? r.ws.split('\n') : []});
+    out.set(String(r.stage_id), {...e, period: e.period || slashed(r.start, r.end), title: r.title, stage_id: String(r.stage_id), _tour: r.tour || '', _ws: r.ws ? r.ws.split('\n') : []});
   }
   // 索引に入る前の新しい公演（毎日の一覧の配達には入っている）
   const catWhere = key ? ` AND (instr(${sqlFold('lower(title)')},?)>0 OR instr(${sqlFold('lower(metadata)')},?)>0)` : '';
@@ -255,6 +255,14 @@ function searchFollow(dec, names) {
 ${out.slice(0, 8).join('')}</div>`;
 }
 
+/** The card's other venues (data-tours): answering the card gives them the same answer (screens/recommend.reactAction). */
+const withSiblings = (card, sibs) => {
+  const v = E(sibs.filter(x => /^\d+$/.test(x)).join(','));
+  return /<article class="ticket [^"]*" data-stage="[^"]*" data-tours="[^"]*"/.test(card)
+    ? card.replace(/(<article class="ticket [^"]*" data-stage="[^"]*") data-tours="[^"]*"/, (m, a) => `${a} data-tours="${v}"`)
+    : card.replace(/(<article class="ticket [^"]*" data-stage="[^"]*")/, (m, a) => `${a} data-tours="${v}"`);
+};
+
 /** app._upcoming_hits: [html, names, n, {month: n} of the stages the word hits (empty without a word), stages the word hits in any month] */
 export async function upcomingHits(ctx, q, ym, b, top = UP_PER, page = 1, href = null) {
   const rows = await upcoming(ctx, q);
@@ -262,7 +270,7 @@ export async function upcomingHits(ctx, q, ym, b, top = UP_PER, page = 1, href =
   for (const [k, lab] of [['tracking', '追いかけています（興味ありと答えました）'], ['owned', '観る予定です（すでに持っていると答えました）'], ['others', '興味なしと答えました']])
     for (const r of b[k]) for (const sid of r.sids || [r.stage_id]) state.set(sid, r.dismissed ? '候補から消しました' : r.cantgo ? '行けないと答えました' : lab);
   const tracking = new Set(b.tracking.flatMap(r => r.sids || [r.stage_id]));
-  const hits = [];
+  let hits = [];
   for (const c of rows) {
     if (ym && !periodMonths(c.period).includes(ym)) continue;
     const [why, names] = q ? hitUpcoming(q, c, c._ws) : [`<li class="rs found"><span class="net">上演</span>${E(runRange(c.period, ctx.today) || c.period || '')}</li>`, []];
@@ -279,6 +287,18 @@ export async function upcomingHits(ctx, q, ym, b, top = UP_PER, page = 1, href =
   } else {
     hits.sort((p, q2) => cmp(periodStart(p[1].period) || '9999', periodStart(q2[1].period) || '9999'));
   }
+  // ツアーは 1 枚にまとめる（起案者の指示 2026-10-20「ツアーがバラバラに出ていて、バラバラに興味ありを押せるようになってしまってる。
+  // まとめて」）。索引の同じ tour（おすすめと同じ束ね方）、索引に無い新しい公演は題名と団体で束ねる。並びの先頭（いちばん早い会場）を
+  // 代表にし、ほかの会場はカードの日程とボタン（data-tours。答えると全会場に同じ答えが付く）に入れる
+  const groupKey = c => c._tour || 't:' + indexKey(c.title || '') + '\u0000' + nz(c.group || '');
+  const byGroup = new Map();
+  for (const h of hits) {
+    const k = groupKey(h[1]);
+    if (byGroup.has(k)) { byGroup.get(k).sids.push(String(h[0])); byGroup.get(k).names.push(...h[3]); continue; }
+    byGroup.set(k, {h, sids: [String(h[0])], names: [...h[3]]});
+  }
+  const venuesOf = new Map([...byGroup.values()].map(g => [String(g.h[0]), g.sids]));
+  hits = [...byGroup.values()].map(g => [g.h[0], g.h[1], g.h[2], g.names]);
   const names = hits.flatMap(h => h[3]);
   // 言葉で引いたときの月ごとの数（カレンダーも当たった公演だけを数える。月の指定より前の全部）
   const matched = q ? rows.filter(c => hitUpcoming(q, c, c._ws)[0]) : rows;
@@ -304,18 +324,20 @@ export async function upcomingHits(ctx, q, ym, b, top = UP_PER, page = 1, href =
       for (const r of sib) { if (!byTour.has(r.tour)) byTour.set(r.tour, []); byTour.get(r.tour).push(String(r.stage_id)); }
     }
   }
-  const tourSids = new Map(ids.map(sid => [sid, [sid, ...(byTour.get(tourOf.get(sid)) || [])]]));
+  const tourSids = new Map(ids.map(sid => [sid, [sid, ...(venuesOf.get(sid) || []), ...(byTour.get(tourOf.get(sid)) || [])]]));
   const info = await stageInfo(ctx.db, [...tourSids.values()].flat());
   const cards = show.filter(h => html.has(h[0])).map(([sid, , why]) => {
-    const st = state.get(sid);
+    const all = [...new Set(tourSids.get(String(sid)))];
+    // 答えはどの会場に付いていても、そのツアーの答え
+    const st = all.map(x => state.get(x)).find(Boolean);
     const w = why + (st ? `<li class="rs state">${E(st)}</li>` : '');
-    const pic = posters.get(sid);
-    const card = compose(html.get(sid), sid, tracking.has(sid) ? 'interest' : 'recommend', {top: w, poster: pic ? cardPoster(pic) : ''});
-    return withTour(card, tourBlock([...new Set(tourSids.get(String(sid)))].map(x => info.get(x)).filter(Boolean), sid, ctx.today));
+    const pic = posters.get(sid) || all.map(x => posters.get(x)).find(Boolean);
+    const card = compose(html.get(sid), sid, all.some(x => tracking.has(x)) ? 'interest' : 'recommend', {top: w, poster: pic ? cardPoster(pic) : ''});
+    return withSiblings(withTour(card, tourBlock(all.map(x => info.get(x)).filter(Boolean), sid, ctx.today)), all.filter(x => x !== String(sid)));
   });
   const tail = '';
   const pager = pagerHtml(hits.length, top, page, href);
-  const head = ym ? `${ym.slice(0, 4)} 年 ${Number(ym.slice(5, 7))} 月に観られる公演` : 'これから観られる公演';
+  const head = ym ? `${ym.slice(0, 4)} 年 ${Number(ym.slice(5, 7))} 月に観られる公演` : '今後の公演';
   const order = ym ? 'この月に始まる公演を先に並べ、そのあとに、すでに始まっている公演を終わりの近い順に並べています。' : '上演日の近い順に並べています。';
   return [`<h2>${E(head)} ${hits.length} 件</h2><p class="lead">${order}順位は付けていません。<b>ここから「興味あり」を押すと、「興味あり」の一覧に入ります。</b></p>${tail}<div id="up-hits">${cards.join('')}</div>${pager}`, names, hits.length, counts, matched.length];
 }
@@ -386,15 +408,15 @@ function monthGrid(ws, upCounts, nUp, side, sel, q = '') {
     return `<a class="cal-c l${lv}${ym === sel ? ' on' : ''}" href="/search?t=__TAGURI_TOKEN__&amp;cal=${E(side)}${qs}&amp;ym=${ym}#cal" aria-label="${y} 年 ${i + 1} 月 ${c} 件">${c}</a>`;
   }).join('')).join('');
   const none = nNone === 0 || side === 'up' ? '' : `<a class="cal-none${sel === 'none' ? ' on' : ''}" href="/search?t=__TAGURI_TOKEN__&amp;ym=none#cal">上演日が分からない記録<span class="mn">${nNone}</span></a>`;
-  const tabs = indexTabs([['past', '観た記録', ws.length], ['up', 'これから観られる公演', nUp]], side, k => `/search?t=__TAGURI_TOKEN__&amp;cal=${k}${qs}#cal`, 'どちらのカレンダーを見るか');
+  const tabs = indexTabs([['past', '観た記録', ws.length], ['up', '今後の公演', nUp]], side, k => `/search?t=__TAGURI_TOKEN__&amp;cal=${k}${qs}#cal`, 'どちらのカレンダーを見るか');
   const lead = side === 'up'
-    ? '<b>これから観られる公演を、月から探せます。</b>数字は、上演期間がその月にかかっている公演の数です。<b>件数が多い月は、言葉と組み合わせると絞り込めます。</b>'
+    ? '<b>今後の公演を、月から探せます。</b>数字は、上演期間がその月にかかっている公演の数です。<b>件数が多い月は、言葉と組み合わせると絞り込めます。</b>'
     : '<b>観た記録を、観た月から探せます。</b>数字はその月に観た作品の数です。押すと、その月の記録が下に出ます。';
   const only = q ? `<b>「${E(q)}」に当たったものだけを数えています。</b>` : '';
   return `<div class="cal" id="cal">
 ${tabs}
 <div class="idxsheet loose"><p class="mnow">${only}${lead}</p>
-${rows ? `<div class="cal-grid"><span class="cal-y"></span>${head}${rows}</div>` : `<p class="empty">${q ? (side === 'up' ? `「${E(q)}」に当たる、これから観られる公演はありません。` : `「${E(q)}」に当たる観た記録はありません。`) : side === 'up' ? 'これから観られる公演は、いま手元にありません。' : 'まだ観た記録がありません。「これから観られる公演」のタブを押すと、月から公演を探せます。'}</p>`}
+${rows ? `<div class="cal-grid"><span class="cal-y"></span>${head}${rows}</div>` : `<p class="empty">${q ? (side === 'up' ? `「${E(q)}」に当たる、今後の公演はありません。` : `「${E(q)}」に当たる観た記録はありません。`) : side === 'up' ? '今後の公演は、いま手元にありません。' : 'まだ観た記録がありません。「今後の公演」のタブを押すと、月から公演を探せます。'}</p>`}
 ${none}</div></div>`;
 }
 
@@ -441,7 +463,7 @@ export async function searchScreen(params, ctx) {
 <label class="fld" for="search-q"><span class="fl">人名・団体・題材・題名<small class="req">必須</small></span><input type="text" id="search-q" name="q" value="${E(q)}" size="28" placeholder="例：シェイクスピア・劇団四季・家族"></label>
 <button type="submit">${ico('search')}探す</button></form>`;
   const head = `<h1>探す</h1>
-<p class="lede">人名・団体・題材・題名で、<b>これから観られる公演 ${months.n} 件と観た記録の両方から探します。</b>見つけたものには、この画面から直接答えられます。これから観られる公演には「興味あり」を押せて、観た記録には評価と感想を付けられます。</p>${form}${note}`;
+<p class="lede">人名・団体・題材・題名で、<b>今後の公演 ${months.n} 件と観た記録の両方から探します。</b>見つけたものには、この画面から直接答えられます。今後の公演には「興味あり」を押せて、観た記録には評価と感想を付けられます。</p>${form}${note}`;
   const seen = ws.filter(w => !w.unseen);
   let cal = monthGrid(seen, months.counts, months.n, side, ym, q);
   const b = await buckets(ctx);
@@ -451,7 +473,7 @@ export async function searchScreen(params, ctx) {
       const [upHtml] = await upcomingHits(ctx, '', ym, b, UP_PER, upPage, pageHref('up', 'up-hits'));
       body = ym ? hitPart('up', upHtml) : '<p class="empty">上のカレンダーから月を選ぶと、その月に観られる公演が出ます。</p>';
     } else if (!ym) {
-      body = '<p class="empty">上のカレンダーから月を選ぶと、その月に観た記録が出ます。これから観られる公演は言葉を入れて探してください。</p>';
+      body = '<p class="empty">上のカレンダーから月を選ぶと、その月に観た記録が出ます。今後の公演は言葉を入れて探してください。</p>';
     } else {
       const hit = (ym === 'none' ? seen.filter(w => (w.first_date || '').length < 7) : seen.filter(w => (w.first_date || '').slice(0, 7) === ym))
         .sort((x, y) => cmp(y.first_date || '', x.first_date || ''));
@@ -479,7 +501,7 @@ export async function searchScreen(params, ctx) {
   let body;
   if (!hits.length && !nUp && !nPast) {
     const narrowed = ym && side === 'up' ? `<b>いまは ${ym.slice(0, 4)} 年 ${Number(ym.slice(5, 7))} 月に絞っています。</b>ほかの月にはあるかもしれません。カレンダーで別の月を押すか、<a href="/search?t=__TAGURI_TOKEN__&amp;cal=up&amp;q=${E(q)}">月の指定を外して</a>お試しください。<br>` : '';
-    body = `<p class="empty">${narrowed}手元には、これから観られる公演にも観た記録にも見つかりませんでした。<b>公演ページを見つけられなかった記録は、出演者や題材では探せません。</b>その場合は題名で探してください。</p>` + web + cal;
+    body = `<p class="empty">${narrowed}手元には、今後の公演にも観た記録にも見つかりませんでした。<b>公演ページを見つけられなかった記録は、出演者や題材では探せません。</b>その場合は題名で探してください。</p>` + web + cal;
   } else if (!hits.length) {
     body = searchFollow(dec, names) + hitPart('up', upHtml) + '<h2>観た記録</h2><p class="empty">観た記録の中には見つかりませんでした。</p>' + pastHtml + web + cal;
   } else {

@@ -2851,6 +2851,19 @@
    "verifies": []
   },
   {
+   "id": "dec-search-tour-one-card",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-20",
+   "title": "探すの「今後の公演」（前の「これから観られる公演」）は、ツアーを 1 枚にまとめ、答えは全会場に付ける",
+   "sources": [
+    "cloudflare/src/screens/search.js",
+    "cloudflare/src/screens/entity.js",
+    "cloudflare/test/search-uncarded.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-search-worker",
    "type": "decision",
    "status": "adopted",
@@ -10332,6 +10345,11 @@
    "from": "dec-search-public-only",
    "rel": "raises",
    "to": "q-past-stage-catalogue"
+  },
+  {
+   "from": "dec-search-tour-one-card",
+   "rel": "affects",
+   "to": "comp-cf-worker"
   },
   {
    "from": "dec-search-worker",

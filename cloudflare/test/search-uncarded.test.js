@@ -21,9 +21,9 @@ test('stages without a card are found: in the index, and only in the catalogue; 
     assert.match(idx, /<article class="ticket recommend" data-stage="101"/);
     const cat = await search(env, a, 'ふぉ〜ゆ〜');          // typed with U+301C; the data has U+FF5E
     assert.match(cat, /<article class="ticket recommend" data-stage="990001"/);
-    assert.match(cat, /これから観られる公演 1 件/);
+    assert.match(cat, /今後の公演 1 件/);
     // The tabs and the calendar below count only what the word hits.
-    assert.match(cat, /これから観られる公演<span class="mn">1<\/span>/);
+    assert.match(cat, /今後の公演<span class="mn">1<\/span>/);
     assert.match(cat, /aria-label="2099 年 12 月 1 件"/);
     assert.match(cat, /観た記録<span class="mn">0<\/span>/);
     assert.match(cat, /「ふぉ〜ゆ〜」に当たったものだけを数えています/);
@@ -49,7 +49,7 @@ test('with a word, the 観た記録 calendar counts only the records it hits; wi
     assert.doesNotMatch(hit, /aria-label="2025 年 11 月/);
     const none = await search(env, a, 'ふぉ〜ゆ〜', '&cal=past');
     assert.match(none, /観た記録<span class="mn">0<\/span>/);
-    assert.match(none, /これから観られる公演<span class="mn">0<\/span>/);
+    assert.match(none, /今後の公演<span class="mn">0<\/span>/);
   } finally { sqlite.close(); }
 });
 
@@ -136,5 +136,23 @@ test('the same past stage can be added again: another day, or the same day at an
     assert.equal((await add({date: '2023-07-02', time: '18:00'})).status, 400);                 // the very same show twice
     assert.equal((await add({date: '2023-07-05'})).status, 400);                                // same day without a time: ask for it
     assert.equal(sqlite.prepare("SELECT COUNT(*) n FROM works WHERE title='何度も観た' AND stage_id='720001'").get().n, 3);
+  } finally { sqlite.close(); }
+});
+
+// ツアーは 1 枚にまとめる（起案者の指示 2026-10-20「ツアーがバラバラに出ていて、バラバラに興味ありを押せるようになってしまってる。まとめて」）
+test('a tour is one card on 探す: the other venues are on its schedule and in data-tours, and the count is per production', async () => {
+  const {env, sqlite} = setup();
+  for (const s of FIXTURE.sql) sqlite.exec(s);
+  const ins = sqlite.prepare('INSERT INTO catalogue(id,title,date,venue,url,metadata) VALUES(?,?,?,?,?,?)');
+  const meta = end => JSON.stringify({end_date: end, group: '劇団旅', fields: {'出演': '旅役者'}});
+  ins.run('990101', '旅の公演', '2099-11-01', '劇場東', '', meta('2099-11-05'));
+  ins.run('990102', '旅の公演', '2099-11-10', '劇場西', '', meta('2099-11-12'));
+  ins.run('990103', '旅の公演', '2099-12-01', '劇場北', '', meta('2099-12-02'));
+  const a = await signIn(env);
+  try {
+    const html = await search(env, a, '旅の公演');
+    assert.equal((html.match(/<article class="ticket [^"]*" data-stage="99010\d"/g) || []).length, 1);
+    assert.match(html, /<article class="ticket recommend" data-stage="990101" data-tours="990102,990103"/);
+    assert.match(html, /今後の公演 1 件/);
   } finally { sqlite.close(); }
 });
