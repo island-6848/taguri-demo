@@ -26,7 +26,7 @@ import {tourBlock} from './schedule.js';
 import {emptyGuide} from './guide.js';
 
 export const KINDS = ['団体', '人', '主催', '作品', '原作者', '題材'];
-const DECLARED_KEY = 'declared', DECLINED_KEY = 'declined';
+const DECLARED_KEY = 'declared', DECLINED_KEY = 'declined', DECLARED_AT_KEY = 'declared_at';
 // 「この理由を使わない」にした種類（起案者の指示 2026-10-16「自分に合わないなと思うおすすめ理由を消すことはできる？」、
 // q-kind-reason-off）。'#原作\tオリジナル' の形で控え、点数にも理由にも使わない。公演そのものは消さない
 export const KIND_OFF_KEY = 'kind_off', KIND_OFF_MAX = 100;
@@ -916,6 +916,14 @@ async function favouriteAction(b, ctx) {
   // app.save_declared: trimmed, de-duplicated, sorted, at most 100 per kind.
   const out = Object.fromEntries(KINDS.map(k => [k, [...new Set(d[k].map(x => String(x).trim().slice(0, 80)).filter(Boolean))].sort(cmp).slice(0, 100)]));
   if (!keep) await writeJson(ctx, DECLARED_KEY, out);
+  // 名前ごとに足した時刻（'種類\t名前' -> ISO）。再生（replay_eval）が日 t のお気に入りを組み立て直すのに使う（#72）。
+  // 画面と推薦は読まない。足した名前・外した名前があるときだけ書く
+  const at = await readJson(ctx, DECLARED_AT_KEY), stamps = at && typeof at === 'object' && !Array.isArray(at) ? at : {};
+  const live = new Set(KINDS.flatMap(k => out[k].map(n => `${k}\t${n}`)));
+  let moved = false;
+  for (const e of Object.keys(stamps)) if (!live.has(e)) { delete stamps[e]; moved = true; }
+  for (const e of live) if (!(e in stamps) && e === `${kind}\t${name}`) { stamps[e] = nowIso(ctx); moved = true; }
+  if (moved) await writeJson(ctx, DECLARED_AT_KEY, stamps);
   if (action === 'remove') await ctx.db.prepare('DELETE FROM favourites WHERE user_id=? AND name=? AND kind=?').bind(ctx.uid, name, kind).run();
   // 人の役職の絞り（任意、q-favourite-homonym）。足すときに選んだ札で置き換え、選ばなければ絞りを外す。外すときも消す。
   // 変わらないときは書かない（D1 の書き込みを増やさない）

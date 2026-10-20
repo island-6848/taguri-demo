@@ -4372,6 +4372,24 @@
    "verifies": []
   },
   {
+   "id": "fix-replay-index-dates",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-20",
+   "title": "再生（replay）は、公演が D1 に載った日と、お気に入りの名前ごとに足した時刻を控えて、日 t の索引とお気に入りに近づける（#72）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/72",
+    "cloudflare/scripts/build_recommend_index.py",
+    "tools/review/replay_eval.py",
+    "cloudflare/scripts/replay_job.py",
+    "cloudflare/src/screens/lists.js",
+    "cloudflare/test/test_replay_eval.py",
+    "cloudflare/test/test_recommend_index.py",
+    "cloudflare/test/fav-roles.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "fix-request-mail",
    "type": "finding",
    "status": "unverified",
@@ -5012,6 +5030,35 @@
     "cloudflare/test/test_replay_job.py",
     "tools/taguri/deploy/github-actions/replay.yml",
     "docs/research/real-data-eval-plan.md"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "impl-replay-h3",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-20",
+   "title": "H3（観る前の点と観たあとの評価の Kendall τ）を replay_eval の h3 と Replay の Summary に足した。観なかった公演は負例にせず、欠測と選んで観た偏りを並べて出す（#114）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/114",
+    "tools/review/replay_eval.py",
+    "cloudflare/scripts/replay_job.py",
+    "cloudflare/test/test_replay_eval.py",
+    "docs/research/real-data-eval-plan.md"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "impl-replay-learning-curve",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-20",
+   "title": "再生に学習曲線（--curve）を足した。同じ区切り・同じ後の答え・同じ索引のまま、日 t までの評価を古いほうから k 件（1・2・5・10・20・全部）だけ残して測る（#103）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/103",
+    "tools/review/replay_eval.py",
+    "cloudflare/scripts/replay_job.py",
+    "cloudflare/test/test_replay_eval.py"
    ],
    "verifies": []
   },
@@ -7720,7 +7767,7 @@
   {
    "id": "q-replay-h3-satisfaction",
    "type": "question",
-   "status": "open",
+   "status": "answered",
    "date": "2026-10-18",
    "title": "評価の計画の H3（観る前の点と観たあとの評価の順位相関）を、手元の再生（replay_eval）にまだ実装していない。興味の指標（H1）と満足の指標を分けて出す（#114、測る道具を作る）",
    "sources": [
@@ -11847,6 +11894,16 @@
    "to": "dec-register-run-precision"
   },
   {
+   "from": "fix-replay-index-dates",
+   "rel": "affects",
+   "to": "impl-replay-eval"
+  },
+  {
+   "from": "fix-replay-index-dates",
+   "rel": "depends_on",
+   "to": "q-replay-history-restore"
+  },
+  {
    "from": "fix-request-mail",
    "rel": "affects",
    "to": "impl-fix-request"
@@ -12335,6 +12392,26 @@
    "from": "impl-replay-eval",
    "rel": "depends_on",
    "to": "impl-eval-logging"
+  },
+  {
+   "from": "impl-replay-h3",
+   "rel": "answers",
+   "to": "q-replay-h3-satisfaction"
+  },
+  {
+   "from": "impl-replay-h3",
+   "rel": "affects",
+   "to": "impl-replay-eval"
+  },
+  {
+   "from": "impl-replay-learning-curve",
+   "rel": "affects",
+   "to": "impl-replay-eval"
+  },
+  {
+   "from": "impl-replay-learning-curve",
+   "rel": "depends_on",
+   "to": "fix-replay-index-dates"
   },
   {
    "from": "impl-search-past-stages",

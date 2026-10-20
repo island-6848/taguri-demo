@@ -186,6 +186,76 @@ def logged(db: sqlite3.Connection, owner: str | None, min_users: int) -> dict:
     return result
 
 
+# ---------------------------------------------------------------- H3（§2・#114）
+# 「気になったか」（H1 の答え）と「観てよかったか」を分ける。観る前に記録した点（reaction.score、答えたときの点）と、
+# 観たあとの本人の評価（works.verdict）を公演で結び、利用者ごとに Kendall の τ-b を出す。
+# 観なかった公演は満足の負例にしない（評価の無い公演は入れない）。推薦の計算は変えない（測るだけ）。
+GRADE = {"◎": 3, "○": 2, "△": 1, "×": 0}
+MIN_H3 = 3                 # 1 人の結べた公演がこれ未満なら、その人の τ は数えない
+
+
+def kendall_tau_b(xs: list[float], ys: list[float]) -> float | None:
+    conc = disc = tx = ty = 0
+    for i in range(len(xs)):
+        for j in range(i + 1, len(xs)):
+            dx, dy = xs[i] - xs[j], ys[i] - ys[j]
+            if dx == 0 and dy == 0:
+                continue
+            if dx == 0:
+                tx += 1
+            elif dy == 0:
+                ty += 1
+            elif (dx > 0) == (dy > 0):
+                conc += 1
+            else:
+                disc += 1
+    den = math.sqrt((conc + disc + tx) * (conc + disc + ty))
+    return (conc - disc) / den if den else None
+
+
+def h3(db: sqlite3.Connection, owner: str | None, min_users: int) -> dict:
+    """観る前の点（観た日より前の答えの score）と観たあとの評価の τ。欠測と、答えた公演に偏る度合いも出す。"""
+    if "score" not in columns(db, "reaction"):
+        return {"error": "この控えには reaction.score がありません（migrations/0029 より前の控え）"}
+    out_ = opted_out(db)
+    before: dict[tuple[str, str], list[tuple[str, float, bool]]] = defaultdict(list)
+    for uid, sid, score, updated, interest, owned, source in db.execute(
+            "SELECT user_id, stage_id, score, updated_at, interest, owned, source FROM reaction WHERE score IS NOT NULL ORDER BY updated_at"):
+        if uid in out_ or (source or "").endswith("_tour"):
+            continue
+        before[(uid, str(sid))].append((jst_day(updated) or "", float(score), owned == 1 or interest in POSITIVE))
+    per = defaultdict(lambda: ([], []))
+    c = defaultdict(int)
+    for uid, sid, verdict, first in db.execute(
+            "SELECT user_id, stage_id, verdict, first_date FROM works WHERE verdict IS NOT NULL AND verdict<>''"):
+        if uid in out_ or verdict not in GRADE:
+            continue
+        c["rated"] += 1
+        if not sid:
+            c["no_stage"] += 1
+            continue
+        # 観た日（first_date）より前に答えた点のうち、いちばん後のものが「観る前」。観た日のあとの点は、観たことを知っている
+        got = next((b for b in reversed(before.get((uid, str(sid)), [])) if first and b[0] and b[0] < str(first)[:10]), None)
+        if not got:
+            c["no_score_before"] += 1
+            continue
+        c["paired"] += 1
+        c["paired_after_positive"] += got[2]
+        per[uid][0].append(got[1])
+        per[uid][1].append(GRADE[verdict])
+    taus = {u: kendall_tau_b(x, y) for u, (x, y) in per.items() if len(x) >= MIN_H3}
+    others = [t for u, t in taus.items() if u != owner and t is not None]
+    enough = len(others) >= min_users and bool(others)
+    return {"rated": c["rated"], "paired": c["paired"],
+            # 欠測: 公演につながっていない・観る前の点が無い。結べたうち、興味あり・購入済と答えていた割合（選んで観た偏り）
+            "missing": {"no_stage": c["no_stage"], "no_score_before": c["no_score_before"]},
+            "paired_after_positive_share": round(c["paired_after_positive"] / c["paired"], 3) if c["paired"] else None,
+            "users": len(others), "median_tau": round(sorted(others)[len(others) // 2], 3) if others else None,
+            "per_user_tau": [round(t, 3) for t in sorted(others)],
+            "p_sign_H3": sign_test_p(sum(t > 0 for t in others), sum(t < 0 for t in others)) if enough else "まだ（人数が足りない）",
+            **({"owner_tau": taus.get(owner)} if owner and owner in taus else {})}
+
+
 # ---------------------------------------------------------------- replay（§3・H5）
 
 STEP_DAYS = 7              # 区切りの長さ。§3 は 4 週間としていたが、記録がまだ数週間分なので 1 週間（§3 の追記 2026-10-18）
@@ -249,11 +319,64 @@ def answers_of(db: sqlite3.Connection) -> dict[str, list[tuple[str, str, bool, s
     return {uid: sorted(rows) for uid, rows in per.items()}
 
 
-def cut_copy(base: sqlite3.Connection, path: Path, day: str) -> None:
-    """日 day（日本時間）より後に書かれた利用者の記録を消した写し。お気に入り（favourites）は時刻が無いので残る（§9）。"""
+INDEX_TABLES = ("rec_stage", "rec_people", "rec_credit", "rec_affil")
+
+
+def index_split(seen: dict | None, day: str, stage_ids: set[str] = frozenset()) -> dict:
+    """索引の公演を、日 day に載っていたかで分ける（#72）。seen は d1/index-hashes.json（build_recommend_index.seen_dates）。
+
+    later: day より後に初めて載った公演（再生で落とす）。changed: day には載っていたが、そのあと中身が変わった公演の数
+    （今の中身で測るので、少し当たって見えるかもしれない）。unknown: day が控えを始めた日より前（載った日が分からない）。
+    stage_ids: 写しの索引の公演。seen に無い公演（作業データにはあるが、まだ D1 に入れていない）も落とす。"""
+    if not seen or not seen.get("_seen"):
+        return {"later": set(), "changed": 0, "unknown": True}
+    since = seen.get("_seen_since") or ""
+    later, changed = set(), 0
+    for sid, (first, last, *_rest) in seen["_seen"].items():
+        if first > day and first != since:     # 控えを始めた日に入っていた公演は、それより前から載っていたかもしれない
+            later.add(str(sid))
+        elif last > day:
+            changed += 1
+    later |= {sid for sid in stage_ids if sid not in seen["_seen"]}
+    return {"later": later, "changed": changed, "unknown": day < since}
+
+
+def declared_at(db: sqlite3.Connection, day: str) -> None:
+    """日 day より後に書き換えたお気に入り（app_setting の declared）を、day までに足した名前だけに戻す（#72）。
+    名前ごとの足した時刻は declared_at（lists.favouriteAction）。時刻の無い名前は、時刻を控える前に足したので残す。
+    day より後に外した名前は戻せない（declared_at からも消える）。"""
+    if not has_table(db, "app_setting"):
+        return
+    rows = db.execute("SELECT user_id, value, updated_at FROM app_setting WHERE key='declared'").fetchall()
+    for uid, value, updated in rows:
+        if (jst_day(updated) or "") <= day:
+            continue
+        at = db.execute("SELECT value FROM app_setting WHERE user_id=? AND key='declared_at'", (uid,)).fetchone()
+        try:
+            dec, stamps = json.loads(value or "{}"), json.loads(at[0]) if at else {}
+        except ValueError:
+            continue
+        kept = {k: [n for n in names if (jst_day(stamps.get(f"{k}\t{n}")) or "") <= day]
+                for k, names in dec.items() if isinstance(names, list)}
+        if any(kept.values()):
+            db.execute("UPDATE app_setting SET value=?, updated_at=? WHERE user_id=? AND key='declared'",
+                       (json.dumps(kept, ensure_ascii=False), day, uid))
+
+
+def cut_copy(base: sqlite3.Connection, path: Path, day: str, later: set[str] = frozenset()) -> None:
+    """日 day（日本時間）より後に書かれた利用者の記録と、day より後に載った索引の公演（later）を消した写し。
+    お気に入り（app_setting の declared）は、day までに足した名前に戻す（declared_at）。古い favourites の表は時刻が無いので残る（§9）。"""
     cut = sqlite3.connect(path)
     base.backup(cut)
+    if later:
+        ids = sorted(later)
+        for table in INDEX_TABLES:
+            if has_table(cut, table):
+                for i in range(0, len(ids), 500):
+                    part = ids[i:i + 500]
+                    cut.execute(f'DELETE FROM "{table}" WHERE stage_id IN ({",".join("?" * len(part))})', part)
     cut.create_function("jst_day", 1, jst_day)
+    declared_at(cut, day)
     for (table,) in cut.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").fetchall():
         cols = columns(cut, table)
         if table in KEEP_TABLES or "user_id" not in cols:
@@ -263,6 +386,53 @@ def cut_copy(base: sqlite3.Connection, path: Path, day: str) -> None:
                 cut.execute(f'DELETE FROM "{table}" WHERE jst_day("{c}") > ?', (day,))
     cut.commit()
     cut.close()
+
+
+# ---------------------------------------------------------------- 学習曲線（#103）
+# 「評価が増えるほど当たるか」を、同じ区切り・同じ後の答え・同じ索引のまま、日 t までの評価を古いほうから k 件だけ
+# 残して測る。索引の変化（カタログの更新）と評価の増え方を切り分けるため、区切りごとに索引は変えない。
+CURVE = (1, 2, 5, 10, 20)
+
+
+def rated_counts(db: sqlite3.Connection) -> dict[str, int]:
+    return {uid: n for uid, n in db.execute(
+        "SELECT user_id, count(*) FROM works WHERE verdict IS NOT NULL AND verdict<>'' GROUP BY user_id")}
+
+
+def keep_oldest(path: Path, k: int) -> None:
+    """写しの評価を、利用者ごとに古いほう（評価した時刻の順）から k 件だけ残す。評価の無い記録はそのまま"""
+    db = sqlite3.connect(path)
+    gone = db.execute(
+        "SELECT user_id, work_key FROM (SELECT user_id, work_key, row_number() OVER (PARTITION BY user_id "
+        "ORDER BY coalesce(rated_at, updated_at), work_key) AS i FROM works WHERE verdict IS NOT NULL AND verdict<>'') "
+        "WHERE i > ?", (k,)).fetchall()
+    db.executemany("DELETE FROM works WHERE user_id=? AND work_key=?", gone)
+    if has_table(db, "work_piece"):
+        db.executemany("DELETE FROM work_piece WHERE user_id=? AND work_key=?", gone)
+    db.commit()
+    db.close()
+
+
+def curve_summary(tally: dict, ks: list) -> list[dict]:
+    """k ごとの AUC の中央値・人数と、最小の k と比べて良くなった人・悪くなった人（符号検定の p）。
+    tally: (uid, k) -> [勝ち, 組, 入っていた答え, 答え]。k=None は全部の評価"""
+    auc = {key: w / n for key, (w, n, _h, _a) in tally.items() if n}
+    out = []
+    first = ks[0]
+    for k in ks:
+        users = sorted(u for (u, kk) in auc if kk == k)
+        vals = sorted(auc[(u, k)] for u in users)
+        both = [u for u in users if (u, first) in auc]
+        better = sum(auc[(u, k)] > auc[(u, first)] for u in both)
+        worse = sum(auc[(u, k)] < auc[(u, first)] for u in both)
+        hit = sum(v[2] for (u, kk), v in tally.items() if kk == k)
+        ans = sum(v[3] for (u, kk), v in tally.items() if kk == k)
+        out.append({"k": "all" if k is None else k, "users": len(users),
+                    "median_auc": round(vals[len(vals) // 2], 3) if vals else None,
+                    "answers_ranked_share": round(hit / ans, 3) if ans else None,
+                    "better_than_first": better, "worse_than_first": worse,
+                    "p_sign": sign_test_p(better, worse) if k != first and better + worse else None})
+    return out
 
 
 def bridge(path: Path, today: str, jobs: list[dict]) -> list[dict]:
@@ -317,11 +487,12 @@ def holm(ps: dict[str, float]) -> dict[str, float]:
 
 
 def replay(backup: str, index: Path, extras: list[Path], *, owner: str | None = None, min_users: int = 1,
-           step_days: int = STEP_DAYS) -> dict:
+           step_days: int = STEP_DAYS, seen: dict | None = None, curve: tuple | None = None) -> dict:
     variants = {"base": {}, **{a: {a: True} for a in ABLATIONS}, **{f"try_{t}": {f"try_{t}": True} for t in TRIALS}}
     with tempfile.TemporaryDirectory(prefix="replay-") as tmp:
         base = build_base(backup, index, extras, Path(tmp) / "base.sqlite")
         answers = answers_of(base)
+        stage_ids = {str(r[0]) for r in base.execute("SELECT stage_id FROM rec_stage")} if seen else set()
         if not answers:
             return {"error": "答えの記録がありません"}
         first = min(rows[0][0] for rows in answers.values())
@@ -336,6 +507,7 @@ def replay(backup: str, index: Path, extras: list[Path], *, owner: str | None = 
         n_origins = 0
         per_origin = []           # 区切りごとの人数だけ（だれかは出さない）
         gate_affil = {}           # 利用者 -> いちばん後の区切りの裏の答え合わせ（affil）の勝ち・負け（履歴がいちばん長い）
+        ctally = defaultdict(lambda: [0.0, 0, 0, 0])   # 学習曲線: (利用者, k) -> [勝ち, 組, 入っていた答え, 答え]
         while t.isoformat() < last:
             lo, hi = t.isoformat(), (t + step).isoformat()
             targets = {uid: [r for r in rows if lo < r[0] <= hi] for uid, rows in answers.items()}
@@ -343,7 +515,8 @@ def replay(backup: str, index: Path, extras: list[Path], *, owner: str | None = 
             if targets:
                 n_origins += 1
                 cut = Path(tmp) / f"cut-{lo}.sqlite"
-                cut_copy(base, cut, lo)
+                split = index_split(seen, lo, stage_ids)
+                cut_copy(base, cut, lo, split["later"])
                 jobs = [{"uid": u, "variant": v, "ablate": ab, "stages": sorted({r[1] for r in rs})}
                         for u, rs in sorted(targets.items()) for v, ab in variants.items()]
                 got = bridge(cut, (t + datetime.timedelta(days=1)).isoformat(), jobs)
@@ -354,7 +527,38 @@ def replay(backup: str, index: Path, extras: list[Path], *, owner: str | None = 
                         gate_affil[o["uid"]] = o["gate_affil"]
                 per_origin.append({"t": lo, "users": len(targets), "answers": sum(len(rs) for rs in targets.values()),
                                    "with_ratings": sum(o.get("n_rated", 0) > 0 for o in base_runs),
-                                   "with_recommendations": sum(o["n_ranked"] > 0 for o in base_runs)})
+                                   "with_recommendations": sum(o["n_ranked"] > 0 for o in base_runs),
+                                   "index_dropped": len(split["later"]), "index_changed": split["changed"],
+                                   "index_unknown": split["unknown"]})
+                if curve:
+                    cdb = sqlite3.connect(cut)
+                    have = rated_counts(cdb)
+                    cdb.close()
+                    for k in [*curve, None]:
+                        # その区切りで k 件以上の評価がある人だけ（足りない人は全部の評価と同じになる）
+                        who = {u: rs for u, rs in targets.items() if k is None or have.get(u, 0) >= k}
+                        if not who:
+                            continue
+                        ck = Path(tmp) / f"curve-{lo}-{k}.sqlite"
+                        src = sqlite3.connect(cut)
+                        dst = sqlite3.connect(ck)
+                        src.backup(dst)
+                        src.close()
+                        dst.close()
+                        if k is not None:
+                            keep_oldest(ck, k)
+                        got_k = bridge(ck, (t + datetime.timedelta(days=1)).isoformat(),
+                                       [{"uid": u, "variant": "base", "ablate": {}, "stages": sorted({r[1] for r in rs})}
+                                        for u, rs in sorted(who.items())])
+                        ck.unlink()
+                        for o in got_k:
+                            rs = who[o["uid"]]
+                            w, n = pair_wins([(r[2], o["ranks"].get(r[1])) for r in rs])
+                            c = ctally[(o["uid"], k)]
+                            c[0] += w
+                            c[1] += n
+                            c[2] += sum(o["ranks"].get(r[1]) is not None for r in rs)
+                            c[3] += len(rs)
                 cut.unlink()
                 for u, rs in targets.items():
                     coverage[0] += sum(ranks[(u, "base")].get(r[1]) is not None for r in rs)
@@ -371,8 +575,13 @@ def replay(backup: str, index: Path, extras: list[Path], *, owner: str | None = 
             t += step
         base.close()
     auc_of = lambda u, sc, v: tally[(u, sc, v)][0] / tally[(u, sc, v)][1] if tally[(u, sc, v)][1] else None
+    if curve:
+        # 持ち主は除く（ほかの結果と同じ）
+        result_curve = curve_summary({key: v for key, v in ctally.items() if key[0] != owner}, [*curve, None])
     result = {"origins": n_origins, "step_days": step_days, "first_answer": first, "last_answer": last,
               "answers_ranked_share": round(coverage[0] / coverage[1], 3) if coverage[1] else None, "per_origin": per_origin}
+    if curve:
+        result["curve"] = result_curve
     # 裏の答え合わせの affil（測るだけで選ばない）を全員分たす。持ち主は別に出す。区切りが重なるので、1 人 1 回（いちばん後）だけ
     ga = {u: v for u, v in gate_affil.items() if u != owner}
     result["gate_affil"] = {"users": len(ga), "wins": sum(int(v.get("wins", 0)) for v in ga.values()),
@@ -412,7 +621,7 @@ def replay(backup: str, index: Path, extras: list[Path], *, owner: str | None = 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("backup", help="復号した控え（backup.sql）")
-    ap.add_argument("what", choices=["counts", "logged", "replay"])
+    ap.add_argument("what", choices=["counts", "logged", "replay", "h3"])
     ap.add_argument("--owner", help="持ち主の user_id（除いて別に出す）")
     ap.add_argument("--min-users", type=int, default=1,
                     help="判定を出す最少の人数（既定 1。§6 の目安は H1 で 15〜20 人、H5 で 30 人）")
@@ -420,16 +629,22 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--extra", type=Path, action="append", default=[],
                     help="replay: ほかに読む SQL（deliver_past.py build の past_stage など。任意）")
     ap.add_argument("--step-days", type=int, default=STEP_DAYS, help="replay: 区切りの長さ（日）")
+    ap.add_argument("--curve", action="store_true",
+                    help="replay: 学習曲線も出す（評価を古いほうから 1・2・5・10・20 件と全部に絞って測る。#103）")
+    ap.add_argument("--seen", type=Path, help="replay: 公演の載った日（取得の作業データの d1/index-hashes.json。#72）")
     a = ap.parse_args(argv)
     if a.what == "replay":
         if not a.index:
             ap.error("replay には --index が要ります")
-        out = replay(a.backup, a.index, a.extra, owner=a.owner, min_users=a.min_users, step_days=a.step_days)
+        seen = json.loads(a.seen.read_text(encoding="utf-8")) if a.seen and a.seen.exists() else None
+        out = replay(a.backup, a.index, a.extra, owner=a.owner, min_users=a.min_users, step_days=a.step_days, seen=seen,
+                     curve=CURVE if a.curve else None)
         json.dump(out, sys.stdout, ensure_ascii=False, indent=1)
         print()
         return 0
     db = load(a.backup)
-    out = counts(db, a.owner) if a.what == "counts" else logged(db, a.owner, a.min_users)
+    out = (counts(db, a.owner) if a.what == "counts" else h3(db, a.owner, a.min_users) if a.what == "h3"
+           else logged(db, a.owner, a.min_users))
     json.dump(out, sys.stdout, ensure_ascii=False, indent=1)
     print()
     return 0
