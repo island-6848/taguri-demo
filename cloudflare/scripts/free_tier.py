@@ -36,7 +36,9 @@ from pathlib import Path
 # ── 上限（無料枠より低く取る。変えるときは docs/free-tier-budget.md と knowledge を直す）──
 FREE = {"actions_minutes_month": 2_000, "d1_writes_day": 100_000, "r2_bytes": 10 * 10**9,
         "r2_class_a_month": 1_000_000, "r2_class_b_month": 10_000_000}
-CAPS = {"actions_minutes_31d": 1_500, "d1_writes_day": 80_000, "r2_bytes": 8 * 10**9,
+# Actions は一時的に 1,600 分（起案者の判断 2026-10-20「すべてはい」）。1,500 分では、これからの毎日の取得を見込むと上限を越え、
+# 計画の段が 10-19・10-20 の取得を始める前に止めていた。無料の 2,000 分までは 400 分残る。31 日の枠に余裕ができたら 1,500 に戻す
+CAPS = {"actions_minutes_31d": 1_600, "d1_writes_day": 80_000, "r2_bytes": 8 * 10**9,
         "r2_class_a_month": 300_000, "r2_class_b_month": 3_000_000,
         # 手元の管理画面（tools/admin）の分。取得の分と同じ上限の中で、さらにこれだけに抑える
         "admin_d1_writes_day": 1_000, "admin_posters_month": 300,
