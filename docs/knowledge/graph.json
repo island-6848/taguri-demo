@@ -3554,6 +3554,18 @@
    ]
   },
   {
+   "id": "dec-watched-unrated-seed",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-20",
+   "title": "観劇記録にある公演はおすすめから外し、まだ評価していない記録は購入済みと同じ推薦の種にする（評価したら評価 1 回分に替わる）",
+   "sources": [
+    "cloudflare/src/screens/recommend.js",
+    "cloudflare/test/watched-reco.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-weight-defaults",
    "type": "decision",
    "status": "adopted",
@@ -11277,6 +11289,11 @@
    "from": "dec-vm-cloudflare",
    "rel": "affects",
    "to": "comp-vm-host"
+  },
+  {
+   "from": "dec-watched-unrated-seed",
+   "rel": "affects",
+   "to": "comp-cf-worker"
   },
   {
    "from": "dec-weight-defaults",
