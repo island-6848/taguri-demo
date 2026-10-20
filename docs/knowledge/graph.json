@@ -6382,6 +6382,19 @@
    "verifies": []
   },
   {
+   "id": "q-anchored-ordinal",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-20",
+   "title": "順序化の z で、◎ が多い人の ○（星 4）がマイナスになる。良い側の評価は常にプラスにする（真ん中の段に錨を置く）か",
+   "sources": [
+    "tools/review/user_recommender.py",
+    "cloudflare/src/recommend.js",
+    "docs/000003-final-presentation-taguri.html"
+   ],
+   "verifies": []
+  },
+  {
    "id": "q-answer-snapshot-shown",
    "type": "question",
    "status": "open",
@@ -13123,6 +13136,26 @@
    "from": "q-all-same-ratings-no-reco",
    "rel": "depends_on",
    "to": "reco-base-rate-relative"
+  },
+  {
+   "from": "q-anchored-ordinal",
+   "rel": "depends_on",
+   "to": "impl-person-ordinal-v3"
+  },
+  {
+   "from": "q-anchored-ordinal",
+   "rel": "depends_on",
+   "to": "eval-douban-graded-better"
+  },
+  {
+   "from": "q-anchored-ordinal",
+   "rel": "affects",
+   "to": "q-all-same-ratings-no-reco"
+  },
+  {
+   "from": "q-anchored-ordinal",
+   "rel": "affects",
+   "to": "q-rating-scale"
   },
   {
    "from": "q-answer-snapshot-shown",

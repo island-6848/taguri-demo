@@ -420,7 +420,8 @@ export async function registerScreen(_params, ctx) {
 <p class="lead">行きたかったのに行けなかった公演です。<b>「興味あり」にしたまま購入済みにならずに終わった公演は、自動でここに入ります。</b>
 ほかの公演は題名で足せます（探す画面の過去の公演からも足せます）。観た本数・評価には入りません。</p>
 <div class="miss-add"><label class="fld" for="miss-title"><span class="fl">公演の題名<small class="req">必須</small></span><input id="miss-title" type="text" placeholder="例：夜の果て" size="30"></label>
- <button data-miss="1">${ico('flag')}足す</button><span class="said"></span></div>
+ <button data-miss="1">${ico('flag')}足す</button><span class="said"></span>
+<div class="miss-sug sug" aria-live="polite"></div></div>
 ${missedHtml(missed, autoMiss)}</details>
 
 ${registerDialogHtml()}
