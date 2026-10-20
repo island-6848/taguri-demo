@@ -190,7 +190,17 @@ def logged(db: sqlite3.Connection, owner: str | None, min_users: int) -> dict:
 # 「気になったか」（H1 の答え）と「観てよかったか」を分ける。観る前に記録した点（reaction.score、答えたときの点）と、
 # 観たあとの本人の評価（works.verdict）を公演で結び、利用者ごとに Kendall の τ-b を出す。
 # 観なかった公演は満足の負例にしない（評価の無い公演は入れない）。推薦の計算は変えない（測るだけ）。
-GRADE = {"◎": 3, "○": 2, "△": 1, "×": 0}
+MARKS = {"◎": 1.0, "○": 2 / 3, "△": 1 / 3, "×": 0.0}
+
+
+def grade_point(verdict) -> float | None:
+    """評価を 0〜1 に（◎○△× と「n/m」。graded と同じ範囲）。τ は 1 人の中の並びだけを見るので、目盛りの違いは問わない"""
+    if verdict in MARKS:
+        return MARKS[verdict]
+    if not graded(verdict):
+        return None
+    m = GRADE.match(str(verdict))
+    return (int(m[1]) - 1) / (int(m[2]) - 1)
 MIN_H3 = 3                 # 1 人の結べた公演がこれ未満なら、その人の τ は数えない
 
 
@@ -228,7 +238,7 @@ def h3(db: sqlite3.Connection, owner: str | None, min_users: int) -> dict:
     c = defaultdict(int)
     for uid, sid, verdict, first in db.execute(
             "SELECT user_id, stage_id, verdict, first_date FROM works WHERE verdict IS NOT NULL AND verdict<>''"):
-        if uid in out_ or verdict not in GRADE:
+        if uid in out_ or grade_point(verdict) is None:
             continue
         c["rated"] += 1
         if not sid:
@@ -242,7 +252,7 @@ def h3(db: sqlite3.Connection, owner: str | None, min_users: int) -> dict:
         c["paired"] += 1
         c["paired_after_positive"] += got[2]
         per[uid][0].append(got[1])
-        per[uid][1].append(GRADE[verdict])
+        per[uid][1].append(grade_point(verdict))
     taus = {u: kendall_tau_b(x, y) for u, (x, y) in per.items() if len(x) >= MIN_H3}
     others = [t for u, t in taus.items() if u != owner and t is not None]
     enough = len(others) >= min_users and bool(others)
@@ -427,6 +437,8 @@ def curve_summary(tally: dict, ks: list) -> list[dict]:
         worse = sum(auc[(u, k)] < auc[(u, first)] for u in both)
         hit = sum(v[2] for (u, kk), v in tally.items() if kk == k)
         ans = sum(v[3] for (u, kk), v in tally.items() if kk == k)
+        if not users:
+            continue
         out.append({"k": "all" if k is None else k, "users": len(users),
                     "median_auc": round(vals[len(vals) // 2], 3) if vals else None,
                     "answers_ranked_share": round(hit / ans, 3) if ans else None,

@@ -107,15 +107,17 @@ def row_values(r: dict, themes: dict[str, list[str]] | None = None, synopses: di
 
 def _people_updates(rows: list[tuple[str, str, str]]) -> list[str]:
     """送り直し: people とあらすじの列だけを書き換える（索引の付いた列は変えないので、1 行の書き込みで済む）。"""
-    tail = (") UPDATE past_stage SET people=(SELECT p FROM v WHERE v.id=past_stage.stage_id), "
-            "synopsis=(SELECT s FROM v WHERE v.id=past_stage.stage_id) WHERE stage_id IN (SELECT id FROM v);")
+    # UPDATE … FROM v で結ぶ（v を 1 回なめ、past_stage は主キーで引く）。前の「SET people=(SELECT p FROM v WHERE …)」は
+    # 書き換える 1 行ごとに v を全部なめ、150 行の文で 23,400 行・1 日 69 文で約 150 万行を読んでいた
+    # （D1 の 1 日の読み出し 500 万行の 3 割。手元の D1 の rows_read で 23,400 → 600、2026-10-20、f-deliver-past-reads）
+    tail = ") UPDATE past_stage SET people=v.p, synopsis=v.s FROM v WHERE past_stage.stage_id=v.id;"
     stmts = _inserts("v", "id,p,s", rows)
     return ["WITH v(id,p,s) AS (VALUES" + x[len("INSERT INTO v(id,p,s) VALUES"):-1] + tail for x in stmts]
 
 
 def _title_updates(rows: list[tuple[str, str]]) -> list[str]:
     """題名だけを書き換える（冠名・サブタイトルを足した題名、dec-title-crown-subtitle）。鍵（tkey）はタイトルだけのままで変わらない"""
-    tail = ") UPDATE past_stage SET title=(SELECT t FROM v WHERE v.id=past_stage.stage_id) WHERE stage_id IN (SELECT id FROM v);"
+    tail = ") UPDATE past_stage SET title=v.t FROM v WHERE past_stage.stage_id=v.id;"     # _people_updates と同じく FROM で結ぶ
     stmts = _inserts("v", "id,t", rows)
     return ["WITH v(id,t) AS (VALUES" + x[len("INSERT INTO v(id,t) VALUES"):-1] + tail for x in stmts]
 

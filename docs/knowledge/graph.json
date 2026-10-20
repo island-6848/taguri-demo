@@ -3942,6 +3942,20 @@
    "verifies": []
   },
   {
+   "id": "f-deliver-past-reads",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-20",
+   "title": "過去の公演の送り直し（deliver_past の people・題名の UPDATE）が、取得の 1 回で D1 を 1,527,180 行読んでいた（1 日 500 万行の 3 割）。相関の副問い合わせを UPDATE … FROM に替え、150 行の文で 23,400 → 600 行にした",
+   "sources": [
+    "https://github.com/island-6848/taguri-crawler/actions/runs/39390407820",
+    "cloudflare/scripts/deliver_past.py",
+    "cloudflare/test/test_deliver_past.py",
+    "https://github.com/island-6848/taguri-demo/issues/242"
+   ],
+   "verifies": []
+  },
+  {
    "id": "f-form-rodoku-1019",
    "type": "finding",
    "status": "confirmed",
@@ -6748,6 +6762,18 @@
    "date": "2026-10-13",
    "title": "一度読んだ公演ページの更新（出演者の追加など）をどう拾い直すか",
    "sources": [],
+   "verifies": []
+  },
+  {
+   "id": "q-crawl-d1-reads-counted",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-20",
+   "title": "取得（taguri-crawler）が D1 から読む行数を、無料枠の点検（free_tier.py check）で数えていない。wrangler の Rows read を控えて、1 日 500 万行の何割かを表に出すか",
+   "sources": [
+    "cloudflare/scripts/free_tier.py",
+    "https://github.com/island-6848/taguri-crawler/actions/runs/39390407820"
+   ],
    "verifies": []
   },
   {
@@ -11706,6 +11732,21 @@
    "to": "dec-title-crown-subtitle"
   },
   {
+   "from": "f-deliver-past-reads",
+   "rel": "depends_on",
+   "to": "d1-free-limits"
+  },
+  {
+   "from": "f-deliver-past-reads",
+   "rel": "affects",
+   "to": "d1-reads-over-1020"
+  },
+  {
+   "from": "f-deliver-past-reads",
+   "rel": "affects",
+   "to": "dec-past-title-backfill"
+  },
+  {
    "from": "f-form-rodoku-1019",
    "rel": "depends_on",
    "to": "dec-forms-1019"
@@ -13559,6 +13600,16 @@
    "from": "q-corich-updates-after-first-read",
    "rel": "depends_on",
    "to": "dec-corich-sitemap"
+  },
+  {
+   "from": "q-crawl-d1-reads-counted",
+   "rel": "raises",
+   "to": "f-deliver-past-reads"
+  },
+  {
+   "from": "q-crawl-d1-reads-counted",
+   "rel": "affects",
+   "to": "d1-free-limits"
   },
   {
    "from": "q-crawler-host",

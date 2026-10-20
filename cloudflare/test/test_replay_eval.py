@@ -155,7 +155,8 @@ class Replay(unittest.TestCase):
         self.assertEqual(r["answers_ranked_share"], 0.0, "311 is no longer a candidate on 10/5")
 
     def test_learning_curve_keeps_the_oldest_ratings(self):
-        # #103: 同じ区切り・同じ答えのまま、評価を古いほうから k 件だけ残す。2 件の評価のうち古い ◎（301・俳優甲）だけでも 311 は 1 位
+        # #103: 同じ区切り・同じ答えのまま、評価を古いほうから k 件だけ残す。1 件（◎ 301）だけでは段が 1 つで人の値が 0 になり
+        # 何も出ない（#106）。2 件（◎ 301・× 302）で 311 が 1 位になり、AUC が 0.5 から 1.0 に上がる
         with tempfile.TemporaryDirectory() as tmp:
             idx, bk = Path(tmp) / "index.sql", Path(tmp) / "backup.sql"
             index_sql(idx)
@@ -163,8 +164,9 @@ class Replay(unittest.TestCase):
             r = replay_eval.replay(str(bk), idx, [], curve=(1, 2, 5))
         by_k = {c["k"]: c for c in r["curve"]}
         self.assertEqual(set(by_k), {1, 2, "all"}, "nobody has 5 ratings")
-        self.assertEqual((by_k[1]["users"], by_k[1]["median_auc"], by_k[1]["answers_ranked_share"]), (1, 1.0, round(1 / 3, 3)))
-        self.assertEqual((by_k["all"]["better_than_first"], by_k["all"]["worse_than_first"], by_k["all"]["p_sign"]), (0, 0, None))
+        self.assertEqual((by_k[1]["users"], by_k[1]["median_auc"], by_k[1]["answers_ranked_share"]), (1, 0.5, 0.0))
+        self.assertEqual((by_k["all"]["median_auc"], by_k["all"]["answers_ranked_share"]), (1.0, round(1 / 3, 3)))
+        self.assertEqual((by_k["all"]["better_than_first"], by_k["all"]["worse_than_first"], by_k["all"]["p_sign"]), (1, 0, 0.5))
         db = sqlite3.connect(":memory:")
         db.execute("CREATE TABLE works (user_id, work_key, verdict, rated_at, updated_at)")
         db.executemany("INSERT INTO works VALUES(?,?,?,?,?)", [("u", "a", "◎", "2026-10-03", "x"), ("u", "b", "×", "2026-10-01", "x"),
@@ -195,6 +197,7 @@ class Replay(unittest.TestCase):
         db.execute("INSERT INTO app_setting VALUES('u','declared_at',?, '2026-10-08T03:00:00Z')",
                    (json.dumps({"人\t前の人": "2026-10-02T01:00:00Z", "人\t後の人": "2026-10-08T03:00:00Z",
                                 "団体\t後の劇団": "2026-10-07T01:00:00Z"}, ensure_ascii=False),))
+        db.commit()     # 書きかけのままだと、写し（backup）が終わらない
         with tempfile.TemporaryDirectory() as tmp:
             cut = Path(tmp) / "cut.sqlite"
             replay_eval.cut_copy(db, cut, "2026-10-05")
