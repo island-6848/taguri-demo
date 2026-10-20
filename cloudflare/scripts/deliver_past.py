@@ -113,6 +113,13 @@ def _people_updates(rows: list[tuple[str, str, str]]) -> list[str]:
     return ["WITH v(id,p,s) AS (VALUES" + x[len("INSERT INTO v(id,p,s) VALUES"):-1] + tail for x in stmts]
 
 
+def _title_updates(rows: list[tuple[str, str]]) -> list[str]:
+    """題名だけを書き換える（冠名・サブタイトルを足した題名、dec-title-crown-subtitle）。鍵（tkey）はタイトルだけのままで変わらない"""
+    tail = ") UPDATE past_stage SET title=(SELECT t FROM v WHERE v.id=past_stage.stage_id) WHERE stage_id IN (SELECT id FROM v);"
+    stmts = _inserts("v", "id,t", rows)
+    return ["WITH v(id,t) AS (VALUES" + x[len("INSERT INTO v(id,t) VALUES"):-1] + tail for x in stmts]
+
+
 def build(data: Path, out: Path, budget: int) -> dict:
     prev = json.loads((data / STATE).read_text(encoding="utf-8")) if (data / STATE).exists() else {}
     done = int(prev.get("lines") or 0)
@@ -152,6 +159,21 @@ def build(data: Path, out: Path, budget: int) -> dict:
                 updates.append((sid, *row_values(r, themes, synopses)[-2:]))
                 sent.add(sid)
                 budget -= WRITES_PER_UPDATE
+    # 送り済みの行で、題名を読み直した（title_main がある）もの。送ったときの題名はタイトルだけだったので、
+    # 冠名・サブタイトルで変わった行だけ UPDATE する（dec-title-crown-subtitle）。送った印は titles_sent
+    titled = set(prev.get("titles_sent") or [])
+    retitles = []
+    for line in lines[:done]:
+        if budget < WRITES_PER_UPDATE:
+            break
+        r = json.loads(line)
+        sid = str(r.get("stage_id") or "")
+        if not sid or "title_main" not in r or sid in titled:
+            continue
+        titled.add(sid)
+        if r.get("title") and r["title"] != r["title_main"]:
+            retitles.append((sid, r["title"]))
+            budget -= WRITES_PER_UPDATE
     take = max(0, budget // WRITES_PER_ROW)
     new = lines[done:done + take]
     rows = []
@@ -161,17 +183,21 @@ def build(data: Path, out: Path, budget: int) -> dict:
             rows.append(row_values(r, themes, synopses))
             if str(r["stage_id"]) in read:
                 sent.add(str(r["stage_id"]))
+            if "title_main" in r:
+                titled.add(str(r["stage_id"]))         # 冠名・サブタイトル込みの題名で送った
     if out.exists():
         shutil.rmtree(out)
     out.mkdir(parents=True)
-    stmts = _people_updates(updates) + [s.replace("INSERT INTO", "INSERT OR REPLACE INTO", 1) for s in
+    stmts = _people_updates(updates) + _title_updates(retitles) + [s.replace("INSERT INTO", "INSERT OR REPLACE INTO", 1) for s in
                                         _inserts("past_stage", COLUMNS, rows)]
     if stmts:
         (out / "past-upload.sql").write_text("\n".join(stmts) + "\n", encoding="utf-8")
     (out / "pending.json").write_text(json.dumps({"lines": done + len(new), "rev": PEOPLE_REV,
                                                   "refreshed": refreshed + len(redo), "refresh_to": refresh_to,
-                                                  "themes_sent": sorted(sent)}), encoding="utf-8")
-    return {"rows": len(rows), "updated": len(updates), "writes": WRITES_PER_ROW * len(rows) + WRITES_PER_UPDATE * len(updates),
+                                                  "themes_sent": sorted(sent), "titles_sent": sorted(titled)}),
+                                     encoding="utf-8")
+    return {"rows": len(rows), "updated": len(updates), "retitled": len(retitles),
+            "writes": WRITES_PER_ROW * len(rows) + WRITES_PER_UPDATE * (len(updates) + len(retitles)),
             "delivered_before": done, "left": max(0, len(lines) - done - len(new)),
             "to_refresh": max(0, refresh_to - refreshed - len(redo)), "with_themes": len(sent)}
 

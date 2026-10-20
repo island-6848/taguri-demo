@@ -2157,6 +2157,21 @@
    "verifies": []
   },
   {
+   "id": "dec-past-title-backfill",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-20",
+   "title": "前に取った過去の公演（30,414 件）の題名も、公演ページを読み直して冠名・サブタイトル込みにする。あらすじの 2 周目で読むページはそのついでに直し、2 周目が通り過ぎた行だけを過去の公演の時間の 3 割で読み直す",
+   "sources": [
+    "tools/review/fetch_past_stages.py",
+    "cloudflare/scripts/deliver_past.py",
+    "tools/review/test_past_stages.py",
+    "cloudflare/test/test_deliver_past.py",
+    "https://github.com/island-6848/taguri-crawler/blob/state/past/progress.json"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-people-network-on-trace",
    "type": "decision",
    "status": "adopted",
@@ -7303,7 +7318,7 @@
   {
    "id": "q-past-title-backfill",
    "type": "question",
-   "status": "open",
+   "status": "answered",
    "date": "2026-10-20",
    "title": "前に取った過去の公演（約 1.8 万件）の題名に冠名・サブタイトルを足すため、公演ページを読み直すか",
    "sources": [
@@ -10262,6 +10277,16 @@
    "from": "dec-past-posters",
    "rel": "affects",
    "to": "comp-crawler"
+  },
+  {
+   "from": "dec-past-title-backfill",
+   "rel": "answers",
+   "to": "q-past-title-backfill"
+  },
+  {
+   "from": "dec-past-title-backfill",
+   "rel": "depends_on",
+   "to": "dec-title-crown-subtitle"
   },
   {
    "from": "dec-people-network-on-trace",
