@@ -24,4 +24,6 @@ links:
 - 組むのは GitHub Actions（.github/workflows/android.yml。手で動かすか android/ を変えて master に押すと動く）。**この環境から Google の配布元（dl.google.com）に届かず、手元では組めない**ため。公開リポジトリの標準の実行環境は無料。debug APK と release AAB を Artifacts に 14 日置く。アップロード鍵は Secrets から（無ければ release は署名しない）。鍵はリポジトリに入れない（.gitignore で *.jks を外す）
 - サイトの /.well-known/assetlinks.json を Worker が gate の前に返す（app-links.js）。指紋が無いうちは空の配列で、アプリは帯付きで開く。Play のアプリ署名鍵の SHA-256 を起案者から受け取って足す
 - 起案者の手順は docs/android-release.md
-- 分からないこと: Play の今の targetSdk の決まり（35 で足りるか）と、TWA の中での Google ログイン（Firebase）の動き。Actions で組めるかは、押したあとの実行で確かめる
+- 分からないこと: Play の今の targetSdk の決まり（35 で足りるか）と、TWA の中での Google ログイン（Firebase）の動き。
+
+2026-10-20: 初めての実行（Android #1、https://github.com/island-6848/taguri-demo/actions/runs/39372332177）が成功し、Artifacts に taguri-android-1（約 1 MB。debug APK と署名なしの release AAB）ができた。実機で開くのはまだ試していない。
