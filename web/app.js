@@ -3351,11 +3351,11 @@ function shortAddButtons(root) {
   });
 }
 
-// **評価の分布は、評価の段階ごとの件数を横棒で並べるだけにする。**
-// 起案者の指示 2026-10-19「『評価一覧』の分布で勝手に『合っていた』評価の☆の数を判定しないで。合ってるかどうかはあなたが判断しないで。
-// 私にとって★3.5は合ってなかった評価なのに、合ってる認定されている」。前は Heiberger & Robbins (2014) の発散型の積み上げ棒で、
-// 星の段階の真ん中より上を「合っていた」、下を「合わなかった」に機械的に分けていた。どの段階が合っていたかは本人の尺度なので、
-// 画面では分けず、段階ごとの件数を同じ目盛り（0 から）の横棒で並べる（Cleveland & McGill 1984: 共通の目盛りの上の位置・長さで読む）
+// **評価の分布は、1 本の横向きの 100% 積み上げ帯にする。**
+// 起案者の指示 2026-10-20「評価一覧の分布、横向きの１００％積み上げ帯グラフにして」。全体のうち各段階が占める割合を 1 本の帯で見る。
+// 2026-10-19 の指示（「合っていた」を判定しない）は守る: 帯は「合っていた／合わなかった」の 2 色に分けず、段階の順（低い段階が左）に
+// 1 色の濃淡で塗る。評価でない行（未評価）は灰色の斜線。
+// 帯の中には、幅が足りる段階（9% 以上）だけ割合を書き、段階の名前と件数は下の凡例に書く（帯の中に名前まで書くと、狭い段階で切れる）。数字は「数字で見る」の表にもある
 function divergeVerdicts(root) {
   root.querySelectorAll(".card .dbar").forEach(bar => {
     const card = bar.closest(".card");
@@ -3369,11 +3369,24 @@ function divergeVerdicts(root) {
     });
     if (!rows.length) return;
     card.dataset.diverged = "1";
-    const max = Math.max(...rows.map(r => r[1])), all = rows.reduce((t, r) => t + r[1], 0);
-    const html = '<div class="vdist" role="img" aria-label="' + E(rows.map(([g, v]) => g + " " + v + " 件").join("、")) + '">'
-      + rows.map(([g, v]) => '<div class="vd-row"><span class="vd-g">' + E(g) + '</span><span class="vd-bar"><i style="width:'
-        + (v / max * 100).toFixed(2) + '%"></i></span><span class="vd-n">' + v + " 件<small>（" + Math.round(v / all * 100) + "%）</small></span></div>").join("")
-      + "</div>";
+    const all = rows.reduce((t, r) => t + r[1], 0);
+    const graded = rows.filter(([g]) => g !== "未評価").length;
+    let k = 0;
+    // 左がいちばん低い段階、右がいちばん高い段階（起案者の指示 2026-10-20「左が一番評価低くて一番右が評価高いで統一して」）。
+    // 表は高い段階から並ぶので、評価の段階を逆にし、評価でない「未評価」はいちばん左に置く（右端はいちばん高い段階のまま）
+    const segs = [...rows.filter(([g]) => g === "未評価"), ...rows.filter(([g]) => g !== "未評価").reverse()].map(([g, v]) => {
+      const p = v / all * 100, none = g === "未評価";
+      // 濃さ: 最も低い段階（左）を 28%、最も高い段階（右）を 100% にし、そのあいだを等分する（段階が 1 つなら 100%）
+      const shade = none ? 0 : graded > 1 ? Math.round(28 + 72 * (k++) / (graded - 1)) : (k++, 100);
+      return {g, v, p, none, shade};
+    });
+    const pctText = p => (p < 1 ? "1%未満" : Math.round(p) + "%");
+    const html = '<div class="vstack" role="img" aria-label="' + E("評価の割合: " + segs.map(x => x.g + " " + pctText(x.p)).join("、")) + '">'
+      + '<div class="vs-bar">' + segs.map(x => '<span class="vs-seg' + (x.none ? " none" : "") + (x.shade >= 60 ? " dark" : "") + '" style="width:'
+        + x.p.toFixed(2) + "%" + (x.none ? "" : ";--vs-shade:" + x.shade + "%") + '" title="' + E(x.g + " " + x.v + " 件（" + pctText(x.p) + "）") + '">'
+        + (x.p >= 9 ? '<span class="vs-in">' + pctText(x.p) + "</span>" : "") + "</span>").join("") + "</div>"
+      + '<ul class="vs-leg">' + segs.map(x => '<li><i class="vs-sw' + (x.none ? " none" : "") + '"' + (x.none ? "" : ' style="--vs-shade:' + x.shade + '%"')
+        + "></i>" + E(x.g) + ' <b>' + x.v + "</b> 件<small>（" + pctText(x.p) + "）</small></li>").join("") + "</ul></div>";
     bar.insertAdjacentHTML("afterend", html);
     bar.remove();
   });
