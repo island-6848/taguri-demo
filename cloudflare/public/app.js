@@ -2293,9 +2293,9 @@ document.addEventListener("click", ev => {
     // 進み具合を見に行き、終わったら読み込み直す ── 押した本人からは、
     // 調べ終わるまで何も起きなかったように見えないようにする。
     // **打っている途中の入力は無い**（欄はここで空にする）ので、読み込み直して困らない
-    post("/api/missed", {title: i.value.trim()}, g,
+    post("/api/missed", {title: i.value.trim(), ...(i.dataset.stage ? {stage_id: i.dataset.stage} : {})}, g,
          "登録しました。出演者とあらすじを調べています…")
-      .then(d => { if (d) { i.value = ""; waitJob(g, true); } });
+      .then(d => { if (d) { i.value = ""; delete i.dataset.stage; g.querySelector(".miss-sug")?.replaceChildren(); waitJob(g, true); } });
   } else if (b.dataset.past) {
     // **探す画面の過去の公演**（起案者の指示 2026-10-17「ボタン 2 つで入れて」「観たならば、日時を入れて
     // 観劇記録に追加できるようにして」）。観た＝観た日（と開演）を入れる欄を開き、追加でその公演に結び付ける。
@@ -2421,6 +2421,14 @@ document.addEventListener("click", ev => {
     sugWeb();
   } else if (b.dataset.registerSearch) {
     registerSearchDialog(b);
+  } else if (b.dataset.pick && b.closest(".miss-add")) {
+    // 行けばよかったの題名の欄の候補を選んだら、題名を欄に入れ、その公演を指して足す（同じ題名の別の公演に取り違えない）
+    const g = b.closest(".miss-add"), r = b.closest(".sug-row"), i = g.querySelector("#miss-title");
+    clearTimeout(missTimer); ++missSeq;
+    i.value = r.dataset.title;
+    i.dataset.stage = r.dataset.stage || "";
+    g.querySelector(".miss-sug")?.replaceChildren();
+    i.focus();
   } else if (b.dataset.pick) {
     // **候補を選んだら、そのまま欄に入れる。** 打ち直させない
     const r = b.closest(".sug-row"), g = document.querySelector(".add-work");
@@ -2997,6 +3005,32 @@ function lkRender(box, rows) {
 // **手で足す欄の候補。** すでにある情報を、打っている最中に出す
 let sugTimer = null;
 let sugSeq = 0;
+
+// **行けばよかったの題名の欄も、2 文字以上打つと候補を出す**（起案者の指示 2026-10-20「行けばよかったの検索欄、探すのページと
+// 同じで2文字以上入れたら候補出るようにして」）。候補は観劇記録を追加の題名の欄と同じ（/api/suggest・sugRender）。
+// 選ぶとその公演を指して足す。打ち直したら指した公演は外す
+let missTimer = null, missSeq = 0;
+document.addEventListener("input", ev => {
+  const i = ev.target.closest && ev.target.closest("#miss-title");
+  if (!i) return;
+  delete i.dataset.stage;
+  clearTimeout(missTimer);
+  const seq = ++missSeq;
+  missTimer = setTimeout(async () => {
+    const box = i.closest(".miss-add")?.querySelector(".miss-sug");
+    if (!box) return;
+    const q = i.value.trim();
+    if (Array.from(q).length < 2) { box.replaceChildren(); return; }
+    let d;
+    try {
+      const r = await fetch(API_BASE + "/api/suggest?t=" + encodeURIComponent(T) + "&q=" + encodeURIComponent(q),
+        {headers: {"X-Taguri-Token": T}, credentials: "include"});
+      d = await r.json();
+    } catch (e) { return; }
+    if (seq !== missSeq || !box.isConnected) return;
+    sugRender(box, d.rows, "すでにある公演から選べます（" + ((d.rows || []).length) + " 件）");
+  }, 220);
+});
 
 // Native dialog supplies Escape handling, modal focus and focus restoration.
 function registerSearchDialog(trigger) {
