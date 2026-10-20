@@ -370,7 +370,7 @@ ol.refs li:target{background:rgba(var(--brand-rgb),.12)}
   <div class="meta">
     <div><b>作成者</b><span><i class="fillme">仲谷茉桜</i></span></div>
     <div><b>提出日</b><span><i class="fillme">2026 年 8 月</i></span></div>
-    <div><b>最終更新</b><span>2026 年 10 月</span></div>
+    <div><b>最終更新</b><span>2026 年 10 月 20 日</span></div>
   </div>
 </section>
 
@@ -381,7 +381,7 @@ ol.refs li:target{background:rgba(var(--brand-rgb),.12)}
   <p class="kicker">企画から、作ったもの・推薦の仕組み・守り方・できたこと・これからまでを順に示す。</p>
   <div class="toc-grid wide">
     <a href="#ch2"><span class="n">01</span><span><h4>企画内容</h4><p>課題・価値・対象ユーザー・想定シーン</p></span></a>
-    <a href="#ch3"><span class="n">02</span><span><h4>機能概要</h4><p>機能の分類・使用イメージ・使っている技術・システム構成</p></span></a>
+    <a href="#ch3"><span class="n">02</span><span><h4>機能概要</h4><p>機能の分類・使用イメージ・使っている技術・システム構成・アプリ化</p></span></a>
     <a href="#algo"><span class="n">03</span><span><h4>推薦アルゴリズム</h4><p>問題設定・評価の順序化・縮約した値・種類のタグ・点の式と出す条件・お気に入りと興味ありの事前・1 段広げる・並べ直し・裏の答え合わせ（符号検定）・検証と限界</p></span></a>
     <a href="#ch4"><span class="n">04</span><span><h4>セキュリティ</h4><p>境界線の概念図</p></span></a>
     <a href="#ch5"><span class="n">05</span><span><h4>達成事項</h4><p>実現できたこと・メリット・未実装</p></span></a>
@@ -478,7 +478,7 @@ ol.refs li:target{background:rgba(var(--brand-rgb),.12)}
     </div>
     <div class="card">
       <h4><span class="icwrap"><svg class="ic" viewBox="0 0 24 24" width="18" height="18"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7.5V12l3.5 2"/></svg></span>見逃しに気づいたとき</h4>
-      <p class="muted">あとから「観ればよかった」を登録する。</p>
+      <p class="muted">「興味あり」のまま購入済みにならずに終わった公演は、自動で「行けばよかった」に入る。自分で足すこともできる。</p>
     </div>
   </div>
 </section>
@@ -545,10 +545,11 @@ ol.refs li:target{background:rgba(var(--brand-rgb),.12)}
         <ul class="tree flush">
           <li class="leaf"><b>観劇記録を追加（右上の ＋：題名で探す／Google カレンダー）</b></li>
           <li class="leaf"><b>購入済み公演</b></li>
+          <li class="leaf"><b>行けばよかった（興味ありのまま終わった公演が自動で入る）</b></li>
           <li class="node">記録を見返す
             <ul>
               <li class="leaf"><b>眺める（好みの傾向・劇場制覇の地図・観劇の時間割）</b></li>
-              <li class="leaf"><b>たどる（作り手と作品のつながり）</b></li>
+              <li class="leaf"><b>人物のページ（おすすめ理由の名前から開く。観た作品を糸でつないだ図）</b></li>
               <li class="leaf"><b>観劇史年表</b></li>
               <li class="leaf"><b>日記帳</b></li>
             </ul>
@@ -575,7 +576,7 @@ ol.refs li:target{background:rgba(var(--brand-rgb),.12)}
               <li class="leaf"><b>開幕リマインド（今週／来週）</b></li>
             </ul>
           </li>
-          <li class="leaf"><b>探す（これから・過去の公演）</b></li>
+          <li class="leaf"><b>探す（今後の公演・過去の公演。ツアーは 1 枚にまとめる）</b></li>
         </ul>
       </div>
       <div class="loomcol" style="grid-column:7">
@@ -590,7 +591,7 @@ ol.refs li:target{background:rgba(var(--brand-rgb),.12)}
   </figure>
 
   <h3 class="sub">2-2　ユーザーの使い方</h3>
-  <p class="col">公開版は Web アプリとして動く。Google・メールのリンク・パスキーのどれかでログインすれば、スマホでも PC でも同じ記録を続けられる。パスワードは使わない。</p>
+  <p class="col">公開版は Web アプリとして動き、スマホのホーム画面に入れればアプリと同じように全画面で開く。Android アプリ（Google Play に出す準備中）も同じ画面を開く。Google・メールのリンク・パスキーのどれかでログインすれば、スマホでも PC でも同じ記録を続けられる。パスワードは使わない。</p>
 
   <div class="grid2 wide pair" style="align-items:start">
     <div class="card">
@@ -598,7 +599,7 @@ ol.refs li:target{background:rgba(var(--brand-rgb),.12)}
       <div class="flow">
         <div class="step"><span class="dot act">1</span><div class="tx"><b>ログインする</b><span>Google・メールのリンク・パスキー。はじめての人には、実際の画面で試せる操作ツアーが始まる</span></div></div>
         <div class="step"><span class="dot act">2</span><div class="tx"><b>今週のおすすめを見る</b><span>理由つきの 15 件・開幕リマインド・興味ありの追跡・お気に入りの新着</span></div></div>
-        <div class="step"><span class="dot act">3</span><div class="tx"><b>その場で答える</b><span>興味あり／興味なし／購入済／行けない の 4 つ。答えた公演は抜け、次点が繰り上がる。全部答えると「回答ありがとうございました」と次の手が出る。出てこない公演は画面の上の「探す」で探して答える</span></div></div>
+        <div class="step"><span class="dot act">3</span><div class="tx"><b>その場で答える</b><span>興味あり／興味なし／購入済 の 3 つ。答えた公演は抜け、次点の 1 枚が押したカードのすぐ下に出る（画面全体は読み直さない）。全部答えると「回答ありがとうございました」と次の手が出る。出てこない公演は画面の上の「探す」で探して答える</span></div></div>
         <div class="step"><span class="dot">4</span><div class="tx"><b>閉じてよい</b><span>記録はサーバー側の本人の領域に保存される</span></div></div>
         <div class="step"><span class="dot eval">5</span><div class="tx"><b>次に開くと、反応と評価が反映されている</b><span>本人の評価と答えから、その場で推薦を計算し直す（3 章）</span></div></div>
       </div>
@@ -610,7 +611,7 @@ ol.refs li:target{background:rgba(var(--brand-rgb),.12)}
         <div class="step"><span class="dot">1</span><div class="tx"><b>観に行く</b><span>上演日を過ぎた公演は「未評価」に並ぶ</span></div></div>
         <div class="step"><span class="dot eval">2</span><div class="tx"><b>星を付ける</b><span>星 5 段階か「評価しない」。押すと感想の欄が開く（任意・1〜3 分）</span></div></div>
         <div class="step"><span class="dot">3</span><div class="tx"><b>足りない記録を追加する</b><span>右上の ＋ から。題名で探す・Google カレンダーから取り込む。W キャストの公演は、観た回に出ていなかった人を外せる</span></div></div>
-        <div class="step"><span class="dot act">4</span><div class="tx"><b>振り返る</b><span>眺める（劇場制覇の地図・観劇の時間割など）・たどる・観劇史年表・日記帳</span></div></div>
+        <div class="step"><span class="dot act">4</span><div class="tx"><b>振り返る</b><span>眺める（劇場制覇の地図・観劇の時間割など）・人物のページ・観劇史年表・日記帳</span></div></div>
       </div>
       <p class="muted" style="margin-top:14px">推薦を使わず、記録だけを残す使い方も成り立つ。</p>
     </div>
@@ -704,6 +705,7 @@ ol.refs li:target{background:rgba(var(--brand-rgb),.12)}
     <li><b>D1 には差分だけを入れる。</b>1 日の書き込みには上限があるので、変わった行だけを書き、無料枠の 8 割を超えそうな日は次の日に回す。</li>
     <li><b>LLM は、あらすじから題材を一度だけ取り出す用途に絞る。</b>順位付けには使わないので、同じ記録からは毎回同じ順位と理由が出る。</li>
     <li><b>技術スタックは、取得側が Python 標準ライブラリ、画面と Workers が素の HTML/CSS/JavaScript。</b>Python の参照実装と Worker が同じ推薦を出すことを、変更のたびに試験で確かめる。</li>
+    <li><b>アプリは、同じ画面を Chrome で全画面に開く入れ物（TWA）にする。</b>自前の WebView にすると Google のログインが使えず、パスキーも使いにくい。TWA なら Chrome のログイン・パスキーがそのまま使え、画面を直せばアプリを出し直さずに届く。アプリの署名の指紋をサイト（assetlinks.json）に載せ、URL の帯の出ない全画面で開くようにした。組み立ては GitHub Actions（公開リポジトリは無料）で行う。費用はストアの登録料だけ。</li>
   </ul>
 
 </section>
@@ -890,6 +892,7 @@ ol.refs li:target{background:rgba(var(--brand-rgb),.12)}
 
   <h3 class="sub">3.5　公演の種類のタグ</h3>
   <p class="para">人物のほかの手がかりは、公演ごとに付ける種類のタグ <i>K</i>(<i>s</i>) である。タグは毎日の取得で、公演ページのどの欄から読むかを決めて機械的に付ける（図 3）。LLM を使うのは #題材 だけで、あらすじから一度だけ取り出す。</p>
+  <p class="para">2026-10-19 に #形式 を分け直した：能・狂言／歌舞伎／文楽／落語・寄席／バレエ／オペラ／お笑い／ミュージカル／ダンス／朗読／人形劇。公演名とクレジットに加え、能楽堂・寄席などの劇場からも判定する（ただし脚本・演出のクレジットがある演劇は劇場で決めない）。ジャンルに 大学演劇・高校演劇 を足した。能などもおすすめの候補に入れ、あらすじが無いときはスタッフ欄の演目をあらすじの欄に出す。コンサートなど舞台でない催しは候補から外す。</p>
   <figure class="wide">
     <svg viewBox="0 0 960 470" role="img" aria-label="種類のタグの読み取り元。公演名とクレジットから形式、原作の書き添えから原作の種類、翻訳のクレジットから翻訳劇、作り手の名前から原作の国、あらすじから題材、主催と原作の種類と題名の型からジャンルを付ける。劇場名と料金帯は使わない。">
       <defs><marker id="fk" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1l7 4-7 4z" class="aF-m"/></marker></defs>
@@ -987,7 +990,7 @@ ol.refs li:target{background:rgba(var(--brand-rgb),.12)}
   <p class="para"><b>根拠。</b>本人の初期の profile を事前にして、評価が届くたびに更新する方法は、内容ベースの推薦で古くから使われている <a href="#ref-10">[10]</a>。データの少ない人は事前に近く、多い人は本人に寄るという階層ベイズの考え方 <a href="#ref-5">[5]</a> を、全体の事前を学ばずに「人が決めた既定の値」で置き換えたものにあたる。公開の映画評価データでお気に入りの代わりを確かめた（団体の代わりに監督、題材の代わりにジャンル）。評価 0 件のとき AUC は +0.024〜0.031 上がり、評価が 10〜20 件を超えると差は消えた。式 9 が狙ったとおりの振る舞いである。</p>
 
   <h3 class="sub">3.8　興味あり・行けないを、1 公演ぶんに割って配る</h3>
-  <p class="para">「興味あり」は押すだけで理由を聞かない。そこで、1 公演ぶんの重さ（評価 1 件と同じ 1）を、その公演の人物と種類に<b>割って</b>配り、式 4 の仮の評価として足す。「行けない」（日程が合わないなど）も、気になった公演として同じ向きに数える。集合を <i>L<sub>u</sub></i>（興味あり・行けない、新しい順に 60 件まで）、<i>D<sub>u</sub></i>（興味なし、同じく 60 件まで）と書く。</p>
+  <p class="para">「興味あり」は押すだけで理由を聞かない。そこで、1 公演ぶんの重さ（評価 1 件と同じ 1）を、その公演の人物と種類に<b>割って</b>配り、式 4 の仮の評価として足す。「行けない」（日程が合わないなど）も、気になった公演として同じ向きに数える（2026-10-19 に答えの押し口からは外した。それまでの「行けない」の答えは、この向きで数え続ける）。集合を <i>L<sub>u</sub></i>（興味あり・行けない、新しい順に 60 件まで）、<i>D<sub>u</sub></i>（興味なし、同じく 60 件まで）と書く。</p>
   <div class="eq"><math display="block"><mrow><msub><mi>π</mi><mi>s</mi></msub><mo stretchy="false">(</mo><mi>q</mi><mo stretchy="false">)</mo><mo>=</mo><msub><mi>β</mi><mi>q</mi></msub><mspace width="0.15em"/><mfrac><mrow><msub><mi>f</mi><mi>s</mi></msub><mo stretchy="false">(</mo><mi>q</mi><mo stretchy="false">)</mo></mrow><mrow><munder><mo>∑</mo><mrow><msup><mi>q</mi><mo>′</mo></msup><mo>∈</mo><msub><mi>Q</mi><mi>s</mi></msub><mo stretchy="false">(</mo><mi>q</mi><mo stretchy="false">)</mo></mrow></munder><msub><mi>f</mi><mi>s</mi></msub><mo stretchy="false">(</mo><msup><mi>q</mi><mo>′</mo></msup><mo stretchy="false">)</mo></mrow></mfrac><mo>,</mo><mspace width="1em"/><msub><mi>β</mi><mi>q</mi></msub><mo>=</mo><mrow><mo>{</mo><mtable columnalign="left"><mtr><mtd><mfrac><mn>1</mn><mn>2</mn></mfrac></mtd><mtd><mtext>人物と種類の両方がある</mtext></mtd></mtr><mtr><mtd><mn>1</mn></mtd><mtd><mtext>片方だけ</mtext></mtd></mtr></mtable></mrow></mrow></math><span class="eqn">(10)</span></div>
   <p class="para"><i>Q<sub>s</sub></i>(<i>q</i>) は、<i>q</i> が人物なら公演 <i>s</i> の人物 <i>P</i>(<i>s</i>)、種類なら <i>K</i>(<i>s</i>) である。1 公演ぶんの合計は Σ<i>π</i> ＝ 1 になる。割る比 <i>f</i> は、本人がなぜ気になったかを推し量る 4 つの手がかりの積とする。</p>
   <div class="eq"><math display="block"><mrow><msub><mi>f</mi><mi>s</mi></msub><mo stretchy="false">(</mo><mi>q</mi><mo stretchy="false">)</mo><mo>=</mo><msub><mi>ι</mi><mi>s</mi></msub><mo stretchy="false">(</mo><mi>q</mi><mo stretchy="false">)</mo><mspace width="0.15em"/><mrow><mo>(</mo><mn>1</mn><mo>+</mo><mi>λ</mi><mspace width="0.1em"/><mi>max</mi><mo stretchy="false">(</mo><msubsup><mi>v</mi><mi>u</mi><mn>0</mn></msubsup><mo stretchy="false">(</mo><mi>q</mi><mo stretchy="false">)</mo><mo>,</mo><mn>0</mn><mo stretchy="false">)</mo><mo>)</mo></mrow><mspace width="0.15em"/><msup><mi>η</mi><mrow><mn mathvariant="bold">1</mn><mo stretchy="false">[</mo><mi>q</mi><mo>∈</mo><msub><mtext>メモ</mtext><mi>s</mi></msub><mo stretchy="false">]</mo></mrow></msup><mspace width="0.15em"/><mfrac><mrow><mi>y</mi><mo stretchy="false">(</mo><mi>q</mi><mo stretchy="false">)</mo></mrow><mrow><mi>y</mi><mo stretchy="false">(</mo><mi>q</mi><mo stretchy="false">)</mo><mo>+</mo><mi>n</mi><mo stretchy="false">(</mo><mi>q</mi><mo stretchy="false">)</mo></mrow></mfrac><mo>,</mo><mspace width="1em"/><mi>λ</mi><mo>=</mo><mn>3</mn><mo>,</mo><mspace width="0.5em"/><mi>η</mi><mo>=</mo><mn>5</mn></mrow></math><span class="eqn">(11)</span></div>
@@ -1370,6 +1373,18 @@ ol.refs li:target{background:rgba(var(--brand-rgb),.12)}
       <p class="benefit"><b>メリット：</b>どの日に行けるかを、公式サイトを開き直さずに決められる。</p>
     </div>
 
+    <div class="ach">
+      <div class="head"><span class="num">10</span><p>アプリとして入れられるようにした</p></div>
+      <p class="body">ホーム画面に入れると全画面で開き、通信が無いときは案内の画面を出す（PWA）。Android アプリ（TWA）を GitHub Actions で組めるようにし、ストアの掲載文・アイコン・フィーチャーグラフィック・スクリーンショット 5 枚（架空のデータで写したもの）を用意した。リンクを X などに貼ると、たぐりのカードが出る。</p>
+      <p class="benefit"><b>メリット：</b>ブラウザでアドレスを打たずに、ほかのアプリと同じようにホーム画面から開ける。</p>
+    </div>
+
+    <div class="ach">
+      <div class="head"><span class="num">11</span><p>おすすめ理由から、その人と観た作品をたどれるようにした</p></div>
+      <p class="body">おすすめ理由の太字の名前から人物のページへ飛び、その人と自分が観た作品を糸でつないだ図で見られる。別にあった「たどる」の画面はここにまとめた。「行けばよかった」には、興味ありのまま購入済みにならずに終わった公演が自動で入る。</p>
+      <p class="benefit"><b>メリット：</b>なぜその公演が出たのかを、自分の観劇の記録で確かめられる。</p>
+    </div>
+
   </div>
 
   <h3 class="sub">5-2　実装できなかった範囲</h3>
@@ -1415,6 +1430,10 @@ ol.refs li:target{background:rgba(var(--brand-rgb),.12)}
   <h2 class="title">今後の展望</h2>
   <div class="col">
     <div class="grid2">
+      <div class="card">
+        <h4><svg class="ic" viewBox="0 0 24 24" width="17" height="17" style="color:var(--brand)"><path d="M5 21V4h13l-2.5 4.5L18 13H5"/></svg>Google Play での公開、そして iPhone へ</h4>
+        <p class="muted">Android から先に出す。Play のアカウント・非公開テスト（個人なら 12 人・14 日）・審査を経て公開する。iPhone には TWA が無く、App Store の審査（Web をそのまま包んだだけのアプリは通りにくい）もあるので、Android のあとに作り方を決める。サーバー・保存・通知は無料枠のまま、費用はストアの登録料だけ。</p>
+      </div>
       <div class="card">
         <h4><svg class="ic" viewBox="0 0 24 24" width="17" height="17" style="color:var(--brand)"><path d="M5 21V4h13l-2.5 4.5L18 13H5"/></svg>気になるけど、追うほどではない要素を弱く効かせる仕組み</h4>
         <p class="muted">お気に入り（無条件に必ず出す）と出さない語（無条件に必ず外す）の中間に、点数を少し上乗せするだけの第 3 の枠を作る案。実データでの需要（該当件数）を見てから作るかどうかを決める。</p>
