@@ -92,6 +92,7 @@ def summary(res: dict, counts: dict, mats: dict | None = None) -> str:
                 f"- 人物の名前がある {g('with_names')} 件、種類の言葉（題材・形式など）がある {g('with_kinds')} 件、"
                 f"感想がある {g('with_note')} 件（そのうち種類の言葉もある {g('with_note_and_kinds')} 件）", ""]
     names = {"reminder": "開幕リマインドの答え（主な結果）", "other": "ほかの画面の答え（参考）", "all": "全部"}
+    trials = {"affil": "所属（劇団）から推し量る"}
     parts = {"split": "興味ありの配り分け", "expand": "1 段広げる", "spread": "並べ直し", "gate": "裏の答え合わせ", "impression": "感想の好み", "rollup": "題材の上位への積み上げ"}
     for key, title in names.items():
         e = res[key]
@@ -103,6 +104,18 @@ def summary(res: dict, counts: dict, mats: dict | None = None) -> str:
         for a, h in e["H5"].items():
             out.append(f"| {parts.get(a, a)} | {fmt(h['median_diff'])} | {h['users_better']} | {h['users_worse']} | {fmt(h['p_holm'])} |")
         out.append("")
+        if e.get("H6"):
+            out += ["| 足して試した部品 (H6) | 差の中央値（足した − 今） | 当たりが増えた人 | 減った人 | p（Holm） |", "|---|---:|---:|---:|---:|"]
+            for t, h in e["H6"].items():
+                out.append(f"| {trials.get(t, t)} | {fmt(h['median_diff'])} | {h['users_better']} | {h['users_worse']} | {fmt(h['p_holm'])} |")
+            out.append("")
+    ga = res.get("gate_affil")
+    if ga:
+        out += ["### 裏の答え合わせ: 所属（劇団）から推し量る（測るだけ）", "",
+                f"- 測れた人 {ga['users']} 人、区切りの勝ち {ga['wins']}・負け {ga['losses']}"
+                f"（勝ちが多い人 {ga['users_better']} 人・負けが多い人 {ga['users_worse']} 人）",
+                "- 1 人の中で「はっきり良い」とみなすのは、勝ち − 負け ≥ 1.96 √（勝ち＋負け）で、決まった区切りが 6 以上のとき",
+                *([f"- 持ち主（別に出す）: 勝ち {ga['owner'].get('wins', 0)}・負け {ga['owner'].get('losses', 0)}"] if ga.get("owner") else []), ""]
     return "\n".join(out) + "\n"
 
 

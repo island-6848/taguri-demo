@@ -34,7 +34,9 @@ export async function run(job) {
     const out = [];
     for (const j of job.jobs) {
       const data = await rankedGroups({db, env, uid: j.uid, today: job.today, now, ablate: j.ablate || {}});
-      out.push({uid: j.uid, variant: j.variant, n_rated: data.n_rated || 0, n_ranked: data.groups.length, ranks: ranksOf(data.groups, j.stages)});
+      // 裏の答え合わせが所属（劇団）の変種を測った勝ち・負け（diag.affil、dec-affil-reco）。測れなかった人は null
+      out.push({uid: j.uid, variant: j.variant, n_rated: data.n_rated || 0, n_ranked: data.groups.length, ranks: ranksOf(data.groups, j.stages),
+        gate_affil: data.diag?.affil || null});
     }
     return out;
   } finally {

@@ -61,7 +61,7 @@ class ReplayEval(unittest.TestCase):
         self.assertEqual((c["users"], c["answers"], c["answers_with_score"], c["answers_reminder"], c["shown_rows"]), (1, 2, 2, 0, 1))
 
 
-def index_sql(path):
+def index_sql(path, affil=False):
     """小さな索引: 終わった公演 301（俳優甲）・302（俳優乙）と、これからの 311（俳優甲）・312（俳優乙）・313（俳優丁）。"""
     spec = importlib.util.spec_from_file_location("build_recommend_index", ROOT / "cloudflare" / "scripts" / "build_recommend_index.py")
     BI = importlib.util.module_from_spec(spec)
@@ -73,6 +73,9 @@ def index_sql(path):
     cands = [stage("301", "2026/08/01~2026/08/10", "俳優甲"), stage("302", "2026/08/11~2026/08/20", "俳優乙"),
              stage("311", "2026/11/01~2026/11/10", "俳優甲"), stage("312", "2026/11/11~2026/11/20", "俳優乙"),
              stage("313", "2026/11/21~2026/11/30", "俳優丁")]
+    if affil:
+        cands[0]["fields"]["出演"] = "俳優甲（劇団X）"
+        cands.append(stage("314", "2026/11/21~2026/11/30", "俳優戊（劇団X）"))
     pool = UR.candidate_pool({}, cands)
     index = BI.build_index(pool, {c["stage_id"]: c["fields"] for c in cands}, APP.group_of)
     path.write_text("\n".join(BI.to_sql(index, BI.version_of(index))) + "\n", encoding="utf-8")
@@ -116,8 +119,23 @@ class Replay(unittest.TestCase):
         self.assertEqual((main["users"], main["median_auc"]), (1, 1.0))
         self.assertAlmostEqual(main["p_sign_H1"], 0.5)
         self.assertEqual(set(main["H5"]), set(replay_eval.ABLATIONS))
+        self.assertEqual(set(main["H6"]), set(replay_eval.TRIALS))
+        self.assertEqual(r["gate_affil"]["users"], 0, "five ratings or fewer: the hidden check does not run")
         self.assertEqual(r["other"]["users"], 0)
         self.assertEqual(r["per_origin"], [{"t": "2026-10-05", "users": 1, "answers": 3, "with_ratings": 1, "with_recommendations": 1}])
+
+    def test_trying_the_affiliation_ranks_a_member_of_a_liked_troupe(self):
+        # dec-affil-reco: ◎ を付けた 301 の俳優甲は劇団X。これからの 314 の俳優戊も劇団X なので、所属を効かせると
+        # 314 が候補に入り（今の計算では圏外）、後で興味ありを押した 314 が、押さなかった 313 より上になる
+        with tempfile.TemporaryDirectory() as tmp:
+            idx, bk = Path(tmp) / "index.sql", Path(tmp) / "backup.sql"
+            index_sql(idx, affil=True)
+            backup_sql(bk, [("399", 0, "2026-10-05T01:00:00Z"), ("314", 1, "2026-10-10T01:00:00Z"),
+                            ("313", 0, "2026-10-10T01:01:00Z"), ("312", 0, "2026-10-10T01:02:00Z")])
+            r = replay_eval.replay(str(bk), idx, [])
+        h = r["reminder"]["H6"]["affil"]
+        self.assertGreater(h["median_diff"], 0)
+        self.assertEqual((h["users_better"], h["users_worse"]), (1, 0))
 
     def test_ratings_made_after_the_origin_are_cut(self):
         # 評価が答えより後に付いたなら、日 t には評価が無い: 何も出ず、どれも圏外で AUC 0.5
