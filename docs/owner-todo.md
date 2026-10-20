@@ -31,6 +31,7 @@
 - [ ] Firebase の API キーに制限（Web サイト・使う API）を掛ける（Google Cloud コンソール）〔q-firebase-key-restriction〕
 - [ ] アカウントを消したあと、Firebase の利用者一覧に残っていないかを見る〔q-firebase-user-deletion〕
 - [ ] Cloudflare のダッシュボードで Workers Builds の月の分（無料 3,000 分）を見る〔q-workers-builds-minutes〕
+- [ ] Workers Builds が「master だけ組み立てる」設定のままか見る。2026-10-20 も作業ブランチ（PR #238・#239）の組み立てが毎回 ✗ になっている。ログは Builds の記録にだけ出る〔q-branch-builds-fail〕
 
 ## 決めること
 
