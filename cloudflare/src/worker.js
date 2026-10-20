@@ -529,6 +529,21 @@ async function posterFromR2(request, env, url) {
   return new Response(obj.body, {headers});
 }
 
+const TROUBLE = '一時的にうまく動いていません。少し待ってから、開き直してください。';
+/** 思わぬ失敗のときの返事。API には JSON、画面には日本語の 1 枚（ほかのファイルを読まずに出せる形） */
+export function troubleResponse(request) {
+  const path = new URL(request.url).pathname;
+  const headers = {'Cache-Control': 'no-store', 'Retry-After': '60', 'X-Content-Type-Options': 'nosniff'};
+  if (path.startsWith('/api/') || path.startsWith('/migration-api/') || path.startsWith('/img/') || request.method !== 'GET')
+    return Response.json({ok: false, error: TROUBLE}, {status: 503, headers});
+  const html = `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>たぐり</title><style>body{margin:0;font-family:system-ui,sans-serif;background:#f6f4f1;color:#222}main{max-width:32em;margin:18vh auto 0;padding:0 20px;line-height:1.8}
+h1{font-size:20px;margin:0 0 12px}a{color:#9b1d2e}</style></head><body><main><h1>たぐり</h1>
+<p>${TROUBLE}</p><p>しばらく続くときは、時間を置いてから開いてください（記録は消えていません）。</p>
+<p><a href="${path === '/' ? '/' : path}">開き直す</a></p></main></body></html>`;
+  return new Response(html, {status: 503, headers: {...headers, 'Content-Type': 'text/html; charset=utf-8'}});
+}
+
 export default {
   // 1 日 1 回（wrangler.jsonc の triggers.crons）: 記録の無いアカウントを片付ける（cleanup.js）
   async scheduled(event, env, ctx) {
@@ -536,7 +551,18 @@ export default {
     // 対応済みの公演修正依頼の本文・行を期限で消す（issue #129）
     ctx.waitUntil(purgeFixRequests(env.DB).then(r => { if (r.cleared || r.removed) console.log(`fix_request purged: ${r.cleared} bodies, ${r.removed} rows`); }));
   },
+  // 画面や API の途中で思わぬ失敗（D1 が答えない・上限に届いた など）が起きたら、Cloudflare の英語の
+  // 「Error 1101: Worker threw exception」ではなく、日本語の案内を返す（起案者の指示 2026-10-21「案内入れてよい」。
+  // 起案者の電話で 1101 の画面が出た）。中身（SQL・記録・設定）は見せない。原因は Workers のログに残す
   async fetch(request, env) {
+    try {
+      return await this.handle(request, env);
+    } catch (error) {
+      console.error('unhandled', request.method, new URL(request.url).pathname, error && (error.stack || error.message));
+      return troubleResponse(request);
+    }
+  },
+  async handle(request, env) {
     const url = new URL(request.url);
     const limited = await rateLimit(request, env, url);
     if (limited) return limited;
