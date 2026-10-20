@@ -41,6 +41,19 @@ export function titlePrefixes(k) {
 export function prefixWhere(keys) {
   return {sql: '(' + keys.map(() => '(tkey>=? AND tkey<?)').join(' OR ') + ')', args: keys.flatMap(x => [x, x + '\u{10FFFF}'])};
 }
+/**
+ * Past stages whose tkey starts with one of keys, by tkey, at most limit. One range per statement in one
+ * batch: an OR of the ranges (prefixWhere) made D1 read every row of past_stage (30,414 on 2026-10-20) on
+ * each keystroke, and that day went over the free 5,000,000 rows read. filter is applied to each range's
+ * first limit rows.
+ */
+export async function pastByPrefix(db, cols, keys, limit, filter = {sql: '', args: []}) {
+  const sql = `SELECT * FROM (SELECT ${cols} FROM past_stage WHERE tkey>=? AND tkey<? ORDER BY tkey LIMIT ?)` + (filter.sql ? ` WHERE ${filter.sql}` : '');
+  const res = await db.batch(keys.map(k => db.prepare(sql).bind(k, k + '\u{10FFFF}', limit, ...filter.args)));
+  const seen = new Set(), out = [];
+  for (const r of res.flatMap(x => x.results)) if (!seen.has(r.stage_id)) { seen.add(r.stage_id); out.push(r); }
+  return out.sort((a, b) => cmp(a.tkey, b.tkey)).slice(0, limit);
+}
 
 const chars = s => Array.from(s);
 export function bigrams(key) {

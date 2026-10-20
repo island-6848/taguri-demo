@@ -10,7 +10,7 @@
 // come from D1 (current stages through rec_gram, past stages by title-key
 // prefix on its index) instead of the files on the Python server.
 import {gradeText} from './grade.js';
-import {titleKey, d1Search, searchIndex, titlePrefixes, prefixWhere} from '../stage-search.js';
+import {titleKey, d1Search, searchIndex, titlePrefixes, pastByPrefix} from '../stage-search.js';
 import {loadWorks} from './works.js';
 import {scheduleFilter} from './schedule-filter.js';
 import {stageInfo} from './fallback.js';
@@ -79,16 +79,13 @@ export async function suggest(params, ctx) {
   // Past stages: titles starting with what was typed (the tkey index; a scan for
   // "contains" would read every row on each keystroke). 「舞台」「ミュージカル」など題名の頭に付く語の後ろも
   // 先頭一致で引く（stage-search.titlePrefixes、起案者の指摘 2026-10-19）
-  const keys = titlePrefixes(k), pw = prefixWhere(keys);
-  const filters = [], args = [...pw.args];
+  const keys = titlePrefixes(k);
+  const filters = [], args = [];
   if (venue) { filters.push("instr(COALESCE(venue,''),?)>0"); args.push(venue); }
   if (group) { filters.push("instr(COALESCE(grp,''),?)>0"); args.push(group); }
   if (schedule.from) { filters.push("start<=? AND COALESCE(NULLIF(end,''),start)>=?"); args.push(schedule.to, schedule.from); }
-  const pastQuery = `SELECT stage_id,title,tkey,start,end,venue,grp,pref FROM past_stage WHERE ${pw.sql}`;
-  const {results: past} = await db.prepare((advanced
-    ? `SELECT * FROM (${pastQuery} ORDER BY tkey LIMIT ${DETAIL_SCAN_LIMIT})` + (filters.length ? ' WHERE ' + filters.join(' AND ') : '')
-    : pastQuery) + ' ORDER BY tkey LIMIT ?')
-    .bind(...args, advanced ? DETAIL_SCAN_LIMIT : PAST_LIMIT).all();
+  const past = await pastByPrefix(db, 'stage_id,title,tkey,start,end,venue,grp,pref', keys,
+    advanced ? DETAIL_SCAN_LIMIT : PAST_LIMIT, {sql: filters.join(' AND '), args});
   for (const p of past.filter(p => fits(p.venue, p.grp, p.start, p.end)).slice(0, PAST_LIMIT)) {
     if (seen.has(p.stage_id)) continue;
     const one = runRange(p.start, p.end, ctx.today);

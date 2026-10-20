@@ -21,7 +21,7 @@ import {peopleByKey} from './diary.js';
 import {parseCredits} from './credits.js';
 import {loadWorks, titleKey} from './works.js';
 import {loadDeclared, buckets, nz, pastFromIndex} from './lists.js';
-import {titleKey as indexKey, titlePrefixes, prefixWhere} from '../stage-search.js';
+import {titleKey as indexKey, titlePrefixes, pastByPrefix} from '../stage-search.js';
 import {stageInfo, fallbackTemplate} from './fallback.js';
 import {tourBlock} from './schedule.js';
 import {withTour} from './recommend.js';
@@ -184,9 +184,7 @@ export async function pastHits(ctx, q, ws, page = 1, href = null) {
   const k = indexKey(q);
   if (Array.from(k).length >= 2) {
     // 「舞台」「ミュージカル」など題名の頭に付く語の後ろも先頭一致で引く（stage-search.titlePrefixes、起案者の指摘 2026-10-19）
-    const pw = prefixWhere(titlePrefixes(k));
-    const {results} = await ctx.db.prepare(`SELECT stage_id,title,tkey,start,end,venue,grp FROM past_stage WHERE ${pw.sql} ORDER BY tkey LIMIT ?`)
-      .bind(...pw.args, PAST_TITLE_ROWS).all();
+    const results = await pastByPrefix(ctx.db, 'stage_id,title,tkey,start,end,venue,grp', titlePrefixes(k), PAST_TITLE_ROWS);
     capped = results.length >= PAST_TITLE_ROWS;
     for (const r of results) add(r, '題名');
   }
