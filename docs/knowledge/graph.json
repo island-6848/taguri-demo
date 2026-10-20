@@ -611,6 +611,19 @@
    "verifies": []
   },
   {
+   "id": "d1-user-isolation-1019",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-19",
+   "title": "D1 は外から直接は読めず、Worker 経由でもログイン中の本人の記録しか返さない。全員分が見えるのは Cloudflare の管理画面（アカウントの持ち主）だけ",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/blob/master/cloudflare/wrangler.jsonc",
+    "https://github.com/island-6848/taguri-demo/blob/master/cloudflare/src/worker.js",
+    "https://github.com/island-6848/taguri-demo/tree/master/cloudflare/migrations"
+   ],
+   "verifies": []
+  },
+  {
    "id": "d1-writes-undercounted",
    "type": "finding",
    "status": "confirmed",
@@ -633,6 +646,19 @@
     "docs/data-inventory.md",
     "cloudflare/migrations",
     "https://github.com/island-6848/taguri-crawler/tree/state"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "data-inventory-1019",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-19",
+   "title": "保存先は D1（taguri-demo、38 表）・R2（taguri-posters・taguri-backup）・Firebase Authentication。D1 の利用者ごとの表は 21、全員共有の公演データは 14、運営・数え上げは 3",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/tree/master/cloudflare/migrations",
+    "https://github.com/island-6848/taguri-demo/blob/master/cloudflare/wrangler.jsonc",
+    "https://github.com/island-6848/taguri-demo/blob/master/docs/free-tier-budget.md"
    ],
    "verifies": []
   },
@@ -687,6 +713,19 @@
     "web/app.js",
     "web/theme.css",
     "cloudflare/test/cutover.test.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-account-rankings",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-20",
+   "title": "アカウントの「よく観ている団体」「よく行く劇場」をランキングの形にし、劇場は作品数と行った回数を切り替えられるようにする。作品数は違う作品（題名の鍵）の数で数える",
+   "sources": [
+    "cloudflare/src/screens/account.js",
+    "web/theme.css",
+    "cloudflare/test/account-stats.test.js"
    ],
    "verifies": []
   },
@@ -1500,6 +1539,19 @@
    "verifies": []
   },
   {
+   "id": "dec-form-rodokugeki",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-19",
+   "title": "形式の札「朗読」を「朗読劇」に改める。外していた人の設定（kind_off）は migration 0043 で新しい名前に移す",
+   "sources": [
+    "tools/review/user_recommender.py",
+    "cloudflare/migrations/0043.sql",
+    "cloudflare/test/migrations-keep-records.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-forms-1019",
    "type": "decision",
    "status": "adopted",
@@ -2118,6 +2170,21 @@
    "verifies": []
   },
   {
+   "id": "dec-past-title-backfill",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-20",
+   "title": "前に取った過去の公演（30,414 件）の題名も、公演ページを読み直して冠名・サブタイトル込みにする。あらすじの 2 周目で読むページはそのついでに直し、2 周目が通り過ぎた行だけを過去の公演の時間の 3 割で読み直す",
+   "sources": [
+    "tools/review/fetch_past_stages.py",
+    "cloudflare/scripts/deliver_past.py",
+    "tools/review/test_past_stages.py",
+    "cloudflare/test/test_deliver_past.py",
+    "https://github.com/island-6848/taguri-crawler/blob/state/past/progress.json"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-people-network-on-trace",
    "type": "decision",
    "status": "adopted",
@@ -2297,6 +2364,33 @@
    "sources": [
     "cloudflare/src/screens/grade.js",
     "cloudflare/test/grade.test.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-reading-dual-form",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-19",
+   "title": "朗読劇はほかの形式と兼ねる。題名に 朗読・リーディング があれば、ほかの形式に加えて朗読劇の札も付け、朗読劇の題名に「音楽劇」があれば音楽劇の札も付ける",
+   "sources": [
+    "tools/review/user_recommender.py",
+    "tools/taguri/test_user_recommendation.py"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-reading-share-6-4",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-20",
+   "title": "朗読劇とほかの形式を兼ねる公演は、形式の札を朗読劇 0.6・ほかの形式 0.4（ほかが 2 つ以上なら残りを等分）の重さで数える。評価から学ぶ側とこれからの公演の点の両方",
+   "sources": [
+    "tools/review/user_recommender.py",
+    "cloudflare/src/recommend.js",
+    "cloudflare/scripts/build_recommend_index.py",
+    "cloudflare/test/pieces.test.js",
+    "cloudflare/test/test_recommend_index.py"
    ],
    "verifies": []
   },
@@ -3042,6 +3136,23 @@
    "verifies": []
   },
   {
+   "id": "dec-split-pieces",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-19",
+   "title": "1 回の公演で観た複数の作品は、利用者が望めば作品ごとに分けて評価・感想・出演者を持つ。記録は 1 件のまま。推薦は人ごとに「出た作品の評価の平均 × 縮めた件数 m/(1+(m−1)·0.4)」を 1 回だけ足す",
+   "sources": [
+    "cloudflare/migrations/0042.sql",
+    "cloudflare/src/recommend.js",
+    "cloudflare/src/screens/recommend.js",
+    "cloudflare/src/screens/diary.js",
+    "cloudflare/src/screens/row.js",
+    "cloudflare/test/pieces.test.js",
+    "cloudflare/test/pieces-screen.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-spread-and-partners",
    "type": "decision",
    "status": "adopted",
@@ -3246,6 +3357,24 @@
    "verifies": []
   },
   {
+   "id": "dec-title-crown-subtitle",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-20",
+   "title": "公演の題名は 冠名・タイトル・サブタイトルを空白でつなげたものにする。照合に使う題名の鍵（tkey）・ツアーのまとめ・名前の索引の鍵はタイトルだけ（title_main）から作る",
+   "sources": [
+    "tools/credits/fetch_credits.py",
+    "tools/review/fetch_candidates.py",
+    "tools/review/fetch_past_stages.py",
+    "cloudflare/scripts/build_recommend_index.py",
+    "cloudflare/scripts/deliver_past.py",
+    "cloudflare/scripts/deliver_past_index.py",
+    "tools/review/test_past_stages.py",
+    "cloudflare/test/test_deliver_past.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-trace-into-person",
    "type": "decision",
    "status": "adopted",
@@ -3436,6 +3565,18 @@
     "S13",
     "S22"
    ]
+  },
+  {
+   "id": "dec-watched-unrated-seed",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-20",
+   "title": "観劇記録にある公演はおすすめから外し、まだ評価していない記録は購入済みと同じ推薦の種にする（評価したら評価 1 回分に替わる）",
+   "sources": [
+    "cloudflare/src/screens/recommend.js",
+    "cloudflare/test/watched-reco.test.js"
+   ],
+   "verifies": []
   },
   {
    "id": "dec-weight-defaults",
@@ -3762,6 +3903,31 @@
    "verifies": []
   },
   {
+   "id": "f-corich-title-parts",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-20",
+   "title": "CoRich の公演ページの見出しは 冠名（p.crown）→ タイトル（h1.name）→ サブタイトル（p.subTitle）。<title> にはタイトルしか入らず、控えの 6,000 件で冠名は 4,092 件・サブタイトルは 969 件にあった",
+   "sources": [
+    "https://github.com/island-6848/taguri-crawler/tree/state/credits/pages",
+    "https://github.com/island-6848/taguri-demo/blob/master/tools/credits/fetch_credits.py"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "f-form-rodoku-1019",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-19",
+   "title": "形式（#形式）に「朗読」がある（札の名前は「朗読劇」ではなく「朗読」）。題名に 朗読 か リーディング があれば付く。題材の語彙表にも別に「朗読劇」（語り口の軸）がある",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/blob/master/tools/review/user_recommender.py",
+    "https://github.com/island-6848/taguri-demo/blob/master/cloudflare/src/vocab/concepts.json",
+    "https://github.com/island-6848/taguri-demo/blob/master/tools/review/recommend.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "f-ios-web-push",
    "type": "finding",
    "status": "unverified",
@@ -3799,6 +3965,19 @@
    "verifies": []
   },
   {
+   "id": "f-multi-piece-handling-1019",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-19",
+   "title": "1 回の公演に複数の演目がある場合、本番（Worker）では 1 公演 = 1 記録・評価 1 つ。演目ごとに分ける仕組みは Render 時代の Python（メール取り込み）にしか無い",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/blob/master/tools/review/rate_performances.py",
+    "https://github.com/island-6848/taguri-demo/blob/master/cloudflare/src/screens/works.js",
+    "https://github.com/island-6848/taguri-demo/blob/master/tools/review/render_recommend.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "f-noh-program-staff",
    "type": "finding",
    "status": "confirmed",
@@ -3806,6 +3985,20 @@
    "title": "能・狂言・歌舞伎などの演目（曲目と「役：名前」の演者、日ごとの違い）は、CoRich の公演ページのスタッフ欄に載っている",
    "sources": [
     "data/review/candidates.jsonl"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "f-people-json-no-affil-1019",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-19",
+   "title": "推薦の索引の出演者（rec_people・past_stage の people、rec_stage.credits）は、名前の後ろの（所属）を外した名前だけ。所属は別の表 rec_affil。書かれたままの文は公演の欄（entry.fields）に残る",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/blob/master/tools/review/measure_nets.py",
+    "https://github.com/island-6848/taguri-demo/blob/master/cloudflare/src/screens/credits.js",
+    "https://github.com/island-6848/taguri-demo/blob/master/cloudflare/migrations/0039.sql",
+    "https://github.com/island-6848/taguri-demo/blob/master/cloudflare/scripts/build_recommend_index.py"
    ],
    "verifies": []
   },
@@ -3909,6 +4102,19 @@
     "cloudflare/scripts/deliver_catalogue.py",
     "tools/admin/admin.py",
     "cloudflare/test/override.test.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "fix-conquest-record-venue",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-20",
+   "title": "劇場制覇マップは、記録に書いた劇場を、結び付いた公演の劇場より先に見る（ツアーの別会場の公演に結び付いた記録で、観た劇場が塗られなかった）",
+   "sources": [
+    "cloudflare/src/screens/conquest.js",
+    "cloudflare/test/conquest.test.js",
+    "https://github.com/island-6848/taguri-crawler/blob/state/d1/delivered.json"
    ],
    "verifies": []
   },
@@ -7148,6 +7354,17 @@
    "verifies": []
   },
   {
+   "id": "q-past-title-backfill",
+   "type": "question",
+   "status": "answered",
+   "date": "2026-10-20",
+   "title": "前に取った過去の公演（約 1.8 万件）の題名に冠名・サブタイトルを足すため、公演ページを読み直すか",
+   "sources": [
+    "tools/review/fetch_past_stages.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "q-pii-git-history",
    "type": "question",
    "status": "open",
@@ -7341,6 +7558,17 @@
    "date": "2026-10-13",
    "title": "◎○△× の 4 段階は適切か。△をどう読み、どう推薦に使うか",
    "sources": [],
+   "verifies": []
+  },
+  {
+   "id": "q-reading-music-form",
+   "type": "question",
+   "status": "answered",
+   "date": "2026-10-19",
+   "title": "「リーディング音楽劇『ジャングル大帝』」のように朗読劇と音楽劇（ミュージカル）を兼ねる公演の形式をどうするか",
+   "sources": [
+    "tools/review/user_recommender.py"
+   ],
    "verifies": []
   },
   {
@@ -7562,6 +7790,20 @@
     "S11",
     "S24"
    ]
+  },
+  {
+   "id": "q-split-pieces-1019",
+   "type": "question",
+   "status": "answered",
+   "date": "2026-10-19",
+   "title": "1 公演に複数の作品がある記録を、利用者が望んだときだけ作品ごとに分けて評価・推薦・感想・題材の読み取りをするか。分けた作品の重みと出演者の割り当てをどうするか",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/blob/master/cloudflare/src/screens/recommend.js",
+    "https://github.com/island-6848/taguri-demo/blob/master/cloudflare/src/recommend.js",
+    "https://github.com/island-6848/taguri-demo/blob/master/tools/credits/extract_theme_llm.py",
+    "https://github.com/island-6848/taguri-demo/blob/master/tools/credits/fetch_credits.py"
+   ],
+   "verifies": []
   },
   {
    "id": "q-synopsis-lit-gaps",
@@ -8860,6 +9102,11 @@
    "to": "index-only-run-1016"
   },
   {
+   "from": "d1-user-isolation-1019",
+   "rel": "affects",
+   "to": "q-review-1015"
+  },
+  {
    "from": "d1-writes-undercounted",
    "rel": "depends_on",
    "to": "d1-meta-size-after"
@@ -8878,6 +9125,11 @@
    "from": "data-inventory-1016",
    "rel": "affects",
    "to": "q-records-viz"
+  },
+  {
+   "from": "data-inventory-1019",
+   "rel": "affects",
+   "to": "d1-user-isolation-1019"
   },
   {
    "from": "dec-account-cap-counted",
@@ -8923,6 +9175,11 @@
    "from": "dec-account-page",
    "rel": "affects",
    "to": "comp-frontend"
+  },
+  {
+   "from": "dec-account-rankings",
+   "rel": "affects",
+   "to": "dec-account-page"
   },
   {
    "from": "dec-affil-reco",
@@ -9580,6 +9837,16 @@
    "to": "dec-font-action-maru"
   },
   {
+   "from": "dec-form-rodokugeki",
+   "rel": "depends_on",
+   "to": "f-form-rodoku-1019"
+  },
+  {
+   "from": "dec-form-rodokugeki",
+   "rel": "affects",
+   "to": "dec-forms-1019"
+  },
+  {
    "from": "dec-forms-1019",
    "rel": "affects",
    "to": "comp-cf-worker"
@@ -10055,6 +10322,16 @@
    "to": "comp-crawler"
   },
   {
+   "from": "dec-past-title-backfill",
+   "rel": "answers",
+   "to": "q-past-title-backfill"
+  },
+  {
+   "from": "dec-past-title-backfill",
+   "rel": "depends_on",
+   "to": "dec-title-crown-subtitle"
+  },
+  {
    "from": "dec-people-network-on-trace",
    "rel": "affects",
    "to": "dec-overview-without-venue-ranking"
@@ -10198,6 +10475,26 @@
    "from": "dec-rating-scales",
    "rel": "affects",
    "to": "comp-recommender"
+  },
+  {
+   "from": "dec-reading-dual-form",
+   "rel": "answers",
+   "to": "q-reading-music-form"
+  },
+  {
+   "from": "dec-reading-dual-form",
+   "rel": "depends_on",
+   "to": "dec-form-rodokugeki"
+  },
+  {
+   "from": "dec-reading-dual-form",
+   "rel": "affects",
+   "to": "dec-forms-1019"
+  },
+  {
+   "from": "dec-reading-share-6-4",
+   "rel": "depends_on",
+   "to": "dec-reading-dual-form"
   },
   {
    "from": "dec-reason-two-works",
@@ -10680,6 +10977,21 @@
    "to": "dec-free-tier-only"
   },
   {
+   "from": "dec-split-pieces",
+   "rel": "answers",
+   "to": "q-split-pieces-1019"
+  },
+  {
+   "from": "dec-split-pieces",
+   "rel": "depends_on",
+   "to": "f-multi-piece-handling-1019"
+  },
+  {
+   "from": "dec-split-pieces",
+   "rel": "affects",
+   "to": "comp-cf-worker"
+  },
+  {
    "from": "dec-spread-and-partners",
    "rel": "depends_on",
    "to": "lit-topic-diversification"
@@ -10865,6 +11177,16 @@
    "to": "impl-card-schedule"
   },
   {
+   "from": "dec-title-crown-subtitle",
+   "rel": "depends_on",
+   "to": "f-corich-title-parts"
+  },
+  {
+   "from": "dec-title-crown-subtitle",
+   "rel": "raises",
+   "to": "q-past-title-backfill"
+  },
+  {
    "from": "dec-trace-into-person",
    "rel": "answers",
    "to": "q-trace-into-person"
@@ -10998,6 +11320,11 @@
    "from": "dec-vm-cloudflare",
    "rel": "affects",
    "to": "comp-vm-host"
+  },
+  {
+   "from": "dec-watched-unrated-seed",
+   "rel": "affects",
+   "to": "comp-cf-worker"
   },
   {
    "from": "dec-weight-defaults",
@@ -11275,6 +11602,16 @@
    "to": "q-app-direction"
   },
   {
+   "from": "f-corich-title-parts",
+   "rel": "affects",
+   "to": "dec-title-crown-subtitle"
+  },
+  {
+   "from": "f-form-rodoku-1019",
+   "rel": "depends_on",
+   "to": "dec-forms-1019"
+  },
+  {
    "from": "f-ios-web-push",
    "rel": "affects",
    "to": "q-app-direction"
@@ -11295,9 +11632,24 @@
    "to": "dec-link-card"
   },
   {
+   "from": "f-multi-piece-handling-1019",
+   "rel": "affects",
+   "to": "dec-noh-program"
+  },
+  {
+   "from": "f-multi-piece-handling-1019",
+   "rel": "affects",
+   "to": "q-nonplay-in-reco"
+  },
+  {
    "from": "f-noh-program-staff",
    "rel": "answers",
    "to": "q-noh-program"
+  },
+  {
+   "from": "f-people-json-no-affil-1019",
+   "rel": "affects",
+   "to": "dec-split-pieces"
   },
   {
    "from": "f-search-asu-prefix",
@@ -11348,6 +11700,11 @@
    "from": "fix-card-synopsis-stale",
    "rel": "depends_on",
    "to": "dec-recommend-worker-cards"
+  },
+  {
+   "from": "fix-conquest-record-venue",
+   "rel": "affects",
+   "to": "comp-cf-worker"
   },
   {
    "from": "fix-cpu-same-production",
@@ -13465,6 +13822,11 @@
    "to": "catalog-terms-no-redistribution"
   },
   {
+   "from": "q-past-title-backfill",
+   "rel": "depends_on",
+   "to": "dec-title-crown-subtitle"
+  },
+  {
    "from": "q-pii-git-history",
    "rel": "depends_on",
    "to": "dec-demo-seed-fictional"
@@ -13583,6 +13945,11 @@
    "from": "q-rating-scale",
    "rel": "affects",
    "to": "q-reco-learning-design"
+  },
+  {
+   "from": "q-reading-music-form",
+   "rel": "depends_on",
+   "to": "dec-form-rodokugeki"
   },
   {
    "from": "q-real-catalog-stats",
@@ -13758,6 +14125,11 @@
    "from": "q-seed-weight-total-ratings",
    "rel": "depends_on",
    "to": "dec-fav-over-interest"
+  },
+  {
+   "from": "q-split-pieces-1019",
+   "rel": "depends_on",
+   "to": "f-multi-piece-handling-1019"
   },
   {
    "from": "q-synopsis-lit-gaps",

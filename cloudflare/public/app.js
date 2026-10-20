@@ -1707,6 +1707,47 @@ function compactTickets(root) {
   });
 }
 
+// 作品ごとに分ける欄の 1 作品ぶん（作品名・評価・感想・出ていた人）。中身は文字として入れる（textContent・value）
+function pieceRow(list, p) {
+  const row = document.createElement("fieldset");
+  row.className = "pc-row";
+  const title = document.createElement("input");
+  title.type = "text"; title.dataset.pcTitle = "1"; title.maxLength = 80; title.size = 28; title.value = p.title || "";
+  title.placeholder = "作品名（例：かもめ）"; title.setAttribute("aria-label", "作品名");
+  const verdict = document.createElement("select");
+  verdict.dataset.pcVerdict = "1"; verdict.setAttribute("aria-label", "この作品の評価");
+  for (const [v, text] of [["", "未評価"], ...(list._grades || [])]) {
+    const o = document.createElement("option");
+    o.value = v; o.textContent = text; o.selected = v === (p.verdict || "");
+    verdict.append(o);
+  }
+  const del = document.createElement("button");
+  del.type = "button"; del.dataset.pieceDel = "1"; del.textContent = "この作品を外す";
+  const head = document.createElement("div");
+  head.className = "pc-head";
+  head.append(title, verdict, del);
+  const note = document.createElement("textarea");
+  note.dataset.pcNote = "1"; note.rows = 2; note.maxLength = 4000; note.value = p.note || "";
+  note.placeholder = "この作品の感想（書かなくてもかまいません）"; note.setAttribute("aria-label", "この作品の感想");
+  row.append(head, note);
+  const cast = list._cast || [];
+  if (cast.length) {
+    const det = document.createElement("details"), sum = document.createElement("summary"), names = document.createElement("div");
+    const chosen = new Set(p.cast && p.cast.length ? p.cast : cast);
+    sum.textContent = "この作品に出ていた人" + (p.cast && p.cast.length ? "（" + p.cast.length + " 人）" : "（全員）");
+    names.className = "pc-cast";
+    for (const name of cast) {
+      const lab = document.createElement("label"), cb = document.createElement("input");
+      cb.type = "checkbox"; cb.checked = chosen.has(name); cb.dataset.pcCast = name;
+      lab.append(cb, " " + name);
+      names.append(lab);
+    }
+    det.append(sum, names);
+    row.append(det);
+  }
+  return row;
+}
+
 async function post(path, body, group, done) {
   const said = group ? group.querySelector(".said") : null;
   // 押した直後に「書き込み中…」を出す。返事が来るまで何も出ないと、反映されたか不安になる
@@ -2652,6 +2693,60 @@ document.addEventListener("click", ev => {
     const off = [...g.querySelectorAll("input[data-cast-name]")].filter(c => !c.checked).map(c => c.dataset.castName);
     post("/api/cast_seen", {work_key: b.dataset.castSave, off}, g, off.length
       ? `${off.length} 人を「観た回に出ていなかった」にしました` : "全員を「観た回に出ていた」にしました");
+  } else if (b.dataset.piecesOpen) {
+    // **作品ごとに分ける**（起案者の指示 2026-10-19、dec-split-pieces）。押したときに中身・出演者・評価の選択肢を読み、
+    // 作品ごとに作品名・評価・感想・出ていた人の欄を並べる。記録は 1 件のまま、推薦は作品ごとの評価を使う
+    const g = b.closest(".ed-pieces"), list = g.querySelector(".ed-piecel");
+    post("/api/pieces", {work_key: b.dataset.piecesOpen}, g, null).then(d => {
+      if (!d) return;
+      list.textContent = "";
+      list.dataset.work = d.work_key;
+      list.dataset.max = d.max;
+      list._cast = d.cast; list._grades = d.grades;
+      const rows = d.pieces.length ? d.pieces : [{title: "", verdict: "", note: "", cast: []}, {title: "", verdict: "", note: "", cast: []}];
+      const box = document.createElement("div");
+      box.className = "pc-rows";
+      for (const p of rows) box.append(pieceRow(list, p));
+      list.append(box);
+      const btns = document.createElement("div");
+      btns.className = "ed-btns";
+      const add = document.createElement("button"), save = document.createElement("button");
+      add.dataset.pieceAdd = "1"; add.textContent = "作品を足す";
+      save.dataset.piecesSave = "1"; save.textContent = "作品ごとの評価・感想を保存する";
+      btns.append(add, save);
+      if (d.pieces.length) {
+        const stop = document.createElement("button");
+        stop.dataset.piecesStop = "1"; stop.textContent = "分けるのをやめる";
+        btns.append(stop);
+      }
+      list.append(btns);
+      b.hidden = true;
+    });
+  } else if (b.dataset.pieceAdd) {
+    const list = b.closest(".ed-piecel"), box = list.querySelector(".pc-rows");
+    if (box.children.length >= Number(list.dataset.max || 20)) { b.closest(".ed-pieces").querySelector(".said").textContent = "作品は " + list.dataset.max + " までです"; return; }
+    box.append(pieceRow(list, {title: "", verdict: "", note: "", cast: []}));
+  } else if (b.dataset.pieceDel) {
+    const box = b.closest(".pc-rows");
+    b.closest(".pc-row").remove();
+    if (!box.children.length) box.append(pieceRow(box.closest(".ed-piecel"), {title: "", verdict: "", note: "", cast: []}));
+  } else if (b.dataset.piecesSave || b.dataset.piecesStop) {
+    const g = b.closest(".ed-pieces"), list = g.querySelector(".ed-piecel"), said = g.querySelector(".said");
+    let pieces = [];
+    if (b.dataset.piecesSave) {
+      for (const r of list.querySelectorAll(".pc-row")) {
+        const title = r.querySelector("[data-pc-title]").value.trim();
+        const verdict = r.querySelector("[data-pc-verdict]").value, note = r.querySelector("[data-pc-note]").value;
+        const boxes = [...r.querySelectorAll("input[data-pc-cast]")], cast = boxes.filter(c => c.checked).map(c => c.dataset.pcCast);
+        if (!title && !verdict && !note.trim()) continue;           // 何も入れていない欄は数えない
+        if (boxes.length && !cast.length) { said.textContent = "「" + (title || "作品") + "」に出ていた人を 1 人以上選んでください"; return; }
+        pieces.push({title, verdict, note, cast: cast.length === boxes.length ? [] : cast});
+      }
+      if (pieces.length < 2) { said.textContent = "作品を 2 つ以上入れてください（分けるのをやめるときは「分けるのをやめる」）"; return; }
+    }
+    post("/api/pieces", {work_key: list.dataset.work, pieces}, g,
+      pieces.length ? pieces.length + " 作品に分けて保存しました" : "分けるのをやめました（記録は残っています）")
+      .then(d => { if (d) setTimeout(() => location.reload(), 1000); });
   } else if (b.dataset.unlink) {
     const g = b.closest(".ed-link");
     post("/api/link_stage", {work_key: b.dataset.unlink, stage_id: ""}, g,

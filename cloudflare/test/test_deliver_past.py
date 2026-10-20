@@ -117,6 +117,45 @@ class DeliverPastTest(unittest.TestCase):
             self.assertEqual(con.execute("SELECT synopsis FROM past_stage WHERE stage_id='20'").fetchone()[0], '')
 
 
+class TitleKeyTest(unittest.TestCase):
+    def test_the_key_comes_from_the_title_without_crown_and_subtitle(self):
+        # 題名は冠名・サブタイトル込みで出し、自動の結び付け・候補の頭の一致に使う鍵はタイトルだけ（dec-title-crown-subtitle）
+        sys.path.insert(0, str(SCRIPT.parent))
+        import deliver_past as DP
+        row = DP.row_values({"stage_id": "40", "title": "特別公演 熱海殺人事件", "title_main": "熱海殺人事件", "fields": {}})
+        self.assertEqual(row[1:3], ("特別公演 熱海殺人事件", "熱海殺人事件"))
+        # 前に取った行（title_main が無い）は題名から
+        self.assertEqual(DP.row_values({"stage_id": "41", "title": "夜の果て", "fields": {}})[2], "夜の果て")
+
+
+class RetitleDeliveryTest(unittest.TestCase):
+    def test_rows_sent_before_get_their_crowned_title_once(self):
+        # 送り済みの行の題名を、読み直した題名（冠名・サブタイトル込み）に UPDATE する。鍵（tkey）は変えない
+        with tempfile.TemporaryDirectory() as t:
+            d = Path(t)
+            (d / 'past').mkdir()
+            rows = [dict(ROWS[0]), {"stage_id": "50", "title": "熱海殺人事件", "start": "2024-01-01", "end": "2024-01-02", "fields": {}}]
+            write = lambda rs: (d / 'past' / 'stages.jsonl').write_text('\n'.join(json.dumps(r, ensure_ascii=False) for r in rs) + '\n', encoding='utf-8')  # noqa: E731
+            write(rows)
+            con = sqlite3.connect(d / 'd1.db')
+            con.executescript('CREATE TABLE works(user_id TEXT, work_key TEXT, title TEXT, first_date TEXT, stage_id TEXT);')
+            con.executescript(MIGRATION.read_text(encoding='utf-8'))
+            con.executescript(SYNOPSIS.read_text(encoding='utf-8'))
+            run('build', '--data', t, '--out', str(d / 'out'))
+            con.executescript((d / 'out' / 'past-upload.sql').read_text(encoding='utf-8'))
+            run('commit', '--data', t, '--out', str(d / 'out'))
+            # 取得が題名を読み直した（50 は冠名あり、30 は冠名なし）
+            rows[0].update(title_main=rows[0]["title"])
+            rows[1].update(title="特別公演 熱海殺人事件", title_main="熱海殺人事件")
+            write(rows)
+            got = run('build', '--data', t, '--out', str(d / 'out'))
+            self.assertEqual((got['retitled'], got['rows']), (1, 0))
+            con.executescript((d / 'out' / 'past-upload.sql').read_text(encoding='utf-8'))
+            self.assertEqual(con.execute("SELECT title, tkey FROM past_stage WHERE stage_id='50'").fetchone(), ("特別公演 熱海殺人事件", "熱海殺人事件"))
+            run('commit', '--data', t, '--out', str(d / 'out'))
+            self.assertEqual(run('build', '--data', t, '--out', str(d / 'out'))['retitled'], 0)    # 送った行は二度送らない
+
+
 class StatementSizeTest(unittest.TestCase):
     def test_statements_fit_d1_in_bytes(self):
         # 2026-10-14: 文字数で数えていたので、日本語の多い 7,016 行が SQLITE_TOOBIG で断られた

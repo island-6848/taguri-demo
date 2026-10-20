@@ -45,6 +45,7 @@ import datetime
 import difflib
 import gzip
 import json
+import html as _h
 import re
 import sys
 import time
@@ -73,6 +74,12 @@ ROLE_KEYS = ["出演", "脚本", "作", "演出", "翻訳", "原作", "音楽", 
              "美術", "照明", "音響", "衣裳", "衣装", "舞台監督", "制作", "宣伝美術"]
 
 _last = [0.0]
+
+
+def cached(url: str) -> str | None:
+    """控えにあるページだけを返す（取りに行かない）。無ければ None"""
+    key = CACHE / (re.sub(r"[^A-Za-z0-9]", "_", url)[-120:] + ".html")
+    return key.read_text(encoding="utf-8") if key.exists() else None
 
 
 def get(url: str) -> str:
@@ -327,8 +334,39 @@ def parse_stage(html: str, stage_id: str) -> dict:
     # 公演なのかを確かめられない ── 年だけで採っていた頃はここを見ていなかった
     m = re.search(r"<title>(.*?)</title>", html, re.S)
     ptitle = re.split(r"[|｜]", re.sub(r"\s+", " ", m.group(1)).strip())[0].strip() if m else ""
+    crown, name, sub = heading(html)
     return {"stage_id": stage_id, "period": period, "page_title": ptitle,
+            "crown": crown, "subtitle": sub, "full_title": full_title(crown, ptitle or name, sub),
             "fields": expand_staff(out)}
+
+
+def heading(html: str) -> tuple[str, str, str]:
+    """公演ページの見出しの (冠名, 題名, サブタイトル)。無い欄は空。
+
+    CoRich の公演は「冠名 → タイトル → サブタイトル」の 3 つの欄で登録され、見出しの
+    `<div class="mainTitle">` に `<p class="crown">`・`<h1 class="name">`（電話の幅は `<div class="name">`）・
+    `<p class="subTitle">` の順で出る。**<title> にはタイトルしか入らない**（手元の公演ページ 6,000 件で、冠名のある
+    4,092 件のうち <title> に冠名があるのは 14 件、サブタイトルのある 969 件のうち 7 件。2026-10-20、f-corich-title-parts）"""
+    m = re.search(r'<div class="mainTitle">(.*?<p class="subTitle">.*?</p>)', html, re.S)
+    if not m:
+        return "", "", ""
+    block = m.group(1)
+
+    def part(pattern: str) -> str:
+        x = re.search(pattern, block, re.S)
+        return re.sub(r"\s+", " ", _h.unescape(re.sub(r"<[^>]+>", "", x.group(1)))).strip() if x else ""
+    return (part(r'<p class="crown">(.*?)</p>'), part(r'<(?:h1|div) class="name">(.*?)</(?:h1|div)>'),
+            part(r'<p class="subTitle">(.*?)</p>'))
+
+
+def full_title(crown: str, name: str, sub: str) -> str:
+    """冠名・タイトル・サブタイトルを 1 つの題名にする（起案者の指示 2026-10-20「冠名とサブタイトルもタイトルに含めてほしい」）。
+
+    空白 1 つでつなぐ。タイトルの中に既に書いてある冠名・サブタイトルは重ねない。照合に使う題名の鍵（title_key）は
+    タイトルだけから作る（取得の行の title_main。dec-title-crown-subtitle）"""
+    name = (name or "").strip()
+    parts = [p for p in (crown, name, sub) if p and (p == name or p not in name)]
+    return " ".join(parts)
 
 
 def expand_staff(fields: dict) -> dict:

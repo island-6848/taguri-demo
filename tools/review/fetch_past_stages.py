@@ -67,6 +67,10 @@ PROGRESS = PAST / "progress.json"
 CANDIDATES = ROOT / "data" / "review" / "candidates.jsonl"
 STORY_SIDE = "past"
 STORY_SHARE = 0.4          # 一覧を読み終える前は、その日の時間の 4 割をあらすじに回す（最近の公演のあらすじから先に揃える）
+# 前に取った行の題名に冠名・サブタイトルを足すため、読み直す時間の割合（起案者の指示 2026-10-20「過去の公演もお願いします」、
+# dec-title-crown-subtitle）。あらすじの 2 周目で読むページはそのついでに直すので、ここで読むのは 2 周目が通り過ぎた行だけ。
+# 読み直す行が無くなれば 0（その日の時間はもとの割り当てに戻る）。Actions の分数は増えない（Plan の段の past_minutes の中）
+RETITLE_SHARE = 0.3
 STORY_QUEUE_MAX = 6_000     # 読み取り待ちの上限（1 件およそ 5〜7 KB。state ブランチを 40 MB ほどまでにする。起案者のセッションが続けて読む）
 
 # 照合とおすすめに使う欄だけを残す（料金・問い合わせなどは持たない）
@@ -100,7 +104,9 @@ def row_from_html(html: str, sid: str) -> dict:
     import unicodedata
     return {
         "stage_id": str(sid),
-        "title": unicodedata.normalize("NFKC", c["page_title"] or "").strip(),
+        # 題名は冠名・タイトル・サブタイトルをつなげたもの。照合の鍵はタイトルだけ（title_main、dec-title-crown-subtitle）
+        "title": unicodedata.normalize("NFKC", c.get("full_title") or c["page_title"] or "").strip(),
+        "title_main": unicodedata.normalize("NFKC", c["page_title"] or "").strip(),
         "period": period,
         "start": start,
         "end": end,
@@ -112,6 +118,79 @@ def row_from_html(html: str, sid: str) -> dict:
         # （起案者の指示 2026-10-16「過去の公演の全てのポスターデータも欲しい」、posters.fetch_past）
         "poster": _poster_url(html),
     }
+
+
+def titles_of(html: str, sid) -> tuple[str, str]:
+    """公演ページの (冠名・サブタイトルを含めた題名, タイトルだけ)。NFKC（row_from_html と同じ）"""
+    import unicodedata
+    c = FC.parse_stage(html, str(sid))
+    nf = lambda t: unicodedata.normalize("NFKC", t or "").strip()      # noqa: E731
+    return nf(c.get("full_title") or c["page_title"]), nf(c["page_title"])
+
+
+def apply_titles(titled: dict[str, tuple[str, str]]) -> int:
+    """手元の一覧（ROWS）の題名を、読み直した題名に書き換える。行の順と数は変えない（配送は行の数で送った所を数える）。
+    読めなかった公演（タイトルが空）は、もとの題名をタイトルとして控え、次から読み直さない"""
+    if not titled or not ROWS.exists():
+        return 0
+    lines = ROWS.read_text(encoding="utf-8").split("\n")
+    n = 0
+    for i, line in enumerate(lines):
+        if not line.strip():
+            continue
+        r = json.loads(line)
+        got = titled.get(str(r.get("stage_id") or ""))
+        if not got or "title_main" in r:
+            continue
+        full, main = got
+        if main:
+            r["title"], r["title_main"] = full or main, main
+        else:
+            r["title_main"] = r.get("title") or ""
+        lines[i] = json.dumps(r, ensure_ascii=False)
+        n += 1
+    tmp = ROWS.with_suffix(".part")
+    tmp.write_text("\n".join(lines), encoding="utf-8")
+    tmp.replace(ROWS)
+    return n
+
+
+def retitle_targets(p: dict) -> int:
+    """題名をまだ読み直していない行のうち、この段で読む行の数（2 周目が通り過ぎた行。2 周目が止まっていれば全部）。"""
+    if not ROWS.exists():
+        return 0
+    lines = [l for l in ROWS.read_text(encoding="utf-8").split("\n") if l.strip()]
+    end = len(lines) if p.get("story_blocked") else min(len(lines), int(p.get("story_line") or 0))
+    return sum(1 for l in lines[:end] if "title_main" not in json.loads(l))
+
+
+def retitle(p: dict, *, limit: int, max_minutes: float, fetch) -> dict:
+    """前に取った行の題名を、公演ページを読み直して冠名・サブタイトル込みにする（dec-title-crown-subtitle）。"""
+    lines = [l for l in ROWS.read_text(encoding="utf-8").split("\n") if l.strip()] if ROWS.exists() else []
+    end = len(lines) if p.get("story_blocked") else min(len(lines), int(p.get("story_line") or 0))
+    t0 = time.monotonic()
+    titled: dict[str, tuple[str, str]] = {}
+    got = {"retitled": 0, "skipped": 0}
+    for line in lines[:end]:
+        if len(titled) >= limit or (max_minutes and (time.monotonic() - t0) / 60 > max_minutes):
+            break
+        r = json.loads(line)
+        sid = str(r.get("stage_id") or "")
+        if not sid or "title_main" in r or sid in titled:
+            continue
+        try:
+            titled[sid] = titles_of(fetch(int(sid)), sid)
+        except PH.Skipped as e:
+            print(f"取得をやめる: {e}")
+            break
+        except Exception as e:                    # 消えたページは、もとの題名のまま控える（読み直さない）
+            titled[sid] = ("", "")
+            got["skipped"] += 1
+            print(f"{sid}: 読めなかった（{type(e).__name__}）")
+    got["retitled"] = apply_titles(titled)
+    got["left"] = retitle_targets(p)
+    print(f"題名の読み直し: {got['retitled']} 件／読めなかった {got['skipped']} 件／残り {got['left']} 件")
+    return got
 
 
 def _poster_url(html: str) -> str:
@@ -170,10 +249,17 @@ def run(ids: list[int], *, limit: int, since: str, stop_after: int, max_minutes:
     """読む。`fetch(sid) -> html` は試験で差し替える。戻り値は今回の数え。"""
     fetch = fetch or (lambda sid: PH.fetch(f"{FC.BASE}/stage/{sid}", timeout=45).decode("utf-8", "replace"))
     p = load_progress()
+    # 前に取った行の題名の読み直し（あれば時間の RETITLE_SHARE。dec-title-crown-subtitle）
+    retitled = None
+    if max_minutes and retitle_targets(p):
+        rt_minutes, rt_limit = max_minutes * RETITLE_SHARE, int(limit * RETITLE_SHARE)
+        max_minutes, limit = max_minutes - rt_minutes, limit - rt_limit
+        retitled = retitle(p, limit=rt_limit, max_minutes=rt_minutes, fetch=fetch)
     if p.get("done"):
         got = stories(p, limit=limit, max_minutes=max_minutes, fetch=fetch)
         save_progress(p)
-        return {"read": 0, "kept": 0, "skipped": 0, "done": True, "cursor": p.get("cursor"), "stories": got}
+        return {"read": 0, "kept": 0, "skipped": 0, "done": True, "cursor": p.get("cursor"), "stories": got,
+                **({"retitle": retitled} if retitled else {})}
     if p.get("top") is None and ids:
         p["top"] = max(ids)
     # 一覧を読み終える前も、時間の上限が決まっている実行（毎日の取得）では、残りの 4 割であらすじも進める
@@ -228,6 +314,8 @@ def run(ids: list[int], *, limit: int, since: str, stop_after: int, max_minutes:
         got["stories"] = stories(p, limit=story_limit, max_minutes=story_minutes, fetch=fetch)
     save_progress(p)
     got.update(done=p.get("done", False), cursor=p.get("cursor"))
+    if retitled:
+        got["retitle"] = retitled
     return got
 
 
@@ -242,6 +330,8 @@ def stories(p: dict, *, limit: int, max_minutes: float, fetch) -> dict:
     queue = EX._read_jsonl(EX.QUEUE)
     room = STORY_QUEUE_MAX - sum(1 for q in queue if q.get("side") == STORY_SIDE)
     got = {"queued": 0, "short": 0, "skipped": 0, "left": 0, "room": max(0, room)}
+    # 読み取り待ちが一杯で 2 周目が止まっている間は、題名の読み直しが 2 周目の先の行も読む（retitle_targets）
+    p["story_blocked"] = room <= 0
     if room <= 0:
         got["left"] = len(lines) - int(p.get("story_line") or 0)
         print(f"あらすじの読み取り待ちが {STORY_QUEUE_MAX} 件あるので、今日は積まない")
@@ -249,6 +339,7 @@ def stories(p: dict, *, limit: int, max_minutes: float, fetch) -> dict:
     t0 = time.monotonic()
     i = int(p.get("story_line") or 0)
     add, short = [], []
+    titled: dict[str, tuple[str, str]] = {}           # 読んだページの題名（冠名・サブタイトル込み）。最後に一覧へ書き戻す
     # 今年に終わった公演を先に読む（起案者の指示 2026-10-19「2026 年の過去公演とれるところまで取って」）。
     # 一覧は番号の順で、番号は登録の順なので、今年の公演でも先の行に散らばっている（2026 年の未読 159 件は
     # 2,156〜6,155 行目にあった）。ここで読んだ行は seen に入るので、あとの順送りでは飛ばす。story_line は動かさない
@@ -259,14 +350,14 @@ def stories(p: dict, *, limit: int, max_minutes: float, fetch) -> dict:
         r = json.loads(lines[j])
         if str(r.get("end") or r.get("start") or "")[:4] != year:
             continue
-        stop = _story(r, seen, add, short, got, fetch)
+        stop = _story(r, seen, add, short, got, fetch, titled)
         if stop:
             break
     while i < len(lines) and len(add) < min(room, limit):
         if max_minutes and (time.monotonic() - t0) / 60 > max_minutes:
             print(f"時間の上限（{max_minutes} 分）に来たので、ここまでにする")
             break
-        if _story(json.loads(lines[i]), seen, add, short, got, fetch):
+        if _story(json.loads(lines[i]), seen, add, short, got, fetch, titled):
             break
         i += 1
     if add:
@@ -281,6 +372,7 @@ def stories(p: dict, *, limit: int, max_minutes: float, fetch) -> dict:
                                          "prompt_version": EX.PROMPT_VERSION, "at": today}, ensure_ascii=False) + "\n"
                               for q in short))
     p["story_line"] = i
+    got["retitled"] = apply_titles(titled)
     got.update(queued=len(add), short=len(short), left=len(lines) - i)
     print(f"あらすじ: 待ちに {len(add)} 件積んだ／本文が短い {len(short)} 件／読めなかった {got['skipped']} 件／残り {got['left']} 行")
     return got
@@ -292,7 +384,7 @@ def report() -> None:
     print(json.dumps({**p, "rows": n}, ensure_ascii=False, indent=1))
 
 
-def _story(r: dict, seen: set, add: list, short: list, got: dict, fetch) -> bool:
+def _story(r: dict, seen: set, add: list, short: list, got: dict, fetch, titled: dict | None = None) -> bool:
     """1 公演の本文を取り、読み取り待ち（add）か本文が短い（short）に入れる。取得をやめるときは True。"""
     import extract_theme_llm as EX
     sid = str(r.get("stage_id") or "")
@@ -308,6 +400,8 @@ def _story(r: dict, seen: set, add: list, short: list, got: dict, fetch) -> bool
         print(f"{sid}: 読めなかった（{type(e).__name__}）")
         seen.add(sid)
         return False
+    if titled is not None and "title_main" not in r:
+        titled[sid] = titles_of(html, sid)            # ついでに題名も冠名・サブタイトル込みに（取得は増えない）
     text = EX.prep(EX.strip_reviews(html), 2500)
     row = {"side": STORY_SIDE, "id": sid, "title": (r.get("title") or "")[:60], "url": "", "text": text}
     (add if len(text) >= EX.MIN_STORY_TEXT else short).append(row)
@@ -331,8 +425,14 @@ def main() -> int:
         return 0
     if a.stories_only:
         p = load_progress()
-        got = stories(p, limit=a.limit, max_minutes=a.max_minutes,
-                      fetch=lambda sid: PH.fetch(f"{FC.BASE}/stage/{sid}", timeout=45).decode("utf-8", "replace"))
+        fetch = lambda sid: PH.fetch(f"{FC.BASE}/stage/{sid}", timeout=45).decode("utf-8", "replace")   # noqa: E731
+        limit, minutes, retitled = a.limit, a.max_minutes, None
+        if minutes and retitle_targets(p):
+            retitled = retitle(p, limit=int(limit * RETITLE_SHARE), max_minutes=minutes * RETITLE_SHARE, fetch=fetch)
+            limit, minutes = limit - int(limit * RETITLE_SHARE), minutes * (1 - RETITLE_SHARE)
+        got = stories(p, limit=limit, max_minutes=minutes, fetch=fetch)
+        if retitled:
+            got["retitle"] = retitled
         save_progress(p)
         print(json.dumps(got, ensure_ascii=False))
         return 0

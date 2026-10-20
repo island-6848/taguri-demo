@@ -137,8 +137,10 @@ def build_index(pool: dict[str, dict], fields_by_stage: dict[str, dict], role_gr
         own = {tag for axis, tag in tags if axis == THEME_AXIS}
         tags += [(THEME_AXIS, w) for w, _ in terms if w not in own]
         tw = dict(terms)
-        stages[sid] = {"title": title, "tkey": M.R.title_key(title), "grp": entry.get("group") or "",
-                       "tour": UR.tour_key(title, entry.get("group") or "", credits),
+        # 題名は冠名・サブタイトルを含めて出し、照合の鍵とツアーのまとめはタイトルだけで作る（dec-title-crown-subtitle）
+        main = entry.get("title_main") or title
+        stages[sid] = {"title": title, "tkey": M.R.title_key(main), "grp": entry.get("group") or "",
+                       "tour": UR.tour_key(main, entry.get("group") or "", credits),
                        "gkey": RC.nz(entry.get("group") or ""),
                        "start": RC.period_start(period), "end": _period_end(period),
                        "credits": [list(c) for c in credits],
@@ -146,8 +148,10 @@ def build_index(pool: dict[str, dict], fields_by_stage: dict[str, dict], role_gr
         for role, person in credits:
             postings.append((role, person, sid, RC.ROLE_W.get(role, RC.BACKSTAGE_W),
                              role_group(role)))
+        # 朗読劇とほかの形式を兼ねる公演は、朗読劇 6・ほかの形式 4 の重さ（UR.kind_shares、dec-reading-dual-form）
+        shares = UR.kind_shares(tags)
         for axis, tag in tags:
-            x = tw.get(tag, 1.0) if axis == THEME_AXIS else 1.0
+            x = tw.get(tag, 1.0) if axis == THEME_AXIS else shares.get((axis, tag), 1.0)
             postings.append((axis, tag, sid, round(UR.GENRE_W * x, 6), "theme"))
     people = {}
     for sid, f in fields_by_stage.items():

@@ -720,10 +720,32 @@ a.htag-in:hover{text-decoration:underline}
 .acst b{font-size:22px;font-variant-numeric:tabular-nums}
 .acst span{font-size:12px;color:var(--ink2);text-align:center}
 .acranks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px}
-.acrank h3{margin:0 0 6px;font-size:13.5px}
-.acrank ol{margin:0;padding-left:1.4em}
-.acrank li{display:flex;justify-content:space-between;gap:8px;padding:3px 0;border-bottom:1px solid var(--grid);font-size:13.5px}
-.acrank li small{flex:none;color:var(--mute)}
+/* よく観ている団体・よく行く劇場のランキング（起案者の指示 2026-10-20「ランキングぽいデザインに」）。
+   順位の札は 1〜3 位を幕の色の濃淡（1 位がいちばん濃い）、4 位からは地の色。棒は 1 位を満たんにした長さ */
+.acrank{min-width:0;padding:12px;border-radius:12px;background:var(--plane)}
+.acrank h3{margin:0 0 8px;font-size:14px}
+.acrank .rk{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.acrank .rk li{display:grid;grid-template-columns:28px minmax(0,1fr) auto;grid-template-areas:"no name n" "no bar bar";
+ align-items:center;column-gap:10px;row-gap:3px;padding:8px 10px;border-radius:10px;background:var(--surf);font-size:13.5px}
+.rk-no{grid-area:no;display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;
+ font-size:14px;font-variant-numeric:tabular-nums;background:var(--plane);color:var(--ink2)}
+.rk-1 .rk-no{background:var(--curtain);color:var(--curtain-w);font-size:15px}
+.rk-2 .rk-no{background:color-mix(in srgb,var(--curtain) 70%,var(--surf));color:var(--curtain-w)}
+.rk-3 .rk-no{background:color-mix(in srgb,var(--curtain) 30%,var(--surf));color:var(--ink)}
+.rk-1 .rk-name{font-weight:700}
+.rk-name{grid-area:name;min-width:0;overflow-wrap:anywhere}
+.rk li small{grid-area:n;color:var(--ink2);font-variant-numeric:tabular-nums;white-space:nowrap}
+.rk-bar{grid-area:bar;display:block;height:6px;border-radius:3px;background:var(--grid);overflow:hidden}
+.rk-bar i{display:block;height:100%;border-radius:3px;background:color-mix(in srgb,var(--curtain) 75%,var(--surf))}
+/* 劇場の数え方の切り替え（作品数・行った回数）。押し口は radio と label だけ。:has の無い古い端末では作品数だけが出る */
+.rk-mode{display:inline-flex;margin:0 0 8px;padding:2px;border-radius:999px;background:var(--surf);border:1px solid var(--ring)}
+.rk-mode input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
+.rk-mode label{padding:6px 14px;min-height:32px;display:inline-flex;align-items:center;border-radius:999px;font-size:13px;color:var(--ink2);cursor:pointer}
+.rk-mode input:checked+label{background:var(--sel);color:var(--sel-curtain);font-weight:700}
+.rk-mode input:focus-visible+label{outline:2px solid var(--curtain);outline-offset:1px}
+.acrank-v .rk-visits{display:none}
+.acrank-v:has(#rk-v-visits:checked) .rk-visits{display:grid}
+.acrank-v:has(#rk-v-visits:checked) .rk-works{display:none}
 .acdl{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:0 0 12px;font-size:14px}
 .acdl dt{color:var(--mute)}
 .acdl dd{margin:0}
@@ -787,6 +809,22 @@ a.htag-in:hover{text-decoration:underline}
 .ed-cast .ed-castl label{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
 .ed-cast>.ed-lk{display:block;margin-bottom:4px}
 .ed-cast .ed-castl .ed-btns{flex:0 0 100%;margin-top:4px}
+.ed-pieces>.ed-lk{display:block;margin-bottom:4px}
+.ed-pieces .ed-piecel{width:100%;margin-top:6px}
+.ed-pieces .pc-row{border:1px solid var(--ring);border-radius:6px;margin:0 0 8px;padding:8px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.ed-pieces .pc-head{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.ed-pieces .pc-head input{flex:1 1 12em;min-width:0}
+.ed-pieces textarea{width:100%;box-sizing:border-box}
+.ed-pieces .pc-cast{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:6px}
+.ed-pieces .pc-cast label{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+.ed-pieces button{min-height:44px}
+.rec-row .pcs{grid-column:2;margin:6px 0 2px;font-size:14px}
+.rec-row .pcs .pch{display:block;font-size:12px;opacity:.75}
+.rec-row .pcs ol{margin:2px 0 0;padding-left:1.4em}
+.rec-row .pcs li{margin:2px 0}
+.rec-row .pcs .pcv{margin-left:.6em;font-weight:700}
+.rec-row .pcs .pcv.none{font-weight:400;opacity:.6}
+.rec-row .pcs .pcn{display:block;white-space:pre-wrap;opacity:.85}
 
 /* ---- 流れる帯（起案者の指示 2026-10-15「今週開幕する公演を…メニューに流す」「本物の電光掲示板に寄せなくていいよ。
    文字流れてれば何でも」。app.js の renderTicker）。ほかの札と同じ地・字で、右から左へ流す。

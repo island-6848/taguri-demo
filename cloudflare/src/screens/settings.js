@@ -78,18 +78,19 @@ ${body}</details>`;
 const EXPORT_LABEL = {works: '観た公演の記録（作品ごと）', ratings: '観た回ごとの評価と感想', attendance: '観に行ったかどうかの答え',
   reaction: 'おすすめへの答え（持っている・興味あり・興味なし）', ticket: '券の日にち', presented: 'これまでに表示したおすすめの一覧',
   splits: '1 通のメールを複数の公演に分けた指定', excluded: '取り込みから外した公演', missed: '「行けばよかった」の登録', declared: 'お気に入りに登録した名前と題材',
-  hand_credits: '手で入れた出演・スタッフとポスター', merges: '1 つにまとめた記録', visit_note: '観た回ごとのメモ',
+  hand_credits: '手で入れた出演・スタッフとポスター', work_piece: '作品ごとに分けた評価と感想', merges: '1 つにまとめた記録', visit_note: '観た回ごとのメモ',
   rank_weight: 'おすすめの選び方（効かせ方）', favourites: 'お気に入り（以前の登録）', settings: '設定（評価の付け方・都道府県・表示名など）',
   search_request: '探した言葉', fix_request: '公演情報の誤りの知らせ', records: '以前の形式の観劇記録', reactions: '以前の形式のおすすめへの答え'};
-// 書き出しの形の版（#192）。鍵を足す・意味を変えるときに上げる。1: 本人の私的な表をすべて入れた最初の版
-export const EXPORT_SCHEMA_VERSION = 1;
+// 書き出しの形の版（#192）。鍵を足す・意味を変えるときに上げる。1: 本人の私的な表をすべて入れた最初の版。
+// 2: 作品ごとに分けた評価と感想（work_piece）を足した（dec-split-pieces）
+export const EXPORT_SCHEMA_VERSION = 2;
 // 本人の行を user_id でそのまま持ち出す表（Python 版と同じ鍵の表と、サービス版で足した表）。
 // 入れないもの: sessions・passkeys・webauthn_challenges・users（ログインの秘密: セッション・復旧コード・パスキー・
 // Firebase UID）と rec_cache（ほかの表から作り直せる計算の控え）。fix_request は運用者のメモ（note・mailed）を除く。
 // rec_shown・viewed（おすすめに出した・開いた公演の計測の控え）も入れない。issue #192 は計測用の表の扱いを
 // 別に決めるとしているので、本人が付けた記録だけにした
 const EXPORT_TABLES = ['works', 'reaction', 'ticket', 'excluded', 'missed', 'hand_credits', 'merges', 'visit_note', 'rank_weight',
-  'favourites', 'search_request', 'records', 'reactions'];
+  'favourites', 'search_request', 'records', 'reactions', 'work_piece'];
 const EXPORT_SQL = {settings: 'SELECT key, value, updated_at FROM app_setting WHERE user_id=?',
   fix_request: 'SELECT id, stage_id, kind, message, created_at, status, resolved_at FROM fix_request WHERE user_id=?'};
 

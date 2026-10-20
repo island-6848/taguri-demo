@@ -96,7 +96,7 @@ test('a later edit that is not a rating (updated_at only) does not change the re
 test('stage scores follow person-ordinal-v3 (people top 3 up and down, plus the mean of kind tags)', () => {
   const rated = [
     {key: 'a', verdict: '◎', people: [['出演', '甲'], ['#形式', 'ミュージカル']]},
-    {key: 'b', verdict: '×', people: [['出演', '乙'], ['#形式', '朗読']]},
+    {key: 'b', verdict: '×', people: [['出演', '乙'], ['#形式', '朗読劇']]},
   ];
   const v = personValues(rated);
   const s = stageScore(v, [['出演', '甲'], ['出演', '乙'], ['#形式', 'ミュージカル']]);

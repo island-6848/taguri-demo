@@ -22,6 +22,37 @@ def page(title: str, period: str, cast: str = "山田太郎 鈴木花子") -> st
             f"<tr><th>料金</th><td>4,500円</td></tr></table></body></html>")
 
 
+class TitlePartsTest(unittest.TestCase):
+    """冠名・タイトル・サブタイトル（起案者の指示 2026-10-20「冠名とサブタイトルもタイトルに含めてほしい」）。
+    見出しの形は取得の控えの実物（stage.corich.jp/stage/425300 ほか）と同じ"""
+
+    @staticmethod
+    def heading(crown, name, sub):
+        h = (f'<div class="mainTitle"><p class="crown">{crown}</p><div class="name"><a href="/stage_main/1">{name}</a></div>'
+             f'<p class="subTitle">{sub}</p></div>')
+        return h + h.replace('<div class="name">', '<h1 class="name">').replace("</a></div>", "</a></h1>")
+
+    def test_the_row_title_carries_crown_and_subtitle_and_the_key_does_not(self):
+        html = page("新喜劇出前ツアー2025", "2025年10月01日 (水) ～ 2025年10月05日 (日)").replace(
+            "<body>", "<body>" + self.heading("寛平GMプロデュース公演", "新喜劇出前ツアー2025", "～あなたの肩越しに～"))
+        r = P.row_from_html(html, "5001")
+        self.assertEqual(r["title"], "寛平GMプロデュース公演 新喜劇出前ツアー2025 ~あなたの肩越しに~")
+        self.assertEqual(r["title_main"], "新喜劇出前ツアー2025")
+
+    def test_no_heading_parts_leaves_the_title_as_it_was(self):
+        html = page("夏の夜", "2025年10月01日 (水) ～ 2025年10月05日 (日)").replace("<body>", "<body>" + self.heading("", "夏の夜", ""))
+        r = P.row_from_html(html, "5002")
+        self.assertEqual((r["title"], r["title_main"]), ("夏の夜", "夏の夜"))
+        r = P.row_from_html(page("夏の夜", "2025年10月01日 (水)"), "5003")      # 見出しの無い古い形のページ
+        self.assertEqual((r["title"], r["title_main"]), ("夏の夜", "夏の夜"))
+
+    def test_a_crown_already_in_the_title_is_not_repeated(self):
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "credits"))
+        import fetch_credits as FC
+        self.assertEqual(FC.full_title("舞台", "舞台「呪術廻戦」", ""), "舞台「呪術廻戦」")
+        self.assertEqual(FC.full_title("創立45周年記念", "鼓童ワン・アース・ツアー2026", ""), "創立45周年記念 鼓童ワン・アース・ツアー2026")
+
+
 class PastStagesTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -100,6 +131,50 @@ class PastStagesTest(unittest.TestCase):
             self.assertEqual((got["stories"]["queued"], got["stories"]["left"]), (0, 1))
         finally:
             P.STORY_QUEUE_MAX = old
+
+    # 前に取った行の題名に冠名・サブタイトルを足す（起案者の指示 2026-10-20「過去の公演もお願いします」）
+    def crowned(self, crown, name, sub=""):
+        return (f'<html><head><title>{name} | CoRich</title></head><body><div class="mainTitle"><p class="crown">{crown}</p>'
+                f'<h1 class="name"><a href="/stage_main/1">{name}</a></h1><p class="subTitle">{sub}</p></div>'
+                "<p>" + "ある家族が、古い家を手放す日の朝に集まり、それぞれの思い出を語り合う物語。" * 12 + "</p></body></html>")
+
+    def test_the_second_pass_also_retitles_the_rows_it_reads(self):
+        P.PAST.mkdir(parents=True)
+        P.ROWS.write_text("".join(json.dumps({"stage_id": s, "title": t}, ensure_ascii=False) + "\n"
+                                  for s, t in (("30", "夜の果て"), ("20", "名もなき町"))), encoding="utf-8")
+        p = {"done": True, "story_line": 0}
+        pages = {30: self.crowned("特別公演", "夜の果て", "～朝～"), 20: self.crowned("", "名もなき町")}
+        got = P.stories(p, limit=10, max_minutes=0, fetch=lambda sid: pages[sid])
+        self.assertEqual(got["retitled"], 2)
+        self.assertEqual([(r["title"], r["title_main"]) for r in self.rows()],
+                         [("特別公演 夜の果て ~朝~", "夜の果て"), ("名もなき町", "名もなき町")])
+
+    def test_rows_the_second_pass_already_passed_are_read_again_in_part_of_the_time(self):
+        P.PAST.mkdir(parents=True)
+        P.ROWS.write_text("".join(json.dumps({"stage_id": s, "title": t}, ensure_ascii=False) + "\n"
+                                  for s, t in (("30", "夜の果て"), ("20", "消えた公演"), ("10", "まだ先"))), encoding="utf-8")
+        P.save_progress({"done": True, "story_line": 2})
+        self.EX.OUT.write_text("".join(json.dumps({"side": "past", "id": i, "synopsis": "", "elements": []}) + "\n"
+                                       for i in ("30", "20", "10")), encoding="utf-8")   # あらすじは 3 件とも済み
+        seen = []
+
+        def fetch(sid):
+            seen.append(sid)
+            if sid == 20:
+                raise OSError("404")
+            return self.crowned("劇団あおば第3回公演", "夜の果て")
+        self.assertEqual(P.retitle_targets(P.load_progress()), 2)      # 2 周目が通り過ぎた 2 行だけ（10 は 2 周目が読む）
+        got = P.run([], limit=10, since="2019-01-01", stop_after=5, max_minutes=60, fetch=fetch)
+        self.assertEqual(seen, [30, 20])
+        self.assertEqual((got["retitle"]["retitled"], got["retitle"]["skipped"], got["retitle"]["left"]), (2, 1, 0))
+        self.assertEqual([(r["stage_id"], r["title"], r.get("title_main")) for r in self.rows()],
+                         [("30", "劇団あおば第3回公演 夜の果て", "夜の果て"), ("20", "消えた公演", "消えた公演"), ("10", "まだ先", None)])
+        # 次の実行: 2 周目があらすじ済みで読まずに通り過ぎた 10 も読み直す。済んだ行（30・20）は二度読まない
+        P.run([], limit=10, since="2019-01-01", stop_after=5, max_minutes=60, fetch=fetch)
+        self.assertEqual(seen, [30, 20, 10])
+        self.assertEqual(P.retitle_targets(P.load_progress()), 0)
+        # 時間の決まっていない実行（手で回すとき）では読み直さない
+        self.assertEqual(P.run([], limit=10, since="2019-01-01", stop_after=5, max_minutes=0, fetch=fetch).get("retitle"), None)
 
     def rows(self):
         return [json.loads(x) for x in P.ROWS.read_text(encoding="utf-8").splitlines() if x.strip()]

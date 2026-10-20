@@ -101,7 +101,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT / "tools" / "credits"))
-from fetch_credits import get, credits_of, parse_stage, BASE   # noqa: E402
+from fetch_credits import get, cached, credits_of, parse_stage, BASE   # noqa: E402
 import fetch_credits as FC                           # noqa: E402
 import polite_http as PH                             # noqa: E402
 import gzip                                          # noqa: E402
@@ -184,7 +184,9 @@ def stage_row(sid: str) -> dict:
     period = re.sub(r"\s*\([^)]*\)", "", c["period"] or "").replace("～", "〜").strip()
     return {
         "stage_id": str(sid),
-        "title": unicodedata.normalize("NFKC", c["page_title"] or "").strip(),
+        # 題名は冠名・タイトル・サブタイトルをつなげたもの。照合の鍵はタイトルだけ（title_main、dec-title-crown-subtitle）
+        "title": unicodedata.normalize("NFKC", c.get("full_title") or c["page_title"] or "").strip(),
+        "title_main": unicodedata.normalize("NFKC", c["page_title"] or "").strip(),
         "group": pick(html, "group"),
         "theater": theater or f.get("劇場", ""),
         "pref": txt(mp.group(1)).strip("()（）") if mp else "",
@@ -364,6 +366,17 @@ def main() -> int:
             # 一覧でも空のままなら、前回そこで直した題名を引き継ぐ（取得はしない）
             if not r.get("title") and prev.get("title"):
                 r["title"] = prev["title"]
+            # 冠名・サブタイトルを含めた題名（dec-title-crown-subtitle）。控えに公演ページがあれば読み直す（取りには行かない）。
+            # 無ければ前回の題名を引き継ぐ
+            page = cached(f"{BASE}/stage/{r['stage_id']}")
+            c = parse_stage(page, r["stage_id"]) if page else {}
+            main = unicodedata.normalize("NFKC", c.get("page_title") or "").strip() or prev.get("title_main") or r.get("title") or ""
+            full = unicodedata.normalize("NFKC", c.get("full_title") or "").strip()
+            if full:
+                r["title"] = full
+            elif prev.get("title_main"):
+                r["title"] = prev.get("title") or r.get("title")
+            r["title_main"] = main
             r["reused_credits"] = True
             reused += 1
 
@@ -416,7 +429,11 @@ def main() -> int:
             if m:
                 title = unicodedata.normalize("NFKC", re.sub(r"\s+", " ", m.group(1))).strip()
                 title = re.split(r"\s*[|｜]\s*", title)[0].strip()
-        out.append({**r, "title": title, "period": c["period"] or r["period"],
+        # 公演ページの見出しが読めれば、冠名・サブタイトルも題名に含める（dec-title-crown-subtitle）。
+        # 照合の鍵に使うタイトルだけの題名（title_main）は、公演ページの <title>（無ければ一覧の題名）
+        main = unicodedata.normalize("NFKC", c.get("page_title") or "").strip() or title
+        full = unicodedata.normalize("NFKC", c.get("full_title") or "").strip()
+        out.append({**r, "title": full or title, "title_main": main, "period": c["period"] or r["period"],
                     "venue": f.get("劇場", "") or r["theater"], "fields": f})
         print(f"  {n}/{len(todo)}", end="\r", flush=True)
 

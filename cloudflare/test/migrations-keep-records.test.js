@@ -22,10 +22,17 @@ const REWRITES = {
   // 興味ありを押した画面の付け直し（0025.sql の本文）
   '0025.sql': {reaction: r => r.interest === 1 && ['screen', 'screen_tour'].includes(r.source) && r.updated_at < '2026-10-15T23:39:00'
     ? {...r, source: r.source === 'screen_tour' ? 'reminder_tour' : 'reminder'} : r},
+  // 形式の札「朗読」→「朗読劇」（0043.sql の本文）。外していた種類（kind_off）だけを書き換える
+  // 書き換えた人は、0035 のトリガーで推薦の材料の合図（users.rec_rev）が 1 進む（控えを作り直させる。種の 2 人とも kind_off に「朗読」がある）
+  '0043.sql': {app_setting: r => (r.key === 'kind_off' ? {...r, value: r.value.replaceAll('"#形式\\t朗読"', '"#形式\\t朗読劇"')} : r),
+    users: r => ('rec_rev' in r ? {...r, rec_rev: r.rec_rev + 1} : r)},
 };
 // 既定値でなく、前からある値から埋める新しい列（表.列 → 前の行から値を作る関数）
 const BACKFILLS = {
   'works.rated_at': r => r.verdict !== null && r.verdict !== '' ? r.updated_at : null,   // 0034.sql
+  // 0035 で 0 から始まり、0043 の kind_off の書き換えで 1 進む（種の 2 人とも「朗読」を外している）。app_setting は 0010 から
+  // なので、それより前に入れた人には設定の行が無く 0 のまま。`after` は種を入れた直前の migration
+  'users.rec_rev': (r, after) => (after >= '0010.sql' ? 1 : 0),
 };
 // 調べた migration に、書き換えの UPDATE・DELETE を足したら、上の 2 つにも書く（ここで気付けるように数える）
 const WRITING = FILES.filter(f => /^\s*(UPDATE|DELETE|DROP\s+TABLE|INSERT\s+OR\s+REPLACE)\b/im.test(sql(f).replace(/^\s*--.*$/gm, '')));
@@ -56,6 +63,9 @@ function value(t, c, uid, i) {
     'reaction.interest': 1, 'reaction.source': ['screen', 'screen_tour', 'search'][i],
     'reaction.updated_at': ['2026-10-10T10:00:00', '2026-10-16T10:00:00', '2026-10-01T00:00:00'][i],
     'fix_request.id': n + 1,
+    // 0043 で書き換える行（kind_off に「朗読」）・同じ値でも別の設定の行・関係ない行
+    'app_setting.key': ['kind_off', 'pref_filter', 'display_name'][i],
+    'app_setting.value': ['["#形式\\t朗読","#形式\\t人形劇"]', '["#形式\\t朗読"]', '表示名'][i],
   }[`${t}.${c.name}`];
   if (special !== undefined) return special;
   if (c.name === 'user_id') return uid;
@@ -92,6 +102,7 @@ const KNOWN_WRITING = {
   '0025.sql': 'REWRITES（reaction.source の付け直し）',
   '0030.sql': 'トリガーの本文（アカウントを消したときだけ fix_request を書き換える。migration を当てるときは動かない）',
   '0034.sql': 'BACKFILLS（works.rated_at）',
+  '0043.sql': 'REWRITES（kind_off の「朗読」を「朗読劇」に）',
 };
 test('every migration that rewrites stored values is known to this test', () => {
   assert.deepEqual(WRITING, Object.keys(KNOWN_WRITING), '値を書き換える migration を足したら、REWRITES・BACKFILLS に期待する値を書き、KNOWN_WRITING にも足す');
@@ -121,7 +132,7 @@ for (let cut = 1; cut < FILES.length; cut++) {
       // 新しい列は既定値か、BACKFILLS の値
       for (const c of all.filter(x => !beforeCols[t].some(b => b.name === x.name))) {
         const fill = BACKFILLS[`${t}.${c.name}`];
-        now.forEach((r, i) => assert.deepEqual(r[c.name], fill ? fill(expect[t].rows[i]) : literal(c.dflt_value, `${t}.${c.name}`),
+        now.forEach((r, i) => assert.deepEqual(r[c.name], fill ? fill(expect[t].rows[i], FILES[cut - 1]) : literal(c.dflt_value, `${t}.${c.name}`),
           `${t}.${c.name}（${FILES[cut - 1]} の後に入れた行 ${i}）`));
       }
     }

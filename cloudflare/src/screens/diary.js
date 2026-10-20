@@ -5,10 +5,10 @@
 // user: every record is a manual one (no purchases, so no `shows`, no
 // corrections table), and serve._enrich (fetching a stage's material) is
 // skipped on the public service.
-import {scaleOf} from './grade.js';
+import {scaleOf, ALL_GRADES, gradeText} from './grade.js';
 import {autoLink, pastStages} from './autolink.js';
 import {E, strip, slice, field, pyRepr, localNow, dumps, ValueError, WS, quote, qsFirst, sortBy, cmp, isdigit} from './py.js';
-import {loadWorks, similarWorks, titleKey, norm, deleteWork} from './works.js';
+import {loadWorks, similarWorks, titleKey, norm, deleteWork, pieceCast} from './works.js';
 import {handCreditCount, parseCredits} from './credits.js';
 import {recRow, anchor, stageLabels} from './row.js';
 import {rowInfos} from './rowinfo.js';
@@ -83,13 +83,13 @@ function cleanValue(f, value) {
 
 /**
  * 鍵（work_key）で記録に結び付いている行を、古い鍵から新しい鍵へ移す文（issue #186）。works の書き換えと同じ batch で流す。
- * 手で入れた出演者（hand_credits）・まとめた印（merges の両側）・取り消しの印（excluded の work:<key>・purged:<key>）。
+ * 手で入れた出演者（hand_credits）・作品ごとに分けた中身（work_piece）・まとめた印（merges の両側）・取り消しの印（excluded の work:<key>・purged:<key>）。
  * どれも利用者と古い鍵で絞る。前の版で取り残された行が新しい鍵に残っていれば、古い鍵の行があるときだけ先に消す（主キーがぶつかるため）。
  */
 function moveKey(ctx, from, to) {
   const q = sql => ctx.db.prepare(sql).bind(ctx.uid, from, to);
   const stmts = [];
-  for (const t of ['hand_credits', 'merges']) {
+  for (const t of ['hand_credits', 'work_piece', 'merges']) {
     stmts.push(q(`DELETE FROM ${t} WHERE user_id=?1 AND work_key=?3 AND EXISTS(SELECT 1 FROM ${t} WHERE user_id=?1 AND work_key=?2)`),
       q(`UPDATE ${t} SET work_key=?3 WHERE user_id=?1 AND work_key=?2`));
   }
@@ -335,6 +335,60 @@ async function castSeenAction(b, ctx) {
     ctx.db.prepare('DELETE FROM rec_cache WHERE user_id=?').bind(ctx.uid)]);
   return {body: {ok: true, work_key: key, off}};
 }
+// ---------------------------------------------------------------- pieces
+// 1 回の観劇で観た複数の作品を、作品ごとに分ける（起案者の指示 2026-10-19「1 公演を 1 件として表示しつつ、評価や推薦、
+// 感想…は作品数分分けられる？ただしユーザーが分けたいとしたときの任意」、dec-split-pieces）。記録は 1 件のまま、
+// 作品ごとに作品名・評価・感想・その作品に出ていた出演者を持つ。推薦は作品ごとの評価を使う（recommend.personValues）。
+// {work_key} だけなら、いまの中身と、つながった公演の出演者、評価の選択肢を返す。
+// {work_key, pieces: [{title, verdict, note, cast}]} なら、まるごと置き換える。[] は分けるのをやめる（記録は残る）。
+export const PIECES_MAX = 20, PIECE_TITLE_MAX = 80, PIECE_NOTE_MAX = 4000;
+/** 評価の付け方ごとの選択肢（上から） */
+const SCALE_GRADES = {marks2: ['2/2', '1/2'], marks3: ['3/3', '2/3', '1/3'], marks4: ['◎', '○', '△', '×'],
+  stars5: ['5/5', '4/5', '3/5', '2/5', '1/5'], stars11: Array.from({length: 10}, (_, i) => `${11 - i}/11`)};
+async function piecesAction(b, ctx) {
+  const key = req(b, 'work_key', 'work_key が要る');
+  const w = await ctx.db.prepare('SELECT stage_id FROM works WHERE user_id=? AND work_key=?').bind(ctx.uid, key).first();
+  if (!w) throw new ValueError('その記録は見つからない');
+  const cast = w.stage_id ? await castOfStage(ctx, w.stage_id) : [];
+  const {results: saved} = await ctx.db.prepare('SELECT idx, title, verdict, aspects, note, cast_in, rated_at FROM work_piece WHERE user_id=? AND work_key=? ORDER BY idx')
+    .bind(ctx.uid, key).all();
+  if (b.pieces === undefined) {
+    const grades = (SCALE_GRADES[await scaleOf(ctx)] || SCALE_GRADES.marks4).map(v => [v, gradeText(v)]);
+    return {body: {ok: true, work_key: key, cast, grades, max: PIECES_MAX,
+      pieces: saved.map(p => ({title: p.title, verdict: p.verdict || '', note: p.note || '', cast: [...(pieceCast(p) || [])].filter(n => cast.includes(n))}))}};
+  }
+  if (!Array.isArray(b.pieces) || b.pieces.length === 1 || b.pieces.length > PIECES_MAX)
+    throw new ValueError(`作品は 2 つから ${PIECES_MAX} までです（分けるのをやめるときは空にします）`);
+  const at = now(ctx), seen = new Set(), rows = [];
+  for (const [i, p] of b.pieces.entries()) {
+    if (!p || typeof p !== 'object') throw new ValueError('作品の中身を確かめてください');
+    const title = slice(strip(String(p.title ?? '').replace(new RegExp(`[${WS}]+`, 'gu'), ' ')), 0, PIECE_TITLE_MAX);
+    if (!title) throw new ValueError(`${i + 1} つめの作品名を入れてください`);
+    if (seen.has(title)) throw new ValueError(`同じ作品名が 2 つあります: ${title}`);
+    seen.add(title);
+    const verdict = p.verdict ? String(p.verdict) : null;
+    if (verdict !== null && !ALL_GRADES.includes(verdict)) throw new ValueError('評価の値が合いません');
+    const note = typeof p.note === 'string' ? p.note : '';
+    if (Array.from(note).length > PIECE_NOTE_MAX) throw new ValueError(`感想は 1 作品 ${PIECE_NOTE_MAX} 字までです`);
+    const names = p.cast === undefined || p.cast === null ? [] : p.cast;
+    if (!Array.isArray(names) || names.some(n => typeof n !== 'string' || !cast.includes(n)))
+      throw new ValueError('出演者の名前が公演のものと合いません');
+    // 全員を選んだときは '' と同じ（公演の出演者が後で増えても全員のまま）
+    const picked = cast.filter(n => names.includes(n));
+    const castIn = picked.length && picked.length < cast.length ? JSON.stringify(picked) : '';
+    // 評価した時刻（rated_at、#112）は、同じ作品名の評価が変わったときだけ進める
+    const prev = saved.find(x => x.title === title);
+    const ratedAt = !verdict ? null : prev && prev.verdict === verdict && prev.rated_at ? prev.rated_at : at;
+    rows.push([i, title, verdict, prev?.aspects || '', note, castIn, ratedAt]);
+  }
+  await ctx.db.batch([
+    ctx.db.prepare('DELETE FROM work_piece WHERE user_id=? AND work_key=?').bind(ctx.uid, key),
+    ...rows.map(r => ctx.db.prepare('INSERT INTO work_piece (user_id, work_key, idx, title, verdict, aspects, note, cast_in, rated_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)')
+      .bind(ctx.uid, key, ...r, at)),
+    // 推薦の控えを捨てる（work_piece のトリガーが rec_rev も進める）
+    ctx.db.prepare('DELETE FROM rec_cache WHERE user_id=?').bind(ctx.uid)]);
+  return {body: {ok: true, work_key: key, n: rows.length}};
+}
 /** 公演の出演者（索引 rec_people、無ければ過去の公演 past_stage）の名前、出てくる順。 */
 async function castOfStage(ctx, sid) {
   const ver = (await ctx.db.prepare("SELECT v FROM rec_meta WHERE k='current'").first())?.v;
@@ -393,8 +447,10 @@ async function linkStageAction(b, ctx) {
     + ' ON CONFLICT(user_id, work_key) DO UPDATE SET stage_id=excluded.stage_id, updated_at=excluded.updated_at')
     .bind(ctx.uid, workKey, w.title, w.first_date || '', w.last_date || '', w.times || 1, stageId || null, now(ctx)).run();
   // Linked by hand: no longer an automatic link. Unlinked: never link this record automatically again.
-  await ctx.db.prepare("UPDATE works SET stage_auto=0, stage_off=?, cast_off='' WHERE user_id=? AND work_key=?")
-    .bind(stageId ? 0 : 1, ctx.uid, workKey).run();
+  // 作品ごとの出演者（work_piece.cast_in）も前の公演の名前なので、全員に戻す
+  await ctx.db.batch([ctx.db.prepare("UPDATE works SET stage_auto=0, stage_off=?, cast_off='' WHERE user_id=? AND work_key=?")
+    .bind(stageId ? 0 : 1, ctx.uid, workKey),
+  ctx.db.prepare("UPDATE work_piece SET cast_in='' WHERE user_id=? AND work_key=? AND cast_in<>''").bind(ctx.uid, workKey)]);
   return {body: {ok: true, work_key: workKey, stage_id: stageId, title}};
 }
 
@@ -567,5 +623,5 @@ export const diaryScreens = {
   screens: {works: worksScreen},
   actions: {fix_work: fixWorkAction, merge_work: mergeWorkAction, drop_work: dropWorkAction,
     restore_work: restoreWorkAction, purge_work: purgeWorkAction, hand_credits: handCreditsAction,
-    link_stage: linkStageAction, visit_note: visitNoteAction, unseen: unseenAction, cast_seen: castSeenAction},
+    link_stage: linkStageAction, visit_note: visitNoteAction, unseen: unseenAction, cast_seen: castSeenAction, pieces: piecesAction},
 };
