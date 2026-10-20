@@ -2829,6 +2829,19 @@
    "verifies": []
   },
   {
+   "id": "dec-same-star-grade",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-20",
+   "title": "評価一覧のタブと分布では、星の 5 段階と 0.5 きざみの同じ星の数を 1 つにまとめる",
+   "sources": [
+    "cloudflare/src/screens/grade.js",
+    "cloudflare/src/screens/rate.js",
+    "cloudflare/test/grade.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-scale-workers",
    "type": "decision",
    "status": "superseded",
@@ -10340,6 +10353,11 @@
    "from": "dec-sale-label-words",
    "rel": "affects",
    "to": "fix-price-detail-missing"
+  },
+  {
+   "from": "dec-same-star-grade",
+   "rel": "affects",
+   "to": "comp-cf-worker"
   },
   {
    "from": "dec-scale-workers",

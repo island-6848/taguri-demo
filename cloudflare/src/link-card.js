@@ -2,7 +2,7 @@
 // カード設定して」）。どのページも同じ 1 枚: 貼られたリンクはログインの前の人にも見えるので、記録や公演の中身は載せない。
 // 画像 public/assets/og.png（1200×630）はログインなしで読める（gate が /assets/ を通す）。og:image は絶対 URL にする
 export const CARD = {title: 'たぐり ― 観劇の記録から、次の一本を', image: '/assets/og.png',
-  description: '観た演劇の記録と評価から、これから観られる公演の中であなたに合いそうな舞台を毎週届けるアプリです。'};
+  description: '観た演劇の記録と評価から、今後の公演の中であなたに合いそうな舞台を毎週届けるアプリです。'};
 export const cardMeta = origin => {
   const a = v => String(v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
   return [['property', 'og:type', 'website'], ['property', 'og:site_name', 'たぐり'], ['property', 'og:title', CARD.title],

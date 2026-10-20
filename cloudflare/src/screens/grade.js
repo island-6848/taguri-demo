@@ -43,6 +43,15 @@ export function frac(v) {
   return p ? (p[0] - 1) / (p[1] - 1) : null;
 }
 const starsOf = (n, L) => (L === 11 ? (n - 1) / 2 : n);
+/**
+ * 同じ星の数を 1 つの値にそろえる（★ 5 段階の "n/5" を、0.5 きざみの "(2n+1)/11" に）。尺度を途中で変えると、同じ ★5 が
+ * "5/5" と "11/11" の 2 通りで残り、評価一覧のタブと分布が 2 つに割れていた（起案者の指摘 2026-10-20「星５がタブ２個に分かれて
+ * 表示されてる」）。◎○△× と記号の段階はそのまま
+ */
+export function sameGrade(v) {
+  const p = parts(v);
+  return p && p[1] === 5 ? `${2 * p[0] + 1}/11` : v;
+}
 /** What a saved rating shows as: ◎ / ○ / ★4 / ★3.5. */
 export function gradeText(v) {
   const p = parts(v);

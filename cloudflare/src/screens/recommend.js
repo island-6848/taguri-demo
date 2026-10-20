@@ -816,7 +816,7 @@ export async function recommendScreen(params, ctx) {
     // 関わりのある人のほかの公演が、本人の公演だけ・終わった・もう始まっている、のどれかだと候補が無い
     const declared = await loadDeclared(ctx);
     lede = KINDS.some(kind => (declared[kind] || []).length)
-      ? '<p class="rcount favnone">お気に入りに登録した名前と関わりのある人の、これから観られる公演はまだ見つかっていません。'
+      ? '<p class="rcount favnone">お気に入りに登録した名前と関わりのある人の、今後の公演はまだ見つかっていません。'
         + '登録した名前の公演は「<a href="/recommend/favourites?t=__TAGURI_TOKEN__">お気に入り</a>」に出ます。新しい公演は毎日取り込んでいます。</p>'
       : '';
   } else if (!prefs.length) {
@@ -825,7 +825,7 @@ export async function recommendScreen(params, ctx) {
     lede = `<p class="rcount"><b>全国</b>／${data.n_scored} 件中 上位 ${cards.length} 件を表示中</p>`;
   } else if (!cards.length) {
     head = `${where}でのあなたへのおすすめはありません`;
-    lede = `<p class="rcount">これから観られる公演 ${nCand} 件のうち、<b>${E(where)}</b>で観られるものはありませんでした。ほかの都道府県を選ぶか、全国に戻してください。</p>`;
+    lede = `<p class="rcount">今後の公演 ${nCand} 件のうち、<b>${E(where)}</b>で観られるものはありませんでした。ほかの都道府県を選ぶか、全国に戻してください。</p>`;
   } else {
     head = `${where}でのあなたへのおすすめ ${cards.length} 件`;
     lede = `<p class="rcount"><b>${E(where)}</b>／${hit} 件中 上位 ${cards.length} 件を表示中</p>`;

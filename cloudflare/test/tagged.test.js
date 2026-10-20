@@ -60,7 +60,7 @@ test('the stages whose subject words include the word, as cards; a whole word on
     // 興味あり・興味なし・購入済を押せる
     assert.match(html, /<span class="btns" data-stage="101"><button data-v="interest">/);
     // 語の一部では当たらない（「家」）。当たらないときの文
-    assert.match((await screen(env, a, '?w=%E5%AE%B6')).body_html, /いま、題材に「家」が付いている、これから観られる公演はありません。/);
+    assert.match((await screen(env, a, '?w=%E5%AE%B6')).body_html, /いま、題材に「家」が付いている、今後の公演はありません。/);
     // rec_card をなめるのは 1 回（あとはカードの分だけ stage_id で引く）
     sqls.length = 0;
     await screen(env, a, '?w=%E5%86%8D%E7%94%9F');   // 再生

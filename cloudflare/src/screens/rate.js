@@ -2,7 +2,7 @@
 // Ports of tools/taguri/app.py (_rate_body, _unrated_body, _notes_body, ...),
 // the serve.py handlers (on_rate, on_note, on_add_work) and the helpers they
 // call in charts.py, render_recommend.py and impressions.py.
-import {ALL_GRADES, isScaled, isStar, isTop, gradeText, markOf, scaleOf, scaleAction} from './grade.js';
+import {ALL_GRADES, isScaled, isStar, isTop, gradeText, markOf, scaleOf, scaleAction, sameGrade} from './grade.js';
 import {autoLink} from './autolink.js';
 import {ASPECT_MARKS, aspectToken} from '../recommend.js';
 import {E, quote, sortBy, cmp, fmtF, strip, slice, field, qsFirst, qsAll, digitsInt, isdigit, strRepr, localNow, ValueError} from './py.js';
@@ -60,7 +60,7 @@ function table(head, rows, attrs = []) {
 /** charts.verdict_panel */
 function verdictPanel(works) {
   const cnt = {};
-  for (const w of works) { const g = w.verdict || '未評価'; cnt[g] = (cnt[g] || 0) + 1; }
+  for (const w of works) { const g = w.verdict ? sameGrade(w.verdict) : '未評価'; cnt[g] = (cnt[g] || 0) + 1; }
   const order = [...ORDER.filter(g => cnt[g]), ...(cnt['未評価'] ? ['未評価'] : [])];
   const tot = order.reduce((s, g) => s + cnt[g], 0);
   const scaled = order.some(isScaled);
@@ -248,7 +248,8 @@ async function rateScreen(params, ctx) {
   const rated = b.rated;
   const verdictFig = verdictPanel(b.all.filter(w => !w.unseen));
   const byFirstDesc = rows => sortBy(rows, w => w.first_date || '', true);
-  const byV = Object.fromEntries(ORDER.map(g => [g, byFirstDesc(rated.filter(w => w.verdict === g))]));
+  // 同じ星の数は尺度が違っても 1 つのタブ（grade.sameGrade）
+  const byV = Object.fromEntries(ORDER.map(g => [g, byFirstDesc(rated.filter(w => sameGrade(w.verdict) === g))]));
   const live = ORDER.filter(g => byV[g].length);
   const stars = live.some(isStar), scaled = live.some(isScaled);
   const title = '評価一覧';
@@ -256,7 +257,7 @@ async function rateScreen(params, ctx) {
     return {title, body_html: `<h1>評価一覧</h1>${verdictFig}<p class="empty">まだ評価が付いた記録はありません。</p>${rateEmptyNext(b)}`, note_tags: noteTags(b.all)};
   }
   // 初めに開くのは「すべて」（起案者の指示 2026-10-19「評価一覧でデフォルトで開かれるのを『すべて』にして」。前は ◎ か、いちばん上の評価）
-  const sel = (live.includes(verdict) || verdict === 'all') ? verdict : 'all';
+  const sel = (live.includes(sameGrade(verdict)) || verdict === 'all') ? (verdict === 'all' ? 'all' : sameGrade(verdict)) : 'all';
   const allSorted = byFirstDesc(rated);
   const chips = indexTabs(
     [['all', 'すべて', rated.length],

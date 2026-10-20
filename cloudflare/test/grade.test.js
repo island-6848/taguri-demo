@@ -132,3 +132,26 @@ test('the ✕ after the stars clears a rating back to unrated and keeps the 詳�
     assert.equal((await step(env, a, {post: '/api/rate', body: {work_key: '無い#2026-01-01', clear: true}})).status, 400);
   } finally { sqlite.close(); }
 });
+
+// 尺度を途中で変えても、同じ星の数は評価一覧の 1 つのタブ・分布の 1 本（起案者の指摘 2026-10-20「星５がタブ２個に分かれて表示されてる」）
+test('sameGrade: ★n of the 5-step scale is the same value as ★n of the 0.5-step scale', async () => {
+  const {sameGrade, gradeText} = await import('../src/screens/grade.js');
+  assert.equal(sameGrade('5/5'), '11/11');
+  assert.equal(sameGrade('1/5'), '3/11');
+  assert.equal(sameGrade('9/11'), '9/11');
+  assert.equal(sameGrade('◎'), '◎');
+  for (const n of [1, 2, 3, 4, 5]) assert.equal(gradeText(sameGrade(`${n}/5`)), gradeText(`${n}/5`));
+  const {setup, step, signIn} = await import('./screens/harness.js');
+  const {env, sqlite} = setup();
+  const a = await signIn(env);
+  try {
+    for (const [t, v] of [['甲の舞台', '5/5'], ['乙の舞台', '11/11'], ['丙の舞台', '4/5']]) {
+      const key = (await step(env, a, {post: '/api/add_work', body: {title: t, date: '2026-05-01'}})).body.work_key;
+      assert.equal((await step(env, a, {post: '/api/rate', body: {work_key: key, verdict: v}})).status, 200);
+    }
+    const html = (await step(env, a, {get: '/api/screen/rate'})).body.body_html;
+    const tabs = [...html.matchAll(/>(★[\d.]+)[^<]*<span class="mn">(\d+)<\/span>/g)].map(m => m[1] + ':' + m[2]);
+    assert.deepEqual(tabs, ['★5:2', '★4:1']);
+    assert.equal((html.match(/<td>★5<\/td>/g) || []).length, 1);
+  } finally { sqlite.close(); }
+});
