@@ -58,7 +58,10 @@ export function detailHtml(s) {
     ? `<div class="syn"><p class="txt">${E(s.synopsis)}</p><span class="src">［出典: 公演の紹介文］</span></div>`
     : '<div class="syn no">あらすじを取れませんでした</div>';
   const url = safeUrl(s.url);
-  return `<div class="when">${E(range(s))}${s.venue ? '・' + E(s.venue) : ''}</div>${castBlock(s.fields || {})}${syn}`
+  // 料金は作り置きのカードと同じく .when の中の .price に入れる（画面の app.js reminderPrices が、おすすめと同じ形に描き直す。
+  // 起案者の指示 2026-10-20「開幕リマインドの料金の表示を、おすすめ画面と同じにして」）。前はこの形の公演には料金が出なかった
+  const price = String((s.fields || {})[PRICE_FIELD] || '').trim();
+  return `<div class="when">${E(range(s))}${s.venue ? '・' + E(s.venue) : ''}${price ? `\n  <span class="price">${E(price)}</span>` : ''}</div>${castBlock(s.fields || {})}${syn}`
     + (url ? `<p class="dgsite"><a href="${E(url)}" target="_blank" rel="noopener noreferrer">公式サイト</a></p>` : '');
 }
 

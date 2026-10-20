@@ -684,6 +684,7 @@ function decorateCards(el) {
   el.querySelectorAll(".btns,.rb[data-work]").forEach(g => pickChoice(g, savedChoice(g)));
   shortAddButtons(el);
   divergeVerdicts(el);
+  reminderPrices(el);
   stampRerate(el);
   aspectsPanel(el);
 }
@@ -1473,6 +1474,29 @@ function priceListHtml(rows, tail = "", icon = true) {
     + rows.map((r, i) => '<li class="lp-row">' + cell(r) + (i === 0 ? tail : "") + "</li>").join("") + "</ul></div>";
 }
 
+// 開幕リマインドの開いた中身の料金を、おすすめのカードと同じ形にする（起案者の指示 2026-10-20「開幕リマインドの料金の表示を、
+// おすすめ画面と同じにして」）。前は料金の欄の文をそのまま日程の行の後ろに続けて書いていた。おすすめと同じく、閉じた 1 行に
+// 金額の幅（座席の決まりつき）、「詳細」を開くと券種ごとの行（priceSummary・priceListHtml）を、日程のすぐ下に置き、
+// 発売の札はその後ろに並べる。料金の欄が無い公演は「料金 不明」
+function reminderPrices(root) {
+  root.querySelectorAll(".dgdetail .dginfo").forEach(info => {
+    if (info.dataset.priced) return;
+    const when = info.querySelector(":scope > .when");
+    if (!when) return;
+    info.dataset.priced = "1";
+    const priceEl = when.querySelector(".price");
+    const {head, open} = priceSummary(priceEl ? sameYen(priceEl.textContent) : "");
+    if (priceEl) priceEl.remove();
+    const box = document.createElement(open.length ? "details" : "div");
+    box.className = "lprice";
+    box.innerHTML = open.length ? "<summary>" + priceListHtml([head], '<span class="lp-more">詳細</span>') + '</summary><div class="lp-body">' + priceListHtml(open, "", false) + "</div>"
+      : priceListHtml([head]);
+    when.after(box);
+    const sale = info.querySelector(":scope > .sale");
+    if (sale) box.after(sale);
+  });
+}
+
 function compactTickets(root) {
   // おすすめの画面の一覧のカードには「くわしく」の折りたたみを付けない（起案者の指示 2026-10-17「おすすめページには
   // 『くわしく』の折りたたみなくして」）。閉じた 1 枚に出す分（日程・出演 5 人・あらすじの 1 文・料金・公式サイト）だけにする
@@ -1481,6 +1505,7 @@ function compactTickets(root) {
   const interestPage = here === "/recommend/interest";   // 興味ありの一覧もおすすめと同じ表示（起案者の指示 2026-10-17）
   const favPage = here === "/recommend/favourites";       // お気に入りも同じ表示（起案者の指示 2026-10-17）
   const tagPage = here === "/recommend/tag";              // あらすじのハッシュタグの公演の一覧も同じ表示（起案者の指示 2026-10-18）
+  const ticketsPage = here === "/tickets";                // 購入済の公演も同じ表示（起案者の指示 2026-10-20「購入済み画面のカードの構成、おすすめのと揃えて」）
   const searchPage = here === "/search" || here === "/recommend/person" || here === "/recommend/kind";   // 人物・形式の画面も同じ表示                  // 「探す」の公演のカードも同じ表示（起案者の指示 2026-10-19「『検索』で出てくる公演カードも他ページのレイアウトと統一して」）
   // お気に入りも同じ形にする（起案者の指示 2026-10-15「お気に入りのページのレイアウト変更して。購入済み公演と似た感じ」）
   root.querySelectorAll("article.ticket.recommend, article.ticket.interest, article.ticket.owned, article.ticket.favourite").forEach(t => {
@@ -1502,6 +1527,7 @@ function compactTickets(root) {
     const noMore = (recPage && t.classList.contains("recommend") && !t.closest(".rfind"))
       || (interestPage && t.classList.contains("interest"))
       || (favPage && t.classList.contains("favourite"))
+      || (ticketsPage && t.classList.contains("owned"))
       || ((tagPage || searchPage) && (t.classList.contains("recommend") || t.classList.contains("interest")));
     const more = document.createElement("details");
     more.className = "more";
