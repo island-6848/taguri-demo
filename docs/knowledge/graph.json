@@ -3240,7 +3240,7 @@
   {
    "id": "dec-system-test-design",
    "type": "decision",
-   "status": "proposed",
+   "status": "adopted",
    "date": "2026-10-20",
    "title": "システムテストは 116 ケース（必須 99）。本番・Cloudflare・実機は起案者が流し、Claude は手順と記録を用意する。Time Travel・migration の失敗は試験用の別の D1（taguri-st）で試す",
    "sources": [
@@ -8410,6 +8410,18 @@
    "title": "サイトマップ版の初回の Catalog（6,000 枚）は成功し、これからの公演 1,353 件・終わった公演 3,460 件を得た",
    "sources": [
     "https://github.com/island-6848/taguri-crawler/actions/runs/38404782069"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "st-screens-cpu-local-1020",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-20",
+   "title": "手元で測ると、「記録を見返す」（records）の画面は評価 200〜300 件で CPU が 10 ミリ秒の前後になる（ほかの主な画面は 5 ミリ秒以下）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/blob/master/cloudflare/scripts/st_measure_screens.mjs",
+    "https://github.com/island-6848/taguri-demo/blob/master/docs/verification/system-test-2026-10-20-prep.md"
    ],
    "verifies": []
   },
@@ -14716,6 +14728,16 @@
    "from": "sitemap-first-run",
    "rel": "raises",
    "to": "q-crawler-state-size"
+  },
+  {
+   "from": "st-screens-cpu-local-1020",
+   "rel": "affects",
+   "to": "q-workers-cpu-real"
+  },
+  {
+   "from": "st-screens-cpu-local-1020",
+   "rel": "supports",
+   "to": "dec-system-test-design"
   },
   {
    "from": "stage-roles",

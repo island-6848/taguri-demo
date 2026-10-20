@@ -201,7 +201,7 @@ node test/visual-check.js          # 写しと差の画像は /tmp/taguri-visual
    curl -s -X POST http://127.0.0.1:8787/api/register -H 'Origin: http://127.0.0.1:8787' -H 'Content-Type: application/json' -d '{"agree":"<今の規約の版>"}' -w '\n%{http_code}\n'
    ```
    503 と「新規登録を一時停止しています。」。前に作った利用者の Cookie では画面が開く
-3. 人数の上限（AV-05-03・PF-05-02）: `scripts/st_seed_users.mjs`（準備で書く）で手元の D1 に 300 人を入れ、301 人目の登録が断られる。同じ日に 30 人を作ったあとの 31 人目、同じ住所（`CF-Connecting-IP` を固定）から 4 人目も断られる
+3. 人数の上限（AV-05-03・PF-05-02）: 手元の D1 に 300 人を入れ（`node scripts/st_seed_users.mjs --users 300 --records 0 --out /tmp/st-seed.sql` → `npx wrangler d1 execute taguri-demo --local --persist-to "$ST_D1" --file /tmp/st-seed.sql`）、301 人目の登録が断られる。同じ日に 30 人を作ったあとの 31 人目、同じ住所（`CF-Connecting-IP` を固定）から 4 人目も断られる
 4. 記録に、断られたときの状態コードと案内の文を写す
 
 ## P-06 性能（OW／CL）
@@ -212,25 +212,25 @@ node test/visual-check.js          # 写しと差の画像は /tmp/taguri-visual
    ```sh
    node cloudflare/scripts/measure_worker.mjs --index d1-out/index.sql --sizes 0,5,20,50,100,300
    node cloudflare/scripts/measure_worker_replay.mjs --index d1-out/index.sql --sizes 0,20,50 --rep 15 --notes 0.5   # D1 を通らない CPU だけ
-   node cloudflare/scripts/st_measure_screens.mjs --index d1-out/index.sql   # 主な画面（PF-01-02、準備で書く）
+   node cloudflare/scripts/st_measure_screens.mjs --index d1-out/index.sql --sizes 0,20,200,300 --rep 9 | tail -1   # 主な画面（PF-01-02）
    ```
    出力の表（記録の件数ごとの CPU の真ん中の値・いちばん遅い値・D1 の行数）を Claude に渡す。Claude が記録に起こし、10 ミリ秒の基準と 8 ミリ秒の注意のラインで判定する
 2. **D1 の行数（PF-02-01、CL）:** 1 の行数から、300 人 × 1 日 20 画面の読み込みを表で計算し、500 万行の半分以下か見る
 3. **索引の入れ替え（PF-02-02、OW）:** Catalog の Free-tier check の表で、その日の書き込みが 8 万行の中
-4. **300 人の伸び（PF-04-01、CL）:** ローカルで `st_seed_users.mjs` で 300 人・1 人 200 記録を入れ、TD-01 の索引で 1 と同じ測りをする。D1 の大きさ（`wrangler d1 execute … --command "PRAGMA page_count"` × ページの大きさ）から、300 人の大きさを推計して表にする
+4. **300 人の伸び（PF-04-01、CL）:** 公演の id を書き出し（`npx wrangler d1 execute taguri-demo --local --persist-to "$ST_D1" --json --command "SELECT id FROM catalogue" | python3 -c 'import json,sys; print("\n".join(r["id"] for r in json.load(sys.stdin)[0]["results"]))' > /tmp/st-stages.txt`）、`node scripts/st_seed_users.mjs --users 300 --records 200 --stages /tmp/st-stages.txt --out /tmp/st-seed.sql` を入れ（60,300 行。D1 で約 14 MB）、TD-01 の索引で 1 と同じ測りをする。D1 の大きさ（`wrangler d1 execute … --command "PRAGMA page_count"` × ページの大きさ）から、300 人の大きさを推計して表にする
 5. **速さ（PF-03-02、CL）:** P-01 の wrangler dev で、主な画面を 20 回ずつ `curl -w '%{time_total}'` で開き、95% の値が 1 秒以内
 
 ## P-07 安全（CL・一部 OW）
 
 対象: SC-04・SC-06・SC-07・SC-08・SC-10・SC-11・EN-05-01
 
-1. **入れた文字（SC-04-01）:** `node --test test/st-escape.test.js`（準備で書く）。ブラウザでも、TD-05 を感想に入れた利用者で全画面を開き、警告の窓が 1 度も出ない・コンソールに CSP の違反以外のエラーが無い
-2. **ヘッダ（SC-04-02・SC-11-01・EN-05-01）:** `node --test test/st-headers.test.js`（準備で書く）。手でも:
+1. **入れた文字（SC-04-01）:** `node --test test/st-escape.test.js`（`npm test` にも入っている）。ブラウザでも、TD-05 を感想に入れた利用者で全画面を開き、警告の窓が 1 度も出ない・コンソールに CSP の違反以外のエラーが無い
+2. **ヘッダ（SC-04-02・SC-11-01・EN-05-01）:** `node --test test/st-headers.test.js`（`npm test` にも入っている）。手でも:
    ```sh
    for p in / /login /privacy /terms /export.json /api/health /.well-known/assetlinks.json; do echo "== $p"; curl -sI "http://127.0.0.1:8787$p" | grep -iE 'content-security|x-content-type|cache-control|strict-transport'; done
    ```
    本番の分（SC-11-01 の P）は OW が同じコマンドを本番の URL で流し、出力を渡す（6 要求）
-3. **ログの目印（SC-06-01）:** wrangler dev の出力をファイルに残しながら、TD-04 の目印を感想・お気に入り名・修正依頼に入れ、ログイン・ログアウト・復旧コードでのログインをする。終わったら
+3. **ログの目印（SC-06-01）:** `node test/st-log-marker.js`（30 秒ほど。全部 OK なら終了コード 0）。手で確かめるときは、wrangler dev の出力をファイルに残しながら、TD-04 の目印を感想・お気に入り名・修正依頼に入れ、ログイン・ログアウト・復旧コードでのログインをする。終わったら
    ```sh
    grep -c "STMARK-" wrangler.log          # 0 であること
    grep -c "<その回の復旧コード>" wrangler.log   # 0
@@ -238,7 +238,7 @@ node test/visual-check.js          # 写しと差の画像は /tmp/taguri-visual
    ```
 4. **本番のログ（SC-06-02、OW）:** `npx wrangler tail app --format json > tail.json` を流したまま、人工の利用者 A で 3 と同じ操作をし、同じ `grep` をする。`tail.json` は終わったら消す
 5. **追える記録（SC-07-01）:** 3 のログから、ログインの失敗・削除・上限の発動の行を抜き出し、何が起きたかが分かり、中身が無いことを見る
-6. **持ち主専用（SC-08-01）:** `node --test test/st-owner-only.test.js`（準備で書く）
+6. **持ち主専用（SC-08-01）:** `node --test test/st-owner-only.test.js`（`npm test` にも入っている）
 7. **秘密（SC-10-01）:** GitHub の秘密の検査をリポジトリ全体に流す（CL）。Firebase の API キーに制限が掛かっていることは OW が Google Cloud のコンソールで見る
 
 ## P-08 本番のスモーク（OW、手順と記録の下書きは CL）

@@ -1,7 +1,7 @@
 ---
 id: dec-system-test-design
 type: decision
-status: proposed
+status: adopted
 date: 2026-10-20
 title: システムテストは 116 ケース（必須 99）。本番・Cloudflare・実機は起案者が流し、Claude は手順と記録を用意する。Time Travel・migration の失敗は試験用の別の D1（taguri-st）で試す
 sources:
@@ -27,4 +27,4 @@ links:
 - 見張りをわざと鳴らす: Service watch は存在しない URL、Catalog age は `max_days=-1`（今日のカタログでも 0 > -1 で失敗する。`check_catalog_age.py` の `age > max_days`）
 - 書き足す試験・道具: `st-escape.test.js`・`st-headers.test.js`・`st-owner-only.test.js`・`st-log-marker.js`・`st_seed_users.mjs`・`st_measure_screens.mjs`（おすすめ以外の画面の CPU を測る道具は今は無い）
 
-分かっていないこと: D1 の数の上限など、試験用の D1 を作ることの無料枠の条件は公式の料金表でまだ確かめていない（作ったら試験のあと消す）。起案者がこの分け方を認めるか。
+分かっていないこと: D1 の数の上限など、試験用の D1 を作ることの無料枠の条件は公式の料金表でまだ確かめていない（作ったら試験のあと消す）。2026-10-20、起案者がこの分け方と、準備の段で 6 つの試験・道具を書くことを認めた。

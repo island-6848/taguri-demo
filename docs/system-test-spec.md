@@ -114,16 +114,16 @@
 | GitHub の秘密の検査 | リポジトリに秘密が無いか | GitHub の secret scanning |
 | `tools/knowledge/build_graph.py` | 結果をナレッジグラフに足したあとの索引 | `--check` は CI |
 
-**この試験のために書き足すもの**（準備の段で CL が書く。書いたら `npm test` に入れるか、手順書に呼び方を足す）:
+**この試験のために書き足したもの**（2026-10-20、準備の段で CL が書いた。`*.test.js` は `npm test` に入っている）:
 
-| 名前（案） | 何をするか | 使うケース |
+| 名前 | 何をするか | 使うケース |
 |---|---|---|
-| `test/st-escape.test.js` | 感想・題名・お気に入り名・劇場名・修正依頼に下の TD-05 を入れ、全画面の HTML に素のまま出ないことを見る | SC-04-01 |
-| `test/st-headers.test.js` | 全画面と主な API の応答のヘッダ（CSP・nosniff・frame-ancestors・Cache-Control）を表にして比べる | SC-11-01・EN-05-01 |
-| `scripts/st_seed_users.mjs` | 手元の D1 に人工の利用者 N 人・1 人 M 記録を入れる（既定 300 人・200 記録） | PF-04-01・AV-05-03 |
-| `test/st-owner-only.test.js` | 一般の利用者で持ち主専用の URL を開き、403 か見つからないことを見る | SC-08-01 |
+| `test/st-escape.test.js` | 感想・題名・劇場名・お気に入り名・表示名・修正依頼と、検索の語・人の名前の引数に TD-05 を入れ、全 21 画面の HTML に素のまま出ないこと・`javascript:` のリンクが無いことを見る | SC-04-01 |
+| `test/st-headers.test.js` | 静的な画面（`public/_headers`）とログインの画面の CSP・nosniff・frame-ancestors、API・書き出し・思わぬ失敗の `no-store`、ポスターの `immutable` を見る。CSP は今より広がらないこと | SC-11-01・EN-05-01 |
+| `scripts/st_seed_users.mjs` | 手元の D1 に入れる SQL を書き出す。人工の利用者 N 人・1 人 M 記録（既定 300 人・200 記録、`--stages` で公演に結び付ける） | PF-04-01・AV-05-03 |
+| `test/st-owner-only.test.js` | 一般の利用者が持ち主専用の操作（`/api/chronicle`・`/api/import_mail`・`/api/people_read`）を使えず、中継の有無によらず Render へ渡さず、画面に入口も出ないことを見る | SC-08-01 |
 | `scripts/st_measure_screens.mjs` | `measure_worker_replay.mjs` と同じ作りで、おすすめ以外の主な画面（記録・日記・暦・探す・アカウント）の CPU を測る | PF-01-02 |
-| `test/st-log-marker.js` | `wrangler dev` の出力を集め、TD-04 の目印を探す | SC-06-01 |
+| `test/st-log-marker.js` | 本物の `wrangler dev` で TD-04 の目印を入れて操作し、出力に目印・復旧コード・セッションの値・Cookie が無いことを見る。要求の行がログにあることも見る（探す先を間違えていないか） | SC-06-01 |
 
 ## 5. 試験データ
 
@@ -270,7 +270,7 @@
 | SC-06-01 | TD-04 を入れて操作し、`wrangler dev` の出力を探す | 目印・Cookie・復旧コードが 1 つも出ない | L | CL | ○ | P-07 | 探した結果 | S08 |
 | SC-06-02 | 本番で目印を入れ、`wrangler tail` の出力を探す | 1 つも出ない | P | OW／CL | ○ | P-07 | 探した結果 | S08 |
 | SC-07-01 | 不正なログイン・削除・上限の発動のログ | 何が・いつ起きたかが分かり、感想・住所・鍵は出ない | L | CL | | P-07 | ログの抜き出し | 計画書 SC-07 |
-| SC-08-01 | 一般の利用者で、持ち主専用の URL を開く | 403 か見つからない | L | CL | ○ | P-07 | 試験の出力 | U3 |
+| SC-08-01 | 一般の利用者で、持ち主専用の URL を開く | 4xx で断られ、Render へ渡さず、画面に入口が無い | L | CL | ○ | P-07 | 試験の出力 | U3 |
 | SC-09-01 | `npm audit` | 本番の依存に high 以上が無い | CI | CL | ○ | P-02 | CI | 計画書 SC-09 |
 | SC-10-01 | 秘密の検査 | リポジトリに鍵・合言葉・トークンが無い（Firebase の公開用の API キーは公開してよいもので、制限を掛けてあること） | CI | CL・OW（キーの制限） | ○ | P-07 | 結果 | 〔q-firebase-key-restriction〕 |
 | SC-11-01 | 全画面と主な API のセキュリティヘッダ | CSP・`X-Content-Type-Options: nosniff`・`frame-ancestors 'none'` が付く。HSTS は workers.dev の既定に従う（独自ドメインは使わない） | L・P | CL・OW | ○ | P-07 | ヘッダの表 | 計画書 SC-11 |
