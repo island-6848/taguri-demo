@@ -42,5 +42,6 @@ Play Console の「メインのストアの掲載情報」に入れる文の下�
 ## 画像（用意するもの）
 
 - アイコン 512×512: `web/assets/logo/icon-512.png`
-- フィーチャーグラフィック 1024×500: 未作成（`cloudflare/public/assets/og.png` を元に作れる）
-- スクリーンショット（電話、2〜8 枚）: 未作成（おすすめ・興味あり・評価一覧・日記帳）
+- フィーチャーグラフィック 1024×500: `docs/store/images/feature-graphic-1024x500.png`（リンクのカード og.png を縮めたもの）
+- スクリーンショット（電話、1080×1920 を 5 枚）: `docs/store/images/screen-1-recommend.png`（おすすめ）・`screen-2-reasons.png`（おすすめ理由）・`screen-3-interest.png`（興味あり）・`screen-4-rate.png`（評価）・`screen-5-diary.png`（日記帳）
+  - 本物の画面を、テストのデータの題名・人名・劇場を架空のものに置き換えて写した（実在の公演・人・ポスターは使わない）。作り直すときは `cd cloudflare && node scripts/store_images.mjs ../docs/store/images`

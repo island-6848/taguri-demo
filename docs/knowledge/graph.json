@@ -4798,6 +4798,19 @@
    "verifies": []
   },
   {
+   "id": "impl-store-images",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-20",
+   "title": "Google Play の掲載画像（フィーチャーグラフィック 1 枚・電話のスクリーンショット 5 枚）は、本物の画面に架空のデータを入れて写す",
+   "sources": [
+    "cloudflare/scripts/store_images.mjs",
+    "docs/store/images/",
+    "docs/store/google-play-listing.md"
+   ],
+   "verifies": []
+  },
+  {
    "id": "impl-terms-consent",
    "type": "decision",
    "status": "adopted",
@@ -11873,6 +11886,16 @@
    "from": "impl-search-past-stages",
    "rel": "affects",
    "to": "fix-search-uncarded"
+  },
+  {
+   "from": "impl-store-images",
+   "rel": "affects",
+   "to": "plan-app-release"
+  },
+  {
+   "from": "impl-store-images",
+   "rel": "depends_on",
+   "to": "impl-android-twa"
   },
   {
    "from": "impl-terms-consent",
