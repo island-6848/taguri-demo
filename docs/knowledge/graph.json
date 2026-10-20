@@ -2228,6 +2228,15 @@
    "verifies": []
   },
   {
+   "id": "dec-quick-aspect-chips",
+   "type": "decision",
+   "status": "proposed",
+   "date": "2026-10-20",
+   "title": "星を付けた直後に「特に良かったのは？」「気になったのは？」を 1 行のチップで聞く（改善案 ① の C。見本を起案者に見せて、決まってから作る）",
+   "sources": [],
+   "verifies": []
+  },
+  {
    "id": "dec-rate-dist-no-fit",
    "type": "decision",
    "status": "adopted",
@@ -6551,6 +6560,17 @@
    "verifies": []
   },
   {
+   "id": "q-deck-gaps-1020",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-20",
+   "title": "プレゼン資料を読んで作られた改善案の文書が「既にあるもの」を指摘している ── 資料のどこが足りないか",
+   "sources": [
+    "docs/000003-final-presentation-taguri.html"
+   ],
+   "verifies": []
+  },
+  {
    "id": "q-deck-net-c-19of40",
    "type": "question",
    "status": "open",
@@ -10087,6 +10107,21 @@
    "to": "dec-ui-1019"
   },
   {
+   "from": "dec-quick-aspect-chips",
+   "rel": "answers",
+   "to": "q-improve-1-attribution"
+  },
+  {
+   "from": "dec-quick-aspect-chips",
+   "rel": "depends_on",
+   "to": "impl-rating-aspects"
+  },
+  {
+   "from": "dec-quick-aspect-chips",
+   "rel": "depends_on",
+   "to": "dec-aspects-strong-weight"
+  },
+  {
    "from": "dec-rate-dist-no-fit",
    "rel": "depends_on",
    "to": "dec-ui-1019"
@@ -13065,6 +13100,11 @@
    "from": "q-d1-user-writes-uncapped",
    "rel": "affects",
    "to": "d1-free-limits"
+  },
+  {
+   "from": "q-deck-gaps-1020",
+   "rel": "affects",
+   "to": "q-improve-1-attribution"
   },
   {
    "from": "q-deck-net-c-19of40",
