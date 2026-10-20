@@ -4,7 +4,11 @@
 // 「アプリ署名鍵の証明書」の SHA-256 を足す（自分で端末に入れて確かめるときは、アップロード鍵の指紋も足す）。
 // ログインの前に開けるよう、Worker が gate の前に答える（worker.js）
 export const ANDROID_PACKAGE = 'jp.taguri.app';   // android/app/build.gradle.kts の applicationId と同じ
-export const ANDROID_FINGERPRINTS = [];            // 'AB:CD:…' の形（64 桁の 16 進を : で区切る）
+// 'AB:CD:…' の形（64 桁の 16 進を : で区切る）。ワークフロー（android.yml）の「Signing fingerprint」の段にも出る
+export const ANDROID_FINGERPRINTS = [
+  // アップロード鍵（2026-10-20 作成、Secrets の TAGURI_UPLOAD_KEYSTORE_B64）。debug・release の両方をこれで署名する
+  '29:3D:0F:BD:01:C4:F0:C7:6E:EE:F0:9B:C2:E1:9E:B6:31:91:E4:C0:E8:C8:28:25:71:51:90:3F:79:2A:1E:64',
+];
 
 export function assetLinks(pkg = ANDROID_PACKAGE, fps = ANDROID_FINGERPRINTS) {
   if (!fps.length) return [];

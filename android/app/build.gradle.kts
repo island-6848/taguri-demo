@@ -3,7 +3,8 @@
 plugins { id("com.android.application") }
 
 // 署名（アップロード鍵）は GitHub の Secrets から環境変数で渡す（.github/workflows/android.yml）。鍵はリポジトリに入れない。
-// 無いときは署名しない release と、確かめ用の debug だけを作る
+// 鍵があるときは debug もこの鍵で署名する。サイトの assetlinks.json（cloudflare/src/app-links.js）の指紋と合うので、
+// 確かめ用の APK もブラウザの帯（URL と ✕）なしの全画面で開く。無いときは署名しない release と、使い捨ての鍵の debug を作る
 val keystore: String? = System.getenv("TAGURI_KEYSTORE_FILE")
 
 android {
@@ -26,6 +27,9 @@ android {
         }
     }
     buildTypes {
+        debug {
+            if (keystore != null) signingConfig = signingConfigs.getByName("upload")
+        }
         release {
             isMinifyEnabled = false
             if (keystore != null) signingConfig = signingConfigs.getByName("upload")

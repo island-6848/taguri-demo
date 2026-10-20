@@ -86,13 +86,17 @@ test('the app manifest, its icons, the head tags, and a service worker that neve
   for (const p of ['/app.js', '/style.css', '/recommend']) assert.ok(!never.test(p), p);
 });
 
-// Android アプリ（TWA）との結び付け（impl-android-twa）: ログインなしで JSON を返す。指紋が無いうちは空の配列
+// Android アプリ（TWA）との結び付け（impl-android-twa）: ログインなしで JSON を返す
 test('/.well-known/assetlinks.json is public JSON; with a fingerprint it names the app', async () => {
   const r = await get('/.well-known/assetlinks.json', 'Mozilla/5.0');
   assert.equal(r.status, 200);
   assert.match(r.headers.get('content-type'), /application\/json/);
-  assert.ok(Array.isArray(await r.json()));
-  const {assetLinks, ANDROID_PACKAGE} = await import('../src/app-links.js');
+  const served = await r.json();
+  const {assetLinks, ANDROID_PACKAGE, ANDROID_FINGERPRINTS} = await import('../src/app-links.js');
+  // 指紋が 1 文字でも違うと、アプリに URL と ✕ の帯が出る。形（32 組の 16 進）と、実際に返していることを確かめる
+  assert.ok(ANDROID_FINGERPRINTS.length > 0);
+  for (const f of ANDROID_FINGERPRINTS) assert.match(f, /^[0-9A-F]{2}(:[0-9A-F]{2}){31}$/);
+  assert.deepEqual(served[0].target.sha256_cert_fingerprints, ANDROID_FINGERPRINTS);
   const fp = Array.from({length: 32}, () => 'AB').join(':');
   assert.deepEqual(assetLinks(ANDROID_PACKAGE, [fp]), [{relation: ['delegate_permission/common.handle_all_urls'],
     target: {namespace: 'android_app', package_name: 'jp.taguri.app', sha256_cert_fingerprints: [fp]}}]);

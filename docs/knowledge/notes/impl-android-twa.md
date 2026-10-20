@@ -27,3 +27,5 @@ links:
 - 分からないこと: Play の今の targetSdk の決まり（35 で足りるか）と、TWA の中での Google ログイン（Firebase）の動き。
 
 2026-10-20: 初めての実行（Android #1、https://github.com/island-6848/taguri-demo/actions/runs/39372332177）が成功し、Artifacts に taguri-android-1（約 1 MB。debug APK と署名なしの release AAB）ができた。実機で開くのはまだ試していない。
+
+2026-10-20: 起案者が実機で開くと、上に URL と ✕ の帯が出た。指紋が空で、debug APK が実行のたびに使い捨ての鍵で署名されていたため。固定のアップロード鍵で debug・release とも署名し、その指紋を assetlinks.json に載せる形に直した〔dec-twa-fixed-signing〕。

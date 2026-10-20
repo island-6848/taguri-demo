@@ -18,7 +18,7 @@ on:
         default: "1.0.0"
   push:
     branches: ["master"]
-    paths: ["android/**", ".github/workflows/android.yml"]
+    paths: ["android/**", ".github/workflows/android.yml", "cloudflare/src/app-links.js"]
 
 permissions:
   contents: read
@@ -59,6 +59,19 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon :app:assembleDebug :app:bundleRelease
+      - name: Signing fingerprint
+        # 指紋は秘密ではない。cloudflare/src/app-links.js の ANDROID_FINGERPRINTS に無いと、アプリに URL と ✕ の帯が出る
+        run: |
+          apk=$(ls android/app/build/outputs/apk/debug/*.apk | head -1)
+          fp=$(keytool -printcert -jarfile "$apk" | grep -m1 'SHA256:' | awk '{print $2}')
+          echo "debug APK の署名の指紋: $fp"
+          echo "### 署名の指紋（SHA-256）" >> "$GITHUB_STEP_SUMMARY"
+          echo "\`$fp\`" >> "$GITHUB_STEP_SUMMARY"
+          if grep -q "$fp" cloudflare/src/app-links.js; then
+            echo "サイトの assetlinks.json に載っている → 帯なしの全画面で開く" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "サイトの assetlinks.json に**載っていない** → アプリに URL と ✕ の帯が出る（アップロード鍵を Secrets に入れたか確かめる）" >> "$GITHUB_STEP_SUMMARY"
+          fi
       - uses: actions/upload-artifact@v4
         with:
           name: taguri-android-${{ github.run_number }}

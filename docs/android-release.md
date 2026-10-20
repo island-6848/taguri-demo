@@ -12,16 +12,14 @@
 2. **Google Play Console の開発者アカウントを作る**（https://play.google.com/console ）。登録料 25 米ドル、本人確認（身分証）があります。
    - **個人**のアカウントだと、本番に出す前に **12 人以上が 14 日続けて参加する非公開テスト**が要ります〔f-store-review-rules〕。テストに入ってくれる人（Google アカウントのメールアドレス）を 12 人以上集めておくと早く進みます
    - **組織**のアカウントは、この条件がかからないと言われています（D-U-N-S 番号などが要ります）
-3. **アップロード鍵を作って、GitHub の Secrets に入れる。** 鍵はリポジトリに入れません。手元に Java があれば次の 1 行で作れます（合言葉は自分で決めて、なくさないように控えてください）:
-   ```
-   keytool -genkeypair -v -keystore taguri-upload.jks -alias upload -keyalg RSA -keysize 2048 -validity 10000
-   ```
-   リポジトリの Settings → Secrets and variables → Actions に、次の 4 つを入れます:
-   - `TAGURI_UPLOAD_KEYSTORE_B64`: `base64 -w0 taguri-upload.jks`（Mac は `base64 -i taguri-upload.jks`）の出力
-   - `TAGURI_UPLOAD_KEYSTORE_PASSWORD`: 鍵の保管庫の合言葉
-   - `TAGURI_UPLOAD_KEY_ALIAS`: `upload`
-   - `TAGURI_UPLOAD_KEY_PASSWORD`: 鍵の合言葉
-   `taguri-upload.jks` は手元の安全な場所に残してください（なくすと Play の手続きで鍵を替えることになります）
+3. **アップロード鍵を GitHub の Secrets に入れる。** 鍵は Claude が作り、`github-secrets.txt`（Secrets に入れる 4 つの値）と `taguri-upload.jks`（鍵そのもの）として渡しました。鍵はリポジトリに入れません。
+   リポジトリの Settings → Secrets and variables → Actions → New repository secret で、次の 4 つを、ファイルに書いてある値のまま入れます:
+   - `TAGURI_UPLOAD_KEYSTORE_B64`（長い 1 行）
+   - `TAGURI_UPLOAD_KEYSTORE_PASSWORD`
+   - `TAGURI_UPLOAD_KEY_ALIAS`（`upload`）
+   - `TAGURI_UPLOAD_KEY_PASSWORD`
+   `taguri-upload.jks` と合言葉は、手元の安全な場所に残してください（なくすと Play の手続きで鍵を替えることになります）。
+   この鍵の指紋（`29:3D:…:1E:64`）は、もうサイトの `/.well-known/assetlinks.json` に載せてあります〔dec-twa-fixed-signing〕。鍵を作り直したときは、ワークフローの実行の要約に出る指紋を `cloudflare/src/app-links.js` に足します
 4. **アプリを組む**: GitHub の Actions → Android → Run workflow（番号 1、版 1.0.0）。終わると「Artifacts」に、確かめ用の APK と、Play に上げる AAB ができます
 5. **Play Console でアプリを作り、AAB を「内部テスト」に上げる。** 「アプリの完全性 → アプリ署名」に出る **アプリ署名鍵の SHA-256 証明書フィンガープリント**を知らせてください。サイトの `/.well-known/assetlinks.json` に足すと、アプリからブラウザの帯が消えます
 6. **ストアの掲載情報**: アプリの説明・アイコン（512×512。`web/assets/logo/icon-512.png`）・フィーチャーグラフィック（1024×500）・スクリーンショット・プライバシーポリシーの URL（`https://app.taguri.workers.dev/privacy`）・データセーフティ・コンテンツのレーティング・アカウント削除の案内（アプリの「アカウント」の画面と `https://app.taguri.workers.dev/account`）。文面と画像の下書きは Claude が用意できます
@@ -30,4 +28,6 @@
 ## 確かめ用の APK を自分の Android に入れる
 
 Artifacts の `app-debug.apk` を端末に送って開くと入ります（「提供元不明のアプリ」を許可する必要があります）。
-署名の指紋がまだサイトに無いので、上にブラウザの帯が出ますが、動きは同じです。
+
+- Secrets にアップロード鍵を入れたあとに組んだ APK は、上の URL と ✕ の帯なしの全画面で開きます。実行の要約の「署名の指紋」に「載っている」と出ていれば合っています
+- 帯が出るとき: 鍵を入れる前に組んだ APK です（使い捨ての鍵で署名されている）。前の版を消してから、新しく組んだ APK を入れ直してください。Chrome は確かめた結果をしばらく覚えているためです

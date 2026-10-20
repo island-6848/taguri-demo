@@ -3265,6 +3265,20 @@
    "verifies": []
   },
   {
+   "id": "dec-twa-fixed-signing",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-20",
+   "title": "アプリの上の URL と ✕ の帯を消すため、固定のアップロード鍵で debug も release も署名し、その指紋を assetlinks.json に載せる（WebView には替えない）",
+   "sources": [
+    "cloudflare/src/app-links.js",
+    "android/app/build.gradle.kts",
+    ".github/workflows/android.yml",
+    "https://developer.chrome.com/docs/android/trusted-web-activity/integration-guide"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-ui-1014-account-reminder",
    "type": "decision",
    "status": "adopted",
@@ -10789,6 +10803,16 @@
    "from": "dec-trace-worker",
    "rel": "affects",
    "to": "comp-native-screens"
+  },
+  {
+   "from": "dec-twa-fixed-signing",
+   "rel": "affects",
+   "to": "impl-android-twa"
+  },
+  {
+   "from": "dec-twa-fixed-signing",
+   "rel": "affects",
+   "to": "plan-app-release"
   },
   {
    "from": "dec-ui-1014-account-reminder",
