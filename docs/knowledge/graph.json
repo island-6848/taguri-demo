@@ -1342,6 +1342,17 @@
    "verifies": []
   },
   {
+   "id": "dec-fill-below",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-20",
+   "title": "おすすめで答えたときの入れ替わりの 1 枚は、押したカードのすぐ下に出す（画面全体は読み込み直さない）",
+   "sources": [
+    "web/app.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-firebase-auth",
    "type": "decision",
    "status": "adopted",
@@ -9236,6 +9247,11 @@
    "from": "dec-favourite-role-filter",
    "rel": "answers",
    "to": "q-favourite-homonym"
+  },
+  {
+   "from": "dec-fill-below",
+   "rel": "affects",
+   "to": "comp-cf-worker"
   },
   {
    "from": "dec-firebase-auth",
