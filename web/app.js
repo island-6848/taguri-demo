@@ -248,8 +248,7 @@ function loadingHtml() {
     + '</svg>'
     + '<div class="tg-ball-pos"><div class="tg-ball-hop">' + YARN_BALL + '</div></div>'
     + '</div>'
-    + '<p class="tg-load-say">公演の糸をたぐっています<span class="tg-dots" aria-hidden="true"><i>.</i><i>.</i><i>.</i></span>'
-    + '<span class="tg-load-pct">0%</span></p>'
+    + '<p class="tg-load-say">公演の糸をたぐっています<span class="tg-dots" aria-hidden="true"><i>.</i><i>.</i><i>.</i></span></p>'
     + '<p class="tg-load-note" hidden>' + COLD_START_NOTE + '</p>'
     + '</div>';
 }
@@ -275,16 +274,15 @@ function placeYarn(el, p) {
   if (spin) spin.style.transform = "rotate(" + Math.round((x - 8) * k / 11 * 57.3) + "deg)";
 }
 
-// **表示 → 糸をたぐる・進捗%を進める → 呼び出し側が止める、までを1つにまとめる。**
-// 本当の進み具合(コールドスタートでサーバが起きるまでの時間)は分からないので、
-// 経過時間から95%まで滑らかに近づける「気持ちの上では正しい」進捗にする。
+// **表示 → 糸をたぐる → 呼び出し側が止める、までを1つにまとめる。**
+// 本当の進み具合は分からないので、糸は経過時間から95%まで滑らかに近づける演出にとどめ、
+// 数字（%）は出さない。数字は「何割終わったか」と読めてしまう（#151）。
 // 5秒以上かかっていたら、コールドスタートの案内をそっと添える(待たされる理由が
 // 分からないと不安になるため)。
 function startLoading(el) {
   el.innerHTML = loadingHtml();
   const t0 = performance.now();
   const box = el.querySelector(".tg-loading");
-  const pct = el.querySelector(".tg-load-pct");
   const note = el.querySelector(".tg-load-note");
 
   const tick = () => {
@@ -292,7 +290,6 @@ function startLoading(el) {
     const elapsed = performance.now() - t0;
     const p = Math.min(95, Math.round(95 * (1 - Math.exp(-elapsed / 6000))));
     placeYarn(box, p);
-    if (pct) pct.textContent = p + "%";
   };
   tick();
   const progressTimer = setInterval(tick, 150);
@@ -304,7 +301,6 @@ function startLoading(el) {
     if (box && box.isConnected) {
       placeYarn(box, 100);
       box.classList.add("done");
-      if (pct) pct.textContent = "100%";
     }
   };
 }
