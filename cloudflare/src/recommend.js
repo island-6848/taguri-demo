@@ -799,7 +799,9 @@ export function d1Access(db, ver, counter = {rows: 0, queries: 0}) {
       try {
         for (let i = 0; i < persons.length; i += IDS_PER_QUERY) {
           const chunk = persons.slice(i, i + IDS_PER_QUERY);
-          const results = await rowsOf(db.prepare(`SELECT DISTINCT affil FROM rec_affil WHERE ver=? AND person IN (${chunk.map(() => '?').join(',')}) AND kind='劇団' AND start>=?`)
+          // 人の索引を名指しする。名指ししないと D1 は主キー（ver から始まる）を選び、その版の所属の行を全部読んでいた
+          // （全部入ると 1 回 23,050 行、計算し直しのたびに 3 回。2026-10-20 に 1 日の読み出しの上限を越えた日の点検で実測）
+          const results = await rowsOf(db.prepare(`SELECT DISTINCT affil FROM rec_affil INDEXED BY rec_affil_person WHERE ver=? AND person IN (${chunk.map(() => '?').join(',')}) AND kind='劇団' AND start>=?`)
             .bind(ver, ...chunk, since), ['affil']);
           counter.rows += results.length; counter.queries += 1;
           for (const [a] of results) found.add(a);

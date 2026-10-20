@@ -582,6 +582,21 @@
    "verifies": []
   },
   {
+   "id": "d1-reads-over-1020",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-20",
+   "title": "2026-10-20 の D1 の 1 日の読み出しの上限（500 万行）越えは、題名の先頭一致を 21 本の範囲の OR で引いて past_stage を毎回全部読んでいたため。範囲ごとに 1 本を batch で送り、1 回 30,453 → 61 行にした",
+   "sources": [
+    "cloudflare/src/stage-search.js",
+    "cloudflare/src/screens/suggest.js",
+    "cloudflare/src/screens/search.js",
+    "cloudflare/src/recommend.js",
+    "cloudflare/test/title-leads.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "d1-time-travel",
    "type": "finding",
    "status": "confirmed",
@@ -9080,6 +9095,21 @@
    "from": "d1-query-limits",
    "rel": "affects",
    "to": "comp-rec-index"
+  },
+  {
+   "from": "d1-reads-over-1020",
+   "rel": "depends_on",
+   "to": "d1-free-limits"
+  },
+  {
+   "from": "d1-reads-over-1020",
+   "rel": "depends_on",
+   "to": "d1-index-measure-193"
+  },
+  {
+   "from": "d1-reads-over-1020",
+   "rel": "affects",
+   "to": "dec-affil-reco"
   },
   {
    "from": "d1-time-travel",

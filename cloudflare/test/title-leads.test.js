@@ -74,3 +74,23 @@ test('part=pp returns only the past list: the page asked for, without the rest o
     assert.doesNotMatch(part, /[?;]part=/);                       // the pager's links are the full page's
   } finally { sqlite.close(); }
 });
+
+// 題名の先頭一致は、範囲ごとに tkey の索引で引く。21 本の範囲を OR でまとめると D1 は past_stage を全部読み
+// （1 回 30,414 行）、打つたびに候補を出す画面で 2026-10-20 に 1 日の読み出しの上限（500 万行）を越えた
+test('the past stages by title are read through the tkey index, not by reading the whole table', async () => {
+  const {env, sqlite} = setup();
+  const a = await signIn(env);
+  try {
+    const seen = [];
+    const prepare = env.DB.prepare;
+    env.DB.prepare = sql => { const s = prepare(sql); const bind = s.bind; s.bind = (...v) => { seen.push([sql, v]); return bind(...v); }; return s; };
+    await step(env, a, {get: '/api/suggest?q=' + encodeURIComponent('銀河鉄道の父')});
+    await step(env, a, {get: '/api/screen/search?q=' + encodeURIComponent('銀河鉄道の父')});
+    const past = seen.filter(([sql]) => /FROM past_stage WHERE tkey/.test(sql));
+    assert.ok(past.length >= 2);
+    for (const [sql, v] of past) {
+      const plan = sqlite.prepare('EXPLAIN QUERY PLAN ' + sql).all(...v).map(r => r.detail).join(' / ');
+      assert.match(plan, /past_stage USING INDEX past_stage_tkey/, plan);
+    }
+  } finally { sqlite.close(); }
+});

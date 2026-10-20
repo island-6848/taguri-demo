@@ -19,7 +19,7 @@ function fixture() {
     async first() {return db.prepare(sql).get(...args)},
     async all() {return {results: db.prepare(sql).all(...args)}},
     async run() {return db.prepare(sql).run(...args)}});
-  const ctx = {db: {prepare: sql => statement(sql)}, uid: 'one', now: Date.parse('2026-10-19T03:00:00Z'), today: '2026-10-19'};
+  const ctx = {db: {prepare: sql => statement(sql), batch: cs => Promise.all(cs.map(c => c.all()))}, uid: 'one', now: Date.parse('2026-10-19T03:00:00Z'), today: '2026-10-19'};
   const stage = (id, venue = '東京劇場', group = '劇団甲', start = '2026-01-01', end = '2026-01-31') =>
     db.prepare('INSERT INTO past_stage VALUES(?,?,?,?,?,?,?,?)').run(String(id), '演劇の夜', '演劇の夜', start, end, venue, group, '東京都');
   return {db, ctx, stage};
