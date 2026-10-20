@@ -65,7 +65,7 @@ def stage_dicts(pool: dict[str, dict], themes: dict, today: datetime.date) -> di
         end = RC.period_end(period)
         if end and end < today:
             continue
-        if any(word in (c.get("title") or "") for word in RC.NOT_PLAY_TITLE):
+        if any(word in (c.get("title") or "") for word in RC.NOT_STAGE_TITLE):
             continue
         fields = c.get("fields") or {}
         c.update(stage_id=sid, days=RC.run_days(period), onsale=RC.onsale(fields, today),

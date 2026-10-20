@@ -523,7 +523,7 @@ def prepare(raw: dict, candidates: list[dict], rated: list[dict], *,
         end = RC.period_end(period)
         if end and end < today:
             continue
-        if any(word in (c.get("title") or "") for word in RC.NOT_PLAY_TITLE):
+        if any(word in (c.get("title") or "") for word in RC.NOT_STAGE_TITLE):
             continue
         fields = c.get("fields") or {}
         parts, negative, kinds = [], [], []

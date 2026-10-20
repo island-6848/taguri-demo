@@ -24,6 +24,7 @@ spec.loader.exec_module(BI)
 sys.path.insert(0, str(ROOT / 'tools' / 'taguri'))
 import app as APP                                                  # noqa: E402
 import user_recommender as UR                                      # noqa: E402
+import recommend2 as RC                                            # noqa: E402
 
 TODAY = datetime.date(2026, 10, 12)
 PEOPLE = [f"人物{i:02d}" for i in range(30)] + ["O'Neil"]
@@ -193,7 +194,10 @@ class ParityTest(unittest.TestCase):
         for st in index['stages'].values():
             self.assertLessEqual(set(st['entry']), set(BI.PUBLIC_KEYS) | {'url'})
             self.assertTrue(st['entry'].get('url', 'https://').startswith('https://'))
-        self.assertTrue(all('オペラ' not in st['title'] for st in index['stages'].values()))
+        # オペラ・能・歌舞伎・落語などもおすすめの候補に入れる（起案者の指示 2026-10-19「おすすめから除外しないで」）。
+        # 外すのはコンサートなど舞台の上演でない催しだけ（recommend.NOT_STAGE_TITLE）
+        self.assertTrue(any('オペラ' in st['title'] for st in index['stages'].values()))
+        self.assertTrue(all(not any(w in st['title'] for w in RC.NOT_STAGE_TITLE) for st in index['stages'].values()))
         self.assertIn('9001', index['stages'])           # tour stage from saved bundles
 
     def test_version_switch_and_cleanup(self):
