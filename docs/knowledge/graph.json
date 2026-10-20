@@ -3695,6 +3695,18 @@
    ]
   },
   {
+   "id": "eval-anchored-ordinal",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-20",
+   "title": "真ん中の段に錨を置いて ◎○（★4〜5）を常にプラスにすると、公開の映画評価では当たりがはっきり下がる（k=80 で −0.04〜−0.05、良くなった人 16〜20%）。0 で止めるだけ（案 3）なら −0.0015",
+   "sources": [
+    "tools/review/eval_anchored_ordinal.py",
+    "https://github.com/librahu/HIN-Datasets-for-Recommendation-and-Network-Embedding"
+   ],
+   "verifies": []
+  },
+  {
    "id": "eval-aspects-sim",
    "type": "finding",
    "status": "unverified",
@@ -11487,6 +11499,16 @@
    "from": "ec2-tokyo-price",
    "rel": "affects",
    "to": "q-ec2-cost"
+  },
+  {
+   "from": "eval-anchored-ordinal",
+   "rel": "depends_on",
+   "to": "q-anchored-ordinal"
+  },
+  {
+   "from": "eval-anchored-ordinal",
+   "rel": "depends_on",
+   "to": "eval-douban-graded-better"
   },
   {
    "from": "eval-aspects-sim",
