@@ -27,7 +27,7 @@ test('the person page lists the coming stages, past stages, own records and outs
     assert.equal(r.status, 200);
     const h = r.body.body_html;
     assert.match(h, /<h1>俳優乙<\/h1>/);
-    assert.match(h, /これから観られる公演 \d+ 件/);
+    assert.match(h, /今後の公演 \d+ 件/);
     assert.match(h, /data-stage="10[12]"/);
     assert.match(h, /Wikipedia で調べる/);
     assert.match(h, /観た記録 \d+ 件/);

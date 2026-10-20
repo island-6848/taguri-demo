@@ -88,7 +88,7 @@ const hrefOf = (path, params, key, anchor) => n => {
 };
 function upcomingBlock(prods, shown, page, href, empty) {
   const last = Math.max(1, Math.ceil(prods.length / UP_PER));
-  return `<h2 id="ent-up">これから観られる公演 ${prods.length} 件</h2>`
+  return `<h2 id="ent-up">今後の公演 ${prods.length} 件</h2>`
     + (shown.length ? `<p class="lead">上演日の近い順に並べています。順位は付けていません。<b>ここから「興味あり」を押すと、「興味あり」の一覧に入ります。</b></p>`
       + `<div class="tickets">${shown.join('')}</div>${pagerHtml(prods.length, UP_PER, Math.min(page, last), href)}` : `<p class="empty">${empty}</p>`);
 }
@@ -124,7 +124,7 @@ export async function personScreen(params, ctx) {
 <p class="hsub">${role ? E(role) + 'として、' : ''}たぐりにある公演と、あなたの観た記録です。</p>
 ${profile}
 ${thread}
-${upcomingBlock(prods, shown, up, hrefOf('/recommend/person', params, 'up', 'ent-up'), 'いま、たぐりにある、これから観られる公演の中には見つかりませんでした。')}
+${upcomingBlock(prods, shown, up, hrefOf('/recommend/person', params, 'up', 'ent-up'), 'いま、たぐりにある今後の公演の中には見つかりませんでした。')}
 ${pastHtml || '<h2>過去の公演（2019 年〜）</h2><p class="empty">たぐりにある過去の公演の中には見つかりませんでした。</p>'}
 ${mineHtml}`;
   return {title: name, body_html: body};
@@ -139,7 +139,7 @@ export async function kindScreen(params, ctx) {
   const shown = await cards(ctx, prods.slice((p - 1) * UP_PER, p * UP_PER), () => `<li class="rs found"><span class="net">形式</span>${E(label)} <b>${E(word)}</b></li>`);
   const body = `<h1>${E(label)}「${E(word)}」の公演</h1>
 <p class="hsub">${E(label)}が「${E(word)}」の、たぐりにある公演です。</p>
-${upcomingBlock(prods, shown, up, hrefOf('/recommend/kind', params, 'up', 'ent-up'), `いま、${E(label)}が「${E(word)}」の、これから観られる公演はありません。`)}`;
+${upcomingBlock(prods, shown, up, hrefOf('/recommend/kind', params, 'up', 'ent-up'), `いま、${E(label)}が「${E(word)}」の、今後の公演はありません。`)}`;
   return {title: `${label}「${word}」`, body_html: body};
 }
 

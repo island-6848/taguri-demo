@@ -26,7 +26,9 @@ const band = (sid, values, hidden = false, current = '') => `<span class="btns"$
 export const buttons = (sid, hidden = false, current = '') => band(sid, current === 'cantgo' ? ['interest', 'nointerest', 'owned', 'cantgo'] : ['interest', 'nointerest', 'owned'], hidden, current);
 // 「なぜ気になったか」は、これまで「回答を直す」と一緒に開いていた（起案者 2026-10-15）。その押し口を、名前を変えて残す
 // 保存済みの「興味あり」も押し直して解除できるよう、現在の回答を選択済みで出す。
-export const interestButtons = sid => band(sid, ['interest', 'nointerest', 'owned', 'cantgo'], false, 'interest');
+// 「行けない」のボタンは外した（起案者の指示 2026-10-20「『行かない』は不要。興味ありにしたけど購入済みにならなかったら自動的に
+// 行けばよかった扱いにすれば良い」）。前に押した「行けない」（interest=2）は答えとして残り、その公演では押し直せるよう出す
+export const interestButtons = sid => band(sid, ['interest', 'nointerest', 'owned'], false, 'interest');
 /** お気に入り: 購入済みにするボタンだけ（起案者の指示 2026-10-15「お気に入りから、購入済みを登録できるようにして」）。 */
 export const ownedButton = (sid, owned = false) => band(sid, ['owned'], false, owned ? 'owned' : '')
   .replace('>購入済</button>', owned ? '>購入済</button>' : '>購入済みにする</button>');
@@ -62,7 +64,7 @@ export function noNote(sid, note = '', hidden = false) {
   const summary = has ? `見送った理由<span class="nnv">${E(note)}</span>` : '見送った理由を書く<span class="opt">任意</span>';
   return `<details class="nn" data-stage="${E(sid)}"${hidden ? ' hidden' : ''}><summary>${summary}</summary>`
     + `<textarea data-nono="${E(sid)}" rows="2" placeholder="例: 日程が合わない／会場が遠い／予算が合わない／この題材は好みではない">${E(note)}</textarea>`
-    + '<div class="wn-foot"><span class="hint">この一覧は消さずに残してあります。理由を書いておくと、あとで「観ればよかった」を拾い直すときに、都合で見送ったものと好みに合わなかったものを見分けられます</span>'
+    + '<div class="wn-foot"><span class="hint">この一覧は消さずに残してあります。理由を書いておくと、あとで「行けばよかった」を拾い直すときに、都合で見送ったものと好みに合わなかったものを見分けられます</span>'
     + '<span class="said"></span></div></details>';
 }
 

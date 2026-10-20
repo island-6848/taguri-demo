@@ -1893,7 +1893,11 @@ function applyFill(fill, g) {
       const dup = fresh && ids(fresh).some(x => here.has(x));
       if (fresh && all.length && !dup) {
         fresh.classList.add("filled");
-        all[all.length - 1].after(fresh);
+        // **押したカードのすぐ下に出す**（起案者の指示 2026-10-20「押したら新しい候補を下に出してほしい。いちいち画面全体が
+        // 読み込まれるとうるさいので、その部分だけ出てくるように」）。前は一覧のいちばん下に足していたので、押した所からは
+        // 見えず、押したカードが縮んで下が詰まる動きだけが目に入った。✕ で消したときは「候補から消しました」の行の下
+        const at = g && (g.closest(".ticket.recommend") || (g.classList && g.classList.contains("dismissed") ? g : null));
+        (at && at.isConnected && !at.closest(".rfind") ? at : all[all.length - 1]).after(fresh);
         if (window.TaguriExposure) TaguriExposure.refresh(contentEl(), "fill");
         bindNotes(fresh);          // 足した 1 枚の入力欄にも動きを付ける
         const ys = document.querySelector(".yfil .ysl");   // 料金の絞り込みを足した 1 枚にも効かせる
@@ -2308,8 +2312,8 @@ document.addEventListener("click", ev => {
           seen.textContent = "観た（もう 1 回追加）";
         });
     } else {
-      post("/api/missed", body, li, "観ればよかったに入れました")
-        .then(r => { if (r) { b.disabled = true; b.textContent = "観ればよかったに入っています"; } });
+      post("/api/missed", body, li, "行けばよかったに入れました")
+        .then(r => { if (r) { b.disabled = true; b.textContent = "行けばよかったに入っています"; } });
     }
   } else if (b.dataset.imp) {
     const g = b.closest(".imp");

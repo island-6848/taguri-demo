@@ -1342,6 +1342,17 @@
    "verifies": []
   },
   {
+   "id": "dec-fill-below",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-20",
+   "title": "おすすめで答えたときの入れ替わりの 1 枚は、押したカードのすぐ下に出す（画面全体は読み込み直さない）",
+   "sources": [
+    "web/app.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-firebase-auth",
    "type": "decision",
    "status": "adopted",
@@ -1570,6 +1581,21 @@
     "cloudflare/scripts/build_cards.py",
     "tools/review/render_recommend.py",
     "cloudflare/test/test_build_cards.py"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-ikeba-yokatta",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-20",
+   "title": "「観ればよかった」を「行けばよかった」にし、興味ありのまま購入済みにならずに終わった公演は自動で入れる。「行けない」のボタンはやめる",
+   "sources": [
+    "cloudflare/src/screens/settings.js",
+    "cloudflare/src/screens/cards.js",
+    "cloudflare/src/screens/search.js",
+    "web/app.js",
+    "cloudflare/test/cantgo.test.js"
    ],
    "verifies": []
   },
@@ -2836,6 +2862,19 @@
    "title": "記録を公演に結び付ける検索には、公開カタログの公演だけを出す",
    "sources": [
     "https://github.com/island-6848/taguri-demo/blob/cloudflare-d1-preview/cloudflare/src/stage-search.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-search-tour-one-card",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-20",
+   "title": "探すの「今後の公演」（前の「これから観られる公演」）は、ツアーを 1 枚にまとめ、答えは全会場に付ける",
+   "sources": [
+    "cloudflare/src/screens/search.js",
+    "cloudflare/src/screens/entity.js",
+    "cloudflare/test/search-uncarded.test.js"
    ],
    "verifies": []
   },
@@ -9252,6 +9291,11 @@
    "to": "q-favourite-homonym"
   },
   {
+   "from": "dec-fill-below",
+   "rel": "affects",
+   "to": "comp-cf-worker"
+  },
+  {
    "from": "dec-firebase-auth",
    "rel": "affects",
    "to": "comp-firebase-login"
@@ -9445,6 +9489,11 @@
    "from": "dec-hook-tag",
    "rel": "affects",
    "to": "dec-theme-kinds-6p2"
+  },
+  {
+   "from": "dec-ikeba-yokatta",
+   "rel": "affects",
+   "to": "comp-cf-worker"
   },
   {
    "from": "dec-import-calendar-mail",
@@ -10330,6 +10379,11 @@
    "from": "dec-search-public-only",
    "rel": "raises",
    "to": "q-past-stage-catalogue"
+  },
+  {
+   "from": "dec-search-tour-one-card",
+   "rel": "affects",
+   "to": "comp-cf-worker"
   },
   {
    "from": "dec-search-worker",

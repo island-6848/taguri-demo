@@ -43,7 +43,7 @@ test('興味あり lists what was answered "interest", with the note; other user
     assert.match(html, /<article class="ticket interest" data-stage="101"/);
     assert.match(html, /<span class="wnt">俳優甲 &amp; 乙<\/span>/);
     // 興味ありの一覧は 興味なし・購入済・行けない を畳まずに（起案者 2026-10-17）。2026-10-19 からは、押してある「興味あり」も印付きで出す（押し直しで解除）
-    assert.match(html, /<span class="btns" data-stage="101" data-current="interest"><button data-v="interest" aria-pressed="true" class="picked">興味あり<\/button><button data-v="nointerest">興味なし<\/button><button data-v="owned">購入済<\/button><button data-v="cantgo">行けない<\/button>/);
+    assert.match(html, /<span class="btns" data-stage="101" data-current="interest"><button data-v="interest" aria-pressed="true" class="picked">興味あり<\/button><button data-v="nointerest">興味なし<\/button><button data-v="owned">購入済<\/button><span class="said">/);
     assert.match(html, /<nav class="idx" aria-label="月で切り替える">/);
     assert.match((await screen(env, b, 'interest')).body_html, /「興味あり」の公演はまだありません/);
     // Not interested: out of 興味あり.
@@ -262,8 +262,10 @@ test('設定・はじめる・登録, the default prefectures, 観ればよか�
     const reg = (await screen(env, a, 'register')).body_html;
     assert.match(reg, /<h1>観劇記録を追加<\/h1>/);
     assert.match(reg, /<span class="badge part">2 件<\/span>/);
-    assert.match(reg, /一覧にはあったが、表示する枠に入らなかった<\/span><span class="w">舞台ひとつめ<\/span>[\s\S]*<span class="cl">出演<\/span><span class="cv">俳優甲、俳優乙<\/span>/);
-    assert.match(reg, /取り込んだ公演の中に無かった<\/span><span class="w">聞いたことのない舞台/);
+    // 行けばよかった（2026-10-20 に「観ればよかった」から名前を変え、題名 1 行・くわしくは畳む形にした）
+    assert.match(reg, /<summary><h2[^>]*>[\s\S]*?行けばよかった/);
+    assert.match(reg, /<b class="mt">舞台ひとつめ<\/b>[\s\S]*<summary>くわしく<\/summary>[\s\S]*<span class="cl">出演<\/span><span class="cv">俳優甲、俳優乙<\/span>/);
+    assert.match(reg, /<b class="mt">聞いたことのない舞台<\/b>/);
     assert.doesNotMatch((await screen(env, b, 'register')).body_html, /舞台ひとつめ/);
     // The export holds this user's rows only.
     const res = await (await import('../src/worker.js')).default.fetch(new Request('https://taguri.example/export.json', {headers: {cookie: a}}), env);
@@ -282,15 +284,15 @@ test('探す: coming stages and works seen, by words and by month', async () => 
   try {
     const empty = (await screen(env, a, 'search')).body_html;
     assert.match(empty, /<h1>探す<\/h1>/);
-    assert.match(empty, /これから観られる公演 3 件と観た記録の両方から探します/);
+    assert.match(empty, /今後の公演 3 件と観た記録の両方から探します/);
     // A new account (no records yet) still gets the month calendar, opened on the coming stages
     // (2026-10-14 起案者「『探す』にあったカレンダーが消えてる」).
     assert.match(empty, /<div class="cal" id="cal">/);
-    assert.match(empty, /aria-current="page"[^>]*>これから観られる公演|これから観られる公演[^<]*<span class="mn">3<\/span>/);
+    assert.match(empty, /aria-current="page"[^>]*>今後の公演|今後の公演[^<]*<span class="mn">3<\/span>/);
     assert.match(empty, /class="cal-c l\d/);
     // A coming stage found by a cast name: the card with 「ヒットした箇所」 on top.
     const byName = (await screen(env, a, 'search', '?q=' + encodeURIComponent('俳優甲'))).body_html;
-    assert.match(byName, /<h2>これから観られる公演 1 件<\/h2>/);
+    assert.match(byName, /<h2>今後の公演 1 件<\/h2>/);
     assert.match(byName, /<div class="whyh top">[\s\S]*ヒットした箇所：<\/div><ul class="why top"><li class="rs found"><span class="net">出演<\/span>俳優甲<\/li><\/ul>/);
     assert.doesNotMatch(byName, /おすすめ理由/);
     assert.match(byName, /この名前を追いますか？[\s\S]*data-name="俳優甲"/);
