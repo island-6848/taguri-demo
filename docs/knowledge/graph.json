@@ -6809,6 +6809,18 @@
    "verifies": []
   },
   {
+   "id": "q-improve-1-attribution",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-20",
+   "title": "改善案 ①「評価を人物ごとに適切に割り当てる」── 何が既にあり、何が残っているか。どれを直すか",
+   "sources": [
+    "tools/review/user_recommender.py",
+    "cloudflare/src/recommend.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "q-index-incremental",
    "type": "question",
    "status": "answered",
@@ -13198,6 +13210,31 @@
    "from": "q-impression-not-in-service",
    "rel": "affects",
    "to": "dec-reco-on-worker"
+  },
+  {
+   "from": "q-improve-1-attribution",
+   "rel": "depends_on",
+   "to": "impl-rating-aspects"
+  },
+  {
+   "from": "q-improve-1-attribution",
+   "rel": "depends_on",
+   "to": "eval-yahoo-aspects"
+  },
+  {
+   "from": "q-improve-1-attribution",
+   "rel": "depends_on",
+   "to": "q-aspect-attribution-check"
+  },
+  {
+   "from": "q-improve-1-attribution",
+   "rel": "depends_on",
+   "to": "q-aspect-usage-check"
+  },
+  {
+   "from": "q-improve-1-attribution",
+   "rel": "depends_on",
+   "to": "dec-part-two-tiers"
   },
   {
    "from": "q-index-incremental",
