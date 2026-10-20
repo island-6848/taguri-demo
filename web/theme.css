@@ -1675,3 +1675,6 @@ details.lprice:not([open]):not(#_)>summary .plist>li:only-child::before{display:
 .dginfo details.lprice summary .lp-more::before{content:"▼";font-size:9px;margin-right:2px}
 .dginfo details.lprice[open] summary .lp-more::before{content:"▲"}
 .dginfo .lp-body{background:var(--fold-bg);border-radius:6px;padding:6px 8px;margin:4px 0 0}
+/* 行けばよかったの題名の欄の候補（app.js の #miss-title）。欄と「足す」の下に、全幅で並べる。空のときは場所を取らない */
+.miss-add .miss-sug{flex:1 0 100%}
+.miss-add .miss-sug:empty{display:none}
