@@ -6,13 +6,8 @@ import {peopleByKey, recordsLede, autoMerge} from './diary.js';
 import {autoLink, pastStages} from './autolink.js';
 import {strip} from './py.js';
 import {panel as chroniclePanel} from './chronicle.js';
-<<<<<<< cloudflare/src/screens/records.js
-import {spiralPanel, venuePanel} from './charts.js';
-import {comparisonPopulation, personalComparison, fourPanels} from './compare-four.js';
-=======
 import {spiralPanel} from './charts.js';
-import {craftRows, panel as comparePanel, popNote, population} from './compare.js';
->>>>>>> /tmp/four-master-0
+import {comparisonPopulation, personalComparison, fourPanels} from './compare-four.js';
 import {RECORDS_EMPTY} from './diary.js';
 import {localNow} from './py.js';
 import {timetableFor} from './timetable.js';

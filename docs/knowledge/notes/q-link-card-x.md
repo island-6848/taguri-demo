@@ -1,7 +1,7 @@
 ---
 id: q-link-card-x
 type: question
-status: open
+status: answered
 date: 2026-10-19
 title: X にリンクのカードが出ない（2026-10-19、起案者の報告）。何が原因か
 sources:

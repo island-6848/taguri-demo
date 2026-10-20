@@ -125,7 +125,7 @@ def build_index(pool: dict[str, dict], fields_by_stage: dict[str, dict], role_gr
     stages, postings = {}, []
     for sid, entry in pool.items():
         title = entry.get("title") or ""
-        if any(word in title for word in RC.NOT_PLAY_TITLE):
+        if any(word in title for word in RC.NOT_STAGE_TITLE):
             continue
         period = entry.get("period") or ""
         credits = sorted(set(M.parse_credits(entry.get("fields") or {})))

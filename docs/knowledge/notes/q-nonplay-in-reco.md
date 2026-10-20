@@ -1,7 +1,7 @@
 ---
 id: q-nonplay-in-reco
 type: question
-status: open
+status: answered
 date: 2026-10-19
 title: 能・歌舞伎・落語・バレエ・オペラなどを、おすすめの候補に入れるか（いまは題名で外している）
 sources:
