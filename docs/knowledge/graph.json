@@ -3714,6 +3714,31 @@
    "verifies": []
   },
   {
+   "id": "f-app-store-fees",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-20",
+   "title": "ストアに出すには登録料がかかる（App Store は年 99 米ドル、Google Play は最初に 25 米ドル）。ホーム画面に入れる Web アプリ（PWA）はかからない",
+   "sources": [
+    "https://developer.apple.com/support/membership-fee-waiver/",
+    "https://support.google.com/googleplay/android-developer/answer/6112435",
+    "https://studio.adalo.com/blog/apple-developer-program-guide"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "f-ios-web-push",
+   "type": "finding",
+   "status": "unverified",
+   "date": "2026-10-20",
+   "title": "iPhone・iPad でも、ホーム画面に追加した Web アプリは通知（Web Push）を受け取れる（iOS 16.4 から）",
+   "sources": [
+    "https://webkit.org/blog/13878/web-push-for-web-apps-on-ios-and-ipados/",
+    "https://www.webkit.org/?p=13966"
+   ],
+   "verifies": []
+  },
+  {
    "id": "f-link-card-spec",
    "type": "finding",
    "status": "unverified",
@@ -6136,6 +6161,15 @@
     "cloudflare/src/screens/evalrec.js",
     "cloudflare/src/screens/recommend.js"
    ],
+   "verifies": []
+  },
+  {
+   "id": "q-app-direction",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-20",
+   "title": "「本格的にアプリ化」をどう進めるか（ホーム画面に入れる Web アプリ＝PWA から始めるか）",
+   "sources": [],
    "verifies": []
   },
   {
@@ -11040,6 +11074,16 @@
    "to": "q-aspect-attribution-check"
   },
   {
+   "from": "f-app-store-fees",
+   "rel": "affects",
+   "to": "q-app-direction"
+  },
+  {
+   "from": "f-ios-web-push",
+   "rel": "affects",
+   "to": "q-app-direction"
+  },
+  {
    "from": "f-link-card-spec",
    "rel": "affects",
    "to": "dec-link-card"
@@ -12618,6 +12662,16 @@
    "from": "q-answer-snapshot-shown",
    "rel": "affects",
    "to": "impl-replay-eval"
+  },
+  {
+   "from": "q-app-direction",
+   "rel": "depends_on",
+   "to": "f-app-store-fees"
+  },
+  {
+   "from": "q-app-direction",
+   "rel": "depends_on",
+   "to": "f-ios-web-push"
   },
   {
    "from": "q-aspect-attribution-check",
