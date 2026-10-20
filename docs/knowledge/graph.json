@@ -1585,6 +1585,21 @@
    "verifies": []
   },
   {
+   "id": "dec-ikeba-yokatta",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-20",
+   "title": "「観ればよかった」を「行けばよかった」にし、興味ありのまま購入済みにならずに終わった公演は自動で入れる。「行けない」のボタンはやめる",
+   "sources": [
+    "cloudflare/src/screens/settings.js",
+    "cloudflare/src/screens/cards.js",
+    "cloudflare/src/screens/search.js",
+    "web/app.js",
+    "cloudflare/test/cantgo.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-import-calendar-mail",
    "type": "decision",
    "status": "adopted",
@@ -9460,6 +9475,11 @@
    "from": "dec-hook-tag",
    "rel": "affects",
    "to": "dec-theme-kinds-6p2"
+  },
+  {
+   "from": "dec-ikeba-yokatta",
+   "rel": "affects",
+   "to": "comp-cf-worker"
   },
   {
    "from": "dec-import-calendar-mail",

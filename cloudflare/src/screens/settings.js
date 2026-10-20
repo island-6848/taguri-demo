@@ -13,7 +13,8 @@ import {E, ValueError} from './py.js';
 import {ico, h2} from './icons.js';
 import {PREFS, readPrefSetting, regionsHtml, regionCounts, prefSettingAction} from './prefs.js';
 import {rankedGroups, prefCounts} from './recommend.js';
-import {KINDS, loadDeclared, favRoleBox} from './lists.js';
+import {KINDS, loadDeclared, favRoleBox, reactionsOf} from './lists.js';
+import {stageInfo} from './fallback.js';
 import {loadWorks, titleKey, DROP_KEEP_DAYS, expiredKeys} from './works.js';
 import {dateParts} from './row.js';
 import {splitNames} from './cast.js';
@@ -76,7 +77,7 @@ ${body}</details>`;
 
 const EXPORT_LABEL = {works: '観た公演の記録（作品ごと）', ratings: '観た回ごとの評価と感想', attendance: '観に行ったかどうかの答え',
   reaction: 'おすすめへの答え（持っている・興味あり・興味なし）', ticket: '券の日にち', presented: 'これまでに表示したおすすめの一覧',
-  splits: '1 通のメールを複数の公演に分けた指定', excluded: '取り込みから外した公演', missed: '「観ればよかった」の登録', declared: 'お気に入りに登録した名前と題材',
+  splits: '1 通のメールを複数の公演に分けた指定', excluded: '取り込みから外した公演', missed: '「行けばよかった」の登録', declared: 'お気に入りに登録した名前と題材',
   hand_credits: '手で入れた出演・スタッフとポスター', merges: '1 つにまとめた記録', visit_note: '観た回ごとのメモ',
   rank_weight: 'おすすめの選び方（効かせ方）', favourites: 'お気に入り（以前の登録）', settings: '設定（評価の付け方・都道府県・表示名など）',
   search_request: '探した言葉', fix_request: '公演情報の誤りの知らせ', records: '以前の形式の観劇記録', reactions: '以前の形式のおすすめへの答え'};
@@ -284,10 +285,40 @@ async function missedRows(ctx) {
   });
 }
 
-function missedHtml(rows) {
-  if (!rows.length) return '<p class="empty">まだ登録はありません。<b>登録すると、その公演がどこで漏れたのか（取り込んだ一覧に無かった／順位が足りなかった／出したのに押されなかった）と、演者・あらすじをここに出します。</b></p>';
-  const out = rows.map(r => {
-    const [head, why] = MISSED_WHERE[r.where];
+/**
+ * 興味ありにしたまま、購入済みにならずに終わった公演（起案者の指示 2026-10-20「興味ありにしたけど購入済みにならなかったら自動的に
+ * 行けばよかった扱いにすれば良い」）。保存はせず、開くたびに答え（reaction）と公演の終わりの日から数える。観た記録のある公演・
+ * 自分で登録した題名は除く。ツアーは題名と団体で 1 行にまとめる（いちばん遅い終わりの日）
+ */
+async function autoMissed(ctx, works, manual) {
+  const reacts = await reactionsOf(ctx);
+  const sids = [...reacts].filter(([, d]) => (d.interest === 1 || d.interest === 2) && d.owned !== 1).map(([sid]) => String(sid));
+  if (!sids.length) return [];
+  const info = await stageInfo(ctx.db, sids);
+  const seen = new Set(works.filter(w => !w.unseen).flatMap(w => [w.stage_id ? 'sid:' + w.stage_id : '', 'key:' + titleKey(w.title || '')]).filter(Boolean));
+  const mine = new Set(manual.map(m => titleKey(m.title)));
+  const out = new Map();
+  for (const sid of sids) {
+    const st = info.get(sid);
+    if (!st || !st.end || st.end >= ctx.today) continue;
+    const key = titleKey(st.title || '');
+    if (seen.has('sid:' + sid) || seen.has('key:' + key) || mine.has(key)) continue;
+    const g = key + '\u0000' + (st.group || '');
+    const had = out.get(g);
+    if (!had || st.end > had.end) out.set(g, {title: st.title, venue: st.venue || '', end: st.end, stage_id: sid, at: String(reacts.get(sid)?.at || '').slice(0, 10)});
+  }
+  return [...out.values()].sort((x, y) => (x.end < y.end ? 1 : x.end > y.end ? -1 : 0));
+}
+
+const ymd = d => (/^\d{4}-\d{2}-\d{2}/.test(d || '') ? `${d.slice(0, 4)}/${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}` : '');
+
+/** 行けばよかった（自動で入った分と、自分で登録した分）。題名を 1 行に並べ、くわしくは畳む */
+function missedHtml(rows, auto = []) {
+  if (!rows.length && !auto.length) return '<p class="empty">まだありません。「興味あり」にしたまま購入済みにならずに終わった公演は、ここに自動で入ります。</p>';
+  const autoLi = auto.map(r => `<li class="miss-row"><b class="mt">${E(r.title)}</b><span class="mw">${E([r.venue, r.end ? ymd(r.end) + ' まで' : ''].filter(Boolean).join('・'))}</span>`
+    + `<span class="mk auto">興味ありのまま終わった</span></li>`).join('');
+  const handLi = rows.map(r => {
+    const [, why] = MISSED_WHERE[r.where];
     let look;
     if (!r.looked_up) look = '<p class="empty">演者とあらすじを調べています…</p>';
     else if (!r.stage_id) look = `<p class="empty">${E(r.lookup_note || 'この題名の公演ページが見つかりませんでした')}</p>`;
@@ -295,9 +326,10 @@ function missedHtml(rows) {
       look = castBlock(r.fields) + (r.synopsis ? `<div class="syn"><p class="txt">${E(r.synopsis)}</p><span class="src">［出典: CoRich の公演ページ］</span></div>`
         : '<p class="empty">あらすじを取れませんでした（公演ページに内容の記載がありません）。</p>') + (r.lookup_note ? `<p class="empty">${E(r.lookup_note)}</p>` : '');
     }
-    return `<div class="prom"><span class="k">${E(head)}</span><span class="w">${E(r.title)}</span><span class="src">${E(r.at)} に登録</span><span class="q">${why}</span>${look}</div>`;
+    return `<li class="miss-row"><b class="mt">${E(r.title)}</b><span class="mk">${E(r.at)} に登録</span>`
+      + `<details class="miss-more"><summary>くわしく</summary><p class="note">${why}</p>${look}</details></li>`;
   }).join('');
-  return `<p class="lead">登録した ${rows.length} 件の、<b>どこで漏れたのか</b>と<b>演者とあらすじ</b>です。出演者・作り手は調べ終わり次第、次の推薦に自動で反映されます（観ていない公演なので、◎ より弱い扱いです）。</p>${out}`;
+  return `<ul class="miss-list">${autoLi}${handLi}</ul>`;
 }
 
 /** render_recommend.cast_block */
@@ -322,6 +354,7 @@ export async function registerScreen(_params, ctx) {
   const works = await loadWorks(ctx);
   const wait = works.filter(w => !w.verdict && !w.unseen && w.last_date && w.last_date <= ctx.today);
   const missed = await missedRows(ctx);
+  const autoMiss = await autoMissed(ctx, works, missed);
   const body = `<h1>観劇記録を追加</h1>
 <p class="lede">公演名だけでも保存できます。日付や評価はあとから追加できます。</p>
 <div class="card register-single">${h2('plus', '観た公演を1件追加')}
@@ -382,16 +415,12 @@ export async function registerScreen(_params, ctx) {
 <div class="imx-row"><button type="button" class="primary" data-imx-add="1">選んだものを記録に足す</button></div></div>
 </div>
 
-<details class="card register-missed"><summary>${h2('flag', '観ていない公演を「観ればよかった」に残す', missed.length ? `<span class="badge part">${missed.length} 件</span>` : '')}</summary>
-<p class="lead">出てこなかったせいで見逃した公演を登録してください。
-どこで漏れたのか（一覧に無かった／順位が低かった／出したのに押されなかった）と、
-演者・あらすじを調べて下に出します（数十秒かかることがあります）。<br>
-<b>これは観ていない公演のための記録です。</b>観た本数にも、図にも、評価待ちにも入らず、
-評価（◎）の材料にもなりません。再演や別会場での上演を次は見逃したくないときは、
-下の一覧から「お気に入りに入れる」を押してください。</p>
+<details class="card register-missed"><summary>${h2('flag', '行けばよかった', missed.length + autoMiss.length ? `<span class="badge part">${missed.length + autoMiss.length} 件</span>` : '')}</summary>
+<p class="lead">行きたかったのに行けなかった公演です。<b>「興味あり」にしたまま購入済みにならずに終わった公演は、自動でここに入ります。</b>
+ほかの公演は題名で足せます（探す画面の過去の公演からも足せます）。観た本数・評価には入りません。</p>
 <div class="miss-add"><label class="fld" for="miss-title"><span class="fl">公演の題名<small class="req">必須</small></span><input id="miss-title" type="text" placeholder="例：夜の果て" size="30"></label>
- <button data-miss="1">${ico('flag')}登録する</button><span class="said"></span></div>
-${missedHtml(missed)}</details>
+ <button data-miss="1">${ico('flag')}足す</button><span class="said"></span></div>
+${missedHtml(missed, autoMiss)}</details>
 
 ${registerDialogHtml()}
 <p class="note">保存した記録の評価・感想は、<a href="/rate?t=__TAGURI_TOKEN__">「観た公演の評価」（未評価 ${wait.length} 件）</a>で追加できます。</p>`;

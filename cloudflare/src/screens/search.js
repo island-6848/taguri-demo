@@ -229,11 +229,11 @@ export async function pastHits(ctx, q, ws, page = 1, href = null) {
 <div class="past-w">${E(run)}${p.where ? '・' + E(p.where) : ''}</div>
 <div class="past-why">ヒットした箇所：${p.why.map(E).join('・')}</div>
 <div class="past-btns"><button type="button" data-past="seen">観た</button>`
-      + `<button type="button" data-past="missed"${isMissed ? ' disabled' : ''}>${isMissed ? '観ればよかったに入っています' : '観ればよかった'}</button></div>${seenForm}<span class="said"></span></li>`;
+      + `<button type="button" data-past="missed"${isMissed ? ' disabled' : ''}>${isMissed ? '行けばよかったに入っています' : '行けばよかった'}</button></div>${seenForm}<span class="said"></span></li>`;
   }).join('');
   const more = capped ? `<p class="lead">題名で当たる公演が多いので、題名の順に ${PAST_TITLE_ROWS} 公演までを読んで出しています。言葉を足すと絞れます。</p>` : '';
   return [`<h2>過去の公演（2019 年〜） ${prods.length} 件</h2>
-<p class="lead">終わった公演のうち、まだ日記帳に無いものです。<b>「観た」</b>を押して観た日を入れると、観劇記録に追加して、その公演と結び付けます。開演の時刻も入れられます。<b>「観ればよかった」</b>を押すと、見逃した公演の一覧に入ります。
+<p class="lead">終わった公演のうち、まだ日記帳に無いものです。<b>「観た」</b>を押して観た日を入れると、観劇記録に追加して、その公演と結び付けます。開演の時刻も入れられます。<b>「行けばよかった」</b>を押すと、見逃した公演の一覧に入ります。
 題名は先頭から一致するもの、人・団体は名前全体が一致するものを探しています。</p>${more}<ul class="pastlist" id="past-hits">${li}</ul>${pagerHtml(prods.length, PAST_PER, page, href)}`, prods.length];
 }
 

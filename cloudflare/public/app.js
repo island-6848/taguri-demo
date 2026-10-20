@@ -2312,8 +2312,8 @@ document.addEventListener("click", ev => {
           seen.textContent = "観た（もう 1 回追加）";
         });
     } else {
-      post("/api/missed", body, li, "観ればよかったに入れました")
-        .then(r => { if (r) { b.disabled = true; b.textContent = "観ればよかったに入っています"; } });
+      post("/api/missed", body, li, "行けばよかったに入れました")
+        .then(r => { if (r) { b.disabled = true; b.textContent = "行けばよかったに入っています"; } });
     }
   } else if (b.dataset.imp) {
     const g = b.closest(".imp");
