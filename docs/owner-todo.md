@@ -20,6 +20,19 @@
 - [ ] 掲載情報を入れる: 文面は [store/google-play-listing.md](store/google-play-listing.md)、画像は `docs/store/images/`〔impl-store-images〕。データセーフティ・コンテンツのレーティングに答える
 - [ ] 問い合わせ用のメールアドレスを作る（規約・削除依頼の窓口に載せる）〔q-contact-email〕
 
+## システムテストで起案者が流すこと（手順は [手順書](system-test-procedure.md)）
+
+本番・Cloudflare・taguri-crawler・実機には Claude の作業環境から届かないので、ここだけお願いします。Claude が手順・SQL・記録の形を先に用意します〔dec-system-test-design〕。
+
+- [ ] 11/5〜11/9: 本番のスモーク（P-08）・本番のログとヘッダ（P-07 の 2・4）・本番の出し方の確認（P-12）
+- [ ] 11/5〜11/9: 試験用の D1 `taguri-st` で Time Travel の戻し（P-09）と migration の失敗（P-13）
+- [ ] 11/1 以降: Restore drill と控えからの戻し（P-10）。続けて 7 日、毎日の控えを見る
+- [ ] taguri-crawler で実カタログの CPU を測る（P-06 の 1〜3）
+- [ ] 10/26〜11/9: 実機（P-14）。iPhone・Android（Chrome とアプリ）・Mac・Windows。iPhone の Safari は 7 日後にもう一度開く
+- [ ] Service watch・Catalog age をわざと鳴らしたとき（P-11）、通知のメールが届いたか Claude に知らせる
+- [ ] 11/10〜: 切り替えの前後の確認と、7 日の Render への要求の数え（P-15）
+- [ ] 11/17〜12/14: ベータの参加者を招き、3 人以上は横で見る（P-16）
+
 ## 実機で確かめること
 
 - [ ] パスキーを iPhone・Android で登録・ログインできるか〔q-passkey-real-devices〕
@@ -35,12 +48,12 @@
 
 ## 決めること
 
-- [ ] [システムテスト計画書](system-test-plan.md)を認めるか: 日程、本番で流す試験の 1 日の量、対象の OS・ブラウザ、戻すまでの時間（4 時間）の目標〔dec-system-test-plan〕
 - [ ] 公開リポジトリの過去の履歴に残る観劇記録・第三者の連絡先を、履歴から消すか〔q-pii-git-history〕
 - [ ] 「眺める」に足す図を選ぶ〔q-records-viz〕
 - [ ] 下書きの PR #9・#12（`cloudflare-d1-preview` 向け）を続けるか閉じるか
 
 ## 済み
 
+- 2026-10-20 システムテスト計画書を承認した（日程・本番の試験の量・対象の OS とブラウザ・RTO 4 時間）〔dec-system-test-plan〕
 - 2026-10-20 ストアの登録料は起案者が負担すると決めた〔dec-app-release-costs〕
 - 2026-10-13 取得用の非公開リポジトリ taguri-crawler を作り、Claude の GitHub アプリを許可した〔q-crawler-repo〕

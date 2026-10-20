@@ -3238,11 +3238,24 @@
    "verifies": []
   },
   {
-   "id": "dec-system-test-plan",
+   "id": "dec-system-test-design",
    "type": "decision",
    "status": "proposed",
    "date": "2026-10-20",
-   "title": "一般公開の前のシステムテストは、IPA の非機能要件の 6 観点に S01〜S35 を並べ直して行い、負荷・壊す試験はローカルと別の D1 だけ、本番は 1 日の使う量を決めた少しの確かめだけにする（起案者の承認待ち）",
+   "title": "システムテストは 116 ケース（必須 99）。本番・Cloudflare・実機は起案者が流し、Claude は手順と記録を用意する。Time Travel・migration の失敗は試験用の別の D1（taguri-st）で試す",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/blob/master/docs/system-test-spec.md",
+    "https://github.com/island-6848/taguri-demo/blob/master/docs/system-test-procedure.md",
+    "https://github.com/island-6848/taguri-demo/blob/master/docs/backup-restore.md"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-system-test-plan",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-20",
+   "title": "一般公開の前のシステムテストは、IPA の非機能要件の 6 観点に S01〜S35 を並べ直して行い、負荷・壊す試験はローカルと別の D1 だけ、本番は 1 日の使う量を決めた少しの確かめだけにする（2026-10-20 起案者が承認）",
    "sources": [
     "https://github.com/island-6848/taguri-demo/blob/master/docs/system-test-plan.md"
    ],
@@ -11143,6 +11156,41 @@
    "from": "dec-synopsis-reader-claude",
    "rel": "raises",
    "to": "q-synopsis-routine-quota"
+  },
+  {
+   "from": "dec-system-test-design",
+   "rel": "depends_on",
+   "to": "dec-system-test-plan"
+  },
+  {
+   "from": "dec-system-test-design",
+   "rel": "depends_on",
+   "to": "dec-free-tier-only"
+  },
+  {
+   "from": "dec-system-test-design",
+   "rel": "affects",
+   "to": "q-d1-migration-failure"
+  },
+  {
+   "from": "dec-system-test-design",
+   "rel": "affects",
+   "to": "q-workers-cpu-real"
+  },
+  {
+   "from": "dec-system-test-design",
+   "rel": "affects",
+   "to": "q-passkey-real-devices"
+  },
+  {
+   "from": "dec-system-test-design",
+   "rel": "affects",
+   "to": "q-safari-cookies"
+  },
+  {
+   "from": "dec-system-test-design",
+   "rel": "affects",
+   "to": "q-firebase-user-deletion"
   },
   {
    "from": "dec-system-test-plan",
