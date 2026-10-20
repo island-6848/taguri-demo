@@ -68,3 +68,20 @@ test('眺める shows the map from the diary, with the census as the denominator
   } finally { sqlite.close(); }
 });
 
+
+test('the venue written on the record counts, not another venue of the tour it is linked to', async () => {
+  // 起案者の指摘（2026-10-20）「キャナルシティ劇場追加したのに福岡が塗られなかった」: 東京の会場の公演に結び付いた記録で、
+  // 観た劇場をキャナルシティ劇場にしていた
+  const {env, sqlite} = setup();
+  const a = await signIn(env);
+  try {
+    sqlite.exec("INSERT INTO venue_census(venue,pref) VALUES('キャナルシティ劇場','福岡県'),('劇場A','東京都')");
+    sqlite.exec("INSERT INTO past_stage(stage_id,title,tkey,start,end,venue,grp,pref,people) VALUES('900','旅の芝居','旅の芝居','2025-07-01','2025-08-30','劇場A','劇団甲','東京都','[]')");
+    sqlite.exec("INSERT INTO past_stage(stage_id,title,tkey,start,end,venue,grp,pref,people) VALUES('901','別の芝居','別の芝居','2025-07-01','2025-08-30','劇場A','劇団甲','東京都','[]')");
+    await step(env, a, {post: '/api/add_work', body: {title: '旅の芝居', date: '2025-08-20', stage_id: '900', venue: 'キャナルシティ劇場'}});
+    await step(env, a, {post: '/api/add_work', body: {title: '別の芝居', date: '2025-08-21', stage_id: '901'}});   // 劇場は公演から
+    const html = (await step(env, a, {get: '/api/screen/records'})).body.body_html;
+    assert.match(html, /<title>福岡県：1 か所<\/title>/);
+    assert.match(html, /<title>東京都：1 か所<\/title>/);
+  } finally { sqlite.close(); }
+});

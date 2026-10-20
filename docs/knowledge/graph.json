@@ -4093,6 +4093,19 @@
    "verifies": []
   },
   {
+   "id": "fix-conquest-record-venue",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-20",
+   "title": "劇場制覇マップは、記録に書いた劇場を、結び付いた公演の劇場より先に見る（ツアーの別会場の公演に結び付いた記録で、観た劇場が塗られなかった）",
+   "sources": [
+    "cloudflare/src/screens/conquest.js",
+    "cloudflare/test/conquest.test.js",
+    "https://github.com/island-6848/taguri-crawler/blob/state/d1/delivered.json"
+   ],
+   "verifies": []
+  },
+  {
    "id": "fix-cpu-same-production",
    "type": "finding",
    "status": "unverified",
@@ -11669,6 +11682,11 @@
    "from": "fix-card-synopsis-stale",
    "rel": "depends_on",
    "to": "dec-recommend-worker-cards"
+  },
+  {
+   "from": "fix-conquest-record-venue",
+   "rel": "affects",
+   "to": "comp-cf-worker"
   },
   {
    "from": "fix-cpu-same-production",
