@@ -3675,6 +3675,18 @@
    "verifies": []
   },
   {
+   "id": "f-link-card-x-ok",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-20",
+   "title": "X（Twitter）にリンクのカードが出るようになった（起案者が確認）",
+   "sources": [
+    "cloudflare/public/robots.txt",
+    "cloudflare/src/link-card.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "f-noh-program-staff",
    "type": "finding",
    "status": "confirmed",
@@ -6666,7 +6678,7 @@
   {
    "id": "q-link-card-x",
    "type": "question",
-   "status": "open",
+   "status": "answered",
    "date": "2026-10-19",
    "title": "X にリンクのカードが出ない（2026-10-19、起案者の報告）。何が原因か",
    "sources": [
@@ -10958,6 +10970,16 @@
   {
    "from": "f-link-card-spec",
    "rel": "affects",
+   "to": "dec-link-card"
+  },
+  {
+   "from": "f-link-card-x-ok",
+   "rel": "answers",
+   "to": "q-link-card-x"
+  },
+  {
+   "from": "f-link-card-x-ok",
+   "rel": "depends_on",
    "to": "dec-link-card"
   },
   {
