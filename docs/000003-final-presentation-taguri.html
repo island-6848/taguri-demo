@@ -382,7 +382,7 @@ ol.refs li:target{background:rgba(var(--brand-rgb),.12)}
   <div class="toc-grid wide">
     <a href="#ch2"><span class="n">01</span><span><h4>企画内容</h4><p>課題・価値・対象ユーザー・想定シーン</p></span></a>
     <a href="#ch3"><span class="n">02</span><span><h4>機能概要</h4><p>機能の分類・使用イメージ・使っている技術・システム構成・アプリ化</p></span></a>
-    <a href="#algo"><span class="n">03</span><span><h4>推薦アルゴリズム</h4><p>問題設定・評価の順序化・縮約した値・種類のタグ・点の式と出す条件・お気に入りと興味ありの事前・1 段広げる・並べ直し・裏の答え合わせ（符号検定）・検証と限界</p></span></a>
+    <a href="#algo"><span class="n">03</span><span><h4>推薦アルゴリズム</h4><p>問題設定・評価の順序化・縮約した値・種類のタグ・あらすじからの題材の抽出・点の式と出す条件・お気に入りと興味ありの事前・1 段広げる・並べ直し・裏の答え合わせ（符号検定）・検証と限界</p></span></a>
     <a href="#ch4"><span class="n">04</span><span><h4>セキュリティ</h4><p>境界線の概念図</p></span></a>
     <a href="#ch5"><span class="n">05</span><span><h4>達成事項</h4><p>実現できたこと・メリット・未実装</p></span></a>
     <a href="#ch6"><span class="n">06</span><span><h4>今後の展望</h4><p>検討中の拡張・応用の可能性</p></span></a>
@@ -954,6 +954,109 @@ ol.refs li:target{background:rgba(var(--brand-rgb),.12)}
     </div>
   </div>
 
+
+  <h3 class="sub">3.5.1　あらすじから #題材 を取り出す</h3>
+  <p class="para">3.5 のタグのうち #題材 だけは、公演ページの決まった欄から読めない。あらすじは公演ページの本文に宣伝文・出演者の紹介・クチコミと混ざって書かれ、見出しの語で切り出す以前の規則では、本物のあらすじを 24% しか取れなかった。そこで、LLM に本文を読ませてあらすじと内容の言葉を取り出し、<b>本文と照らして通ったものだけ</b>を残す。読むのは公演ごとに一度だけで、結果は版の名前を付けて確定させる。訪問者の操作で LLM を呼ぶことはない（2-4）。</p>
+
+  <h4 class="eqhead">入力と出力</h4>
+  <p class="para">公演 <i>s</i> の入力 <i>T</i>(<i>s</i>) は、取得元（CoRich）の公演ページ 2,500 字と公式サイト 3,500 字を、この順につないだ本文である。取得元を先に置くのは、その公演のことしか書かれていないからである。HTML を文字にしたあと、NFKC で正規化し、20 字未満の行と重複行、クチコミと自動表示の投稿の欄を落とす（浅い特徴で定型部分を除く手法 <a href="#ref-34">[34]</a> の、最も単純な形）。これで 5,500 字のページが 1,159 字になった例がある。本文が 400 字に満たない公演は LLM に渡さない（2026-10-16 の 1,353 件中 42 件で、渡してもあらすじは 0 件だった）。</p>
+  <p class="para">出力は、あらすじ <i>y</i>（本文のまま 60〜300 字）と、言葉の集合 <i>E</i>(<i>s</i>) ＝ {(<i>k</i>, <i>w</i>, <i>b</i>, <i>f</i>)} である。<i>k</i> は種類、<i>w</i> は言葉、<i>b</i> は根拠、<i>f</i> は根拠の引用である。種類はジャンル・題材・テーマ・舞台設定・味わい・語り口の 6 つに、照合に使わない原作・モチーフを足した 8 つで、1 公演の上限はそれぞれ 2・4・3・2・3・2・2・3 個とする。根拠は 本文・推定・作風・知識・定評 の 5 つで、知識と定評は、本文に名前が出ている作品・作家・劇団について言えることにだけ許す。プロンプトの末尾に語彙表（110 概念）を付け、合う言葉があればその言葉を使わせる。</p>
+
+  <figure class="wide">
+    <svg viewBox="0 0 960 300" role="img" aria-label="あらすじの抽出の流れ。公演ページと公式サイトの本文を前処理し、LLM が版 g5 のプロンプトであらすじと言葉を答え、本文と照らして通ったものだけを確定させ、索引の #題材 に重さを付けて入れる。">
+      <defs><marker id="fk2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1l7 4-7 4z" class="aF-m"/></marker></defs>
+      <rect x="20" y="40" width="170" height="96" rx="10" class="aTip"/>
+      <text x="105" y="66" text-anchor="middle" class="aH">本文 <tspan font-style="italic">T</tspan>(<tspan font-style="italic">s</tspan>)</text>
+      <text x="105" y="90" text-anchor="middle" class="aS">取得元 2,500 字</text>
+      <text x="105" y="110" text-anchor="middle" class="aS">＋公式サイト 3,500 字</text>
+      <path d="M190 88H226" class="aL" marker-end="url(#fk2)"/>
+      <rect x="230" y="40" width="170" height="96" rx="10" class="aTip"/>
+      <text x="315" y="66" text-anchor="middle" class="aH">前処理</text>
+      <text x="315" y="90" text-anchor="middle" class="aS">短い行・重複・</text>
+      <text x="315" y="110" text-anchor="middle" class="aS">クチコミを落とす</text>
+      <path d="M400 88H436" class="aL" marker-end="url(#fk2)"/>
+      <rect x="440" y="40" width="170" height="96" rx="10" class="aTip"/>
+      <text x="525" y="66" text-anchor="middle" class="aH">LLM（版 g5）</text>
+      <text x="525" y="90" text-anchor="middle" class="aS">あらすじ <tspan font-style="italic">y</tspan> と</text>
+      <text x="525" y="110" text-anchor="middle" class="aS">言葉 (<tspan font-style="italic">k, w, b, f</tspan>)</text>
+      <path d="M610 88H646" class="aL" marker-end="url(#fk2)"/>
+      <rect x="650" y="40" width="290" height="96" rx="10" class="aTip"/>
+      <text x="795" y="66" text-anchor="middle" class="aH">本文と照らす（式 17・18）</text>
+      <text x="795" y="90" text-anchor="middle" class="aS">あらすじは 12 字の窓 5 つのうち 3 つ</text>
+      <text x="795" y="110" text-anchor="middle" class="aS">言葉は根拠の引用 <tspan font-style="italic">f</tspan> が本文にあるか</text>
+      <path d="M795 136V176" class="aL" marker-end="url(#fk2)"/>
+      <rect x="560" y="180" width="380" height="96" rx="10" class="aTip"/>
+      <text x="750" y="206" text-anchor="middle" class="aH">索引の #題材（式 19）</text>
+      <text x="750" y="230" text-anchor="middle" class="aS">重さ ＝ 種類の重さ × 根拠の重さ、1 公演 16 語まで</text>
+      <text x="750" y="250" text-anchor="middle" class="aS">人物と同じ式 4 で値を作り、点に足す（3.6）</text>
+      <rect x="20" y="180" width="500" height="96" rx="10" class="aTip" style="opacity:.55"/>
+      <text x="270" y="206" text-anchor="middle" class="aH">落とすもの</text>
+      <text x="270" y="230" text-anchor="middle" class="aS">本文 400 字未満は渡さない・本文に無いあらすじは言葉ごと捨てる</text>
+      <text x="270" y="250" text-anchor="middle" class="aS">引用の無い推定・手がかりに無い作風・数字や宣伝の語のタグ</text>
+    </svg>
+    <figcaption><b>図 10.</b>　あらすじの抽出の流れ。LLM が答えたものは、本文と照らして通ったものだけを残す。結果は版の名前（g5）を付けて保存し、同じ公演を二度読まない。</figcaption>
+  </figure>
+
+  <h4 class="eqhead">本文と照らす</h4>
+  <p class="para">LLM は、公演ページに宣伝文しか無いときに、自分の知識で筋書きを書くことがある（実例：同じ題名の映画の筋書きが出た）。おすすめの理由は事実だけで書く方針なので、本文に実在しないあらすじは捨てる。<i>N</i>(·) を英数・仮名・漢字だけを残す正規化、<i>a</i> ＝ <i>N</i>(<i>y</i>)、<i>t</i> ＝ <i>N</i>(<i>T</i>(<i>s</i>)) とし、<i>a</i> から長さ 12 の窓を等間隔に 5 つ取る。5 つのうち 3 つ以上が <i>t</i> の部分文字列なら通す（|<i>a</i>| &lt; 24 なら通さない）。</p>
+  <div class="eq"><math display="block"><mrow><mi>G</mi><mo stretchy="false">(</mo><mi>y</mi><mo>,</mo><mi>T</mi><mo stretchy="false">)</mo><mo>=</mo><mn>𝟙</mn><mrow><mo>[</mo><munderover><mo>∑</mo><mrow><mi>j</mi><mo>=</mo><mn>0</mn></mrow><mn>4</mn></munderover><mn>𝟙</mn><mrow><mo>[</mo><msub><mi>a</mi><mrow><mo stretchy="false">[</mo><msub><mi>p</mi><mi>j</mi></msub><mo>,</mo><mspace width="0.2em"/><msub><mi>p</mi><mi>j</mi></msub><mo>+</mo><mn>12</mn><mo stretchy="false">)</mo></mrow></msub><mo>⊑</mo><mi>t</mi><mo>]</mo></mrow><mo>≥</mo><mn>3</mn><mo>]</mo></mrow><mo>,</mo><mspace width="1em"/><msub><mi>p</mi><mi>j</mi></msub><mo>=</mo><mrow><mo>⌊</mo><mfrac><mrow><mi>j</mi><mspace width="0.1em"/><mo stretchy="false">(</mo><mo stretchy="false">|</mo><mi>a</mi><mo stretchy="false">|</mo><mo>−</mo><mn>12</mn><mo stretchy="false">)</mo></mrow><mn>4</mn></mfrac><mo>⌋</mo></mrow></mrow></math><span class="eqn">(17)</span></div>
+  <p class="para">⊑ は「部分文字列である」を表す。完全一致にすると、空白や記号を落としただけの正しい答えまで捨てることになる。そこで、窓の過半で一致すれば通す、ゆるい一致にした（文字列照合で根拠を付ける手法でも、完全一致にあいまい一致を足している <a href="#ref-30">[30]</a>）。言葉は、根拠ごとに次の条件で残す。</p>
+  <div class="eq"><math display="block"><mrow><mi>keep</mi><mo stretchy="false">(</mo><mi>k</mi><mo>,</mo><mi>w</mi><mo>,</mo><mi>b</mi><mo>,</mo><mi>f</mi><mo stretchy="false">)</mo><mo>⟺</mo><mrow><mo>{</mo><mtable columnalign="left"><mtr><mtd><mtext>上限の内側</mtext></mtd><mtd><mi>b</mi><mo>=</mo><mtext>本文</mtext></mtd></mtr><mtr><mtd><mi>N</mi><mo stretchy="false">(</mo><mi>f</mi><mo stretchy="false">)</mo><mo>⊑</mo><mi>t</mi></mtd><mtd><mi>b</mi><mo>∈</mo><mo stretchy="false">{</mo><mtext>推定, 知識, 定評</mtext><mo stretchy="false">}</mo></mtd></mtr><mtr><mtd><mi>f</mi><mo>∈</mo><mi>H</mi><mo stretchy="false">(</mo><mi>g</mi><mo stretchy="false">)</mo></mtd><mtd><mi>b</mi><mo>=</mo><mtext>作風</mtext></mtd></mtr></mtable></mrow></mrow></math><span class="eqn">(18)</span></div>
+  <p class="para"><i>H</i>(<i>g</i>) は団体 <i>g</i> の作風の手がかりで、同じ団体のほかの公演が 3 本以上あるとき、その半数以上に付いている言葉とする。どの根拠でも、種類ごとの上限を越えた分は捨てる。知識と定評は取り込むたびに一覧を出し、目で確かめる。</p>
+
+  <h4 class="eqhead">索引への重さと、語彙表</h4>
+  <p class="para">残った言葉 <i>w</i> は、種類 <i>k</i> と根拠 <i>b</i> の重さの積を付けて、公演の #題材 タグとして索引に入れる（1 公演 16 語まで）。この重さが式 4 の <i>a<sub>s</sub></i>(<i>q</i>) にあたり、人物と同じ式で値を作って点に足す。</p>
+  <div class="eq"><math display="block"><mrow><msub><mi>a</mi><mi>s</mi></msub><mo stretchy="false">(</mo><mtext>#題材</mtext><mspace width="0.2em"/><mi>w</mi><mo stretchy="false">)</mo><mo>=</mo><msub><mi>α</mi><mi>k</mi></msub><mspace width="0.1em"/><msub><mi>β</mi><mi>b</mi></msub></mrow></math><span class="eqn">(19)</span></div>
+  <div class="twrap wide">
+    <table class="calc" style="font-size:13px">
+      <thead><tr><th>種類 <i>k</i></th><th><i>α<sub>k</sub></i></th><th>根拠 <i>b</i></th><th><i>β<sub>b</sub></i></th></tr></thead>
+      <tbody>
+        <tr><td>ジャンル・題材・テーマ・味わい・原作</td><td>1.0</td><td>本文</td><td>1.0</td></tr>
+        <tr><td>語り口</td><td>0.7</td><td>推定</td><td>0.7</td></tr>
+        <tr><td>舞台設定</td><td>0.5</td><td>作風・知識</td><td>0.5</td></tr>
+        <tr><td>モチーフ</td><td>0（索引に入れない）</td><td>定評</td><td>0.3</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="para">読み取った 1,537 公演では言葉が 2,161 種あり、そのうち 1,301 種は 1 公演にしか付いていなかった。言葉がそのままでは公演どうしが重ならないので、言葉を 110 の概念（同義語・上位・関連を持つ語彙表）にまとめた。題材をお気に入りにしたときは、語彙表の下位へ重さを減らしながら広げる（子 0.6・孫 0.35・その下 0.2、関連 0.3）。たとえば「科学」で当たる公演は 2 件から 89 件になった。評価から分かった細かい好みは、3 つ以上の枝で同じ向きのときだけ上位の好みにする（分類の階層に沿って好みを計算する先行研究があるとされるが、原典は確かめていない）。この積み上げは Worker だけにあり、Python の参照実装には無い。</p>
+
+  <h4 class="eqhead">検証</h4>
+  <div class="twrap wide">
+    <table class="calc" style="font-size:13px">
+      <thead><tr><th>確かめたこと</th><th>データ</th><th>結果</th></tr></thead>
+      <tbody>
+        <tr><td>網羅（g2、2026-10-16）</td><td>終わっていない候補 1,353 件</td><td>全件に読み取りの行。あらすじあり 836 件（62%）、言葉あり 1,109 件（82%）、本文に無いので捨てたもの 31 件</td></tr>
+        <tr><td>伏せた審査（2026-10-18）</td><td>無作為 40 公演（あらすじあり 25・空 15）。答えを知らない読み手 2・審査役 2、120 件の判定がすべて一致</td><td>本番の版で、その公演のあらすじ 25・空が正しい 12・取りこぼし 3・別の公演の話 0。根拠の無い言葉 0/190。別の公演の混入は、95% の上限で 0〜7% までしか言えない</td></tr>
+        <tr><td>言葉がページにあるか</td><td>言葉 6,311 個</td><td>77% がページにそのまま出る。1 つも出ない公演は 30/1,109</td></tr>
+        <tr><td>g4 と g5 の比べ（2026-10-18）</td><td>40 公演</td><td>1 公演の言葉 6.5 → 8.9。語彙表にある言葉 40% → 46%。推定の引用は 84/84 が本文にあった</td></tr>
+        <tr><td>g5 で読み直し（2026-10-19）</td><td>過去 2,000・これから 1,311 公演</td><td>言葉あり 2,822 件。知識・定評の誤りは目視で 0 件</td></tr>
+        <tr><td>当たりへの効き目</td><td>持ち主 1 人の記録（n ＝ 1、判断の根拠にしない）</td><td>あらすじの言葉だけで ◎ を当てる AUC 0.551 ± 0.167（40 回の取り直し）。ほかの手がかりに足して上がった回は 0/40。ただし点の付く候補が 29 件から 136 件に増えるので、候補を拾う役として残した（5-2）</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="grid2 wide">
+    <div class="card">
+      <h4>根拠</h4>
+      <ul class="muted">
+        <li>指示だけで LLM に鍵語を抜かせる方法は、従来の手法に劣るという報告と、上回るという報告がある <a href="#ref-28">[28]</a>。たぐりは言い換えを許し、語彙表に寄せるので、鍵語抽出とは物差しが違う。</li>
+        <li>LLM で品目の説明を補うと推薦が良くなるという報告がある <a href="#ref-29">[29]</a>。たぐりは逆向きで、本文に無いことは足させない（知識・定評は、本文に名前がある作品などに限る）。</li>
+        <li>生成文の誤りは、出典と照らして見つけるのが基本である <a href="#ref-31">[31]</a>。式 17・18 はその最も軽い形である。</li>
+        <li>作品の内容を表す言葉の束で推薦する考え方は、映画のタグの関連度（Tag Genome）にある <a href="#ref-33">[33]</a>。たぐりの #題材 は関連度ではなく「ある・ない」の 2 値である。</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4>限界</h4>
+      <ul class="muted">
+        <li><b>根拠が「本文」の言葉そのものは、本文と照らしていない。</b>言葉の 23% はページにそのまま出ない（言い換え）。言葉ごとに出典と照らす仕組み <a href="#ref-31">[31]</a> はまだ無い。</li>
+        <li>式 17 の 12 字・5 つ・3 つ以上という値に根拠は無い。別の公演の本文を引き写した答えも通ってしまう。</li>
+        <li>長い入力の真ん中を読み落とす傾向 <a href="#ref-32">[32]</a> の影響は測っていない。</li>
+        <li>同じ指示でも読むたびに結果が揺れる（g4 で取れるようになった公演 2 件の一方で、取れていた 2 件が空になった）。</li>
+        <li>知識に頼ると有名な作品に寄りうる。小さな劇団の新作は本文だけで読む。過去の公演には言葉がほとんど無く、評価から学びにくい。</li>
+        <li>種類の数（6＋2）は、読書相談の appeal の分け方などを参考にしたが、原典はまだ確かめていない。</li>
+      </ul>
+    </div>
+  </div>
+
   <h3 class="sub">3.6　公演の点と、出す条件</h3>
   <p class="para">公演 <i>s</i> の手がかり <i>q</i>（役職 <i>r</i>）の寄与は、値に役職の重み <i>ρ</i> と、役職のまとまり <i>G</i>(<i>r</i>) ごとの倍率 <i>μ<sub>u</sub></i> を掛けたものとする。</p>
   <div class="eq"><math display="block"><mrow><msub><mi>c</mi><mi>s</mi></msub><mo stretchy="false">(</mo><mi>q</mi><mo stretchy="false">)</mo><mo>=</mo><mi>ρ</mi><mo stretchy="false">(</mo><mi>r</mi><mo stretchy="false">)</mo><mspace width="0.15em"/><msub><mi>μ</mi><mi>u</mi></msub><mo stretchy="false">(</mo><mi>G</mi><mo stretchy="false">(</mo><mi>r</mi><mo stretchy="false">)</mo><mo stretchy="false">)</mo><mspace width="0.15em"/><msub><mi>v</mi><mi>u</mi></msub><mo stretchy="false">(</mo><mi>q</mi><mo stretchy="false">)</mo><mo>,</mo><mspace width="1em"/><msub><mi>μ</mi><mi>u</mi></msub><mo stretchy="false">(</mo><mi>G</mi><mo stretchy="false">)</mo><mo>=</mo><msubsup><mi>μ</mi><mi>u</mi><mtext>答え合わせ</mtext></msubsup><mo stretchy="false">(</mo><mi>G</mi><mo stretchy="false">)</mo><mo>·</mo><msubsup><mi>μ</mi><mi>u</mi><mtext>本人</mtext></msubsup><mo stretchy="false">(</mo><mi>G</mi><mo stretchy="false">)</mo></mrow></math><span class="eqn"></span></div>
@@ -1139,6 +1242,7 @@ ol.refs li:target{background:rgba(var(--brand-rgb),.12)}
         <tr><td>Python と Worker の一致</td><td>架空の公演一覧と記録</td><td>公演・順・点・理由が一致（変更のたびにテスト）。式 12（1 段広げる）は Worker だけにあり、一致の経路の外</td></tr>
         <tr><td>興味ありの配り方（式 10–11）</td><td>試験用の公演と記録</td><td>性質だけを確認：合計が 1、共通する人が積み上がる、好きな人に多め、興味なしと比べて弱まる、メモの名前に多め、評価が増えると薄まる</td></tr>
         <tr><td>1 段広げる・並べ直し（式 12–13）</td><td>試験用の公演と記録</td><td>性質だけを確認：好きな人の公演には足さない、筆頭が同じ公演は 1 ページ 2 件まで、越えた分は消えずに後ろへ</td></tr>
+        <tr><td>あらすじの抽出（式 17–19）</td><td>無作為 40 公演の伏せた審査・g5 の読み直し 3,311 公演</td><td>別の公演の話 0・根拠の無い言葉 0/190。当たりへの効き目は未確認（3.5.1）</td></tr>
         <tr><td>ジャンルの印（3.5）</td><td>2026-10-16 のこれからの公演 1,001 題名</td><td>2.5次元 18 作品・宝塚 7 作品。原作の欄も製作委員会も無いものは漏れる</td></tr>
       </tbody>
     </table>
@@ -1211,6 +1315,13 @@ ol.refs li:target{background:rgba(var(--brand-rgb),.12)}
     <li id="ref-25">J. Chen, H. Zhang, X. He, L. Nie, W. Liu, T.-S. Chua. Attentive Collaborative Filtering: Multimedia Recommendation with Item- and Component-Level Attention. <i>SIGIR</i> 2017.（<code>lit-interest-split-precedents</code>）</li>
     <li id="ref-26">Recommendation with Attribute-aware Product Networks: A Representation Learning Model. arXiv:1908.05928, 2019（著者は未確認）.（<code>lit-interest-split-precedents</code>）</li>
     <li id="ref-27">T. Schnabel, P. Bennett, S. Dumais, T. Joachims. Using Shortlists to Support Decision Making and Improve Recommender System Performance. <i>WWW</i> 2016.（<code>lit-interest-split-precedents</code>）</li>
+    <li id="ref-28">M. Song ほか. arXiv:2312.15156, 2023／B. Kang, H. Shin. <i>COLING</i> 2025, pp.3670–3686.（<code>lit-llm-keyphrase-zeroshot</code>）</li>
+    <li id="ref-29">H. Lyu ほか. LLM-Rec. <i>Findings of NAACL</i> 2024／Y. Xi ほか（KAR）2023（原論文は未見）.（<code>lit-llm-augmented-item-text</code>）</li>
+    <li id="ref-30">google/langextract（ライブラリ）／arXiv:2402.13364 ほか.（<code>lit-grounding-string-match</code>）</li>
+    <li id="ref-31">P. Manakul, A. Liusie, M. Gales. SelfCheckGPT. <i>EMNLP</i> 2023／S. Min ほか. FActScore. <i>EMNLP</i> 2023.（<code>lit-hallucination-detection</code>）</li>
+    <li id="ref-32">Liu ほか. <i>TACL</i> 2024（arXiv:2307.03172, 2023）.（<code>lit-lost-in-the-middle</code>）</li>
+    <li id="ref-33">J. Vig, S. Sen, J. Riedl. The Tag Genome. <i>ACM TiiS</i> 2(3), 2012.（<code>lit-tag-genome</code>）</li>
+    <li id="ref-34">C. Kohlschütter, P. Fankhauser, W. Nejdl. <i>WSDM</i> 2010, pp.441–450（Boilerpipe）.（<code>lit-boilerplate-shallow-features</code>）</li>
   </ol>
 </section>
 

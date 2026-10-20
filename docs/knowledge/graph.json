@@ -6551,6 +6551,18 @@
    "verifies": []
   },
   {
+   "id": "q-deck-net-c-19of40",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-20",
+   "title": "プレゼン資料 5-2 の「網 C の語を意味でまとめ直すと、判別力が上がったのは取り直し 40 回中 19 回」の出典がリポジトリに無い",
+   "sources": [
+    "docs/000003-final-presentation-taguri.html",
+    "tools/review/recommend2.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "q-demo-after-render",
    "type": "question",
    "status": "answered",
@@ -13041,6 +13053,11 @@
    "from": "q-d1-user-writes-uncapped",
    "rel": "affects",
    "to": "d1-free-limits"
+  },
+  {
+   "from": "q-deck-net-c-19of40",
+   "rel": "raises",
+   "to": "reco-past-auc"
   },
   {
    "from": "q-demo-after-render",
