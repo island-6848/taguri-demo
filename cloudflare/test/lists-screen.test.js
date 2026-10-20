@@ -544,7 +544,7 @@ test('お気に入りのハッシュタグ: the name coming stages, works seen a
     put('p2', '別人の舞台', [['出演', '俳優甲乙']]);
     const v = (await screen(env, a, 'favourites', '?n=' + encodeURIComponent('俳優甲'))).body_html;
     assert.match(v, /<h1><span class="ftag big">#俳優甲<\/span> の公演<\/h1>/);
-    assert.match(v, /これから観られる公演 <span class="cnt">1 件<\/span>[\s\S]*data-stage="101"/);
+    assert.match(v, /今後の公演 <span class="cnt">1 件<\/span>[\s\S]*data-stage="101"/);
     assert.match(v, /観た公演 <span class="cnt">1 件<\/span>[\s\S]*終わった舞台[\s\S]*★5/);
     // 過去の公演は開いたときに自動で出す（起案者 2026-10-15）。名前全体で当てる
     assert.match(v, /2023\/05\/01〜05\/10<\/span><span class="t">昔の舞台/);

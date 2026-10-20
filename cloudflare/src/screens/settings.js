@@ -229,7 +229,7 @@ export async function startScreen(_params, ctx) {
   const step1 = stepCard(1, `見逃したくない名前を登録する（いま ${nDec} 件）`, nDec > 0,
     '劇団・俳優・演出家・作品・原作者・題材のどれでも登録できます。<b>登録した名前の公演は、内容を問わず、件数の制限も付けずに「お気に入り」に出します。</b>1 件登録するだけで動き始めます。<br>あとから「おすすめ ▸ お気に入り」で足すことも外すこともできます。', form);
   const step2 = stepCard(2, '公演の情報を取り寄せる', nCand > 0, nCand > 0
-    ? `手元にこれから観られる公演を ${nCand} 件持っています。毎日取り直しています。`
+    ? `手元に今後の公演を ${nCand} 件持っています。毎日取り直しています。`
     : 'まだ公演の情報が届いていません。毎日の取得のあとに、ここに件数が出ます。');
   const rateLink = nWait
     ? `<a href="/rate/unrated?t=__TAGURI_TOKEN__">未評価の記録（いま ${nWait} 件）</a>で ${E(words.marks)} を付けてください`
@@ -259,7 +259,7 @@ export async function startScreen(_params, ctx) {
     foot = '<p class="lede">ナビゲーションから、各画面を先に見ることもできます。<b>どの画面もまだ0件です。</b></p>';
   }
   const body = `<h1>${h1}</h1>
-<p class="lede">たぐりは<b>これから観られる公演の中から、見逃したくない舞台を毎週届けるアプリ</b>です。${lede}</p>
+<p class="lede">たぐりは<b>今後の公演の中から、見逃したくない舞台を毎週届けるアプリ</b>です。${lede}</p>
 ${doneLine}
 ${step1}
 ${step2}
