@@ -175,6 +175,20 @@ export function independentRatings(rows) {
  * 出た作品の評価（z）の平均を、この件数ぶんの重みで 1 回だけ足す。10 本すべてに出た人も 2.5 件ぶんを越えない。
  */
 export const PIECE_RHO = 0.4;
+/**
+ * 朗読劇とほかの形式を兼ねる公演（dec-reading-dual-form）は、朗読劇の札を READING_SHARE、ほかの形式の札を残りで数える
+ * （起案者 2026-10-20「リーディング音楽劇は朗読劇6音楽劇4くらいだった」）。user_recommender.kind_shares と同じ。
+ * keys は 'role\u0000person' の並び。兼ねていなければ空の Map（どの札も 1）
+ */
+export const READING_FORM = '朗読劇', READING_SHARE = 0.6;
+export function kindShares(keys) {
+  const forms = [...new Set(keys.filter(k => k.startsWith('#形式\u0000')))];
+  const out = new Map();
+  if (forms.length < 2 || !forms.includes('#形式\u0000' + READING_FORM)) return out;
+  const other = (1 - READING_SHARE) / (forms.length - 1);
+  for (const k of forms) out.set(k, k === '#形式\u0000' + READING_FORM ? READING_SHARE : other);
+  return out;
+}
 export const pieceWeight = m => m / (1 + (m - 1) * PIECE_RHO);
 /** 評価の件数（作品ごとに分けた観劇は、作品の数によらず 1 件。r.share は 1 / 評価した作品の数） */
 export const ratingCount = rated => rated.reduce((n, r) => n + (r.share ?? 1), 0);
@@ -354,26 +368,28 @@ export function personValues(rated, seeds = [], skip = new Set(), liked = [], di
     const lv = z ? aspectLevels(r.aspects) : {};
     const [troubles, goods] = z ? parseAspects(r.aspects) : [[], []];
     const marked = troubles.length || goods.length;
+    // 朗読劇とほかの形式を兼ねる公演の形式の札は 6:4（kindShares）。ほかの札は 1
+    const shares = kindShares(keys);
     if (r.occasion) {
       if (!pieces.has(r.occasion)) pieces.set(r.occasion, new Map());
       const acc = pieces.get(r.occasion);
       for (const k of keys) {
-        const a = acc.get(k) || [0, 0];
+        const a = acc.get(k) || [0, 0, shares.get(k) ?? 1];
         a[0] += marked ? z * aspectShare(troubles, goods, k.slice(0, k.indexOf('\u0000')), z > 0, lv) : z; a[1] += 1;
         acc.set(k, a);
       }
       continue;
     }
     for (const k of keys) {
-      const t = tally.get(k) || [0, 0, 0];
-      t[0] += 1; t[1] += marked ? z * aspectShare(troubles, goods, k.slice(0, k.indexOf('\u0000')), z > 0, lv) : z; t[2] += 1.0;
+      const t = tally.get(k) || [0, 0, 0], share = shares.get(k) ?? 1;
+      t[0] += 1; t[1] += (marked ? z * aspectShare(troubles, goods, k.slice(0, k.indexOf('\u0000')), z > 0, lv) : z) * share; t[2] += share;
       tally.set(k, t);
     }
   }
   // 作品ごとに分けた観劇: 人ごとに、出た作品の z の平均を、縮めた件数（pieceWeight）の重みで 1 回だけ足す
   for (const acc of pieces.values()) {
-    for (const [k, [sum, m]] of acc) {
-      const t = tally.get(k) || [0, 0, 0], wt = pieceWeight(m);
+    for (const [k, [sum, m, share]] of acc) {
+      const t = tally.get(k) || [0, 0, 0], wt = pieceWeight(m) * share;
       t[0] += 1; t[1] += (sum / m) * wt; t[2] += wt;
       tally.set(k, t);
     }

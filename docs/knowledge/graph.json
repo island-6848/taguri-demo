@@ -2352,6 +2352,21 @@
    "verifies": []
   },
   {
+   "id": "dec-reading-share-6-4",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-20",
+   "title": "朗読劇とほかの形式を兼ねる公演は、形式の札を朗読劇 0.6・ほかの形式 0.4（ほかが 2 つ以上なら残りを等分）の重さで数える。評価から学ぶ側とこれからの公演の点の両方",
+   "sources": [
+    "tools/review/user_recommender.py",
+    "cloudflare/src/recommend.js",
+    "cloudflare/scripts/build_recommend_index.py",
+    "cloudflare/test/pieces.test.js",
+    "cloudflare/test/test_recommend_index.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-reason-two-works",
    "type": "decision",
    "status": "adopted",
@@ -10353,6 +10368,11 @@
    "from": "dec-reading-dual-form",
    "rel": "affects",
    "to": "dec-forms-1019"
+  },
+  {
+   "from": "dec-reading-share-6-4",
+   "rel": "depends_on",
+   "to": "dec-reading-dual-form"
   },
   {
    "from": "dec-reason-two-works",

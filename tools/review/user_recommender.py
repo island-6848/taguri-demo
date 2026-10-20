@@ -432,6 +432,22 @@ def rated_keys(r: dict) -> list[tuple]:
                                           r.get("prices") or (), group=r.get("group") or "")))
 
 
+# 朗読劇とほかの形式を兼ねる公演（dec-reading-dual-form）は、朗読劇の札を READING_SHARE、ほかの形式の札を残りで数える
+# （起案者 2026-10-20「この場合はリーディングのほうが若干つよいことが多い。リーディング音楽劇は朗読劇6音楽劇4くらいだった」）。
+# 合わせて 1 なので、札が 2 つあっても形式 1 つの公演より重くならない。評価から学ぶ側（person_values）と、
+# これからの公演の札の重さ（build_recommend_index の role_w）の両方で使う。Worker の recommend.kindShares と同じ
+READING_FORM, READING_SHARE = "朗読劇", 0.6
+
+
+def kind_shares(keys) -> dict:
+    """(axis, tag) -> weight for the 形式 tags of one production when 朗読劇 shares it with other forms; {} otherwise."""
+    forms = sorted({tuple(k) for k in keys if k[0] == "#形式"})
+    if len(forms) < 2 or ("#形式", READING_FORM) not in forms:
+        return {}
+    other = (1 - READING_SHARE) / (len(forms) - 1)
+    return {k: READING_SHARE if k[1] == READING_FORM else other for k in forms}
+
+
 def person_values(rated: list[dict], seeds: list[dict] = (), skip: set = frozenset()) -> tuple[dict, dict]:
     """(role, person) -> (n, value) and the user's scale {mean, spread}.
 
@@ -464,10 +480,13 @@ def person_values(rated: list[dict], seeds: list[dict] = (), skip: set = frozens
         z = ((below + 0.5 * same) / len(vals) - 0.5) * SQRT12
         levels = aspect_levels(r.get("aspects")) if z else {}
         troubles, goods = parse_aspects(r.get("aspects")) if z else ([], [])
-        for key in rated_keys(r):
+        keys = rated_keys(r)
+        shares = kind_shares(keys)
+        for key in keys:
+            share = shares.get(key, 1.0)
             tally[key][0] += 1
-            tally[key][1] += z * aspect_share(troubles, goods, key[0], z > 0, levels) if troubles or goods else z
-            tally[key][2] += 1.0
+            tally[key][1] += (z * aspect_share(troubles, goods, key[0], z > 0, levels) if troubles or goods else z) * share
+            tally[key][2] += share
     w = SEED_K / (SEED_K + len(rated))
     for r in seeds:
         for key in rated_keys(r):

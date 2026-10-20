@@ -49,3 +49,18 @@ test('a later visit to the same stage replaces an earlier one, pieces and all', 
   const kept = independentRatings([...first, ...later]);
   assert.deepEqual(kept.map(r => r.key), later.map(r => r.key));
 });
+
+// 朗読劇とほかの形式を兼ねる公演（dec-reading-dual-form）: 朗読劇 6・ほかの形式 4 で数える（起案者 2026-10-20）
+test('a reading that is also a musical play counts 朗読劇 six and 音楽劇 four', async () => {
+  const {kindShares, READING_SHARE} = await import('../src/recommend.js');
+  const R = '#形式\u0000朗読劇', M = '#形式\u0000音楽劇';
+  assert.equal(READING_SHARE, 0.6);
+  assert.deepEqual([...kindShares([R, M, '出演\u0000甲'])], [[R, 0.6], [M, 0.4]]);
+  assert.equal(kindShares([R, '出演\u0000甲']).size, 0);                 // 朗読劇だけ: 1
+  assert.equal(kindShares(['#形式\u0000ミュージカル', M]).size, 0);      // 朗読劇の無い 2 つ: 1 のまま
+  const people = [['出演', '甲'], ['#形式', '朗読劇'], ['#形式', '音楽劇']];
+  const vals = personValues([other, {key: 'j', stage_id: 'S9', verdict: '◎', rated_at: '2', people}]);
+  near(vals.get(R)[1], Z * 0.6 / (0.6 + CONF_K));
+  near(vals.get(M)[1], Z * 0.4 / (0.4 + CONF_K));
+  near(vals.get('出演\u0000甲')[1], Z / (1 + CONF_K));
+});

@@ -200,6 +200,16 @@ class ParityTest(unittest.TestCase):
         self.assertTrue(all(not any(w in st['title'] for w in RC.NOT_STAGE_TITLE) for st in index['stages'].values()))
         self.assertIn('9001', index['stages'])           # tour stage from saved bundles
 
+    def test_reading_shares_its_form_six_to_four(self):
+        # 朗読劇とほかの形式を兼ねる公演の札の重さ（dec-reading-dual-form、起案者 2026-10-20「朗読劇6音楽劇4くらい」）
+        pool = {"7001": {"title": "リーディング音楽劇『ジャングル大帝』", "period": "2026/11/01~2026/11/03",
+                         "fields": {"出演": "甲"}, "group": "劇団甲"},
+                "7002": {"title": "朗読劇『夜』", "period": "2026/11/01~2026/11/03", "fields": {"出演": "乙"}, "group": "劇団乙"}}
+        index = BI.build_index(pool, {}, APP.group_of)
+        forms = sorted((sid, tag, w) for role, tag, sid, w, _g in index["postings"] if role == "#形式")
+        self.assertEqual(forms, [("7001", "朗読劇", round(UR.GENRE_W * 0.6, 6)), ("7001", "音楽劇", round(UR.GENRE_W * 0.4, 6)),
+                                 ("7002", "朗読劇", UR.GENRE_W)])
+
     def test_version_switch_and_cleanup(self):
         raw, cands, fbs = catalogue(2)
         old = BI.build_index(UR.candidate_pool(raw, cands), fbs, APP.group_of)

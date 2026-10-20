@@ -146,8 +146,10 @@ def build_index(pool: dict[str, dict], fields_by_stage: dict[str, dict], role_gr
         for role, person in credits:
             postings.append((role, person, sid, RC.ROLE_W.get(role, RC.BACKSTAGE_W),
                              role_group(role)))
+        # 朗読劇とほかの形式を兼ねる公演は、朗読劇 6・ほかの形式 4 の重さ（UR.kind_shares、dec-reading-dual-form）
+        shares = UR.kind_shares(tags)
         for axis, tag in tags:
-            x = tw.get(tag, 1.0) if axis == THEME_AXIS else 1.0
+            x = tw.get(tag, 1.0) if axis == THEME_AXIS else shares.get((axis, tag), 1.0)
             postings.append((axis, tag, sid, round(UR.GENRE_W * x, 6), "theme"))
     people = {}
     for sid, f in fields_by_stage.items():
