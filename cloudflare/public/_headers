@@ -3,3 +3,9 @@
   Referrer-Policy: no-referrer
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
+
+# アプリの service worker は毎回確かめる（古い版が残らないように。impl-pwa-base）
+/sw.js
+  Cache-Control: no-cache
+/manifest.webmanifest
+  Cache-Control: no-cache

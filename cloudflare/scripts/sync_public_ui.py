@@ -21,7 +21,9 @@ COPIED = ("tour.js", "style.css", "tour.css", "theme.css", "fonts.css", "halfwid
           "assets/fonts/OFL-ZenKakuGothicNew.txt")
 # Self-hosted title font (SIL OFL, subset to the page titles). Copied byte for byte.
 BINARY = ("assets/fonts/zkga-title.woff2",
-          "assets/logo/apple-touch-icon.png")   # ホーム画面のアイコン（docs/design/logo/make_type.py）
+          "assets/logo/apple-touch-icon.png",   # ホーム画面のアイコン（docs/design/logo/make_type.py）
+          # アプリのアイコン（manifest。docs/design/logo/make_app_icons.mjs、impl-pwa-base）
+          "assets/logo/icon-192.png", "assets/logo/icon-512.png", "assets/logo/icon-maskable-512.png")
 # 押すものと公演名の文字（さわらびゴシック Regular、SIL OFL）。文字の範囲ごとのファイルを丸ごと写す
 BINARY += tuple("assets/fonts/sawarabi-gothic/" + p.name for p in sorted((WEB / "assets/fonts/sawarabi-gothic").glob("*.woff2")))
 # おすすめ理由の丸枠の字（Zen丸ゴシック Bold、SIL OFL。起案者の指示 2026-10-18）

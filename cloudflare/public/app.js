@@ -930,6 +930,12 @@ function markMutated() {
   try { localStorage.setItem(MUTATED_KEY, String(Date.now())); } catch (e) { /* 使えない端末では、このタブだけ */ }
 }
 
+// **アプリ（ホーム画面に入れたとき）の service worker**（起案者 2026-10-20「アプリにしたい」、impl-pwa-base）。
+// サービス版だけ（デモの GitHub Pages では入れない）。控えるのは画面の部品だけ（cloudflare/public/sw.js）
+if (EDITION.edition === "service" && "serviceWorker" in navigator && location.origin === API_BASE) {
+  window.addEventListener("load", () => { navigator.serviceWorker.register("/sw.js").catch(() => { /* 入れられなくても画面はそのまま動く */ }); });
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   if (!API_BASE) {
     contentEl().innerHTML = "<h1>サービス版は準備中です</h1>"

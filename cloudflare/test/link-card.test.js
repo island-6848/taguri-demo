@@ -64,3 +64,24 @@ test('robots.txt is a real file that lets the card crawlers in', () => {
   assert.match(t, /^Allow: \/$/m);
   assert.doesNotMatch(t, /^Disallow: \/\s*$/m);
 });
+
+// アプリとしてホーム画面に入れる（起案者 2026-10-20「アプリにしたい」、impl-pwa-base）
+test('the app manifest, its icons, the head tags, and a service worker that never keeps records', async () => {
+  const m = JSON.parse(readFileSync(new URL('../public/manifest.webmanifest', import.meta.url), 'utf8'));
+  assert.equal(m.display, 'standalone');
+  assert.equal(m.lang, 'ja');
+  assert.ok(m.start_url.startsWith('/recommend'));
+  for (const ic of m.icons) {
+    const png = readFileSync(new URL('../public' + ic.src, import.meta.url));
+    assert.equal(`${png.readUInt32BE(16)}x${png.readUInt32BE(20)}`, ic.sizes, ic.src);
+  }
+  assert.ok(m.icons.some(ic => ic.purpose === 'maskable'));
+  const {APP_HEAD} = await import('../src/link-card.js');
+  assert.match(APP_HEAD, /<link rel="manifest" href="\/manifest\.webmanifest">/);
+  globalThis.HTMLRewriter = FakeRewriter;
+  try { assert.match(await (await get('/terms')).text(), /rel="manifest"[^]*<\/head>/); } finally { delete globalThis.HTMLRewriter; }
+  const sw = readFileSync(new URL('../public/sw.js', import.meta.url), 'utf8');
+  const never = new RegExp(sw.match(/const NEVER = \/(.+)\/;/)[1]);
+  for (const p of ['/api/screen/recommend', '/api/react', '/img/1.jpg', '/login', '/export.json']) assert.ok(never.test(p), p);
+  for (const p of ['/app.js', '/style.css', '/recommend']) assert.ok(!never.test(p), p);
+});
