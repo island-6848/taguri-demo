@@ -202,7 +202,13 @@ test('開幕リマインド: a catalogue-only stage keeps its answer, shows in �
     sqlite.prepare("INSERT INTO catalogue(id,title,date,venue,url,metadata) VALUES('777','索引に無い新作','2026-10-22','劇場Z','https://example.com/z',?)")
       .run(JSON.stringify({end_date: '2026-10-30', group: '劇団Z', synopsis: '海辺の町の三姉妹の話。', fields: {出演: '山田太郎、鈴木花子'}}));
     const html = (await screen(env, a, 'reminder')).body_html;
-    assert.match(html, /data-stage="777"><details class="dgopen"><summary>[\s\S]*?<\/summary><div class="dgdetail">[\s\S]*?山田太郎、鈴木花子[\s\S]*?海辺の町の三姉妹の話。/);
+    // 開いたときの中身は、開いたときに読む（/api/reminder_detail）。画面には読む先の印だけを置く
+    assert.match(html, /data-stage="777"><details class="dgopen"><summary>[\s\S]*?<\/summary><div class="dgdetail"><div class="dginfo"><div class="dglazy" data-detail="777"><\/div>/);
+    assert.doesNotMatch(html, /海辺の町の三姉妹の話。/);
+    const det = (await step(env, a, {get: '/api/reminder_detail?sids=777,bad%20id'})).body;
+    assert.deepEqual(Object.keys(det.html), ['777']);
+    assert.match(det.html['777'], /山田太郎、鈴木花子[\s\S]*?海辺の町の三姉妹の話。/);
+    assert.equal((await step(env, '', {get: '/api/reminder_detail?sids=777'})).status, 401);
     await step(env, a, {post: '/api/react', body: {stage_id: '777', value: 'interest', nofill: true}});
     assert.match((await screen(env, a, 'reminder')).body_html, /<li class="dgli dgfold trk" data-stage="777">/);
     const it = (await screen(env, a, 'interest')).body_html;
