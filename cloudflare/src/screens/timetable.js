@@ -2,6 +2,7 @@
 // 「時間割から実装してよい」、dec-records-viz-picks）。年輪が「何年のどの季節か」を見せるのに対し、
 // こちらは「1 週間のどこで観るか」。観た回は、行った日が過ぎたチケット（ticket）と、日記帳の観た日（works）から数える。
 import {E} from './py.js';
+import {visitsOf} from './works.js';
 import {h2} from './icons.js';
 
 export const DAYS = ['月', '火', '水', '木', '金', '土', '日'];
@@ -40,12 +41,13 @@ export function visits(tickets, works, today) {
     out.push({date: t.date, time: t.time || ''});
     ticketDays.add(t.date);
   }
-  for (const w of works) {
-    const days = [...new Set([w.first_date, w.last_date].filter(d => d && d <= today))];
+  // まとめた記録は、まとめた回の日と開演も数える（visitsOf。起案者の問い 2026-10-21 ── 前は残した記録の日だけだった）
+  for (const w of works) for (const v of visitsOf(w)) {
+    const days = [...new Set([v.date, v.last_date].filter(d => d && d <= today))];
     for (const d of days) {
       if (ticketDays.has(d)) continue;
       // The work's own time is the curtain of the day it was entered for (the first one).
-      out.push({date: d, time: d === w.first_date ? (w.time || '') : ''});
+      out.push({date: d, time: d === v.date ? (v.time || '') : ''});
     }
   }
   return out.filter(v => weekday(v.date) !== null);

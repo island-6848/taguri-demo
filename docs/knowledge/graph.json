@@ -3403,6 +3403,27 @@
    "verifies": []
   },
   {
+   "id": "dec-tour-visits-1021",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-21",
+   "title": "まとめた記録は観た回ごとの日付・劇場・開演を残して出し、回数と劇場は回ごとに数え、1 回ずつ分けられるようにする。ツアーを続けて足すときの劇場名・日付の範囲・探すの一覧も直す",
+   "sources": [
+    "cloudflare/src/screens/works.js",
+    "cloudflare/src/screens/row.js",
+    "cloudflare/src/screens/diary.js",
+    "cloudflare/src/screens/account.js",
+    "cloudflare/src/screens/search.js",
+    "cloudflare/src/screens/suggest.js",
+    "cloudflare/src/screens/rate.js",
+    "cloudflare/src/screens/timetable.js",
+    "web/app.js",
+    "web/theme.css",
+    "cloudflare/test/visits.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-trace-into-person",
    "type": "decision",
    "status": "adopted",
@@ -11300,6 +11321,26 @@
    "from": "dec-title-crown-subtitle",
    "rel": "raises",
    "to": "q-past-title-backfill"
+  },
+  {
+   "from": "dec-tour-visits-1021",
+   "rel": "depends_on",
+   "to": "ux-tour-repeat-merge-1021"
+  },
+  {
+   "from": "dec-tour-visits-1021",
+   "rel": "affects",
+   "to": "dec-account-rankings-top3"
+  },
+  {
+   "from": "dec-tour-visits-1021",
+   "rel": "affects",
+   "to": "fix-past-tour-venue-by-date"
+  },
+  {
+   "from": "dec-tour-visits-1021",
+   "rel": "affects",
+   "to": "dec-register-detail-repeat"
   },
   {
    "from": "dec-trace-into-person",

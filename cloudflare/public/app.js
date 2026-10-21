@@ -2370,7 +2370,8 @@ document.addEventListener("click", ev => {
       }
       // **同じ公演を続けて何回でも足せる**（起案者の指摘 2026-10-18「連続で何回も同じ公演を追加したい場合に対処して」）。
       // 足したあとも欄は開いたまま、日付と時刻だけ空にする。足した回は行の下に並べる。同じ日の昼・夜は開演の時刻で分ける（サーバー）
-      const when = `${+d.value.slice(5, 7)}/${+d.value.slice(8, 10)}${t.value ? " " + t.value : ""}`;
+      // 足した回の一覧には劇場も添える（ツアーのどの劇場の回か分かるように。起案者の問い 2026-10-21）
+      const when = `${+d.value.slice(5, 7)}/${+d.value.slice(8, 10)}${t.value ? " " + t.value : ""}${opt && opt.dataset.venue ? " " + opt.dataset.venue : ""}`;
       post("/api/add_work", {...body, date: d.value, time: t.value || ""}, li, `${when} を観劇記録に追加しました。続けて別の回も追加できます`)
         .then(r => {
           if (!r) return;
@@ -2425,6 +2426,8 @@ document.addEventListener("click", ev => {
         clearTimeout(sugTimer); ++sugSeq;
         if (!repeat) { t.value = ""; g.querySelector("#w-stage").value = ""; runDates(dt, "", ""); }
         else if (d.stage_id) g.querySelector("#w-stage").value = d.stage_id;
+        // 観た日から別の劇場の公演に結び付け直したときは、劇場の欄もその劇場にする（起案者の問い 2026-10-21。rate.addWorkAction の venue）
+        if (repeat && typeof d.venue === "string") g.querySelector("#w-venue").value = d.venue;
         document.getElementById("sug").replaceChildren();
         if (g.dataset.registerSingle) {
           const result = g.parentElement.querySelector("[data-register-result]");
@@ -2500,10 +2503,17 @@ document.addEventListener("click", ev => {
     g.querySelector(".said").textContent = "別の公演として、そのままにします";
     g.querySelectorAll("button").forEach(x => x.disabled = true);
     setTimeout(() => location.reload(), 1200);
+  } else if (b.dataset.unmergeOne) {
+    // まとめた記録の 1 回だけを別の記録に分ける（起案者の問い 2026-10-21。row.js visitsHtml）
+    const g = b.closest("details.visits") || b.parentElement;
+    b.disabled = true;
+    post("/api/merge_work", {work_key: b.dataset.unmergeOne, one: b.dataset.one, unmerge: true}, g,
+      "この回を別の記録に分けました。画面を読み込み直します")
+      .then(d => { if (d) setTimeout(() => location.reload(), 1000); else b.disabled = false; });
   } else if (b.dataset.unmerge) {
     const g = b.closest(".ed-btns") || b.parentElement;
     post("/api/merge_work", {work_key: b.dataset.unmerge, unmerge: true}, g,
-      "まとめを取り消しました。画面を読み込み直します")
+      "まとめた回をすべて別の記録に分けました。画面を読み込み直します")
       .then(d => { if (d) setTimeout(() => location.reload(), 1000); });
   } else if (b.dataset.wsave) {
     // **確定を押したときに 1 回だけ書き、そこで読み込み直す**（起案者の指示・2026-08-24）。

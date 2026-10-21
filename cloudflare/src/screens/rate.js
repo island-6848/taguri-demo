@@ -6,7 +6,7 @@ import {ALL_GRADES, isScaled, isStar, isTop, gradeText, markOf, scaleOf, scaleAc
 import {autoLink} from './autolink.js';
 import {ASPECT_MARKS, aspectToken} from '../recommend.js';
 import {E, quote, sortBy, cmp, fmtF, strip, slice, field, qsFirst, qsAll, digitsInt, isdigit, strRepr, localNow, ValueError} from './py.js';
-import {loadWorks, similarWorks, titleKey} from './works.js';
+import {loadWorks, similarWorks, titleKey, seenTimes} from './works.js';
 import {recRow, venueOf, venueKey, ico, h2, stageLabels} from './row.js';
 import {hashtagsHtml, noteTags} from './hashtags.js';
 import {promoteOwned} from './lists.js';
@@ -144,7 +144,7 @@ function jdate(s) {
 /** impressions.pending(limit=None) */
 const pending = works => sortBy(
   works.filter(w => isTop(w.verdict) && !strip(w.note_impression || '') && !w.unseen),
-  w => [-(w.times || 1), negDate(w.first_date || '')]);
+  w => [-seenTimes(w), negDate(w.first_date || '')]);
 /** impressions.wait_note_html(open_=True) */
 const waitNote = (key, note) => `<div class="wnote">`
   + `<textarea data-note="${e2(key)}" rows="2"`
@@ -155,7 +155,7 @@ function pendingHtml(rows, nAll, top = '◎') {
   const more = nAll > rows.length ? `残りの ${nAll - rows.length} 件は次に出します。` : '';
   const items = rows.map(w => waitShell(w, `<span class="wt">${e2(w.title)}</span>`
     + `<span class="wm">${e2(jdate(w.first_date))}`
-    + ((w.times || 1) > 1 ? `・${w.times} 回観た` : '')
+    + (seenTimes(w) > 1 ? `・${seenTimes(w)} 回観た` : '')
     + '</span>'
     + waitNote(w.work_key, w.note_impression || ''))).join('');
   return `<p class="lead">${top} を付けたのに感想が無い作品が ${nAll} 件あります。`
@@ -422,7 +422,12 @@ async function addWorkAction(b, ctx) {
     if (st && !(st.start <= date && date <= st.end)) {
       const {results} = await ctx.db.prepare('SELECT stage_id, venue FROM past_stage WHERE tkey=? AND grp IS ? AND start<=? AND end>=? LIMIT 2')
         .bind(st.tkey, st.grp, date, date).all();
-      if (results.length === 1) { stageId = String(results[0].stage_id); if (!venue) venue2 = results[0].venue || ''; }
+      // 劇場の欄が、選んでいた公演（別の劇場）の名前のままなら、結び付け直した劇場の名前にする（起案者の問い 2026-10-21 ──
+      // 連続追加で劇場A を選んだまま 8 月の日を入れると、劇場E に結び付くのに「劇場A」と保存されていた）
+      if (results.length === 1) {
+        stageId = String(results[0].stage_id);
+        if (!venue || strip(venue) === strip(st.venue || '')) venue2 = results[0].venue || '';
+      }
     } else if (st && !venue) venue2 = st.venue || '';
   }
   let key = `${titleKey(title)}#${date || 'undated'}`;
@@ -446,7 +451,7 @@ async function addWorkAction(b, ctx) {
   const linked = stageId ? '' : ((await autoLink(ctx, [key]))[key] || '');
   const similar = await similarWorks(ctx, title, key);
   // Repeated attendance is intentional; keep each date/time as its own record.
-  return {body: {ok: true, work_key: key, stage_id: stageId || linked, adopted: {},
+  return {body: {ok: true, work_key: key, stage_id: stageId || linked, ...(venue2 !== venue ? {venue: venue2} : {}), adopted: {},
     similar: b.repeat === true ? similar.filter(w => titleKey(w.title) !== titleKey(title)) : similar}};
 }
 

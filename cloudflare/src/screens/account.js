@@ -4,7 +4,7 @@ import {SESSION_TTL} from '../session-policy.js';
 // A Worker-only screen: the Python service has no account page, so there is no
 // parity test; it only reads the user's own rows and writes one setting.
 import {E, ValueError} from './py.js';
-import {loadWorks, titleKey} from './works.js';
+import {loadWorks, titleKey, visitsOf, seenTimes} from './works.js';
 import {venueOf} from './row.js';
 import {loadDeclared, KINDS} from './lists.js';
 
@@ -127,15 +127,18 @@ async function accountScreen(_params, ctx) {
     db.prepare('SELECT count(*) AS n FROM reaction WHERE user_id=? AND interest=1').bind(uid).first(),
     loadWorks(ctx)]);
   const seen = works.filter(w => !w.unseen);
-  // 観た回数: 作品でまとめず、劇場に行った回数（同じ作品を 2 回観たら 2。記録の times と、まとめた別の回の記録 merged）。起案者の指示 2026-10-18
+  // 観た回数: 作品でまとめず、劇場に行った回数（同じ作品を 2 回観たら 2。記録の times に、まとめた別の回の times を足す works.seenTimes）。起案者の指示 2026-10-18
   const rated = seen.filter(w => w.verdict && w.verdict !== 'まだ判断できない');
   const noted = seen.filter(w => (w.note_impression || '').trim());
   // 団体・劇場は、違う作品（題名の鍵）の数で並べる。前は記録の数で、同じ作品を別の日に観ると 2 作品になっていた
   const grps = await groupsOf(ctx, seen.map(w => w.stage_id || ''));
   const groups = ranking(worksBy(seen.map((w, i) => [grps[i], titleKey(w.title)])));
-  const venueWorks = ranking(worksBy(seen.map(w => [venueOf(w), titleKey(w.title)])));
+  // 劇場は観た回ごとに数える（まとめた記録のほかの回が別の劇場なら、その劇場に数える。起案者の問い 2026-10-21 ──
+  // 前はまとめた記録の回を全部、残した記録の劇場に数えていた）
+  const legs = seen.flatMap(w => visitsOf(w).map(v => [String(v.venue || '').trim() || venueOf(w), titleKey(w.title), v.times]));
+  const venueWorks = ranking(worksBy(legs.map(([v, k]) => [v, k])));
   const visits = new Map();
-  for (const w of seen) { const v = venueOf(w); if (v) visits.set(v, (visits.get(v) || 0) + (Number(w.times) || 1) + (w.merged || []).length); }
+  for (const [v, , n] of legs) if (v) visits.set(v, (visits.get(v) || 0) + n);
   const venueVisits = ranking(visits);
   const display = name?.value || '';
   const google = Boolean(u?.firebase_uid);
@@ -160,7 +163,7 @@ ${since ? `<p class="acsince">${since}から使っています</p>` : ''}</div>
 <button type="submit">保存</button><button type="button" data-account-name-cancel>やめる</button></div><p class="said" role="status" aria-live="polite"></p></form>
 </section>
 <section class="acct-card">${h2('book', 'これまでの記録')}
-<div class="acstats">${stat(seen.length, '観た作品', '/records/works')}${stat(seen.reduce((n, w) => n + (Number(w.times) || 1) + (w.merged || []).length, 0), '観た回数', '/records/works')}${stat(rated.length, '評価した作品', '/rate')}${stat(noted.length, '感想', '/rate/notes')}${stat(KINDS.reduce((n, k) => n + (favs[k] || []).length, 0), 'お気に入り', '/recommend/favourites')}${stat(reacts?.n || 0, '興味あり', '/recommend/interest')}</div>
+<div class="acstats">${stat(seen.length, '観た作品', '/records/works')}${stat(seen.reduce((n, w) => n + seenTimes(w), 0), '観た回数', '/records/works')}${stat(rated.length, '評価した作品', '/rate')}${stat(noted.length, '感想', '/rate/notes')}${stat(KINDS.reduce((n, k) => n + (favs[k] || []).length, 0), 'お気に入り', '/recommend/favourites')}${stat(reacts?.n || 0, '興味あり', '/recommend/interest')}</div>
 ${groups.length || venueWorks.length || venueVisits.length ? `<div class="acranks">${ranked('よく観ている団体', groups, '作品')}${venueRanks(venueWorks, venueVisits)}</div>`
     : `<p class="note">${seen.length ? '2 作品以上観た団体や劇場ができると、ここに出ます。' : '観た公演を記録すると、よく観ている団体や劇場がここに出ます。'}</p>`}
 </section>
