@@ -95,6 +95,9 @@ def update(mode: str, today: str) -> None:
     cmd = [sys.executable, str(ROOT / "tools" / "taguri" / "run.py"), "--no-open", "--today", today]
     if mode == "weekly":
         cmd.append("--fetch")
+    else:
+        # 毎日も、新しく載った公演と更新日が変わった公演だけは読む（dec-crawl-tiers）。上限の分数は取得の計画の段から
+        cmd += ["--discover", os.environ.get("TAGURI_DISCOVER_MINUTES", "5")]
     log("取り直す: " + " ".join(cmd[1:]))
     r = subprocess.run(cmd, cwd=ROOT)
     if r.returncode != 0:

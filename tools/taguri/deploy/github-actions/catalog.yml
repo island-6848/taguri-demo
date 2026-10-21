@@ -6,9 +6,12 @@
 #
 # **無料枠の中だけで動かす**（起案者の指示「必ず無料の範囲内にして。絶対超えないで」、docs/free-tier-budget.md）。
 # 非公開リポジトリの Actions は月 2,000 分まで無料。最初の段（Plan within the free tier）が直近 31 日の分数を
-# GitHub の API で数え、上限 1,500 分に収まるときだけ動かし、過去の公演を読む分数を決める
-# （cloudflare/scripts/free_tier.py）。D1・R2 に入れる段も、それぞれの上限の手前で止まる。
-# 最後の段（Free-tier check）が使った量を表にし、上限の 8 割を越えたら失敗して持ち主に通知が届く。
+# GitHub の API で数え、これからの毎日の更新の分を先に取っておいたうえで、下位の処理（過去の公演・ポスター）に
+# 渡す分数を決める（cloudflare/scripts/free_tier.py、docs/knowledge の dec-crawl-tiers）。段は優先順に並べる:
+#   1 新しい公演の発見と登録  2 これからの公演の情報・出演者・あらすじ  3 持っている公演の変更確認（ここまで毎日の更新）
+#   4 過去の公演の補完  5 過去の公演のポスター（残りの予算の中だけ。時間の上限で止め、続きは次回）
+# D1・R2 に入れる段も、それぞれの上限の手前で止まる。最後の段（Free-tier check）が使った量と段ごとの時間を表にし、
+# 上限の 8 割を越えたら、このリポジトリの issue で持ち主に知らせる（保存まで済ませるため、失敗にはしない）。
 # 過去の公演の一覧（q-auto-link-past）は、別のワークフローにすると準備と書き戻しで毎日 10 分ほど
 # 余計にかかるので、このジョブの中で読む（以前の past-stages.yml はやめた）。
 name: Catalog
@@ -21,9 +24,9 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'daily・weekly・index（初回は weekly）。index は推薦の索引だけを入れる（取り直し・ポスター・過去の公演はしない。q-index-load-now）'
+        description: 'daily・weekly・index（初回は weekly）。index は推薦の索引だけを入れる（取り直し・ポスター・過去の公演はしない。q-index-load-now）。手で動かすときは daily が既定（週 1 の取り直しは分を多く使う）'
         required: false
-        default: 'weekly'
+        default: 'daily'
 
 # 2 本同時に走らせない（作業データを取り合わない）。走っている方は止めない
 concurrency:
@@ -32,7 +35,8 @@ concurrency:
 
 permissions:
   contents: write   # state ブランチへの書き戻しに使う
-  actions: read     # 無料枠の点検で、このリポジトリのジョブの分数を読む
+  actions: read     # 無料枠の点検で、このリポジトリのジョブの分数と、この実行の段ごとの時間を読む
+  issues: write     # 無料枠の注意・取得を止めた日を、このリポジトリの issue で持ち主に知らせる
 
 jobs:
   build:
@@ -96,22 +100,28 @@ jobs:
           fi
           python tools/taguri/crawler_state.py restore --from state
       - name: Plan within the free tier
-        # 直近 31 日の分数が上限に届く見込みなら、ここで失敗して何もしない（通知が届く）。
-        # 週 1 の分が無ければ毎日の更新だけにし、過去の公演を読む分数（0 もある）を決める
+        # 直近 31 日の分数を数え、これからの毎日の更新の分を先に取っておく。足りない日は何もせずに終わる
+        # （失敗にはしない。持ち主にはこのリポジトリの issue で知らせる）。下位の処理（過去の公演・ポスター）の分数は、
+        # その残りから余白を引いた分だけ（cloudflare/scripts/free_tier.py、docs/knowledge の dec-crawl-tiers）
         id: plan
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          TAGURI_PLAN_SOFT_STOP: '1'      # 止めた日も失敗にしない（あとの段は run を見て止まる）
         run: python cloudflare/scripts/free_tier.py plan --data data --mode "$MODE"
+      # ── 1〜3: 毎日の更新（新しい公演の発見・これからの公演・持っている公演の変更）。見積もり 15 分の中 ──
       - name: Rebuild the catalog
-        if: steps.plan.outputs.mode != 'index'
+        # 毎日: サイトマップの差分で新しく載った公演と、更新日が変わったこれからの公演だけを読む（上限 discover_minutes 分、
+        # 続きは次回）。ステイジーズカレンダーとお気に入りの名前もここで引く。週 1 は候補とクレジットを取り直す
+        if: steps.plan.outputs.run == 'true' && steps.plan.outputs.mode != 'index'
         timeout-minutes: ${{ fromJSON(steps.plan.outputs.catalog_minutes) }}
+        env:
+          TAGURI_DISCOVER_MINUTES: ${{ steps.plan.outputs.discover_minutes }}
         run: python tools/taguri/publish_catalog.py --mode "${{ steps.plan.outputs.mode }}" --dry-run --out catalog.tar.gz
       - name: Queue the synopses of new stages (cached pages only, every day)
         # あらすじの読み取り待ち（data/credits/synopsis_queue.jsonl）を毎日足す（起案者の指摘 2026-10-16
-        # 「あらすじ取れないと興味ありなしの推薦の意味ない」）。これまでは週 1 の取り直しの中だけで作っていたので、
-        # 待ちが一度も出ず、あらすじは 0 件だった。ここは手元に控えたページだけを使い（--no-fetch）、取得も LLM も
+        # 「あらすじ取れないと興味ありなしの推薦の意味ない」）。手元に控えたページだけを使い（--no-fetch）、取得も LLM も
         # 呼ばない（数十秒）。読むのは起案者の Claude の定期実行（docs/knowledge の dec-synopsis-reader-claude）
-        if: steps.plan.outputs.mode == 'daily'
+        if: steps.plan.outputs.run == 'true' && steps.plan.outputs.mode == 'daily'
         continue-on-error: true
         timeout-minutes: 10
         env:
@@ -121,6 +131,7 @@ jobs:
         if: steps.plan.outputs.run == 'true'
         # 公演一覧と、一度だけ読んだあらすじを本番の D1 に入れる（cloudflare/scripts/deliver_catalogue.py）。
         # 変わった行だけを書く（D1 の無料枠は 1 日 10 万行の書き込み）。鍵はこの段にだけ渡す
+        timeout-minutes: 15
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -130,7 +141,7 @@ jobs:
             echo "Cloudflare の鍵が無いので D1 には入れない"; exit 0
           fi
           # wrangler の出力を <ファイル>.log に残し、commit が D1 の数（rows_written）で控えを直す（d1-upsert-counts）。
-          # tee を挟んでも wrangler の失敗で止まるように pipefail
+          # 点検の段は rows_read も数える。tee を挟んでも wrangler の失敗で止まるように pipefail
           set -o pipefail
           # index のときは推薦の索引だけ（その日の予算をまるごと索引に回す。公演一覧・題名・カードは毎日の実行で）
           only=""; [ "${{ steps.plan.outputs.mode }}" = "index" ] && only="--index-only"
@@ -146,38 +157,25 @@ jobs:
           done
           # 入れ終えてから「入れた」と記録する（失敗した分は次回まるごと入れ直す）
           python scripts/deliver_catalogue.py commit --data ../data --out ../d1-out
-      - name: Fetch posters of past stages (newest first)
-        # 過去の公演（2019 年以降）のポスター（起案者の指示 2026-10-16「過去の公演の全てのポスターデータも欲しい」）。
-        # taguri-demo の tools/taguri/posters.py --past。ページは 1 公演 1 回だけ読み直して画像の URL を控え、
-        # 画像は 1.1 秒に 1 枚（polite_http）。分数は Plan の段が無料枠から決める（0 の日は取らない）。
-        # 取ったものは次の段で R2 に入る（無料枠の控えを見て、入れられる分だけ）。失敗しても先へ進む
-        if: always() && steps.plan.outputs.run == 'true' && steps.plan.outputs.mode != 'index' && steps.plan.outputs.poster_minutes != '0'
-        continue-on-error: true
-        timeout-minutes: ${{ fromJSON(steps.plan.outputs.poster_timeout) }}
-        run: python tools/taguri/posters.py --past --max-minutes "${{ steps.plan.outputs.poster_minutes }}"
-      - name: Upload posters to R2 (new ones only)
-        # 取り込んだポスターを R2 に移し、D1 の poster 表に載せる（cloudflare/scripts/deliver_posters.py）。
-        # R2 は無料枠を越えると請求が来るので、保存 8 GB・月 30 万回の手前で止まる（free_tier.py）。
-        # R2 に入れ終えた分は作業データから外れる（crawler_state.py）。鍵に R2 の権限が無いか、
-        # バケットが無いときは何も変えずに先へ進む（ポスターは今までどおり作業データに残る）
+      - name: Back up the user records (encrypted, 30 days in R2)
+        # 利用者の記録の表だけを書き出し、行数を D1 と比べてから gpg（AES-256）で暗号化して R2 の
+        # backup/d1/ に置く。30 日より古いものは消す（cloudflare/scripts/backup_d1.py、S31）。
+        # 合言葉 BACKUP_PASSPHRASE が無ければ何もしない。失敗しても取得の結果の保存は続ける。
+        # 下位の処理（過去の公演・ポスター）より先に置く（それらが時間の上限で止まっても、控えは毎日できる）
         if: always() && steps.plan.outputs.run == 'true' && steps.plan.outputs.mode != 'index'
+        continue-on-error: true
+        timeout-minutes: 10
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        working-directory: cloudflare
-        run: |
-          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
-            echo "Cloudflare の鍵が無いので R2 には入れない"; exit 0
-          fi
-          python scripts/deliver_posters.py build --data ../data --out ../d1-posters
-          if [ -f ../d1-posters/posters-upload.sql ]; then
-            npx --yes "$WRANGLER" d1 execute taguri-demo --remote --yes --file ../d1-posters/posters-upload.sql
-          fi
-          python scripts/deliver_posters.py commit --data ../data --out ../d1-posters
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: python cloudflare/scripts/backup_d1.py backup --data data
+      # ── 4: 過去の公演の補完（残りの予算の中だけ。続きは次回）──
       - name: Read past stage pages (2019 onwards, newest first)
         # 過去の公演の一覧（q-auto-link-past）。1.1 秒に 1 枚（polite_http）。読む枚数と分数は Plan の段が
-        # 無料枠から決める（起案者の「1 日 6,000 件」は、無料枠に収まる分だけにした。free-tier-budget.md）
+        # 毎日の更新の取り置きと余白の残りから決める（0 の日は読まない）。新しい順に読み、読んだものは控えるので、続きは次回
         if: always() && steps.plan.outputs.run == 'true' && steps.plan.outputs.past_minutes != '0' && steps.plan.outputs.mode != 'index'
+        continue-on-error: true
         timeout-minutes: ${{ fromJSON(steps.plan.outputs.past_timeout) }}
         run: |
           python tools/review/fetch_past_stages.py --limit "${{ steps.plan.outputs.past_limit }}" \
@@ -185,6 +183,8 @@ jobs:
           python tools/review/fetch_past_stages.py --report | head -20
       - name: Deliver the new past stages to D1 (past_stage)
         if: always() && steps.plan.outputs.run == 'true' && steps.plan.outputs.mode != 'index'
+        continue-on-error: true
+        timeout-minutes: 10
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -193,17 +193,20 @@ jobs:
           if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
             echo "Cloudflare の鍵が無いので D1 には入れない"; exit 0
           fi
+          set -o pipefail
           python scripts/deliver_past.py build --data ../data --out ../d1-past
           if [ -f ../d1-past/past-upload.sql ]; then
-            npx --yes "$WRANGLER" d1 execute taguri-demo --remote --yes --file ../d1-past/past-upload.sql
+            npx --yes "$WRANGLER" d1 execute taguri-demo --remote --yes --file ../d1-past/past-upload.sql 2>&1 | tee ../d1-past/past-upload.sql.log
           fi
           python scripts/deliver_past.py commit --data ../data --out ../d1-past
       - name: Put the name index of the past stages into R2 (changed files only)
         # お気に入りのハッシュタグの画面が、名前から過去の公演を引くための索引（taguri-demo の
         # cloudflare/scripts/deliver_past_index.py、docs/knowledge の dec-past-name-index）。
         # 名前で 256 個に分けた JSON を R2 に置き、中身が変わったものだけ送る（ふだんは 1 日 256 回まで）。
-        # R2 の保存と書き込み回数は free_tier.py の控えで数え、上限の手前で止まる。失敗しても先へ進む
-        if: always() && steps.plan.outputs.run == 'true' && steps.plan.outputs.mode != 'index'
+        # 過去の公演を読んだ日だけ動かす（実測 3〜4 分）。R2 の保存と書き込み回数は free_tier.py の控えで数える
+        if: always() && steps.plan.outputs.run == 'true' && steps.plan.outputs.past_index == 'true'
+        continue-on-error: true
+        timeout-minutes: 8
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -216,21 +219,39 @@ jobs:
             echo "taguri-demo にまだ deliver_past_index.py が無い"; exit 0
           fi
           python scripts/deliver_past_index.py --data ../data || echo "名前の索引は入れられなかった（画面は D1 の一覧で代わりに探す）"
-      - name: Back up the user records (encrypted, 30 days in R2)
-        # 利用者の記録の表だけを書き出し、行数を D1 と比べてから gpg（AES-256）で暗号化して R2 の
-        # backup/d1/ に置く。30 日より古いものは消す（cloudflare/scripts/backup_d1.py、S31）。
-        # 合言葉 BACKUP_PASSPHRASE が無ければ何もしない。失敗しても取得の結果の保存は続ける。
-        # 雛形（taguri-demo の tools/taguri/deploy/github-actions/catalog.yml）にはあったが、ここに入っていなかった（2026-10-18 に足した）
-        if: always() && steps.plan.outputs.run == 'true' && steps.plan.outputs.mode != 'index'
+      # ── 5: 過去の公演のポスター（いちばん後。残りの予算の中だけ）──
+      - name: Fetch posters of past stages (newest first)
+        # 過去の公演（2019 年以降）のポスター（起案者の指示 2026-10-16「過去の公演の全てのポスターデータも欲しい」）。
+        # taguri-demo の tools/taguri/posters.py --past。画像は 1.1 秒に 1 枚（polite_http）。分数は Plan の段が決める
+        if: always() && steps.plan.outputs.run == 'true' && steps.plan.outputs.mode != 'index' && steps.plan.outputs.poster_minutes != '0'
         continue-on-error: true
+        timeout-minutes: ${{ fromJSON(steps.plan.outputs.poster_timeout) }}
+        run: python tools/taguri/posters.py --past --max-minutes "${{ steps.plan.outputs.poster_minutes }}"
+      - name: Upload posters to R2 (new ones only)
+        # 取り込んだポスターを R2 に移し、D1 の poster 表に載せる（cloudflare/scripts/deliver_posters.py）。
+        # R2 は無料枠を越えると請求が来るので、保存 8 GB・月 30 万回の手前で止まる（free_tier.py）。
+        # 時間の上限（upload_minutes 分）で止め、続きは次回（前は上限が無く、45 分かかった日もあった）
+        if: always() && steps.plan.outputs.run == 'true' && steps.plan.outputs.mode != 'index' && steps.plan.outputs.upload_minutes != '0'
+        continue-on-error: true
+        timeout-minutes: ${{ fromJSON(steps.plan.outputs.upload_timeout) }}
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
-        run: python cloudflare/scripts/backup_d1.py backup --data data
+        working-directory: cloudflare
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "Cloudflare の鍵が無いので R2 には入れない"; exit 0
+          fi
+          set -o pipefail
+          python scripts/deliver_posters.py build --data ../data --out ../d1-posters --max-minutes "${{ steps.plan.outputs.upload_minutes }}"
+          if [ -f ../d1-posters/posters-upload.sql ]; then
+            npx --yes "$WRANGLER" d1 execute taguri-demo --remote --yes --file ../d1-posters/posters-upload.sql 2>&1 | tee ../d1-posters/posters-upload.sql.log
+          fi
+          python scripts/deliver_posters.py commit --data ../data --out ../d1-posters
       - name: Free-tier check
-        # 使った量（Actions の分・D1 の書き込み・R2 の保存と回数・Worker の R2 の読み出し）を表にする。
-        # 上限の 8 割を越えたか、読めなかったら失敗する（GitHub から持ち主に通知が届く）
+        # 使った量（Actions の分・D1 の書き込みと読み出し・R2 の保存と回数・Worker の R2 の読み出し）と、この実行の
+        # 段ごとの時間を表にする。上限の 8 割を越えたら注意を出し、このリポジトリの issue で持ち主に知らせる
+        # （保存まで済ませるため、失敗にはしない）。数えが読めないときだけ失敗する（本当のエラーは隠さない）
         if: always()
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -240,8 +261,11 @@ jobs:
           if [ -n "$CLOUDFLARE_API_TOKEN" ] && [ -n "$CLOUDFLARE_ACCOUNT_ID" ]; then
             (cd cloudflare && npx --yes "$WRANGLER" d1 execute taguri-demo --remote --json \
               --command "SELECT k, n FROM usage" > ../worker-usage.json) || echo "Worker の数えが読めなかった"
+            # D1 の読み出し（直近 24 時間、Worker と取得の合計）。鍵に分析を読む権限が無ければ読めない（注意だけ）
+            (cd cloudflare && npx --yes "$WRANGLER" d1 info taguri-demo --json > ../d1-info.json) || echo "D1 の分析が読めなかった"
           fi
-          python cloudflare/scripts/free_tier.py check --data data --d1-usage worker-usage.json
+          python cloudflare/scripts/free_tier.py check --data data --d1-usage worker-usage.json --d1-info d1-info.json \
+            --run-mode "${{ steps.plan.outputs.run == 'true' && steps.plan.outputs.mode || '' }}" --d1-logs $(ls d1-out/*.log d1-past/*.log d1-posters/*.log 2>/dev/null)
       # 失敗しても、そこまでの取得の控えは残す（次回に同じものを取り直さない）
       - name: Save the working data to the state branch
         if: always() && steps.plan.outputs.run == 'true'

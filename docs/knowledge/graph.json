@@ -1034,6 +1034,24 @@
    ]
   },
   {
+   "id": "dec-crawl-tiers",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-21",
+   "title": "取得を優先順位の段に分ける。毎日の更新（新しい公演の発見・これからの公演・変更の確認）の分を先に取っておき、過去の公演・ポスターは残りから余白 30 分を引いた分だけ。下位の段に時間の上限を付け、続きは次回。止めた日・8 割の注意は失敗にせず issue で知らせる",
+   "sources": [
+    "cloudflare/scripts/free_tier.py",
+    "tools/review/fetch_candidates.py",
+    "tools/taguri/run.py",
+    "tools/taguri/publish_catalog.py",
+    "cloudflare/scripts/deliver_posters.py",
+    "tools/taguri/deploy/github-actions/catalog.yml",
+    "cloudflare/test/test_free_tier.py",
+    "tools/review/test_fetch_candidates_sitemap.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-crawler-gha-private",
    "type": "decision",
    "status": "adopted",
@@ -3959,6 +3977,22 @@
    "verifies": []
   },
   {
+   "id": "f-crawl-step-times-1021",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-21",
+   "title": "Catalog の段ごとの実測（10-14〜10-20）。毎日の更新の段（準備・取り直し・D1・控え・点検・書き戻し）は 4〜5 分。時間の上限の無い「ポスターを R2 に入れる」段が 3〜45 分かかり、毎日の更新の取り置きを食っていた",
+   "sources": [
+    "https://github.com/island-6848/taguri-crawler/actions/runs/38646724578",
+    "https://github.com/island-6848/taguri-crawler/actions/runs/38973663053",
+    "https://github.com/island-6848/taguri-crawler/actions/runs/39084288296",
+    "https://github.com/island-6848/taguri-crawler/actions/runs/39119155187",
+    "https://github.com/island-6848/taguri-crawler/actions/runs/39390407820",
+    "https://github.com/island-6848/taguri-crawler/actions/runs/38404782069"
+   ],
+   "verifies": []
+  },
+  {
    "id": "f-deliver-past-reads",
    "type": "finding",
    "status": "confirmed",
@@ -4086,6 +4120,17 @@
     "https://www.choicely.com/blog/google-play-12-tester-rule",
     "https://www.thinktecture.com/en/pwa/twa-bubblewrap",
     "https://developer.chrome.com/docs/android/trusted-web-activity/quick-start"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "f-wrangler-d1-info-reads",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-21",
+   "title": "wrangler d1 info <名前> --json は、D1 の分析（GraphQL の d1AnalyticsAdaptiveGroups）から直近 24 時間の rows_read_24h・rows_written_24h・read_queries_24h を返す",
+   "sources": [
+    "cloudflare/node_modules/wrangler/wrangler-dist/cli.js"
    ],
    "verifies": []
   },
@@ -6784,7 +6829,7 @@
   {
    "id": "q-crawl-d1-reads-counted",
    "type": "question",
-   "status": "open",
+   "status": "answered",
    "date": "2026-10-20",
    "title": "取得（taguri-crawler）が D1 から読む行数を、無料枠の点検（free_tier.py check）で数えていない。wrangler の Rows read を控えて、1 日 500 万行の何割かを表に出すか",
    "sources": [
@@ -7893,6 +7938,17 @@
     "https://github.com/island-6848/taguri-demo/issues/107",
     "cloudflare/src/recommend.js",
     "tools/review/user_recommender.py"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "q-sitemap-lastmod-meaning",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-21",
+   "title": "CoRich のサイトマップの lastmod は、出演者の追加・日程の変更など公演ページの中身が変わったときに進むか。進まないなら、持っている公演の変更の確認（優先度 3）を別の方法で補う",
+   "sources": [
+    "tools/review/fetch_candidates.py"
    ],
    "verifies": []
   },
@@ -9497,6 +9553,31 @@
    "from": "dec-corich-sitemap",
    "rel": "affects",
    "to": "dec-crawler-gha-private"
+  },
+  {
+   "from": "dec-crawl-tiers",
+   "rel": "depends_on",
+   "to": "f-crawl-step-times-1021"
+  },
+  {
+   "from": "dec-crawl-tiers",
+   "rel": "depends_on",
+   "to": "corich-sitemap-stage-ids"
+  },
+  {
+   "from": "dec-crawl-tiers",
+   "rel": "depends_on",
+   "to": "dec-free-tier-only"
+  },
+  {
+   "from": "dec-crawl-tiers",
+   "rel": "answers",
+   "to": "q-crawl-d1-reads-counted"
+  },
+  {
+   "from": "dec-crawl-tiers",
+   "rel": "affects",
+   "to": "dec-corich-sitemap"
   },
   {
    "from": "dec-crawler-gha-private",
@@ -11759,6 +11840,11 @@
    "to": "dec-title-crown-subtitle"
   },
   {
+   "from": "f-crawl-step-times-1021",
+   "rel": "supports",
+   "to": "dec-crawl-tiers"
+  },
+  {
    "from": "f-deliver-past-reads",
    "rel": "depends_on",
    "to": "d1-free-limits"
@@ -11827,6 +11913,11 @@
    "from": "f-store-review-rules",
    "rel": "affects",
    "to": "plan-app-release"
+  },
+  {
+   "from": "f-wrangler-d1-info-reads",
+   "rel": "supports",
+   "to": "dec-crawl-tiers"
   },
   {
    "from": "fav-reason-two-step",
@@ -14332,6 +14423,16 @@
    "from": "q-seed-weight-total-ratings",
    "rel": "depends_on",
    "to": "dec-fav-over-interest"
+  },
+  {
+   "from": "q-sitemap-lastmod-meaning",
+   "rel": "raises",
+   "to": "dec-crawl-tiers"
+  },
+  {
+   "from": "q-sitemap-lastmod-meaning",
+   "rel": "affects",
+   "to": "corich-sitemap-stage-ids"
   },
   {
    "from": "q-split-pieces-1019",
