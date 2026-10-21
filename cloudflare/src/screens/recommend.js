@@ -17,6 +17,7 @@ import {parseCredits, isGuide} from './credits.js';
 import {chooseVariant, groupOf, VARIANTS} from '../reco-gate.js';
 import {readWeights, multipliersOf, weightForm, weightAction, tunedWeights} from './weights.js';
 import {impressionAdjust, round6} from '../impression.js';
+import {noteAiFor} from '../note-ai.js';
 import {E, ValueError, cmp} from './py.js';
 import {answerSnapshot, recordShown} from './evalrec.js';
 import {ico} from './icons.js';
@@ -526,7 +527,8 @@ export async function rankedGroups(ctx) {
   // app._apply_impression_preferences と同じく「作品の内容」（theme）の効かせ方を掛け、点の付いた候補は
   // 上げ下げし、点の無い公演は好みが正のときだけ加える。規則だけで動き、好みのある言葉だけを索引から引く
   const themeMul = Object.hasOwn(multipliers, 'theme') ? multipliers.theme : 1.0;
-  const imp = themeMul > 0 && !ablate.impression ? await impressionAdjust(access, wholeStages(rated), CONTENT_AXES) : null;
+  // 本人が同意していれば、AI で読み取った感想の結果も使う（note-ai.js、dec-note-ai）
+  const imp = themeMul > 0 && !ablate.impression ? await impressionAdjust(access, wholeStages(rated), CONTENT_AXES, await noteAiFor(ctx)) : null;
   if (imp?.adjust.size) {
     const inRanked = new Set(ranked.map(c => String(c.stage_id)));
     for (const c of ranked) {

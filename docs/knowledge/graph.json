@@ -2071,6 +2071,22 @@
    "verifies": []
   },
   {
+   "id": "dec-note-ai",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-21",
+   "title": "感想は、設定で同意した人の分だけ Claude Haiku 5.5 に送って特徴を読み取り、感想の好み（#104）に使う。答えは候補の番号と符号だけ・1 回 20 件・同じ感想は 1 度だけ・夜にまとめて",
+   "sources": [
+    "cloudflare/src/note-ai.js",
+    "cloudflare/src/impression.js",
+    "cloudflare/migrations/0045.sql",
+    "cloudflare/public/privacy.html",
+    "cloudflare/test/note-ai.test.js",
+    "https://platform.claude.com/docs/en/about-claude/api-credits-for-subscribers"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-operator-name",
    "type": "decision",
    "status": "adopted",
@@ -10513,6 +10529,16 @@
    "from": "dec-nonplay-in-reco",
    "rel": "affects",
    "to": "comp-cf-worker"
+  },
+  {
+   "from": "dec-note-ai",
+   "rel": "affects",
+   "to": "impl-impression-worker"
+  },
+  {
+   "from": "dec-note-ai",
+   "rel": "affects",
+   "to": "q-impression-not-in-service"
   },
   {
    "from": "dec-own-domain",

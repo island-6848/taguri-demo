@@ -2590,6 +2590,14 @@ document.addEventListener("click", ev => {
       on.value === "1" ? "保存しました。分析から外します" : "保存しました").then(d => {
       if (d) setTimeout(() => location.reload(), 700);
     });
+  } else if (b.dataset.setNoteAi) {
+    // 感想の AI 読み取りへの同意（設定、note-ai.js）。押したときに 1 回だけ書く
+    const card = b.closest("#note-ai-setting"), on = card.querySelector('input[name="note_ai"]:checked');
+    if (!on) return;
+    post("/api/note_ai", {on: on.value === "1"}, card,
+      on.value === "1" ? "保存しました。今夜から感想を読み取ります" : "保存しました。感想を AI に送りません").then(d => {
+      if (d) setTimeout(() => location.reload(), 700);
+    });
   } else if (b.dataset.setPref || b.dataset.setPrefAll) {
     // **設定は「押したときに 1 回だけ書く」**（効かせ方と同じ規約）。チェックの
     // 並びは `.pfil` の form が持っているので、そこから読む ── 別の場所に状態を

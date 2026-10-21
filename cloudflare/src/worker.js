@@ -13,6 +13,7 @@ import {recommendApi} from './screens/recommend.js';
 import {searchIndex, d1Search} from './stage-search.js';
 import {suggest, stageTimes} from './screens/suggest.js';
 import {readPost} from './x-post.js';
+import {runNoteAi} from './note-ai.js';
 import {reminderDetails} from './screens/reminder.js';
 import {exportPayload} from './screens/settings.js';
 import {R2_READS_CAP, r2ReadAllowed, d1RoomLeft, d1Bytes, D1_BYTES_CAP, MAX_ACCOUNTS} from './free-tier.js';
@@ -574,6 +575,9 @@ export default {
     ctx.waitUntil(sweepEmptyAccounts(env.DB).then(n => { if (n) console.log(`empty accounts removed: ${n}`); }));
     // 対応済みの公演修正依頼の本文・行を期限で消す（issue #129）
     ctx.waitUntil(purgeFixRequests(env.DB).then(r => { if (r.cleared || r.removed) console.log(`fix_request purged: ${r.cleared} bodies, ${r.removed} rows`); }));
+    // 同意した人の感想を AI で読み取る（note-ai.js、dec-note-ai）。鍵（ANTHROPIC_API_KEY）が無ければ何もしない。本文はログに出さない
+    ctx.waitUntil(runNoteAi(env).then(r => { if (r.sent || r.stopped) console.log(`note_ai: ${r.sent} requests, ${r.saved} notes, stopped=${r.stopped}`); })
+      .catch(e => console.error('note_ai failed', e && e.message)));
   },
   // 画面や API の途中で思わぬ失敗（D1 が答えない・上限に届いた など）が起きたら、Cloudflare の英語の
   // 「Error 1101: Worker threw exception」ではなく、日本語の案内を返す（起案者の指示 2026-10-21「案内入れてよい」。
