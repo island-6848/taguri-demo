@@ -13,6 +13,7 @@ import {recommendApi} from './screens/recommend.js';
 import {searchIndex, d1Search} from './stage-search.js';
 import {suggest, stageTimes} from './screens/suggest.js';
 import {readPost} from './x-post.js';
+import {reminderDetails} from './screens/reminder.js';
 import {exportPayload} from './screens/settings.js';
 import {R2_READS_CAP, r2ReadAllowed, d1RoomLeft, d1Bytes, D1_BYTES_CAP, MAX_ACCOUNTS} from './free-tier.js';
 import {rateLimit, checkNewAccount, guardedUserInsert, countNewAccount, confirmNewAccount, rateLimitHealth} from './rate-limit.js';
@@ -443,6 +444,17 @@ async function nativeRoute(request, env, url) {
     try {
       await user(request, env.DB);
       return json(await stageTimes(url.searchParams, {db: env.DB}));
+    } catch (error) {
+      return json({ok:false,error:error.status ? error.message : '読めませんでした。'}, error.status ?? 500);
+    }
+  }
+  // 開幕リマインドの行を開いたときの中身（screens/reminder.reminderDetails）。1 回 20 件まで。公開の公演の情報だけ
+  if (allNative(env) && request.method === 'GET' && url.pathname === '/api/reminder_detail') {
+    try {
+      await user(request, env.DB);
+      const sids = [...new Set(String(url.searchParams.get('sids') || '').split(',').map(x => x.trim()).filter(x => /^[\w-]{1,40}$/.test(x)))].slice(0, 20);
+      const m = sids.length ? await reminderDetails({db: env.DB}, sids) : new Map();
+      return json({ok: true, html: Object.fromEntries(m)});
     } catch (error) {
       return json({ok:false,error:error.status ? error.message : '読めませんでした。'}, error.status ?? 500);
     }

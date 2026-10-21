@@ -4128,6 +4128,33 @@
    "verifies": []
   },
   {
+   "id": "f-reco-recompute-cpu-1021",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-21",
+   "title": "本番の大きさの索引で、おすすめの計算し直しは評価 10 件で 17 ms・40 件で 37 ms・100 件で 59 ms（無料は 10 ms）。裏の答え合わせを外しても 10 ms には届かない",
+   "sources": [
+    "cloudflare/src/recommend.js",
+    "cloudflare/src/reco-gate.js",
+    "cloudflare/src/screens/recommend.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "f-reminder-cpu-1021",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-21",
+   "title": "開幕リマインドは 1 回 Worker の CPU 30〜40 ミリ秒（無料は 10 ミリ秒）で、「いまは一時的に止めています」（503）の見込みの原因。週の束の使い回し・中身を開いたときに読む・entry を D1 で取り出す、で 10〜12 ミリ秒にした",
+   "sources": [
+    "cloudflare/src/screens/reminder.js",
+    "cloudflare/src/screens/index.js",
+    "cloudflare/src/worker.js",
+    "web/app.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "f-search-asu-prefix",
    "type": "finding",
    "status": "confirmed",
@@ -11946,6 +11973,26 @@
    "from": "f-people-json-no-affil-1019",
    "rel": "affects",
    "to": "dec-split-pieces"
+  },
+  {
+   "from": "f-reco-recompute-cpu-1021",
+   "rel": "depends_on",
+   "to": "q-reco-cpu-structure"
+  },
+  {
+   "from": "f-reco-recompute-cpu-1021",
+   "rel": "depends_on",
+   "to": "workers-free-cpu-10ms"
+  },
+  {
+   "from": "f-reminder-cpu-1021",
+   "rel": "depends_on",
+   "to": "workers-free-cpu-10ms"
+  },
+  {
+   "from": "f-reminder-cpu-1021",
+   "rel": "affects",
+   "to": "d1-reads-over-1020"
   },
   {
    "from": "f-search-asu-prefix",

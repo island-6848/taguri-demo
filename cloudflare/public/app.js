@@ -1513,6 +1513,33 @@ function reminderPrices(root) {
   });
 }
 
+// **開幕リマインドの行の中身は、開いたときに読む**（/api/reminder_detail、screens/reminder.reminderDetails）。前は 1 週ぶん
+// 全部（数百件）の中身を画面と一緒に組み、Worker が無料の CPU 10 ミリ秒を越えて「一時的に止めています」が出ていた。
+// 開いた行と、同じ日に並ぶ閉じた行を合わせて 20 件までまとめて読み、入れたら料金の行を整える（reminderPrices）
+document.addEventListener("toggle", async ev => {
+  const d = ev.target;
+  if (!d.open || !d.matches || !d.matches("details.dgopen")) return;
+  const lazy = d.querySelector(".dglazy[data-detail]:not([data-loading])");
+  if (!lazy) return;
+  const list = d.closest(".dglist") || d;
+  const boxes = [lazy, ...[...list.querySelectorAll(".dglazy[data-detail]:not([data-loading])")].filter(b => b !== lazy)].slice(0, 20);
+  boxes.forEach(b => { b.dataset.loading = "1"; });
+  lazy.textContent = "読み込んでいます…";
+  try {
+    const r = await fetch(API_BASE + "/api/reminder_detail?sids=" + boxes.map(b => encodeURIComponent(b.dataset.detail)).join(","), {credentials: "same-origin"});
+    const j = await r.json();
+    if (!r.ok || !j.ok) throw new Error();
+    boxes.forEach(b => {
+      const info = b.parentElement;
+      b.outerHTML = j.html[b.dataset.detail] || "";
+      if (info) reminderPrices(info.closest(".dgdetail") || info);
+    });
+  } catch (e) {
+    boxes.forEach(b => { delete b.dataset.loading; });
+    lazy.textContent = "くわしい情報を読めませんでした。閉じて、もう一度開いてください。";
+  }
+}, true);
+
 function compactTickets(root) {
   // おすすめの画面の一覧のカードには「くわしく」の折りたたみを付けない（起案者の指示 2026-10-17「おすすめページには
   // 『くわしく』の折りたたみなくして」）。閉じた 1 枚に出す分（日程・出演 5 人・あらすじの 1 文・料金・公式サイト）だけにする
