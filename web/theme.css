@@ -734,6 +734,8 @@ a.htag-in:hover{text-decoration:underline}
 .rk-3 .rk-no{background:color-mix(in srgb,var(--curtain) 30%,var(--surf));color:var(--ink)}
 .rk-1 .rk-name{font-weight:700}
 .rk-name{grid-area:name;min-width:0;overflow-wrap:anywhere}
+/* 同じ数の名前は 1 行に併記する（起案者の指示 2026-10-21）。区切りの「、」は薄く */
+.rk-sep{color:var(--ink2);font-weight:400}
 .rk li small{grid-area:n;color:var(--ink2);font-variant-numeric:tabular-nums;white-space:nowrap}
 .rk-bar{grid-area:bar;display:block;height:6px;border-radius:3px;background:var(--grid);overflow:hidden}
 .rk-bar i{display:block;height:100%;border-radius:3px;background:color-mix(in srgb,var(--curtain) 75%,var(--surf))}

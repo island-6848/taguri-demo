@@ -732,9 +732,22 @@
    "verifies": []
   },
   {
-   "id": "dec-account-rankings",
+   "id": "dec-account-rankings-top3",
    "type": "decision",
    "status": "adopted",
+   "date": "2026-10-21",
+   "title": "アカウントの団体・劇場のランキングは 3 位まで。1 のもの（1 作品・1 回）は出さず、同じ数は 1 行に併記する",
+   "sources": [
+    "cloudflare/src/screens/account.js",
+    "web/theme.css",
+    "cloudflare/test/account-stats.test.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-account-rankings",
+   "type": "decision",
+   "status": "superseded",
    "date": "2026-10-20",
    "title": "アカウントの「よく観ている団体」「よく行く劇場」をランキングの形にし、劇場は作品数と行った回数を切り替えられるようにする。作品数は違う作品（題名の鍵）の数で数える",
    "sources": [
@@ -6470,7 +6483,7 @@
   {
    "id": "q-account-rankings-look-1021",
    "type": "question",
-   "status": "open",
+   "status": "answered",
    "date": "2026-10-21",
    "title": "起案者に、アカウントの団体・劇場のランキングが「前作ったときの見た目じゃない」と見える。master のコードは作ったときのまま。本番が古いのか、別の見た目を指しているのか",
    "sources": [
@@ -9229,6 +9242,21 @@
    "from": "dec-account-page",
    "rel": "affects",
    "to": "comp-frontend"
+  },
+  {
+   "from": "dec-account-rankings-top3",
+   "rel": "supersedes",
+   "to": "dec-account-rankings"
+  },
+  {
+   "from": "dec-account-rankings-top3",
+   "rel": "answers",
+   "to": "q-account-rankings-look-1021"
+  },
+  {
+   "from": "dec-account-rankings-top3",
+   "rel": "affects",
+   "to": "dec-account-page"
   },
   {
    "from": "dec-account-rankings",
