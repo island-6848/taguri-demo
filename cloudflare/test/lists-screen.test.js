@@ -62,7 +62,7 @@ test('a registered name brings its stages to お気に入り and out of おす�
     const fav = (await screen(env, a, 'favourites')).body_html;
     // 見出しは「お気に入り」だけ。件数は表示中の 1 行で。並べ替えは月のタブより下。並び方の説明の段落と
     // 「すべてを表示しています」の 1 行は出さない（起案者の指示 2026-10-18 の仕様変更）
-    assert.match(fav, /<h1>お気に入り<\/h1>/);
+    assert.match(fav, /<h1>お気に入り(?:<button[^>]*share-page-btn[\s\S]*?<\/button>)?<\/h1>/);
     assert.match(fav, /全 1 件中 1 件を表示中/);
     assert.match(fav, /<nav class="idx" aria-label="月で切り替える">[\s\S]*<form class="sortf"[\s\S]*<div class="tickets">/);
     assert.doesNotMatch(fav, /すべてを表示しています|に並んでいます。順位は付けていません。観ると決めたら/);
@@ -350,7 +350,7 @@ test('観劇史年表: the years of the works seen', async () => {
       await step(env, a, {post: '/api/rate', body: {work_key: key, verdict: v}});
     }
     const html = (await screen(env, a, 'chronicle')).body_html;
-    assert.match(html, /<h1>観劇史年表 ── 何が始まった年か<\/h1>/);
+    assert.match(html, /<h1>観劇史年表 ── 何が始まった年か(?:<button[^>]*share-page-btn[\s\S]*?<\/button>)?<\/h1>/);
     assert.match(html, /観劇の年表<\/span><span class="badge part">3 作品<\/span>/);
     assert.match(html, /<div class="chfig"><svg /);
     assert.match(html, /<b>2026<\/b><i>2 作品・のべ 2 回<\/i>/);

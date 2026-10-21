@@ -580,6 +580,7 @@ async function walkA(A) {
     const row = () => page.locator('[data-route="/records/works"] .rec-row').filter({hasText: '終わった舞台'}).first();
     await go('/records/works');
     check(await page.locator('[data-route="/records/works"] .share-page-btn').count() === 1, '日記帳に「このページを共有」が無い');
+    await page.screenshot({path: join(OUT, 'share-buttons-pc.png')});   // 押し口は小さな丸いアイコンだけ
     await row().locator('[data-share-kind="stage"]').click();
     const dlg = page.locator('#share-dlg');
     await dlg.waitFor();

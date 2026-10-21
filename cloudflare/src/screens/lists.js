@@ -876,7 +876,7 @@ export async function favouritesScreen(params, ctx) {
 <p class="hsub">おすすめにかかわらず新着情報を知りたい題材や作り手がいるときは、お気に入りに追加することで情報の追跡ができます。</p>
 ${tools}
 ${emptyGuide('favourite', 'お気に入りに登録されている要素がありません。', '<p>上の「要素を登録」で、劇団・俳優・演出家・作品・原作者・題材などの名前を登録すると、その名前の公演をここに並べます。</p>')}`};
-  const body = `<h1>お気に入り</h1>${sharePageButton('favourites')}
+  const body = `<h1>お気に入り${sharePageButton('favourites')}</h1>
 <p class="hsub">おすすめにかかわらず新着情報を知りたい題材や作り手がいるときは、お気に入りに追加することで情報の追跡ができます。</p>
 ${tools}
 ${rcount}
