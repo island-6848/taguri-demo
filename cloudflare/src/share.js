@@ -106,14 +106,14 @@ async function shareAction(b, ctx) {
 
 export const shareScreens = {screens: {}, actions: {share: shareAction}};
 
-// 共有の押し口（app.js の data-share-kind が、選ぶ欄の小窓を開く）。小窓で評価・感想・名前を選んでからリンクを作る
+// 共有の押し口（app.js の data-share-kind が、選ぶ欄の小窓を開く）。字は出さず、小さい共有の印だけ（起案者の指示 2026-10-21）。小窓で評価・感想・名前を選んでからリンクを作る
 const SHARE_ICON = '<svg class="ico" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" '
   + 'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V4M8 8l4-4 4 4M5 13v6h14v-6"/></svg>';
 /** 公演 1 件のカードの共有（label: owned 購入済・interest 興味あり・watched 観た） */
 export const shareStageButton = (sid, label) => `<button type="button" class="share-open" data-share-kind="stage" data-share-stage="${E(sid)}"`
-  + ` data-share-label="${E(label)}">${SHARE_ICON}共有</button>`;
-/** ページの共有（kind: works・records・favourites・chronicle） */
-export const sharePageButton = kind => `<button type="button" class="share-open share-page-btn" data-share-kind="${E(kind)}">${SHARE_ICON}このページを共有</button>`;
+  + ` data-share-label="${E(label)}" aria-label="この公演を共有" title="共有">${SHARE_ICON}</button>`;
+/** ページの共有（kind: works・records・favourites・chronicle）。見出しの右に小さい印だけを置く（起案者の指示 2026-10-21「小さめの共有アイコンでよい」） */
+export const sharePageButton = kind => `<button type="button" class="share-open share-page-btn" data-share-kind="${E(kind)}" aria-label="このページを共有" title="このページを共有">${SHARE_ICON}</button>`;
 /** カード・行の終わり（</article>）の手前に押し口を足す */
 export const withShareButton = (html, button) => html.replace(/<\/article>(\s*)$/, `${button}</article>$1`);
 

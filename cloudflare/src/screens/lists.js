@@ -646,6 +646,35 @@ export function kindOffBox(keys) {
 </details>`;
 }
 
+/**
+ * 設定の画面の「外したおすすめ理由」（起案者の指示 2026-10-21「間違って✕で消しちゃったオススメ理由を復活させたい。設定ページに追加」）。
+ * 理由の ✕ は、人物の行なら「使わない言葉」（declined）に、形式の行なら「使わない理由」（kind_off）に入る。ここから 1 つずつ戻す。
+ * 戻す押し口は app.js の既存の道（.tag の data-dec="remove" と data-kindoff-remove）をそのまま使う。読み出しは 2 行（app_setting）。
+ */
+export function reasonOffCardHtml(words, kindKeys, summary) {
+  const label = k => (DEC_KINDS.find(([v]) => v === k) || ['', ''])[1];
+  const wtags = words.map(e => {
+    const {kind, word} = decEntry(e);
+    return `<span class="tag" data-word="${E(e)}">${kind ? E(label(kind)) : ''}「${E(word)}」<button data-dec="remove">戻す</button></span>`;
+  }).join('');
+  const ktags = kindKeys.map(k => {
+    const [axis, tag] = k.split('\t');
+    const kl = KIND_OFF_LABEL[axis] || axis.replace(/^#+/, '');
+    return `<span class="tag" data-kindkey="${E(k)}">${tag.endsWith(kl) ? '' : E(kl)}「${E(tag)}」<button data-kindoff-remove="1">戻す</button></span>`;
+  }).join('');
+  const n = words.length + kindKeys.length;
+  return `<details class="card" id="reason-off">${summary(n)}
+<p class="lead">おすすめの「なぜ出てきたか」で ✕ を押して外した理由です。<b>「戻す」を押すと、次の組み直しから、また理由とおすすめに使います。</b></p>
+${n ? '' : '<p class="empty">外した理由はありません。</p>'}
+${words.length ? `<h3>人物・言葉（使わない言葉）</h3>
+<p class="lead">人物の ✕ で外した名前と、自分で足した「使わない言葉」です。その言葉が入った公演は、おすすめに出ません。</p>
+<div class="tags">${wtags}<span class="said"></span></div>` : ''}
+${kindKeys.length ? `<h3>形式・原作など（使わない理由）</h3>
+<p class="lead">理由として使わないだけで、公演はおすすめに出ます。</p>
+<div class="tags">${ktags}<span class="said"></span></div>` : ''}
+</details>`;
+}
+
 export function declinedBox(words) {
   const label = k => (DEC_KINDS.find(([v]) => v === k) || ['', ''])[1];
   const tags = words.map(e => {
@@ -876,7 +905,7 @@ export async function favouritesScreen(params, ctx) {
 <p class="hsub">おすすめにかかわらず新着情報を知りたい題材や作り手がいるときは、お気に入りに追加することで情報の追跡ができます。</p>
 ${tools}
 ${emptyGuide('favourite', 'お気に入りに登録されている要素がありません。', '<p>上の「要素を登録」で、劇団・俳優・演出家・作品・原作者・題材などの名前を登録すると、その名前の公演をここに並べます。</p>')}`};
-  const body = `<h1>お気に入り</h1>${sharePageButton('favourites')}
+  const body = `<h1>お気に入り${sharePageButton('favourites')}</h1>
 <p class="hsub">おすすめにかかわらず新着情報を知りたい題材や作り手がいるときは、お気に入りに追加することで情報の追跡ができます。</p>
 ${tools}
 ${rcount}

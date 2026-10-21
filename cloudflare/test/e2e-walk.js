@@ -580,6 +580,7 @@ async function walkA(A) {
     const row = () => page.locator('[data-route="/records/works"] .rec-row').filter({hasText: '終わった舞台'}).first();
     await go('/records/works');
     check(await page.locator('[data-route="/records/works"] .share-page-btn').count() === 1, '日記帳に「このページを共有」が無い');
+    await page.screenshot({path: join(OUT, 'share-buttons-pc.png')});   // 押し口は小さな丸いアイコンだけ
     await row().locator('[data-share-kind="stage"]').click();
     const dlg = page.locator('#share-dlg');
     await dlg.waitFor();
@@ -818,6 +819,37 @@ async function walkA(A) {
     check(r[0]?.interest === 3, 'D1 に dismiss（interest=3）が無い: ' + JSON.stringify(r));
     await page.screenshot({path: join(OUT, 'dismiss-tag.png'), fullPage: true}).catch(() => {});
     note('D1: ' + JSON.stringify(r));
+  });
+
+  // 理由の ✕ を押しまちがえたら、設定の「外したおすすめ理由」から戻す（起案者の指示 2026-10-21）
+  await step('おすすめ理由の ✕ → 設定の「外したおすすめ理由」で戻す', async () => {
+    await go('/');
+    await page.locator('.ticket.recommend[data-stage="101"] li.rs button.rsx').first().waitFor({timeout: 10000});
+    const c101 = page.locator('.ticket.recommend[data-stage="101"]');
+    const k = c101.locator('li.rs button.rsx[data-kindoff]');
+    const x = (await k.count()) ? k.first() : c101.locator('li.rs button.rsx[data-word]').first();
+    check(await x.count() === 1, 'おすすめに ✕ の付いた理由が無い');
+    const word = await x.getAttribute('data-kindoff') || await x.getAttribute('data-word');
+    const done = page.waitForResponse(r => /\/api\/(kind_off|decline)$/.test(r.url()));
+    await x.click();
+    check((await done).status() === 200, '理由の ✕ が記録されない');
+    await go('/settings');
+    const card = page.locator('#reason-off');
+    await card.locator('summary').click();
+    const n0 = await card.locator('.tag').count();
+    const tag = card.locator('.tag', {hasText: word.split('\t').pop()}).first();
+    check(await tag.count() === 1, '外した理由が設定に出ない: ' + word);
+    await page.screenshot({path: join(OUT, 'reason-off-pc.png')});
+    const back = page.waitForResponse(r => /\/api\/(kind_off|decline)$/.test(r.url()));
+    await tag.locator('button').click();
+    check((await back).status() === 200, '戻すが記録されない');
+    await page.waitForFunction(n => document.querySelectorAll('#reason-off .tag').length < n, n0, {timeout: 10000})
+      .catch(() => check(false, '戻した理由が一覧に残る'));
+    await settle();
+    // 戻したあとの組み直しで、公演 101 がおすすめに戻る（次の段が使う）
+    await go('/');
+    await page.locator('.ticket.recommend[data-stage="101"]').waitFor({timeout: 30000})
+      .catch(() => check(false, '戻したあと、公演 101 がおすすめに戻らない'));
   });
 
   await step('今週のおすすめ: 興味なし → 押し直して興味あり', async () => {

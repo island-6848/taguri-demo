@@ -168,7 +168,7 @@ test('the cards and pages carry the share buttons, and settings lists the links'
     sqlite.exec("UPDATE rec_stage SET start='2026-12-01', end='2026-12-10' WHERE stage_id='102'");
     assert.equal((await step(env, a, {post: '/api/react', body: {stage_id: '102', value: 'interest', nofill: true}})).status, 200);
     assert.match((await step(env, a, {get: '/api/screen/interest'})).body.body_html,
-      /data-share-kind="stage" data-share-stage="102" data-share-label="interest">[\s\S]*?共有<\/button><\/article>/);
+      /data-share-kind="stage" data-share-stage="102" data-share-label="interest" aria-label="この公演を共有" title="共有"><svg[\s\S]*?<\/button><\/article>/);
     await share(env, a, {kind: 'works'});
     const set = (await step(env, a, {get: '/api/screen/settings'})).body.body_html;
     assert.match(set, /共有中のリンク（1 件）/);
