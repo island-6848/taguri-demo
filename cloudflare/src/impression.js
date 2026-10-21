@@ -5,6 +5,7 @@
 // 特徴は、観た公演に付いている種類の言葉（rec_people の '#題材' などの行）に限る。作品全体の ◎○△× から
 // 全部の特徴への好き嫌いを推し量らない。プロフィールは今の記録から毎回作り直すので、編集・削除がすぐ効く。
 
+import {splitMark} from './x-post.js';
 export const PRIOR = 3, WEIGHT = 0.75, TOP_N = 3;
 
 // 同じ特徴に限って表記を揃える。「恋愛」と「恋愛が多い」などは統合しない
@@ -137,7 +138,8 @@ export function buildProfile(works) {
     const key = String(work.work_key || work.key || '');
     if (!key || seen.has(key) || work.unseen) continue;
     seen.add(key);
-    const note = work.note_impression || '';
+    // X のポストから取り込んだ感想は、出どころの行（URL）を外して読む（x-post.js）
+    const note = splitMark(work.note_impression).body;
     if (!note.trim()) continue;
     const perWork = new Map();
     for (const s of extract(note, work.elements || [])) {
