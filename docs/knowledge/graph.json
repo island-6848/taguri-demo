@@ -6468,6 +6468,18 @@
    "verifies": []
   },
   {
+   "id": "q-account-rankings-look-1021",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-21",
+   "title": "起案者に、アカウントの団体・劇場のランキングが「前作ったときの見た目じゃない」と見える。master のコードは作ったときのまま。本番が古いのか、別の見た目を指しているのか",
+   "sources": [
+    "cloudflare/src/screens/account.js",
+    "cloudflare/public/theme.css"
+   ],
+   "verifies": []
+  },
+  {
    "id": "q-admin-override-in-index",
    "type": "question",
    "status": "open",
@@ -13307,6 +13319,11 @@
    "from": "q-account-limit-100",
    "rel": "affects",
    "to": "dec-free-tier-only"
+  },
+  {
+   "from": "q-account-rankings-look-1021",
+   "rel": "affects",
+   "to": "dec-account-rankings"
   },
   {
    "from": "q-admin-override-in-index",
