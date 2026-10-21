@@ -3012,6 +3012,17 @@
    ]
   },
   {
+   "id": "dec-search-bar-emphasis",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-21",
+   "title": "探すの画面の検索欄を目立たせる（幕の色を薄く敷いた帯・大きな丸い入力欄・幕の色で塗った「探す」）。CSS だけで、画面の HTML は変えない",
+   "sources": [
+    "web/theme.css"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-search-part-paging",
    "type": "decision",
    "status": "adopted",
@@ -11050,6 +11061,11 @@
    "from": "dec-scale-workers",
    "rel": "depends_on",
    "to": "q-crawler-host"
+  },
+  {
+   "from": "dec-search-bar-emphasis",
+   "rel": "affects",
+   "to": "dec-search-tour-one-card"
   },
   {
    "from": "dec-search-part-paging",

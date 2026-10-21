@@ -1614,6 +1614,20 @@ details.lprice:not([open]):not(#_)>summary .plist>li:only-child::before{display:
 
 /* ---- お気に入りの役職（起案者の指示 2026-10-18「人って選んだあとに、細く指定したい場合のみ任意で選べるように。複数役職やる人もいるので」、
    q-favourite-homonym）。種類で「人」を選んだときだけ出す。選ばなければ、どの役職でも当てる */
+/* 探すの画面の検索欄を目立たせる（起案者の指示 2026-10-21「『探す』のページ内にある検索バー強調して」）。幕の色を薄く敷いた帯に、
+   大きな丸い入力欄と、幕の色で塗った「探す」を並べる。印は CSS だけ（画面の HTML は前のまま） */
+.fav-add:has(#search-q){margin:14px 0 8px;padding:14px;gap:10px;flex-wrap:nowrap;align-items:flex-end;border-radius:16px;
+ background:color-mix(in srgb,var(--curtain) 8%,var(--surf));border:1.5px solid color-mix(in srgb,var(--curtain) 35%,var(--ring))}
+.fav-add:has(#search-q) .fld{flex:1;min-width:0}
+.fav-add:has(#search-q) .fl{font-weight:700;color:var(--ink)}
+.fav-add #search-q{width:100%;box-sizing:border-box;height:50px;padding:0 18px;font-size:17px;color:var(--ink);background:var(--surf);
+ border:2px solid var(--curtain);border-radius:999px}
+.fav-add #search-q::placeholder{color:var(--mute)}
+.fav-add #search-q:focus{outline:none;box-shadow:0 0 0 4px color-mix(in srgb,var(--curtain) 25%,transparent)}
+.fav-add:has(#search-q) button[type=submit]{flex:none;height:50px;padding:0 22px;border-radius:999px;font-size:15px;font-weight:700;
+ background:var(--curtain);border-color:var(--curtain);color:var(--curtain-w)}
+.fav-add:has(#search-q) button[type=submit] .ico{stroke:currentColor}
+@media(max-width:420px){.fav-add:has(#search-q){padding:12px}.fav-add #search-q{font-size:16px;padding:0 14px}.fav-add:has(#search-q) button[type=submit]{padding:0 16px}}
 .fav-add .fav-roles{display:none;flex:1 0 100%;flex-wrap:wrap;gap:4px 14px;align-items:center;margin:4px 0 0;padding:8px 10px;border:1px solid var(--ring);border-radius:8px}
 .fav-add:has(#fav-kind option[value="人"]:checked) .fav-roles{display:flex}
 .fav-roles legend{font-size:.85rem;padding:0 4px}
