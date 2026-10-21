@@ -3657,6 +3657,21 @@
    "verifies": []
   },
   {
+   "id": "dec-x-post-note",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-21",
+   "title": "X のポストは、感想の欄に URL を貼ると本文を取り込む形にする（X の API は有料なので使わず、埋め込み用の oEmbed で 1 件ずつ読む）",
+   "sources": [
+    "cloudflare/src/x-post.js",
+    "cloudflare/src/screens/row.js",
+    "web/app.js",
+    "cloudflare/test/x-post.test.js",
+    "https://docs.x.com/x-for-websites/oembed-api"
+   ],
+   "verifies": []
+  },
+  {
    "id": "decision-spa-save-retry",
    "type": "decision",
    "status": "adopted",
@@ -11588,6 +11603,11 @@
    "from": "dec-workers-d1",
    "rel": "affects",
    "to": "q-direction"
+  },
+  {
+   "from": "dec-x-post-note",
+   "rel": "affects",
+   "to": "impl-impression-worker"
   },
   {
    "from": "demo-seed-link-rate",
