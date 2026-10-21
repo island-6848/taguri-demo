@@ -1061,6 +1061,23 @@
    "verifies": []
   },
   {
+   "id": "dec-csp-script-self",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-20",
+   "title": "画面の CSP を script-src 'self' にした（'unsafe-inline'・'unsafe-eval' を外す）。index.html の先読みと「眺める」の storyline をファイルに出し、HTML の onload・onerror・onsubmit・onchange を app.js の委譲に移した（#155）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/155",
+    "cloudflare/public/_headers",
+    "web/app.js",
+    "web/prefetch.js",
+    "web/storyline-draw.js",
+    "cloudflare/src/screens/cards.js",
+    "cloudflare/scripts/sync_public_ui.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-d1-backup",
    "type": "decision",
    "status": "adopted",
@@ -7409,7 +7426,7 @@
   {
    "id": "q-original-ui-csp",
    "type": "question",
-   "status": "open",
+   "status": "answered",
    "date": "2026-10-13",
    "title": "元の画面の Content-Security-Policy を強められるか",
    "sources": [
@@ -9505,6 +9522,16 @@
    "from": "dec-credit-part-names",
    "rel": "answers",
    "to": "q-credit-part-names"
+  },
+  {
+   "from": "dec-csp-script-self",
+   "rel": "answers",
+   "to": "q-original-ui-csp"
+  },
+  {
+   "from": "dec-csp-script-self",
+   "rel": "affects",
+   "to": "sec-audit-1017"
   },
   {
    "from": "dec-d1-backup",

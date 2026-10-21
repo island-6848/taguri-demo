@@ -173,7 +173,7 @@ export async function settingsScreen(_params, ctx) {
 <b>いくつでも同時に選べます。</b><br>
 <b>すでに「興味あり」を押した公演・お気に入り・買った券には影響しません。</b>
 一度決めたことを、この設定で見えなくすることはありません。</p>
-<form class="pfil" id="pref-setting" onsubmit="return false">
+<form class="pfil" id="pref-setting" data-nosubmit>
 ${regionsHtml(counts, rcounts, true)}
 <div class="pchips">${chips}</div>
 <div class="pfoot"><button type="button" data-set-pref="1">${ico('gear')}この都道府県を既定にする</button>

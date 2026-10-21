@@ -87,8 +87,7 @@ export function mytixHtml(sid, start, end, tickets) {
 }
 
 export const posterHtml = file => `<span class="pwrap"><img class="poster" src="/img/${E(file)}?t=__TAGURI_TOKEN__"`
-  + ` alt="" loading="lazy" onload="this.parentElement.classList.add('ld')"`
-  + ` onerror="this.parentElement.classList.add('pe');this.nextElementSibling.textContent='読み込めませんでした'">`
+  + ` alt="" loading="lazy" data-poster>`   // 読めた・読めなかったの印は app.js が付ける（CSP の 'unsafe-inline' を外すため、#155）
   + `<span class="pmsg">読み込み中…</span></span>`;
 
 /** build_cards.compose */

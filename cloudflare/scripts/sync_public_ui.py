@@ -16,7 +16,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 WEB, PUBLIC = ROOT / "web", ROOT / "cloudflare" / "public"
-COPIED = ("tour.js", "style.css", "tour.css", "theme.css", "fonts.css", "halfwidth.js", "recommendation-exposure.js",
+COPIED = ("tour.js", "prefetch.js", "storyline-draw.js", "style.css", "tour.css", "theme.css", "fonts.css", "halfwidth.js", "recommendation-exposure.js",
           "assets/fonts/OFL-ZenKakuGothicAntique.txt", "assets/fonts/OFL-SawarabiGothic.txt", "assets/fonts/OFL-ZenMaruGothic.txt",
           "assets/fonts/OFL-ZenKakuGothicNew.txt")
 # Self-hosted title font (SIL OFL, subset to the page titles). Copied byte for byte.
@@ -36,7 +36,8 @@ def expected() -> dict[str, str | bytes]:
     out: dict[str, str | bytes] = {name: (WEB / name).read_text(encoding="utf-8") for name in COPIED}
     out.update({name: (WEB / name).read_bytes() for name in BINARY})
     app = (WEB / "app.js").read_text(encoding="utf-8")
-    out["app.js"] = app.replace('"/taguri-demo/vendor/d3.v7.min.js"', '"/vendor/d3.v7.min.js"')
+    out["app.js"] = app.replace('"/taguri-demo/vendor/d3.v7.min.js"', '"/vendor/d3.v7.min.js"').replace(
+        '"/taguri-demo/storyline-draw.js"', '"/storyline-draw.js"')
     html = (WEB / "index.html").read_text(encoding="utf-8")
     html = html.replace('src="/taguri-demo/', 'src="/').replace('href="/taguri-demo/', 'href="/')
     out["index.html"] = html.replace("URL(例: /taguri-demo/recommend/reminder)", "URL(例: /recommend/reminder)")

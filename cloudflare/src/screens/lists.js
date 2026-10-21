@@ -519,7 +519,7 @@ const sortOf = (params, keys) => { const k = params.get('s') || 'start'; return 
 function sortForm(action, sort, keys, keep = '') {
   const opts = keys.map(k => `<option value="${k}"${k === sort ? ' selected' : ''}>${E(SORTS[k])}</option>`).join('');
   return `<form class="sortf" method="get" action="${action}"><input type="hidden" name="t" value="__TAGURI_TOKEN__">${keep}`
-    + `<label>並べ替え <select name="s" onchange="this.form.requestSubmit ? this.form.requestSubmit() : this.form.submit()">${opts}</select></label>`
+    + `<label>並べ替え <select name="s" data-autosubmit>${opts}</select></label>`
     + '<noscript><button type="submit">並べ替える</button></noscript></form>';
 }
 const monthKey = r => (r.start || '').slice(0, 7);
