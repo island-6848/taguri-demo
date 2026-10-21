@@ -370,6 +370,10 @@ body{font-family:var(--font-body-default)}
 .int[contenteditable]{outline:0;border-bottom:1.5px solid var(--curtain);padding:2px 0;cursor:text;
  background:color-mix(in srgb,var(--curtain) 4%,transparent)}
 .inr .said:not(:empty){grid-column:2/-1}
+/* X のポストから取り込んだ感想の出どころ（row.xSource・app.js の showXSource） */
+.inr .xsrc{grid-column:2/-1;font-size:12px;color:var(--mute);line-height:1.6}
+.htagged .xsrc{display:block;font-size:12px;color:var(--mute);margin-top:2px}
+.xsrc a{color:inherit;text-decoration:underline;text-underline-offset:2px;white-space:nowrap}
 .vnr{display:grid;grid-template-columns:6em minmax(0,1fr) auto;column-gap:6px;align-items:baseline}
 .vnt[contenteditable]{outline:0;border-bottom:1.5px solid var(--ink2);padding:2px 0;cursor:text}
 .vnr .wnb{min-height:32px;padding:0 4px;border:0;background:none;box-shadow:none;font-size:12px;

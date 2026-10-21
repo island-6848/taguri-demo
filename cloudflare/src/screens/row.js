@@ -26,6 +26,7 @@ export function ico(name, size = 16, cls = '') {
 export const h2 = (name, text, extra = '') => `<h2>${ico(name, 18)}<span>${text}</span>${extra}</h2>`;
 
 import {anchor} from './anchor.js';
+import {splitMark, mark} from '../x-post.js';
 export {anchor};
 
 // ---------------------------------------------------------------- dates, venue, stamp
@@ -84,9 +85,12 @@ export function impressionParts(w) {
     + ` placeholder="どう感じましたか（任意です。書かなくても記録は残ります）"`
     + `>${E(note)}</textarea><span class="said"></span></div>`;
   if (note) {
+    // X のポストから取り込んだ感想は、出どころの行を文から外して下に小さく出す（x-post.js）。書き直しでも
+    // その行は残す（app.js の editInPlace が data-xsrc を文の後ろに付け直す）
+    const x = splitMark(note);
     return ['', `<div class="inw"><div class="inr"><span class="inl">感想</span>`
-      + `<span class="int">${E(note)}</span>`
-      + `<button class="wnb" data-note-open="1">書き直す</button></div>`
+      + `<span class="int"${x.url ? ` data-xsrc="${E(mark(x.date, x.url))}"` : ''}>${E(x.body)}</span>`
+      + `<button class="wnb" data-note-open="1">書き直す</button>${xSource(x)}</div>`
       + `${box}</div>`];
   }
   // 何も書いていないときも感想の欄を出し、文は出さない。鉛筆（app.js の penNotes）で書く（起案者の指示 2026-10-16）
@@ -94,6 +98,13 @@ export function impressionParts(w) {
     + `<span class="int"></span>`
     + `<button class="wnb" data-note-open="1">書き直す</button></div>`
     + `${box}</div>`];
+}
+
+/** 「2026/10/18 の X のポストから · X で見る ↗」。出どころが無ければ ''。 */
+export function xSource(x) {
+  if (!x || !x.url) return '';
+  const when = x.date ? `${x.date.replaceAll('-', '/')} の ` : '';
+  return `<span class="xsrc">${when}X のポストから · <a href="${E(x.url)}" target="_blank" rel="noopener noreferrer">X で見る ↗</a></span>`;
 }
 
 /** app._synopsis_html */

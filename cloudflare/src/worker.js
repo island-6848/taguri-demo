@@ -11,6 +11,7 @@ import {d1Access, gradeOf, cleanAspects, SEED_KINDS, SEED_ROLES, MAX_SEED_FAVS, 
 import {recommendApi} from './screens/recommend.js';
 import {searchIndex, d1Search} from './stage-search.js';
 import {suggest, stageTimes} from './screens/suggest.js';
+import {readPost} from './x-post.js';
 import {exportPayload} from './screens/settings.js';
 import {R2_READS_CAP, r2ReadAllowed, d1RoomLeft, d1Bytes, D1_BYTES_CAP, MAX_ACCOUNTS} from './free-tier.js';
 import {rateLimit, checkNewAccount, guardedUserInsert, countNewAccount, confirmNewAccount, rateLimitHealth} from './rate-limit.js';
@@ -441,6 +442,16 @@ async function nativeRoute(request, env, url) {
     try {
       await user(request, env.DB);
       return json(await stageTimes(url.searchParams, {db: env.DB}));
+    } catch (error) {
+      return json({ok:false,error:error.status ? error.message : '読めませんでした。'}, error.status ?? 500);
+    }
+  }
+  // 感想の欄に貼った X のポストの本文（x-post.js）。ログインしている人だけ。D1 は読まない（ログインの確かめだけ）
+  if (allNative(env) && request.method === 'GET' && url.pathname === '/api/x_post') {
+    try {
+      await user(request, env.DB);
+      const r = await readPost(url.searchParams.get('url'));
+      return json(r.body, r.status);
     } catch (error) {
       return json({ok:false,error:error.status ? error.message : '読めませんでした。'}, error.status ?? 500);
     }
