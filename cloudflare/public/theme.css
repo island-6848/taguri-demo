@@ -752,6 +752,8 @@ a.htag-in:hover{text-decoration:underline}
 .acrank-v .rk-visits{display:none}
 .acrank-v:has(#rk-v-visits:checked) .rk-visits{display:grid}
 .acrank-v:has(#rk-v-visits:checked) .rk-works{display:none}
+/* 探すの過去の公演の「観た」: ツアーは劇場を選ぶまで観た日を選べない（起案者の指示 2026-10-21）。選べない欄は薄くする */
+.past-seen input:disabled{opacity:.45;cursor:not-allowed}
 /* まとめた記録の観た回（起案者の問い 2026-10-21、screens/row.js visitsHtml）。1 回 1 行で日付・開演・劇場、まとめた回には「分ける」 */
 .visits{margin:6px 0 4px;font-size:13px}
 .visits>summary{cursor:pointer;color:var(--acc);font-size:12.5px;padding:6px 0}

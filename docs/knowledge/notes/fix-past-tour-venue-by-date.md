@@ -1,7 +1,7 @@
 ---
 id: fix-past-tour-venue-by-date
 type: decision
-status: adopted
+status: superseded
 date: 2026-10-18
 title: 探す画面の過去の公演（ツアー）で「観た」を記録するとき、観た日にその日上演していた劇場の公演（stage_id）に結び付ける。画面では劇場を選べ、サーバーも日付から選び直す
 sources:

@@ -68,7 +68,8 @@ test('past stages (2019-) show on 探す by title prefix, with 観た and 行け
     assert.match(html, /2023\/7\/1〜2023\/8\/3・劇場A ほか 1 会場/);
     assert.match(html, /<button type="button" data-past="seen">観た<\/button><button type="button" data-past="missed">行けばよかった<\/button>/);
     // 観た: the date (within the run) and the curtain time, then 観劇記録に追加
-    assert.match(html, /<div class="past-seen" hidden><label>観た日 <input type="date" name="date" value="" min="2023-07-01" max="2023-08-03" required><\/label><label>劇場 <select name="stage"><option value="700001" data-start="2023-07-01" data-end="2023-07-10" data-venue="劇場A">劇場A（2023\/7\/1〜2023\/7\/10）<\/option><option value="700002" data-start="2023-08-01" data-end="2023-08-03" data-venue="劇場B">劇場B（2023\/8\/1〜2023\/8\/3）<\/option><\/select><\/label><label>開演 <input type="time" name="time" step="60"><\/label><button type="button" data-past="seen-save">観劇記録に追加<\/button><\/div>/);
+    // ツアーは劇場 → その劇場の期間だけの観た日 → 開演の順（起案者の指示 2026-10-21）。劇場を選ぶまで観た日は選べない
+    assert.match(html, /<div class="past-seen" hidden><label>劇場 <select name="stage" required><option value="" selected disabled>劇場を選んでください<\/option><option value="700001" data-start="2023-07-01" data-end="2023-07-10" data-venue="劇場A">劇場A（2023\/7\/1〜2023\/7\/10）<\/option><option value="700002" data-start="2023-08-01" data-end="2023-08-03" data-venue="劇場B">劇場B（2023\/8\/1〜2023\/8\/3）<\/option><\/select><\/label><label>観た日 <input type="date" name="date" value="" required disabled><\/label><label>開演 <input type="time" name="time" step="60"><\/label><button type="button" data-past="seen-save">観劇記録に追加<\/button><\/div>/);
     assert.doesNotMatch(html, /冬物語/);
     // 観た: into the diary, linked to that stage. The row stays, marked 記録あり, so another visit can be added
     // (起案者の問い 2026-10-21 ── 前はこの一覧から消え、同じ劇場にもう 1 回足せなかった)

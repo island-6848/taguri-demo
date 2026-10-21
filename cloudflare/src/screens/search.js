@@ -219,13 +219,15 @@ export async function pastHits(ctx, q, ws, page = 1, href = null) {
     const isMissed = missed.has(indexKey(p.title));
     // 観た日の欄: 1 日だけの公演はその日を入れておく。期間の外は選べない（min/max）
     const one = p.start === p.end ? p.start : '';
-    // ツアーは劇場ごとに公演が別（stage_id が違う）。観た日からその日に上演していた劇場を選び直す（画面の app.js）。
-    // 日が重なる劇場が 2 つあるときや、日を入れる前は、ここで選べる（起案者の指摘 2026-10-18「適切な観劇日を入れても
-    // 観劇した劇場がその日と対応しない」── 前は代表の 1 劇場にしか結び付かなかった）
-    const legSel = p.legs.length > 1 ? `<label>劇場 <select name="stage">${p.legs.map(l =>
+    // ツアーは劇場ごとに公演が別（stage_id が違う）。先に劇場を選び、その劇場の期間だけのカレンダーから観た日を選び、開演を入れる
+    // （起案者の指示 2026-10-21「観た→劇場選択→その劇場日付しか選べないカレンダーから日付を追加→時間追加」）。劇場を選ぶまで観た日は選べない
+    const tour = p.legs.length > 1;
+    const legSel = tour ? `<label>劇場 <select name="stage" required><option value="" selected disabled>劇場を選んでください</option>${p.legs.map(l =>
       `<option value="${E(l.sid)}" data-start="${E(l.start)}" data-end="${E(l.end)}" data-venue="${E(l.venue)}">${E(l.venue || '劇場不明')}（${E(l.start === l.end ? md(l.start) : `${md(l.start)}〜${md(l.end)}`)}）${l.mine ? `・記録あり ${l.mine} 回` : ''}</option>`).join('')}</select></label>` : '';
-    const seenForm = `<div class="past-seen" hidden><label>観た日 <input type="date" name="date" value="${E(one)}" min="${E(p.start || '')}" max="${E(p.end || '')}" required></label>`
-      + `${legSel}<label>開演 <input type="time" name="time" step="60"></label><button type="button" data-past="seen-save">観劇記録に追加</button></div>`;
+    const dateIn = tour ? '<input type="date" name="date" value="" required disabled>'
+      : `<input type="date" name="date" value="${E(one)}" min="${E(p.start || '')}" max="${E(p.end || '')}" required>`;
+    const seenForm = `<div class="past-seen" hidden${tour ? '' : ` data-stage="${E(p.sid)}"`}>${legSel}<label>観た日 ${dateIn}</label>`
+      + `<label>開演 <input type="time" name="time" step="60"></label><button type="button" data-past="seen-save">観劇記録に追加</button></div>`;
     return `<li class="pastrow" data-stage="${E(p.sid)}" data-title="${E(p.title)}">
 <div class="past-t"><b>${E(p.title)}</b>${p.grp ? `<span class="past-g">${E(p.grp)}</span>` : ''}${p.mine ? `<span class="badge part">記録あり ${p.mine} 回</span>` : ''}</div>
 <div class="past-w">${E(run)}${p.where ? '・' + E(p.where) : ''}</div>

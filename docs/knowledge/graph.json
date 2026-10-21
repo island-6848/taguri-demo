@@ -2198,6 +2198,20 @@
    "verifies": []
   },
   {
+   "id": "dec-past-seen-venue-first",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-21",
+   "title": "探すの過去の公演の「観た」は、劇場 → その劇場の期間だけのカレンダーで観た日 → 開演の順に入れる。ツアーは劇場を選ぶまで観た日を選べない",
+   "sources": [
+    "cloudflare/src/screens/search.js",
+    "web/app.js",
+    "web/theme.css",
+    "cloudflare/test/search-uncarded.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-past-title-backfill",
    "type": "decision",
    "status": "adopted",
@@ -4354,7 +4368,7 @@
   {
    "id": "fix-past-tour-venue-by-date",
    "type": "decision",
-   "status": "adopted",
+   "status": "superseded",
    "date": "2026-10-18",
    "title": "探す画面の過去の公演（ツアー）で「観た」を記録するとき、観た日にその日上演していた劇場の公演（stage_id）に結び付ける。画面では劇場を選べ、サーバーも日付から選び直す",
    "sources": [
@@ -10456,6 +10470,16 @@
    "from": "dec-past-posters",
    "rel": "affects",
    "to": "comp-crawler"
+  },
+  {
+   "from": "dec-past-seen-venue-first",
+   "rel": "supersedes",
+   "to": "fix-past-tour-venue-by-date"
+  },
+  {
+   "from": "dec-past-seen-venue-first",
+   "rel": "affects",
+   "to": "dec-tour-visits-1021"
   },
   {
    "from": "dec-past-title-backfill",
