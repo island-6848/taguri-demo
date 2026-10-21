@@ -3851,6 +3851,53 @@ document.addEventListener("click", ev => {
   if (pen) pen.click();
 });
 
+// **X のポストの URL を貼ると、その本文を感想に入れる**（起案者の指示 2026-10-21「Xと連携して、ツイートを感想として
+// 紐付けられると便利そう」「リンク貼る方式にしましょう」）。本文は Worker が X の埋め込み用の口（oEmbed、無料・鍵なし）で
+// 読む（/api/x_post、cloudflare/src/x-post.js）。感想の最後の行に「[X 日付] URL」を残し、画面ではそれを
+// 「日付 の X のポストから · X で見る ↗」の行にする。読めなかったときは URL をそのまま入れる
+const X_POST_URL = /^https?:\/\/(?:www\.|mobile\.)?(?:x|twitter)\.com\/[A-Za-z0-9_]{1,15}\/status(?:es)?\/\d{1,25}(?:[/?#]\S*)?$/;
+const X_MARK_LINE = /\n*\[X (?:\d{4}-\d{2}-\d{2})?\] https:\/\/x\.com\/[A-Za-z0-9_]{1,15}\/status\/\d{1,25}\s*$/;
+function insertAtCaret(el, text) {
+  el.focus();
+  let ok = false;
+  try { ok = document.execCommand("insertText", false, text); } catch (e) {}
+  if (ok) return;
+  if ("value" in el) {
+    const a = el.selectionStart ?? el.value.length, b = el.selectionEnd ?? a;
+    el.value = el.value.slice(0, a) + text + el.value.slice(b);
+  } else el.textContent += text;
+}
+async function pasteXPost(ev, el, said, onMark) {
+  const text = ((ev.clipboardData && ev.clipboardData.getData("text/plain")) || "").trim();
+  if (!X_POST_URL.test(text)) return;
+  ev.preventDefault();
+  if (said) said.textContent = "X のポストを読んでいます…";
+  let d;
+  try {
+    const r = await fetch("/api/x_post?url=" + encodeURIComponent(text), {credentials: "same-origin"});
+    d = await r.json().catch(() => ({}));
+    if (!r.ok || !d.ok) throw new Error(d.error || "このポストは読めませんでした。");
+  } catch (e) {
+    if (said) said.textContent = e.message;
+    insertAtCaret(el, text);
+    return;
+  }
+  insertAtCaret(el, d.text);
+  onMark(d.mark);
+  if (said) said.textContent = "X のポストの文を入れました。離れると保存します。";
+}
+// 出どころの行（row.xSource と同じ形）を、感想の行（.inr）の中に出し直す。m が空なら外す
+function showXSource(row, m) {
+  let x = row.querySelector(":scope > .xsrc");
+  const g = /^\[X (\d{4}-\d{2}-\d{2})?\] (\S+)$/.exec(m || "");
+  if (!g) { if (x) x.remove(); return; }
+  if (!x) { x = document.createElement("span"); x.className = "xsrc"; (row.querySelector(":scope > .said") || row.appendChild(document.createTextNode(""))).before(x); }
+  x.textContent = (g[1] ? g[1].replaceAll("-", "/") + " の " : "") + "X のポストから · ";
+  const a = document.createElement("a");
+  a.href = g[2]; a.target = "_blank"; a.rel = "noopener noreferrer"; a.textContent = "X で見る ↗";
+  x.append(a);
+}
+
 // **書いてある文を、その場で書き直せる欄にする。** 下に入力欄を開くのではなく、読んでいた文の上で
 // そのまま書く。離れたら（または「書き終える」を押したら）保存し、Esc で元に戻す。保存は今までと
 // 同じ口（感想は /api/note、回のメモは /api/visit_note）。隠れている textarea も同じ値にそろえておく
@@ -3859,7 +3906,11 @@ function editInPlace(btn, el, ta, row, path, bodyOf, okMsg) {
   // 「書き終える」を押すと、先に文から離れた（blur）ことで保存が済む。そのあとに届く押下で
   // また書き始めないようにする
   if (btn._finishedAt && Date.now() - btn._finishedAt < 600) return;
-  const before = el.textContent;
+  const before = el.textContent, xsrc0 = el.dataset.xsrc || "";
+  // 文と、X のポストから取り込んだときの出どころの行（data-xsrc）を合わせたものが保存する感想になる
+  const full = () => { const b = el.textContent.trim(); return b && el.dataset.xsrc ? b + "\n\n" + el.dataset.xsrc : b; };
+  const onPaste = ev => pasteXPost(ev, el, row.querySelector(":scope > .said"), m => { el.dataset.xsrc = m; showXSource(row, m); });
+  if (path === "/api/note") el.addEventListener("paste", onPaste);
   try { el.contentEditable = "plaintext-only"; } catch (e) {}
   if (!el.isContentEditable) el.contentEditable = "true";
   el.setAttribute("role", "textbox");
@@ -3874,22 +3925,30 @@ function editInPlace(btn, el, ta, row, path, bodyOf, okMsg) {
   const finish = save => {
     el.removeEventListener("blur", onBlur);
     el.removeEventListener("keydown", onKey);
+    el.removeEventListener("paste", onPaste);
     el.removeAttribute("contenteditable");
     el.removeAttribute("role");
     el.removeAttribute("aria-multiline");
     setPen(btn, false);
-    const text = el.textContent.trim();
+    const body = el.textContent.trim(), text = full();
+    const was = before.trim() && xsrc0 ? before.trim() + "\n\n" + xsrc0 : before.trim();
     // 前に保存できなかった文（unsaved）は、書き直さずに離れても送り直す（#83）
-    if (!save || (text === before.trim() && !el.dataset.unsaved)) { el.textContent = before; return; }
-    el.textContent = text;
+    if (!save || (text === was && !el.dataset.unsaved)) {
+      el.textContent = before;
+      if (xsrc0) el.dataset.xsrc = xsrc0; else delete el.dataset.xsrc;
+      showXSource(row, xsrc0);
+      return;
+    }
+    el.textContent = body;
+    if (!body) { delete el.dataset.xsrc; showXSource(row, ""); }
     if (ta) ta.value = text;
     if (!live) return;
     // 送るのは隠れている欄と同じ順番待ち（#84）。失敗しても文は巻き戻さない ── 巻き戻すと、
     // 返ってくるまでに書いた新しい文まで消える。保存できなかった印だけ付けておく
     const holder = ta || el;
-    if (holder.dataset.was === undefined) holder.dataset.was = before.trim();
+    if (holder.dataset.was === undefined) holder.dataset.was = was;
     saveQueued(holder, text, row, t => post(path, bodyOf({dataset: ta ? ta.dataset : {}, value: t}), row, okMsg).then(d => {
-      if (d && el.textContent.trim() === t) delete el.dataset.unsaved;
+      if (d && full() === t) delete el.dataset.unsaved;
       if (!d) el.dataset.unsaved = "1";
       return d;
     }));
@@ -4151,6 +4210,8 @@ root.querySelectorAll("textarea[data-note]").forEach(t => {
   if (t.dataset.bound) return;
   t.dataset.bound = "1";
   t.dataset.was = t.value;
+  t.addEventListener("paste", ev => pasteXPost(ev, t, (t.closest(".inote, .wnote, .wait, .rec-row") || document).querySelector(".said"),
+    m => { t.value = t.value.replace(X_MARK_LINE, "").trimEnd() + "\n\n" + m; }));
   t.addEventListener("blur", () => {
     if (!live) return;
     // **保存できたことを、書いた欄のそばに出す。** `.rec-row` しか見ていなかったため、

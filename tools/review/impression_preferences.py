@@ -59,6 +59,7 @@ _EVALUATION = re.compile(
     r"面白(?:い|かった)|楽し(?:い|かった|めた)|よかった|良かった|"
     r"最高(?:だった|です)?|魅力的|心地よ(?:い|かった)|刺さ(?:る|った))"
 )
+_X_MARK = re.compile(r"\n*\[X (?:\d{4}-\d{2}-\d{2})?\] https://x\.com/[A-Za-z0-9_]{1,15}/status/\d{1,25}\s*\Z")
 _SPLIT = re.compile(r"[。！？!?\n、,;；]|けれど(?:も)?|けど|しかし|でも|一方(?:で)?|だが|ですが")
 _UNCERTAIN = re.compile(r"かもしれ|とは(?:言え|いえ|限ら)|わけ(?:では|じゃ)|ではなく|じゃなく|とは思わ")
 _REPORTED = re.compile(r"[」』](?:と|って)(?:言|話|語|叫)|(?:という|と言う)(?:台詞|セリフ)")
@@ -124,7 +125,8 @@ def build_profile(works: list[dict], themes: dict) -> dict[str, dict]:
         if not key or key in seen or work.get("unseen"):
             continue
         seen.add(key)
-        note = work.get("note_impression") or ""
+        # X のポストから取り込んだ感想の出どころの行（cloudflare/src/x-post.js）は読まない
+        note = _X_MARK.sub("", work.get("note_impression") or "")
         if not note.strip():
             continue
         # rated 要素は元の作品、公演へのリンクは手入力の記録にも使える。
