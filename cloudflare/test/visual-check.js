@@ -14,7 +14,7 @@ const server=createServer((req,res)=>{
  const name=original?url.pathname.slice('/taguri-demo/'.length):url.pathname.slice(1);
  let file=resolve(root,name||'index.html');
  if(!file.startsWith(root+'/')||!existsSync(file)||!extname(file))file=resolve(root,'index.html');
- try{const types={'.css':'text/css','.js':'text/javascript','.html':'text/html','.mp4':'video/mp4'};res.setHeader('Content-Type',types[extname(file)]||'application/octet-stream');if(!original)res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");res.end(readFileSync(file));}catch{res.writeHead(404);res.end();}
+ try{const types={'.css':'text/css','.js':'text/javascript','.html':'text/html','.mp4':'video/mp4'};res.setHeader('Content-Type',types[extname(file)]||'application/octet-stream');if(!original)res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");res.end(readFileSync(file));}catch{res.writeHead(404);res.end();}
 });
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const base=`http://127.0.0.1:${server.address().port}`;
 const browser=await chromium.launch();mkdirSync('/tmp/taguri-visual',{recursive:true});

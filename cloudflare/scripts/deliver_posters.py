@@ -147,7 +147,8 @@ def _transient(e: Exception) -> bool:
 
 
 def build(data: Path, out: Path, *, bucket: str, limit: int, put=put_object,
-          get=get_object, delete=delete_object, reshrink: int = 0, sleep=time.sleep) -> dict:
+          get=get_object, delete=delete_object, reshrink: int = 0, sleep=time.sleep,
+          max_minutes: float | None = None, clock=time.monotonic) -> dict:
     account, token = os.environ.get("CLOUDFLARE_ACCOUNT_ID", ""), os.environ.get("CLOUDFLARE_API_TOKEN", "")
     done = load(data)
     # 新しい公演から入れる（起案者の指示 2026-10-19「2026 年の過去公演とれるところまで取って」）。名前の順だと
@@ -165,8 +166,15 @@ def build(data: Path, out: Path, *, bucket: str, limit: int, put=put_object,
     d1_rows = FT.d1_left(data) // WRITES_PER_ROW
     import datetime as _dt
     ended = ended_ids(data, (_dt.datetime.now(_dt.timezone.utc) + _dt.timedelta(hours=9)).date().isoformat())
+    # 時間の上限（dec-crawl-tiers）。前はこの段に上限が無く、溜まったポスターを入れるのに 45 分かかった日があった（Catalog #5）。
+    # 入れ終えた分は commit で控えるので、続きは次回から（同じものを入れ直さない）
+    deadline = clock() + max_minutes * 60 if max_minutes is not None else None
+    over = lambda: deadline is not None and clock() >= deadline        # noqa: E731
     try:
         for f in todo:
+            if over():
+                stop = f"時間の上限（{max_minutes} 分）に届いたので止めた（続きは次回）"
+                break
             size = f.stat().st_size
             if FT.r2_bytes(u) + size > FT.CAPS["r2_bytes"]:
                 stop = f"R2 の保存が上限 {FT.CAPS['r2_bytes']:,} バイトに届くので止めた（無料枠 10 GB）"
@@ -219,7 +227,7 @@ def build(data: Path, out: Path, *, bucket: str, limit: int, put=put_object,
         n_re = 0
         if not stop:
             for stem, old_key in sorted(done.items()):
-                if n_re >= reshrink:
+                if n_re >= reshrink or over():
                     break
                 if old_key.endswith(".webp") or stem in got:
                     continue
@@ -278,13 +286,15 @@ def main() -> int:
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--bucket", default=os.environ.get("TAGURI_POSTER_BUCKET", "taguri-posters"))
     ap.add_argument("--limit", type=int, default=2000)
+    ap.add_argument("--max-minutes", type=float, default=None, help="R2 に入れる時間の上限（分）。続きは次回")
     ap.add_argument("--reshrink", type=int, default=500, help="R2 にある大きいままのポスターを 1 回に縮め直す枚数")
     a = ap.parse_args()
     if a.action == "commit":
         commit(a.data, a.out)
         print("posters: delivered list saved")
         return 0
-    print(json.dumps(build(a.data, a.out, bucket=a.bucket, limit=a.limit, reshrink=a.reshrink), ensure_ascii=False))
+    print(json.dumps(build(a.data, a.out, bucket=a.bucket, limit=a.limit, reshrink=a.reshrink, max_minutes=a.max_minutes),
+                     ensure_ascii=False))
     return 0
 
 

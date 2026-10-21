@@ -1,7 +1,7 @@
 ---
 id: q-replay-h3-satisfaction
 type: question
-status: open
+status: answered
 date: 2026-10-18
 title: 評価の計画の H3（観る前の点と観たあとの評価の順位相関）を、手元の再生（replay_eval）にまだ実装していない。興味の指標（H1）と満足の指標を分けて出す（#114、測る道具を作る）
 sources:

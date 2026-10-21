@@ -154,21 +154,33 @@ def listing(page: int, y: int, m: int, d: int) -> list[dict]:
 SITEMAP_INDEX = f"{BASE}/sitemaps/sitemap.xml.gz"
 
 
-def sitemap_stage_ids() -> list[int]:
-    """CoRich のサイトマップに載っている公演ページの id（昇順）。
+_SITEMAP_URL = re.compile(r"<url>\s*<loc>[^<]*/stage/(\d+)</loc>(?:\s*<lastmod>([^<]*)</lastmod>)?", re.S)
+
+
+def sitemap_entries() -> dict[int, str]:
+    """CoRich のサイトマップに載っている公演ページの id → 更新日（lastmod。無ければ ""）。
 
     **検索ページを使わずに新しい公演を見つける道。** robots.txt が示すサイトマップは毎日作り直され、
-    すべての公演ページ（/stage/<id>）が載っている（docs/knowledge の corich-sitemap-stage-ids）。
-    公演が載るのは前のほうのファイルだけなので、公演の無いファイルに当たったら読むのをやめる。"""
+    すべての公演ページ（/stage/<id>）が更新日つきで載っている（docs/knowledge の corich-sitemap-stage-ids）。
+    公演が載るのは前のほうのファイルだけなので、公演の無いファイルに当たったら読むのをやめる。
+    更新日は、すでに持っている公演の中身が変わったかを、公演ページを読まずに見分けるのに使う（dec-crawl-tiers）。"""
     idx = gzip.decompress(PH.fetch(SITEMAP_INDEX, timeout=60)).decode("utf-8", "replace")
-    ids: list[int] = []
+    out: dict[int, str] = {}
     for url in re.findall(r"<loc>([^<]+)</loc>", idx):
         x = gzip.decompress(PH.fetch(url, timeout=120)).decode("utf-8", "replace")
-        got = [int(i) for i in re.findall(r"/stage/(\d+)</loc>", x)]
-        if not got and ids:
+        got = {int(i): (lm or "").strip() for i, lm in _SITEMAP_URL.findall(x)}
+        if not got:
+            # 更新日の無い形（<url> で囲まない <loc>）も読む
+            got = {int(i): "" for i in re.findall(r"/stage/(\d+)</loc>", x)}
+        if not got and out:
             break
-        ids += got
-    return sorted(set(ids))
+        out.update(got)
+    return out
+
+
+def sitemap_stage_ids() -> list[int]:
+    """サイトマップの公演ページの id（昇順）。"""
+    return sorted(sitemap_entries())
 
 
 def stage_row(sid: str) -> dict:
@@ -227,6 +239,9 @@ def main() -> int:
                          "（TAGURI_CORICH_SEARCH=off のときの既定）")
     ap.add_argument("--initial-ids", type=int, default=6000,
                     help="sitemap で前回の控えが無いとき、新しいほうから何件の公演ページを読むか")
+    ap.add_argument("--max-minutes", type=float, default=None,
+                    help="公演ページを読む時間の上限（分）。届いたらそこで止め、続きは次回に読む（無料枠、dec-crawl-tiers）。"
+                         "読む順は 1) 新しく載った公演 2) クレジットが空のこれからの公演 3) 更新日が変わった公演")
     ap.add_argument("--since-days", type=int, default=None,
                     help="初日を何日さかのぼって引くか。既定は --keep-days + 45"
                          "（上演日数の 99 パーセンタイルが 44 日）")
@@ -243,16 +258,28 @@ def main() -> int:
     rows: list[dict] = []
     seen: set[str] = set()
     max_id = None
+    started = time.monotonic()
+    deadline = started + a.max_minutes * 60 if a.max_minutes is not None else None
+    over = lambda: deadline is not None and time.monotonic() >= deadline        # noqa: E731
+    lastmod_now: dict[int, str] = {}
+    prev_scan = json.loads(SCAN.read_text(encoding="utf-8")) if SCAN.exists() else {}
+    lastmod_prev: dict[str, str] = prev_scan.get("lastmod") or {}
+    stopped_at = None                       # 時間の上限で止めたときの、読み終えた新しい公演のいちばん大きい id
     if a.source == "sitemap":
         # **サイトマップで、前回より新しい公演の id だけを読む。** 前回の候補は下の引き継ぎが拾う
-        prev_scan = json.loads(SCAN.read_text(encoding="utf-8")) if SCAN.exists() else {}
-        ids = sitemap_stage_ids()
+        lastmod_now = sitemap_entries()
+        ids = sorted(lastmod_now)
         max_id = max(ids) if ids else prev_scan.get("max_id")
         last = prev_scan.get("max_id")
         targets = [i for i in ids if i > last] if last else ids[-a.initial_ids:]
         print(f"サイトマップの公演 {len(ids)} 件・最新 {max_id} ── 読むのは "
               f"{'前回（' + str(last) + '）より新しい' if last else '新しいほうから'} {len(targets)} 件", flush=True)
         for n, sid in enumerate(targets, 1):
+            if over():
+                # **続きは次回に読む。** 読み終えたところまでを「前回の最新」として残す（読まずに飛ばさない）
+                stopped_at = targets[n - 2] if n > 1 else (last or (targets[0] - 1))
+                print(f"  時間の上限（{a.max_minutes} 分）に届いたので、新しい公演 {len(targets) - n + 1} 件は次回に読む", flush=True)
+                break
             r = None
             for attempt in range(2):
                 try:
@@ -334,12 +361,25 @@ def main() -> int:
         carried += 1
     if carried:
         print(f"前回の候補から {carried} 件を引き継ぎました（取得はしません）")
+    changed: set[str] = set()
     if a.source == "sitemap":
         # **サイトマップでは前回の候補を一覧で見直さないので、クレジットが空のまま残った
         # これからの公演だけは、公演ページを読み直す**（初報では空のことがある）
         for r in rows:
             if r.get("carried") and not r.get("ended") and not r.get("fields"):
                 r["carried"] = False
+        # **更新日が前回より新しい、これからの公演も読み直す**（出演者の追加・日程の変更など。dec-crawl-tiers）。
+        # 前回の更新日が無い公演（控えを始める前から持っている公演）は、今回の更新日を控えるだけで読み直さない
+        for r in rows:
+            sid = str(r["stage_id"])
+            now_lm, old_lm = lastmod_now.get(int(sid), "") if sid.isdigit() else "", lastmod_prev.get(sid, "")
+            if (r.get("carried") and not r.get("ended") and r.get("fields") and now_lm and old_lm and now_lm > old_lm):
+                changed.add(sid)
+                r["carried"] = False
+                r["_prev_fields"] = r["fields"]
+                r["fields"] = {}
+        if changed:
+            print(f"更新日が変わったこれからの公演 {len(changed)} 件を読み直します")
 
     # **前回すでにクレジットが取れている候補は、取り直さない。** もとは「取得済みの
     # 公演も毎回取り直す」だった ── 初報の時点ではあらすじもクレジットも載っていない
@@ -355,7 +395,7 @@ def main() -> int:
     # 取れたあとの細かな更新はこの一周の対象に入れていない）。
     reused = 0
     for r in rows:
-        if r.get("carried") or r.get("ended"):
+        if r.get("carried") or r.get("ended") or str(r["stage_id"]) in changed:
             continue
         prev = prev_by_id.get(r["stage_id"])
         if prev and prev.get("fields"):
@@ -384,6 +424,8 @@ def main() -> int:
     # 劇場・都道府県・期間）は一覧の行に載っており、クレジットが要る推薦の側は
     # 終わった公演を落とす ── 取っても読む先が無い
     todo = [r for r in rows if not r.get("ended") and not r.get("carried") and not r.get("fields")]
+    # 読む順: 新しく載った公演・クレジットが空の公演（2）を先に、更新日が変わった公演（3）をあとに
+    todo.sort(key=lambda r: str(r["stage_id"]) in changed)
     skipped_ended = sum(1 for r in rows if r.get("ended") and not r.get("carried"))
     if reused:
         print(f"前回すでに取れているクレジットを {reused} 件 使い回しました（取得はしません）")
@@ -400,7 +442,15 @@ def main() -> int:
             out.append({**r, "venue": r["theater"], "fields": {}})
         elif r.get("fields"):
             out.append(r)                      # 前回のクレジットを使い回した行
+    left_over: set[str] = set()
     for n, r in enumerate(todo, 1):
+        if over():
+            # **時間の上限。** 残りは前回の中身のまま書き出し、次回にまた読む（更新日も前回のまま残すので、変わった印は消えない）
+            for x in todo[n - 1:]:
+                left_over.add(str(x["stage_id"]))
+                out.append({**{k: v for k, v in x.items() if k != "_prev_fields"}, "fields": x.get("_prev_fields") or {}})
+            print(f"  時間の上限に届いたので、{len(todo) - n + 1} 件は次回に読む", flush=True)
+            break
         # **1 度だけ取り直す。** [検証 037](../../docs/verification/037-first-day-guarantee.md)
         # で、前日に落ちた 54 件が翌日には問題なく取れた ── その回だけの失敗が混じる
         c, err = None, ""
@@ -416,8 +466,11 @@ def main() -> int:
             # **クレジットが取れないことは、候補から消す理由にならない。**
             # 一覧の行から題名・団体・劇場・期間は取れているので、候補としては残す。
             # 網 B・C の強さは 0 になるが、**初日までに 1 回出す保証の対象には入る**
-            out.append({**r, "fields": {}, "credits_error": err})
+            # 読み直しで失敗したときは、前回の中身を残す（消さない）
+            out.append({**{k: v for k, v in r.items() if k != "_prev_fields"}, "fields": r.get("_prev_fields") or {},
+                        "credits_error": err})
             failed.append(r["stage_id"])
+            left_over.add(str(r["stage_id"]))
             continue
         f = c["fields"]
         # **公演名は表（th/td）に無い。** 一覧の行から取る（無ければ <title>）。
@@ -433,8 +486,8 @@ def main() -> int:
         # 照合の鍵に使うタイトルだけの題名（title_main）は、公演ページの <title>（無ければ一覧の題名）
         main = unicodedata.normalize("NFKC", c.get("page_title") or "").strip() or title
         full = unicodedata.normalize("NFKC", c.get("full_title") or "").strip()
-        out.append({**r, "title": full or title, "title_main": main, "period": c["period"] or r["period"],
-                    "venue": f.get("劇場", "") or r["theater"], "fields": f})
+        out.append({**{k: v for k, v in r.items() if k != "_prev_fields"}, "title": full or title, "title_main": main,
+                    "period": c["period"] or r["period"], "venue": f.get("劇場", "") or r["theater"], "fields": f})
         print(f"  {n}/{len(todo)}", end="\r", flush=True)
 
     OUT.write_text("\n".join(json.dumps(x, ensure_ascii=False) for x in out), encoding="utf-8")
@@ -456,8 +509,22 @@ def main() -> int:
               f"（うち新規登録 {len(fresh)} 件）／消えた {len(gone)} 件")
         if len(gone) > len(added):
             print("  ** 消えた件数が増えた件数を上回っている。走査の取りこぼしを疑う **")
+    # 更新日は、いま候補にある公演の分だけ控える（ファイルを大きくしない）。読み直せなかった公演は前回の更新日のまま
+    lastmod_keep = {}
+    for i in now_ids:
+        i = str(i)
+        if i in left_over:
+            if i in lastmod_prev:
+                lastmod_keep[i] = lastmod_prev[i]
+        elif i.isdigit() and lastmod_now.get(int(i)):
+            lastmod_keep[i] = lastmod_now[int(i)]
+        elif i in lastmod_prev:
+            lastmod_keep[i] = lastmod_prev[i]
+    print(f"かかった時間 {time.monotonic() - started:.0f} 秒（新しく載った公演 {sum(1 for r in out if r.get('source') == 'sitemap' and not r.get('carried'))} 件・"
+          f"更新日が変わった公演 {len(changed)} 件・次回に回した {len(left_over)} 件）", flush=True)
     SCAN.write_text(json.dumps({"date": str(today), "ids": now_ids, "source": a.source,
-                                "max_id": max_id if a.source == "sitemap" else prev.get("max_id"),
+                                "lastmod": lastmod_keep,
+                                "max_id": (stopped_at if stopped_at is not None else max_id) if a.source == "sitemap" else prev.get("max_id"),
                                 "credits_failed": failed}, ensure_ascii=False),
                     encoding="utf-8")
 

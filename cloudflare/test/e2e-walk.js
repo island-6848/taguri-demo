@@ -574,6 +574,47 @@ async function walkA(A) {
     check(sql("SELECT count(*) n FROM work_piece")[0].n === 0, '分けるのをやめても work_piece が残る');
   });
 
+  // 共有リンク（dec-share-links）: 日記帳の行から「観ました」のカードを、評価を出して共有する。ログインしていない窓で開ける。
+  // 設定の「共有中のリンク」から取り消すと開けない
+  await step('共有リンク: 日記帳の行から作り、ログインなしで開き、取り消す（電話の幅）', async () => {
+    const row = () => page.locator('[data-route="/records/works"] .rec-row').filter({hasText: '終わった舞台'}).first();
+    await go('/records/works');
+    check(await page.locator('[data-route="/records/works"] .share-page-btn').count() === 1, '日記帳に「このページを共有」が無い');
+    await row().locator('[data-share-kind="stage"]').click();
+    const dlg = page.locator('#share-dlg');
+    await dlg.waitFor();
+    await dlg.locator('[data-share-opt="verdict"]').check();
+    await page.setViewportSize({width: 390, height: 844});
+    await page.screenshot({path: join(OUT, 'share-dialog-phone.png')});
+    await dlg.locator('[data-share-make]').click();
+    await page.waitForFunction(() => /\/s\//.test(document.querySelector('#share-dlg .share-url')?.value || ''), null, {timeout: 10000})
+      .catch(async () => note('小窓の言葉: ' + await dlg.locator('.said').textContent()));
+    const url = await dlg.locator('.share-url').inputValue();
+    check(/\/s\/[A-Za-z0-9_-]{22}$/.test(url), '共有のリンクが出ない: ' + url);
+    await dlg.locator('[data-share-close]').click();
+    const anon = await browser.newContext({viewport: {width: 390, height: 844}, locale: 'ja-JP'});
+    const pub = await anon.newPage();
+    watch(pub, '公開');
+    const res = await pub.goto(url);
+    check(res.status() === 200, '公開ページが開けない: ' + res.status());
+    const text = await pub.locator('main').textContent();
+    check(/この公演を観ました！/.test(text) && /終わった舞台/.test(text), '公開ページに公演が出ない: ' + text.slice(0, 120));
+    check((res.headers()['x-robots-tag'] || '').includes('noindex'), '検索エンジンに載せない印が無い');
+    check(await pub.evaluate(() => document.documentElement.scrollWidth) <= 390, '公開ページが電話の幅で横にはみ出す');
+    await pub.screenshot({path: join(OUT, 'share-public-phone.png'), fullPage: true});
+    await page.setViewportSize({width: 1280, height: 900});
+    await go('/settings');
+    const box = page.locator('#shares');
+    if (!(await box.evaluate(b => b.open))) await box.locator(':scope > summary').click();
+    page.once('dialog', d => d.accept());
+    await box.locator('[data-share-revoke]').first().click();
+    await waitSaid(box.locator('li').first(), /取り消しました/);
+    current.allowFailed = true;                       // 取り消したリンクの 404 は、ここで確かめたいこと
+    const gone = await pub.goto(url + '?after=revoke');
+    check(gone.status() === 404, '取り消したリンクが開ける: ' + gone.status());
+    await anon.close();
+  });
+
   // 起案者の指示 2026-10-18（おすすめのカードの 7 点）: 理由の作品名は 2 つまで・札は「人物」「形式」で Zen丸ゴシック、
   // 発売の札は値段帯のすぐ下、枠線 2px、同じ額の幅は 1 つの額、あらすじの続きは地の色なしで題材のハッシュタグ、日程と暦の間をあける
   await step('今週のおすすめ: カードの見た目（理由・発売の札・料金・あらすじのハッシュタグ・暦。PC・電話の幅）', async () => {

@@ -71,7 +71,7 @@ def fmt(v) -> str:
     return f"{v:.3f}" if isinstance(v, float) else str(v)
 
 
-def summary(res: dict, counts: dict, mats: dict | None = None) -> str:
+def summary(res: dict, counts: dict, mats: dict | None = None, sat: dict | None = None) -> str:
     """集計だけの表（Markdown）。"""
     if "error" in res:
         return f"## 推薦の再生\n\n{res['error']}\n"
@@ -81,7 +81,10 @@ def summary(res: dict, counts: dict, mats: dict | None = None) -> str:
            f"- たまった数: 利用者 {counts['users']} 人（答え 10 件以上 {counts['users_10_answers']} 人）、答え {counts['answers']} 件"
            f"（開幕リマインド {counts['answers_reminder']} 件）、分析から外れた人 {counts['opted_out']} 人",
            *[f"- 日 {o['t']} まで → その後 {res['step_days']} 日: 答えた人 {o['users']} 人・答え {o['answers']} 件、"
-             f"評価が残っていた人 {o['with_ratings']} 人、おすすめが出た人 {o['with_recommendations']} 人" for o in res.get("per_origin", [])],
+             f"評価が残っていた人 {o['with_ratings']} 人、おすすめが出た人 {o['with_recommendations']} 人"
+             + f"、索引: 後で載った公演 {o.get('index_dropped', 0)} 件を外した・後で中身が変わった公演 {o.get('index_changed', 0)} 件"
+             + ("（載った日を控える前の日なので、控え始めに載っていた公演は外せていない）" if o.get("index_unknown", True) else "")
+             for o in res.get("per_origin", [])],
            "", "AUC は 0.5 が当てずっぽう、1.0 が全部当たり。人数が少ないうちの p 値は偶然の差を拾いやすい。", ""]
     if mats:
         g = lambda k: mats.get(k, 0)
@@ -109,6 +112,25 @@ def summary(res: dict, counts: dict, mats: dict | None = None) -> str:
             for t, h in e["H6"].items():
                 out.append(f"| {trials.get(t, t)} | {fmt(h['median_diff'])} | {h['users_better']} | {h['users_worse']} | {fmt(h['p_holm'])} |")
             out.append("")
+    if res.get("curve"):
+        out += ["### 学習曲線: 評価を古いほうから k 件だけ残したとき（#103）", "",
+                "同じ区切り・同じ後の答え・同じ索引のまま、日 t までの評価の数だけを変えて測る。k 件以上の評価がある人だけを数える。"
+                "全員がいつも良くなるとは限らないので、良くなった人と悪くなった人を両方出す。", "",
+                "| 評価の数 k | 人数 | AUC の中央値 | おすすめに入っていた答えの割合 | k=1 より良い人 | 悪い人 | p（符号検定） |",
+                "|---|---:|---:|---:|---:|---:|---:|"]
+        for c in res["curve"]:
+            out.append(f"| {'全部' if c['k'] == 'all' else c['k']} | {c['users']} | {fmt(c['median_auc'])} | {fmt(c['answers_ranked_share'])} | "
+                       f"{c['better_than_first']} | {c['worse_than_first']} | {fmt(c['p_sign'])} |")
+        out.append("")
+    if sat and "error" not in sat:
+        miss = sat["missing"]
+        out += ["### 観る前の点と、観たあとの評価（H3・#114）", "",
+                "H1 は「気になったか」、こちらは「観てよかったか」。観た公演だけを数え、観なかった公演は負例にしない。", "",
+                f"- 評価 {sat['rated']} 件のうち、観る前の点と結べた {sat['paired']} 件"
+                f"（公演につながっていない {miss['no_stage']} 件・観る前の点が無い {miss['no_score_before']} 件）",
+                f"- 結べた公演のうち、観る前に興味あり・購入済と答えていた割合 {fmt(sat['paired_after_positive_share'])}（選んで観た偏り）",
+                f"- 利用者 {sat['users']} 人、τ の中央値 {fmt(sat['median_tau'])}、p（符号検定） {fmt(sat['p_sign_H3'])}"
+                + (f"、持ち主（別に出す） τ {fmt(sat['owner_tau'])}" if "owner_tau" in sat else ""), ""]
     ga = res.get("gate_affil")
     if ga:
         out += ["### 裏の答え合わせ: 所属（劇団）から推し量る（測るだけ）", "",
@@ -124,6 +146,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--data", type=Path, default=ROOT / "data")
     ap.add_argument("--owner", default="", help="持ち主の user_id（除いて別に出す。任意）")
     ap.add_argument("--step-days", type=int, default=RE.STEP_DAYS)
+    ap.add_argument("--curve", action="store_true", help="学習曲線も出す（#103。区切りごとに 6 回多く計算する）")
     a = ap.parse_args(argv)
     with tempfile.TemporaryDirectory(prefix="taguri-replay-") as tmp:
         tmp = Path(tmp)
@@ -131,12 +154,16 @@ def main(argv: list[str] | None = None) -> int:
         export_records(records)
         build_index(index)
         past_sql(a.data, past)
-        res = RE.replay(str(records), index, [past], owner=a.owner or None, step_days=a.step_days)
+        seen_path = a.data / "d1" / "index-hashes.json"      # 公演の載った日（#72。deliver_catalogue.INDEX_HASHES）
+        seen = json.loads(seen_path.read_text(encoding="utf-8")) if seen_path.exists() else None
+        res = RE.replay(str(records), index, [past], owner=a.owner or None, step_days=a.step_days, seen=seen,
+                        curve=RE.CURVE if a.curve else None)
         db = RE.load(str(records))
         counts = RE.counts(db, a.owner or None)
+        sat = RE.h3(db, a.owner or None, 1)
         db.close()
         mats = RE.materials(str(records), index, [past], RE.jst_day(datetime.datetime.now(datetime.timezone.utc).isoformat()))
-    text = summary(res, counts, mats)
+    text = summary(res, counts, mats, sat)
     print(text)
     if os.environ.get("GITHUB_STEP_SUMMARY"):
         with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as f:

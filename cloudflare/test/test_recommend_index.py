@@ -255,6 +255,33 @@ def search_dates(index):
     return [''] + starts[::max(len(starts) // 3, 1)]
 
 
+class SeenDatesTest(unittest.TestCase):
+    """#72: 公演ごとに、初めて入れた日と中身を最後に変えた日を控える（再生が日 t の索引を組み立て直す）。"""
+
+    def test_first_and_changed_dates_follow_what_was_sent(self):
+        raw, cands, fbs = catalogue(3)
+        a = BI.build_index(UR.candidate_pool(raw, cands[:40]), fbs, APP.group_of)
+        b = BI.build_index(UR.candidate_pool(raw, cands), fbs, APP.group_of)
+        _s, h1, _c = BI.diff_sql(a, {}, today="2026-10-01")
+        self.assertEqual(h1[BI.SEEN_SINCE], "2026-10-01")
+        self.assertEqual(set(h1[BI.SEEN]), set(a["stages"]))
+        self.assertTrue(all(v[:2] == ["2026-10-01", "2026-10-01"] for v in h1[BI.SEEN].values()))
+        sid = sorted(a["stages"])[0]
+        a["stages"][sid] = {**a["stages"][sid], "title": a["stages"][sid]["title"] + "（再演）"}
+        _s, h2, _c = BI.diff_sql(a, h1, today="2026-10-03")
+        self.assertEqual(h2[BI.SEEN][sid][:2], ["2026-10-01", "2026-10-03"])
+        self.assertEqual(h2[BI.SEEN_SINCE], "2026-10-01")
+        new = set(b["stages"]) - set(a["stages"])
+        _s, h3, _c = BI.diff_sql(b, h2, today="2026-10-05")
+        self.assertTrue(new and all(h3[BI.SEEN][s][0] == "2026-10-05" for s in new))
+        # 入れきれずに残した公演は、まだ載っていない
+        _s, h4, c4 = BI.diff_sql(b, h2, None, 1, today="2026-10-05")
+        self.assertGreater(c4["left"], 0)
+        self.assertLess(len(set(h4[BI.SEEN]) & new), len(new))
+        # 日付を渡さない呼び方（テスト・手元）は控えを足さない
+        self.assertNotIn(BI.SEEN, BI.diff_sql(a, {})[1])
+
+
 class DiffDeliveryTest(unittest.TestCase):
     """差分で入れる（q-index-incremental）: 差分を順に当てた表は、毎回まるごと入れた表と同じ中身になる。"""
 

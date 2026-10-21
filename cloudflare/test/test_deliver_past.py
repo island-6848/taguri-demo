@@ -1,5 +1,6 @@
 """deliver_past: only new lines are sent, the budget caps a day, rows load into past_stage."""
 import json
+import re
 import sqlite3
 import subprocess
 import sys
@@ -154,6 +155,26 @@ class RetitleDeliveryTest(unittest.TestCase):
             self.assertEqual(con.execute("SELECT title, tkey FROM past_stage WHERE stage_id='50'").fetchone(), ("特別公演 熱海殺人事件", "熱海殺人事件"))
             run('commit', '--data', t, '--out', str(d / 'out'))
             self.assertEqual(run('build', '--data', t, '--out', str(d / 'out'))['retitled'], 0)    # 送った行は二度送らない
+
+
+class UpdateReadsTest(unittest.TestCase):
+    def test_updates_join_the_values_once_instead_of_scanning_them_per_row(self):
+        # 2026-10-20: 「SET people=(SELECT p FROM v WHERE v.id=…)」は書き換える 1 行ごとに v を全部なめ、取得の 1 回で
+        # D1 を約 150 万行読んでいた（f-deliver-past-reads）。UPDATE … FROM v なら v を 1 回なめ、past_stage は主キーで引く
+        sys.path.insert(0, str(HERE.parent / 'scripts'))
+        import deliver_past as DP
+        db = sqlite3.connect(':memory:')
+        table = re.search(r'CREATE TABLE past_stage \(.*?\);', MIGRATION.read_text(encoding='utf-8'), re.S).group(0)
+        db.executescript(table + "ALTER TABLE past_stage ADD COLUMN synopsis TEXT NOT NULL DEFAULT '';")
+        db.executemany("INSERT INTO past_stage(stage_id,title,tkey) VALUES(?,?,?)", [(str(i), f't{i}', f'k{i}') for i in range(300)])
+        stmts = DP._people_updates([(str(i), '[1]', 'あらすじ') for i in range(0, 300, 3)]) + DP._title_updates([('7', '冠 題名 副')])
+        for st in stmts:
+            plan = ' '.join(r[3] for r in db.execute('EXPLAIN QUERY PLAN ' + st))
+            self.assertNotIn('CORRELATED', plan, st[:80])
+            db.execute(st)
+        self.assertEqual(db.execute("SELECT count(*) FROM past_stage WHERE people='[1]' AND synopsis='あらすじ'").fetchone()[0], 100)
+        self.assertEqual(db.execute("SELECT title FROM past_stage WHERE stage_id='7'").fetchone()[0], '冠 題名 副')
+        self.assertEqual(db.execute("SELECT people FROM past_stage WHERE stage_id='1'").fetchone()[0], '[]')
 
 
 class StatementSizeTest(unittest.TestCase):

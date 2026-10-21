@@ -157,6 +157,13 @@ class BackupTest(unittest.TestCase):
         got = B.drill(self.data, get=missing)
         self.assertEqual((got["ok"], got["mismatch"]), (False, ["この 4 日の控えが R2 に無い"]))
 
+    def test_drill_never_touches_the_production_database(self):
+        # #74: 予行は作り直して消す D1 にだけ書く。名前が本番と同じなら、何もせずに止まる
+        from unittest import mock
+        with mock.patch.object(B, "DRILL_DB", B.DB_NAME), mock.patch.object(B, "wrangler", side_effect=AssertionError("wrangler")):
+            with self.assertRaises(SystemExit):
+                B.drill(self.data, get=lambda *a: (_ for _ in ()).throw(AssertionError("get")))
+
     def test_no_passphrase_no_backup(self):
         os.environ.pop("BACKUP_PASSPHRASE")
         self.assertIn("skipped", self.run_backup())

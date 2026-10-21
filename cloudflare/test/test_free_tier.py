@@ -5,6 +5,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
 import deliver_posters as DP  # noqa: E402
@@ -31,16 +32,17 @@ class ActionsTest(unittest.TestCase):
 
     def test_every_31_day_window_stays_under_the_cap(self):
         # Whatever was used, a plan's own minutes plus the Catalog estimate never break any window.
-        for used in ([0] * 31, [200] + [0] * 30, [45] * 31, [0] * 30 + [900], [140] * 10 + [0] * 21):
+        for used in ([0] * 31, [200] + [0] * 30, [45] * 31, [0] * 30 + [900], [140] * 10 + [0] * 21,
+                     [1, 101, 1, 22, 146, 574, 1, 22, 98, 175, 360] + [0] * 20):
             for mode in ('daily', 'weekly'):
                 p = FT.plan(list(used), mode)
                 if not p['run']:
                     continue
-                today = (used[0] + FT.CATALOG_MINUTES[p['mode']] + p['past_minutes'] + FT.AFTER_PAST_MINUTES
-                         + (p.get('poster_minutes', 0) + FT.POSTER_AFTER_MINUTES if p.get('poster_minutes') else 0))
+                today = used[0] + FT.planned_minutes(p)
                 for k in range(31):
                     window = today + sum(used[1:31 - k]) + FT.future_catalog(k)
-                    self.assertLessEqual(window, FT.CAPS['actions_minutes_31d'], (used[:3], mode, k))
+                    # 下位の処理は余白（BACKGROUND_MARGIN）を残す: 見積もりより長くかかっても、毎日の更新の取り置きは残る
+                    self.assertLessEqual(window, FT.CAPS['actions_minutes_31d'] - (FT.BACKGROUND_MARGIN if FT.planned_minutes(p) > FT.CATALOG_MINUTES['daily'] + (FT.WEEKLY_EXTRA if p['mode'] == 'weekly' else 0) else 0), (used[:3], mode, k))
 
     def test_past_posters_share_the_room(self):
         # 起案者の指示 2026-10-16「過去の公演の全てのポスターデータも欲しい」: 余裕があれば毎日回し、少なければ回さない
@@ -80,7 +82,7 @@ class ActionsTest(unittest.TestCase):
         self.assertEqual(p['past_limit'], int(FT.STORIES_MAX_MINUTES * 60 / FT.PAST_SECONDS_PER_PAGE))
         # 毎日の更新の分を食わない: 残りが少なければ、その分だけ（10 分未満なら動かさない）
         small = FT.plan([46] * 31, 'stories')                 # 残り（上限 - 46×31 - 毎日の 15 分）。上限 1,500 なら 59 分
-        left = FT.CAPS['actions_minutes_31d'] - 46 * 31 - FT.CATALOG_MINUTES['daily']
+        left = FT.CAPS['actions_minutes_31d'] - 46 * 31 - FT.CATALOG_MINUTES['daily'] - FT.BACKGROUND_MARGIN
         self.assertEqual((small['run'], small['past_minutes']), (True, left - FT.STORIES_AFTER_MINUTES))
         self.assertFalse(FT.plan([60] * 31, 'stories')['run'])
         self.assertFalse(FT.plan(None, 'stories')['run'])
@@ -96,7 +98,8 @@ class ActionsTest(unittest.TestCase):
         self.assertTrue(FT.plan([0] * 31, 'replay')['run'])
         self.assertFalse(FT.plan(None, 'replay')['run'])
         # 毎日の更新の分（31 日 × 15 分）と今日の分を取っておくと、残りが REPLAY_MINUTES に足りない
-        tight = FT.CAPS['actions_minutes_31d'] - FT.future_catalog(30) - FT.CATALOG_MINUTES['daily'] - FT.REPLAY_MINUTES + 1
+        tight = (FT.CAPS['actions_minutes_31d'] - FT.future_catalog(30) - FT.CATALOG_MINUTES['daily'] - FT.BACKGROUND_MARGIN
+                 - FT.REPLAY_MINUTES + 1)
         self.assertFalse(FT.plan([tight] + [0] * 30, 'replay')['run'])
         self.assertTrue(FT.plan([tight - 1] + [0] * 30, 'replay')['run'])
 
@@ -104,9 +107,50 @@ class ActionsTest(unittest.TestCase):
         # 控えから戻す予行（restore-drill.yml）も、毎日の更新の分を取っておいて DRILL_MINUTES が残るときだけ（issue #139）
         self.assertTrue(FT.plan([0] * 31, 'drill')['run'])
         self.assertFalse(FT.plan(None, 'drill')['run'])
-        tight = FT.CAPS['actions_minutes_31d'] - FT.future_catalog(30) - FT.CATALOG_MINUTES['daily'] - FT.DRILL_MINUTES + 1
+        tight = (FT.CAPS['actions_minutes_31d'] - FT.future_catalog(30) - FT.CATALOG_MINUTES['daily'] - FT.BACKGROUND_MARGIN
+                 - FT.DRILL_MINUTES + 1)
         self.assertFalse(FT.plan([tight] + [0] * 30, 'drill')['run'])
         self.assertTrue(FT.plan([tight - 1] + [0] * 30, 'drill')['run'])
+
+    def test_background_work_never_takes_the_daily_reserve(self):
+        # dec-crawl-tiers: 下位の処理（過去の公演・ポスター）が残りを使い切っても、毎日の更新は次の日も動ける
+        used = [0] * 31
+        for day in range(40):
+            p = FT.plan(list(used), 'daily')
+            self.assertTrue(p['run'], (day, p))
+            used = [FT.planned_minutes(p)] + used[:30]          # 計画の上限まで使い切った日が続く
+
+    def test_lower_tiers_get_only_what_is_left_in_order(self):
+        rich = FT.plan([0] * 31, 'daily')
+        self.assertEqual((rich['catalog_minutes'], rich['discover_minutes']), (FT.CATALOG_MINUTES['daily'], FT.DISCOVER_MINUTES))
+        self.assertEqual(rich['past_minutes'], FT.PAST_MAX_MINUTES)
+        self.assertTrue(rich['past_index'])
+        self.assertGreater(rich['upload_minutes'], 0)
+        self.assertLessEqual(rich['upload_minutes'], FT.POSTER_UPLOAD_MAX_MINUTES)
+        # 残りが少ない日: 過去の公演が先、ポスターはあと
+        for n in range(30, 60):
+            p = FT.plan([n] * 31, 'daily')
+            if p['run'] and p['poster_minutes']:
+                self.assertEqual(p['past_minutes'], FT.PAST_MAX_MINUTES, n)
+        # 毎日の更新の分しか無い日: 下位の処理は 0、毎日の更新は動く
+        cap, core = FT.CAPS['actions_minutes_31d'], FT.CATALOG_MINUTES['daily']
+        just = [cap - core - FT.future_catalog(30)] + [0] * 30
+        p = FT.plan(just, 'daily')
+        self.assertEqual((p['run'], p['past_minutes'], p['poster_minutes'], p['upload_minutes'], p['past_index']),
+                         (True, 0, 0, 0, False))
+
+    def test_a_stopped_plan_does_not_fail_the_workflow(self):
+        # 予算不足で止めるのはエラーではない（使う前に止めるのが守り）。毎日の更新が止まったときは issue で知らせる
+        sent = []
+        with mock.patch.object(FT, '_actions', return_value=[60] * 31), \
+             mock.patch.object(FT, 'notify', side_effect=lambda t, b: sent.append(t)), \
+             mock.patch.object(sys, 'argv', ['x', 'plan', '--mode', 'daily']), mock.patch('sys.stdout'):
+            with mock.patch.dict('os.environ', {'TAGURI_PLAN_SOFT_STOP': '1'}):
+                self.assertEqual(FT.main(), 0)
+            self.assertEqual(sent, [FT.NOTIFY_TITLE])
+            # 古い catalog.yml（あとの段が run を見ない）では、これまでどおり失敗にしてあとの段を止める
+            with mock.patch.dict('os.environ', {'TAGURI_PLAN_SOFT_STOP': ''}):
+                self.assertEqual(FT.main(), 1)
 
     def test_separate_caps_keep_the_sum_under_the_free_tier(self):
         # 取得と管理画面の控えは別のファイル。足しても無料枠の 9 割に届かないこと（issue #139）
@@ -147,6 +191,20 @@ class LedgerTest(unittest.TestCase):
         FT.d1_spend(self.data, 70_000, NOW)
         self.assertEqual(FT.d1_left(self.data, NOW), FT.CAPS['d1_writes_day'] - 70_000)
         self.assertEqual(FT.d1_left(self.data, NOW + dt.timedelta(days=1)), FT.CAPS['d1_writes_day'])
+
+    def test_poster_upload_stops_at_its_time_limit_and_resumes(self):
+        # dec-crawl-tiers: ポスターを R2 に入れる段にも時間の上限を付ける。入れた分は控え、続きは次回
+        t = iter([0, 0])                                          # 2 回目に見たときには 1 分を過ぎている
+        put = []
+        got = DP.build(self.data, self.out, bucket='b', limit=10, put=lambda *a: put.append(a[3]),
+                       max_minutes=1, clock=lambda: next(t, 999))
+        self.assertIn('時間の上限', got['stopped'])
+        self.assertEqual(len(put), got['uploaded'])
+        self.assertGreater(got['left'], 0)
+        DP.commit(self.data, self.out)
+        rest = []
+        DP.build(self.data, self.out, bucket='b', limit=10, put=lambda *a: rest.append(a[3]))
+        self.assertFalse(set(put) & set(rest))                    # 入れ直さない
 
     def test_r2_storage_cap_stops_uploads(self):
         FT.CAPS['r2_bytes'] = 250
@@ -218,6 +276,41 @@ class LedgerTest(unittest.TestCase):
         self.assertFalse(rows['GitHub Actions（直近 31 日・分）']['ok'])
         self.assertTrue(rows['R2 の Class B（今月・Worker と取得の合計）']['ok'])
         self.assertEqual(json.loads((self.data / FT.LEDGER).read_text())['d1_writes'], {'2026-10-14': 72000})
+
+    def test_d1_reads_and_the_run_steps_are_counted(self):
+        # dec-crawl-tiers: D1 の読み出し（wrangler d1 info の rows_read_24h）と、取得の段の rows_read（ログ）を数える
+        info = self.data / 'd1-info.json'
+        info.write_text(json.dumps({'rows_read_24h': 2_900_000}))
+        self.assertEqual(FT.d1_reads_24h(info), 2_900_000)
+        self.assertIsNone(FT.d1_reads_24h(self.data / 'none.json'))
+        log = self.data / 'past.log'
+        log.write_text('[{"meta": {"rows_read": 600, "rows_written": 150}}, {"meta": {"rows_read": 61}}]')
+        self.assertEqual(FT.rows_read_in_logs([log, self.data / 'missing.log']), 661)
+        rows = {r['what']: r for r in FT.check(self.data, [0] * 31, {}, NOW, 2_900_000)}
+        self.assertFalse(rows['D1 の読み出し（直近 24 時間・Worker と取得の合計）']['ok'])
+        # 読めなかったときは注意を出すが、取得の守りは別にあるので点検を失敗にしない
+        rows = {r['what']: r for r in FT.check(self.data, [0] * 31, {}, NOW, None)}
+        self.assertTrue(rows['D1 の読み出し（直近 24 時間・Worker と取得の合計）']['ok'])
+        # 段ごとの時間: 毎日の更新（1〜3）と下位の処理（4・5）に分けて控える
+        steps = [('Rebuild the catalog', 70), ('Deliver the catalogue to D1 (changed rows only)', 40),
+                 ('Read past stage pages (2019 onwards, newest first)', 600), ('Upload posters to R2 (new ones only)', 120)]
+        row = FT.record_run(self.data, '1', 'daily', steps, NOW)
+        self.assertEqual((row['core_seconds'], row['background_seconds']), (110, 720))
+        self.assertEqual(FT.core_minutes_measured(self.data), [1.8])
+
+    def test_warnings_do_not_fail_but_unread_minutes_do(self):
+        sent = []
+        usage = self.data / 'usage.json'
+        usage.write_text(json.dumps([{'results': [{'k': 'r2_get:2026-10', 'n': 5}]}]))
+        def run(by_day):
+            with mock.patch.object(FT, '_actions', return_value=by_day), \
+                 mock.patch.object(FT, 'notify', side_effect=lambda t, b: sent.append(t)), \
+                 mock.patch.object(sys, 'argv', ['x', 'check', '--data', str(self.data), '--d1-usage', str(usage)]), \
+                 mock.patch('sys.stdout'):
+                return FT.main()
+        self.assertEqual(run([50] * 31), 0)                       # 上限の 8 割を越えた: 注意と issue だけ
+        self.assertEqual(sent, [FT.NOTIFY_TITLE])
+        self.assertEqual(run(None), 1)                            # 分数が読めない: 本当のエラーは隠さない
 
 
 if __name__ == '__main__':

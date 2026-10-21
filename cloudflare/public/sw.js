@@ -16,7 +16,7 @@ const OFFLINE = '<!doctype html><html lang="ja"><head><meta charset="utf-8"><met
   + 'border:1px solid #1d1d1f;border-radius:999px;background:#fff;font-size:15px}</style></head><body><div>'
   + '<img src="/assets/logo/icon-192.png" alt="" width="96" height="96"><h1 style="font-size:20px">インターネットにつながっていません</h1>'
   + '<p>つながったら、もう一度開いてください。記録はたぐりのサーバーにあるので、消えていません。</p>'
-  + '<button onclick="location.reload()">もう一度読み込む</button></div></body></html>';
+  + '<form><button>もう一度読み込む</button></form></div></body></html>';
 
 self.addEventListener("install", ev => {
   // 1 つ取れなくても入れる（控えは次に開いたときにも足す）

@@ -8,6 +8,7 @@
 // with each card (migration 0018), so the Worker never scans every stage itself.
 // Left out for now: the name candidates picked from notes (reasons.promotions /
 // demotions), the matching of a subject word inside a longer registered subject.
+import {shareStageButton, sharePageButton, withShareButton} from '../share.js';
 import {stageInfo, fallbackTemplate} from './fallback.js';
 import {parseCredits} from './credits.js';
 import {loadWorks} from './works.js';
@@ -26,7 +27,7 @@ import {tourBlock} from './schedule.js';
 import {emptyGuide} from './guide.js';
 
 export const KINDS = ['団体', '人', '主催', '作品', '原作者', '題材'];
-const DECLARED_KEY = 'declared', DECLINED_KEY = 'declined';
+const DECLARED_KEY = 'declared', DECLINED_KEY = 'declined', DECLARED_AT_KEY = 'declared_at';
 // 「この理由を使わない」にした種類（起案者の指示 2026-10-16「自分に合わないなと思うおすすめ理由を消すことはできる？」、
 // q-kind-reason-off）。'#原作\tオリジナル' の形で控え、点数にも理由にも使わない。公演そのものは消さない
 export const KIND_OFF_KEY = 'kind_off', KIND_OFF_MAX = 100;
@@ -519,7 +520,7 @@ const sortOf = (params, keys) => { const k = params.get('s') || 'start'; return 
 function sortForm(action, sort, keys, keep = '') {
   const opts = keys.map(k => `<option value="${k}"${k === sort ? ' selected' : ''}>${E(SORTS[k])}</option>`).join('');
   return `<form class="sortf" method="get" action="${action}"><input type="hidden" name="t" value="__TAGURI_TOKEN__">${keep}`
-    + `<label>並べ替え <select name="s" onchange="this.form.requestSubmit ? this.form.requestSubmit() : this.form.submit()">${opts}</select></label>`
+    + `<label>並べ替え <select name="s" data-autosubmit>${opts}</select></label>`
     + '<noscript><button type="submit">並べ替える</button></noscript></form>';
 }
 const monthKey = r => (r.start || '').slice(0, 7);
@@ -563,7 +564,9 @@ async function cards(ctx, rows, mode, extra = () => ({})) {
   const info = ['interest', 'favourite', 'owned'].includes(mode) ? await stageInfo(ctx.db, rows.flatMap(r => r.sids || [r.stage_id])) : null;
   return rows.filter(r => html.has(r.stage_id)).map(r => {
     const pic = posters.get(r.stage_id) || r.sids?.map(s => posters.get(s)).find(Boolean);
-    const card = compose(html.get(r.stage_id), r.stage_id, mode, {poster: pic ? posterHtml(pic) : '', ...extra(r)});
+    let card = compose(html.get(r.stage_id), r.stage_id, mode, {poster: pic ? posterHtml(pic) : '', ...extra(r)});
+    // 興味あり・購入済のカードは共有できる（dec-share-links）。compose は Python の build_cards と同じ形のままにする
+    if (mode === 'interest' || mode === 'owned') card = withShareButton(card, shareStageButton(r.stage_id, mode));
     if (!info) return card;
     const sids = [...new Set([r.stage_id, ...(r.sids || [])].map(String))];
     return withTour(card, tourBlock(sids.map(s => info.get(s)).filter(Boolean), r.stage_id, ctx.today, ctx.prefs || []));
@@ -873,7 +876,7 @@ export async function favouritesScreen(params, ctx) {
 <p class="hsub">おすすめにかかわらず新着情報を知りたい題材や作り手がいるときは、お気に入りに追加することで情報の追跡ができます。</p>
 ${tools}
 ${emptyGuide('favourite', 'お気に入りに登録されている要素がありません。', '<p>上の「要素を登録」で、劇団・俳優・演出家・作品・原作者・題材などの名前を登録すると、その名前の公演をここに並べます。</p>')}`};
-  const body = `<h1>お気に入り</h1>
+  const body = `<h1>お気に入り</h1>${sharePageButton('favourites')}
 <p class="hsub">おすすめにかかわらず新着情報を知りたい題材や作り手がいるときは、お気に入りに追加することで情報の追跡ができます。</p>
 ${tools}
 ${rcount}
@@ -916,6 +919,14 @@ async function favouriteAction(b, ctx) {
   // app.save_declared: trimmed, de-duplicated, sorted, at most 100 per kind.
   const out = Object.fromEntries(KINDS.map(k => [k, [...new Set(d[k].map(x => String(x).trim().slice(0, 80)).filter(Boolean))].sort(cmp).slice(0, 100)]));
   if (!keep) await writeJson(ctx, DECLARED_KEY, out);
+  // 名前ごとに足した時刻（'種類\t名前' -> ISO）。再生（replay_eval）が日 t のお気に入りを組み立て直すのに使う（#72）。
+  // 画面と推薦は読まない。足した名前・外した名前があるときだけ書く
+  const at = await readJson(ctx, DECLARED_AT_KEY), stamps = at && typeof at === 'object' && !Array.isArray(at) ? at : {};
+  const live = new Set(KINDS.flatMap(k => out[k].map(n => `${k}\t${n}`)));
+  let moved = false;
+  for (const e of Object.keys(stamps)) if (!live.has(e)) { delete stamps[e]; moved = true; }
+  for (const e of live) if (!(e in stamps) && e === `${kind}\t${name}`) { stamps[e] = nowIso(ctx); moved = true; }
+  if (moved) await writeJson(ctx, DECLARED_AT_KEY, stamps);
   if (action === 'remove') await ctx.db.prepare('DELETE FROM favourites WHERE user_id=? AND name=? AND kind=?').bind(ctx.uid, name, kind).run();
   // 人の役職の絞り（任意、q-favourite-homonym）。足すときに選んだ札で置き換え、選ばなければ絞りを外す。外すときも消す。
   // 変わらないときは書かない（D1 の書き込みを増やさない）

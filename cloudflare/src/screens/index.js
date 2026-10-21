@@ -24,15 +24,16 @@ import {importScreens} from './import.js';
 import {ValueError} from './py.js';
 import {fixRequestScreens} from './fixrequest.js';
 import {agreeAction} from '../terms.js';
+import {shareScreens} from '../share.js';
 
 export const SCREEN_TABLES = ['works', 'excluded', 'merges', 'hand_credits', 'visit_note', 'reaction', 'viewed',
-  'ticket', 'missed', 'rank_weight', 'app_setting', 'search_request', 'work_piece'];
+  'ticket', 'missed', 'rank_weight', 'app_setting', 'search_request', 'work_piece', 'share'];
 // Stands in for the Python server's per-process token (__TAGURI_TOKEN__). The
 // public service never checks it; screens only carry it in links.
 export const TOKEN = 'cfw0000000000000000000000000000000';
 
 const SCREENS = {...tickerScreens.screens, ...rateScreens.screens, ...diaryScreens.screens, ...accountScreens.screens, ...recommendScreens.screens, ...listScreens.screens, ...reminderScreens.screens, ...calendarScreens.screens, ...settingsScreens.screens, ...searchScreens.screens, ...taggedScreens.screens, ...entityScreens.screens, ...recordScreens.screens};
-const ACTIONS = {...rateScreens.actions, ...diaryScreens.actions, ...accountScreens.actions, ...recommendScreens.actions, ...listScreens.actions, ...settingsScreens.actions, ...searchScreens.actions, ...importScreens.actions, ...fixRequestScreens.actions, agree: agreeAction};
+const ACTIONS = {...shareScreens.actions, ...rateScreens.actions, ...diaryScreens.actions, ...accountScreens.actions, ...recommendScreens.actions, ...listScreens.actions, ...settingsScreens.actions, ...searchScreens.actions, ...importScreens.actions, ...fixRequestScreens.actions, agree: agreeAction};
 
 const enabled = (env, kind, name) => {
   const list = String(env.NATIVE_UI || '').split(',').map(s => s.trim());
