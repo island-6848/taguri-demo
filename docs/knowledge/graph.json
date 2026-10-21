@@ -6926,6 +6926,17 @@
    "verifies": []
   },
   {
+   "id": "q-crawl-in-session",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-22",
+   "title": "GitHub Actions でしている取得（特に過去の公演の補完・ポスター・本文の長い実行）を、Claude Code のクラウドのセッションで代わりに動かすか",
+   "sources": [
+    "https://code.claude.com/docs/en/cloud-environments#network-access"
+   ],
+   "verifies": []
+  },
+  {
    "id": "q-crawler-host",
    "type": "question",
    "status": "answered",
@@ -13855,6 +13866,11 @@
    "from": "q-crawl-d1-reads-counted",
    "rel": "affects",
    "to": "d1-free-limits"
+  },
+  {
+   "from": "q-crawl-in-session",
+   "rel": "depends_on",
+   "to": "find-catalog-stopped-1022"
   },
   {
    "from": "q-crawler-host",
