@@ -1720,3 +1720,50 @@ details.lprice:not([open]):not(#_)>summary .plist>li:only-child::before{display:
 /* 行けばよかったの題名の欄の候補（app.js の #miss-title）。欄と「足す」の下に、全幅で並べる。空のときは場所を取らない */
 .miss-add .miss-sug{flex:1 0 100%}
 .miss-add .miss-sug:empty{display:none}
+
+/* ── 共有リンク（cloudflare/src/share.js、dec-share-links）── */
+.share-open{display:inline-flex;align-items:center;gap:4px;font-size:12.5px;padding:4px 10px;border:1px solid var(--line,#d8d8dc);
+ border-radius:999px;background:var(--surf);color:var(--ink2);cursor:pointer}
+.share-open:hover{color:var(--curtain);border-color:var(--curtain)}
+.share-page-btn{margin:0 0 10px}
+article .share-open{margin:6px 0 0 auto}
+.share-dlg{max-width:min(30em,calc(100vw - 32px));border:0;border-radius:14px;padding:18px 18px 14px;background:var(--surf);color:var(--ink)}
+.share-dlg::backdrop{background:rgba(0,0,0,.35)}
+.share-dlg h2{font-size:17px;margin:0 0 8px}
+.share-lead{font-size:13px;color:var(--ink2);margin:0 0 10px;line-height:1.7}
+.share-opts{border:0;padding:0;margin:0 0 12px;display:flex;flex-wrap:wrap;gap:6px 16px}
+.share-opts legend{font-size:12.5px;color:var(--mute);margin-bottom:4px}
+.share-opt{font-size:14px}
+.share-out{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
+.share-out[hidden]{display:none}
+.share-url{flex:1 1 100%;font-size:13px;padding:6px 8px;border:1px solid var(--line,#d8d8dc);border-radius:8px}
+.share-foot{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.share-foot .said{font-size:12.5px;color:var(--ink2)}
+.share-list{list-style:none;padding:0;margin:0}
+.share-list li{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:8px 0;border-top:1px solid var(--line,#e5e5e8)}
+.share-list li small{color:var(--mute);font-size:12px}
+.share-list li.gone{opacity:.45}
+/* 公開ページ（ログインなし。app.js は動かない） */
+.share-page{background:var(--plane)}
+.share-main{max-width:44em;margin:0 auto;padding:18px 16px 40px}
+.share-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 14px}
+.share-brand{font-weight:700;color:var(--curtain);letter-spacing:.08em}
+.share-who{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--ink2)}
+.share-avatar{border-radius:50%;object-fit:cover}
+.share-stage{text-align:center}
+.share-label{display:inline-block;margin:0 0 10px;padding:4px 14px;border-radius:999px;background:var(--curtain);color:var(--curtain-w);font-weight:700;font-size:14px}
+.share-poster{display:block;max-width:min(260px,70vw);margin:0 auto 12px;border-radius:6px}
+.share-meta{color:var(--ink2);font-size:14px;line-height:1.7}
+.share-verdict-big b{font-size:22px;color:var(--curtain)}
+.share-note{text-align:left;margin:10px 0;padding:8px 12px;border-left:3px solid var(--curtain);background:var(--plane);font-size:14px;line-height:1.8}
+.share-year h2 small{margin-left:8px;font-size:12px;color:var(--mute);font-weight:400}
+.share-records{list-style:none;padding:0;margin:0}
+.share-records li{padding:7px 0;border-top:1px solid var(--line,#e5e5e8);display:flex;flex-wrap:wrap;gap:2px 10px;align-items:baseline}
+.share-date{font-size:12.5px;color:var(--mute);font-variant-numeric:tabular-nums}
+.share-title{font-weight:600}
+.share-venue{font-size:12.5px;color:var(--ink2)}
+.share-verdict{color:var(--curtain);font-weight:700}
+.share-records .share-note{flex-basis:100%}
+.share-tags{list-style:none;padding:0;margin:0 0 10px;display:flex;flex-wrap:wrap;gap:6px}
+.share-tags li{padding:3px 10px;border-radius:999px;background:var(--plane);font-size:13px}
+.share-pfoot{margin-top:28px;font-size:13px;color:var(--ink2);text-align:center}

@@ -3141,6 +3141,24 @@
    "verifies": []
   },
   {
+   "id": "dec-share-links",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-21",
+   "title": "共有リンク（/s/<token>）。公演 1 件のカードか、観劇記録の一覧・眺める・お気に入り・観劇史年表を、リンクを知る人だけにログインなしで見せる。評価・感想・名前は共有するときに選び、既定は出さない。検索エンジンには載せず、いつでも取り消せる",
+   "sources": [
+    "cloudflare/src/share.js",
+    "cloudflare/migrations/0044.sql",
+    "cloudflare/src/worker.js",
+    "web/app.js",
+    "web/theme.css",
+    "cloudflare/public/privacy.html",
+    "cloudflare/test/share.test.js",
+    "cloudflare/test/e2e-walk.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-signed-out-gate",
    "type": "decision",
    "status": "adopted",
@@ -11193,6 +11211,11 @@
    "from": "dec-settings-worker",
    "rel": "affects",
    "to": "comp-native-screens"
+  },
+  {
+   "from": "dec-share-links",
+   "rel": "affects",
+   "to": "comp-public-server"
   },
   {
    "from": "dec-signed-out-gate",

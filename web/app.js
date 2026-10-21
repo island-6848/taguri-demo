@@ -658,6 +658,7 @@ function renderScreen(el, activePath, d, exposureSource) {
   fixupMonthScroll(el);
   fixupStoryline(el);
   fixupFigs(el);
+  fixupShare(el, activePath);
   fixupImportBar(el);
   fixupPeopleNet(el);
   fixupPrefMap(el);
@@ -5234,4 +5235,101 @@ document.addEventListener("click", async ev => {
   // ログインの画面がメールのリンク用に控えたアドレスなども消す（#132、cloudflare/src/client/login.js）
   if (d) try { for (const k of ["taguri_login_email", "taguri_login_agree", "taguri_login_intent", "taguri_login_saved_at"]) localStorage.removeItem(k); } catch {}
   if (d) location.href = "/login";
+});
+
+// **共有リンク**（起案者の指示 2026-10-21「共有できるようにしたい。公演単体か、または指定のページをパブリックで公開するか選べるように」、
+// cloudflare/src/share.js、dec-share-links）。「共有」を押すと、評価・感想・名前を出すかを選ぶ小窓を開き、リンクを作る。
+// リンクを知っている人はログインなしで見られる（検索エンジンには載らない）。設定の「共有中のリンク」から取り消せる
+const SHARE_HEAD = {stage: "この公演を共有する", works: "観劇記録の一覧を共有する", records: "眺めるを共有する",
+  favourites: "お気に入りを共有する", chronicle: "観劇史年表を共有する"};
+function shareDialog() {
+  let d = document.getElementById("share-dlg");
+  if (!d) {
+    d = document.createElement("dialog");
+    d.id = "share-dlg";
+    d.className = "share-dlg";
+    document.body.appendChild(d);
+  }
+  return d;
+}
+// 日記帳の共有の押し口（ページと、各行の「観ました」）。日記帳の HTML は Python 版と同じ形に保つので（screens.test.js）、
+// 押し口はここで足す。行は記録の鍵（data-work）で送り、公演に結び付いていない記録はサーバーが断る
+const SHARE_ICON_SVG = '<svg class="ico" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" '
+  + 'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V4M8 8l4-4 4 4M5 13v6h14v-6"/></svg>';
+function fixupShare(el, path) {
+  if (EDITION.edition !== "service" || path !== "/records/works") return;
+  const h1 = el.querySelector("h1");
+  if (h1 && !el.querySelector('[data-share-kind="works"]')) {
+    h1.insertAdjacentHTML("afterend", '<button type="button" class="share-open share-page-btn" data-share-kind="works">' + SHARE_ICON_SVG + "このページを共有</button>");
+  }
+  el.querySelectorAll("article.rec-row").forEach(a => {
+    const key = a.querySelector("[data-work]");
+    if (!key || a.querySelector("[data-share-kind]")) return;
+    a.insertAdjacentHTML("beforeend", '<button type="button" class="share-open" data-share-kind="stage" data-share-label="watched" data-share-work="'
+      + E(key.dataset.work) + '">' + SHARE_ICON_SVG + "共有</button>");
+  });
+}
+function openShare(btn) {
+  const kind = btn.dataset.shareKind, label = btn.dataset.shareLabel || "";
+  // 評価・感想を出せるのは、記録のあるもの（購入済・興味ありのカードと、お気に入りには無い）
+  const record = kind !== "favourites" && !(kind === "stage" && label !== "watched");
+  const box = (k, text) => '<label class="share-opt"><input type="checkbox" data-share-opt="' + k + '"> ' + E(text) + "</label>";
+  const d = shareDialog();
+  d.dataset.kind = kind;
+  d.dataset.stage = btn.dataset.shareStage || "";
+  d.dataset.work = btn.dataset.shareWork || "";
+  d.dataset.label = label;
+  d.innerHTML = "<h2>" + E(SHARE_HEAD[kind] || "共有する") + "</h2>"
+    + '<p class="share-lead">リンクを知っている人は、ログインしなくても見られます。検索エンジンには載りません。あとで設定の「共有中のリンク」から取り消せます。</p>'
+    + '<fieldset class="share-opts"><legend>いっしょに出すもの（選ばなければ出しません）</legend>'
+    + (record ? box("verdict", "評価") + box("note", "感想") : "") + box("name", "表示名とアイコン") + "</fieldset>"
+    + '<div class="share-out" hidden><input class="share-url" readonly aria-label="共有のリンク">'
+    + '<button type="button" data-share-copy-out="1">コピー</button>'
+    + (navigator.share ? '<button type="button" data-share-send="1">ほかのアプリで送る</button>' : "") + "</div>"
+    + '<div class="share-foot"><button type="button" class="primary" data-share-make="1">リンクを作る</button>'
+    + '<button type="button" data-share-close="1">閉じる</button><span class="said"></span></div>';
+  d.showModal();
+}
+async function copyText(text, said) {
+  try { await navigator.clipboard.writeText(text); if (said) said.textContent = "コピーしました"; }
+  catch (e) { if (said) said.textContent = "コピーできませんでした。リンクを長押ししてコピーしてください"; }
+}
+document.addEventListener("click", async ev => {
+  const t = ev.target.closest ? ev.target : null;
+  if (!t) return;
+  const open = t.closest("[data-share-kind]");
+  if (open) { ev.preventDefault(); openShare(open); return; }
+  const d = t.closest("#share-dlg");
+  if (d && t.closest("[data-share-close]")) { d.close(); return; }
+  if (d && t.closest("[data-share-make]")) {
+    const opt = k => !!d.querySelector('[data-share-opt="' + k + '"]:checked');
+    const body = {action: "create", kind: d.dataset.kind, stage_id: d.dataset.stage, work_key: d.dataset.work, label: d.dataset.label,
+      verdict: opt("verdict"), note: opt("note"), name: opt("name")};
+    const r = await post("/api/share", body, d.querySelector(".share-foot"), null);
+    if (!r || !r.path) return;
+    const url = location.origin + r.path;
+    const out = d.querySelector(".share-out");
+    out.hidden = false;
+    out.querySelector(".share-url").value = url;
+    d.querySelector("[data-share-make]").hidden = true;
+    d.querySelectorAll("[data-share-opt]").forEach(x => { x.disabled = true; });
+    d.querySelector(".said").textContent = r.said || "リンクを作りました";
+    markMutated();
+    return;
+  }
+  if (d && t.closest("[data-share-copy-out]")) { await copyText(d.querySelector(".share-url").value, d.querySelector(".said")); return; }
+  if (d && t.closest("[data-share-send]")) {
+    try { await navigator.share({title: "たぐり", url: d.querySelector(".share-url").value}); } catch (e) { /* 送るのをやめた */ }
+    return;
+  }
+  const copy = t.closest("[data-share-copy]");
+  if (copy) { await copyText(location.origin + copy.dataset.shareCopy, copy.parentElement.querySelector(".said")); return; }
+  const rev = t.closest("[data-share-revoke]");
+  if (rev) {
+    if (!confirm("このリンクを取り消しますか？ 取り消すと、このリンクはもう開けません")) return;
+    const li = rev.closest("li");
+    const r = await post("/api/share", {action: "revoke", token: rev.dataset.shareRevoke}, li, "取り消しました");
+    if (r && li) { li.classList.add("gone"); rev.disabled = true; }
+    if (r) markMutated();
+  }
 });

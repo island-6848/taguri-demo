@@ -8,6 +8,7 @@
 // with each card (migration 0018), so the Worker never scans every stage itself.
 // Left out for now: the name candidates picked from notes (reasons.promotions /
 // demotions), the matching of a subject word inside a longer registered subject.
+import {shareStageButton, sharePageButton, withShareButton} from '../share.js';
 import {stageInfo, fallbackTemplate} from './fallback.js';
 import {parseCredits} from './credits.js';
 import {loadWorks} from './works.js';
@@ -563,7 +564,9 @@ async function cards(ctx, rows, mode, extra = () => ({})) {
   const info = ['interest', 'favourite', 'owned'].includes(mode) ? await stageInfo(ctx.db, rows.flatMap(r => r.sids || [r.stage_id])) : null;
   return rows.filter(r => html.has(r.stage_id)).map(r => {
     const pic = posters.get(r.stage_id) || r.sids?.map(s => posters.get(s)).find(Boolean);
-    const card = compose(html.get(r.stage_id), r.stage_id, mode, {poster: pic ? posterHtml(pic) : '', ...extra(r)});
+    let card = compose(html.get(r.stage_id), r.stage_id, mode, {poster: pic ? posterHtml(pic) : '', ...extra(r)});
+    // 興味あり・購入済のカードは共有できる（dec-share-links）。compose は Python の build_cards と同じ形のままにする
+    if (mode === 'interest' || mode === 'owned') card = withShareButton(card, shareStageButton(r.stage_id, mode));
     if (!info) return card;
     const sids = [...new Set([r.stage_id, ...(r.sids || [])].map(String))];
     return withTour(card, tourBlock(sids.map(s => info.get(s)).filter(Boolean), r.stage_id, ctx.today, ctx.prefs || []));
@@ -873,7 +876,7 @@ export async function favouritesScreen(params, ctx) {
 <p class="hsub">おすすめにかかわらず新着情報を知りたい題材や作り手がいるときは、お気に入りに追加することで情報の追跡ができます。</p>
 ${tools}
 ${emptyGuide('favourite', 'お気に入りに登録されている要素がありません。', '<p>上の「要素を登録」で、劇団・俳優・演出家・作品・原作者・題材などの名前を登録すると、その名前の公演をここに並べます。</p>')}`};
-  const body = `<h1>お気に入り</h1>
+  const body = `<h1>お気に入り</h1>${sharePageButton('favourites')}
 <p class="hsub">おすすめにかかわらず新着情報を知りたい題材や作り手がいるときは、お気に入りに追加することで情報の追跡ができます。</p>
 ${tools}
 ${rcount}

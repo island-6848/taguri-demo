@@ -57,14 +57,14 @@ export function ranking(counts, n = TOP) {
   return rows.filter(([, c], i) => i < n || c === cut).map(([v, c]) => [v, c, 1 + rows.filter(r => r[1] > c).length]);
 }
 /** 名前ごとの、違う作品（題名の鍵）の数 */
-function worksBy(pairs) {
+export function worksBy(pairs) {
   const sets = new Map();
   for (const [name, key] of pairs) if (name && key) { if (!sets.has(name)) sets.set(name, new Set()); sets.get(name).add(key); }
   return new Map([...sets].map(([name, keys]) => [name, keys.size]));
 }
 
 /** Groups of the stages the user's works are linked to (current catalogue, then past stages). */
-async function groupsOf(ctx, sids) {
+export async function groupsOf(ctx, sids) {
   const want = [...new Set(sids.filter(Boolean))], got = {};
   for (let i = 0; i < want.length; i += 90) {
     const part = want.slice(i, i + 90), qs = part.map(() => '?').join(',');
@@ -82,7 +82,7 @@ const stat = (n, label, href) =>
  * ランキングの一覧（起案者の指示 2026-10-20「よく観る団体とよく観る劇場、それぞれランキングぽいデザインに」）。
  * 順位の札（1〜3 位は色つき）・名前・1 位を満たんにした棒・数。rows は ranking() の行
  */
-const rankList = (rows, unit, cls = '') => {
+export const rankList = (rows, unit, cls = '') => {
   const max = rows.length ? rows[0][1] : 1;
   return `<ol class="rk${cls ? ' ' + cls : ''}">${rows.map(([v, n, r]) => `<li class="rk-${r <= 3 ? r : 'n'}">`
     + `<b class="rk-no" aria-label="${r} 位">${r}</b><span class="rk-name">${E(v)}</span>`

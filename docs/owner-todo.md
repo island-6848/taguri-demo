@@ -39,6 +39,7 @@
 - [ ] Cloudflare の鍵（CLOUDFLARE_API_TOKEN）に、D1 の分析を読む権限（Account Analytics: Read）があるか見る。無いと、点検の表の D1 の読み出しが「読めなかった」になる〔f-wrangler-d1-info-reads〕
 
 ## 決めること
+- [ ] 共有リンクの追記（プライバシーポリシー第 5 条）の文面を確かめ、改めての同意（TERMS_VERSION を上げて全員に同意を求める）が要るかを決める。いまは「本人が自ら作るときだけ公開する」ので、版は上げていない〔dec-share-links〕
 
 - [ ] 公開リポジトリの過去の履歴に残る観劇記録・第三者の連絡先を、履歴から消すか〔q-pii-git-history〕
 - [ ] 「眺める」に足す図を選ぶ〔q-records-viz〕

@@ -1,5 +1,6 @@
 // 記録を見返す: the material the three screens share (app._records_base) and the screens
 // themselves (起案者の指示 2026-10-14「残りの画面も順に移して」).
+import {sharePageButton} from '../share.js';
 import {isScaled} from './grade.js';
 import {loadWorks} from './works.js';
 import {peopleByKey, recordsLede, autoMerge} from './diary.js';
@@ -79,7 +80,7 @@ export async function chronicleScreen(_params, ctx) {
   const themes = await themesOf(ctx, d.rated.map(r => r.stage_id));
   for (const r of d.rated) r.themes = themes[r.stage_id] || [];
   const main = chroniclePanel(d.seen, d.rated) || '<section class="card"><p class="empty">まだ年表を描けるだけの記録がありません。上演日の分かる記録が増えると出るようになります。</p></section>';
-  return {title: '観劇史年表', body_html: `<h1>観劇史年表 ── 何が始まった年か</h1>
+  return {title: '観劇史年表', body_html: `<h1>観劇史年表 ── 何が始まった年か</h1>${sharePageButton('chronicle')}
 ${recordsLede(d)}
 ${main}`};
 }
@@ -112,7 +113,7 @@ export async function recordsScreen(_params, ctx) {
   try { timetable = await timetableFor(ctx, d.seen, localNow().slice(0, 10)); } catch { /* 時間割は無くても画面は出す */ }
   let conquest = '';
   try { conquest = await conquestFor(ctx, d.seen); } catch { /* 制覇マップは無くても画面は出す */ }
-  const body = `<h1>眺める ── 図で見る</h1>
+  const body = `<h1>眺める ── 図で見る</h1>${sharePageButton('records')}
 ${recordsLede(d)}
 ${d.seen.length ? '' : RECORDS_EMPTY}
 <div class="figs">

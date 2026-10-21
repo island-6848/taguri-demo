@@ -5,6 +5,7 @@
 // the Python text speaks of the Render server: the アカウント card (recovery codes on Render)
 // points to the account page, the mail import is the owner's only, and 「観ればよかった」 is
 // looked up in the stages already in D1 instead of fetching the web.
+import {sharesCardHtml} from '../share.js';
 import {registerDialogHtml} from './register-dialog.js';
 import {scaleOf, scaleCardHtml, SCALE_LABEL, frac} from './grade.js';
 import {FAV_SEED_W} from '../recommend.js';
@@ -184,6 +185,7 @@ ${await (async () => { const sc = await scaleOf(ctx); return scaleCardHtml(sc, c
 <details class="card">${cardH2('gear', 'アカウント')}
 <p class="lead">表示名・ログインの方法・パスキー・ログアウト・アカウントの削除は、<a href="/account">アカウント</a>の画面にまとめてあります。</p></details>
 ${await (async () => { const off = await optedOut(ctx); return optoutCardHtml(off, cardH2('gear', '推薦の改善の分析', `<span class="badge part">いまは${off ? '分析に使わない' : '分析に使ってよい'}</span>`)); })()}
+${await sharesCardHtml(ctx)}
 ${await exportCardHtml(ctx)}
 ${droppedHtml(await droppedRows(ctx))}
 ${skippedHtml(works.filter(w => w.unseen))}`;

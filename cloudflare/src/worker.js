@@ -1,4 +1,5 @@
 import {withCard, PREVIEW_BOT} from './link-card.js';
+import {publicShare} from './share.js';
 import {assetLinksResponse} from './app-links.js';
 import {SESSION_TTL} from './session-policy.js';
 import {deleteAccountStatements, sweepEmptyAccounts} from './cleanup.js';
@@ -491,7 +492,7 @@ async function nativeRoute(request, env, url) {
   try {
     const uid = await user(request, env.DB);
     // env.CLOCK exists only in tests (an object cannot come from wrangler vars).
-    const ctx = {db: env.DB, env, uid, today: env.CLOCK?.today ?? jstToday(), now: env.CLOCK?.now ?? Date.now()};
+    const ctx = {db: env.DB, env, uid, today: env.CLOCK?.today ?? jstToday(), now: env.CLOCK?.now ?? Date.now(), origin: url.origin};
     if (isScreen) {
       const body = await nativeScreenBody(m[1], url.searchParams, ctx);
       // 規約の版が上がっていたら、画面が同意を求める（terms.agreeAction）
@@ -579,6 +580,9 @@ export default {
     if (limited) return limited;
     // Android アプリとの結び付け（app-links.js）。ログインの前に Google が読むので gate より先
     if (url.pathname === '/.well-known/assetlinks.json' && request.method === 'GET') return assetLinksResponse();
+    // 共有リンク（share.js、dec-share-links）。本人が選んだものだけを、リンクを知る人にログインなしで見せる。gate より先
+    const shared = await publicShare(request, env, url);
+    if (shared) return shared;
     const blocked = await gate(request, env, url);
     if (blocked) return blocked;
     // たぐりとは and ログイン are one page now; old links to /about still land there.
