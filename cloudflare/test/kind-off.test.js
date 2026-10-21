@@ -85,3 +85,24 @@ test('原作「原作もの」 left in the production index is neither a reason 
   assert.match(html, /<span class="net">形式<\/span><a class="rsl"[^>]*><b>ミュージカル<\/b><\/a>/);   // 札と同じ見出し「形式」は重ねない
   assert.doesNotMatch(html, /種類/);
 });
+
+test('settings lists the reasons taken off with ✕, and each one can be put back (起案者の指示 2026-10-21)', async () => {
+  const {env, sqlite} = setup();
+  for (const s of FIXTURE.sql) sqlite.exec(s);
+  const a = await signIn(env);
+  try {
+    const empty = (await step(env, a, {get: '/api/screen/settings'})).body.body_html;
+    assert.match(empty, /<details class="card" id="reason-off">[\s\S]*?外した理由はありません。/);
+    // 人物の ✕ は使わない言葉に、形式の ✕ は使わない理由に入る（app.js の rsx）
+    assert.equal((await step(env, a, {post: '/api/decline', body: {action: 'add', word: '俳優甲'}})).status, 200);
+    assert.equal((await step(env, a, {post: '/api/kind_off', body: {action: 'add', key: '#原作\tオリジナル'}})).status, 200);
+    const set = (await step(env, a, {get: '/api/screen/settings'})).body.body_html;
+    assert.match(set, /外したおすすめ理由<\/span><span class="badge part">2 件<\/span>/);
+    assert.ok(set.includes('<span class="tag" data-word="俳優甲">「俳優甲」<button data-dec="remove">戻す</button></span>'));
+    assert.ok(set.includes('<span class="tag" data-kindkey="#原作\tオリジナル">原作「オリジナル」<button data-kindoff-remove="1">戻す</button></span>'));
+    // 戻す（app.js は既存の remove を呼ぶ）と、一覧から消える
+    assert.equal((await step(env, a, {post: '/api/decline', body: {action: 'remove', word: '俳優甲'}})).status, 200);
+    assert.equal((await step(env, a, {post: '/api/kind_off', body: {action: 'remove', key: '#原作\tオリジナル'}})).status, 200);
+    assert.match((await step(env, a, {get: '/api/screen/settings'})).body.body_html, /外した理由はありません。/);
+  } finally { sqlite.close(); }
+});
