@@ -8616,6 +8616,24 @@
    "verifies": []
   },
   {
+   "id": "ux-tour-repeat-merge-1021",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-21",
+   "title": "ツアー公演を何回も足すと、自動でまとめた後は 1 回・最初の日・最初の劇場の 1 行になり、回数・劇場・時刻が画面から消える。外すと評価が消えたように見え、連続追加では劇場名がまちがって保存される",
+   "sources": [
+    "cloudflare/src/screens/works.js",
+    "cloudflare/src/screens/diary.js",
+    "cloudflare/src/screens/row.js",
+    "cloudflare/src/screens/search.js",
+    "cloudflare/src/screens/rate.js",
+    "cloudflare/src/screens/account.js",
+    "cloudflare/src/screens/charts.js",
+    "cloudflare/public/app.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "white-record-sites",
    "type": "finding",
    "status": "unverified",
@@ -14772,6 +14790,16 @@
    "from": "user-storage-measured",
    "rel": "supports",
    "to": "dec-account-cap-counted"
+  },
+  {
+   "from": "ux-tour-repeat-merge-1021",
+   "rel": "affects",
+   "to": "fix-past-tour-venue-by-date"
+  },
+  {
+   "from": "ux-tour-repeat-merge-1021",
+   "rel": "affects",
+   "to": "dec-register-detail-repeat"
   },
   {
    "from": "white-record-sites",

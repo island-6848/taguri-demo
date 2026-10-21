@@ -697,23 +697,24 @@ flowchart LR
   n674[["サイトの文章を yomiyasu（日本語の推敲スキル）で書き直す。スキルは .claude/skills/yomiyasu に入れた"]]
   n675("画面の△の説明「あまり合わなかった」は、起案者の考える△（まあ良いが気になる所がある）と食い違う")
   n676("1 人が D1 に置く量は、ふつうに使って約 0.7 MB、いまの行数の歯止めの中でいちばん長い文字で埋めると約 218 MB（しかも上限の無い表があった）")
-  n677("note・Notion のような白基調の記録サイトの見た目（白い紙面・真っ黒でない文字・差し色 1 つ・広い余白）")
-  n678("本番の Worker の /api/health は、Render への橋渡しに取られて 404 になっていた（直した）")
-  n679("Worker での推薦計算は 1 回 10〜12 ミリ秒、重い想定で 39 ミリ秒（見積もり）")
-  n680("workerd は Worker の入り口のモジュール（src/worker.js）の名前付き export をすべて入り口として読む。数や文字を export すると起動しない")
-  n681("起案者が Workers Builds を master だけ組み立てるようにした")
-  n682("push するたびに Workers Builds が D1 の migration を当ててから deploy する")
-  n683("コミットの ✗（Workers Builds）は、master 以外のブランチの組み立てが失敗しているもの。master の組み立ては毎回成功している見込み")
-  n684("Workers Builds（GitHub からの自動配信）は無料プランで月 3,000 分・同時 1 本・1 回 20 分まで")
-  n685("コミットの ✗ は Workers Builds が cloudflare/ の無い master を組もうとして失敗していたため")
-  n686("Workers の Cache API は *.workers.dev では何もしない（独自ドメインでだけ効く）")
-  n687("Workers の定期実行は、無料プランだと 1 回あたり CPU 10 ミリ秒・外部への要求 50 回まで")
-  n688("別の作業で、Workers＋D1 の版が workers.dev で動き始めている")
-  n689("workers.dev の URL は無料のまま名前を変えられる（アカウントの subdomain と Worker の名前）。独自ドメインは年額がかかる")
-  n690("Workers の無料プランは 1 要求あたり CPU 10 ミリ秒・1 日 10 万要求まで")
-  n691("Workers の有料プランは月 5 ドルで、要求 1000 万回・CPU 3000 万ミリ秒・D1 の読み 250 億行が含まれる")
-  n692("master 以外のブランチの組み立ては `npx wrangler preview` を走らせ、設定に previews の欄が無いので失敗している")
-  n693("Workers の静的ファイルへの要求は無料・無制限で、要求数の上限に数えない")
+  n677("ツアー公演を何回も足すと、自動でまとめた後は 1 回・最初の日・最初の劇場の 1 行になり、回数・劇場・時刻が画面から消える。外すと評価が消えたように見え、連続追加では劇場名がまちがって保存される")
+  n678("note・Notion のような白基調の記録サイトの見た目（白い紙面・真っ黒でない文字・差し色 1 つ・広い余白）")
+  n679("本番の Worker の /api/health は、Render への橋渡しに取られて 404 になっていた（直した）")
+  n680("Worker での推薦計算は 1 回 10〜12 ミリ秒、重い想定で 39 ミリ秒（見積もり）")
+  n681("workerd は Worker の入り口のモジュール（src/worker.js）の名前付き export をすべて入り口として読む。数や文字を export すると起動しない")
+  n682("起案者が Workers Builds を master だけ組み立てるようにした")
+  n683("push するたびに Workers Builds が D1 の migration を当ててから deploy する")
+  n684("コミットの ✗（Workers Builds）は、master 以外のブランチの組み立てが失敗しているもの。master の組み立ては毎回成功している見込み")
+  n685("Workers Builds（GitHub からの自動配信）は無料プランで月 3,000 分・同時 1 本・1 回 20 分まで")
+  n686("コミットの ✗ は Workers Builds が cloudflare/ の無い master を組もうとして失敗していたため")
+  n687("Workers の Cache API は *.workers.dev では何もしない（独自ドメインでだけ効く）")
+  n688("Workers の定期実行は、無料プランだと 1 回あたり CPU 10 ミリ秒・外部への要求 50 回まで")
+  n689("別の作業で、Workers＋D1 の版が workers.dev で動き始めている")
+  n690("workers.dev の URL は無料のまま名前を変えられる（アカウントの subdomain と Worker の名前）。独自ドメインは年額がかかる")
+  n691("Workers の無料プランは 1 要求あたり CPU 10 ミリ秒・1 日 10 万要求まで")
+  n692("Workers の有料プランは月 5 ドルで、要求 1000 万回・CPU 3000 万ミリ秒・D1 の読み 250 億行が含まれる")
+  n693("master 以外のブランチの組み立ては `npx wrangler preview` を走らせ、設定に previews の欄が無いので失敗している")
+  n694("Workers の静的ファイルへの要求は無料・無制限で、要求数の上限に数えない")
   n0 -- 影響する --> n608
   n1 -- 新たな問いを生む --> n495
   n1 -- 影響する --> n571
@@ -779,7 +780,7 @@ flowchart LR
   n46 -- 前提にする --> n43
   n46 -- 影響する --> n59
   n47 -- 影響する --> n562
-  n47 -- 影響する --> n688
+  n47 -- 影響する --> n689
   n48 -- 前提にする --> n50
   n48 -- 影響する --> n380
   n49 -- 影響する --> n608
@@ -945,7 +946,7 @@ flowchart LR
   n120 -- 前提にする --> n634
   n120 -- 前提にする --> n332
   n120 -- 前提にする --> n41
-  n120 -- 前提にする --> n690
+  n120 -- 前提にする --> n691
   n120 -- 影響する --> n65
   n120 -- 影響する --> n168
   n120 -- 影響する --> n559
@@ -1115,7 +1116,7 @@ flowchart LR
   n201 -- 前提にする --> n617
   n201 -- 前提にする --> n51
   n202 -- 前提にする --> n76
-  n202 -- 前提にする --> n690
+  n202 -- 前提にする --> n691
   n202 -- 前提にする --> n120
   n202 -- 影響する --> n24
   n203 -- 影響する --> n55
@@ -1215,7 +1216,7 @@ flowchart LR
   n254 -- 前提にする --> n186
   n255 -- 前提にする --> n526
   n256 -- 答える --> n524
-  n256 -- 前提にする --> n689
+  n256 -- 前提にする --> n690
   n256 -- 根拠になる --> n120
   n257 -- 答える --> n625
   n257 -- 影響する --> n28
@@ -1235,7 +1236,7 @@ flowchart LR
   n263 -- 置き換える --> n85
   n263 -- 置き換える --> n260
   n263 -- 食い違う --> n85
-  n263 -- 前提にする --> n690
+  n263 -- 前提にする --> n691
   n263 -- 影響する --> n18
   n263 -- 影響する --> n523
   n265 -- 影響する --> n28
@@ -1582,7 +1583,7 @@ flowchart LR
   n470 -- 影響する --> n362
   n471 -- 影響する --> n616
   n472 -- 根拠になる --> n202
-  n472 -- 前提にする --> n690
+  n472 -- 前提にする --> n691
   n473 -- 影響する --> n202
   n474 -- 影響する --> n202
   n475 -- 前提にする --> n61
@@ -1640,7 +1641,7 @@ flowchart LR
   n494 -- 影響する --> n454
   n495 -- 前提にする --> n1
   n495 -- 影響する --> n571
-  n496 -- 影響する --> n683
+  n496 -- 影響する --> n684
   n497 -- 前提にする --> n508
   n498 -- 前提にする --> n593
   n498 -- 前提にする --> n459
@@ -1674,7 +1675,7 @@ flowchart LR
   n522 -- 影響する --> n214
   n523 -- 前提にする --> n593
   n523 -- 前提にする --> n626
-  n524 -- 前提にする --> n689
+  n524 -- 前提にする --> n690
   n524 -- 影響する --> n120
   n524 -- 影響する --> n525
   n525 -- 前提にする --> n523
@@ -1768,7 +1769,7 @@ flowchart LR
   n596 -- 影響する --> n28
   n597 -- 前提にする --> n190
   n597 -- 影響する --> n28
-  n598 -- 前提にする --> n690
+  n598 -- 前提にする --> n691
   n598 -- 影響する --> n303
   n599 -- 前提にする --> n362
   n601 -- 影響する --> n193
@@ -1824,10 +1825,10 @@ flowchart LR
   n628 -- 前提にする --> n267
   n629 -- 前提にする --> n192
   n630 -- 前提にする --> n327
-  n630 -- 影響する --> n684
+  n630 -- 影響する --> n685
   n631 -- 前提にする --> n632
   n631 -- 前提にする --> n593
-  n632 -- 前提にする --> n690
+  n632 -- 前提にする --> n691
   n632 -- 影響する --> n24
   n634 -- 検証項目 --> n635
   n634 -- 根拠になる --> n120
@@ -1887,7 +1888,7 @@ flowchart LR
   n663 -- 根拠になる --> n260
   n663 -- 答える --> n633
   n664 -- 根拠になる --> n202
-  n664 -- 前提にする --> n690
+  n664 -- 前提にする --> n691
   n665 -- 影響する --> n614
   n665 -- 影響する --> n616
   n665 -- 影響する --> n581
@@ -1903,33 +1904,35 @@ flowchart LR
   n675 -- 新たな問いを生む --> n591
   n675 -- 影響する --> n28
   n676 -- 根拠になる --> n54
-  n677 -- 影響する --> n90
-  n678 -- 影響する --> n4
-  n678 -- 根拠になる --> n120
-  n679 -- 食い違う --> n85
-  n679 -- 新たな問いを生む --> n593
-  n679 -- 影響する --> n523
-  n680 -- 影響する --> n682
-  n681 -- 影響する --> n692
-  n682 -- 影響する --> n20
-  n683 -- 影響する --> n685
-  n683 -- 新たな問いを生む --> n496
-  n684 -- 根拠になる --> n120
-  n685 -- 影響する --> n18
-  n686 -- 影響する --> n120
-  n687 -- 影響する --> n508
-  n688 -- 食い違う --> n85
-  n688 -- 影響する --> n523
-  n688 -- 影響する --> n28
-  n689 -- 影響する --> n525
-  n689 -- 根拠になる --> n120
-  n690 -- 根拠になる --> n85
-  n690 -- 答える --> n633
-  n691 -- 根拠になる --> n219
-  n691 -- 影響する --> n523
-  n692 -- 答える --> n496
-  n692 -- 根拠になる --> n683
-  n693 -- 影響する --> n655
+  n677 -- 影響する --> n317
+  n677 -- 影響する --> n204
+  n678 -- 影響する --> n90
+  n679 -- 影響する --> n4
+  n679 -- 根拠になる --> n120
+  n680 -- 食い違う --> n85
+  n680 -- 新たな問いを生む --> n593
+  n680 -- 影響する --> n523
+  n681 -- 影響する --> n683
+  n682 -- 影響する --> n693
+  n683 -- 影響する --> n20
+  n684 -- 影響する --> n686
+  n684 -- 新たな問いを生む --> n496
+  n685 -- 根拠になる --> n120
+  n686 -- 影響する --> n18
+  n687 -- 影響する --> n120
+  n688 -- 影響する --> n508
+  n689 -- 食い違う --> n85
+  n689 -- 影響する --> n523
+  n689 -- 影響する --> n28
+  n690 -- 影響する --> n525
+  n690 -- 根拠になる --> n120
+  n691 -- 根拠になる --> n85
+  n691 -- 答える --> n633
+  n692 -- 根拠になる --> n219
+  n692 -- 影響する --> n523
+  n693 -- 答える --> n496
+  n693 -- 根拠になる --> n684
+  n694 -- 影響する --> n655
   class n0 finding_confirmed
   class n1 finding_confirmed
   class n2 finding_confirmed
@@ -2607,16 +2610,16 @@ flowchart LR
   class n674 decision_adopted
   class n675 finding_confirmed
   class n676 finding_confirmed
-  class n677 finding_unverified
-  class n678 finding_confirmed
-  class n679 finding_unverified
-  class n680 finding_confirmed
-  class n681 finding_unverified
-  class n682 finding_confirmed
+  class n677 finding_confirmed
+  class n678 finding_unverified
+  class n679 finding_confirmed
+  class n680 finding_unverified
+  class n681 finding_confirmed
+  class n682 finding_unverified
   class n683 finding_confirmed
   class n684 finding_confirmed
-  class n685 finding_outdated
-  class n686 finding_confirmed
+  class n685 finding_confirmed
+  class n686 finding_outdated
   class n687 finding_confirmed
   class n688 finding_confirmed
   class n689 finding_confirmed
@@ -2624,6 +2627,7 @@ flowchart LR
   class n691 finding_confirmed
   class n692 finding_confirmed
   class n693 finding_confirmed
+  class n694 finding_confirmed
   classDef finding_confirmed fill:#e6f4ea,stroke:#2e7d32
   classDef finding_unverified fill:#fff8e1,stroke:#b26a00,stroke-dasharray:4 3
   classDef finding_outdated fill:#eeeeee,stroke:#9e9e9e
@@ -2905,7 +2909,7 @@ flowchart LR
 | [興味なしとの比べ（興味ありの件数 /（興味あり＋興味なし））は、1 公演ぶんを割ったあとに掛ける。興味なしの分はその公演の重さから引くだけで、ほかの人・種類には回さない（#109）](notes/fix-interest-contrast-after-split.md) | 採用 | 2026-10-18 | ─ | 影響する → [興味ありは、1 公演ぶん（評価 1 件と同じ重さ）をその公演の人・種類に割って配る。(1) 人数で割る (2) 好きと分かっている人に多め (3) 興味なしにもいるものは弱める。「なぜ気になったか」に名前があればその人に多め](notes/impl-interest-split.md) |
 | [興味ありの「なぜ気になったか」に名前があっても、打ち消し・苦手の語がある区切り、「○○より」「○○と比べ」の名前、長い名前の一部は多めに配らない（分からないときは等分のまま）。LLM は使わない（#111）](notes/fix-interest-note-names.md) | 採用 | 2026-10-18 | ─ | 影響する → [興味ありは、1 公演ぶん（評価 1 件と同じ重さ）をその公演の人・種類に割って配る。(1) 人数で割る (2) 好きと分かっている人に多め (3) 興味なしにもいるものは弱める。「なぜ気になったか」に名前があればその人に多め](notes/impl-interest-split.md)<br>前提にする → [興味ありの理由は主演とは限らない。役の格で配る（dec-part-tiers-tome）のを弱めるか外して、何件にも共通するもの・興味なしとの比べ・本人の好みで「なぜ」を推し量る方に任せるか](notes/q-interest-why-unknown.md) |
 | [ツアーのほかの会場へ写した答え（reaction.source が '…_tour'）は、好みの手がかり（興味あり・興味なしの種）にも、手元の答え合わせ（replay_eval の logged）にも数えない。会場ごとの行は、答えた公演を外すため・一覧のために残す（#110）](notes/fix-interest-tour-copies.md) | 採用 | 2026-10-18 | ─ | 影響する → [興味ありは、1 公演ぶん（評価 1 件と同じ重さ）をその公演の人・種類に割って配る。(1) 人数で割る (2) 好きと分かっている人に多め (3) 興味なしにもいるものは弱める。「なぜ気になったか」に名前があればその人に多め](notes/impl-interest-split.md)<br>影響する → [推薦の再生（replay）を作った。日 t までの記録だけに切った写しで Worker と同じ rankedGroups を node で動かし、t より後 1 週間の答えを利用者ごとの AUC で当てる。部品 4 つを外した計算とも比べる（H5）。利用者 1 人から判定を出す](notes/impl-replay-eval.md) |
-| [探す画面の過去の公演（ツアー）で「観た」を記録するとき、観た日にその日上演していた劇場の公演（stage_id）に結び付ける。画面では劇場を選べ、サーバーも日付から選び直す](notes/fix-past-tour-venue-by-date.md) | 採用 | 2026-10-18 | ─ | 影響する → [手元で開く管理画面（tools/admin）を作った。手で直した分は D1 の stage_override に置き、Worker が画面に出すときに重ねる。読み取りは Claude Code](notes/impl-admin-tool.md) |
+| [探す画面の過去の公演（ツアー）で「観た」を記録するとき、観た日にその日上演していた劇場の公演（stage_id）に結び付ける。画面では劇場を選べ、サーバーも日付から選び直す](notes/fix-past-tour-venue-by-date.md) | 採用 | 2026-10-18 | ─ | 影響する → [手元で開く管理画面（tools/admin）を作った。手で直した分は D1 の stage_override に置き、Worker が画面に出すときに重ねる。読み取りは Claude Code](notes/impl-admin-tool.md)<br>[ツアー公演を何回も足すと、自動でまとめた後は 1 回・最初の日・最初の劇場の 1 行になり、回数・劇場・時刻が画面から消える。外すと評価が消えたように見え、連続追加では劇場名がまちがって保存される](notes/ux-tour-repeat-merge-1021.md) が影響する |
 | [評価した順は works.rated_at（評価・詳細が変わったときだけ進む、migrations/0034）で決める。感想・日付などの編集で進む updated_at は使わない（無い行だけ代わりに使う）（#112）](notes/fix-rated-at.md) | 採用 | 2026-10-18 | ─ | 影響する → [裏の答え合わせを Worker に入れた（本人の記録を時間順に再生して、別の計算が確かに勝ったときだけ使う）](notes/impl-hidden-gate.md)<br>新たな問いを生む → [手元の再生（replay_eval の cut_copy）は、時点 t より後に編集した行を丸ごと消すので、当時あった評価が消える。当時の値をどう戻すか（履歴の行・時点別の控え）、戻せない期間をどう結果から外すか（#113）](notes/q-replay-history-restore.md) |
 | [あらすじのハッシュタグを押すと、その題材の付いたこれから観られる公演の一覧（/recommend/tag）へ。1 回開くごとの D1 の読み取りは 2,000 行ほど](notes/impl-hashtag-list.md) | 採用 | 2026-10-18 | ─ | 前提にする → [おすすめの画面を Worker に移す。カードは毎日の取得で Python の ticket() が作り置き（rec_card）、Worker は順位・理由・ポスターだけを差し込む](notes/dec-recommend-worker-cards.md)<br>前提にする → [D1 の無料枠は 1 日に読み 500 万行・書き 10 万行、保存 5GB](notes/d1-free-limits.md)<br>影響する → [本番で 1 人・1 日あたり D1 を何行読んでいるか（利用者 300 人の上限の前提）](notes/q-d1-reads-real.md)<br>影響する → [おすすめのカード: 発売の札は値段帯のすぐ下、公式サイトと発売の札の枠線 2px、同じ額の幅は 1 つの額、あらすじの続きは地の色なしで題材のハッシュタグ、日程と暦の間をあける](notes/dec-rec-card-1018-layout.md) |
 | [感想で書いた特徴への好みを、サービス版（Worker）の推薦の順位と理由に効かせた（規則だけ、LLM なし、#104）](notes/impl-impression-worker.md) | 採用 | 2026-10-18 | ─ | 答える → [感想の本文による好みの補正（impression preferences）は、サービス版の推薦（Worker）に届いていない。つなぐか、未対応と書くか（#104、起案者の判断）](notes/q-impression-not-in-service.md)<br>影響する → [おすすめ（人物得点）は索引をバッチで作り、Worker で計算する](notes/dec-reco-on-worker.md)<br>[過去の公演（past_stage）にも種類の言葉（形式・原作・翻訳・ジャンル）を入れ、過去の記録からも好みを学べるようにした](notes/impl-past-stage-kinds.md) が影響する |
@@ -2990,10 +2994,10 @@ flowchart LR
 | [文字の形を試す。ボタンは Zen丸ゴシック Bold、本文は Zen角ゴシック New（どちらもサイトに置いて配る）。これまでの文字を「規定」として残し、設定で戻せる](notes/font-trial.md) | 置き換え済み | 2026-10-18 | ─ | 新たな問いを生む → [マメロンを Web フォントとしてサイトに置いて配ってよいか（ライセンス）と、ファイルをどこから取るか](notes/q-mamelon-license.md)<br>[書体の役割を決める。見出しは Zen丸ゴシック、本文・ボタン・入れ口・表・札・数字・公演名は Zen角ゴシック New。指定は web/fonts.css だけに置く](notes/dec-font-roles.md) が置き換える<br>[マメロン Hi Regular の配布ファイルの readme は、商用利用と Web フォントでの利用を認め、無断の改変・二次配布は控えるよう求めている](notes/mamelon-readme.md) が影響する<br>[マメロンを Web フォントとしてサイトに置いて配ってよいか（ライセンス）と、ファイルをどこから取るか](notes/q-mamelon-license.md) が影響する |
 | [おすすめ理由の太字から、人物・形式ごとのページへ飛べるようにする](notes/dec-entity-pages.md) | 置き換え済み | 2026-10-19 | ─ | 影響する → [Cloudflare Worker（cloudflare/src/worker.js）](notes/comp-cf-worker.md)<br>[おすすめ理由の太字のリンク（人物・形式のページ）は、作った形のまま残す](notes/dec-entity-pages-keep.md) が前提にする<br>[おすすめ理由の太字のリンク（人物・形式のページ）は先送りにして、いったん元に戻す](notes/dec-entity-pages-later.md) が置き換える |
 | [おすすめ理由の太字のリンク（人物・形式のページ）は先送りにして、いったん元に戻す](notes/dec-entity-pages-later.md) | 置き換え済み | 2026-10-19 | ─ | 置き換える → [おすすめ理由の太字から、人物・形式ごとのページへ飛べるようにする](notes/dec-entity-pages.md)<br>影響する → [Cloudflare Worker（cloudflare/src/worker.js）](notes/comp-cf-worker.md)<br>[おすすめ理由の太字のリンク（人物・形式のページ）は、作った形のまま残す](notes/dec-entity-pages-keep.md) が置き換える |
-| [観劇記録の追加に詳細検索ダイアログと同じ作品の連続追加を設ける](notes/dec-register-detail-repeat.md) | 置き換え済み | 2026-10-19 | ─ | 前提にする → [観劇記録の追加は1件入力を先頭に置き、取り込みと観ていない公演を分ける](notes/dec-register-single-first.md)<br>[詳細検索は上演期間との重なりで絞り、月・月日・年・年月・年月日を選べるようにする](notes/dec-register-run-precision.md) が置き換える |
+| [観劇記録の追加に詳細検索ダイアログと同じ作品の連続追加を設ける](notes/dec-register-detail-repeat.md) | 置き換え済み | 2026-10-19 | ─ | 前提にする → [観劇記録の追加は1件入力を先頭に置き、取り込みと観ていない公演を分ける](notes/dec-register-single-first.md)<br>[詳細検索は上演期間との重なりで絞り、月・月日・年・年月・年月日を選べるようにする](notes/dec-register-run-precision.md) が置き換える<br>[ツアー公演を何回も足すと、自動でまとめた後は 1 回・最初の日・最初の劇場の 1 行になり、回数・劇場・時刻が画面から消える。外すと評価が消えたように見え、連続追加では劇場名がまちがって保存される](notes/ux-tour-repeat-merge-1021.md) が影響する |
 | [アカウントの「よく観ている団体」「よく行く劇場」をランキングの形にし、劇場は作品数と行った回数を切り替えられるようにする。作品数は違う作品（題名の鍵）の数で数える](notes/dec-account-rankings.md) | 置き換え済み | 2026-10-20 | ─ | 影響する → [本人だけが見るアカウントの画面（/account）を Worker に作る](notes/dec-account-page.md)<br>[アカウントの団体・劇場のランキングは 3 位まで。1 のもの（1 作品・1 回）は出さず、同じ数は 1 行に併記する](notes/dec-account-rankings-top3.md) が置き換える<br>[起案者に、アカウントの団体・劇場のランキングが「前作ったときの見た目じゃない」と見える。master のコードは作ったときのまま。本番が古いのか、別の見た目を指しているのか](notes/q-account-rankings-look-1021.md) が影響する |
 
-## 調べたこと（271 件）
+## 調べたこと（272 件）
 
 | 項目 | 状態 | 日付 | 検証項目 | つながり |
 | --- | --- | --- | --- | --- |
@@ -3173,6 +3177,7 @@ flowchart LR
 | [真ん中の段に錨を置いて ◎○（★4〜5）を常にプラスにすると、公開の映画評価では当たりがはっきり下がる（k=80 で −0.04〜−0.05、良くなった人 16〜20%）。0 で止めるだけ（案 3）なら −0.0015](notes/eval-anchored-ordinal.md) | 確認済み | 2026-10-20 | ─ | 前提にする → [順序化の z で、◎ が多い人の ○（星 4）がマイナスになる。良い側の評価は常にプラスにする（真ん中の段に錨を置く）か](notes/q-anchored-ordinal.md)<br>前提にする → [全部の段階をその人基準（いつもより高いか低いか）で使うと、62〜82% の人で今の推薦より良く、使うほど差が広がる](notes/eval-douban-graded-better.md) |
 | [CoRich の公演ページの見出しは 冠名（p.crown）→ タイトル（h1.name）→ サブタイトル（p.subTitle）。<title> にはタイトルしか入らず、控えの 6,000 件で冠名は 4,092 件・サブタイトルは 969 件にあった](notes/f-corich-title-parts.md) | 確認済み | 2026-10-20 | ─ | 影響する → [公演の題名は 冠名・タイトル・サブタイトルを空白でつなげたものにする。照合に使う題名の鍵（tkey）・ツアーのまとめ・名前の索引の鍵はタイトルだけ（title_main）から作る](notes/dec-title-crown-subtitle.md)<br>[公演の題名は 冠名・タイトル・サブタイトルを空白でつなげたものにする。照合に使う題名の鍵（tkey）・ツアーのまとめ・名前の索引の鍵はタイトルだけ（title_main）から作る](notes/dec-title-crown-subtitle.md) が前提にする |
 | [X（Twitter）にリンクのカードが出るようになった（起案者が確認）](notes/f-link-card-x-ok.md) | 確認済み | 2026-10-20 | ─ | 答える → [X にリンクのカードが出ない（2026-10-19、起案者の報告）。何が原因か](notes/q-link-card-x.md)<br>前提にする → [リンクのカード（OGP・X のカード）は全ページ同じ 1 枚。Worker が HTML に足し、クローラーにはログインの画面を 200 で返す](notes/dec-link-card.md) |
+| [ツアー公演を何回も足すと、自動でまとめた後は 1 回・最初の日・最初の劇場の 1 行になり、回数・劇場・時刻が画面から消える。外すと評価が消えたように見え、連続追加では劇場名がまちがって保存される](notes/ux-tour-repeat-merge-1021.md) | 確認済み | 2026-10-21 | ─ | 影響する → [探す画面の過去の公演（ツアー）で「観た」を記録するとき、観た日にその日上演していた劇場の公演（stage_id）に結び付ける。画面では劇場を選べ、サーバーも日付から選び直す](notes/fix-past-tour-venue-by-date.md)<br>影響する → [観劇記録の追加に詳細検索ダイアログと同じ作品の連続追加を設ける](notes/dec-register-detail-repeat.md) |
 | [取得元の実際の robots.txt はまだ読めていない](notes/corich-robots-unchecked.md) | 古い | 2026-10-12 | S24 | 新たな問いを生む → [取得元の利用規約・robots.txt・ポスター画像の権利](notes/q-source-terms.md)<br>[CoRich の robots.txt は禁止を書いておらず、サイトマップを 2 つ示している](notes/corich-robots-sitemap-only.md) が置き換える |
 | [見本の記録のうち推薦の材料になるのは 6 割ほど（見積もり）](notes/demo-seed-link-rate.md) | 古い | 2026-10-12 | ─ | 影響する → [本人向けのおすすめ計算（user_recommender.py）](notes/comp-recommender.md)<br>[公開デモの見本 96 件を架空の題名・日付・会場に入れ替え、日報メールの宛先と差出人を手元の設定へ移す（今の版だけ。履歴は起案者が決める）](notes/dec-demo-seed-fictional.md) が影響する |
 | [Claude の GitHub アプリは taguri-crawler にまだ入っていない](notes/claude-app-repo-access.md) | 古い | 2026-10-13 | ─ | 影響する → [取得処理用の非公開リポジトリ（taguri-crawler）と、その秘密の設定](notes/q-crawler-repo.md) |
