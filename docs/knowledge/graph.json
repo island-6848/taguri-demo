@@ -4236,6 +4236,19 @@
    "verifies": []
   },
   {
+   "id": "find-session-past-trial-1022",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-22",
+   "title": "セッションで過去公演の補完を 10 分試した。読み取りは動き（219 件・534 要求・9 分 50 秒）、作業データは state に書き戻した。D1 への送信は、セッションの安全判定で止められて未実施",
+   "sources": [
+    "https://github.com/island-6848/taguri-crawler/tree/state",
+    "tools/review/fetch_past_stages.py",
+    "cloudflare/scripts/deliver_past.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "firebase-apikey-public",
    "type": "finding",
    "status": "unverified",
@@ -12066,6 +12079,11 @@
    "from": "find-catalog-stopped-1022",
    "rel": "depends_on",
    "to": "dec-crawl-tiers"
+  },
+  {
+   "from": "find-session-past-trial-1022",
+   "rel": "depends_on",
+   "to": "q-crawl-in-session"
   },
   {
    "from": "firebase-apikey-public",
