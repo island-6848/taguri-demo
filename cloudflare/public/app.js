@@ -5295,13 +5295,14 @@ function fixupShare(el, path) {
   if (EDITION.edition !== "service" || path !== "/records/works") return;
   const h1 = el.querySelector("h1");
   if (h1 && !el.querySelector('[data-share-kind="works"]')) {
-    h1.insertAdjacentHTML("afterend", '<button type="button" class="share-open share-page-btn" data-share-kind="works">' + SHARE_ICON_SVG + "このページを共有</button>");
+    h1.insertAdjacentHTML("beforeend", '<button type="button" class="share-open share-page-btn" data-share-kind="works" aria-label="このページを共有" title="このページを共有">'
+      + SHARE_ICON_SVG + "</button>");
   }
   el.querySelectorAll("article.rec-row").forEach(a => {
     const key = a.querySelector("[data-work]");
     if (!key || a.querySelector("[data-share-kind]")) return;
     a.insertAdjacentHTML("beforeend", '<button type="button" class="share-open" data-share-kind="stage" data-share-label="watched" data-share-work="'
-      + E(key.dataset.work) + '">' + SHARE_ICON_SVG + "共有</button>");
+      + E(key.dataset.work) + '" aria-label="この公演を共有" title="共有">' + SHARE_ICON_SVG + "</button>");
   });
 }
 function openShare(btn) {

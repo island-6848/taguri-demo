@@ -14,7 +14,7 @@ import {E, ValueError} from './py.js';
 import {ico, h2} from './icons.js';
 import {PREFS, readPrefSetting, regionsHtml, regionCounts, prefSettingAction} from './prefs.js';
 import {rankedGroups, prefCounts} from './recommend.js';
-import {KINDS, loadDeclared, favRoleBox, reactionsOf} from './lists.js';
+import {KINDS, loadDeclared, favRoleBox, reactionsOf, loadDeclined, loadKindOff, reasonOffCardHtml} from './lists.js';
 import {stageInfo} from './fallback.js';
 import {loadWorks, titleKey, DROP_KEEP_DAYS, expiredKeys} from './works.js';
 import {dateParts} from './row.js';
@@ -187,6 +187,10 @@ ${await (async () => { const sc = await scaleOf(ctx); return scaleCardHtml(sc, c
 <p class="lead">表示名・ログインの方法・パスキー・ログアウト・アカウントの削除は、<a href="/account">アカウント</a>の画面にまとめてあります。</p></details>
 ${await (async () => { const off = await optedOut(ctx); return optoutCardHtml(off, cardH2('gear', '推薦の改善の分析', `<span class="badge part">いまは${off ? '分析に使わない' : '分析に使ってよい'}</span>`)); })()}
 ${await (async () => { const on = await consented(ctx); return consentCardHtml(on, cardH2('gear', '感想の AI 読み取り', `<span class="badge part">いまは${on ? '同意している' : '同意していない'}</span>`)); })()}
+${await (async () => {
+  const [words, kinds] = await Promise.all([loadDeclined(ctx), loadKindOff(ctx)]);
+  return reasonOffCardHtml(words, kinds, n => cardH2('flag', '外したおすすめ理由', n ? `<span class="badge part">${n} 件</span>` : ''));
+})()}
 ${await sharesCardHtml(ctx)}
 ${await exportCardHtml(ctx)}
 ${droppedHtml(await droppedRows(ctx))}

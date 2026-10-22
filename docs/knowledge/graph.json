@@ -2461,6 +2461,20 @@
    "verifies": []
   },
   {
+   "id": "dec-reason-off-settings",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-21",
+   "title": "おすすめ理由の ✕ で外したものを、設定の画面「外したおすすめ理由」に並べ、1 つずつ「戻す」で復活できるようにする",
+   "sources": [
+    "cloudflare/src/screens/lists.js",
+    "cloudflare/src/screens/settings.js",
+    "cloudflare/test/kind-off.test.js",
+    "cloudflare/test/e2e-walk.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-reason-two-works",
    "type": "decision",
    "status": "adopted",
@@ -10804,6 +10818,11 @@
    "from": "dec-reading-share-6-4",
    "rel": "depends_on",
    "to": "dec-reading-dual-form"
+  },
+  {
+   "from": "dec-reason-off-settings",
+   "rel": "depends_on",
+   "to": "impl-kind-reason-off"
   },
   {
    "from": "dec-reason-two-works",

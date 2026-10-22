@@ -1722,11 +1722,15 @@ details.lprice:not([open]):not(#_)>summary .plist>li:only-child::before{display:
 .miss-add .miss-sug:empty{display:none}
 
 /* ── 共有リンク（cloudflare/src/share.js、dec-share-links）── */
-.share-open{display:inline-flex;align-items:center;gap:4px;font-size:12.5px;padding:4px 10px;border:1px solid var(--line,#d8d8dc);
- border-radius:999px;background:var(--surf);color:var(--ink2);cursor:pointer}
-.share-open:hover{color:var(--curtain);border-color:var(--curtain)}
-.share-page-btn{margin:0 0 10px}
-article .share-open{margin:6px 0 0 auto}
+.share-open{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;padding:0;
+ border:1px solid var(--line,#d8d8dc);border-radius:50%;background:var(--surf);color:var(--ink2);cursor:pointer;
+ vertical-align:middle;flex:none}
+.share-open .ico{width:13px;height:13px}
+.share-open:hover,.share-open:focus-visible{color:var(--curtain);border-color:var(--curtain)}
+/* ページの共有は見出しの右に（h1 の中） */
+h1 .share-page-btn{margin-left:8px;width:24px;height:24px;position:relative;top:-2px}
+/* カード・行の共有は右下に小さく */
+article .share-open{display:flex;margin:6px 0 0 auto}
 .share-dlg{max-width:min(30em,calc(100vw - 32px));border:0;border-radius:14px;padding:18px 18px 14px;background:var(--surf);color:var(--ink)}
 .share-dlg::backdrop{background:rgba(0,0,0,.35)}
 .share-dlg h2{font-size:17px;margin:0 0 8px}
