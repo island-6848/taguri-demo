@@ -404,11 +404,62 @@ function fixupFigs(root) {
   import("/figs/figs.js").then(m => {
     if (!src.isConnected) return;   // 組み上がる前に別の画面へ移った
     m.fill(root);
+    wordCloudSave(root);
     fixupStoryline(root);
     fixupPeopleNet(root);
   }).catch(() => {
     root.querySelectorAll("[data-fig]").forEach(box => {
       box.outerHTML = '<p class="empty">この図は読み込めませんでした。ページを開き直すと出ることがあります。</p>';
+    });
+  });
+}
+
+// ことばの雲を画像（PNG）で保存する押し口（起案者の指示 2026-10-24「ことばの雲、画像ダウンロードボタンをつけて」）。
+// 雲は SVG で、色は CSS の変数から付いているので、そのまま画像にすると色が抜ける。描かれている色・字の太さを 1 語ずつ写した複製を
+// 2 倍の大きさで canvas に描き、地の色を敷いて PNG にする。外へは何も送らない（ブラウザの中だけで作る）
+function wordCloudSave(root) {
+  root.querySelectorAll("svg.wcloud").forEach(svg => {
+    if (svg.nextElementSibling?.classList.contains("wcsave")) return;
+    const p = document.createElement("p");
+    p.className = "wcsave";
+    p.innerHTML = '<button type="button">' + ico("download", 14) + "画像を保存</button>";
+    svg.after(p);
+    p.querySelector("button").addEventListener("click", async () => {
+      const vb = (svg.getAttribute("viewBox") || "0 0 760 400").split(/\s+/).map(Number);
+      const copy = svg.cloneNode(true);
+      const font = getComputedStyle(svg).fontFamily || "sans-serif";
+      svg.querySelectorAll("text").forEach((t, i) => {
+        const cs = getComputedStyle(t), c = copy.querySelectorAll("text")[i];
+        c.setAttribute("fill", cs.fill);
+        c.setAttribute("font-weight", cs.fontWeight);
+        c.setAttribute("font-family", font + ", sans-serif");
+        c.querySelector("title")?.remove();
+      });
+      copy.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+      copy.setAttribute("width", String(vb[2] * 2));
+      copy.setAttribute("height", String(vb[3] * 2));
+      copy.removeAttribute("style");
+      // 画像の出どころは data: にする（画面の CSP の img-src は 'self' と data: だけで、blob: は読めない）
+      const url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(new XMLSerializer().serializeToString(copy));
+      const img = new Image();
+      img.onload = () => {
+        const cv = document.createElement("canvas");
+        cv.width = vb[2] * 2; cv.height = vb[3] * 2;
+        const cx = cv.getContext("2d");
+        cx.fillStyle = getComputedStyle(svg.closest(".card") || document.body).backgroundColor || "#fff";
+        cx.fillRect(0, 0, cv.width, cv.height);
+        cx.drawImage(img, 0, 0);
+        cv.toBlob(b => {
+          if (!b) return;
+          const a = document.createElement("a");
+          a.href = URL.createObjectURL(b);
+          a.download = "taguri-kotoba-no-kumo.png";
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+        }, "image/png");
+      };
+      img.src = url;
     });
   });
 }
@@ -1439,9 +1490,12 @@ function leadSynopsis(t, lead, noMore) {
           // 開いたあらすじの下にハッシュタグで並べる（起案者の指示 2026-10-18「取得したワードをハッシュタグっぽく記載して」）。
           // 続きの無い短いあらすじは、本文のすぐ下に出す
           const words = [...new Set([...syn.querySelectorAll(".tags .tag:not(.mine)")].map(n => n.textContent.trim().replace(/^#/, "")).filter(Boolean))];
+          // これから観られる公演に付いていない語（サーバーが .dead を付ける。rowinfo.js）は、押しても 1 件も出ないので押せない札にする
+          // （起案者の指示 2026-10-24「1件もないならリンク踏んでも飛べないようにして」）
+          const dead = new Set([...syn.querySelectorAll(".tags .tag.dead")].map(n => n.textContent.trim().replace(/^#/, "")));
           // 押すと、その題材の付いた、これから観られる公演の一覧へ（起案者の指示 2026-10-18「あらすじのハッシュタグ押したら
           // それがついてる公演一覧が出るようにして」。src/screens/tagged.js）。デモ版（Render）にはその画面が無いので押せない札のまま
-          const tag = w => IS_DEMO ? '<span class="lsyntag">#' + E(w) + "</span>"
+          const tag = w => IS_DEMO || dead.has(w) ? '<span class="lsyntag' + (dead.has(w) ? " dead" : "") + '">#' + E(w) + "</span>"
             : '<a class="lsyntag" href="/recommend/tag?w=' + encodeURIComponent(w) + '">#' + E(w) + "</a>";
           const tags = words.length ? '<span class="lsyntags">' + words.map(tag).join("") + "</span>" : "";
           // ハッシュタグは折りたたみの外に出して、閉じていても見せる（起案者の指示 2026-10-18「あらすじのハッシュタグは常に表示。

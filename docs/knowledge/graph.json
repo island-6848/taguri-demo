@@ -4039,6 +4039,21 @@
    "verifies": []
   },
   {
+   "id": "dec-wcloud-save-dead-tags",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-24",
+   "title": "ことばの雲に「画像を保存」（PNG）を付ける。これから観られる公演の無いハッシュタグは押せない札にする",
+   "sources": [
+    "web/app.js",
+    "web/theme.css",
+    "cloudflare/src/screens/tagged.js",
+    "cloudflare/src/screens/rowinfo.js",
+    "cloudflare/test/rowinfo.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-weight-defaults",
    "type": "decision",
    "status": "adopted",
@@ -12439,6 +12454,11 @@
    "from": "dec-watched-unrated-seed",
    "rel": "affects",
    "to": "comp-cf-worker"
+  },
+  {
+   "from": "dec-wcloud-save-dead-tags",
+   "rel": "affects",
+   "to": "dec-word-cloud"
   },
   {
    "from": "dec-weight-defaults",
