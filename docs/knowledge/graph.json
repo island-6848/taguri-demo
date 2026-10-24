@@ -3454,6 +3454,19 @@
    "verifies": []
   },
   {
+   "id": "dec-storyline-title-scroll",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-24",
+   "title": "眺めるの「同じ作品で一緒だった人の流れ」を「Storyline」にし、説明の文を消す。図は d3 の拡大縮小に指の操作を渡さず、スマホでは横・縦にスクロールできるようにする",
+   "sources": [
+    "tools/taguri/storyline.py",
+    "cloudflare/src/screens/storyline.js",
+    "web/style.css"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-sweep-recheck",
    "type": "decision",
    "status": "adopted",
@@ -11817,6 +11830,11 @@
    "from": "dec-star-default",
    "rel": "affects",
    "to": "comp-recommender"
+  },
+  {
+   "from": "dec-storyline-title-scroll",
+   "rel": "affects",
+   "to": "dec-overview-without-venue-ranking"
   },
   {
    "from": "dec-sweep-recheck",

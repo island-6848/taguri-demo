@@ -1857,7 +1857,7 @@ button .ico{vertical-align:-.2em;margin-right:5px}
    CSS。Phase 3(#000009)で追加。内容はそのまま抽出、書き換えていない。 */
 
 /* ---- 同じ作品で一緒だった人の流れ（storyline） ------------------------------- */
-.sl{margin:10px 0 2px;overflow-x:auto}
+.sl{margin:10px 0 2px;overflow-x:auto;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y}
 .sl svg{display:block}
 .sl .ln{fill:none;stroke-width:2.6;stroke-linecap:round;stroke-opacity:.7}
 .sl .ln.w0{stroke:var(--pos)}

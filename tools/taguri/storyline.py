@@ -773,29 +773,6 @@ def build(rated: list[dict], min_times: int = MIN_TIMES) -> dict:
                                if r.get("people") and _d(r.get("date") or "")])}
 
 
-def _recent_line(worlds: list[dict]) -> str:
-    """直近 1 年にどちらを観ているか。**言い過ぎない。**
-
-    はじめは「まったく交わらない流れを並行して観ています」と書いたが、**自分で測った値と
-    矛盾していた** ── 四半期ごとに数えると 2022〜2023 はほぼ一方だけで、2024 から
-    もう一方が増えている。「並行」ではない。
-
-    かといって「乗り換えた」とも書かない ── **直近 1 年でも少ないほうが 0 ではない。**
-    書けるのは**どちらを何回観たか**までである。
-    """
-    act = [w for w in worlds if w["recent"]]
-    if not act:
-        return ""
-    if len(act) == 1:
-        w = act[0]
-        return (f'<b>直近 1 年に束があるのは {w["loc"] + 1} つめだけで、'
-                f'{w["recent"]} 回です。</b>ほかの流れの公演は、この 1 年は観ていらっしゃいません。')
-    top = max(act, key=lambda w: w["recent"])
-    parts = "、".join(f'{w["loc"] + 1} つめが {w["recent"]} 回' for w in act)
-    return (f'<b>直近 1 年は{parts}です。</b>'
-            f'いまは {top["loc"] + 1} つめを多く観ています。')
-
-
 def panel(rated: list[dict], min_times: int = MIN_TIMES) -> str:
     """図とその説明。**載らなかった件数と、絞った人数を必ず書く。**"""
     d = build(rated, min_times)
@@ -820,17 +797,9 @@ def panel(rated: list[dict], min_times: int = MIN_TIMES) -> str:
                           "X": xs, "width": width, "ticks": ticks,
                           "rowHref": CH.ROW_HREF}, ensure_ascii=False).replace("<", "\\u003c")
     # ↑ <script> の中に置くので「<」を逃がす（名前や題名に「</script>」があっても、そこで閉じない）
-    return f"""<div class="card wide">{IC.h2("light", "同じ作品で一緒だった人の流れ")}
-<p class="lead"><b>1 本の線が 1 人、横が時間です。同じ作品に出た方の線はその日に束になります。</b>
-<b>● が「その日その作品に出ていた」印です。</b>束 1 つが 1 公演で、押すとその記録へ移動します。<br>
-<b>線の色は {len(ws)} つに分かれています。</b>
-{"、".join(f'{w["n_people"]} 人（{w["from"]} 〜 {w["to"]}）' for w in ws)}で、
-<b>この {len(ws)} つのあいだで一緒に出た方は 1 人もいません。</b>
-{_recent_line(ws)}<br>
-線にしているのは <b>{min_times} 回以上観た {d["n_lines"]} 名</b>です。
-作り手が分かっている {d["n_credited"]} 件の記録には、のべ {d["n_people_all"]} 名が出てきます。
-横に引っぱると時間を伸ばせます。<b>線を押すと、その人の流れだけが浮き上がります。</b>
-何人でも選べます。背景を押すと戻ります。</p>
+    # 見出しは「Storyline」、説明の文は出さない（起案者の指示 2026-10-24「『同じ作品で一緒だった人の流れ』を『Storyline』にして」
+    # 「下の文章消して」）
+    return f"""<div class="card wide">{IC.h2("light", "Storyline")}
 <div class="sl-legend">{"".join(
     f'<span class="sl-k sl-w{w["loc"]}">{w["loc"] + 1} つめの世界 ── '
     f'{w["n_people"]} 人・{w["n_sessions"]} 回</span>' for w in ws)}
@@ -843,7 +812,7 @@ def panel(rated: list[dict], min_times: int = MIN_TIMES) -> str:
 
 STYLE = """
 /* ---- 同じ作品で一緒だった人の流れ（storyline） ------------------------------- */
-.sl{margin:10px 0 2px;overflow-x:auto}
+.sl{margin:10px 0 2px;overflow-x:auto;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y}
 .sl svg{display:block}
 .sl .ln{fill:none;stroke-width:2.6;stroke-linecap:round;stroke-opacity:.7}
 .sl .ln.w0{stroke:var(--pos)}
@@ -1091,7 +1060,9 @@ SCRIPT = """
   }
   draw();
 
-  root.call(d3.zoom().scaleExtent([1, 30])
+  // **指の操作は d3 に渡さない。** 渡すと図の上で横にも縦にも動かせなくなる（起案者の指摘 2026-10-24「図をスマホでもスクロール
+  // できるようにして」）。スマホは入れ物（.sl）の横のスクロールで時間をたどり、拡大縮小はマウスのドラッグとホイールだけにする
+  root.call(d3.zoom().scaleExtent([1, 30]).touchable(() => false)
     .translateExtent([[left, 0], [w - padR, h]])
     .extent([[left, 0], [w - padR, h]])
     // **位置はもう決まっているので、拡大縮小は写した px の上に掛ける**
