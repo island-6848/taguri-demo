@@ -42,7 +42,16 @@ import storyline as SL                                               # noqa: E40
 SL_JS = ("// storyline.SCRIPT, written by scripts/write_icons.py (do not edit).\n"
          f"export const STORYLINE_JS = {json.dumps(SL.SCRIPT, ensure_ascii=False)};\n")
 
+# 画面で実際に図を動かすのは web/storyline-draw.js（app.js の fixupStoryline が読み込む。画面に入れた <script> は動かない）。
+# 前は手で写していたので、SCRIPT を直してもこちらが古いままだった（起案者の指摘 2026-10-24「スマホで横スクロールでこない」）。
+# ここで SCRIPT から書き出し、test/test_storyline_draw.py で食い違いを止める
+DRAW_JS = ("// 「眺める」の storyline の図を描く（app.js の fixupStoryline が、画面に #sl-data が来るたびに読み込み直す）。\n"
+           "// 前は app.js の中の文字列を <script> に入れて動かしていたが、それには CSP の 'unsafe-inline' が要る（#155）。\n"
+           "// storyline.py の SCRIPT を scripts/write_icons.py が書き出したもの（手で直さない）。\n"
+           + SL.SCRIPT)
+
 if __name__ == "__main__":
+    (ROOT / "web" / "storyline-draw.js").write_text(DRAW_JS, encoding="utf-8")
     (ROOT / "cloudflare" / "src" / "screens" / "icons.js").write_text(SRC, encoding="utf-8")
     (ROOT / "cloudflare" / "src" / "screens" / "calendar_js.js").write_text(CAL_JS, encoding="utf-8")
     (ROOT / "cloudflare" / "src" / "screens" / "storyline_js.js").write_text(SL_JS, encoding="utf-8")

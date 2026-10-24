@@ -13,7 +13,7 @@ import {RECORDS_EMPTY} from './diary.js';
 import {localNow} from './py.js';
 import {timetableFor} from './timetable.js';
 import {conquestFor} from './conquest.js';
-import {loadOverrides, richText} from './override.js';
+import {loadOverrides} from './override.js';
 
 const GRADES = ['◎', '○', '△', '×'];
 const norm = s => strip(String(s || '').normalize('NFKC'));
@@ -76,33 +76,45 @@ async function themesOf(ctx, sids) {
   return out;
 }
 
-// ことばの雲（words.js）の材料。1 公演 600 字・300 公演までにして、ページに載せる量を抑える（約 180KB まで）
-const SYN_CHARS = 600, SYN_STAGES = 300;
+// ことばの雲（words.js）の材料。300 公演まで（ページに載せる量を抑える）
+const TAG_STAGES = 300;
+const tagKey = w => String(w ?? '').normalize('NFKC').replace(/[\s　]+/gu, '').toLowerCase();   // recommend2.nz と同じ
 /**
- * 観た公演のあらすじの本文の並び（公演ごとに 1 つ）。手で直したあらすじ（stage_override）を先に、
- * 無ければ公演一覧（catalogue）、それも無ければ過去の公演（past_stage）から取る。
- * 数えて並べるのはブラウザ（Worker の CPU 10 ミリ秒に Intl.Segmenter は重い）
+ * 観た公演ごとの、あらすじから読み取ったタグ（カードのあらすじの下のハッシュタグと同じ語）の並び。タグのある公演だけを返す。
+ * 起案者の指示 2026-10-24「ワードクラウドはあらすじ抽出でタグに出ている単語リストから構成してほしい」。引く順は札と同じ:
+ * - 管理者が手で入れた題材（stage_override.themes）がある公演は、それ（カードの札もそれに差し替わる。override.applySynopsis）
+ * - 無ければ、作り置きのカードの題材（rec_card.ws。1 行に 1 語。tagged.js がハッシュタグの当たりを引くのと同じ列）
+ * - それも無ければ、過去の公演の #題材（past_stage.people。過去の公演の読み取りの結果）
+ * 1 公演の中で同じ語（nz でそろえて同じもの）は 1 つにする。読むのは観た公演の行だけ（主キー）
  */
-export async function synopsesFor(ctx, sids) {
-  const want = [...new Set(sids.filter(Boolean).map(String))].slice(0, SYN_STAGES), out = new Map();
+export async function tagsFor(ctx, sids) {
+  const want = [...new Set(sids.filter(Boolean).map(String))].slice(0, TAG_STAGES), out = new Map();
+  const put = (sid, words) => {
+    const seen = new Set(), list = [];
+    for (const w of words || []) {
+      const t = String(w ?? '').trim(), k = tagKey(t);
+      if (k && !seen.has(k)) { seen.add(k); list.push(t); }
+    }
+    if (list.length) out.set(sid, list);
+  };
   const ovs = await loadOverrides(ctx.db, want);
-  for (const sid of want) {
-    const v = ovs.get(sid)?.synopsis;
-    if (typeof v === 'string' && v.trim()) out.set(sid, richText(v));
-  }
-  const ask = async (sql, rest) => {
+  for (const sid of want) { const t = ovs.get(sid)?.themes; if (Array.isArray(t)) put(sid, t); }
+  const done = sid => out.has(sid) || Array.isArray(ovs.get(sid)?.themes);   // 手で「題材なし」にした公演は、ほかから足さない
+  const ask = async (sql, rest, row) => {
     for (let i = 0; i < rest.length; i += 90) {
       const part = rest.slice(i, i + 90);
       try {
         const {results} = await ctx.db.prepare(sql.replace('%', part.map(() => '?').join(','))).bind(...part).all();
-        for (const r of results) if (String(r.syn || '').trim()) out.set(String(r.sid), String(r.syn));
+        for (const r of results) row(r);
       } catch { return; }   // 表が無い（試験の小さな D1）ときは、ある分だけで描く
     }
   };
-  // metadata は大きいので Worker で JSON を解かず、あらすじだけを D1 の json_extract で取り出す（override.fillCatalogueSynopsis と同じ）
-  await ask(`SELECT id AS sid, json_extract(metadata,'$.synopsis') AS syn FROM catalogue WHERE id IN (%) AND json_valid(metadata)`, want.filter(s => !out.has(s)));
-  await ask(`SELECT stage_id AS sid, synopsis AS syn FROM past_stage WHERE stage_id IN (%) AND synopsis<>''`, want.filter(s => !out.has(s)));
-  return want.filter(s => out.has(s)).map(s => out.get(s).trim().slice(0, SYN_CHARS));
+  await ask(`SELECT stage_id, ws FROM rec_card WHERE ver=(SELECT v FROM rec_meta WHERE k='rec_card') AND stage_id IN (%) AND ws<>''`,
+    want.filter(s => !done(s)), r => put(String(r.stage_id), String(r.ws).split('\n')));
+  await ask(`SELECT stage_id, people FROM past_stage WHERE stage_id IN (%)`, want.filter(s => !done(s)), r => {
+    try { put(String(r.stage_id), JSON.parse(r.people || '[]').filter(p => p[0] === '#題材').map(p => p[1])); } catch { /* broken row */ }
+  });
+  return want.filter(s => out.has(s)).map(s => out.get(s));
 }
 
 export async function chronicleScreen(_params, ctx) {
@@ -146,8 +158,8 @@ export async function recordsScreen(_params, ctx) {
   try { timetable = await timetableFor(ctx, d.seen, localNow().slice(0, 10)); } catch { /* 時間割は無くても画面は出す */ }
   let conquest = '';
   try { conquest = await conquestFor(ctx, d.seen); } catch { /* 制覇マップは無くても画面は出す */ }
-  let syn = [];
-  try { syn = d.seen.length ? await synopsesFor(ctx, d.seen.map(w => w.stage_id)) : []; } catch { /* ことばの雲は無くても画面は出す */ }
+  let tags = [];
+  try { tags = d.seen.length ? await tagsFor(ctx, d.seen.map(w => w.stage_id)) : []; } catch { /* ことばの雲は無くても画面は出す */ }
   const body = `<h1>眺める ── 図で見る${sharePageButton('records')}</h1>
 ${recordsLede(d)}
 ${d.seen.length ? '' : RECORDS_EMPTY}
@@ -159,7 +171,7 @@ ${conquest}
 
 <div data-fig="storyline"></div>
 </div>
-<script id="figs-src" type="application/json">${scriptJson({rated: d.rated, syn, nSeen: d.seen.length})}</script>
+<script id="figs-src" type="application/json">${scriptJson({rated: d.rated, tags, nSeen: d.seen.length})}</script>
 <h2>比べる ── 掲載公演と自分の観劇</h2>
 <p class="lede">クレジット・題材・地域・公演期間を、割合と件数で比べます。</p>
 ${d.seen.length ? '' : COMPARE_EMPTY}
