@@ -20,7 +20,7 @@ test('re-rating in the same second is not answered from the cache, and the hidde
     assert.equal((await step(env, u, {post: '/api/link_stage', body: {work_key: other, stage_id: '104'}})).status, 200);
     assert.equal((await step(env, u, {post: '/api/rate', body: {work_key: other, verdict: '×'}})).status, 200);
     const uid = sqlite.prepare('SELECT user_id FROM works WHERE work_key=?').get(key).user_id;
-    const ctx = {db: env.DB, uid, today: env.CLOCK.today, now: env.CLOCK.now};
+    const ctx = {db: env.DB, env, uid, today: env.CLOCK.today, now: env.CLOCK.now};
     const first = await rankedGroups(ctx);
     assert.equal(first.cached, false);
     assert.ok(first.groups.length, 'the ◎ brings recommendations');

@@ -346,7 +346,7 @@ async function castSeenAction(b, ctx) {
   await ctx.db.batch([
     ctx.db.prepare('UPDATE works SET cast_off=? WHERE user_id=? AND work_key=?').bind(off.length ? JSON.stringify(off) : '', ctx.uid, key),
     // 推薦の控えを捨てる（updated_at は評価の時刻として裏の答え合わせが使うので動かさない）。
-    ctx.db.prepare('DELETE FROM rec_cache WHERE user_id=?').bind(ctx.uid)]);
+    ctx.db.prepare("UPDATE rec_cache SET stamp='' WHERE user_id=?").bind(ctx.uid)]);
   return {body: {ok: true, work_key: key, off}};
 }
 // ---------------------------------------------------------------- pieces
@@ -400,7 +400,7 @@ async function piecesAction(b, ctx) {
     ...rows.map(r => ctx.db.prepare('INSERT INTO work_piece (user_id, work_key, idx, title, verdict, aspects, note, cast_in, rated_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)')
       .bind(ctx.uid, key, ...r, at)),
     // 推薦の控えを捨てる（work_piece のトリガーが rec_rev も進める）
-    ctx.db.prepare('DELETE FROM rec_cache WHERE user_id=?').bind(ctx.uid)]);
+    ctx.db.prepare("UPDATE rec_cache SET stamp='' WHERE user_id=?").bind(ctx.uid)]);
   return {body: {ok: true, work_key: key, n: rows.length}};
 }
 /** 公演の出演者（索引 rec_people、無ければ過去の公演 past_stage）の名前、出てくる順。 */

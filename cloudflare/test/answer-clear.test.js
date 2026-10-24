@@ -8,7 +8,7 @@ function setup() {
   const sql = new DatabaseSync(':memory:');
   sql.exec(`CREATE TABLE reaction(user_id TEXT,label TEXT,stage_id TEXT,interest INTEGER,owned INTEGER,note TEXT,note_no TEXT,note_pre TEXT,
     why TEXT,source TEXT,updated_at TEXT,rank INTEGER,score REAL,ver TEXT,arm TEXT,PRIMARY KEY(user_id,label,stage_id));
-    CREATE TABLE rec_cache(user_id TEXT PRIMARY KEY,body TEXT);
+    CREATE TABLE rec_cache(user_id TEXT PRIMARY KEY,stamp TEXT,body TEXT);
     CREATE TABLE app_setting(user_id TEXT,key TEXT,value TEXT);
     CREATE TABLE ticket(user_id TEXT,stage_id TEXT,date TEXT);
     INSERT INTO ticket VALUES('alice','101','2026-11-01');`);
@@ -28,15 +28,16 @@ test('explicit clear removes every historical answer for this user and the tour,
       sql.prepare('INSERT INTO reaction(user_id,label,stage_id,interest,owned,note,updated_at) VALUES(?,?,?,?,?,?,?)')
         .run(uid, day, sid, 1, 1, '残すメモ', day + 'T00:00:00Z');
     }
-    sql.exec(`INSERT INTO rec_cache VALUES('alice','{}'),('bob','{}')`);
+    sql.exec(`INSERT INTO rec_cache VALUES('alice','s','{}'),('bob','s','{}')`);
     const result = await reactAction({stage_id: '101', clear: true, siblings: ['102', 'bad/id', '102']}, ctx);
     assert.equal(result.body.cleared, true);
     const a = await reactionsOf(ctx);
     for (const sid of ['101', '102']) { assert.equal(a.get(sid).interest, undefined); assert.equal(a.get(sid).owned, undefined); assert.equal(a.get(sid).note, '残すメモ'); }
     assert.equal(sql.prepare('SELECT count(*) AS n FROM reaction WHERE user_id=? AND interest=1').get('bob').n, 4);
     assert.equal(sql.prepare("SELECT count(*) AS n FROM ticket").get().n, 1);
-    assert.equal(sql.prepare("SELECT count(*) AS n FROM rec_cache WHERE user_id='alice'").get().n, 0);
-    assert.equal(sql.prepare("SELECT count(*) AS n FROM rec_cache WHERE user_id='bob'").get().n, 1);
+    // 控えは消さずに古い印にする（消すと次に開いたとき重い計算に戻る。dec-reco-nightly）
+    assert.equal(sql.prepare("SELECT stamp FROM rec_cache WHERE user_id='alice'").get().stamp, '');
+    assert.equal(sql.prepare("SELECT stamp FROM rec_cache WHERE user_id='bob'").get().stamp, 's');
     await reactAction({stage_id: '101', clear: true, siblings: ['102']}, ctx); // retry is idempotent
     await reactAction({stage_id: '101', value: 'interest', nofill: true, siblings: ['102']}, ctx);
     assert.equal((await reactionsOf(ctx)).get('102').interest, 1);

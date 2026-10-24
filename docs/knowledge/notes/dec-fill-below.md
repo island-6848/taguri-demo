@@ -1,7 +1,7 @@
 ---
 id: dec-fill-below
 type: decision
-status: adopted
+status: superseded
 date: 2026-10-20
 title: おすすめで答えたときの入れ替わりの 1 枚は、押したカードのすぐ下に出す（画面全体は読み込み直さない）
 sources:
