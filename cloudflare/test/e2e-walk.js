@@ -242,7 +242,8 @@ async function walkA(A) {
     await page.click('#recovery-done');
     await page.waitForURL(BASE + '/');
     await settle();
-    check(/今週のあなたへのおすすめ/.test(await content()), '登録後におすすめの画面が出ない');   // 見出しは 2026-10-18 から「今週のあなたへのおすすめ…」
+    // 見出しは 2026-10-18 から「今週のあなたへのおすすめ…」、使い始めでまだ無いときは 2026-10-24 から「たぐりへようこそ！」
+    check(/今週のあなたへのおすすめ|たぐりへようこそ！/.test(await content()), '登録後におすすめの画面が出ない');
   });
   A.code = code;
   A.uid = sql('SELECT id FROM users')[0]?.id;
@@ -346,11 +347,11 @@ async function walkA(A) {
       await form.locator('[data-past=seen-save]').click();
     };
     await add('710002', '2025-08-02', '');
-    await waitSaid(li, /8\/2 を観劇記録に追加しました/);
+    await waitSaid(li, /8\/2 劇場B を観劇記録に追加しました/);
     await add('710003', '2025-08-21', '13:00');
-    await waitSaid(li, /8\/21 13:00 を観劇記録に追加しました/);
+    await waitSaid(li, /8\/21 13:00 劇場E を観劇記録に追加しました/);
     await add('710003', '2025-08-21', '18:00');
-    await waitSaid(li, /8\/21 18:00 を観劇記録に追加しました/);
+    await waitSaid(li, /8\/21 18:00 劇場E を観劇記録に追加しました/);
     await add('710003', '2025-08-21', '18:00');
     const dup = await waitSaid(li, /できませんでした|もうある/);
     note('同じ日・同じ開演の 4 回目: 「' + dup + '」');
