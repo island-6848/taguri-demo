@@ -3,6 +3,7 @@
 // build_cards.compose; test/cards.test.js checks it against the Python output for
 // every list (recommend / interest / favourite / owned).
 import {E} from './py.js';
+import {recDate} from './row.js';
 import {loadOverrides, applySynopsis, applyPrice, fillCatalogueSynopsis} from './override.js';
 
 const ICONS = {check: 'M4.5 12.5 9.5 18 20 6', plus: 'M12 5v14M5 12h14', eye: 'M2.5 12S6 6 12 6s9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6zM12 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z',
@@ -71,13 +72,12 @@ export function noNote(sid, note = '', hidden = false) {
 /** build_cards.mytix_html: the 行く日 box of an owned stage. `start`/`end` are YYYY-MM-DD. */
 export function mytixHtml(sid, start, end, tickets) {
   const rows = tickets.map(t => {
-    const tm = t.time ? ` ${E(t.time)}` : '';
     const s = E(String(t.sid || sid)), dd = E(t.date), tt = E(t.time || '');
     const [note, btns] = t.confirmed
       ? ['', `<button data-mt-del="${s}" data-date="${dd}" data-time="${tt}">取り消す</button>`]
       : ['（未確定）', `<button data-mt-ok="${s}" data-date="${dd}" data-time="${tt}">確定する</button>`
         + `<button data-mt-del="${s}" data-date="${dd}" data-time="${tt}">違う</button>`];
-    return `<span class="mt-row${t.confirmed ? '' : ' un'}">${Number(t.date.slice(5, 7))}月${Number(t.date.slice(8, 10))}日${tm}${note} ${btns}</span>`;
+    return `<span class="mt-row${t.confirmed ? '' : ' un'}">${E(recDate(t.date, t.time || ''))}${note} ${btns}</span>`;
   }).join('');
   const add = '<span class="mt-add"><input type="date" class="mt-d" aria-label="行く日"'
     + (start ? ` min="${start}"` : '') + (end ? ` max="${end}"` : '') + '>'

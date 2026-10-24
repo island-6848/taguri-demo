@@ -6896,10 +6896,8 @@ def _rec_row(user_id: str, w: dict, *, poster: str = "", rate_always: bool = Fal
     vn_head, vn_box = _visit_note_html(visit_uid, visit_note) if visit_uid else ("", "")
     y, md, wd = _date_parts(w.get("first_date") or "")
     if md and full_date:
-        # **日記帳の日付は yyyy/mm/dd(曜日) の 1 続きで書く**（起案者の指示 2026-10-18「日記帳の日付の書き方、
-        # yyyy/mm/dd(曜日)で統一して。」）。例: 2026/10/17(土)。「評価一覧と検索の日付もそろえて」で、どの行も既定でこの形
-        mo, dd = md.split(".")
-        dt = f'<span class="dt"><span class="ymd">{y}/{int(mo):02d}/{dd}({wd})</span></span>'
+        # **記録の日付は 2026.10.13(水) の形**（起案者の指示 2026-10-24。charts.rec_date）。10-18 の yyyy/mm/dd(曜日) から改めた
+        dt = f'<span class="dt"><span class="ymd">{CH.rec_date(w.get("first_date") or "")}</span></span>'
     elif md:
         dt = (f'<span class="dt"><span class="y">{y}</span>'
               f'<span class="md">{md}</span><span class="wd">{wd}</span></span>')
@@ -7310,8 +7308,7 @@ def _skipped_html(user_id: str) -> str:
 各行で「行かなかった」を押すと、ここに並びます。</b></p></details>"""
     body = []
     for w in rows:
-        _y, md, _wd = _date_parts(w.get("first_date") or "")
-        when = f"{_y}年{md.split('.')[0]}月{int(md.split('.')[1])}日" if md else "上演日が分かりません"
+        when = CH.rec_date(w.get("first_date") or "", w.get("time") or "") or "上演日が分かりません"
         body.append(f'<div class="drop-row"><span class="dt">{E(w["title"])}</span>'
                     f'<span class="dm">{E(when)}</span>'
                     f'<div class="drop-btns">'

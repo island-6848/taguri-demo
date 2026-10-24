@@ -92,6 +92,16 @@ def years_panel(works: list[dict]) -> str:
 {_table(["年", "作品数"], [[y, cnt[y]] for y in ys])}</section>"""
 
 
+def rec_date(iso: str, time: str = "") -> str:
+    """記録の日付を `2026.10.13(水) 13:00` の形にする（起案者の指示 2026-10-24「全ページ共通でユーザが追加した公演記録の
+    日付の表記、2026.10.13(水) 13:00表記を採用して」）。時刻は分かるときだけ。読めない日付は空。サービス版の row.recDate と同じ"""
+    try:
+        d = date.fromisoformat((iso or "")[:10])
+    except ValueError:
+        return ""
+    return f"{d.year}.{d.month:02d}.{d.day:02d}({'月火水木金土日'[d.weekday()]})" + (f" {time}" if time else "")
+
+
 def verdict_panel(works: list[dict]) -> str:
     """◎○△× の分布。**発散の帯 1 本で描く。**"""
     cnt = collections.Counter(w.get("verdict") or "未評価" for w in works)
@@ -114,13 +124,10 @@ def verdict_panel(works: list[dict]) -> str:
                         f'{E(g)} <b>{cnt[g]}</b></span>')
         x += wpc
     return f"""<section class="card">
-{IC.h2("star", "付けた評価の分布", f'<span class="badge part">分母 {tot} 作品</span>')}
-<p class="lead"><b>基準は「自分に合っていたか」で、作品の出来ではありません。</b>
-◎ 側と × 側を左右に分けて置いています。おすすめの材料に数えるのは <b>◎ だけ</b>です。</p>
-<div class="dbar"><svg viewBox="0 0 100 26" width="100%" height="26" preserveAspectRatio="none"
+{IC.h2("star", "評価の分布", f'<span class="badge part">分母 {tot} 作品</span>')}
+<div class="dbar" data-rows="{E(json.dumps([[g, cnt[g]] for g in order], ensure_ascii=False, separators=(",", ":")))}"><svg viewBox="0 0 100 26" width="100%" height="26" preserveAspectRatio="none"
  role="img" aria-label="評価の分布">{"".join(segs)}</svg>
-<div class="dlabs">{"".join(labs)}</div></div>
-{_table(["評価", "件数", "割合"], [[g, cnt[g], f"{cnt[g] / tot:.0%}"] for g in order])}</section>"""
+<div class="dlabs">{"".join(labs)}</div></div></section>"""
 
 
 def _venue_block(cnt: collections.Counter, top: int, unit: str, note: str) -> str:

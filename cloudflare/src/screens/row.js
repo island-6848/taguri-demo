@@ -44,6 +44,17 @@ export function dateParts(iso) {
   return [String(y), `${mo}.${String(d).padStart(2, '0')}`, WEEK[(dt.getUTCDay() + 6) % 7]];
 }
 
+/**
+ * 利用者の記録の日付は、どの画面も「2026.10.13(水) 13:00」の形（起案者の指示 2026-10-24「全ページ共通でユーザが追加した
+ * 公演記録の日付の表記、2026.10.13(水) 13:00表記を採用して」）。時刻は分かるときだけ。日付が読めなければ空
+ */
+export function recDate(iso, time = '') {
+  const [y, md, wd] = dateParts(iso);
+  if (!md) return '';
+  const [mo, dd] = md.split('.');
+  return `${y}.${mo.padStart(2, '0')}.${dd}(${wd})${time ? ` ${time}` : ''}`;
+}
+
 /** app._venue_of (a manual record has no shows, so only its own venue). */
 export function venueOf(w) {
   if (strip(w.venue || '')) return strip(w.venue);
@@ -153,12 +164,6 @@ function castHtml(people) {
 }
 
 // ---------------------------------------------------------------- 観た回（まとめた記録）
-const visitDate = v => {
-  const [y, md, wd] = dateParts(v.date);
-  if (!md) return '日付なし';
-  const [mo, dd] = md.split('.');
-  return `${y}/${mo.padStart(2, '0')}/${dd}(${wd})`;
-};
 /**
  * まとめた記録の観た回の一覧（起案者の問い 2026-10-21「まとめた公演を見るとき周辺のUXが悪い」）。観た日・開演・劇場を 1 回 1 行で出す。
  * 直せる行（日記帳）では、まとめた回ごとに「分ける」（別の記録に戻す。app.js の data-unmerge-one）を付ける。1 回だけの記録には出さない
@@ -166,7 +171,7 @@ const visitDate = v => {
 export function visitsHtml(w, editable = false) {
   if (!(w.merged || []).length || w.unseen) return '';
   const vs = visitsOf(w);
-  const li = vs.map(v => `<li><span class="vis-d">${E(visitDate(v))}${v.time ? ` ${E(v.time)}` : ''}</span>`
+  const li = vs.map(v => `<li><span class="vis-d">${E(recDate(v.date, v.time) || '日付なし')}</span>`
     + `<span class="vis-v">${E(strip(v.venue) || '劇場なし')}${v.times > 1 ? `・${v.times} 回` : ''}</span>`
     + (editable && !v.kept ? `<button type="button" class="vsplit" data-unmerge-one="${E(w.work_key)}" data-one="${E(v.work_key)}">分ける</button>` : '')
     + '</li>').join('');
@@ -215,20 +220,18 @@ export function recRow(w, {poster = '', rateAlways = false, editable = false, ra
     if (w.skipped) times = `${n} 回観た（あと ${w.skipped} 回は行かなかった）`;
     else if (n > 1) times = `${n} 回観た`;
   }
-  // 開演の時刻は 1 回だけの記録に添える（同じ日の昼・夜を見分けられるように。起案者の問い 2026-10-21）
-  const at = !unseen && w.time && !(w.merged || []).length ? `${w.time} 開演` : '';
+  // 開演の時刻は 1 回だけの記録に添える（同じ日の昼・夜を見分けられるように。起案者の問い 2026-10-21）。
+  // 2026-10-24 からは日付の後ろ（2026.10.13(水) 13:00）に書く。会場の行には出さない
+  const at = !unseen && w.time && !(w.merged || []).length ? w.time : '';
   // サービス版だけの形（開演・まとめた回を足した回数）は、Python と比べる試験（screens.test.js）で外せるよう印を付ける
   const mtimes = (w.merged || []).length;
-  const where = [[venueLine(w), ''], [at, ' class="at"'], [times, mtimes ? ' class="mtimes"' : '']].filter(([x]) => x)
+  const where = [[venueLine(w), ''], [times, mtimes ? ' class="mtimes"' : '']].filter(([x]) => x)
     .map(([x, c]) => `<span${c}>${E(x)}</span>`).join(' ');
   const [impHead, impBox] = impressionParts(w);
   const [y, md, wd] = dateParts(w.first_date || '');
-  // 日付は yyyy/mm/dd(曜日) の 1 続きで書く（起案者の指示 2026-10-18「日記帳の日付の書き方、yyyy/mm/dd(曜日)で統一して。」、
-  // 続けて「評価一覧と検索の日付もyyyy/mm/dd(曜日)でそろえて」で、どの行も既定でこの形）。例: 2026/10/17(土)。
-  // app._rec_row(full_date=True) と同じ形
-  const [mo, dd] = md.split('.');
+  // 日付は 2026.10.13(水) 13:00 の形で 1 続きに書く（起案者の指示 2026-10-24。recDate）。10-18 の yyyy/mm/dd(曜日) から改めた
   const dt = md && fullDate
-    ? `<span class="dt"><span class="ymd">${y}/${mo.padStart(2, '0')}/${dd}(${wd})</span></span>`
+    ? `<span class="dt"><span class="ymd">${E(recDate(w.first_date))}${at ? ` <span class="at">${E(at)}</span>` : ''}</span></span>`
     : md
     ? `<span class="dt"><span class="y">${y}</span><span class="md">${md}</span><span class="wd">${wd}</span></span>`
     : '<span class="dt no">上演日が<br>分かりません</span>';

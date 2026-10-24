@@ -203,8 +203,7 @@ def components(g: dict, skip=()) -> list[list[str]]:
 # どの時点でも core から外れない）。配置（座標）は「いま」の網で 1 度だけ解き、
 # 画面側は時点ごとに出ていない点と線を隠すだけにする（配置を解き直さない）。
 def _fmt_date(d: str) -> str:
-    y, m, day = d.split("-")
-    return f"{y}年{int(m)}月{int(day)}日"
+    return CH.rec_date(d) or d   # 記録の日付の形（起案者の指示 2026-10-24）
 
 
 def _people_join(names: list[str], limit: int = 4) -> str:

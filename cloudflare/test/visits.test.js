@@ -42,14 +42,15 @@ test('the merged record keeps every visit: count, theatres, and one row per visi
   assert.match(html, /<div class="where"><span>劇場A ほか 2 会場<\/span> <span class="mtimes">5 回観た<\/span><\/div>/);
   const list = html.match(/<details class="visits"><summary>観た 5 回の日付と劇場<\/summary><ol>(.*?)<\/ol>/s)[1];
   assert.deepEqual([...list.matchAll(/<span class="vis-d">([^<]+)<\/span><span class="vis-v">([^<]+)<\/span>/g)].map(m => `${m[1]} ${m[2]}`),
-    ['2025/07/05(土) 劇場A', '2025/07/08(火) 劇場A', '2025/08/02(土) 13:00 劇場B', '2025/08/02(土) 18:00 劇場B', '2025/08/22(金) 劇場E']);
+    ['2025.07.05(土) 劇場A', '2025.07.08(火) 劇場A', '2025.08.02(土) 13:00 劇場B', '2025.08.02(土) 18:00 劇場B', '2025.08.22(金) 劇場E']);
   assert.equal([...list.matchAll(/data-unmerge-one=/g)].length, 4);   // 残した回（7/5）のほかに「分ける」
   // すべて表示: 回ごとに 1 行。直す欄は残した回の行にだけ
   const visit = await diary(env, a, 'visit');
   assert.match(visit, /すべて表示<span class="mn">5<\/span>/);
   assert.equal([...visit.matchAll(/<article class="rec-row/g)].length, 5);
   assert.equal([...visit.matchAll(/<details class="editor"/g)].length, 1);
-  assert.match(visit, /<span>劇場B<\/span> <span class="at">18:00 開演<\/span>/);
+  // 開演の時刻は日付の後ろ（2026.10.13(水) 13:00 の形。起案者の指示 2026-10-24）
+  assert.match(visit, /<span class="ymd">2025\.08\.02\(土\) <span class="at">18:00<\/span><\/span>/);
 }));
 
 test('the account counts each visit at its own theatre', async () => withTour(async (env, a) => {

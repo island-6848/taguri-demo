@@ -4,7 +4,7 @@
 // The rows are measure_nets.load_rated for a public user (records.ratedRows).
 import {E, quote, fmtF} from './py.js';
 import {h2} from './icons.js';
-import {anchor} from './row.js';
+import {anchor, recDate} from './row.js';
 import {md5hex} from './md5.js';
 
 export const KEEP_ROLES = ['出演', '演出', '脚本', '作', '原作', '翻訳', '音楽', '作曲', '振付'];
@@ -69,7 +69,7 @@ function xsOf(rows) {
   if (xs.at(-1) > SVG_W - PAD_X) { const k = (SVG_W - PAD_X * 2) / (xs.at(-1) - xs[0]); const x0 = xs[0]; xs = xs.map(x => PAD_X + (x - x0) * k); }
   return xs;
 }
-const jdate = s => { const m = /^(\d+)-(\d+)-(\d+)$/.exec(s || ''); return m ? `${Number(m[1])}年${Number(m[2])}月${Number(m[3])}日` : (s || ''); };
+const jdate = s => recDate(s || '') || (s || '');   // 記録の日付の形（起案者の指示 2026-10-24。row.recDate）
 const q = s => quote(s);
 
 function threadSvg(name, rows, brs, nxt) {
