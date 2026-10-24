@@ -189,7 +189,7 @@ check("評価待ちと同じ外枠を通っている",
       and RR.wait_shell(W, "X").startswith('<div class="wait">'))
 check("感想の欄が開いている", 'class="wnote"' in html_one and 'class="wnote" hidden' not in html_one)
 check("評価待ちの欄は閉じたまま", 'class="wnote" hidden' in RR.wait_row(W))
-check("日付は日本語の表記", "2024年12月11日" in html_one, html_one)
+check("日付は記録の日付の形（2026-10-24）", "2024.12.11(水)" in html_one, html_one)
 check("観た回数を添える", "7 回観た" in html_one)
 check("日付が無い記録は「日付不明」", "日付不明" in IM.pending_html(
     [dict(W, first_date="", shows=[])], 1))
