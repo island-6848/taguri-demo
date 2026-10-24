@@ -194,7 +194,6 @@ def _go_label(tk: list[dict]) -> str:
 # **都道府県の並び順は北から南**（`render_recommend.PREFS` と同じ並び。都道府県の
 # 絞り込みの札もこの順で出している）── 新しく順を作ると、暦と絞り込みで県の並びが
 # 2 つできる。**分からない県（探して見つけた公演など、値が空のもの）は最後に置く。**
-_PREF_RANK = {p: i for i, p in enumerate(RR.PREFS)}
 
 
 def _timeline(rows: list[dict], ms: list[tuple[int, int]], today: dt.date) -> str:
@@ -211,9 +210,12 @@ def _timeline(rows: list[dict], ms: list[tuple[int, int]], today: dt.date) -> st
     (fy, fm), (ly, lm) = ms[0], ms[-1]
     a, b = dt.date(fy, fm, 1), dt.date(ly, lm, _mdays(ly, lm))
     n = (b - a).days + 1
-    # 並びは都道府県ごと（起案者の指摘 2026-08-25「都道府県順に並び変えて」）、県の中は締切の近い順
+    # 並びは、上演中（初日が今日まで）を千穐楽の近い順に、そのあとにこれから開く公演を初日の近い順に
+    # （起案者の指示 2026-10-24「上演中のものは千秋楽が近いものから順に並べて、そのあとに開幕の初日が近い順に並べて」）。
+    # 前は都道府県ごと（2026-08-25「都道府県順に並び変えて」）で、県の中は締切の近い順だった
     hit = sorted((r for r in rows if r["start"] <= b and r["end"] >= a),
-                 key=lambda r: (_PREF_RANK.get(r["pref"], len(RR.PREFS)), r["end"], r["start"], r["title"]))
+                 key=lambda r: (0, r["end"], r["start"], r["title"]) if r["start"] <= today
+                 else (1, r["start"], r["end"], r["title"]))
     if not hit:
         return ""
     tally = "".join(

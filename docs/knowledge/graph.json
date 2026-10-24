@@ -929,6 +929,19 @@
    "verifies": []
   },
   {
+   "id": "dec-calendar-order-live-first",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-24",
+   "title": "公演カレンダーの並びを、上演中は千穐楽の近い順、そのあとにこれから開く公演を初日の近い順にする（都道府県ごとの並びはやめた）",
+   "sources": [
+    "cloudflare/src/screens/calendar.js",
+    "tools/taguri/stage_calendar.py",
+    "cloudflare/test/calendar.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-calendar-timeline",
    "type": "decision",
    "status": "adopted",
@@ -9785,6 +9798,11 @@
    "from": "dec-calendar-oauth",
    "rel": "supports",
    "to": "dec-free-tier-only"
+  },
+  {
+   "from": "dec-calendar-order-live-first",
+   "rel": "depends_on",
+   "to": "dec-calendar-timeline"
   },
   {
    "from": "dec-calendar-timeline",

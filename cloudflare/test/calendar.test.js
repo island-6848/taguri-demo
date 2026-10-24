@@ -32,3 +32,17 @@ test('#100 the go-date list says what its delete button removes and what stays',
     new Map([['9', [{date: '2026-10-20', time: '', confirmed: 1}]]]));
   assert.match(one, /data-done="10\/20 の行く日を削除しました。公演の登録（購入済み・興味あり・お気に入り）は変わりません。入れてある日は、もうありません"/);
 });
+
+test('上演中は千穐楽の近い順、そのあとにこれから開く公演を初日の近い順 (起案者 2026-10-24)', () => {
+  const st = (id, title, period, pref) => ({stage_id: id, title, period, pref, venue: '劇場'});
+  const d = {tracking: [
+    st('1', '開く遅い', '2026/11/20 ～ 2026/11/25', '東京都'),
+    st('2', '上演中で長い', '2026/10/01 ～ 2026/12/20', '北海道'),
+    st('3', '開く早い', '2026/10/20 ～ 2026/12/31', '沖縄県'),
+    st('4', '上演中で楽日が近い', '2026/10/05 ～ 2026/10/18', '大阪府'),
+    st('5', '今日が初日', '2026/10/12 ～ 2026/11/30', '東京都'),
+  ]};
+  const html = panel(d, '2026-10-12', new Map());
+  const order = [...html.matchAll(/<span class="nm" data-stage="(\d+)"/g)].map(m => m[1]);
+  assert.deepEqual(order, ['4', '5', '2', '3', '1']);
+});
