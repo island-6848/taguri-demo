@@ -29,8 +29,8 @@ test('the weekly calendar: times on their days, 休演 inside the run, blank out
   const perf = parseTimetable('10月8日(水) 18:30\n10月9日(木) 13:30／18:30\n10月11日(土) 13:00／18:00', '2025-10-08', '2025-10-12');
   const html = timetableGrid(perf, '2025-10-08', '2025-10-12', '2025-10-01');
   assert.match(html, /<thead><tr><th class="sun">日<\/th><th>月<\/th><th>火<\/th><th>水<\/th><th>木<\/th><th>金<\/th><th class="sat">土<\/th><\/tr><\/thead>/);
-  assert.match(html, /<td><span class="d">9<\/span><span class="tm">13:30<\/span><span class="tm">18:30<\/span><\/td>/);
-  assert.match(html, /<td><span class="d">10<\/span><span class="off">休演<\/span><\/td>/);   // 金: 休演日
+  assert.match(html, /<td data-d="[\d-]+"><span class="d">9<\/span><span class="tm">13:30<\/span><span class="tm">18:30<\/span><\/td>/);
+  assert.match(html, /<td data-d="[\d-]+"><span class="d">10<\/span><span class="off">休演<\/span><\/td>/);   // 金: 休演日
   assert.match(html, /<td class="sun out"><span class="d">10\/5<\/span><\/td><td class="out"><span class="d">6<\/span><\/td>/);   // 日曜はじまり: 期間の外
   assert.equal(timetableGrid(new Map(), '2025-10-08', '2025-10-12', '2025-10-01'), '');
 });
@@ -135,7 +135,7 @@ test('#76 ranges: 「各」 ranges are read day by day; days of lines it cannot 
   assert.deepEqual(flat(perf), {'2026-10-20': ['19:00'], '2026-10-21': ['14:00', '19:00'], '2026-10-22': ['19:00'], '2026-10-23': ['19:00']});
   const html = timetableGrid(perf, '2026-10-20', '2026-10-23', '2026-10-01');
   assert.doesNotMatch(html, /休演|公式で確認/);
-  assert.match(html, /<td><span class="d">23<\/span><span class="tm">19:00<\/span><\/td>/);
+  assert.match(html, /<td data-d="[\d-]+"><span class="d">23<\/span><span class="tm">19:00<\/span><\/td>/);
   // 月の見出しの下の期間・月をまたぐ期間・月/日の期間
   assert.deepEqual(flat(parseTimetable('10月\n22日(木)〜23日(金) 各19:00', '2026-10-20', '2026-10-23')), {'2026-10-22': ['19:00'], '2026-10-23': ['19:00']});
   assert.deepEqual(Object.keys(flat(parseTimetable('10月30日(金)〜11月1日(日) 各14:00', '2026-10-30', '2026-11-01'))), ['2026-10-30', '2026-10-31', '2026-11-01']);
@@ -144,15 +144,15 @@ test('#76 ranges: 「各」 ranges are read day by day; days of lines it cannot 
   const part = parseTimetable('10月20日(火) 19:00\n10月21日(水)〜23日(金) 14:00／19:00', '2026-10-20', '2026-10-24');
   assert.deepEqual(flat(part), {'2026-10-20': ['19:00']});
   const g = timetableGrid(part, '2026-10-20', '2026-10-24', '2026-10-01');
-  assert.match(g, /<td><span class="d">21<\/span><span class="unk">公式で確認<\/span><\/td>/);
-  assert.match(g, /<td class="sat"><span class="d">24<\/span><span class="off">休演<\/span><\/td>/);   // どの行にも無い日は休演のまま
+  assert.match(g, /<td data-d="[\d-]+"><span class="d">21<\/span><span class="unk">公式で確認<\/span><\/td>/);
+  assert.match(g, /<td class="sat" data-d="[\d-]+"><span class="d">24<\/span><span class="off">休演<\/span><\/td>/);   // どの行にも無い日は休演のまま
   assert.match(g, /aria-label="公演日時（1 回以上）"/);
   assert.match(g, /<p class="ttb-note">「公式で確認」の日は/);
   // 上演期間を書いただけの見出しの行は、日ごとの行の邪魔をしない。「休演」と書いた期間は休演
   const hd = parseTimetable('10月20日(火)〜24日(土)\n10月20日(火) 19:00\n10月21日(水)〜22日(木) 休演\n10月23日(金) 19:00', '2026-10-20', '2026-10-24');
   const hg = timetableGrid(hd, '2026-10-20', '2026-10-24', '2026-10-01');
   assert.doesNotMatch(hg, /公式で確認/);
-  assert.match(hg, /<td><span class="d">21<\/span><span class="off">休演<\/span><\/td>/);
+  assert.match(hg, /<td data-d="[\d-]+"><span class="d">21<\/span><span class="off">休演<\/span><\/td>/);
   // 日付が 2 つある行も「公式で確認」
   assert.match(timetableGrid(parseTimetable('10月20日(火) 19:00\n10月21日(水) 19:00 / 10月22日(木) 14:00', '2026-10-20', '2026-10-22'), '2026-10-20', '2026-10-22', '2026-10-01'),
     /<span class="d">21<\/span><span class="unk">公式で確認<\/span>.*<span class="d">22<\/span><span class="unk">公式で確認<\/span>/);

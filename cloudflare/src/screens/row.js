@@ -231,7 +231,8 @@ export function recRow(w, {poster = '', rateAlways = false, editable = false, ra
     + visitsHtml(w, editable)
     + piecesHtml(w)
     // つながった公演の作り手・あらすじ（rowinfo.rowInfos。サービス版だけ）があれば、おすすめのカードと同じ形で出す
-    + (w.info ? rinfoHtml(w.info, venueLine(w), [at, times].filter(Boolean).join('・')) : synopsisHtml(w.synopsis) + castHtml(w.people))
+    // 開演の時刻は日付の後ろに出すので、ここ（会場の行）には書かない（2026-10-24）
+    + (w.info ? rinfoHtml(w.info, venueLine(w), times) : synopsisHtml(w.synopsis) + castHtml(w.people))
     + extra                         // 探す画面の「ヒットした箇所」（題名のすぐ下）
     + impBox
     + (editable ? editHtml(w, label) : '')

@@ -342,10 +342,31 @@ async function kindTagged(ctx, words) {
 }
 
 /** app._owned_done_date over the production's stages: the last confirmed ticket ({date, time}) or the run's end ({date}). */
-// since: この時刻より前に入れた券は数えない（もう一度「購入済」を押したあと、前に観た回の券で終わったと見ないように）
-function doneDate(sids, end, tickets, since = '') {
-  const confirmed = sids.flatMap(s => (tickets.get(s) || []).filter(t => t.confirmed && (!since || (t.at || '') >= since))).sort((a, b) => cmp(a.date + (a.time || ''), b.date + (b.time || '')));
+// since: 最後に「購入済」を押した時刻。それより前に入れた、押した日より前の日の券は数えない（もう一度「購入済」を押したあと、
+// 前に観た回の券で終わったと見ないように）。押した日以後の日の券は、入れた時刻にかかわらず数える（✕ を「元に戻す」で押し直しても、
+// 前に入れた先の行く日で終わる）。
+// recs: 観た記録の日付（[{date, time}]。観劇記録を追加・購入確認メールなどで入れた記録）。行く日と同じく、入れた日のうち
+// いちばん遅い日を過ぎたら、ツアー中でも購入済の一覧から外す（起案者の指示 2026-10-24「購入済の公演、登録日が過ぎたらツアー中でも
+// 一覧からは消してよい（代わりに、+ボタンなどから記録が追加されたら再表示）」）。押した日より前の日の記録は数えない
+const jstDay = iso => (iso ? new Date(Date.parse(iso) + 9 * 3600e3).toISOString().slice(0, 10) : '');
+function doneDate(sids, end, tickets, since = '', recs = []) {
+  const day = jstDay(since);
+  const confirmed = sids.flatMap(s => (tickets.get(s) || []).filter(t => t.confirmed && (!since || (t.at || '') >= since || t.date >= day)))
+    .concat(recs.filter(r => r.date && (!day || r.date >= day)))
+    .sort((a, b) => cmp(a.date + (a.time || ''), b.date + (b.time || '')));
   return confirmed.length ? {date: confirmed.at(-1).date, time: confirmed.at(-1).time || ''} : {date: end || '', time: ''};
+}
+/** 公演ごとの、観た記録の日付（works.stage_id。まとめた記録も 1 行ずつ） */
+async function recordDatesOf(ctx) {
+  const {results} = await ctx.db.prepare("SELECT stage_id, first_date, last_date, time FROM works WHERE user_id=? AND stage_id IS NOT NULL AND stage_id<>''").bind(ctx.uid).all();
+  const out = new Map();
+  for (const r of results) {
+    const date = String(r.last_date || r.first_date || '').slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
+    if (!out.has(String(r.stage_id))) out.set(String(r.stage_id), []);
+    out.get(String(r.stage_id)).push({date, time: r.last_date && r.last_date !== r.first_date ? '' : String(r.time || '')});
+  }
+  return out;
 }
 /**
  * 観に行く回の開演を過ぎたか（日本時間）。起案者の指示 2026-10-18「購入済み公演は、観に行く日の公演開始時間過ぎてから未評価に移して」。
@@ -445,7 +466,7 @@ async function promoteTickets(ctx, react) {
 /** app._rebucket for the three lists: {tracking, favourites, owned, others, declined, react, tickets}. */
 export async function buckets(ctx, {catalogue = false} = {}) {
   await promoteOwned(ctx);
-  const [react, tickets, declared, words] = await Promise.all([reactionsOf(ctx), ticketsOf(ctx), loadDeclared(ctx), loadDeclined(ctx)]);
+  const [react, tickets, declared, words, recDates] = await Promise.all([reactionsOf(ctx), ticketsOf(ctx), loadDeclared(ctx), loadDeclined(ctx), recordDatesOf(ctx)]);
   const {hits, declined} = await nameHits(ctx, declared, words, {catalogue});
   const meta = await cardMeta(ctx, [...react.keys()]);
   // Answered stages without a prebuilt card (only in the catalogue, see fallback.js) still count.
@@ -493,7 +514,9 @@ export async function buckets(ctx, {catalogue = false} = {}) {
       // 最後に押した時刻より前に入れた券は数えず、押したあとに入れた券か、無ければ会期の終わりで見る（押したあとに、観た日を
       // 過去の日で入れたときは、その日で終わったと見る）
       const since = mine.map(s => react.get(s)?.at || '').sort().at(-1) || '';
-      const done = mine.length ? doneDate(mine, ends.at(-1) || row.end, tickets, since) : doneDate(sids, row.end, tickets);
+      // 観た記録は、ツアーのどの会場の記録でも数える（観劇記録を追加で別の会場を選んで入れることがあるため）
+      const recs = sids.flatMap(s => recDates.get(String(s)) || []);
+      const done = mine.length ? doneDate(mine, ends.at(-1) || row.end, tickets, since, recs) : doneDate(sids, row.end, tickets, '', recs);
       if (startPassed(done.date, done.time, ctx)) continue;
       const at = mine.find(s => group.some(v => v.stage_id === s));
       out.owned.push(at && at !== row.stage_id ? {...row, ...group.find(v => v.stage_id === at)} : row);
@@ -967,7 +990,7 @@ export async function ticketsScreen(params, ctx) {
     })).join('');
   // 見出しは「購入済の公演」（起案者の指示 2026-10-18。以前は「購入済み公演 ── N 件」）
   const body = `<h1>購入済の公演</h1>
-<p class="lede">「すでに持っている」と答えた公演と、購入確認メールから見つかった公演を並べています。<b>この一覧に入っても、次のおすすめは変わりません。</b>上演日を過ぎると一覧から外れ、<a href="/rate?t=__TAGURI_TOKEN__">評価一覧</a>の評価待ちに移ります。行く日は、各公演の「行く日」の欄から入れられます。</p>
+<p class="lede">「すでに持っている」と答えた公演と、購入確認メールから見つかった公演を並べています。<b>この一覧に入っても、次のおすすめは変わりません。</b>上演日を過ぎると一覧から外れ、<a href="/rate?t=__TAGURI_TOKEN__">評価一覧</a>の評価待ちに移ります。観劇日は、各公演の「観劇日」の欄から入れられます。</p>
 ${owned.length ? sortForm('/tickets', sort, keys) : ''}
 ${html || emptyGuide('owned', '購入済の公演はまだありません', '<p>「<a href="/recommend?t=__TAGURI_TOKEN__">おすすめ</a>」または「<a href="/recommend/reminder?t=__TAGURI_TOKEN__">開幕リマインド</a>」、'
   + '「<a href="/search?t=__TAGURI_TOKEN__">探す</a>」で「購入済」と回答してください。<br>また「<a href="/register?t=__TAGURI_TOKEN__">観劇記録を追加</a>」で購入済の公演を追加してください。</p>')}

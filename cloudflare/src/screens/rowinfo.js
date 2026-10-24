@@ -7,6 +7,7 @@
 import {E} from './py.js';
 import {stageInfo} from './fallback.js';
 import {pastStages} from './autolink.js';
+import {synTagMap} from './syntags.js';
 
 // 作り手の役職の並び（画面の CREDIT_BASE・CREDIT_OPTIONS と同じ順）。ほかの役職はその後ろに名前の順で並べる
 const ROLE_ORDER = ['作', '原作', '脚本', '演出', '出演', '翻訳', '音楽', '作曲', '振付'];
@@ -58,6 +59,9 @@ export async function rowInfos(ctx, ws, people = {}) {
   const info = sids.length ? await stageInfo(ctx.db, sids) : new Map();
   const past = await pastStages(ctx.db, sids.filter(s => !info.has(s)));
   const cards = await cardSynopses(ctx.db, sids.filter(s => !(info.get(s)?.synopsis || '').trim()));
+  // あらすじから読み取ったタグ（カードのハッシュタグと同じ語）。あらすじの下にハッシュタグで出す（起案者の指示 2026-10-24
+  // 「評価ページのあらすじにも抽出のタグをつけて」）
+  const tags = await synTagMap(ctx, sids);
   const out = {};
   for (const w of ws) {
     const sid = String(w.stage_id || '');
@@ -70,7 +74,7 @@ export async function rowInfos(ctx, ws, people = {}) {
     // 公式サイト（公演の欄の URL）。無ければ公演の情報を取ったページ（stage.corich.jp。stage_id はその番号）
     const url = /^https?:\/\//.test(s.url || '') ? s.url : '';
     const page = !url && /^\d+$/.test(sid) ? `https://stage.corich.jp/stage/${sid}` : '';
-    out[w.work_key] = {grp: s.group || p.grp || '', venue, synopsis, credits, url, page};
+    out[w.work_key] = {grp: s.group || p.grp || '', venue, synopsis, credits, url, page, tags: tags.get(sid) || []};
   }
   return out;
 }
@@ -82,7 +86,9 @@ export async function rowInfos(ctx, ws, people = {}) {
 export function rinfoHtml(info, venue, times) {
   const cast = info.credits.length ? `<div class="cast">${info.credits.map(([r, ns]) =>
     `<div class="cr"><span class="cl">${E(r)}</span><span class="cv">${ns.map(E).join('、')}</span></div>`).join('')}</div>` : '';
-  const syn = info.synopsis ? `<div class="syn"><p class="txt">${E(info.synopsis)}</p>`
+  // タグはカードのあらすじと同じ形（.tags .tag「#語」）。app.js の leadSynopsis がハッシュタグの押し口にする
+  const tags = (info.tags || []).length ? `<div class="tags">${info.tags.map(w => `<span class="tag">#${E(w)}</span>`).join('')}</div>` : '';
+  const syn = info.synopsis ? `<div class="syn"><p class="txt">${E(info.synopsis)}</p>${tags}`
     + '<button class="mrb" data-more="1">続きを読む</button></div>' : '';
   return `<div class="rinfo" data-grp="${E(info.grp)}" data-venue="${E(venue || info.venue)}" data-times="${E(times)}"`
     + (info.url ? ` data-url="${E(info.url)}"` : info.page ? ` data-page="${E(info.page)}"` : '') + '>'
