@@ -139,11 +139,12 @@ export async function reactionsOf(ctx) {
 
 /** feedback.tickets: stage_id -> tickets, earliest first. */
 async function ticketsOf(ctx) {
-  const {results} = await ctx.db.prepare('SELECT stage_id,date,time,source,confirmed,uid FROM ticket WHERE user_id=? ORDER BY date,time').bind(ctx.uid).all();
+  const {results} = await ctx.db.prepare('SELECT stage_id,date,time,source,confirmed,uid,updated_at FROM ticket WHERE user_id=? ORDER BY date,time').bind(ctx.uid).all();
   const out = new Map();
   for (const t of results) {
     if (!out.has(t.stage_id)) out.set(t.stage_id, []);
-    out.get(t.stage_id).push({date: t.date, time: t.time || '', source: t.source, confirmed: Number(t.confirmed || 0), uid: t.uid || ''});
+    // at: 券を入れた（確定した）時刻。もう一度「購入済」を押したあとに、それより前に入れた券を数えないのに使う（doneDate）
+    out.get(t.stage_id).push({date: t.date, time: t.time || '', source: t.source, confirmed: Number(t.confirmed || 0), uid: t.uid || '', at: String(t.updated_at || '')});
   }
   return out;
 }
@@ -341,8 +342,9 @@ async function kindTagged(ctx, words) {
 }
 
 /** app._owned_done_date over the production's stages: the last confirmed ticket ({date, time}) or the run's end ({date}). */
-function doneDate(sids, end, tickets) {
-  const confirmed = sids.flatMap(s => (tickets.get(s) || []).filter(t => t.confirmed)).sort((a, b) => cmp(a.date + (a.time || ''), b.date + (b.time || '')));
+// since: この時刻より前に入れた券は数えない（もう一度「購入済」を押したあと、前に観た回の券で終わったと見ないように）
+function doneDate(sids, end, tickets, since = '') {
+  const confirmed = sids.flatMap(s => (tickets.get(s) || []).filter(t => t.confirmed && (!since || (t.at || '') >= since))).sort((a, b) => cmp(a.date + (a.time || ''), b.date + (b.time || '')));
   return confirmed.length ? {date: confirmed.at(-1).date, time: confirmed.at(-1).time || ''} : {date: end || '', time: ''};
 }
 /**
@@ -486,7 +488,12 @@ export async function buckets(ctx, {catalogue = false} = {}) {
       // 写ししか無い古い答えは、前と同じくツアー全体で見る
       const mine = sids.filter(s => (react.get(s)?.owned === 1 && !react.get(s).ownedCopy) || (tickets.get(s) || []).length);
       const ends = mine.map(s => group.find(v => v.stage_id === s)?.end || meta.get(s)?.end).filter(Boolean).sort();
-      const done = mine.length ? doneDate(mine, ends.at(-1) || row.end, tickets) : doneDate(sids, row.end, tickets);
+      // 観終わったあとで、もう一度「購入済」を押した公演は一覧に戻す（起案者の指摘 2026-10-24「すでに観劇記録に入っているものを
+      // 改めて購入済にいれても表示されない」）。前は観た回の券（過ぎた日）を「終わる日」と見て外したままだった。
+      // 最後に押した時刻より前に入れた券は数えず、押したあとに入れた券か、無ければ会期の終わりで見る（押したあとに、観た日を
+      // 過去の日で入れたときは、その日で終わったと見る）
+      const since = mine.map(s => react.get(s)?.at || '').sort().at(-1) || '';
+      const done = mine.length ? doneDate(mine, ends.at(-1) || row.end, tickets, since) : doneDate(sids, row.end, tickets);
       if (startPassed(done.date, done.time, ctx)) continue;
       const at = mine.find(s => group.some(v => v.stage_id === s));
       out.owned.push(at && at !== row.stage_id ? {...row, ...group.find(v => v.stage_id === at)} : row);
