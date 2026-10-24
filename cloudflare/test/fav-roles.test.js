@@ -53,3 +53,18 @@ test('unknown role labels are dropped, and no roles keeps the old behaviour', as
   assert.match((await screen(env, a, 'favourites')).body_html, /data-stage="101"/);
   assert.equal((await screen(env, a, 'recommend')).diag.favourite_seeds, 2);
 }));
+
+// #72: 再生（replay_eval）が日 t のお気に入りを組み立て直せるように、名前ごとに足した時刻を declared_at に控える
+test('adding and removing a favourite keeps when each name was added', async () => withUser(async (env, a, sqlite) => {
+  const at = () => JSON.parse(sqlite.prepare("SELECT value FROM app_setting WHERE key='declared_at'").get()?.value || '{}');
+  await add(env, a, '俳優甲');
+  await add(env, a, '俳優乙');
+  const first = at();
+  assert.deepEqual(Object.keys(first).sort(), ['人\t俳優乙', '人\t俳優甲']);
+  assert.match(first['人\t俳優甲'], /^\d{4}-\d\d-\d\dT/);
+  // 足し直しても最初の時刻のまま。外すと控えからも消える
+  await add(env, a, '俳優甲', ['出演']);
+  assert.equal(at()['人\t俳優甲'], first['人\t俳優甲']);
+  await step(env, a, {post: '/api/favourite', body: {action: 'remove', kind: '人', name: '俳優乙'}});
+  assert.deepEqual(Object.keys(at()), ['人\t俳優甲']);
+}));

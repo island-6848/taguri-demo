@@ -1047,6 +1047,24 @@
    ]
   },
   {
+   "id": "dec-crawl-tiers",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-21",
+   "title": "取得を優先順位の段に分ける。毎日の更新（新しい公演の発見・これからの公演・変更の確認）の分を先に取っておき、過去の公演・ポスターは残りから余白 30 分を引いた分だけ。下位の段に時間の上限を付け、続きは次回。止めた日・8 割の注意は失敗にせず issue で知らせる",
+   "sources": [
+    "cloudflare/scripts/free_tier.py",
+    "tools/review/fetch_candidates.py",
+    "tools/taguri/run.py",
+    "tools/taguri/publish_catalog.py",
+    "cloudflare/scripts/deliver_posters.py",
+    "tools/taguri/deploy/github-actions/catalog.yml",
+    "cloudflare/test/test_free_tier.py",
+    "tools/review/test_fetch_candidates_sitemap.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-crawler-gha-private",
    "type": "decision",
    "status": "adopted",
@@ -1070,6 +1088,23 @@
     "tools/review/measure_nets.py",
     "cloudflare/src/screens/credits.js",
     "cloudflare/test/credits.test.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-csp-script-self",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-20",
+   "title": "画面の CSP を script-src 'self' にした（'unsafe-inline'・'unsafe-eval' を外す）。index.html の先読みと「眺める」の storyline をファイルに出し、HTML の onload・onerror・onsubmit・onchange を app.js の委譲に移した（#155）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/155",
+    "cloudflare/public/_headers",
+    "web/app.js",
+    "web/prefetch.js",
+    "web/storyline-draw.js",
+    "cloudflare/src/screens/cards.js",
+    "cloudflare/scripts/sync_public_ui.py"
    ],
    "verifies": []
   },
@@ -2049,6 +2084,22 @@
    "verifies": []
   },
   {
+   "id": "dec-note-ai",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-21",
+   "title": "感想は、設定で同意した人の分だけ Claude Haiku 5.5 に送って特徴を読み取り、感想の好み（#104）に使う。答えは候補の番号と符号だけ・1 回 20 件・同じ感想は 1 度だけ・夜にまとめて",
+   "sources": [
+    "cloudflare/src/note-ai.js",
+    "cloudflare/src/impression.js",
+    "cloudflare/migrations/0045.sql",
+    "cloudflare/public/privacy.html",
+    "cloudflare/test/note-ai.test.js",
+    "https://platform.claude.com/docs/en/about-claude/api-credits-for-subscribers"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-operator-name",
    "type": "decision",
    "status": "adopted",
@@ -2433,6 +2484,20 @@
     "cloudflare/scripts/build_recommend_index.py",
     "cloudflare/test/pieces.test.js",
     "cloudflare/test/test_recommend_index.py"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-reason-off-settings",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-21",
+   "title": "おすすめ理由の ✕ で外したものを、設定の画面「外したおすすめ理由」に並べ、1 つずつ「戻す」で復活できるようにする",
+   "sources": [
+    "cloudflare/src/screens/lists.js",
+    "cloudflare/src/screens/settings.js",
+    "cloudflare/test/kind-off.test.js",
+    "cloudflare/test/e2e-walk.js"
    ],
    "verifies": []
   },
@@ -3140,6 +3205,24 @@
     "cloudflare/src/screens/cast.js",
     "cloudflare/test/lists-screen.test.js",
     "cloudflare/test/cast.test.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-share-links",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-21",
+   "title": "共有リンク（/s/<token>）。公演 1 件のカードか、観劇記録の一覧・眺める・お気に入り・観劇史年表を、リンクを知る人だけにログインなしで見せる。評価・感想・名前は共有するときに選び、既定は出さない。検索エンジンには載せず、いつでも取り消せる",
+   "sources": [
+    "cloudflare/src/share.js",
+    "cloudflare/migrations/0044.sql",
+    "cloudflare/src/worker.js",
+    "web/app.js",
+    "web/theme.css",
+    "cloudflare/public/privacy.html",
+    "cloudflare/test/share.test.js",
+    "cloudflare/test/e2e-walk.js"
    ],
    "verifies": []
   },
@@ -4016,6 +4099,36 @@
    "verifies": []
   },
   {
+   "id": "f-crawl-step-times-1021",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-21",
+   "title": "Catalog の段ごとの実測（10-14〜10-20）。毎日の更新の段（準備・取り直し・D1・控え・点検・書き戻し）は 4〜5 分。時間の上限の無い「ポスターを R2 に入れる」段が 3〜45 分かかり、毎日の更新の取り置きを食っていた",
+   "sources": [
+    "https://github.com/island-6848/taguri-crawler/actions/runs/38646724578",
+    "https://github.com/island-6848/taguri-crawler/actions/runs/38973663053",
+    "https://github.com/island-6848/taguri-crawler/actions/runs/39084288296",
+    "https://github.com/island-6848/taguri-crawler/actions/runs/39119155187",
+    "https://github.com/island-6848/taguri-crawler/actions/runs/39390407820",
+    "https://github.com/island-6848/taguri-crawler/actions/runs/38404782069"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "f-deliver-past-reads",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-20",
+   "title": "過去の公演の送り直し（deliver_past の people・題名の UPDATE）が、取得の 1 回で D1 を 1,527,180 行読んでいた（1 日 500 万行の 3 割）。相関の副問い合わせを UPDATE … FROM に替え、150 行の文で 23,400 → 600 行にした",
+   "sources": [
+    "https://github.com/island-6848/taguri-crawler/actions/runs/39390407820",
+    "cloudflare/scripts/deliver_past.py",
+    "cloudflare/test/test_deliver_past.py",
+    "https://github.com/island-6848/taguri-demo/issues/242"
+   ],
+   "verifies": []
+  },
+  {
    "id": "f-form-rodoku-1019",
    "type": "finding",
    "status": "confirmed",
@@ -4104,6 +4217,33 @@
    "verifies": []
   },
   {
+   "id": "f-reco-recompute-cpu-1021",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-21",
+   "title": "本番の大きさの索引で、おすすめの計算し直しは評価 10 件で 17 ms・40 件で 37 ms・100 件で 59 ms（無料は 10 ms）。裏の答え合わせを外しても 10 ms には届かない",
+   "sources": [
+    "cloudflare/src/recommend.js",
+    "cloudflare/src/reco-gate.js",
+    "cloudflare/src/screens/recommend.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "f-reminder-cpu-1021",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-21",
+   "title": "開幕リマインドは 1 回 Worker の CPU 30〜40 ミリ秒（無料は 10 ミリ秒）で、「いまは一時的に止めています」（503）の見込みの原因。週の束の使い回し・中身を開いたときに読む・entry を D1 で取り出す、で 10〜12 ミリ秒にした",
+   "sources": [
+    "cloudflare/src/screens/reminder.js",
+    "cloudflare/src/screens/index.js",
+    "cloudflare/src/worker.js",
+    "web/app.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "f-search-asu-prefix",
    "type": "finding",
    "status": "confirmed",
@@ -4129,6 +4269,17 @@
     "https://www.choicely.com/blog/google-play-12-tester-rule",
     "https://www.thinktecture.com/en/pwa/twa-bubblewrap",
     "https://developer.chrome.com/docs/android/trusted-web-activity/quick-start"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "f-wrangler-d1-info-reads",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-21",
+   "title": "wrangler d1 info <名前> --json は、D1 の分析（GraphQL の d1AnalyticsAdaptiveGroups）から直近 24 時間の rows_read_24h・rows_written_24h・read_queries_24h を返す",
+   "sources": [
+    "cloudflare/node_modules/wrangler/wrangler-dist/cli.js"
    ],
    "verifies": []
   },
@@ -4454,6 +4605,24 @@
     "cloudflare/test/register-dialog-markup.test.js",
     "cloudflare/test/register-dialog-browser.js",
     "cloudflare/test/visual-check.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "fix-replay-index-dates",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-20",
+   "title": "再生（replay）は、公演が D1 に載った日と、お気に入りの名前ごとに足した時刻を控えて、日 t の索引とお気に入りに近づける（#72）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/72",
+    "cloudflare/scripts/build_recommend_index.py",
+    "tools/review/replay_eval.py",
+    "cloudflare/scripts/replay_job.py",
+    "cloudflare/src/screens/lists.js",
+    "cloudflare/test/test_replay_eval.py",
+    "cloudflare/test/test_recommend_index.py",
+    "cloudflare/test/fav-roles.test.js"
    ],
    "verifies": []
   },
@@ -5098,6 +5267,35 @@
     "cloudflare/test/test_replay_job.py",
     "tools/taguri/deploy/github-actions/replay.yml",
     "docs/research/real-data-eval-plan.md"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "impl-replay-h3",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-20",
+   "title": "H3（観る前の点と観たあとの評価の Kendall τ）を replay_eval の h3 と Replay の Summary に足した。観なかった公演は負例にせず、欠測と選んで観た偏りを並べて出す（#114）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/114",
+    "tools/review/replay_eval.py",
+    "cloudflare/scripts/replay_job.py",
+    "cloudflare/test/test_replay_eval.py",
+    "docs/research/real-data-eval-plan.md"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "impl-replay-learning-curve",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-20",
+   "title": "再生に学習曲線（--curve）を足した。同じ区切り・同じ後の答え・同じ索引のまま、日 t までの評価を古いほうから k 件（1・2・5・10・20・全部）だけ残して測る（#103）",
+   "sources": [
+    "https://github.com/island-6848/taguri-demo/issues/103",
+    "tools/review/replay_eval.py",
+    "cloudflare/scripts/replay_job.py",
+    "cloudflare/test/test_replay_eval.py"
    ],
    "verifies": []
   },
@@ -6790,6 +6988,18 @@
    "verifies": []
   },
   {
+   "id": "q-crawl-d1-reads-counted",
+   "type": "question",
+   "status": "answered",
+   "date": "2026-10-20",
+   "title": "取得（taguri-crawler）が D1 から読む行数を、無料枠の点検（free_tier.py check）で数えていない。wrangler の Rows read を控えて、1 日 500 万行の何割かを表に出すか",
+   "sources": [
+    "cloudflare/scripts/free_tier.py",
+    "https://github.com/island-6848/taguri-crawler/actions/runs/39390407820"
+   ],
+   "verifies": []
+  },
+  {
    "id": "q-crawler-host",
    "type": "question",
    "status": "answered",
@@ -7422,7 +7632,7 @@
   {
    "id": "q-original-ui-csp",
    "type": "question",
-   "status": "open",
+   "status": "answered",
    "date": "2026-10-13",
    "title": "元の画面の Content-Security-Policy を強められるか",
    "sources": [
@@ -7818,7 +8028,7 @@
   {
    "id": "q-replay-h3-satisfaction",
    "type": "question",
-   "status": "open",
+   "status": "answered",
    "date": "2026-10-18",
    "title": "評価の計画の H3（観る前の点と観たあとの評価の順位相関）を、手元の再生（replay_eval）にまだ実装していない。興味の指標（H1）と満足の指標を分けて出す（#114、測る道具を作る）",
    "sources": [
@@ -7889,6 +8099,17 @@
     "https://github.com/island-6848/taguri-demo/issues/107",
     "cloudflare/src/recommend.js",
     "tools/review/user_recommender.py"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "q-sitemap-lastmod-meaning",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-21",
+   "title": "CoRich のサイトマップの lastmod は、出演者の追加・日程の変更など公演ページの中身が変わったときに進むか。進まないなら、持っている公演の変更の確認（優先度 3）を別の方法で補う",
+   "sources": [
+    "tools/review/fetch_candidates.py"
    ],
    "verifies": []
   },
@@ -9528,6 +9749,31 @@
    "to": "dec-crawler-gha-private"
   },
   {
+   "from": "dec-crawl-tiers",
+   "rel": "depends_on",
+   "to": "f-crawl-step-times-1021"
+  },
+  {
+   "from": "dec-crawl-tiers",
+   "rel": "depends_on",
+   "to": "corich-sitemap-stage-ids"
+  },
+  {
+   "from": "dec-crawl-tiers",
+   "rel": "depends_on",
+   "to": "dec-free-tier-only"
+  },
+  {
+   "from": "dec-crawl-tiers",
+   "rel": "answers",
+   "to": "q-crawl-d1-reads-counted"
+  },
+  {
+   "from": "dec-crawl-tiers",
+   "rel": "affects",
+   "to": "dec-corich-sitemap"
+  },
+  {
    "from": "dec-crawler-gha-private",
    "rel": "answers",
    "to": "q-crawler-host"
@@ -9551,6 +9797,16 @@
    "from": "dec-credit-part-names",
    "rel": "answers",
    "to": "q-credit-part-names"
+  },
+  {
+   "from": "dec-csp-script-self",
+   "rel": "answers",
+   "to": "q-original-ui-csp"
+  },
+  {
+   "from": "dec-csp-script-self",
+   "rel": "affects",
+   "to": "sec-audit-1017"
   },
   {
    "from": "dec-d1-backup",
@@ -10393,6 +10649,16 @@
    "to": "comp-cf-worker"
   },
   {
+   "from": "dec-note-ai",
+   "rel": "affects",
+   "to": "impl-impression-worker"
+  },
+  {
+   "from": "dec-note-ai",
+   "rel": "affects",
+   "to": "q-impression-not-in-service"
+  },
+  {
    "from": "dec-own-domain",
    "rel": "affects",
    "to": "comp-frontend"
@@ -10666,6 +10932,11 @@
    "from": "dec-reading-share-6-4",
    "rel": "depends_on",
    "to": "dec-reading-dual-form"
+  },
+  {
+   "from": "dec-reason-off-settings",
+   "rel": "depends_on",
+   "to": "impl-kind-reason-off"
   },
   {
    "from": "dec-reason-two-works",
@@ -11131,6 +11402,11 @@
    "from": "dec-settings-worker",
    "rel": "affects",
    "to": "comp-native-screens"
+  },
+  {
+   "from": "dec-share-links",
+   "rel": "affects",
+   "to": "comp-public-server"
   },
   {
    "from": "dec-signed-out-gate",
@@ -11818,6 +12094,26 @@
    "to": "dec-title-crown-subtitle"
   },
   {
+   "from": "f-crawl-step-times-1021",
+   "rel": "supports",
+   "to": "dec-crawl-tiers"
+  },
+  {
+   "from": "f-deliver-past-reads",
+   "rel": "depends_on",
+   "to": "d1-free-limits"
+  },
+  {
+   "from": "f-deliver-past-reads",
+   "rel": "affects",
+   "to": "d1-reads-over-1020"
+  },
+  {
+   "from": "f-deliver-past-reads",
+   "rel": "affects",
+   "to": "dec-past-title-backfill"
+  },
+  {
    "from": "f-form-rodoku-1019",
    "rel": "depends_on",
    "to": "dec-forms-1019"
@@ -11863,6 +12159,26 @@
    "to": "dec-split-pieces"
   },
   {
+   "from": "f-reco-recompute-cpu-1021",
+   "rel": "depends_on",
+   "to": "q-reco-cpu-structure"
+  },
+  {
+   "from": "f-reco-recompute-cpu-1021",
+   "rel": "depends_on",
+   "to": "workers-free-cpu-10ms"
+  },
+  {
+   "from": "f-reminder-cpu-1021",
+   "rel": "depends_on",
+   "to": "workers-free-cpu-10ms"
+  },
+  {
+   "from": "f-reminder-cpu-1021",
+   "rel": "affects",
+   "to": "d1-reads-over-1020"
+  },
+  {
    "from": "f-search-asu-prefix",
    "rel": "affects",
    "to": "dec-search-part-paging"
@@ -11871,6 +12187,11 @@
    "from": "f-store-review-rules",
    "rel": "affects",
    "to": "plan-app-release"
+  },
+  {
+   "from": "f-wrangler-d1-info-reads",
+   "rel": "supports",
+   "to": "dec-crawl-tiers"
   },
   {
    "from": "fav-reason-two-step",
@@ -12026,6 +12347,16 @@
    "from": "fix-register-empty-dialog",
    "rel": "affects",
    "to": "dec-register-run-precision"
+  },
+  {
+   "from": "fix-replay-index-dates",
+   "rel": "affects",
+   "to": "impl-replay-eval"
+  },
+  {
+   "from": "fix-replay-index-dates",
+   "rel": "depends_on",
+   "to": "q-replay-history-restore"
   },
   {
    "from": "fix-request-mail",
@@ -12516,6 +12847,26 @@
    "from": "impl-replay-eval",
    "rel": "depends_on",
    "to": "impl-eval-logging"
+  },
+  {
+   "from": "impl-replay-h3",
+   "rel": "answers",
+   "to": "q-replay-h3-satisfaction"
+  },
+  {
+   "from": "impl-replay-h3",
+   "rel": "affects",
+   "to": "impl-replay-eval"
+  },
+  {
+   "from": "impl-replay-learning-curve",
+   "rel": "affects",
+   "to": "impl-replay-eval"
+  },
+  {
+   "from": "impl-replay-learning-curve",
+   "rel": "depends_on",
+   "to": "fix-replay-index-dates"
   },
   {
    "from": "impl-search-past-stages",
@@ -13648,6 +13999,16 @@
    "to": "dec-corich-sitemap"
   },
   {
+   "from": "q-crawl-d1-reads-counted",
+   "rel": "raises",
+   "to": "f-deliver-past-reads"
+  },
+  {
+   "from": "q-crawl-d1-reads-counted",
+   "rel": "affects",
+   "to": "d1-free-limits"
+  },
+  {
    "from": "q-crawler-host",
    "rel": "depends_on",
    "to": "q-ec2-cost"
@@ -14341,6 +14702,16 @@
    "from": "q-seed-weight-total-ratings",
    "rel": "depends_on",
    "to": "dec-fav-over-interest"
+  },
+  {
+   "from": "q-sitemap-lastmod-meaning",
+   "rel": "raises",
+   "to": "dec-crawl-tiers"
+  },
+  {
+   "from": "q-sitemap-lastmod-meaning",
+   "rel": "affects",
+   "to": "corich-sitemap-stage-ids"
   },
   {
    "from": "q-split-pieces-1019",

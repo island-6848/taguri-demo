@@ -2,6 +2,7 @@
 import importlib.util
 import io
 import json
+import math
 import os
 import re
 import sqlite3
@@ -122,7 +123,8 @@ class Replay(unittest.TestCase):
         self.assertEqual(set(main["H6"]), set(replay_eval.TRIALS))
         self.assertEqual(r["gate_affil"]["users"], 0, "five ratings or fewer: the hidden check does not run")
         self.assertEqual(r["other"]["users"], 0)
-        self.assertEqual(r["per_origin"], [{"t": "2026-10-05", "users": 1, "answers": 3, "with_ratings": 1, "with_recommendations": 1}])
+        self.assertEqual(r["per_origin"], [{"t": "2026-10-05", "users": 1, "answers": 3, "with_ratings": 1, "with_recommendations": 1,
+                                            "index_dropped": 0, "index_changed": 0, "index_unknown": True}])
 
     def test_trying_the_affiliation_ranks_a_member_of_a_liked_troupe(self):
         # dec-affil-reco: ◎ を付けた 301 の俳優甲は劇団X。これからの 314 の俳優戊も劇団X なので、所属を効かせると
@@ -136,6 +138,73 @@ class Replay(unittest.TestCase):
         h = r["reminder"]["H6"]["affil"]
         self.assertGreater(h["median_diff"], 0)
         self.assertEqual((h["users_better"], h["users_worse"]), (1, 0))
+
+    def test_stages_listed_after_the_origin_are_left_out(self):
+        # #72: 311 は 10/8 に初めて載った（日 t = 10/5 より後）。写しの索引から外れ、圏外になる。
+        # 312 は控えを始めた日（9/1）からあるので残り、313 は 10/7 に中身が変わったと数える。314 は控えに無い（まだ D1 に無い）
+        seen = {"_seen_since": "2026-09-01", "_seen": {"301": ["2026-09-01", "2026-09-01", "a"], "302": ["2026-09-01", "2026-09-01", "b"],
+                                                      "311": ["2026-10-08", "2026-10-08", "c"], "312": ["2026-09-01", "2026-09-01", "d"],
+                                                      "313": ["2026-09-20", "2026-10-07", "e"]}}
+        with tempfile.TemporaryDirectory() as tmp:
+            idx, bk = Path(tmp) / "index.sql", Path(tmp) / "backup.sql"
+            index_sql(idx, affil=True)
+            backup_sql(bk, self.ANSWERS)
+            r = replay_eval.replay(str(bk), idx, [], seen=seen)
+        o = r["per_origin"][0]
+        self.assertEqual((o["index_dropped"], o["index_changed"], o["index_unknown"]), (2, 1, False))
+        self.assertEqual(r["answers_ranked_share"], 0.0, "311 is no longer a candidate on 10/5")
+
+    def test_learning_curve_keeps_the_oldest_ratings(self):
+        # #103: 同じ区切り・同じ答えのまま、評価を古いほうから k 件だけ残す。1 件（◎ 301）だけでは段が 1 つで人の値が 0 になり
+        # 何も出ない（#106）。2 件（◎ 301・× 302）で 311 が 1 位になり、AUC が 0.5 から 1.0 に上がる
+        with tempfile.TemporaryDirectory() as tmp:
+            idx, bk = Path(tmp) / "index.sql", Path(tmp) / "backup.sql"
+            index_sql(idx)
+            backup_sql(bk, self.ANSWERS)
+            r = replay_eval.replay(str(bk), idx, [], curve=(1, 2, 5))
+        by_k = {c["k"]: c for c in r["curve"]}
+        self.assertEqual(set(by_k), {1, 2, "all"}, "nobody has 5 ratings")
+        self.assertEqual((by_k[1]["users"], by_k[1]["median_auc"], by_k[1]["answers_ranked_share"]), (1, 0.5, 0.0))
+        self.assertEqual((by_k["all"]["median_auc"], by_k["all"]["answers_ranked_share"]), (1.0, round(1 / 3, 3)))
+        self.assertEqual((by_k["all"]["better_than_first"], by_k["all"]["worse_than_first"], by_k["all"]["p_sign"]), (1, 0, 0.5))
+        db = sqlite3.connect(":memory:")
+        db.execute("CREATE TABLE works (user_id, work_key, verdict, rated_at, updated_at)")
+        db.executemany("INSERT INTO works VALUES(?,?,?,?,?)", [("u", "a", "◎", "2026-10-03", "x"), ("u", "b", "×", "2026-10-01", "x"),
+                                                               ("u", "c", None, None, "2026-09-01"), ("v", "d", "○", None, "2026-09-05")])
+        db.commit()
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "c.sqlite"
+            dst = sqlite3.connect(path)
+            db.backup(dst)
+            dst.close()
+            replay_eval.keep_oldest(path, 1)
+            got = sqlite3.connect(path).execute("SELECT work_key FROM works ORDER BY work_key").fetchall()
+        self.assertEqual(got, [("b",), ("c",), ("d",)])
+
+    def test_index_split(self):
+        seen = {"_seen_since": "2026-10-01", "_seen": {"1": ["2026-10-01", "2026-10-09", "h"], "2": ["2026-10-03", "2026-10-03", "h"]}}
+        self.assertEqual(replay_eval.index_split(seen, "2026-10-02", {"1", "2", "3"}),
+                         {"later": {"2", "3"}, "changed": 1, "unknown": False})
+        self.assertTrue(replay_eval.index_split(seen, "2026-09-20")["unknown"])
+        self.assertEqual(replay_eval.index_split(None, "2026-10-02")["later"], set())
+
+    def test_favourites_are_rebuilt_as_they_were_on_the_origin(self):
+        # #72: お気に入り（declared）を 10/8 に書き換えた。10/5 の写しには、10/5 までに足した名前と時刻の無い名前だけが残る
+        db = sqlite3.connect(":memory:")
+        db.execute("CREATE TABLE app_setting (user_id TEXT, key TEXT, value TEXT, updated_at TEXT, PRIMARY KEY (user_id, key))")
+        db.execute("INSERT INTO app_setting VALUES('u','declared',?, '2026-10-08T03:00:00Z')",
+                   (json.dumps({"人": ["古い人", "前の人", "後の人"], "団体": ["後の劇団"]}, ensure_ascii=False),))
+        db.execute("INSERT INTO app_setting VALUES('u','declared_at',?, '2026-10-08T03:00:00Z')",
+                   (json.dumps({"人\t前の人": "2026-10-02T01:00:00Z", "人\t後の人": "2026-10-08T03:00:00Z",
+                                "団体\t後の劇団": "2026-10-07T01:00:00Z"}, ensure_ascii=False),))
+        db.commit()     # 書きかけのままだと、写し（backup）が終わらない
+        with tempfile.TemporaryDirectory() as tmp:
+            cut = Path(tmp) / "cut.sqlite"
+            replay_eval.cut_copy(db, cut, "2026-10-05")
+            c = sqlite3.connect(cut)
+            got = c.execute("SELECT key, value FROM app_setting ORDER BY key").fetchall()
+            c.close()
+        self.assertEqual(got, [("declared", json.dumps({"人": ["古い人", "前の人"], "団体": []}, ensure_ascii=False))])
 
     def test_ratings_made_after_the_origin_are_cut(self):
         # 評価が答えより後に付いたなら、日 t には評価が無い: 何も出ず、どれも圏外で AUC 0.5
@@ -171,6 +240,35 @@ class Replay(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class H3(unittest.TestCase):
+    """#114: 観る前の点と観たあとの評価の τ。観なかった公演は入れず、観た日より後の点も使わない。"""
+
+    def run_on(self, sql, *args):
+        return ReplayEval.run_on(self, "CREATE TABLE works (user_id TEXT, stage_id TEXT, verdict TEXT, first_date TEXT);\n" + sql, *args)
+
+    def test_tau_follows_the_scores_shown_before_watching(self):
+        rows_ = ""
+        for uid, pairs in (("a", [(0.9, "◎"), (0.6, "○"), (0.3, "×")]), ("b", [(0.9, "×"), (0.5, "○"), (0.2, "◎")])):
+            for i, (score, verdict) in enumerate(pairs):
+                rows_ += (f"INSERT INTO reaction VALUES('{uid}','l','{i}',1,0,'','reminder','2026-10-01T01:00:00Z',1,{score},'v',NULL);\n"
+                          f"INSERT INTO works VALUES('{uid}','{i}','{verdict}','2026-10-10');\n")
+        # 観たあと（10/12）に答えた点しか無い公演・公演につながっていない記録・評価の無い記録・観なかった公演は結ばない
+        rows_ += ("INSERT INTO reaction VALUES('a','l','9',1,0,'','reminder','2026-10-12T01:00:00Z',1,0.1,'v',NULL);\n"
+                  "INSERT INTO works VALUES('a','9','◎','2026-10-10');\n"
+                  "INSERT INTO works VALUES('a',NULL,'○','2026-10-10');\n"
+                  "INSERT INTO works VALUES('a','8',NULL,'2026-10-10');\n"
+                  "INSERT INTO reaction VALUES('a','l','7',0,0,'','reminder','2026-10-01T01:00:00Z',1,0.95,'v',NULL);\n")
+        r = self.run_on(rows_, "h3", "--owner", "b")
+        self.assertEqual((r["rated"], r["paired"], r["missing"]), (8, 6, {"no_stage": 1, "no_score_before": 1}))
+        self.assertEqual((r["users"], r["median_tau"], r["owner_tau"]), (1, 1.0, -1.0))
+        self.assertEqual(r["paired_after_positive_share"], 1.0)
+        self.assertAlmostEqual(r["p_sign_H3"], 0.5)
+
+    def test_kendall_tau_b_with_ties(self):
+        self.assertAlmostEqual(replay_eval.kendall_tau_b([1, 2, 3], [1, 1, 2]), 2 / math.sqrt(6))
+        self.assertIsNone(replay_eval.kendall_tau_b([1, 1], [2, 2]))
 
 
 class Materials(unittest.TestCase):

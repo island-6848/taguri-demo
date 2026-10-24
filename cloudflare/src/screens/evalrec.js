@@ -81,7 +81,7 @@ export function optoutCardHtml(off, head) {
 結果は利用者ごとの数（当たりの度合いなど）と全体の分布だけにして、1 人の記録が分かる形では出しません。<br>
 <b>ここで「使わない」を選ぶと、分析から外します。</b>おすすめそのものの出し方は、どちらでも変わりません。
 <a href="/terms">利用規約</a>の第 7 条と、<a href="/privacy">プライバシーポリシー</a>の第 4 条にも書いてあります。</p>
-<form class="pfil" id="analysis-setting" onsubmit="return false">
+<form class="pfil" id="analysis-setting" data-nosubmit>
 <div class="pchips"><label class="pchip${off ? '' : ' on'}"><input type="radio" name="analysis" value="0"${off ? '' : ' checked'}><span class="pl">分析に使ってよい</span></label>
 <label class="pchip${off ? ' on' : ''}"><input type="radio" name="analysis" value="1"${off ? ' checked' : ''}><span class="pl">推薦の改善の分析に使わない</span></label></div>
 <div class="pfoot"><button type="button" data-set-analysis="1">これにする</button><span class="said"></span></div>

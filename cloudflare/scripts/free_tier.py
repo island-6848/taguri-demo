@@ -3,10 +3,12 @@
 
 起案者の指示（2026-10-13）「必ず無料の範囲内にして。絶対超えないで。つねに警戒してチェックして」。
 上限の数字は **ここにだけ** 書く（取得の各段・Worker の試験・文書はここを見る）。各上限は無料枠より
-低く取り、超えそうなら **使う前に止める**。止めたら失敗の印を出して、持ち主に GitHub から通知が届くようにする。
+低く取り、超えそうなら **使う前に止める**。毎日の更新を止めた日と、上限の 8 割を越えた日は、取得のリポジトリの
+issue「無料枠の注意（取得）」で持ち主に知らせる（失敗にはしない。数えが読めないときだけ失敗にする。dec-crawl-tiers）。
 
     python3 cloudflare/scripts/free_tier.py plan  --data data --mode daily   # Actions の分数を見て、今日の取得の量を決める
-    python3 cloudflare/scripts/free_tier.py check --data data [--d1-usage f]  # 使った量を数え、8 割を越えたら失敗する
+    python3 cloudflare/scripts/free_tier.py check --data data [--d1-usage f] [--d1-info f] [--d1-logs …] [--run-mode daily]
+                                                     # 使った量と、この実行の段ごとの時間を表にする
 
 ## 数えているもの
 
@@ -34,11 +36,14 @@ import urllib.request
 from pathlib import Path
 
 # ── 上限（無料枠より低く取る。変えるときは docs/free-tier-budget.md と knowledge を直す）──
-FREE = {"actions_minutes_month": 2_000, "d1_writes_day": 100_000, "r2_bytes": 10 * 10**9,
+FREE = {"actions_minutes_month": 2_000, "d1_writes_day": 100_000, "d1_reads_day": 5_000_000, "r2_bytes": 10 * 10**9,
         "r2_class_a_month": 1_000_000, "r2_class_b_month": 10_000_000}
 # Actions は一時的に 1,600 分（起案者の判断 2026-10-20「すべてはい」）。1,500 分では、これからの毎日の取得を見込むと上限を越え、
 # 計画の段が 10-19・10-20 の取得を始める前に止めていた。無料の 2,000 分までは 400 分残る。31 日の枠に余裕ができたら 1,500 に戻す
 CAPS = {"actions_minutes_31d": 1_600, "d1_writes_day": 80_000, "r2_bytes": 8 * 10**9,
+        # D1 の読み出し（Worker と取得の合計、直近 24 時間）。無料は 1 日 500 万行で、越えると止まる（2026-10-20 に越えた）。
+        # 半分で知らせる（d1-reads-over-1020・f-deliver-past-reads）
+        "d1_reads_day": 3_000_000,
         "r2_class_a_month": 300_000, "r2_class_b_month": 3_000_000,
         # 手元の管理画面（tools/admin）の分。取得の分と同じ上限の中で、さらにこれだけに抑える
         "admin_d1_writes_day": 1_000, "admin_posters_month": 300,
@@ -69,6 +74,21 @@ DRILL_MINUTES = 20
 # 毎日の更新の分を取っておいた残りから、1 回 STORIES_MAX_MINUTES 分まで（ジョブの上限 6 時間の手前）
 STORIES_MAX_MINUTES = 300
 STORIES_AFTER_MINUTES = 10       # 準備と書き戻し
+# ── 取得の優先順位（dec-crawl-tiers、起案者の指示 2026-10-21「下位の処理が大量の実行時間を消費しても、上位の処理が停止しない」）──
+#   1 新しい公演の発見と登録  2 これからの公演の情報・出演者・あらすじ  3 持っている公演の変更確認
+#   4 過去の公演の補完        5 過去の公演のポスター・あらすじの本文
+# 1〜3 は毎日の更新（CATALOG_MINUTES["daily"] の中）で、これからの毎日の分を先に取っておく（worst_window）。
+# 4・5 と手で動かすもの（再生・予行・本文）は、その残りから BACKGROUND_MARGIN を引いた分だけを使う。
+# 見積もりより長くかかっても、毎日の更新の取り置きを食わないための余白（前は余白が 0 で、ポスターを R2 に入れる段に
+# 時間の上限が無く、45 分かかった日もあった。Catalog #5）
+BACKGROUND_MARGIN = 30
+# 新しい公演の発見（サイトマップの差分と、公演ページの読み直し）の上限。毎日の更新の 15 分の中に入れる。
+# 実測（10-14〜10-20 の Catalog）: 準備・取り直し・D1 へ入れる・控え・書き戻しで 4〜5 分。取り直しは 1 分前後
+DISCOVER_MINUTES = 5
+# ポスターを R2 に入れる段の上限（前は無かった）。入れきれなかった分は次回（deliver_posters.py --max-minutes）
+POSTER_UPLOAD_MAX_MINUTES = 30
+# 過去の公演の名前の索引を R2 に入れる段（実測 3〜4 分）。過去の公演を読んだ日だけ動かす
+PAST_INDEX_MINUTES = 6
 
 LEDGER = Path("free_tier") / "usage.json"
 
@@ -215,69 +235,153 @@ def worst_window(by_day: list[int]) -> int:
     return max(sum(by_day[:n - k]) + future_catalog(k) for k in range(n))
 
 
+def _stopped(mode: str, by_day, worst, note: str) -> dict:
+    return {"run": False, "mode": mode, "catalog_minutes": 1, "discover_minutes": 0, "past_minutes": 0, "past_limit": 0,
+            "past_timeout": 1, "poster_minutes": 0, "poster_timeout": 1, "upload_minutes": 0, "upload_timeout": 1,
+            "past_index": False, "used_31d": sum(by_day) if by_day is not None else None, "worst_31d": worst, "note": note}
+
+
 def plan(by_day: list[int] | None, mode: str) -> dict:
-    """今日の Catalog を動かしてよいか、どの mode で、過去の公演を何分読むか。
-    分数が読めなかったとき（by_day が None）は、過去の公演は読まず、毎日の更新だけにする。"""
+    """今日の取得を動かしてよいか、どの mode で、下位の処理（過去の公演・ポスター）に何分渡すか（dec-crawl-tiers）。
+    分数が読めなかったとき（by_day が None）は、毎日の更新（1〜3）だけにする。"""
     cap = CAPS["actions_minutes_31d"]
+    core = CATALOG_MINUTES["daily"]
     if by_day is None and mode in ("index", "replay", "drill", "stories"):
-        # 索引だけの手動実行は急がない。分数が読めないなら動かさない（毎日の実行に任せる）
-        return {"run": False, "mode": mode, "catalog_minutes": 1, "past_minutes": 0, "past_limit": 0,
-                "past_timeout": 1, "used_31d": None, "note": "Actions の分数が読めなかったので、索引だけ・再生・戻す予行の実行はしない"}
+        # 索引だけの手動実行・再生・予行・本文は急がない。分数が読めないなら動かさない（毎日の実行に任せる）
+        return _stopped(mode, by_day, None, "Actions の分数が読めなかったので、索引だけ・再生・戻す予行・本文の実行はしない")
     if by_day is None:
-        return {"run": True, "mode": "daily", "catalog_minutes": 45, "past_minutes": 0, "past_limit": 0,
-                "past_timeout": 5,
-                "used_31d": None, "note": "Actions の分数が読めなかったので、毎日の更新だけにする"}
+        out = _stopped("daily", by_day, None, "Actions の分数が読めなかったので、毎日の更新だけにする")
+        return {**out, "run": True, "catalog_minutes": core, "discover_minutes": DISCOVER_MINUTES}
     worst = worst_window(by_day)
-    # worst に入っているのは、今日までに使った分と、明日からの Catalog の見積もり。
-    # 今日のこの実行の Catalog の分（週 1 なら上乗せも）は、ここで別に取っておく
-    room = cap - worst - CATALOG_MINUTES["daily"]
-    note = ""
+    # worst に入っているのは、今日までに使った分と、明日からの毎日の更新の見積もり。今日の毎日の更新の分は、ここで別に取っておく
+    room = cap - worst - core
+    # 下位の処理と手で動かすものが使ってよい分（毎日の更新の取り置きを食わないよう、余白を残す）
+    spare = room - BACKGROUND_MARGIN
     if mode in ("replay", "drill"):
-        # 推薦の再生・控えから戻す予行。これからの毎日の更新と今日の分を取っておいたうえで、その分が残るときだけ
         need = REPLAY_MINUTES if mode == "replay" else DRILL_MINUTES
-        ok = room >= need
         what = "再生" if mode == "replay" else "戻す予行"
-        return {"run": ok, "mode": mode, "catalog_minutes": 1, "past_minutes": 0, "past_limit": 0,
-                "past_timeout": 1, "used_31d": sum(by_day), "worst_31d": worst,
-                "note": "" if ok else f"Actions の分数が上限 {cap} 分に届く見込みなので、{what}はしない"}
+        if spare < need:
+            return _stopped(mode, by_day, worst, f"Actions の分数が上限 {cap} 分に届く見込みなので、{what}はしない"
+                            f"（毎日の更新の取り置きと余白 {BACKGROUND_MARGIN} 分を残すと {max(spare, 0)} 分しか無い）")
+        return {**_stopped(mode, by_day, worst, ""), "run": True}
     if mode == "stories":
-        minutes = min(STORIES_MAX_MINUTES, room - STORIES_AFTER_MINUTES)
-        ok = minutes >= 10
-        return {"run": ok, "mode": mode, "catalog_minutes": 1, "past_minutes": minutes if ok else 0,
-                "past_limit": int(minutes * 60 / PAST_SECONDS_PER_PAGE) if ok else 0,
-                "past_timeout": (minutes + 5) if ok else 1, "used_31d": sum(by_day), "worst_31d": worst,
-                "note": "" if ok else f"Actions の分数が上限 {cap} 分に届く見込みなので、本文は取らない"}
+        minutes = min(STORIES_MAX_MINUTES, spare - STORIES_AFTER_MINUTES)
+        if minutes < 10:
+            return _stopped(mode, by_day, worst, f"Actions の分数が上限 {cap} 分に届く見込みなので、本文は取らない")
+        return {**_stopped(mode, by_day, worst, ""), "run": True, "past_minutes": minutes,
+                "past_limit": int(minutes * 60 / PAST_SECONDS_PER_PAGE), "past_timeout": minutes + 5}
     if mode == "index":
-        # 索引だけの手動実行（q-index-load-now）。取り直しも過去の公演も読まない。数分で終わるが、
-        # 毎日の分（CATALOG_MINUTES["daily"]）をまるごと取っておく
-        return {"run": room >= 0, "mode": mode, "catalog_minutes": 1, "past_minutes": 0, "past_limit": 0,
-                "past_timeout": 1, "used_31d": sum(by_day), "worst_31d": worst,
-                "note": "" if room >= 0 else f"Actions の分数が上限 {cap} 分に届く見込みなので、今日は動かさない"}
-    if mode == "weekly" and room < WEEKLY_EXTRA:
-        mode, note = "daily", "週 1 の取り直しの分が無いので、毎日の更新だけにする"
+        # 索引だけの手動実行（q-index-load-now）。取り直しも過去の公演も読まない。毎日の分をまるごと取っておく
+        if room < 0:
+            return _stopped(mode, by_day, worst, f"Actions の分数が上限 {cap} 分に届く見込みなので、今日は動かさない")
+        return {**_stopped(mode, by_day, worst, ""), "run": True}
     if room < 0:
-        return {"run": False, "mode": mode, "catalog_minutes": 1, "past_minutes": 0, "past_limit": 0,
-                "past_timeout": 1,
-                "used_31d": sum(by_day), "worst_31d": worst,
-                "note": f"Actions の分数が上限 {cap} 分に届く見込みなので、今日は動かさない"}
+        return _stopped(mode, by_day, worst, f"Actions の分数が上限 {cap} 分に届く見込みなので、今日は動かさない")
+    note = ""
+    if mode == "weekly" and spare < WEEKLY_EXTRA:
+        mode, note = "daily", "週 1 の取り直しの分が無いので、毎日の更新だけにする（新しい公演の発見は毎日の更新でする）"
     if mode == "weekly":
-        room -= WEEKLY_EXTRA
-    share = room - AFTER_PAST_MINUTES
-    poster = min(POSTER_MAX_MINUTES, (share - POSTER_AFTER_MINUTES) // 3) if share - POSTER_AFTER_MINUTES >= 30 else 0
-    past = min(PAST_MAX_MINUTES, share - (poster + POSTER_AFTER_MINUTES if poster else 0))
+        spare -= WEEKLY_EXTRA
+    # 4 過去の公演の補完（読み取り・D1 へ入れる・名前の索引）
+    past = min(PAST_MAX_MINUTES, spare - AFTER_PAST_MINUTES - PAST_INDEX_MINUTES)
     if past < 10:
         past = 0
+    if past:
+        spare -= past + AFTER_PAST_MINUTES + PAST_INDEX_MINUTES
+    # 5 過去の公演のポスター（取る分と R2 に入れる分。残りが少なければ取らない）
+    poster = min(POSTER_MAX_MINUTES, (spare - POSTER_AFTER_MINUTES) // 2) if spare - POSTER_AFTER_MINUTES >= 20 else 0
+    if poster:
+        spare -= poster + POSTER_AFTER_MINUTES
+    upload = min(POSTER_UPLOAD_MAX_MINUTES, spare) if spare >= 3 else 0
     return {"run": True, "mode": mode,
+            # 取り直しの段の時間の上限。毎日は見積もり（15 分）を越えない。週 1 は見積もりの 2 倍まで（最低 10 分）
+            "catalog_minutes": core if mode == "daily" else max(10, min(CATALOG_MINUTES[mode] * 2, 240,
+                                                                       CATALOG_MINUTES[mode] + spare + WEEKLY_EXTRA)),
+            "discover_minutes": DISCOVER_MINUTES,
+            "past_minutes": past, "past_limit": int(past * 60 / PAST_SECONDS_PER_PAGE), "past_timeout": past + 5 if past else 1,
+            "past_index": bool(past),
             "poster_minutes": poster, "poster_timeout": poster + POSTER_AFTER_MINUTES if poster else 1,
-            # 取り直しの段の時間の上限。見積もりの 3 倍か、残りのどちらか小さいほう（最低 10 分）
-            "catalog_minutes": max(10, min(CATALOG_MINUTES[mode] * 3, 240, room + CATALOG_MINUTES[mode])),
-            "past_minutes": past, "past_limit": int(past * 60 / PAST_SECONDS_PER_PAGE),
-            "past_timeout": past + 5, "used_31d": sum(by_day), "worst_31d": worst, "note": note}
+            "upload_minutes": upload, "upload_timeout": upload + 3 if upload else 1,
+            "used_31d": sum(by_day), "worst_31d": worst, "note": note}
+
+
+def planned_minutes(p: dict) -> int:
+    """計画どおりに動いたとき、今日のこのジョブが使う分の上限（毎日の更新の見積もり＋下位の処理の上限）。"""
+    if not p["run"]:
+        return 1
+    extra = (WEEKLY_EXTRA if p["mode"] == "weekly" else 0)
+    past = p["past_minutes"] + AFTER_PAST_MINUTES + PAST_INDEX_MINUTES if p["past_minutes"] else 0
+    poster = p["poster_minutes"] + POSTER_AFTER_MINUTES if p["poster_minutes"] else 0
+    return CATALOG_MINUTES["daily"] + extra + past + poster + p["upload_minutes"]
+
+
+# ── この実行の段ごとの時間（日次更新の 15 分の見積もりを実測で確かめる。dec-crawl-tiers）──
+# 下位の処理（4・5）の段。これ以外の段は毎日の更新（1〜3）として数える
+BACKGROUND_STEPS = ("Fetch posters of past stages", "Upload posters to R2", "Read past stage pages",
+                    "Deliver the new past stages to D1", "Put the name index of the past stages into R2")
+
+
+def run_steps(repo: str, token: str, run_id: str, get=_get) -> list[tuple[str, int]]:
+    """この実行のジョブの段と秒数（終わった段だけ）。"""
+    out = []
+    for j in get(f"https://api.github.com/repos/{repo}/actions/runs/{run_id}/jobs?per_page=100", token).get("jobs", []):
+        for st in j.get("steps") or []:
+            a, b = _ts(st.get("started_at")), _ts(st.get("completed_at"))
+            if a and b and st.get("conclusion") != "skipped":
+                out.append((st.get("name") or "", max(0, int((b - a).total_seconds()))))
+    return out
+
+
+def record_run(data: Path, run_id: str, mode: str, steps: list[tuple[str, int]], now: dt.datetime | None = None) -> dict:
+    """段ごとの秒数を控え（data/free_tier/usage.json の runs）に残し、毎日の更新の分と下位の処理の分に分けて返す。"""
+    core = sum(t for n, t in steps if not n.startswith(BACKGROUND_STEPS))
+    back = sum(t for n, t in steps if n.startswith(BACKGROUND_STEPS))
+    row = {"date": today(now), "mode": mode, "core_seconds": core, "background_seconds": back,
+           "steps": {n: t for n, t in steps}}
+    u = load(data)
+    runs = u.setdefault("runs", {})
+    runs[str(run_id)] = row
+    for k in sorted(runs, key=lambda k: runs[k].get("date", ""))[:-60]:      # 新しい 60 回だけ残す
+        runs.pop(k, None)
+    save(data, u)
+    return row
+
+
+def core_minutes_measured(data: Path) -> list[float]:
+    """控えにある毎日の更新（mode が daily）の、1〜3 の段の分数（新しい順）。後の書き戻しの段（約 1 分）は入らない。"""
+    runs = load(data).get("runs", {})
+    rows = sorted((r for r in runs.values() if r.get("mode") == "daily"), key=lambda r: r.get("date", ""), reverse=True)
+    return [round(r["core_seconds"] / 60, 1) for r in rows]
+
+
+_ROWS_READ = re.compile(r'"rows_read"\s*:\s*(\d+)')
+
+
+def rows_read_in_logs(paths: list[Path]) -> int:
+    """取得の段が D1 に送った文の rows_read の合計（wrangler d1 execute の出力を残したログから）。"""
+    n = 0
+    for p in paths:
+        try:
+            n += sum(int(x) for x in _ROWS_READ.findall(p.read_text(encoding="utf-8", errors="replace")))
+        except OSError:
+            continue
+    return n
+
+
+def d1_reads_24h(info_path: Path | None) -> int | None:
+    """wrangler d1 info --json の rows_read_24h（D1 の分析から、Worker と取得の合計。直近 24 時間）。読めなければ None。"""
+    if not info_path or not info_path.exists():
+        return None
+    try:
+        v = json.loads(info_path.read_text(encoding="utf-8")).get("rows_read_24h")
+    except (ValueError, AttributeError):
+        return None
+    return int(v) if isinstance(v, (int, float)) else None
 
 
 # ── 点検 ──
 def check(data: Path, by_day: list[int] | None, worker_usage: dict | None,
-          now: dt.datetime | None = None) -> list[dict]:
+          now: dt.datetime | None = None, d1_reads: int | None = None) -> list[dict]:
     """使った量と上限の表。worker_usage は D1 の usage 表（k -> n）。読めなかったものは -1（注意にする）。"""
     u = load(data)
     rows = [
@@ -288,13 +392,48 @@ def check(data: Path, by_day: list[int] | None, worker_usage: dict | None,
          -1 if worker_usage is None else int(worker_usage.get(f"r2_get:{month(now)}", 0)) + r2_class_b(u, now),
          CAPS["r2_class_b_month"], FREE["r2_class_b_month"]),
     ]
+    rows.insert(1, ("D1 の読み出し（直近 24 時間・Worker と取得の合計）", -2 if d1_reads is None else d1_reads,
+                    CAPS["d1_reads_day"], FREE["d1_reads_day"]))
     if by_day is not None:
         rows.insert(0, ("GitHub Actions（直近 31 日・分）", sum(by_day), CAPS["actions_minutes_31d"],
                         FREE["actions_minutes_month"]))
     else:
         rows.insert(0, ("GitHub Actions（直近 31 日・分）", -1, CAPS["actions_minutes_31d"], FREE["actions_minutes_month"]))
-    return [{"what": w, "used": n, "cap": c, "free": f,
-             "ok": n >= 0 and n <= c * WARN} for w, n, c, f in rows]
+    # used: -1 読めなかった（本当のエラー）・-2 読めなかったが、無くても取得の守りは効く（D1 の分析。鍵に権限が無いなど）
+    return [{"what": w, "used": n, "cap": c, "free": f, "ok": (n >= 0 and n <= c * WARN) or n == -2,
+             "unread": n < 0} for w, n, c, f in rows]
+
+
+def notify(title: str, body: str, repo: str | None = None, token: str | None = None, get=_get, post=None) -> str:
+    """持ち主に知らせる（このリポジトリの issue）。開いている同じ題の issue があればコメントを足す。
+    前は段を失敗させて GitHub のメールで知らせていたが、保存まで済んだ実行も失敗に見えた（dec-crawl-tiers）。"""
+    repo = repo or os.environ.get("GITHUB_REPOSITORY", "")
+    token = token or os.environ.get("GITHUB_TOKEN", "")
+    if not repo or not token:
+        return "skipped"
+    post = post or _post
+    api = f"https://api.github.com/repos/{repo}/issues"
+    try:
+        same = [i for i in get(f"{api}?state=open&per_page=100", token) if i.get("title") == title and "pull_request" not in i]
+        if same:
+            post(f"{api}/{same[0]['number']}/comments", token, {"body": body})
+            return "commented"
+        post(api, token, {"title": title, "body": body})
+        return "opened"
+    except Exception as e:                                          # noqa: BLE001
+        print(f"::warning::持ち主に知らせる issue を書けなかった（{type(e).__name__}: {e}）")
+        return "failed"
+
+
+def _post(url: str, token: str, payload: dict) -> dict:
+    req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), method="POST",
+                                 headers={"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json",
+                                          "X-GitHub-Api-Version": "2022-11-28", "Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=30) as r:
+        return json.loads(r.read().decode("utf-8"))
+
+
+NOTIFY_TITLE = "無料枠の注意（取得）"
 
 
 def _actions(now: dt.datetime) -> list[int] | None:
@@ -322,18 +461,30 @@ def main() -> int:
     ap.add_argument("--data", type=Path, default=Path(__file__).resolve().parents[2] / "data")
     ap.add_argument("--mode", default="daily", choices=["daily", "weekly", "index", "replay", "drill", "stories"])
     ap.add_argument("--d1-usage", type=Path, help="wrangler d1 execute --json の出力（usage 表）")
+    ap.add_argument("--d1-info", type=Path, help="wrangler d1 info --json の出力（rows_read_24h）")
+    ap.add_argument("--d1-logs", type=Path, nargs="*", default=[], help="取得の段が残した wrangler d1 execute の出力")
+    ap.add_argument("--run-mode", default="", help="check: この実行の mode（段ごとの時間を控えるとき）")
     a = ap.parse_args()
     now = utc_now()
     by_day = _actions(now)
     if a.action == "plan":
         p = plan(by_day, a.mode)
         print(json.dumps(p, ensure_ascii=False))
-        _out({"poster_minutes": 0, "poster_timeout": 1,
-              **{k: v for k, v in p.items() if k in ("run", "mode", "catalog_minutes", "past_minutes", "past_limit", "past_timeout",
-                                                     "poster_minutes", "poster_timeout")}})
+        _out({k: v for k, v in p.items() if k in ("run", "mode", "catalog_minutes", "discover_minutes", "past_minutes",
+                                                   "past_limit", "past_timeout", "poster_minutes", "poster_timeout",
+                                                   "upload_minutes", "upload_timeout", "past_index")})
         if p["note"]:
             print(f"::warning::{p['note']}")
         if not p["run"]:
+            # 予算が足りずに止めるのはエラーではない（使う前に止めるのが守り）。失敗にはせず、毎日の更新が止まったときだけ知らせる
+            # 失敗にしないのは、あとの段が run を見て止まる新しい catalog.yml（TAGURI_PLAN_SOFT_STOP=1）のときだけ。
+            # 古い catalog.yml はこの段の失敗であとの段を止めている
+            if a.mode in ("daily", "weekly") and os.environ.get("TAGURI_PLAN_SOFT_STOP") == "1":
+                notify(NOTIFY_TITLE, f"{today(now)} の取得（{a.mode}）を動かさなかった: {p['note']}\n\n"
+                       f"直近 31 日 {p.get('used_31d')} 分・見込み {p.get('worst_31d')} 分（上限 {CAPS['actions_minutes_31d']} 分）")
+                return 0
+            # 手で動かすもの（再生・予行・本文・索引だけ）は、動かなかったことが押した人に見えるよう失敗にする
+            # （あとの段は、この段の失敗で止まる）
             print(f"::error::{p['note']}")
             return 1
         return 0
@@ -344,19 +495,50 @@ def main() -> int:
             worker = {r["k"]: r["n"] for r in res[0]["results"]}
         except (ValueError, KeyError, IndexError, TypeError):
             worker = None
-    rows = check(a.data, by_day, worker, now)
+    reads24 = d1_reads_24h(a.d1_info)
+    rows = check(a.data, by_day, worker, now, reads24)
     lines = ["| 項目 | 使った量 | 上限（たぐり） | 無料枠 | |", "|---|---:|---:|---:|---|"]
     for r in rows:
         used = "読めなかった" if r["used"] < 0 else f"{r['used']:,}"
-        lines.append(f"| {r['what']} | {used} | {r['cap']:,} | {r['free']:,} | {'ok' if r['ok'] else '**注意**'} |")
-    print("\n".join(lines))
+        lines.append(f"| {r['what']} | {used} | {r['cap']:,} | {r['free']:,} | {'ok' if r['ok'] and not r['unread'] else '**注意**'} |")
+    crawl_reads = rows_read_in_logs(a.d1_logs)
+    if a.d1_logs:
+        u = load(a.data)
+        u.setdefault("d1_reads", {})[today(now)] = int(u.get("d1_reads", {}).get(today(now), 0)) + crawl_reads
+        save(a.data, u)
+        lines.append(f"| D1 の読み出し（この実行の取得の段） | {crawl_reads:,} | | | |")
+    # この実行の段ごとの時間（毎日の更新の見積もり 15 分を実測で確かめる）
+    timing = []
+    repo, token, run_id = os.environ.get("GITHUB_REPOSITORY", ""), os.environ.get("GITHUB_TOKEN", ""), os.environ.get("GITHUB_RUN_ID", "")
+    if repo and token and run_id and a.run_mode:
+        try:
+            row = record_run(a.data, run_id, a.run_mode, run_steps(repo, token, run_id), now)
+            past = core_minutes_measured(a.data)
+            timing = ["", f"この実行（{a.run_mode}）: 毎日の更新（1〜3）の段 {row['core_seconds'] / 60:.1f} 分・"
+                      f"下位の処理（4・5）の段 {row['background_seconds'] / 60:.1f} 分（このあとの書き戻しの約 1 分は入らない）",
+                      f"毎日の更新の実測（新しい順、{len(past)} 回）: {', '.join(str(x) for x in past[:10])} 分"
+                      f" ── 見積もりは {CATALOG_MINUTES['daily']} 分",
+                      "", "| 段 | 秒 |", "|---|---:|", *[f"| {n} | {t} |" for n, t in row["steps"].items()]]
+        except Exception as e:                                      # noqa: BLE001
+            timing = ["", f"段ごとの時間が読めなかった（{type(e).__name__}）"]
+    print("\n".join(lines + timing))
     if os.environ.get("GITHUB_STEP_SUMMARY"):
         with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as f:
-            f.write("## 無料枠\n\n" + "\n".join(lines) + "\n")
-    bad = [r for r in rows if not r["ok"]]
-    for r in bad:
-        print(f"::error::無料枠の注意: {r['what']} が上限の {int(WARN * 100)}% を越えたか、読めなかった")
-    return 1 if bad else 0
+            f.write("## 無料枠\n\n" + "\n".join(lines + timing) + "\n")
+    errors = [r for r in rows if r["used"] == -1]
+    warns = [r for r in rows if not r["ok"] and r["used"] != -1]
+    for r in rows:
+        if r["used"] == -2:
+            print(f"::warning::{r['what']} が読めなかった（鍵に D1 の分析を読む権限が無いかもしれない）")
+    for r in warns:
+        print(f"::warning::無料枠の注意: {r['what']} が上限の {int(WARN * 100)}% を越えた（{r['used']:,} / {r['cap']:,}）")
+    if warns:
+        notify(NOTIFY_TITLE, f"{today(now)} の点検で、上限の {int(WARN * 100)}% を越えたもの:\n\n"
+               + "\n".join(f"- {r['what']}: {r['used']:,} / {r['cap']:,}（無料枠 {r['free']:,}）" for r in warns))
+    # 本当のエラー（数えが読めない）は隠さない。上限の手前の注意は、保存まで済ませるために失敗にしない
+    for r in errors:
+        print(f"::error::無料枠の点検: {r['what']} が読めなかった")
+    return 1 if errors else 0
 
 
 if __name__ == "__main__":

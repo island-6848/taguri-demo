@@ -5,6 +5,7 @@
 // the Python text speaks of the Render server: the アカウント card (recovery codes on Render)
 // points to the account page, the mail import is the owner's only, and 「観ればよかった」 is
 // looked up in the stages already in D1 instead of fetching the web.
+import {sharesCardHtml} from '../share.js';
 import {registerDialogHtml} from './register-dialog.js';
 import {scaleOf, scaleCardHtml, SCALE_LABEL, frac} from './grade.js';
 import {FAV_SEED_W} from '../recommend.js';
@@ -13,12 +14,13 @@ import {E, ValueError} from './py.js';
 import {ico, h2} from './icons.js';
 import {PREFS, readPrefSetting, regionsHtml, regionCounts, prefSettingAction} from './prefs.js';
 import {rankedGroups, prefCounts} from './recommend.js';
-import {KINDS, loadDeclared, favRoleBox, reactionsOf} from './lists.js';
+import {KINDS, loadDeclared, favRoleBox, reactionsOf, loadDeclined, loadKindOff, reasonOffCardHtml} from './lists.js';
 import {stageInfo} from './fallback.js';
 import {loadWorks, titleKey, DROP_KEEP_DAYS, expiredKeys} from './works.js';
 import {dateParts} from './row.js';
 import {splitNames} from './cast.js';
 import {optedOut, optoutCardHtml, optoutAction} from './evalrec.js';
+import {consented, consentCardHtml, consentAction} from '../note-ai.js';
 
 const cardH2 = (name, text, extra = '') => `<summary>${h2(name, text, extra)}</summary>`;
 
@@ -173,7 +175,7 @@ export async function settingsScreen(_params, ctx) {
 <b>いくつでも同時に選べます。</b><br>
 <b>すでに「興味あり」を押した公演・お気に入り・買った券には影響しません。</b>
 一度決めたことを、この設定で見えなくすることはありません。</p>
-<form class="pfil" id="pref-setting" onsubmit="return false">
+<form class="pfil" id="pref-setting" data-nosubmit>
 ${regionsHtml(counts, rcounts, true)}
 <div class="pchips">${chips}</div>
 <div class="pfoot"><button type="button" data-set-pref="1">${ico('gear')}この都道府県を既定にする</button>
@@ -184,6 +186,12 @@ ${await (async () => { const sc = await scaleOf(ctx); return scaleCardHtml(sc, c
 <details class="card">${cardH2('gear', 'アカウント')}
 <p class="lead">表示名・ログインの方法・パスキー・ログアウト・アカウントの削除は、<a href="/account">アカウント</a>の画面にまとめてあります。</p></details>
 ${await (async () => { const off = await optedOut(ctx); return optoutCardHtml(off, cardH2('gear', '推薦の改善の分析', `<span class="badge part">いまは${off ? '分析に使わない' : '分析に使ってよい'}</span>`)); })()}
+${await (async () => { const on = await consented(ctx); return consentCardHtml(on, cardH2('gear', '感想の AI 読み取り', `<span class="badge part">いまは${on ? '同意している' : '同意していない'}</span>`)); })()}
+${await (async () => {
+  const [words, kinds] = await Promise.all([loadDeclined(ctx), loadKindOff(ctx)]);
+  return reasonOffCardHtml(words, kinds, n => cardH2('flag', '外したおすすめ理由', n ? `<span class="badge part">${n} 件</span>` : ''));
+})()}
+${await sharesCardHtml(ctx)}
 ${await exportCardHtml(ctx)}
 ${droppedHtml(await droppedRows(ctx))}
 ${skippedHtml(works.filter(w => w.unseen))}`;
@@ -467,7 +475,7 @@ async function missedAction(b, ctx) {
 
 export const settingsScreens = {
   screens: {settings: settingsScreen, start: startScreen, register: registerScreen},
-  actions: {pref_setting: prefSettingAction, missed: missedAction, analysis_optout: optoutAction},
+  actions: {pref_setting: prefSettingAction, missed: missedAction, analysis_optout: optoutAction, note_ai: consentAction},
 };
 
 

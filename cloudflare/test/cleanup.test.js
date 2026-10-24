@@ -55,6 +55,8 @@ const NOT_RECORDS = {
   passkeys: 'ログインの手段',
   webauthn_challenges: 'ログインの途中',
   fix_request: '公演修正依頼（消すときはトリガーで本文と利用者だけ外す）',
+  share: '共有リンク（記録の見せ方の設定。記録が無ければ見せるものも無い）',
+  note_ai: '感想を AI で読み取った結果（感想から作り直せる。感想が無ければ行も無い）',
 };
 const userTables = sqlite => sqlite.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map(r => r.name)
   .filter(t => sqlite.prepare(`PRAGMA table_info(${t})`).all().some(c => c.name === 'user_id')).sort();

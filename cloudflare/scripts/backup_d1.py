@@ -273,6 +273,9 @@ def drill(data: Path, get=r2_get) -> dict:
     passphrase = os.environ.get("BACKUP_PASSPHRASE", "")
     if not passphrase:
         return {"skipped": "BACKUP_PASSPHRASE が無い"}
+    # 予行は作り直して消す D1 にだけ書く。名前を書き間違えて本番を消さないよう、ここで止める（#74、データの安全を先に）
+    if DRILL_DB == DB_NAME or not DRILL_DB.startswith("taguri-restore"):
+        raise SystemExit(f"予行の D1 の名前 {DRILL_DB!r} が本番と同じか、予行用の名前でないので止めた")
     # 取得の作業データを使わずに、今日から 3 日前までの控えを新しい順に探す
     t0 = time.monotonic()
     key, body = None, b""

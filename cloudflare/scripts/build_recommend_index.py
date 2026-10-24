@@ -618,7 +618,7 @@ def _stage_of(table: str, key: str) -> str:
 
 
 def diff_sql(index: dict, prev: dict, onboarding: list[str] | None = None,
-             limit: int | None = None) -> tuple[list[str], dict, dict]:
+             limit: int | None = None, today: str | None = None) -> tuple[list[str], dict, dict]:
     """(statements, hashes to keep for next time, counts). prev: table -> {key: hash} from last delivery.
 
     limit: at most this many rows changed or deleted in one delivery (the day's D1 write budget). When the
@@ -675,6 +675,8 @@ def diff_sql(index: dict, prev: dict, onboarding: list[str] | None = None,
         counts["deleted"] += len(gone)
         if table == "rec_stage":
             counts["stages_upserted"] = len(upsert) + len(gone)
+    if today:
+        hashes.update(seen_dates(hashes, prev, today))
     rev = version_of(index)
     # 途中まで入れた日は、控えを捨てる合図を「版-残り件数」にする（全部入ってから版そのものにする）
     shown = rev if not counts["left"] else f"{rev}-left{counts['left']}"
@@ -685,6 +687,26 @@ def diff_sql(index: dict, prev: dict, onboarding: list[str] | None = None,
     stmts.append(f"INSERT INTO rec_meta(k,v) VALUES('current',{_q(LIVE)}) ON CONFLICT(k) DO UPDATE SET v=excluded.v;")
     counts["rev"] = rev
     return stmts, hashes, counts
+
+
+# ---------------------------------------------------------------- 載った日（#72）
+# 再生（replay_eval）は今日の索引で過去の日 t を測るので、日 t より後に載った公演が候補に入る。索引の控え（ハッシュ）と
+# いっしょに、公演ごとに [D1 に初めて入れた日, 中身（題名・日付・出演者）を最後に変えた日, 中身のハッシュ] を残す。
+# 作業データ（state ブランチの d1/index-hashes.json）に置くだけで、D1・R2 の無料枠は使わない。
+# 控えを始めた日（SEEN_SINCE）に入っていた公演は、それより前のいつ載ったか分からない。
+SEEN, SEEN_SINCE = "_seen", "_seen_since"
+
+
+def seen_dates(hashes: dict, prev: dict, today: str) -> dict:
+    """{SEEN: {stage_id: [first, changed, hash]}, SEEN_SINCE: date}. Only stages actually sent (hashes) count."""
+    old = prev.get(SEEN) or {}
+    since = prev.get(SEEN_SINCE) or today
+    seen = {}
+    for sid, h in (hashes.get("rec_stage") or {}).items():
+        content = h + (hashes.get("rec_people") or {}).get(sid, "")
+        first, changed, before = old.get(sid) or (today, today, content)
+        seen[sid] = [first, changed if before == content else today, content]
+    return {SEEN: seen, SEEN_SINCE: since}
 
 
 def gram_rows(index: dict, ver: str) -> list[tuple]:
@@ -756,7 +778,8 @@ def main() -> int:
     counts = None
     if a.hashes_out:
         prev = json.loads(a.prev_hashes.read_text(encoding="utf-8")) if a.prev_hashes and a.prev_hashes.exists() else {}
-        stmts, hashes, counts = diff_sql(index, prev, onboarding_list(index, a.today), a.max_rows)
+        stmts, hashes, counts = diff_sql(index, prev, onboarding_list(index, a.today), a.max_rows,
+                                          a.today.isoformat())
         a.hashes_out.write_text(json.dumps(hashes, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     else:
         stmts = to_sql(index, version_of(index), onboarding_list(index, a.today))

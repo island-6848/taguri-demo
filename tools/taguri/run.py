@@ -195,6 +195,9 @@ def main() -> int:
     ap.add_argument("--top", type=int, default=15)
     ap.add_argument("--fetch", action="store_true",
                     help="候補とあらすじを取り直す（月 1 回・新規と前回空だった分だけ取るので約 5 分）")
+    ap.add_argument("--discover", type=float, default=None, metavar="MINUTES",
+                    help="--fetch でない日も、サイトマップで新しく載った公演と更新日が変わったこれからの公演だけを読む。"
+                         "公演ページを読む時間の上限（分）を渡す（毎日の取得、dec-crawl-tiers）")
     ap.add_argument("--mail", action="store_true",
                     help="購入確認メールの差分を取る（Gmail の認証が要る）")
     ap.add_argument("--no-open", action="store_true", help="画面を開かずに終わる")
@@ -246,6 +249,12 @@ def main() -> int:
         # あらすじを同じ 1 回で取るためである** ── 分けると、次の月まで空のままになる
         sh(["tools/credits/link_works.py"], required=False, tag="link")
         sh(["tools/credits/extract_theme_llm.py", "--side", "both"], required=False, tag="themes")
+    elif a.discover is not None:
+        # **新しい公演の発見はいちばん先に、毎日。** 前は週 1 の取り直し（--fetch）の中だけで、新しく載った公演が
+        # 最長 1 週間（週 1 が止まればそれ以上）出なかった。サイトマップの差分だけを読み、時間の上限で止めたら続きは次回
+        # （dec-crawl-tiers）。あらすじは次の段（読み取り待ちに足す、控えたページだけ）に任せる
+        sh(["tools/review/fetch_candidates.py", "--today", a.today, "--no-synopsis", "--max-minutes", str(a.discover)],
+           required=False, tag="candidates")
     else:
         print("  手元の候補とあらすじをそのまま使う")
 

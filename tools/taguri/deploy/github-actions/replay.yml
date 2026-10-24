@@ -19,6 +19,11 @@ on:
         description: '区切りの長さ（日）'
         required: false
         default: '7'
+      curve:
+        description: '学習曲線も出す（評価を古いほうから k 件だけ残して測る。#103。時間が数倍かかる）'
+        type: boolean
+        required: false
+        default: false
 
 concurrency:
   group: replay
@@ -61,4 +66,5 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           OWNER: ${{ github.event.inputs.owner }}
           STEP_DAYS: ${{ github.event.inputs.step_days || '7' }}
-        run: python cloudflare/scripts/replay_job.py --data data --owner "$OWNER" --step-days "$STEP_DAYS"
+          CURVE: ${{ github.event.inputs.curve == 'true' && '--curve' || '' }}
+        run: python cloudflare/scripts/replay_job.py --data data --owner "$OWNER" --step-days "$STEP_DAYS" $CURVE

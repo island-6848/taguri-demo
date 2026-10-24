@@ -1,4 +1,5 @@
 import {withCard, PREVIEW_BOT} from './link-card.js';
+import {publicShare} from './share.js';
 import {assetLinksResponse} from './app-links.js';
 import {SESSION_TTL} from './session-policy.js';
 import {deleteAccountStatements, sweepEmptyAccounts} from './cleanup.js';
@@ -12,6 +13,8 @@ import {recommendApi} from './screens/recommend.js';
 import {searchIndex, d1Search} from './stage-search.js';
 import {suggest, stageTimes} from './screens/suggest.js';
 import {readPost} from './x-post.js';
+import {runNoteAi} from './note-ai.js';
+import {reminderDetails} from './screens/reminder.js';
 import {exportPayload} from './screens/settings.js';
 import {R2_READS_CAP, r2ReadAllowed, d1RoomLeft, d1Bytes, D1_BYTES_CAP, MAX_ACCOUNTS} from './free-tier.js';
 import {rateLimit, checkNewAccount, guardedUserInsert, countNewAccount, confirmNewAccount, rateLimitHealth} from './rate-limit.js';
@@ -446,6 +449,17 @@ async function nativeRoute(request, env, url) {
       return json({ok:false,error:error.status ? error.message : '読めませんでした。'}, error.status ?? 500);
     }
   }
+  // 開幕リマインドの行を開いたときの中身（screens/reminder.reminderDetails）。1 回 20 件まで。公開の公演の情報だけ
+  if (allNative(env) && request.method === 'GET' && url.pathname === '/api/reminder_detail') {
+    try {
+      await user(request, env.DB);
+      const sids = [...new Set(String(url.searchParams.get('sids') || '').split(',').map(x => x.trim()).filter(x => /^[\w-]{1,40}$/.test(x)))].slice(0, 20);
+      const m = sids.length ? await reminderDetails({db: env.DB}, sids) : new Map();
+      return json({ok: true, html: Object.fromEntries(m)});
+    } catch (error) {
+      return json({ok:false,error:error.status ? error.message : '読めませんでした。'}, error.status ?? 500);
+    }
+  }
   // 感想の欄に貼った X のポストの本文（x-post.js）。ログインしている人だけ。D1 は読まない（ログインの確かめだけ）
   if (allNative(env) && request.method === 'GET' && url.pathname === '/api/x_post') {
     try {
@@ -491,7 +505,7 @@ async function nativeRoute(request, env, url) {
   try {
     const uid = await user(request, env.DB);
     // env.CLOCK exists only in tests (an object cannot come from wrangler vars).
-    const ctx = {db: env.DB, env, uid, today: env.CLOCK?.today ?? jstToday(), now: env.CLOCK?.now ?? Date.now()};
+    const ctx = {db: env.DB, env, uid, today: env.CLOCK?.today ?? jstToday(), now: env.CLOCK?.now ?? Date.now(), origin: url.origin};
     if (isScreen) {
       const body = await nativeScreenBody(m[1], url.searchParams, ctx);
       // 規約の版が上がっていたら、画面が同意を求める（terms.agreeAction）
@@ -561,6 +575,9 @@ export default {
     ctx.waitUntil(sweepEmptyAccounts(env.DB).then(n => { if (n) console.log(`empty accounts removed: ${n}`); }));
     // 対応済みの公演修正依頼の本文・行を期限で消す（issue #129）
     ctx.waitUntil(purgeFixRequests(env.DB).then(r => { if (r.cleared || r.removed) console.log(`fix_request purged: ${r.cleared} bodies, ${r.removed} rows`); }));
+    // 同意した人の感想を AI で読み取る（note-ai.js、dec-note-ai）。鍵（ANTHROPIC_API_KEY）が無ければ何もしない。本文はログに出さない
+    ctx.waitUntil(runNoteAi(env).then(r => { if (r.sent || r.stopped) console.log(`note_ai: ${r.sent} requests, ${r.saved} notes, stopped=${r.stopped}`); })
+      .catch(e => console.error('note_ai failed', e && e.message)));
   },
   // 画面や API の途中で思わぬ失敗（D1 が答えない・上限に届いた など）が起きたら、Cloudflare の英語の
   // 「Error 1101: Worker threw exception」ではなく、日本語の案内を返す（起案者の指示 2026-10-21「案内入れてよい」。
@@ -579,6 +596,9 @@ export default {
     if (limited) return limited;
     // Android アプリとの結び付け（app-links.js）。ログインの前に Google が読むので gate より先
     if (url.pathname === '/.well-known/assetlinks.json' && request.method === 'GET') return assetLinksResponse();
+    // 共有リンク（share.js、dec-share-links）。本人が選んだものだけを、リンクを知る人にログインなしで見せる。gate より先
+    const shared = await publicShare(request, env, url);
+    if (shared) return shared;
     const blocked = await gate(request, env, url);
     if (blocked) return blocked;
     // たぐりとは and ログイン are one page now; old links to /about still land there.
