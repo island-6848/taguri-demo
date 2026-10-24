@@ -1471,9 +1471,20 @@
   {
    "id": "dec-fill-below",
    "type": "decision",
-   "status": "adopted",
+   "status": "superseded",
    "date": "2026-10-20",
    "title": "おすすめで答えたときの入れ替わりの 1 枚は、押したカードのすぐ下に出す（画面全体は読み込み直さない）",
+   "sources": [
+    "web/app.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-fill-bottom",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-24",
+   "title": "おすすめで答えたときの入れ替わりの 1 枚は、一覧のいちばん下に足す（押したカードのすぐ下はやめる）",
    "sources": [
     "web/app.js"
    ],
@@ -2707,6 +2718,21 @@
    "date": "2026-10-13",
    "title": "推薦の改善は、先に測る仕組みを作ってから計算を変える",
    "sources": [],
+   "verifies": []
+  },
+  {
+   "id": "dec-reco-nightly",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-24",
+   "title": "おすすめは取得の夜の段で全員分を前もって作り、Worker は古い控えを計算し直さずに出す（答えた公演だけ外す。順位は毎朝変わる）",
+   "sources": [
+    "cloudflare/scripts/nightly_reco.mjs",
+    "cloudflare/src/screens/recommend.js",
+    "tools/taguri/deploy/github-actions/catalog.yml",
+    "cloudflare/test/nightly-reco.test.js",
+    "cloudflare/test/reco-stale.test.js"
+   ],
    "verifies": []
   },
   {
@@ -7079,6 +7105,18 @@
    "verifies": []
   },
   {
+   "id": "q-backup-export-blocks",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-24",
+   "title": "毎日の控え（backup_d1.py）は wrangler d1 export を使う。export のあいだ D1 が答えなくなるなら、夜に数十秒サイトが止まっているのではないか",
+   "sources": [
+    "cloudflare/scripts/backup_d1.py",
+    "https://developers.cloudflare.com/api/resources/d1/subresources/database/methods/export/"
+   ],
+   "verifies": []
+  },
+  {
    "id": "q-branch-builds-fail",
    "type": "question",
    "status": "answered",
@@ -8154,7 +8192,7 @@
   {
    "id": "q-reco-cpu-structure",
    "type": "question",
-   "status": "open",
+   "status": "answered",
    "date": "2026-10-18",
    "title": "評価が数十件を越える利用者の推薦を Workers Free の 10 ms に収めるには、計算の形をどう変えるか（点数付けを D1 の SQL に移す・点数を付ける人数に上限・書くときに計算・計算を分ける）",
    "sources": [
@@ -10424,6 +10462,16 @@
    "to": "comp-cf-worker"
   },
   {
+   "from": "dec-fill-bottom",
+   "rel": "supersedes",
+   "to": "dec-fill-below"
+  },
+  {
+   "from": "dec-fill-bottom",
+   "rel": "affects",
+   "to": "comp-cf-worker"
+  },
+  {
    "from": "dec-firebase-auth",
    "rel": "affects",
    "to": "comp-firebase-login"
@@ -11272,6 +11320,21 @@
    "from": "dec-reco-measure-first",
    "rel": "supports",
    "to": "reco-plan-unmerged"
+  },
+  {
+   "from": "dec-reco-nightly",
+   "rel": "answers",
+   "to": "q-reco-cpu-structure"
+  },
+  {
+   "from": "dec-reco-nightly",
+   "rel": "depends_on",
+   "to": "f-reco-recompute-cpu-1021"
+  },
+  {
+   "from": "dec-reco-nightly",
+   "rel": "depends_on",
+   "to": "workers-free-cpu-10ms"
   },
   {
    "from": "dec-reco-on-worker",
@@ -14242,6 +14305,11 @@
    "from": "q-auto-link-past",
    "rel": "affects",
    "to": "q-past-stage-catalogue"
+  },
+  {
+   "from": "q-backup-export-blocks",
+   "rel": "raises",
+   "to": "dec-reco-nightly"
   },
   {
    "from": "q-branch-builds-fail",

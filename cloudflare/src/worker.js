@@ -678,7 +678,7 @@ export default {
       // alone misses two edits within the same second).
       if (!shrinkingPath(path, input) && !(await d1RoomLeft(env.DB, env))) fail(503, STORAGE_FULL);
       if (['/api/record','/api/record/delete','/api/reaction','/api/favourite','/api/import'].includes(path))
-        await env.DB.prepare('DELETE FROM rec_cache WHERE user_id=?').bind(uid).run();
+        await env.DB.prepare("UPDATE rec_cache SET stamp='' WHERE user_id=?").bind(uid).run();
       if (path === '/api/record') {
         const r = record(input);
         const existing = await env.DB.prepare('SELECT id FROM records WHERE user_id=? AND id=?').bind(uid,r.id).first();

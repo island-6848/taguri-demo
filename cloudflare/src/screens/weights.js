@@ -57,7 +57,7 @@ export async function weightAction(b, ctx) {
   // time to the second only, so two saves within a second would keep the old one.
   await ctx.db.batch([...rows.map(([k, v]) => ctx.db.prepare('INSERT INTO rank_weight(user_id,grp,step,updated_at) VALUES(?,?,?,?)'
     + ' ON CONFLICT(user_id,grp) DO UPDATE SET step=excluded.step, updated_at=excluded.updated_at').bind(ctx.uid, k, v, at)),
-  ctx.db.prepare('DELETE FROM rec_cache WHERE user_id=?').bind(ctx.uid)]);
+  ctx.db.prepare("UPDATE rec_cache SET stamp='' WHERE user_id=?").bind(ctx.uid)]);
   if (rows.length === 1 && !(ws && typeof ws === 'object')) {
     const [k, v] = rows[0];
     return {body: {ok: true, grp: k, label: GROUP_LABEL[k], step: v}};

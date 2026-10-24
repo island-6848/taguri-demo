@@ -1,7 +1,7 @@
 ---
 id: q-reco-cpu-structure
 type: question
-status: open
+status: answered
 date: 2026-10-18
 title: 評価が数十件を越える利用者の推薦を Workers Free の 10 ms に収めるには、計算の形をどう変えるか（点数付けを D1 の SQL に移す・点数を付ける人数に上限・書くときに計算・計算を分ける）
 sources:

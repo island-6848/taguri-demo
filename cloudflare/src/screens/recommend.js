@@ -428,6 +428,23 @@ async function answered(ctx) {
 }
 
 /**
+ * 古い控え（印が今と違う）を、計算し直さずに出す（dec-reco-nightly）。控えを作ったあとに答えた公演と、観劇記録に
+ * 入れた公演は、束ごと外す（計算するときと同じ: 答えた公演・記録にある公演は出さない）。ツアーのほかの会場で答えた
+ * 公演も外す（答えはツアーの全会場に写すので、同じ）。読むのは本人の reaction と works の stage_id だけ
+ */
+async function staleGroups(ctx, body) {
+  const done = await answered(ctx);
+  const {results} = await ctx.db.prepare('SELECT stage_id FROM works WHERE user_id=? AND stage_id IS NOT NULL').bind(ctx.uid).all();
+  for (const r of results) done.add(String(r.stage_id));
+  const out = [];
+  for (const g of body.groups || []) {
+    if (done.has(g.stage_id) || (g.venues || []).some(v => done.has(v.stage_id))) continue;
+    out.push(g);
+  }
+  return {...body, groups: out, titles: new Map(body.titles), cached: true, stale: true};
+}
+
+/**
  * Ranked productions for the user, one slot each, with every venue of the production
  * (stage_id, pref, start) so a prefecture filter can pick the venue. Cached in rec_cache
  * until the index, the date, or the user's works / favourites / reactions change.
@@ -461,6 +478,13 @@ export async function rankedGroups(ctx) {
     const body = JSON.parse(prev.body);
     return {...body, titles: new Map(body.titles), cached: true};
   }
+  // 控えが古くても、ここでは計算し直さない（起案者の決定 2026-10-24「A で進めて」、dec-reco-nightly）。計算し直しは
+  // 本番の大きさで評価 10 件で 17 ms・40 件で 37 ms あり、Workers Free の CPU 10 ms を越えて止められる
+  // （f-reco-recompute-cpu-1021）。全員分の計算は取得の夜の段（scripts/nightly_reco.mjs）で前もって作る。
+  // 古い控えからは、そのあと答えた公演・観劇記録に入れた公演だけを外して出す（順位は翌朝に変わる）。
+  // 控えが 1 行も無い人（登録した直後）と、夜の段の計算（ctx.recompute）だけがここから下で計算する。
+  // 試験は、計算の中身を確かめるために env.RECO_INLINE='1' で前のとおりその場で計算し直す（本番の wrangler の vars には無い）
+  if (prev && !ctx.recompute && !ctx.ablate && ctx.env?.RECO_INLINE !== '1') return staleGroups(ctx, JSON.parse(prev.body));
   // 「使わない」にした種類の理由（q-kind-reason-off）は、評価・興味あり・お気に入りのどこからも値を持たせない
   // 観劇記録（評価の有無を問わず）。評価した記録は学ぶ材料、まだの記録は種にし、どれもおすすめからは外す（dec-watched-unrated-seed）
   const allWorks = await loadWorks(ctx);
@@ -873,6 +897,8 @@ export async function recommendScreen(params, ctx) {
     head = `${where}でのあなたへのおすすめ ${cards.length} 件`;
     lede = `<p class="rcount"><b>${E(where)}</b>／${hit} 件中 上位 ${cards.length} 件を表示中</p>`;
   }
+  // 控えが古いまま出しているとき（dec-reco-nightly）: 順位は毎朝作り直すので、そのことを 1 行で伝える
+  if (data.stale && cards.length) lede += '<p class="rcount stalenote">評価や答えは、翌朝のおすすめの順位に反映されます（答えた公演はすぐ外れます）。</p>';
   // 推薦を出すためのワンポイント（起案者の指示 2026-10-14「なにがしたら出るか、使うユーザーが
   // わかりやすい文章で（技術的なことは書かないで）おすすめの初期画面に追加して」）。
   // 条件は new-user-reco-threshold: 公演とつながった記録が 2 件以上で、評価が 2 種類以上。
@@ -980,7 +1006,7 @@ export async function reactAction(b, ctx) {
     await ctx.db.batch([...ids.map(sid => ctx.db.prepare(`UPDATE reaction SET interest=NULL,owned=NULL,why=NULL,
       rank=NULL,score=NULL,ver=NULL,arm=NULL,updated_at=? WHERE user_id=? AND stage_id=?
       AND (interest IS NOT NULL OR owned IS NOT NULL)`).bind(new Date(ctx.now).toISOString(), ctx.uid, sid)),
-    ctx.db.prepare('DELETE FROM rec_cache WHERE user_id=?').bind(ctx.uid)]);
+    ctx.db.prepare("UPDATE rec_cache SET stamp='' WHERE user_id=?").bind(ctx.uid)]);
     return {body: {ok: true, saved: true, stage_id: stageId, value: '', cleared: true}};
   }
   if (b.fill_only) {
