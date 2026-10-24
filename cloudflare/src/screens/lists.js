@@ -122,7 +122,9 @@ export async function reactionsOf(ctx) {
     const d = out.get(r.stage_id) || {};
     // src: the screen the newest 興味あり／なし was pressed on ('reminder', 'search', 'screen' …)
     if (r.interest !== null) { d.interest = Number(r.interest); d.src = String(r.source || '').replace(/_tour$/, ''); }
-    if (r.owned !== null) d.owned = Number(r.owned);
+    // ownedCopy: the newest 購入済 was copied from another venue of the tour (source '…_tour'), not pressed here.
+    // A copy is not a ticket for this venue (起案者の指摘 2026-10-24、購入済の公演にツアーのほかの日程が出直した)
+    if (r.owned !== null) { d.owned = Number(r.owned); d.ownedCopy = String(r.source || '').endsWith('_tour'); }
     // at: when the newest 興味あり／持っている was pressed (the list's 「追加した新しい順」)
     if (r.interest !== null || r.owned !== null) d.at = String(r.updated_at || '');
     if (r.note !== null) d.note = r.note;
@@ -363,7 +365,8 @@ export function startPassed(date, time, ctx) {
 export async function promoteOwned(ctx) {
   const react = await reactionsOf(ctx);
   await promoteTickets(ctx, react);
-  const owned = [...react].filter(([, r]) => r.owned === 1).map(([sid]) => sid);
+  // ツアーのほかの会場へ写しただけの購入済（ownedCopy）は、記録にしない。行っていない会場の「観た」記録ができてしまう
+  const owned = [...react].filter(([, r]) => r.owned === 1 && !r.ownedCopy).map(([sid]) => sid);
   if (!owned.length) return;
   const have = new Set((await ctx.db.prepare('SELECT stage_id FROM works WHERE user_id=? AND stage_id IS NOT NULL').bind(ctx.uid).all()).results.map(r => r.stage_id));
   const todo = owned.filter(sid => !have.has(sid));
@@ -477,9 +480,16 @@ export async function buckets(ctx, {catalogue = false} = {}) {
       at: sids.map(x => react.get(x)?.at || '').sort().at(-1) || ''};
     if (r.owned === 1) {
       seen.add(key);
-      const done = doneDate(sids, row.end, tickets);
+      // 買った会場だけで、終わったかを見る: 自分で「購入済」を押した会場と、行く日を入れた会場（起案者の指摘 2026-10-24
+      // 「そのツアー日程を購入済に登録していないのであれば、この画面に出さないようにして」）。ツアーのカードで押すと
+      // 答えはほかの会場にも写るので、前は観終わったあとも、写しだけの会場の日程で一覧に出直した。
+      // 写ししか無い古い答えは、前と同じくツアー全体で見る
+      const mine = sids.filter(s => (react.get(s)?.owned === 1 && !react.get(s).ownedCopy) || (tickets.get(s) || []).length);
+      const ends = mine.map(s => group.find(v => v.stage_id === s)?.end || meta.get(s)?.end).filter(Boolean).sort();
+      const done = mine.length ? doneDate(mine, ends.at(-1) || row.end, tickets) : doneDate(sids, row.end, tickets);
       if (startPassed(done.date, done.time, ctx)) continue;
-      out.owned.push(row);
+      const at = mine.find(s => group.some(v => v.stage_id === s));
+      out.owned.push(at && at !== row.stage_id ? {...row, ...group.find(v => v.stage_id === at)} : row);
       // お気に入りの名前に当たる公演は、購入済みにしてもお気に入りの画面に残す（印を付けて。favOwned）。
       // 起案者の指示（2026-10-15）「購入済み押してもお気に入りから消さないで」。カレンダー・開幕リマインドは
       // 購入済みとして 1 回だけ出すので、favourites には入れない。

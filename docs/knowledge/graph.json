@@ -2174,6 +2174,19 @@
    "verifies": []
   },
   {
+   "id": "dec-owned-tour-copies",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-24",
+   "title": "ツアーのほかの会場へ写しただけの「購入済」は、買った印にしない。購入済の公演の一覧と「観た」記録づくりは、押した会場と行く日を入れた会場だけで見る",
+   "sources": [
+    "cloudflare/src/screens/lists.js",
+    "cloudflare/src/screens/recommend.js",
+    "cloudflare/test/owned-tour.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-page-pref-filter",
    "type": "decision",
    "status": "adopted",

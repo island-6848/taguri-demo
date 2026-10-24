@@ -278,11 +278,11 @@ export function tourBlock(venues, shown, today, prefs = []) {
     // 公演の回数は、開く前の日程の横に「（N 回）」（起案者の指示 2026-10-18。開いた中の「公演日時（N 回）」の見出しはやめた）
     // いま上演中の会場（初日から千穐楽までに今日が入る）は「・」を「●」に（起案者の指示 2026-10-18）。絞り込んだ県の会場は「★」のまま
     const live = v.start <= today && today <= end;
-    // 行頭の印は「・」の字ではなく、テーマの色の小さな菱形（theme.css）。上演中の会場は「●」をやめて「→」に
-    // （起案者の指示 2026-10-18「日程の箇条書きの『・』が味気ないので少しデザイン的に…『●』→『→』にして」）
-    const mark = isHere ? '<span class="tf-star" title="絞り込んだ都道府県の会場">★</span>'
-      : live ? '<span class="tf-dot live" title="いま上演中">→</span>' : '<span class="tf-dot" aria-hidden="true"></span>';
-    const head = `<span class="tf-when">${tour ? mark : ''}${E(when)}`
+    // 行頭の印は「・」の字ではなく、テーマの色の小さな菱形（theme.css）。上演中の会場は、行頭は同じ菱形のまま、
+    // 日程の後ろに「上演中」の小さな札を付ける（起案者の指示 2026-10-18「『●』→『→』にして」のあと、
+    // 2026-10-24「日時カレンダーの『→』を『上演中』に変えて」。3 文字は行頭の狭い場所に入らないので、日程の後ろへ）
+    const mark = isHere ? '<span class="tf-star" title="絞り込んだ都道府県の会場">★</span>' : '<span class="tf-dot" aria-hidden="true"></span>';
+    const head = `<span class="tf-when">${tour ? mark : ''}${E(when)}${tour && live ? '<span class="tf-live">上演中</span>' : ''}`
       + (grid && n ? `<span class="tf-cnt">（${n} 回${unsureIn(perf, v.start, end) ? '以上' : ''}）</span>` : '') + '</span>'
       + (tour ? `<span class="tf-loc">${E(where)}</span>` : '');
     const body = (price ? `<div class="tf-price">${price}</div>` : '') + (grid || '');
