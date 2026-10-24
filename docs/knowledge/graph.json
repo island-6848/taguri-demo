@@ -1318,6 +1318,24 @@
    ]
   },
   {
+   "id": "dec-empty-guides-1024",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-24",
+   "title": "空の画面の案内をそろえる（おすすめの見出し「たぐりへようこそ！」、公演カレンダー・評価一覧はイラスト付き、未評価 0 件は感謝）。眺めるの図の名前を「Storyline」にし、スマホで指 1 本で送れるようにした",
+   "sources": [
+    "cloudflare/src/screens/recommend.js",
+    "cloudflare/src/screens/lists.js",
+    "cloudflare/src/screens/calendar.js",
+    "cloudflare/src/screens/rate.js",
+    "cloudflare/src/screens/guide.js",
+    "tools/taguri/storyline.py",
+    "cloudflare/test/rate-empty.test.js",
+    "cloudflare/test/screens.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-entity-pages-keep",
    "type": "decision",
    "status": "adopted",

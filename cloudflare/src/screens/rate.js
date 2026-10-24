@@ -11,6 +11,7 @@ import {recRow, venueOf, venueKey, ico, h2, stageLabels} from './row.js';
 import {hashtagsHtml, noteTags} from './hashtags.js';
 import {promoteOwned} from './lists.js';
 import {rowInfos} from './rowinfo.js';
+import {emptyGuide} from './guide.js';
 import {peopleByKey, autoMerge} from './diary.js';
 
 /** serve.VERDICTS / charts.VERDICT_ORDER */
@@ -235,12 +236,6 @@ export async function posterFiles(ctx, works) {
 }
 
 // ---------------------------------------------------------------- screens
-/** app._rate_empty_next: 評価が 1 件も無いときに、次に押す先（#94）。未評価があればそこへ、記録が無ければ追加へ */
-function rateEmptyNext(b) {
-  if (b.unrated.length) return `<p class="empty-next"><a href="/rate/unrated?t=__TAGURI_TOKEN__">未評価の記録に評価する（${b.unrated.length}件）</a></p>`;
-  const lead = b.all.some(w => !w.unseen) ? '記録した公演は、上演が終わると未評価に並び、評価できるようになります。' : '観た公演を記録すると、ここで評価できます。';
-  return `<p class="empty-next">${lead}<a href="/register?t=__TAGURI_TOKEN__">観劇記録を追加</a></p>`;
-}
 /** app._rate_body (GET /api/screen/rate?v=&y=&venue=&p=) */
 async function rateScreen(params, ctx) {
   const verdict = qsFirst(params, 'v'), year = qsFirst(params, 'y'), venues = qsAll(params, 'venue');
@@ -254,7 +249,12 @@ async function rateScreen(params, ctx) {
   const stars = live.some(isStar), scaled = live.some(isScaled);
   const title = '評価一覧';
   if (!live.length) {
-    return {title, body_html: `<h1>評価一覧</h1>${verdictFig}<p class="empty">まだ評価が付いた記録はありません。</p>${rateEmptyNext(b)}`, note_tags: noteTags(b.all)};
+    // 評価が 1 件も無いときは、イラスト付きの案内（起案者の指示 2026-10-24「評価一覧の初期画面、おすすめと同じようにイラスト付きで
+    // ページ説明を書いて」）。未評価の記録があれば、そこへ進む口も添える（#94）。Python の画面は前の 1 行のまま（screens.test.js で読み替え）
+    const next = b.unrated.length ? `<p class="empty-next"><a href="/rate/unrated?t=__TAGURI_TOKEN__">未評価の記録に評価する（${b.unrated.length}件）</a></p>` : '';
+    return {title, body_html: `<h1>評価一覧</h1>${verdictFig}${emptyGuide('rate', '過去に観た舞台の評価一覧が表示されます。',
+      '<p>過去の観劇記録の追加は、右上の+ボタンまたは<a href="/register?t=__TAGURI_TOKEN__">こちら</a>。<br>'
+      + '「購入済」にした公演は、公演日時をすぎると自動的に評価一覧ページに表示されます。</p>')}${next}`, note_tags: noteTags(b.all)};
   }
   // 初めに開くのは「すべて」（起案者の指示 2026-10-19「評価一覧でデフォルトで開かれるのを『すべて』にして」。前は ◎ か、いちばん上の評価）
   const sel = (live.includes(sameGrade(verdict)) || verdict === 'all') ? (verdict === 'all' ? 'all' : sameGrade(verdict)) : 'all';
@@ -326,7 +326,12 @@ async function unratedScreen(_params, ctx) {
   return {title: '未評価', body_html: `<h1>未評価 ── ${unrated.length} 件</h1>
 <p class="lede">評価がまだ付いていない記録です。<b>上演日が分からない記録も含みます。</b>日付がないと上演が終わったかどうかを判定できないので、「まだ答えていない」には出てきません。${skipped}<br>
 <b>実際には観ていない公演が混じっていたら、各行の「公演詳細を直す」から外せます。</b>券を買って行かなかった公演と、舞台ではない記録は、そこで書き分けられます。どちらも、あとで戻せます。</p>
-${rows || '<p class="empty">評価が付いていない記録はありません。</p>'}`, note_tags: noteTags(b.all)};
+${rows || (b.rated.length
+  // 評価は付いていて、未評価が 0 件のときは感謝（起案者の指示 2026-10-24「未評価が0件（評価一覧は1個以上あるのに未評価は0件のとき）の画面に、
+  // 『ご回答ありがとうございました！』のような感謝の文章をイラスト付きで表示」）。Python の画面は前の 1 行のまま（screens.test.js で読み替え）
+  ? emptyGuide('thanks', 'ご回答ありがとうございました！', '<p>評価待ちの記録は、すべて評価していただきました。付けた評価は<a href="/rate?t=__TAGURI_TOKEN__">評価一覧</a>で見直せます。<br>'
+    + '新しく観た公演は、右上の+ボタンまたは「<a href="/register?t=__TAGURI_TOKEN__">観劇記録を追加</a>」から追加してください。</p>')
+  : '<p class="empty">評価が付いていない記録はありません。</p>')}`, note_tags: noteTags(b.all)};
 }
 
 /** app._notes_body (GET /api/screen/notes) */

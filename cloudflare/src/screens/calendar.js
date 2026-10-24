@@ -7,6 +7,7 @@ import {ico} from './icons.js';
 import {CALENDAR_JS} from './calendar_js.js';
 import {periodStart, periodEnd, regionLabel, runRange, workKey} from './reminder.js';
 import {PREFS} from './prefs.js';
+import {emptyGuide} from './guide.js';
 import {buckets} from './lists.js';
 
 export const KINDS = [['owned', 'すでに持っている', 'ticket', 'own'], ['tracking', '興味あり', 'flag', 'trk'], ['favourites', 'お気に入り', 'star', 'fav']];
@@ -269,6 +270,10 @@ export async function calendarScreen(params, ctx) {
   const d = Object.fromEntries(['owned', 'tracking', 'favourites'].map(k => [k, b[k].map(r => ent.get(r.stage_id)).filter(Boolean)]));
   const kinds = params.getAll('kind').filter(k => KIND_KEYS.includes(k));
   const prefs = params.getAll('pref').filter(p => PREFS.includes(p));
+  // 表示できる公演が 1 件も無いときは、説明の文と帯の代わりに、イラスト付きの案内だけを出す（起案者の指示 2026-10-24
+  // 「公演カレンダーの初期画面、おすすめと同じようにイラスト付きでページ説明を書いて」。panel は Python の stage_calendar と同じ形のまま）
+  if (!rowsOf(d, ctx.today, b.tickets).length) return {title: '公演カレンダー', body_html: `<h1>公演カレンダー</h1>
+${emptyGuide('calendar', 'カレンダーに表示できる公演がありません。', '<p>推薦の画面で「興味あり」を押した公演と、お気に入りに関連する公演の情報が表示されます。</p>')}`};
   const body = `<h1>公演カレンダー</h1>
 ${addTicketButtonHtml(d, ctx.today, b.tickets)}
 <p class="lede toinfo">券を持っている公演、「興味あり」を押した公演、お気に入りに登録した名前で見つかった公演を、上演期間の帯で並べています。<b>いつまで観られるか</b>が1枚で分かります。券を持っている公演は、行く日を入れるとその日が半券の形で出ます。</p>

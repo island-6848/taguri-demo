@@ -208,6 +208,12 @@
   root.call(d3.zoom().scaleExtent([1, 30])
     .translateExtent([[left, 0], [w - padR, h]])
     .extent([[left, 0], [w - padR, h]])
+    // **指 1 本の動きは、図の入れ物の横・縦の送りに任せる。**（起案者の指摘・2026-10-24「スマホだと図を
+    // スクロールできない」）d3 の拡大縮小は触れた指をすべて受け取り、入れ物が送れなかった。拡大縮小は指 2 本と
+    // ホイール・ドラッグ（マウス）だけで受ける
+    .filter(ev => (ev.type.startsWith("touch") ? ev.touches.length > 1 : !ev.button))
     // **位置はもう決まっているので、拡大縮小は写した px の上に掛ける**
-    .on("zoom", ev => { tr = ev.transform; draw(); }));
+    .on("zoom", ev => { tr = ev.transform; draw(); }))
+    // d3 は touch-action を none にして指の送りを止めるので、送りだけは戻す（指 2 本の拡大は d3 が受ける）
+    .style("touch-action", "pan-x pan-y");
 })();

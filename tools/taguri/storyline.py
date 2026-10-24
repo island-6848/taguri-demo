@@ -820,7 +820,7 @@ def panel(rated: list[dict], min_times: int = MIN_TIMES) -> str:
                           "X": xs, "width": width, "ticks": ticks,
                           "rowHref": CH.ROW_HREF}, ensure_ascii=False).replace("<", "\\u003c")
     # ↑ <script> の中に置くので「<」を逃がす（名前や題名に「</script>」があっても、そこで閉じない）
-    return f"""<div class="card wide">{IC.h2("light", "同じ作品で一緒だった人の流れ")}
+    return f"""<div class="card wide">{IC.h2("light", "Storyline")}
 <p class="lead"><b>1 本の線が 1 人、横が時間です。同じ作品に出た方の線はその日に束になります。</b>
 <b>● が「その日その作品に出ていた」印です。</b>束 1 つが 1 公演で、押すとその記録へ移動します。<br>
 <b>線の色は {len(ws)} つに分かれています。</b>
@@ -829,7 +829,7 @@ def panel(rated: list[dict], min_times: int = MIN_TIMES) -> str:
 {_recent_line(ws)}<br>
 線にしているのは <b>{min_times} 回以上観た {d["n_lines"]} 名</b>です。
 作り手が分かっている {d["n_credited"]} 件の記録には、のべ {d["n_people_all"]} 名が出てきます。
-横に引っぱると時間を伸ばせます。<b>線を押すと、その人の流れだけが浮き上がります。</b>
+横に引っぱると時間を伸ばせます（スマホでは指 2 本で広げます。指 1 本では図を送れます）。<b>線を押すと、その人の流れだけが浮き上がります。</b>
 何人でも選べます。背景を押すと戻ります。</p>
 <div class="sl-legend">{"".join(
     f'<span class="sl-k sl-w{w["loc"]}">{w["loc"] + 1} つめの世界 ── '
@@ -1094,7 +1094,13 @@ SCRIPT = """
   root.call(d3.zoom().scaleExtent([1, 30])
     .translateExtent([[left, 0], [w - padR, h]])
     .extent([[left, 0], [w - padR, h]])
+    // **指 1 本の動きは、図の入れ物の横・縦の送りに任せる。**（起案者の指摘・2026-10-24「スマホだと図を
+    // スクロールできない」）d3 の拡大縮小は触れた指をすべて受け取り、入れ物が送れなかった。拡大縮小は指 2 本と
+    // ホイール・ドラッグ（マウス）だけで受ける
+    .filter(ev => (ev.type.startsWith("touch") ? ev.touches.length > 1 : !ev.button))
     // **位置はもう決まっているので、拡大縮小は写した px の上に掛ける**
-    .on("zoom", ev => { tr = ev.transform; draw(); }));
+    .on("zoom", ev => { tr = ev.transform; draw(); }))
+    // d3 は touch-action を none にして指の送りを止めるので、送りだけは戻す（指 2 本の拡大は d3 が受ける）
+    .style("touch-action", "pan-x pan-y");
 })();
 """

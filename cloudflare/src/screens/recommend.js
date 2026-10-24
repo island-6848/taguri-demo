@@ -58,7 +58,7 @@ const tip = (n, art, head, body) => `<div class="tip"><div class="tip-t"><p clas
 const TIPS = `<section class="card tips">
 <h2>おすすめを出すためのワンポイント</h2>
 ${tip(1, 'record', '過去の観劇記録を2件以上追加する',
-  '<p>「<a href="/register?t=__TAGURI_TOKEN__">観劇記録を追加</a>」から、追加してください。<br>「<a href="/search?t=__TAGURI_TOKEN__">探す</a>」から公演名などで検索して追加することもできます。</p>')}
+  '<p>右上の+ボタンまたは「<a href="/register?t=__TAGURI_TOKEN__">観劇記録を追加</a>」から、追加してください。<br>「<a href="/search?t=__TAGURI_TOKEN__">探す</a>」から公演名などで検索して追加することもできます。</p>')}
 <p class="tip-or">または</p>
 ${tip(2, 'favourite', '好きな俳優・劇団・作品を「お気に入り」に登録する',
   '<p>「<a href="/recommend/favourites?t=__TAGURI_TOKEN__">お気に入り</a>」に好きな要素を追加してください。<br>共演者や題材などが推薦に反映されます。</p>')}
@@ -854,7 +854,8 @@ export async function recommendScreen(params, ctx) {
     head = '今週のあなたへのおすすめにはすべて答えました';
     lede = '';
   } else if (!prefs.length && !cards.length) {
-    head = '今週のあなたへのおすすめはありません';
+    // 使い始めでおすすめがまだ無いとき（起案者の指示 2026-10-24「『今週のあなたへのおすすめはありません』を『たぐりへようこそ！』にして」）
+    head = 'たぐりへようこそ！';
     // お気に入りを登録しているのに 0 件のときだけ、一文添える（起案者の答え 2026-10-18「C」。q-fav-reco-running-shows）。
     // 関わりのある人のほかの公演が、本人の公演だけ・終わった・もう始まっている、のどれかだと候補が無い
     const declared = await loadDeclared(ctx);
