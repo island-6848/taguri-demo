@@ -1,6 +1,6 @@
 // 「眺める」の storyline の図を描く（app.js の fixupStoryline が、画面に #sl-data が来るたびに読み込み直す）。
 // 前は app.js の中の文字列を <script> に入れて動かしていたが、それには CSP の 'unsafe-inline' が要る（#155）。
-// 中身は cloudflare/src/screens/storyline_js.js の STORYLINE_JS と同じ（storyline.py の SCRIPT から書き出したもの）。
+// storyline.py の SCRIPT を scripts/write_icons.py が書き出したもの（手で直さない）。
 
 (function () {
   const host = document.getElementById("sl");
@@ -205,7 +205,9 @@
   }
   draw();
 
-  root.call(d3.zoom().scaleExtent([1, 30])
+  // **指の操作は d3 に渡さない。** 渡すと図の上で横にも縦にも動かせなくなる（起案者の指摘 2026-10-24「図をスマホでもスクロール
+  // できるようにして」）。スマホは入れ物（.sl）の横のスクロールで時間をたどり、拡大縮小はマウスのドラッグとホイールだけにする
+  root.call(d3.zoom().scaleExtent([1, 30]).touchable(() => false)
     .translateExtent([[left, 0], [w - padR, h]])
     .extent([[left, 0], [w - padR, h]])
     // **位置はもう決まっているので、拡大縮小は写した px の上に掛ける**
