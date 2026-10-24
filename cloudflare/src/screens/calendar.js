@@ -264,13 +264,18 @@ async function entries(ctx, sids) {
 
 export async function calendarScreen(params, ctx) {
   const b = await buckets(ctx);
-  const sids = ['owned', 'tracking', 'favourites'].flatMap(k => b[k].map(r => r.stage_id));
+  // 「観劇日を追加する」は、購入済の公演のツアーの全会場から日付を選べるようにする（起案者の指摘 2026-10-24「ミス・サイゴン
+  // 1月の終わりまでツアーでやってるのに、観劇日を追加しようとしても1月カレンダーが選べなくなってしまってる」）。前は押した会場
+  // 1 つの会期だけだった。入れた日は、その日に上演している会場の券になる（lists.ticketAction）。カレンダーの帯は前のまま
+  const tourSids = r => (r.sids?.length ? r.sids : [r.stage_id]);
+  const sids = [...new Set(['owned', 'tracking', 'favourites'].flatMap(k => b[k].flatMap(r => (k === 'owned' ? tourSids(r) : [r.stage_id]))))];
   const ent = await entries(ctx, sids);
   const d = Object.fromEntries(['owned', 'tracking', 'favourites'].map(k => [k, b[k].map(r => ent.get(r.stage_id)).filter(Boolean)]));
+  const dlg = {...d, owned: b.owned.flatMap(r => tourSids(r).map(s => ent.get(s))).filter(Boolean)};
   const kinds = params.getAll('kind').filter(k => KIND_KEYS.includes(k));
   const prefs = params.getAll('pref').filter(p => PREFS.includes(p));
   const body = `<h1>公演カレンダー</h1>
-${addTicketButtonHtml(d, ctx.today, b.tickets)}
+${addTicketButtonHtml(dlg, ctx.today, b.tickets)}
 <p class="lede toinfo">券を持っている公演、「興味あり」を押した公演、お気に入りに登録した名前で見つかった公演を、上演期間の帯で並べています。<b>いつまで観られるか</b>が1枚で分かります。券を持っている公演は、行く日を入れるとその日が半券の形で出ます。</p>
 ${panel(d, ctx.today, b.tickets, kinds.length ? new Set(kinds) : null, prefs.length ? new Set(prefs) : null)}`;
   return {title: '公演カレンダー', body_html: body};
