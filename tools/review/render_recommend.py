@@ -1419,6 +1419,11 @@ def hand_form(c: dict, hand: dict) -> str:
 <button class="hb" data-handtheme="{E(c["stage_id"])}">保存する</button></details>"""
 
 
+
+def circled(i: int) -> str:
+    """観劇日の番号 ①②…（起案者の指示 2026-10-24「観劇日を追加したら①②のように箇条書きで書いて」）。20 を超えたら (21)。"""
+    return chr(0x2460 + i) if i < 20 else f"({i + 1})"
+
 def ticket(c: dict, *, rank=None, mode: str = "recommend", note: str = "",
            why_html: str = "", my_tickets: list[dict] | None = None) -> str:
     """1 公演を 1 枚のチケットの形で出す。**推薦・興味あり・お気に入りで同じ枠を使う。**
@@ -1560,7 +1565,7 @@ def ticket(c: dict, *, rank=None, mode: str = "recommend", note: str = "",
         # **押し口には券自身の stage_id を持たせる**（`t.get("sid")`）── 券は
         # このカードの代表 stage_id とは違う会場に付いていることがある
         # （`app._react_groups` の docstring・フタマツヅキ・ミス・サイゴン）。
-        def _mt_row(t: dict) -> str:
+        def _mt_row(i: int, t: dict) -> str:
             tm = f' {E(t["time"])}' if t.get("time") else ""
             sid, dd, tt = (E(str(t.get("sid") or c.get("stage_id") or "")),
                            E(t["date"]), E(t.get("time") or ""))
@@ -1573,18 +1578,18 @@ def ticket(c: dict, *, rank=None, mode: str = "recommend", note: str = "",
             # 行く日は記録の日付の形 2026.11.02(月) 18:30（起案者の指示 2026-10-24。charts.rec_date と同じ）
             d = date.fromisoformat(t["date"][:10])
             when = f"{d.year}.{d.month:02d}.{d.day:02d}({'月火水木金土日'[d.weekday()]})"
-            return (f'<span class="mt-row{"" if t.get("confirmed") else " un"}">{when}{tm}{note} {btns}</span>')
+            return (f'<span class="mt-row{"" if t.get("confirmed") else " un"}"><span class="mt-n">{circled(i)}</span>{when}{tm}{note} {btns}</span>')
         lo, hi = _period_start(c.get("period") or ""), _period_end(c.get("period") or "")
         add_form = (
             '<span class="mt-add">'
-            f'<input type="date" class="mt-d" aria-label="行く日"'
+            f'<input type="date" class="mt-d" aria-label="観劇日"'
             + (f' min="{lo.isoformat()}"' if lo else "")
             + (f' max="{hi.isoformat()}"' if hi else "") + '>'
             '<input type="time" class="mt-t" aria-label="時刻（任意）">'
-            f'<button data-mt-add="{E(str(c["stage_id"]))}">{IC.ico("plus", 13)}行く日を追加</button>'
+            f'<button data-mt-add="{E(str(c["stage_id"]))}">{IC.ico("plus", 13)}観劇日を追加</button>'
             '<span class="said"></span></span>')
-        rows = "".join(_mt_row(t) for t in (my_tickets or []))
-        mytix_html = f'<div class="mytix"><b>行く日</b>{rows}{add_form}</div>'
+        rows = "".join(_mt_row(i, t) for i, t in enumerate(my_tickets or []))
+        mytix_html = f'<div class="mytix"><b>観劇日</b>{rows}{add_form}</div>'
     tour_ids = ",".join(str(t.get("stage_id")) for t in (c.get("tours") or []) if str(t.get("stage_id") or "").isdigit())
     # 他会場が無い券にも空で付ける（画面は「他会場は無い」と分かり、記録のときに推薦を計算し直さずに済む）
     tours_attr = f' data-tours="{E(tour_ids)}"'

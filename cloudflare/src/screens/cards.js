@@ -34,7 +34,7 @@ export const interestButtons = sid => band(sid, ['interest', 'nointerest', 'owne
 export const ownedButton = (sid, owned = false) => band(sid, ['owned'], false, owned ? 'owned' : '')
   .replace('>購入済</button>', owned ? '>購入済</button>' : '>購入済みにする</button>');
 /** お気に入り: 購入済みにした公演は一覧に残し、ボタンの代わりに印を出す（起案者の指示 2026-10-15「購入済み押してもお気に入りから消さないで」）。 */
-export const ownedMark = '<span class="owned-mark">購入済みです。<a href="/tickets?t=__TAGURI_TOKEN__">購入済の公演で行く日を入れる</a></span>';
+export const ownedMark = '<span class="owned-mark">購入済みです。<a href="/tickets?t=__TAGURI_TOKEN__">購入済の公演で観劇日を入れる</a></span>';
 
 /** render_recommend.why_note */
 export function whyNote(sid, note = '', {open = false, ask = false} = {}) {
@@ -69,21 +69,26 @@ export function noNote(sid, note = '', hidden = false) {
     + '<span class="said"></span></div></details>';
 }
 
-/** build_cards.mytix_html: the 行く日 box of an owned stage. `start`/`end` are YYYY-MM-DD. */
+// 観劇日の番号 ①②…（起案者の指示 2026-10-24「観劇日を追加したら①②のように箇条書きで書いて」）。20 を超えたら (21)
+export const circled = i => (i < 20 ? String.fromCharCode(0x2460 + i) : `(${i + 1})`);
+/**
+ * build_cards.mytix_html: the 観劇日 box of an owned stage. `start`/`end` are YYYY-MM-DD.
+ * 見出しは「観劇日」（起案者の指示 2026-10-24「『行く日』を『観劇日』にして」。前は「行く日」）
+ */
 export function mytixHtml(sid, start, end, tickets) {
-  const rows = tickets.map(t => {
+  const rows = tickets.map((t, i) => {
     const s = E(String(t.sid || sid)), dd = E(t.date), tt = E(t.time || '');
     const [note, btns] = t.confirmed
       ? ['', `<button data-mt-del="${s}" data-date="${dd}" data-time="${tt}">取り消す</button>`]
       : ['（未確定）', `<button data-mt-ok="${s}" data-date="${dd}" data-time="${tt}">確定する</button>`
         + `<button data-mt-del="${s}" data-date="${dd}" data-time="${tt}">違う</button>`];
-    return `<span class="mt-row${t.confirmed ? '' : ' un'}">${E(recDate(t.date, t.time || ''))}${note} ${btns}</span>`;
+    return `<span class="mt-row${t.confirmed ? '' : ' un'}"><span class="mt-n">${circled(i)}</span>${E(recDate(t.date, t.time || ''))}${note} ${btns}</span>`;
   }).join('');
-  const add = '<span class="mt-add"><input type="date" class="mt-d" aria-label="行く日"'
+  const add = '<span class="mt-add"><input type="date" class="mt-d" aria-label="観劇日"'
     + (start ? ` min="${start}"` : '') + (end ? ` max="${end}"` : '') + '>'
     + '<input type="time" class="mt-t" aria-label="時刻（任意）">'
-    + `<button data-mt-add="${E(sid)}">${ico('plus', 13)}行く日を追加</button><span class="said"></span></span>`;
-  return `<div class="mytix"><b>行く日</b>${rows}${add}</div>`;
+    + `<button data-mt-add="${E(sid)}">${ico('plus', 13)}観劇日を追加</button><span class="said"></span></span>`;
+  return `<div class="mytix"><b>観劇日</b>${rows}${add}</div>`;
 }
 
 export const posterHtml = file => `<span class="pwrap"><img class="poster" src="/img/${E(file)}?t=__TAGURI_TOKEN__"`

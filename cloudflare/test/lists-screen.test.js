@@ -118,7 +118,7 @@ test('購入済み shows owned stages with their tickets; an ended one moves to 
     assert.match(html, /<h1>購入済の公演<\/h1>/);   // 見出しに件数は入れない（起案者の指示 2026-10-18）
     assert.equal((html.match(/<article class="ticket owned"/g) || []).length, 1);
     assert.match(html, /<article class="ticket owned" data-stage="101"/);
-    assert.match(html, /<span class="mt-row">2026\.11\.03\(火\) 14:00 <button data-mt-del="101" data-date="2026-11-03" data-time="14:00">取り消す<\/button><\/span>/);
+    assert.match(html, /<span class="mt-row"><span class="mt-n">①<\/span>2026\.11\.03\(火\) 14:00 <button data-mt-del="101" data-date="2026-11-03" data-time="14:00">取り消す<\/button><\/span>/);
     assert.match(html, /min="2026-11-01" max="2026-11-10"/);
     assert.doesNotMatch((await screen(env, a, 'interest')).body_html, /data-stage="101"/);
     // A memo before seeing it, only on owned stages; it goes with the work once seen.

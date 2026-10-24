@@ -466,7 +466,7 @@ function dismissButton(t) {
   if (t.querySelector(":scope > .dismissq") || (t.classList.contains("owned") && here !== "/tickets")) return;
   const box = document.createElement("div");
   box.className = "dismissq";
-  const label = here === "/tickets" ? "この公演を購入済の一覧から外す（観た記録と行く日は残ります）"
+  const label = here === "/tickets" ? "この公演を購入済の一覧から外す（観た記録と観劇日は残ります）"
     : here === "/recommend/interest" ? "この公演を一覧から外し、今後のおすすめを減らす"
     : "この公演を候補に表示しない（好みには反映しません）";
   box.innerHTML = '<button type="button" class="dismissq-open" aria-label="' + E(label) + '" title="' + E(label) + '">' + DISMISS_ICON + "</button>";
@@ -542,7 +542,7 @@ document.addEventListener("click", async ev => {
   const shown = slot ? [...document.querySelectorAll(".ticket.recommend")].filter(a => !a.closest(".rfind")).map(a => a.dataset.stage).filter(Boolean) : null;
   const g = t.querySelector(".btns[data-stage]") || t;
   b.disabled = true;
-  const done = here === "/tickets" ? "購入済の一覧から外しました（観た記録と行く日は残ります）" : "候補から消しました";
+  const done = here === "/tickets" ? "購入済の一覧から外しました（観た記録と観劇日は残ります）" : "候補から消しました";
   const d = await post("/api/react", body, g, done);
   if (!d) { b.disabled = false; return; }
   const title = ((t.querySelector("h3") || {}).textContent || "").trim();
@@ -712,6 +712,8 @@ function decorateCards(el) {
   reminderPrices(el);
   stampRerate(el);
   aspectsPanel(el);
+  markMyShows(el);
+  foldRateRows(el);
 }
 
 // **「次の 5 件」は、その一覧（.hitpart）だけを取り直して差し替える**（起案者の指摘 2026-10-19「いちいち画面全部を
@@ -1774,6 +1776,9 @@ function compactTickets(root) {
     // 購入済み公演の「行く日」は、出演・あらすじの下に全幅で置く（おすすめと同じ並び）
     const mytix = main.querySelector(":scope > .mytix");
     if (mytix) foot.appendChild(mytix);
+    // 「観る前のメモを書く」は観劇日の欄の下に置く（起案者の指示 2026-10-24「購入済のページ、『観る前のメモを書く』の欄は、行く日の下にして」）
+    const pre = main.querySelector(":scope > details.nn.pre");
+    if (pre && mytix) mytix.after(pre);
     let n = main.querySelector(":scope > details.more") || main.querySelector(":scope > .whyh:not(.top)") || main.querySelector(":scope > .act");
     while (n) { const nx = n.nextSibling; foot.appendChild(n); n = nx; }
     t.appendChild(foot);
@@ -2554,7 +2559,7 @@ document.addEventListener("click", ev => {
           const result = g.parentElement.querySelector("[data-register-result]");
           const message = document.createElement("p");
           message.textContent = "「" + title + "」" + (date ? "（" + date + (savedTime ? " " + savedTime : "") + "）" : "")
-            + "を購入済の公演に追加しました。" + (date ? "行く日を過ぎると、評価待ちに移ります。" : "行く日は、購入済の公演の画面から入れられます。");
+            + "を購入済の公演に追加しました。" + (date ? "観劇日を過ぎると、評価待ちに移ります。" : "観劇日は、購入済の公演の画面から入れられます。");
           const link = document.createElement("a");
           link.href = "/tickets";
           link.textContent = "購入済の公演を見る";
@@ -3024,7 +3029,7 @@ document.addEventListener("click", ev => {
     // その会場のカードから入れる
     const box = b.closest(".mytix"), dd = box.querySelector(".mt-d").value,
           tt = box.querySelector(".mt-t").value, said = box.querySelector(".said");
-    if (!dd) { said.textContent = "行く日を入れてください"; return; }
+    if (!dd) { said.textContent = "観劇日を入れてください"; return; }
     post("/api/ticket", {stage_id: b.dataset.mtAdd, date: dd, time: tt}, box, "記録しました")
       .then(r => { if (r) setTimeout(() => location.reload(), 500); });
   } else if (b.dataset.mtDel || b.dataset.mtOk) {
@@ -3675,7 +3680,7 @@ fixupImportBar(document);
 function shortAddButtons(root) {
   root.querySelectorAll(".mt-add button[data-mt-add]").forEach(b => {
     b.innerHTML = ico("plus", 13) + "追加";
-    b.setAttribute("aria-label", "行く日を追加");
+    b.setAttribute("aria-label", "観劇日を追加");
   });
 }
 
@@ -3753,6 +3758,43 @@ function placeVsLabels(stack) {
   });
   top.style.height = used.top ? (used.top * ROW + 6) + "px" : "0";
   bot.style.height = used.bot ? (used.bot * ROW + 6) + "px" : "0";
+}
+
+// 購入済の公演で、入れた観劇日時を日程の暦（.ttb）の升で赤く囲む（起案者の指示 2026-10-24「観劇日時がわかるものは、日程カレンダーの
+// 該当の時間を赤枠で囲って、行く日を強調して」）。時刻の分かる観劇日だけ。升は schedule.js が data-d（YYYY-MM-DD）を付ける。
+// 時刻は「13:00」の形の頭で比べる（(貸) や印 ★ は除く）
+function markMyShows(root) {
+  root.querySelectorAll("article.ticket.owned").forEach(t => {
+    const mine = [...t.querySelectorAll(".mytix .mt-row")].map(r => r.querySelector("button[data-date]"))
+      .filter(b => b && b.dataset.time).map(b => [b.dataset.date, b.dataset.time.slice(0, 5)]);
+    for (const [d, tm] of mine) {
+      t.querySelectorAll('.ttb td[data-d="' + d + '"] .tm').forEach(s => {
+        const m = /(\d{1,2}):(\d{2})/.exec(s.textContent);
+        if (m && m[1].padStart(2, "0") + ":" + m[2] === tm) {
+          s.classList.add("mine");
+          s.title = "観劇日";
+        }
+      });
+    }
+  });
+}
+
+// 評価一覧の各記録は、評価の星より下（観た回・作り手・あらすじ・感想・評価の詳細など）を「くわしく」に畳む（起案者の指示 2026-10-24
+// 「評価一覧のページは、各公演のカードの評価の星より下は全て折りたたんで」）。未評価・日記帳は今までどおり開いたまま
+function foldRateRows(root) {
+  if ((location.pathname.slice(REPO_BASE.length) || "/") !== "/rate") return;
+  root.querySelectorAll("article.rec-row .page").forEach(page => {
+    const tools = page.querySelector(":scope > .tools");
+    if (!tools || page.querySelector(":scope > details.rfold")) return;
+    const rest = [];
+    for (let n = tools.nextSibling; n; n = n.nextSibling) rest.push(n);
+    if (!rest.some(n => n.nodeType === 1)) return;
+    const fold = document.createElement("details");
+    fold.className = "rfold";
+    fold.innerHTML = "<summary>くわしく</summary>";
+    fold.append(...rest);
+    tools.after(fold);
+  });
 }
 
 // **評価を押し直すのは、判子の丸から。**（起案者の指示 2026-10-13「『評価を押し直す』ってボタンは消して、
