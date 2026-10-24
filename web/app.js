@@ -458,13 +458,16 @@ function fixLinks(root) {
 // 結構マイナスと判断できる」）。カードの枠の外の右上。押すと /api/react に value 'dismiss'（興味ありの一覧では 'dismiss_strong'）を
 // 三択のボタンと同じ形（shown・siblings・from）で送り、カードを消す。購入済の公演（持っている券）のカードには出さない
 const DISMISS_ICON = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg>';
+// 購入済の公演の画面では、もう行った・券を買い足さない公演を一覧から外す口として出す（起案者の指示 2026-10-24「購入済に
+// ある公演、もう1回行ったし今後もチケット買い足さなさそうなやつはカード右上の✕ボタンを押して画面から消せるようにしたい」）。
+// 送るのはほかの画面と同じ 'dismiss'。観た記録と入れた行く日は消えない。ほかの画面の購入済のカードには、これまでどおり出さない
 function dismissButton(t) {
-  if (t.querySelector(":scope > .dismissq") || t.classList.contains("owned")) return;
   const here = location.pathname.slice(REPO_BASE.length) || "/";
-  if (here === "/tickets") return;
+  if (t.querySelector(":scope > .dismissq") || (t.classList.contains("owned") && here !== "/tickets")) return;
   const box = document.createElement("div");
   box.className = "dismissq";
-  const label = here === "/recommend/interest" ? "この公演を一覧から外し、今後のおすすめを減らす"
+  const label = here === "/tickets" ? "この公演を購入済の一覧から外す（観た記録と行く日は残ります）"
+    : here === "/recommend/interest" ? "この公演を一覧から外し、今後のおすすめを減らす"
     : "この公演を候補に表示しない（好みには反映しません）";
   box.innerHTML = '<button type="button" class="dismissq-open" aria-label="' + E(label) + '" title="' + E(label) + '">' + DISMISS_ICON + "</button>";
   t.appendChild(box);
@@ -539,13 +542,14 @@ document.addEventListener("click", async ev => {
   const shown = slot ? [...document.querySelectorAll(".ticket.recommend")].filter(a => !a.closest(".rfind")).map(a => a.dataset.stage).filter(Boolean) : null;
   const g = t.querySelector(".btns[data-stage]") || t;
   b.disabled = true;
-  const d = await post("/api/react", body, g, "候補から消しました");
+  const done = here === "/tickets" ? "購入済の一覧から外しました（観た記録と行く日は残ります）" : "候補から消しました";
+  const d = await post("/api/react", body, g, done);
   if (!d) { b.disabled = false; return; }
   const title = ((t.querySelector("h3") || {}).textContent || "").trim();
   const note = document.createElement("p");
   note.className = "dismissed";
   note.setAttribute("role", "status");
-  note.innerHTML = (title ? "「" + E(title) + "」を" : "この公演を") + '候補から消しました。<span class="said"></span>';
+  note.innerHTML = (title ? "「" + E(title) + "」を" : "この公演を") + E(done) + '。<span class="said"></span>';
   t.replaceWith(note);
   if (!shown) return;
   const f = await fetch(API_BASE + "/api/react", {method: "POST", credentials: "include",
