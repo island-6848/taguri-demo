@@ -2128,6 +2128,21 @@
    "verifies": []
   },
   {
+   "id": "dec-missed-cancel-btn-base",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-24",
+   "title": "行けばよかったは 1 件ずつ取り消せる（取り消した題名は hidden で残す）。回答の押し口の下の台を、押し口と同じ幅に収める",
+   "sources": [
+    "cloudflare/migrations/0047.sql",
+    "cloudflare/src/screens/settings.js",
+    "web/app.js",
+    "web/theme.css",
+    "cloudflare/test/cantgo.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-native-cutover-now",
    "type": "decision",
    "status": "adopted",
@@ -11144,6 +11159,11 @@
    "from": "dec-migration-owner-push",
    "rel": "affects",
    "to": "migration-handover-stage0"
+  },
+  {
+   "from": "dec-missed-cancel-btn-base",
+   "rel": "affects",
+   "to": "comp-cf-worker"
   },
   {
    "from": "dec-native-cutover-now",

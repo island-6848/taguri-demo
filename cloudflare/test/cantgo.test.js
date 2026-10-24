@@ -110,3 +110,28 @@ test('興味あり on a stage that ended without 購入済 is listed under 行�
     assert.doesNotMatch(await reg(a), /興味ありのまま終わった/);
   } finally { sqlite.close(); }
 });
+
+// 行けばよかったは 1 件ずつ取り消せる（起案者の指示 2026-10-24「行けばよかった、各公演取り消せるようにして」）。
+// 自動で入った分も、取り消したら次に開いても出ない。もう一度足すと戻る
+test('行けばよかった: each entry (auto or added by hand) can be cancelled and stays gone; adding it again brings it back', async () => {
+  const {env, sqlite} = setup();
+  for (const s of FIXTURE.sql) sqlite.exec(s);
+  const a = await signIn(env);
+  const reg = async () => (await step(env, a, {get: '/api/screen/register'})).body.body_html;
+  try {
+    const ended = sqlite.prepare("SELECT stage_id, title FROM rec_stage WHERE end<>'' AND end<'2026-10-01' LIMIT 1").get();
+    assert.equal((await step(env, a, {post: '/api/react', body: {stage_id: ended.stage_id, value: 'interest', nofill: true}})).status, 200);
+    assert.equal((await step(env, a, {post: '/api/missed', body: {title: '手で足した芝居'}})).status, 200);
+    let html = await reg();
+    assert.match(html, new RegExp(`<b class="mt">${ended.title}</b>[^]*?<button type="button" class="miss-del" data-miss-del="${ended.title}"`));
+    assert.match(html, /<button type="button" class="miss-del" data-miss-del="手で足した芝居"/);
+    for (const title of [ended.title, '手で足した芝居']) {
+      assert.equal((await step(env, a, {post: '/api/missed', body: {title, remove: true}})).status, 200);
+    }
+    html = await reg();
+    assert.doesNotMatch(html, new RegExp(`<b class="mt">(${ended.title}|手で足した芝居)</b>`));
+    assert.doesNotMatch(html, /<span class="badge part">\d+ 件<\/span><\/h2><\/summary>\n<p class="lead">行きたかった/);
+    assert.equal((await step(env, a, {post: '/api/missed', body: {title: '手で足した芝居'}})).status, 200);
+    assert.match(await reg(), /<b class="mt">手で足した芝居<\/b>/);
+  } finally { sqlite.close(); }
+});
