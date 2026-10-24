@@ -2941,6 +2941,20 @@
    "verifies": []
   },
   {
+   "id": "dec-records-notes-trim-1024",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-24",
+   "title": "眺めるの劇場制覇マップの下の注（数えている劇場の決め方）と、観劇の時間割の上の説明の文を消す。時間割の「時刻なし」の列は、時刻の分からない回が無ければ出さない",
+   "sources": [
+    "cloudflare/src/screens/conquest.js",
+    "cloudflare/src/screens/timetable.js",
+    "cloudflare/test/timetable.test.js",
+    "cloudflare/test/conquest.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-records-viz-picks",
    "type": "decision",
    "status": "proposed",
@@ -3483,6 +3497,19 @@
    "sources": [
     "cloudflare/src/screens/grade.js",
     "cloudflare/test/grade.test.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-storyline-title-scroll",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-24",
+   "title": "眺めるの「同じ作品で一緒だった人の流れ」を「Storyline」にし、説明の文を消す。図は d3 の拡大縮小に指の操作を渡さず、スマホでは横・縦にスクロールできるようにする",
+   "sources": [
+    "tools/taguri/storyline.py",
+    "cloudflare/src/screens/storyline.js",
+    "web/style.css"
    ],
    "verifies": []
   },
@@ -11585,6 +11612,11 @@
    "to": "dec-recommend-compact-poster"
   },
   {
+   "from": "dec-records-notes-trim-1024",
+   "rel": "affects",
+   "to": "dec-storyline-title-scroll"
+  },
+  {
    "from": "dec-records-viz-picks",
    "rel": "answers",
    "to": "q-records-viz"
@@ -11918,6 +11950,11 @@
    "from": "dec-star-default",
    "rel": "affects",
    "to": "comp-recommender"
+  },
+  {
+   "from": "dec-storyline-title-scroll",
+   "rel": "affects",
+   "to": "dec-overview-without-venue-ranking"
   },
   {
    "from": "dec-sweep-recheck",

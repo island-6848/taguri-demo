@@ -84,7 +84,6 @@ ${h2('building', '劇場制覇マップ', `<span class="badge part">${visited} �
 <div class="cq-legend">${legend}</div>
 <div class="cq-detail" aria-live="polite"><p class="cq-hint">マスを押すと、その県で行った劇場が出ます。</p>${picks}</div>
 ${rest}
-<p class="fine">その県の劇場として数えているのは、たぐりが集めた公演（これからの公演と 2019 年以降の過去の公演）に 2 回以上出てきた会場です。同じ建物の別のホールは別に数えます。この数に入っていない劇場に行っていたら、行った劇場として数え、その県の数にも足しています。</p>
 </section>`;
 }
 

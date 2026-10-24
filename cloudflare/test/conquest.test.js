@@ -34,6 +34,7 @@ test('the panel: counts on the tiles, shades by venues, a list per prefecture', 
   const by = tally([{key: 'a', name: '劇場A', pref: '東京都'}], {'東京都': 3}, new Set(['a']));
   const html = conquestPanel(by, ['どこかの劇場']);
   assert.match(html, /劇場制覇マップ/);
+  assert.doesNotMatch(html, /2 回以上出てきた会場/);   // 下の注の文は出さない（起案者の指示 2026-10-24）
   assert.match(html, /行った劇場 <b>1<\/b>（全国 3 のうち）・行った都道府県 <b>1 \/ 47<\/b>/);
   assert.match(html, /<title>東京都：1 \/ 3 か所<\/title>/);
   assert.match(html, />1\/3</);

@@ -1,4 +1,4 @@
-// 記録を見返す ▸ Storyline（前の名前「同じ作品で一緒だった人の流れ」、起案者の指示 2026-10-24「Storyline に名前を変えて」）: tools/taguri/storyline.py's panel() ported to
+// 記録を見返す ▸ 同じ作品で一緒だった人の流れ: tools/taguri/storyline.py's panel() ported to
 // the Worker. storyline.test.js checks panel() against storyline.panel byte for byte.
 //
 // Python behaviour copied on purpose:
@@ -528,21 +528,6 @@ export function build(rated, minTimes = MIN_TIMES) {
           n_dated: rated.filter(hasDate).length, n_credited: credited.length};
 }
 
-function recentLine(worlds) {
-  const act = worlds.filter(w => w.recent);
-  if (!act.length) return '';
-  if (act.length === 1) {
-    const w = act[0];
-    return `<b>直近 1 年に束があるのは ${w.loc + 1} つめだけで、`
-      + `${w.recent} 回です。</b>ほかの流れの公演は、この 1 年は観ていらっしゃいません。`;
-  }
-  let top = act[0];
-  for (const w of act) if (w.recent > top.recent) top = w;
-  const parts = act.map(w => `${w.loc + 1} つめが ${w.recent} 回`).join('、');
-  return `<b>直近 1 年は${parts}です。</b>`
-    + `いまは ${top.loc + 1} つめを多く観ています。`;
-}
-
 /** charts._table */
 function chTable(head, rows) {
   const th = head.map(h => `<th>${E(h)}</th>`).join('');
@@ -574,17 +559,9 @@ export function panel(rated, minTimes = MIN_TIMES) {
                       from: d.from, to: d.to, runPx: f(RUN_PX), X, width: f(width), ticks, rowHref: ROW_HREF})
     // <script> の中に置くので「<」を逃がす（名前や題名に「</script>」があっても、そこで閉じない。people.js の scriptSafe と同じ）
     .replace(/</g, '\\u003c');
+  // 見出しは「Storyline」、説明の文は出さない（起案者の指示 2026-10-24「『同じ作品で一緒だった人の流れ』を『Storyline』にして」
+  // 「下の文章消して」）
   return `<div class="card wide">${h2('light', 'Storyline')}
-<p class="lead"><b>1 本の線が 1 人、横が時間です。同じ作品に出た方の線はその日に束になります。</b>
-<b>● が「その日その作品に出ていた」印です。</b>束 1 つが 1 公演で、押すとその記録へ移動します。<br>
-<b>線の色は ${ws.length} つに分かれています。</b>
-${ws.map(w => `${w.n_people} 人（${w.from} 〜 ${w.to}）`).join('、')}で、
-<b>この ${ws.length} つのあいだで一緒に出た方は 1 人もいません。</b>
-${recentLine(ws)}<br>
-線にしているのは <b>${minTimes} 回以上観た ${d.n_lines} 名</b>です。
-作り手が分かっている ${d.n_credited} 件の記録には、のべ ${d.n_people_all} 名が出てきます。
-横に引っぱると時間を伸ばせます（スマホでは指 2 本で広げます。指 1 本では図を送れます）。<b>線を押すと、その人の流れだけが浮き上がります。</b>
-何人でも選べます。背景を押すと戻ります。</p>
 <div class="sl-legend">${ws.map(w =>
     `<span class="sl-k sl-w${w.loc}">${w.loc + 1} つめの世界 ── `
     + `${w.n_people} 人・${w.n_sessions} 回</span>`).join('')}

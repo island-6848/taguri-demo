@@ -26,19 +26,28 @@ test('a ticket is a visit; a work adds only the days no ticket stands for; the f
   assert.deepEqual(vs.map(v => v.date + ' ' + v.time).sort(), ['2026-09-05 ', '2026-10-10 13:00', '2026-10-11 18:30', '2026-10-12 ']);
 });
 
-test('the panel counts each weekday and slot, names the busiest, and writes every number', () => {
+test('the panel counts each weekday and slot and writes every number', () => {
   const html = timetablePanel([
     {date: '2026-10-10', time: '13:00'}, {date: '2026-10-03', time: '12:00'},   // 土 マチネ ×2
     {date: '2026-10-08', time: '19:00'},                                        // 木 ソワレ
     {date: '2026-10-11', time: '15:30'},                                        // 日 ジュルネ
     {date: '2026-10-05', time: ''}]);                                            // 月 時刻なし
-  assert.match(html, /いちばん多いのは <b>土曜のマチネ（2 回）<\/b>/);
-  assert.match(html, /<b>5 回のうち 4 回<\/b>/);
+  // 図の上の説明の文は出さない（起案者の指示 2026-10-24）
+  assert.doesNotMatch(html, /いちばん多いのは|開演時刻が分かるのは|<p class="lead">/);
+  assert.match(html, /<th scope="col" title="開演時刻が分からない回">時刻なし<\/th>/);
   assert.match(html, /<th scope="col" title="15 時から 17 時より前">ジュルネ<\/th>/);
   assert.match(html, /title="日曜 ジュルネ：1 回"><span class="tt-n">1<\/span>/);
   assert.match(html, /<th scope="row">土<\/th><td class="tt-c tt-4" title="土曜 マチネ：2 回"><span class="tt-n">2<\/span>/);
   assert.match(html, /<td class="tt-c tt-0" title="火曜 マチネ：0 回"><span class="tt-n">·<\/span>/);
   assert.equal(timetablePanel([]), '');
+});
+
+test('the 時刻なし column is left out when every visit has a time', () => {
+  // 起案者の指示 2026-10-24「時刻なしの列は1件もなければ非表示」
+  const html = timetablePanel([{date: '2026-10-10', time: '13:00'}, {date: '2026-10-08', time: '19:00'}]);
+  assert.doesNotMatch(html, /時刻なし/);
+  assert.match(html, /<thead><tr><th><\/th><th scope="col"[^>]*>マチネ<\/th><th scope="col"[^>]*>ジュルネ<\/th><th scope="col"[^>]*>ソワレ<\/th><th scope="col">計<\/th><\/tr><\/thead>/);
+  assert.match(html, /<th scope="row">土<\/th><td class="tt-c tt-4" title="土曜 マチネ：1 回">[^]*?<td class="tt-t">1<\/td><\/tr>/);
 });
 
 test('眺める shows the timetable from the diary and the tickets', async () => {
@@ -49,7 +58,6 @@ test('眺める shows the timetable from the diary and the tickets', async () =>
     assert.ok(key);
     const html = (await step(env, a, {get: '/api/screen/records'})).body.body_html;
     assert.match(html, /観劇の時間割/);
-    assert.match(html, /いちばん多いのは|開演時刻の分かる回がまだありません/);
     // 2026-08-08 is a Saturday.
     assert.match(html, /<th scope="row">土<\/th>[^]*?時刻なし：1 回/);
   } finally { sqlite.close(); }
