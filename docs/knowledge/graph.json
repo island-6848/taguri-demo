@@ -5120,6 +5120,20 @@
    "verifies": []
   },
   {
+   "id": "impl-compare-four-axes",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-19",
+   "title": "眺めるの比較にクレジット・題材・地域・公演期間の4軸を実装",
+   "sources": [
+    "cloudflare/src/screens/compare-four.js",
+    "cloudflare/src/screens/records.js",
+    "cloudflare/test/compare-four.test.js",
+    "cloudflare/test/compare-layout-browser.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "impl-d1-settle",
    "type": "decision",
    "status": "adopted",
@@ -12792,6 +12806,11 @@
    "from": "impl-cast-seen",
    "rel": "affects",
    "to": "impl-person-ordinal-v3"
+  },
+  {
+   "from": "impl-compare-four-axes",
+   "rel": "supports",
+   "to": "dec-compare-mobile-and-expansion"
   },
   {
    "from": "impl-d1-settle",
