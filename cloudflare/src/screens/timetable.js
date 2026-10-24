@@ -66,13 +66,10 @@ export function timetablePanel(vs) {
   }
   const cell = (d, s) => grid.get(d + '|' + s) || 0;
   const max = Math.max(...grid.values());
-  const timed = vs.filter(v => slotOf(v.time) !== 'u').length;
-  // The busiest weekday × matinée/journée/soirée (ties: earlier in the week, earlier in the day).
-  let best = null;
-  for (let d = 0; d < 7; d++) for (const [s] of SLOTS.slice(0, 3)) if (cell(d, s) && (!best || cell(d, s) > best[2])) best = [d, s, cell(d, s)];
-  const slotName = s => SLOTS.find(x => x[0] === s)[1];
+  // 時刻なしの列は、時刻の分からない回が 1 回も無ければ出さない（起案者の指示 2026-10-24「時刻なしの列は1件もなければ非表示」）
+  const slots = vs.some(v => slotOf(v.time) === 'u') ? SLOTS : SLOTS.filter(([s]) => s !== 'u');
   const rows = DAYS.map((name, d) => {
-    const cells = SLOTS.map(([s, label]) => {
+    const cells = slots.map(([s, label]) => {
       const n = cell(d, s);
       return `<td class="tt-c tt-${level(n, max)}${s === 'u' ? ' tt-u' : ''}" title="${E(name)}曜 ${E(label)}：${n} 回"><span class="tt-n">${n || '·'}</span>`
         + `<span class="sr">${E(name)}曜 ${E(label)} ${n} 回</span></td>`;
@@ -80,15 +77,11 @@ export function timetablePanel(vs) {
     const total = SLOTS.reduce((a, [s]) => a + cell(d, s), 0);
     return `<tr${d >= 5 ? ' class="tt-we"' : ''}><th scope="row">${E(name)}</th>${cells}<td class="tt-t">${total}</td></tr>`;
   }).join('');
-  const head = SLOTS.map(([, label, hint]) => `<th scope="col" title="${E(hint)}">${E(label)}</th>`).join('');
-  const lead = best
-    ? `いちばん多いのは <b>${E(DAYS[best[0]])}曜の${E(slotName(best[1]))}（${best[2]} 回）</b>です。`
-    : '開演時刻の分かる回がまだありません。';
+  const head = slots.map(([, label, hint]) => `<th scope="col" title="${E(hint)}">${E(label)}</th>`).join('');
+  // 図の上の説明の文は出さない（起案者の指示 2026-10-24「観た回を曜日と開演の時刻…で数えています。…を削除」）
   return `<section class="card">
 ${h2('clock', '観劇の時間割 ── 1 週間のどこで観ているか', `<span class="badge part">${vs.length} 回</span>`)}
-<p class="lead">観た回を曜日と開演の時刻（15 時より前がマチネ、15 時から 17 時より前がジュルネ、17 時からがソワレ）で数えています。${lead}
-開演時刻が分かるのは <b>${vs.length} 回のうち ${timed} 回</b>で、チケットか日記帳に時刻を入れた回です。</p>
-<table class="tt" aria-label="観劇の時間割。行が曜日、列がマチネ・ジュルネ・ソワレ・時刻なし、数は観た回数">
+<table class="tt" aria-label="観劇の時間割。行が曜日、列が${slots.map(([, label]) => label).join('・')}、数は観た回数">
 <thead><tr><th></th>${head}<th scope="col">計</th></tr></thead>
 <tbody>${rows}</tbody></table>
 </section>`;
