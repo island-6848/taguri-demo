@@ -1,7 +1,7 @@
 ---
 id: q-miss-saigon-cast
 type: question
-status: open
+status: answered
 date: 2026-10-24
 title: ミス・サイゴンの出演者を、起案者が渡した一覧に差し替える（管理画面で起案者が入れる）
 sources:

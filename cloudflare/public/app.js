@@ -550,6 +550,25 @@ document.addEventListener("click", async ev => {
   note.className = "dismissed";
   note.setAttribute("role", "status");
   note.innerHTML = (title ? "「" + E(title) + "」を" : "この公演を") + E(done) + '。<span class="said"></span>';
+  // 購入済の画面では、押し間違えたときに戻せるようにする（起案者の指示 2026-10-24「間違って✕ボタンで消してしまったら戻せるようにして」）。
+  // 戻すは、そのカードで「購入済」を押し直すのと同じ（ツアーのほかの会場へも写す）。戻せたら、カードを元の場所に戻す
+  if (here === "/tickets") {
+    const undo = document.createElement("button");
+    undo.type = "button";
+    undo.className = "undo-dismiss";
+    undo.textContent = "元に戻す";
+    note.querySelector(".said").before(undo, " ");
+    undo.addEventListener("click", async () => {
+      undo.disabled = true;
+      const r = await post("/api/react", {stage_id: body.stage_id, value: "owned", siblings: body.siblings || []}, note, "購入済に戻しました");
+      if (!r) { undo.disabled = false; return; }
+      b.disabled = false;
+      note.replaceWith(t);
+      // 知らせは行く日の欄に出す（三択の欄は「回答を直す」を押すまで閉じているので、そこに書くと見えない）
+      const said = t.querySelector(".mytix .said") || g.querySelector(".said");
+      if (said) said.textContent = "購入済に戻しました";
+    });
+  }
   t.replaceWith(note);
   if (!shown) return;
   const f = await fetch(API_BASE + "/api/react", {method: "POST", credentials: "include",
@@ -1147,6 +1166,9 @@ function yenLabel([lo, hi]) {
 }
 const yenStepLabel = v => v ? v.toLocaleString("ja-JP") + "円まで" : "上限なし";
 function priceFilter(el) {
+  // 購入済の公演には出さない（起案者の指示 2026-10-24「購入済のページの料金の絞り込み消して」。もう買った公演を料金で隠す用は無い）。
+  // 端末に覚えた上限もこの画面では効かせない
+  if ((location.pathname.slice(REPO_BASE.length) || "/") === "/tickets") return;
   if (!el.querySelector("article.ticket[data-yen]") || el.querySelector(".yfil")) return;
   let cur = 0;
   try { cur = Number(localStorage.getItem(YEN_KEY) || 0) || 0; } catch (e) { cur = 0; }
