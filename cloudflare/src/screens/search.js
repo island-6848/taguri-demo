@@ -32,11 +32,14 @@ const cmp = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
 // 波ダッシュの揺れ（〜 U+301C と ～ U+FF5E など）は NFKC でも 1 つにならない。取得元は「ふぉ～ゆ～」、
 // 打つと「ふぉ〜ゆ〜」になりやすい（起案者の検索 2026-10-17 で 0 件だった）ので、どれも ~ にそろえて比べる
 const WAVES = /[\u301c\uff5e\u223c\u2053\u02dc]/gu;
-const fold = s => String(s || '').normalize('NFKC').replace(WAVES, '~');
+// 中黒などの点は除いて比べる（起案者の指示 2026-10-24「正式名称はミス・サイゴンだけど点を含む作品名は、ミスサイゴンのように
+// 点を除いても検索にヒットするようにして」）。打った言葉と本文の両方から除くので、点を入れて打っても当たる。半角の ･ は NFKC で ・ になる
+const DOTS = /[\u30fb\u00b7\u2022\u2027\u2219]/gu;
+const fold = s => String(s || '').normalize('NFKC').replace(WAVES, '~').replace(DOTS, '');
 /** render_recommend._norm (plus the wave dashes folded) */
 const norm = s => fold(String(s || '').replace(/\s+/gu, ''));
-/** The SQL side of `fold` for a column (NFKC already turns ～ into ~ in the prebuilt texts, not in entry JSON). */
-const sqlFold = col => `replace(replace(replace(${col},'〜','~'),'～','~'),'∼','~')`;
+/** The SQL side of `fold` for a column (NFKC already turns ～ into ~ in the prebuilt texts, not in entry JSON). The dots are dropped too. */
+const sqlFold = col => `replace(replace(replace(replace(replace(replace(${col},'〜','~'),'～','~'),'∼','~'),'・',''),'･',''),'·','')`;
 const chunks = (xs, n) => Array.from({length: Math.ceil(xs.length / n)}, (_, i) => xs.slice(i * n, i * n + n));
 const DATE_RE = /(20\d\d)\/(\d{1,2})\/(\d{1,2})/g;
 

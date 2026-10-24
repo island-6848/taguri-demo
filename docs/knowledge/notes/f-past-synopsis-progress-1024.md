@@ -24,3 +24,5 @@ links:
 - 速さの目安: 1 日 4 回×60 件＝240 件。待ちの 1,151 件は約 5 日。一覧の残り（約 26,000 行）を全部読むには、待ちに積む速さ（取得の 1 日の枠）と読む速さの両方が今のままだと 3〜4 か月かかる見込み（見積もり）
 
 2026-10-24 追記: セットアップスクリプトの中身は、Claude Code の許可の設定の書き方（`Bash(npx --yes wrangler@4.151.1 d1 execute taguri-demo --remote:*)` と `Bash(python3 scripts/deliver_posters.py:*)`）の 2 行だった。シェルとして読めないので失敗していた。起案者が消して空にした。手動で起動した回（15:22 UTC）は、セットアップを飛ばして Claude の起動まで進んだ。
+
+2026-10-24 追記（2）: セットアップを直したあとの手動の回（15:22 UTC）は、Claude の起動まで進んだが読めなかった。定期実行のセッションに add_repo が無く、taguri-crawler の clone が認証で失敗した（gh api も 403、GitHub の MCP も無い）。読んだ件数 0・push なし。10-18〜19 に動いていた回は add_repo で taguri-crawler を足していたので、そのあとに定期実行の環境かつながりが変わった見込み（未確認）。直し方: 定期実行の環境の設定（環境のメニュー → Edit）の Repositories に island-6848/taguri-crawler（と taguri-demo）を足すか、claude.ai で GitHub をつなぎ直す。
