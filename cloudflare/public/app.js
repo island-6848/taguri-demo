@@ -2589,13 +2589,17 @@ document.addEventListener("click", ev => {
     const r = b.closest(".sug-row"), g = document.querySelector(".add-work");
     clearTimeout(sugTimer); ++sugSeq;
     g.querySelector("#w-title").value = r.dataset.title;
-    g.querySelector("#w-date").value = r.dataset.date || "";
+    // 記録のある公演をもう一度選んだときは、前の観た日を入れない（新しい日を入れてもらう）
+    g.querySelector("#w-date").value = b.dataset.again ? "" : (r.dataset.date || "");
     runDates(g.querySelector("#w-date"), r.dataset.start, r.dataset.end);
     loadStageTimes(r.dataset.stage || "");
-    g.querySelector("#w-venue").value = r.dataset.venue || "";
+    // 記録の行の劇場の欄は「劇場 開演時刻」と並べて見せているので（suggest.js）、もう一度足すときは時刻を外す
+    g.querySelector("#w-venue").value = b.dataset.again ? (r.dataset.venue || "").replace(/\s+\d{1,2}:\d{2}$/, "") : (r.dataset.venue || "");
     g.querySelector("#w-stage").value = r.dataset.stage || "";
     document.getElementById("sug").replaceChildren();
-    g.querySelector(".said").textContent = "候補から入れました。内容を確かめて登録してください";
+    g.querySelector(".said").textContent = b.dataset.again ? "同じ公演を入れました。今回観た日を入れて保存してください"
+      : "候補から入れました。内容を確かめて登録してください";
+    if (b.dataset.again) g.querySelector("#w-date").focus();
     const dialog = r.closest('dialog.register-search-dialog');
     if (dialog) { dialog.dataset.picked = '1'; dialog.close(); }
   } else if (b.dataset.merge) {
@@ -3444,7 +3448,8 @@ function sugRender(box, rows, headText) {
     r.dataset.title = x.title;
     r.dataset.date = x.date || "";
     r.dataset.venue = x.venue || "";
-    r.dataset.stage = x.kind === "stage" ? (x.stage_id || "") : "";
+    // 記録の行も、結び付いた公演があれば持つ（もう一度行った回を足すとき、同じ公演に結び付ける）
+    r.dataset.stage = x.stage_id || "";
     r.dataset.start = x.start || ""; r.dataset.end = x.end || "";
     r.innerHTML = '<span class="sg-p"></span><span class="sg-b">'
       + '<span class="sg-k"></span><span class="sg-t"></span>'
@@ -3472,10 +3477,25 @@ function sugRender(box, rows, headText) {
       r.append(c);
     }
     if (x.kind === "record") {
-      const w = document.createElement("span");
-      w.className = "sg-dup";
-      w.textContent = "すでに記録にあります";
-      r.append(w);
+      // 行けばよかったの欄では、これまでどおり選ばせず「すでに記録にあります」とだけ出す
+      if (box.closest(".miss-add")) {
+        const w = document.createElement("span");
+        w.className = "sg-dup";
+        w.textContent = "すでに記録にあります";
+        r.append(w);
+      }
+      // 同じ公演に何回も行くことがあるので、記録のある公演も選べるようにする（起案者の指示 2026-10-24「『すでに記録にあります』でも
+      // 複数回行ってる場合があるから再度選んで行った履歴を追加できるようにしてほしい」）。選ぶと題名・劇場・公演を入れ、観た日は空けて
+      // 新しい日を入れてもらう。保存は日付ごとに別の記録になる（rate.addWorkAction。同じ日なら開演の時刻で分ける）
+      if (!box.closest(".miss-add")) {
+        const again = document.createElement("button");
+        // 「記録あり」の札で記録にあることは分かるので、「すでに記録にあります」の文は出さず、ボタンを短くして題名の幅を空ける
+        again.textContent = "もう一度足す";
+        again.title = again.ariaLabel = "この公演に、もう一度行った日を足す";
+        again.dataset.pick = "1";
+        again.dataset.again = "1";
+        r.append(again);
+      }
     } else {
       const pick = document.createElement("button");
       pick.textContent = "これを使う";
