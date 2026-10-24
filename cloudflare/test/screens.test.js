@@ -36,6 +36,10 @@ const RINFO_JS = /<div class="rinfo"[^>]*>[\s\S]*?<!--\/rinfo--><\/div>/g;
 const ROWINFO_PY = /<div class="syn"><p class="txt">[^<]*<\/p><button class="mrb" data-more="1">続きを読む<\/button><\/div>|<div class="cast">(?:<div class="cr">[\s\S]*?<\/span><\/div>)+<\/div>/g;
 const noRowInfo = r => (r && typeof r.body?.body_html === 'string' && r.body.body_html.includes('rec-row')
   ? {...r, body: {...r.body, body_html: r.body.body_html.replace(RINFO_JS, '').replace(ROWINFO_PY, '')}} : r);
+// 2026-10-21 からサービス版だけ: 1 回の記録の開演の時刻、まとめた回を足した回数、まとめた回の一覧（起案者の問い「ツアー公演を複数回追加するとき、
+// またまとめた公演を見るとき周辺のUXが悪い」、screens/row.js visitsHtml）。Python の行には無いので外して比べ、形は visits.test.js で確かめる
+const VISITS_JS = / <span class="at">[^<]*<\/span>| ?<span class="mtimes">[^<]*<\/span>|<details class="visits">[\s\S]*?<\/details>/g;
+const noVisits = r => (r && typeof r.body?.body_html === 'string' ? {...r, body: {...r.body, body_html: r.body.body_html.replace(VISITS_JS, '')}} : r);
 const noEditor = (r, re) => (r && typeof r.body === 'object' && typeof r.body?.body_html === 'string'
   ? {...r, body: {...r.body, body_html: r.body.body_html.replace(re, '<EDITOR/>').replace(STAR_BTNS, MARK_BTNS).replaceAll('この場で★を押せます', 'この場で ◎○△× を押せます')}} : r);
 
@@ -45,7 +49,7 @@ for (const [i, sc] of scenarios.entries()) {
     const cookie = await signIn(env);
     for (const [j, s] of sc.steps.entries()) {
       const raw = await step(env, cookie, s);
-      const got = noRowInfo(noEditor(raw, EDITOR_JS));
+      const got = noVisits(noRowInfo(noEditor(raw, EDITOR_JS)));
       // 判子が 1 つも無い画面は星の段階の人の画面（◎○△× の人は判子のまま）
       const starPage = typeof raw?.body?.body_html === 'string' && !raw.body.body_html.includes('data-stamp="1"');
       const want = noRowInfo(noEditor(starPage ? asStarRows(python[i].steps[j]) : python[i].steps[j], EDITOR_PY));

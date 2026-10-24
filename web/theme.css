@@ -738,6 +738,8 @@ a.htag-in:hover{text-decoration:underline}
 .rk-3 .rk-no{background:color-mix(in srgb,var(--curtain) 30%,var(--surf));color:var(--ink)}
 .rk-1 .rk-name{font-weight:700}
 .rk-name{grid-area:name;min-width:0;overflow-wrap:anywhere}
+/* 同じ数の名前は 1 行に併記する（起案者の指示 2026-10-21）。区切りの「、」は薄く */
+.rk-sep{color:var(--ink2);font-weight:400}
 .rk li small{grid-area:n;color:var(--ink2);font-variant-numeric:tabular-nums;white-space:nowrap}
 .rk-bar{grid-area:bar;display:block;height:6px;border-radius:3px;background:var(--grid);overflow:hidden}
 .rk-bar i{display:block;height:100%;border-radius:3px;background:color-mix(in srgb,var(--curtain) 75%,var(--surf))}
@@ -750,6 +752,17 @@ a.htag-in:hover{text-decoration:underline}
 .acrank-v .rk-visits{display:none}
 .acrank-v:has(#rk-v-visits:checked) .rk-visits{display:grid}
 .acrank-v:has(#rk-v-visits:checked) .rk-works{display:none}
+/* 探すの過去の公演の「観た」: ツアーは劇場を選ぶまで観た日を選べない（起案者の指示 2026-10-21）。選べない欄は薄くする */
+.past-seen input:disabled{opacity:.45;cursor:not-allowed}
+/* まとめた記録の観た回（起案者の問い 2026-10-21、screens/row.js visitsHtml）。1 回 1 行で日付・開演・劇場、まとめた回には「分ける」 */
+.visits{margin:6px 0 4px;font-size:13px}
+.visits>summary{cursor:pointer;color:var(--acc);font-size:12.5px;padding:6px 0}
+.visits ol{list-style:none;margin:4px 0 0;padding:0;display:grid;gap:4px}
+.visits li{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding:6px 10px;border-radius:8px;background:var(--plane)}
+.visits .vis-d{font-variant-numeric:tabular-nums;white-space:nowrap}
+.visits .vis-v{color:var(--ink2);min-width:0;overflow-wrap:anywhere}
+.visits .vsplit{margin-left:auto;padding:4px 12px;min-height:32px;font-size:12.5px}
+.visits .vnote{margin:6px 0 0;color:var(--mute);font-size:12px}
 .acdl{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:0 0 12px;font-size:14px}
 .acdl dt{color:var(--mute)}
 .acdl dd{margin:0}
@@ -915,6 +928,9 @@ h2 .cnt{font-size:13px;font-weight:400;color:var(--mute);margin-left:6px}
    上に 32px・左右に 20px の空きができていた。左の帯（スマホでは上の帯）のある画面では上の余白だけ消す
    （左右の余白は残す。起案者の指示 2026-10-16「左右の余白は更新前でよかった。上だけ詰めてほしかった」） */
 body:has(>.shell){padding-top:0}
+/* スマホで上に置いた行き先の帯だけは、左右の余白の外まで広げて画面の端に付ける（起案者の指示 2026-10-24
+   「画面上の白いメニューバーの横側を画面ぴったりにつくようにして」）。本文の左右の余白は上の決めどおり残す */
+@media(max-width:820px){body:has(>.shell)>.shell>.side{margin:0 -20px;width:calc(100% + 40px)}}
 
 /* ---- 評価の行（起案者の指示 2026-10-16）
    星は会場のすぐ下に左寄せで置く（省スペース）。いまの星の数を星の右に出す（app.js の starValue）。
@@ -1601,6 +1617,20 @@ details.lprice:not([open]):not(#_)>summary .plist>li:only-child::before{display:
 
 /* ---- お気に入りの役職（起案者の指示 2026-10-18「人って選んだあとに、細く指定したい場合のみ任意で選べるように。複数役職やる人もいるので」、
    q-favourite-homonym）。種類で「人」を選んだときだけ出す。選ばなければ、どの役職でも当てる */
+/* 探すの画面の検索欄を目立たせる（起案者の指示 2026-10-21「『探す』のページ内にある検索バー強調して」）。幕の色を薄く敷いた帯に、
+   大きな丸い入力欄と、幕の色で塗った「探す」を並べる。印は CSS だけ（画面の HTML は前のまま） */
+.fav-add:has(#search-q){margin:14px 0 8px;padding:14px;gap:10px;flex-wrap:nowrap;align-items:flex-end;border-radius:16px;
+ background:color-mix(in srgb,var(--curtain) 8%,var(--surf));border:1.5px solid color-mix(in srgb,var(--curtain) 35%,var(--ring))}
+.fav-add:has(#search-q) .fld{flex:1;min-width:0}
+.fav-add:has(#search-q) .fl{font-weight:700;color:var(--ink)}
+.fav-add #search-q{width:100%;box-sizing:border-box;height:50px;padding:0 18px;font-size:17px;color:var(--ink);background:var(--surf);
+ border:2px solid var(--curtain);border-radius:999px}
+.fav-add #search-q::placeholder{color:var(--mute)}
+.fav-add #search-q:focus{outline:none;box-shadow:0 0 0 4px color-mix(in srgb,var(--curtain) 25%,transparent)}
+.fav-add:has(#search-q) button[type=submit]{flex:none;height:50px;padding:0 22px;border-radius:999px;font-size:15px;font-weight:700;
+ background:var(--curtain);border-color:var(--curtain);color:var(--curtain-w)}
+.fav-add:has(#search-q) button[type=submit] .ico{stroke:currentColor}
+@media(max-width:420px){.fav-add:has(#search-q){padding:12px}.fav-add #search-q{font-size:16px;padding:0 14px}.fav-add:has(#search-q) button[type=submit]{padding:0 16px}}
 .fav-add .fav-roles{display:none;flex:1 0 100%;flex-wrap:wrap;gap:4px 14px;align-items:center;margin:4px 0 0;padding:8px 10px;border:1px solid var(--ring);border-radius:8px}
 .fav-add:has(#fav-kind option[value="人"]:checked) .fav-roles{display:flex}
 .fav-roles legend{font-size:.85rem;padding:0 4px}

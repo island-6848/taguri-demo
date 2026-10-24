@@ -19,7 +19,7 @@ import {recRow, stageLabels} from './row.js';
 import {posterHtml, posterFiles, indexTabs} from './rate.js';
 import {peopleByKey} from './diary.js';
 import {parseCredits} from './credits.js';
-import {loadWorks, titleKey} from './works.js';
+import {loadWorks, titleKey, visitsOf} from './works.js';
 import {loadDeclared, buckets, nz, pastFromIndex} from './lists.js';
 import {titleKey as indexKey, titlePrefixes, pastByPrefix} from '../stage-search.js';
 import {stageInfo, fallbackTemplate} from './fallback.js';
@@ -138,8 +138,23 @@ function monthCounts(rows, today) {
   for (const r of rows) for (const m of periodMonths(r.period)) if (m >= now) out[m] = (out[m] || 0) + 1;
   return out;
 }
-/** Coming stages counted by month, without a word: only the dates are read (no entry JSON to parse). */
+/**
+ * Coming stages counted by month, without a word: only the dates are read (no entry JSON to parse).
+ * 誰が開いても同じ数なので、索引の版・一覧の配達・日付ごとに 1 度だけ数えて rec_meta に置く（compare.population と同じ形）。
+ * 前は探すを開くたびにこれからの公演を全部（約 5,100 行）読んでいた（issue #242、D1 の 1 日の読み出しの無料枠）
+ */
 async function upcomingMonths(ctx) {
+  const {results: meta} = await ctx.db.prepare("SELECT k, v FROM rec_meta WHERE k IN ('current','catalogue_delivered','search_months')").all();
+  const m = Object.fromEntries(meta.map(r => [r.k, r.v]));
+  const stamp = `${m.current || ''}|${m.catalogue_delivered || ''}|${ctx.today}`;
+  if (m.search_months) { try { const p = JSON.parse(m.search_months); if (p.stamp === stamp) return {counts: p.counts, n: p.n}; } catch { /* count again */ } }
+  const counted = await countUpcomingMonths(ctx);
+  try {
+    await ctx.db.prepare("INSERT INTO rec_meta(k,v) VALUES('search_months',?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").bind(JSON.stringify({stamp, ...counted})).run();
+  } catch { /* 書けなくても数は出す（保存の上限など） */ }
+  return counted;
+}
+async function countUpcomingMonths(ctx) {
   const [idx, cat] = await ctx.db.batch([
     ctx.db.prepare("SELECT stage_id, start, end FROM rec_stage WHERE ver=(SELECT v FROM rec_meta WHERE k='current') AND (end='' OR end>=?)").bind(ctx.today),
     ctx.db.prepare("SELECT id, date, json_extract(metadata,'$.end_date') AS end FROM catalogue WHERE date>=? AND COALESCE(json_extract(metadata,'$.end_date'), date)>=?").bind(since(ctx.today), ctx.today)]);
@@ -172,12 +187,15 @@ export function pagerHtml(total, per, page, href) {
 const md = d => (/^\d{4}-\d{2}-\d{2}$/.test(d || '') ? `${d.slice(0, 4)}/${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}` : '');
 
 export async function pastHits(ctx, q, ws, page = 1, href = null) {
-  const linked = new Set(ws.map(w => w.stage_id).filter(Boolean).map(String));
+  // もう記録した公演も消さずに出し、「記録あり N 回」と添える（同じ劇場にもう 1 回足せるように。起案者の問い 2026-10-21 ──
+  // 前は記録に結び付いた劇場を外していたので、読み込み直すとツアーの劇場の選択欄が消え、まとめた回の劇場だけがまた出ていた）
+  const mine = new Map();
+  for (const w of ws) if (!w.unseen) for (const v of visitsOf(w)) if (v.stage_id) mine.set(String(v.stage_id), (mine.get(String(v.stage_id)) || 0) + v.times);
   const rows = new Map();
   let capped = false;
   const add = (r, why) => {
     const sid = String(r.stage_id);
-    if (!r.end || r.end >= ctx.today || linked.has(sid)) return;
+    if (!r.end || r.end >= ctx.today) return;
     const had = rows.get(sid);
     if (had) { if (!had.why.includes(why)) had.why.push(why); } else rows.set(sid, {...r, stage_id: sid, why: [why]});
   };
@@ -203,7 +221,8 @@ export async function pastHits(ctx, q, ws, page = 1, href = null) {
     const venues = [...new Set(g.map(r => r.venue).filter(Boolean))];
     return {sid: g[0].stage_id, title: g[0].title, grp: g[0].grp || '', start: g[0].start, end: g.map(r => r.end).sort().at(-1),
       where: venues.length > 1 ? `${venues[0]} ほか ${venues.length - 1} 会場` : (venues[0] || ''), why: [...new Set(g.flatMap(r => r.why))],
-      legs: g.map(r => ({sid: r.stage_id, start: r.start || '', end: r.end || '', venue: r.venue || ''}))};
+      legs: g.map(r => ({sid: r.stage_id, start: r.start || '', end: r.end || '', venue: r.venue || '', mine: mine.get(r.stage_id) || 0})),
+      mine: g.reduce((n, r) => n + (mine.get(r.stage_id) || 0), 0)};
   }).sort((a, b) => cmp(b.start, a.start));
   if (!prods.length) return ['', 0];
   const {results: miss} = await ctx.db.prepare('SELECT title FROM missed WHERE user_id=?').bind(ctx.uid).all();
@@ -215,23 +234,25 @@ export async function pastHits(ctx, q, ws, page = 1, href = null) {
     const isMissed = missed.has(indexKey(p.title));
     // 観た日の欄: 1 日だけの公演はその日を入れておく。期間の外は選べない（min/max）
     const one = p.start === p.end ? p.start : '';
-    // ツアーは劇場ごとに公演が別（stage_id が違う）。観た日からその日に上演していた劇場を選び直す（画面の app.js）。
-    // 日が重なる劇場が 2 つあるときや、日を入れる前は、ここで選べる（起案者の指摘 2026-10-18「適切な観劇日を入れても
-    // 観劇した劇場がその日と対応しない」── 前は代表の 1 劇場にしか結び付かなかった）
-    const legSel = p.legs.length > 1 ? `<label>劇場 <select name="stage">${p.legs.map(l =>
-      `<option value="${E(l.sid)}" data-start="${E(l.start)}" data-end="${E(l.end)}" data-venue="${E(l.venue)}">${E(l.venue || '劇場不明')}（${E(l.start === l.end ? md(l.start) : `${md(l.start)}〜${md(l.end)}`)}）</option>`).join('')}</select></label>` : '';
-    const seenForm = `<div class="past-seen" hidden><label>観た日 <input type="date" name="date" value="${E(one)}" min="${E(p.start || '')}" max="${E(p.end || '')}" required></label>`
-      + `${legSel}<label>開演 <input type="time" name="time" step="60"></label><button type="button" data-past="seen-save">観劇記録に追加</button></div>`;
+    // ツアーは劇場ごとに公演が別（stage_id が違う）。先に劇場を選び、その劇場の期間だけのカレンダーから観た日を選び、開演を入れる
+    // （起案者の指示 2026-10-21「観た→劇場選択→その劇場日付しか選べないカレンダーから日付を追加→時間追加」）。劇場を選ぶまで観た日は選べない
+    const tour = p.legs.length > 1;
+    const legSel = tour ? `<label>劇場 <select name="stage" required><option value="" selected disabled>劇場を選んでください</option>${p.legs.map(l =>
+      `<option value="${E(l.sid)}" data-start="${E(l.start)}" data-end="${E(l.end)}" data-venue="${E(l.venue)}">${E(l.venue || '劇場不明')}（${E(l.start === l.end ? md(l.start) : `${md(l.start)}〜${md(l.end)}`)}）${l.mine ? `・記録あり ${l.mine} 回` : ''}</option>`).join('')}</select></label>` : '';
+    const dateIn = tour ? '<input type="date" name="date" value="" required disabled>'
+      : `<input type="date" name="date" value="${E(one)}" min="${E(p.start || '')}" max="${E(p.end || '')}" required>`;
+    const seenForm = `<div class="past-seen" hidden${tour ? '' : ` data-stage="${E(p.sid)}"`}>${legSel}<label>観た日 ${dateIn}</label>`
+      + `<label>開演 <input type="time" name="time" step="60"></label><button type="button" data-past="seen-save">観劇記録に追加</button></div>`;
     return `<li class="pastrow" data-stage="${E(p.sid)}" data-title="${E(p.title)}">
-<div class="past-t"><b>${E(p.title)}</b>${p.grp ? `<span class="past-g">${E(p.grp)}</span>` : ''}</div>
+<div class="past-t"><b>${E(p.title)}</b>${p.grp ? `<span class="past-g">${E(p.grp)}</span>` : ''}${p.mine ? `<span class="badge part">記録あり ${p.mine} 回</span>` : ''}</div>
 <div class="past-w">${E(run)}${p.where ? '・' + E(p.where) : ''}</div>
 <div class="past-why">ヒットした箇所：${p.why.map(E).join('・')}</div>
-<div class="past-btns"><button type="button" data-past="seen">観た</button>`
+<div class="past-btns"><button type="button" data-past="seen">${p.mine ? '観た（もう 1 回追加）' : '観た'}</button>`
       + `<button type="button" data-past="missed"${isMissed ? ' disabled' : ''}>${isMissed ? '行けばよかったに入っています' : '行けばよかった'}</button></div>${seenForm}<span class="said"></span></li>`;
   }).join('');
   const more = capped ? `<p class="lead">題名で当たる公演が多いので、題名の順に ${PAST_TITLE_ROWS} 公演までを読んで出しています。言葉を足すと絞れます。</p>` : '';
   return [`<h2>過去の公演（2019 年〜） ${prods.length} 件</h2>
-<p class="lead">終わった公演のうち、まだ日記帳に無いものです。<b>「観た」</b>を押して観た日を入れると、観劇記録に追加して、その公演と結び付けます。開演の時刻も入れられます。<b>「行けばよかった」</b>を押すと、見逃した公演の一覧に入ります。
+<p class="lead">終わった公演です。もう記録した公演には「記録あり」と出ます。<b>「観た」</b>を押して観た日を入れると、観劇記録に追加して、その公演と結び付けます。同じ公演を何回観ても、1 回ずつ足せます。開演の時刻も入れられます。<b>「行けばよかった」</b>を押すと、見逃した公演の一覧に入ります。
 題名は先頭から一致するもの、人・団体は名前全体が一致するものを探しています。</p>${more}<ul class="pastlist" id="past-hits">${li}</ul>${pagerHtml(prods.length, PAST_PER, page, href)}`, prods.length];
 }
 

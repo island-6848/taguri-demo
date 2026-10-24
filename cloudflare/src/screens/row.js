@@ -7,6 +7,7 @@ import {pastStages} from './autolink.js';
 import {E, WS, strip, cmp} from './py.js';
 import {handCreditCount} from './credits.js';
 import {rinfoHtml} from './rowinfo.js';
+import {visitsOf, seenTimes} from './works.js';
 
 // ---------------------------------------------------------------- icons.py
 const ICONS = {
@@ -53,6 +54,18 @@ export function venueOf(w) {
   }
   if (!out.length) return '';
   return out.length === 1 ? out[0] : `${out[0]} ほか ${out.length - 1} 会場`;
+}
+/**
+ * 行に出す劇場: venueOf に、まとめた回の別の劇場を「ほか N 会場」で足す（ツアーを劇場ごとに足してまとめた記録。起案者の問い 2026-10-21）。
+ * 劇場で絞る鍵（venueKey）は venueOf のまま
+ */
+export function venueLine(w) {
+  const v = venueOf(w);
+  if (!(w.merged || []).length) return v;
+  const loose = x => strip(x || '').replace(VENUE_WS, '');
+  const names = [];
+  for (const x of [v, ...visitsOf(w).map(x => x.venue)]) if (loose(x) && !names.some(n => loose(n) === loose(x))) names.push(strip(x));
+  return names.length > 1 ? `${names[0]} ほか ${names.length - 1} 会場` : (names[0] || '');
 }
 const VENUE_WS = new RegExp(`[${WS}　]+`, 'gu');
 /** app._venue_key */
@@ -139,6 +152,29 @@ function castHtml(people) {
   return `<div class="cast">${rows.join('')}</div>`;
 }
 
+// ---------------------------------------------------------------- 観た回（まとめた記録）
+const visitDate = v => {
+  const [y, md, wd] = dateParts(v.date);
+  if (!md) return '日付なし';
+  const [mo, dd] = md.split('.');
+  return `${y}/${mo.padStart(2, '0')}/${dd}(${wd})`;
+};
+/**
+ * まとめた記録の観た回の一覧（起案者の問い 2026-10-21「まとめた公演を見るとき周辺のUXが悪い」）。観た日・開演・劇場を 1 回 1 行で出す。
+ * 直せる行（日記帳）では、まとめた回ごとに「分ける」（別の記録に戻す。app.js の data-unmerge-one）を付ける。1 回だけの記録には出さない
+ */
+export function visitsHtml(w, editable = false) {
+  if (!(w.merged || []).length || w.unseen) return '';
+  const vs = visitsOf(w);
+  const li = vs.map(v => `<li><span class="vis-d">${E(visitDate(v))}${v.time ? ` ${E(v.time)}` : ''}</span>`
+    + `<span class="vis-v">${E(strip(v.venue) || '劇場なし')}${v.times > 1 ? `・${v.times} 回` : ''}</span>`
+    + (editable && !v.kept ? `<button type="button" class="vsplit" data-unmerge-one="${E(w.work_key)}" data-one="${E(v.work_key)}">分ける</button>` : '')
+    + '</li>').join('');
+  return `<details class="visits"><summary>観た ${seenTimes(w)} 回の日付と劇場</summary><ol>${li}</ol>`
+    + (editable ? '<p class="vnote">「分ける」を押すと、その回を別の記録に戻します。評価はそのまま写します。</p><span class="said"></span>' : '')
+    + '</details>';
+}
+
 // ---------------------------------------------------------------- the row
 /**
  * app._rec_row. Options as in Python (poster, rate_always, editable,
@@ -175,11 +211,16 @@ export function recRow(w, {poster = '', rateAlways = false, editable = false, ra
   }
   let times = '';
   if (!unseen) {
-    const n = w.times || 1;
+    const n = seenTimes(w);
     if (w.skipped) times = `${n} 回観た（あと ${w.skipped} 回は行かなかった）`;
     else if (n > 1) times = `${n} 回観た`;
   }
-  const where = [venueOf(w), times].filter(x => x).map(x => `<span>${E(x)}</span>`).join(' ');
+  // 開演の時刻は 1 回だけの記録に添える（同じ日の昼・夜を見分けられるように。起案者の問い 2026-10-21）
+  const at = !unseen && w.time && !(w.merged || []).length ? `${w.time} 開演` : '';
+  // サービス版だけの形（開演・まとめた回を足した回数）は、Python と比べる試験（screens.test.js）で外せるよう印を付ける
+  const mtimes = (w.merged || []).length;
+  const where = [[venueLine(w), ''], [at, ' class="at"'], [times, mtimes ? ' class="mtimes"' : '']].filter(([x]) => x)
+    .map(([x, c]) => `<span${c}>${E(x)}</span>`).join(' ');
   const [impHead, impBox] = impressionParts(w);
   const [y, md, wd] = dateParts(w.first_date || '');
   // 日付は yyyy/mm/dd(曜日) の 1 続きで書く（起案者の指示 2026-10-18「日記帳の日付の書き方、yyyy/mm/dd(曜日)で統一して。」、
@@ -204,9 +245,10 @@ export function recRow(w, {poster = '', rateAlways = false, editable = false, ra
     + (where ? `<div class="where">${where}</div>` : '')
     // 評価の押し口は会場のすぐ下（起案者の指示 2026-10-16「星の位置を会場の下に入れて省スペース化」）
     + ((rate || impHead) ? `<div class="tools">${rate}${impHead}</div>` : '')
+    + visitsHtml(w, editable)
     + piecesHtml(w)
     // つながった公演の作り手・あらすじ（rowinfo.rowInfos。サービス版だけ）があれば、おすすめのカードと同じ形で出す
-    + (w.info ? rinfoHtml(w.info, venueOf(w), times) : synopsisHtml(w.synopsis) + castHtml(w.people))
+    + (w.info ? rinfoHtml(w.info, venueLine(w), [at, times].filter(Boolean).join('・')) : synopsisHtml(w.synopsis) + castHtml(w.people))
     + extra                         // 探す画面の「ヒットした箇所」（題名のすぐ下）
     + impBox
     + (editable ? editHtml(w, label) : '')
@@ -277,13 +319,13 @@ export function editHtml(w, label) {
     + `<input type="text" data-ed-venue="" value="${E(w.venue || '')}"`
     + ` placeholder="劇場" size="18"></div>`;
   const mg = w.merged || [];
-  const merged = mg.length ? `<button data-unmerge="${key}">まとめた ${mg.length} 件を戻す</button>` : '';
+  const merged = mg.length ? `<button data-unmerge="${key}">まとめた ${mg.length} 件をすべて分ける</button>` : '';
   const skipLead = w.unseen
     ? '<b>この記録には「行かなかった」が付いています。</b>観た本数と図、評価待ちからは外れています。この行の上にある「やはり観た」で戻せます。<br>'
     : '';
-  const mgNote = !mg.length ? '' : '<p class="ed-lead">この記録には、同じ公演としてまとめた次の記録が入っています：'
-    + mg.slice(0, 4).map(m => `「${E(m.title)}」`).join('、')
-    + (mg.length > 4 ? ` ほか ${mg.length - 4} 件` : '') + '。</p>';
+  // まとめた回は上の「観た N 回の日付と劇場」に 1 回ずつ出し、そこで 1 回ずつ分けられる（起案者の問い 2026-10-21。前は題名だけを並べていた）
+  const mgNote = !mg.length ? '' : `<p class="ed-lead">この記録には、同じ公演として ${mg.length + 1} 回分の記録をまとめています。`
+    + '下の観た日・劇場は、いちばん早い回のものです。ほかの回は、上の「観た回の日付と劇場」で見られ、1 回ずつ分けられます。</p>';
   const sid = w.stage_id || '';
   let linkNote;
   if (sid && w.auto_linked) {

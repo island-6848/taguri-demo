@@ -27,7 +27,7 @@ import {agreeAction} from '../terms.js';
 import {shareScreens} from '../share.js';
 
 export const SCREEN_TABLES = ['works', 'excluded', 'merges', 'hand_credits', 'visit_note', 'reaction', 'viewed',
-  'ticket', 'missed', 'rank_weight', 'app_setting', 'search_request', 'work_piece', 'share'];
+  'ticket', 'missed', 'rank_weight', 'app_setting', 'search_request', 'work_piece', 'share', 'note_ai'];
 // Stands in for the Python server's per-process token (__TAGURI_TOKEN__). The
 // public service never checks it; screens only carry it in links.
 export const TOKEN = 'cfw0000000000000000000000000000000';

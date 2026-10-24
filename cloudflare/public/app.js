@@ -1868,19 +1868,62 @@ document.addEventListener("change", ev => {
   });
 });
 
-// **探す画面の過去の公演（ツアー）: 観た日を入れたら、その日に上演していた劇場を選び直す**（起案者の指摘 2026-10-18
-// 「適切な観劇日を入れても観劇した劇場がその日と対応しない」）。日が重なる劇場が複数あるときは最初のものを選び、
-// 劇場の欄で選び直せる。どの劇場の期間にも入らない日（ツアーの合間）は、そう書く
+// **探す画面の過去の公演の「観た」: 劇場 → その劇場の日付だけのカレンダー → 開演**（起案者の指示 2026-10-21「観た→劇場選択→
+// その劇場日付しか選べないカレンダーから日付を追加→時間追加」。前は日付を先に入れ、そこから劇場を選び直していた）。
+// ツアーは劇場を選ぶまで観た日を選べない。開演の時刻が分かる日（/api/stage_times）は、その時刻だけのプルダウンにする
+function pastTimes(form, times) {
+  const cur = form.querySelector("[name=time]");
+  if (!cur) return;
+  const want = times && times.length ? "SELECT" : "INPUT";
+  let el = cur;
+  if (cur.tagName !== want) {
+    el = document.createElement(want === "SELECT" ? "select" : "input");
+    el.name = "time";
+    if (want === "INPUT") { el.type = "time"; el.step = "60"; }
+    cur.replaceWith(el);
+  }
+  if (want === "SELECT") {
+    const keep = cur.value;
+    el.innerHTML = (times.length > 1 ? '<option value="">選んでください</option>' : "") + times.map(t => '<option value="' + E(t) + '">' + E(t) + "</option>").join("");
+    if (times.includes(keep)) el.value = keep;
+  }
+}
+function pastTimesForDate(form) {
+  const d = form.querySelector("input[name=date]");
+  let all = {};
+  try { all = JSON.parse(form.dataset.times || "{}") || {}; } catch (e) { all = {}; }
+  pastTimes(form, d && d.value ? all[d.value] || null : null);
+}
+async function pastLoadTimes(form, sid) {
+  delete form.dataset.times;
+  form.dataset.timesFor = sid || "";
+  pastTimesForDate(form);
+  if (!sid || IS_DEMO) return;
+  try {
+    const r = await fetch(API_BASE + "/api/stage_times?stage_id=" + encodeURIComponent(sid), {credentials: "include"});
+    const d = r.ok ? await r.json() : {};
+    if (form.dataset.timesFor !== sid) return;   // 待つ間に劇場を選び直した
+    form.dataset.times = JSON.stringify(d.times || {});
+    pastTimesForDate(form);
+  } catch (e) { /* 分からなければ自由に入れる欄のまま */ }
+}
 document.addEventListener("change", ev => {
+  const sel = ev.target.closest && ev.target.closest(".past-seen select[name=stage]");
+  if (sel) {
+    const form = sel.closest(".past-seen"), d = form.querySelector("input[name=date]"), opt = sel.selectedOptions[0];
+    const said = form.closest(".pastrow").querySelector(":scope > .said");
+    if (!opt || !opt.value) return;
+    d.min = opt.dataset.start || ""; d.max = opt.dataset.end || opt.dataset.start || "";
+    d.disabled = false;
+    if (opt.dataset.start && opt.dataset.start === opt.dataset.end) d.value = opt.dataset.start;
+    else if (d.value && !(d.min <= d.value && d.value <= d.max)) d.value = "";
+    if (said) said.textContent = "";
+    pastLoadTimes(form, opt.value);
+    d.focus();
+    return;
+  }
   const d = ev.target.closest && ev.target.closest(".past-seen input[name=date]");
-  if (!d) return;
-  const form = d.closest(".past-seen"), sel = form.querySelector("select[name=stage]");
-  if (!sel || !d.value) return;
-  const hit = [...sel.options].filter(o => o.dataset.start <= d.value && d.value <= o.dataset.end);
-  const said = form.closest(".pastrow").querySelector(":scope > .said");
-  if (hit.length) sel.value = hit[0].value;
-  if (said) said.textContent = !hit.length ? "その日はどの劇場でも上演していません。観た日を確かめてください"
-    : hit.length > 1 ? "その日は複数の劇場で上演しています。劇場を選んでください" : "";
+  if (d) pastTimesForDate(d.closest(".past-seen"));
 });
 
 // **前におすすめを開いた日から今日までに終わった公演があり、未評価が残っていたら知らせる**
@@ -2390,17 +2433,21 @@ document.addEventListener("click", ev => {
     if (b.dataset.past === "seen") {
       form.hidden = !form.hidden;
       b.classList.toggle("picked", !form.hidden);
-      if (!form.hidden) form.querySelector("input[name=date]").focus();
+      // ツアーは劇場から、1 会場の公演は観た日から（劇場の時刻はそのときに読む）
+      const sel0 = form.querySelector("select[name=stage]");
+      if (!form.hidden && !sel0 && form.dataset.stage && form.dataset.timesFor !== form.dataset.stage) pastLoadTimes(form, form.dataset.stage);
+      if (!form.hidden) (sel0 && !sel0.value ? sel0 : form.querySelector("input[name=date]")).focus();
     } else if (b.dataset.past === "seen-save") {
-      const d = form.querySelector("input[name=date]"), t = form.querySelector("input[name=time]");
+      const d = form.querySelector("input[name=date]"), t = form.querySelector("[name=time]");
+      const sel = form.querySelector("select[name=stage]"), opt = sel && sel.selectedOptions[0];
+      if (sel && !sel.value) { if (said) said.textContent = "先に劇場を選んでください"; sel.focus(); return; }
       if (!d.value) { if (said) said.textContent = "観た日を入れてください"; d.focus(); return; }
       if (!d.checkValidity()) { if (said) said.textContent = "観た日は上演期間の中から選んでください"; d.focus(); return; }
       const prev = li.querySelector(".past-done");
       if (prev && !t.value && (prev.dataset.days || "").split(",").includes(d.value)) {
         if (said) said.textContent = "その日はもう追加しました。同じ日にもう一度観たときは、開演の時刻も入れてください"; t.focus(); return;
       }
-      // ツアーは選んだ劇場（観た日から選び直してある）の公演に結び付ける
-      const sel = form.querySelector("select[name=stage]"), opt = sel && sel.selectedOptions[0];
+      // ツアーは選んだ劇場の公演に結び付ける
       if (opt) {
         if (!(opt.dataset.start <= d.value && d.value <= opt.dataset.end)) {
           // どの劇場の期間にも入らない日（ツアーの合間）なら、日を入れたときと同じ言い方にする（#134 の通しで食い違っていた）
@@ -2413,7 +2460,8 @@ document.addEventListener("click", ev => {
       }
       // **同じ公演を続けて何回でも足せる**（起案者の指摘 2026-10-18「連続で何回も同じ公演を追加したい場合に対処して」）。
       // 足したあとも欄は開いたまま、日付と時刻だけ空にする。足した回は行の下に並べる。同じ日の昼・夜は開演の時刻で分ける（サーバー）
-      const when = `${+d.value.slice(5, 7)}/${+d.value.slice(8, 10)}${t.value ? " " + t.value : ""}`;
+      // 足した回の一覧には劇場も添える（ツアーのどの劇場の回か分かるように。起案者の問い 2026-10-21）
+      const when = `${+d.value.slice(5, 7)}/${+d.value.slice(8, 10)}${t.value ? " " + t.value : ""}${opt && opt.dataset.venue ? " " + opt.dataset.venue : ""}`;
       post("/api/add_work", {...body, date: d.value, time: t.value || ""}, li, `${when} を観劇記録に追加しました。続けて別の回も追加できます`)
         .then(r => {
           if (!r) return;
@@ -2423,7 +2471,8 @@ document.addEventListener("click", ev => {
           done.dataset.list = (done.dataset.list ? done.dataset.list + "、" : "") + when;
           done.dataset.days = (done.dataset.days ? done.dataset.days + "," : "") + d.value;
           done.textContent = `追加した回（${done.dataset.n}）: ${done.dataset.list}`;
-          d.value = ""; t.value = ""; d.focus();
+          // 劇場は選んだまま、日付と時刻だけ空にする（同じ劇場の別の回を続けて足せる）
+          d.value = ""; t.value = ""; pastTimesForDate(form); d.focus();
           const seen = li.querySelector("[data-past=seen]");
           seen.textContent = "観た（もう 1 回追加）";
         });
@@ -2468,6 +2517,8 @@ document.addEventListener("click", ev => {
         clearTimeout(sugTimer); ++sugSeq;
         if (!repeat) { t.value = ""; g.querySelector("#w-stage").value = ""; runDates(dt, "", ""); }
         else if (d.stage_id) g.querySelector("#w-stage").value = d.stage_id;
+        // 観た日から別の劇場の公演に結び付け直したときは、劇場の欄もその劇場にする（起案者の問い 2026-10-21。rate.addWorkAction の venue）
+        if (repeat && typeof d.venue === "string") g.querySelector("#w-venue").value = d.venue;
         document.getElementById("sug").replaceChildren();
         if (g.dataset.registerSingle) {
           const result = g.parentElement.querySelector("[data-register-result]");
@@ -2543,10 +2594,17 @@ document.addEventListener("click", ev => {
     g.querySelector(".said").textContent = "別の公演として、そのままにします";
     g.querySelectorAll("button").forEach(x => x.disabled = true);
     setTimeout(() => location.reload(), 1200);
+  } else if (b.dataset.unmergeOne) {
+    // まとめた記録の 1 回だけを別の記録に分ける（起案者の問い 2026-10-21。row.js visitsHtml）
+    const g = b.closest("details.visits") || b.parentElement;
+    b.disabled = true;
+    post("/api/merge_work", {work_key: b.dataset.unmergeOne, one: b.dataset.one, unmerge: true}, g,
+      "この回を別の記録に分けました。画面を読み込み直します")
+      .then(d => { if (d) setTimeout(() => location.reload(), 1000); else b.disabled = false; });
   } else if (b.dataset.unmerge) {
     const g = b.closest(".ed-btns") || b.parentElement;
     post("/api/merge_work", {work_key: b.dataset.unmerge, unmerge: true}, g,
-      "まとめを取り消しました。画面を読み込み直します")
+      "まとめた回をすべて別の記録に分けました。画面を読み込み直します")
       .then(d => { if (d) setTimeout(() => location.reload(), 1000); });
   } else if (b.dataset.wsave) {
     // **確定を押したときに 1 回だけ書き、そこで読み込み直す**（起案者の指示・2026-08-24）。
@@ -2588,6 +2646,14 @@ document.addEventListener("click", ev => {
     if (!on) return;
     post("/api/analysis_optout", {off: on.value === "1"}, card,
       on.value === "1" ? "保存しました。分析から外します" : "保存しました").then(d => {
+      if (d) setTimeout(() => location.reload(), 700);
+    });
+  } else if (b.dataset.setNoteAi) {
+    // 感想の AI 読み取りへの同意（設定、note-ai.js）。押したときに 1 回だけ書く
+    const card = b.closest("#note-ai-setting"), on = card.querySelector('input[name="note_ai"]:checked');
+    if (!on) return;
+    post("/api/note_ai", {on: on.value === "1"}, card,
+      on.value === "1" ? "保存しました。今夜から感想を読み取ります" : "保存しました。感想を AI に送りません").then(d => {
       if (d) setTimeout(() => location.reload(), 700);
     });
   } else if (b.dataset.setPref || b.dataset.setPrefAll) {
