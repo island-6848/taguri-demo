@@ -909,6 +909,12 @@ async function walkA(A) {
     });
     check(below, '並べ替えが月のタブより下にない');
     await shotsBoth('favourites');
+    // 表示の絞り込みは、おすすめと同じ 1 つの折りたたみで、既定は閉じる（起案者の指示 2026-10-24）
+    const ctl = page.locator('details.rec-controls');
+    check(await ctl.count() === 1 && await ctl.getAttribute('open') === null, 'お気に入りの表示の絞り込みが閉じた折りたたみになっていない');
+    await ctl.locator('> summary').click();
+    await shotsBoth('favourites-filter-open');
+    await ctl.locator('> summary').click();
     const tag = page.locator('.tag[data-name="劇団ナシ"]');
     const reload = page.waitForEvent('load', {timeout: 15000});
     await tag.locator('button[data-fav="remove"]').click();

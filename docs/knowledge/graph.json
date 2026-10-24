@@ -1352,6 +1352,18 @@
    "verifies": []
   },
   {
+   "id": "dec-fav-filter-fold",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-24",
+   "title": "お気に入りの「表示の絞り込み」（場所・料金）を、おすすめの「地域・調整」と同じ 1 つの折りたたみにする。既定は閉じる",
+   "sources": [
+    "cloudflare/src/screens/lists.js",
+    "cloudflare/test/cantgo.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-fav-only-reco",
    "type": "decision",
    "status": "adopted",
@@ -10317,6 +10329,11 @@
   },
   {
    "from": "dec-entity-pages",
+   "rel": "affects",
+   "to": "comp-cf-worker"
+  },
+  {
+   "from": "dec-fav-filter-fold",
    "rel": "affects",
    "to": "comp-cf-worker"
   },
