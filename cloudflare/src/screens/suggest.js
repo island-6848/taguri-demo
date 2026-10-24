@@ -10,7 +10,7 @@
 // come from D1 (current stages through rec_gram, past stages by title-key
 // prefix on its index) instead of the files on the Python server.
 import {gradeText} from './grade.js';
-import {titleKey, d1Search, searchIndex, titlePrefixes, pastByPrefix} from '../stage-search.js';
+import {titleKey, d1Search, searchIndex, titlePrefixes, pastByPrefix, pastByTitle} from '../stage-search.js';
 import {loadWorks, visitsOf} from './works.js';
 import {scheduleFilter} from './schedule-filter.js';
 import {stageInfo} from './fallback.js';
@@ -87,6 +87,11 @@ export async function suggest(params, ctx) {
   if (schedule.from) { filters.push("start<=? AND COALESCE(NULLIF(end,''),start)>=?"); args.push(schedule.to, schedule.from); }
   const past = await pastByPrefix(db, 'stage_id,title,tkey,start,end,venue,grp,pref', keys,
     advanced ? DETAIL_SCAN_LIMIT : PAST_LIMIT, {sql: filters.join(' AND '), args});
+  // 題名の途中の語でも引く（R2 の題名の索引、stage-search.pastByTitle。起案者の指示 2026-10-24）。劇場・団体・日付の絞り込みは下の fits で
+  const had = new Set(past.map(p => String(p.stage_id)));
+  for (const p of await pastByTitle(ctx.env, db, k, 'stage_id,title,tkey,start,end,venue,grp,pref', advanced ? DETAIL_SCAN_LIMIT : PAST_LIMIT)) {
+    if (!had.has(String(p.stage_id))) past.push(p);
+  }
   // ツアー（同じ題名・団体で劇場ごとの公演）は、どの劇場を選んでも観た日をツアー全体の期間から選べるようにする。保存するときに、
   // 観た日に上演していた劇場へ結び付け直す（rate.addWorkAction。起案者の問い 2026-10-21 ── 前は選んだ劇場の期間しか選べなかった）
   const tour = new Map();
@@ -98,7 +103,7 @@ export async function suggest(params, ctx) {
     if (seen.has(p.stage_id)) continue;
     const one = runRange(p.start, p.end, ctx.today);
     const run = tour.get(p.tkey + '\u0000' + (p.grp || ''));
-    rows.push({_s: [keys.includes(p.tkey) ? 0 : 1, 1], kind: 'stage', key: p.stage_id, title: p.title,
+    rows.push({_s: [keys.includes(p.tkey) ? 0 : keys.some(x => p.tkey.startsWith(x)) ? 1 : 2, 1], kind: 'stage', key: p.stage_id, title: p.title,
       date: one && !one.includes('〜') ? iso(ymd(p.start)) : '', venue: p.venue,
       note: `${p.grp}／${one}（${p.pref}）`, times: 1, stage_id: p.stage_id, start: iso(ymd(run.start)), end: iso(ymd(run.end)),
       wk: groupKey(p.tkey, p.grp, p.stage_id)});

@@ -100,7 +100,9 @@ test('past stages are found by a person name through the R2 name index (one shar
     const html = await search(env, a, '俳優甲');
     assert.match(html, /data-stage="800001" data-title="ある舞台"/);
     assert.match(html, /ヒットした箇所：出演・作り手・団体/);
-    assert.deepEqual([...new Set(gets)], [file]);
+    // 名前の索引は 1 個だけ読む。ほかに読むのは題名の索引（題名の途中の語、2026-10-24）だけ
+    assert.deepEqual([...new Set(gets)].filter(k => k.startsWith('pastidx/')), [file]);
+    assert.ok(gets.every(k => k.startsWith('pastidx/') || k.startsWith('pasttitle/')));
   } finally { sqlite.close(); }
 });
 
