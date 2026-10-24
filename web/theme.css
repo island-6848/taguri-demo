@@ -1117,6 +1117,8 @@ a.pill.buy .go:not(#_){font-size:12px;margin-left:2px}
 .rec-controls>summary{cursor:pointer;font-size:13px;line-height:1.7}
 .rec-controls>summary span{color:var(--mute);font-size:12px;margin-left:8px;overflow-wrap:anywhere}
 .rec-controls .rec-budget:empty{display:none}
+/* 興味ありの画面: 料金の箱が入らなかったとき（料金の分かる公演が無い）は、「表示の絞り込み」の見出しも出さない */
+.rec-controls .fgh:has(+ .fil2:empty),.rec-controls .fil2:empty{display:none}
 .rec-answer-help{font-size:12px;color:var(--ink2);line-height:1.7;margin:10px 0 18px}
 /* 保存済みのカードだけを縮める。元の情報と入力欄は残し、「回答を直す」で再び開く。 */
 .ticket.answered-compact:not(.answer-editing){display:block;min-height:0;padding:10px 14px}

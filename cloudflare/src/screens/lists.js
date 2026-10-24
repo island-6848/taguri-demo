@@ -605,6 +605,20 @@ async function interestWhy(ctx, show) {
   return out;
 }
 
+/**
+ * 興味ありの画面の「絞り込み・並べ替え」を、おすすめの画面（地域・調整）と同じく 1 つの折りたたみにまとめる
+ * （起案者の指示 2026-10-24「おすすめページと同様に、絞り込み自体を折りたためるようにして」）。既定は閉じる。
+ * * 料金の絞り込みは app.js（priceFilter）が中の .fil2.narrow に入れ、いまの上限を見出しの .rec-budget に書く。
+ */
+function interestControls(sort, sortHtml) {
+  return `<details class="rec-controls">
+<summary><b>絞り込み・並べ替え</b><span>${E(SORTS[sort])}</span><span class="rec-budget"></span></summary>
+<p class="fgh">${ico('search', 15)}<b>表示の絞り込み</b><span>並んでいる公演のうち、見る分だけに絞ります</span></p>
+<div class="fil2 narrow"></div>
+${sortHtml}
+</details>`;
+}
+
 export async function interestScreen(params, ctx) {
   const b = await buckets(ctx);
   const keys = ['start', 'end', 'added', 'title', 'pref'], sort = sortOf(params, keys);
@@ -621,10 +635,10 @@ export async function interestScreen(params, ctx) {
   // 0 件のときは月のタブと「0 件すべてを表示しています」を出さず、案内だけにする。「並べ替え」はお気に入りと同じく年月のタブより下
   // （起案者の答え 2026-10-18「お願い」）
   const body = `<h1>「興味あり」の公演</h1>
-<p class="lede">「興味あり」を押した公演を並べています。順位は付けていません。並べ替えは下の「並べ替え」で選べます。チケットが取れたら「すでに持っている」を押してください。「購入済の公演」に移り、上演日を過ぎると評価待ちに並びます。<br>
+<p class="lede">「興味あり」を押した公演を並べています。順位は付けていません。並べ替えと料金の絞り込みは、下の「絞り込み・並べ替え」を開くと選べます。チケットが取れたら「すでに持っている」を押してください。「購入済の公演」に移り、上演日を過ぎると評価待ちに並びます。<br>
 「なぜ気になったか」に書いた名前は、<a href="/recommend/favourites?t=__TAGURI_TOKEN__">お気に入り</a>に加える候補として並びます。</p>
 ${rows.length ? mfil : ''}
-${rows.length ? sortForm('/recommend/interest', sort, keys, params.get('m') ? `<input type="hidden" name="m" value="${E(params.get('m'))}">` : '') : ''}
+${rows.length ? interestControls(sort, sortForm('/recommend/interest', sort, keys, params.get('m') ? `<input type="hidden" name="m" value="${E(params.get('m'))}">` : '')) : ''}
 ${list}
 ${rows.length ? mfoot : ''}`;
   return {title: '興味あり', body_html: body};
