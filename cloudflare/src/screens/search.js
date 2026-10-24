@@ -138,8 +138,23 @@ function monthCounts(rows, today) {
   for (const r of rows) for (const m of periodMonths(r.period)) if (m >= now) out[m] = (out[m] || 0) + 1;
   return out;
 }
-/** Coming stages counted by month, without a word: only the dates are read (no entry JSON to parse). */
+/**
+ * Coming stages counted by month, without a word: only the dates are read (no entry JSON to parse).
+ * 誰が開いても同じ数なので、索引の版・一覧の配達・日付ごとに 1 度だけ数えて rec_meta に置く（compare.population と同じ形）。
+ * 前は探すを開くたびにこれからの公演を全部（約 5,100 行）読んでいた（issue #242、D1 の 1 日の読み出しの無料枠）
+ */
 async function upcomingMonths(ctx) {
+  const {results: meta} = await ctx.db.prepare("SELECT k, v FROM rec_meta WHERE k IN ('current','catalogue_delivered','search_months')").all();
+  const m = Object.fromEntries(meta.map(r => [r.k, r.v]));
+  const stamp = `${m.current || ''}|${m.catalogue_delivered || ''}|${ctx.today}`;
+  if (m.search_months) { try { const p = JSON.parse(m.search_months); if (p.stamp === stamp) return {counts: p.counts, n: p.n}; } catch { /* count again */ } }
+  const counted = await countUpcomingMonths(ctx);
+  try {
+    await ctx.db.prepare("INSERT INTO rec_meta(k,v) VALUES('search_months',?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").bind(JSON.stringify({stamp, ...counted})).run();
+  } catch { /* 書けなくても数は出す（保存の上限など） */ }
+  return counted;
+}
+async function countUpcomingMonths(ctx) {
   const [idx, cat] = await ctx.db.batch([
     ctx.db.prepare("SELECT stage_id, start, end FROM rec_stage WHERE ver=(SELECT v FROM rec_meta WHERE k='current') AND (end='' OR end>=?)").bind(ctx.today),
     ctx.db.prepare("SELECT id, date, json_extract(metadata,'$.end_date') AS end FROM catalogue WHERE date>=? AND COALESCE(json_extract(metadata,'$.end_date'), date)>=?").bind(since(ctx.today), ctx.today)]);

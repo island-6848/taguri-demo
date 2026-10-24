@@ -6,6 +6,7 @@
 // 全部の特徴への好き嫌いを推し量らない。プロフィールは今の記録から毎回作り直すので、編集・削除がすぐ効く。
 
 import {splitMark} from './x-post.js';
+import {noteHash} from './note-ai.js';
 export const PRIOR = 3, WEIGHT = 0.75, TOP_N = 3;
 
 // 同じ特徴に限って表記を揃える。「恋愛」と「恋愛が多い」などは統合しない
@@ -142,7 +143,7 @@ export function buildProfile(works) {
     const note = splitMark(work.note_impression).body;
     if (!note.trim()) continue;
     const perWork = new Map();
-    for (const s of extract(note, work.elements || [])) {
+    for (const s of work.ai || extract(note, work.elements || [])) {
       if (!perWork.has(s.feature)) perWork.set(s.feature, []);
       perWork.get(s.feature).push(s);
     }
@@ -187,7 +188,9 @@ export function score(elements, profile) {
  * 候補の種類の言葉は、好みのある言葉だけを索引から 1 回引く（候補全部を回さない。Worker の CPU を増やさない）。
  * 戻り値は {profile, adjust: Map(stage_id → [補正, 理由])}
  */
-export async function impressionAdjust({postingsFor}, rated, axes) {
+// ai（任意）: AI で読み取った結果 work_key -> {hash, feats: [[言葉, 1|-1]]}（note-ai.noteAiFor。本人が同意したときだけ）。
+// 感想の文が読み取った時と同じ作品だけ、決まりで読む代わりにその結果を使う（書き直した直後は決まりで読む）
+export async function impressionAdjust({postingsFor}, rated, axes, ai = null) {
   const works = [];
   const axesOf = new Map();                         // 特徴 → 観た公演でその言葉が付いていた軸（'#題材' など）
   for (const r of rated) {
@@ -198,8 +201,11 @@ export async function impressionAdjust({postingsFor}, rated, axes) {
       if (!axesOf.has(k)) axesOf.set(k, new Set());
       axesOf.get(k).add(role);
     }
+    const read = ai?.get(r.key);
+    const quoteOf = () => { const q = splitMark(r.note).body.trim(); return [...q].length > 160 ? [...q].slice(0, 160).join('') + '…' : q; };
     works.push({work_key: r.key, title: r.title, first_date: r.date || '', note_impression: r.note,
-      elements: kinds.map(([, word]) => ({word}))});
+      elements: kinds.map(([, word]) => ({word})),
+      ai: read && read.hash === noteHash(r.note) ? read.feats.map(([word, value]) => ({feature: canonical(word), label: word, value, quote: quoteOf()})) : null});
   }
   if (!works.length) return null;
   const profile = buildProfile(works);

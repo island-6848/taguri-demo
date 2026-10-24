@@ -34,6 +34,7 @@
 | Render（デモ・橋渡し先） | 月 750 時間〔render-free-spin-down〕 | 月末まで止まる | ― | 無料プランのまま |
 | GitHub Pages（デモ） | 無料 | ― | ― | ― |
 | X の埋め込み用の口（oEmbed、publish.twitter.com。感想に貼ったポストの本文を読む） | 無料・鍵なし・回数の上限なし〔dec-x-post-note〕 | ― | ― | X の API（2026-02 から読むたびに有料）は使わない。貼られた URL 1 つにつき 1 回だけ読み、D1 は読まない（ログインの確かめだけ） |
+| Anthropic の Claude API（同意した人の感想の読み取り、Claude Haiku 5.5） | Max 5x の毎月 100 ドルの API の枠（起案者のプラン。Console に支払い方法を登録しない）〔dec-note-ai〕 | 枠を使い切った月は API が止まる（請求なし。支払い方法を登録していないため） | 1 か月の入出力 500 万トークン（`note-ai.js` の `NOTE_AI_TOKENS_CAP`、Haiku 5.5 で約 0.6 ドル） | 夜の定期実行だけで送る（1 晩 10 回・200 件まで）。同じ感想は 1 度だけ。使った量を D1 の `usage` に数え、上限の月は送らない。Console の支払い方法と自動の補充（auto-reload）は付けない |
 | Firebase Authentication | 無料の Spark プラン〔q-firebase-free-tier〕 | ― | ― | カード登録をしない |
 | あらすじの読み取り（運営者の Claude の定期実行） | 有料の API は使わない | ― | 1 回 60 件・1 日 4 回まで〔q-synopsis-routine-quota〕 | 取得では LLM を呼ばない〔dec-synopsis-reader-claude〕 |
 | Gmail（公演修正依頼の知らせ） | 個人の Gmail は 1 日 500 通まで〔fix-request-mail〕 | その日は送れない（請求なし） | 1 日 30 通（`free-tier.js` の `FIX_MAILS_PER_DAY`）・依頼は 1 人 1 日 5 件 | Worker が送る前に D1 の `usage` に数える。越えた日は保存だけして管理画面で見る〔impl-fix-request〕。保存は 1 人の未対応 10 件・1 人 50 件・全体 2,000 件（約 6 MB）までで、INSERT の条件で守る。対応済みは 30 日で本文、180 日で行を消す（定期実行で 1 日 2 文、それぞれ 1 回 500 件まで `FIX_PURGE_PER_RUN`）〔dec-fix-request-retention〕〔dec-free-tier-audit-fixes-1018〕 |
