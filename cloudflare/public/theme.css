@@ -1565,9 +1565,14 @@ details.lprice>summary .plist>li:only-child::before{display:block}
    差し色の輪郭の小さな菱形、いま上演中の会場は差し色の「→」。絞り込んだ県の会場の ★ はそのまま */
 .tourfull.v2 .tf-dot:not(.live){top:.62em;left:.25em;width:6px;height:6px;box-sizing:border-box;transform:rotate(45deg);
  border:1.5px solid color-mix(in srgb,var(--curtain) 70%,transparent);border-radius:1px}
-/* いま上演中の会場は、日程の後ろに「上演中」の小さな札（起案者の指示 2026-10-24「日時カレンダーの『→』を『上演中』に変えて」） */
-.tourfull.v2 .tf-live{display:inline-block;margin-left:6px;padding:0 6px;border:1px solid var(--curtain);border-radius:99px;
- color:var(--curtain);font-size:10.5px;font-weight:700;line-height:1.6;vertical-align:.1em;white-space:nowrap}
+/* いま上演中の会場は、行頭の印（◇・★）の代わりに「上演中」の小さな札（起案者の指示 2026-10-24「★とか◇とかの箇条書きの
+   マークを、上演中の日程は『上演中』に置き換えてほしい」）。上演中の会場があるツアー（haslive）は、行頭の欄を札の幅に広げ、
+   ほかの行の ◇・★ はその欄の右寄せに置く。どの行も日程の頭がそろう */
+.tourfull.v2.haslive:not(.one) .tf-row{padding-left:3.9em}
+.tourfull.v2.haslive .tf-dot:not(.live){left:2.95em}
+.tourfull.v2.haslive .tf-star{left:2.75em}
+.tourfull.v2 .tf-live{position:absolute;left:0;top:.2em;padding:0 5px;border:1px solid var(--curtain);border-radius:99px;
+ color:var(--curtain);font-size:10.5px;font-weight:700;line-height:1.5;white-space:nowrap}
 /* 日程の行の右の「詳細」の字はやめ、行そのものを押す口に。開くことが分かるよう、行の終わりに小さな三角だけ置く */
 .tourfull.v2 summary.tf-head::after{content:"▸";display:inline-block;margin-left:.5em;color:var(--curtain);font-size:.8em;transition:transform .15s}
 .tourfull.v2 details[open]>summary.tf-head::after{transform:rotate(90deg)}

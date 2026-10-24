@@ -1628,6 +1628,20 @@
    "verifies": []
   },
   {
+   "id": "dec-form-vs-theme-words",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-24",
+   "title": "公演の形式の言葉（バレエ・ミュージカル・落語…）は、あらすじの読み取りが「題材」と書いたときだけ #題材 にする。ジャンルと書いたものは形式の手がかりにする",
+   "sources": [
+    "tools/review/user_recommender.py",
+    "cloudflare/scripts/build_recommend_index.py",
+    "cloudflare/scripts/deliver_catalogue.py",
+    "cloudflare/test/test_recommend_index.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-forms-1019",
    "type": "decision",
    "status": "adopted",
@@ -3557,6 +3571,19 @@
     "cloudflare/scripts/deliver_past_index.py",
     "tools/review/test_past_stages.py",
     "cloudflare/test/test_deliver_past.py"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-tour-live-mark",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-24",
+   "title": "ツアーの日程で、いま上演中の会場は、行頭の印（◇・★）の代わりに「上演中」の札を置く",
+   "sources": [
+    "cloudflare/src/screens/schedule.js",
+    "web/theme.css",
+    "cloudflare/test/schedule.test.js"
    ],
    "verifies": []
   },
@@ -10389,6 +10416,11 @@
    "from": "dec-form-rodokugeki",
    "rel": "affects",
    "to": "dec-forms-1019"
+  },
+  {
+   "from": "dec-form-vs-theme-words",
+   "rel": "depends_on",
+   "to": "dec-synopsis-reader-claude"
   },
   {
    "from": "dec-forms-1019",

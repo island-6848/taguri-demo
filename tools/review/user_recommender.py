@@ -135,6 +135,29 @@ _FORM_PLACE = (
 )
 
 
+# あらすじの読み取りが「ジャンル」「トーン」「語り口」として書いた公演の形式の言葉（起案者の指摘 2026-10-24「形式バレエと
+# 形式題材バレエがおすすめ理由に表示されるのがおかしい。題材バレエは話のあらすじの中心がバレエのときにつくもの。形式バレエは
+# バレエ上演公演のときにつくもの」）。これらは #題材 にせず、題名・劇場で形式が決まらない公演の形式の手がかりにする。
+# 読み取りが「題材」として書いたときだけ、物語の題材として残す（形式が同じなら、それは上演そのものなので外す）
+FORM_WORDS = {"バレエ": "バレエ", "オペラ": "オペラ", "オペレッタ": "オペラ", "歌劇": "オペラ", "ミュージカル": "ミュージカル",
+              "ダンス": "ダンス", "コンテンポラリーダンス": "ダンス", "歌舞伎": "歌舞伎", "落語": "落語・寄席", "講談": "落語・寄席",
+              "浪曲": "落語・寄席", "寄席": "落語・寄席", "演芸": "落語・寄席", "能": "能・狂言", "狂言": "能・狂言", "能楽": "能・狂言",
+              "文楽": "文楽", "人形浄瑠璃": "文楽", "人形劇": "人形劇", "朗読劇": "朗読劇", "朗読": "朗読劇", "リーディング": "朗読劇",
+              "お笑い": "お笑い", "コント": "お笑い", "漫才": "お笑い", "音楽劇": "音楽劇"}
+
+
+def form_hints(elements) -> list[str]:
+    """Forms the synopsis reader named as the work's ジャンル, first first. トーン・語り口 の形式の言葉（「ダンスのような」
+    「朗読劇のように語る」）は、演劇の味わいのことが多いので形式の手がかりにしない（#題材 にもしない）。"""
+    out = []
+    for e in elements or ():
+        if isinstance(e, dict) and (e.get("kind") or "") == "ジャンル":
+            f = FORM_WORDS.get(M.norm(e.get("word") or ""))
+            if f and f not in out:
+                out.append(f)
+    return out
+
+
 _PLAY_ROLES = {"脚本", "演出", "作・演出", "作", "作曲", "音楽", "振付", "美術", "照明"}
 # あらすじの代わりに、公演ページのスタッフ欄の演目（曲目と「役：名前」の演者）を出す形式（起案者の指示 2026-10-19「能のとき、
 # あらすじはないけど演目はわかる。演目をあらすじ代わりに同じ欄に書いてほしい」→ 演目は CoRich のスタッフ欄に載っている）
@@ -300,13 +323,17 @@ def genres(title: str, group: str = "", source: str = "") -> list[str]:
     return []
 
 
-def stage_tags(title: str, venues, credits, prices=(), source: str = "", group: str = "") -> list[tuple[str, str]]:
+def stage_tags(title: str, venues, credits, prices=(), source: str = "", group: str = "", hints=()) -> list[tuple[str, str]]:
     """Kind-of-show tags of one production. `credits`: (role, person) pairs; `source`: the 原作・原案
     text with its notes (source_text). `prices` is no longer used: the price band is not a reason and
     does not score (起案者の指示 2026-10-16「料金帯はおすすめ理由に入れないで。重み付けでも料金入ってるなら消して」)."""
     roles = {role for role, _ in credits if not role.startswith("#")}
     tags = set()
     form = form_of(title, [*(venues or []), group], roles)
+    # 題名・劇場・主催で決まらないときは、あらすじの読み取りが書いた形式（form_hints）。作曲の作り手がいるだけの
+    # 「音楽劇」より先に見る（「くるみ割り人形 全幕」が、作曲の欄があるだけで音楽劇になっていた。2026-10-24）
+    if not form and hints:
+        form = hints[0]
     if not form and roles & _MUSIC_ROLES:
         form = "音楽劇"
     if form:

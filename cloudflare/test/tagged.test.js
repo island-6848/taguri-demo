@@ -55,7 +55,7 @@ test('the stages whose subject words include the word, as cards; a whole word on
     assert.deepEqual(order, ['102', '101']);
     assert.match(html, /<div class="whyh top">[\s\S]*?ヒットした箇所：<\/div><ul class="why top"><li class="rs found"><span class="net">題材<\/span>#家族<\/li><\/ul>/);
     const c102 = html.slice(html.indexOf('data-stage="102"'), html.indexOf('data-stage="101"'));
-    assert.match(c102, /<div class="tourfull v2">/);   // 会場が 2 つ（one ではない）
+    assert.match(c102, /<div class="tourfull v2( haslive)?">/);   // 会場が 2 つ（one ではない）
     assert.equal((c102.match(/class="tf-row/g) || []).length, 2);
     // 興味あり・興味なし・購入済を押せる
     assert.match(html, /<span class="btns" data-stage="101"><button data-v="interest">/);

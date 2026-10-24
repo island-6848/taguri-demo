@@ -278,15 +278,16 @@ export function tourBlock(venues, shown, today, prefs = []) {
     // 公演の回数は、開く前の日程の横に「（N 回）」（起案者の指示 2026-10-18。開いた中の「公演日時（N 回）」の見出しはやめた）
     // いま上演中の会場（初日から千穐楽までに今日が入る）は「・」を「●」に（起案者の指示 2026-10-18）。絞り込んだ県の会場は「★」のまま
     const live = v.start <= today && today <= end;
-    // 行頭の印は「・」の字ではなく、テーマの色の小さな菱形（theme.css）。上演中の会場は、行頭は同じ菱形のまま、
-    // 日程の後ろに「上演中」の小さな札を付ける（起案者の指示 2026-10-18「『●』→『→』にして」のあと、
-    // 2026-10-24「日時カレンダーの『→』を『上演中』に変えて」。3 文字は行頭の狭い場所に入らないので、日程の後ろへ）
-    const mark = isHere ? '<span class="tf-star" title="絞り込んだ都道府県の会場">★</span>' : '<span class="tf-dot" aria-hidden="true"></span>';
-    const head = `<span class="tf-when">${tour ? mark : ''}${E(when)}${tour && live ? '<span class="tf-live">上演中</span>' : ''}`
+    // 行頭の印は「・」の字ではなく、テーマの色の小さな菱形（theme.css）。上演中の会場は、行頭の印（◇・★）の代わりに
+    // 「上演中」の札を置く（起案者の指示 2026-10-18「『●』→『→』にして」、2026-10-24「日時カレンダーの『→』を
+    // 『上演中』に変えて」、同日「★とか◇とかの箇条書きのマークを、上演中の日程は『上演中』に置き換えてほしい」）
+    const mark = live ? '<span class="tf-live">上演中</span>'
+      : isHere ? '<span class="tf-star" title="絞り込んだ都道府県の会場">★</span>' : '<span class="tf-dot" aria-hidden="true"></span>';
+    const head = `<span class="tf-when">${tour ? mark : ''}${E(when)}`
       + (grid && n ? `<span class="tf-cnt">（${n} 回${unsureIn(perf, v.start, end) ? '以上' : ''}）</span>` : '') + '</span>'
       + (tour ? `<span class="tf-loc">${E(where)}</span>` : '');
     const body = (price ? `<div class="tf-price">${price}</div>` : '') + (grid || '');
-    const cls = `tf-row${isHere ? ' here' : ''}${end < today ? ' done' : ''}`;
+    const cls = `tf-row${isHere ? ' here' : ''}${tour && live ? ' live' : ''}${end < today ? ' done' : ''}`;
     // 日程の行そのものを押す口にし、開いた中身（料金・暦）は一段右にずらす（起案者の指示 2026-10-17）。行の右の「詳細」の字は
     // やめ、開くことが分かる小さな三角（theme.css の summary.tf-head::after）だけにする（起案者の指示 2026-10-18「『詳細』のボタンは不要」）
     return body
@@ -294,5 +295,7 @@ export function tourBlock(venues, shown, today, prefs = []) {
       : `<div class="${cls}"><div class="tf-head">${head}</div></div>`;
   });
   // 会場が 1 つなら one: 見出し「日程」の横から書き始める（起案者の指示 2026-10-17）
-  return {html: `<div class="tourfull v2${vs.length === 1 ? ' one' : ''}">${rows.join('')}</div>`, perVenuePrice};
+  // 上演中の会場があるツアーは、行頭の欄を「上演中」の札の幅に広げ、どの行も日程の頭をそろえる（haslive、theme.css）
+  const haslive = vs.length > 1 && vs.some(v => v.start <= today && today <= (v.end || v.start));
+  return {html: `<div class="tourfull v2${vs.length === 1 ? ' one' : ''}${haslive ? ' haslive' : ''}">${rows.join('')}</div>`, perVenuePrice};
 }
