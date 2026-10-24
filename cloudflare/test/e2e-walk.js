@@ -335,23 +335,32 @@ async function walkA(A) {
     await li.locator('[data-past=seen]').click();
     const form = li.locator('.past-seen');
     check(await form.isVisible(), '「観た」で欄が開かない');
-    const add = async (date, time) => {
+    // ツアーは、先に劇場を選ぶと、その劇場の期間だけの観た日が選べるようになる（#249、起案者の指示 2026-10-21
+    // 「観た→劇場選択→その劇場日付しか選べないカレンダーから日付を追加→時間追加」）。劇場を選ぶまで観た日は入れられない
+    check(await form.locator('input[name=date]').isDisabled(), '劇場を選ぶ前に観た日が入れられる');
+    const add = async (stage, date, time) => {
+      await form.locator('select[name=stage]').selectOption(stage);
       await form.locator('input[name=date]').fill(date);
       await form.locator('input[name=date]').dispatchEvent('change');
-      if (time) await form.locator('input[name=time]').fill(time);
+      await form.locator('input[name=time]').fill(time || '');
       await form.locator('[data-past=seen-save]').click();
     };
-    await add('2025-08-02', '');
+    await add('710002', '2025-08-02', '');
     await waitSaid(li, /8\/2 を観劇記録に追加しました/);
-    await add('2025-08-21', '13:00');
+    await add('710003', '2025-08-21', '13:00');
     await waitSaid(li, /8\/21 13:00 を観劇記録に追加しました/);
-    await add('2025-08-21', '18:00');
+    await add('710003', '2025-08-21', '18:00');
     await waitSaid(li, /8\/21 18:00 を観劇記録に追加しました/);
-    await add('2025-08-21', '18:00');
+    await add('710003', '2025-08-21', '18:00');
     const dup = await waitSaid(li, /できませんでした|もうある/);
     note('同じ日・同じ開演の 4 回目: 「' + dup + '」');
-    await add('2025-07-15', '');
-    note('ツアーの合間の日: 「' + (await saidOf(li)) + '」');
+    // 選んだ劇場の期間の外の日は、送らずに言う（ツアーの合間の日）
+    await form.locator('select[name=stage]').selectOption('710002');
+    await form.locator('input[name=date]').evaluate(el => { el.value = '2025-07-15'; });
+    await form.locator('input[name=time]').fill('');
+    await form.locator('[data-past=seen-save]').click();
+    const gap = await waitSaid(li, /上演していません|上演期間/);
+    note('ツアーの合間の日: 「' + gap + '」');
     const rows = sql("SELECT work_key, first_date, time, stage_id, venue FROM works WHERE title='旅の芝居' ORDER BY work_key");
     note('D1: ' + rows.map(r => `${r.first_date} ${r.time || '-'} ${r.stage_id} ${r.venue}`).join(' / '));
     check(rows.length === 3, '3 回分の記録にならない: ' + rows.length);
