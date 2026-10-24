@@ -2128,6 +2128,21 @@
    "verifies": []
   },
   {
+   "id": "dec-missed-cancel-btn-base",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-24",
+   "title": "行けばよかったは 1 件ずつ取り消せる（取り消した題名は hidden で残す）。回答の押し口の下の台を、押し口と同じ幅に収める",
+   "sources": [
+    "cloudflare/migrations/0047.sql",
+    "cloudflare/src/screens/settings.js",
+    "web/app.js",
+    "web/theme.css",
+    "cloudflare/test/cantgo.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-native-cutover-now",
    "type": "decision",
    "status": "adopted",
@@ -3739,6 +3754,36 @@
    "verifies": []
   },
   {
+   "id": "dec-tickets-1024",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-24",
+   "title": "購入済の公演は、入れた日（行く日・観た記録）を過ぎたらツアー中でも外す。料金の絞り込みは出さない。✕ のあとに「元に戻す」を置く",
+   "sources": [
+    "cloudflare/src/screens/lists.js",
+    "web/app.js",
+    "web/theme.css",
+    "cloudflare/test/owned-recorded.test.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-tickets-rate-1024b",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-24",
+   "title": "購入済の「行く日」を「観劇日」にし、①②で並べて暦の升を赤く囲む。観る前のメモは観劇日の下。評価一覧は星より下を畳み、あらすじにタグを付ける",
+   "sources": [
+    "cloudflare/src/screens/cards.js",
+    "cloudflare/src/screens/schedule.js",
+    "cloudflare/src/screens/rowinfo.js",
+    "cloudflare/src/screens/syntags.js",
+    "web/app.js",
+    "web/theme.css"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-timetable-unknown-days",
    "type": "decision",
    "status": "adopted",
@@ -4005,6 +4050,21 @@
    "sources": [
     "cloudflare/src/screens/recommend.js",
     "cloudflare/test/watched-reco.test.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-wcloud-save-dead-tags",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-24",
+   "title": "ことばの雲に「画像を保存」（PNG）を付ける。これから観られる公演の無いハッシュタグは押せない札にする",
+   "sources": [
+    "web/app.js",
+    "web/theme.css",
+    "cloudflare/src/screens/tagged.js",
+    "cloudflare/src/screens/rowinfo.js",
+    "cloudflare/test/rowinfo.test.js"
    ],
    "verifies": []
   },
@@ -11153,6 +11213,11 @@
    "to": "migration-handover-stage0"
   },
   {
+   "from": "dec-missed-cancel-btn-base",
+   "rel": "affects",
+   "to": "comp-cf-worker"
+  },
+  {
    "from": "dec-native-cutover-now",
    "rel": "answers",
    "to": "q-native-cutover"
@@ -12263,6 +12328,16 @@
    "to": "dec-native-cutover-now"
   },
   {
+   "from": "dec-tickets-1024",
+   "rel": "affects",
+   "to": "f-owned-again-tour-range"
+  },
+  {
+   "from": "dec-tickets-rate-1024b",
+   "rel": "affects",
+   "to": "dec-register-owned"
+  },
+  {
    "from": "dec-timetable-unknown-days",
    "rel": "affects",
    "to": "impl-card-schedule"
@@ -12436,6 +12511,11 @@
    "from": "dec-watched-unrated-seed",
    "rel": "affects",
    "to": "comp-cf-worker"
+  },
+  {
+   "from": "dec-wcloud-save-dead-tags",
+   "rel": "affects",
+   "to": "dec-word-cloud"
   },
   {
    "from": "dec-weight-defaults",

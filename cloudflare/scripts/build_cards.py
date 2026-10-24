@@ -141,7 +141,7 @@ def mytix_html(c: dict, tickets: list[dict]) -> str:
     import icons as IC
     E = RR.E
     rows = []
-    for t in tickets:
+    for i, t in enumerate(tickets):
         tm = f' {E(t["time"])}' if t.get("time") else ""
         sid, dd, tt = (E(str(t.get("sid") or c.get("stage_id") or "")), E(t["date"]), E(t.get("time") or ""))
         if t.get("confirmed"):
@@ -153,15 +153,15 @@ def mytix_html(c: dict, tickets: list[dict]) -> str:
         # 行く日も記録の日付の形 2026.10.13(水) 13:00（起案者の指示 2026-10-24。charts.rec_date と同じ）
         d = datetime.date.fromisoformat(t["date"][:10])
         when = f"{d.year}.{d.month:02d}.{d.day:02d}({'月火水木金土日'[d.weekday()]})"
-        rows.append(f'<span class="mt-row{"" if t.get("confirmed") else " un"}">{when}{tm}{note} {btns}</span>')
+        rows.append(f'<span class="mt-row{"" if t.get("confirmed") else " un"}"><span class="mt-n">{RR.circled(i)}</span>{when}{tm}{note} {btns}</span>')
     lo, hi = RR._period_start(c.get("period") or ""), RR._period_end(c.get("period") or "")
     add_form = ('<span class="mt-add">'
-                '<input type="date" class="mt-d" aria-label="行く日"'
+                '<input type="date" class="mt-d" aria-label="観劇日"'
                 + (f' min="{lo.isoformat()}"' if lo else "") + (f' max="{hi.isoformat()}"' if hi else "") + '>'
                 '<input type="time" class="mt-t" aria-label="時刻（任意）">'
-                f'<button data-mt-add="{E(str(c["stage_id"]))}">{IC.ico("plus", 13)}行く日を追加</button>'
+                f'<button data-mt-add="{E(str(c["stage_id"]))}">{IC.ico("plus", 13)}観劇日を追加</button>'
                 '<span class="said"></span></span>')
-    return f'<div class="mytix"><b>行く日</b>{"".join(rows)}{add_form}</div>'
+    return f'<div class="mytix"><b>観劇日</b>{"".join(rows)}{add_form}</div>'
 
 
 def compose(template: str, sid: str, mode: str, *, rank: int | None = None, why: str = "",

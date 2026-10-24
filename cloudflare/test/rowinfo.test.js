@@ -55,3 +55,28 @@ test('a record linked to a past stage shows the synopsis read for that stage (pa
     assert.doesNotMatch(m[1], /#題材/);                          // 種類の言葉は作り手の欄に出さない
   } finally { sqlite.close(); }
 });
+
+// あらすじの下に、読み取ったタグ（カードのハッシュタグと同じ語）を付ける（起案者の指示 2026-10-24「評価ページのあらすじにも抽出のタグをつけて」）
+test('the synopsis of a row carries the tags read from it, like the card', async () => {
+  const {rinfoHtml} = await import('../src/screens/rowinfo.js');
+  const html = rinfoHtml({grp: '', venue: '', synopsis: '海辺の町の話。', credits: [], url: '', page: '', tags: ['家族', '再生']}, '', '');
+  assert.match(html, /<div class="syn"><p class="txt">海辺の町の話。<\/p><div class="tags"><span class="tag">#家族<\/span><span class="tag">#再生<\/span><\/div>/);
+  assert.doesNotMatch(rinfoHtml({grp: '', venue: '', synopsis: 'あらすじ。', credits: [], url: '', page: '', tags: []}, '', ''), /class="tags"/);
+});
+
+// これから観られる公演に付いていない語は押せない札（.dead）にする（起案者の指示 2026-10-24「1件もないならリンク踏んでも飛べないようにして」）
+test('a tag with no coming stage is marked dead; liveTagKeys has the words of coming cards only', async () => {
+  const {rinfoHtml} = await import('../src/screens/rowinfo.js');
+  const {liveTagKeys} = await import('../src/screens/tagged.js');
+  const html = rinfoHtml({grp: '', venue: '', synopsis: 'あらすじ。', credits: [], url: '', page: '', tags: [{w: '家族', live: true}, {w: '昔の語', live: false}]}, '', '');
+  assert.match(html, /<span class="tag">#家族<\/span><span class="tag dead">#昔の語<\/span>/);
+  const {env, sqlite} = setup();
+  for (const s of FIXTURE.sql) sqlite.exec(s);
+  try {
+    sqlite.exec("UPDATE rec_card SET ws='家族' WHERE stage_id='101'");
+    sqlite.exec("UPDATE rec_card SET ws='終わった語' WHERE stage_id IN (SELECT stage_id FROM rec_card WHERE end<>'' AND end<'2026-10-01')");
+    const live = await liveTagKeys({db: env.DB, today: '2026-10-12'});
+    assert.ok(live.has('家族'));
+    assert.ok(!live.has('終わった語'));
+  } finally { sqlite.close(); }
+});

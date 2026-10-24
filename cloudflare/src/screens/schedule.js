@@ -192,7 +192,8 @@ export function timetableGrid(perf, start, end, today, texts = []) {
         // 貸切の回は時刻の前に「(貸)」（起案者の指示 2026-10-18）。升の中で折り返さないよう、印の字間は theme.css で詰める
         ? ps.map(p => `<span class="tm${p.k ? ' kas' : ''}">${p.k ? '<b>(貸)</b>' : ''}${E(p.t || (p.k ? '' : '公演'))}${p.m ? `<i>${E(p.m)}</i>` : ''}</span>`).join('')
         : unsure(perf, d) ? '<span class="unk">公式で確認</span>' : '<span class="off">休演</span>';
-      cells.push(`<td${cls ? ` class="${cls}"` : ''}><span class="d">${E(label)}</span>${body}</td>`);
+      // data-d: 購入済の公演で、入れた観劇日時の升を囲むのに使う（app.js markMyShows）
+      cells.push(`<td${cls ? ` class="${cls}"` : ''}${inRun ? ` data-d="${d}"` : ''}><span class="d">${E(label)}</span>${body}</td>`);
     }
     rows.push(`<tr>${cells.join('')}</tr>`);
   }

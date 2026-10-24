@@ -404,11 +404,62 @@ function fixupFigs(root) {
   import("/figs/figs.js").then(m => {
     if (!src.isConnected) return;   // 組み上がる前に別の画面へ移った
     m.fill(root);
+    wordCloudSave(root);
     fixupStoryline(root);
     fixupPeopleNet(root);
   }).catch(() => {
     root.querySelectorAll("[data-fig]").forEach(box => {
       box.outerHTML = '<p class="empty">この図は読み込めませんでした。ページを開き直すと出ることがあります。</p>';
+    });
+  });
+}
+
+// ことばの雲を画像（PNG）で保存する押し口（起案者の指示 2026-10-24「ことばの雲、画像ダウンロードボタンをつけて」）。
+// 雲は SVG で、色は CSS の変数から付いているので、そのまま画像にすると色が抜ける。描かれている色・字の太さを 1 語ずつ写した複製を
+// 2 倍の大きさで canvas に描き、地の色を敷いて PNG にする。外へは何も送らない（ブラウザの中だけで作る）
+function wordCloudSave(root) {
+  root.querySelectorAll("svg.wcloud").forEach(svg => {
+    if (svg.nextElementSibling?.classList.contains("wcsave")) return;
+    const p = document.createElement("p");
+    p.className = "wcsave";
+    p.innerHTML = '<button type="button">' + ico("download", 14) + "画像を保存</button>";
+    svg.after(p);
+    p.querySelector("button").addEventListener("click", async () => {
+      const vb = (svg.getAttribute("viewBox") || "0 0 760 400").split(/\s+/).map(Number);
+      const copy = svg.cloneNode(true);
+      const font = getComputedStyle(svg).fontFamily || "sans-serif";
+      svg.querySelectorAll("text").forEach((t, i) => {
+        const cs = getComputedStyle(t), c = copy.querySelectorAll("text")[i];
+        c.setAttribute("fill", cs.fill);
+        c.setAttribute("font-weight", cs.fontWeight);
+        c.setAttribute("font-family", font + ", sans-serif");
+        c.querySelector("title")?.remove();
+      });
+      copy.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+      copy.setAttribute("width", String(vb[2] * 2));
+      copy.setAttribute("height", String(vb[3] * 2));
+      copy.removeAttribute("style");
+      // 画像の出どころは data: にする（画面の CSP の img-src は 'self' と data: だけで、blob: は読めない）
+      const url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(new XMLSerializer().serializeToString(copy));
+      const img = new Image();
+      img.onload = () => {
+        const cv = document.createElement("canvas");
+        cv.width = vb[2] * 2; cv.height = vb[3] * 2;
+        const cx = cv.getContext("2d");
+        cx.fillStyle = getComputedStyle(svg.closest(".card") || document.body).backgroundColor || "#fff";
+        cx.fillRect(0, 0, cv.width, cv.height);
+        cx.drawImage(img, 0, 0);
+        cv.toBlob(b => {
+          if (!b) return;
+          const a = document.createElement("a");
+          a.href = URL.createObjectURL(b);
+          a.download = "taguri-kotoba-no-kumo.png";
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+        }, "image/png");
+      };
+      img.src = url;
     });
   });
 }
@@ -466,7 +517,7 @@ function dismissButton(t) {
   if (t.querySelector(":scope > .dismissq") || (t.classList.contains("owned") && here !== "/tickets")) return;
   const box = document.createElement("div");
   box.className = "dismissq";
-  const label = here === "/tickets" ? "この公演を購入済の一覧から外す（観た記録と行く日は残ります）"
+  const label = here === "/tickets" ? "この公演を購入済の一覧から外す（観た記録と観劇日は残ります）"
     : here === "/recommend/interest" ? "この公演を一覧から外し、今後のおすすめを減らす"
     : "この公演を候補に表示しない（好みには反映しません）";
   box.innerHTML = '<button type="button" class="dismissq-open" aria-label="' + E(label) + '" title="' + E(label) + '">' + DISMISS_ICON + "</button>";
@@ -542,7 +593,7 @@ document.addEventListener("click", async ev => {
   const shown = slot ? [...document.querySelectorAll(".ticket.recommend")].filter(a => !a.closest(".rfind")).map(a => a.dataset.stage).filter(Boolean) : null;
   const g = t.querySelector(".btns[data-stage]") || t;
   b.disabled = true;
-  const done = here === "/tickets" ? "購入済の一覧から外しました（観た記録と行く日は残ります）" : "候補から消しました";
+  const done = here === "/tickets" ? "購入済の一覧から外しました（観た記録と観劇日は残ります）" : "候補から消しました";
   const d = await post("/api/react", body, g, done);
   if (!d) { b.disabled = false; return; }
   const title = ((t.querySelector("h3") || {}).textContent || "").trim();
@@ -550,6 +601,25 @@ document.addEventListener("click", async ev => {
   note.className = "dismissed";
   note.setAttribute("role", "status");
   note.innerHTML = (title ? "「" + E(title) + "」を" : "この公演を") + E(done) + '。<span class="said"></span>';
+  // 購入済の画面では、押し間違えたときに戻せるようにする（起案者の指示 2026-10-24「間違って✕ボタンで消してしまったら戻せるようにして」）。
+  // 戻すは、そのカードで「購入済」を押し直すのと同じ（ツアーのほかの会場へも写す）。戻せたら、カードを元の場所に戻す
+  if (here === "/tickets") {
+    const undo = document.createElement("button");
+    undo.type = "button";
+    undo.className = "undo-dismiss";
+    undo.textContent = "元に戻す";
+    note.querySelector(".said").before(undo, " ");
+    undo.addEventListener("click", async () => {
+      undo.disabled = true;
+      const r = await post("/api/react", {stage_id: body.stage_id, value: "owned", siblings: body.siblings || []}, note, "購入済に戻しました");
+      if (!r) { undo.disabled = false; return; }
+      b.disabled = false;
+      note.replaceWith(t);
+      // 知らせは行く日の欄に出す（三択の欄は「回答を直す」を押すまで閉じているので、そこに書くと見えない）
+      const said = t.querySelector(".mytix .said") || g.querySelector(".said");
+      if (said) said.textContent = "購入済に戻しました";
+    });
+  }
   t.replaceWith(note);
   if (!shown) return;
   const f = await fetch(API_BASE + "/api/react", {method: "POST", credentials: "include",
@@ -693,6 +763,8 @@ function decorateCards(el) {
   reminderPrices(el);
   stampRerate(el);
   aspectsPanel(el);
+  markMyShows(el);
+  foldRateRows(el);
 }
 
 // **「次の 5 件」は、その一覧（.hitpart）だけを取り直して差し替える**（起案者の指摘 2026-10-19「いちいち画面全部を
@@ -1145,6 +1217,9 @@ function yenLabel([lo, hi]) {
 }
 const yenStepLabel = v => v ? v.toLocaleString("ja-JP") + "円まで" : "上限なし";
 function priceFilter(el) {
+  // 購入済の公演には出さない（起案者の指示 2026-10-24「購入済のページの料金の絞り込み消して」。もう買った公演を料金で隠す用は無い）。
+  // 端末に覚えた上限もこの画面では効かせない
+  if ((location.pathname.slice(REPO_BASE.length) || "/") === "/tickets") return;
   if (!el.querySelector("article.ticket[data-yen]") || el.querySelector(".yfil")) return;
   let cur = 0;
   try { cur = Number(localStorage.getItem(YEN_KEY) || 0) || 0; } catch (e) { cur = 0; }
@@ -1415,9 +1490,12 @@ function leadSynopsis(t, lead, noMore) {
           // 開いたあらすじの下にハッシュタグで並べる（起案者の指示 2026-10-18「取得したワードをハッシュタグっぽく記載して」）。
           // 続きの無い短いあらすじは、本文のすぐ下に出す
           const words = [...new Set([...syn.querySelectorAll(".tags .tag:not(.mine)")].map(n => n.textContent.trim().replace(/^#/, "")).filter(Boolean))];
+          // これから観られる公演に付いていない語（サーバーが .dead を付ける。rowinfo.js）は、押しても 1 件も出ないので押せない札にする
+          // （起案者の指示 2026-10-24「1件もないならリンク踏んでも飛べないようにして」）
+          const dead = new Set([...syn.querySelectorAll(".tags .tag.dead")].map(n => n.textContent.trim().replace(/^#/, "")));
           // 押すと、その題材の付いた、これから観られる公演の一覧へ（起案者の指示 2026-10-18「あらすじのハッシュタグ押したら
           // それがついてる公演一覧が出るようにして」。src/screens/tagged.js）。デモ版（Render）にはその画面が無いので押せない札のまま
-          const tag = w => IS_DEMO ? '<span class="lsyntag">#' + E(w) + "</span>"
+          const tag = w => IS_DEMO || dead.has(w) ? '<span class="lsyntag' + (dead.has(w) ? " dead" : "") + '">#' + E(w) + "</span>"
             : '<a class="lsyntag" href="/recommend/tag?w=' + encodeURIComponent(w) + '">#' + E(w) + "</a>";
           const tags = words.length ? '<span class="lsyntags">' + words.map(tag).join("") + "</span>" : "";
           // ハッシュタグは折りたたみの外に出して、閉じていても見せる（起案者の指示 2026-10-18「あらすじのハッシュタグは常に表示。
@@ -1752,6 +1830,9 @@ function compactTickets(root) {
     // 購入済み公演の「行く日」は、出演・あらすじの下に全幅で置く（おすすめと同じ並び）
     const mytix = main.querySelector(":scope > .mytix");
     if (mytix) foot.appendChild(mytix);
+    // 「観る前のメモを書く」は観劇日の欄の下に置く（起案者の指示 2026-10-24「購入済のページ、『観る前のメモを書く』の欄は、行く日の下にして」）
+    const pre = main.querySelector(":scope > details.nn.pre");
+    if (pre && mytix) mytix.after(pre);
     let n = main.querySelector(":scope > details.more") || main.querySelector(":scope > .whyh:not(.top)") || main.querySelector(":scope > .act");
     while (n) { const nx = n.nextSibling; foot.appendChild(n); n = nx; }
     t.appendChild(foot);
@@ -2420,6 +2501,12 @@ document.addEventListener("click", ev => {
              null, null)
       : post("/api/decline", {action: "add", word: b.dataset.word}, null, null);
     req.then(d => { if (d) { li.remove(); waitJob(null, true); } else { b.disabled = false; } });
+  } else if (b.dataset.missDel) {
+    // 行けばよかったの 1 件を取り消す（起案者の指示 2026-10-24）。消せたら行を外す
+    const li = b.closest(".miss-row");
+    b.disabled = true;
+    post("/api/missed", {title: b.dataset.missDel, remove: true}, li, "取り消しました")
+      .then(d => { if (d) li.remove(); else b.disabled = false; });
   } else if (b.dataset.miss) {
     const g = b.closest(".miss-add"), i = g.querySelector("#miss-title");
     if (!i.value.trim()) return;
@@ -2532,7 +2619,7 @@ document.addEventListener("click", ev => {
           const result = g.parentElement.querySelector("[data-register-result]");
           const message = document.createElement("p");
           message.textContent = "「" + title + "」" + (date ? "（" + date + (savedTime ? " " + savedTime : "") + "）" : "")
-            + "を購入済の公演に追加しました。" + (date ? "行く日を過ぎると、評価待ちに移ります。" : "行く日は、購入済の公演の画面から入れられます。");
+            + "を購入済の公演に追加しました。" + (date ? "観劇日を過ぎると、評価待ちに移ります。" : "観劇日は、購入済の公演の画面から入れられます。");
           const link = document.createElement("a");
           link.href = "/tickets";
           link.textContent = "購入済の公演を見る";
@@ -3002,7 +3089,7 @@ document.addEventListener("click", ev => {
     // その会場のカードから入れる
     const box = b.closest(".mytix"), dd = box.querySelector(".mt-d").value,
           tt = box.querySelector(".mt-t").value, said = box.querySelector(".said");
-    if (!dd) { said.textContent = "行く日を入れてください"; return; }
+    if (!dd) { said.textContent = "観劇日を入れてください"; return; }
     post("/api/ticket", {stage_id: b.dataset.mtAdd, date: dd, time: tt}, box, "記録しました")
       .then(r => { if (r) setTimeout(() => location.reload(), 500); });
   } else if (b.dataset.mtDel || b.dataset.mtOk) {
@@ -3653,7 +3740,7 @@ fixupImportBar(document);
 function shortAddButtons(root) {
   root.querySelectorAll(".mt-add button[data-mt-add]").forEach(b => {
     b.innerHTML = ico("plus", 13) + "追加";
-    b.setAttribute("aria-label", "行く日を追加");
+    b.setAttribute("aria-label", "観劇日を追加");
   });
 }
 
@@ -3731,6 +3818,43 @@ function placeVsLabels(stack) {
   });
   top.style.height = used.top ? (used.top * ROW + 6) + "px" : "0";
   bot.style.height = used.bot ? (used.bot * ROW + 6) + "px" : "0";
+}
+
+// 購入済の公演で、入れた観劇日時を日程の暦（.ttb）の升で赤く囲む（起案者の指示 2026-10-24「観劇日時がわかるものは、日程カレンダーの
+// 該当の時間を赤枠で囲って、行く日を強調して」）。時刻の分かる観劇日だけ。升は schedule.js が data-d（YYYY-MM-DD）を付ける。
+// 時刻は「13:00」の形の頭で比べる（(貸) や印 ★ は除く）
+function markMyShows(root) {
+  root.querySelectorAll("article.ticket.owned").forEach(t => {
+    const mine = [...t.querySelectorAll(".mytix .mt-row")].map(r => r.querySelector("button[data-date]"))
+      .filter(b => b && b.dataset.time).map(b => [b.dataset.date, b.dataset.time.slice(0, 5)]);
+    for (const [d, tm] of mine) {
+      t.querySelectorAll('.ttb td[data-d="' + d + '"] .tm').forEach(s => {
+        const m = /(\d{1,2}):(\d{2})/.exec(s.textContent);
+        if (m && m[1].padStart(2, "0") + ":" + m[2] === tm) {
+          s.classList.add("mine");
+          s.title = "観劇日";
+        }
+      });
+    }
+  });
+}
+
+// 評価一覧の各記録は、評価の星より下（観た回・作り手・あらすじ・感想・評価の詳細など）を「くわしく」に畳む（起案者の指示 2026-10-24
+// 「評価一覧のページは、各公演のカードの評価の星より下は全て折りたたんで」）。未評価・日記帳は今までどおり開いたまま
+function foldRateRows(root) {
+  if ((location.pathname.slice(REPO_BASE.length) || "/") !== "/rate") return;
+  root.querySelectorAll("article.rec-row .page").forEach(page => {
+    const tools = page.querySelector(":scope > .tools");
+    if (!tools || page.querySelector(":scope > details.rfold")) return;
+    const rest = [];
+    for (let n = tools.nextSibling; n; n = n.nextSibling) rest.push(n);
+    if (!rest.some(n => n.nodeType === 1)) return;
+    const fold = document.createElement("details");
+    fold.className = "rfold";
+    fold.innerHTML = "<summary>くわしく</summary>";
+    fold.append(...rest);
+    tools.after(fold);
+  });
 }
 
 // **評価を押し直すのは、判子の丸から。**（起案者の指示 2026-10-13「『評価を押し直す』ってボタンは消して、

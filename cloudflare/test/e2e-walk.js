@@ -1070,7 +1070,7 @@ async function walkA(A) {
     await go('/tickets');
     const plan = await page.locator('article.ticket[data-stage="102"] .mytix').first().innerText();
     note('購入済の公演の行く日: ' + plan.replace(/\s+/g, ' ').slice(0, 160));
-    check(/10\/20|10月20日/.test(plan) && !/10\/19|10月19日/.test(plan), '購入済の公演の行く日が残った日（10/20）だけになっていない');
+    check(/10\/20|10月20日|\.10\.20/.test(plan) && !/10\/19|10月19日|\.10\.19/.test(plan), '購入済の公演の行く日が残った日（10/20）だけになっていない');
   });
 
   await step('観察: 行く日が過ぎた券（昨日）は評価待ちになるか', async () => {
