@@ -62,6 +62,30 @@ export async function taggedStages(ctx, word) {
   return out;
 }
 
+/**
+ * これから観られる公演に付いている題材の語（nz でそろえたもの）の集まり。ハッシュタグを押しても 1 件も出ない語は、押せる札にしない
+ * （起案者の指示 2026-10-24「『いま、題材に「〇〇」が付いている、今後の公演はありません。』と出さないで、1件もないならリンク踏んでも
+ * 飛べないようにして」）。taggedStages と同じく rec_card のいまの版の終わっていない行を 1 回なめ、手で入れた題材の公演は手で入れた方で数える
+ */
+export async function liveTagKeys(ctx) {
+  const out = new Set();
+  let results = [];
+  try {
+    ({results} = await ctx.db.prepare(`SELECT stage_id,ws FROM rec_card WHERE ver=(SELECT v FROM rec_meta WHERE k='rec_card') AND (end='' OR end>=?)`).bind(ctx.today).all());
+  } catch { return out; }   // 表が無い（試験の小さな D1）
+  let ovs = [];
+  try {
+    ({results: ovs} = await ctx.db.prepare('SELECT stage_id,themes FROM stage_override WHERE themes IS NOT NULL LIMIT ?').bind(TAG_OVERRIDE_ROWS).all());
+  } catch { ovs = []; }
+  const hand = new Map();
+  for (const o of ovs) { try { const ts = JSON.parse(o.themes); if (Array.isArray(ts)) hand.set(String(o.stage_id), ts); } catch { /* broken row */ } }
+  for (const r of results) {
+    const words = hand.get(String(r.stage_id)) || String(r.ws || '').split('\n');
+    for (const w of words) { const k = nz(w); if (k) out.add(k); }
+  }
+  return out;
+}
+
 /** One row per production (the tour key, or the stage alone): {stage_id: the earliest venue with the word, sids, start}. */
 export function byProduction(stages) {
   const groups = new Map();
