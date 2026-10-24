@@ -1132,9 +1132,16 @@ a.pill.buy .go:not(#_){font-size:12px;margin-left:2px}
 .ticket.interest .why-memo>summary .wnt{display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;white-space:normal;min-width:0}
 .ticket.interest .wnw{margin-top:10px}
 .ticket.interest .act{width:100%;min-width:0}
-.ticket.interest .act .btns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%;min-width:0;gap:8px;margin:0}
-.ticket.interest .act .btns .said{grid-column:1/-1}
-@media(min-width:700px){.ticket.interest .act .btns{grid-template-columns:repeat(4,minmax(0,1fr))}}
+/* 興味ありの回答の 3 つ（興味あり・興味なし・購入済）は、電話の幅でも 1 列に並べる（起案者の指示 2026-10-24
+   「興味ありのページ、ボタンが1列に収まるようにして」）。前は電話の幅で 2 列にしていて、購入済だけが 2 段目に落ちた。
+   幅は等分にし、狭いときは文字の周りの余白を詰める。押したあとの言葉（.said）だけは次の段に回す */
+.ticket.interest .act .btns{display:flex;flex-wrap:wrap;width:100%;min-width:0;gap:8px 6px;margin:0}
+.ticket.interest .act .btns button{flex:1 1 0;min-width:0;padding:0 4px;border-left:1px solid var(--ink);border-radius:8px}
+.ticket.interest .act .btns .said{flex-basis:100%}
+/* いちばん狭い電話（幅 320〜380px）は、文字を 11px にして余白を詰め、選んだ印の ✓ を出さない（選んだものは塗りで分かる） */
+@media(max-width:380px){.ticket.interest .act .btns{gap:8px 4px}
+ .ticket.interest .act .btns button{font-size:11px;padding:0 2px}
+ .ticket.interest .act .btns button.picked::before{content:none}}
 /* 段の中が 1 つだけ（開幕リマインドの場所・お気に入りの登録した名前など）なら全幅に */
 .fil2:not(.tabbed)>:only-child{grid-column:1/-1}
 
