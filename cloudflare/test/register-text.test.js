@@ -22,7 +22,8 @@ test('single entry comes first; import and unwatched performances stay separate'
   assert.ok(html.indexOf('id="w-venue"') < html.indexOf('data-add-work'));
   assert.ok(html.indexOf('data-import') < html.indexOf('register-missed'));
   assert.match(html, /公演名だけでも保存できます/);
-  assert.match(html, /data-add-work="1">[\s\S]*?観劇記録を保存<\/button>/);
+  assert.match(html, /data-add-work="1">[\s\S]*?保存<\/button>/);
+  assert.match(html, /公演を1件追加/);   // これからの公演は購入済に入る（2026-10-24）
   assert.match(html, /<details class="card register-missed"><summary>/);
   assert.doesNotMatch(html, /<details class="imx-src" open|メールに残らない分を手で|入口は3つ/);
   for (const id of ['w-title', 'w-date', 'w-time', 'w-venue', 'sug', 'imx-url', 'imx-ics', 'imx-text', 'imx-eml']) {
@@ -58,7 +59,7 @@ test('#95: inputs have visible labels with required/optional, placeholders are e
     const reg = await html('/api/screen/register');
     const label = (id, name, req) => new RegExp(`<label class="fld" for="${id}"><span class="fl">${name}<small class="${req ? 'req">必須' : 'opt">任意'}</small></span><(?:input|select) id="${id}"`);
     assert.match(reg, label('w-title', '公演の題名', true));
-    assert.match(reg, label('w-date', '観た日', false));
+    assert.match(reg, label('w-date', '観た日・行く日', false));
     assert.match(reg, label('w-time', '開演時刻', false));
     assert.match(reg, label('w-venue', '劇場', false));
     assert.match(reg, /id="w-title" type="text" placeholder="例：/);

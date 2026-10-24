@@ -365,17 +365,17 @@ export async function registerScreen(_params, ctx) {
   const missed = await missedRows(ctx);
   const autoMiss = await autoMissed(ctx, works, missed);
   const body = `<h1>観劇記録を追加</h1>
-<p class="lede">公演名だけでも保存できます。日付や評価はあとから追加できます。</p>
-<div class="card register-single">${h2('plus', '観た公演を1件追加')}
+<p class="lede">公演名だけでも保存できます。日付や評価はあとから追加できます。<b>これから観る公演</b>（日付がまだ先の公演）を候補から選ぶと、<a href="/tickets?t=__TAGURI_TOKEN__">購入済の公演</a>に入ります。</p>
+<div class="card register-single">${h2('plus', '公演を1件追加')}
 <div class="add-work" data-register-single="1">
  <div class="register-search"><label class="fld" for="w-title"><span class="fl">公演の題名<small class="req">必須</small></span><input id="w-title" type="text" placeholder="例：夜の果て" size="26" autocomplete="off" aria-describedby="register-title-help"></label><input id="w-stage" type="hidden" value="">
  <button type="button" data-register-search="1" data-open-dialog="register-search-dialog">${ico('search')}詳細検索</button></div>
  <p class="note" id="register-title-help">題名を2文字入れると候補が出ます。劇場と上演期間を見て選んでください。見つからなくても、入力した名前で記録できます。</p>
  <div id="sug" class="sug"></div>
- <div class="register-dates"><label class="fld" for="w-date"><span class="fl">観た日<small class="opt">任意</small></span><input id="w-date" type="date"></label>
+ <div class="register-dates"><label class="fld" for="w-date"><span class="fl">観た日・行く日<small class="opt">任意</small></span><input id="w-date" type="date"></label>
  <label class="fld" for="w-time"><span class="fl">開演時刻<small class="opt">任意</small></span><input id="w-time" type="time"></label></div>
  <label class="fld" for="w-venue"><span class="fl">劇場<small class="opt">任意</small></span><input id="w-venue" type="text" placeholder="例：本多劇場" size="26"></label>
- <div class="register-save"><button type="button" class="primary" data-add-work="1">${ico('plus')}観劇記録を保存</button><span class="said" role="status" aria-live="polite"></span></div>
+ <div class="register-save"><button type="button" class="primary" data-add-work="1">${ico('plus')}保存</button><span class="said" role="status" aria-live="polite"></span></div>
 </div>
 <div class="register-result" data-register-result="1" hidden></div>
 <details class="register-help"><summary>公演の候補について</summary>

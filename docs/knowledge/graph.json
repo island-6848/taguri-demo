@@ -2971,6 +2971,20 @@
    "verifies": []
   },
   {
+   "id": "dec-register-owned",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-24",
+   "title": "観劇記録を追加で、これからの公演を候補から選ぶと購入済に入れる（観た日の欄は行く日になる）",
+   "sources": [
+    "cloudflare/src/screens/rate.js",
+    "cloudflare/src/screens/settings.js",
+    "web/app.js",
+    "cloudflare/test/register-owned.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-register-run-precision",
    "type": "decision",
    "status": "adopted",
