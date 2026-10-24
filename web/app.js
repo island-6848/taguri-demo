@@ -125,7 +125,10 @@ function markAcctNav(root) {
 // 「４つの大きいメニューにアイコンをつけて」）。パソコン幅では今までどおり左の帯（NAV）を使う。
 // 探すは帯の検索窓、設定は右上の歯車、公演情報の登録はその左の「＋」から入る。
 const PNAV = [
-  ["rec", "おすすめ", "yarn", [["/recommend", "今週のおすすめ"], ["/recommend/interest", "興味あり"], ["/recommend/favourites", "お気に入り"]]],
+  ["rec", "おすすめ", "yarn", [["/recommend", "今週のおすすめ"], ["/recommend/interest", "興味あり"]]],
+  // お気に入りは、おすすめの子から出して、おすすめの右に 1 つのボタンとして置く（起案者の指示 2026-10-24「おすすめの下にある
+  // 『お気に入り』を独立させて、おすすめタブの右側に置いてほしい（スマホ）」）。子が無いので、押すとそのまま移る
+  ["fav", "お気に入り", "star", [], "/recommend/favourites"],
   ["plan", "予定", "calendar", [["/calendar", "公演カレンダー"], ["/recommend/reminder", "開幕リマインド"], ["/tickets", "購入済の公演"]]],
   ["rate", "評価", "stamp", [["/rate", "評価一覧"], ["/rate/unrated", "未評価"], ["/rate/notes", "感想"], ["/register", "観劇記録を追加"]]],
   ["rec2", "記録", "notebook", [["/records/works", "日記帳"], ["/records", "眺める"], ["/records/chronicle", "観劇史年表"]]],
@@ -139,10 +142,12 @@ function renderPNav() {
     // （起案者の指示 2026-10-19「現在のアカウントアイコンを押したら…ポップアップ…設定のアイコンは消して」）。デモ版は歯車のまま
     + (IS_DEMO ? '<a class="pset" href="/settings" data-path="/settings" aria-label="設定">' + ico("gear", 20) + "</a>"
       : '<button type="button" class="pacct" data-acct-menu aria-haspopup="menu" aria-expanded="false" aria-label="アカウント" title="アカウント">' + ico("user", 20) + "</button>")
-    + '<div class="pnav">' + PNAV.map(([id, label, icon]) =>
-      '<button type="button" class="pm" data-pm="' + id + '" aria-expanded="false">' + ico(icon, 22)
-      + '<span class="pl">' + E(label) + ico("chevron", 9, "cv") + "</span></button>").join("") + "</div>"
-    + PNAV.map(([id, , , kids]) => '<div class="psud' + (kids.length === 3 ? " three" : "") + '" data-psud="' + id + '" hidden>'
+    + '<div class="pnav">' + PNAV.map(([id, label, icon, kids, path]) => (kids.length
+      ? '<button type="button" class="pm" data-pm="' + id + '" aria-expanded="false">' + ico(icon, 22)
+        + '<span class="pl">' + E(label) + ico("chevron", 9, "cv") + "</span></button>"
+      : '<a class="pm" data-pm="' + id + '" href="' + path + '" data-path="' + path + '">' + ico(icon, 22)
+        + '<span class="pl">' + E(label) + "</span></a>")).join("") + "</div>"
+    + PNAV.filter(m => m[3].length).map(([id, , , kids]) => '<div class="psud' + (kids.length === 3 ? " three" : "") + '" data-psud="' + id + '" hidden>'
       + kids.map(([p, t]) => '<a href="' + p + '" data-path="' + p + '"><i aria-hidden="true"></i>' + E(t) + "</a>").join("")
       + "</div>").join("");
 }
@@ -181,7 +186,7 @@ function crumbsFor(path, title) {
 }
 function updateNavActive(path) {
   // スマホ幅の大メニュー: いまいる組を塗り、開いていたすだれは画面を移ったら閉じる
-  const here = PNAV.find(m => m[3].some(k => k[0] === path));
+  const here = PNAV.find(m => m[4] === path || m[3].some(k => k[0] === path));
   document.querySelectorAll(".side .pm").forEach(b => b.classList.toggle("on", !!here && b.dataset.pm === here[0]));
   openPSud(null);
   document.querySelectorAll(".side a[data-path]").forEach(a => {
