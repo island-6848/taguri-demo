@@ -24,10 +24,6 @@
 - [ ] 掲載情報を入れる: 文面は [store/google-play-listing.md](store/google-play-listing.md)、画像は `docs/store/images/`〔impl-store-images〕。データセーフティ・コンテンツのレーティングに答える
 - [ ] 問い合わせ用のメールアドレスを作る（規約・削除依頼の窓口に載せる）〔q-contact-email〕
 
-## 宝塚 OG・STARTO の一覧を外から足す（起案者の答え 2026-10-24「b,c でお願い」）
-
-- [ ] **このセッションの通信の許可に 3 つを足す:** `ja.wikipedia.org`（退団者の一覧）、`kageki.hankyu.co.jp`（宝塚歌劇の公式サイト、在団の名簿）、`starto.jp`（STARTO の公式サイト）。足すと、Claude が使ってよい条件を確かめてから一覧を取り込む〔dec-member-affil-tag〕〔q-affil-external-list〕
-
 ## 実機で確かめること
 
 - [ ] パスキーを iPhone・Android で登録・ログインできるか〔q-passkey-real-devices〕
@@ -55,6 +51,8 @@
 - [ ] 「次の更新で探してもらう」依頼を処理する段を作るか（issue #101）。今は依頼を受け付けるだけで、だれも探していない。案: 毎日の取得が新しく読んだ公演と、頼まれた題名を手元で照らし、画面に「見つかった・まだ」を出す（通信なし・Actions 数秒・D1 の書き込み 1 日 最大 200 行）〔q-search-request-crawl〕
 
 ## 済み
+
+- [x] 宝塚 OG・STARTO の一覧のために、通信の許可に ja.wikipedia.org・kageki.hankyu.co.jp・starto.jp を足した（2026-10-24）。Wikipedia から一覧を作った。公式サイトは使えなかった（STARTO は robots.txt で断り、宝塚は通じない）〔find-wikipedia-member-categories-1024〕
 
 - 2026-10-24 ミス・サイゴンの出演者を差し替えた（Claude が本番の D1 に入れた。ツアー 5 会場）〔f-miss-saigon-cast-applied〕
 - 2026-10-24 定期実行の環境のセットアップスクリプトを空にした（許可の設定の書き方の 2 行が入っていて、あらすじの読み取りが 10-20 ごろから毎回失敗していた）〔f-past-synopsis-progress-1024〕

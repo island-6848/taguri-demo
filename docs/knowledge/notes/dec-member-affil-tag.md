@@ -40,10 +40,10 @@ links:
 - 外の一覧: `data/affil/members.json`（札の名前 → 人の名前の並び）を置けば足す。
 - 作業データで数えると、宝塚歌劇団 279 人、STARTO 104 人。これからの候補 4,766 件のうち、宝塚歌劇団の札が 74 件、STARTO の札が 26 件に付く。
 
-**まだのこと**
-- b と c の取り込み。このセッションからは ja.wikipedia.org・kageki.hankyu.co.jp・starto.jp に通じない（通信の許可の一覧に無い）。起案者のやることに足した。
-  - 通じたら、使ってよい条件を確かめてから members.json を作る。
-  - Wikipedia（CC BY-SA）は、使う形に合わせて出典の書き方を決める。
+**外の一覧（2026-10-24 追記）**
+- Wikipedia の分類から作った一覧を `cloudflare/scripts/affil_members.json` に置き、索引を作るときに読む〔find-wikipedia-member-categories-1024〕。作り直しは `tools/review/collect_affil_wikipedia.py`。
+- 公式サイトは使えなかった。STARTO は robots.txt で Claude を断っている〔find-starto-robots-no-claude-1024〕。宝塚はこの環境から通じない〔find-kageki-unreachable-1024〕。
+- これからの公演の札は、宝塚 74→131 件、STARTO 26→66 件。
 - 本番に効くのは、次に索引を作り直して届けたとき。
 
 **無料枠**
