@@ -500,6 +500,37 @@ class FavouriteSeedKindsTest(unittest.TestCase):
         w = {r[1]: r[3] for r in index['postings'] if r[0] == '#題材' and r[2] == '9'}
         self.assertEqual(w['江戸'], round(UR.GENRE_W * 0.5, 6))
 
+    def test_form_words_are_the_form_not_the_subject(self):
+        # 起案者の指摘（2026-10-24）「題材バレエは話のあらすじの中心がバレエのときにつくもの。形式バレエはバレエ上演公演のとき
+        # につくもの」。読み取りがジャンル・トーンに書いた形式の言葉は #題材 にせず、ジャンルのものは形式の手がかりにする
+        ballet = {'elements': [{'kind': 'ジャンル', 'word': 'バレエ'}, {'kind': 'トーン', 'word': 'ミュージカル'},
+                               {'kind': '題材', 'word': 'クリスマス'}]}
+        story = {'elements': [{'kind': '題材', 'word': 'バレエ'}, {'kind': '題材', 'word': '挫折'}]}
+        self.assertEqual([w for w, _ in BI.theme_terms(ballet)], ['クリスマス'])
+        self.assertEqual(UR.form_hints(ballet['elements']), ['バレエ'])
+        self.assertEqual(UR.form_hints(story['elements']), [])
+        pool = UR.candidate_pool({}, [
+            # 題名にも主催にも「バレエ」が無く、作曲の欄があるだけで前は「音楽劇」になっていた公演
+            {'stage_id': '1', 'title': 'くるみ割り人形 全幕', 'period': '2099/01/01 〜 2099/01/02', 'group': 'インプレサリオ東京',
+             'fields': {'作曲': 'チャイコフスキー'}},
+            # バレエ団の公演で、読み取りが題材にも「バレエ」と書いたもの: 形式と同じなので題材から外す
+            {'stage_id': '2', 'title': '白鳥の湖', 'period': '2099/01/01 〜 2099/01/02', 'group': '東京バレエ団', 'fields': {}},
+            # バレリーナを目指す話の演劇: 題材の「バレエ」は残し、形式はバレエにしない
+            {'stage_id': '3', 'title': 'つま先立ちの夏', 'period': '2099/01/01 〜 2099/01/02', 'group': '劇団甲',
+             'fields': {'脚本': '作家乙', '演出': '作家乙'}}])
+        index = BI.build_index(pool, {}, APP.group_of,
+                               themes={'1': BI.theme_terms(ballet), '2': BI.theme_terms(story), '3': BI.theme_terms(story)},
+                               forms={'1': UR.form_hints(ballet['elements'])})
+        tags = lambda sid: {(r[0], r[1]) for r in index['postings'] if r[2] == sid and r[0].startswith('#')}
+        self.assertIn(('#形式', 'バレエ'), tags('1'))
+        self.assertNotIn(('#形式', '音楽劇'), tags('1'))
+        self.assertNotIn(('#題材', 'バレエ'), tags('1'))
+        self.assertIn(('#形式', 'バレエ'), tags('2'))
+        self.assertNotIn(('#題材', 'バレエ'), tags('2'))
+        self.assertIn(('#題材', '挫折'), tags('2'))
+        self.assertIn(('#題材', 'バレエ'), tags('3'))
+        self.assertNotIn(('#形式', 'バレエ'), tags('3'))
+
     def test_too_short_or_unknown_names_add_nothing(self):
         self.assertEqual(self.seeds([{'name': '劇', 'kind': '団体'}, {'name': '海', 'kind': '題材'}]), set())
 

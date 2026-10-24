@@ -93,6 +93,9 @@ def theme_terms(row: dict | None) -> list[tuple[str, float]]:
             continue
         w = RC.nz(e.get("word") or "")
         kind = e.get("kind") or ""
+        # 公演の形式の言葉（バレエ・ミュージカル…）は、読み取りが「題材」と書いたときだけ題材にする（UR.form_hints）
+        if kind != "題材" and M.norm(w) in UR.FORM_WORDS:
+            continue
         cap, kw = THEME_KIND_W.get(kind, (MAX_THEME_WORDS, 1.0))
         if len(w) < 2 or per.get(kind, 0) >= cap:
             continue
@@ -111,7 +114,7 @@ def theme_words(row: dict | None) -> list[str]:
 
 def build_index(pool: dict[str, dict], fields_by_stage: dict[str, dict], role_group,
                 titles: dict[str, str] | None = None, themes: dict[str, list[str]] | None = None,
-                past: list[dict] | None = None) -> dict:
+                past: list[dict] | None = None, forms: dict[str, list[str]] | None = None) -> dict:
     """User-independent material. `pool` is `UR.candidate_pool(...)`.
 
     Kind-of-show tags (UR.stage_tags: form, source, venue) are stored with the
@@ -122,6 +125,12 @@ def build_index(pool: dict[str, dict], fields_by_stage: dict[str, dict], role_gr
     """
     titles = dict(titles or {})
     themes = themes or {}
+    forms = forms or {}      # stage id -> UR.form_hints（題名・劇場で形式が決まらないときの手がかり）
+
+    def no_form_words(tags, words):
+        """題材の言葉から、その公演の形式そのもの（形式がバレエの公演の題材「バレエ」）を外す。"""
+        own = {tag for axis, tag in tags if axis == "#形式"}
+        return [t for t in words if UR.FORM_WORDS.get(M.norm(t if isinstance(t, str) else t[0])) not in own]
     stages, postings = {}, []
     for sid, entry in pool.items():
         title = entry.get("title") or ""
@@ -131,9 +140,9 @@ def build_index(pool: dict[str, dict], fields_by_stage: dict[str, dict], role_gr
         credits = sorted(set(M.parse_credits(entry.get("fields") or {})))
         titles.setdefault(sid, title)
         tags = UR.stage_tags(title, [(entry.get("fields") or {}).get("劇場", ""), entry.get("venue") or "", entry.get("theater") or ""], credits,
-                             source=UR.source_text(entry.get("fields") or {}), group=entry.get("group") or "")
+                             source=UR.source_text(entry.get("fields") or {}), group=entry.get("group") or "", hints=forms.get(sid, ()))
         # 題材の言葉は種類と根拠で重さが違う（theme_terms）。言葉だけの古い形（重さ 1）も受ける
-        terms = [(t, 1.0) if isinstance(t, str) else (t[0], t[1]) for t in themes.get(sid, [])]
+        terms = [(t, 1.0) if isinstance(t, str) else (t[0], t[1]) for t in no_form_words(tags, themes.get(sid, []))]
         own = {tag for axis, tag in tags if axis == THEME_AXIS}
         tags += [(THEME_AXIS, w) for w, _ in terms if w not in own]
         tw = dict(terms)
@@ -160,8 +169,8 @@ def build_index(pool: dict[str, dict], fields_by_stage: dict[str, dict], role_gr
         credits = sorted(set(M.parse_credits(f)))
         row = pool.get(sid) or {}
         tags = UR.stage_tags(titles.get(sid, ""), [f.get("劇場", ""), row.get("venue") or "", row.get("theater") or ""], credits,
-                             source=UR.source_text(f), group=(pool.get(sid) or {}).get("group") or "")
-        tags += [(THEME_AXIS, t if isinstance(t, str) else t[0]) for t in themes.get(sid, [])]
+                             source=UR.source_text(f), group=(pool.get(sid) or {}).get("group") or "", hints=forms.get(sid, ()))
+        tags += [(THEME_AXIS, t if isinstance(t, str) else t[0]) for t in no_form_words(tags, themes.get(sid, []))]
         people[sid] = [list(c) for c in sorted(set(credits) | set(tags))]
     for sid, ws in themes.items():
         if sid not in people and ws:
@@ -769,12 +778,15 @@ def main() -> int:
                     titles.setdefault(str(r["stage_id"]), r["page_title"])
     # Subject words of candidate stages (synopsis elements, hand-entered ones overlaid).
     import net_c as C
-    themes = {sid: ws for (side, sid), row in C.load_themes().items()
+    loaded = C.load_themes()
+    themes = {sid: ws for (side, sid), row in loaded.items()
               if side == "candidate" for ws in [theme_terms(row)] if ws}
+    forms = {sid: fs for (side, sid), row in loaded.items()
+             if side == "candidate" for fs in [UR.form_hints((row or {}).get("elements"))] if fs}
     # 過去の公演（fetch_past_stages の控え）は、所属の表（rec_affil）にだけ使う
     past_path = ROOT / "data" / "past" / "stages.jsonl"
     past = [json.loads(x) for x in past_path.read_text(encoding="utf-8").split("\n") if x.strip()] if past_path.exists() else []
-    index = build_index(pool, M._fields_by_stage(), APP.group_of, titles, themes, past)
+    index = build_index(pool, M._fields_by_stage(), APP.group_of, titles, themes, past, forms)
     counts = None
     if a.hashes_out:
         prev = json.loads(a.prev_hashes.read_text(encoding="utf-8")) if a.prev_hashes and a.prev_hashes.exists() else {}
