@@ -30,6 +30,16 @@ class PastIndexTest(unittest.TestCase):
     def tearDown(self):
         self.t.cleanup()
 
+    def test_title_pairs_newest_first_and_shared_with_the_worker(self):
+        # 題名の途中の語でも引けるように、題名の鍵の 2 文字ずつの組 → 公演（起案者の指示 2026-10-24）
+        t = PI.title_shards(self.d)
+        def lookup(g):
+            return t.get(PI.shard_of(g), {}).get('grams', {}).get(g, [])
+        self.assertEqual(lookup('の果'), ['31', '30'])          # 新しい番号が先
+        self.assertEqual(lookup('果て'), ['31', '30'])
+        self.assertEqual(lookup('劇団'), [])                    # 団体の名前は入れない（題名だけ）
+        self.assertEqual([PI.shard_of('果て'), PI.shard_of('白酒')], [0xd7, 0x18])   # stage-search.test.js の gramShard と同じ値
+
     def test_names_whole_and_shared_with_the_worker(self):
         s = PI.shards(self.d)
         def lookup(name):
@@ -47,15 +57,18 @@ class PastIndexTest(unittest.TestCase):
         sent = []
         put = lambda account, token, bucket, key, body, ctype: sent.append((key, body))
         r = PI.deliver(self.d, bucket='b', put=put)
-        self.assertEqual(r['sent'], r['shards'])                # 初回はすべて
-        self.assertTrue(all(k.startswith('pastidx/v1/') and k.endswith('.json') for k, _ in sent))
+        self.assertEqual(r['sent'], r['shards'] + r['title_shards'])   # 初回はすべて（名前の索引と題名の索引）
+        self.assertTrue(all(k.startswith(('pastidx/v1/', 'pasttitle/v1/')) and k.endswith('.json') for k, _ in sent))
         sent.clear()
         self.assertEqual(PI.deliver(self.d, bucket='b', put=put)['sent'], 0)
         rows = ROWS + [{"stage_id": "32", "title": "新しい舞台", "start": "2025-01-01", "end": "2025-01-02", "fields": {"出演": "上村聡"}}]
         (self.d / 'past' / 'stages.jsonl').write_text('\n'.join(json.dumps(r, ensure_ascii=False) for r in rows) + '\n', encoding='utf-8')
         r = PI.deliver(self.d, bucket='b', put=put)
-        self.assertEqual(r['sent'], 1)                          # 変わったのは「上村聡」の入ったファイルだけ
-        self.assertIn(f"pastidx/v1/{PI.shard_of(PI.nz('上村聡')):02x}.json", [k for k, _ in sent])
+        names = [k for k, _ in sent if k.startswith('pastidx/v1/')]
+        self.assertEqual(names, [f"pastidx/v1/{PI.shard_of(PI.nz('上村聡')):02x}.json"])   # 名前は「上村聡」の入ったファイルだけ
+        # 題名は「新しい舞台」の組の入ったファイルだけ
+        want = sorted({f"pasttitle/v1/{PI.shard_of(g):02x}.json" for g in ('新し', 'しい', 'い舞', '舞台')})
+        self.assertEqual(sorted(k for k, _ in sent if k.startswith('pasttitle/v1/')), want)
 
 
 if __name__ == '__main__':
