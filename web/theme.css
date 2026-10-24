@@ -1815,3 +1815,12 @@ article .share-open{display:flex;margin:6px 0 0 auto}
 .share-tags{list-style:none;padding:0;margin:0 0 10px;display:flex;flex-wrap:wrap;gap:6px}
 .share-tags li{padding:3px 10px;border-radius:999px;background:var(--plane);font-size:13px}
 .share-pfoot{margin-top:28px;font-size:13px;color:var(--ink2);text-align:center}
+
+/* ---- ことばの雲（眺める。起案者の指示 2026-10-24、見本を見て「OK」。words.js）
+   多い 3 語は差し色、あとは多い順に濃い字から薄い字へ */
+.wcloud{display:block;margin:8px auto 0}
+.wcloud text{font-family:inherit;font-weight:500}
+.wcloud .w0{fill:var(--curtain);font-weight:700}
+.wcloud .w1{fill:var(--ink)}
+.wcloud .w2{fill:var(--ink2)}
+.wcloud .w3{fill:var(--mute)}

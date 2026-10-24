@@ -9,20 +9,25 @@
 // （静的ファイルは Worker の要求にも CPU にも数えられない）。
 import {panel as storyline} from './storyline.js';
 import {panel as people} from './people.js';
+import {panel as words} from './words.js';
 
-export const FIGS = {storyline: rated => (rated.length ? storyline(rated) : ''), people: rated => people(rated)};
+// 2 つ目の引数は `#figs-src` の中身全部と、置き場所の幅（ことばの雲が文字の大きさを決めるのに使う）
+export const FIGS = {storyline: rated => (rated.length ? storyline(rated) : ''), people: rated => people(rated),
+  words: (_rated, src, width) => words(src.syn || [], src.nSeen || 0, width)};
 
 /** Fill every `[data-fig]` under root from `#figs-src`. Returns how many were drawn. */
 export function fill(root) {
   const src = root.querySelector('#figs-src');
   if (!src) return 0;
-  let rated;
-  try { rated = JSON.parse(src.textContent).rated || []; } catch { return 0; }
+  let data, rated;
+  try { data = JSON.parse(src.textContent) || {}; rated = data.rated || []; } catch { return 0; }
   let n = 0;
   for (const box of root.querySelectorAll('[data-fig]')) {
     const make = FIGS[box.dataset.fig];
     let html = '';
-    try { html = make ? make(rated) : ''; } catch { html = ''; }   // **落ちても画面の残りは出す**
+    // 枠の左右の余白（約 40px）を引いた幅。測れない所（試験）では既定の幅
+    const width = (box.parentElement?.clientWidth || 800) - 40;
+    try { html = make ? make(rated, data, width) : ''; } catch { html = ''; }   // **落ちても画面の残りは出す**
     if (html.trim()) n++;
     box.outerHTML = html;
   }
