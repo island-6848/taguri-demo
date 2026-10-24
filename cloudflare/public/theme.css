@@ -1852,7 +1852,8 @@ article .share-open{display:flex;margin:6px 0 0 auto}
 /* ことばの雲の「画像を保存」（起案者の指示 2026-10-24。app.js wordCloudSave） */
 .wcsave{text-align:center;margin:8px 0 0}
 .wcsave button{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;padding:4px 14px}
-/* これから観られる公演の無いハッシュタグは押せない札（起案者の指示 2026-10-24。app.js leadSynopsis） */
-:is(.ticket.cmp,.rec-row.cmp) .lsyntag.dead{color:var(--mute);border-style:dashed;cursor:default}
+/* これから観られる公演の無いハッシュタグは押せない札（起案者の指示 2026-10-24。app.js leadSynopsis）。見た目はほかの札と同じで、
+   押せないだけ（起案者の指示 2026-10-24「リンクないやつでも色は薄くしないで。押せないだけでよい」。初めは薄い字・点線の枠にしていた） */
+:is(.ticket.cmp,.rec-row.cmp) .lsyntag.dead{cursor:default}
 /* 行けばよかったの 1 件ずつの「取り消す」（起案者の指示 2026-10-24） */
 .miss-row .miss-del{margin-left:auto;font-size:12px;padding:1px 10px}
