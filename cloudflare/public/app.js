@@ -3662,7 +3662,8 @@ function shortAddButtons(root) {
 // 2026-10-19 の指示（「合っていた」を判定しない）は守る: 帯は「合っていた／合わなかった」の 2 色に分けず、段階の順（低い段階が左）に
 // 1 色の濃淡で塗る。評価でない行（未評価）は灰色の斜線。
 // 帯の下に、段階ごとの札「★n n%」をその段階の真下に置く（起案者の指示 2026-10-24「角帯の下に『★n n%』のラベルをつけて」）。
-// 狭い段階が続いて札が重なるときは、重なった札を次の段に下げ、細い線で帯とつなぐ。前の凡例と帯の中の割合はやめた（同じ数を 2 度書くため）
+// 狭い段階が続いて札が重なるときは、重なった札を帯の上に出し、細い線で帯とつなぐ（起案者の指示 2026-10-24「ラベルの位置、重なるものは
+// 帯グラフの上に書いて」。前は下に段を重ねていた）。前の凡例と帯の中の割合はやめた（同じ数を 2 度書くため）
 function divergeVerdicts(root) {
   root.querySelectorAll(".card .dbar").forEach(bar => {
     const card = bar.closest(".card");
@@ -3685,10 +3686,11 @@ function divergeVerdicts(root) {
     });
     const pctText = p => (p < 1 ? "1%未満" : Math.round(p) + "%");
     const html = '<div class="vstack" role="img" aria-label="' + E("評価の割合: " + segs.map(x => x.g + " " + pctText(x.p)).join("、")) + '">'
+      + '<div class="vs-labs top" aria-hidden="true"></div>'
       + '<div class="vs-bar">' + segs.map(x => '<span class="vs-seg' + (x.none ? " none" : "") + '" style="width:'
         + x.p.toFixed(2) + "%" + (x.none ? "" : ";--vs-shade:" + x.shade + "%") + '" title="' + E(x.g + " " + x.v + " 件（" + pctText(x.p) + "）") + '">'
         + "</span>").join("") + "</div>"
-      + '<div class="vs-labs" aria-hidden="true">' + (() => {
+      + '<div class="vs-labs bot" aria-hidden="true">' + (() => {
         let at = 0;
         return segs.map(x => { const c = at + x.p / 2; at += x.p;
           return '<i class="vs-tick" style="left:' + c.toFixed(2) + '%"></i><span class="vs-lab" style="left:' + c.toFixed(2) + '%">'
@@ -3696,30 +3698,39 @@ function divergeVerdicts(root) {
       })() + "</div></div>";
     bar.insertAdjacentHTML("afterend", html);
     bar.remove();
-    const labs = card.querySelector(".vs-labs");
-    placeVsLabels(labs);
+    const stack = card.querySelector(".vstack");
+    placeVsLabels(stack);
     // 画面の幅が変わると札の幅と帯の幅の比が変わるので、置き直す
-    if (window.ResizeObserver) new ResizeObserver(() => placeVsLabels(labs)).observe(labs);
+    if (window.ResizeObserver) new ResizeObserver(() => placeVsLabels(stack)).observe(stack.querySelector(".vs-bar"));
   });
 }
-// 札を段階の真下に置く。左右の端ではみ出す札は内に寄せ、前の札と重なる札は次の段へ（3 段まで）。線は札の段まで伸ばす
-function placeVsLabels(box) {
-  if (!box || !box.offsetWidth) return;
-  const W = box.offsetWidth, ROW = 20, GAP = 6;
-  const labs = [...box.querySelectorAll(".vs-lab")], ticks = [...box.querySelectorAll(".vs-tick")];
-  const ends = [];   // 段ごとの、いちばん右の札の右端
-  let rowsUsed = 1;
-  labs.forEach((l, i) => {
+// 札を段階の真下に置く。左右の端ではみ出す札は内に寄せる。前の札と重なる札は帯の上へ置き、上でも重なれば上にもう 1 段ずつ積む（3 段まで）。
+// 線は札の段まで伸ばす
+function placeVsLabels(stack) {
+  const top = stack && stack.querySelector(".vs-labs.top"), bot = stack && stack.querySelector(".vs-labs.bot");
+  if (!top || !bot || !bot.offsetWidth) return;
+  const W = bot.offsetWidth, ROW = 20, GAP = 6;
+  // 札と線の組は、初めに下の箱に並んだ順（左から）で覚えておく。置き直すたびに上と下へ振り分け直す
+  if (!stack._vsl) {
+    const ticks = [...bot.querySelectorAll(".vs-tick")];
+    stack._vsl = [...bot.querySelectorAll(".vs-lab")].map((l, i) => [ticks[i], l]);
+  }
+  const lanes = [[bot, 0], [top, 0], [top, 1], [top, 2]].map(([box, r]) => ({box, r, end: -Infinity}));
+  const used = {top: 0, bot: 0};
+  stack._vsl.forEach(([t, l]) => {
+    bot.append(t, l);                    // 幅を測るため、いったん下の箱に入れる
     const w = l.offsetWidth, c = parseFloat(l.style.left) / 100 * W;
     const x = Math.min(Math.max(c - w / 2, 0), Math.max(W - w, 0));
-    let r = 0;
-    while (r < 2 && ends[r] !== undefined && x < ends[r] + GAP) r++;
-    ends[r] = x + w;
-    rowsUsed = Math.max(rowsUsed, r + 1);
-    l.style.transform = "translate(" + (x - c).toFixed(1) + "px," + (r * ROW) + "px)";
-    ticks[i].style.height = (4 + r * ROW) + "px";
+    const lane = lanes.find(n => x >= n.end + GAP) || lanes[lanes.length - 1];
+    lane.end = x + w;
+    const up = lane.box === top;
+    lane.box.append(t, l);
+    used[up ? "top" : "bot"] = Math.max(used[up ? "top" : "bot"], lane.r + 1);
+    l.style.transform = "translate(" + (x - c).toFixed(1) + "px," + ((up ? -1 : 1) * lane.r * ROW) + "px)";
+    t.style.height = (4 + lane.r * ROW) + "px";
   });
-  box.style.height = (rowsUsed * ROW + 6) + "px";
+  top.style.height = used.top ? (used.top * ROW + 6) + "px" : "0";
+  bot.style.height = used.bot ? (used.bot * ROW + 6) + "px" : "0";
 }
 
 // **評価を押し直すのは、判子の丸から。**（起案者の指示 2026-10-13「『評価を押し直す』ってボタンは消して、
