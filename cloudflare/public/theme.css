@@ -1719,14 +1719,11 @@ details.lprice:not([open]):not(#_)>summary .plist>li:only-child::before{display:
   background:color-mix(in srgb,var(--ink2) var(--vs-shade,60%),var(--fold-bg));box-shadow:inset -1px 0 0 var(--surf)}
 .vstack .vs-seg:last-child{box-shadow:none}
 .vstack .vs-seg.none{background:var(--fold-bg);background-image:repeating-linear-gradient(45deg,transparent 0 4px,color-mix(in srgb,var(--mute) 35%,transparent) 4px 5px)}
-.vstack .vs-in{font-size:12px;white-space:nowrap;color:var(--ink);font-variant-numeric:tabular-nums;padding:0 4px}
-.vstack .vs-seg.dark .vs-in{color:var(--surf)}
-.vstack .vs-leg{display:flex;flex-wrap:wrap;gap:4px 14px;margin:8px 0 0;padding:0;list-style:none;font-size:12.5px;color:var(--ink2)}
-.vstack .vs-leg li{display:flex;align-items:center;gap:5px;white-space:nowrap;font-variant-numeric:tabular-nums}
-.vstack .vs-leg b{color:var(--ink)}
-.vstack .vs-leg small{color:var(--mute)}
-.vstack .vs-sw{display:inline-block;width:11px;height:11px;border-radius:3px;background:color-mix(in srgb,var(--ink2) var(--vs-shade,60%),var(--fold-bg))}
-.vstack .vs-sw.none{background:var(--fold-bg);background-image:repeating-linear-gradient(45deg,transparent 0 3px,color-mix(in srgb,var(--mute) 45%,transparent) 3px 4px)}
+/* 帯の下の札「★n n%」（起案者の指示 2026-10-24）。位置は app.js の placeVsLabels が決める */
+.vstack .vs-labs{position:relative;height:26px;margin-top:4px}
+.vstack .vs-lab{position:absolute;top:6px;left:0;white-space:nowrap;font-size:12px;line-height:16px;color:var(--ink2);font-variant-numeric:tabular-nums}
+.vstack .vs-lab b{color:var(--ink);font-weight:700}
+.vstack .vs-tick{position:absolute;top:0;width:1px;height:4px;background:var(--ring)}
 
 /* 上のメニューを開いたときの子ページ（すだれ .psud）は、1 つずつ独立したボタンに見せる（起案者の指示 2026-10-19「今地続きの灰色背景帯の
    色上に文字がのってるので、それぞれボタンとして独立していることがわかるようなデザインに変更」）。白い地・枠線・角丸・すき間。

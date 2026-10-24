@@ -17,7 +17,7 @@ import {rankedGroups, prefCounts} from './recommend.js';
 import {KINDS, loadDeclared, favRoleBox, reactionsOf, loadDeclined, loadKindOff, reasonOffCardHtml} from './lists.js';
 import {stageInfo} from './fallback.js';
 import {loadWorks, titleKey, DROP_KEEP_DAYS, expiredKeys} from './works.js';
-import {dateParts} from './row.js';
+import {recDate} from './row.js';
 import {splitNames} from './cast.js';
 import {optedOut, optoutCardHtml, optoutAction} from './evalrec.js';
 import {consented, consentCardHtml, consentAction} from '../note-ai.js';
@@ -66,8 +66,7 @@ function skippedHtml(rows) {
 <p class="lead">「行かなかった」と答えた公演はありません。<b>評価待ちや日記帳の
 各行で「行かなかった」を押すと、ここに並びます。</b></p></details>`;
   const body = rows.map(w => {
-    const [y, md] = dateParts(w.first_date || '');
-    const when = md ? `${y}年${md.split('.')[0]}月${Number(md.split('.')[1])}日` : '上演日が分かりません';
+    const when = recDate(w.first_date || '', w.time || '') || '上演日が分かりません';   // 記録の日付の形（row.recDate）
     return `<div class="drop-row"><span class="dt">${E(w.title)}</span><span class="dm">${E(when)}</span>`
       + `<div class="drop-btns"><button data-seen="${E(w.work_key)}">やはり観た</button><span class="said"></span></div></div>`;
   }).join('');

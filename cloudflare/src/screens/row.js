@@ -31,18 +31,9 @@ import {splitMark, mark} from '../x-post.js';
 export {anchor};
 
 // ---------------------------------------------------------------- dates, venue, stamp
-const WEEK = '月火水木金土日';
-/** app._date_parts: (年, 月.日, 曜日), or empty when date.fromisoformat fails. */
-export function dateParts(iso) {
-  const m = Array.from(iso || '').slice(0, 10).join('').match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (!m) return ['', '', ''];
-  const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
-  const dim = [31, (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0 ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-  if (y < 1 || mo < 1 || mo > 12 || d < 1 || d > dim[mo - 1]) return ['', '', ''];
-  const dt = new Date(0);
-  dt.setUTCFullYear(y, mo - 1, d);
-  return [String(y), `${mo}.${String(d).padStart(2, '0')}`, WEEK[(dt.getUTCDay() + 6) % 7]];
-}
+// 日付の部品は recdate.js（眺めるの図もブラウザーで使うので、サーバー専用の row.js から切り離した）
+import {dateParts, recDate} from './recdate.js';
+export {dateParts, recDate};
 
 /** app._venue_of (a manual record has no shows, so only its own venue). */
 export function venueOf(w) {
@@ -153,12 +144,6 @@ function castHtml(people) {
 }
 
 // ---------------------------------------------------------------- 観た回（まとめた記録）
-const visitDate = v => {
-  const [y, md, wd] = dateParts(v.date);
-  if (!md) return '日付なし';
-  const [mo, dd] = md.split('.');
-  return `${y}/${mo.padStart(2, '0')}/${dd}(${wd})`;
-};
 /**
  * まとめた記録の観た回の一覧（起案者の問い 2026-10-21「まとめた公演を見るとき周辺のUXが悪い」）。観た日・開演・劇場を 1 回 1 行で出す。
  * 直せる行（日記帳）では、まとめた回ごとに「分ける」（別の記録に戻す。app.js の data-unmerge-one）を付ける。1 回だけの記録には出さない
@@ -166,7 +151,7 @@ const visitDate = v => {
 export function visitsHtml(w, editable = false) {
   if (!(w.merged || []).length || w.unseen) return '';
   const vs = visitsOf(w);
-  const li = vs.map(v => `<li><span class="vis-d">${E(visitDate(v))}${v.time ? ` ${E(v.time)}` : ''}</span>`
+  const li = vs.map(v => `<li><span class="vis-d">${E(recDate(v.date, v.time) || '日付なし')}</span>`
     + `<span class="vis-v">${E(strip(v.venue) || '劇場なし')}${v.times > 1 ? `・${v.times} 回` : ''}</span>`
     + (editable && !v.kept ? `<button type="button" class="vsplit" data-unmerge-one="${E(w.work_key)}" data-one="${E(v.work_key)}">分ける</button>` : '')
     + '</li>').join('');
@@ -215,20 +200,18 @@ export function recRow(w, {poster = '', rateAlways = false, editable = false, ra
     if (w.skipped) times = `${n} 回観た（あと ${w.skipped} 回は行かなかった）`;
     else if (n > 1) times = `${n} 回観た`;
   }
-  // 開演の時刻は 1 回だけの記録に添える（同じ日の昼・夜を見分けられるように。起案者の問い 2026-10-21）
-  const at = !unseen && w.time && !(w.merged || []).length ? `${w.time} 開演` : '';
+  // 開演の時刻は 1 回だけの記録に添える（同じ日の昼・夜を見分けられるように。起案者の問い 2026-10-21）。
+  // 2026-10-24 からは日付の後ろ（2026.10.13(水) 13:00）に書く。会場の行には出さない
+  const at = !unseen && w.time && !(w.merged || []).length ? w.time : '';
   // サービス版だけの形（開演・まとめた回を足した回数）は、Python と比べる試験（screens.test.js）で外せるよう印を付ける
   const mtimes = (w.merged || []).length;
-  const where = [[venueLine(w), ''], [at, ' class="at"'], [times, mtimes ? ' class="mtimes"' : '']].filter(([x]) => x)
+  const where = [[venueLine(w), ''], [times, mtimes ? ' class="mtimes"' : '']].filter(([x]) => x)
     .map(([x, c]) => `<span${c}>${E(x)}</span>`).join(' ');
   const [impHead, impBox] = impressionParts(w);
   const [y, md, wd] = dateParts(w.first_date || '');
-  // 日付は yyyy/mm/dd(曜日) の 1 続きで書く（起案者の指示 2026-10-18「日記帳の日付の書き方、yyyy/mm/dd(曜日)で統一して。」、
-  // 続けて「評価一覧と検索の日付もyyyy/mm/dd(曜日)でそろえて」で、どの行も既定でこの形）。例: 2026/10/17(土)。
-  // app._rec_row(full_date=True) と同じ形
-  const [mo, dd] = md.split('.');
+  // 日付は 2026.10.13(水) 13:00 の形で 1 続きに書く（起案者の指示 2026-10-24。recDate）。10-18 の yyyy/mm/dd(曜日) から改めた
   const dt = md && fullDate
-    ? `<span class="dt"><span class="ymd">${y}/${mo.padStart(2, '0')}/${dd}(${wd})</span></span>`
+    ? `<span class="dt"><span class="ymd">${E(recDate(w.first_date))}${at ? ` <span class="at">${E(at)}</span>` : ''}</span></span>`
     : md
     ? `<span class="dt"><span class="y">${y}</span><span class="md">${md}</span><span class="wd">${wd}</span></span>`
     : '<span class="dt no">上演日が<br>分かりません</span>';

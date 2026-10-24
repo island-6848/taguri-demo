@@ -7,7 +7,7 @@ import {autoLink} from './autolink.js';
 import {ASPECT_MARKS, aspectToken} from '../recommend.js';
 import {E, quote, sortBy, cmp, fmtF, strip, slice, field, qsFirst, qsAll, digitsInt, isdigit, strRepr, localNow, ValueError} from './py.js';
 import {loadWorks, similarWorks, titleKey, seenTimes} from './works.js';
-import {recRow, venueOf, venueKey, ico, h2, stageLabels} from './row.js';
+import {recRow, venueOf, venueKey, ico, h2, stageLabels, recDate} from './row.js';
 import {hashtagsHtml, noteTags} from './hashtags.js';
 import {promoteOwned, listScreens} from './lists.js';
 import {reactAction} from './recommend.js';
@@ -51,22 +51,12 @@ const VERDICT_FILL = {'◎': 'var(--pos)', '○': 'var(--pos)', '△': 'var(--ne
 const VERDICT_OP = {'◎': '1.0', '○': '0.42', '△': '0.42', '×': '1.0'};   // str(float)
 const pct = x => fmtF(x * 100, 0) + '%';                                 // f"{x:.0%}"
 
-/** charts._table */
-function table(head, rows, attrs = []) {
-  const th = head.map(h => `<th>${E(h)}</th>`).join('');
-  // attrs: a row's data-v for n/L grades (app.js divergeVerdicts reads the side from it; ◎○△× rows have none)
-  const tr = rows.map((r, i) => `<tr${attrs[i] || ''}>` + r.map(c => `<td>${E(c)}</td>`).join('') + '</tr>').join('');
-  return `<details class="tv"><summary>数字で見る</summary>`
-    + `<table class="tbl mini"><thead><tr>${th}</tr></thead><tbody>${tr}</tbody></table></details>`;
-}
-
 /** charts.verdict_panel */
 function verdictPanel(works) {
   const cnt = {};
   for (const w of works) { const g = w.verdict ? sameGrade(w.verdict) : '未評価'; cnt[g] = (cnt[g] || 0) + 1; }
   const order = [...ORDER.filter(g => cnt[g]), ...(cnt['未評価'] ? ['未評価'] : [])];
   const tot = order.reduce((s, g) => s + cnt[g], 0);
-  const scaled = order.some(isScaled);
   if (!tot) return '';
   const segs = [], labs = [];
   let x = 0.0;
@@ -80,14 +70,14 @@ function verdictPanel(works) {
     if (wpc >= 7) labs.push(`<span class="dl" style="left:${fmtF(x + wpc / 2, 2)}%">${E(gradeText(g))} <b>${cnt[g]}</b></span>`);
     x += wpc;
   }
+  // 見出しは「評価の分布」、説明の段落と「数字で見る」の表は出さない（起案者の指示 2026-10-24）。段階ごとの件数は帯の data-rows に置き、
+  // app.js（divergeVerdicts）がそれで横帯と、帯の下の「★n n%」の札を描く
+  const rows = order.map(g => [gradeText(g), cnt[g]]);
   return `<section class="card">
-${h2('star', '付けた評価の分布', `<span class="badge part">分母 ${tot} 作品</span>`)}
-<p class="lead"><b>基準は「自分に合っていたか」で、作品の出来ではありません。</b>
-${scaled ? '高い評価と低い評価を、左右に分けて並べています。高い評価も低い評価も、おすすめの材料になります。' : '◎ 側と × 側を左右に分けて置いています。おすすめの材料に数えるのは <b>◎ だけ</b>です。'}</p>
-<div class="dbar"><svg viewBox="0 0 100 26" width="100%" height="26" preserveAspectRatio="none"
+${h2('star', '評価の分布', `<span class="badge part">分母 ${tot} 作品</span>`)}
+<div class="dbar" data-rows="${E(JSON.stringify(rows))}"><svg viewBox="0 0 100 26" width="100%" height="26" preserveAspectRatio="none"
  role="img" aria-label="評価の分布">${segs.join('')}</svg>
-<div class="dlabs">${labs.join('')}</div></div>
-${table(['評価', '件数', '割合'], order.map(g => [gradeText(g), cnt[g], pct(cnt[g] / tot)]), order.map(g => (isScaled(g) ? ` data-v="${g}"` : '')))}</section>`;
+<div class="dlabs">${labs.join('')}</div></div></section>`;
 }
 
 // ---------------------------------------------------------------- render_recommend
@@ -142,7 +132,8 @@ const negDate = d => d ? Array.from(d).map(ch => isdigit(ch) ? String.fromCharCo
 /** impressions._jdate */
 function jdate(s) {
   const m = slice(s || '', 0, 10).match(/^(\p{Nd}{4})-(\p{Nd}{1,2})-(\p{Nd}{1,2})$/u);
-  return m ? `${digitsInt(m[1])}年${digitsInt(m[2])}月${digitsInt(m[3])}日` : '日付不明';
+  // 記録の日付は 2026.10.13(水) の形（起案者の指示 2026-10-24。row.recDate）
+  return (m && recDate(`${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`)) || '日付不明';
 }
 /** impressions.pending(limit=None) */
 const pending = works => sortBy(

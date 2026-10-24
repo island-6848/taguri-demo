@@ -1570,8 +1570,10 @@ def ticket(c: dict, *, rank=None, mode: str = "recommend", note: str = "",
                 note = "（未確定）"
                 btns = (f'<button data-mt-ok="{sid}" data-date="{dd}" data-time="{tt}">確定する</button>'
                         f'<button data-mt-del="{sid}" data-date="{dd}" data-time="{tt}">違う</button>')
-            return (f'<span class="mt-row{"" if t.get("confirmed") else " un"}">{int(t["date"][5:7])}月'
-                    f'{int(t["date"][8:10])}日{tm}{note} {btns}</span>')
+            # 行く日は記録の日付の形 2026.11.02(月) 18:30（起案者の指示 2026-10-24。charts.rec_date と同じ）
+            d = date.fromisoformat(t["date"][:10])
+            when = f"{d.year}.{d.month:02d}.{d.day:02d}({'月火水木金土日'[d.weekday()]})"
+            return (f'<span class="mt-row{"" if t.get("confirmed") else " un"}">{when}{tm}{note} {btns}</span>')
         lo, hi = _period_start(c.get("period") or ""), _period_end(c.get("period") or "")
         add_form = (
             '<span class="mt-add">'

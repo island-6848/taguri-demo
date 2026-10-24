@@ -32,7 +32,7 @@ test('a new user rates with stars; the saved n/5 shows as ★n and groups on the
     // 星の行には余白の丸い判子を出さず、星の列を常に出す（起案者 2026-10-15「下に星で表示されるんなら、〇の枠いらなくない？」）
     assert.doesNotMatch(rate, /data-stamp="1"/);
     assert.doesNotMatch(rate, /data-rate-open/);
-    assert.match(rate, /<td>★4<\/td>/);
+    assert.match(rate, /<div class="dbar" data-rows="\[\[&quot;★4&quot;,1\]\]">/);   // 評価の分布の段階と件数（「数字で見る」の表は 2026-10-24 にやめた）
     // the stars up to the rating are filled (★★★★☆) when the rating is opened again
     assert.match(rate, /(<button class="star on" data-v="[1-4]\/5"[^>]*><\/button>){4}<button class="star" data-v="5\/5"/);
     assert.equal((await step(env, a, {post: '/api/rate', body: {work_key: k, verdict: '6/5'}})).status, 400);
@@ -95,7 +95,7 @@ test('the scale is chosen on 設定; old ratings keep their own scale', async ()
     const rate = (await step(env, a, {get: '/api/screen/rate?v=all'})).body.body_html;
     assert.match(rate, /data-stamp="1"[^>]*>★5<\/span>/);       // the old star rating stays a star (a stamp: the buttons are ○△× now)
     assert.match(rate, /data-stamp="1"[^>]*>△<\/span>/);
-    assert.match(rate, /<tr data-v="2\/3"><td>△<\/td>/);
+    assert.match(rate, /data-rows="[^"]*&quot;△&quot;,1/);
     await step(env, a, {post: '/api/rating_scale', body: {scale: 'stars11'}});
     assert.match((await step(env, a, {get: '/api/screen/rate?v=all'})).body.body_html, /class="gclr"/);
   } finally { sqlite.close(); }
@@ -152,6 +152,6 @@ test('sameGrade: ★n of the 5-step scale is the same value as ★n of the 0.5-s
     const html = (await step(env, a, {get: '/api/screen/rate'})).body.body_html;
     const tabs = [...html.matchAll(/>(★[\d.]+)[^<]*<span class="mn">(\d+)<\/span>/g)].map(m => m[1] + ':' + m[2]);
     assert.deepEqual(tabs, ['★5:2', '★4:1']);
-    assert.equal((html.match(/<td>★5<\/td>/g) || []).length, 1);
+    assert.equal((html.match(/&quot;★5&quot;/g) || []).length, 1);
   } finally { sqlite.close(); }
 });

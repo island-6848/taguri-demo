@@ -72,6 +72,7 @@ from __future__ import annotations
 
 import html
 import re
+from datetime import date
 import sqlite3
 import sys
 from pathlib import Path
@@ -287,7 +288,11 @@ def _jdate(s: str) -> str:
     表記だけを揃えて、重複はそのまま残す（耳と行の重複は `_wait_stub` の約束である）。
     """
     m = re.fullmatch(r"(\d{4})-(\d{1,2})-(\d{1,2})", (s or "")[:10])
-    return f"{int(m[1])}年{int(m[2])}月{int(m[3])}日" if m else "日付不明"
+    if not m:
+        return "日付不明"
+    # 記録の日付の形 2026.10.13(水)（起案者の指示 2026-10-24。charts.rec_date と同じ）
+    d = date(int(m[1]), int(m[2]), int(m[3]))
+    return f"{d.year}.{d.month:02d}.{d.day:02d}({'月火水木金土日'[d.weekday()]})"
 
 
 def _e(s) -> str:

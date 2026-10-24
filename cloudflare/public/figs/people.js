@@ -9,6 +9,7 @@
 import {E, fmtF, pyFloat, pyRound} from './py.js';
 import {h2} from './icons.js';
 import {anchor} from './anchor.js';
+import {recDate} from './recdate.js';
 
 const MAKER_ROLES = ['演出', '脚本', '作', '原作', '翻訳', '音楽', '作曲', '振付'];
 const MAKER = new Set(MAKER_ROLES);
@@ -330,10 +331,7 @@ export function components(g, skip = []) {
 }
 
 // ---------------------------------------------------------------- 時間の軸
-function fmtDate(d) {
-  const [y, m, day] = d.split('-');
-  return `${y}年${parseInt(m, 10)}月${parseInt(day, 10)}日`;
-}
+const fmtDate = d => recDate(d) || d;   // 記録の日付の形（起案者の指示 2026-10-24。row.recDate）
 
 function peopleJoin(names, limit = 4) {
   if (names.length <= limit) return names.map(E).join('、');

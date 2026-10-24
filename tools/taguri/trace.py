@@ -323,11 +323,7 @@ def _thread_svg(name: str, rows: list[dict], brs: dict, nxt: str) -> str:
 
 def _jdate(s: str) -> str:
     """**年から書く。**何年ぶんも混ざる並びで月日だけにすると読めない。"""
-    try:
-        y, m, d = s.split("-")
-        return f"{int(y)}年{int(m)}月{int(d)}日"
-    except (ValueError, AttributeError):
-        return s or ""
+    return CH.rec_date(s or "") or (s or "")   # 記録の日付の形（起案者の指示 2026-10-24）
 
 
 def _q(s: str) -> str:

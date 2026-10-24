@@ -3661,18 +3661,15 @@ function shortAddButtons(root) {
 // 起案者の指示 2026-10-20「評価一覧の分布、横向きの１００％積み上げ帯グラフにして」。全体のうち各段階が占める割合を 1 本の帯で見る。
 // 2026-10-19 の指示（「合っていた」を判定しない）は守る: 帯は「合っていた／合わなかった」の 2 色に分けず、段階の順（低い段階が左）に
 // 1 色の濃淡で塗る。評価でない行（未評価）は灰色の斜線。
-// 帯の中には、幅が足りる段階（9% 以上）だけ割合を書き、段階の名前と件数は下の凡例に書く（帯の中に名前まで書くと、狭い段階で切れる）。数字は「数字で見る」の表にもある
+// 帯の下に、段階ごとの札「★n n%」をその段階の真下に置く（起案者の指示 2026-10-24「角帯の下に『★n n%』のラベルをつけて」）。
+// 狭い段階が続いて札が重なるときは、重なった札を次の段に下げ、細い線で帯とつなぐ。前の凡例と帯の中の割合はやめた（同じ数を 2 度書くため）
 function divergeVerdicts(root) {
   root.querySelectorAll(".card .dbar").forEach(bar => {
     const card = bar.closest(".card");
     if (!card || card.dataset.diverged) return;
-    const rows = [];
-    card.querySelectorAll("table tr").forEach(tr => {
-      const td = tr.querySelectorAll("td");
-      if (td.length < 2) return;
-      const g = td[0].textContent.trim(), v = parseInt(td[1].textContent, 10) || 0;
-      if (v) rows.push([g, v]);
-    });
+    // 段階と件数は、サーバーが帯に置いた data-rows（[[段階, 件数], …]。高い段階から）
+    let rows = [];
+    try { rows = JSON.parse(bar.dataset.rows || "[]").filter(r => r[1] > 0); } catch (e) { rows = []; }
     if (!rows.length) return;
     card.dataset.diverged = "1";
     const all = rows.reduce((t, r) => t + r[1], 0);
@@ -3688,14 +3685,41 @@ function divergeVerdicts(root) {
     });
     const pctText = p => (p < 1 ? "1%未満" : Math.round(p) + "%");
     const html = '<div class="vstack" role="img" aria-label="' + E("評価の割合: " + segs.map(x => x.g + " " + pctText(x.p)).join("、")) + '">'
-      + '<div class="vs-bar">' + segs.map(x => '<span class="vs-seg' + (x.none ? " none" : "") + (x.shade >= 60 ? " dark" : "") + '" style="width:'
+      + '<div class="vs-bar">' + segs.map(x => '<span class="vs-seg' + (x.none ? " none" : "") + '" style="width:'
         + x.p.toFixed(2) + "%" + (x.none ? "" : ";--vs-shade:" + x.shade + "%") + '" title="' + E(x.g + " " + x.v + " 件（" + pctText(x.p) + "）") + '">'
-        + (x.p >= 9 ? '<span class="vs-in">' + pctText(x.p) + "</span>" : "") + "</span>").join("") + "</div>"
-      + '<ul class="vs-leg">' + segs.map(x => '<li><i class="vs-sw' + (x.none ? " none" : "") + '"' + (x.none ? "" : ' style="--vs-shade:' + x.shade + '%"')
-        + "></i>" + E(x.g) + ' <b>' + x.v + "</b> 件<small>（" + pctText(x.p) + "）</small></li>").join("") + "</ul></div>";
+        + "</span>").join("") + "</div>"
+      + '<div class="vs-labs" aria-hidden="true">' + (() => {
+        let at = 0;
+        return segs.map(x => { const c = at + x.p / 2; at += x.p;
+          return '<i class="vs-tick" style="left:' + c.toFixed(2) + '%"></i><span class="vs-lab" style="left:' + c.toFixed(2) + '%">'
+            + E(x.g) + " <b>" + pctText(x.p) + "</b></span>"; }).join("");
+      })() + "</div></div>";
     bar.insertAdjacentHTML("afterend", html);
     bar.remove();
+    const labs = card.querySelector(".vs-labs");
+    placeVsLabels(labs);
+    // 画面の幅が変わると札の幅と帯の幅の比が変わるので、置き直す
+    if (window.ResizeObserver) new ResizeObserver(() => placeVsLabels(labs)).observe(labs);
   });
+}
+// 札を段階の真下に置く。左右の端ではみ出す札は内に寄せ、前の札と重なる札は次の段へ（3 段まで）。線は札の段まで伸ばす
+function placeVsLabels(box) {
+  if (!box || !box.offsetWidth) return;
+  const W = box.offsetWidth, ROW = 20, GAP = 6;
+  const labs = [...box.querySelectorAll(".vs-lab")], ticks = [...box.querySelectorAll(".vs-tick")];
+  const ends = [];   // 段ごとの、いちばん右の札の右端
+  let rowsUsed = 1;
+  labs.forEach((l, i) => {
+    const w = l.offsetWidth, c = parseFloat(l.style.left) / 100 * W;
+    const x = Math.min(Math.max(c - w / 2, 0), Math.max(W - w, 0));
+    let r = 0;
+    while (r < 2 && ends[r] !== undefined && x < ends[r] + GAP) r++;
+    ends[r] = x + w;
+    rowsUsed = Math.max(rowsUsed, r + 1);
+    l.style.transform = "translate(" + (x - c).toFixed(1) + "px," + (r * ROW) + "px)";
+    ticks[i].style.height = (4 + r * ROW) + "px";
+  });
+  box.style.height = (rowsUsed * ROW + 6) + "px";
 }
 
 // **評価を押し直すのは、判子の丸から。**（起案者の指示 2026-10-13「『評価を押し直す』ってボタンは消して、
