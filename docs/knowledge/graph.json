@@ -2016,6 +2016,17 @@
    "verifies": []
   },
   {
+   "id": "dec-merge-without-asking",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-24",
+   "title": "Claude が作った PR は、確かめが済んでいれば、起案者に聞かずに master へマージしてよい",
+   "sources": [
+    "docs/issues-workflow.md"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-migration-branch-wip",
    "type": "decision",
    "status": "adopted",
