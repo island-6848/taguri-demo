@@ -4,7 +4,8 @@
 // The rows are measure_nets.load_rated for a public user (records.ratedRows).
 import {E, quote, fmtF} from './py.js';
 import {h2} from './icons.js';
-import {anchor, recDate} from './row.js';
+import {anchor} from './row.js';
+import {recDate} from './recdate.js';
 import {md5hex} from './md5.js';
 
 export const KEEP_ROLES = ['出演', '演出', '脚本', '作', '原作', '翻訳', '音楽', '作曲', '振付'];

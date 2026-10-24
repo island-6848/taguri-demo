@@ -9,7 +9,7 @@
 import {E, fmtF, pyFloat, pyRound} from './py.js';
 import {h2} from './icons.js';
 import {anchor} from './anchor.js';
-import {recDate} from './row.js';
+import {recDate} from './recdate.js';
 
 const MAKER_ROLES = ['演出', '脚本', '作', '原作', '翻訳', '音楽', '作曲', '振付'];
 const MAKER = new Set(MAKER_ROLES);
