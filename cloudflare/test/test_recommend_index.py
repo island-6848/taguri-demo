@@ -643,6 +643,11 @@ class MemberAffilTest(unittest.TestCase):
         self.assertIn('STARTO ENTERTAINMENT', {t for r, t, s, *_ in index['postings'] if s == '4' and r == UR.MEMBER_AXIS})
         self.assertIn(UR.MEMBER_AXIS, UR.CONTENT_AXES)
 
+    def test_synopsis_words_drop_the_member_names(self):
+        S = UR.synopsis_words
+        self.assertEqual(S(['宝塚歌劇団', 'STARTO', '恋愛'], '主催乙'), ['恋愛'])
+        self.assertEqual(S([('宝塚歌劇団', 1.0), ('Snow Man', 1.0), ('恋愛', 0.5)], '宝塚歌劇団'), [('宝塚歌劇団', 1.0), ('恋愛', 0.5)])
+
     def test_affiliation_words(self):
         A = UR.member_affils
         self.assertEqual(A('元宝塚歌劇団雪組'), ['宝塚歌劇団'])

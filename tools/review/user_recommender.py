@@ -311,6 +311,19 @@ def member_affils(affil: str) -> list[str]:
     if STARTO_AFFIL.search(a):
         out.append(STARTO)
     return out
+def synopsis_words(words, group: str = "") -> list:
+    """あらすじの抽出ワードから、出身・所属の札の名前（宝塚歌劇団・STARTO の書き方）を外す。主催が宝塚歌劇団の公演だけは
+    「宝塚歌劇団」を残す（起案者の指示 2026-10-24「あらすじのところにはその2つのタグつけないで。例外として、主催が宝塚歌劇団の場合のみ、
+    あらすじの抽出ワードにも宝塚歌劇団を含めてよい」）。`words` は言葉か（言葉, 重さ）の並び。"""
+    own = _TAKARAZUKA in (group or "")
+    out = []
+    for w in words or ():
+        names = member_affils(w if isinstance(w, str) else w[0])
+        if not names or (own and names == [TAKARAZUKA_GENRE]):
+            out.append(w)
+    return out
+
+
 _25D_SOURCES = {"漫画原作", "アニメ原作", "ゲーム原作"}
 _25D_TITLE = re.compile(r"the\s*stage|^\s*(?:舞台|ミュージカル|音楽劇)?\s*『", re.I)
 _BRACKETED = re.compile(r"[『「]([^』」]{2,})[』」]")

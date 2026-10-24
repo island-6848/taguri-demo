@@ -150,7 +150,8 @@ def build_index(pool: dict[str, dict], fields_by_stage: dict[str, dict], role_gr
         tags = with_members(tags, entry.get("fields") or {}, entry.get("group") or "",
                             [(entry.get("fields") or {}).get("劇場", ""), entry.get("venue") or "", entry.get("theater") or ""])
         # 題材の言葉は種類と根拠で重さが違う（theme_terms）。言葉だけの古い形（重さ 1）も受ける
-        terms = [(t, 1.0) if isinstance(t, str) else (t[0], t[1]) for t in no_form_words(tags, themes.get(sid, []))]
+        terms = [(t, 1.0) if isinstance(t, str) else (t[0], t[1])
+                 for t in no_form_words(tags, UR.synopsis_words(themes.get(sid, []), entry.get("group") or ""))]
         own = {tag for axis, tag in tags if axis == THEME_AXIS}
         tags += [(THEME_AXIS, w) for w, _ in terms if w not in own]
         tw = dict(terms)
@@ -179,9 +180,11 @@ def build_index(pool: dict[str, dict], fields_by_stage: dict[str, dict], role_gr
         tags = UR.stage_tags(titles.get(sid, ""), [f.get("劇場", ""), row.get("venue") or "", row.get("theater") or ""], credits,
                              source=UR.source_text(f), group=(pool.get(sid) or {}).get("group") or "", hints=forms.get(sid, ()))
         tags = with_members(tags, f, row.get("group") or "", [f.get("劇場", ""), row.get("venue") or "", row.get("theater") or ""])
-        tags += [(THEME_AXIS, t if isinstance(t, str) else t[0]) for t in no_form_words(tags, themes.get(sid, []))]
+        tags += [(THEME_AXIS, t if isinstance(t, str) else t[0])
+                 for t in no_form_words(tags, UR.synopsis_words(themes.get(sid, []), row.get("group") or ""))]
         people[sid] = [list(c) for c in sorted(set(credits) | set(tags))]
     for sid, ws in themes.items():
+        ws = UR.synopsis_words(ws, (pool.get(sid) or {}).get("group") or "")
         if sid not in people and ws:
             people[sid] = [[THEME_AXIS, w] for w in sorted({t if isinstance(t, str) else t[0] for t in ws})]
     people = {sid: p for sid, p in people.items() if p}
