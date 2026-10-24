@@ -953,7 +953,14 @@ export async function ticketsScreen(params, ctx) {
   const owned = sortRows(b.owned, sort);
   const mine = r => r.sids.flatMap(s => (b.tickets.get(s) || []).map(t => ({...t, sid: s})))
     .sort((p, q) => cmp(p.date, q.date) || cmp(p.time || '', q.time || ''));
-  const html = (await cards(ctx, owned, 'owned', r => ({mytix: mytixHtml(r.stage_id, r.start, r.end, mine(r)) + preNote(r.stage_id, r.note_pre)}))).join('');
+  // カードにツアーのほかの会場（data-tours）を入れる。右上の ✕（app.js dismissButton）で一覧から外すとき、全会場に同じ答えを付けないと、
+  // ほかの会場に写った購入済が残って一覧から消えないため（起案者の指示 2026-10-24「カード右上の✕ボタンを押して画面から消せるようにしたい」）
+  const tours = r => E([...new Set((r.sids || []).map(String))].filter(s => s !== String(r.stage_id) && /^\d+$/.test(s)).join(','));
+  const html = (await cards(ctx, owned, 'owned', r => ({mytix: mytixHtml(r.stage_id, r.start, r.end, mine(r)) + preNote(r.stage_id, r.note_pre)})))
+    .map(card => card.replace(/(<article class="ticket [^"]*" data-stage="([^"]*)") data-tours="[^"]*"/, (m, a, sid) => {
+      const r = owned.find(x => E(String(x.stage_id)) === sid);
+      return r ? `${a} data-tours="${tours(r)}"` : m;
+    })).join('');
   // 見出しは「購入済の公演」（起案者の指示 2026-10-18。以前は「購入済み公演 ── N 件」）
   const body = `<h1>購入済の公演</h1>
 <p class="lede">「すでに持っている」と答えた公演と、購入確認メールから見つかった公演を並べています。<b>この一覧に入っても、次のおすすめは変わりません。</b>上演日を過ぎると一覧から外れ、<a href="/rate?t=__TAGURI_TOKEN__">評価一覧</a>の評価待ちに移ります。行く日は、各公演の「行く日」の欄から入れられます。</p>
