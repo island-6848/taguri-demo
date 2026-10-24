@@ -4337,6 +4337,18 @@
    "verifies": []
   },
   {
+   "id": "f-past-synopsis-progress-1024",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-24",
+   "title": "過去の公演のあらすじは 10-24 時点で 30,633 件中 3,316 件を読み、あらすじが取れたのは 1,698 件。10-20 から読み取りがほぼ止まっている（定期実行の環境のセットアップスクリプトが構文エラーで、毎回 3 秒で失敗）",
+   "sources": [
+    "https://github.com/island-6848/taguri-crawler/tree/state",
+    "tools/review/fetch_past_stages.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "f-people-json-no-affil-1019",
    "type": "finding",
    "status": "confirmed",
@@ -12392,6 +12404,21 @@
    "from": "f-noh-program-staff",
    "rel": "answers",
    "to": "q-noh-program"
+  },
+  {
+   "from": "f-past-synopsis-progress-1024",
+   "rel": "depends_on",
+   "to": "impl-theme-g5-reread"
+  },
+  {
+   "from": "f-past-synopsis-progress-1024",
+   "rel": "depends_on",
+   "to": "peer-synopsis-routine"
+  },
+  {
+   "from": "f-past-synopsis-progress-1024",
+   "rel": "affects",
+   "to": "q-synopsis-routine-quota"
   },
   {
    "from": "f-people-json-no-affil-1019",
