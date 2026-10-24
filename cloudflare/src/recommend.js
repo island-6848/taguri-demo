@@ -164,8 +164,34 @@ export function independentRatings(rows) {
     const key = row.stage_id ? 'stage\u0000' + row.stage_id : 'work\u0000' + row.key;
     grouped.set(key, row);         // like a Python dict: a later row keeps the key's first slot
   }
-  return [...grouped.values()];
+  // 作品ごとに分けた記録（occasion、dec-split-pieces）は、選ばれた観劇の作品をすべて残す（同じ公演の別の観劇は落とす）
+  return [...grouped.values()].flatMap(r => (r.occasion ? sorted.filter(x => x.occasion === r.occasion && gradeOf(x.verdict)) : [r]));
 }
+
+/**
+ * 1 回の観劇で複数の作品を観て、作品ごとに評価した記録（dec-split-pieces、起案者の決定 2026-10-19「0.4にしたい」）。
+ * 同じ晩の作品の評価は、演出・劇場・その日の気分が共通なので似る。その似かた（級内相関）を PIECE_RHO と決め打ちし、
+ * ある人が出た作品の数 m を、有効な件数 m / (1 + (m − 1)ρ) に縮める（Kish の design effect の形）。人の値には、
+ * 出た作品の評価（z）の平均を、この件数ぶんの重みで 1 回だけ足す。10 本すべてに出た人も 2.5 件ぶんを越えない。
+ */
+export const PIECE_RHO = 0.4;
+/**
+ * 朗読劇とほかの形式を兼ねる公演（dec-reading-dual-form）は、朗読劇の札を READING_SHARE、ほかの形式の札を残りで数える
+ * （起案者 2026-10-20「リーディング音楽劇は朗読劇6音楽劇4くらいだった」）。user_recommender.kind_shares と同じ。
+ * keys は 'role\u0000person' の並び。兼ねていなければ空の Map（どの札も 1）
+ */
+export const READING_FORM = '朗読劇', READING_SHARE = 0.6;
+export function kindShares(keys) {
+  const forms = [...new Set(keys.filter(k => k.startsWith('#形式\u0000')))];
+  const out = new Map();
+  if (forms.length < 2 || !forms.includes('#形式\u0000' + READING_FORM)) return out;
+  const other = (1 - READING_SHARE) / (forms.length - 1);
+  for (const k of forms) out.set(k, k === '#形式\u0000' + READING_FORM ? READING_SHARE : other);
+  return out;
+}
+export const pieceWeight = m => m / (1 + (m - 1) * PIECE_RHO);
+/** 評価の件数（作品ごとに分けた観劇は、作品の数によらず 1 件。r.share は 1 / 評価した作品の数） */
+export const ratingCount = rated => rated.reduce((n, r) => n + (r.share ?? 1), 0);
 
 /**
  * user_recommender.person_values: (role, person) -> [n, value], where value is
@@ -312,12 +338,13 @@ export function personValues(rated, seeds = [], skip = new Set(), liked = [], di
   // person-ordinal-v3: a rating's place among the user's own ratings on the
   // same scale, ((lower) + ½ (equal)) / n − ½, times √12.
   // 同じ尺度の中の「下の数」と「同じ数」は、値ごとの数から出す（前は 1 件ごとに全件と比べていた。結果は同じ。#138）
+  // 作品ごとに分けた観劇の評価は、作品の数で割った重み（r.share）で順位に入れる（オムニバス 1 公演が分母を何件ぶんも動かさない）
   const byScale = new Map();
   for (const r of rated) {
     const [value, levels] = gradeOf(r.verdict);
     if (!byScale.has(levels)) byScale.set(levels, {n: 0, count: new Map()});
-    const sc = byScale.get(levels);
-    sc.n += 1; sc.count.set(value, (sc.count.get(value) || 0) + 1);
+    const sc = byScale.get(levels), share = r.share ?? 1;
+    sc.n += share; sc.count.set(value, (sc.count.get(value) || 0) + share);
   }
   const rankOf = new Map();                    // levels -> value -> [below, same]
   for (const [levels, {count}] of byScale) {
@@ -330,6 +357,7 @@ export function personValues(rated, seeds = [], skip = new Set(), liked = [], di
     rankOf.set(levels, m);
   }
   const tally = new Map();
+  const pieces = new Map();                    // occasion -> key -> [z の和, 出た作品の数]
   for (const r of rated) {
     const [value, levels] = gradeOf(r.verdict);
     const [below, same] = rankOf.get(levels).get(value);
@@ -340,14 +368,34 @@ export function personValues(rated, seeds = [], skip = new Set(), liked = [], di
     const lv = z ? aspectLevels(r.aspects) : {};
     const [troubles, goods] = z ? parseAspects(r.aspects) : [[], []];
     const marked = troubles.length || goods.length;
+    // 朗読劇とほかの形式を兼ねる公演の形式の札は 6:4（kindShares）。ほかの札は 1
+    const shares = kindShares(keys);
+    if (r.occasion) {
+      if (!pieces.has(r.occasion)) pieces.set(r.occasion, new Map());
+      const acc = pieces.get(r.occasion);
+      for (const k of keys) {
+        const a = acc.get(k) || [0, 0, shares.get(k) ?? 1];
+        a[0] += marked ? z * aspectShare(troubles, goods, k.slice(0, k.indexOf('\u0000')), z > 0, lv) : z; a[1] += 1;
+        acc.set(k, a);
+      }
+      continue;
+    }
     for (const k of keys) {
-      const t = tally.get(k) || [0, 0, 0];
-      t[0] += 1; t[1] += marked ? z * aspectShare(troubles, goods, k.slice(0, k.indexOf('\u0000')), z > 0, lv) : z; t[2] += 1.0;
+      const t = tally.get(k) || [0, 0, 0], share = shares.get(k) ?? 1;
+      t[0] += 1; t[1] += (marked ? z * aspectShare(troubles, goods, k.slice(0, k.indexOf('\u0000')), z > 0, lv) : z) * share; t[2] += share;
+      tally.set(k, t);
+    }
+  }
+  // 作品ごとに分けた観劇: 人ごとに、出た作品の z の平均を、縮めた件数（pieceWeight）の重みで 1 回だけ足す
+  for (const acc of pieces.values()) {
+    for (const [k, [sum, m, share]] of acc) {
+      const t = tally.get(k) || [0, 0, 0], wt = pieceWeight(m) * share;
+      t[0] += 1; t[1] += (sum / m) * wt; t[2] += wt;
       tally.set(k, t);
     }
   }
   // Seeds: z = SEED_Z with weight w; they add to the weight, not to n.
-  const w = SEED_K / (SEED_K + rated.length);
+  const w = SEED_K / (SEED_K + ratingCount(rated));
   for (const r of seeds) {
     const keys = [...new Set((r.people || []).filter(([, person]) => !skip.has(person)).map(([role, person]) => role + '\u0000' + person))].sort(cmp);
     for (const k of keys) {
@@ -751,7 +799,9 @@ export function d1Access(db, ver, counter = {rows: 0, queries: 0}) {
       try {
         for (let i = 0; i < persons.length; i += IDS_PER_QUERY) {
           const chunk = persons.slice(i, i + IDS_PER_QUERY);
-          const results = await rowsOf(db.prepare(`SELECT DISTINCT affil FROM rec_affil WHERE ver=? AND person IN (${chunk.map(() => '?').join(',')}) AND kind='劇団' AND start>=?`)
+          // 人の索引を名指しする。名指ししないと D1 は主キー（ver から始まる）を選び、その版の所属の行を全部読んでいた
+          // （全部入ると 1 回 23,050 行、計算し直しのたびに 3 回。2026-10-20 に 1 日の読み出しの上限を越えた日の点検で実測）
+          const results = await rowsOf(db.prepare(`SELECT DISTINCT affil FROM rec_affil INDEXED BY rec_affil_person WHERE ver=? AND person IN (${chunk.map(() => '?').join(',')}) AND kind='劇団' AND start>=?`)
             .bind(ver, ...chunk, since), ['affil']);
           counter.rows += results.length; counter.queries += 1;
           for (const [a] of results) found.add(a);

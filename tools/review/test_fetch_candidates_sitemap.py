@@ -68,9 +68,17 @@ class SitemapCandidates(unittest.TestCase):
         self.fetched.append(sid)
         return PAGES[sid]
 
+    def fake_credits(self, sid):
+        if sid in self.broken:
+            raise OSError("取得に失敗")
+        return FCAND.parse_stage(self.fake_get(f"{FCAND.BASE}/stage/{sid}"), sid)
+
+    broken: set = set()
+
     def run_main(self, *args):
         with patch.object(FCAND.PH, "fetch", side_effect=self.fake_fetch), \
              patch.object(FCAND, "get", side_effect=self.fake_get), \
+             patch.object(FCAND, "credits_of", side_effect=self.fake_credits), \
              patch.object(sys, "argv", ["x", "--source", "sitemap", "--today", "2026-10-13",
                                         "--no-synopsis", *args]), \
              patch("sys.stdout"):
@@ -102,6 +110,53 @@ class SitemapCandidates(unittest.TestCase):
     def test_search_is_never_used(self):
         with patch.object(FCAND, "listing", side_effect=AssertionError("search used")):
             self.run_main("--initial-ids", "2")
+
+    def test_time_limit_leaves_the_new_ids_for_the_next_run(self):
+        # dec-crawl-tiers: 時間の上限で止めたら、読まなかった新しい公演は次回に読む（飛ばさない）
+        self.run_main("--initial-ids", "3")
+        self.fetched.clear()
+        self.sitemap["sitemap1"] = SM1 + "<url><loc>https://stage.corich.jp/stage/50</loc></url>"
+        got = self.run_main("--max-minutes", "0")
+        self.assertEqual(self.fetched, [])
+        self.assertEqual(sorted(got), ["20", "30", "40"])                # 前の候補は残る
+        self.assertEqual(json.loads(FCAND.SCAN.read_text(encoding="utf-8"))["max_id"], 40)
+        got = self.run_main()
+        self.assertEqual(self.fetched, ["50"])
+        self.assertIn("50", got)
+
+    def test_a_newer_lastmod_rereads_only_that_coming_stage(self):
+        lm = lambda d: "".join(f"<url><loc>https://stage.corich.jp/stage/{i}</loc><lastmod>{d.get(i, '2026-10-01')}</lastmod></url>"
+                               for i in (10, 20, 30, 40))
+        self.sitemap["sitemap1"] = lm({})
+        self.run_main("--initial-ids", "3")
+        self.fetched.clear()
+        # 40 の出演者が増えた（更新日が進む）。30 は変わらない
+        PAGES["40"] = page("もっと先の公演", "2027/01/10 (日) ～ 2027/01/20 (水)", cast="検査の俳優、追加の俳優")
+        self.sitemap["sitemap1"] = lm({40: "2026-10-12"})
+        try:
+            got = self.run_main()
+        finally:
+            PAGES["40"] = page("もっと先の公演", "2027/01/10 (日) ～ 2027/01/20 (水)")
+        self.assertEqual(self.fetched, ["40"])
+        self.assertIn("追加の俳優", got["40"]["fields"]["出演"])
+        self.assertEqual(json.loads(FCAND.SCAN.read_text(encoding="utf-8"))["lastmod"]["40"], "2026-10-12")
+
+    def test_a_failed_reread_keeps_the_old_credits_and_tries_again(self):
+        lm = lambda d: "".join(f"<url><loc>https://stage.corich.jp/stage/{i}</loc><lastmod>{d.get(i, '2026-10-01')}</lastmod></url>"
+                               for i in (10, 20, 30, 40))
+        self.sitemap["sitemap1"] = lm({})
+        self.run_main("--initial-ids", "3")
+        self.sitemap["sitemap1"] = lm({30: "2026-10-12"})
+        self.broken = {"30"}
+        try:
+            got = self.run_main()
+        finally:
+            self.broken = set()
+        self.assertIn("検査の俳優", got["30"]["fields"]["出演"])             # 消えない
+        self.assertEqual(json.loads(FCAND.SCAN.read_text(encoding="utf-8"))["lastmod"]["30"], "2026-10-01")
+        self.fetched.clear()
+        self.run_main()
+        self.assertEqual(self.fetched, ["30"])                           # 次回にまた読む
 
 
 if __name__ == "__main__":

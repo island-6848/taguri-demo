@@ -8,6 +8,7 @@
 // with each card (migration 0018), so the Worker never scans every stage itself.
 // Left out for now: the name candidates picked from notes (reasons.promotions /
 // demotions), the matching of a subject word inside a longer registered subject.
+import {shareStageButton, sharePageButton, withShareButton} from '../share.js';
 import {stageInfo, fallbackTemplate} from './fallback.js';
 import {parseCredits} from './credits.js';
 import {loadWorks} from './works.js';
@@ -26,7 +27,7 @@ import {tourBlock} from './schedule.js';
 import {emptyGuide} from './guide.js';
 
 export const KINDS = ['団体', '人', '主催', '作品', '原作者', '題材'];
-const DECLARED_KEY = 'declared', DECLINED_KEY = 'declined';
+const DECLARED_KEY = 'declared', DECLINED_KEY = 'declined', DECLARED_AT_KEY = 'declared_at';
 // 「この理由を使わない」にした種類（起案者の指示 2026-10-16「自分に合わないなと思うおすすめ理由を消すことはできる？」、
 // q-kind-reason-off）。'#原作\tオリジナル' の形で控え、点数にも理由にも使わない。公演そのものは消さない
 export const KIND_OFF_KEY = 'kind_off', KIND_OFF_MAX = 100;
@@ -519,7 +520,7 @@ const sortOf = (params, keys) => { const k = params.get('s') || 'start'; return 
 function sortForm(action, sort, keys, keep = '') {
   const opts = keys.map(k => `<option value="${k}"${k === sort ? ' selected' : ''}>${E(SORTS[k])}</option>`).join('');
   return `<form class="sortf" method="get" action="${action}"><input type="hidden" name="t" value="__TAGURI_TOKEN__">${keep}`
-    + `<label>並べ替え <select name="s" onchange="this.form.requestSubmit ? this.form.requestSubmit() : this.form.submit()">${opts}</select></label>`
+    + `<label>並べ替え <select name="s" data-autosubmit>${opts}</select></label>`
     + '<noscript><button type="submit">並べ替える</button></noscript></form>';
 }
 const monthKey = r => (r.start || '').slice(0, 7);
@@ -563,7 +564,9 @@ async function cards(ctx, rows, mode, extra = () => ({})) {
   const info = ['interest', 'favourite', 'owned'].includes(mode) ? await stageInfo(ctx.db, rows.flatMap(r => r.sids || [r.stage_id])) : null;
   return rows.filter(r => html.has(r.stage_id)).map(r => {
     const pic = posters.get(r.stage_id) || r.sids?.map(s => posters.get(s)).find(Boolean);
-    const card = compose(html.get(r.stage_id), r.stage_id, mode, {poster: pic ? posterHtml(pic) : '', ...extra(r)});
+    let card = compose(html.get(r.stage_id), r.stage_id, mode, {poster: pic ? posterHtml(pic) : '', ...extra(r)});
+    // 興味あり・購入済のカードは共有できる（dec-share-links）。compose は Python の build_cards と同じ形のままにする
+    if (mode === 'interest' || mode === 'owned') card = withShareButton(card, shareStageButton(r.stage_id, mode));
     if (!info) return card;
     const sids = [...new Set([r.stage_id, ...(r.sids || [])].map(String))];
     return withTour(card, tourBlock(sids.map(s => info.get(s)).filter(Boolean), r.stage_id, ctx.today, ctx.prefs || []));
@@ -640,6 +643,35 @@ export function kindOffBox(keys) {
 <summary>${ico('flag')}使わない理由 <b>${keys.length}件</b></summary>
 <p class="lead">「おすすめ理由」の ✕ で外した要素です。</p>
 <div class="tags">${tags}</div>
+</details>`;
+}
+
+/**
+ * 設定の画面の「外したおすすめ理由」（起案者の指示 2026-10-21「間違って✕で消しちゃったオススメ理由を復活させたい。設定ページに追加」）。
+ * 理由の ✕ は、人物の行なら「使わない言葉」（declined）に、形式の行なら「使わない理由」（kind_off）に入る。ここから 1 つずつ戻す。
+ * 戻す押し口は app.js の既存の道（.tag の data-dec="remove" と data-kindoff-remove）をそのまま使う。読み出しは 2 行（app_setting）。
+ */
+export function reasonOffCardHtml(words, kindKeys, summary) {
+  const label = k => (DEC_KINDS.find(([v]) => v === k) || ['', ''])[1];
+  const wtags = words.map(e => {
+    const {kind, word} = decEntry(e);
+    return `<span class="tag" data-word="${E(e)}">${kind ? E(label(kind)) : ''}「${E(word)}」<button data-dec="remove">戻す</button></span>`;
+  }).join('');
+  const ktags = kindKeys.map(k => {
+    const [axis, tag] = k.split('\t');
+    const kl = KIND_OFF_LABEL[axis] || axis.replace(/^#+/, '');
+    return `<span class="tag" data-kindkey="${E(k)}">${tag.endsWith(kl) ? '' : E(kl)}「${E(tag)}」<button data-kindoff-remove="1">戻す</button></span>`;
+  }).join('');
+  const n = words.length + kindKeys.length;
+  return `<details class="card" id="reason-off">${summary(n)}
+<p class="lead">おすすめの「なぜ出てきたか」で ✕ を押して外した理由です。<b>「戻す」を押すと、次の組み直しから、また理由とおすすめに使います。</b></p>
+${n ? '' : '<p class="empty">外した理由はありません。</p>'}
+${words.length ? `<h3>人物・言葉（使わない言葉）</h3>
+<p class="lead">人物の ✕ で外した名前と、自分で足した「使わない言葉」です。その言葉が入った公演は、おすすめに出ません。</p>
+<div class="tags">${wtags}<span class="said"></span></div>` : ''}
+${kindKeys.length ? `<h3>形式・原作など（使わない理由）</h3>
+<p class="lead">理由として使わないだけで、公演はおすすめに出ます。</p>
+<div class="tags">${ktags}<span class="said"></span></div>` : ''}
 </details>`;
 }
 
@@ -790,7 +822,7 @@ async function nameView(params, ctx, b, name) {
   const favs = sortRows([...b.favourites, ...b.favOwned].filter(r => r.a.some(x => nz(label(x)) === key)), 'start');
   const why = r => ({owned: Boolean(r.owned), tags: [...new Set(r.a.map(label))]});
   const up = favs.length ? `<div class="tickets">${(await wholeTour(ctx, await cards(ctx, favs, 'favourite', why), favs)).join('')}</div>`
-    : '<p class="empty">これから観られる公演はいまのところ見つかっていません。</p>';
+    : '<p class="empty">今後の公演はいまのところ見つかっていません。</p>';
   // 観た公演
   const ws = (await loadWorks(ctx)).filter(w => !w.unseen);
   const people = await peopleByKey(ctx, ws);
@@ -806,7 +838,7 @@ async function nameView(params, ctx, b, name) {
   const past = await pastByName(ctx, name, key, seenSids);
   const body = `<h1><span class="ftag big">#${E(name)}</span> の公演</h1>
 <p class="lede"><a href="/recommend/favourites?t=__TAGURI_TOKEN__">← お気に入りに戻る</a></p>
-<h2>これから観られる公演 <span class="cnt">${favs.length} 件</span></h2>
+<h2>今後の公演 <span class="cnt">${favs.length} 件</span></h2>
 ${up}
 <h2>観た公演 <span class="cnt">${seenRows.length} 件</span></h2>
 ${seen}
@@ -873,7 +905,7 @@ export async function favouritesScreen(params, ctx) {
 <p class="hsub">おすすめにかかわらず新着情報を知りたい題材や作り手がいるときは、お気に入りに追加することで情報の追跡ができます。</p>
 ${tools}
 ${emptyGuide('favourite', 'お気に入りに登録されている要素がありません。', '<p>上の「要素を登録」で、劇団・俳優・演出家・作品・原作者・題材などの名前を登録すると、その名前の公演をここに並べます。</p>')}`};
-  const body = `<h1>お気に入り</h1>
+  const body = `<h1>お気に入り${sharePageButton('favourites')}</h1>
 <p class="hsub">おすすめにかかわらず新着情報を知りたい題材や作り手がいるときは、お気に入りに追加することで情報の追跡ができます。</p>
 ${tools}
 ${rcount}
@@ -916,6 +948,14 @@ async function favouriteAction(b, ctx) {
   // app.save_declared: trimmed, de-duplicated, sorted, at most 100 per kind.
   const out = Object.fromEntries(KINDS.map(k => [k, [...new Set(d[k].map(x => String(x).trim().slice(0, 80)).filter(Boolean))].sort(cmp).slice(0, 100)]));
   if (!keep) await writeJson(ctx, DECLARED_KEY, out);
+  // 名前ごとに足した時刻（'種類\t名前' -> ISO）。再生（replay_eval）が日 t のお気に入りを組み立て直すのに使う（#72）。
+  // 画面と推薦は読まない。足した名前・外した名前があるときだけ書く
+  const at = await readJson(ctx, DECLARED_AT_KEY), stamps = at && typeof at === 'object' && !Array.isArray(at) ? at : {};
+  const live = new Set(KINDS.flatMap(k => out[k].map(n => `${k}\t${n}`)));
+  let moved = false;
+  for (const e of Object.keys(stamps)) if (!live.has(e)) { delete stamps[e]; moved = true; }
+  for (const e of live) if (!(e in stamps) && e === `${kind}\t${name}`) { stamps[e] = nowIso(ctx); moved = true; }
+  if (moved) await writeJson(ctx, DECLARED_AT_KEY, stamps);
   if (action === 'remove') await ctx.db.prepare('DELETE FROM favourites WHERE user_id=? AND name=? AND kind=?').bind(ctx.uid, name, kind).run();
   // 人の役職の絞り（任意、q-favourite-homonym）。足すときに選んだ札で置き換え、選ばなければ絞りを外す。外すときも消す。
   // 変わらないときは書かない（D1 の書き込みを増やさない）

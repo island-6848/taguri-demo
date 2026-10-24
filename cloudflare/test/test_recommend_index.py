@@ -200,6 +200,16 @@ class ParityTest(unittest.TestCase):
         self.assertTrue(all(not any(w in st['title'] for w in RC.NOT_STAGE_TITLE) for st in index['stages'].values()))
         self.assertIn('9001', index['stages'])           # tour stage from saved bundles
 
+    def test_reading_shares_its_form_six_to_four(self):
+        # 朗読劇とほかの形式を兼ねる公演の札の重さ（dec-reading-dual-form、起案者 2026-10-20「朗読劇6音楽劇4くらい」）
+        pool = {"7001": {"title": "リーディング音楽劇『ジャングル大帝』", "period": "2026/11/01~2026/11/03",
+                         "fields": {"出演": "甲"}, "group": "劇団甲"},
+                "7002": {"title": "朗読劇『夜』", "period": "2026/11/01~2026/11/03", "fields": {"出演": "乙"}, "group": "劇団乙"}}
+        index = BI.build_index(pool, {}, APP.group_of)
+        forms = sorted((sid, tag, w) for role, tag, sid, w, _g in index["postings"] if role == "#形式")
+        self.assertEqual(forms, [("7001", "朗読劇", round(UR.GENRE_W * 0.6, 6)), ("7001", "音楽劇", round(UR.GENRE_W * 0.4, 6)),
+                                 ("7002", "朗読劇", UR.GENRE_W)])
+
     def test_version_switch_and_cleanup(self):
         raw, cands, fbs = catalogue(2)
         old = BI.build_index(UR.candidate_pool(raw, cands), fbs, APP.group_of)
@@ -243,6 +253,33 @@ SEARCHES = ['舞台', '舞台1', '新作', '再演', '朗読劇夜', '『夜の�
 def search_dates(index):
     starts = sorted({st['start'] for st in index['stages'].values() if st['start']})
     return [''] + starts[::max(len(starts) // 3, 1)]
+
+
+class SeenDatesTest(unittest.TestCase):
+    """#72: 公演ごとに、初めて入れた日と中身を最後に変えた日を控える（再生が日 t の索引を組み立て直す）。"""
+
+    def test_first_and_changed_dates_follow_what_was_sent(self):
+        raw, cands, fbs = catalogue(3)
+        a = BI.build_index(UR.candidate_pool(raw, cands[:40]), fbs, APP.group_of)
+        b = BI.build_index(UR.candidate_pool(raw, cands), fbs, APP.group_of)
+        _s, h1, _c = BI.diff_sql(a, {}, today="2026-10-01")
+        self.assertEqual(h1[BI.SEEN_SINCE], "2026-10-01")
+        self.assertEqual(set(h1[BI.SEEN]), set(a["stages"]))
+        self.assertTrue(all(v[:2] == ["2026-10-01", "2026-10-01"] for v in h1[BI.SEEN].values()))
+        sid = sorted(a["stages"])[0]
+        a["stages"][sid] = {**a["stages"][sid], "title": a["stages"][sid]["title"] + "（再演）"}
+        _s, h2, _c = BI.diff_sql(a, h1, today="2026-10-03")
+        self.assertEqual(h2[BI.SEEN][sid][:2], ["2026-10-01", "2026-10-03"])
+        self.assertEqual(h2[BI.SEEN_SINCE], "2026-10-01")
+        new = set(b["stages"]) - set(a["stages"])
+        _s, h3, _c = BI.diff_sql(b, h2, today="2026-10-05")
+        self.assertTrue(new and all(h3[BI.SEEN][s][0] == "2026-10-05" for s in new))
+        # 入れきれずに残した公演は、まだ載っていない
+        _s, h4, c4 = BI.diff_sql(b, h2, None, 1, today="2026-10-05")
+        self.assertGreater(c4["left"], 0)
+        self.assertLess(len(set(h4[BI.SEEN]) & new), len(new))
+        # 日付を渡さない呼び方（テスト・手元）は控えを足さない
+        self.assertNotIn(BI.SEEN, BI.diff_sql(a, {})[1])
 
 
 class DiffDeliveryTest(unittest.TestCase):
@@ -475,7 +512,7 @@ class OnboardingTest(unittest.TestCase):
         return {"stages": {"p1": st("2026-09-01"), "p2": st("2026-09-02"), "p3": st("2026-09-03"),
                            "c1": st("2026-11-01"), "c2": st("2026-11-02"), "c3": st("2026-12-01")},
                 "postings": [("出演", "甲", "c1", 1.0, "cast"), ("出演", "甲", "c2", 1.0, "cast"),
-                             ("出演", "乙", "c3", 1.0, "cast"), ("#形式", "朗読", "c3", 1.0, "theme"),
+                             ("出演", "乙", "c3", 1.0, "cast"), ("#形式", "朗読劇", "c3", 1.0, "theme"),
                              ("出演", "甲", "p1", 1.0, "cast"), ("出演", "甲", "p2", 1.0, "cast"),
                              ("出演", "乙", "p2", 1.0, "cast"), ("出演", "丙", "p3", 1.0, "cast")]}
 

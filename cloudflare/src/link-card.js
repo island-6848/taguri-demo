@@ -2,7 +2,7 @@
 // カード設定して」）。どのページも同じ 1 枚: 貼られたリンクはログインの前の人にも見えるので、記録や公演の中身は載せない。
 // 画像 public/assets/og.png（1200×630）はログインなしで読める（gate が /assets/ を通す）。og:image は絶対 URL にする
 export const CARD = {title: 'たぐり ― 観劇の記録から、次の一本を', image: '/assets/og.png',
-  description: '観た演劇の記録と評価から、これから観られる公演の中であなたに合いそうな舞台を毎週届けるアプリです。'};
+  description: '観た演劇の記録と評価から、今後の公演の中であなたに合いそうな舞台を毎週届けるアプリです。'};
 export const cardMeta = origin => {
   const a = v => String(v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
   return [['property', 'og:type', 'website'], ['property', 'og:site_name', 'たぐり'], ['property', 'og:title', CARD.title],
@@ -12,9 +12,14 @@ export const cardMeta = origin => {
     ['name', 'twitter:description', CARD.description], ['name', 'twitter:image', origin + CARD.image]]
     .map(([k, n, v]) => `<meta ${k}="${n}" content="${a(v)}">`).join('');
 };
+// アプリとしてホーム画面に入れるための印（起案者 2026-10-20「アプリにしたい」、impl-pwa-base）。manifest と地の色。
+// iPhone は manifest に加えて apple- の印を読む（全画面で開く・上の帯の色・ホーム画面の名前）
+export const APP_HEAD = '<link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#fbeee2">'
+  + '<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">'
+  + '<meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="たぐり">';
 export function withCard(response, url) {
   if (!(response.headers.get('content-type') || '').includes('text/html') || typeof HTMLRewriter === 'undefined') return response;
-  return new HTMLRewriter().on('head', {element(el) { el.append(cardMeta(url.origin), {html: true}); }}).transform(response);
+  return new HTMLRewriter().on('head', {element(el) { el.append(cardMeta(url.origin) + APP_HEAD, {html: true}); }}).transform(response);
 }
 // リンクのカードを作りに来るクローラー。ログインしていないので、ふつうは /login へ 302 で送る。送り先を読まないクローラーもあるので、
 // ページの道ではその場でログインの画面（カード付き）を返す。ログインの画面は誰でも開けるので、出してよいものは同じ

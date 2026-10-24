@@ -62,7 +62,7 @@ test('a registered name brings its stages to お気に入り and out of おす�
     const fav = (await screen(env, a, 'favourites')).body_html;
     // 見出しは「お気に入り」だけ。件数は表示中の 1 行で。並べ替えは月のタブより下。並び方の説明の段落と
     // 「すべてを表示しています」の 1 行は出さない（起案者の指示 2026-10-18 の仕様変更）
-    assert.match(fav, /<h1>お気に入り<\/h1>/);
+    assert.match(fav, /<h1>お気に入り(?:<button[^>]*share-page-btn[\s\S]*?<\/button>)?<\/h1>/);
     assert.match(fav, /全 1 件中 1 件を表示中/);
     assert.match(fav, /<nav class="idx" aria-label="月で切り替える">[\s\S]*<form class="sortf"[\s\S]*<div class="tickets">/);
     assert.doesNotMatch(fav, /すべてを表示しています|に並んでいます。順位は付けていません。観ると決めたら/);
@@ -202,7 +202,13 @@ test('開幕リマインド: a catalogue-only stage keeps its answer, shows in �
     sqlite.prepare("INSERT INTO catalogue(id,title,date,venue,url,metadata) VALUES('777','索引に無い新作','2026-10-22','劇場Z','https://example.com/z',?)")
       .run(JSON.stringify({end_date: '2026-10-30', group: '劇団Z', synopsis: '海辺の町の三姉妹の話。', fields: {出演: '山田太郎、鈴木花子'}}));
     const html = (await screen(env, a, 'reminder')).body_html;
-    assert.match(html, /data-stage="777"><details class="dgopen"><summary>[\s\S]*?<\/summary><div class="dgdetail">[\s\S]*?山田太郎、鈴木花子[\s\S]*?海辺の町の三姉妹の話。/);
+    // 開いたときの中身は、開いたときに読む（/api/reminder_detail）。画面には読む先の印だけを置く
+    assert.match(html, /data-stage="777"><details class="dgopen"><summary>[\s\S]*?<\/summary><div class="dgdetail"><div class="dginfo"><div class="dglazy" data-detail="777"><\/div>/);
+    assert.doesNotMatch(html, /海辺の町の三姉妹の話。/);
+    const det = (await step(env, a, {get: '/api/reminder_detail?sids=777,bad%20id'})).body;
+    assert.deepEqual(Object.keys(det.html), ['777']);
+    assert.match(det.html['777'], /山田太郎、鈴木花子[\s\S]*?海辺の町の三姉妹の話。/);
+    assert.equal((await step(env, '', {get: '/api/reminder_detail?sids=777'})).status, 401);
     await step(env, a, {post: '/api/react', body: {stage_id: '777', value: 'interest', nofill: true}});
     assert.match((await screen(env, a, 'reminder')).body_html, /<li class="dgli dgfold trk" data-stage="777">/);
     const it = (await screen(env, a, 'interest')).body_html;
@@ -344,7 +350,7 @@ test('観劇史年表: the years of the works seen', async () => {
       await step(env, a, {post: '/api/rate', body: {work_key: key, verdict: v}});
     }
     const html = (await screen(env, a, 'chronicle')).body_html;
-    assert.match(html, /<h1>観劇史年表 ── 何が始まった年か<\/h1>/);
+    assert.match(html, /<h1>観劇史年表 ── 何が始まった年か(?:<button[^>]*share-page-btn[\s\S]*?<\/button>)?<\/h1>/);
     assert.match(html, /観劇の年表<\/span><span class="badge part">3 作品<\/span>/);
     assert.match(html, /<div class="chfig"><svg /);
     assert.match(html, /<b>2026<\/b><i>2 作品・のべ 2 回<\/i>/);
@@ -544,7 +550,7 @@ test('お気に入りのハッシュタグ: the name coming stages, works seen a
     put('p2', '別人の舞台', [['出演', '俳優甲乙']]);
     const v = (await screen(env, a, 'favourites', '?n=' + encodeURIComponent('俳優甲'))).body_html;
     assert.match(v, /<h1><span class="ftag big">#俳優甲<\/span> の公演<\/h1>/);
-    assert.match(v, /これから観られる公演 <span class="cnt">1 件<\/span>[\s\S]*data-stage="101"/);
+    assert.match(v, /今後の公演 <span class="cnt">1 件<\/span>[\s\S]*data-stage="101"/);
     assert.match(v, /観た公演 <span class="cnt">1 件<\/span>[\s\S]*終わった舞台[\s\S]*★5/);
     // 過去の公演は開いたときに自動で出す（起案者 2026-10-15）。名前全体で当てる
     assert.match(v, /2023\/05\/01〜05\/10<\/span><span class="t">昔の舞台/);

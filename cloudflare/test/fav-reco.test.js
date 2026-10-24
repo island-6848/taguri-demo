@@ -66,7 +66,7 @@ test('nothing to recommend when every co-worker\'s other show is the favourite\'
   assert.equal(got.diag.favourite_seeds, 2);
   assert.match(got.body_html, /<h1>今週のあなたへのおすすめはありません<\/h1>/);
   // お気に入りがあるのに 0 件のときだけ、一文添える（起案者の答え 2026-10-18「C」）
-  assert.match(got.body_html, /<p class="rcount favnone">お気に入りに登録した名前と関わりのある人の、これから観られる公演はまだ見つかっていません。/);
+  assert.match(got.body_html, /<p class="rcount favnone">お気に入りに登録した名前と関わりのある人の、今後の公演はまだ見つかっていません。/);
 });
 
 test('people of a favourite\'s show count by role: 出演 > 演出 > 脚本 > 翻訳 > 主催 > 美術…; 制作・宣伝・その他 not at all', () => {

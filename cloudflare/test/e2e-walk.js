@@ -526,6 +526,96 @@ async function walkA(A) {
     check(n === 6, '評価の数が 6 でない: ' + n);
   });
 
+  // 1 回の公演で観た複数の作品を、作品ごとに分ける（起案者の指示 2026-10-19、dec-split-pieces）。記録は 1 件のまま、
+  // 行に作品ごとの評価と感想が並ぶ。あとのおすすめの段を変えないよう、最後に「分けるのをやめる」で戻す
+  await step('記録を作品ごとに分ける・やめる（パソコンと電話の幅）', async () => {
+    const row = () => page.locator('[data-route="/records/works"] .rec-row').filter({hasText: '終わった舞台'}).first();
+    await go('/records/works');
+    const ed = row().locator('details.editor');
+    if (!(await ed.evaluate(b => b.open))) await ed.locator(':scope > summary').click();
+    const box = row().locator('.ed-pieces');
+    await box.locator('[data-pieces-open]').click();
+    await box.locator('.pc-row').nth(1).waitFor();
+    check(await box.locator('.pc-row').count() === 2, '最初に 2 作品ぶんの欄が出ない');
+    await box.locator('[data-piece-add]').click();
+    check(await box.locator('.pc-row').count() === 3, '「作品を足す」で欄が増えない');
+    await box.locator('.pc-row').nth(2).locator('[data-piece-del]').click();
+    const fill = async (i, title, v, note) => {
+      const r = box.locator('.pc-row').nth(i);
+      await r.locator('[data-pc-title]').fill(title);
+      await r.locator('[data-pc-verdict]').selectOption(v);
+      if (note) await r.locator('[data-pc-note]').fill(note);
+    };
+    await fill(0, 'かもめ', '5/5', '一本目がよかった');
+    await fill(1, '熊', '2/5', '');
+    await page.setViewportSize({width: 390, height: 844});
+    await box.scrollIntoViewIfNeeded();
+    await page.screenshot({path: join(OUT, 'pieces-editor-phone.png'), fullPage: false});
+    check(await page.evaluate(() => document.documentElement.scrollWidth) <= 390, '電話の幅で横にはみ出す');
+    await page.setViewportSize({width: 1280, height: 900});
+    await box.locator('[data-pieces-save]').click();
+    await waitSaid(box, /2 作品に分けて保存しました/);
+    await page.waitForEvent('load', {timeout: 5000}).catch(() => {});
+    await settle();
+    const saved = sql("SELECT title, verdict, note FROM work_piece ORDER BY idx");
+    note('D1: ' + saved.map(r => `${r.title} ${r.verdict} ${r.note}`).join(' / '));
+    check(saved.length === 2 && saved[0].verdict === '5/5' && saved[1].verdict === '2/5', '作品ごとの評価が D1 に入らない');
+    check(sql("SELECT count(*) n FROM works WHERE title='終わった舞台'")[0].n === 1, '記録が 1 件のままでない');
+    const shown = await row().locator('.pcs').textContent();
+    check(/作品ごと[（(]2 作品[）)]/.test(shown) && /かもめ/.test(shown) && /★5/.test(shown) && /一本目がよかった/.test(shown), '行に作品ごとの評価・感想が出ない: ' + shown);
+    await row().screenshot({path: join(OUT, 'pieces-row.png')});
+    // 分けるのをやめる
+    const ed2 = row().locator('details.editor');
+    if (!(await ed2.evaluate(b => b.open))) await ed2.locator(':scope > summary').click();
+    const box2 = row().locator('.ed-pieces');
+    await box2.locator('[data-pieces-open]').click();
+    await box2.locator('[data-pieces-stop]').click();
+    await waitSaid(box2, /分けるのをやめました/);
+    check(sql("SELECT count(*) n FROM work_piece")[0].n === 0, '分けるのをやめても work_piece が残る');
+  });
+
+  // 共有リンク（dec-share-links）: 日記帳の行から「観ました」のカードを、評価を出して共有する。ログインしていない窓で開ける。
+  // 設定の「共有中のリンク」から取り消すと開けない
+  await step('共有リンク: 日記帳の行から作り、ログインなしで開き、取り消す（電話の幅）', async () => {
+    const row = () => page.locator('[data-route="/records/works"] .rec-row').filter({hasText: '終わった舞台'}).first();
+    await go('/records/works');
+    check(await page.locator('[data-route="/records/works"] .share-page-btn').count() === 1, '日記帳に「このページを共有」が無い');
+    await page.screenshot({path: join(OUT, 'share-buttons-pc.png')});   // 押し口は小さな丸いアイコンだけ
+    await row().locator('[data-share-kind="stage"]').click();
+    const dlg = page.locator('#share-dlg');
+    await dlg.waitFor();
+    await dlg.locator('[data-share-opt="verdict"]').check();
+    await page.setViewportSize({width: 390, height: 844});
+    await page.screenshot({path: join(OUT, 'share-dialog-phone.png')});
+    await dlg.locator('[data-share-make]').click();
+    await page.waitForFunction(() => /\/s\//.test(document.querySelector('#share-dlg .share-url')?.value || ''), null, {timeout: 10000})
+      .catch(async () => note('小窓の言葉: ' + await dlg.locator('.said').textContent()));
+    const url = await dlg.locator('.share-url').inputValue();
+    check(/\/s\/[A-Za-z0-9_-]{22}$/.test(url), '共有のリンクが出ない: ' + url);
+    await dlg.locator('[data-share-close]').click();
+    const anon = await browser.newContext({viewport: {width: 390, height: 844}, locale: 'ja-JP'});
+    const pub = await anon.newPage();
+    watch(pub, '公開');
+    const res = await pub.goto(url);
+    check(res.status() === 200, '公開ページが開けない: ' + res.status());
+    const text = await pub.locator('main').textContent();
+    check(/この公演を観ました！/.test(text) && /終わった舞台/.test(text), '公開ページに公演が出ない: ' + text.slice(0, 120));
+    check((res.headers()['x-robots-tag'] || '').includes('noindex'), '検索エンジンに載せない印が無い');
+    check(await pub.evaluate(() => document.documentElement.scrollWidth) <= 390, '公開ページが電話の幅で横にはみ出す');
+    await pub.screenshot({path: join(OUT, 'share-public-phone.png'), fullPage: true});
+    await page.setViewportSize({width: 1280, height: 900});
+    await go('/settings');
+    const box = page.locator('#shares');
+    if (!(await box.evaluate(b => b.open))) await box.locator(':scope > summary').click();
+    page.once('dialog', d => d.accept());
+    await box.locator('[data-share-revoke]').first().click();
+    await waitSaid(box.locator('li').first(), /取り消しました/);
+    current.allowFailed = true;                       // 取り消したリンクの 404 は、ここで確かめたいこと
+    const gone = await pub.goto(url + '?after=revoke');
+    check(gone.status() === 404, '取り消したリンクが開ける: ' + gone.status());
+    await anon.close();
+  });
+
   // 起案者の指示 2026-10-18（おすすめのカードの 7 点）: 理由の作品名は 2 つまで・札は「人物」「形式」で Zen丸ゴシック、
   // 発売の札は値段帯のすぐ下、枠線 2px、同じ額の幅は 1 つの額、あらすじの続きは地の色なしで題材のハッシュタグ、日程と暦の間をあける
   await step('今週のおすすめ: カードの見た目（理由・発売の札・料金・あらすじのハッシュタグ・暦。PC・電話の幅）', async () => {
@@ -729,6 +819,37 @@ async function walkA(A) {
     check(r[0]?.interest === 3, 'D1 に dismiss（interest=3）が無い: ' + JSON.stringify(r));
     await page.screenshot({path: join(OUT, 'dismiss-tag.png'), fullPage: true}).catch(() => {});
     note('D1: ' + JSON.stringify(r));
+  });
+
+  // 理由の ✕ を押しまちがえたら、設定の「外したおすすめ理由」から戻す（起案者の指示 2026-10-21）
+  await step('おすすめ理由の ✕ → 設定の「外したおすすめ理由」で戻す', async () => {
+    await go('/');
+    await page.locator('.ticket.recommend[data-stage="101"] li.rs button.rsx').first().waitFor({timeout: 10000});
+    const c101 = page.locator('.ticket.recommend[data-stage="101"]');
+    const k = c101.locator('li.rs button.rsx[data-kindoff]');
+    const x = (await k.count()) ? k.first() : c101.locator('li.rs button.rsx[data-word]').first();
+    check(await x.count() === 1, 'おすすめに ✕ の付いた理由が無い');
+    const word = await x.getAttribute('data-kindoff') || await x.getAttribute('data-word');
+    const done = page.waitForResponse(r => /\/api\/(kind_off|decline)$/.test(r.url()));
+    await x.click();
+    check((await done).status() === 200, '理由の ✕ が記録されない');
+    await go('/settings');
+    const card = page.locator('#reason-off');
+    await card.locator('summary').click();
+    const n0 = await card.locator('.tag').count();
+    const tag = card.locator('.tag', {hasText: word.split('\t').pop()}).first();
+    check(await tag.count() === 1, '外した理由が設定に出ない: ' + word);
+    await page.screenshot({path: join(OUT, 'reason-off-pc.png')});
+    const back = page.waitForResponse(r => /\/api\/(kind_off|decline)$/.test(r.url()));
+    await tag.locator('button').click();
+    check((await back).status() === 200, '戻すが記録されない');
+    await page.waitForFunction(n => document.querySelectorAll('#reason-off .tag').length < n, n0, {timeout: 10000})
+      .catch(() => check(false, '戻した理由が一覧に残る'));
+    await settle();
+    // 戻したあとの組み直しで、公演 101 がおすすめに戻る（次の段が使う）
+    await go('/');
+    await page.locator('.ticket.recommend[data-stage="101"]').waitFor({timeout: 30000})
+      .catch(() => check(false, '戻したあと、公演 101 がおすすめに戻らない'));
   });
 
   await step('今週のおすすめ: 興味なし → 押し直して興味あり', async () => {

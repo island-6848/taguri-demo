@@ -113,7 +113,13 @@ export async function visitedVenues(db, seen) {
   });
   const out = new Map();
   for (const w of seen) {
-    const s = stage[w.stage_id] || (w.venue ? {name: w.venue, pref: ''} : null);
+    // 記録に書いた劇場を先に見る（起案者の指摘 2026-10-20「キャナルシティ劇場追加したのに福岡が塗られなかった」）。
+    // ツアーの公演は、結び付いた公演が別の会場（東京の劇場など）のことがあり、公演の劇場を先にすると観た劇場が塗られなかった。
+    // 県は、記録の劇場が公演の劇場と同じときだけ公演の県を使い、違えば分母の表・劇場名の表で引く（conquestFor）
+    const st = stage[w.stage_id];
+    const s = w.venue && String(w.venue).trim()
+      ? {name: w.venue, pref: st && venueKey(st.name) === venueKey(w.venue) ? st.pref : ''}
+      : st || null;
     const key = s && venueKey(s.name);
     if (!key) continue;
     const had = out.get(key);

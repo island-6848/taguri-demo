@@ -43,6 +43,15 @@ export function frac(v) {
   return p ? (p[0] - 1) / (p[1] - 1) : null;
 }
 const starsOf = (n, L) => (L === 11 ? (n - 1) / 2 : n);
+/**
+ * 同じ星の数を 1 つの値にそろえる（★ 5 段階の "n/5" を、0.5 きざみの "(2n+1)/11" に）。尺度を途中で変えると、同じ ★5 が
+ * "5/5" と "11/11" の 2 通りで残り、評価一覧のタブと分布が 2 つに割れていた（起案者の指摘 2026-10-20「星５がタブ２個に分かれて
+ * 表示されてる」）。◎○△× と記号の段階はそのまま
+ */
+export function sameGrade(v) {
+  const p = parts(v);
+  return p && p[1] === 5 ? `${2 * p[0] + 1}/11` : v;
+}
 /** What a saved rating shows as: ◎ / ○ / ★4 / ★3.5. */
 export function gradeText(v) {
   const p = parts(v);
@@ -116,7 +125,7 @@ export function scaleCardHtml(scale, head = `<summary><h2>評価の付け方</h2
   return `<details class="card">${head}
 <p class="lead">観た公演に付ける評価の形を選べます。<b>段階の意味は自分の尺度で決めて構いません。</b>おすすめは自分が付けた評価の中で高いか低いかを見て作るので、どの形でも同じように働きます。<br>
 <b>形を変えても、これまでに付けた評価はそのまま残ります。</b>表示も付けたときの形のままです。</p>
-<form class="pfil" id="scale-setting" onsubmit="return false">
+<form class="pfil" id="scale-setting" data-nosubmit>
 <p class="pgrp"><b>図形</b></p><div class="pchips">${['marks2', 'marks3', 'marks4'].map(opt).join('')}</div>
 <p class="pgrp"><b>星</b></p><div class="pchips">${['stars5', 'stars11'].map(opt).join('')}</div>
 <div class="pfoot"><button type="button" data-set-scale="1">この形にする</button><span class="said"></span></div>

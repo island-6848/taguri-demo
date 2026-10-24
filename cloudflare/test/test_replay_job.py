@@ -44,6 +44,9 @@ class ReplayJob(unittest.TestCase):
             self.assertIn("並べ直し", text)
             self.assertIn("所属（劇団）から推し量る", text)
             self.assertIn("裏の答え合わせ: 所属（劇団）から推し量る（測るだけ）", text)
+            # H3（#114）と、索引の載った日（#72。控えが無いので分からないと出す）
+            self.assertIn("観る前の点と、観たあとの評価（H3・#114）", text)
+            self.assertIn("控え始めに載っていた公演は外せていない", text)
             # 利用者の ID・公演の番号は出さない。書き出した記録は残らない
             self.assertNotIn("'u'", text)
             self.assertNotIn("311", text)

@@ -2,6 +2,8 @@
 // （起案者の指示 2026-10-14「感想を書くとき、ハッシュタグをユーザーが独自で作って検索できるようにして」）。
 import {gradeText} from './grade.js';
 import {E, quote} from './py.js';
+import {splitMark} from '../x-post.js';
+import {xSource} from './row.js';
 
 const TAG = /[#＃]([^\s#＃、。，,．.!！?？「」『』（）()\[\]【】<>＜＞]{1,30})/gu;
 
@@ -47,7 +49,7 @@ export function hashtagsHtml(all, tag = '') {
     const rows = hit.map(w =>
       `<li><span class="hd">${E(w.last_date || w.first_date || '')}</span>`
       + `<b>${E(w.title || '')}</b>${w.verdict ? ' ' + E(gradeText(w.verdict)) : ''}`
-      + `<p class="int">${E(w.note_impression || '')}</p></li>`).join('');
+      + `<p class="int">${E(splitMark(w.note_impression).body)}</p>${xSource(splitMark(w.note_impression))}</li>`).join('');
     out.push(`<h2>#${E(tag)} の感想 ── ${hit.length} 件</h2>`
       + `<p><a href="/rate/notes?t=__TAGURI_TOKEN__">タグの選択をやめる</a></p>`
       + `<ul class="htagged">${rows}</ul>`);

@@ -10,17 +10,18 @@
 // weights.js. Left out for now: the map above the prefecture chips (no outlines in
 // D1), the count of shows a setting hid (w_dropped); the impression preferences (感想の好み, #104) are applied in rankedGroups.
 import {frac} from './grade.js';
-import {scoreFromIndex, d1Access, seedsFromFavourites, gradeOf, MAX_SEED_STAGES, droppedKind, GENRE_AXIS, CONTENT_AXES, favSpread, affilSince, AFFIL_PEOPLE, SEED_GROUP_KINDS} from '../recommend.js';
+import {scoreFromIndex, d1Access, seedsFromFavourites, gradeOf, MAX_SEED_STAGES, droppedKind, GENRE_AXIS, CONTENT_AXES, favSpread, ratingCount, affilSince, AFFIL_PEOPLE, SEED_GROUP_KINDS} from '../recommend.js';
 import {stageInfo} from './fallback.js';
 import {tourBlock} from './schedule.js';
 import {parseCredits, isGuide} from './credits.js';
 import {chooseVariant, groupOf, VARIANTS} from '../reco-gate.js';
 import {readWeights, multipliersOf, weightForm, weightAction, tunedWeights} from './weights.js';
 import {impressionAdjust, round6} from '../impression.js';
-import {E, ValueError} from './py.js';
+import {noteAiFor} from '../note-ai.js';
+import {E, ValueError, cmp} from './py.js';
 import {answerSnapshot, recordShown} from './evalrec.js';
 import {ico} from './icons.js';
-import {loadWorks} from './works.js';
+import {loadWorks, pieceCast} from './works.js';
 import {castOffOf} from './diary.js';
 import {compose, cardTemplates, posterHtml} from './cards.js';
 import {PREFS, prefForm, prefsFor, regionCounts, PAGE_PREF_NOTE} from './prefs.js';
@@ -107,7 +108,7 @@ const KEEP = 400;
 const GATE_REUSE_MIN = 30;
 // 再生（H5）で 1 つずつ外す部品: 興味ありの配り分け・1 段広げる・並べ直し（spreadLeads）・裏の答え合わせ（chooseVariant）・感想の好み（#104）
 export const REPLAY_ABLATIONS = ['split', 'expand', 'spread', 'gate', 'impression', 'rollup'];
-const VERSION = 'screen-v38';   // v38: the hidden check also measures the affiliation (劇団) variant, never chosen (dec-affil-reco, 2026-10-19); v37: a troupe's reason has no 主催, a production already on お気に入り under another id stays off (2026-10-18); v36: a favourite's reason names its role, the work and this person's role there, rows without an explanation are left out (2026-10-18); the ✕ (dismiss) and role-narrowed favourites (declared_roles) change the seeds (2026-10-18); v35: fine subject likes roll up the vocabulary to broader concepts (SF) across 3+ branches, and the reason names them (rolledThemeWords, 2026-10-18); v34: 作曲・音楽 spread from favourites too (FAV_SPREAD_W, 2026-10-18); v33: favourites' own stages (お気に入りの一覧) seed too, spread by role (FAV_SPREAD_W), reasons name the favourite, the 効かせ方 defaults per group (2026-10-18); v32: the reasons name the newest and oldest works, favourites' works too (2026-10-18); v31: 感想で書いた特徴への好みが順位と理由に効く（#104）; v30: the hidden check's choice is reused while the ratings are unchanged (CPU, #138); v29: the cache keeps only the reasons the screens show (CPU, #138); v28: the hidden check leaves out the dropped kinds as the ranking does (#115); v27: a rating of a record dated after today is not learnt from (#116); v26: ratings ordered by when they were rated (works.rated_at), not by the last edit (#112); v25: a name in the 興味あり note counts only when not denied or compared against (#111); v24: a 興味あり copied to the tour's other venues counts once (#110); v23: 興味なし weakens after the split, not before (#109); v22: favourite seeds weigh FAV_SEED_W (お気に入り＞興味あり); v21: credits read only where needed (CPU); v20: a production answered under another stage id stays out; v19: same title + (group / venue / a shared person) is one card; v18: one card per title+group (sameProduction); v17: no 出典 on the reasons; v16: #会場 dropped, 行けない (interest=2) as a liked seed; v15: 出さない語 also hits the kind tags; v14: #ジャンル (a genre turned off hides its stages); v13: no 原作「原作もの」 (DROPPED_KEYS); v12: no #値段 (DROPPED_AXES); v11: reasons of answered stages (answered_why); v2: the user's 効かせ方 (rank_weight) and the per-group counts; v3: 興味あり as seeds; v4: diag; v5: 興味あり split (impl-interest-split); v6: by part importance; v7: tiers + トメ; v8: two tiers only; v9: トメ joins the main roles; v10: spread leads + one-step partners
+const VERSION = 'screen-v40';   // v40: stages in the user's records are out of the recommendations, and records not rated yet seed like 購入済み (dec-watched-unrated-seed, 2026-10-20); v39: a record split into pieces (work_piece) is rated per piece, each person counted once per visit with the pieces they were in shrunk by PIECE_RHO (dec-split-pieces, 2026-10-19); v38: the hidden check also measures the affiliation (劇団) variant, never chosen (dec-affil-reco, 2026-10-19); v37: a troupe's reason has no 主催, a production already on お気に入り under another id stays off (2026-10-18); v36: a favourite's reason names its role, the work and this person's role there, rows without an explanation are left out (2026-10-18); the ✕ (dismiss) and role-narrowed favourites (declared_roles) change the seeds (2026-10-18); v35: fine subject likes roll up the vocabulary to broader concepts (SF) across 3+ branches, and the reason names them (rolledThemeWords, 2026-10-18); v34: 作曲・音楽 spread from favourites too (FAV_SPREAD_W, 2026-10-18); v33: favourites' own stages (お気に入りの一覧) seed too, spread by role (FAV_SPREAD_W), reasons name the favourite, the 効かせ方 defaults per group (2026-10-18); v32: the reasons name the newest and oldest works, favourites' works too (2026-10-18); v31: 感想で書いた特徴への好みが順位と理由に効く（#104）; v30: the hidden check's choice is reused while the ratings are unchanged (CPU, #138); v29: the cache keeps only the reasons the screens show (CPU, #138); v28: the hidden check leaves out the dropped kinds as the ranking does (#115); v27: a rating of a record dated after today is not learnt from (#116); v26: ratings ordered by when they were rated (works.rated_at), not by the last edit (#112); v25: a name in the 興味あり note counts only when not denied or compared against (#111); v24: a 興味あり copied to the tour's other venues counts once (#110); v23: 興味なし weakens after the split, not before (#109); v22: favourite seeds weigh FAV_SEED_W (お気に入り＞興味あり); v21: credits read only where needed (CPU); v20: a production answered under another stage id stays out; v19: same title + (group / venue / a shared person) is one card; v18: one card per title+group (sameProduction); v17: no 出典 on the reasons; v16: #会場 dropped, 行けない (interest=2) as a liked seed; v15: 出さない語 also hits the kind tags; v14: #ジャンル (a genre turned off hides its stages); v13: no 原作「原作もの」 (DROPPED_KEYS); v12: no #値段 (DROPPED_AXES); v11: reasons of answered stages (answered_why); v2: the user's 効かせ方 (rank_weight) and the per-group counts; v3: 興味あり as seeds; v4: diag; v5: 興味あり split (impl-interest-split); v6: by part importance; v7: tiers + トメ; v8: two tiers only; v9: トメ joins the main roles; v10: spread leads + one-step partners
 export {PREFS} from './prefs.js';
 const KIND_LABEL = {'#形式': '形式', '#原作': '原作', '#翻訳': '', '#原作の国': '原作の国', '#会場': '劇場', '#題材': '題材', '#ジャンル': 'ジャンル'};
 // 理由に添える作品名は、いちばん新しい公演といちばん古い公演の 2 つまで（起案者の指示 2026-10-18「公演タイトルすでに
@@ -122,23 +123,52 @@ const pad2 = n => String(n).padStart(2, '0');
 const chunks = (xs, n) => Array.from({length: Math.ceil(xs.length / n)}, (_, i) => xs.slice(i * n, i * n + n));
 
 /** The user's rated works as the recommender reads them, with their linked stage's credits. */
-async function ratedWorks(ctx, access) {
+async function ratedWorks(ctx, access, all = null) {
+  // 作品ごとに分けた記録（work_piece、dec-split-pieces）。評価した作品があれば、記録そのものの評価の代わりに作品ごとの行にする
+  const ratedPieces = w => (w.pieces || []).filter(p => gradeOf(p.verdict));
   // 観た日がまだ来ていない記録（先の予定・日付の打ち間違い）の評価は、観たあとの好みとして学ばない（#116。
   // docs/impression-preferences.md「未来の記録…は学習に含めない」、感想の補正 app._apply_impression_preferences と同じ
   // first_date <= 今日。日付の無い記録は数える）。日付を直せば、次の計算から入る（控えの印に works の更新日時と今日がある）
-  const works = (await loadWorks(ctx)).filter(w => !w.unseen && w.stage_id && gradeOf(w.verdict) && (w.first_date || '') <= ctx.today);
+  const works = (all || await loadWorks(ctx)).filter(w => !w.unseen && w.stage_id && (gradeOf(w.verdict) || ratedPieces(w).length) && (w.first_date || '') <= ctx.today);
   // 評価した順は、評価を付けた（直した）時刻（rated_at、#112）。updated_at は感想・日付の編集でも進むので、
   // rated_at の無い行（移行の前に書いた行）だけ updated_at で代える
   const {results} = await ctx.db.prepare("SELECT work_key, COALESCE(rated_at, updated_at) AS rated_at FROM works WHERE user_id=? AND verdict IS NOT NULL AND verdict<>''").bind(ctx.uid).all();
   const updated = new Map(results.map(r => [r.work_key, r.rated_at]));
   const people = await access.peopleFor([...new Set(works.map(w => w.stage_id))]);
   // 観た回に出ていなかった出演者（Wキャスト・休演、works.cast_off）は、この記録の材料から外す。
-  return works.map(w => {
+  return works.flatMap(w => {
     const off = new Set(castOffOf(w));
-    return {key: w.work_key, title: w.title, stage_id: w.stage_id, verdict: w.verdict, cast_off: [...off],
+    const row = {key: w.work_key, title: w.title, stage_id: w.stage_id, verdict: w.verdict, cast_off: [...off],
       date: w.last_date || w.first_date || '', aspects: w.aspects || '', rated_at: updated.get(w.work_key) || '', note: w.note_impression || '',
       people: (people.get(w.stage_id) || []).filter(([role, person]) => !(role === '出演' && off.has(person)))};
+    const ps = ratedPieces(w);
+    if (!ps.length) return [row];
+    // 作品ごとの行: 出演はその作品に出ていた人だけ（cast_in。空なら全員）、スタッフ・公演の種類は公演のまま。
+    // whole は分ける前の 1 公演の行（裏の答え合わせ・感想の好みは 1 公演を 1 件で数える。wholeStages）
+    const notes = [w.note_impression || '', ...(w.pieces || []).map(p => p.note || '')].filter(n => n.trim());
+    const whole = {...row, note: notes.join('\n')};
+    return ps.map(p => {
+      const cast = pieceCast(p);
+      return {...row, key: `${w.work_key}\u0000${p.idx}`, occasion: w.work_key, share: 1 / ps.length, whole,
+        verdict: p.verdict, aspects: p.aspects || '', rated_at: p.rated_at || row.rated_at, note: p.note || '',
+        people: cast ? row.people.filter(([role, person]) => role !== '出演' || cast.has(person)) : row.people};
+    });
   });
+}
+
+/**
+ * 作品ごとに分けた行を、分ける前の 1 公演の行に戻す。裏の答え合わせ（評価の付いた 1 公演だけ）と感想の好み
+ * （作品ごとの感想をまとめた 1 件）は、同じ晩の作品を別々に数えると、作品どうしで答えが漏れ、票が重なるため
+ */
+export function wholeStages(rated, {graded = false} = {}) {
+  const out = [], seen = new Set();
+  for (const r of rated) {
+    if (!r.occasion) { out.push(r); continue; }
+    if (seen.has(r.occasion)) continue;
+    seen.add(r.occasion);
+    if (!graded || gradeOf(r.whole.verdict)) out.push(r.whole);
+  }
+  return out;
 }
 
 /**
@@ -147,7 +177,7 @@ async function ratedWorks(ctx, access) {
  * 評価が増えるほど薄まる（recommend.personValues の SEED_K / (SEED_K + 評価の数)）。
  * 索引に人物の無い公演（一覧 catalogue にだけある開幕リマインドの公演など）は、出演欄から人物を読む。
  */
-async function interestSeeds(ctx, access, ratedSids = new Set()) {
+async function interestSeeds(ctx, access, ratedSids = new Set(), watched = []) {
   // reaction は日ごとの行（label = その日）なので、公演ごとに新しい答えで上書きしてから選ぶ（lists.reactionsOf と同じ）。
   // 購入済み（owned=1）は興味ありと同じ手がかりにする。購入済みを押しても interest は前の答えのまま（REACT.owned）なので、
   // 興味ありを押さずに買った公演が種にならず、興味ありを押してから買った公演とで重さが違っていた（起案者の指示 2026-10-19
@@ -156,6 +186,10 @@ async function interestSeeds(ctx, access, ratedSids = new Set()) {
     .bind(ctx.uid).all();
   const last = new Map();
   for (const r of results) { last.delete(r.stage_id); last.set(r.stage_id, [Number(r.owned) === 1 ? 1 : Number(r.interest), String(r.source || '')]); }
+  // 観劇記録に足して、まだ評価していない公演も、購入済みと同じ手がかりにする（起案者の指摘 2026-10-20「観劇記録に追加しても、
+  // すぐにおすすめ欄に反映されてる感じしない」、dec-watched-unrated-seed）。観に行ったことは、買ったこと以上の手がかり。
+  // 評価を付けたら下の ratedSids で外れ、評価 1 回分に替わる。足した順（新しいものが後ろ）に、答えより新しい手がかりとして並べる
+  for (const sid of watched) { last.delete(String(sid)); last.set(String(sid), [1, 'record']); }
   // 評価を付けた公演（ratedWorks に入る記録）は、評価 1 回分だけを数え、ここの種からは外す。興味あり→観て評価、の順に
   // 付けた公演だけが 2 回分になり、評価だけの過去の記録と重さが揃わなかった（同上 2026-10-19）。観た日が先の記録は
   // 評価を学ばないので、種のまま残る
@@ -383,7 +417,8 @@ export function impWhy(parts) {
 /** Each item's people without the kind keys the user turned off ('#原作\tオリジナル'; q-kind-reason-off). */
 export function withoutKinds(items, off) {
   if (!off.size) return items;
-  return items.map(r => ({...r, people: (r.people || []).filter(([role, p]) => !(role.startsWith('#') && off.has(role + '\t' + p)))}));
+  const keep = people => (people || []).filter(([role, p]) => !(role.startsWith('#') && off.has(role + '\t' + p)));
+  return items.map(r => ({...r, people: keep(r.people), ...(r.whole ? {whole: {...r.whole, people: keep(r.whole.people)}} : {})}));
 }
 
 /** Stages the user has answered (interest / not interested / owned): out of the recommendations. */
@@ -427,14 +462,17 @@ export async function rankedGroups(ctx) {
     return {...body, titles: new Map(body.titles), cached: true};
   }
   // 「使わない」にした種類の理由（q-kind-reason-off）は、評価・興味あり・お気に入りのどこからも値を持たせない
-  const rated = withoutKinds(await ratedWorks(ctx, access), off);
+  // 観劇記録（評価の有無を問わず）。評価した記録は学ぶ材料、まだの記録は種にし、どれもおすすめからは外す（dec-watched-unrated-seed）
+  const allWorks = await loadWorks(ctx);
+  const rated = withoutKinds(await ratedWorks(ctx, access, allWorks), off);
+  const recorded = allWorks.filter(w => !w.unseen && w.stage_id);
   // 部品を外した計算（手元の再生 replay_eval.py の H5 だけが ctx.ablate を渡す。本番は渡さないので動きは変わらない）
   const ablate = ctx.ablate || {};
   // 裏の答え合わせ（chooseVariant）は評価だけで決まる（評価の数・最後の更新・今日・使わない種類）。興味ありを押しただけで
   // 控えが捨てられたときは、前の控えに残した結果をそのまま使う。評価が多いと計算の 2〜4 割をここで使っていた（#138）
   const gateKey = [VERSION, ctx.today, st.wr ?? '', st.wn, st.wm, [...off].sort().join(',')].join('|');
   let gate = null;
-  if (!ablate.gate && prev && rated.length >= GATE_REUSE_MIN) {
+  if (!ablate.gate && prev && ratingCount(rated) >= GATE_REUSE_MIN) {
     try { const g = JSON.parse(prev.body).gate; if (g && g.key === gateKey) gate = g.choice; } catch { /* recompute */ }
   }
   if (!gate && !ablate.gate) {
@@ -442,7 +480,7 @@ export async function rankedGroups(ctx) {
     // その劇団の直近 AFFIL_YEARS 年の所属の人を読む。読むのは裏の答え合わせを計算し直すときだけ
     const cast = [...new Set(rated.flatMap(r => (r.people || []).filter(([role]) => role === '出演').map(([, p]) => p)))].sort().slice(0, AFFIL_PEOPLE);
     const members = cast.length && !ablate.affil ? await access.affilMembers(cast, [], affilSince(ctx.today)) : new Map();
-    gate = chooseVariant(rated, {affil: members});
+    gate = chooseVariant(wholeStages(rated, {graded: true}), {affil: members});
   }
   if (!gate) gate = {multipliers: VARIANTS.base, aspects: true};
   // 効かせ方（本人が決めた段）は、裏の答え合わせが選んだ倍率に掛け合わせる。
@@ -466,7 +504,9 @@ export async function rankedGroups(ctx) {
   // 登録した人の名前は、索引の書き方（空白なし・NFKC）でも理由に出さない（その人の公演はお気に入りの一覧に出る）
   const favNames = new Set(KINDS.filter(k => k === '人' || k === '原作者').flatMap(k => declared[k] || []).map(nzName));
   for (const s of favSeeds) for (const [role, p] of s.people || []) if (!role.startsWith('#') && favNames.has(nzName(p))) skip.add(p);
-  const interest = await interestSeeds(ctx, access, new Set(rated.map(r => String(r.stage_id)))), nLiked = interest.n;
+  const ratedSids = new Set(rated.map(r => String(r.stage_id)));
+  const watched = [...new Set(recorded.filter(w => !ratedSids.has(String(w.stage_id))).sort((a, b) => cmp(a.first_date || '', b.first_date || '')).map(w => String(w.stage_id)))];
+  const interest = await interestSeeds(ctx, access, ratedSids, watched), nLiked = interest.n;
   const liked = withoutKinds(interest.seeds, off), disliked = withoutKinds(interest.disliked, off);
   const seeds = withoutKinds(favSeeds, off);
   // 所属（劇団）を効かせた計算を試す（ablate.try_affil。手元の再生 replay_eval.py の H6 だけが渡す。本番は渡さないので
@@ -487,7 +527,8 @@ export async function rankedGroups(ctx) {
   // app._apply_impression_preferences と同じく「作品の内容」（theme）の効かせ方を掛け、点の付いた候補は
   // 上げ下げし、点の無い公演は好みが正のときだけ加える。規則だけで動き、好みのある言葉だけを索引から引く
   const themeMul = Object.hasOwn(multipliers, 'theme') ? multipliers.theme : 1.0;
-  const imp = themeMul > 0 && !ablate.impression ? await impressionAdjust(access, rated, CONTENT_AXES) : null;
+  // 本人が同意していれば、AI で読み取った感想の結果も使う（note-ai.js、dec-note-ai）
+  const imp = themeMul > 0 && !ablate.impression ? await impressionAdjust(access, wholeStages(rated), CONTENT_AXES, await noteAiFor(ctx)) : null;
   if (imp?.adjust.size) {
     const inRanked = new Set(ranked.map(c => String(c.stage_id)));
     for (const c of ranked) {
@@ -517,7 +558,9 @@ export async function rankedGroups(ctx) {
     const seen = new Set([...c.parts, ...c.kinds].map(p => groupOf(p[1])));
     for (const g of seen) wCounts[g] = (wCounts[g] || 0) + 1;
   }
+  // 答えた公演と、観劇記録にある公演（観た公演をおすすめし続けない。dec-watched-unrated-seed）
   const done = await answered(ctx);
+  for (const w of recorded) done.add(String(w.stage_id));
   // 理由の ✕ で外したジャンル（2.5次元・宝塚）は、その公演ごと出さない（起案者の指示 2026-10-16
   // 「おすすめ理由に2.5次元として出してほしい。いらない人はそれ✕押せばいい」）。索引の 1 回の読み出しで引く
   const offGenres = [...off].map(k => k.split('\t')).filter(([axis]) => axis === GENRE_AXIS);
@@ -583,7 +626,7 @@ export async function rankedGroups(ctx) {
   // 興味ありの公演は自分自身も種になっているので、作品名からは自分を除いて出す（lists.ownlessWhy）。
   const answeredWhy = ranked.filter(c => done.has(c.stage_id)).slice(0, 200).map(c => [c.stage_id, whyOf({...c, ...favWhy(c)}, titles)]);
   // 推薦が出ないときに本番で何が足りないかを見るための数（画面には出さない。/api/screen/recommend の JSON の diag）。
-  const diag = {rated: rated.length, rated_linked: rated.filter(r => r.people.length).length,
+  const diag = {rated: wholeStages(rated).length, rated_linked: wholeStages(rated).filter(r => r.people.length).length,
     interest: nLiked, interest_with_people: liked.length, favourite_seeds: fav.seeds.length,
     ranked: ranked.length, after_answered: groups.length,
     // 所属（劇団）から推し量ると、本人の後の評価の並びをよく当てたか（裏の答え合わせの affil。勝ち・負けの区切りの数）
@@ -595,7 +638,7 @@ export async function rankedGroups(ctx) {
   // 理由に出す人・種類（各束の上位 4 人・2 種類）の鍵を先に集める。前は titles の全件 × 残した束（最大 400）を
   // 比べていて、本番の大きさの索引でこれだけで数十 ms かかっていた（#138、Workers Free の CPU は 10 ms）
   const shownKeys = new Set(kept.flatMap(g => [...g.parts.slice(0, 4), ...g.kinds.slice(0, 2)].map(p => p[1] + '\t' + p[2])));
-  const body = {ready: true, gate: ablate.gate ? null : {key: gateKey, choice: gate}, ver, n_rated: rated.length, n_scored: groups.length, groups: kept, weights, w_counts: wCounts, diag, answered_why: answeredWhy,
+  const body = {ready: true, gate: ablate.gate ? null : {key: gateKey, choice: gate}, ver, n_rated: wholeStages(rated).length, n_scored: groups.length, groups: kept, weights, w_counts: wCounts, diag, answered_why: answeredWhy,
     titles: [...titles].filter(([k]) => shownKeys.has(k))};
   if (!ctx.ablate) await db.prepare('INSERT INTO rec_cache(user_id,stamp,body,created_at) VALUES(?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET stamp=excluded.stamp,body=excluded.body,created_at=excluded.created_at')
     .bind(ctx.uid, stamp, JSON.stringify(body), Math.floor(ctx.now / 1000)).run();
@@ -816,7 +859,7 @@ export async function recommendScreen(params, ctx) {
     // 関わりのある人のほかの公演が、本人の公演だけ・終わった・もう始まっている、のどれかだと候補が無い
     const declared = await loadDeclared(ctx);
     lede = KINDS.some(kind => (declared[kind] || []).length)
-      ? '<p class="rcount favnone">お気に入りに登録した名前と関わりのある人の、これから観られる公演はまだ見つかっていません。'
+      ? '<p class="rcount favnone">お気に入りに登録した名前と関わりのある人の、今後の公演はまだ見つかっていません。'
         + '登録した名前の公演は「<a href="/recommend/favourites?t=__TAGURI_TOKEN__">お気に入り</a>」に出ます。新しい公演は毎日取り込んでいます。</p>'
       : '';
   } else if (!prefs.length) {
@@ -825,7 +868,7 @@ export async function recommendScreen(params, ctx) {
     lede = `<p class="rcount"><b>全国</b>／${data.n_scored} 件中 上位 ${cards.length} 件を表示中</p>`;
   } else if (!cards.length) {
     head = `${where}でのあなたへのおすすめはありません`;
-    lede = `<p class="rcount">これから観られる公演 ${nCand} 件のうち、<b>${E(where)}</b>で観られるものはありませんでした。ほかの都道府県を選ぶか、全国に戻してください。</p>`;
+    lede = `<p class="rcount">今後の公演 ${nCand} 件のうち、<b>${E(where)}</b>で観られるものはありませんでした。ほかの都道府県を選ぶか、全国に戻してください。</p>`;
   } else {
     head = `${where}でのあなたへのおすすめ ${cards.length} 件`;
     lede = `<p class="rcount"><b>${E(where)}</b>／${hit} 件中 上位 ${cards.length} 件を表示中</p>`;

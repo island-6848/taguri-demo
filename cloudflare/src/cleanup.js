@@ -12,7 +12,7 @@ export const EMPTY_ACCOUNT_DAYS = 30;
 export const SWEEP_LIMIT = 50;
 // 利用者が自分で足した記録の表
 export const RECORD_TABLES = ['records', 'favourites', 'reactions', 'works', 'reaction', 'ticket', 'visit_note', 'hand_credits',
-  'missed', 'search_request', 'merges', 'excluded'];
+  'missed', 'search_request', 'merges', 'excluded', 'work_piece'];
 // アカウントの削除で消す表（users のほか）
 export const ACCOUNT_TABLES = ['records', 'favourites', 'reactions', 'passkeys', 'webauthn_challenges', 'rec_cache', 'rec_shown',
   ...SCREEN_TABLES, 'sessions'];

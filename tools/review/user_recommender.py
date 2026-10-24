@@ -106,8 +106,9 @@ def independent_ratings(rows: list[dict]) -> list[dict]:
 # 形式（#形式）。起案者の指示 2026-10-19「能、とかバレエ、とかオペラ、とかの区切りがないなら分けないといけない」「落語・寄席も
 # あるかな？」→「その分け方で移行」: 演劇（どれにも当たらない公演。札は付けない）・ミュージカル・能・狂言・歌舞伎・文楽・
 # 落語・寄席（講談・浪曲など演芸を含む）・バレエ・ダンス・オペラ・お笑い（コント・漫才）。前は 歌舞伎・狂言・文楽 を「古典」、
-# 落語を「お笑い」、バレエを「ダンス」にまとめ、能とオペラは区切りが無かった。朗読・人形劇・音楽劇は前のまま残す。
+# 落語を「お笑い」、バレエを「ダンス」にまとめ、能とオペラは区切りが無かった。朗読劇（前の名前は朗読）・人形劇・音楽劇は前のまま残す。
 # 題名を先に見て、題名で決まらないときだけ劇場・主催の名前を見る（能楽堂で講談、文楽劇場で演芸の会もあるため）。上から順に最初に当たったもの
+_READING_TITLE = re.compile(r"朗読|リーディング")
 _FORM_TITLE = (
     ("落語・寄席", re.compile(r"落語|寄席|講談|浪曲|演芸|高座|噺家|^(?:桂|林家|柳家|立川|三遊亭|古今亭|春風亭|柳亭|入船亭|金原亭|瀧川|"
                             r"笑福亭|月亭|露の|一龍斎|神田|宝井|玉川|春野)\S*\s*(?:独演会|二人会|三人会|落語会)")),
@@ -119,7 +120,8 @@ _FORM_TITLE = (
     ("ミュージカル", re.compile(r"ミュージカル")),
     ("お笑い", re.compile(r"コント|漫才|お笑い")),
     ("ダンス", re.compile(r"ダンス")),
-    ("朗読", re.compile(r"朗読|リーディング")),
+    # 札の名前は「朗読劇」（起案者の指示 2026-10-19「『朗読劇』に名前変えて」。前は「朗読」）
+    ("朗読劇", _READING_TITLE),
     ("人形劇", re.compile(r"人形劇")),
 )
 # 題名で決まらないとき: 劇場・主催の名前（宝塚歌劇団・OSK日本歌劇団はオペラではない）
@@ -309,6 +311,14 @@ def stage_tags(title: str, venues, credits, prices=(), source: str = "", group: 
         form = "音楽劇"
     if form:
         tags.add(("#形式", form))
+    # 朗読劇はほかの形式と兼ねる（起案者の指示 2026-10-19「両方の札を付ける」、dec-reading-dual-form）。
+    # 「リーディングミュージカル」はミュージカルと朗読劇、「リーディング音楽劇『ジャングル大帝』」は朗読劇と音楽劇。
+    # 音楽劇は題名に「音楽劇」とあるときだけ足す（作曲・音楽の作り手だけでは足さない。BGM の作曲者がいる朗読劇は多い）
+    t = M.norm(title or "")
+    if _READING_TITLE.search(t):
+        tags.add(("#形式", "朗読劇"))
+        if "音楽劇" in t:
+            tags.add(("#形式", "音楽劇"))
     if roles:
         if roles & {"原作", "原案"} or (source or "").strip():
             tags.update(("#原作", k) for k in source_kinds(source))
@@ -422,6 +432,22 @@ def rated_keys(r: dict) -> list[tuple]:
                                           r.get("prices") or (), group=r.get("group") or "")))
 
 
+# 朗読劇とほかの形式を兼ねる公演（dec-reading-dual-form）は、朗読劇の札を READING_SHARE、ほかの形式の札を残りで数える
+# （起案者 2026-10-20「この場合はリーディングのほうが若干つよいことが多い。リーディング音楽劇は朗読劇6音楽劇4くらいだった」）。
+# 合わせて 1 なので、札が 2 つあっても形式 1 つの公演より重くならない。評価から学ぶ側（person_values）と、
+# これからの公演の札の重さ（build_recommend_index の role_w）の両方で使う。Worker の recommend.kindShares と同じ
+READING_FORM, READING_SHARE = "朗読劇", 0.6
+
+
+def kind_shares(keys) -> dict:
+    """(axis, tag) -> weight for the 形式 tags of one production when 朗読劇 shares it with other forms; {} otherwise."""
+    forms = sorted({tuple(k) for k in keys if k[0] == "#形式"})
+    if len(forms) < 2 or ("#形式", READING_FORM) not in forms:
+        return {}
+    other = (1 - READING_SHARE) / (len(forms) - 1)
+    return {k: READING_SHARE if k[1] == READING_FORM else other for k in forms}
+
+
 def person_values(rated: list[dict], seeds: list[dict] = (), skip: set = frozenset()) -> tuple[dict, dict]:
     """(role, person) -> (n, value) and the user's scale {mean, spread}.
 
@@ -454,10 +480,13 @@ def person_values(rated: list[dict], seeds: list[dict] = (), skip: set = frozens
         z = ((below + 0.5 * same) / len(vals) - 0.5) * SQRT12
         levels = aspect_levels(r.get("aspects")) if z else {}
         troubles, goods = parse_aspects(r.get("aspects")) if z else ([], [])
-        for key in rated_keys(r):
+        keys = rated_keys(r)
+        shares = kind_shares(keys)
+        for key in keys:
+            share = shares.get(key, 1.0)
             tally[key][0] += 1
-            tally[key][1] += z * aspect_share(troubles, goods, key[0], z > 0, levels) if troubles or goods else z
-            tally[key][2] += 1.0
+            tally[key][1] += (z * aspect_share(troubles, goods, key[0], z > 0, levels) if troubles or goods else z) * share
+            tally[key][2] += share
     w = SEED_K / (SEED_K + len(rated))
     for r in seeds:
         for key in rated_keys(r):

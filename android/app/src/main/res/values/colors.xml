@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 地の色（manifest.webmanifest の background_color・theme_color と同じ） -->
+    <color name="bg">#FBEEE2</color>
+</resources>

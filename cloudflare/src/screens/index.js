@@ -24,15 +24,16 @@ import {importScreens} from './import.js';
 import {ValueError} from './py.js';
 import {fixRequestScreens} from './fixrequest.js';
 import {agreeAction} from '../terms.js';
+import {shareScreens} from '../share.js';
 
 export const SCREEN_TABLES = ['works', 'excluded', 'merges', 'hand_credits', 'visit_note', 'reaction', 'viewed',
-  'ticket', 'missed', 'rank_weight', 'app_setting', 'search_request'];
+  'ticket', 'missed', 'rank_weight', 'app_setting', 'search_request', 'work_piece', 'share', 'note_ai'];
 // Stands in for the Python server's per-process token (__TAGURI_TOKEN__). The
 // public service never checks it; screens only carry it in links.
 export const TOKEN = 'cfw0000000000000000000000000000000';
 
 const SCREENS = {...tickerScreens.screens, ...rateScreens.screens, ...diaryScreens.screens, ...accountScreens.screens, ...recommendScreens.screens, ...listScreens.screens, ...reminderScreens.screens, ...calendarScreens.screens, ...settingsScreens.screens, ...searchScreens.screens, ...taggedScreens.screens, ...entityScreens.screens, ...recordScreens.screens};
-const ACTIONS = {...rateScreens.actions, ...diaryScreens.actions, ...accountScreens.actions, ...recommendScreens.actions, ...listScreens.actions, ...settingsScreens.actions, ...searchScreens.actions, ...importScreens.actions, ...fixRequestScreens.actions, agree: agreeAction};
+const ACTIONS = {...shareScreens.actions, ...rateScreens.actions, ...diaryScreens.actions, ...accountScreens.actions, ...recommendScreens.actions, ...listScreens.actions, ...settingsScreens.actions, ...searchScreens.actions, ...importScreens.actions, ...fixRequestScreens.actions, agree: agreeAction};
 
 const enabled = (env, kind, name) => {
   const list = String(env.NATIVE_UI || '').split(',').map(s => s.trim());
@@ -45,7 +46,11 @@ export const allNative = env => String(env.NATIVE_UI || '').split(',').map(s => 
 
 /** What Handler._json adds to every answer (public service edition). */
 const envelope = obj => ({...obj, demo_mode: false, public: true, edition: 'service'});
-const withToken = obj => JSON.parse(JSON.stringify(obj).replaceAll('__TAGURI_TOKEN__', TOKEN));
+// 画面の文の __TAGURI_TOKEN__ を差し替える。前は答え全体を JSON にして戻していた（開幕リマインドで 1 回 約 4 ミリ秒。
+// 無料の Worker は 1 回 CPU 10 ミリ秒まで）。文字列だけを見て差し替える。TOKEN は JSON で escape の要らない字だけ
+const withToken = v => typeof v === 'string' ? (v.includes('__TAGURI_TOKEN__') ? v.replaceAll('__TAGURI_TOKEN__', TOKEN) : v)
+  : Array.isArray(v) ? v.map(withToken)
+  : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, withToken(x)])) : v;
 
 // Screens not ported yet, once production no longer goes to Render (NATIVE_UI=all).
 // Their titles are the ones serve.py gives. 起案者の指示（2026-10-14）「本番用のサイトなはずなのに、

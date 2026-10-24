@@ -4,7 +4,7 @@ import {SESSION_TTL} from '../session-policy.js';
 // A Worker-only screen: the Python service has no account page, so there is no
 // parity test; it only reads the user's own rows and writes one setting.
 import {E, ValueError} from './py.js';
-import {loadWorks} from './works.js';
+import {loadWorks, titleKey} from './works.js';
 import {venueOf} from './row.js';
 import {loadDeclared, KINDS} from './lists.js';
 
@@ -47,15 +47,24 @@ const jstDate = sec => {
   return `${d.getUTCFullYear()}年${d.getUTCMonth() + 1}月${d.getUTCDate()}日`;
 };
 
-/** Most frequent values, ties in first-seen order. */
-function top(values, n = TOP) {
-  const count = new Map();
-  for (const v of values) if (v) count.set(v, (count.get(v) || 0) + 1);
-  return [...count].sort((a, b) => b[1] - a[1]).slice(0, n);
+/**
+ * 多い順の上位 n 件 [[名前, 数, 順位]...]。counts: Map(名前 -> 数)。同じ数は同じ順位（1, 2, 2, 4）で、名前の順に並べる。
+ * 同じ数が n 件目をまたぐときも、その数の分はすべて出す（同じ順位なのに出る・出ないが分かれないように）
+ */
+export function ranking(counts, n = TOP) {
+  const rows = [...counts].filter(([v, c]) => v && c > 0).sort((a, b) => (b[1] - a[1]) || a[0].localeCompare(b[0], 'ja'));
+  const cut = rows.length > n ? rows[n - 1][1] : 0;
+  return rows.filter(([, c], i) => i < n || c === cut).map(([v, c]) => [v, c, 1 + rows.filter(r => r[1] > c).length]);
+}
+/** 名前ごとの、違う作品（題名の鍵）の数 */
+export function worksBy(pairs) {
+  const sets = new Map();
+  for (const [name, key] of pairs) if (name && key) { if (!sets.has(name)) sets.set(name, new Set()); sets.get(name).add(key); }
+  return new Map([...sets].map(([name, keys]) => [name, keys.size]));
 }
 
 /** Groups of the stages the user's works are linked to (current catalogue, then past stages). */
-async function groupsOf(ctx, sids) {
+export async function groupsOf(ctx, sids) {
   const want = [...new Set(sids.filter(Boolean))], got = {};
   for (let i = 0; i < want.length; i += 90) {
     const part = want.slice(i, i + 90), qs = part.map(() => '?').join(',');
@@ -69,9 +78,29 @@ async function groupsOf(ctx, sids) {
 
 const stat = (n, label, href) =>
   `<a class="acst" href="${href}?t=__TAGURI_TOKEN__"><b>${n}</b><span>${label}</span></a>`;
-const ranked = (title, rows, unit) => rows.length
-  ? `<div class="acrank"><h3>${title}</h3><ol>${rows.map(([v, n]) => `<li><span>${E(v)}</span><small>${n} ${unit}</small></li>`).join('')}</ol></div>`
-  : '';
+/**
+ * ランキングの一覧（起案者の指示 2026-10-20「よく観る団体とよく観る劇場、それぞれランキングぽいデザインに」）。
+ * 順位の札（1〜3 位は色つき）・名前・1 位を満たんにした棒・数。rows は ranking() の行
+ */
+export const rankList = (rows, unit, cls = '') => {
+  const max = rows.length ? rows[0][1] : 1;
+  return `<ol class="rk${cls ? ' ' + cls : ''}">${rows.map(([v, n, r]) => `<li class="rk-${r <= 3 ? r : 'n'}">`
+    + `<b class="rk-no" aria-label="${r} 位">${r}</b><span class="rk-name">${E(v)}</span>`
+    + `<span class="rk-bar" aria-hidden="true"><i style="width:${Math.max(4, Math.round(100 * n / max))}%"></i></span>`
+    + `<small>${n} ${unit}</small></li>`).join('')}</ol>`;
+};
+const ranked = (title, rows, unit) => rows.length ? `<div class="acrank"><h3>${title}</h3>${rankList(rows, unit)}</div>` : '';
+/**
+ * よく行く劇場: 作品数（同じ作品は 1）と、行った回数（同じ作品でも観た回ごと。上の「観た回数」と同じ数え方）を切り替える
+ * （起案者の指示 2026-10-20）。切り替えは押し口（radio）と CSS だけで、画面のスクリプトに頼らない
+ */
+const venueRanks = (byWorks, byVisits) => (byWorks.length
+  ? `<div class="acrank acrank-v"><h3>よく行く劇場</h3>
+<div class="rk-mode" role="radiogroup" aria-label="劇場の数え方">
+<input type="radio" name="rk-venue" id="rk-v-works" value="works" checked><label for="rk-v-works">作品数</label>
+<input type="radio" name="rk-venue" id="rk-v-visits" value="visits"><label for="rk-v-visits">行った回数</label></div>
+${rankList(byWorks, '作品', 'rk-works')}${rankList(byVisits, '回', 'rk-visits')}</div>`
+  : '');
 
 async function accountScreen(_params, ctx) {
   const db = ctx.db, uid = ctx.uid;
@@ -90,8 +119,13 @@ async function accountScreen(_params, ctx) {
   // 観た回数: 作品でまとめず、劇場に行った回数（同じ作品を 2 回観たら 2。記録の times と、まとめた別の回の記録 merged）。起案者の指示 2026-10-18
   const rated = seen.filter(w => w.verdict && w.verdict !== 'まだ判断できない');
   const noted = seen.filter(w => (w.note_impression || '').trim());
-  const groups = top(await groupsOf(ctx, seen.map(w => w.stage_id || '')));
-  const venues = top(seen.map(w => venueOf(w)));
+  // 団体・劇場は、違う作品（題名の鍵）の数で並べる。前は記録の数で、同じ作品を別の日に観ると 2 作品になっていた
+  const grps = await groupsOf(ctx, seen.map(w => w.stage_id || ''));
+  const groups = ranking(worksBy(seen.map((w, i) => [grps[i], titleKey(w.title)])));
+  const venueWorks = ranking(worksBy(seen.map(w => [venueOf(w), titleKey(w.title)])));
+  const visits = new Map();
+  for (const w of seen) { const v = venueOf(w); if (v) visits.set(v, (visits.get(v) || 0) + (Number(w.times) || 1) + (w.merged || []).length); }
+  const venueVisits = ranking(visits);
   const display = name?.value || '';
   const google = Boolean(u?.firebase_uid);
   const recovery = Boolean(u?.recovery_hash) && !String(u.recovery_hash).startsWith('firebase:');
@@ -116,7 +150,7 @@ ${since ? `<p class="acsince">${since}から使っています</p>` : ''}</div>
 </section>
 <section class="acct-card">${h2('book', 'これまでの記録')}
 <div class="acstats">${stat(seen.length, '観た作品', '/records/works')}${stat(seen.reduce((n, w) => n + (Number(w.times) || 1) + (w.merged || []).length, 0), '観た回数', '/records/works')}${stat(rated.length, '評価した作品', '/rate')}${stat(noted.length, '感想', '/rate/notes')}${stat(KINDS.reduce((n, k) => n + (favs[k] || []).length, 0), 'お気に入り', '/recommend/favourites')}${stat(reacts?.n || 0, '興味あり', '/recommend/interest')}</div>
-${groups.length || venues.length ? `<div class="acranks">${ranked('よく観ている団体', groups, '作品')}${ranked('よく行く劇場', venues, '作品')}</div>`
+${groups.length || venueWorks.length ? `<div class="acranks">${ranked('よく観ている団体', groups, '作品')}${venueRanks(venueWorks, venueVisits)}</div>`
     : '<p class="note">観た公演を記録すると、よく観ている団体や劇場がここに出ます。</p>'}
 </section>
 <section class="acct-card">${h2('check', 'ログイン')}

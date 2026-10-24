@@ -1,4 +1,6 @@
 import {withCard, PREVIEW_BOT} from './link-card.js';
+import {publicShare} from './share.js';
+import {assetLinksResponse} from './app-links.js';
 import {SESSION_TTL} from './session-policy.js';
 import {deleteAccountStatements, sweepEmptyAccounts} from './cleanup.js';
 import {purgeFixRequests} from './screens/fixrequest.js';
@@ -10,6 +12,9 @@ import {d1Access, gradeOf, cleanAspects, SEED_KINDS, SEED_ROLES, MAX_SEED_FAVS, 
 import {recommendApi} from './screens/recommend.js';
 import {searchIndex, d1Search} from './stage-search.js';
 import {suggest, stageTimes} from './screens/suggest.js';
+import {readPost} from './x-post.js';
+import {runNoteAi} from './note-ai.js';
+import {reminderDetails} from './screens/reminder.js';
 import {exportPayload} from './screens/settings.js';
 import {R2_READS_CAP, r2ReadAllowed, d1RoomLeft, d1Bytes, D1_BYTES_CAP, MAX_ACCOUNTS} from './free-tier.js';
 import {rateLimit, checkNewAccount, guardedUserInsert, countNewAccount, confirmNewAccount, rateLimitHealth} from './rate-limit.js';
@@ -22,6 +27,8 @@ const SHRINKING_WHEN = {
   ticket: b => b.action === 'del',
   // 表示名・アイコンを空にする（app_setting の行を消す）
   account: b => (Object.hasOwn(b, 'avatar') ? b.avatar === '' : b.display_name === ''),
+  // 作品ごとに分けた中身を読むだけ、または分けるのをやめる（work_piece の行を消す）
+  pieces: b => b.pieces === undefined || (Array.isArray(b.pieces) && !b.pieces.length),
 };
 /** 画面の書き込み（/api/<name>）が、保存の上限でも通してよい減らす操作か */
 export const shrinkingAction = (name, input) => SHRINKING_ACTIONS.has(name) || Boolean(SHRINKING_WHEN[name]?.(input || {}));
@@ -442,6 +449,27 @@ async function nativeRoute(request, env, url) {
       return json({ok:false,error:error.status ? error.message : '読めませんでした。'}, error.status ?? 500);
     }
   }
+  // 開幕リマインドの行を開いたときの中身（screens/reminder.reminderDetails）。1 回 20 件まで。公開の公演の情報だけ
+  if (allNative(env) && request.method === 'GET' && url.pathname === '/api/reminder_detail') {
+    try {
+      await user(request, env.DB);
+      const sids = [...new Set(String(url.searchParams.get('sids') || '').split(',').map(x => x.trim()).filter(x => /^[\w-]{1,40}$/.test(x)))].slice(0, 20);
+      const m = sids.length ? await reminderDetails({db: env.DB}, sids) : new Map();
+      return json({ok: true, html: Object.fromEntries(m)});
+    } catch (error) {
+      return json({ok:false,error:error.status ? error.message : '読めませんでした。'}, error.status ?? 500);
+    }
+  }
+  // 感想の欄に貼った X のポストの本文（x-post.js）。ログインしている人だけ。D1 は読まない（ログインの確かめだけ）
+  if (allNative(env) && request.method === 'GET' && url.pathname === '/api/x_post') {
+    try {
+      await user(request, env.DB);
+      const r = await readPost(url.searchParams.get('url'));
+      return json(r.body, r.status);
+    } catch (error) {
+      return json({ok:false,error:error.status ? error.message : '読めませんでした。'}, error.status ?? 500);
+    }
+  }
   // suggest_web も同じ保存済みの公演一覧から探す（その場で外のサイトは探さない。画面の文言もそう書く、#92）
   if (allNative(env) && request.method === 'GET' && ['/api/suggest', '/api/suggest_web'].includes(url.pathname)) {
     try {
@@ -477,7 +505,7 @@ async function nativeRoute(request, env, url) {
   try {
     const uid = await user(request, env.DB);
     // env.CLOCK exists only in tests (an object cannot come from wrangler vars).
-    const ctx = {db: env.DB, env, uid, today: env.CLOCK?.today ?? jstToday(), now: env.CLOCK?.now ?? Date.now()};
+    const ctx = {db: env.DB, env, uid, today: env.CLOCK?.today ?? jstToday(), now: env.CLOCK?.now ?? Date.now(), origin: url.origin};
     if (isScreen) {
       const body = await nativeScreenBody(m[1], url.searchParams, ctx);
       // 規約の版が上がっていたら、画面が同意を求める（terms.agreeAction）
@@ -526,17 +554,51 @@ async function posterFromR2(request, env, url) {
   return new Response(obj.body, {headers});
 }
 
+const TROUBLE = '一時的にうまく動いていません。少し待ってから、開き直してください。';
+/** 思わぬ失敗のときの返事。API には JSON、画面には日本語の 1 枚（ほかのファイルを読まずに出せる形） */
+export function troubleResponse(request) {
+  const path = new URL(request.url).pathname;
+  const headers = {'Cache-Control': 'no-store', 'Retry-After': '60', 'X-Content-Type-Options': 'nosniff'};
+  if (path.startsWith('/api/') || path.startsWith('/migration-api/') || path.startsWith('/img/') || request.method !== 'GET')
+    return Response.json({ok: false, error: TROUBLE}, {status: 503, headers});
+  const html = `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>たぐり</title><style>body{margin:0;font-family:system-ui,sans-serif;background:#f6f4f1;color:#222}main{max-width:32em;margin:18vh auto 0;padding:0 20px;line-height:1.8}
+h1{font-size:20px;margin:0 0 12px}a{color:#9b1d2e}</style></head><body><main><h1>たぐり</h1>
+<p>${TROUBLE}</p><p>しばらく続くときは、時間を置いてから開いてください（記録は消えていません）。</p>
+<p><a href="${path === '/' ? '/' : path}">開き直す</a></p></main></body></html>`;
+  return new Response(html, {status: 503, headers: {...headers, 'Content-Type': 'text/html; charset=utf-8'}});
+}
+
 export default {
   // 1 日 1 回（wrangler.jsonc の triggers.crons）: 記録の無いアカウントを片付ける（cleanup.js）
   async scheduled(event, env, ctx) {
     ctx.waitUntil(sweepEmptyAccounts(env.DB).then(n => { if (n) console.log(`empty accounts removed: ${n}`); }));
     // 対応済みの公演修正依頼の本文・行を期限で消す（issue #129）
     ctx.waitUntil(purgeFixRequests(env.DB).then(r => { if (r.cleared || r.removed) console.log(`fix_request purged: ${r.cleared} bodies, ${r.removed} rows`); }));
+    // 同意した人の感想を AI で読み取る（note-ai.js、dec-note-ai）。鍵（ANTHROPIC_API_KEY）が無ければ何もしない。本文はログに出さない
+    ctx.waitUntil(runNoteAi(env).then(r => { if (r.sent || r.stopped) console.log(`note_ai: ${r.sent} requests, ${r.saved} notes, stopped=${r.stopped}`); })
+      .catch(e => console.error('note_ai failed', e && e.message)));
   },
+  // 画面や API の途中で思わぬ失敗（D1 が答えない・上限に届いた など）が起きたら、Cloudflare の英語の
+  // 「Error 1101: Worker threw exception」ではなく、日本語の案内を返す（起案者の指示 2026-10-21「案内入れてよい」。
+  // 起案者の電話で 1101 の画面が出た）。中身（SQL・記録・設定）は見せない。原因は Workers のログに残す
   async fetch(request, env) {
+    try {
+      return await this.handle(request, env);
+    } catch (error) {
+      console.error('unhandled', request.method, new URL(request.url).pathname, error && (error.stack || error.message));
+      return troubleResponse(request);
+    }
+  },
+  async handle(request, env) {
     const url = new URL(request.url);
     const limited = await rateLimit(request, env, url);
     if (limited) return limited;
+    // Android アプリとの結び付け（app-links.js）。ログインの前に Google が読むので gate より先
+    if (url.pathname === '/.well-known/assetlinks.json' && request.method === 'GET') return assetLinksResponse();
+    // 共有リンク（share.js、dec-share-links）。本人が選んだものだけを、リンクを知る人にログインなしで見せる。gate より先
+    const shared = await publicShare(request, env, url);
+    if (shared) return shared;
     const blocked = await gate(request, env, url);
     if (blocked) return blocked;
     // たぐりとは and ログイン are one page now; old links to /about still land there.

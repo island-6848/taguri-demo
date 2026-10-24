@@ -92,13 +92,16 @@ export function looseTitle(title) {
   return t.replace(/[『』「」]/gu, '');
 }
 
+// 初日（読めない・あり得ない日付は ''）。画面は同じ候補を週ごとに何度も見るので、1 度だけ読んで _start に置く
+const startOf = c => { const s = periodStart(c.period); return s && valid(s.split('-').map(Number)) ? s : ''; };
+
 /** digest.week_rows over candidates; status: stage_id -> kind key. */
 export function weekRows(cands, status, today, offset = 0) {
   const lo = addDays(today, WINDOW * offset), hi = addDays(lo, WINDOW - 1);
   const rows = [];
   for (const c of cands) {
-    const s = periodStart(c.period);
-    if (!s || !valid(s.split('-').map(Number)) || s < lo || s > hi) continue;
+    const s = c._start ?? startOf(c);
+    if (!s || s < lo || s > hi) continue;
     const sid = String(c.stage_id || '');
     const key = status.get(sid) || 'unanswered';
     // ✕ で候補から消した公演は出さない（起案者の指示 2026-10-18。lists の dismissed）
@@ -230,9 +233,10 @@ function row(r, today, poster, detail, hereLabel) {
 /** digest.panel */
 // 「直近の観劇予定」の枠は外した（起案者の指示 2026-10-18「下にある『直近の観劇予定』の枠は消す」）。digest.panel と同じ。
 // count は週のタブのすぐ下に置く 1 行（画面だけが渡す。digest.panel には無いので、既定は空）
-export function panel({cands, status, today, prefs = [], week = 'this', poster = () => '', detail = null, hereLabel = 'このおすすめの日程', pq = '', count = ''}) {
+// weekOf（任意）: 週の番号 -> weekAll の答え。画面が同じ週を先に組んでいれば、それを使い回す
+export function panel({cands, status, today, prefs = [], week = 'this', poster = () => '', detail = null, hereLabel = 'このおすすめの日程', pq = '', count = '', weekOf = null}) {
   week = WEEKS.some(([k]) => k === week) ? week : 'this';
-  const wks = Object.fromEntries(WEEKS.map(([k], i) => [k, weekAll(cands, status, today, prefs, i)]));
+  const wks = Object.fromEntries(WEEKS.map(([k], i) => [k, weekOf ? weekOf(i) : weekAll(cands, status, today, prefs, i)]));
   const wk = wks[week];
   const tabs = indexTabs(WEEKS.map(([k, lab]) => [k, lab, wks[k].n]), week, k => `/recommend/reminder?t=__TAGURI_TOKEN__&w=${k}${pq}`, '週で切り替える');
   const where = prefs.length > 0 && prefs.length <= 3 ? prefs.join('・') : prefs.length ? `${prefs[0]}ほか ${prefs.length - 1} 県` : '';
@@ -259,6 +263,15 @@ ${open}</section>`;
 
 // ---------------------------------------------------------------- the screen (app._reminder_body)
 
+/** 開幕リマインドの行を開いたときの中身: stage_id -> html（前は画面を組むときに全部の行の分を作っていた）。 */
+export async function reminderDetails(ctx, sids) {
+  const {html: cardHtml} = await cardTemplates(ctx.db, sids);
+  const details = new Map([...cardHtml].map(([sid, h]) => [sid, detailFromCard(h)]));
+  const bare = sids.filter(sid => !details.has(sid));
+  if (bare.length) for (const [sid, s] of await stageInfo(ctx.db, bare)) details.set(sid, detailHtml(s));
+  return details;
+}
+
 const chunk90 = xs => Array.from({length: Math.ceil(xs.length / 90)}, (_, i) => xs.slice(i * 90, i * 90 + 90));
 
 /**
@@ -269,22 +282,32 @@ const chunk90 = xs => Array.from({length: Math.ceil(xs.length / 90)}, (_, i) => 
  * leave this screen empty; the catalogue is upserted every day (changed rows only).
  * Catalogue rows carry no prefecture of their own; it comes from venue_pref (by venue name) when known.
  */
+// 開幕リマインドの一覧（行・ツアーの束・県の絞り込み）が使う entry の欄
+const OPEN_FIELDS = ['group', 'period', 'pref', 'theater', 'venue', 'price', 'url', 'days', 'onsale'];
 export async function openingCandidates(ctx) {
   const hi = addDays(ctx.today, WINDOW * WEEKS.length - 1);
-  const {results} = await ctx.db.prepare("SELECT stage_id,title,entry FROM rec_stage WHERE ver=(SELECT v FROM rec_meta WHERE k='current') AND start>=? AND start<=? ORDER BY stage_id")
+  // entry は丸ごと読まず、一覧に使う欄だけを D1 に取り出させる（出演などの大きな欄の JSON.parse が 1 回 約 3 ミリ秒あった。
+  // 無料の Worker は CPU 10 ミリ秒まで、D1 の中の手間は数えない）。開いたときの中身は reminderDetails が読む
+  const cols = OPEN_FIELDS.map(f => `json_extract(entry,'$.${f}') AS "${f}"`).join(',');
+  const {results} = await ctx.db.prepare(`SELECT stage_id,title,${cols} FROM rec_stage WHERE ver=(SELECT v FROM rec_meta WHERE k='current') AND start>=? AND start<=? ORDER BY stage_id`)
     .bind(ctx.today, hi).all();
-  const out = results.map(r => ({...JSON.parse(r.entry || '{}'), title: r.title, stage_id: r.stage_id}));
+  const out = results.map(r => {
+    const c = {};
+    for (const f of OPEN_FIELDS) if (r[f] != null) c[f] = r[f];
+    return {...c, title: r.title, stage_id: r.stage_id};
+  });
   const have = new Set(out.map(c => String(c.stage_id)));
   // The catalogue has no prefecture; venue_pref (migration 0024) gives it by venue name.
-  const cat = await ctx.db.prepare('SELECT c.id,c.title,c.date,c.venue,c.url,c.metadata,vp.pref AS vpref FROM catalogue c LEFT JOIN venue_pref vp ON vp.venue=c.venue WHERE c.date>=? AND c.date<=? ORDER BY c.id').bind(ctx.today, hi).all();
+  // metadata も丸ごとは読まない（終わりの日と団体だけ。出演などは開いたときに reminderDetails が読む）
+  const cat = await ctx.db.prepare(`SELECT c.id,c.title,c.date,c.venue,c.url,CASE WHEN json_valid(c.metadata) THEN json_extract(c.metadata,'$.end_date') END AS end_date,
+    CASE WHEN json_valid(c.metadata) THEN json_extract(c.metadata,'$.group') END AS grp,vp.pref AS vpref
+    FROM catalogue c LEFT JOIN venue_pref vp ON vp.venue=c.venue WHERE c.date>=? AND c.date<=? ORDER BY c.id`).bind(ctx.today, hi).all();
   const slash = d => d.replaceAll('-', '/');
   for (const r of cat.results) {
     if (have.has(String(r.id))) continue;
-    let m = {};
-    try { m = JSON.parse(r.metadata || '{}') || {}; } catch { /* no metadata */ }
-    const end = /^\d{4}-\d{2}-\d{2}$/.test(m.end_date || '') ? m.end_date : r.date;
+    const end = /^\d{4}-\d{2}-\d{2}$/.test(String(r.end_date || '')) ? r.end_date : r.date;
     out.push({stage_id: String(r.id), title: r.title, period: `${slash(r.date)} ～ ${slash(end)}`, theater: r.venue || '', venue: r.venue || '', pref: r.vpref || '',
-      group: m.group || '', ...(m.fields ? {fields: m.fields} : {}), ...(r.url ? {url: r.url} : {})});
+      group: typeof r.grp === 'string' ? r.grp : '', ...(r.url ? {url: r.url} : {})});
   }
   return out;
 }
@@ -322,34 +345,38 @@ export async function reminderScreen(params, ctx) {
   const week = WEEKS.some(([k]) => k === w) ? w : 'this';
   const offset = WEEKS.findIndex(([k]) => k === week);
   const [cands, b] = await Promise.all([openingCandidates(ctx), buckets(ctx)]);
+  for (const c of cands) c._start = startOf(c);
   const status = statusOf(b);
+  // 週ごとの束は 1 度だけ組む（前は同じ週を最大 4 回組んでいた。無料の Worker は 1 回 CPU 10 ミリ秒まで）
+  const memo = new Map();
+  const weekOf = (i, ps = prefs) => { const k = i + '\u0000' + ps.join(','); if (!memo.has(k)) memo.set(k, weekAll(cands, status, ctx.today, ps, i)); return memo.get(k); };
   const wr = weekRows(cands, status, ctx.today, offset);
   const counts = {};
   for (const r of wr) if (r.pref) counts[r.pref] = (counts[r.pref] || 0) + 1;
   const label = Object.fromEntries(WEEKS)[week];
   // 場所の説明はどのページでも同じ（起案者の指示 2026-10-18）。以前の「今週のおすすめと同じ絞り込み」は 2026-10-17 から違う（絞り込みはページの中だけ）
   const note = PAGE_PREF_NOTE;
-  const pics = await postersOf(ctx, cands.map(c => c.stage_id));
+
   // What each row of this week shows when opened: the prebuilt card's parts, or (a stage
   // only in the catalogue) its credits and synopsis from there (fallback.js).
   // 都道府県が分からない公演（一覧 catalogue にだけあり、索引に無い公演）は、場所で絞ると落ちる。開幕リマインドは
   // 見逃しを防ぐ画面なので隠さず、絞った一覧の下に別にまとめて出す（起案者の指摘 2026-10-15「場所絞ったら開幕リマインド0件になる」）
-  const main = weekAll(cands, status, ctx.today, prefs, offset).days.flatMap(([, rows]) => rows);
+  const main = weekOf(offset).days.flatMap(([, rows]) => rows);
   // 絞った一覧に同じ題名で出ている公演は、県の分からない箱には重ねて出さない
   const mainKeys = new Set(main.map(r => workKey(r.title, r.stage_id)));
-  const unknown = prefs.length ? weekAll(cands, status, ctx.today, [], offset).days.flatMap(([, rows]) => rows)
+  const unknown = prefs.length ? weekOf(offset, []).days.flatMap(([, rows]) => rows)
     .filter(r => !r.pref && !mainKeys.has(workKey(r.title, r.stage_id))) : [];
   const shown = [...main.map(r => r.stage_id), ...unknown.map(r => r.stage_id)].filter(Boolean);
   // その日に出した公演（測るための記録 rec_shown。点と関係なく出す画面なので、偏りの少ない分母になる）
   await recordShown(ctx, 'reminder', shown);
-  const {html: cardHtml} = await cardTemplates(ctx.db, shown);
-  const details = new Map([...cardHtml].map(([sid, h]) => [sid, detailFromCard(h)]));
-  const bare = shown.filter(sid => !details.has(sid));
-  if (bare.length) for (const [sid, s] of await stageInfo(ctx.db, bare)) details.set(sid, detailHtml(s));
-  const poster = sid => (pics.has(sid) ? posterHtml(pics.get(sid)) : NO_POSTER), detail = sid => details.get(sid) || '';
+  // ポスターは出す行の分だけ読む（前は 2 週分の候補すべて）
+  const pics = await postersOf(ctx, shown);
+  // 開いたときに出す中身（日程・出演・あらすじ・料金）は、開いたときに読む（reminderDetails・app.js の lazyReminder）。
+  // 前は 1 週ぶん全部（数百件）をここで組み、1 回 CPU 15 ミリ秒・答え 253 KB になっていた（無料の Worker は 10 ミリ秒まで）
+  const poster = sid => (pics.has(sid) ? posterHtml(pics.get(sid)) : NO_POSTER), detail = sid => `<div class="dglazy" data-detail="${E(sid)}"></div>`;
   // 件数の 1 行は、今週・来週を選ぶタブの下に置く（起案者の指示 2026-10-18）
   const count = `\n<p class="rcount"><b>${prefs.length ? E(prefs.length <= 3 ? prefs.join('・') : `${prefs[0]}ほか ${prefs.length - 1} 県`) : '全国'}</b>／${E(label)}開幕する公演 ${main.length} 件を表示中</p>`;
-  const html = panel({cands, status, today: ctx.today, prefs, week, poster, detail, hereLabel: 'この行の会場', pq: prefQs(params), count});
+  const html = panel({cands, status, today: ctx.today, prefs, week, poster, detail, hereLabel: 'この行の会場', pq: prefQs(params), count, weekOf});
   const unknownHtml = !unknown.length ? '' : `<details class="dgday" open><summary>都道府県が分からない公演　${unknown.length} 件</summary>`
     + '<p class="dglead">会場の都道府県がまだ分からないため、場所の絞り込みに入れられない公演です。見逃さないように、ここに分けて出しています。</p>'
     + `<ul class="dglist">${unknown.map(r => row(r, ctx.today, poster, detail, 'この行の会場')).join('')}</ul></details>`;

@@ -248,8 +248,7 @@ function loadingHtml() {
     + '</svg>'
     + '<div class="tg-ball-pos"><div class="tg-ball-hop">' + YARN_BALL + '</div></div>'
     + '</div>'
-    + '<p class="tg-load-say">公演の糸をたぐっています<span class="tg-dots" aria-hidden="true"><i>.</i><i>.</i><i>.</i></span>'
-    + '<span class="tg-load-pct">0%</span></p>'
+    + '<p class="tg-load-say">公演の糸をたぐっています<span class="tg-dots" aria-hidden="true"><i>.</i><i>.</i><i>.</i></span></p>'
     + '<p class="tg-load-note" hidden>' + COLD_START_NOTE + '</p>'
     + '</div>';
 }
@@ -275,16 +274,15 @@ function placeYarn(el, p) {
   if (spin) spin.style.transform = "rotate(" + Math.round((x - 8) * k / 11 * 57.3) + "deg)";
 }
 
-// **表示 → 糸をたぐる・進捗%を進める → 呼び出し側が止める、までを1つにまとめる。**
-// 本当の進み具合(コールドスタートでサーバが起きるまでの時間)は分からないので、
-// 経過時間から95%まで滑らかに近づける「気持ちの上では正しい」進捗にする。
+// **表示 → 糸をたぐる → 呼び出し側が止める、までを1つにまとめる。**
+// 本当の進み具合は分からないので、糸は経過時間から95%まで滑らかに近づける演出にとどめ、
+// 数字（%）は出さない。数字は「何割終わったか」と読めてしまう（#151）。
 // 5秒以上かかっていたら、コールドスタートの案内をそっと添える(待たされる理由が
 // 分からないと不安になるため)。
 function startLoading(el) {
   el.innerHTML = loadingHtml();
   const t0 = performance.now();
   const box = el.querySelector(".tg-loading");
-  const pct = el.querySelector(".tg-load-pct");
   const note = el.querySelector(".tg-load-note");
 
   const tick = () => {
@@ -292,7 +290,6 @@ function startLoading(el) {
     const elapsed = performance.now() - t0;
     const p = Math.min(95, Math.round(95 * (1 - Math.exp(-elapsed / 6000))));
     placeYarn(box, p);
-    if (pct) pct.textContent = p + "%";
   };
   tick();
   const progressTimer = setInterval(tick, 150);
@@ -304,7 +301,6 @@ function startLoading(el) {
     if (box && box.isConnected) {
       placeYarn(box, 100);
       box.classList.add("done");
-      if (pct) pct.textContent = "100%";
     }
   };
 }
@@ -378,19 +374,19 @@ function ensureD3() {
 
 // **storyline.py(観る世界の乗り換わりを見る図)が埋め込むJS。**
 // `<script>`タグとして本文(body_html)の中に来るが、innerHTML経由では
-// 実行されない ── ここに一度だけ移植し、`#sl-data`(材料のJSON)が
-// 画面に来るたびに明示的に実行し直す(新しいデータで描き直すため、
+// 実行されない ── 同じ中身を storyline-draw.js に置き、`#sl-data`(材料のJSON)が
+// 画面に来るたびに読み込み直す(新しいデータで描き直すため、
 // chronicle.pyのJS(委譲登録・1回きりでよい)とは事情が違う)。
-const SL_SCRIPT = "\n(function () {\n  const host = document.getElementById(\"sl\");\n  const src = document.getElementById(\"sl-data\");\n  if (!host || !src || typeof d3 === \"undefined\") return;\n  const D = JSON.parse(src.textContent);\n  // **左に名前のための余白を取る。**（正解の図も左端が名前の欄になっている）\n  // padT は世界の名札を置くぶん取る（名札は先頭の線の 16px 上に出る）\n  const left = 84, padR = 18, padT = 30, axisH = 26;\n  const h = D.height + padT + axisH + 26;\n  // **横幅は「束が入り切る幅」で決める。** 入れ物に合わせて縮めると、束が詰まった\n  // ところで水平区間が消える（入れ物は横に流れる）\n  const w = Math.max(D.width, host.clientWidth || 900);\n  // 位置は Python 側で決めてある（日付の順は保ち、詰まるところだけ広げてある）\n  let tr = d3.zoomIdentity;\n  const px = dt => D.X[dt];\n  const xz = dt => tr.applyX(px(dt));\n  const cls = d => \"w\" + Math.min(d.loc, 2);\n\n  // **viewBox で縮めない。** 縮めると幅を広げた意味が消える（入れ物を横に流す）\n  const root = d3.select(host).append(\"svg\")\n    .attr(\"width\", w).attr(\"height\", h);\n  const svg = root.append(\"g\").attr(\"transform\", \"translate(0,\" + padT + \")\");\n  const clip = svg.append(\"clipPath\").attr(\"id\", \"sl-clip\");\n  clip.append(\"rect\").attr(\"x\", 0).attr(\"y\", -padT)\n    .attr(\"width\", w).attr(\"height\", h);\n  const plot = svg.append(\"g\").attr(\"clip-path\", \"url(#sl-clip)\");\n  const gLb = plot.append(\"g\");        // 場所の名前（面の縁に沿う）\n  const gSes = plot.append(\"g\");       // 束\n  const gLine = plot.append(\"g\");      // 線\n  // **名前は切り取る層の外に置く。** 中に置くと、左の余白へはみ出した名前が切れる\n  const gName = svg.append(\"g\");\n  const gDot = plot.append(\"g\");       // 束に入っている印（線の上）\n  const gSt = plot.append(\"g\");        // 作品名\n  const ax = svg.append(\"g\").attr(\"class\", \"ax\")\n    .attr(\"transform\", \"translate(0,\" + (D.height + 12) + \")\");\n  const tip = d3.select(\"body\").append(\"div\").attr(\"class\", \"sl-tip\")\n    .style(\"display\", \"none\");\n\n  // **線は水平に走り、高さが変わるところだけ S 字で移る。**（起案者の指摘・2026-08-25）\n  //\n  // 前は各場面の点を `curveMonotoneX` で結んでいたので、**点ごとに高さが違うぶん\n  // 線がずっと斜めに流れていた。** storyline の図は地下鉄の路線図に近く、\n  // **平らに走っている時間があって、移るときだけ短く上下する。** 平らな区間があるから\n  // 「この人とこの人がしばらく一緒だった」が読めるので、これは見た目の好みではない。\n  //\n  // 移り変わりは横に TW px だけ使い、両端で水平に接する 3 次ベジエにする\n  // （制御点を同じ高さに置くと、接続部が折れずに滑らかにつながる）。\n  const TW = 26;\n  function pathOf(l) {\n    const P = l.pts.map(p => ({ x: xz(p.date), y: p.y }));\n    if (!P.length) return \"\";\n    // 束に居るあいだは少し前後へ伸ばす（一緒に居た幅を見せる）\n    let d = \"M\" + (P[0].x - D.runPx).toFixed(1) + \",\" + P[0].y.toFixed(1);\n    for (let i = 0; i < P.length; i++) {\n      const cur = P[i], nxt = P[i + 1];\n      d += \"L\" + (cur.x + D.runPx).toFixed(1) + \",\" + cur.y.toFixed(1);\n      if (!nxt) break;\n      const gap = (nxt.x - D.runPx) - (cur.x + D.runPx);\n      const tw = Math.max(Math.min(TW, gap), 0);\n      const x0 = (nxt.x - D.runPx) - tw;\n      if (x0 > cur.x + D.runPx) d += \"L\" + x0.toFixed(1) + \",\" + cur.y.toFixed(1);\n      if (Math.abs(nxt.y - cur.y) < 0.4) {\n        d += \"L\" + (nxt.x - D.runPx).toFixed(1) + \",\" + nxt.y.toFixed(1);\n      } else {\n        const xm = (x0 + (nxt.x - D.runPx)) / 2;\n        d += \"C\" + xm.toFixed(1) + \",\" + cur.y.toFixed(1)\n           + \" \" + xm.toFixed(1) + \",\" + nxt.y.toFixed(1)\n           + \" \" + (nxt.x - D.runPx).toFixed(1) + \",\" + nxt.y.toFixed(1);\n      }\n    }\n    return d;\n  }\n  const lines = D.lines.map(l => ({ ...l }));\n\n  // 選んだ人の集合。**`draw()` より前に置く** ── `draw()` の最後で `paint()` を\n  // 呼ぶので、後ろに置くと初回の描画で ReferenceError になる（`const` は\n  // 初期化より前に触れない）。`node --check` は構文しか見ないので通ってしまう\n  // 選んだ人の集合。**空なら全部ふつうに描く**\n  const chosen = new Set();\n  function paint() {\n    const on = chosen.size > 0;\n    gLine.selectAll(\"path\")\n      .classed(\"hot\", d => on && chosen.has(d.name))\n      .classed(\"dim\", d => on && !chosen.has(d.name));\n    gName.selectAll(\"text\").classed(\"dim\", d => on && !chosen.has(d.l ? d.l.name : d.name));\n    gDot.selectAll(\"circle\").classed(\"dim\", d => on && !chosen.has(d.name));\n  }\n  function pick(name) {\n    if (chosen.has(name)) chosen.delete(name); else chosen.add(name);\n    paint();\n  }\n  // **背景を押すと解除する**（参照実装と同じ）\n  root.on(\"click\", () => { chosen.clear(); paint(); });\n\n  function draw() {\n    // **年の変わり目だけを置く。** 位置を歪めてあるので普通の軸は引けない\n    ax.selectAll(\"text\").data(D.ticks).join(\"text\")\n      .attr(\"x\", t => tr.applyX(t.x)).attr(\"y\", 14).attr(\"text-anchor\", \"start\")\n      .text(t => t.label);\n    ax.selectAll(\"line\").data(D.ticks).join(\"line\")\n      .attr(\"x1\", t => tr.applyX(t.x)).attr(\"x2\", t => tr.applyX(t.x))\n      .attr(\"y1\", -D.height - 8).attr(\"y2\", 4);\n    // **世界の名札は水平に、その世界の左上へ置く。**\n    // 背景の帯はやめたので（起案者の指示・2026-08-25）、どの線がどの世界かを示すのは\n    // **線の色とこの名札だけ**である。帯は線の色と並びで既に読めることを塗り直して\n    // いただけで、しかも論文で背景が指すのは「場所」なので、\n    // **「この人たちはこの場所に居た」と誤読される**ほうが大きかった\n    gLb.selectAll(\"text\").data(D.worlds).join(\"text\")\n      .attr(\"class\", d => \"loclb \" + cls(d))\n      .attr(\"x\", d => tr.applyX(px(d.lx)) - D.runPx)\n      .attr(\"y\", d => d.ly - 16)\n      .text(d => (d.loc + 1) + \" つめの世界 ── \" + d.n_people + \" 人\");\n    // **束はやわらかい影にする。** 正解の図は角のある枠ではなく、束の後ろにぼんやりした\n    // 影を敷いている ── 枠で囲うと「囲われた集合」に見え、線が主役でなくなる\n    gSes.selectAll(\"ellipse\").data(D.sessions).join(\"ellipse\")\n      .attr(\"class\", \"ses\")\n      .attr(\"cx\", s => xz(s.date))\n      .attr(\"cy\", s => (s.y0 + s.y1) / 2)\n      .attr(\"rx\", D.runPx + 11)\n      .attr(\"ry\", s => (s.y1 - s.y0) / 2 + 11)\n      .on(\"mouseenter\", (ev, s) => tip.style(\"display\", \"block\")\n        .text(s.date + \"｜\" + s.titles.join(\" / \") + \"｜この日に一緒だった \" + s.n + \" 名\"))\n      .on(\"mousemove\", ev => tip.style(\"left\", (ev.clientX + 14) + \"px\")\n        .style(\"top\", (ev.clientY + 14) + \"px\"))\n      .on(\"mouseleave\", () => tip.style(\"display\", \"none\"))\n      .on(\"click\", (ev, s) => {\n        const a = s.anchors[0];\n        location.href = D.rowHref + \"&w=\" + encodeURIComponent(a) + \"#w-\" + a;\n      });\n    // **名札は近すぎるものを出さない。** 前半は束が詰まっているので、全部出すと\n    // 名前が重なって読めない（束に触れれば作品名は出る）\n    let lastX = -1e9;\n    const shown = D.sessions.slice().sort((a, b) => px(a.date) - px(b.date))\n      .filter(sx => { const X = tr.applyX(px(sx.date));\n                      if (X - lastX < 64) return false; lastX = X; return true; });\n    gSt.selectAll(\"text\").data(shown).join(\"text\")\n      .attr(\"class\", \"st\").attr(\"text-anchor\", \"middle\")\n      .attr(\"x\", s => xz(s.date))\n      .attr(\"y\", s => s.y0 - 15)\n      .text(s => s.titles[0].length > 13 ? s.titles[0].slice(0, 12) + \"…\" : s.titles[0]);\n    gLine.selectAll(\"path\").data(lines).join(\"path\")\n      .attr(\"class\", d => \"ln \" + cls(d))\n      .attr(\"id\", (d, i) => \"slln\" + i)\n      .attr(\"d\", d => pathOf(d))\n      .on(\"mouseenter\", (ev, l) => tip.style(\"display\", \"block\")\n        .text(l.name + \"｜\" + l.n + \" 回、\" + l.from + \" から \" + l.to + \" まで\"))\n      .on(\"mousemove\", ev => tip.style(\"left\", (ev.clientX + 14) + \"px\")\n        .style(\"top\", (ev.clientY + 14) + \"px\"))\n      .on(\"mouseleave\", () => tip.style(\"display\", \"none\"))\n      // **押して選ぶ**（参照実装の toggleCharacterHighlight）。触れるだけの強調は\n      // **2 人を見比べられない** ── 手を離すと消えるので、追いたい線を並べて見られない。\n      // 複数選べて、背景を押すと解除する（参照実装と同じ約束）\n      .on(\"click\", (ev, l) => { ev.stopPropagation(); pick(l.name); });\n    // **束に入った日に ● を打つ。**（起案者の指示・2026-08-25）\n    //\n    // 線が水平に走る形にしたので、**どこが「一緒に出た日」でどこが「通り過ぎただけ」\n    // なのかが線の形からは分からない** ── 束の影は重なった塊にしか見えず、1 人ずつでは\n    // 読めない。**点を打つと、その人がその日に出ていたことが 1 本ずつ分かる。**\n    //\n    // 通っているだけの点には打たない（`on` が偽）。打つと、居なかった日にも\n    // 居たように見える\n    const dots = [];\n    lines.forEach(l => l.pts.forEach(p => {\n      if (p.on) dots.push({ name: l.name, loc: l.loc, date: p.date, y: p.y });\n    }));\n    gDot.selectAll(\"circle\").data(dots).join(\"circle\")\n      .attr(\"class\", d => \"dot \" + cls(d))\n      .attr(\"cx\", d => xz(d.date)).attr(\"cy\", d => d.y).attr(\"r\", 3.1);\n\n    // **名前は線の始まりの左に置く。**（起案者の指摘・2026-08-25）\n    //\n    // 線に沿わせる（textPath）のをやめた ── 正解の図は**左端に名前を縦に並べ、線の\n    // 高さに合わせている。** 線に沿わせると、線が動くたびに名前の位置も動いて追えず、\n    // **どの高さが誰なのかを最初に掴めない。** 線が平らに走る形にしたので、始まりの\n    // 高さがそのままその人の「持ち場」になる。\n    // **名前がぶつかるので、ぶつかる分だけ左へ段をずらす。**\n    // 束の中は 8.4px 間隔で文字は 10.5px あるため、同じ束から始まる線の名前は必ず重なる。\n    // **高さは動かさない** ── 名前の高さがその人の線の高さであることが、この図で\n    // 名前と線を結びつける唯一の手がかりだからである。段は 3 つまでで、\n    // それでも収まらない分は出さない（線に触れれば名前は出る）\n    const COLW = 46, VMIN = 11.5, COLS = 3;\n    const taken = [[], [], []];\n    const labelled = [];\n    lines.slice().sort((a, b) => a.pts[0].y - b.pts[0].y).forEach(l => {\n      const y = l.pts[0].y, x0 = xz(l.pts[0].date) - D.runPx - 5;\n      for (let c = 0; c < COLS; c++) {\n        if (taken[c].every(v => Math.abs(v - y) >= VMIN)) {\n          taken[c].push(y);\n          // **画面の外へは出さない。** 段をずらしても左端より外なら、そこで留める\n          labelled.push({ l: l, x: Math.max(x0 - c * COLW, 38), y: y });\n          break;\n        }\n      }\n    });\n    gName.selectAll(\"text\").data(labelled, d => d.l.name).join(\"text\")\n      .attr(\"class\", d => \"nm \" + cls(d.l))\n      .attr(\"text-anchor\", \"end\").attr(\"dy\", 3.5)\n      .attr(\"x\", d => d.x).attr(\"y\", d => d.y)\n      .text(d => d.l.name.length > 9 ? d.l.name.slice(0, 8) + \"…\" : d.l.name);\n    if (typeof paint === \"function\") paint();   // 拡大縮小で描き直しても選択を保つ\n  }\n  draw();\n\n  root.call(d3.zoom().scaleExtent([1, 30])\n    .translateExtent([[left, 0], [w - padR, h]])\n    .extent([[left, 0], [w - padR, h]])\n    // **位置はもう決まっているので、拡大縮小は写した px の上に掛ける**\n    .on(\"zoom\", ev => { tr = ev.transform; draw(); }));\n})();\n";
-function runInlineScript(code) {
+// 同じファイルでも、新しい <script src> を足すたびに動き直す（2 回目からはブラウザの控えから読む）
+function runStorylineScript() {
   const s = document.createElement("script");
-  s.textContent = code;
+  s.src = "/storyline-draw.js";
+  s.onload = s.onerror = () => s.remove();
   document.body.appendChild(s);
-  s.remove();
 }
 function fixupStoryline(root) {
   if (!root.querySelector("#sl-data")) return;
-  ensureD3().then(() => runInlineScript(SL_SCRIPT));
+  ensureD3().then(runStorylineScript);
 }
 
 // **重い図はブラウザで組み立てる**(Cloudflare 版の「眺める」)。Worker は 1 回に CPU を
@@ -662,6 +658,7 @@ function renderScreen(el, activePath, d, exposureSource) {
   fixupMonthScroll(el);
   fixupStoryline(el);
   fixupFigs(el);
+  fixupShare(el, activePath);
   fixupImportBar(el);
   fixupPeopleNet(el);
   fixupPrefMap(el);
@@ -684,6 +681,7 @@ function decorateCards(el) {
   el.querySelectorAll(".btns,.rb[data-work]").forEach(g => pickChoice(g, savedChoice(g)));
   shortAddButtons(el);
   divergeVerdicts(el);
+  reminderPrices(el);
   stampRerate(el);
   aspectsPanel(el);
 }
@@ -890,6 +888,8 @@ document.addEventListener("click", ev => {
 document.addEventListener("submit", ev => {
   const f = ev.target.closest("form");
   if (!f) return;
+  // 送らない入れ物（設定の画面の絞り込みなど。前は onsubmit="return false"。CSP の 'unsafe-inline' を外すため、#155）
+  if (f.hasAttribute("data-nosubmit")) { ev.preventDefault(); return; }
   const method = (f.getAttribute("method") || "get").toLowerCase();
   if (method !== "get") return;
   const action = f.getAttribute("action") || location.pathname;
@@ -901,6 +901,23 @@ document.addEventListener("submit", ev => {
   const usp = new URLSearchParams(new FormData(f));
   navigate(action, usp.toString());
 });
+
+// **選んだらすぐ送る選択肢**（並べ替え。前は onchange="this.form.requestSubmit()"、#155）。送ると上の submit が受け取る
+document.addEventListener("change", ev => {
+  const sel = ev.target.closest && ev.target.closest("select[data-autosubmit]");
+  if (sel && sel.form) sel.form.requestSubmit ? sel.form.requestSubmit() : sel.form.submit();
+});
+// **ポスターの読めた・読めなかった**（前は img の onload・onerror、#155）。load と error は泡立たないので、捕まえる側（true）で聞く
+document.addEventListener("load", ev => {
+  const img = ev.target;
+  if (img && img.matches && img.matches("img[data-poster]")) img.parentElement.classList.add("ld");
+}, true);
+document.addEventListener("error", ev => {
+  const img = ev.target;
+  if (!img || !img.matches || !img.matches("img[data-poster]")) return;
+  img.parentElement.classList.add("pe");
+  if (img.nextElementSibling) img.nextElementSibling.textContent = "読み込めませんでした";
+}, true);
 
 window.addEventListener("popstate", () => {
   const path = (location.pathname.slice(REPO_BASE.length) || "/");
@@ -928,6 +945,12 @@ function markMutated() {
   fragmentCache.clear();
   try { sessionStorage.removeItem("taguri-ticker"); } catch (e) { /* 控えが無ければ何もしない */ }
   try { localStorage.setItem(MUTATED_KEY, String(Date.now())); } catch (e) { /* 使えない端末では、このタブだけ */ }
+}
+
+// **アプリ（ホーム画面に入れたとき）の service worker**（起案者 2026-10-20「アプリにしたい」、impl-pwa-base）。
+// サービス版だけ（デモの GitHub Pages では入れない）。控えるのは画面の部品だけ（cloudflare/public/sw.js）
+if (EDITION.edition === "service" && "serviceWorker" in navigator && location.origin === API_BASE) {
+  window.addEventListener("load", () => { navigator.serviceWorker.register("/sw.js").catch(() => { /* 入れられなくても画面はそのまま動く */ }); });
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -1467,6 +1490,56 @@ function priceListHtml(rows, tail = "", icon = true) {
     + rows.map((r, i) => '<li class="lp-row">' + cell(r) + (i === 0 ? tail : "") + "</li>").join("") + "</ul></div>";
 }
 
+// 開幕リマインドの開いた中身の料金を、おすすめのカードと同じ形にする（起案者の指示 2026-10-20「開幕リマインドの料金の表示を、
+// おすすめ画面と同じにして」）。前は料金の欄の文をそのまま日程の行の後ろに続けて書いていた。おすすめと同じく、閉じた 1 行に
+// 金額の幅（座席の決まりつき）、「詳細」を開くと券種ごとの行（priceSummary・priceListHtml）を、日程のすぐ下に置き、
+// 発売の札はその後ろに並べる。料金の欄が無い公演は「料金 不明」
+function reminderPrices(root) {
+  root.querySelectorAll(".dgdetail .dginfo").forEach(info => {
+    if (info.dataset.priced) return;
+    const when = info.querySelector(":scope > .when");
+    if (!when) return;
+    info.dataset.priced = "1";
+    const priceEl = when.querySelector(".price");
+    const {head, open} = priceSummary(priceEl ? sameYen(priceEl.textContent) : "");
+    if (priceEl) priceEl.remove();
+    const box = document.createElement(open.length ? "details" : "div");
+    box.className = "lprice";
+    box.innerHTML = open.length ? "<summary>" + priceListHtml([head], '<span class="lp-more">詳細</span>') + '</summary><div class="lp-body">' + priceListHtml(open, "", false) + "</div>"
+      : priceListHtml([head]);
+    when.after(box);
+    const sale = info.querySelector(":scope > .sale");
+    if (sale) box.after(sale);
+  });
+}
+
+// **開幕リマインドの行の中身は、開いたときに読む**（/api/reminder_detail、screens/reminder.reminderDetails）。前は 1 週ぶん
+// 全部（数百件）の中身を画面と一緒に組み、Worker が無料の CPU 10 ミリ秒を越えて「一時的に止めています」が出ていた。
+// 開いた行と、同じ日に並ぶ閉じた行を合わせて 20 件までまとめて読み、入れたら料金の行を整える（reminderPrices）
+document.addEventListener("toggle", async ev => {
+  const d = ev.target;
+  if (!d.open || !d.matches || !d.matches("details.dgopen")) return;
+  const lazy = d.querySelector(".dglazy[data-detail]:not([data-loading])");
+  if (!lazy) return;
+  const list = d.closest(".dglist") || d;
+  const boxes = [lazy, ...[...list.querySelectorAll(".dglazy[data-detail]:not([data-loading])")].filter(b => b !== lazy)].slice(0, 20);
+  boxes.forEach(b => { b.dataset.loading = "1"; });
+  lazy.textContent = "読み込んでいます…";
+  try {
+    const r = await fetch(API_BASE + "/api/reminder_detail?sids=" + boxes.map(b => encodeURIComponent(b.dataset.detail)).join(","), {credentials: "same-origin"});
+    const j = await r.json();
+    if (!r.ok || !j.ok) throw new Error();
+    boxes.forEach(b => {
+      const info = b.parentElement;
+      b.outerHTML = j.html[b.dataset.detail] || "";
+      if (info) reminderPrices(info.closest(".dgdetail") || info);
+    });
+  } catch (e) {
+    boxes.forEach(b => { delete b.dataset.loading; });
+    lazy.textContent = "くわしい情報を読めませんでした。閉じて、もう一度開いてください。";
+  }
+}, true);
+
 function compactTickets(root) {
   // おすすめの画面の一覧のカードには「くわしく」の折りたたみを付けない（起案者の指示 2026-10-17「おすすめページには
   // 『くわしく』の折りたたみなくして」）。閉じた 1 枚に出す分（日程・出演 5 人・あらすじの 1 文・料金・公式サイト）だけにする
@@ -1475,6 +1548,7 @@ function compactTickets(root) {
   const interestPage = here === "/recommend/interest";   // 興味ありの一覧もおすすめと同じ表示（起案者の指示 2026-10-17）
   const favPage = here === "/recommend/favourites";       // お気に入りも同じ表示（起案者の指示 2026-10-17）
   const tagPage = here === "/recommend/tag";              // あらすじのハッシュタグの公演の一覧も同じ表示（起案者の指示 2026-10-18）
+  const ticketsPage = here === "/tickets";                // 購入済の公演も同じ表示（起案者の指示 2026-10-20「購入済み画面のカードの構成、おすすめのと揃えて」）
   const searchPage = here === "/search" || here === "/recommend/person" || here === "/recommend/kind";   // 人物・形式の画面も同じ表示                  // 「探す」の公演のカードも同じ表示（起案者の指示 2026-10-19「『検索』で出てくる公演カードも他ページのレイアウトと統一して」）
   // お気に入りも同じ形にする（起案者の指示 2026-10-15「お気に入りのページのレイアウト変更して。購入済み公演と似た感じ」）
   root.querySelectorAll("article.ticket.recommend, article.ticket.interest, article.ticket.owned, article.ticket.favourite").forEach(t => {
@@ -1496,6 +1570,7 @@ function compactTickets(root) {
     const noMore = (recPage && t.classList.contains("recommend") && !t.closest(".rfind"))
       || (interestPage && t.classList.contains("interest"))
       || (favPage && t.classList.contains("favourite"))
+      || (ticketsPage && t.classList.contains("owned"))
       || ((tagPage || searchPage) && (t.classList.contains("recommend") || t.classList.contains("interest")));
     const more = document.createElement("details");
     more.className = "more";
@@ -1673,6 +1748,47 @@ function compactTickets(root) {
     t.appendChild(foot);
     fixupSynClamp(box);
   });
+}
+
+// 作品ごとに分ける欄の 1 作品ぶん（作品名・評価・感想・出ていた人）。中身は文字として入れる（textContent・value）
+function pieceRow(list, p) {
+  const row = document.createElement("fieldset");
+  row.className = "pc-row";
+  const title = document.createElement("input");
+  title.type = "text"; title.dataset.pcTitle = "1"; title.maxLength = 80; title.size = 28; title.value = p.title || "";
+  title.placeholder = "作品名（例：かもめ）"; title.setAttribute("aria-label", "作品名");
+  const verdict = document.createElement("select");
+  verdict.dataset.pcVerdict = "1"; verdict.setAttribute("aria-label", "この作品の評価");
+  for (const [v, text] of [["", "未評価"], ...(list._grades || [])]) {
+    const o = document.createElement("option");
+    o.value = v; o.textContent = text; o.selected = v === (p.verdict || "");
+    verdict.append(o);
+  }
+  const del = document.createElement("button");
+  del.type = "button"; del.dataset.pieceDel = "1"; del.textContent = "この作品を外す";
+  const head = document.createElement("div");
+  head.className = "pc-head";
+  head.append(title, verdict, del);
+  const note = document.createElement("textarea");
+  note.dataset.pcNote = "1"; note.rows = 2; note.maxLength = 4000; note.value = p.note || "";
+  note.placeholder = "この作品の感想（書かなくてもかまいません）"; note.setAttribute("aria-label", "この作品の感想");
+  row.append(head, note);
+  const cast = list._cast || [];
+  if (cast.length) {
+    const det = document.createElement("details"), sum = document.createElement("summary"), names = document.createElement("div");
+    const chosen = new Set(p.cast && p.cast.length ? p.cast : cast);
+    sum.textContent = "この作品に出ていた人" + (p.cast && p.cast.length ? "（" + p.cast.length + " 人）" : "（全員）");
+    names.className = "pc-cast";
+    for (const name of cast) {
+      const lab = document.createElement("label"), cb = document.createElement("input");
+      cb.type = "checkbox"; cb.checked = chosen.has(name); cb.dataset.pcCast = name;
+      lab.append(cb, " " + name);
+      names.append(lab);
+    }
+    det.append(sum, names);
+    row.append(det);
+  }
+  return row;
 }
 
 async function post(path, body, group, done) {
@@ -2261,9 +2377,9 @@ document.addEventListener("click", ev => {
     // 進み具合を見に行き、終わったら読み込み直す ── 押した本人からは、
     // 調べ終わるまで何も起きなかったように見えないようにする。
     // **打っている途中の入力は無い**（欄はここで空にする）ので、読み込み直して困らない
-    post("/api/missed", {title: i.value.trim()}, g,
+    post("/api/missed", {title: i.value.trim(), ...(i.dataset.stage ? {stage_id: i.dataset.stage} : {})}, g,
          "登録しました。出演者とあらすじを調べています…")
-      .then(d => { if (d) { i.value = ""; waitJob(g, true); } });
+      .then(d => { if (d) { i.value = ""; delete i.dataset.stage; g.querySelector(".miss-sug")?.replaceChildren(); waitJob(g, true); } });
   } else if (b.dataset.past) {
     // **探す画面の過去の公演**（起案者の指示 2026-10-17「ボタン 2 つで入れて」「観たならば、日時を入れて
     // 観劇記録に追加できるようにして」）。観た＝観た日（と開演）を入れる欄を開き、追加でその公演に結び付ける。
@@ -2389,6 +2505,14 @@ document.addEventListener("click", ev => {
     sugWeb();
   } else if (b.dataset.registerSearch) {
     registerSearchDialog(b);
+  } else if (b.dataset.pick && b.closest(".miss-add")) {
+    // 行けばよかったの題名の欄の候補を選んだら、題名を欄に入れ、その公演を指して足す（同じ題名の別の公演に取り違えない）
+    const g = b.closest(".miss-add"), r = b.closest(".sug-row"), i = g.querySelector("#miss-title");
+    clearTimeout(missTimer); ++missSeq;
+    i.value = r.dataset.title;
+    i.dataset.stage = r.dataset.stage || "";
+    g.querySelector(".miss-sug")?.replaceChildren();
+    i.focus();
   } else if (b.dataset.pick) {
     // **候補を選んだら、そのまま欄に入れる。** 打ち直させない
     const r = b.closest(".sug-row"), g = document.querySelector(".add-work");
@@ -2464,6 +2588,14 @@ document.addEventListener("click", ev => {
     if (!on) return;
     post("/api/analysis_optout", {off: on.value === "1"}, card,
       on.value === "1" ? "保存しました。分析から外します" : "保存しました").then(d => {
+      if (d) setTimeout(() => location.reload(), 700);
+    });
+  } else if (b.dataset.setNoteAi) {
+    // 感想の AI 読み取りへの同意（設定、note-ai.js）。押したときに 1 回だけ書く
+    const card = b.closest("#note-ai-setting"), on = card.querySelector('input[name="note_ai"]:checked');
+    if (!on) return;
+    post("/api/note_ai", {on: on.value === "1"}, card,
+      on.value === "1" ? "保存しました。今夜から感想を読み取ります" : "保存しました。感想を AI に送りません").then(d => {
       if (d) setTimeout(() => location.reload(), 700);
     });
   } else if (b.dataset.setPref || b.dataset.setPrefAll) {
@@ -2612,6 +2744,60 @@ document.addEventListener("click", ev => {
     const off = [...g.querySelectorAll("input[data-cast-name]")].filter(c => !c.checked).map(c => c.dataset.castName);
     post("/api/cast_seen", {work_key: b.dataset.castSave, off}, g, off.length
       ? `${off.length} 人を「観た回に出ていなかった」にしました` : "全員を「観た回に出ていた」にしました");
+  } else if (b.dataset.piecesOpen) {
+    // **作品ごとに分ける**（起案者の指示 2026-10-19、dec-split-pieces）。押したときに中身・出演者・評価の選択肢を読み、
+    // 作品ごとに作品名・評価・感想・出ていた人の欄を並べる。記録は 1 件のまま、推薦は作品ごとの評価を使う
+    const g = b.closest(".ed-pieces"), list = g.querySelector(".ed-piecel");
+    post("/api/pieces", {work_key: b.dataset.piecesOpen}, g, null).then(d => {
+      if (!d) return;
+      list.textContent = "";
+      list.dataset.work = d.work_key;
+      list.dataset.max = d.max;
+      list._cast = d.cast; list._grades = d.grades;
+      const rows = d.pieces.length ? d.pieces : [{title: "", verdict: "", note: "", cast: []}, {title: "", verdict: "", note: "", cast: []}];
+      const box = document.createElement("div");
+      box.className = "pc-rows";
+      for (const p of rows) box.append(pieceRow(list, p));
+      list.append(box);
+      const btns = document.createElement("div");
+      btns.className = "ed-btns";
+      const add = document.createElement("button"), save = document.createElement("button");
+      add.dataset.pieceAdd = "1"; add.textContent = "作品を足す";
+      save.dataset.piecesSave = "1"; save.textContent = "作品ごとの評価・感想を保存する";
+      btns.append(add, save);
+      if (d.pieces.length) {
+        const stop = document.createElement("button");
+        stop.dataset.piecesStop = "1"; stop.textContent = "分けるのをやめる";
+        btns.append(stop);
+      }
+      list.append(btns);
+      b.hidden = true;
+    });
+  } else if (b.dataset.pieceAdd) {
+    const list = b.closest(".ed-piecel"), box = list.querySelector(".pc-rows");
+    if (box.children.length >= Number(list.dataset.max || 20)) { b.closest(".ed-pieces").querySelector(".said").textContent = "作品は " + list.dataset.max + " までです"; return; }
+    box.append(pieceRow(list, {title: "", verdict: "", note: "", cast: []}));
+  } else if (b.dataset.pieceDel) {
+    const box = b.closest(".pc-rows");
+    b.closest(".pc-row").remove();
+    if (!box.children.length) box.append(pieceRow(box.closest(".ed-piecel"), {title: "", verdict: "", note: "", cast: []}));
+  } else if (b.dataset.piecesSave || b.dataset.piecesStop) {
+    const g = b.closest(".ed-pieces"), list = g.querySelector(".ed-piecel"), said = g.querySelector(".said");
+    let pieces = [];
+    if (b.dataset.piecesSave) {
+      for (const r of list.querySelectorAll(".pc-row")) {
+        const title = r.querySelector("[data-pc-title]").value.trim();
+        const verdict = r.querySelector("[data-pc-verdict]").value, note = r.querySelector("[data-pc-note]").value;
+        const boxes = [...r.querySelectorAll("input[data-pc-cast]")], cast = boxes.filter(c => c.checked).map(c => c.dataset.pcCast);
+        if (!title && !verdict && !note.trim()) continue;           // 何も入れていない欄は数えない
+        if (boxes.length && !cast.length) { said.textContent = "「" + (title || "作品") + "」に出ていた人を 1 人以上選んでください"; return; }
+        pieces.push({title, verdict, note, cast: cast.length === boxes.length ? [] : cast});
+      }
+      if (pieces.length < 2) { said.textContent = "作品を 2 つ以上入れてください（分けるのをやめるときは「分けるのをやめる」）"; return; }
+    }
+    post("/api/pieces", {work_key: list.dataset.work, pieces}, g,
+      pieces.length ? pieces.length + " 作品に分けて保存しました" : "分けるのをやめました（記録は残っています）")
+      .then(d => { if (d) setTimeout(() => location.reload(), 1000); });
   } else if (b.dataset.unlink) {
     const g = b.closest(".ed-link");
     post("/api/link_stage", {work_key: b.dataset.unlink, stage_id: ""}, g,
@@ -2965,6 +3151,32 @@ function lkRender(box, rows) {
 // **手で足す欄の候補。** すでにある情報を、打っている最中に出す
 let sugTimer = null;
 let sugSeq = 0;
+
+// **行けばよかったの題名の欄も、2 文字以上打つと候補を出す**（起案者の指示 2026-10-20「行けばよかったの検索欄、探すのページと
+// 同じで2文字以上入れたら候補出るようにして」）。候補は観劇記録を追加の題名の欄と同じ（/api/suggest・sugRender）。
+// 選ぶとその公演を指して足す。打ち直したら指した公演は外す
+let missTimer = null, missSeq = 0;
+document.addEventListener("input", ev => {
+  const i = ev.target.closest && ev.target.closest("#miss-title");
+  if (!i) return;
+  delete i.dataset.stage;
+  clearTimeout(missTimer);
+  const seq = ++missSeq;
+  missTimer = setTimeout(async () => {
+    const box = i.closest(".miss-add")?.querySelector(".miss-sug");
+    if (!box) return;
+    const q = i.value.trim();
+    if (Array.from(q).length < 2) { box.replaceChildren(); return; }
+    let d;
+    try {
+      const r = await fetch(API_BASE + "/api/suggest?t=" + encodeURIComponent(T) + "&q=" + encodeURIComponent(q),
+        {headers: {"X-Taguri-Token": T}, credentials: "include"});
+      d = await r.json();
+    } catch (e) { return; }
+    if (seq !== missSeq || !box.isConnected) return;
+    sugRender(box, d.rows, "すでにある公演から選べます（" + ((d.rows || []).length) + " 件）");
+  }, 220);
+});
 
 // Native dialog supplies Escape handling, modal focus and focus restoration.
 function registerSearchDialog(trigger) {
@@ -3345,11 +3557,11 @@ function shortAddButtons(root) {
   });
 }
 
-// **評価の分布は、評価の段階ごとの件数を横棒で並べるだけにする。**
-// 起案者の指示 2026-10-19「『評価一覧』の分布で勝手に『合っていた』評価の☆の数を判定しないで。合ってるかどうかはあなたが判断しないで。
-// 私にとって★3.5は合ってなかった評価なのに、合ってる認定されている」。前は Heiberger & Robbins (2014) の発散型の積み上げ棒で、
-// 星の段階の真ん中より上を「合っていた」、下を「合わなかった」に機械的に分けていた。どの段階が合っていたかは本人の尺度なので、
-// 画面では分けず、段階ごとの件数を同じ目盛り（0 から）の横棒で並べる（Cleveland & McGill 1984: 共通の目盛りの上の位置・長さで読む）
+// **評価の分布は、1 本の横向きの 100% 積み上げ帯にする。**
+// 起案者の指示 2026-10-20「評価一覧の分布、横向きの１００％積み上げ帯グラフにして」。全体のうち各段階が占める割合を 1 本の帯で見る。
+// 2026-10-19 の指示（「合っていた」を判定しない）は守る: 帯は「合っていた／合わなかった」の 2 色に分けず、段階の順（低い段階が左）に
+// 1 色の濃淡で塗る。評価でない行（未評価）は灰色の斜線。
+// 帯の中には、幅が足りる段階（9% 以上）だけ割合を書き、段階の名前と件数は下の凡例に書く（帯の中に名前まで書くと、狭い段階で切れる）。数字は「数字で見る」の表にもある
 function divergeVerdicts(root) {
   root.querySelectorAll(".card .dbar").forEach(bar => {
     const card = bar.closest(".card");
@@ -3363,11 +3575,24 @@ function divergeVerdicts(root) {
     });
     if (!rows.length) return;
     card.dataset.diverged = "1";
-    const max = Math.max(...rows.map(r => r[1])), all = rows.reduce((t, r) => t + r[1], 0);
-    const html = '<div class="vdist" role="img" aria-label="' + E(rows.map(([g, v]) => g + " " + v + " 件").join("、")) + '">'
-      + rows.map(([g, v]) => '<div class="vd-row"><span class="vd-g">' + E(g) + '</span><span class="vd-bar"><i style="width:'
-        + (v / max * 100).toFixed(2) + '%"></i></span><span class="vd-n">' + v + " 件<small>（" + Math.round(v / all * 100) + "%）</small></span></div>").join("")
-      + "</div>";
+    const all = rows.reduce((t, r) => t + r[1], 0);
+    const graded = rows.filter(([g]) => g !== "未評価").length;
+    let k = 0;
+    // 左がいちばん低い段階、右がいちばん高い段階（起案者の指示 2026-10-20「左が一番評価低くて一番右が評価高いで統一して」）。
+    // 表は高い段階から並ぶので、評価の段階を逆にし、評価でない「未評価」はいちばん左に置く（右端はいちばん高い段階のまま）
+    const segs = [...rows.filter(([g]) => g === "未評価"), ...rows.filter(([g]) => g !== "未評価").reverse()].map(([g, v]) => {
+      const p = v / all * 100, none = g === "未評価";
+      // 濃さ: 最も低い段階（左）を 28%、最も高い段階（右）を 100% にし、そのあいだを等分する（段階が 1 つなら 100%）
+      const shade = none ? 0 : graded > 1 ? Math.round(28 + 72 * (k++) / (graded - 1)) : (k++, 100);
+      return {g, v, p, none, shade};
+    });
+    const pctText = p => (p < 1 ? "1%未満" : Math.round(p) + "%");
+    const html = '<div class="vstack" role="img" aria-label="' + E("評価の割合: " + segs.map(x => x.g + " " + pctText(x.p)).join("、")) + '">'
+      + '<div class="vs-bar">' + segs.map(x => '<span class="vs-seg' + (x.none ? " none" : "") + (x.shade >= 60 ? " dark" : "") + '" style="width:'
+        + x.p.toFixed(2) + "%" + (x.none ? "" : ";--vs-shade:" + x.shade + "%") + '" title="' + E(x.g + " " + x.v + " 件（" + pctText(x.p) + "）") + '">'
+        + (x.p >= 9 ? '<span class="vs-in">' + pctText(x.p) + "</span>" : "") + "</span>").join("") + "</div>"
+      + '<ul class="vs-leg">' + segs.map(x => '<li><i class="vs-sw' + (x.none ? " none" : "") + '"' + (x.none ? "" : ' style="--vs-shade:' + x.shade + '%"')
+        + "></i>" + E(x.g) + ' <b>' + x.v + "</b> 件<small>（" + pctText(x.p) + "）</small></li>").join("") + "</ul></div>";
     bar.insertAdjacentHTML("afterend", html);
     bar.remove();
   });
@@ -3677,6 +3902,53 @@ document.addEventListener("click", ev => {
   if (pen) pen.click();
 });
 
+// **X のポストの URL を貼ると、その本文を感想に入れる**（起案者の指示 2026-10-21「Xと連携して、ツイートを感想として
+// 紐付けられると便利そう」「リンク貼る方式にしましょう」）。本文は Worker が X の埋め込み用の口（oEmbed、無料・鍵なし）で
+// 読む（/api/x_post、cloudflare/src/x-post.js）。感想の最後の行に「[X 日付] URL」を残し、画面ではそれを
+// 「日付 の X のポストから · X で見る ↗」の行にする。読めなかったときは URL をそのまま入れる
+const X_POST_URL = /^https?:\/\/(?:www\.|mobile\.)?(?:x|twitter)\.com\/[A-Za-z0-9_]{1,15}\/status(?:es)?\/\d{1,25}(?:[/?#]\S*)?$/;
+const X_MARK_LINE = /\n*\[X (?:\d{4}-\d{2}-\d{2})?\] https:\/\/x\.com\/[A-Za-z0-9_]{1,15}\/status\/\d{1,25}\s*$/;
+function insertAtCaret(el, text) {
+  el.focus();
+  let ok = false;
+  try { ok = document.execCommand("insertText", false, text); } catch (e) {}
+  if (ok) return;
+  if ("value" in el) {
+    const a = el.selectionStart ?? el.value.length, b = el.selectionEnd ?? a;
+    el.value = el.value.slice(0, a) + text + el.value.slice(b);
+  } else el.textContent += text;
+}
+async function pasteXPost(ev, el, said, onMark) {
+  const text = ((ev.clipboardData && ev.clipboardData.getData("text/plain")) || "").trim();
+  if (!X_POST_URL.test(text)) return;
+  ev.preventDefault();
+  if (said) said.textContent = "X のポストを読んでいます…";
+  let d;
+  try {
+    const r = await fetch("/api/x_post?url=" + encodeURIComponent(text), {credentials: "same-origin"});
+    d = await r.json().catch(() => ({}));
+    if (!r.ok || !d.ok) throw new Error(d.error || "このポストは読めませんでした。");
+  } catch (e) {
+    if (said) said.textContent = e.message;
+    insertAtCaret(el, text);
+    return;
+  }
+  insertAtCaret(el, d.text);
+  onMark(d.mark);
+  if (said) said.textContent = "X のポストの文を入れました。離れると保存します。";
+}
+// 出どころの行（row.xSource と同じ形）を、感想の行（.inr）の中に出し直す。m が空なら外す
+function showXSource(row, m) {
+  let x = row.querySelector(":scope > .xsrc");
+  const g = /^\[X (\d{4}-\d{2}-\d{2})?\] (\S+)$/.exec(m || "");
+  if (!g) { if (x) x.remove(); return; }
+  if (!x) { x = document.createElement("span"); x.className = "xsrc"; (row.querySelector(":scope > .said") || row.appendChild(document.createTextNode(""))).before(x); }
+  x.textContent = (g[1] ? g[1].replaceAll("-", "/") + " の " : "") + "X のポストから · ";
+  const a = document.createElement("a");
+  a.href = g[2]; a.target = "_blank"; a.rel = "noopener noreferrer"; a.textContent = "X で見る ↗";
+  x.append(a);
+}
+
 // **書いてある文を、その場で書き直せる欄にする。** 下に入力欄を開くのではなく、読んでいた文の上で
 // そのまま書く。離れたら（または「書き終える」を押したら）保存し、Esc で元に戻す。保存は今までと
 // 同じ口（感想は /api/note、回のメモは /api/visit_note）。隠れている textarea も同じ値にそろえておく
@@ -3685,7 +3957,11 @@ function editInPlace(btn, el, ta, row, path, bodyOf, okMsg) {
   // 「書き終える」を押すと、先に文から離れた（blur）ことで保存が済む。そのあとに届く押下で
   // また書き始めないようにする
   if (btn._finishedAt && Date.now() - btn._finishedAt < 600) return;
-  const before = el.textContent;
+  const before = el.textContent, xsrc0 = el.dataset.xsrc || "";
+  // 文と、X のポストから取り込んだときの出どころの行（data-xsrc）を合わせたものが保存する感想になる
+  const full = () => { const b = el.textContent.trim(); return b && el.dataset.xsrc ? b + "\n\n" + el.dataset.xsrc : b; };
+  const onPaste = ev => pasteXPost(ev, el, row.querySelector(":scope > .said"), m => { el.dataset.xsrc = m; showXSource(row, m); });
+  if (path === "/api/note") el.addEventListener("paste", onPaste);
   try { el.contentEditable = "plaintext-only"; } catch (e) {}
   if (!el.isContentEditable) el.contentEditable = "true";
   el.setAttribute("role", "textbox");
@@ -3700,22 +3976,30 @@ function editInPlace(btn, el, ta, row, path, bodyOf, okMsg) {
   const finish = save => {
     el.removeEventListener("blur", onBlur);
     el.removeEventListener("keydown", onKey);
+    el.removeEventListener("paste", onPaste);
     el.removeAttribute("contenteditable");
     el.removeAttribute("role");
     el.removeAttribute("aria-multiline");
     setPen(btn, false);
-    const text = el.textContent.trim();
+    const body = el.textContent.trim(), text = full();
+    const was = before.trim() && xsrc0 ? before.trim() + "\n\n" + xsrc0 : before.trim();
     // 前に保存できなかった文（unsaved）は、書き直さずに離れても送り直す（#83）
-    if (!save || (text === before.trim() && !el.dataset.unsaved)) { el.textContent = before; return; }
-    el.textContent = text;
+    if (!save || (text === was && !el.dataset.unsaved)) {
+      el.textContent = before;
+      if (xsrc0) el.dataset.xsrc = xsrc0; else delete el.dataset.xsrc;
+      showXSource(row, xsrc0);
+      return;
+    }
+    el.textContent = body;
+    if (!body) { delete el.dataset.xsrc; showXSource(row, ""); }
     if (ta) ta.value = text;
     if (!live) return;
     // 送るのは隠れている欄と同じ順番待ち（#84）。失敗しても文は巻き戻さない ── 巻き戻すと、
     // 返ってくるまでに書いた新しい文まで消える。保存できなかった印だけ付けておく
     const holder = ta || el;
-    if (holder.dataset.was === undefined) holder.dataset.was = before.trim();
+    if (holder.dataset.was === undefined) holder.dataset.was = was;
     saveQueued(holder, text, row, t => post(path, bodyOf({dataset: ta ? ta.dataset : {}, value: t}), row, okMsg).then(d => {
-      if (d && el.textContent.trim() === t) delete el.dataset.unsaved;
+      if (d && full() === t) delete el.dataset.unsaved;
       if (!d) el.dataset.unsaved = "1";
       return d;
     }));
@@ -3977,6 +4261,8 @@ root.querySelectorAll("textarea[data-note]").forEach(t => {
   if (t.dataset.bound) return;
   t.dataset.bound = "1";
   t.dataset.was = t.value;
+  t.addEventListener("paste", ev => pasteXPost(ev, t, (t.closest(".inote, .wnote, .wait, .rec-row") || document).querySelector(".said"),
+    m => { t.value = t.value.replace(X_MARK_LINE, "").trimEnd() + "\n\n" + m; }));
   t.addEventListener("blur", () => {
     if (!live) return;
     // **保存できたことを、書いた欄のそばに出す。** `.rec-row` しか見ていなかったため、
@@ -4984,4 +5270,102 @@ document.addEventListener("click", async ev => {
   // ログインの画面がメールのリンク用に控えたアドレスなども消す（#132、cloudflare/src/client/login.js）
   if (d) try { for (const k of ["taguri_login_email", "taguri_login_agree", "taguri_login_intent", "taguri_login_saved_at"]) localStorage.removeItem(k); } catch {}
   if (d) location.href = "/login";
+});
+
+// **共有リンク**（起案者の指示 2026-10-21「共有できるようにしたい。公演単体か、または指定のページをパブリックで公開するか選べるように」、
+// cloudflare/src/share.js、dec-share-links）。「共有」を押すと、評価・感想・名前を出すかを選ぶ小窓を開き、リンクを作る。
+// リンクを知っている人はログインなしで見られる（検索エンジンには載らない）。設定の「共有中のリンク」から取り消せる
+const SHARE_HEAD = {stage: "この公演を共有する", works: "観劇記録の一覧を共有する", records: "眺めるを共有する",
+  favourites: "お気に入りを共有する", chronicle: "観劇史年表を共有する"};
+function shareDialog() {
+  let d = document.getElementById("share-dlg");
+  if (!d) {
+    d = document.createElement("dialog");
+    d.id = "share-dlg";
+    d.className = "share-dlg";
+    document.body.appendChild(d);
+  }
+  return d;
+}
+// 日記帳の共有の押し口（ページと、各行の「観ました」）。日記帳の HTML は Python 版と同じ形に保つので（screens.test.js）、
+// 押し口はここで足す。行は記録の鍵（data-work）で送り、公演に結び付いていない記録はサーバーが断る
+const SHARE_ICON_SVG = '<svg class="ico" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" '
+  + 'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V4M8 8l4-4 4 4M5 13v6h14v-6"/></svg>';
+function fixupShare(el, path) {
+  if (EDITION.edition !== "service" || path !== "/records/works") return;
+  const h1 = el.querySelector("h1");
+  if (h1 && !el.querySelector('[data-share-kind="works"]')) {
+    h1.insertAdjacentHTML("beforeend", '<button type="button" class="share-open share-page-btn" data-share-kind="works" aria-label="このページを共有" title="このページを共有">'
+      + SHARE_ICON_SVG + "</button>");
+  }
+  el.querySelectorAll("article.rec-row").forEach(a => {
+    const key = a.querySelector("[data-work]");
+    if (!key || a.querySelector("[data-share-kind]")) return;
+    a.insertAdjacentHTML("beforeend", '<button type="button" class="share-open" data-share-kind="stage" data-share-label="watched" data-share-work="'
+      + E(key.dataset.work) + '" aria-label="この公演を共有" title="共有">' + SHARE_ICON_SVG + "</button>");
+  });
+}
+function openShare(btn) {
+  const kind = btn.dataset.shareKind, label = btn.dataset.shareLabel || "";
+  // 評価・感想を出せるのは、記録のあるもの（購入済・興味ありのカードと、お気に入りには無い）
+  const record = kind !== "favourites" && !(kind === "stage" && label !== "watched");
+  const box = (k, text) => '<label class="share-opt"><input type="checkbox" data-share-opt="' + k + '"> ' + E(text) + "</label>";
+  const d = shareDialog();
+  d.dataset.kind = kind;
+  d.dataset.stage = btn.dataset.shareStage || "";
+  d.dataset.work = btn.dataset.shareWork || "";
+  d.dataset.label = label;
+  d.innerHTML = "<h2>" + E(SHARE_HEAD[kind] || "共有する") + "</h2>"
+    + '<p class="share-lead">リンクを知っている人は、ログインしなくても見られます。検索エンジンには載りません。あとで設定の「共有中のリンク」から取り消せます。</p>'
+    + '<fieldset class="share-opts"><legend>いっしょに出すもの（選ばなければ出しません）</legend>'
+    + (record ? box("verdict", "評価") + box("note", "感想") : "") + box("name", "表示名とアイコン") + "</fieldset>"
+    + '<div class="share-out" hidden><input class="share-url" readonly aria-label="共有のリンク">'
+    + '<button type="button" data-share-copy-out="1">コピー</button>'
+    + (navigator.share ? '<button type="button" data-share-send="1">ほかのアプリで送る</button>' : "") + "</div>"
+    + '<div class="share-foot"><button type="button" class="primary" data-share-make="1">リンクを作る</button>'
+    + '<button type="button" data-share-close="1">閉じる</button><span class="said"></span></div>';
+  d.showModal();
+}
+async function copyText(text, said) {
+  try { await navigator.clipboard.writeText(text); if (said) said.textContent = "コピーしました"; }
+  catch (e) { if (said) said.textContent = "コピーできませんでした。リンクを長押ししてコピーしてください"; }
+}
+document.addEventListener("click", async ev => {
+  const t = ev.target.closest ? ev.target : null;
+  if (!t) return;
+  const open = t.closest("[data-share-kind]");
+  if (open) { ev.preventDefault(); openShare(open); return; }
+  const d = t.closest("#share-dlg");
+  if (d && t.closest("[data-share-close]")) { d.close(); return; }
+  if (d && t.closest("[data-share-make]")) {
+    const opt = k => !!d.querySelector('[data-share-opt="' + k + '"]:checked');
+    const body = {action: "create", kind: d.dataset.kind, stage_id: d.dataset.stage, work_key: d.dataset.work, label: d.dataset.label,
+      verdict: opt("verdict"), note: opt("note"), name: opt("name")};
+    const r = await post("/api/share", body, d.querySelector(".share-foot"), null);
+    if (!r || !r.path) return;
+    const url = location.origin + r.path;
+    const out = d.querySelector(".share-out");
+    out.hidden = false;
+    out.querySelector(".share-url").value = url;
+    d.querySelector("[data-share-make]").hidden = true;
+    d.querySelectorAll("[data-share-opt]").forEach(x => { x.disabled = true; });
+    d.querySelector(".said").textContent = r.said || "リンクを作りました";
+    markMutated();
+    return;
+  }
+  if (d && t.closest("[data-share-copy-out]")) { await copyText(d.querySelector(".share-url").value, d.querySelector(".said")); return; }
+  if (d && t.closest("[data-share-send]")) {
+    try { await navigator.share({title: "たぐり", url: d.querySelector(".share-url").value}); } catch (e) { /* 送るのをやめた */ }
+    return;
+  }
+  const copy = t.closest("[data-share-copy]");
+  if (copy) { await copyText(location.origin + copy.dataset.shareCopy, copy.parentElement.querySelector(".said")); return; }
+  const rev = t.closest("[data-share-revoke]");
+  if (rev) {
+    if (!confirm("このリンクを取り消しますか？ 取り消すと、このリンクはもう開けません")) return;
+    const li = rev.closest("li");
+    const r = await post("/api/share", {action: "revoke", token: rev.dataset.shareRevoke}, li, "取り消しました");
+    if (r && li) { li.classList.add("gone"); rev.disabled = true; }
+    if (r) markMutated();
+  }
 });

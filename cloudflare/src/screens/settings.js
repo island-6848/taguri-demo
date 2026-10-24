@@ -5,6 +5,7 @@
 // the Python text speaks of the Render server: the アカウント card (recovery codes on Render)
 // points to the account page, the mail import is the owner's only, and 「観ればよかった」 is
 // looked up in the stages already in D1 instead of fetching the web.
+import {sharesCardHtml} from '../share.js';
 import {registerDialogHtml} from './register-dialog.js';
 import {scaleOf, scaleCardHtml, SCALE_LABEL, frac} from './grade.js';
 import {FAV_SEED_W} from '../recommend.js';
@@ -13,12 +14,13 @@ import {E, ValueError} from './py.js';
 import {ico, h2} from './icons.js';
 import {PREFS, readPrefSetting, regionsHtml, regionCounts, prefSettingAction} from './prefs.js';
 import {rankedGroups, prefCounts} from './recommend.js';
-import {KINDS, loadDeclared, favRoleBox, reactionsOf} from './lists.js';
+import {KINDS, loadDeclared, favRoleBox, reactionsOf, loadDeclined, loadKindOff, reasonOffCardHtml} from './lists.js';
 import {stageInfo} from './fallback.js';
 import {loadWorks, titleKey, DROP_KEEP_DAYS, expiredKeys} from './works.js';
 import {dateParts} from './row.js';
 import {splitNames} from './cast.js';
 import {optedOut, optoutCardHtml, optoutAction} from './evalrec.js';
+import {consented, consentCardHtml, consentAction} from '../note-ai.js';
 
 const cardH2 = (name, text, extra = '') => `<summary>${h2(name, text, extra)}</summary>`;
 
@@ -78,18 +80,19 @@ ${body}</details>`;
 const EXPORT_LABEL = {works: '観た公演の記録（作品ごと）', ratings: '観た回ごとの評価と感想', attendance: '観に行ったかどうかの答え',
   reaction: 'おすすめへの答え（持っている・興味あり・興味なし）', ticket: '券の日にち', presented: 'これまでに表示したおすすめの一覧',
   splits: '1 通のメールを複数の公演に分けた指定', excluded: '取り込みから外した公演', missed: '「行けばよかった」の登録', declared: 'お気に入りに登録した名前と題材',
-  hand_credits: '手で入れた出演・スタッフとポスター', merges: '1 つにまとめた記録', visit_note: '観た回ごとのメモ',
+  hand_credits: '手で入れた出演・スタッフとポスター', work_piece: '作品ごとに分けた評価と感想', merges: '1 つにまとめた記録', visit_note: '観た回ごとのメモ',
   rank_weight: 'おすすめの選び方（効かせ方）', favourites: 'お気に入り（以前の登録）', settings: '設定（評価の付け方・都道府県・表示名など）',
   search_request: '探した言葉', fix_request: '公演情報の誤りの知らせ', records: '以前の形式の観劇記録', reactions: '以前の形式のおすすめへの答え'};
-// 書き出しの形の版（#192）。鍵を足す・意味を変えるときに上げる。1: 本人の私的な表をすべて入れた最初の版
-export const EXPORT_SCHEMA_VERSION = 1;
+// 書き出しの形の版（#192）。鍵を足す・意味を変えるときに上げる。1: 本人の私的な表をすべて入れた最初の版。
+// 2: 作品ごとに分けた評価と感想（work_piece）を足した（dec-split-pieces）
+export const EXPORT_SCHEMA_VERSION = 2;
 // 本人の行を user_id でそのまま持ち出す表（Python 版と同じ鍵の表と、サービス版で足した表）。
 // 入れないもの: sessions・passkeys・webauthn_challenges・users（ログインの秘密: セッション・復旧コード・パスキー・
 // Firebase UID）と rec_cache（ほかの表から作り直せる計算の控え）。fix_request は運用者のメモ（note・mailed）を除く。
 // rec_shown・viewed（おすすめに出した・開いた公演の計測の控え）も入れない。issue #192 は計測用の表の扱いを
 // 別に決めるとしているので、本人が付けた記録だけにした
 const EXPORT_TABLES = ['works', 'reaction', 'ticket', 'excluded', 'missed', 'hand_credits', 'merges', 'visit_note', 'rank_weight',
-  'favourites', 'search_request', 'records', 'reactions'];
+  'favourites', 'search_request', 'records', 'reactions', 'work_piece'];
 const EXPORT_SQL = {settings: 'SELECT key, value, updated_at FROM app_setting WHERE user_id=?',
   fix_request: 'SELECT id, stage_id, kind, message, created_at, status, resolved_at FROM fix_request WHERE user_id=?'};
 
@@ -172,7 +175,7 @@ export async function settingsScreen(_params, ctx) {
 <b>いくつでも同時に選べます。</b><br>
 <b>すでに「興味あり」を押した公演・お気に入り・買った券には影響しません。</b>
 一度決めたことを、この設定で見えなくすることはありません。</p>
-<form class="pfil" id="pref-setting" onsubmit="return false">
+<form class="pfil" id="pref-setting" data-nosubmit>
 ${regionsHtml(counts, rcounts, true)}
 <div class="pchips">${chips}</div>
 <div class="pfoot"><button type="button" data-set-pref="1">${ico('gear')}この都道府県を既定にする</button>
@@ -183,6 +186,12 @@ ${await (async () => { const sc = await scaleOf(ctx); return scaleCardHtml(sc, c
 <details class="card">${cardH2('gear', 'アカウント')}
 <p class="lead">表示名・ログインの方法・パスキー・ログアウト・アカウントの削除は、<a href="/account">アカウント</a>の画面にまとめてあります。</p></details>
 ${await (async () => { const off = await optedOut(ctx); return optoutCardHtml(off, cardH2('gear', '推薦の改善の分析', `<span class="badge part">いまは${off ? '分析に使わない' : '分析に使ってよい'}</span>`)); })()}
+${await (async () => { const on = await consented(ctx); return consentCardHtml(on, cardH2('gear', '感想の AI 読み取り', `<span class="badge part">いまは${on ? '同意している' : '同意していない'}</span>`)); })()}
+${await (async () => {
+  const [words, kinds] = await Promise.all([loadDeclined(ctx), loadKindOff(ctx)]);
+  return reasonOffCardHtml(words, kinds, n => cardH2('flag', '外したおすすめ理由', n ? `<span class="badge part">${n} 件</span>` : ''));
+})()}
+${await sharesCardHtml(ctx)}
 ${await exportCardHtml(ctx)}
 ${droppedHtml(await droppedRows(ctx))}
 ${skippedHtml(works.filter(w => w.unseen))}`;
@@ -229,7 +238,7 @@ export async function startScreen(_params, ctx) {
   const step1 = stepCard(1, `見逃したくない名前を登録する（いま ${nDec} 件）`, nDec > 0,
     '劇団・俳優・演出家・作品・原作者・題材のどれでも登録できます。<b>登録した名前の公演は、内容を問わず、件数の制限も付けずに「お気に入り」に出します。</b>1 件登録するだけで動き始めます。<br>あとから「おすすめ ▸ お気に入り」で足すことも外すこともできます。', form);
   const step2 = stepCard(2, '公演の情報を取り寄せる', nCand > 0, nCand > 0
-    ? `手元にこれから観られる公演を ${nCand} 件持っています。毎日取り直しています。`
+    ? `手元に今後の公演を ${nCand} 件持っています。毎日取り直しています。`
     : 'まだ公演の情報が届いていません。毎日の取得のあとに、ここに件数が出ます。');
   const rateLink = nWait
     ? `<a href="/rate/unrated?t=__TAGURI_TOKEN__">未評価の記録（いま ${nWait} 件）</a>で ${E(words.marks)} を付けてください`
@@ -259,7 +268,7 @@ export async function startScreen(_params, ctx) {
     foot = '<p class="lede">ナビゲーションから、各画面を先に見ることもできます。<b>どの画面もまだ0件です。</b></p>';
   }
   const body = `<h1>${h1}</h1>
-<p class="lede">たぐりは<b>これから観られる公演の中から、見逃したくない舞台を毎週届けるアプリ</b>です。${lede}</p>
+<p class="lede">たぐりは<b>今後の公演の中から、見逃したくない舞台を毎週届けるアプリ</b>です。${lede}</p>
 ${doneLine}
 ${step1}
 ${step2}
@@ -419,7 +428,8 @@ export async function registerScreen(_params, ctx) {
 <p class="lead">行きたかったのに行けなかった公演です。<b>「興味あり」にしたまま購入済みにならずに終わった公演は、自動でここに入ります。</b>
 ほかの公演は題名で足せます（探す画面の過去の公演からも足せます）。観た本数・評価には入りません。</p>
 <div class="miss-add"><label class="fld" for="miss-title"><span class="fl">公演の題名<small class="req">必須</small></span><input id="miss-title" type="text" placeholder="例：夜の果て" size="30"></label>
- <button data-miss="1">${ico('flag')}足す</button><span class="said"></span></div>
+ <button data-miss="1">${ico('flag')}足す</button><span class="said"></span>
+<div class="miss-sug sug" aria-live="polite"></div></div>
 ${missedHtml(missed, autoMiss)}</details>
 
 ${registerDialogHtml()}
@@ -465,7 +475,7 @@ async function missedAction(b, ctx) {
 
 export const settingsScreens = {
   screens: {settings: settingsScreen, start: startScreen, register: registerScreen},
-  actions: {pref_setting: prefSettingAction, missed: missedAction, analysis_optout: optoutAction},
+  actions: {pref_setting: prefSettingAction, missed: missedAction, analysis_optout: optoutAction, note_ai: consentAction},
 };
 
 

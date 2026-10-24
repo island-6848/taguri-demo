@@ -1,0 +1,81 @@
+# たぐりの Android アプリ（TWA）を組む（plan-app-release、impl-android-twa）。この環境（手元の Claude）からは Google の配布元に
+# つながらないので、Android SDK の入った GitHub の Ubuntu で組む。公開リポジトリの標準の実行環境は無料〔github-actions-public-free〕。
+# 手で動かす（Actions → Android → Run workflow）か、android/ を変えて master に押したときに動く。
+# 出すもの: 確かめ用の debug APK（端末に直接入れられる）と、Play に上げる release の AAB。
+# 署名（アップロード鍵）は Secrets から渡す。無いときは release を署名せずに作る（Play には上げられない）。鍵や合言葉をログに出さない
+name: Android
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_code:
+        description: "出すたびに 1 ずつ上げる番号（Play は同じ番号を受け付けない）"
+        required: true
+        default: "1"
+      version_name:
+        description: "見せる版の名前"
+        required: true
+        default: "1.0.0"
+  push:
+    branches: ["master"]
+    paths: ["android/**", ".github/workflows/android.yml", "cloudflare/src/app-links.js"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Upload key (from Secrets, if set)
+        env:
+          KEYSTORE_B64: ${{ secrets.TAGURI_UPLOAD_KEYSTORE_B64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/upload.jks"
+            echo "TAGURI_KEYSTORE_FILE=$RUNNER_TEMP/upload.jks" >> "$GITHUB_ENV"
+            echo "署名する（アップロード鍵あり）"
+          else
+            echo "アップロード鍵が Secrets に無いので、release は署名しない"
+          fi
+      - name: Build
+        working-directory: android
+        env:
+          TAGURI_KEYSTORE_PASSWORD: ${{ secrets.TAGURI_UPLOAD_KEYSTORE_PASSWORD }}
+          TAGURI_KEY_ALIAS: ${{ secrets.TAGURI_UPLOAD_KEY_ALIAS }}
+          TAGURI_KEY_PASSWORD: ${{ secrets.TAGURI_UPLOAD_KEY_PASSWORD }}
+          TAGURI_VERSION_CODE: ${{ inputs.version_code || '1' }}
+          TAGURI_VERSION_NAME: ${{ inputs.version_name || '1.0.0' }}
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon :app:assembleDebug :app:bundleRelease
+      - name: Signing fingerprint
+        # 指紋は秘密ではない。cloudflare/src/app-links.js の ANDROID_FINGERPRINTS に無いと、アプリに URL と ✕ の帯が出る
+        run: |
+          apk=$(ls android/app/build/outputs/apk/debug/*.apk | head -1)
+          fp=$(keytool -printcert -jarfile "$apk" | grep -m1 'SHA256:' | awk '{print $2}')
+          echo "debug APK の署名の指紋: $fp"
+          echo "### 署名の指紋（SHA-256）" >> "$GITHUB_STEP_SUMMARY"
+          echo "\`$fp\`" >> "$GITHUB_STEP_SUMMARY"
+          if grep -q "$fp" cloudflare/src/app-links.js; then
+            echo "サイトの assetlinks.json に載っている → 帯なしの全画面で開く" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "サイトの assetlinks.json に**載っていない** → アプリに URL と ✕ の帯が出る（アップロード鍵を Secrets に入れたか確かめる）" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: taguri-android-${{ github.run_number }}
+          path: |
+            android/app/build/outputs/apk/debug/*.apk
+            android/app/build/outputs/bundle/release/*.aab
+          retention-days: 14

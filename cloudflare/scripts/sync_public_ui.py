@@ -16,12 +16,14 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 WEB, PUBLIC = ROOT / "web", ROOT / "cloudflare" / "public"
-COPIED = ("tour.js", "style.css", "tour.css", "theme.css", "fonts.css", "halfwidth.js", "recommendation-exposure.js",
+COPIED = ("tour.js", "prefetch.js", "storyline-draw.js", "style.css", "tour.css", "theme.css", "fonts.css", "halfwidth.js", "recommendation-exposure.js",
           "assets/fonts/OFL-ZenKakuGothicAntique.txt", "assets/fonts/OFL-SawarabiGothic.txt", "assets/fonts/OFL-ZenMaruGothic.txt",
           "assets/fonts/OFL-ZenKakuGothicNew.txt")
 # Self-hosted title font (SIL OFL, subset to the page titles). Copied byte for byte.
 BINARY = ("assets/fonts/zkga-title.woff2",
-          "assets/logo/apple-touch-icon.png")   # ホーム画面のアイコン（docs/design/logo/make_type.py）
+          "assets/logo/apple-touch-icon.png",   # ホーム画面のアイコン（docs/design/logo/make_type.py）
+          # アプリのアイコン（manifest。docs/design/logo/make_app_icons.mjs、impl-pwa-base）
+          "assets/logo/icon-192.png", "assets/logo/icon-512.png", "assets/logo/icon-maskable-512.png")
 # 押すものと公演名の文字（さわらびゴシック Regular、SIL OFL）。文字の範囲ごとのファイルを丸ごと写す
 BINARY += tuple("assets/fonts/sawarabi-gothic/" + p.name for p in sorted((WEB / "assets/fonts/sawarabi-gothic").glob("*.woff2")))
 # おすすめ理由の丸枠の字（Zen丸ゴシック Bold、SIL OFL。起案者の指示 2026-10-18）
@@ -34,7 +36,8 @@ def expected() -> dict[str, str | bytes]:
     out: dict[str, str | bytes] = {name: (WEB / name).read_text(encoding="utf-8") for name in COPIED}
     out.update({name: (WEB / name).read_bytes() for name in BINARY})
     app = (WEB / "app.js").read_text(encoding="utf-8")
-    out["app.js"] = app.replace('"/taguri-demo/vendor/d3.v7.min.js"', '"/vendor/d3.v7.min.js"')
+    out["app.js"] = app.replace('"/taguri-demo/vendor/d3.v7.min.js"', '"/vendor/d3.v7.min.js"').replace(
+        '"/taguri-demo/storyline-draw.js"', '"/storyline-draw.js"')
     html = (WEB / "index.html").read_text(encoding="utf-8")
     html = html.replace('src="/taguri-demo/', 'src="/').replace('href="/taguri-demo/', 'href="/')
     out["index.html"] = html.replace("URL(例: /taguri-demo/recommend/reminder)", "URL(例: /recommend/reminder)")

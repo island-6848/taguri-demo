@@ -1,7 +1,7 @@
 ---
 id: q-original-ui-csp
 type: question
-status: open
+status: answered
 date: 2026-10-13
 title: 元の画面の Content-Security-Policy を強められるか
 sources:

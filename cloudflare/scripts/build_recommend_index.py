@@ -137,8 +137,10 @@ def build_index(pool: dict[str, dict], fields_by_stage: dict[str, dict], role_gr
         own = {tag for axis, tag in tags if axis == THEME_AXIS}
         tags += [(THEME_AXIS, w) for w, _ in terms if w not in own]
         tw = dict(terms)
-        stages[sid] = {"title": title, "tkey": M.R.title_key(title), "grp": entry.get("group") or "",
-                       "tour": UR.tour_key(title, entry.get("group") or "", credits),
+        # 題名は冠名・サブタイトルを含めて出し、照合の鍵とツアーのまとめはタイトルだけで作る（dec-title-crown-subtitle）
+        main = entry.get("title_main") or title
+        stages[sid] = {"title": title, "tkey": M.R.title_key(main), "grp": entry.get("group") or "",
+                       "tour": UR.tour_key(main, entry.get("group") or "", credits),
                        "gkey": RC.nz(entry.get("group") or ""),
                        "start": RC.period_start(period), "end": _period_end(period),
                        "credits": [list(c) for c in credits],
@@ -146,8 +148,10 @@ def build_index(pool: dict[str, dict], fields_by_stage: dict[str, dict], role_gr
         for role, person in credits:
             postings.append((role, person, sid, RC.ROLE_W.get(role, RC.BACKSTAGE_W),
                              role_group(role)))
+        # 朗読劇とほかの形式を兼ねる公演は、朗読劇 6・ほかの形式 4 の重さ（UR.kind_shares、dec-reading-dual-form）
+        shares = UR.kind_shares(tags)
         for axis, tag in tags:
-            x = tw.get(tag, 1.0) if axis == THEME_AXIS else 1.0
+            x = tw.get(tag, 1.0) if axis == THEME_AXIS else shares.get((axis, tag), 1.0)
             postings.append((axis, tag, sid, round(UR.GENRE_W * x, 6), "theme"))
     people = {}
     for sid, f in fields_by_stage.items():
@@ -614,7 +618,7 @@ def _stage_of(table: str, key: str) -> str:
 
 
 def diff_sql(index: dict, prev: dict, onboarding: list[str] | None = None,
-             limit: int | None = None) -> tuple[list[str], dict, dict]:
+             limit: int | None = None, today: str | None = None) -> tuple[list[str], dict, dict]:
     """(statements, hashes to keep for next time, counts). prev: table -> {key: hash} from last delivery.
 
     limit: at most this many rows changed or deleted in one delivery (the day's D1 write budget). When the
@@ -671,6 +675,8 @@ def diff_sql(index: dict, prev: dict, onboarding: list[str] | None = None,
         counts["deleted"] += len(gone)
         if table == "rec_stage":
             counts["stages_upserted"] = len(upsert) + len(gone)
+    if today:
+        hashes.update(seen_dates(hashes, prev, today))
     rev = version_of(index)
     # 途中まで入れた日は、控えを捨てる合図を「版-残り件数」にする（全部入ってから版そのものにする）
     shown = rev if not counts["left"] else f"{rev}-left{counts['left']}"
@@ -681,6 +687,26 @@ def diff_sql(index: dict, prev: dict, onboarding: list[str] | None = None,
     stmts.append(f"INSERT INTO rec_meta(k,v) VALUES('current',{_q(LIVE)}) ON CONFLICT(k) DO UPDATE SET v=excluded.v;")
     counts["rev"] = rev
     return stmts, hashes, counts
+
+
+# ---------------------------------------------------------------- 載った日（#72）
+# 再生（replay_eval）は今日の索引で過去の日 t を測るので、日 t より後に載った公演が候補に入る。索引の控え（ハッシュ）と
+# いっしょに、公演ごとに [D1 に初めて入れた日, 中身（題名・日付・出演者）を最後に変えた日, 中身のハッシュ] を残す。
+# 作業データ（state ブランチの d1/index-hashes.json）に置くだけで、D1・R2 の無料枠は使わない。
+# 控えを始めた日（SEEN_SINCE）に入っていた公演は、それより前のいつ載ったか分からない。
+SEEN, SEEN_SINCE = "_seen", "_seen_since"
+
+
+def seen_dates(hashes: dict, prev: dict, today: str) -> dict:
+    """{SEEN: {stage_id: [first, changed, hash]}, SEEN_SINCE: date}. Only stages actually sent (hashes) count."""
+    old = prev.get(SEEN) or {}
+    since = prev.get(SEEN_SINCE) or today
+    seen = {}
+    for sid, h in (hashes.get("rec_stage") or {}).items():
+        content = h + (hashes.get("rec_people") or {}).get(sid, "")
+        first, changed, before = old.get(sid) or (today, today, content)
+        seen[sid] = [first, changed if before == content else today, content]
+    return {SEEN: seen, SEEN_SINCE: since}
 
 
 def gram_rows(index: dict, ver: str) -> list[tuple]:
@@ -752,7 +778,8 @@ def main() -> int:
     counts = None
     if a.hashes_out:
         prev = json.loads(a.prev_hashes.read_text(encoding="utf-8")) if a.prev_hashes and a.prev_hashes.exists() else {}
-        stmts, hashes, counts = diff_sql(index, prev, onboarding_list(index, a.today), a.max_rows)
+        stmts, hashes, counts = diff_sql(index, prev, onboarding_list(index, a.today), a.max_rows,
+                                          a.today.isoformat())
         a.hashes_out.write_text(json.dumps(hashes, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     else:
         stmts = to_sql(index, version_of(index), onboarding_list(index, a.today))
