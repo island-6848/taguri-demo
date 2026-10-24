@@ -11,6 +11,10 @@
 - [ ] **`taguri-upload.jks` と合言葉を、手元の安全な場所に保管する**（なくすと Play で鍵を替える手続きが要る）
 - [ ] Actions → Android → Run workflow で組み直し、前のアプリを消してから新しい APK を入れ直す。帯が消えたか Claude に知らせる
 
+## あらすじの読み取りを動かす（2026-10-24 追加）
+
+- [ ] **定期実行の環境から taguri-crawler に入れるようにする。** 環境のメニュー → Edit → Repositories に `island-6848/taguri-crawler` と `island-6848/taguri-demo` を足す（無ければ https://claude.ai/connect-github で GitHub をつなぎ直す）。今は定期実行がリポジトリに入れず、あらすじを 1 件も読めていない〔f-past-synopsis-progress-1024〕
+
 ## Google Play に出すまで（手順は [android-release.md](android-release.md)）
 
 - [ ] **アプリの番号（パッケージ名）を決める。** いまは仮に `jp.taguri.app`。Play に一度上げると変えられない

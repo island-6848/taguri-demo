@@ -13,7 +13,7 @@ import {panel as words} from './words.js';
 
 // 2 つ目の引数は `#figs-src` の中身全部と、置き場所の幅（ことばの雲が文字の大きさを決めるのに使う）
 export const FIGS = {storyline: rated => (rated.length ? storyline(rated) : ''), people: rated => people(rated),
-  words: (_rated, src, width) => words(src.syn || [], src.nSeen || 0, width)};
+  words: (_rated, src, width) => words(src.tags || [], src.nSeen || 0, width)};
 
 /** Fill every `[data-fig]` under root from `#figs-src`. Returns how many were drawn. */
 export function fill(root) {

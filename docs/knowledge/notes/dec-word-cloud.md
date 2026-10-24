@@ -1,7 +1,7 @@
 ---
 id: dec-word-cloud
 type: decision
-status: adopted
+status: superseded
 date: 2026-10-24
 title: 眺めるに「ことばの雲」を置く。観た公演のあらすじから語を数え、切り出しと配置はブラウザで行う
 sources:
