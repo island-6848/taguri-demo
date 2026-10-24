@@ -648,6 +648,18 @@ class MemberAffilTest(unittest.TestCase):
         self.assertEqual(S(['宝塚歌劇団', 'STARTO', '恋愛'], '主催乙'), ['恋愛'])
         self.assertEqual(S([('宝塚歌劇団', 1.0), ('Snow Man', 1.0), ('恋愛', 0.5)], '宝塚歌劇団'), [('宝塚歌劇団', 1.0), ('恋愛', 0.5)])
 
+    def test_the_wikipedia_list_is_names_only(self):
+        # Wikipedia の分類から作った一覧（tools/review/collect_affil_wikipedia.py、find-wikipedia-member-categories-1024）
+        d = json.loads((HERE / 'scripts' / 'affil_members.json').read_text(encoding='utf-8'))
+        m = d['members']
+        self.assertIn('天海祐希', m['宝塚歌劇団'])          # 2021 年より前の退団者も入る
+        self.assertIn('木村拓哉', m['STARTO ENTERTAINMENT'])
+        # 人ごとの分類（配偶者・出た番組）は使わない
+        self.assertNotIn('朝海ひかる', m['STARTO ENTERTAINMENT'])
+        self.assertNotIn('宮沢りえ', m['STARTO ENTERTAINMENT'])
+        self.assertTrue(all(2 <= len(n) <= 8 for ns in m.values() for n in ns))
+        self.assertIn('CC BY-SA', d['source'])
+
     def test_affiliation_words(self):
         A = UR.member_affils
         self.assertEqual(A('元宝塚歌劇団雪組'), ['宝塚歌劇団'])

@@ -835,9 +835,13 @@ def main() -> int:
     # 過去の公演（fetch_past_stages の控え）は、所属の表（rec_affil）にだけ使う
     past_path = ROOT / "data" / "past" / "stages.jsonl"
     past = [json.loads(x) for x in past_path.read_text(encoding="utf-8").split("\n") if x.strip()] if past_path.exists() else []
-    # 外の一覧（dec-member-affil-tag）。無ければ手元の公演だけで作る
-    listed_path = ROOT / "data" / "affil" / "members.json"
-    listed = json.loads(listed_path.read_text(encoding="utf-8")) if listed_path.exists() else None
+    # 外の一覧（dec-member-affil-tag）: リポジトリに置いた Wikipedia の分類から作った一覧（affil_members.json）と、
+    # 作業データに置いた一覧（data/affil/members.json、あれば）。無ければ手元の公演だけで作る
+    listed: dict[str, list[str]] = {}
+    for listed_path in (Path(__file__).with_name("affil_members.json"), ROOT / "data" / "affil" / "members.json"):
+        if listed_path.exists():
+            for tag, names in (json.loads(listed_path.read_text(encoding="utf-8")).get("members") or {}).items():
+                listed.setdefault(tag, []).extend(names)
     index = build_index(pool, M._fields_by_stage(), APP.group_of, titles, themes, past, forms, listed)
     counts = None
     if a.hashes_out:

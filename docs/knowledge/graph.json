@@ -4709,6 +4709,17 @@
    "verifies": []
   },
   {
+   "id": "find-kageki-unreachable-1024",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-24",
+   "title": "宝塚歌劇の公式サイト（kageki.hankyu.co.jp）は、通信の許可を足した後も、このセッションからは TLS の途中で切れて読めない（海外の IP を断っているとみられる）",
+   "sources": [
+    "https://kageki.hankyu.co.jp/"
+   ],
+   "verifies": []
+  },
+  {
    "id": "find-max-api-credits",
    "type": "finding",
    "status": "confirmed",
@@ -4746,6 +4757,17 @@
    "verifies": []
   },
   {
+   "id": "find-starto-robots-no-claude-1024",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-24",
+   "title": "STARTO の公式サイト（starto.jp）の robots.txt は ClaudeBot・Claude-SearchBot・GPTBot などを全面的に断っている。所属の一覧は公式サイトから取らない",
+   "sources": [
+    "https://starto.jp/robots.txt"
+   ],
+   "verifies": []
+  },
+  {
    "id": "find-takarazuka-starto-coverage-1024",
    "type": "finding",
    "status": "confirmed",
@@ -4754,6 +4776,21 @@
    "sources": [
     "tools/review/user_recommender.py",
     "https://kai-you.net/word/STARTO%20ENTERTAINMENT"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "find-wikipedia-member-categories-1024",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-24",
+   "title": "日本語版 Wikipedia の分類から、宝塚歌劇団の在団・退団者 833 名と STARTO・旧ジャニーズの人 383 名の名前を集めた。手元の出演欄と合うのは 345 名と 166 名で、これからの公演の札は 宝塚 74→131 件・STARTO 26→66 件に増える",
+   "sources": [
+    "https://ja.wikipedia.org/wiki/Category:宝塚歌劇団",
+    "https://ja.wikipedia.org/wiki/Category:STARTO_ENTERTAINMENT所属者",
+    "https://ja.wikipedia.org/wiki/Category:過去のジャニーズ事務所所属者",
+    "tools/review/collect_affil_wikipedia.py",
+    "cloudflare/scripts/affil_members.json"
    ],
    "verifies": []
   },
@@ -12936,6 +12973,16 @@
    "to": "dec-crawl-tiers"
   },
   {
+   "from": "find-kageki-unreachable-1024",
+   "rel": "affects",
+   "to": "dec-member-affil-tag"
+  },
+  {
+   "from": "find-kageki-unreachable-1024",
+   "rel": "depends_on",
+   "to": "q-affil-external-list"
+  },
+  {
    "from": "find-max-api-credits",
    "rel": "affects",
    "to": "dec-no-llm-per-user"
@@ -12956,6 +13003,16 @@
    "to": "q-crawl-in-session"
   },
   {
+   "from": "find-starto-robots-no-claude-1024",
+   "rel": "affects",
+   "to": "dec-member-affil-tag"
+  },
+  {
+   "from": "find-starto-robots-no-claude-1024",
+   "rel": "depends_on",
+   "to": "q-affil-external-list"
+  },
+  {
    "from": "find-takarazuka-starto-coverage-1024",
    "rel": "answers",
    "to": "q-takarazuka-starto-members"
@@ -12964,6 +13021,21 @@
    "from": "find-takarazuka-starto-coverage-1024",
    "rel": "depends_on",
    "to": "dec-takarazuka-genre-1024"
+  },
+  {
+   "from": "find-wikipedia-member-categories-1024",
+   "rel": "answers",
+   "to": "q-affil-external-list"
+  },
+  {
+   "from": "find-wikipedia-member-categories-1024",
+   "rel": "affects",
+   "to": "dec-member-affil-tag"
+  },
+  {
+   "from": "find-wikipedia-member-categories-1024",
+   "rel": "depends_on",
+   "to": "find-takarazuka-starto-coverage-1024"
   },
   {
    "from": "firebase-apikey-public",
