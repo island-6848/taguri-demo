@@ -276,6 +276,16 @@ def source_kinds(text: str) -> list[str]:
 #   『作品名』・THE STAGE などの型のとき（製作委員会だけでは 2.5次元でない公演も多く混ざる）。
 GENRE_AXIS = "#ジャンル"
 _TAKARAZUKA = "宝塚歌劇団"
+# ジャンルの名前は「宝塚歌劇団」（起案者の指示 2026-10-24「特例で東京宝塚劇場と兵庫の宝塚劇場でやってる演目のジャンルは
+# 『宝塚歌劇団』として。あらすじにも #宝塚歌劇団 のタグをつける」。前の名前は「宝塚」）。主催が宝塚歌劇団の公演に加え、
+# 2 つの本拠地の劇場でかかる公演も、主催の欄にかかわらず入れる
+TAKARAZUKA_GENRE = "宝塚歌劇団"
+TAKARAZUKA_VENUES = ("東京宝塚劇場", "宝塚大劇場")
+
+
+def is_takarazuka(group: str = "", venues=()) -> bool:
+    """A 宝塚歌劇団 production: the troupe is 宝塚歌劇団, or it plays at 東京宝塚劇場 / 宝塚大劇場."""
+    return _TAKARAZUKA in (group or "") or any(v in (p or "") for p in venues or () for v in TAKARAZUKA_VENUES)
 _25D_SOURCES = {"漫画原作", "アニメ原作", "ゲーム原作"}
 _25D_TITLE = re.compile(r"the\s*stage|^\s*(?:舞台|ミュージカル|音楽劇)?\s*『", re.I)
 _BRACKETED = re.compile(r"[『「]([^』」]{2,})[』」]")
@@ -303,15 +313,15 @@ def student(title: str, group: str) -> str:
     return ""
 
 
-def genres(title: str, group: str = "", source: str = "") -> list[str]:
-    """Big genres of one production ('2.5次元', '宝塚', '大学演劇', '高校演劇'). 宝塚 is read from the troupe only:
-    the staff lists name 宝塚歌劇団 for people lent to other shows."""
+def genres(title: str, group: str = "", source: str = "", venues=()) -> list[str]:
+    """Big genres of one production ('2.5次元', '宝塚歌劇団', '大学演劇', '高校演劇'). 宝塚歌劇団 is read from the troupe
+    and the two home theatres, not from the staff lists (they name 宝塚歌劇団 for people lent to other shows)."""
     title, group = title or "", group or ""
     school = student(title, group)
     if school:
         return [school]
-    if _TAKARAZUKA in group:
-        return ["宝塚"]
+    if is_takarazuka(group, venues):
+        return [TAKARAZUKA_GENRE]
     if set(source_kinds(source)) & _25D_SOURCES:
         return ["2.5次元"]
     if "製作委員会" in group:
@@ -355,9 +365,9 @@ def stage_tags(title: str, venues, credits, prices=(), source: str = "", group: 
             tags.add(("#翻訳", "翻訳劇"))
     if korean_origin(title, credits):
         tags.add(("#原作の国", "韓国"))
-    tags.update((GENRE_AXIS, g) for g in genres(title, group, source))
+    tags.update((GENRE_AXIS, g) for g in genres(title, group, source, venues))
     # 劇場（#会場）は入れない（起案者の指示 2026-10-17「おすすめの種類に劇場名出てくるのなぜ？不要…ただ会場で
-    # 出てくるのは不要」）。主催が劇場の公演は、主催（団体）の名前として別に効く。`venues` は呼び出し側との形のために残す
+    # 出てくるのは不要」）。主催が劇場の公演は、主催（団体）の名前として別に効く。`venues` は宝塚歌劇団の本拠地の判定にだけ使う
     return sorted(tags)
 
 

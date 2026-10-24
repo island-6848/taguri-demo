@@ -79,7 +79,12 @@ def stage_dicts(pool: dict[str, dict], themes: dict, today: datetime.date) -> di
         # カードに並べるのは照合に使う言葉。モチーフ（その作品だけの句）は並べず、お気に入りの文字の一致（ws）にだけ使う。
         # 先頭には見せる用のハッシュタグを 1 つだけ出す（起案者の指示 2026-10-18「カードに 1 つだけ出して」）
         els = [e for e in (t.get("elements") or []) if e.get("word")]
-        c["themes"] = [e["word"] for e in els if e.get("kind") != "モチーフ"]
+        # 公演の形式の言葉（バレエ・ミュージカル…）は、読み取りが「題材」と書いたときだけ（dec-form-vs-theme-words）
+        c["themes"] = [e["word"] for e in els if e.get("kind") != "モチーフ"
+                       and (e.get("kind") == "題材" or M.norm(e["word"]) not in UR.FORM_WORDS)]
+        # 宝塚歌劇団の公演は、あらすじの札の先頭に #宝塚歌劇団（起案者の指示 2026-10-24「あらすじにも#宝塚歌劇団、のタグをつける」）
+        if UR.is_takarazuka(c.get("group") or "", [fields.get("劇場", ""), c.get("venue") or "", c.get("theater") or ""]):
+            c["themes"] = [UR.TAKARAZUKA_GENRE] + [w for w in c["themes"] if w != UR.TAKARAZUKA_GENRE]
         c["motifs"] = [e["word"] for e in els if e.get("kind") == "モチーフ"]
         c["hook"] = next((str(x).lstrip("#＃").strip() for x in t.get("tags") or [] if str(x).strip("#＃ ")), "")
         c["themes_by"] = t.get("elements_by") or ""

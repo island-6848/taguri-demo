@@ -3441,6 +3441,20 @@
    "verifies": []
   },
   {
+   "id": "dec-takarazuka-genre-1024",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-24",
+   "title": "ジャンル「宝塚」を「宝塚歌劇団」に改め、東京宝塚劇場・宝塚大劇場でかかる公演も主催にかかわらず入れる。あらすじの札の先頭にも #宝塚歌劇団",
+   "sources": [
+    "tools/review/user_recommender.py",
+    "cloudflare/scripts/build_cards.py",
+    "cloudflare/migrations/0046.sql",
+    "tools/taguri/test_user_recommendation.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-theme-kinds-1018",
    "type": "decision",
    "status": "superseded",
@@ -11733,6 +11747,16 @@
    "from": "dec-synopsis-reader-claude",
    "rel": "raises",
    "to": "q-synopsis-routine-quota"
+  },
+  {
+   "from": "dec-takarazuka-genre-1024",
+   "rel": "depends_on",
+   "to": "dec-genre-axis"
+  },
+  {
+   "from": "dec-takarazuka-genre-1024",
+   "rel": "affects",
+   "to": "comp-recommender"
   },
   {
    "from": "dec-theme-kinds-1018",

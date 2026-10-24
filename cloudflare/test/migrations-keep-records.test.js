@@ -26,6 +26,8 @@ const REWRITES = {
   // 書き換えた人は、0035 のトリガーで推薦の材料の合図（users.rec_rev）が 1 進む（控えを作り直させる。種の 2 人とも kind_off に「朗読」がある）
   '0043.sql': {app_setting: r => (r.key === 'kind_off' ? {...r, value: r.value.replaceAll('"#形式\\t朗読"', '"#形式\\t朗読劇"')} : r),
     users: r => ('rec_rev' in r ? {...r, rec_rev: r.rec_rev + 1} : r)},
+  // ジャンル「宝塚」→「宝塚歌劇団」（起案者の指示 2026-10-24）。種の人は「宝塚」を外していないので、kind_off の行は変わらない
+  '0046.sql': {app_setting: r => (r.key === 'kind_off' ? {...r, value: r.value.replaceAll('"#ジャンル\\t宝塚"', '"#ジャンル\\t宝塚歌劇団"')} : r)},
 };
 // 既定値でなく、前からある値から埋める新しい列（表.列 → 前の行から値を作る関数）
 const BACKFILLS = {
@@ -103,6 +105,7 @@ const KNOWN_WRITING = {
   '0030.sql': 'トリガーの本文（アカウントを消したときだけ fix_request を書き換える。migration を当てるときは動かない）',
   '0034.sql': 'BACKFILLS（works.rated_at）',
   '0043.sql': 'REWRITES（kind_off の「朗読」を「朗読劇」に）',
+  '0046.sql': 'REWRITES（kind_off のジャンル「宝塚」を「宝塚歌劇団」に）',
 };
 test('every migration that rewrites stored values is known to this test', () => {
   assert.deepEqual(WRITING, Object.keys(KNOWN_WRITING), '値を書き換える migration を足したら、REWRITES・BACKFILLS に期待する値を書き、KNOWN_WRITING にも足す');
