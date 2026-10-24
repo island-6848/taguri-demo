@@ -15,10 +15,6 @@
 
 - [ ] **定期実行の環境から taguri-crawler に入れるようにする。** 環境のメニュー → Edit → Repositories に `island-6848/taguri-crawler` と `island-6848/taguri-demo` を足す（無ければ https://claude.ai/connect-github で GitHub をつなぎ直す）。今は定期実行がリポジトリに入れず、あらすじを 1 件も読めていない〔f-past-synopsis-progress-1024〕
 
-## 公演の情報を直す（2026-10-24 追加）
-
-- [ ] **ミス・サイゴンの出演者を差し替える。** 管理画面（`tools/admin`）で「ミス・サイゴン」を探し、各公演（ツアーなら会場ごと）の「出演」の欄を [owner/miss-saigon-cast.txt](owner/miss-saigon-cast.txt) の中身に置き換えて保存する。Claude のセッションからは本番の D1 を読み書きできない設定のため〔q-miss-saigon-cast〕
-
 ## Google Play に出すまで（手順は [android-release.md](android-release.md)）
 
 - [ ] **アプリの番号（パッケージ名）を決める。** いまは仮に `jp.taguri.app`。Play に一度上げると変えられない
@@ -60,6 +56,7 @@
 
 ## 済み
 
+- 2026-10-24 ミス・サイゴンの出演者を差し替えた（Claude が本番の D1 に入れた。ツアー 5 会場）〔f-miss-saigon-cast-applied〕
 - 2026-10-24 定期実行の環境のセットアップスクリプトを空にした（許可の設定の書き方の 2 行が入っていて、あらすじの読み取りが 10-20 ごろから毎回失敗していた）〔f-past-synopsis-progress-1024〕
 
 - 2026-10-20 ストアの登録料は起案者が負担すると決めた〔dec-app-release-costs〕
