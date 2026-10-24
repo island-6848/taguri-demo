@@ -122,7 +122,9 @@ export async function reactionsOf(ctx) {
     const d = out.get(r.stage_id) || {};
     // src: the screen the newest 興味あり／なし was pressed on ('reminder', 'search', 'screen' …)
     if (r.interest !== null) { d.interest = Number(r.interest); d.src = String(r.source || '').replace(/_tour$/, ''); }
-    if (r.owned !== null) d.owned = Number(r.owned);
+    // ownedCopy: the newest 購入済 was copied from another venue of the tour (source '…_tour'), not pressed here.
+    // A copy is not a ticket for this venue (起案者の指摘 2026-10-24、購入済の公演にツアーのほかの日程が出直した)
+    if (r.owned !== null) { d.owned = Number(r.owned); d.ownedCopy = String(r.source || '').endsWith('_tour'); }
     // at: when the newest 興味あり／持っている was pressed (the list's 「追加した新しい順」)
     if (r.interest !== null || r.owned !== null) d.at = String(r.updated_at || '');
     if (r.note !== null) d.note = r.note;
@@ -363,7 +365,8 @@ export function startPassed(date, time, ctx) {
 export async function promoteOwned(ctx) {
   const react = await reactionsOf(ctx);
   await promoteTickets(ctx, react);
-  const owned = [...react].filter(([, r]) => r.owned === 1).map(([sid]) => sid);
+  // ツアーのほかの会場へ写しただけの購入済（ownedCopy）は、記録にしない。行っていない会場の「観た」記録ができてしまう
+  const owned = [...react].filter(([, r]) => r.owned === 1 && !r.ownedCopy).map(([sid]) => sid);
   if (!owned.length) return;
   const have = new Set((await ctx.db.prepare('SELECT stage_id FROM works WHERE user_id=? AND stage_id IS NOT NULL').bind(ctx.uid).all()).results.map(r => r.stage_id));
   const todo = owned.filter(sid => !have.has(sid));
@@ -477,9 +480,16 @@ export async function buckets(ctx, {catalogue = false} = {}) {
       at: sids.map(x => react.get(x)?.at || '').sort().at(-1) || ''};
     if (r.owned === 1) {
       seen.add(key);
-      const done = doneDate(sids, row.end, tickets);
+      // 買った会場だけで、終わったかを見る: 自分で「購入済」を押した会場と、行く日を入れた会場（起案者の指摘 2026-10-24
+      // 「そのツアー日程を購入済に登録していないのであれば、この画面に出さないようにして」）。ツアーのカードで押すと
+      // 答えはほかの会場にも写るので、前は観終わったあとも、写しだけの会場の日程で一覧に出直した。
+      // 写ししか無い古い答えは、前と同じくツアー全体で見る
+      const mine = sids.filter(s => (react.get(s)?.owned === 1 && !react.get(s).ownedCopy) || (tickets.get(s) || []).length);
+      const ends = mine.map(s => group.find(v => v.stage_id === s)?.end || meta.get(s)?.end).filter(Boolean).sort();
+      const done = mine.length ? doneDate(mine, ends.at(-1) || row.end, tickets) : doneDate(sids, row.end, tickets);
       if (startPassed(done.date, done.time, ctx)) continue;
-      out.owned.push(row);
+      const at = mine.find(s => group.some(v => v.stage_id === s));
+      out.owned.push(at && at !== row.stage_id ? {...row, ...group.find(v => v.stage_id === at)} : row);
       // お気に入りの名前に当たる公演は、購入済みにしてもお気に入りの画面に残す（印を付けて。favOwned）。
       // 起案者の指示（2026-10-15）「購入済み押してもお気に入りから消さないで」。カレンダー・開幕リマインドは
       // 購入済みとして 1 回だけ出すので、favourites には入れない。
@@ -605,6 +615,20 @@ async function interestWhy(ctx, show) {
   return out;
 }
 
+/**
+ * 興味ありの画面の「絞り込み・並べ替え」を、おすすめの画面（地域・調整）と同じく 1 つの折りたたみにまとめる
+ * （起案者の指示 2026-10-24「おすすめページと同様に、絞り込み自体を折りたためるようにして」）。既定は閉じる。
+ * * 料金の絞り込みは app.js（priceFilter）が中の .fil2.narrow に入れ、いまの上限を見出しの .rec-budget に書く。
+ */
+function interestControls(sort, sortHtml) {
+  return `<details class="rec-controls">
+<summary><b>絞り込み・並べ替え</b><span>${E(SORTS[sort])}</span><span class="rec-budget"></span></summary>
+<p class="fgh">${ico('search', 15)}<b>表示の絞り込み</b><span>並んでいる公演のうち、見る分だけに絞ります</span></p>
+<div class="fil2 narrow"></div>
+${sortHtml}
+</details>`;
+}
+
 export async function interestScreen(params, ctx) {
   const b = await buckets(ctx);
   const keys = ['start', 'end', 'added', 'title', 'pref'], sort = sortOf(params, keys);
@@ -621,10 +645,10 @@ export async function interestScreen(params, ctx) {
   // 0 件のときは月のタブと「0 件すべてを表示しています」を出さず、案内だけにする。「並べ替え」はお気に入りと同じく年月のタブより下
   // （起案者の答え 2026-10-18「お願い」）
   const body = `<h1>「興味あり」の公演</h1>
-<p class="lede">「興味あり」を押した公演を並べています。順位は付けていません。並べ替えは下の「並べ替え」で選べます。チケットが取れたら「すでに持っている」を押してください。「購入済の公演」に移り、上演日を過ぎると評価待ちに並びます。<br>
+<p class="lede">「興味あり」を押した公演を並べています。順位は付けていません。並べ替えと料金の絞り込みは、下の「絞り込み・並べ替え」を開くと選べます。チケットが取れたら「すでに持っている」を押してください。「購入済の公演」に移り、上演日を過ぎると評価待ちに並びます。<br>
 「なぜ気になったか」に書いた名前は、<a href="/recommend/favourites?t=__TAGURI_TOKEN__">お気に入り</a>に加える候補として並びます。</p>
 ${rows.length ? mfil : ''}
-${rows.length ? sortForm('/recommend/interest', sort, keys, params.get('m') ? `<input type="hidden" name="m" value="${E(params.get('m'))}">` : '') : ''}
+${rows.length ? interestControls(sort, sortForm('/recommend/interest', sort, keys, params.get('m') ? `<input type="hidden" name="m" value="${E(params.get('m'))}">` : '')) : ''}
 ${list}
 ${rows.length ? mfoot : ''}`;
   return {title: '興味あり', body_html: body};

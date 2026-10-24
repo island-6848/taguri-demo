@@ -78,10 +78,11 @@ test('the tour block: a bulleted row per venue in date order, ★ on the filtere
   assert.match(unk.html, /<ul class="plist"><li class="lp-row"><span class="lp-k">料金<\/span><span class="lp-v">不明<\/span><\/li><\/ul>/);
 });
 
-test('the venue playing today is marked with →, not ●', () => {
+test('the venue playing today carries 上演中 after its dates, not → or ●', () => {
   const v = (sid, start, end, venue) => ({stage_id: sid, start, end, venue, pref: '東京都', fields: {}});
   const t = tourBlock([v('1', '2026-10-10', '2026-10-25', 'A'), v('2', '2026-11-06', '2026-11-08', 'B')], '1', '2026-10-20');
-  assert.match(t.html, /<span class="tf-dot live" title="いま上演中">→<\/span>10\/10〜10\/25/);
+  assert.match(t.html, /<span class="tf-dot" aria-hidden="true"><\/span>10\/10〜10\/25<span class="tf-live">上演中<\/span>/);
+  assert.doesNotMatch(t.html, /→/);
   assert.match(t.html, /<span class="tf-dot" aria-hidden="true"><\/span>11\/6〜11\/8/);
   assert.doesNotMatch(t.html, /●/);
 });

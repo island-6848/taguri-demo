@@ -1117,6 +1117,8 @@ a.pill.buy .go:not(#_){font-size:12px;margin-left:2px}
 .rec-controls>summary{cursor:pointer;font-size:13px;line-height:1.7}
 .rec-controls>summary span{color:var(--mute);font-size:12px;margin-left:8px;overflow-wrap:anywhere}
 .rec-controls .rec-budget:empty{display:none}
+/* 興味ありの画面: 料金の箱が入らなかったとき（料金の分かる公演が無い）は、「表示の絞り込み」の見出しも出さない */
+.rec-controls .fgh:has(+ .fil2:empty),.rec-controls .fil2:empty{display:none}
 .rec-answer-help{font-size:12px;color:var(--ink2);line-height:1.7;margin:10px 0 18px}
 /* 保存済みのカードだけを縮める。元の情報と入力欄は残し、「回答を直す」で再び開く。 */
 .ticket.answered-compact:not(.answer-editing){display:block;min-height:0;padding:10px 14px}
@@ -1132,9 +1134,16 @@ a.pill.buy .go:not(#_){font-size:12px;margin-left:2px}
 .ticket.interest .why-memo>summary .wnt{display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;white-space:normal;min-width:0}
 .ticket.interest .wnw{margin-top:10px}
 .ticket.interest .act{width:100%;min-width:0}
-.ticket.interest .act .btns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%;min-width:0;gap:8px;margin:0}
-.ticket.interest .act .btns .said{grid-column:1/-1}
-@media(min-width:700px){.ticket.interest .act .btns{grid-template-columns:repeat(4,minmax(0,1fr))}}
+/* 興味ありの回答の 3 つ（興味あり・興味なし・購入済）は、電話の幅でも 1 列に並べる（起案者の指示 2026-10-24
+   「興味ありのページ、ボタンが1列に収まるようにして」）。前は電話の幅で 2 列にしていて、購入済だけが 2 段目に落ちた。
+   幅は等分にし、狭いときは文字の周りの余白を詰める。押したあとの言葉（.said）だけは次の段に回す */
+.ticket.interest .act .btns{display:flex;flex-wrap:wrap;width:100%;min-width:0;gap:8px 6px;margin:0}
+.ticket.interest .act .btns button{flex:1 1 0;min-width:0;padding:0 4px;border-left:1px solid var(--ink);border-radius:8px}
+.ticket.interest .act .btns .said{flex-basis:100%}
+/* いちばん狭い電話（幅 320〜380px）は、文字を 11px にして余白を詰め、選んだ印の ✓ を出さない（選んだものは塗りで分かる） */
+@media(max-width:380px){.ticket.interest .act .btns{gap:8px 4px}
+ .ticket.interest .act .btns button{font-size:11px;padding:0 2px}
+ .ticket.interest .act .btns button.picked::before{content:none}}
 /* 段の中が 1 つだけ（開幕リマインドの場所・お気に入りの登録した名前など）なら全幅に */
 .fil2:not(.tabbed)>:only-child{grid-column:1/-1}
 
@@ -1366,8 +1375,6 @@ details.pbox>summary[data-fold] .fv,.ftab .fv{margin-left:auto;text-align:right;
  text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:4px;
  text-decoration-color:color-mix(in srgb,var(--mute) 55%,transparent);align-self:start}
 
-/* ツアーの日程で、いま上演中の会場の行頭（●）は差し色で（起案者の指示 2026-10-18） */
-.tourfull.v2 .tf-dot.live{color:var(--curtain);font-size:.8em}
 
 /* ---- 公演日時の暦: 折りたたみの地（--fold-bg）の上で灰色のマスが沈んで読みにくかった（起案者の指摘 2026-10-18）。
    公演のある日のマスは紙の白に細い枠、期間の外は地のまま。字は濃く */
@@ -1558,7 +1565,9 @@ details.lprice>summary .plist>li:only-child::before{display:block}
    差し色の輪郭の小さな菱形、いま上演中の会場は差し色の「→」。絞り込んだ県の会場の ★ はそのまま */
 .tourfull.v2 .tf-dot:not(.live){top:.62em;left:.25em;width:6px;height:6px;box-sizing:border-box;transform:rotate(45deg);
  border:1.5px solid color-mix(in srgb,var(--curtain) 70%,transparent);border-radius:1px}
-.tourfull.v2 .tf-dot.live:not(#_){left:0;font-size:1em;font-weight:700;line-height:inherit;color:var(--curtain)}
+/* いま上演中の会場は、日程の後ろに「上演中」の小さな札（起案者の指示 2026-10-24「日時カレンダーの『→』を『上演中』に変えて」） */
+.tourfull.v2 .tf-live{display:inline-block;margin-left:6px;padding:0 6px;border:1px solid var(--curtain);border-radius:99px;
+ color:var(--curtain);font-size:10.5px;font-weight:700;line-height:1.6;vertical-align:.1em;white-space:nowrap}
 /* 日程の行の右の「詳細」の字はやめ、行そのものを押す口に。開くことが分かるよう、行の終わりに小さな三角だけ置く */
 .tourfull.v2 summary.tf-head::after{content:"▸";display:inline-block;margin-left:.5em;color:var(--curtain);font-size:.8em;transition:transform .15s}
 .tourfull.v2 details[open]>summary.tf-head::after{transform:rotate(90deg)}

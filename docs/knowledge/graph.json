@@ -929,6 +929,19 @@
    "verifies": []
   },
   {
+   "id": "dec-calendar-order-live-first",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-24",
+   "title": "公演カレンダーの並びを、上演中は千穐楽の近い順、そのあとにこれから開く公演を初日の近い順にする（都道府県ごとの並びはやめた）",
+   "sources": [
+    "cloudflare/src/screens/calendar.js",
+    "tools/taguri/stage_calendar.py",
+    "cloudflare/test/calendar.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-calendar-timeline",
    "type": "decision",
    "status": "adopted",
@@ -1804,6 +1817,19 @@
    "verifies": []
   },
   {
+   "id": "dec-interest-page-compact",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-24",
+   "title": "興味ありの画面は、回答ボタン 3 つを電話の幅でも 1 列に並べ、絞り込み・並べ替えをおすすめの画面と同じ 1 つの折りたたみにする",
+   "sources": [
+    "web/theme.css",
+    "cloudflare/src/screens/lists.js",
+    "cloudflare/test/recommend-screen.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-interest-ux-toggle-1019",
    "type": "decision",
    "status": "adopted",
@@ -2157,6 +2183,19 @@
    "title": "購入済みも興味ありと同じ種にし、評価を付けた公演は評価 1 回分だけにする",
    "sources": [
     "cloudflare/src/screens/recommend.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-owned-tour-copies",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-24",
+   "title": "ツアーのほかの会場へ写しただけの「購入済」は、買った印にしない。購入済の公演の一覧と「観た」記録づくりは、押した会場と行く日を入れた会場だけで見る",
+   "sources": [
+    "cloudflare/src/screens/lists.js",
+    "cloudflare/src/screens/recommend.js",
+    "cloudflare/test/owned-tour.test.js"
    ],
    "verifies": []
   },
@@ -4294,6 +4333,56 @@
     "cloudflare/src/screens/recommend.js",
     "web/halfwidth.js",
     "cloudflare/test/fav-reco.test.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "find-catalog-stopped-1022",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-22",
+   "title": "毎日の取得（Catalog の定時実行）が 10/17 から毎日 1〜2 分で止まっているのは、無料枠の守り（plan）が「Actions の 31 日の分数が上限 1,600 分に届く見込み」と判断したため。10/13〜10/21 の手動の長い実行が原因",
+   "sources": [
+    "https://github.com/island-6848/taguri-crawler/actions/runs/39685987712",
+    "https://github.com/island-6848/taguri-crawler/actions/workflows/catalog.yml",
+    "cloudflare/scripts/free_tier.py"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "find-max-api-credits",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-24",
+   "title": "Claude の Max・Team 契約には、毎月の API クレジットが付く（Max 5x は 100 米ドル・Max 20x は 200 米ドル）。使い切ると API は止まり、支払い方法も自動の買い足しも無ければ請求されない",
+   "sources": [
+    "https://platform.claude.com/docs/en/about-claude/api-credits-for-subscribers",
+    "https://support.claude.com/en/articles/17154008-monthly-api-credits-for-max-and-team-plans",
+    "https://platform.claude.com/docs/en/about-claude/pricing"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "find-session-past-trial-1022",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-22",
+   "title": "セッションで過去公演の補完を 10 分試した。読み取りは動き（219 件・534 要求・9 分 50 秒）、作業データは state に書き戻した。D1 への送信は、セッションの安全判定で止められて未実施",
+   "sources": [
+    "https://github.com/island-6848/taguri-crawler/tree/state",
+    "tools/review/fetch_past_stages.py",
+    "cloudflare/scripts/deliver_past.py"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "find-session-secret-overrides-env",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-24",
+   "title": "クラウドのセッションでは、環境の「シークレット（Bearer）」の値が、環境変数のトークンより優先して付けられる。古いトークンを残すと、D1・R2 だけが Authentication error になる",
+   "sources": [
+    "https://code.claude.com/docs/en/cloud-environments#network-access"
    ],
    "verifies": []
   },
@@ -7000,6 +7089,17 @@
    "verifies": []
   },
   {
+   "id": "q-crawl-in-session",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-22",
+   "title": "GitHub Actions でしている取得（特に過去の公演の補完・ポスター・本文の長い実行）を、Claude Code のクラウドのセッションで代わりに動かすか",
+   "sources": [
+    "https://code.claude.com/docs/en/cloud-environments#network-access"
+   ],
+   "verifies": []
+  },
+  {
    "id": "q-crawler-host",
    "type": "question",
    "status": "answered",
@@ -7354,6 +7454,17 @@
    "date": "2026-10-13",
    "title": "新しい要素を安全に入れる「裏の答え合わせ」をどう作るか（起案者が良いと判断）",
    "sources": [],
+   "verifies": []
+  },
+  {
+   "id": "q-impression-llm-credits",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-24",
+   "title": "利用者の感想を、Max 契約の毎月の API クレジットで LLM に読ませ、推薦に生かすか（dec-no-llm-per-user の見直し）",
+   "sources": [
+    "https://platform.claude.com/docs/en/about-claude/api-credits-for-subscribers"
+   ],
    "verifies": []
   },
   {
@@ -9687,6 +9798,11 @@
    "from": "dec-calendar-oauth",
    "rel": "supports",
    "to": "dec-free-tier-only"
+  },
+  {
+   "from": "dec-calendar-order-live-first",
+   "rel": "depends_on",
+   "to": "dec-calendar-timeline"
   },
   {
    "from": "dec-calendar-timeline",
@@ -12204,6 +12320,31 @@
    "to": "dec-fav-only-reco"
   },
   {
+   "from": "find-catalog-stopped-1022",
+   "rel": "depends_on",
+   "to": "dec-crawl-tiers"
+  },
+  {
+   "from": "find-max-api-credits",
+   "rel": "affects",
+   "to": "dec-no-llm-per-user"
+  },
+  {
+   "from": "find-max-api-credits",
+   "rel": "raises",
+   "to": "q-impression-llm-credits"
+  },
+  {
+   "from": "find-session-past-trial-1022",
+   "rel": "depends_on",
+   "to": "q-crawl-in-session"
+  },
+  {
+   "from": "find-session-secret-overrides-env",
+   "rel": "depends_on",
+   "to": "q-crawl-in-session"
+  },
+  {
    "from": "firebase-apikey-public",
    "rel": "raises",
    "to": "q-firebase-key-restriction"
@@ -14009,6 +14150,11 @@
    "to": "d1-free-limits"
   },
   {
+   "from": "q-crawl-in-session",
+   "rel": "depends_on",
+   "to": "find-catalog-stopped-1022"
+  },
+  {
    "from": "q-crawler-host",
    "rel": "depends_on",
    "to": "q-ec2-cost"
@@ -14212,6 +14358,21 @@
    "from": "q-hidden-gate",
    "rel": "affects",
    "to": "comp-recommender"
+  },
+  {
+   "from": "q-impression-llm-credits",
+   "rel": "depends_on",
+   "to": "find-max-api-credits"
+  },
+  {
+   "from": "q-impression-llm-credits",
+   "rel": "affects",
+   "to": "dec-no-llm-per-user"
+  },
+  {
+   "from": "q-impression-llm-credits",
+   "rel": "affects",
+   "to": "impl-impression-worker"
   },
   {
    "from": "q-impression-not-in-service",

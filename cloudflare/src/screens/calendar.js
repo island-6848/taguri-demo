@@ -60,7 +60,6 @@ function goLabel(tk) {
     return `${Number(day.slice(5, 7))}/${Number(day.slice(8, 10))}` + (tms ? ` ${tms}` : '') + (g.some(t => t.confirmed) ? '' : '（確定前）');
   }).join('・');
 }
-const prefRank = p => (PREFS.includes(p) ? PREFS.indexOf(p) : PREFS.length);
 function points(tk, r, a, row) {
   return byDay(tk).map(([day, g]) => {
     const col = days(day, a) + 2;
@@ -82,8 +81,13 @@ function points(tk, r, a, row) {
 function timeline(rows, ms, today) {
   const [fy, fm] = ms[0], [ly, lm] = ms.at(-1);
   const a = isoOf(fy, fm, 1), b = isoOf(ly, lm, mdays(ly, lm)), n = days(b, a) + 1;
+  // 並びは、上演中（初日が今日まで）を千穐楽の近い順に、そのあとにこれから開く公演を初日の近い順に
+  // （起案者の指示 2026-10-24「上演中のものは千秋楽が近いものから順に並べて、そのあとに開幕の初日が近い順に並べて」）。
+  // 前は都道府県ごと（2026-08-25「都道府県順に並び変えて」）で、県の中は締切の近い順だった
+  const live = r => r.start <= today;
   const hit = rows.filter(r => r.start <= b && r.end >= a)
-    .sort((p, q) => (prefRank(p.pref) - prefRank(q.pref)) || cmp(p.end, q.end) || cmp(p.start, q.start) || cmp(p.title, q.title));
+    .sort((p, q) => (live(q) - live(p)) || (live(p) ? cmp(p.end, q.end) || cmp(p.start, q.start)
+      : cmp(p.start, q.start) || cmp(p.end, q.end)) || cmp(p.title, q.title));
   if (!hit.length) return '';
   const tally = KINDS.map(([, lb, icon]) => [lb, icon, hit.filter(r => r.kind === lb).length]).filter(([, , c]) => c)
     .map(([lb, icon, c]) => `<span class="ck">${ico(icon, 12)}<i class="sr">${E(lb)}</i>${c}</span>`).join('');
