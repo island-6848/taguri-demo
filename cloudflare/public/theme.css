@@ -1722,10 +1722,14 @@ details.lprice:not([open]):not(#_)>summary .plist>li:only-child::before{display:
 .vstack .vs-seg:last-child{box-shadow:none}
 .vstack .vs-seg.none{background:var(--fold-bg);background-image:repeating-linear-gradient(45deg,transparent 0 4px,color-mix(in srgb,var(--mute) 35%,transparent) 4px 5px)}
 /* 帯の下の札「★n n%」（起案者の指示 2026-10-24）。位置は app.js の placeVsLabels が決める */
+/* 重なる札は帯の上に出す（起案者の指示 2026-10-24）。上の箱では札と線を下端（帯の側）から置く */
 .vstack .vs-labs{position:relative;height:26px;margin-top:4px}
+.vstack .vs-labs.top{height:0;margin:0 0 4px}
 .vstack .vs-lab{position:absolute;top:6px;left:0;white-space:nowrap;font-size:12px;line-height:16px;color:var(--ink2);font-variant-numeric:tabular-nums}
 .vstack .vs-lab b{color:var(--ink);font-weight:700}
 .vstack .vs-tick{position:absolute;top:0;width:1px;height:4px;background:var(--ring)}
+.vstack .vs-labs.top .vs-lab{top:auto;bottom:6px}
+.vstack .vs-labs.top .vs-tick{top:auto;bottom:0}
 
 /* 上のメニューを開いたときの子ページ（すだれ .psud）は、1 つずつ独立したボタンに見せる（起案者の指示 2026-10-19「今地続きの灰色背景帯の
    色上に文字がのってるので、それぞれボタンとして独立していることがわかるようなデザインに変更」）。白い地・枠線・角丸・すき間。

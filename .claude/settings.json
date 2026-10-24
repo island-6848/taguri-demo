@@ -1,4 +1,9 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(npx wrangler d1 execute taguri-demo --remote:*)"
+    ]
+  },
   "hooks": {
     "PostToolUse": [
       {
