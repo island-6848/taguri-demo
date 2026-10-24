@@ -31,6 +31,7 @@
 | **Cloudflare Workers** | 1 日 10 万要求・1 回 CPU 10 ミリ秒〔workers-free-cpu-10ms〕 | 止まる（請求なし） | ― | 静的ファイルは数えない〔workers-static-assets-free〕。眺めるの重い 2 枚（人の流れ・相関図）は 10 ミリ秒を越えるので、Worker では組まずにブラウザで組む（/figs/ の静的ファイル）〔dec-records-worker〕。ポスターはブラウザに 1 週間置く（`immutable`） |
 | Workers Builds（自動配信） | 月 3,000 分〔workers-builds-free-3000〕 | 止まる見込み（未確認） | ―（数えていない） | 1 回 1〜2 分。2026-10 は master に 1 日 約 19 回押していて月 約 570〜1,180 分。1 日 50 回を越えて押すと越えうる〔q-workers-builds-minutes〕 |
 | D1 の控え（`backup_d1.py`、R2 の入れ物 taguri-backup） | R2 の枠の中（入れ物を分けても口座で合計） | **請求される**（R2） | 取得の控えと同じ R2 の上限 | 控えの PUT と入れ物の確かめ（作る・lifecycle の PUT・GET）を送る前に数える。30 日分だけ置く |
+| 過去の公演の索引（`deliver_past_index.py`、R2 の pastidx/・pasttitle/） | R2 の枠の中 | **請求される**（R2） | 取得の控えと同じ R2 の上限 | 名前の索引と題名の索引（2 文字ずつの組、dec-past-title-index）。中身が前回と同じファイルは送らない。書き込みは 1 日多くて 512 回・保存は合わせて約 5MB。読み出しは検索 1 回で名前 1 個・題名 多くて 6 個で、Worker の R2 の読み出しの上限に数える |
 | Render（デモ・橋渡し先） | 月 750 時間〔render-free-spin-down〕 | 月末まで止まる | ― | 無料プランのまま |
 | GitHub Pages（デモ） | 無料 | ― | ― | ― |
 | X の埋め込み用の口（oEmbed、publish.twitter.com。感想に貼ったポストの本文を読む） | 無料・鍵なし・回数の上限なし〔dec-x-post-note〕 | ― | ― | X の API（2026-02 から読むたびに有料）は使わない。貼られた URL 1 つにつき 1 回だけ読み、D1 は読まない（ログインの確かめだけ） |

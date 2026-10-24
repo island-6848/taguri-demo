@@ -474,7 +474,7 @@ async function nativeRoute(request, env, url) {
   if (allNative(env) && request.method === 'GET' && ['/api/suggest', '/api/suggest_web'].includes(url.pathname)) {
     try {
       const uid = await user(request, env.DB);
-      return json(await suggest(url.searchParams, {db: env.DB, uid, today: env.CLOCK?.today ?? jstToday(), now: env.CLOCK?.now ?? Date.now()}));
+      return json(await suggest(url.searchParams, {db: env.DB, env, uid, today: env.CLOCK?.today ?? jstToday(), now: env.CLOCK?.now ?? Date.now()}));
     } catch (error) {
       return json({ok:false,error:error.status ? error.message : '探せませんでした。'}, error.status ?? 500);
     }

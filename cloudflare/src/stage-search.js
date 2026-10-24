@@ -3,6 +3,7 @@
 // rate_performances.title_key of every title, and titleKey below must give the
 // same key for the query. test/stage-search.test.js checks both against Python.
 import {cmp} from './recommend.js';
+import {r2ReadAllowed} from './free-tier.js';
 
 export const SEARCH_LIMIT = 20;
 const GRAMS_PER_QUERY = 98;      // D1 binds at most 100 parameters: ver + grams
@@ -80,6 +81,49 @@ export async function searchIndex(entriesFor, q, date = '', limit = SEARCH_LIMIT
   }
   hits.sort((a, b) => (a[0] - b[0]) || (a[1] - b[1]) || (a[2] - b[2]) || cmp(a[3], b[3]));
   return hits.slice(0, Math.min(200, Math.max(1, limit))).map(h => h[3]);
+}
+
+// ---- 過去の公演を題名の途中の語でも引く（起案者の指示 2026-10-24「検索しても今年の3月とかの公演が候補に出てこないのはなぜ？」→
+// 案に「OK」）。先頭一致（pastByPrefix）だけでは、途中の 3 字を打っても 469 件中 1 件しか出なかった。毎日の取得が
+// deliver_past_index.py で R2 に置く題名の索引（pasttitle/v1/<shard>.json: {grams: {2 文字の組: [公演の番号（新しい順）]}}）を、
+// 打った言葉の組の数だけ読み、全部の組を含む公演に絞ってから、D1 の past_stage を番号で引いて本当に含むかを確かめる。
+// D1 は番号で引く分しか読まない（表全体を読まない）。索引がまだ無い・R2 が使えないときは空（先頭一致だけになる）
+export const TITLE_IDX = 'pasttitle/v1/';
+const TITLE_GRAMS = 6;        // 読む索引のファイルは多くて 6 個（1 個 平均 13KB）
+const TITLE_CANDIDATES = 90;  // D1 で確かめるのは多くて 90 公演（1 回の問い合わせ）
+/** deliver_past_index.shard_of: FNV-1a (32 bit) of the UTF-8 bytes, modulo 256. */
+export function gramShard(s) {
+  let h = 0x811c9dc5;
+  for (const b of new TextEncoder().encode(s)) { h ^= b; h = Math.imul(h, 0x01000193) >>> 0; }
+  return h % 256;
+}
+/** Past stages whose title key contains k (cols from past_stage), newest stage ids first, at most limit. */
+export async function pastByTitle(env, db, k, cols, limit) {
+  const bucket = env?.POSTERS, grams = bigrams(k);
+  if (!bucket || !grams.length) return [];
+  // 組を全部読まなくても、一部の組に全部含まれる公演から確かめれば足りる（最後に本当に含むかを見る）
+  const pick = grams.length <= TITLE_GRAMS ? grams
+    : Array.from({length: TITLE_GRAMS}, (_, i) => grams[Math.round(i * (grams.length - 1) / (TITLE_GRAMS - 1))]);
+  const files = new Map();
+  try {
+    for (const sh of new Set(pick.map(gramShard))) {
+      if (!(await r2ReadAllowed(env))) return [];
+      const obj = await bucket.get(`${TITLE_IDX}${sh.toString(16).padStart(2, '0')}.json`);
+      if (!obj) return [];
+      files.set(sh, (await obj.json())?.grams || {});
+    }
+  } catch { return []; }
+  const lists = pick.map(g => files.get(gramShard(g))?.[g] || []).sort((a, b) => a.length - b.length);
+  const rest = lists.slice(1).map(l => new Set(l));
+  const ids = lists[0].filter(sid => rest.every(set => set.has(sid))).slice(0, TITLE_CANDIDATES);
+  if (!ids.length) return [];
+  let results = [];
+  try {
+    ({results} = await db.prepare(`SELECT ${cols} FROM past_stage WHERE stage_id IN (${ids.map(() => '?').join(',')})`).bind(...ids).all());
+  } catch { return []; }
+  const order = new Map(ids.map((sid, i) => [String(sid), i]));
+  return results.filter(r => String(r.tkey || '').includes(k))
+    .sort((a, b) => order.get(String(a.stage_id)) - order.get(String(b.stage_id))).slice(0, limit);
 }
 
 export function d1Search(db, ver, counter = {rows: 0, queries: 0}) {

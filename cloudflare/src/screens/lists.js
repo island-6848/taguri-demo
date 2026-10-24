@@ -139,11 +139,12 @@ export async function reactionsOf(ctx) {
 
 /** feedback.tickets: stage_id -> tickets, earliest first. */
 async function ticketsOf(ctx) {
-  const {results} = await ctx.db.prepare('SELECT stage_id,date,time,source,confirmed,uid FROM ticket WHERE user_id=? ORDER BY date,time').bind(ctx.uid).all();
+  const {results} = await ctx.db.prepare('SELECT stage_id,date,time,source,confirmed,uid,updated_at FROM ticket WHERE user_id=? ORDER BY date,time').bind(ctx.uid).all();
   const out = new Map();
   for (const t of results) {
     if (!out.has(t.stage_id)) out.set(t.stage_id, []);
-    out.get(t.stage_id).push({date: t.date, time: t.time || '', source: t.source, confirmed: Number(t.confirmed || 0), uid: t.uid || ''});
+    // at: 券を入れた（確定した）時刻。もう一度「購入済」を押したあとに、それより前に入れた券を数えないのに使う（doneDate）
+    out.get(t.stage_id).push({date: t.date, time: t.time || '', source: t.source, confirmed: Number(t.confirmed || 0), uid: t.uid || '', at: String(t.updated_at || '')});
   }
   return out;
 }
@@ -341,8 +342,9 @@ async function kindTagged(ctx, words) {
 }
 
 /** app._owned_done_date over the production's stages: the last confirmed ticket ({date, time}) or the run's end ({date}). */
-function doneDate(sids, end, tickets) {
-  const confirmed = sids.flatMap(s => (tickets.get(s) || []).filter(t => t.confirmed)).sort((a, b) => cmp(a.date + (a.time || ''), b.date + (b.time || '')));
+// since: この時刻より前に入れた券は数えない（もう一度「購入済」を押したあと、前に観た回の券で終わったと見ないように）
+function doneDate(sids, end, tickets, since = '') {
+  const confirmed = sids.flatMap(s => (tickets.get(s) || []).filter(t => t.confirmed && (!since || (t.at || '') >= since))).sort((a, b) => cmp(a.date + (a.time || ''), b.date + (b.time || '')));
   return confirmed.length ? {date: confirmed.at(-1).date, time: confirmed.at(-1).time || ''} : {date: end || '', time: ''};
 }
 /**
@@ -486,7 +488,12 @@ export async function buckets(ctx, {catalogue = false} = {}) {
       // 写ししか無い古い答えは、前と同じくツアー全体で見る
       const mine = sids.filter(s => (react.get(s)?.owned === 1 && !react.get(s).ownedCopy) || (tickets.get(s) || []).length);
       const ends = mine.map(s => group.find(v => v.stage_id === s)?.end || meta.get(s)?.end).filter(Boolean).sort();
-      const done = mine.length ? doneDate(mine, ends.at(-1) || row.end, tickets) : doneDate(sids, row.end, tickets);
+      // 観終わったあとで、もう一度「購入済」を押した公演は一覧に戻す（起案者の指摘 2026-10-24「すでに観劇記録に入っているものを
+      // 改めて購入済にいれても表示されない」）。前は観た回の券（過ぎた日）を「終わる日」と見て外したままだった。
+      // 最後に押した時刻より前に入れた券は数えず、押したあとに入れた券か、無ければ会期の終わりで見る（押したあとに、観た日を
+      // 過去の日で入れたときは、その日で終わったと見る）
+      const since = mine.map(s => react.get(s)?.at || '').sort().at(-1) || '';
+      const done = mine.length ? doneDate(mine, ends.at(-1) || row.end, tickets, since) : doneDate(sids, row.end, tickets);
       if (startPassed(done.date, done.time, ctx)) continue;
       const at = mine.find(s => group.some(v => v.stage_id === s));
       out.owned.push(at && at !== row.stage_id ? {...row, ...group.find(v => v.stage_id === at)} : row);
@@ -946,7 +953,14 @@ export async function ticketsScreen(params, ctx) {
   const owned = sortRows(b.owned, sort);
   const mine = r => r.sids.flatMap(s => (b.tickets.get(s) || []).map(t => ({...t, sid: s})))
     .sort((p, q) => cmp(p.date, q.date) || cmp(p.time || '', q.time || ''));
-  const html = (await cards(ctx, owned, 'owned', r => ({mytix: mytixHtml(r.stage_id, r.start, r.end, mine(r)) + preNote(r.stage_id, r.note_pre)}))).join('');
+  // カードにツアーのほかの会場（data-tours）を入れる。右上の ✕（app.js dismissButton）で一覧から外すとき、全会場に同じ答えを付けないと、
+  // ほかの会場に写った購入済が残って一覧から消えないため（起案者の指示 2026-10-24「カード右上の✕ボタンを押して画面から消せるようにしたい」）
+  const tours = r => E([...new Set((r.sids || []).map(String))].filter(s => s !== String(r.stage_id) && /^\d+$/.test(s)).join(','));
+  const html = (await cards(ctx, owned, 'owned', r => ({mytix: mytixHtml(r.stage_id, r.start, r.end, mine(r)) + preNote(r.stage_id, r.note_pre)})))
+    .map(card => card.replace(/(<article class="ticket [^"]*" data-stage="([^"]*)") data-tours="[^"]*"/, (m, a, sid) => {
+      const r = owned.find(x => E(String(x.stage_id)) === sid);
+      return r ? `${a} data-tours="${tours(r)}"` : m;
+    })).join('');
   // 見出しは「購入済の公演」（起案者の指示 2026-10-18。以前は「購入済み公演 ── N 件」）
   const body = `<h1>購入済の公演</h1>
 <p class="lede">「すでに持っている」と答えた公演と、購入確認メールから見つかった公演を並べています。<b>この一覧に入っても、次のおすすめは変わりません。</b>上演日を過ぎると一覧から外れ、<a href="/rate?t=__TAGURI_TOKEN__">評価一覧</a>の評価待ちに移ります。行く日は、各公演の「行く日」の欄から入れられます。</p>

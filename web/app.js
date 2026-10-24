@@ -125,7 +125,10 @@ function markAcctNav(root) {
 // 「４つの大きいメニューにアイコンをつけて」）。パソコン幅では今までどおり左の帯（NAV）を使う。
 // 探すは帯の検索窓、設定は右上の歯車、公演情報の登録はその左の「＋」から入る。
 const PNAV = [
-  ["rec", "おすすめ", "yarn", [["/recommend", "今週のおすすめ"], ["/recommend/interest", "興味あり"], ["/recommend/favourites", "お気に入り"]]],
+  ["rec", "おすすめ", "yarn", [["/recommend", "今週のおすすめ"], ["/recommend/interest", "興味あり"]]],
+  // お気に入りは、おすすめの子から出して、おすすめの右に 1 つのボタンとして置く（起案者の指示 2026-10-24「おすすめの下にある
+  // 『お気に入り』を独立させて、おすすめタブの右側に置いてほしい（スマホ）」）。子が無いので、押すとそのまま移る
+  ["fav", "お気に入り", "star", [], "/recommend/favourites"],
   ["plan", "予定", "calendar", [["/calendar", "公演カレンダー"], ["/recommend/reminder", "開幕リマインド"], ["/tickets", "購入済の公演"]]],
   ["rate", "評価", "stamp", [["/rate", "評価一覧"], ["/rate/unrated", "未評価"], ["/rate/notes", "感想"], ["/register", "観劇記録を追加"]]],
   ["rec2", "記録", "notebook", [["/records/works", "日記帳"], ["/records", "眺める"], ["/records/chronicle", "観劇史年表"]]],
@@ -139,10 +142,12 @@ function renderPNav() {
     // （起案者の指示 2026-10-19「現在のアカウントアイコンを押したら…ポップアップ…設定のアイコンは消して」）。デモ版は歯車のまま
     + (IS_DEMO ? '<a class="pset" href="/settings" data-path="/settings" aria-label="設定">' + ico("gear", 20) + "</a>"
       : '<button type="button" class="pacct" data-acct-menu aria-haspopup="menu" aria-expanded="false" aria-label="アカウント" title="アカウント">' + ico("user", 20) + "</button>")
-    + '<div class="pnav">' + PNAV.map(([id, label, icon]) =>
-      '<button type="button" class="pm" data-pm="' + id + '" aria-expanded="false">' + ico(icon, 22)
-      + '<span class="pl">' + E(label) + ico("chevron", 9, "cv") + "</span></button>").join("") + "</div>"
-    + PNAV.map(([id, , , kids]) => '<div class="psud' + (kids.length === 3 ? " three" : "") + '" data-psud="' + id + '" hidden>'
+    + '<div class="pnav">' + PNAV.map(([id, label, icon, kids, path]) => (kids.length
+      ? '<button type="button" class="pm" data-pm="' + id + '" aria-expanded="false">' + ico(icon, 22)
+        + '<span class="pl">' + E(label) + ico("chevron", 9, "cv") + "</span></button>"
+      : '<a class="pm" data-pm="' + id + '" href="' + path + '" data-path="' + path + '">' + ico(icon, 22)
+        + '<span class="pl">' + E(label) + "</span></a>")).join("") + "</div>"
+    + PNAV.filter(m => m[3].length).map(([id, , , kids]) => '<div class="psud' + (kids.length === 3 ? " three" : "") + '" data-psud="' + id + '" hidden>'
       + kids.map(([p, t]) => '<a href="' + p + '" data-path="' + p + '"><i aria-hidden="true"></i>' + E(t) + "</a>").join("")
       + "</div>").join("");
 }
@@ -181,7 +186,7 @@ function crumbsFor(path, title) {
 }
 function updateNavActive(path) {
   // スマホ幅の大メニュー: いまいる組を塗り、開いていたすだれは画面を移ったら閉じる
-  const here = PNAV.find(m => m[3].some(k => k[0] === path));
+  const here = PNAV.find(m => m[4] === path || m[3].some(k => k[0] === path));
   document.querySelectorAll(".side .pm").forEach(b => b.classList.toggle("on", !!here && b.dataset.pm === here[0]));
   openPSud(null);
   document.querySelectorAll(".side a[data-path]").forEach(a => {
@@ -453,13 +458,16 @@ function fixLinks(root) {
 // 結構マイナスと判断できる」）。カードの枠の外の右上。押すと /api/react に value 'dismiss'（興味ありの一覧では 'dismiss_strong'）を
 // 三択のボタンと同じ形（shown・siblings・from）で送り、カードを消す。購入済の公演（持っている券）のカードには出さない
 const DISMISS_ICON = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg>';
+// 購入済の公演の画面では、もう行った・券を買い足さない公演を一覧から外す口として出す（起案者の指示 2026-10-24「購入済に
+// ある公演、もう1回行ったし今後もチケット買い足さなさそうなやつはカード右上の✕ボタンを押して画面から消せるようにしたい」）。
+// 送るのはほかの画面と同じ 'dismiss'。観た記録と入れた行く日は消えない。ほかの画面の購入済のカードには、これまでどおり出さない
 function dismissButton(t) {
-  if (t.querySelector(":scope > .dismissq") || t.classList.contains("owned")) return;
   const here = location.pathname.slice(REPO_BASE.length) || "/";
-  if (here === "/tickets") return;
+  if (t.querySelector(":scope > .dismissq") || (t.classList.contains("owned") && here !== "/tickets")) return;
   const box = document.createElement("div");
   box.className = "dismissq";
-  const label = here === "/recommend/interest" ? "この公演を一覧から外し、今後のおすすめを減らす"
+  const label = here === "/tickets" ? "この公演を購入済の一覧から外す（観た記録と行く日は残ります）"
+    : here === "/recommend/interest" ? "この公演を一覧から外し、今後のおすすめを減らす"
     : "この公演を候補に表示しない（好みには反映しません）";
   box.innerHTML = '<button type="button" class="dismissq-open" aria-label="' + E(label) + '" title="' + E(label) + '">' + DISMISS_ICON + "</button>";
   t.appendChild(box);
@@ -534,13 +542,14 @@ document.addEventListener("click", async ev => {
   const shown = slot ? [...document.querySelectorAll(".ticket.recommend")].filter(a => !a.closest(".rfind")).map(a => a.dataset.stage).filter(Boolean) : null;
   const g = t.querySelector(".btns[data-stage]") || t;
   b.disabled = true;
-  const d = await post("/api/react", body, g, "候補から消しました");
+  const done = here === "/tickets" ? "購入済の一覧から外しました（観た記録と行く日は残ります）" : "候補から消しました";
+  const d = await post("/api/react", body, g, done);
   if (!d) { b.disabled = false; return; }
   const title = ((t.querySelector("h3") || {}).textContent || "").trim();
   const note = document.createElement("p");
   note.className = "dismissed";
   note.setAttribute("role", "status");
-  note.innerHTML = (title ? "「" + E(title) + "」を" : "この公演を") + '候補から消しました。<span class="said"></span>';
+  note.innerHTML = (title ? "「" + E(title) + "」を" : "この公演を") + E(done) + '。<span class="said"></span>';
   t.replaceWith(note);
   if (!shown) return;
   const f = await fetch(API_BASE + "/api/react", {method: "POST", credentials: "include",
@@ -2520,6 +2529,21 @@ document.addEventListener("click", ev => {
         // 観た日から別の劇場の公演に結び付け直したときは、劇場の欄もその劇場にする（起案者の問い 2026-10-21。rate.addWorkAction の venue）
         if (repeat && typeof d.venue === "string") g.querySelector("#w-venue").value = d.venue;
         document.getElementById("sug").replaceChildren();
+        // これからの公演は購入済に入った（rate.addWorkAction の owned。起案者の指示 2026-10-24）
+        if (d.owned && g.dataset.registerSingle) {
+          const result = g.parentElement.querySelector("[data-register-result]");
+          const message = document.createElement("p");
+          message.textContent = "「" + title + "」" + (date ? "（" + date + (savedTime ? " " + savedTime : "") + "）" : "")
+            + "を購入済の公演に追加しました。" + (date ? "行く日を過ぎると、評価待ちに移ります。" : "行く日は、購入済の公演の画面から入れられます。");
+          const link = document.createElement("a");
+          link.href = "/tickets";
+          link.textContent = "購入済の公演を見る";
+          result.replaceChildren(message, link);
+          result.hidden = false;
+          g.querySelector(".said").textContent = "購入済に追加しました。";
+          dt.focus();
+          return;
+        }
         if (g.dataset.registerSingle) {
           const result = g.parentElement.querySelector("[data-register-result]");
           const message = document.createElement("p");
@@ -2569,13 +2593,17 @@ document.addEventListener("click", ev => {
     const r = b.closest(".sug-row"), g = document.querySelector(".add-work");
     clearTimeout(sugTimer); ++sugSeq;
     g.querySelector("#w-title").value = r.dataset.title;
-    g.querySelector("#w-date").value = r.dataset.date || "";
+    // 記録のある公演をもう一度選んだときは、前の観た日を入れない（新しい日を入れてもらう）
+    g.querySelector("#w-date").value = b.dataset.again ? "" : (r.dataset.date || "");
     runDates(g.querySelector("#w-date"), r.dataset.start, r.dataset.end);
     loadStageTimes(r.dataset.stage || "");
-    g.querySelector("#w-venue").value = r.dataset.venue || "";
+    // 記録の行の劇場の欄は「劇場 開演時刻」と並べて見せているので（suggest.js）、もう一度足すときは時刻を外す
+    g.querySelector("#w-venue").value = b.dataset.again ? (r.dataset.venue || "").replace(/\s+\d{1,2}:\d{2}$/, "") : (r.dataset.venue || "");
     g.querySelector("#w-stage").value = r.dataset.stage || "";
     document.getElementById("sug").replaceChildren();
-    g.querySelector(".said").textContent = "候補から入れました。内容を確かめて登録してください";
+    g.querySelector(".said").textContent = b.dataset.again ? "同じ公演を入れました。今回観た日を入れて保存してください"
+      : "候補から入れました。内容を確かめて登録してください";
+    if (b.dataset.again) g.querySelector("#w-date").focus();
     const dialog = r.closest('dialog.register-search-dialog');
     if (dialog) { dialog.dataset.picked = '1'; dialog.close(); }
   } else if (b.dataset.merge) {
@@ -3424,7 +3452,8 @@ function sugRender(box, rows, headText) {
     r.dataset.title = x.title;
     r.dataset.date = x.date || "";
     r.dataset.venue = x.venue || "";
-    r.dataset.stage = x.kind === "stage" ? (x.stage_id || "") : "";
+    // 記録の行も、結び付いた公演があれば持つ（もう一度行った回を足すとき、同じ公演に結び付ける）
+    r.dataset.stage = x.stage_id || "";
     r.dataset.start = x.start || ""; r.dataset.end = x.end || "";
     r.innerHTML = '<span class="sg-p"></span><span class="sg-b">'
       + '<span class="sg-k"></span><span class="sg-t"></span>'
@@ -3452,10 +3481,25 @@ function sugRender(box, rows, headText) {
       r.append(c);
     }
     if (x.kind === "record") {
-      const w = document.createElement("span");
-      w.className = "sg-dup";
-      w.textContent = "すでに記録にあります";
-      r.append(w);
+      // 行けばよかったの欄では、これまでどおり選ばせず「すでに記録にあります」とだけ出す
+      if (box.closest(".miss-add")) {
+        const w = document.createElement("span");
+        w.className = "sg-dup";
+        w.textContent = "すでに記録にあります";
+        r.append(w);
+      }
+      // 同じ公演に何回も行くことがあるので、記録のある公演も選べるようにする（起案者の指示 2026-10-24「『すでに記録にあります』でも
+      // 複数回行ってる場合があるから再度選んで行った履歴を追加できるようにしてほしい」）。選ぶと題名・劇場・公演を入れ、観た日は空けて
+      // 新しい日を入れてもらう。保存は日付ごとに別の記録になる（rate.addWorkAction。同じ日なら開演の時刻で分ける）
+      if (!box.closest(".miss-add")) {
+        const again = document.createElement("button");
+        // 「記録あり」の札で記録にあることは分かるので、「すでに記録にあります」の文は出さず、ボタンを短くして題名の幅を空ける
+        again.textContent = "もう一度足す";
+        again.title = again.ariaLabel = "この公演に、もう一度行った日を足す";
+        again.dataset.pick = "1";
+        again.dataset.again = "1";
+        r.append(again);
+      }
     } else {
       const pick = document.createElement("button");
       pick.textContent = "これを使う";

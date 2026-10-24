@@ -16,6 +16,11 @@ past_stage を毎回全部読むと 1 回で最大 2 万行になり、無料枠
   （NFKC・半角と全角の空白を除く・小文字）。2 文字未満の名前は入れない。
 - 1 個のファイル: {"v":1, "stages": {stage_id: [title, tkey, start, end, venue, group]}, "names": {name: [stage_id, ...]}}。
 - 中身が前回（data/r2/pastidx.json に SHA-256 を控える）と同じファイルは送らない。
+- 題名の索引（pasttitle/v1/<shard>.json）も同じ流れで置く（起案者の指示 2026-10-24「検索しても今年の3月とかの公演が
+  候補に出てこないのはなぜ？」→ 題名の途中の語でも引けるようにする案に「OK」）。過去の公演は題名の先頭一致でしか
+  引けず、途中の語では 469 件中 1 件しか出なかった。題名の鍵（title_key）の 2 文字ずつの組 → 公演の番号の並び
+  （新しい番号が先）を、組の FNV-1a で 256 個に分ける: {"v":1, "grams": {gram: [stage_id, ...]}}。
+  2026-10-24 の取得データ（30,633 公演）で 46,705 組・全体 3.3MB・1 個 平均 13KB（最大 29KB）。D1 には書かない。
 - 無料枠: R2 は越えると請求が来るので、送る前に free_tier.py の控えで保存の合計と今月の書き込み回数を
   確かめ、越えるなら止める（deliver_posters.py と同じ）。ふだんは 1 日 256 回まで。
 """
@@ -42,6 +47,7 @@ import measure_nets as M                                           # noqa: E402
 
 SHARDS = 256
 PREFIX = "pastidx/v1/"
+TITLE_PREFIX = "pasttitle/v1/"
 ROWS = Path("past") / "stages.jsonl"
 MANIFEST = Path("r2") / "pastidx.json"
 
@@ -85,6 +91,27 @@ def shards(data: Path) -> dict[int, dict]:
     return out
 
 
+def title_shards(data: Path) -> dict[int, dict]:
+    """題名の鍵の 2 文字ずつの組 → 公演の番号（新しい番号が先）。Worker の stage-search.pastByTitle が読む。"""
+    text = (data / ROWS).read_text(encoding="utf-8") if (data / ROWS).exists() else ""
+    grams: dict[str, set[str]] = {}
+    for line in text.split("\n"):
+        if not line.strip():
+            continue
+        r = json.loads(line)
+        sid, title = str(r.get("stage_id") or ""), r.get("title") or ""
+        if not sid or not title:
+            continue
+        c = list(M.R.title_key(r.get("title_main") or title))
+        for i in range(len(c) - 1):
+            grams.setdefault(c[i] + c[i + 1], set()).add(sid)
+    out: dict[int, dict] = {}
+    num = lambda x: int(x) if x.isdigit() else 0                     # noqa: E731
+    for g in sorted(grams):
+        out.setdefault(shard_of(g), {"v": 1, "grams": {}})["grams"][g] = sorted(grams[g], key=lambda x: (-num(x), x))
+    return out
+
+
 def body_of(shard: dict) -> bytes:
     return json.dumps(shard, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
 
@@ -93,13 +120,14 @@ def deliver(data: Path, *, bucket: str, put=DP.put_object) -> dict:
     account, token = os.environ.get("CLOUDFLARE_ACCOUNT_ID", ""), os.environ.get("CLOUDFLARE_API_TOKEN", "")
     prev = json.loads((data / MANIFEST).read_text(encoding="utf-8")) if (data / MANIFEST).exists() else {}
     built = shards(data)
+    titles = title_shards(data)
+    files = {f"{PREFIX}{k:02x}.json": v for k, v in built.items()} | {f"{TITLE_PREFIX}{k:02x}.json": v for k, v in titles.items()}
     u = FT.load(data)
     sent, stop = 0, ""
     done = dict(prev)
-    for k in sorted(built):
-        body = body_of(built[k])
+    for key in sorted(files):
+        body = body_of(files[key])
         digest = hashlib.sha256(body).hexdigest()
-        key = f"{PREFIX}{k:02x}.json"
         if prev.get(key) == digest:
             continue
         grow = len(body) - int(u["r2"]["sizes"].get(key, 0))
@@ -124,7 +152,8 @@ def deliver(data: Path, *, bucket: str, put=DP.put_object) -> dict:
     FT.save(data, u)
     (data / MANIFEST).parent.mkdir(parents=True, exist_ok=True)
     (data / MANIFEST).write_text(json.dumps(done, sort_keys=True), encoding="utf-8")
-    return {"shards": len(built), "sent": sent, "names": sum(len(s["names"]) for s in built.values()),
+    return {"shards": len(built), "title_shards": len(titles), "sent": sent, "names": sum(len(s["names"]) for s in built.values()),
+            "grams": sum(len(s["grams"]) for s in titles.values()),
             "bytes": sum(len(body_of(s)) for s in built.values()), "stopped": stop}
 
 

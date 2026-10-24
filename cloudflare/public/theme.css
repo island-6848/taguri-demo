@@ -182,7 +182,10 @@ body{font-family:var(--font-body-default)}
  .side .navrow{display:none}
  .side .pset{display:flex;flex:none;width:40px;height:40px;padding:0;align-items:center;justify-content:center}
  .side .pset svg.ico{width:20px;height:20px}
- .side .pnav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;width:100%}
+ .side .pnav{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;width:100%}
+ /* お気に入りはすだれを持たず、押すとそのまま移る（a.pm。起案者の指示 2026-10-24） */
+ .side a.pm{text-decoration:none}
+ .side .pm .pl{white-space:nowrap}
  .side .pm{min-height:54px;padding:5px 0 4px;display:flex;flex-direction:column;align-items:center;
   justify-content:center;gap:3px;border:0;border-radius:8px;background:transparent;color:var(--ink);
   font:inherit;font-size:12.5px;font-weight:500;cursor:pointer}
@@ -201,6 +204,8 @@ body{font-family:var(--font-body-default)}
  .side .psud a.on{background:var(--surf);font-weight:700}
  .side .psud a.on i{background:var(--acc)}}
 @media (prefers-reduced-motion:reduce){.side .pm .pl svg.cv{transition:none}}
+/* 5 つ並べると、幅 360px 以下では「お気に入り」が折り返す。字を少し小さくして 1 行に収める */
+@media(max-width:360px){.side .pnav{gap:2px}.side .pm{font-size:11px}.side .pm .pl{gap:1px}}
 
 /* ---- おすすめの 1 枚を詰める（app.js の compactTickets・dec-recommend-compact-poster）。
    切り取り線の左にポスター、右に 日付・公演名・団体と劇場・発売。その下に全幅で 出演 5 人・
@@ -1530,6 +1535,11 @@ a.lsyntag:hover,a.lsyntag:focus-visible{text-decoration:underline}
 /* 2026-10-20: 420px より少し広い電話（450px 前後）でも「(貸)13:00」が升からはみ出していた（起案者の指摘「カレンダー（貸）で時刻が
    日付の枠はみ出してるの修正して」）。幅で分けず、どの幅でも「(貸)」を時刻の上の行に小さく置く */
 .ttb .tm.kas b:not(#_){display:block;margin:0;line-height:1.1;font-size:.75em}
+/* 2026-10-24: 起案者の指摘「（貸）と時刻が改行されている。1列になるように」。升の幅は電話で 32px ほどで、12px の「13:00」だけで
+   埋まる。見本 2 案（点線の枠で囲む／字を小さくして並べる）から、起案者が「字を小さくして並べる」を選んだ。貸切の回だけ
+   時刻を 10.5px・「(貸)」を 8px にして、「(貸)13:00」を 1 行に収める（390px の電話で 32〜33px に収まるのを測った） */
+.ttb .tm.kas:not(#_):not(#_){font-size:10.5px;letter-spacing:-.08em}
+.ttb .tm.kas b:not(#_):not(#_){display:inline;font-size:8px;margin:0 1px 0 0;letter-spacing:-.05em;vertical-align:1px;line-height:1}
 /* 「ほか n 会場」は押すと、ほかの会場の一覧（.mvlist）が会場の行の下に開く（app.js compactTickets） */
 .ticket.cmp .meta .mvmore{display:inline;margin-left:6px;padding:0;border:0;background:none;font:inherit;color:var(--curtain);
  cursor:pointer;white-space:nowrap;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px;position:relative}
