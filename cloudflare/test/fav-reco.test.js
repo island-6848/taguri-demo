@@ -64,7 +64,7 @@ test('a troupe or a work as the favourite is named in the reason', async () => {
 test('nothing to recommend when every co-worker\'s other show is the favourite\'s own, over, or already running', async () => {
   const got = await favOnly('人', '俳優甲');
   assert.equal(got.diag.favourite_seeds, 2);
-  assert.match(got.body_html, /<h1>今週のあなたへのおすすめはありません<\/h1>/);
+  assert.match(got.body_html, /<h1>たぐりへようこそ！<\/h1>/);
   // お気に入りがあるのに 0 件のときだけ、一文添える（起案者の答え 2026-10-18「C」）
   assert.match(got.body_html, /<p class="rcount favnone">お気に入りに登録した名前と関わりのある人の、今後の公演はまだ見つかっていません。/);
 });

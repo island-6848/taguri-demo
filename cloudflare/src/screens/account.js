@@ -177,7 +177,7 @@ ${google ? '' : '<a class="btn" href="/login?link=1&amp;next=%2Faccount">Google�
 </section>
 <section class="acct-card acct-danger">${h2('info', 'アカウントの削除')}
 <p>記録・評価・感想・お気に入り・ログインの情報をすべて消します。元に戻せません。</p>
-<p><a href="/login?purpose=delete">アカウントを削除する</a></p>
+<p><a href="/login?purpose=delete" data-account-delete>アカウントを削除する</a></p>
 </section>`;
   return {title: 'アカウント', body_html: body};
 }

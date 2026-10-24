@@ -242,7 +242,8 @@ async function walkA(A) {
     await page.click('#recovery-done');
     await page.waitForURL(BASE + '/');
     await settle();
-    check(/今週のあなたへのおすすめ/.test(await content()), '登録後におすすめの画面が出ない');   // 見出しは 2026-10-18 から「今週のあなたへのおすすめ…」
+    // 見出しは 2026-10-18 から「今週のあなたへのおすすめ…」、使い始めでまだ無いときは 2026-10-24 から「たぐりへようこそ！」
+    check(/今週のあなたへのおすすめ|たぐりへようこそ！/.test(await content()), '登録後におすすめの画面が出ない');
   });
   A.code = code;
   A.uid = sql('SELECT id FROM users')[0]?.id;
@@ -335,23 +336,32 @@ async function walkA(A) {
     await li.locator('[data-past=seen]').click();
     const form = li.locator('.past-seen');
     check(await form.isVisible(), '「観た」で欄が開かない');
-    const add = async (date, time) => {
+    // ツアーは、先に劇場を選ぶと、その劇場の期間だけの観た日が選べるようになる（#249、起案者の指示 2026-10-21
+    // 「観た→劇場選択→その劇場日付しか選べないカレンダーから日付を追加→時間追加」）。劇場を選ぶまで観た日は入れられない
+    check(await form.locator('input[name=date]').isDisabled(), '劇場を選ぶ前に観た日が入れられる');
+    const add = async (stage, date, time) => {
+      await form.locator('select[name=stage]').selectOption(stage);
       await form.locator('input[name=date]').fill(date);
       await form.locator('input[name=date]').dispatchEvent('change');
-      if (time) await form.locator('input[name=time]').fill(time);
+      await form.locator('input[name=time]').fill(time || '');
       await form.locator('[data-past=seen-save]').click();
     };
-    await add('2025-08-02', '');
-    await waitSaid(li, /8\/2 を観劇記録に追加しました/);
-    await add('2025-08-21', '13:00');
-    await waitSaid(li, /8\/21 13:00 を観劇記録に追加しました/);
-    await add('2025-08-21', '18:00');
-    await waitSaid(li, /8\/21 18:00 を観劇記録に追加しました/);
-    await add('2025-08-21', '18:00');
+    await add('710002', '2025-08-02', '');
+    await waitSaid(li, /8\/2 劇場B を観劇記録に追加しました/);
+    await add('710003', '2025-08-21', '13:00');
+    await waitSaid(li, /8\/21 13:00 劇場E を観劇記録に追加しました/);
+    await add('710003', '2025-08-21', '18:00');
+    await waitSaid(li, /8\/21 18:00 劇場E を観劇記録に追加しました/);
+    await add('710003', '2025-08-21', '18:00');
     const dup = await waitSaid(li, /できませんでした|もうある/);
     note('同じ日・同じ開演の 4 回目: 「' + dup + '」');
-    await add('2025-07-15', '');
-    note('ツアーの合間の日: 「' + (await saidOf(li)) + '」');
+    // 選んだ劇場の期間の外の日は、送らずに言う（ツアーの合間の日）
+    await form.locator('select[name=stage]').selectOption('710002');
+    await form.locator('input[name=date]').evaluate(el => { el.value = '2025-07-15'; });
+    await form.locator('input[name=time]').fill('');
+    await form.locator('[data-past=seen-save]').click();
+    const gap = await waitSaid(li, /上演していません|上演期間/);
+    note('ツアーの合間の日: 「' + gap + '」');
     const rows = sql("SELECT work_key, first_date, time, stage_id, venue FROM works WHERE title='旅の芝居' ORDER BY work_key");
     note('D1: ' + rows.map(r => `${r.first_date} ${r.time || '-'} ${r.stage_id} ${r.venue}`).join(' / '));
     check(rows.length === 3, '3 回分の記録にならない: ' + rows.length);
@@ -1482,6 +1492,11 @@ async function deleteA(A, B) {
   await step('アカウントの削除（復旧コードで本人確認 →「削除」）', async () => {
     cookie = (await ctx.cookies(BASE)).map(c => `${c.name}=${c.value}`).join('; ');
     await go('/account');
+    // 押すと「本当に削除の手続きに進みますか？」の確認が出る（起案者の指示 2026-10-24）。取りやめたら進まない
+    page.once('dialog', d => d.dismiss());
+    await page.locator('a[href="/login?purpose=delete"]').click();
+    check(!/purpose=delete/.test(page.url()), '確認で取りやめても削除の画面に進む');
+    page.once('dialog', d => { check(/本当に削除の手続きに進みますか/.test(d.message()), '確認の文が違う: ' + d.message()); d.accept(); });
     await page.locator('a[href="/login?purpose=delete"]').click();
     await page.waitForURL(/purpose=delete/);
     await settle();
@@ -1490,6 +1505,7 @@ async function deleteA(A, B) {
     await page.locator('#recovery-login button').click();
     await page.locator('#delete-confirm:not([hidden])').waitFor({timeout: 10000});
     await page.fill('#delete-word', '削除');
+    page.once('dialog', d => { check(/本当にアカウントを削除しますか/.test(d.message()), '最後の確認の文が違う: ' + d.message()); d.accept(); });
     await page.locator('#delete-confirm button').click();
     await page.locator('#delete-done:not([hidden])').waitFor({timeout: 10000});
     note('終わり: 「' + (await page.locator('#status').innerText()).trim() + '」');

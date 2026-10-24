@@ -661,7 +661,7 @@ ${rows.length ? mfoot : ''}`;
   return {title: '興味あり', body_html: body};
 }
 
-const KIND_OFF_LABEL = {'#形式': '形式', '#原作': '原作', '#翻訳': '翻訳', '#原作の国': '原作の国', '#会場': '劇場', '#題材': '題材', '#ジャンル': 'ジャンル'};
+const KIND_OFF_LABEL = {'#形式': '形式', '#原作': '原作', '#翻訳': '翻訳', '#原作の国': '原作の国', '#会場': '劇場', '#題材': '題材', '#ジャンル': 'ジャンル', '#出身・所属': '出身・所属'};
 /** 「使わない」にした種類の理由の一覧（q-kind-reason-off）。1 つも無いときは出さない */
 export function kindOffBox(keys) {
   if (!keys.length) return '';
@@ -939,7 +939,7 @@ export async function favouritesScreen(params, ctx) {
   if (!n) return {title: 'お気に入り', body_html: `<h1>お気に入り</h1>
 <p class="hsub">おすすめにかかわらず新着情報を知りたい題材や作り手がいるときは、お気に入りに追加することで情報の追跡ができます。</p>
 ${tools}
-${emptyGuide('favourite', 'お気に入りに登録されている要素がありません。', '<p>上の「要素を登録」で、劇団・俳優・演出家・作品・原作者・題材などの名前を登録すると、その名前の公演をここに並べます。</p>')}`};
+${emptyGuide('favourite', 'お気に入りに登録されている要素がありません。', '<p>上の「要素を登録」で、劇団・俳優・演出家・作品・原作者・題材などの名前を登録すると、登録した要素の公演情報が表示されます。</p>')}`};
   const body = `<h1>お気に入り${sharePageButton('favourites')}</h1>
 <p class="hsub">おすすめにかかわらず新着情報を知りたい題材や作り手がいるときは、お気に入りに追加することで情報の追跡ができます。</p>
 ${tools}

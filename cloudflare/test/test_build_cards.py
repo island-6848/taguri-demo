@@ -65,6 +65,19 @@ class CardTest(unittest.TestCase):
         self.assertNotIn("山荘</span>", html["html"], "モチーフはカードに並べない")
         self.assertIn("雪に閉ざされた山荘", html["ws"], "お気に入りの文字の一致には使う")
 
+    def test_synopsis_tags_carry_takarazuka_only_when_the_troupe_produces(self):
+        # 起案者の指示（2026-10-24）「あらすじのところにはその2つのタグつけないで。例外として、主催が宝塚歌劇団の場合のみ、
+        # あらすじの抽出ワードにも宝塚歌劇団を含めてよい」
+        els = {"synopsis": "", "tags": [], "elements": [
+            {"kind": "題材", "word": "宝塚歌劇団"}, {"kind": "題材", "word": "ジャニーズ"}, {"kind": "題材", "word": "恋愛"}]}
+        pool = {k: dict(v) for k, v in self.pool.items()}
+        pool["101"]["group"], pool["101"]["venue"] = "主催乙", "東京宝塚劇場"
+        c = BC.stage_dicts(pool, {("candidate", "101"): els}, TODAY)["101"]
+        self.assertEqual(c["themes"], ["恋愛"], "劇場だけで宝塚の公演でも、主催が宝塚歌劇団でなければ付けない")
+        pool["101"]["group"] = "宝塚歌劇団"
+        c = BC.stage_dicts(pool, {("candidate", "101"): els}, TODAY)["101"]
+        self.assertEqual(c["themes"], ["宝塚歌劇団", "恋愛"])
+
     def test_a_tour_lists_every_venue(self):
         pool = dict(self.pool)
         pool["301"] = dict(pool["101"], stage_id="301", theater="劇場Z", pref="大阪府",
