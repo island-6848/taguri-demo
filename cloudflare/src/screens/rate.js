@@ -9,7 +9,9 @@ import {E, quote, sortBy, cmp, fmtF, strip, slice, field, qsFirst, qsAll, digits
 import {loadWorks, similarWorks, titleKey, seenTimes} from './works.js';
 import {recRow, venueOf, venueKey, ico, h2, stageLabels} from './row.js';
 import {hashtagsHtml, noteTags} from './hashtags.js';
-import {promoteOwned} from './lists.js';
+import {promoteOwned, listScreens} from './lists.js';
+import {reactAction} from './recommend.js';
+import {stageInfo} from './fallback.js';
 import {rowInfos} from './rowinfo.js';
 import {peopleByKey, autoMerge} from './diary.js';
 
@@ -414,6 +416,21 @@ async function addWorkAction(b, ctx) {
   if (time && !/^\p{Nd}{2}:\p{Nd}{2}$/u.test(time)) throw new ValueError('開演時刻は HH:MM で入れる');
   let stageId = slice(strip(field(b, 'stage_id')), 0, 16);
   if (stageId && !/^\p{Nd}{1,12}$/u.test(stageId)) throw new ValueError('公演の id が数字ではない');
+  // これからの公演は、観た記録ではなく購入済にする（起案者の指示 2026-10-24「『観た公演を追加』、過去の記録じゃなくて購入済の
+  // 公演もここから探して追加できるようにして」）。候補から選んだ公演で、入れた日がまだ先（日が無ければ初日がまだ先）のとき。
+  // 押す口は「購入済」のボタンと同じ（recommend.reactAction）で、日があれば行く日にする（lists の ticket。ツアーなら
+  // その日に上演している会場の券になる）。行く日を過ぎると、これまでどおり記録（評価待ち）になる（lists.promoteTickets）
+  if (stageId) {
+    let st = null;
+    try { st = (await stageInfo(ctx.db, [stageId])).get(stageId); } catch { /* 公演の表を読めないときは、これまでどおり記録にする */ }
+    if (st && (date ? date > ctx.today : (st.start || '') > ctx.today)) {
+      // 券を先に入れる（上演期間の外の日なら、ここで断って何も書かない）
+      let sid = stageId;
+      if (date) sid = (await listScreens.actions.ticket({stage_id: stageId, date, time}, ctx)).body.stage_id || stageId;
+      await reactAction({stage_id: sid, value: 'owned', nofill: true}, ctx);
+      return {body: {ok: true, owned: true, stage_id: sid, work_key: '', similar: []}};
+    }
+  }
   // 過去の公演のツアーは劇場ごとに stage_id が違う。観た日がその劇場の期間に入らなければ、同じ題名・団体で
   // その日に上演していた劇場（1 つに決まるときだけ）に結び付け直す（起案者の指摘 2026-10-18）
   let venue2 = venue;

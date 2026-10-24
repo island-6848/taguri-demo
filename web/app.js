@@ -2520,6 +2520,21 @@ document.addEventListener("click", ev => {
         // 観た日から別の劇場の公演に結び付け直したときは、劇場の欄もその劇場にする（起案者の問い 2026-10-21。rate.addWorkAction の venue）
         if (repeat && typeof d.venue === "string") g.querySelector("#w-venue").value = d.venue;
         document.getElementById("sug").replaceChildren();
+        // これからの公演は購入済に入った（rate.addWorkAction の owned。起案者の指示 2026-10-24）
+        if (d.owned && g.dataset.registerSingle) {
+          const result = g.parentElement.querySelector("[data-register-result]");
+          const message = document.createElement("p");
+          message.textContent = "「" + title + "」" + (date ? "（" + date + (savedTime ? " " + savedTime : "") + "）" : "")
+            + "を購入済の公演に追加しました。" + (date ? "行く日を過ぎると、評価待ちに移ります。" : "行く日は、購入済の公演の画面から入れられます。");
+          const link = document.createElement("a");
+          link.href = "/tickets";
+          link.textContent = "購入済の公演を見る";
+          result.replaceChildren(message, link);
+          result.hidden = false;
+          g.querySelector(".said").textContent = "購入済に追加しました。";
+          dt.focus();
+          return;
+        }
         if (g.dataset.registerSingle) {
           const result = g.parentElement.querySelector("[data-register-result]");
           const message = document.createElement("p");
