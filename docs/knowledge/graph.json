@@ -1153,6 +1153,17 @@
    ]
   },
   {
+   "id": "dec-d1-remote-permission",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-24",
+   "title": "Claude のクラウドのセッションに、本番の D1 への wrangler d1 execute（taguri-demo --remote）だけを許可する（.claude/settings.json の permissions.allow）",
+   "sources": [
+    ".claude/settings.json"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-deck-algo-paper",
    "type": "decision",
    "status": "adopted",
@@ -10336,6 +10347,11 @@
    "from": "dec-d1-catalogue-delivery",
    "rel": "raises",
    "to": "q-catalogue-python-snapshot-vs-d1"
+  },
+  {
+   "from": "dec-d1-remote-permission",
+   "rel": "affects",
+   "to": "q-miss-saigon-cast"
   },
   {
    "from": "dec-deck-algo-paper",
