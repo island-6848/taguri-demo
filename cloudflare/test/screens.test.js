@@ -40,6 +40,13 @@ const noRowInfo = r => (r && typeof r.body?.body_html === 'string' && r.body.bod
 // またまとめた公演を見るとき周辺のUXが悪い」、screens/row.js visitsHtml）。Python の行には無いので外して比べ、形は visits.test.js で確かめる
 const VISITS_JS = / <span class="at">[^<]*<\/span>| ?<span class="mtimes">[^<]*<\/span>|<details class="visits">[\s\S]*?<\/details>/g;
 const noVisits = r => (r && typeof r.body?.body_html === 'string' ? {...r, body: {...r.body, body_html: r.body.body_html.replace(VISITS_JS, '')}} : r);
+// 2026-10-24 からサービス版だけ: 評価一覧が空のときのイラスト付きの案内と、未評価が 0 件（評価はある）のときの感謝
+// （起案者の指示「評価一覧の初期画面、おすすめと同じようにイラスト付きで」「未評価が0件…感謝の文章をイラスト付きで」）。
+// Python は前の 1 行のままなので、両方を同じ印に置き換えて比べ、形は rate-empty.test.js で確かめる
+const EGUIDE_JS = /<section class="card tips eguide">[\s\S]*?<\/section>/g;
+const EGUIDE_PY = /<p class="empty">まだ評価が付いた記録はありません。<\/p>(?:<p class="empty-next">[^<]*<a href="\/register\?t=__TAGURI_TOKEN__">観劇記録を追加<\/a><\/p>)?|<p class="empty">評価が付いていない記録はありません。<\/p>/g;
+const eguide = (r, re, js) => (r && typeof r.body?.body_html === 'string'
+  ? {...r, body: {...r.body, body_html: (js && !r.body.body_html.includes('eguide') ? r.body.body_html : r.body.body_html.replace(re, '<EGUIDE/>'))}} : r);
 const noEditor = (r, re) => (r && typeof r.body === 'object' && typeof r.body?.body_html === 'string'
   ? {...r, body: {...r.body, body_html: r.body.body_html.replace(re, '<EDITOR/>').replace(STAR_BTNS, MARK_BTNS).replaceAll('この場で★を押せます', 'この場で ◎○△× を押せます')}} : r);
 
@@ -49,10 +56,12 @@ for (const [i, sc] of scenarios.entries()) {
     const cookie = await signIn(env);
     for (const [j, s] of sc.steps.entries()) {
       const raw = await step(env, cookie, s);
-      const got = noVisits(noRowInfo(noEditor(raw, EDITOR_JS)));
+      const got = eguide(noVisits(noRowInfo(noEditor(raw, EDITOR_JS))), EGUIDE_JS, true);
       // 判子が 1 つも無い画面は星の段階の人の画面（◎○△× の人は判子のまま）
       const starPage = typeof raw?.body?.body_html === 'string' && !raw.body.body_html.includes('data-stamp="1"');
-      const want = noRowInfo(noEditor(starPage ? asStarRows(python[i].steps[j]) : python[i].steps[j], EDITOR_PY));
+      const want0 = noRowInfo(noEditor(starPage ? asStarRows(python[i].steps[j]) : python[i].steps[j], EDITOR_PY));
+      // Python の空の 1 行は、サービス版が案内・感謝を出したときだけ印に置き換える（記録も評価も無い未評価の画面は、両方とも前の 1 行のまま）
+      const want = typeof got?.body?.body_html === 'string' && got.body.body_html.includes('<EGUIDE/>') ? eguide(want0, EGUIDE_PY, false) : want0;
       if (typeof want.body === 'object' && typeof got.body === 'object' && got.body.body_html !== want.body.body_html && got.body.body_html && want.body.body_html) {
         // Show where the HTML first differs (the whole page is long).
         const a = got.body.body_html, b = want.body.body_html;

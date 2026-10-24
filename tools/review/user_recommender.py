@@ -12,6 +12,7 @@ import hashlib
 import json
 import math
 import re
+import unicodedata
 
 import measure_nets as M
 import recommend2 as RC
@@ -276,6 +277,53 @@ def source_kinds(text: str) -> list[str]:
 #   『作品名』・THE STAGE などの型のとき（製作委員会だけでは 2.5次元でない公演も多く混ざる）。
 GENRE_AXIS = "#ジャンル"
 _TAKARAZUKA = "宝塚歌劇団"
+# ジャンルの名前は「宝塚歌劇団」（起案者の指示 2026-10-24「特例で東京宝塚劇場と兵庫の宝塚劇場でやってる演目のジャンルは
+# 『宝塚歌劇団』として。あらすじにも #宝塚歌劇団 のタグをつける」。前の名前は「宝塚」）。主催が宝塚歌劇団の公演に加え、
+# 2 つの本拠地の劇場でかかる公演も、主催の欄にかかわらず入れる
+TAKARAZUKA_GENRE = "宝塚歌劇団"
+TAKARAZUKA_VENUES = ("東京宝塚劇場", "宝塚大劇場")
+
+
+def is_takarazuka(group: str = "", venues=()) -> bool:
+    """A 宝塚歌劇団 production: the troupe is 宝塚歌劇団, or it plays at 東京宝塚劇場 / 宝塚大劇場."""
+    return _TAKARAZUKA in (group or "") or any(v in (p or "") for p in venues or () for v in TAKARAZUKA_VENUES)
+# 出演者の出身・所属（起案者の指示 2026-10-24「推薦の特例で、宝塚歌劇団の作品を好む人には、宝塚OGが出ている舞台を勧めたい。
+# …同様にSTARTO ENTERTAINMENT（旧ジャニーズ事務所）も同じようにしたい」、dec-member-affil-tag）。
+# 宝塚歌劇団の公演と、在団・退団の人が出る公演に同じ札を付けるので、宝塚の公演を好む人の好みが OG の出る公演に伝わる。
+# STARTO も、所属の人が出る公演どうしが同じ札でつながる
+MEMBER_AXIS = "#出身・所属"
+STARTO = "STARTO ENTERTAINMENT"
+# 出演欄の括弧の書き添え（所属）から STARTO の人を見分ける。前の社名・Jr. の書き方と、グループの名前
+# （2026-10-24 の作業データの書き添えと、kai-you の 2024-04 の一覧〔find-takarazuka-starto-coverage-1024〕で拾った）
+STARTO_AFFIL = re.compile(
+    r"starto|ジャニーズ|johnny|snow ?man|sixtones|なにわ男子|king ?& ?prince|travis ?japan|kis-?my-?ft2|hey!? ?say!? ?jump|"
+    r"sexy ?zone|timelesz|^west\.?$|kat-?tun|^news$|関ジャニ|super ?eight|a\.?b\.?c-?z|aぇ!? ?group|hihi ?jets|美\s?少年|"
+    r"少年忍者|7 ?men ?侍|impactors|key ?to ?lit|acees|^ambitious$|lil ?かんさい|go!? ?go!? ?kids|jr\.? ?sp|^special$|b ?& ?zai|"
+    r"ふぉ[〜～ー]ゆ[〜～ー]|^tokio$|kinki ?kids|^v6$|^嵐$|^arashi$", re.I)
+
+
+def member_affils(affil: str) -> list[str]:
+    """出演欄の括弧の所属 1 つから、出身・所属の札の名前（宝塚歌劇団・STARTO ENTERTAINMENT）。"""
+    a = unicodedata.normalize("NFKC", affil or "").strip()
+    out = []
+    if "宝塚" in a and "宝塚大学" not in a:
+        out.append(TAKARAZUKA_GENRE)
+    if STARTO_AFFIL.search(a):
+        out.append(STARTO)
+    return out
+def synopsis_words(words, group: str = "") -> list:
+    """あらすじの抽出ワードから、出身・所属の札の名前（宝塚歌劇団・STARTO の書き方）を外す。主催が宝塚歌劇団の公演だけは
+    「宝塚歌劇団」を残す（起案者の指示 2026-10-24「あらすじのところにはその2つのタグつけないで。例外として、主催が宝塚歌劇団の場合のみ、
+    あらすじの抽出ワードにも宝塚歌劇団を含めてよい」）。`words` は言葉か（言葉, 重さ）の並び。"""
+    own = _TAKARAZUKA in (group or "")
+    out = []
+    for w in words or ():
+        names = member_affils(w if isinstance(w, str) else w[0])
+        if not names or (own and names == [TAKARAZUKA_GENRE]):
+            out.append(w)
+    return out
+
+
 _25D_SOURCES = {"漫画原作", "アニメ原作", "ゲーム原作"}
 _25D_TITLE = re.compile(r"the\s*stage|^\s*(?:舞台|ミュージカル|音楽劇)?\s*『", re.I)
 _BRACKETED = re.compile(r"[『「]([^』」]{2,})[』」]")
@@ -303,15 +351,15 @@ def student(title: str, group: str) -> str:
     return ""
 
 
-def genres(title: str, group: str = "", source: str = "") -> list[str]:
-    """Big genres of one production ('2.5次元', '宝塚', '大学演劇', '高校演劇'). 宝塚 is read from the troupe only:
-    the staff lists name 宝塚歌劇団 for people lent to other shows."""
+def genres(title: str, group: str = "", source: str = "", venues=()) -> list[str]:
+    """Big genres of one production ('2.5次元', '宝塚歌劇団', '大学演劇', '高校演劇'). 宝塚歌劇団 is read from the troupe
+    and the two home theatres, not from the staff lists (they name 宝塚歌劇団 for people lent to other shows)."""
     title, group = title or "", group or ""
     school = student(title, group)
     if school:
         return [school]
-    if _TAKARAZUKA in group:
-        return ["宝塚"]
+    if is_takarazuka(group, venues):
+        return [TAKARAZUKA_GENRE]
     if set(source_kinds(source)) & _25D_SOURCES:
         return ["2.5次元"]
     if "製作委員会" in group:
@@ -355,9 +403,9 @@ def stage_tags(title: str, venues, credits, prices=(), source: str = "", group: 
             tags.add(("#翻訳", "翻訳劇"))
     if korean_origin(title, credits):
         tags.add(("#原作の国", "韓国"))
-    tags.update((GENRE_AXIS, g) for g in genres(title, group, source))
+    tags.update((GENRE_AXIS, g) for g in genres(title, group, source, venues))
     # 劇場（#会場）は入れない（起案者の指示 2026-10-17「おすすめの種類に劇場名出てくるのなぜ？不要…ただ会場で
-    # 出てくるのは不要」）。主催が劇場の公演は、主催（団体）の名前として別に効く。`venues` は呼び出し側との形のために残す
+    # 出てくるのは不要」）。主催が劇場の公演は、主催（団体）の名前として別に効く。`venues` は宝塚歌劇団の本拠地の判定にだけ使う
     return sorted(tags)
 
 
@@ -649,7 +697,7 @@ def plain_sum(values) -> float:
 
 
 # 公演そのものを表す種類。劇場（#会場）と料金帯（#値段）は索引から外した（dec-drop-venue-kind・dec-source-kind-no-price）
-CONTENT_AXES = ("#形式", "#原作", "#翻訳", "#原作の国", "#題材", "#ジャンル")
+CONTENT_AXES = ("#形式", "#原作", "#翻訳", "#原作の国", "#題材", "#ジャンル", "#出身・所属")
 
 
 def has_reason(parts, kinds) -> bool:

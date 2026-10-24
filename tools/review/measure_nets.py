@@ -204,11 +204,12 @@ _AFFIL_SCHEDULE = re.compile(r"公演|交互|日替|回替|替わり|\d+/\d+|\d+
 _AFFIL_TAIL = re.compile(r"(主宰|所属|代表|創始|座長)$")
 
 
-def affiliations(text: str) -> list[tuple[str, str]]:
+def affiliations(text: str, former: bool = False) -> list[tuple[str, str]]:
     """出演欄の「名前（所属）」を (名前, 所属) の並びにする。名前は _names と同じ書き方（索引の人と合う）。
 
     カッコの直前の 1 人だけに付ける（「A・B（劇団X）」の A には付けない。どちらの所属か決められない）。
     カッコの中が「、」「／」で区切られていれば、所属が複数ある（「Aぇ!group、関西ジャニーズJr.」）。
+    `former`: 「元宝塚歌劇団雪組」のような前の所属も、頭の「元」を外して返す（出身・所属の札、dec-member-affil-tag）。
     """
     out = []
     t = _URL.sub("", html.unescape(text or ""))
@@ -220,6 +221,8 @@ def affiliations(text: str) -> list[tuple[str, str]]:
         for a in _AFFIL_PART.split(m.group(1)):
             a = re.sub(r"[\u200b-\u200d\ufeff]", "", norm(a)).strip(" 　・#「」『』\"")
             a = _AFFIL_TAIL.sub("", a).strip(" 　・")
+            if former:
+                a = re.sub(r"^元[・\s]?", "", a)
             if 2 <= len(a) <= 30 and not _NOT_AFFIL.search(a) and not _AFFIL_PLACE.match(a) and a not in ROLE_VOCAB \
                     and a != names[0]:
                 out.append((names[0], a))

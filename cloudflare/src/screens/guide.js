@@ -25,6 +25,29 @@ const ART = {
 <path d="M24 28h13" stroke="var(--ink2)" stroke-width="2" stroke-linecap="round" opacity=".55"/>
 <rect x="12" y="42" width="26" height="12" rx="6" fill="var(--surf)" stroke="var(--ink2)" stroke-width="2" opacity=".6"/>
 <path d="M50 30l3.1 6.3 7 1-5 4.9 1.2 6.9-6.3-3.3-6.3 3.3 1.2-6.9-5-4.9 7-1z" fill="var(--curtain)"/></svg>`,
+  // 公演カレンダー: 月の暦と、上演期間の帯（起案者の指示 2026-10-24「公演カレンダーの初期画面、おすすめと同じようにイラスト付きで」）
+  calendar: `<svg class="tip-art" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true">
+<rect x="6" y="12" width="52" height="44" rx="5" fill="var(--surf)" stroke="var(--ink2)" stroke-width="2"/>
+<path d="M6 22h52" stroke="var(--ink2)" stroke-width="2"/>
+<path d="M18 8v8M46 8v8" stroke="var(--ink2)" stroke-width="2.4" stroke-linecap="round"/>
+<rect x="12" y="28" width="26" height="6" rx="3" fill="var(--curtain)"/>
+<rect x="24" y="38" width="28" height="6" rx="3" fill="var(--ink2)" opacity=".35"/>
+<rect x="12" y="48" width="18" height="4" rx="2" fill="var(--ink2)" opacity=".2"/></svg>`,
+  // 評価一覧: 観た公演の券と、星の評価（起案者の指示 2026-10-24「評価一覧の初期画面、おすすめと同じようにイラスト付きで」）
+  rate: `<svg class="tip-art" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true">
+<rect x="8" y="10" width="36" height="46" rx="4" fill="var(--surf)" stroke="var(--ink2)" stroke-width="2"/>
+<path d="M15 20h22M15 27h16" stroke="var(--ink2)" stroke-width="2" stroke-linecap="round" opacity=".55"/>
+<path d="M17 40l1.6 3.3 3.6.5-2.6 2.5.6 3.6-3.2-1.7-3.2 1.7.6-3.6-2.6-2.5 3.6-.5zM30 40l1.6 3.3 3.6.5-2.6 2.5.6 3.6-3.2-1.7-3.2 1.7.6-3.6-2.6-2.5 3.6-.5z" fill="var(--curtain)"/>
+<circle cx="48" cy="44" r="11" fill="var(--surf)" stroke="var(--ink2)" stroke-width="2"/>
+<path d="M48 38v12M42 44h12" stroke="var(--curtain)" stroke-width="2.6" stroke-linecap="round"/></svg>`,
+  // 未評価が 0 件（評価は付いている）: 花束（起案者の指示 2026-10-24「『ご回答ありがとうございました！』のような感謝の文章をイラスト付きで」）
+  thanks: `<svg class="tip-art" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true">
+<path d="M26 36l-5-12M32 36V20M38 36l5-12" stroke="var(--mute)" stroke-width="2"/>
+<circle cx="20" cy="21" r="7" fill="var(--acc)"/><circle cx="20" cy="21" r="2.5" fill="var(--surf)"/>
+<circle cx="44" cy="21" r="7" fill="var(--acc)"/><circle cx="44" cy="21" r="2.5" fill="var(--surf)"/>
+<circle cx="32" cy="15" r="8" fill="var(--curtain)"/><circle cx="32" cy="15" r="3" fill="var(--surf)"/>
+<path d="M19 36h26L32 60z" fill="var(--surf)" stroke="var(--ink2)" stroke-width="2" stroke-linejoin="round"/>
+<path d="M25 44q7 6 14 0" stroke="var(--curtain)" stroke-width="2.6" fill="none" stroke-linecap="round"/></svg>`,
 };
 
 /** 空のときの案内の枠。art は ART の鍵、text は中の文（<p> を含む HTML）。 */

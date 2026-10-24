@@ -613,5 +613,50 @@ class AffiliationTest(unittest.TestCase):
         self.assertFalse(any(s.startswith('INSERT INTO rec_affil') for s in again))
 
 
+class MemberAffilTest(unittest.TestCase):
+    """出身・所属の札（dec-member-affil-tag）: 宝塚歌劇団の公演と OG の出る公演、STARTO の人が出る公演どうしを同じ札でつなぐ。"""
+
+    def test_takarazuka_alumnae_and_starto_share_one_tag(self):
+        pool = {
+            '1': {'title': '宝塚の公演', 'period': '2026/11/01 〜 2026/11/03', 'group': '宝塚歌劇団', 'theater': '宝塚大劇場',
+                  'fields': {'出演': '星乃花子、月野雪子', '劇場': '宝塚大劇場'}},
+            '2': {'title': '外の舞台', 'period': '2026/12/01 〜 2026/12/03', 'group': '主催乙', 'theater': '劇場丙',
+                  'fields': {'出演': '星乃花子、山田太郎', '劇場': '劇場丙'}},
+            '3': {'title': '別の舞台', 'period': '2026/12/05 〜 2026/12/07', 'group': '主催乙', 'theater': '劇場丙',
+                  'fields': {'出演': '鈴木一郎（Snow Man）、山田太郎', '劇場': '劇場丙'}},
+            '4': {'title': '関係ない舞台', 'period': '2026/12/05 〜 2026/12/07', 'group': '主催乙', 'theater': '劇場丙',
+                  'fields': {'出演': '山田太郎', '劇場': '劇場丙'}},
+        }
+        # 過去の公演の書き添え（元宝塚歌劇団）だけで分かる人も入る
+        past = [{'stage_id': '9', 'fields': {'出演': '海野波子（元宝塚歌劇団雪組）'}}]
+        pool['5'] = {'title': '五つめ', 'period': '2026/12/05 〜 2026/12/07', 'group': '主催乙', 'theater': '劇場丙',
+                     'fields': {'出演': '海野波子', '劇場': '劇場丙'}}
+        index = BI.build_index(pool, {}, APP.group_of, past=past)
+        tags = lambda sid: {t for r, t, s, *_ in index['postings'] if s == sid and r == UR.MEMBER_AXIS}  # noqa: E731
+        self.assertEqual(tags('1'), {'宝塚歌劇団'})
+        self.assertEqual(tags('2'), {'宝塚歌劇団'})
+        self.assertEqual(tags('3'), {'STARTO ENTERTAINMENT'})
+        self.assertEqual(tags('4'), set())
+        self.assertEqual(tags('5'), {'宝塚歌劇団'})
+        # 外の一覧（data/affil/members.json）で、手元の公演に出てこない人も足せる
+        index = BI.build_index(pool, {}, APP.group_of, listed={'STARTO ENTERTAINMENT': ['山田 太郎']})
+        self.assertIn('STARTO ENTERTAINMENT', {t for r, t, s, *_ in index['postings'] if s == '4' and r == UR.MEMBER_AXIS})
+        self.assertIn(UR.MEMBER_AXIS, UR.CONTENT_AXES)
+
+    def test_synopsis_words_drop_the_member_names(self):
+        S = UR.synopsis_words
+        self.assertEqual(S(['宝塚歌劇団', 'STARTO', '恋愛'], '主催乙'), ['恋愛'])
+        self.assertEqual(S([('宝塚歌劇団', 1.0), ('Snow Man', 1.0), ('恋愛', 0.5)], '宝塚歌劇団'), [('宝塚歌劇団', 1.0), ('恋愛', 0.5)])
+
+    def test_affiliation_words(self):
+        A = UR.member_affils
+        self.assertEqual(A('元宝塚歌劇団雪組'), ['宝塚歌劇団'])
+        self.assertEqual(A('少年忍者/ジャニーズJr.'), ['STARTO ENTERTAINMENT'])
+        self.assertEqual(A('SixTONES'), ['STARTO ENTERTAINMENT'])
+        self.assertEqual(A('劇団四季'), [])
+        self.assertEqual(A('宝塚大学'), [])
+        self.assertEqual(A('Special Thanks'), [])
+
+
 if __name__ == '__main__':
     unittest.main()

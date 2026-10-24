@@ -79,7 +79,15 @@ def stage_dicts(pool: dict[str, dict], themes: dict, today: datetime.date) -> di
         # カードに並べるのは照合に使う言葉。モチーフ（その作品だけの句）は並べず、お気に入りの文字の一致（ws）にだけ使う。
         # 先頭には見せる用のハッシュタグを 1 つだけ出す（起案者の指示 2026-10-18「カードに 1 つだけ出して」）
         els = [e for e in (t.get("elements") or []) if e.get("word")]
-        c["themes"] = [e["word"] for e in els if e.get("kind") != "モチーフ"]
+        # 公演の形式の言葉（バレエ・ミュージカル…）は、読み取りが「題材」と書いたときだけ（dec-form-vs-theme-words）
+        c["themes"] = [e["word"] for e in els if e.get("kind") != "モチーフ"
+                       and (e.get("kind") == "題材" or M.norm(e["word"]) not in UR.FORM_WORDS)]
+        # あらすじの札に出身・所属の札の名前（宝塚歌劇団・STARTO）は付けない。主催が宝塚歌劇団の公演だけ、先頭に #宝塚歌劇団
+        # （起案者の指示 2026-10-24「あらすじにも#宝塚歌劇団、のタグをつける」→ 同じ日「あらすじのところにはその2つのタグつけないで。
+        # 例外として、主催が宝塚歌劇団の場合のみ、あらすじの抽出ワードにも宝塚歌劇団を含めてよい」）。劇場だけで決まる公演には付けない
+        c["themes"] = UR.synopsis_words(c["themes"], c.get("group") or "")
+        if UR._TAKARAZUKA in (c.get("group") or ""):
+            c["themes"] = [UR.TAKARAZUKA_GENRE] + [w for w in c["themes"] if w != UR.TAKARAZUKA_GENRE]
         c["motifs"] = [e["word"] for e in els if e.get("kind") == "モチーフ"]
         c["hook"] = next((str(x).lstrip("#＃").strip() for x in t.get("tags") or [] if str(x).strip("#＃ ")), "")
         c["themes_by"] = t.get("elements_by") or ""
