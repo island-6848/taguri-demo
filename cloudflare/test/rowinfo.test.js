@@ -55,3 +55,11 @@ test('a record linked to a past stage shows the synopsis read for that stage (pa
     assert.doesNotMatch(m[1], /#題材/);                          // 種類の言葉は作り手の欄に出さない
   } finally { sqlite.close(); }
 });
+
+// あらすじの下に、読み取ったタグ（カードのハッシュタグと同じ語）を付ける（起案者の指示 2026-10-24「評価ページのあらすじにも抽出のタグをつけて」）
+test('the synopsis of a row carries the tags read from it, like the card', async () => {
+  const {rinfoHtml} = await import('../src/screens/rowinfo.js');
+  const html = rinfoHtml({grp: '', venue: '', synopsis: '海辺の町の話。', credits: [], url: '', page: '', tags: ['家族', '再生']}, '', '');
+  assert.match(html, /<div class="syn"><p class="txt">海辺の町の話。<\/p><div class="tags"><span class="tag">#家族<\/span><span class="tag">#再生<\/span><\/div>/);
+  assert.doesNotMatch(rinfoHtml({grp: '', venue: '', synopsis: 'あらすじ。', credits: [], url: '', page: '', tags: []}, '', ''), /class="tags"/);
+});

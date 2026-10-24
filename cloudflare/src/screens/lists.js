@@ -967,7 +967,7 @@ export async function ticketsScreen(params, ctx) {
     })).join('');
   // 見出しは「購入済の公演」（起案者の指示 2026-10-18。以前は「購入済み公演 ── N 件」）
   const body = `<h1>購入済の公演</h1>
-<p class="lede">「すでに持っている」と答えた公演と、購入確認メールから見つかった公演を並べています。<b>この一覧に入っても、次のおすすめは変わりません。</b>上演日を過ぎると一覧から外れ、<a href="/rate?t=__TAGURI_TOKEN__">評価一覧</a>の評価待ちに移ります。行く日は、各公演の「行く日」の欄から入れられます。</p>
+<p class="lede">「すでに持っている」と答えた公演と、購入確認メールから見つかった公演を並べています。<b>この一覧に入っても、次のおすすめは変わりません。</b>上演日を過ぎると一覧から外れ、<a href="/rate?t=__TAGURI_TOKEN__">評価一覧</a>の評価待ちに移ります。観劇日は、各公演の「観劇日」の欄から入れられます。</p>
 ${owned.length ? sortForm('/tickets', sort, keys) : ''}
 ${html || emptyGuide('owned', '購入済の公演はまだありません', '<p>「<a href="/recommend?t=__TAGURI_TOKEN__">おすすめ</a>」または「<a href="/recommend/reminder?t=__TAGURI_TOKEN__">開幕リマインド</a>」、'
   + '「<a href="/search?t=__TAGURI_TOKEN__">探す</a>」で「購入済」と回答してください。<br>また「<a href="/register?t=__TAGURI_TOKEN__">観劇記録を追加</a>」で購入済の公演を追加してください。</p>')}
