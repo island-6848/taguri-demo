@@ -1841,10 +1841,6 @@ article .share-open{display:flex;margin:6px 0 0 auto}
 .wcloud .w1{fill:var(--ink)}
 .wcloud .w2{fill:var(--ink2)}
 .wcloud .w3{fill:var(--mute)}
-<<<<<<< HEAD
-/* 行けばよかったの 1 件ずつの「取り消す」（起案者の指示 2026-10-24） */
-.miss-row .miss-del{margin-left:auto;font-size:12px;padding:1px 10px}
-=======
 
 /* 購入済の公演: 入れた観劇日時の升を赤く囲む（起案者の指示 2026-10-24。app.js markMyShows） */
 .ttb .tm.mine{outline:2px solid var(--curtain);outline-offset:0;border-radius:3px;color:var(--curtain)}
@@ -1853,5 +1849,5 @@ article .share-open{display:flex;margin:6px 0 0 auto}
 /* 評価一覧: 星より下を畳む「くわしく」（起案者の指示 2026-10-24。app.js foldRateRows） */
 .rec-row details.rfold{margin:4px 0 0}
 .rec-row details.rfold>summary{cursor:pointer;font-size:12.5px;color:var(--mute);padding:4px 0}
-
->>>>>>> origin/master
+/* 行けばよかったの 1 件ずつの「取り消す」（起案者の指示 2026-10-24） */
+.miss-row .miss-del{margin-left:auto;font-size:12px;padding:1px 10px}
