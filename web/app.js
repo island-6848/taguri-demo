@@ -5318,6 +5318,13 @@ document.addEventListener("click", async ev => {
   const d = await post("/api/account", {avatar: ""}, b.closest(".acpic"), "アイコンを外しました");
   if (d) showAvatar("");
 });
+// 「アカウントを削除する」を押したら、本人確認の画面へ進む前に確かめる（起案者の指示 2026-10-24「設定で『アカウントの削除』
+// を押したとき、ポップアップで本当にいいですか？って確認してから消して」）。削除の最後の「すべて削除する」でも、もう一度確かめる
+// （cloudflare/src/client/login.js）
+document.addEventListener("click", ev => {
+  const a = ev.target.closest("[data-account-delete]");
+  if (a && !confirm("アカウントを削除すると、記録・評価・感想・お気に入り・ログインの情報がすべて消え、元に戻せません。\n本当に削除の手続きに進みますか？")) ev.preventDefault();
+});
 document.addEventListener("click", async ev => {
   const b = ev.target.closest("[data-account-logout]");
   if (!b) return;

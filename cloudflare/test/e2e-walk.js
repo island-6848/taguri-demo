@@ -1476,6 +1476,11 @@ async function deleteA(A, B) {
   await step('アカウントの削除（復旧コードで本人確認 →「削除」）', async () => {
     cookie = (await ctx.cookies(BASE)).map(c => `${c.name}=${c.value}`).join('; ');
     await go('/account');
+    // 押すと「本当に削除の手続きに進みますか？」の確認が出る（起案者の指示 2026-10-24）。取りやめたら進まない
+    page.once('dialog', d => d.dismiss());
+    await page.locator('a[href="/login?purpose=delete"]').click();
+    check(!/purpose=delete/.test(page.url()), '確認で取りやめても削除の画面に進む');
+    page.once('dialog', d => { check(/本当に削除の手続きに進みますか/.test(d.message()), '確認の文が違う: ' + d.message()); d.accept(); });
     await page.locator('a[href="/login?purpose=delete"]').click();
     await page.waitForURL(/purpose=delete/);
     await settle();
@@ -1484,6 +1489,7 @@ async function deleteA(A, B) {
     await page.locator('#recovery-login button').click();
     await page.locator('#delete-confirm:not([hidden])').waitFor({timeout: 10000});
     await page.fill('#delete-word', '削除');
+    page.once('dialog', d => { check(/本当にアカウントを削除しますか/.test(d.message()), '最後の確認の文が違う: ' + d.message()); d.accept(); });
     await page.locator('#delete-confirm button').click();
     await page.locator('#delete-done:not([hidden])').waitFor({timeout: 10000});
     note('終わり: 「' + (await page.locator('#status').innerText()).trim() + '」');
