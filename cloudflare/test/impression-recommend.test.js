@@ -40,7 +40,7 @@ test('a note on a seen show moves the shows with the same kind word, and editing
     // 控えの印は works の更新時刻（秒）なので、書き込みのたびに時計を進める（試験の時計は止まっている）
     const note = async (u, text) => { env.CLOCK.now += 1000; return (await step(env, u, {post: '/api/note', body: {work_key: keys[u], note_impression: text}})).status; };
     const ranked = async u => {
-      const r = await rankedGroups({db: env.DB, uid: uidOf[u], today: env.CLOCK.today, now: env.CLOCK.now});
+      const r = await rankedGroups({db: env.DB, env, uid: uidOf[u], today: env.CLOCK.today, now: env.CLOCK.now});
       return r.groups.map(g => [g.stage_id, g.imp ? g.imp.map(([label, sign]) => label + sign) : []]);
     };
     const before = await ranked(a);

@@ -199,6 +199,19 @@ jobs:
             npx --yes "$WRANGLER" d1 execute taguri-demo --remote --yes --file ../d1-past/past-upload.sql 2>&1 | tee ../d1-past/past-upload.sql.log
           fi
           python scripts/deliver_past.py commit --data ../data --out ../d1-past
+      - name: Precompute everyone's recommendations (after the index is in D1)
+        # おすすめの計算し直しは本番の大きさで Worker の CPU 10 ms を越えるので（f-reco-recompute-cpu-1021）、
+        # ここで全員分を Worker と同じコードで作り、rec_cache に入れる（起案者の決定 2026-10-24、dec-reco-nightly）。
+        # Worker は控えが古くても計算し直さず、答えた公演だけ外して出す。順位は毎朝変わる。
+        # 利用者の記録はこの機械のメモリにだけ置き、ログには件数だけを出す（このリポジトリは非公開）。
+        # D1 の読みは 1 日 10 万行ほど（上限 500 万行。40 万行を越えたらやめる）、書きは多くて利用者の数。300 人で 1 分ほど
+        if: always() && steps.plan.outputs.run == 'true'
+        continue-on-error: true
+        timeout-minutes: 10
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node cloudflare/scripts/nightly_reco.mjs
       - name: Put the name index of the past stages into R2 (changed files only)
         # お気に入りのハッシュタグの画面が、名前から過去の公演を引くための索引（taguri-demo の
         # cloudflare/scripts/deliver_past_index.py、docs/knowledge の dec-past-name-index）。
