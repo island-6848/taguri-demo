@@ -1471,9 +1471,20 @@
   {
    "id": "dec-fill-below",
    "type": "decision",
-   "status": "adopted",
+   "status": "superseded",
    "date": "2026-10-20",
    "title": "おすすめで答えたときの入れ替わりの 1 枚は、押したカードのすぐ下に出す（画面全体は読み込み直さない）",
+   "sources": [
+    "web/app.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-fill-bottom",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-24",
+   "title": "おすすめで答えたときの入れ替わりの 1 枚は、一覧のいちばん下に足す（押したカードのすぐ下はやめる）",
    "sources": [
     "web/app.js"
    ],
@@ -10407,6 +10418,16 @@
   },
   {
    "from": "dec-fill-below",
+   "rel": "affects",
+   "to": "comp-cf-worker"
+  },
+  {
+   "from": "dec-fill-bottom",
+   "rel": "supersedes",
+   "to": "dec-fill-below"
+  },
+  {
+   "from": "dec-fill-bottom",
    "rel": "affects",
    "to": "comp-cf-worker"
   },
