@@ -1612,6 +1612,8 @@ details.lprice>summary .plist>li:only-child::before{display:block}
 /* 消したカードの跡の 1 行 */
 .dismissed{margin:0 0 16px;padding:10px 14px;border:1px dashed var(--ring);color:var(--ink2);font-size:13px;line-height:1.6}
 .dismissed .said:not(:empty){margin-left:.6em}
+/* 購入済の画面で ✕ を押したあとの「元に戻す」（起案者の指示 2026-10-24） */
+.dismissed .undo-dismiss{margin-left:.6em;padding:2px 12px;font-size:12.5px}
 /* あらすじ: 続きは同じ段落の中で、畳む前の最後の字のすぐ次から続ける（details をやめて span の開け閉めに）。
    ハッシュタグは折りたたみの外で、閉じていても見える */
 :is(.ticket.cmp,.rec-row.cmp) .lsynopen{display:inline;margin-left:4px;padding:0;border:0;background:none;font:inherit;font-size:12px;
