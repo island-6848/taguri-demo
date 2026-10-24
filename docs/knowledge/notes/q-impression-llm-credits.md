@@ -1,7 +1,7 @@
 ---
 id: q-impression-llm-credits
 type: question
-status: open
+status: dropped
 date: 2026-10-24
 title: 利用者の感想を、Max 契約の毎月の API クレジットで LLM に読ませ、推薦に生かすか（dec-no-llm-per-user の見直し）
 sources:
@@ -10,7 +10,10 @@ links:
   - depends_on: find-max-api-credits
   - affects: dec-no-llm-per-user
   - affects: impl-impression-worker
+  - depends_on: dec-note-ai
 ---
+**取り下げ（2026-10-24）:** この問いを立てる前の 2026-10-21 に、別のセッションで同じことが決まり、作られていた〔dec-note-ai〕（同意した人の感想だけを Haiku 5.5 に送る。migration 0045・note-ai.js）。下の「決めること」の 1〜4 は、そちらで答えが出ている（同意の欄・プライバシーポリシー第 5 条・夜のまとめ処理・支払い方法を登録しない）。
+
 起案者（2026-10-24）「利用者の感想を推薦に活かしたい、Max契約してたら100ドルまで無料って聞いたけど」
 
 **今の形:** 感想は規則で読んでいる（impl-impression-worker）。Worker は LLM を呼ばない（dec-no-llm-per-user、no-llm.test.js）。

@@ -29,7 +29,7 @@ test('a new account gets no recommendations and is told what to do', async () =>
     assert.equal(got.status, 200);
     assert.equal(got.body.title, '今週のあなたへのおすすめ');
     assert.equal(got.body.moving, undefined);
-    assert.match(got.body.body_html, /<h1>今週のあなたへのおすすめはありません<\/h1>/);
+    assert.match(got.body.body_html, /<h1>たぐりへようこそ！<\/h1>/);
     assert.doesNotMatch(got.body.body_html, /<article/);
     // 推薦を出すためのワンポイント (起案者 2026-10-14): what to do, in plain words.
     assert.match(got.body.body_html, /<h2>おすすめを出すためのワンポイント<\/h2>/);
@@ -137,7 +137,7 @@ test('効かせ方: the sliders show the saved steps and the counts; "効かせ�
     assert.doesNotMatch(html, /<span class="net">人物<\/span>出演 /);   // the cast leaves the reasons too
     const all = Object.fromEntries(['cast', 'author', 'craft', 'stage', 'produce', 'other', 'theme'].map(k => [k, 'off']));
     assert.equal((await step(env, a, {post: '/api/weight', body: {weights: all}})).status, 200);
-    assert.match((await step(env, a, {get: '/api/screen/recommend'})).body.body_html, /<h1>今週のあなたへのおすすめはありません<\/h1>/);
+    assert.match((await step(env, a, {get: '/api/screen/recommend'})).body.body_html, /<h1>たぐりへようこそ！<\/h1>/);
     // Only the listed groups and steps; nothing is written when one is wrong.
     assert.equal((await step(env, a, {post: '/api/weight', body: {weights: {cast: 'mid', bogus: 'max'}}})).status, 400);
     assert.equal((await step(env, a, {post: '/api/weight', body: {weights: {cast: '9'}}})).status, 400);

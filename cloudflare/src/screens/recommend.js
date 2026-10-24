@@ -58,7 +58,7 @@ const tip = (n, art, head, body) => `<div class="tip"><div class="tip-t"><p clas
 const TIPS = `<section class="card tips">
 <h2>おすすめを出すためのワンポイント</h2>
 ${tip(1, 'record', '過去の観劇記録を2件以上追加する',
-  '<p>「<a href="/register?t=__TAGURI_TOKEN__">観劇記録を追加</a>」から、追加してください。<br>「<a href="/search?t=__TAGURI_TOKEN__">探す</a>」から公演名などで検索して追加することもできます。</p>')}
+  '<p>右上の+ボタンまたは「<a href="/register?t=__TAGURI_TOKEN__">観劇記録を追加</a>」から、追加してください。<br>「<a href="/search?t=__TAGURI_TOKEN__">探す</a>」から公演名などで検索して追加することもできます。</p>')}
 <p class="tip-or">または</p>
 ${tip(2, 'favourite', '好きな俳優・劇団・作品を「お気に入り」に登録する',
   '<p>「<a href="/recommend/favourites?t=__TAGURI_TOKEN__">お気に入り</a>」に好きな要素を追加してください。<br>共演者や題材などが推薦に反映されます。</p>')}
@@ -110,7 +110,7 @@ const GATE_REUSE_MIN = 30;
 export const REPLAY_ABLATIONS = ['split', 'expand', 'spread', 'gate', 'impression', 'rollup'];
 const VERSION = 'screen-v40';   // v40: stages in the user's records are out of the recommendations, and records not rated yet seed like 購入済み (dec-watched-unrated-seed, 2026-10-20); v39: a record split into pieces (work_piece) is rated per piece, each person counted once per visit with the pieces they were in shrunk by PIECE_RHO (dec-split-pieces, 2026-10-19); v38: the hidden check also measures the affiliation (劇団) variant, never chosen (dec-affil-reco, 2026-10-19); v37: a troupe's reason has no 主催, a production already on お気に入り under another id stays off (2026-10-18); v36: a favourite's reason names its role, the work and this person's role there, rows without an explanation are left out (2026-10-18); the ✕ (dismiss) and role-narrowed favourites (declared_roles) change the seeds (2026-10-18); v35: fine subject likes roll up the vocabulary to broader concepts (SF) across 3+ branches, and the reason names them (rolledThemeWords, 2026-10-18); v34: 作曲・音楽 spread from favourites too (FAV_SPREAD_W, 2026-10-18); v33: favourites' own stages (お気に入りの一覧) seed too, spread by role (FAV_SPREAD_W), reasons name the favourite, the 効かせ方 defaults per group (2026-10-18); v32: the reasons name the newest and oldest works, favourites' works too (2026-10-18); v31: 感想で書いた特徴への好みが順位と理由に効く（#104）; v30: the hidden check's choice is reused while the ratings are unchanged (CPU, #138); v29: the cache keeps only the reasons the screens show (CPU, #138); v28: the hidden check leaves out the dropped kinds as the ranking does (#115); v27: a rating of a record dated after today is not learnt from (#116); v26: ratings ordered by when they were rated (works.rated_at), not by the last edit (#112); v25: a name in the 興味あり note counts only when not denied or compared against (#111); v24: a 興味あり copied to the tour's other venues counts once (#110); v23: 興味なし weakens after the split, not before (#109); v22: favourite seeds weigh FAV_SEED_W (お気に入り＞興味あり); v21: credits read only where needed (CPU); v20: a production answered under another stage id stays out; v19: same title + (group / venue / a shared person) is one card; v18: one card per title+group (sameProduction); v17: no 出典 on the reasons; v16: #会場 dropped, 行けない (interest=2) as a liked seed; v15: 出さない語 also hits the kind tags; v14: #ジャンル (a genre turned off hides its stages); v13: no 原作「原作もの」 (DROPPED_KEYS); v12: no #値段 (DROPPED_AXES); v11: reasons of answered stages (answered_why); v2: the user's 効かせ方 (rank_weight) and the per-group counts; v3: 興味あり as seeds; v4: diag; v5: 興味あり split (impl-interest-split); v6: by part importance; v7: tiers + トメ; v8: two tiers only; v9: トメ joins the main roles; v10: spread leads + one-step partners
 export {PREFS} from './prefs.js';
-const KIND_LABEL = {'#形式': '形式', '#原作': '原作', '#翻訳': '', '#原作の国': '原作の国', '#会場': '劇場', '#題材': '題材', '#ジャンル': 'ジャンル'};
+const KIND_LABEL = {'#形式': '形式', '#原作': '原作', '#翻訳': '', '#原作の国': '原作の国', '#会場': '劇場', '#題材': '題材', '#ジャンル': 'ジャンル', '#出身・所属': '出身・所属'};
 // 理由に添える作品名は、いちばん新しい公演といちばん古い公演の 2 つまで（起案者の指示 2026-10-18「公演タイトルすでに
 // 書けているものも、最大2件だけ表示。一番最近の公演と一番古い公演から計2個」）
 const WORKS_SHOWN = 2;
@@ -878,7 +878,8 @@ export async function recommendScreen(params, ctx) {
     head = '今週のあなたへのおすすめにはすべて答えました';
     lede = '';
   } else if (!prefs.length && !cards.length) {
-    head = '今週のあなたへのおすすめはありません';
+    // 使い始めでおすすめがまだ無いとき（起案者の指示 2026-10-24「『今週のあなたへのおすすめはありません』を『たぐりへようこそ！』にして」）
+    head = 'たぐりへようこそ！';
     // お気に入りを登録しているのに 0 件のときだけ、一文添える（起案者の答え 2026-10-18「C」。q-fav-reco-running-shows）。
     // 関わりのある人のほかの公演が、本人の公演だけ・終わった・もう始まっている、のどれかだと候補が無い
     const declared = await loadDeclared(ctx);

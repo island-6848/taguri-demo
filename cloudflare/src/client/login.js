@@ -261,6 +261,11 @@ function setupDelete() {
   });
   $('#delete-confirm').addEventListener('submit', async ev => {
     ev.preventDefault();
+    // 消す直前にもう一度確かめる（起案者の指示 2026-10-24「ポップアップで本当にいいですか？って確認してから消して」）
+    if (!confirm('本当にアカウントを削除しますか？\n記録・評価・感想・お気に入り・ログインの情報がすべて消え、元に戻せません。')) {
+      say('削除を取りやめました。', false, $('#delete-confirm button'));
+      return;
+    }
     busy(true); say('削除しています…', false, $('#delete-confirm button'));
     try {
       await postJSON('/migration-api/account/delete', {confirm: $('#delete-word').value, firebase_ready: !!firebaseUser});

@@ -1318,6 +1318,24 @@
    ]
   },
   {
+   "id": "dec-empty-guides-1024",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-24",
+   "title": "空の画面の案内をそろえる（おすすめの見出し「たぐりへようこそ！」、公演カレンダー・評価一覧はイラスト付き、未評価 0 件は感謝）。眺めるの図の名前を「Storyline」にし、スマホで指 1 本で送れるようにした",
+   "sources": [
+    "cloudflare/src/screens/recommend.js",
+    "cloudflare/src/screens/lists.js",
+    "cloudflare/src/screens/calendar.js",
+    "cloudflare/src/screens/rate.js",
+    "cloudflare/src/screens/guide.js",
+    "tools/taguri/storyline.py",
+    "cloudflare/test/rate-empty.test.js",
+    "cloudflare/test/screens.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-entity-pages-keep",
    "type": "decision",
    "status": "adopted",
@@ -2037,6 +2055,21 @@
     "cloudflare/src/worker.js",
     "cloudflare/src/firebase-auth.js",
     "cloudflare/test/firebase-auth.test.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-member-affil-tag",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-24",
+   "title": "出演者の出身・所属の札（#出身・所属 宝塚歌劇団 / STARTO ENTERTAINMENT）を作り、宝塚の公演と OG の出る公演、STARTO の人が出る公演どうしをつなぐ。一覧は手元のデータに、Wikipedia と公式サイトを足す",
+   "sources": [
+    "tools/review/user_recommender.py",
+    "tools/review/measure_nets.py",
+    "cloudflare/scripts/build_recommend_index.py",
+    "cloudflare/src/recommend.js",
+    "cloudflare/test/test_recommend_index.py"
    ],
    "verifies": []
   },
@@ -3518,6 +3551,20 @@
    "verifies": []
   },
   {
+   "id": "dec-takarazuka-genre-1024",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-24",
+   "title": "ジャンル「宝塚」を「宝塚歌劇団」に改め、東京宝塚劇場・宝塚大劇場でかかる公演も主催にかかわらず入れる。あらすじの札の先頭にも #宝塚歌劇団",
+   "sources": [
+    "tools/review/user_recommender.py",
+    "cloudflare/scripts/build_cards.py",
+    "cloudflare/migrations/0046.sql",
+    "tools/taguri/test_user_recommendation.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-theme-kinds-1018",
    "type": "decision",
    "status": "superseded",
@@ -4569,6 +4616,18 @@
    "title": "クラウドのセッションでは、環境の「シークレット（Bearer）」の値が、環境変数のトークンより優先して付けられる。古いトークンを残すと、D1・R2 だけが Authentication error になる",
    "sources": [
     "https://code.claude.com/docs/en/cloud-environments#network-access"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "find-takarazuka-starto-coverage-1024",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-24",
+   "title": "手元の取得データだけで、宝塚歌劇団の出演者（在団・退団）は約 270 人、STARTO 系の出演者は約 110 人まで引ける。2021 年より前に退団した人は引けない",
+   "sources": [
+    "tools/review/user_recommender.py",
+    "https://kai-you.net/word/STARTO%20ENTERTAINMENT"
    ],
    "verifies": []
   },
@@ -7067,6 +7126,17 @@
    "verifies": []
   },
   {
+   "id": "q-affil-external-list",
+   "type": "question",
+   "status": "answered",
+   "date": "2026-10-24",
+   "title": "2021 年より前に退団した宝塚 OG と、書き添えの無い STARTO の人を足すために、外の一覧を使うか（使うならどれか）",
+   "sources": [
+    "https://kai-you.net/word/STARTO%20ENTERTAINMENT"
+   ],
+   "verifies": []
+  },
+  {
    "id": "q-all-same-ratings-no-reco",
    "type": "question",
    "status": "open",
@@ -7685,7 +7755,7 @@
   {
    "id": "q-impression-llm-credits",
    "type": "question",
-   "status": "open",
+   "status": "dropped",
    "date": "2026-10-24",
    "title": "利用者の感想を、Max 契約の毎月の API クレジットで LLM に読ませ、推薦に生かすか（dec-no-llm-per-user の見直し）",
    "sources": [
@@ -8516,6 +8586,17 @@
    "date": "2026-10-13",
    "title": "あらすじを Claude の定期実行で読むと、1 日にどれだけ読め、起案者の使用枠をどれだけ使うか",
    "sources": [],
+   "verifies": []
+  },
+  {
+   "id": "q-takarazuka-starto-members",
+   "type": "question",
+   "status": "answered",
+   "date": "2026-10-24",
+   "title": "宝塚歌劇団（在団・退団）と STARTO ENTERTAINMENT の所属者の一覧を、どこから作れるか",
+   "sources": [
+    "tools/review/user_recommender.py"
+   ],
    "verifies": []
   },
   {
@@ -10909,6 +10990,26 @@
    "to": "comp-firebase-login"
   },
   {
+   "from": "dec-member-affil-tag",
+   "rel": "depends_on",
+   "to": "find-takarazuka-starto-coverage-1024"
+  },
+  {
+   "from": "dec-member-affil-tag",
+   "rel": "depends_on",
+   "to": "dec-takarazuka-genre-1024"
+  },
+  {
+   "from": "dec-member-affil-tag",
+   "rel": "answers",
+   "to": "q-affil-external-list"
+  },
+  {
+   "from": "dec-member-affil-tag",
+   "rel": "affects",
+   "to": "comp-recommender"
+  },
+  {
    "from": "dec-migration-branch-wip",
    "rel": "answers",
    "to": "q-migration-branch"
@@ -11949,6 +12050,16 @@
    "to": "q-synopsis-routine-quota"
   },
   {
+   "from": "dec-takarazuka-genre-1024",
+   "rel": "depends_on",
+   "to": "dec-genre-axis"
+  },
+  {
+   "from": "dec-takarazuka-genre-1024",
+   "rel": "affects",
+   "to": "comp-recommender"
+  },
+  {
    "from": "dec-theme-kinds-1018",
    "rel": "affects",
    "to": "eval-g5-trial-1018"
@@ -12667,6 +12778,16 @@
    "from": "find-session-secret-overrides-env",
    "rel": "depends_on",
    "to": "q-crawl-in-session"
+  },
+  {
+   "from": "find-takarazuka-starto-coverage-1024",
+   "rel": "answers",
+   "to": "q-takarazuka-starto-members"
+  },
+  {
+   "from": "find-takarazuka-starto-coverage-1024",
+   "rel": "depends_on",
+   "to": "dec-takarazuka-genre-1024"
   },
   {
    "from": "firebase-apikey-public",
@@ -14304,6 +14425,11 @@
    "to": "impl-admin-tool"
   },
   {
+   "from": "q-affil-external-list",
+   "rel": "depends_on",
+   "to": "find-takarazuka-starto-coverage-1024"
+  },
+  {
    "from": "q-all-same-ratings-no-reco",
    "rel": "depends_on",
    "to": "impl-person-ordinal-v3"
@@ -14712,6 +14838,11 @@
    "from": "q-impression-llm-credits",
    "rel": "affects",
    "to": "impl-impression-worker"
+  },
+  {
+   "from": "q-impression-llm-credits",
+   "rel": "depends_on",
+   "to": "dec-note-ai"
   },
   {
    "from": "q-impression-not-in-service",
@@ -15267,6 +15398,11 @@
    "from": "q-synopsis-routine-quota",
    "rel": "depends_on",
    "to": "dec-synopsis-reader-claude"
+  },
+  {
+   "from": "q-takarazuka-starto-members",
+   "rel": "depends_on",
+   "to": "dec-affiliation-table"
   },
   {
    "from": "q-theater-master",

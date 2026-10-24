@@ -684,7 +684,7 @@ def cast_block(c: dict) -> str:
 # 一番最近の公演と一番古い公演から計2個」。Worker の screens/recommend.js worksText と同じ）
 WORKS_SHOWN = 2
 # 種類の理由の見出し（user_recommender.stage_tags が付ける軸）
-KIND_LABEL = {"#形式": "形式", "#原作": "原作", "#翻訳": "", "#原作の国": "原作の国", "#会場": "劇場", "#題材": "題材", "#ジャンル": "ジャンル"}
+KIND_LABEL = {"#形式": "形式", "#原作": "原作", "#翻訳": "", "#原作の国": "原作の国", "#会場": "劇場", "#題材": "題材", "#ジャンル": "ジャンル", "#出身・所属": "出身・所属"}
 
 
 def works_text(works: list, n: int) -> str:
