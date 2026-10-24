@@ -13,6 +13,7 @@ import {RECORDS_EMPTY} from './diary.js';
 import {localNow} from './py.js';
 import {timetableFor} from './timetable.js';
 import {conquestFor} from './conquest.js';
+import {loadOverrides, richText} from './override.js';
 
 const GRADES = ['◎', '○', '△', '×'];
 const norm = s => strip(String(s || '').normalize('NFKC'));
@@ -75,6 +76,35 @@ async function themesOf(ctx, sids) {
   return out;
 }
 
+// ことばの雲（words.js）の材料。1 公演 600 字・300 公演までにして、ページに載せる量を抑える（約 180KB まで）
+const SYN_CHARS = 600, SYN_STAGES = 300;
+/**
+ * 観た公演のあらすじの本文の並び（公演ごとに 1 つ）。手で直したあらすじ（stage_override）を先に、
+ * 無ければ公演一覧（catalogue）、それも無ければ過去の公演（past_stage）から取る。
+ * 数えて並べるのはブラウザ（Worker の CPU 10 ミリ秒に Intl.Segmenter は重い）
+ */
+export async function synopsesFor(ctx, sids) {
+  const want = [...new Set(sids.filter(Boolean).map(String))].slice(0, SYN_STAGES), out = new Map();
+  const ovs = await loadOverrides(ctx.db, want);
+  for (const sid of want) {
+    const v = ovs.get(sid)?.synopsis;
+    if (typeof v === 'string' && v.trim()) out.set(sid, richText(v));
+  }
+  const ask = async (sql, rest) => {
+    for (let i = 0; i < rest.length; i += 90) {
+      const part = rest.slice(i, i + 90);
+      try {
+        const {results} = await ctx.db.prepare(sql.replace('%', part.map(() => '?').join(','))).bind(...part).all();
+        for (const r of results) if (String(r.syn || '').trim()) out.set(String(r.sid), String(r.syn));
+      } catch { return; }   // 表が無い（試験の小さな D1）ときは、ある分だけで描く
+    }
+  };
+  // metadata は大きいので Worker で JSON を解かず、あらすじだけを D1 の json_extract で取り出す（override.fillCatalogueSynopsis と同じ）
+  await ask(`SELECT id AS sid, json_extract(metadata,'$.synopsis') AS syn FROM catalogue WHERE id IN (%) AND json_valid(metadata)`, want.filter(s => !out.has(s)));
+  await ask(`SELECT stage_id AS sid, synopsis AS syn FROM past_stage WHERE stage_id IN (%) AND synopsis<>''`, want.filter(s => !out.has(s)));
+  return want.filter(s => out.has(s)).map(s => out.get(s).trim().slice(0, SYN_CHARS));
+}
+
 export async function chronicleScreen(_params, ctx) {
   const d = await recordsBase(ctx);
   const themes = await themesOf(ctx, d.rated.map(r => r.stage_id));
@@ -113,17 +143,20 @@ export async function recordsScreen(_params, ctx) {
   try { timetable = await timetableFor(ctx, d.seen, localNow().slice(0, 10)); } catch { /* 時間割は無くても画面は出す */ }
   let conquest = '';
   try { conquest = await conquestFor(ctx, d.seen); } catch { /* 制覇マップは無くても画面は出す */ }
+  let syn = [];
+  try { syn = d.seen.length ? await synopsesFor(ctx, d.seen.map(w => w.stage_id)) : []; } catch { /* ことばの雲は無くても画面は出す */ }
   const body = `<h1>眺める ── 図で見る${sharePageButton('records')}</h1>
 ${recordsLede(d)}
 ${d.seen.length ? '' : RECORDS_EMPTY}
 <div class="figs">
 ${spiralPanel(d.seen)}
+${d.seen.length ? '<div data-fig="words"></div>' : ''}
 ${timetable}
 ${conquest}
 
 <div data-fig="storyline"></div>
 </div>
-<script id="figs-src" type="application/json">${scriptJson({rated: d.rated})}</script>
+<script id="figs-src" type="application/json">${scriptJson({rated: d.rated, syn, nSeen: d.seen.length})}</script>
 <h2>比べる ── これから上演される公演との差</h2>
 <p class="lede">観た記録を今後の公演の一覧と並べて、差の大きいところを出しています。</p>
 ${d.seen.length ? '' : COMPARE_EMPTY}
