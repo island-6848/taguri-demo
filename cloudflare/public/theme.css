@@ -1511,6 +1511,10 @@ html .dgli .noposter:not(#_):not(#_) span{font-size:9px;letter-spacing:0}
 .btns button:hover::after{bottom:-4px}
 .btns button:active::after{bottom:-2px}
 .btns button.picked::after{bottom:-3px}
+/* 台が押し口より左右に 2px ずつはみ出していた（起案者の指摘 2026-10-24「ボタンの下側のあみかけの箇所が枠線よりはみ出ている」）。
+   *{box-sizing:border-box} は ::after に効かないので、台の幅（left/right -2px ＝押し口の外の枠の端）に台自身の枠 2px が外へ足されていた。
+   台も枠込みの寸法にする。高さは枠込みで前と同じ見え方になるよう 16px（中 12px＋上下の枠） */
+.btns button::after{box-sizing:border-box;height:16px}
 
 /* ---- おすすめのカードの見た目（起案者の指示 2026-10-18 の 3 点。app.js compactTickets・fixLinks・leadSynopsis、schedule.js timetableGrid） */
 /* 発売の札の中で ↗ が 2 行目に落ちないように（「発売済み ↗」を 1 行に） */
@@ -1850,4 +1854,5 @@ article .share-open{display:flex;margin:6px 0 0 auto}
 .wcsave button{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;padding:4px 14px}
 /* これから観られる公演の無いハッシュタグは押せない札（起案者の指示 2026-10-24。app.js leadSynopsis） */
 :is(.ticket.cmp,.rec-row.cmp) .lsyntag.dead{color:var(--mute);border-style:dashed;cursor:default}
-
+/* 行けばよかったの 1 件ずつの「取り消す」（起案者の指示 2026-10-24） */
+.miss-row .miss-del{margin-left:auto;font-size:12px;padding:1px 10px}
