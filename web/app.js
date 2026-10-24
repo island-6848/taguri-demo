@@ -2420,6 +2420,12 @@ document.addEventListener("click", ev => {
              null, null)
       : post("/api/decline", {action: "add", word: b.dataset.word}, null, null);
     req.then(d => { if (d) { li.remove(); waitJob(null, true); } else { b.disabled = false; } });
+  } else if (b.dataset.missDel) {
+    // 行けばよかったの 1 件を取り消す（起案者の指示 2026-10-24）。消せたら行を外す
+    const li = b.closest(".miss-row");
+    b.disabled = true;
+    post("/api/missed", {title: b.dataset.missDel, remove: true}, li, "取り消しました")
+      .then(d => { if (d) li.remove(); else b.disabled = false; });
   } else if (b.dataset.miss) {
     const g = b.closest(".miss-add"), i = g.querySelector("#miss-title");
     if (!i.value.trim()) return;

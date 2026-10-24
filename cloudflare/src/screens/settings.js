@@ -283,12 +283,12 @@ const MISSED_WHERE = {
 };
 
 async function missedRows(ctx) {
-  const {results} = await ctx.db.prepare('SELECT title, created_at, note, stage_id, fields_json, synopsis, lookup_note, looked_up_at FROM missed WHERE user_id=? ORDER BY created_at DESC').bind(ctx.uid).all();
+  const {results} = await ctx.db.prepare('SELECT title, created_at, note, stage_id, fields_json, synopsis, lookup_note, looked_up_at, hidden FROM missed WHERE user_id=? ORDER BY created_at DESC').bind(ctx.uid).all();
   return results.map(r => {
     let fields = {};
     try { fields = r.fields_json ? JSON.parse(r.fields_json) : {}; } catch { fields = {}; }
     return {title: r.title, at: String(r.created_at || '').slice(0, 10), stage_id: r.stage_id || '', fields, synopsis: r.synopsis || '',
-      lookup_note: r.lookup_note || '', looked_up: r.looked_up_at !== null && r.looked_up_at !== undefined,
+      lookup_note: r.lookup_note || '', looked_up: r.looked_up_at !== null && r.looked_up_at !== undefined, hidden: Number(r.hidden || 0) === 1,
       where: r.stage_id ? 'pool' : 'none'};
   });
 }
@@ -320,11 +320,13 @@ async function autoMissed(ctx, works, manual) {
 
 const ymd = d => (/^\d{4}-\d{2}-\d{2}/.test(d || '') ? `${d.slice(0, 4)}/${Number(d.slice(5, 7))}/${Number(d.slice(8, 10))}` : '');
 
+// 1 件ずつの「取り消す」（起案者の指示 2026-10-24「行けばよかった、各公演取り消せるようにして」）。app.js が POST /api/missed {remove}
+const missDel = title => `<button type="button" class="miss-del" data-miss-del="${E(title)}" aria-label="「${E(title)}」を行けばよかったから外す">取り消す</button>`;
 /** 行けばよかった（自動で入った分と、自分で登録した分）。題名を 1 行に並べ、くわしくは畳む */
 function missedHtml(rows, auto = []) {
   if (!rows.length && !auto.length) return '<p class="empty">まだありません。「興味あり」にしたまま購入済みにならずに終わった公演は、ここに自動で入ります。</p>';
   const autoLi = auto.map(r => `<li class="miss-row"><b class="mt">${E(r.title)}</b><span class="mw">${E([r.venue, r.end ? ymd(r.end) + ' まで' : ''].filter(Boolean).join('・'))}</span>`
-    + `<span class="mk auto">興味ありのまま終わった</span></li>`).join('');
+    + `<span class="mk auto">興味ありのまま終わった</span>${missDel(r.title)}</li>`).join('');
   const handLi = rows.map(r => {
     const [, why] = MISSED_WHERE[r.where];
     let look;
@@ -334,7 +336,7 @@ function missedHtml(rows, auto = []) {
       look = castBlock(r.fields) + (r.synopsis ? `<div class="syn"><p class="txt">${E(r.synopsis)}</p><span class="src">［出典: CoRich の公演ページ］</span></div>`
         : '<p class="empty">あらすじを取れませんでした（公演ページに内容の記載がありません）。</p>') + (r.lookup_note ? `<p class="empty">${E(r.lookup_note)}</p>` : '');
     }
-    return `<li class="miss-row"><b class="mt">${E(r.title)}</b><span class="mk">${E(r.at)} に登録</span>`
+    return `<li class="miss-row"><b class="mt">${E(r.title)}</b><span class="mk">${E(r.at)} に登録</span>${missDel(r.title)}`
       + `<details class="miss-more"><summary>くわしく</summary><p class="note">${why}</p>${look}</details></li>`;
   }).join('');
   return `<ul class="miss-list">${autoLi}${handLi}</ul>`;
@@ -361,8 +363,10 @@ export function castBlock(f) {
 export async function registerScreen(_params, ctx) {
   const works = await loadWorks(ctx);
   const wait = works.filter(w => !w.verdict && !w.unseen && w.last_date && w.last_date <= ctx.today);
-  const missed = await missedRows(ctx);
-  const autoMiss = await autoMissed(ctx, works, missed);
+  // 取り消した行（hidden）は出さないが、自動で入る分を出さない目印には使う
+  const allMissed = await missedRows(ctx);
+  const missed = allMissed.filter(r => !r.hidden);
+  const autoMiss = await autoMissed(ctx, works, allMissed);
   const body = `<h1>観劇記録を追加</h1>
 <p class="lede">公演名だけでも保存できます。日付や評価はあとから追加できます。<b>これから観る公演</b>（日付がまだ先の公演）を候補から選ぶと、<a href="/tickets?t=__TAGURI_TOKEN__">購入済の公演</a>に入ります。</p>
 <div class="card register-single">${h2('plus', '公演を1件追加')}
@@ -440,6 +444,13 @@ ${registerDialogHtml()}
 async function missedAction(b, ctx) {
   const title = String(b.title ?? '').trim().slice(0, 200);
   if (!title) throw new ValueError('題名を入れてください');
+  // 取り消し: 行は残して hidden=1（自動で入る分が、次に開いたときにまた出ないように。migrations/0047）
+  if (b.remove) {
+    const at = new Date(ctx.now + 9 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' ');
+    await ctx.db.prepare(`INSERT INTO missed(user_id,title,created_at,hidden) VALUES(?,?,?,1)
+      ON CONFLICT(user_id,title) DO UPDATE SET hidden=1`).bind(ctx.uid, title, at).run();
+    return {body: {ok: true, title, removed: true}};
+  }
   const k = titleKey(title);
   let sid = '', fields = {}, note = '';
   // 探す画面の過去の公演から押したときは、その公演を指して来る（同じ題名の別の公演に取り違えない）
@@ -467,7 +478,7 @@ async function missedAction(b, ctx) {
   if (!sid) note = 'この題名の公演は、手元の公演一覧に見当たりませんでした。';
   const at = new Date(ctx.now + 9 * 3600 * 1000).toISOString().slice(0, 19).replace('T', ' ');
   await ctx.db.prepare(`INSERT INTO missed(user_id,title,created_at,note,stage_id,fields_json,synopsis,lookup_note,looked_up_at) VALUES(?,?,?,?,?,?,?,?,?)
-    ON CONFLICT(user_id,title) DO UPDATE SET created_at=excluded.created_at, stage_id=excluded.stage_id, fields_json=excluded.fields_json, lookup_note=excluded.lookup_note, looked_up_at=excluded.looked_up_at`)
+    ON CONFLICT(user_id,title) DO UPDATE SET hidden=0, created_at=excluded.created_at, stage_id=excluded.stage_id, fields_json=excluded.fields_json, lookup_note=excluded.lookup_note, looked_up_at=excluded.looked_up_at`)
     .bind(ctx.uid, title, at, String(b.note ?? '').slice(0, 1000), sid || null, JSON.stringify(fields), '', note, at).run();
   return {body: {ok: true, title}};
 }
