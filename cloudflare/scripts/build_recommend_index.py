@@ -114,7 +114,8 @@ def theme_words(row: dict | None) -> list[str]:
 
 def build_index(pool: dict[str, dict], fields_by_stage: dict[str, dict], role_group,
                 titles: dict[str, str] | None = None, themes: dict[str, list[str]] | None = None,
-                past: list[dict] | None = None, forms: dict[str, list[str]] | None = None) -> dict:
+                past: list[dict] | None = None, forms: dict[str, list[str]] | None = None,
+                listed: dict[str, list[str]] | None = None) -> dict:
     """User-independent material. `pool` is `UR.candidate_pool(...)`.
 
     Kind-of-show tags (UR.stage_tags: form, source, venue) are stored with the
@@ -131,6 +132,11 @@ def build_index(pool: dict[str, dict], fields_by_stage: dict[str, dict], role_gr
         """題材の言葉から、その公演の形式そのもの（形式がバレエの公演の題材「バレエ」）を外す。"""
         own = {tag for axis, tag in tags if axis == "#形式"}
         return [t for t in words if UR.FORM_WORDS.get(M.norm(t if isinstance(t, str) else t[0])) not in own]
+    members = member_list(pool, fields_by_stage, past, listed)
+
+    def with_members(tags, f, group, venues):
+        """出演者の出身・所属の札（UR.MEMBER_AXIS）を足す（dec-member-affil-tag）。"""
+        return tags + sorted((UR.MEMBER_AXIS, a) for a in member_tags(f, group, venues, members))
     stages, postings = {}, []
     for sid, entry in pool.items():
         title = entry.get("title") or ""
@@ -141,6 +147,8 @@ def build_index(pool: dict[str, dict], fields_by_stage: dict[str, dict], role_gr
         titles.setdefault(sid, title)
         tags = UR.stage_tags(title, [(entry.get("fields") or {}).get("劇場", ""), entry.get("venue") or "", entry.get("theater") or ""], credits,
                              source=UR.source_text(entry.get("fields") or {}), group=entry.get("group") or "", hints=forms.get(sid, ()))
+        tags = with_members(tags, entry.get("fields") or {}, entry.get("group") or "",
+                            [(entry.get("fields") or {}).get("劇場", ""), entry.get("venue") or "", entry.get("theater") or ""])
         # 題材の言葉は種類と根拠で重さが違う（theme_terms）。言葉だけの古い形（重さ 1）も受ける
         terms = [(t, 1.0) if isinstance(t, str) else (t[0], t[1]) for t in no_form_words(tags, themes.get(sid, []))]
         own = {tag for axis, tag in tags if axis == THEME_AXIS}
@@ -170,6 +178,7 @@ def build_index(pool: dict[str, dict], fields_by_stage: dict[str, dict], role_gr
         row = pool.get(sid) or {}
         tags = UR.stage_tags(titles.get(sid, ""), [f.get("劇場", ""), row.get("venue") or "", row.get("theater") or ""], credits,
                              source=UR.source_text(f), group=(pool.get(sid) or {}).get("group") or "", hints=forms.get(sid, ()))
+        tags = with_members(tags, f, row.get("group") or "", [f.get("劇場", ""), row.get("venue") or "", row.get("theater") or ""])
         tags += [(THEME_AXIS, t if isinstance(t, str) else t[0]) for t in no_form_words(tags, themes.get(sid, []))]
         people[sid] = [list(c) for c in sorted(set(credits) | set(tags))]
     for sid, ws in themes.items():
@@ -180,6 +189,43 @@ def build_index(pool: dict[str, dict], fields_by_stage: dict[str, dict], role_gr
     src += [(sid, f, "", (pool.get(sid) or {}).get("group") or "") for sid, f in fields_by_stage.items() if f and sid not in pool]
     src += [(str(r.get("stage_id") or ""), r.get("fields") or {}, r.get("start") or "", r.get("group") or "") for r in past or []]
     return {"stages": stages, "postings": postings, "people": people, "affil": affiliation_rows(src)}
+
+
+def member_list(pool: dict[str, dict], fields_by_stage: dict[str, dict], past: list[dict] | None,
+                listed: dict[str, list[str]] | None = None) -> dict[str, set[str]]:
+    """人（索引の書き方）-> 出身・所属の札の名前（UR.MEMBER_AXIS の値）。dec-member-affil-tag。
+
+    - 宝塚歌劇団: 宝塚歌劇団の公演（UR.is_takarazuka）の出演者と、出演欄の括弧に宝塚とある人（在団・退団を分けない）
+    - STARTO ENTERTAINMENT: 出演欄の括弧の所属が STARTO の書き方（UR.STARTO_AFFIL）の人
+    - `listed`: 外の一覧（札の名前 -> 人の名前の並び、data/affil/members.json）。手元の公演に出てこない人を足す
+    """
+    rows = [(e.get("fields") or {}, e.get("group") or "", [(e.get("fields") or {}).get("劇場", ""), e.get("venue") or "", e.get("theater") or ""])
+            for e in pool.values()]
+    rows += [(f, "", [f.get("劇場", "")]) for sid, f in fields_by_stage.items() if f and sid not in pool]
+    rows += [(r.get("fields") or {}, r.get("group") or "", [(r.get("fields") or {}).get("劇場", ""), r.get("theater") or ""]) for r in past or []]
+    out: dict[str, set[str]] = collections.defaultdict(set)
+    for f, group, venues in rows:
+        cast = f.get("出演") or ""
+        if not cast:
+            continue
+        if UR.is_takarazuka(group, venues):
+            for n in M._names(cast):
+                out[n].add(UR.TAKARAZUKA_GENRE)
+        for n, affil in M.affiliations(cast, former=True):
+            out[n].update(UR.member_affils(affil))
+    for tag, names in (listed or {}).items():
+        for n in names:
+            for k in M._names(n)[:1]:      # 出演欄と同じ書き方に寄せる
+                out[k].add(tag)
+    return {n: a for n, a in out.items() if a}
+
+
+def member_tags(f: dict, group: str, venues, members: dict[str, set[str]]) -> set[str]:
+    """1 公演の出身・所属の札: 宝塚歌劇団の公演そのものと、出演者の出身・所属。"""
+    out = {UR.TAKARAZUKA_GENRE} if UR.is_takarazuka(group, venues) else set()
+    for n in M._names(f.get("出演") or ""):
+        out |= members.get(n, set())
+    return out
 
 
 # 所属の種類（目安）。主催の団体名と同じなら「劇団」。名前の言葉で劇団・事務所・グループに分け、分からなければ空
@@ -786,7 +832,10 @@ def main() -> int:
     # 過去の公演（fetch_past_stages の控え）は、所属の表（rec_affil）にだけ使う
     past_path = ROOT / "data" / "past" / "stages.jsonl"
     past = [json.loads(x) for x in past_path.read_text(encoding="utf-8").split("\n") if x.strip()] if past_path.exists() else []
-    index = build_index(pool, M._fields_by_stage(), APP.group_of, titles, themes, past, forms)
+    # 外の一覧（dec-member-affil-tag）。無ければ手元の公演だけで作る
+    listed_path = ROOT / "data" / "affil" / "members.json"
+    listed = json.loads(listed_path.read_text(encoding="utf-8")) if listed_path.exists() else None
+    index = build_index(pool, M._fields_by_stage(), APP.group_of, titles, themes, past, forms, listed)
     counts = None
     if a.hashes_out:
         prev = json.loads(a.prev_hashes.read_text(encoding="utf-8")) if a.prev_hashes and a.prev_hashes.exists() else {}

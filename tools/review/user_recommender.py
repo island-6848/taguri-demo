@@ -12,6 +12,7 @@ import hashlib
 import json
 import math
 import re
+import unicodedata
 
 import measure_nets as M
 import recommend2 as RC
@@ -286,6 +287,30 @@ TAKARAZUKA_VENUES = ("東京宝塚劇場", "宝塚大劇場")
 def is_takarazuka(group: str = "", venues=()) -> bool:
     """A 宝塚歌劇団 production: the troupe is 宝塚歌劇団, or it plays at 東京宝塚劇場 / 宝塚大劇場."""
     return _TAKARAZUKA in (group or "") or any(v in (p or "") for p in venues or () for v in TAKARAZUKA_VENUES)
+# 出演者の出身・所属（起案者の指示 2026-10-24「推薦の特例で、宝塚歌劇団の作品を好む人には、宝塚OGが出ている舞台を勧めたい。
+# …同様にSTARTO ENTERTAINMENT（旧ジャニーズ事務所）も同じようにしたい」、dec-member-affil-tag）。
+# 宝塚歌劇団の公演と、在団・退団の人が出る公演に同じ札を付けるので、宝塚の公演を好む人の好みが OG の出る公演に伝わる。
+# STARTO も、所属の人が出る公演どうしが同じ札でつながる
+MEMBER_AXIS = "#出身・所属"
+STARTO = "STARTO ENTERTAINMENT"
+# 出演欄の括弧の書き添え（所属）から STARTO の人を見分ける。前の社名・Jr. の書き方と、グループの名前
+# （2026-10-24 の作業データの書き添えと、kai-you の 2024-04 の一覧〔find-takarazuka-starto-coverage-1024〕で拾った）
+STARTO_AFFIL = re.compile(
+    r"starto|ジャニーズ|johnny|snow ?man|sixtones|なにわ男子|king ?& ?prince|travis ?japan|kis-?my-?ft2|hey!? ?say!? ?jump|"
+    r"sexy ?zone|timelesz|^west\.?$|kat-?tun|^news$|関ジャニ|super ?eight|a\.?b\.?c-?z|aぇ!? ?group|hihi ?jets|美\s?少年|"
+    r"少年忍者|7 ?men ?侍|impactors|key ?to ?lit|acees|^ambitious$|lil ?かんさい|go!? ?go!? ?kids|jr\.? ?sp|^special$|b ?& ?zai|"
+    r"ふぉ[〜～ー]ゆ[〜～ー]|^tokio$|kinki ?kids|^v6$|^嵐$|^arashi$", re.I)
+
+
+def member_affils(affil: str) -> list[str]:
+    """出演欄の括弧の所属 1 つから、出身・所属の札の名前（宝塚歌劇団・STARTO ENTERTAINMENT）。"""
+    a = unicodedata.normalize("NFKC", affil or "").strip()
+    out = []
+    if "宝塚" in a and "宝塚大学" not in a:
+        out.append(TAKARAZUKA_GENRE)
+    if STARTO_AFFIL.search(a):
+        out.append(STARTO)
+    return out
 _25D_SOURCES = {"漫画原作", "アニメ原作", "ゲーム原作"}
 _25D_TITLE = re.compile(r"the\s*stage|^\s*(?:舞台|ミュージカル|音楽劇)?\s*『", re.I)
 _BRACKETED = re.compile(r"[『「]([^』」]{2,})[』」]")
@@ -659,7 +684,7 @@ def plain_sum(values) -> float:
 
 
 # 公演そのものを表す種類。劇場（#会場）と料金帯（#値段）は索引から外した（dec-drop-venue-kind・dec-source-kind-no-price）
-CONTENT_AXES = ("#形式", "#原作", "#翻訳", "#原作の国", "#題材", "#ジャンル")
+CONTENT_AXES = ("#形式", "#原作", "#翻訳", "#原作の国", "#題材", "#ジャンル", "#出身・所属")
 
 
 def has_reason(parts, kinds) -> bool:

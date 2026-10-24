@@ -20,6 +20,10 @@
 - [ ] 掲載情報を入れる: 文面は [store/google-play-listing.md](store/google-play-listing.md)、画像は `docs/store/images/`〔impl-store-images〕。データセーフティ・コンテンツのレーティングに答える
 - [ ] 問い合わせ用のメールアドレスを作る（規約・削除依頼の窓口に載せる）〔q-contact-email〕
 
+## 宝塚 OG・STARTO の一覧を外から足す（起案者の答え 2026-10-24「b,c でお願い」）
+
+- [ ] **このセッションの通信の許可に 3 つを足す:** `ja.wikipedia.org`（退団者の一覧）、`kageki.hankyu.co.jp`（宝塚歌劇の公式サイト、在団の名簿）、`starto.jp`（STARTO の公式サイト）。足すと、Claude が使ってよい条件を確かめてから一覧を取り込む〔dec-member-affil-tag〕〔q-affil-external-list〕
+
 ## 実機で確かめること
 
 - [ ] パスキーを iPhone・Android で登録・ログインできるか〔q-passkey-real-devices〕

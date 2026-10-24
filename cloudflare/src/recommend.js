@@ -125,7 +125,7 @@ export function gradeOf(verdict) {
   return levels >= MIN_LEVELS && levels <= MAX_LEVELS && value >= 1 && value <= levels ? [value, levels] : null;
 }
 // user_recommender.CONTENT_AXES
-export const CONTENT_AXES = ['#形式', '#原作', '#翻訳', '#原作の国', '#題材', '#ジャンル'];
+export const CONTENT_AXES = ['#形式', '#原作', '#翻訳', '#原作の国', '#題材', '#ジャンル', '#出身・所属'];
 // 大きなくくりのジャンル（user_recommender.GENRE_AXIS）。理由の ✕ で外すと、その公演ごとおすすめから外す
 export const GENRE_AXIS = '#ジャンル';
 const KEYS_PER_QUERY = 49;     // D1 binds at most 100 parameters: ver + 2 per key

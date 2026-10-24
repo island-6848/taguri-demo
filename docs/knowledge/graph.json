@@ -2048,6 +2048,21 @@
    "verifies": []
   },
   {
+   "id": "dec-member-affil-tag",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-24",
+   "title": "出演者の出身・所属の札（#出身・所属 宝塚歌劇団 / STARTO ENTERTAINMENT）を作り、宝塚の公演と OG の出る公演、STARTO の人が出る公演どうしをつなぐ。一覧は手元のデータに、Wikipedia と公式サイトを足す",
+   "sources": [
+    "tools/review/user_recommender.py",
+    "tools/review/measure_nets.py",
+    "cloudflare/scripts/build_recommend_index.py",
+    "cloudflare/src/recommend.js",
+    "cloudflare/test/test_recommend_index.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-merge-without-asking",
    "type": "decision",
    "status": "adopted",
@@ -7020,7 +7035,7 @@
   {
    "id": "q-affil-external-list",
    "type": "question",
-   "status": "open",
+   "status": "answered",
    "date": "2026-10-24",
    "title": "2021 年より前に退団した宝塚 OG と、書き添えの無い STARTO の人を足すために、外の一覧を使うか（使うならどれか）",
    "sources": [
@@ -10845,6 +10860,26 @@
    "from": "dec-logout-all-token-boundary",
    "rel": "affects",
    "to": "comp-firebase-login"
+  },
+  {
+   "from": "dec-member-affil-tag",
+   "rel": "depends_on",
+   "to": "find-takarazuka-starto-coverage-1024"
+  },
+  {
+   "from": "dec-member-affil-tag",
+   "rel": "depends_on",
+   "to": "dec-takarazuka-genre-1024"
+  },
+  {
+   "from": "dec-member-affil-tag",
+   "rel": "answers",
+   "to": "q-affil-external-list"
+  },
+  {
+   "from": "dec-member-affil-tag",
+   "rel": "affects",
+   "to": "comp-recommender"
   },
   {
    "from": "dec-migration-branch-wip",
