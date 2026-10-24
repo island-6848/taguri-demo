@@ -3830,6 +3830,20 @@
    "verifies": []
   },
   {
+   "id": "dec-word-cloud",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-24",
+   "title": "眺めるに「ことばの雲」を置く。観た公演のあらすじから語を数え、切り出しと配置はブラウザで行う",
+   "sources": [
+    "cloudflare/src/screens/words.js",
+    "cloudflare/src/screens/records.js",
+    "cloudflare/src/screens/figs.js",
+    "cloudflare/test/words.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-workers-d1",
    "type": "decision",
    "status": "adopted",
@@ -11961,6 +11975,11 @@
    "from": "dec-weight-defaults",
    "rel": "depends_on",
    "to": "dec-recommend-weights-worker"
+  },
+  {
+   "from": "dec-word-cloud",
+   "rel": "affects",
+   "to": "dec-records-worker"
   },
   {
    "from": "dec-workers-d1",
