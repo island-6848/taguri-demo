@@ -1,7 +1,7 @@
 # 起案者のやることリスト
 
 起案者にしかできないこと（アカウント・お金・鍵・実機・決めること）の一覧です。Claude が作業の中で見つけたら足し、済んだら「済み」に移します。
-くわしい理由や経緯は、各項目の〔 〕の中の名前（`docs/knowledge/notes/` の同じ名前のファイル）にあります。最終更新 2026-10-21。
+くわしい理由や経緯は、各項目の〔 〕の中の名前（`docs/knowledge/notes/` の同じ名前のファイル）にあります。最終更新 2026-10-24。
 
 費用が掛かるのは、ストアの登録料（Google Play 1 回 25 米ドル・Apple 年 99 米ドル）だけです〔dec-app-release-costs〕。それ以外は無料枠の中で進めます。
 
@@ -10,6 +10,14 @@
 - [ ] **アップロード鍵を GitHub の Secrets に入れる**（Claude が渡した `github-secrets.txt` の 4 つの値。Settings → Secrets and variables → Actions）〔dec-twa-fixed-signing〕
 - [ ] **`taguri-upload.jks` と合言葉を、手元の安全な場所に保管する**（なくすと Play で鍵を替える手続きが要る）
 - [ ] Actions → Android → Run workflow で組み直し、前のアプリを消してから新しい APK を入れ直す。帯が消えたか Claude に知らせる
+
+## あらすじの読み取りを動かす（2026-10-24 追加）
+
+- [ ] **定期実行の環境から taguri-crawler に入れるようにする。** 環境のメニュー → Edit → Repositories に `island-6848/taguri-crawler` と `island-6848/taguri-demo` を足す（無ければ https://claude.ai/connect-github で GitHub をつなぎ直す）。今は定期実行がリポジトリに入れず、あらすじを 1 件も読めていない〔f-past-synopsis-progress-1024〕
+
+## 公演の情報を直す（2026-10-24 追加）
+
+- [ ] **ミス・サイゴンの出演者を差し替える。** 管理画面（`tools/admin`）で「ミス・サイゴン」を探し、各公演（ツアーなら会場ごと）の「出演」の欄を [owner/miss-saigon-cast.txt](owner/miss-saigon-cast.txt) の中身に置き換えて保存する。Claude のセッションからは本番の D1 を読み書きできない設定のため〔q-miss-saigon-cast〕
 
 ## Google Play に出すまで（手順は [android-release.md](android-release.md)）
 
