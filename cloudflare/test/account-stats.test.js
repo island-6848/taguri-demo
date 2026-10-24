@@ -34,10 +34,15 @@ test('startPassed: the day before, the day after the start time (JST), and a day
 
 // よく観ている団体・よく行く劇場のランキング（起案者の指示 2026-10-20「ランキングぽいデザインに。劇場の方は、作品数と
 // 単純に行った回数（同じ作品でも複数数える）で切り替えられるようにして」）
-test('ranking: ties share a rank, and a tie across the cut stays in', async () => {
+test('ranking: ties share one row, 1 is left out, and at most 3 ranks', async () => {
+  // 起案者の指示 2026-10-21「1作品のものは端折ってよい。同率の場合は併記して。つまりそれぞれ3行以内に抑えてください」
   const {ranking} = await import('../src/screens/account.js');
-  const r = ranking(new Map([['甲', 3], ['乙', 2], ['丙', 2], ['丁', 1], ['戊', 1], ['己', 1], ['庚', 0]]), 4);
-  assert.deepEqual(r.map(([v, n, k]) => `${k}:${v}${n}`), ['1:甲3', '2:乙2', '2:丙2', '4:己1', '4:丁1', '4:戊1']);
+  const show = r => r.map(([v, n, k]) => `${k}:${v.join('・')}${n}`);
+  assert.deepEqual(show(ranking(new Map([['甲', 5], ['乙', 4], ['丙', 3], ['丁', 2], ['戊', 1]]))), ['1:甲5', '2:乙4', '3:丙3']);
+  // 1 位が 2 件なら次は 3 位。4 位からは出さない
+  assert.deepEqual(show(ranking(new Map([['甲', 3], ['乙', 3], ['丙', 2], ['丁', 2], ['戊', 1]]))), ['1:乙・甲3', '3:丁・丙2']);
+  assert.deepEqual(show(ranking(new Map([['甲', 3], ['乙', 3], ['丙', 3], ['丁', 2]]))), ['1:乙・甲・丙3']);
+  assert.deepEqual(ranking(new Map([['甲', 1], ['乙', 1], ['丙', 0]])), []);
 });
 
 test('よく行く劇場 counts works and visits, switched without a script', async () => {
@@ -53,8 +58,9 @@ test('よく行く劇場 counts works and visits, switched without a script', as
     const page = (await step(env, a, {get: '/api/screen/account'})).body.body_html;
     const list = cls => page.match(new RegExp(`<ol class="rk ${cls}">(.*?)</ol>`, 's'))[1];
     const rows = cls => [...list(cls).matchAll(/aria-label="(\d+) 位">\d+<\/b><span class="rk-name">([^<]+)<\/span>.*?<small>([^<]+)<\/small>/g)].map(m => `${m[1]}:${m[2]}:${m[3]}`);
-    assert.deepEqual(rows('rk-works'), ['1:劇場A:2 作品', '2:劇場B:1 作品']);
-    assert.deepEqual(rows('rk-visits'), ['1:劇場A:4 回', '2:劇場B:1 回']);
+    // 劇場B は 1 作品・1 回なので出さない
+    assert.deepEqual(rows('rk-works'), ['1:劇場A:2 作品']);
+    assert.deepEqual(rows('rk-visits'), ['1:劇場A:4 回']);
     assert.match(page, /<input type="radio" name="rk-venue" id="rk-v-works" value="works" checked><label for="rk-v-works">作品数<\/label>/);
     assert.match(page, /<label for="rk-v-visits">行った回数<\/label>/);
     // 1 位の札は色つき、棒は 1 位を満たん

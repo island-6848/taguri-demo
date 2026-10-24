@@ -1,7 +1,7 @@
 ---
 id: dec-account-rankings
 type: decision
-status: adopted
+status: superseded
 date: 2026-10-20
 title: アカウントの「よく観ている団体」「よく行く劇場」をランキングの形にし、劇場は作品数と行った回数を切り替えられるようにする。作品数は違う作品（題名の鍵）の数で数える
 sources:

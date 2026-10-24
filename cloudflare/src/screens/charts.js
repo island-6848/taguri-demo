@@ -8,6 +8,7 @@ import {ALL_GRADES, isScaled, gradeText, markOf} from './grade.js';
 import {E, fmtF, sortBy} from './py.js';
 import {h2} from './icons.js';
 import {anchor} from './anchor.js';
+import {seenTimes} from './works.js';
 
 export const ROW_HREF = '/records/works?t=__TAGURI_TOKEN__';
 const VERDICT_FILL = {'◎': 'var(--pos)', '○': 'var(--pos)', '△': 'var(--neg)', '×': 'var(--neg)'};
@@ -117,7 +118,7 @@ export function spiralPanel(works) {
     tally.add(isScaled(v) || v in VERDICT_FILL ? v : '未評価');
     const fill = VERDICT_FILL[m] || 'var(--unk)';
     const solid = m === '◎' || m === '○';
-    const times = (w.times || 1) > 1 ? `・${w.times} 回` : '';
+    const times = seenTimes(w) > 1 ? `・${seenTimes(w)} 回` : '';
     const a = E(anchor(w.work_key));
     pts.push(`<a href="${ROW_HREF}&amp;w=${a}#w-${a}"><g class="pt">`
       + `<title>${E(w.title)} ── ${E(w.first_date)}${E(times)}${v ? '・' + E(gradeText(v)) : '・評価なし'}</title>`

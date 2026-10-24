@@ -732,9 +732,22 @@
    "verifies": []
   },
   {
-   "id": "dec-account-rankings",
+   "id": "dec-account-rankings-top3",
    "type": "decision",
    "status": "adopted",
+   "date": "2026-10-21",
+   "title": "アカウントの団体・劇場のランキングは 3 位まで。1 のもの（1 作品・1 回）は出さず、同じ数は 1 行に併記する",
+   "sources": [
+    "cloudflare/src/screens/account.js",
+    "web/theme.css",
+    "cloudflare/test/account-stats.test.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-account-rankings",
+   "type": "decision",
+   "status": "superseded",
    "date": "2026-10-20",
    "title": "アカウントの「よく観ている団体」「よく行く劇場」をランキングの形にし、劇場は作品数と行った回数を切り替えられるようにする。作品数は違う作品（題名の鍵）の数で数える",
    "sources": [
@@ -2236,6 +2249,20 @@
    "verifies": []
   },
   {
+   "id": "dec-past-seen-venue-first",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-21",
+   "title": "探すの過去の公演の「観た」は、劇場 → その劇場の期間だけのカレンダーで観た日 → 開演の順に入れる。ツアーは劇場を選ぶまで観た日を選べない",
+   "sources": [
+    "cloudflare/src/screens/search.js",
+    "web/app.js",
+    "web/theme.css",
+    "cloudflare/test/search-uncarded.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-past-title-backfill",
    "type": "decision",
    "status": "adopted",
@@ -3050,6 +3077,17 @@
    ]
   },
   {
+   "id": "dec-search-bar-emphasis",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-21",
+   "title": "探すの画面の検索欄を目立たせる（幕の色を薄く敷いた帯・大きな丸い入力欄・幕の色で塗った「探す」）。CSS だけで、画面の HTML は変えない",
+   "sources": [
+    "web/theme.css"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-search-part-paging",
    "type": "decision",
    "status": "adopted",
@@ -3469,6 +3507,27 @@
     "cloudflare/scripts/deliver_past_index.py",
     "tools/review/test_past_stages.py",
     "cloudflare/test/test_deliver_past.py"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-tour-visits-1021",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-21",
+   "title": "まとめた記録は観た回ごとの日付・劇場・開演を残して出し、回数と劇場は回ごとに数え、1 回ずつ分けられるようにする。ツアーを続けて足すときの劇場名・日付の範囲・探すの一覧も直す",
+   "sources": [
+    "cloudflare/src/screens/works.js",
+    "cloudflare/src/screens/row.js",
+    "cloudflare/src/screens/diary.js",
+    "cloudflare/src/screens/account.js",
+    "cloudflare/src/screens/search.js",
+    "cloudflare/src/screens/suggest.js",
+    "cloudflare/src/screens/rate.js",
+    "cloudflare/src/screens/timetable.js",
+    "web/app.js",
+    "web/theme.css",
+    "cloudflare/test/visits.test.js"
    ],
    "verifies": []
   },
@@ -4471,7 +4530,7 @@
   {
    "id": "fix-past-tour-venue-by-date",
    "type": "decision",
-   "status": "adopted",
+   "status": "superseded",
    "date": "2026-10-18",
    "title": "探す画面の過去の公演（ツアー）で「観た」を記録するとき、観た日にその日上演していた劇場の公演（stage_id）に結び付ける。画面では劇場を選べ、サーバーも日付から選び直す",
    "sources": [
@@ -6681,6 +6740,18 @@
    "verifies": []
   },
   {
+   "id": "q-account-rankings-look-1021",
+   "type": "question",
+   "status": "answered",
+   "date": "2026-10-21",
+   "title": "起案者に、アカウントの団体・劇場のランキングが「前作ったときの見た目じゃない」と見える。master のコードは作ったときのまま。本番が古いのか、別の見た目を指しているのか",
+   "sources": [
+    "cloudflare/src/screens/account.js",
+    "cloudflare/public/theme.css"
+   ],
+   "verifies": []
+  },
+  {
    "id": "q-admin-override-in-index",
    "type": "question",
    "status": "open",
@@ -8827,6 +8898,24 @@
    "verifies": []
   },
   {
+   "id": "ux-tour-repeat-merge-1021",
+   "type": "finding",
+   "status": "confirmed",
+   "date": "2026-10-21",
+   "title": "ツアー公演を何回も足すと、自動でまとめた後は 1 回・最初の日・最初の劇場の 1 行になり、回数・劇場・時刻が画面から消える。外すと評価が消えたように見え、連続追加では劇場名がまちがって保存される",
+   "sources": [
+    "cloudflare/src/screens/works.js",
+    "cloudflare/src/screens/diary.js",
+    "cloudflare/src/screens/row.js",
+    "cloudflare/src/screens/search.js",
+    "cloudflare/src/screens/rate.js",
+    "cloudflare/src/screens/account.js",
+    "cloudflare/src/screens/charts.js",
+    "cloudflare/public/app.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "white-record-sites",
    "type": "finding",
    "status": "unverified",
@@ -9453,6 +9542,21 @@
    "from": "dec-account-page",
    "rel": "affects",
    "to": "comp-frontend"
+  },
+  {
+   "from": "dec-account-rankings-top3",
+   "rel": "supersedes",
+   "to": "dec-account-rankings"
+  },
+  {
+   "from": "dec-account-rankings-top3",
+   "rel": "answers",
+   "to": "q-account-rankings-look-1021"
+  },
+  {
+   "from": "dec-account-rankings-top3",
+   "rel": "affects",
+   "to": "dec-account-page"
   },
   {
    "from": "dec-account-rankings",
@@ -10645,6 +10749,16 @@
    "to": "comp-crawler"
   },
   {
+   "from": "dec-past-seen-venue-first",
+   "rel": "supersedes",
+   "to": "fix-past-tour-venue-by-date"
+  },
+  {
+   "from": "dec-past-seen-venue-first",
+   "rel": "affects",
+   "to": "dec-tour-visits-1021"
+  },
+  {
    "from": "dec-past-title-backfill",
    "rel": "answers",
    "to": "q-past-title-backfill"
@@ -11220,6 +11334,11 @@
    "to": "q-crawler-host"
   },
   {
+   "from": "dec-search-bar-emphasis",
+   "rel": "affects",
+   "to": "dec-search-tour-one-card"
+  },
+  {
    "from": "dec-search-part-paging",
    "rel": "affects",
    "to": "comp-cf-worker"
@@ -11518,6 +11637,26 @@
    "from": "dec-title-crown-subtitle",
    "rel": "raises",
    "to": "q-past-title-backfill"
+  },
+  {
+   "from": "dec-tour-visits-1021",
+   "rel": "depends_on",
+   "to": "ux-tour-repeat-merge-1021"
+  },
+  {
+   "from": "dec-tour-visits-1021",
+   "rel": "affects",
+   "to": "dec-account-rankings-top3"
+  },
+  {
+   "from": "dec-tour-visits-1021",
+   "rel": "affects",
+   "to": "fix-past-tour-venue-by-date"
+  },
+  {
+   "from": "dec-tour-visits-1021",
+   "rel": "affects",
+   "to": "dec-register-detail-repeat"
   },
   {
    "from": "dec-trace-into-person",
@@ -13680,6 +13819,11 @@
    "to": "dec-free-tier-only"
   },
   {
+   "from": "q-account-rankings-look-1021",
+   "rel": "affects",
+   "to": "dec-account-rankings"
+  },
+  {
    "from": "q-admin-override-in-index",
    "rel": "affects",
    "to": "impl-admin-tool"
@@ -15118,6 +15262,16 @@
    "from": "user-storage-measured",
    "rel": "supports",
    "to": "dec-account-cap-counted"
+  },
+  {
+   "from": "ux-tour-repeat-merge-1021",
+   "rel": "affects",
+   "to": "fix-past-tour-venue-by-date"
+  },
+  {
+   "from": "ux-tour-repeat-merge-1021",
+   "rel": "affects",
+   "to": "dec-register-detail-repeat"
   },
   {
    "from": "white-record-sites",

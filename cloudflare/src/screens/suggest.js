@@ -11,7 +11,7 @@
 // prefix on its index) instead of the files on the Python server.
 import {gradeText} from './grade.js';
 import {titleKey, d1Search, searchIndex, titlePrefixes, pastByPrefix} from '../stage-search.js';
-import {loadWorks} from './works.js';
+import {loadWorks, visitsOf} from './works.js';
 import {scheduleFilter} from './schedule-filter.js';
 import {stageInfo} from './fallback.js';
 import {parseTimetable} from './schedule.js';
@@ -49,14 +49,15 @@ export async function suggest(params, ctx) {
   const db = ctx.db;
   const works = (await loadWorks(ctx)).filter(w => !w.unseen);
   const mine = {};
-  for (const w of works) if (w.stage_id) mine[w.stage_id] = (mine[w.stage_id] || 0) + (w.times || 1);
+  for (const w of works) for (const v of visitsOf(w)) if (v.stage_id) mine[v.stage_id] = (mine[v.stage_id] || 0) + v.times;
   const rank = tk => tk === k ? 0 : tk.startsWith(k) ? 1 : tk.includes(k) ? 2 : (k.includes(tk) && Array.from(tk).length >= 4) ? 3 : -1;
   const rows = [];
   for (const w of works) {
     if (advanced) continue; // Select the production, rather than an existing attendance.
     const s = rank(titleKey(w.title));
     if (s < 0) continue;
-    rows.push({_s: [s, 0], kind: 'record', key: w.work_key, title: w.title, date: w.first_date || '', venue: '',
+    // 劇場と開演も出す（同じ日の昼・夜の記録を見分けられるように。起案者の問い 2026-10-21）
+    rows.push({_s: [s, 0], kind: 'record', key: w.work_key, title: w.title, date: w.first_date || '', venue: [w.venue, w.time].filter(Boolean).join(' '),
       note: w.verdict ? '評価 ' + gradeText(w.verdict) : '評価はまだです', times: w.times || 1, stage_id: w.stage_id || '',
       wk: groupKey(titleKey(w.title), '', w.stage_id || w.work_key)});
   }
@@ -86,12 +87,20 @@ export async function suggest(params, ctx) {
   if (schedule.from) { filters.push("start<=? AND COALESCE(NULLIF(end,''),start)>=?"); args.push(schedule.to, schedule.from); }
   const past = await pastByPrefix(db, 'stage_id,title,tkey,start,end,venue,grp,pref', keys,
     advanced ? DETAIL_SCAN_LIMIT : PAST_LIMIT, {sql: filters.join(' AND '), args});
+  // ツアー（同じ題名・団体で劇場ごとの公演）は、どの劇場を選んでも観た日をツアー全体の期間から選べるようにする。保存するときに、
+  // 観た日に上演していた劇場へ結び付け直す（rate.addWorkAction。起案者の問い 2026-10-21 ── 前は選んだ劇場の期間しか選べなかった）
+  const tour = new Map();
+  for (const p of past) {
+    const g = p.tkey + '\u0000' + (p.grp || ''), t = tour.get(g);
+    tour.set(g, t ? {start: p.start < t.start ? p.start : t.start, end: (p.end || p.start) > t.end ? (p.end || p.start) : t.end} : {start: p.start, end: p.end || p.start});
+  }
   for (const p of past.filter(p => fits(p.venue, p.grp, p.start, p.end)).slice(0, PAST_LIMIT)) {
     if (seen.has(p.stage_id)) continue;
     const one = runRange(p.start, p.end, ctx.today);
+    const run = tour.get(p.tkey + '\u0000' + (p.grp || ''));
     rows.push({_s: [keys.includes(p.tkey) ? 0 : 1, 1], kind: 'stage', key: p.stage_id, title: p.title,
       date: one && !one.includes('〜') ? iso(ymd(p.start)) : '', venue: p.venue,
-      note: `${p.grp}／${one}（${p.pref}）`, times: 1, stage_id: p.stage_id, start: iso(ymd(p.start)), end: iso(ymd(p.end || p.start)),
+      note: `${p.grp}／${one}（${p.pref}）`, times: 1, stage_id: p.stage_id, start: iso(ymd(run.start)), end: iso(ymd(run.end)),
       wk: groupKey(p.tkey, p.grp, p.stage_id)});
   }
   rows.sort((a, b) => (a._s[0] - b._s[0]) || (a._s[1] - b._s[1]));
