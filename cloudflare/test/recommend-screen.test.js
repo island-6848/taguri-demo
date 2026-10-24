@@ -399,6 +399,8 @@ test('興味あり pressed on おすすめ keeps the reasons it was shown with, 
     assert.match(html, /data-stage="101"/);
     assert.match(html, reason);
     assert.doesNotMatch(html, /理由を出せていません/);
+    // 絞り込み・並べ替えは、おすすめの「地域・調整」と同じく 1 つの折りたたみ（既定は閉じる。起案者の指示 2026-10-24）
+    assert.match(html, /<details class="rec-controls">\n<summary><b>絞り込み・並べ替え<\/b><span>上演日の近い順<\/span>[\s\S]*?<div class="fil2 narrow"><\/div>\n<form class="sortf"[\s\S]*?<\/form>\n<\/details>/);
     // A 興味あり from before the reasons were kept: the reasons come from the cache, without the stage's own title.
     sqlite.exec("UPDATE reaction SET why=NULL");
     const old = (await step(env, a, {get: '/api/screen/interest'})).body.body_html;

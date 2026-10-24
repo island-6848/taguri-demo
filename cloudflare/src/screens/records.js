@@ -2,7 +2,7 @@
 // themselves (起案者の指示 2026-10-14「残りの画面も順に移して」).
 import {sharePageButton} from '../share.js';
 import {isScaled} from './grade.js';
-import {loadWorks} from './works.js';
+import {loadWorks, seenTimes} from './works.js';
 import {peopleByKey, recordsLede, autoMerge} from './diary.js';
 import {autoLink, pastStages} from './autolink.js';
 import {strip} from './py.js';
@@ -40,7 +40,7 @@ export async function ratedRows(ctx, ws) {
   const people = await peopleByKey(ctx, rated);
   const venues = await venuesOf(ctx, rated.map(w => w.stage_id));
   return rated.map(w => ({key: w.work_key, title: w.title, date: w.first_date || '', verdict: w.verdict, stage_id: w.stage_id || '',
-    times: w.times || 1, people: (people[w.work_key] || []).slice().sort((a, b) => cmp(a[0], b[0]) || cmp(a[1], b[1])),
+    times: seenTimes(w), people: (people[w.work_key] || []).slice().sort((a, b) => cmp(a[0], b[0]) || cmp(a[1], b[1])),
     venues: venues[w.stage_id] ? [venues[w.stage_id]] : [], manual: true}));
 }
 

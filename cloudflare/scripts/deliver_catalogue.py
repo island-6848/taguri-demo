@@ -44,6 +44,8 @@ ROOT = HERE.parents[1]
 sys.path.insert(0, str(HERE))
 from convert_catalogue import public_candidate                     # noqa: E402
 import free_tier as FT                                             # noqa: E402
+sys.path.insert(0, str(HERE.parents[1] / "tools" / "review"))
+import user_recommender as UR                                      # noqa: E402
 
 JST = datetime.timezone(datetime.timedelta(hours=9))
 WRITE_BUDGET = 60_000          # of the 100,000 rows/day free tier; the rest is for users
@@ -91,7 +93,9 @@ def catalogue_rows(data: Path, today: datetime.date) -> dict[str, list[str]]:
         t = themes.get(sid)
         if t:
             value["synopsis"] = t["synopsis"]
-            value["words"] = [e["word"] for e in t.get("elements") or [] if isinstance(e, dict) and e.get("word")]
+            # 公演の形式の言葉は、読み取りが「題材」と書いたときだけ（build_recommend_index.theme_terms と同じ）
+            value["words"] = [e["word"] for e in t.get("elements") or [] if isinstance(e, dict) and e.get("word")
+                              and (e.get("kind") == "題材" or UR.M.norm(e["word"]) not in UR.FORM_WORDS)]
         try:
             row = public_candidate(value)
         except ValueError:

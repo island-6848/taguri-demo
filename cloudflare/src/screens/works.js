@@ -3,7 +3,7 @@
 // a manual one (rate_performances.load_purchases returns [] for them): the
 // purchase / attendance / splits / credits.jsonl paths of app._works are empty
 // and are not ported.
-import {WS, strip, seqRatio, pyRound, sortBy, localNow} from './py.js';
+import {WS, strip, seqRatio, pyRound, sortBy, localNow, cmp} from './py.js';
 
 // rate_performances.title_key: drop a leading crown (〈…〉【…】) and symbols/spaces.
 const CROWN = new RegExp(`^[〈<（(【\\[][^\\n]{0,12}?[〉>）)】\\]][${WS}]*`, 'u');
@@ -121,7 +121,10 @@ export async function loadWorks(ctx) {
     if (mergedInto.has(k)) {
       const dst = mergedInto.get(k);
       if (!into.has(dst)) into.set(dst, []);
-      into.get(dst).push({work_key: k, title: sv.title || ''});
+      // まとめた回も、観た日・劇場・開演・回数・公演を残す（日記帳で回ごとに出し、回数・劇場を数えるため。起案者の問い 2026-10-21
+      // 「ツアー公演を複数回追加するとき、またまとめた公演を見るとき周辺のUXが悪い」── 前は題名だけを残し、7 回観ても 1 回に見えた）
+      into.get(dst).push({work_key: k, title: sv.title || '', first_date: sv.first_date || '', last_date: sv.last_date || '',
+        times: sv.times || 1, venue: sv.venue || '', time: sv.time || '', stage_id: sv.stage_id || ''});
       continue;
     }
     // Links made by screens/autolink.js carry stage_auto=1 (shown as 自動で結び付けました).
@@ -133,10 +136,30 @@ export async function loadWorks(ctx) {
       auto_linked: !!sv.stage_auto && !!sv.stage_id, has_credits: false, unseen: false, skipped: 0,
       suspect: false, merged: [], hand: hand[k] || {}, shows: [], pieces: pieces.get(k) || []});
   }
-  for (const w of out) if (into.has(w.work_key)) w.merged = [...w.merged, ...into.get(w.work_key)];
+  for (const w of out) {
+    if (into.has(w.work_key)) w.merged = [...w.merged, ...into.get(w.work_key)];
+    w.visits = visitsOf(w);
+    w.seen_times = w.visits.reduce((n, v) => n + v.times, 0);
+    // 並びは、まとめた回も入れていちばん後に観た日（ツアーの最後の回を 8 月に観たなら、7 月の所に埋もれない）
+    w.seen_last = w.visits.reduce((d, v) => (v.last_date > d ? v.last_date : d), w.last_date || '');
+  }
   // out.sort(key=lambda w: w["last_date"] or "0000", reverse=True) — stable.
-  return sortBy(out, w => w.last_date || '0000', true);
+  return sortBy(out, w => w.seen_last || w.last_date || '0000', true);
 }
+
+/**
+ * 記録の観た回 [{work_key, date, last_date, time, venue, stage_id, times, kept}]。残した記録（kept）と、まとめた記録（merged）の
+ * 1 件ずつを、観た日・開演の順に。loadWorks を通った記録は w.visits に入っている
+ */
+export function visitsOf(w) {
+  if (Array.isArray(w.visits)) return w.visits;
+  const one = (x, kept) => ({work_key: x.work_key, date: x.first_date || '', last_date: x.last_date || x.first_date || '',
+    time: x.time || '', venue: x.venue || '', stage_id: x.stage_id || '', times: Number(x.times) || 1, kept});
+  return [one(w, true), ...(w.merged || []).map(m => one(m, false))]
+    .sort((a, b) => cmp(a.date || '9999', b.date || '9999') || cmp(a.time, b.time));
+}
+/** 観た回数: まとめた回も入れ、記録ごとの回数（times）を足す。アカウント・日記帳・眺める・評価で同じ数にする */
+export const seenTimes = w => w.seen_times ?? visitsOf(w).reduce((n, v) => n + v.times, 0);
 
 /** app.similar_works: records whose title is close to `title` (never merged automatically). */
 export async function similarWorks(ctx, title, excludeKey = '', limit = 5) {

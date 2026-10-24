@@ -8,7 +8,7 @@
 import {scaleOf, ALL_GRADES, gradeText} from './grade.js';
 import {autoLink, pastStages} from './autolink.js';
 import {E, strip, slice, field, pyRepr, localNow, dumps, ValueError, WS, quote, qsFirst, sortBy, cmp, isdigit} from './py.js';
-import {loadWorks, similarWorks, titleKey, norm, deleteWork, pieceCast} from './works.js';
+import {loadWorks, similarWorks, titleKey, norm, deleteWork, pieceCast, visitsOf} from './works.js';
 import {handCreditCount, parseCredits} from './credits.js';
 import {recRow, anchor, stageLabels} from './row.js';
 import {rowInfos} from './rowinfo.js';
@@ -251,12 +251,26 @@ export async function autoMerge(ctx, ws = null) {
 async function mergeWorkAction(b, ctx) {
   const workKey = req(b, 'work_key', 'work_key が要る');
   if (truthy(b.unmerge)) {
-    // 外した記録は、自動でまとめ直さない（autoMerge の nomerge:<鍵>）
-    const {results: drops} = await ctx.db.prepare('SELECT work_key FROM merges WHERE user_id=? AND into_key=?').bind(ctx.uid, workKey).all();
-    const r = await ctx.db.prepare('DELETE FROM merges WHERE user_id=? AND into_key=?').bind(ctx.uid, workKey).run();
-    if (drops.length) await ctx.db.batch(drops.map(d => ctx.db.prepare("INSERT INTO excluded (user_id, uid, program, updated_at) VALUES (?,?,'auto_merge',?) ON CONFLICT DO NOTHING")
-      .bind(ctx.uid, 'nomerge:' + d.work_key, now(ctx))));
-    return {body: {ok: true, n: r.meta?.changes ?? r.changes ?? 0}};
+    // 外した記録は、自動でまとめ直さない（autoMerge の nomerge:<鍵>）。one を渡すと、その 1 回だけを分ける
+    // （起案者の問い 2026-10-21。前は全部か無しかで、分けた回は評価が無くなり、未評価に何件も並んだ）
+    const one = field(b, 'one');
+    const {results: all} = await ctx.db.prepare('SELECT work_key FROM merges WHERE user_id=? AND into_key=?').bind(ctx.uid, workKey).all();
+    const drops = one ? all.filter(d => d.work_key === one) : all;
+    if (one && !drops.length) throw new ValueError('その回はこの記録にまとまっていない');
+    // 評価が無い回には、まとめていた記録の評価（と評価した時刻）を写す。感想は写さない（同じ文が 2 つになるため）
+    const kv = (await savedWork(ctx, workKey)) || {};
+    const stmts = [];
+    for (const d of drops) {
+      stmts.push(ctx.db.prepare('DELETE FROM merges WHERE user_id=? AND work_key=?').bind(ctx.uid, d.work_key));
+      stmts.push(ctx.db.prepare("INSERT INTO excluded (user_id, uid, program, updated_at) VALUES (?,?,'auto_merge',?) ON CONFLICT DO NOTHING")
+        .bind(ctx.uid, 'nomerge:' + d.work_key, now(ctx)));
+      if (kv.verdict) {
+        stmts.push(ctx.db.prepare("UPDATE works SET verdict=?, rated_at=?, updated_at=? WHERE user_id=? AND work_key=? AND (verdict IS NULL OR verdict='')")
+          .bind(kv.verdict, kv.rated_at || kv.updated_at || null, now(ctx), ctx.uid, d.work_key));
+      }
+    }
+    if (stmts.length) await ctx.db.batch(stmts);
+    return {body: {ok: true, n: drops.length}};
   }
   return {body: await mergeWorks(ctx, workKey, field(b, 'other'))};
 }
@@ -555,7 +569,11 @@ async function worksScreen(params, ctx) {
   const check = ws.filter(w => w.suspect);
   let rest = ws.filter(w => !w.suspect && !w.unseen);
   // app._flatten_visits: a manual record has no mails to open, so only the order changes.
-  const restVisit = sortBy(rest, w => w.first_date || '0000', true);
+  // まとめた記録は、観た回ごとの行に開く（起案者の問い 2026-10-21。前はまとめた回が消え、説明の「行った日の数だけ並びます」と食い違った）。
+  // 評価・感想は残した記録のものを共有する。直す欄は残した回の行にだけ付ける
+  const restVisit = sortBy(rest.flatMap(w => !(w.merged || []).length ? [w] : visitsOf(w).map((v, i) => ({...w,
+    first_date: v.date, last_date: v.last_date, time: v.time, venue: v.venue, stage_id: v.stage_id || w.stage_id,
+    times: v.times, merged: [], visits: [v], seen_times: v.times, visitOf: v.kept ? '' : `-v${i}`}))), w => w.first_date || '0000', true);
   const groups = [['work', '作品でまとめる', rest.length], ['visit', 'すべて表示', restVisit.length]];
   group = ['work', 'visit'].includes(group) ? group : 'work';
   if (group === 'visit') rest = restVisit;
@@ -604,7 +622,7 @@ async function worksScreen(params, ctx) {
   const scale = await scaleOf(ctx);
   const infos = await rowInfos(ctx, show, people);
   const rows = show.map(w => recRow({...w, people: people[w.work_key] || [], synopsis: '', info: infos[w.work_key]},
-    {poster: posterHtml(w, files), editable: true, label: labels[w.stage_id] || '', scale, fullDate: true})).join('');
+    {poster: posterHtml(w, files), editable: !w.visitOf, idSuffix: w.visitOf || '', label: labels[w.stage_id] || '', scale, fullDate: true})).join('');
   return {title, body_html: `<h1>日記帳</h1>
 ${recordsLede(d)}
 <p class="lede">1 件ごとに、日付・評価・感想が出ます。<b>感想は各行の「感想」の鉛筆から書けます</b>。書いた感想は欄から離れたときに保存されます。
