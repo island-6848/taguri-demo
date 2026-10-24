@@ -21,7 +21,7 @@ import {peopleByKey} from './diary.js';
 import {parseCredits} from './credits.js';
 import {loadWorks, titleKey, visitsOf} from './works.js';
 import {loadDeclared, buckets, nz, pastFromIndex} from './lists.js';
-import {titleKey as indexKey, titlePrefixes, pastByPrefix} from '../stage-search.js';
+import {titleKey as indexKey, titlePrefixes, pastByPrefix, pastByTitle} from '../stage-search.js';
 import {stageInfo, fallbackTemplate} from './fallback.js';
 import {tourBlock} from './schedule.js';
 import {withTour} from './recommend.js';
@@ -205,6 +205,8 @@ export async function pastHits(ctx, q, ws, page = 1, href = null) {
     const results = await pastByPrefix(ctx.db, 'stage_id,title,tkey,start,end,venue,grp', titlePrefixes(k), PAST_TITLE_ROWS);
     capped = results.length >= PAST_TITLE_ROWS;
     for (const r of results) add(r, '題名');
+    // 題名の途中の語でも引く（R2 の題名の索引、stage-search.pastByTitle。起案者の指示 2026-10-24）
+    for (const r of await pastByTitle(ctx.env, ctx.db, k, 'stage_id,title,tkey,start,end,venue,grp', 90)) add(r, '題名');
   }
   for (const key of [...new Set([nz(q), nz(fold(q))])].filter(x => Array.from(x).length >= 2)) {
     for (const r of (await pastFromIndex(ctx, key)) || []) add(r, '出演・作り手・団体');

@@ -2342,6 +2342,22 @@
    "verifies": []
   },
   {
+   "id": "dec-past-title-index",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-24",
+   "title": "過去の公演を題名の途中の語でも引けるよう、題名の 2 文字ずつの組の索引を R2 に置く（D1 には書かない）",
+   "sources": [
+    "cloudflare/scripts/deliver_past_index.py",
+    "cloudflare/src/stage-search.js",
+    "cloudflare/src/screens/suggest.js",
+    "cloudflare/src/screens/search.js",
+    "cloudflare/test/past-title.test.js",
+    "cloudflare/test/test_deliver_past_index.py"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-people-network-on-trace",
    "type": "decision",
    "status": "adopted",
@@ -10954,6 +10970,11 @@
    "from": "dec-past-title-backfill",
    "rel": "depends_on",
    "to": "dec-title-crown-subtitle"
+  },
+  {
+   "from": "dec-past-title-index",
+   "rel": "affects",
+   "to": "dec-past-name-index"
   },
   {
    "from": "dec-people-network-on-trace",
