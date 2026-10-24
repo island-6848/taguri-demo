@@ -81,6 +81,9 @@ test('お気に入り cards use the same schedule block, with no 「このおす
     const html = (await step(env, a, {get: '/api/screen/favourites'})).body.body_html;
     assert.match(html, /<article class="ticket favourite"[\s\S]*<div class="tourfull v2/);
     assert.doesNotMatch(html, /このおすすめの日程/);
+    // 表示の絞り込みは、おすすめの「地域・調整」と同じく 1 つの折りたたみ（既定は閉じる。起案者の指示 2026-10-24）
+    assert.match(html, /<details class="rec-controls">\n<summary><b>表示の絞り込み<\/b><span>全国<\/span><span class="rec-budget"><\/span><\/summary>[\s\S]*?<div class="fil2 narrow">[\s\S]*?<\/div>\n<\/details>/);
+    assert.equal(html.match(/表示の絞り込み/g).length, 1);
   } finally { sqlite.close(); }
 });
 

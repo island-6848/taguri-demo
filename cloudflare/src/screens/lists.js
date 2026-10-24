@@ -906,6 +906,7 @@ export async function favouritesScreen(params, ctx) {
   const n = KINDS.reduce((s, k) => s + (dec[k] || []).length, 0);
   // 登録した名前は、この一覧に出る公演そのものを決める。場所・料金は出てきた公演の絞り込み。2 段に分ける
   // （起案者の指示 2026-10-17。出さない語・使わない理由はおすすめの設定なので、おすすめの画面に置く）
+  const where = prefs.length <= 3 ? prefs.join('・') : `${prefs[0]}ほか ${prefs.length - 1} 県`;
   const tools = `<p class="fgh">${ico('star', 15)}<b>お気に入りに出す名前</b><span>お気に入りに表示される結果自体が変わります。</span></p>`
     + `<div class="fil2 tune"><details class="pbox" id="names"${keep ? ' open' : ''}>`
     // 見出しと説明の文は起案者の指示 2026-10-18（「登録した名前」→「要素を登録」、説明は表記ゆれの 1 文だけ）
@@ -913,12 +914,15 @@ export async function favouritesScreen(params, ctx) {
     + '<p class="lead">表記ゆれ（漢字とカタカナ、送り仮名の違いなど）は、自動では見分けられない場合があります。</p>'
     + `<div class="fav-add"><label class="fld" for="fav-kind"><span class="fl">種類<small class="req">必須</small></span><select id="fav-kind">${kinds}</select></label> <label class="fld" for="fav-name"><span class="fl">名前<small class="req">必須</small></span><input id="fav-name" type="text" placeholder="例：劇団四季・シェイクスピア・家族" size="26"></label> <button data-fav="add">登録する</button>${favRoleBox()}`
     + `<span class="said"></span></div><div class="tags">${tags}</div></details></div>`
-    + (allFavs.length ? `<p class="fgh">${ico('search', 15)}<b>表示の絞り込み</b><span>お気に入りの公演の中から、表示する項目を設定できます。</span></p>`
+    // 表示の絞り込み（場所・料金）は、おすすめの画面（地域・調整）と同じく 1 つの折りたたみにまとめ、既定は閉じる（起案者の指示
+    // 2026-10-24「お気に入りの『表示の絞り込み』自体を、おすすめページのように折りたたんでほしい」）。料金の上限は app.js が .rec-budget に書く
+    + (allFavs.length ? `<details class="rec-controls">\n<summary><b>表示の絞り込み</b><span>${E(prefs.length ? where : '全国')}</span><span class="rec-budget"></span></summary>\n`
+      // 中の見出しは折りたたみの見出しと同じ言葉が 2 度続くので外し、説明の 1 文だけ残す
+      + `<p class="fgh"><span>お気に入りの公演の中から、表示する項目を設定できます。</span></p>`
       + `<div class="fil2 narrow">${prefForm(pcounts, prefs, '/recommend/favourites', PAGE_PREF_NOTE, sort !== 'start' ? {s: sort} : {},
-        regionCounts(allFavs.map(r => ({key: r.stage_id, prefs: prefsOf(r)}))))}</div>` : '');
+        regionCounts(allFavs.map(r => ({key: r.stage_id, prefs: prefsOf(r)}))))}</div>\n</details>` : '');
   // 当たった名前（「人「俳優甲」」→「俳優甲」）をハッシュタグにする。理由の欄は出さない（起案者の指示 2026-10-15）
   const why = r => ({owned: Boolean(r.owned), tags: [...new Set(r.a.map(w => (/「(.*)」$/.exec(w) || [, w])[1]))]});
-  const where = prefs.length <= 3 ? prefs.join('・') : `${prefs[0]}ほか ${prefs.length - 1} 県`;
   const list = !favs.length && allFavs.length
     ? `<p class="empty"><b>${E(where)}</b>で観られるお気に入りの公演はありません（全国では ${allFavs.length} 件）。ほかの都道府県を選ぶか、全国に戻してください。</p>`
     : favs.length
