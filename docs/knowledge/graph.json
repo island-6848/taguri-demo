@@ -3913,9 +3913,23 @@
    "verifies": []
   },
   {
-   "id": "dec-word-cloud",
+   "id": "dec-word-cloud-tags",
    "type": "decision",
    "status": "adopted",
+   "date": "2026-10-24",
+   "title": "眺めるの「ことばの雲」は、あらすじの本文を語に切るのをやめ、あらすじから読み取ったタグ（カードのハッシュタグと同じ語）を、付いている公演の数で並べる",
+   "sources": [
+    "cloudflare/src/screens/words.js",
+    "cloudflare/src/screens/records.js",
+    "cloudflare/src/screens/figs.js",
+    "cloudflare/test/words.test.js"
+   ],
+   "verifies": []
+  },
+  {
+   "id": "dec-word-cloud",
+   "type": "decision",
+   "status": "superseded",
    "date": "2026-10-24",
    "title": "眺めるに「ことばの雲」を置く。観た公演のあらすじから語を数え、切り出しと配置はブラウザで行う",
    "sources": [
@@ -12163,6 +12177,21 @@
    "from": "dec-weight-defaults",
    "rel": "depends_on",
    "to": "dec-recommend-weights-worker"
+  },
+  {
+   "from": "dec-word-cloud-tags",
+   "rel": "supersedes",
+   "to": "dec-word-cloud"
+  },
+  {
+   "from": "dec-word-cloud-tags",
+   "rel": "depends_on",
+   "to": "impl-hashtag-list"
+  },
+  {
+   "from": "dec-word-cloud-tags",
+   "rel": "depends_on",
+   "to": "dec-synopsis-reader-claude"
   },
   {
    "from": "dec-word-cloud",
