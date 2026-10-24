@@ -22,3 +22,5 @@ links:
 - 原因: 定期実行「あらすじの読み取り（1 日 4 回・各 60 件）」（trig_01Y7a7jwMQpEgcCiTdkwwVaK）は動いているが、毎回 3 秒で失敗している。最後の実行（2026-10-24 10:08 UTC）の記録は「Setup script failed with exit code 2. … line 3: syntax error near unexpected token `npx'」。環境のセットアップスクリプトの 3 行目が壊れている。もう一つの「あらすじの読み取り（毎日）」（800 件、trig_014eMAXkksBvXuKB31mAuKht）は 10-18 から止めてある（enabled false）
 - 直すのは起案者: 環境の設定（セッションの題の横の環境のメニュー → Edit → Setup script）。いつから壊れたかは確かめていない（10-20 以降の実行の記録は見ていない）
 - 速さの目安: 1 日 4 回×60 件＝240 件。待ちの 1,151 件は約 5 日。一覧の残り（約 26,000 行）を全部読むには、待ちに積む速さ（取得の 1 日の枠）と読む速さの両方が今のままだと 3〜4 か月かかる見込み（見積もり）
+
+2026-10-24 追記: セットアップスクリプトの中身は、Claude Code の許可の設定の書き方（`Bash(npx --yes wrangler@4.151.1 d1 execute taguri-demo --remote:*)` と `Bash(python3 scripts/deliver_posters.py:*)`）の 2 行だった。シェルとして読めないので失敗していた。起案者が消して空にした。手動で起動した回（15:22 UTC）は、セットアップを飛ばして Claude の起動まで進んだ。

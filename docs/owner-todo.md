@@ -11,10 +11,6 @@
 - [ ] **`taguri-upload.jks` と合言葉を、手元の安全な場所に保管する**（なくすと Play で鍵を替える手続きが要る）
 - [ ] Actions → Android → Run workflow で組み直し、前のアプリを消してから新しい APK を入れ直す。帯が消えたか Claude に知らせる
 
-## あらすじの読み取りを動かす（2026-10-24 追加）
-
-- [ ] **定期実行の環境のセットアップスクリプトを直す。** 3 行目で `syntax error near unexpected token npx` になり、あらすじの読み取り（1 日 4 回）が 10-20 ごろから毎回失敗している。環境のメニュー → Edit → Setup script〔f-past-synopsis-progress-1024〕
-
 ## Google Play に出すまで（手順は [android-release.md](android-release.md)）
 
 - [ ] **アプリの番号（パッケージ名）を決める。** いまは仮に `jp.taguri.app`。Play に一度上げると変えられない
@@ -51,6 +47,8 @@
 - [ ] 「次の更新で探してもらう」依頼を処理する段を作るか（issue #101）。今は依頼を受け付けるだけで、だれも探していない。案: 毎日の取得が新しく読んだ公演と、頼まれた題名を手元で照らし、画面に「見つかった・まだ」を出す（通信なし・Actions 数秒・D1 の書き込み 1 日 最大 200 行）〔q-search-request-crawl〕
 
 ## 済み
+
+- 2026-10-24 定期実行の環境のセットアップスクリプトを空にした（許可の設定の書き方の 2 行が入っていて、あらすじの読み取りが 10-20 ごろから毎回失敗していた）〔f-past-synopsis-progress-1024〕
 
 - 2026-10-20 ストアの登録料は起案者が負担すると決めた〔dec-app-release-costs〕
 - 2026-10-13 取得用の非公開リポジトリ taguri-crawler を作り、Claude の GitHub アプリを許可した〔q-crawler-repo〕
