@@ -66,7 +66,7 @@ export async function consentAction(b, ctx) {
   const cmds = [ctx.db.prepare('INSERT INTO app_setting(user_id,key,value,updated_at) VALUES(?,?,?,?) ON CONFLICT(user_id,key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at')
     .bind(ctx.uid, NOTE_AI_KEY, b.on ? '1' : '0', at)];
   if (!b.on) cmds.push(ctx.db.prepare('DELETE FROM note_ai WHERE user_id=?').bind(ctx.uid),
-    ctx.db.prepare('DELETE FROM rec_cache WHERE user_id=?').bind(ctx.uid));
+    ctx.db.prepare("UPDATE rec_cache SET stamp='' WHERE user_id=?").bind(ctx.uid));
   await ctx.db.batch(cmds);
   return {body: {ok: true, on: b.on}};
 }
@@ -228,7 +228,7 @@ export async function runNoteAi(env, {client = null, now = Date.now()} = {}) {
       model=excluded.model, prompt_ver=excluded.prompt_ver, analyzed_at=excluded.analyzed_at`)
     .bind(uid, wk, hash, JSON.stringify(feats), status, NOTE_AI_MODEL, PROMPT_VER, at));
   // 結果が変わった人のおすすめの控えを消し、次に開いたときに計算し直す
-  for (const uid of new Set(rows.filter(r => r[4] === 'ok').map(r => r[0]))) cmds.push(db.prepare('DELETE FROM rec_cache WHERE user_id=?').bind(uid));
+  for (const uid of new Set(rows.filter(r => r[4] === 'ok').map(r => r[0]))) cmds.push(db.prepare("UPDATE rec_cache SET stamp='' WHERE user_id=?").bind(uid));
   if (tokens) cmds.push(db.prepare('INSERT INTO usage(k,n) VALUES(?,?) ON CONFLICT(k) DO UPDATE SET n=n+excluded.n').bind(usageKey, tokens));
   for (let i = 0; i < cmds.length; i += 50) await db.batch(cmds.slice(i, i + 50));
   return {sent, saved: rows.length, stopped};
