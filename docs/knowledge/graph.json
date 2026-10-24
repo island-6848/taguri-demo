@@ -3222,6 +3222,18 @@
    "verifies": []
   },
   {
+   "id": "dec-search-middot",
+   "type": "decision",
+   "status": "adopted",
+   "date": "2026-10-24",
+   "title": "探すは中黒などの点（・ ･ · • ‧ ∙）を除いて比べる。ミス・サイゴンを「ミスサイゴン」と打っても当たり、点を入れて打っても点の無い題名に当たる",
+   "sources": [
+    "cloudflare/src/screens/search.js",
+    "cloudflare/test/search-middot.test.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "dec-search-part-paging",
    "type": "decision",
    "status": "adopted",
@@ -7850,6 +7862,19 @@
    "verifies": []
   },
   {
+   "id": "q-miss-saigon-cast",
+   "type": "question",
+   "status": "open",
+   "date": "2026-10-24",
+   "title": "ミス・サイゴンの出演者を、起案者が渡した一覧に差し替える（管理画面で起案者が入れる）",
+   "sources": [
+    "docs/owner/miss-saigon-cast.txt",
+    "tools/admin/admin.py",
+    "cloudflare/src/screens/override.js"
+   ],
+   "verifies": []
+  },
+  {
    "id": "q-monitoring",
    "type": "question",
    "status": "answered",
@@ -11709,6 +11734,11 @@
    "to": "dec-search-tour-one-card"
   },
   {
+   "from": "dec-search-middot",
+   "rel": "affects",
+   "to": "dec-search-bar-emphasis"
+  },
+  {
    "from": "dec-search-part-paging",
    "rel": "affects",
    "to": "comp-cf-worker"
@@ -14807,6 +14837,11 @@
    "from": "q-migration-owner",
    "rel": "depends_on",
    "to": "dec-render-full-migration"
+  },
+  {
+   "from": "q-miss-saigon-cast",
+   "rel": "depends_on",
+   "to": "impl-admin-tool"
   },
   {
    "from": "q-name-search-without-corich-search",
